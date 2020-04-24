@@ -98,6 +98,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         debugger_hook_config=None,
         tensorboard_output_config=None,
         enable_sagemaker_metrics=None,
+        enable_network_isolation=False,
     ):
         """Initialize an ``EstimatorBase`` instance.
 
@@ -201,6 +202,11 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                 Series. For more information see:
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_AlgorithmSpecification.html#SageMaker-Type-AlgorithmSpecification-EnableSageMakerMetricsTimeSeries
                 (default: ``None``).
+            enable_network_isolation (bool): Specifies whether container will
+                run in network isolation mode (default: ``False``). Network
+                isolation mode restricts the container access to outside networks
+                (such as the Internet). The container does not make any inbound or
+                outbound network calls. Also known as Internet-free mode.
         """
         self.role = role
         self.train_instance_count = train_instance_count
@@ -220,6 +226,11 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             if self.train_instance_type == "local_gpu" and self.train_instance_count > 1:
                 raise RuntimeError("Distributed Training in Local GPU is not supported")
             self.sagemaker_session = sagemaker_session or LocalSession()
+            if not isinstance(self.sagemaker_session, sagemaker.local.LocalSession):
+                raise RuntimeError(
+                    "instance_type local or local_gpu is only supported with an"
+                    "instance of LocalSession"
+                )
         else:
             self.sagemaker_session = sagemaker_session or Session()
 
@@ -257,6 +268,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         self.collection_configs = None
 
         self.enable_sagemaker_metrics = enable_sagemaker_metrics
+        self._enable_network_isolation = enable_network_isolation
 
     @abstractmethod
     def train_image(self):
@@ -287,7 +299,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         Returns:
             bool: Whether this Estimator needs network isolation or not.
         """
-        return False
+        return self._enable_network_isolation
 
     def prepare_workflow_for_training(self, job_name=None):
         """Calls _prepare_for_training. Used when setting up a workflow.
@@ -816,6 +828,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         role=None,
         volume_kms_key=None,
         vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT,
+        enable_network_isolation=None,
+        model_name=None,
     ):
         """Return a ``Transformer`` that uses a SageMaker Model based on the
         training job. It reuses the SageMaker Session and base job name used by
@@ -826,8 +840,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             instance_type (str): Type of EC2 instance to use, for example,
                 'ml.c4.xlarge'.
             strategy (str): The strategy used to decide how to batch records in
-                a single request (default: None). Valid values: 'MULTI_RECORD'
-                and 'SINGLE_RECORD'.
+                a single request (default: None). Valid values: 'MultiRecord'
+                and 'SingleRecord'.
             assemble_with (str): How the output is assembled (default: None).
                 Valid values: 'Line' or 'None'.
             output_path (str): S3 location for saving the transform result. If
@@ -854,8 +868,20 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             vpc_config_override (dict[str, list[str]]): Optional override for the
                 VpcConfig set on the model.
                 Default: use subnets and security groups from this Estimator.
+
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
+
+            enable_network_isolation (bool): Specifies whether container will
+                run in network isolation mode. Network isolation mode restricts
+                the container access to outside networks (such as the internet).
+                The container does not make any inbound or outbound network
+                calls. If True, a channel named "code" will be created for any
+                user entry script for inference. Also known as Internet-free mode.
+                If not specified, this setting is taken from the estimator's
+                current configuration.
+            model_name (str): Name to use for creating an Amazon SageMaker
+                model. If not specified, the name of the training job is used.
         """
         tags = tags or self.tags
 
@@ -864,11 +890,16 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                 "No finished training job found associated with this estimator. Please make sure "
                 "this estimator is only used for building workflow config"
             )
-            model_name = self._current_job_name
+            model_name = model_name or self._current_job_name
         else:
-            model_name = self.latest_training_job.name
+            model_name = model_name or self.latest_training_job.name
+            if enable_network_isolation is None:
+                enable_network_isolation = self.enable_network_isolation()
+
             model = self.create_model(
-                vpc_config_override=vpc_config_override, model_kms_key=self.output_kms_key
+                vpc_config_override=vpc_config_override,
+                model_kms_key=self.output_kms_key,
+                enable_network_isolation=enable_network_isolation,
             )
 
             # not all create_model() implementations have the same kwargs
@@ -1217,13 +1248,10 @@ class Estimator(EstimatorBase):
                 checkpoints will be provided under `/opt/ml/checkpoints/`.
                 (default: ``None``).
             enable_network_isolation (bool): Specifies whether container will
-                run in network isolation mode. Network isolation mode restricts
-                the container access to outside networks (such as the Internet).
-                The container does not make any inbound or outbound network
-                calls. If ``True``, a channel named "code" will be created for any
-                user entry script for training. The user entry script, files in
-                source_dir (if specified), and dependencies will be uploaded in
-                a tar to S3. Also known as internet-free mode (default: ``False``).
+                run in network isolation mode (default: ``False``). Network
+                isolation mode restricts the container access to outside networks
+                (such as the Internet). The container does not make any inbound or
+                outbound network calls. Also known as Internet-free mode.
             enable_sagemaker_metrics (bool): enable SageMaker Metrics Time
                 Series. For more information see:
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_AlgorithmSpecification.html#SageMaker-Type-AlgorithmSpecification-EnableSageMakerMetricsTimeSeries
@@ -1231,7 +1259,6 @@ class Estimator(EstimatorBase):
         """
         self.image_name = image_name
         self.hyperparam_dict = hyperparameters.copy() if hyperparameters else {}
-        self._enable_network_isolation = enable_network_isolation
         super(Estimator, self).__init__(
             role,
             train_instance_count,
@@ -1259,15 +1286,8 @@ class Estimator(EstimatorBase):
             debugger_hook_config=debugger_hook_config,
             tensorboard_output_config=tensorboard_output_config,
             enable_sagemaker_metrics=enable_sagemaker_metrics,
+            enable_network_isolation=enable_network_isolation,
         )
-
-    def enable_network_isolation(self):
-        """If this Estimator can use network isolation when running.
-
-        Returns:
-            bool: Whether this Estimator can use network isolation or not.
-        """
-        return self._enable_network_isolation
 
     def train_image(self):
         """Returns the docker image to use for training.
@@ -1356,6 +1376,9 @@ class Estimator(EstimatorBase):
 
         role = role or self.role
 
+        if "enable_network_isolation" not in kwargs:
+            kwargs["enable_network_isolation"] = self.enable_network_isolation()
+
         return Model(
             self.model_data,
             image or self.train_image(),
@@ -1363,7 +1386,6 @@ class Estimator(EstimatorBase):
             vpc_config=self.get_vpc_config(vpc_config_override),
             sagemaker_session=self.sagemaker_session,
             predictor_cls=predictor_cls,
-            enable_network_isolation=self.enable_network_isolation(),
             **kwargs
         )
 
@@ -1473,7 +1495,7 @@ class Framework(EstimatorBase):
                 uploaded (default: None) - don't include a trailing slash since
                 a string prepended with a "/" is appended to ``code_location``. The code
                 file uploaded to S3 is 'code_location/job-name/source/sourcedir.tar.gz'.
-                If not specified, the default ``code location`` is s3://default_bucket/job-name/.
+                If not specified, the default ``code location`` is s3://output_bucket/job-name/.
             image_name (str): An alternate image name to use instead of the
                 official Sagemaker image for the framework. This is useful to
                 run one of the Sagemaker supported frameworks with an image
@@ -1496,6 +1518,7 @@ class Framework(EstimatorBase):
                     >>>     |------ train.py
                     >>>     |------ common
                     >>>     |------ virtual-env
+
             enable_network_isolation (bool): Specifies whether container will
                 run in network isolation mode. Network isolation mode restricts
                 the container access to outside networks (such as the internet).
@@ -1503,8 +1526,7 @@ class Framework(EstimatorBase):
                 calls. If True, a channel named "code" will be created for any
                 user entry script for training. The user entry script, files in
                 source_dir (if specified), and dependencies will be uploaded in
-                a tar to S3. Also known as internet-free mode (default: `False`
-                ).
+                a tar to S3. Also known as internet-free mode (default: `False`).
             git_config (dict[str, str]): Git configurations used for cloning
                 files, including ``repo``, ``branch``, ``commit``,
                 ``2FA_enabled``, ``username``, ``password`` and ``token``. The
@@ -1577,7 +1599,7 @@ class Framework(EstimatorBase):
             You can find additional parameters for initializing this class at
             :class:`~sagemaker.estimator.EstimatorBase`.
         """
-        super(Framework, self).__init__(**kwargs)
+        super(Framework, self).__init__(enable_network_isolation=enable_network_isolation, **kwargs)
         if entry_point.startswith("s3://"):
             raise ValueError(
                 "Invalid entry point script: {}. Must be a path to a local file.".format(
@@ -1597,7 +1619,6 @@ class Framework(EstimatorBase):
         self.container_log_level = container_log_level
         self.code_location = code_location
         self.image_name = image_name
-        self._enable_network_isolation = enable_network_isolation
 
         self.uploaded_code = None
 
@@ -1605,14 +1626,6 @@ class Framework(EstimatorBase):
         self.checkpoint_s3_uri = checkpoint_s3_uri
         self.checkpoint_local_path = checkpoint_local_path
         self.enable_sagemaker_metrics = enable_sagemaker_metrics
-
-    def enable_network_isolation(self):
-        """Return True if this Estimator can use network isolation to run.
-
-        Returns:
-            bool: Whether this Estimator can use network isolation or not.
-        """
-        return self._enable_network_isolation
 
     def _prepare_for_training(self, job_name=None):
         """Set hyperparameters needed for training. This method will also
@@ -1711,6 +1724,7 @@ class Framework(EstimatorBase):
             directory=self.source_dir,
             dependencies=self.dependencies,
             kms_key=kms_key,
+            s3_resource=self.sagemaker_session.s3_resource,
         )
 
     def _model_source_dir(self):
@@ -1888,6 +1902,8 @@ class Framework(EstimatorBase):
         volume_kms_key=None,
         entry_point=None,
         vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT,
+        enable_network_isolation=None,
+        model_name=None,
     ):
         """Return a ``Transformer`` that uses a SageMaker Model based on the
         training job. It reuses the SageMaker Session and base job name used by
@@ -1898,8 +1914,8 @@ class Framework(EstimatorBase):
             instance_type (str): Type of EC2 instance to use, for example,
                 'ml.c4.xlarge'.
             strategy (str): The strategy used to decide how to batch records in
-                a single request (default: None). Valid values: 'MULTI_RECORD'
-                and 'SINGLE_RECORD'.
+                a single request (default: None). Valid values: 'MultiRecord'
+                and 'SingleRecord'.
             assemble_with (str): How the output is assembled (default: None).
                 Valid values: 'Line' or 'None'.
             output_path (str): S3 location for saving the transform result. If
@@ -1932,8 +1948,20 @@ class Framework(EstimatorBase):
             vpc_config_override (dict[str, list[str]]): Optional override for
                 the VpcConfig set on the model.
                 Default: use subnets and security groups from this Estimator.
+
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
+
+            enable_network_isolation (bool): Specifies whether container will
+                run in network isolation mode. Network isolation mode restricts
+                the container access to outside networks (such as the internet).
+                The container does not make any inbound or outbound network
+                calls. If True, a channel named "code" will be created for any
+                user entry script for inference. Also known as Internet-free mode.
+                If not specified, this setting is taken from the estimator's
+                current configuration.
+            model_name (str): Name to use for creating an Amazon SageMaker
+                model. If not specified, the name of the training job is used.
 
         Returns:
             sagemaker.transformer.Transformer: a ``Transformer`` object that can be used to start a
@@ -1943,12 +1971,17 @@ class Framework(EstimatorBase):
         tags = tags or self.tags
 
         if self.latest_training_job is not None:
+            if enable_network_isolation is None:
+                enable_network_isolation = self.enable_network_isolation()
+
             model = self.create_model(
                 role=role,
                 model_server_workers=model_server_workers,
                 entry_point=entry_point,
                 vpc_config_override=vpc_config_override,
                 model_kms_key=self.output_kms_key,
+                enable_network_isolation=enable_network_isolation,
+                name=model_name,
             )
             model._create_sagemaker_model(instance_type, tags=tags)
 
@@ -1961,7 +1994,7 @@ class Framework(EstimatorBase):
                 "No finished training job found associated with this estimator. Please make sure "
                 "this estimator is only used for building workflow config"
             )
-            model_name = self._current_job_name
+            model_name = model_name or self._current_job_name
             transform_env = env or {}
 
         return Transformer(

@@ -32,7 +32,7 @@ import six
 from six.moves.urllib import parse
 
 
-ECR_URI_PATTERN = r"^(\d+)(\.)dkr(\.)ecr(\.)(.+)(\.)(amazonaws.com|c2s.ic.gov)(/)(.*:.*)$"
+ECR_URI_PATTERN = r"^(\d+)(\.)dkr(\.)ecr(\.)(.+)(\.)(.*)(/)(.*:.*)$"
 MAX_BUCKET_PATHS_COUNT = 5
 S3_PREFIX = "s3://"
 HTTP_PREFIX = "http://"
@@ -346,16 +346,21 @@ def download_folder(bucket_name, prefix, target, sagemaker_session):
 
     # Try to download the prefix as an object first, in case it is a file and not a 'directory'.
     # Do this first, in case the object has broader permissions than the bucket.
-    try:
-        s3.Object(bucket_name, prefix).download_file(os.path.join(target, os.path.basename(prefix)))
-        return
-    except botocore.exceptions.ClientError as e:
-        if e.response["Error"]["Code"] == "404" and e.response["Error"]["Message"] == "Not Found":
-            # S3 also throws this error if the object is a folder,
-            # so assume that is the case here, and then raise for an actual 404 later.
-            _download_files_under_prefix(bucket_name, prefix, target, s3)
-        else:
-            raise
+    if not prefix.endswith("/"):
+        try:
+            file_destination = os.path.join(target, os.path.basename(prefix))
+            s3.Object(bucket_name, prefix).download_file(file_destination)
+            return
+        except botocore.exceptions.ClientError as e:
+            err_info = e.response["Error"]
+            if err_info["Code"] == "404" and err_info["Message"] == "Not Found":
+                # S3 also throws this error if the object is a folder,
+                # so assume that is the case here, and then raise for an actual 404 later.
+                pass
+            else:
+                raise
+
+    _download_files_under_prefix(bucket_name, prefix, target, s3)
 
 
 def _download_files_under_prefix(bucket_name, prefix, target, s3):
@@ -370,7 +375,7 @@ def _download_files_under_prefix(bucket_name, prefix, target, s3):
     bucket = s3.Bucket(bucket_name)
     for obj_sum in bucket.objects.filter(Prefix=prefix):
         # if obj_sum is a folder object skip it.
-        if obj_sum.key != "" and obj_sum.key[-1] == "/":
+        if obj_sum.key.endswith("/"):
             continue
         obj = s3.Object(obj_sum.bucket_name, obj_sum.key)
         s3_relative_path = obj_sum.key[len(prefix) :].lstrip("/")
@@ -509,9 +514,9 @@ def _save_model(repacked_model_uri, tmp_model_path, sagemaker_session, kms_key):
             extra_args = {"ServerSideEncryption": "aws:kms", "SSEKMSKeyId": kms_key}
         else:
             extra_args = None
-        sagemaker_session.boto_session.resource("s3").Object(bucket, new_key).upload_file(
-            tmp_model_path, ExtraArgs=extra_args
-        )
+        sagemaker_session.boto_session.resource(
+            "s3", region_name=sagemaker_session.boto_region_name
+        ).Object(bucket, new_key).upload_file(tmp_model_path, ExtraArgs=extra_args)
     else:
         shutil.move(tmp_model_path, repacked_model_uri.replace("file://", ""))
 
@@ -530,7 +535,9 @@ def _create_or_update_code_dir(
     """
     code_dir = os.path.join(model_dir, "code")
     if os.path.exists(code_dir):
-        shutil.rmtree(code_dir, ignore_errors=True)
+        for filename in os.listdir(code_dir):
+            if filename.endswith(".py"):
+                os.remove(os.path.join(code_dir, filename))
     if source_directory and source_directory.lower().startswith("s3://"):
         local_code_path = os.path.join(tmp, "local_code.tar.gz")
         download_file_from_url(source_directory, local_code_path, sagemaker_session)
@@ -539,9 +546,12 @@ def _create_or_update_code_dir(
             t.extractall(path=code_dir)
 
     elif source_directory:
+        if os.path.exists(code_dir):
+            shutil.rmtree(code_dir)
         shutil.copytree(source_directory, code_dir)
     else:
-        os.mkdir(code_dir)
+        if not os.path.exists(code_dir):
+            os.mkdir(code_dir)
         shutil.copy2(inference_script, code_dir)
 
     for dependency in dependencies:
@@ -599,7 +609,7 @@ def download_file(bucket_name, path, target, sagemaker_session):
     path = path.lstrip("/")
     boto_session = sagemaker_session.boto_session
 
-    s3 = boto_session.resource("s3")
+    s3 = boto_session.resource("s3", region_name=sagemaker_session.boto_region_name)
     bucket = s3.Bucket(bucket_name)
     bucket.download_file(path, target)
 

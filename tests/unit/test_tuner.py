@@ -40,7 +40,7 @@ from .tuner_test_utils import *  # noqa: F403
 @pytest.fixture()
 def sagemaker_session():
     boto_mock = Mock(name="boto_session", region_name=REGION)
-    sms = Mock(name="sagemaker_session", boto_session=boto_mock)
+    sms = Mock(name="sagemaker_session", boto_session=boto_mock, s3_client=None, s3_resource=None)
     sms.boto_region_name = REGION
     sms.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
     sms.config = None

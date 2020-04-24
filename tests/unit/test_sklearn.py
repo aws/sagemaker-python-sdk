@@ -20,9 +20,7 @@ import pytest
 from mock import Mock
 from mock import patch
 
-from sagemaker.sklearn import defaults
-from sagemaker.sklearn import SKLearn
-from sagemaker.sklearn import SKLearnPredictor, SKLearnModel
+from sagemaker.sklearn import defaults, SKLearn, SKLearnModel, SKLearnPredictor
 from sagemaker.fw_utils import UploadedCode
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
@@ -64,6 +62,8 @@ def sagemaker_session():
         boto_region_name=REGION,
         config=None,
         local_mode=False,
+        s3_resource=None,
+        s3_client=None,
     )
 
     describe = {"ModelArtifacts": {"S3ModelArtifacts": "s3://m/m.tar.gz"}}
@@ -252,13 +252,18 @@ def test_create_model_with_optional_params(sagemaker_session):
     new_role = "role"
     model_server_workers = 2
     vpc_config = {"Subnets": ["foo"], "SecurityGroupIds": ["bar"]}
+    model_name = "model-name"
     model = sklearn.create_model(
-        role=new_role, model_server_workers=model_server_workers, vpc_config_override=vpc_config
+        role=new_role,
+        model_server_workers=model_server_workers,
+        vpc_config_override=vpc_config,
+        name=model_name,
     )
 
     assert model.role == new_role
     assert model.model_server_workers == model_server_workers
     assert model.vpc_config == vpc_config
+    assert model.name == model_name
 
 
 def test_create_model_with_custom_image(sagemaker_session):
@@ -570,3 +575,11 @@ def test_model_py2_warning(warning, sagemaker_session):
     )
     assert model.py_version == "py2"
     warning.assert_called_with(model.__framework_name__, defaults.LATEST_PY2_VERSION)
+
+
+def test_custom_image_estimator_deploy(sagemaker_session):
+    custom_image = "mycustomimage:latest"
+    sklearn = _sklearn_estimator(sagemaker_session)
+    sklearn.fit(inputs="s3://mybucket/train", job_name="new_name")
+    model = sklearn.create_model(image=custom_image)
+    assert model.image == custom_image

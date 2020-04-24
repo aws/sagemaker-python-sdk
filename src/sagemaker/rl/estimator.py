@@ -218,8 +218,8 @@ class RLEstimator(Framework):
         base_args = dict(
             model_data=self.model_data,
             role=role or self.role,
-            image=self.image_name,
-            name=self._current_job_name,
+            image=kwargs.get("image", self.image_name),
+            name=kwargs.get("name", self._current_job_name),
             container_log_level=self.container_log_level,
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),

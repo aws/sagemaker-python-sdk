@@ -1,5 +1,192 @@
 # Changelog
 
+## v1.56.0 (2020-04-24)
+
+### Features
+
+ * add EIA support for TFS 1.15.0 and 2.0.0
+
+### Bug Fixes and Other Changes
+
+ * use format strings intead of os.path.join for Unix paths for Processing Jobs
+
+## v1.55.4 (2020-04-17)
+
+### Bug Fixes and Other Changes
+
+ * use valid encryption key arg for S3 downloads
+ * update sagemaker pytorch containers to external link
+ * allow specifying model name when creating a Transformer from an Estimator
+ * allow specifying model name in create_model() for TensorFlow, SKLearn, and XGBoost
+ * allow specifying model name in create_model() for Chainer, MXNet, PyTorch, and RL
+
+### Documentation Changes
+
+ * fix wget endpoints
+ * add Adobe Analytics; upgrade Sphinx and docs environment
+ * Explain why default model_fn loads PyTorch-EI models to CPU by default
+ * Set theme in conf.py
+ * correct transform()'s wait default value to "False"
+
+### Testing and Release Infrastructure
+
+ * move unit tests for updating an endpoint to test_deploy.py
+ * move Neo unit tests to a new file and directly use the Model class
+ * move Model.deploy unit tests to separate file
+ * add Model unit tests for delete_model and enable_network_isolation
+ * skip integ tests in PR build if only unit tests are modified
+ * add Model unit tests for prepare_container_def and _create_sagemaker_model
+ * use Model class for model deployment unit tests
+ * split model unit tests by Model, FrameworkModel, and ModelPackage
+ * add Model unit tests for all transformer() params
+ * add TF batch transform integ test with KMS and network isolation
+ * use pytest fixtures in batch transform integ tests to train and upload to S3 only once
+ * improve unit tests for creating Transformers and transform jobs
+ * add PyTorch + custom model bucket batch transform integ test
+
+## v1.55.3 (2020-04-08)
+
+### Bug Fixes and Other Changes
+
+ * remove .strip() from batch transform
+ * allow model with network isolation when creating a Transformer from an Estimator
+ * add enable_network_isolation to EstimatorBase
+
+## v1.55.2 (2020-04-07)
+
+### Bug Fixes and Other Changes
+
+ * use .format instead of os.path.join for Processing S3 paths.
+
+### Testing and Release Infrastructure
+
+ * use m5.xlarge instances for "ap-northeast-1" region integ tests.
+
+## v1.55.1 (2020-04-06)
+
+### Bug Fixes and Other Changes
+
+ * correct local mode behavior for CN regions
+
+## v1.55.0.post0 (2020-04-06)
+
+### Documentation Changes
+
+ * fix documentation to provide working example.
+ * add documentation for XGBoost
+ * Correct comment in SKLearn Estimator about default Python version
+ * document inferentia supported version
+ * Merge Amazon Sagemaker Operators for Kubernetes and Kubernetes Jobs pages
+
+### Testing and Release Infrastructure
+
+ * turn on warnings as errors for docs builds
+
+## v1.55.0 (2020-03-31)
+
+### Features
+
+ * support cn-north-1 and cn-northwest-1
+
+## v1.54.0 (2020-03-31)
+
+### Features
+
+ * inferentia support
+
+## v1.53.0 (2020-03-30)
+
+### Features
+
+ * Allow setting S3 endpoint URL for Local Session
+
+### Bug Fixes and Other Changes
+
+ * Pass kwargs from create_model to Model constructors
+ * Warn if parameter server is used with multi-GPU instance
+
+## v1.52.1 (2020-03-26)
+
+### Bug Fixes and Other Changes
+
+ * Fix local _SageMakerContainer detached mode (aws#1374)
+
+## v1.52.0.post0 (2020-03-25)
+
+### Documentation Changes
+
+ * Add docs for debugger job support in operator
+
+## v1.52.0 (2020-03-24)
+
+### Features
+
+ * add us-gov-west-1 to neo supported regions
+
+## v1.51.4 (2020-03-23)
+
+### Bug Fixes and Other Changes
+
+ * Check that session is a LocalSession when using local mode
+ * add tflite to Neo-supported frameworks
+ * ignore tags with 'aws:' prefix when creating an EndpointConfig based on an existing one
+ * allow custom image when calling deploy or create_model with various frameworks
+
+### Documentation Changes
+
+ * fix description of default model_dir for TF
+ * add more details about PyTorch eia
+
+## v1.51.3 (2020-03-12)
+
+### Bug Fixes and Other Changes
+
+ * make repack_model only removes py file when new entry_point provided
+
+## v1.51.2 (2020-03-11)
+
+### Bug Fixes and Other Changes
+
+ * handle empty inputs/outputs in ProcessingJob.from_processing_name()
+ * use DLC images for GovCloud
+
+### Testing and Release Infrastructure
+
+ * generate test job name at test start instead of module start
+
+## v1.51.1 (2020-03-10)
+
+### Bug Fixes and Other Changes
+
+ * skip pytorch ei test in unsupported regions
+
+### Documentation Changes
+
+ * correct MultiString/MULTI_STRING docstring
+
+## v1.51.0 (2020-03-09)
+
+### Features
+
+ * pytorch 1.3.1 eia support
+
+### Documentation Changes
+
+ * Update Kubernetes Operator default tag
+ * improve docstring for tuner.best_estimator()
+
+## v1.50.18.post0 (2020-03-05)
+
+### Documentation Changes
+
+ * correct Estimator code_location default S3 path
+
+## v1.50.18 (2020-03-04)
+
+### Bug Fixes and Other Changes
+
+ * change default compile model max run to 15 mins
+
 ## v1.50.17.post0 (2020-03-03)
 
 ### Testing and Release Infrastructure

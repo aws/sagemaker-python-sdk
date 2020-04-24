@@ -36,6 +36,8 @@ def sagemaker_session():
         boto_region_name=REGION,
         config=None,
         local_mode=False,
+        s3_resource=None,
+        s3_client=None,
     )
     session.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
     session._default_bucket = BUCKET_NAME

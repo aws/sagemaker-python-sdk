@@ -6,6 +6,8 @@ With PyTorch Estimators and Models, you can train and host PyTorch models on Ama
 
 Supported versions of PyTorch: ``0.4.0``, ``1.0.0``, ``1.1.0``, ``1.2.0``, ``1.3.1``.
 
+Supported versions of PyTorch for Elastic Inference: ``1.3.1``.
+
 We recommend that you use the latest supported version, because that's where we focus most of our development efforts.
 
 You can visit the PyTorch repository at https://github.com/pytorch/pytorch.
@@ -116,11 +118,23 @@ to a certain filesystem path called ``model_dir``. This value is accessible thro
 After your training job is complete, SageMaker will compress and upload the serialized model to S3, and your model data
 will be available in the S3 ``output_path`` you specified when you created the PyTorch Estimator.
 
+If you are using Elastic Inference, you must convert your models to the TorchScript format and use ``torch.jit.save`` to save the model.
+For example:
+
+.. code:: python
+
+    import os
+    import torch
+
+    # ... train `model`, then save it to `model_dir`
+    model_dir = os.path.join(model_dir, "model.pt")
+    torch.jit.save(model, model_dir)
+
 Using third-party libraries
 ---------------------------
 
-When running your training script on SageMaker, it will have access to some pre-installed third-party libraries including ``torch``, ``torchvisopm``, and ``numpy``.
-For more information on the runtime environment, including specific package versions, see `SageMaker PyTorch Docker containers <#id4>`__.
+When running your training script on SageMaker, it will have access to some pre-installed third-party libraries including ``torch``, ``torchvision``, and ``numpy``.
+For more information on the runtime environment, including specific package versions, see `SageMaker PyTorch Docker containers <https://github.com/aws/sagemaker-python-sdk/tree/master/src/sagemaker/pytorch#sagemaker-pytorch-docker-containers>`_.
 
 If there are other packages you want to use with your script, you can include a ``requirements.txt`` file in the same directory as your training script to install other dependencies at runtime. Both ``requirements.txt`` and your training script should be put in the same folder. You must specify this folder in ``source_dir`` argument when creating PyTorch estimator.
 
@@ -250,6 +264,14 @@ You use the SageMaker PyTorch model server to host your PyTorch model when you c
 Estimator. The model server runs inside a SageMaker Endpoint, which your call to ``deploy`` creates.
 You can access the name of the Endpoint by the ``name`` property on the returned ``Predictor``.
 
+PyTorch on Amazon SageMaker has support for `Elastic Inference <https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html>`_, which allows for inference acceleration to a hosted endpoint for a fraction of the cost of using a full GPU instance.
+In order to attach an Elastic Inference accelerator to your endpoint provide the accelerator type to ``accelerator_type`` to your ``deploy`` call.
+
+.. code:: python
+
+  predictor = pytorch_estimator.deploy(instance_type='ml.m4.xlarge',
+                                       initial_instance_count=1,
+                                       accelerator_type='ml.eia2.medium')
 
 The SageMaker PyTorch Model Server
 ==================================
@@ -268,7 +290,7 @@ Load a Model
 ------------
 
 Before a model can be served, it must be loaded. The SageMaker PyTorch model server loads your model by invoking a
-``model_fn`` function that you must provide in your script. The ``model_fn`` should have the following signature:
+``model_fn`` function that you must provide in your script when you are not using Elastic Inference. The ``model_fn`` should have the following signature:
 
 .. code:: python
 
@@ -290,6 +312,16 @@ It loads the model parameters from a ``model.pth`` file in the SageMaker model d
         with open(os.path.join(model_dir, 'model.pth'), 'rb') as f:
             model.load_state_dict(torch.load(f))
         return model
+
+However, if you are using PyTorch Elastic Inference, you do not have to provide a ``model_fn`` since the PyTorch serving
+container has a default one for you. But please note that if you are utilizing the default ``model_fn``, please save
+your ScriptModule as ``model.pt``. If you are implementing your own ``model_fn``, please use TorchScript and ``torch.jit.save``
+to save your ScriptModule, then load it in your ``model_fn`` with ``torch.jit.load(..., map_location=torch.device('cpu'))``.
+
+The client-side Elastic Inference framework is CPU-only, even though inference still happens in a CUDA context on the server. Thus, the default ``model_fn`` for Elastic Inference loads the model to CPU. Tracing models may lead to tensor creation on a specific device, which may cause device-related errors when loading a model onto a different device. Providing an explicit ``map_location=torch.device('cpu')`` argument forces all tensors to CPU.
+
+For more information on the default inference handler functions, please refer to:
+`SageMaker PyTorch Default Inference Handler <https://github.com/aws/sagemaker-pytorch-serving-container/blob/master/src/sagemaker_pytorch_serving_container/default_inference_handler.py>`_.
 
 Serve a PyTorch Model
 ---------------------
@@ -445,6 +477,23 @@ If you implement your own prediction function, you should take care to ensure th
 -  The return value should be of the correct type to be passed as the
    first argument to ``output_fn``. If you use the default
    ``output_fn``, this should be a torch.Tensor.
+
+The default Elastic Inference ``predict_fn`` is similar but runs the TorchScript model using ``torch.jit.optimized_execution``.
+If you are implementing your own ``predict_fn``, please also use the ``torch.jit.optimized_execution``
+block, for example:
+
+.. code:: python
+
+    import torch
+    import numpy as np
+
+    def predict_fn(input_data, model):
+        device = torch.device("cpu")
+        model = model.to(device)
+        input_data = data.to(device)
+        model.eval()
+        with torch.jit.optimized_execution(True, {"target_device": "eia:0"}):
+            output = model(input_data)
 
 Process Model Output
 ^^^^^^^^^^^^^^^^^^^^
@@ -624,7 +673,7 @@ The following are optional arguments. When you create a ``PyTorch`` object, you 
    model training code.
 -  ``framework_version`` PyTorch version you want to use for executing
    your model training code. You can find the list of supported versions
-   in `SageMaker PyTorch Docker Containers <#id4>`_.
+   in `SageMaker PyTorch Docker Containers <https://github.com/aws/sagemaker-python-sdk/tree/master/src/sagemaker/pytorch#sagemaker-pytorch-docker-containers>`_.
 -  ``train_volume_size`` Size in GB of the EBS volume to use for storing
    input data during training. Must be large enough to store training
    data if input_mode='File' is used (which is the default).
@@ -649,13 +698,13 @@ The following are optional arguments. When you create a ``PyTorch`` object, you 
    serving.  If specified, the estimator will use this image for training and
    hosting, instead of selecting the appropriate SageMaker official image based on
    framework_version and py_version. Refer to: `SageMaker PyTorch Docker Containers
-   <#id4>`_ for details on what the Official images support
+   <https://github.com/aws/sagemaker-python-sdk/tree/master/src/sagemaker/pytorch#sagemaker-pytorch-docker-containers>`_ for details on what the Official images support
    and where to find the source code to build your custom image.
 
 ***********************************
 SageMaker PyTorch Docker Containers
 ***********************************
 
-For information about SageMaker PyTorch containers, see  `the SageMaker PyTorch containers repository <https://github.com/aws/sagemaker-pytorch-container>`_.
+For information about SageMaker PyTorch containers, see  `the SageMaker PyTorch container repository <https://github.com/aws/sagemaker-pytorch-container>`_ and `SageMaker PyTorch Serving container repository <https://github.com/aws/sagemaker-pytorch-serving-container>`__.
 
 For information about SageMaker PyTorch container dependencies, see `SageMaker PyTorch Containers <https://github.com/aws/sagemaker-python-sdk/tree/master/src/sagemaker/pytorch#sagemaker-pytorch-docker-containers>`_.

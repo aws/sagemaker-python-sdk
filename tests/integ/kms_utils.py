@@ -141,7 +141,7 @@ KMS_BUCKET_POLICY = """{{
       "Resource": "arn:{partition}:s3:::{bucket_name}/*",
       "Condition": {{
         "StringNotEquals": {{
-          "s3:x-amz-server-side-encryption": "{partition}:kms"
+          "s3:x-amz-server-side-encryption": "aws:kms"
         }}
       }}
     }},
@@ -172,7 +172,7 @@ def bucket_with_encryption(sagemaker_session, sagemaker_role):
     account = sts_client.get_caller_identity()["Account"]
     role_arn = sts_client.get_caller_identity()["Arn"]
 
-    kms_client = boto_session.client("kms")
+    kms_client = boto_session.client("kms", region_name=region)
     kms_key_arn = _create_kms_key(kms_client, account, region, role_arn, sagemaker_role, None)
 
     region = boto_session.region_name
@@ -187,9 +187,7 @@ def bucket_with_encryption(sagemaker_session, sagemaker_role):
             "Rules": [
                 {
                     "ApplyServerSideEncryptionByDefault": {
-                        "SSEAlgorithm": "{partition}:kms".format(
-                            partition=utils._aws_partition(region)
-                        ),
+                        "SSEAlgorithm": "aws:kms",
                         "KMSMasterKeyID": kms_key_arn,
                     }
                 }

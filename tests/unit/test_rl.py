@@ -62,6 +62,8 @@ def fixture_sagemaker_session():
         boto_region_name=REGION,
         config=None,
         local_mode=False,
+        s3_resource=None,
+        s3_client=None,
     )
 
     describe = {"ModelArtifacts": {"S3ModelArtifacts": "s3://m/m.tar.gz"}}
@@ -246,13 +248,15 @@ def test_create_model_with_optional_params(sagemaker_session, rl_coach_mxnet_ver
     new_role = "role"
     new_entry_point = "deploy_script.py"
     vpc_config = {"Subnets": ["foo"], "SecurityGroupIds": ["bar"]}
+    model_name = "model-name"
     model = rl.create_model(
-        role=new_role, entry_point=new_entry_point, vpc_config_override=vpc_config
+        role=new_role, entry_point=new_entry_point, vpc_config_override=vpc_config, name=model_name
     )
 
     assert model.role == new_role
     assert model.vpc_config == vpc_config
     assert model.entry_point == new_entry_point
+    assert model.name == model_name
 
 
 def test_create_model_with_custom_image(sagemaker_session):
@@ -618,3 +622,11 @@ def test_wrong_type_parameters(sagemaker_session):
             train_instance_type=INSTANCE_TYPE,
         )
     assert "combination is not supported." in str(e.value)
+
+
+def test_custom_image_estimator_deploy(sagemaker_session):
+    custom_image = "mycustomimage:latest"
+    rl = _rl_estimator(sagemaker_session)
+    rl.fit(inputs="s3://mybucket/train", job_name="new_name")
+    model = rl.create_model(image=custom_image)
+    assert model.image == custom_image

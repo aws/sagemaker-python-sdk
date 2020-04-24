@@ -82,14 +82,17 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
             :class:`~sagemaker.estimator.EstimatorBase`.
         """
         super(AmazonAlgorithmEstimatorBase, self).__init__(
-            role, train_instance_count, train_instance_type, **kwargs
+            role,
+            train_instance_count,
+            train_instance_type,
+            enable_network_isolation=enable_network_isolation,
+            **kwargs
         )
 
         data_location = data_location or "s3://{}/sagemaker-record-sets/".format(
             self.sagemaker_session.default_bucket()
         )
         self._data_location = data_location
-        self._enable_network_isolation = enable_network_isolation
 
     def train_image(self):
         """Placeholder docstring"""
@@ -100,14 +103,6 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
     def hyperparameters(self):
         """Placeholder docstring"""
         return hp.serialize_all(self)
-
-    def enable_network_isolation(self):
-        """If this Estimator can use network isolation when running.
-
-        Returns:
-            bool: Whether this Estimator can use network isolation or not.
-        """
-        return self._enable_network_isolation
 
     @property
     def data_location(self):
@@ -281,7 +276,9 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
             RecordSet: A RecordSet referencing the encoded, uploading training
             and label data.
         """
-        s3 = self.sagemaker_session.boto_session.resource("s3")
+        s3 = self.sagemaker_session.boto_session.resource(
+            "s3", region_name=self.sagemaker_session.boto_region_name
+        )
         parsed_s3_url = urlparse(self.data_location)
         bucket, key_prefix = parsed_s3_url.netloc, parsed_s3_url.path
         key_prefix = key_prefix + "{}-{}/".format(type(self).__name__, sagemaker_timestamp())
@@ -467,9 +464,14 @@ def registry(region_name, algorithm=None):
     https://github.com/aws/sagemaker-python-sdk/tree/master/src/sagemaker/amazon
 
     Args:
-        region_name:
-        algorithm:
+        region_name (str): The region name for the account.
+        algorithm (str): The algorithm for the account.
+
+    Raises:
+        ValueError: If invalid algorithm passed in or if mapping does not exist for given algorithm
+            and region.
     """
+    region_to_accounts = {}
     if algorithm in [
         None,
         "pca",
@@ -482,7 +484,7 @@ def registry(region_name, algorithm=None):
         "object2vec",
         "ipinsights",
     ]:
-        account_id = {
+        region_to_accounts = {
             "us-east-1": "382416733822",
             "us-east-2": "404615174143",
             "us-west-2": "174872318107",
@@ -503,9 +505,11 @@ def registry(region_name, algorithm=None):
             "eu-west-3": "749696950732",
             "sa-east-1": "855470959533",
             "me-south-1": "249704162688",
-        }[region_name]
+            "cn-north-1": "390948362332",
+            "cn-northwest-1": "387376663083",
+        }
     elif algorithm in ["lda"]:
-        account_id = {
+        region_to_accounts = {
             "us-east-1": "766337827248",
             "us-east-2": "999911452149",
             "us-west-2": "266724342769",
@@ -521,9 +525,9 @@ def registry(region_name, algorithm=None):
             "eu-west-2": "644912444149",
             "us-west-1": "632365934929",
             "us-iso-east-1": "490574956308",
-        }[region_name]
+        }
     elif algorithm in ["forecasting-deepar"]:
-        account_id = {
+        region_to_accounts = {
             "us-east-1": "522234722520",
             "us-east-2": "566113047672",
             "us-west-2": "156387875391",
@@ -544,7 +548,9 @@ def registry(region_name, algorithm=None):
             "eu-west-3": "749696950732",
             "sa-east-1": "855470959533",
             "me-south-1": "249704162688",
-        }[region_name]
+            "cn-north-1": "390948362332",
+            "cn-northwest-1": "387376663083",
+        }
     elif algorithm in [
         "xgboost",
         "seq2seq",
@@ -553,7 +559,7 @@ def registry(region_name, algorithm=None):
         "object-detection",
         "semantic-segmentation",
     ]:
-        account_id = {
+        region_to_accounts = {
             "us-east-1": "811284229777",
             "us-east-2": "825641698319",
             "us-west-2": "433757028032",
@@ -574,15 +580,25 @@ def registry(region_name, algorithm=None):
             "eu-west-3": "749696950732",
             "sa-east-1": "855470959533",
             "me-south-1": "249704162688",
-        }[region_name]
+            "cn-north-1": "390948362332",
+            "cn-northwest-1": "387376663083",
+        }
     elif algorithm in ["image-classification-neo", "xgboost-neo"]:
-        account_id = NEO_IMAGE_ACCOUNT[region_name]
+        region_to_accounts = NEO_IMAGE_ACCOUNT
     else:
         raise ValueError(
             "Algorithm class:{} does not have mapping to account_id with images".format(algorithm)
         )
 
-    return get_ecr_image_uri_prefix(account_id, region_name)
+    if region_name in region_to_accounts:
+        account_id = region_to_accounts[region_name]
+        return get_ecr_image_uri_prefix(account_id, region_name)
+
+    raise ValueError(
+        "Algorithm ({algorithm}) is unsupported for region ({region_name}).".format(
+            algorithm=algorithm, region_name=region_name
+        )
+    )
 
 
 def get_image_uri(region_name, repo_name, repo_version=1):

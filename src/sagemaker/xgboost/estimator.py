@@ -15,7 +15,7 @@ from __future__ import absolute_import
 
 import logging
 
-from sagemaker.estimator import Framework
+from sagemaker.estimator import Framework, _TrainingJob
 from sagemaker.fw_registry import default_framework_uri
 from sagemaker.fw_utils import (
     framework_name_from_image,
@@ -23,14 +23,8 @@ from sagemaker.fw_utils import (
     get_unsupported_framework_version_error,
     UploadedCode,
 )
-
-
 from sagemaker.session import Session
-
-from sagemaker.estimator import _TrainingJob
-
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
-
 from sagemaker.xgboost import defaults
 from sagemaker.xgboost.model import XGBoostModel
 
@@ -67,8 +61,8 @@ class XGBoost(Framework):
         Training is started by calling :meth:`~sagemaker.amazon.estimator.Framework.fit` on this
         Estimator. After training is complete, calling
         :meth:`~sagemaker.amazon.estimator.Framework.deploy` creates a hosted SageMaker endpoint
-         and returns an :class:`~sagemaker.amazon.xgboost.model.XGBoostPredictor` instance that
-         can be used to perform inference against the hosted model.
+        and returns an :class:`~sagemaker.amazon.xgboost.model.XGBoostPredictor` instance that
+        can be used to perform inference against the hosted model.
 
         Technical documentation on preparing XGBoost scripts for SageMaker training and using the
         XGBoost Estimator is available on the project home-page:
@@ -154,7 +148,10 @@ class XGBoost(Framework):
         # Remove unwanted entry_point kwarg
         if "entry_point" in kwargs:
             logger.debug("Removing unused entry_point argument: %s", str(kwargs["entry_point"]))
-            kwargs = {k: v for k, v in kwargs.items() if k != "entry_point"}
+            del kwargs["entry_point"]
+
+        if "name" not in kwargs:
+            kwargs["name"] = self._current_job_name
 
         return XGBoostModel(
             self.model_data,
@@ -163,7 +160,6 @@ class XGBoost(Framework):
             framework_version=self.framework_version,
             source_dir=self._model_source_dir(),
             enable_cloudwatch_metrics=self.enable_cloudwatch_metrics,
-            name=self._current_job_name,
             container_log_level=self.container_log_level,
             code_location=self.code_location,
             py_version=self.py_version,

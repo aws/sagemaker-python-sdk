@@ -203,22 +203,27 @@ class Chainer(Framework):
             sagemaker.chainer.model.ChainerModel: A SageMaker ``ChainerModel``
             object. See :func:`~sagemaker.chainer.model.ChainerModel` for full details.
         """
+        if "image" not in kwargs:
+            kwargs["image"] = self.image_name
+
+        if "name" not in kwargs:
+            kwargs["name"] = self._current_job_name
+
         return ChainerModel(
             self.model_data,
             role or self.role,
             entry_point or self.entry_point,
             source_dir=(source_dir or self._model_source_dir()),
             enable_cloudwatch_metrics=self.enable_cloudwatch_metrics,
-            name=self._current_job_name,
             container_log_level=self.container_log_level,
             code_location=self.code_location,
             py_version=self.py_version,
             framework_version=self.framework_version,
             model_server_workers=model_server_workers,
-            image=self.image_name,
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
             dependencies=(dependencies or self.dependencies),
+            **kwargs
         )
 
     @classmethod

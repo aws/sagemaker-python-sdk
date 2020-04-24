@@ -20,7 +20,9 @@ Documentation of the previous Legacy Mode versions: `1.4.1 <https://github.com/a
 | You can find the Legacy Mode README `here <https://github.com/aws/sagemaker-python-sdk/tree/v1.12.0/src/sagemaker/tensorflow#tensorflow-sagemaker-estimators-and-models>`_. |
 +-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 
-Supported versions of TensorFlow for Elastic Inference: ``1.11``, ``1.12``, ``1.13``, ``1.14``.
+Supported versions of TensorFlow for Elastic Inference: ``1.11``, ``1.12``, ``1.13``, ``1.14``, ``1.15``, ``2.0``.
+
+Supported versions of TensorFlow for Inferentia: ``1.15.0``.
 
 For information about using TensorFlow with the SageMaker Python SDK, see https://sagemaker.readthedocs.io/en/stable/using_tf.html.
 

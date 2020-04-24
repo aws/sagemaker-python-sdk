@@ -20,7 +20,7 @@ import pytest
 import tests.integ
 from botocore.config import Config
 
-from sagemaker import Session
+from sagemaker import Session, utils
 from sagemaker.chainer import Chainer
 from sagemaker.local import LocalSession
 from sagemaker.mxnet import MXNet
@@ -30,8 +30,16 @@ from sagemaker.sklearn.defaults import SKLEARN_VERSION
 from sagemaker.tensorflow.estimator import TensorFlow
 
 DEFAULT_REGION = "us-west-2"
+CUSTOM_BUCKET_NAME_PREFIX = "sagemaker-custom-bucket"
 
-NO_M4_REGIONS = ["eu-west-3", "eu-north-1", "ap-east-1", "sa-east-1", "me-south-1"]
+NO_M4_REGIONS = [
+    "eu-west-3",
+    "eu-north-1",
+    "ap-east-1",
+    "ap-northeast-1",  # it has m4.xl, but not enough in all AZs
+    "sa-east-1",
+    "me-south-1",
+]
 
 NO_T2_REGIONS = ["eu-north-1", "ap-east-1", "me-south-1"]
 
@@ -57,7 +65,7 @@ def pytest_addoption(parser):
     )
     parser.addoption("--sklearn-full-version", action="store", default=SKLEARN_VERSION)
     parser.addoption("--tf-full-version", action="store")
-    parser.addoption("--ei-tf-full-version", action="store", default=TensorFlow.LATEST_VERSION)
+    parser.addoption("--ei-tf-full-version", action="store")
     parser.addoption("--xgboost-full-version", action="store", default=SKLEARN_VERSION)
 
 
@@ -82,16 +90,16 @@ def sagemaker_runtime_config(request):
 
 
 @pytest.fixture(scope="session")
-def boto_config(request):
+def boto_session(request):
     config = request.config.getoption("--boto-config")
-    return json.loads(config) if config else None
+    if config:
+        return boto3.Session(**json.loads(config))
+    else:
+        return boto3.Session(region_name=DEFAULT_REGION)
 
 
 @pytest.fixture(scope="session")
-def sagemaker_session(sagemaker_client_config, sagemaker_runtime_config, boto_config):
-    boto_session = (
-        boto3.Session(**boto_config) if boto_config else boto3.Session(region_name=DEFAULT_REGION)
-    )
+def sagemaker_session(sagemaker_client_config, sagemaker_runtime_config, boto_session):
     sagemaker_client_config.setdefault("config", Config(retries=dict(max_attempts=10)))
     sagemaker_client = (
         boto_session.client("sagemaker", **sagemaker_client_config)
@@ -112,12 +120,17 @@ def sagemaker_session(sagemaker_client_config, sagemaker_runtime_config, boto_co
 
 
 @pytest.fixture(scope="session")
-def sagemaker_local_session(boto_config):
-    if boto_config:
-        boto_session = boto3.Session(**boto_config)
-    else:
-        boto_session = boto3.Session(region_name=DEFAULT_REGION)
+def sagemaker_local_session(boto_session):
     return LocalSession(boto_session=boto_session)
+
+
+@pytest.fixture(scope="module")
+def custom_bucket_name(boto_session):
+    region = boto_session.region_name
+    account = boto_session.client(
+        "sts", region_name=region, endpoint_url=utils.sts_regional_endpoint(region)
+    ).get_caller_identity()["Account"]
+    return "{}-{}-{}".format(CUSTOM_BUCKET_NAME_PREFIX, region, account)
 
 
 @pytest.fixture(scope="module", params=["4.0", "4.0.0", "4.1", "4.1.0", "5.0", "5.0.0"])
@@ -255,9 +268,13 @@ def tf_full_version(request):
         return tf_version
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="module", params=["1.15.0", "2.0.0"])
 def ei_tf_full_version(request):
-    return request.config.getoption("--ei-tf-full-version")
+    tf_ei_version = request.config.getoption("--ei-tf-full-version")
+    if tf_ei_version is None:
+        return request.param
+    else:
+        tf_ei_version
 
 
 @pytest.fixture(scope="session")
@@ -267,6 +284,11 @@ def cpu_instance_type(sagemaker_session, request):
         return "ml.m5.xlarge"
     else:
         return "ml.m4.xlarge"
+
+
+@pytest.fixture(scope="session")
+def inf_instance_type(sagemaker_session, request):
+    return "ml.inf1.xlarge"
 
 
 @pytest.fixture(scope="session")
@@ -287,6 +309,11 @@ def alternative_cpu_instance_type(sagemaker_session, request):
 @pytest.fixture(scope="session")
 def cpu_instance_family(cpu_instance_type):
     return "_".join(cpu_instance_type.split(".")[0:2])
+
+
+@pytest.fixture(scope="session")
+def inf_instance_family(inf_instance_type):
+    return "_".join(inf_instance_type.split(".")[0:2])
 
 
 def pytest_generate_tests(metafunc):
