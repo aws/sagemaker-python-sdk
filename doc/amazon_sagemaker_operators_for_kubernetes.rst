@@ -669,11 +669,14 @@ look like the following:
     Use "smlogs [command] --help" for more information about a command.
 
 
-Delete operators from the cluster 
-----------------------------------
+Delete operators
+----------------
+
+Delete cluster-based operators
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Operators installed using YAML
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 To uninstall the operator from your cluster, make sure that all
 Amazon SageMaker resources have been deleted from the cluster. Failure
@@ -728,7 +731,7 @@ You should see output like the following:
     secrets "sagemaker-k8s-operator-abcde" deleted
 
 Operators installed using Helm Charts
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 To delete the operator CRDs, first delete all the running jobs. Then
 delete the helm chart that was used to deploy the operators using the
@@ -743,6 +746,60 @@ following commands:
     $ helm delete <chart name>
 
 ​
+
+Delete namespace-based operators
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+Operators installed with YAML
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+To uninstall the operator from your cluster, make sure that all
+Amazon SageMaker resources have been deleted from the cluster. Failure
+to do so will cause the operator delete operation to hang. Once you have
+deleted all Amazon SageMaker jobs, use ``kubectl`` to first delete the operator from the namespace and then the CRDs from the cluster. Run the following commands to stop
+all jobs and delete the operator from the cluster:
+
+::
+
+    # Delete all Amazon SageMaker jobs from Kubernetes
+    kubectl delete --all --all-namespaces hyperparametertuningjob.sagemaker.aws.amazon.com
+    kubectl delete --all --all-namespaces trainingjobs.sagemaker.aws.amazon.com
+    kubectl delete --all --all-namespaces batchtransformjob.sagemaker.aws.amazon.com
+    kubectl delete --all --all-namespaces hostingdeployment.sagemaker.aws.amazon.com
+
+
+::
+
+    # Delete the operator using the same yaml file that was used to install the operator 
+    kubectl delete -f operator.yaml
+
+    # Now delete the CRDs using the CRD installer yaml
+    kubectl delete -f https://raw.githubusercontent.com/aws/amazon-sagemaker-operator-for-k8s/master/release/rolebased/namespaced/crd.yaml
+
+    # Now you can delete the namespace if you want
+    kubectl delete namespace <namespace>
+
+Operators installed with Helm Charts
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+To delete the operator CRDs, first delete all the running jobs. Then
+delete the helm chart that was used to deploy the operators using the
+following commands: 
+
+::
+
+    # Delete the operator
+    $ helm delete -n <namespace> op
+
+    # delete the crds
+    $ helm delete crds
+
+    # optionally delete the namespace
+    $ kubectl delete namespace <namespace>
+
+​
+
 
 Troubleshooting
 ---------------
