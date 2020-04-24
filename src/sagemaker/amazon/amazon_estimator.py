@@ -31,7 +31,7 @@ from sagemaker.xgboost.defaults import (
     XGBOOST_LATEST_VERSION,
     XGBOOST_SUPPORTED_VERSIONS,
     XGBOOST_VERSION_1,
-    XGBOOST_LATEST_VERSION_EQUIVALENTS,
+    XGBOOST_VERSION_EQUIVALENTS,
 )
 from sagemaker.xgboost.estimator import get_xgboost_image_uri
 
@@ -632,7 +632,7 @@ def get_image_uri(region_name, repo_name, repo_version=1):
         supported_version = [
             version
             for version in XGBOOST_SUPPORTED_VERSIONS
-            if repo_version in (version, version + "-cpu-py3")
+            if repo_version in _generate_version_equivalents(version)
         ]
         if supported_version:
             return get_xgboost_image_uri(region_name, supported_version[0])
@@ -649,4 +649,13 @@ def _is_latest_xgboost_version(repo_version):
     """
     if repo_version in (1, "latest"):
         return False
-    return repo_version in XGBOOST_LATEST_VERSION_EQUIVALENTS
+    return repo_version in _generate_version_equivalents(XGBOOST_LATEST_VERSION)
+
+
+def _generate_version_equivalents(version):
+    """Returns a list of version equivalents for XGBoost
+
+    Args:
+        version:
+    """
+    return [version + suffix for suffix in XGBOOST_VERSION_EQUIVALENTS] + [version]
