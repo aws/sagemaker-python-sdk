@@ -20,15 +20,33 @@ import sagemaker.local.utils
 
 @patch("shutil.rmtree", Mock())
 @patch("sagemaker.local.utils.recursive_copy")
-def test_move_to_destination(recursive_copy):
+def test_move_to_destination_local(recursive_copy):
     # local files will just be recursively copied
     sagemaker.local.utils.move_to_destination("/tmp/data", "file:///target/dir/", "job", None)
     recursive_copy.assert_called_with("/tmp/data", "/target/dir/")
 
-    # s3 destination will upload to S3
+
+@patch("shutil.rmtree", Mock())
+@patch("sagemaker.local.utils.recursive_copy")
+def test_move_to_destination_s3(recursive_copy):
     sms = Mock()
+
+    # without trailing slash in prefix
     sagemaker.local.utils.move_to_destination("/tmp/data", "s3://bucket/path", "job", sms)
-    sms.upload_data.assert_called()
+    sms.upload_data.assert_called_with("/tmp/data", "bucket", "path/job")
+    recursive_copy.assert_not_called()
+
+    # with trailing slash in prefix
+    sagemaker.local.utils.move_to_destination("/tmp/data", "s3://bucket/path/", "job", sms)
+    sms.upload_data.assert_called_with("/tmp/data", "bucket", "path/job")
+
+    # without path, with trailing slash
+    sagemaker.local.utils.move_to_destination("/tmp/data", "s3://bucket/", "job", sms)
+    sms.upload_data.assert_called_with("/tmp/data", "bucket", "job")
+
+    # without path, without trailing slash
+    sagemaker.local.utils.move_to_destination("/tmp/data", "s3://bucket", "job", sms)
+    sms.upload_data.assert_called_with("/tmp/data", "bucket", "job")
 
 
 def test_move_to_destination_illegal_destination():

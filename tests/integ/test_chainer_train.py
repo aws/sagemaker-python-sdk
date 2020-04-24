@@ -137,6 +137,8 @@ def _run_mnist_training_job(
         train_instance_type=instance_type,
         sagemaker_session=sagemaker_session,
         hyperparameters={"epochs": 1},
+        # test output_path without trailing slash
+        output_path="s3://{}".format(sagemaker_session.default_bucket()),
     )
 
     train_input = "file://" + os.path.join(data_path, "train")
