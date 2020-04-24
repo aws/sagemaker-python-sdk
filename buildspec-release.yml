@@ -7,7 +7,7 @@ phases:
       - git-release --prepare
 
       # run linters
-      - tox -e flake8,pylint
+      - tox -e flake8,pylint,ws-check
 
       # run format verification
       - tox -e black-check
