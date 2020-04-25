@@ -17,7 +17,7 @@ The XGBoost open source algorithm provides the following benefits over the built
 * Latest version - The open source XGBoost algorithm typically supports a more recent version of XGBoost.
   To see the XGBoost version that is currently supported,
   see `XGBoost SageMaker Estimators and Models <https://github.com/aws/sagemaker-python-sdk/tree/master/src/sagemaker/xgboost#xgboost-sagemaker-estimators-and-models>`__.
-* Flexibility - Take advantage of the full range of XGBoost functionality, such as cross-validation support. 
+* Flexibility - Take advantage of the full range of XGBoost functionality, such as cross-validation support.
   You can add custom pre- and post-processing logic and run additional code after training.
 * Scalability - The XGBoost open source algorithm has a more efficient implementation of distributed training,
   which enables it to scale out to more instances and reduce out-of-memory errors.
@@ -100,14 +100,14 @@ such as the location of input data and location where we want to save the model.
         parser.add_argument('--max_depth', type=int, default=5)
         parser.add_argument('--eta', type=float, default=0.2)
         parser.add_argument('--objective', type=str, default='reg:squarederror')
-    
+
         # SageMaker specific arguments. Defaults are set in the environment variables.
         parser.add_argument('--model_dir', type=str, default=os.environ.get('SM_MODEL_DIR'))
         parser.add_argument('--train', type=str, default=os.environ['SM_CHANNEL_TRAIN'])
         parser.add_argument('--validation', type=str, default=os.environ['SM_CHANNEL_VALIDATION'])
-    
+
         args = parser.parse_args()
-    
+
         train_hp = {
             'max_depth': args.max_depth,
             'eta': args.eta,
@@ -117,7 +117,7 @@ such as the location of input data and location where we want to save the model.
             'silent': args.silent,
             'objective': args.objective
         }
-    
+
         dtrain = xgb.DMatrix(args.train)
         dval = xgb.DMatrix(args.validation)
         watchlist = [(dtrain, 'train'), (dval, 'validation')] if dval is not None else [(dtrain, 'train')]
@@ -125,7 +125,7 @@ such as the location of input data and location where we want to save the model.
         callbacks = []
         prev_checkpoint, n_iterations_prev_run = add_checkpointing(callbacks)
         # If checkpoint is found then we reduce num_boost_round by previously run number of iterations
-    
+
         bst = xgb.train(
             params=train_hp,
             dtrain=dtrain,
@@ -134,7 +134,7 @@ such as the location of input data and location where we want to save the model.
             xgb_model=prev_checkpoint,
             callbacks=callbacks
         )
-    
+
         # Save the model to the location specified by ``model_dir``
         model_location = args.model_dir + '/xgboost-model'
         pkl.dump(bst, open(model_location, 'wb'))
@@ -154,7 +154,7 @@ and a dictionary of the hyperparameters to pass to the training script.
     xgb_estimator = XGBoost(
         entry_point="abalone.py",
         hyperparameters=hyperparameters,
-        role=role, 
+        role=role,
         train_instance_count=1,
         train_instance_type="ml.m5.2xlarge",
         framework_version="0.90-1",
@@ -210,6 +210,3 @@ SageMaker XGBoost Docker Containers
 ***********************************
 
 For information about SageMaker XGBoost Docker container and its dependencies, see `SageMaker XGBoost Container <https://github.com/aws/sagemaker-xgboost-container>`_.
-
-
-
