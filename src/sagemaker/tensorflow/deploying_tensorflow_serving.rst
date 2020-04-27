@@ -262,8 +262,7 @@ Specifying the output of a prediction request
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The structure of the prediction ``result`` is determined at the end of the training process before SavedModel is created. For example, if
-you are using TensorFlow's Estimator API for training, you control inference outputs using the ``export_outputs`` parameter of the `tf.estimator.EstimatorSpec <https://www.tensorflow.org/api_docs/python/tf/estimator/EstimatorSpec>`_ that you return from
-your ``model_fn`` (see `Example of a complete model_fn`_ for an example of ``export_outputs``).
+you are using TensorFlow's Estimator API for training, you control inference outputs using the ``export_outputs`` parameter of the `tf.estimator.EstimatorSpec <https://www.tensorflow.org/api_docs/python/tf/estimator/EstimatorSpec>`_ that you return from your ``model_fn``.
 
 More information on how to create ``export_outputs`` can be found in `specifying the outputs of a custom model <https://github.com/tensorflow/tensorflow/blob/r1.4/tensorflow/docs_src/programmers_guide/saved_model.md#specifying-the-outputs-of-a-custom-model>`_. You can also
 refer to TensorFlow's `Save and Restore <https://www.tensorflow.org/guide/saved_model>`_ documentation for other ways to control the
