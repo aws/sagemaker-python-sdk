@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.56.1 (2020-04-27)
+
+### Bug Fixes and Other Changes
+
+ * add super() call in Local Mode DataSource subclasses
+ * fix xgboost image incorrect latest version warning
+ * allow output_path without trailing slash in Local Mode training jobs
+ * allow S3 folder input to contain a trailing slash in Local Mode
+
+### Documentation Changes
+
+ * Add namespace-based setup for SageMaker Operators for Kubernetes
+ * Add note about file URLs for Estimator methods in Local Mode
+
 ## v1.56.0 (2020-04-24)
 
 ### Features
