@@ -198,7 +198,23 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                 started. If the path is unset then SageMaker assumes the
                 checkpoints will be provided under `/opt/ml/checkpoints/`.
                 (default: ``None``).
-            enable_sagemaker_metrics (bool): enable SageMaker Metrics Time
+            rules (list[:class:`~sagemaker.debugger.Rule`]): A list of
+                :class:`~sagemaker.debugger.Rule` objects used to define
+                rules for continuous analysis with SageMaker Debugger
+                (default: ``None``). For more, see
+                https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_debugger.html#continuous-analyses-through-rules
+            debugger_hook_config (:class:`~sagemaker.debugger.DebuggerHookConfig` or bool):
+                Configuration for how debugging information is emitted with
+                SageMaker Debugger. If not specified, a default one is created using
+                the estimator's ``output_path``, unless the region does not
+                support SageMaker Debugger. To disable SageMaker Debugger,
+                set this parameter to ``False``. For more, see
+                https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_debugger.html
+            tensorboard_output_config (:class:`~sagemaker.debugger.TensorBoardOutputConfig`):
+                Configuration for customizing debugging visualization using TensorBoard
+                (default: ``None``). For more, see
+                https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_debugger.html#capture-real-time-tensorboard-data-from-the-debugging-hook
+            enable_sagemaker_metrics (bool): Enables SageMaker Metrics Time
                 Series. For more information see:
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_AlgorithmSpecification.html#SageMaker-Type-AlgorithmSpecification-EnableSageMakerMetricsTimeSeries
                 (default: ``None``).
