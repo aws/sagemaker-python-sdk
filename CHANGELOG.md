@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.56.1.post1 (2020-04-29)
+
+### Documentation Changes
+
+ * document model.tar.gz structure for MXNet and PyTorch
+ * add documentation for EstimatorBase parameters missing from docstring
+
 ## v1.56.1.post0 (2020-04-28)
 
 ### Testing and Release Infrastructure
