@@ -27,7 +27,12 @@ from sagemaker.inputs import FileSystemInput
 from sagemaker.model import NEO_IMAGE_ACCOUNT
 from sagemaker.session import s3_input
 from sagemaker.utils import sagemaker_timestamp, get_ecr_image_uri_prefix
-from sagemaker.xgboost.defaults import XGBOOST_VERSION_1, XGBOOST_SUPPORTED_VERSIONS
+from sagemaker.xgboost.defaults import (
+    XGBOOST_LATEST_VERSION,
+    XGBOOST_SUPPORTED_VERSIONS,
+    XGBOOST_VERSION_1,
+    XGBOOST_VERSION_EQUIVALENTS,
+)
 from sagemaker.xgboost.estimator import get_xgboost_image_uri
 
 logger = logging.getLogger(__name__)
@@ -611,24 +616,46 @@ def get_image_uri(region_name, repo_name, repo_version=1):
         repo_version:
     """
     if repo_name == "xgboost":
+        if not _is_latest_xgboost_version(repo_version):
+            logging.warning(
+                "There is a more up to date SageMaker XGBoost image. "
+                "To use the newer image, please set 'repo_version'="
+                "'%s'. For example:\n"
+                "\tget_image_uri(region, 'xgboost', '%s').",
+                XGBOOST_LATEST_VERSION,
+                XGBOOST_LATEST_VERSION,
+            )
+
         if repo_version in ["0.90", "0.90-1", "0.90-1-cpu-py3"]:
             return get_xgboost_image_uri(region_name, XGBOOST_VERSION_1)
 
         supported_version = [
             version
             for version in XGBOOST_SUPPORTED_VERSIONS
-            if repo_version in (version, version + "-cpu-py3")
+            if repo_version in _generate_version_equivalents(version)
         ]
         if supported_version:
             return get_xgboost_image_uri(region_name, supported_version[0])
 
-        logging.warning(
-            "There is a more up to date SageMaker XGBoost image. "
-            "To use the newer image, please set 'repo_version'="
-            "'%s'. For example:\n"
-            "\tget_image_uri(region, 'xgboost', '%s').",
-            XGBOOST_VERSION_1,
-            XGBOOST_VERSION_1,
-        )
     repo = "{}:{}".format(repo_name, repo_version)
     return "{}/{}".format(registry(region_name, repo_name), repo)
+
+
+def _is_latest_xgboost_version(repo_version):
+    """Compare xgboost image version with latest version
+
+    Args:
+        repo_version:
+    """
+    if repo_version in (1, "latest"):
+        return False
+    return repo_version in _generate_version_equivalents(XGBOOST_LATEST_VERSION)
+
+
+def _generate_version_equivalents(version):
+    """Returns a list of version equivalents for XGBoost
+
+    Args:
+        version:
+    """
+    return [version + suffix for suffix in XGBOOST_VERSION_EQUIVALENTS] + [version]

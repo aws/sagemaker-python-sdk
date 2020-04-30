@@ -13,8 +13,7 @@ phases:
       - tox -e black-check
 
       # run package and docbuild checks
-      - tox -e twine
-      - tox -e sphinx
+      - tox -e twine,sphinx,doc8
 
       # run unit tests
       - AWS_ACCESS_KEY_ID= AWS_SECRET_ACCESS_KEY= AWS_SESSION_TOKEN=

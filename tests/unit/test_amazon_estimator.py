@@ -24,7 +24,9 @@ from sagemaker.amazon.amazon_estimator import (
     registry,
     get_image_uri,
     FileSystemRecordSet,
+    _is_latest_xgboost_version,
 )
+from sagemaker.xgboost.defaults import XGBOOST_LATEST_VERSION, XGBOOST_SUPPORTED_VERSIONS
 
 COMMON_ARGS = {"role": "myrole", "train_instance_count": 1, "train_instance_type": "ml.c4.xlarge"}
 
@@ -474,3 +476,13 @@ def test_regitry_throws_error_if_mapping_does_not_exist_for_default_algorithm():
     with pytest.raises(ValueError) as error:
         registry("broken_region_name")
     assert "Algorithm (None) is unsupported for region (broken_region_name)." in str(error)
+
+
+def test_is_latest_xgboost_version():
+    for version in XGBOOST_SUPPORTED_VERSIONS:
+        if version != XGBOOST_LATEST_VERSION:
+            assert _is_latest_xgboost_version(version) is False
+
+    assert _is_latest_xgboost_version("0.90-1-cpu-py3") is False
+
+    assert _is_latest_xgboost_version(XGBOOST_LATEST_VERSION) is True

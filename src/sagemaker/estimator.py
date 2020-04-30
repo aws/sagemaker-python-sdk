@@ -133,6 +133,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                 stored to a default bucket. If the bucket with the specific name
                 does not exist, the estimator creates the bucket during the
                 :meth:`~sagemaker.estimator.EstimatorBase.fit` method execution.
+                file:// urls are used for local mode. For example: 'file://model/'
+                will save to the model folder in the current directory.
             output_kms_key (str): Optional. KMS key ID for encrypting the
                 training output (default: None).
             base_job_name (str): Prefix for training job name when the
@@ -196,7 +198,23 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                 started. If the path is unset then SageMaker assumes the
                 checkpoints will be provided under `/opt/ml/checkpoints/`.
                 (default: ``None``).
-            enable_sagemaker_metrics (bool): enable SageMaker Metrics Time
+            rules (list[:class:`~sagemaker.debugger.Rule`]): A list of
+                :class:`~sagemaker.debugger.Rule` objects used to define
+                rules for continuous analysis with SageMaker Debugger
+                (default: ``None``). For more, see
+                https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_debugger.html#continuous-analyses-through-rules
+            debugger_hook_config (:class:`~sagemaker.debugger.DebuggerHookConfig` or bool):
+                Configuration for how debugging information is emitted with
+                SageMaker Debugger. If not specified, a default one is created using
+                the estimator's ``output_path``, unless the region does not
+                support SageMaker Debugger. To disable SageMaker Debugger,
+                set this parameter to ``False``. For more, see
+                https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_debugger.html
+            tensorboard_output_config (:class:`~sagemaker.debugger.TensorBoardOutputConfig`):
+                Configuration for customizing debugging visualization using TensorBoard
+                (default: ``None``). For more, see
+                https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_debugger.html#capture-real-time-tensorboard-data-from-the-debugging-hook
+            enable_sagemaker_metrics (bool): Enables SageMaker Metrics Time
                 Series. For more information see:
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_AlgorithmSpecification.html#SageMaker-Type-AlgorithmSpecification-EnableSageMakerMetricsTimeSeries
                 (default: ``None``).
@@ -446,7 +464,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             inputs (str or dict or sagemaker.session.s3_input): Information
                 about the training data. This can be one of three types:
 
-                * (str) the S3 location where training data is saved.
+                * (str) the S3 location where training data is saved, or a file:// path in
+                    local mode.
                 * (dict[str, str] or dict[str, sagemaker.session.s3_input]) If using multiple
                     channels for training data, you can specify a dict mapping channel names to
                     strings or :func:`~sagemaker.session.s3_input` objects.

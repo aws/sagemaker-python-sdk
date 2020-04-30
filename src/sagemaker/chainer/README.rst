@@ -11,7 +11,7 @@ You can visit the Chainer repository at https://github.com/chainer/chainer.
 For information about using Chainer with the SageMaker Python SDK, see https://sagemaker.readthedocs.io/en/stable/using_chainer.html.
 
 Chainer Training Examples
-~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Amazon provides several example Jupyter notebooks that demonstrate end-to-end training on Amazon SageMaker using Chainer.
 Please refer to:
@@ -22,7 +22,7 @@ These are also available in SageMaker Notebook Instance hosted Jupyter notebooks
 
 
 SageMaker Chainer Docker containers
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 When training and deploying training scripts, SageMaker runs your Python script in a Docker container with several
 libraries installed. When creating the Estimator and calling deploy to create the SageMaker Endpoint, you can control
