@@ -420,6 +420,9 @@ Inference arrays or lists are serialized and sent to the MXNet model server by a
 ``predict`` returns the result of inference against your model.
 By default, the inference result is either a Python list or dictionary.
 
+Elastic Inference
+=================
+
 MXNet on Amazon SageMaker has support for `Elastic Inference <https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html>`_, which allows for inference acceleration to a hosted endpoint for a fraction of the cost of using a full GPU instance.
 In order to attach an Elastic Inference accelerator to your endpoint provide the accelerator type to ``accelerator_type`` to your ``deploy`` call.
 
@@ -428,6 +431,61 @@ In order to attach an Elastic Inference accelerator to your endpoint provide the
   predictor = mxnet_estimator.deploy(instance_type='ml.m4.xlarge',
                                      initial_instance_count=1,
                                      accelerator_type='ml.eia1.medium')
+
+Model Directory Structure
+=========================
+
+In general, if you use the same version of MXNet for both training and inference with the SageMaker Python SDK,
+the SDK should take care of ensuring that the contents of your ``model.tar.gz`` file are organized correctly.
+
+For versions 1.4 and higher
+---------------------------
+
+For MXNet versions 1.4 and higher, the contents of ``model.tar.gz`` should be organized as follows:
+
+- Model files in the top-level directory
+- Inference script (and any other source files) in a directory named ``code/`` (for more about the inference script, see `The SageMaker MXNet Model Server <#the-sagemaker-mxnet-model-server>`_)
+- Optional requirements file located at ``code/requirements.txt`` (for more about requirements files, see `Use third-party libraries <#use-third-party-libraries>`_)
+
+For example:
+
+.. code::
+
+  model.tar.gz/
+  |- model-symbol.json
+  |- model-shapes.json
+  |- model-0000.params
+  |- code/
+    |- inference.py
+    |- requirements.txt  # only for versions 1.6.0 and higher
+
+In this example, ``model-symbol.json``, ``model-shapes.json``, and ``model-0000.params`` are the model files saved from training,
+``inference.py`` is the inference script, and ``requirements.txt`` is a requirements file.
+
+The ``MXNet`` and ``MXNetModel`` classes repack ``model.tar.gz`` to include the inference script (and related files),
+as long as the ``framework_version`` is set to 1.4 or higher.
+
+For versions 1.3 and lower
+--------------------------
+
+For MXNet versions 1.3 and lower, ``model.tar.gz`` should contain only the model files,
+while your inference script and optional requirements file are packed in a separate tarball, named ``sourcedir.tar.gz`` by default.
+
+For example:
+
+.. code::
+
+  model.tar.gz/
+  |- model-symbol.json
+  |- model-shapes.json
+  |- model-0000.params
+
+  sourcedir.tar.gz/
+  |- script.py
+  |- requirements.txt  # only for versions 0.12.1-1.3.0
+
+In this example, ``model-symbol.json``, ``model-shapes.json``, and ``model-0000.params`` are the model files saved from training,
+``script.py`` is the inference script, and ``requirements.txt`` is a requirements file.
 
 The SageMaker MXNet Model Server
 ================================
@@ -512,7 +570,7 @@ Defining how to handle these requests can be done in one of two ways:
 - writing your own ``transform_fn`` for handling input processing, prediction, and output processing
 
 Use ``input_fn``, ``predict_fn``, and ``output_fn``
----------------------------------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The SageMaker MXNet model server breaks request handling into three steps:
 
@@ -565,7 +623,7 @@ In the following sections, we describe the default implementations of ``input_fn
 We describe the input arguments and expected return types of each, so you can define your own implementations.
 
 Process Model Input
-^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~
 
 When an ``InvokeEndpoint`` operation is made against an endpoint running an MXNet model server, the model server receives two pieces of information:
 
@@ -607,7 +665,7 @@ If you provide your own implementation of input_fn, you should abide by the ``in
             pass
 
 Predict from a Deployed Model
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 After the inference request has been deserialized by ``input_fn``, the MXNet model server invokes ``predict_fn``.
 As with the other functions, you can define your own ``predict_fn`` or use the model server's default.
@@ -640,7 +698,7 @@ If you implement your own prediction function, you should take care to ensure th
    ``output_fn``, this should be an ``NDArrayIter``.
 
 Process Model Output
-^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~
 
 After invoking ``predict_fn``, the model server invokes ``output_fn``, passing in the return value from ``predict_fn`` and the ``InvokeEndpoint`` requested response content type.
 
@@ -656,7 +714,7 @@ The function should return an array of bytes serialized to the expected content 
 The default implementation expects ``prediction`` to be an ``NDArray`` and can serialize the result to either JSON or CSV. It accepts response content types of "application/json" and "text/csv".
 
 Use ``transform_fn``
---------------------
+^^^^^^^^^^^^^^^^^^^^
 
 If you would rather not structure your code around the three methods described above, you can instead define your own ``transform_fn`` to handle inference requests.
 An error is thrown if a ``transform_fn`` is present in conjunction with any ``input_fn``, ``predict_fn``, and/or ``output_fn``.

@@ -302,13 +302,13 @@ def test_tf_eia_images():
         "us-west-2",
         "tensorflow-serving",
         "ml.m4.xlarge",
-        "1.14.0",
+        "2.0.0",
         "py3",
         accelerator_type="ml.eia1.medium",
     )
     assert (
         image_uri
-        == "{}.dkr.ecr.us-west-2.amazonaws.com/tensorflow-inference-eia:1.14.0-cpu".format(
+        == "{}.dkr.ecr.us-west-2.amazonaws.com/tensorflow-inference-eia:2.0.0-cpu".format(
             fw_utils.ASIMOV_PROD_ACCOUNT
         )
     )
