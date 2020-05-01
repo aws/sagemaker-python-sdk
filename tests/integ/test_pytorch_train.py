@@ -31,6 +31,7 @@ from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 MNIST_DIR = os.path.join(DATA_DIR, "pytorch_mnist")
 MNIST_SCRIPT = os.path.join(MNIST_DIR, "mnist.py")
+PACKED_MODEL = os.path.join(MNIST_DIR, "packed_model.tar.gz")
 
 EIA_DIR = os.path.join(DATA_DIR, "pytorch_eia")
 EIA_MODEL = os.path.join(EIA_DIR, "model_mnist.tar.gz")
@@ -113,6 +114,31 @@ def test_deploy_model(pytorch_training_job, sagemaker_session, cpu_instance_type
             model_data,
             "SageMakerRole",
             entry_point=MNIST_SCRIPT,
+            sagemaker_session=sagemaker_session,
+        )
+        predictor = model.deploy(1, cpu_instance_type, endpoint_name=endpoint_name)
+
+        batch_size = 100
+        data = numpy.random.rand(batch_size, 1, 28, 28).astype(numpy.float32)
+        output = predictor.predict(data)
+
+        assert output.shape == (batch_size, 10)
+
+
+@pytest.mark.skipif(
+    PYTHON_VERSION == "py2",
+    reason="Python 2 is supported by PyTorch {} and lower versions.".format(LATEST_PY2_VERSION),
+)
+def test_deploy_packed_model_with_entry_point_name(sagemaker_session, cpu_instance_type):
+    endpoint_name = "test-pytorch-deploy-model-{}".format(sagemaker_timestamp())
+
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
+        model_data = sagemaker_session.upload_data(path=PACKED_MODEL)
+        model = PyTorchModel(
+            model_data,
+            "SageMakerRole",
+            entry_point="mnist.py",
+            framework_version="1.4.0",
             sagemaker_session=sagemaker_session,
         )
         predictor = model.deploy(1, cpu_instance_type, endpoint_name=endpoint_name)

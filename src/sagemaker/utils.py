@@ -548,7 +548,13 @@ def _create_or_update_code_dir(
     else:
         if not os.path.exists(code_dir):
             os.mkdir(code_dir)
-        shutil.copy2(inference_script, code_dir)
+        try:
+            shutil.copy2(inference_script, code_dir)
+        except FileNotFoundError:
+            if os.path.exists(os.path.join(code_dir, inference_script)):
+                pass
+            else:
+                raise
 
     for dependency in dependencies:
         lib_dir = os.path.join(code_dir, "lib")
