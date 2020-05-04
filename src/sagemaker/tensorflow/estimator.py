@@ -73,10 +73,13 @@ class Tensorboard(threading.Thread):
     @staticmethod
     def _cmd_exists(cmd):
         """Placeholder docstring"""
-        return any(
-            os.access(os.path.join(path, cmd), os.X_OK)
-            for path in os.environ["PATH"].split(os.pathsep)
-        )
+        for path in os.environ["PATH"].split(os.pathsep):
+            try:
+                if os.access(os.path.join(path, cmd), os.X_OK):
+                    return True
+            except StopIteration:
+                return False
+        return False
 
     @staticmethod
     def _sync_directories(from_directory, to_directory):
