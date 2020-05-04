@@ -14,6 +14,7 @@
 from __future__ import absolute_import
 
 XGBOOST_NAME = "xgboost"
+XGBOOST_VERSION_0 = "0.90"
 XGBOOST_VERSION_1 = "0.90-1"
 XGBOOST_VERSION_2 = "0.90-2"
 XGBOOST_LATEST_VERSION = "1.0-1"
