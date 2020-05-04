@@ -236,6 +236,9 @@ def training_config(estimator, inputs=None, job_name=None, mini_batch_size=None)
     if estimator.tags is not None:
         train_config["Tags"] = estimator.tags
 
+    if estimator.metric_definitions is not None:
+        train_config["AlgorithmSpecification"]["MetricDefinitions"] = estimator.metric_definitions
+
     return train_config
 
 

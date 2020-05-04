@@ -284,6 +284,7 @@ def test_framework_training_config_all_args(ecr_prefix, sagemaker_session):
         tags=[{"{{ key }}": "{{ value }}"}],
         subnets=["{{ subnet }}"],
         security_group_ids=["{{ security_group_ids }}"],
+        metric_definitions=[{"Name": "{{ name }}", "Regex": "{{ regex }}"}],
         sagemaker_session=sagemaker_session,
     )
 
@@ -294,6 +295,7 @@ def test_framework_training_config_all_args(ecr_prefix, sagemaker_session):
         "AlgorithmSpecification": {
             "TrainingImage": "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-tensorflow:1.10.0-cpu-py2",
             "TrainingInputMode": "Pipe",
+            "MetricDefinitions": [{"Name": "{{ name }}", "Regex": "{{ regex }}"}],
         },
         "OutputDataConfig": {
             "S3OutputPath": "{{ output_path }}",
