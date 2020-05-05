@@ -90,6 +90,7 @@ SageMaker Python SDK is tested on:
 
 - Python 2.7
 - Python 3.6
+- Python 3.7
 
 AWS Permissions
 ~~~~~~~~~~~~~~~
@@ -117,8 +118,8 @@ You can install the libraries needed to run the tests by running :code:`pip inst
 
 
 We run unit tests with tox, which is a program that lets you run unit tests for multiple Python versions, and also make sure the
-code fits our style guidelines. We run tox with Python 2.7 and 3.6, so to run unit tests
-with the same configuration we do, you'll need to have interpreters for Python 2.7 and Python 3.6 installed.
+code fits our style guidelines. We run tox with Python 2.7, 3.6 and 3.7, so to run unit tests
+with the same configuration we do, you'll need to have interpreters for Python 2.7, Python 3.6 and Python 3.7 installed.
 
 To run the unit tests with tox, run:
 
@@ -215,7 +216,7 @@ By using TensorFlow SageMaker Estimators, you can train and host TensorFlow mode
 
 Supported versions of TensorFlow: ``1.4.1``, ``1.5.0``, ``1.6.0``, ``1.7.0``, ``1.8.0``, ``1.9.0``, ``1.10.0``, ``1.11.0``, ``1.12.0``, ``1.13.1``, ``1.14.0``, ``1.15.0``, ``1.15.2``, ``2.0.0``, ``2.0.1``, ``2.1.0``.
 
-Supported versions of TensorFlow for Elastic Inference: ``1.11.0``, ``1.12.0``, ``1.13.1``, ``1.14.0``.
+Supported versions of TensorFlow for Elastic Inference: ``1.11.0``, ``1.12.0``, ``1.13.1``, ``1.14.0``, ``1.15.0``, ``2.0.0``.
 
 We recommend that you use the latest supported version, because that's where we focus most of our development efforts.
 

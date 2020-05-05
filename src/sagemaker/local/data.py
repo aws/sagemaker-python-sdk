@@ -122,6 +122,8 @@ class LocalFileDataSource(DataSource):
         Args:
             root_path:
         """
+        super(LocalFileDataSource, self).__init__()
+
         self.root_path = os.path.abspath(root_path)
         if not os.path.exists(self.root_path):
             raise RuntimeError("Invalid data source: %s does not exist." % self.root_path)
@@ -167,6 +169,7 @@ class S3DataSource(DataSource):
             desired settings
                 to talk to S3
         """
+        super(S3DataSource, self).__init__()
 
         # Create a temporary dir to store the S3 contents
         root_dir = sagemaker.utils.get_config_value(

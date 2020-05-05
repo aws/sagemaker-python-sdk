@@ -1,5 +1,53 @@
 # Changelog
 
+## v1.56.2 (2020-05-05)
+
+### Bug Fixes and Other Changes
+
+ * training_config returns MetricDefinitions
+ * preserve inference script in model repack.
+
+### Testing and Release Infrastructure
+
+ * support Python 3.7
+
+## v1.56.1.post1 (2020-04-29)
+
+### Documentation Changes
+
+ * document model.tar.gz structure for MXNet and PyTorch
+ * add documentation for EstimatorBase parameters missing from docstring
+
+## v1.56.1.post0 (2020-04-28)
+
+### Testing and Release Infrastructure
+
+ * add doc8 check for documentation files
+
+## v1.56.1 (2020-04-27)
+
+### Bug Fixes and Other Changes
+
+ * add super() call in Local Mode DataSource subclasses
+ * fix xgboost image incorrect latest version warning
+ * allow output_path without trailing slash in Local Mode training jobs
+ * allow S3 folder input to contain a trailing slash in Local Mode
+
+### Documentation Changes
+
+ * Add namespace-based setup for SageMaker Operators for Kubernetes
+ * Add note about file URLs for Estimator methods in Local Mode
+
+## v1.56.0 (2020-04-24)
+
+### Features
+
+ * add EIA support for TFS 1.15.0 and 2.0.0
+
+### Bug Fixes and Other Changes
+
+ * use format strings intead of os.path.join for Unix paths for Processing Jobs
+
 ## v1.55.4 (2020-04-17)
 
 ### Bug Fixes and Other Changes
