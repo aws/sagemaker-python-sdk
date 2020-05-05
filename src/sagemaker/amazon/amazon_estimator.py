@@ -30,7 +30,8 @@ from sagemaker.utils import sagemaker_timestamp, get_ecr_image_uri_prefix
 from sagemaker.xgboost.defaults import (
     XGBOOST_LATEST_VERSION,
     XGBOOST_SUPPORTED_VERSIONS,
-    XGBOOST_VERSION_1,
+    XGBOOST_VERSION_0_90_1,
+    XGBOOST_VERSION_0_90,
     XGBOOST_VERSION_EQUIVALENTS,
 )
 from sagemaker.xgboost.estimator import get_xgboost_image_uri
@@ -626,8 +627,10 @@ def get_image_uri(region_name, repo_name, repo_version=1):
                 XGBOOST_LATEST_VERSION,
             )
 
-        if repo_version in ["0.90", "0.90-1", "0.90-1-cpu-py3"]:
-            return get_xgboost_image_uri(region_name, XGBOOST_VERSION_1)
+        if repo_version in [XGBOOST_VERSION_0_90] + _generate_version_equivalents(
+            XGBOOST_VERSION_0_90_1
+        ):
+            return get_xgboost_image_uri(region_name, XGBOOST_VERSION_0_90_1)
 
         supported_version = [
             version
