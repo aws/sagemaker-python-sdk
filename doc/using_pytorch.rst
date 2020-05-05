@@ -4,11 +4,7 @@ Using PyTorch with the SageMaker Python SDK
 
 With PyTorch Estimators and Models, you can train and host PyTorch models on Amazon SageMaker.
 
-<<<<<<< HEAD
-* Supported versions of PyTorch: ``0.4.0``, ``1.0.0``, ``1.1.0``, ``1.2.0``, ``1.3.1``.
-=======
 Supported versions of PyTorch: ``0.4.0``, ``1.0.0``, ``1.1.0``, ``1.2.0``, ``1.3.1``, ``1.4.0``.
->>>>>>> 53fe1dc2025a1ba6e7fe4f16f120dfcc245ed465
 
 * Supported versions of PyTorch for Elastic Inference: ``1.3.1``.
 
@@ -596,12 +592,14 @@ Package model artifacts into a tar.gz file
 
 The directory structure where you saved your PyTorch model should look something like the following:
 
-|   my_model
-|           |--model.pth
-|        
-|           code
-|               |--inference.py
-|               |--requirements.txt
+::
+
+    |   my_model
+    |           |--model.pth
+    |        
+    |           code
+    |               |--inference.py
+    |               |--requirements.txt
 
 Where ``requirments.txt`` is an optional file that specifies dependencies on third-party libraries.
 
