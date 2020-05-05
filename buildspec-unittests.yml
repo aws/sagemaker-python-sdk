@@ -11,8 +11,8 @@ phases:
       - ./ci-scripts/displaytime.sh 'flake8,pylint,twine,black-check' $start_time
 
       - start_time=`date +%s`
-      - tox -e sphinx
-      - ./ci-scripts/displaytime.sh 'sphinx' $start_time
+      - tox -e sphinx,doc8
+      - ./ci-scripts/displaytime.sh 'sphinx,doc8' $start_time
 
       # run unit tests
       - start_time=`date +%s`

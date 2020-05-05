@@ -4,11 +4,15 @@ Using PyTorch with the SageMaker Python SDK
 
 With PyTorch Estimators and Models, you can train and host PyTorch models on Amazon SageMaker.
 
+<<<<<<< HEAD
 * Supported versions of PyTorch: ``0.4.0``, ``1.0.0``, ``1.1.0``, ``1.2.0``, ``1.3.1``.
+=======
+Supported versions of PyTorch: ``0.4.0``, ``1.0.0``, ``1.1.0``, ``1.2.0``, ``1.3.1``, ``1.4.0``.
+>>>>>>> 53fe1dc2025a1ba6e7fe4f16f120dfcc245ed465
 
 * Supported versions of PyTorch for Elastic Inference: ``1.3.1``.
 
-We recommend that you use the latest supported version, because that's where we focus most of our development efforts.
+We recommend that you use the latest supported version because that's where we focus our development efforts.
 
 You can visit the PyTorch repository at https://github.com/pytorch/pytorch.
 
@@ -264,6 +268,9 @@ You use the SageMaker PyTorch model server to host your PyTorch model when you c
 Estimator. The model server runs inside a SageMaker Endpoint, which your call to ``deploy`` creates.
 You can access the name of the Endpoint by the ``name`` property on the returned ``Predictor``.
 
+Elastic Inference
+=================
+
 PyTorch on Amazon SageMaker has support for `Elastic Inference <https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html>`_, which allows for inference acceleration to a hosted endpoint for a fraction of the cost of using a full GPU instance.
 In order to attach an Elastic Inference accelerator to your endpoint provide the accelerator type to ``accelerator_type`` to your ``deploy`` call.
 
@@ -272,6 +279,55 @@ In order to attach an Elastic Inference accelerator to your endpoint provide the
   predictor = pytorch_estimator.deploy(instance_type='ml.m4.xlarge',
                                        initial_instance_count=1,
                                        accelerator_type='ml.eia2.medium')
+
+Model Directory Structure
+=========================
+
+In general, if you use the same version of PyTorch for both training and inference with the SageMaker Python SDK,
+the SDK should take care of ensuring that the contents of your ``model.tar.gz`` file are organized correctly.
+
+For versions 1.2 and higher
+---------------------------
+
+For PyTorch versions 1.2 and higher, the contents of ``model.tar.gz`` should be organized as follows:
+
+- Model files in the top-level directory
+- Inference script (and any other source files) in a directory named ``code/`` (for more about the inference script, see `The SageMaker PyTorch Model Server <#the-sagemaker-pytorch-model-server>`_)
+- Optional requirements file located at ``code/requirements.txt`` (for more about requirements files, see `Using third-party libraries <#using-third-party-libraries>`_)
+
+For example:
+
+.. code::
+
+  model.tar.gz/
+  |- model.pth
+  |- code/
+    |- inference.py
+    |- requirements.txt  # only for versions 1.3.1 and higher
+
+In this example, ``model.pth`` is the model file saved from training, ``inference.py`` is the inference script, and ``requirements.txt`` is a requirements file.
+
+The ``PyTorch`` and ``PyTorchModel`` classes repack ``model.tar.gz`` to include the inference script (and related files),
+as long as the ``framework_version`` is set to 1.2 or higher.
+
+For versions 1.1 and lower
+--------------------------
+
+For PyTorch versions 1.1 and lower, ``model.tar.gz`` should contain only the model files,
+while your inference script and optional requirements file are packed in a separate tarball, named ``sourcedir.tar.gz`` by default.
+
+For example:
+
+.. code::
+
+  model.tar.gz/
+  |- model.pth
+
+  sourcedir.tar.gz/
+  |- script.py
+  |- requirements.txt
+
+In this example, ``model.pth`` is the model file saved from training, ``script.py`` is the inference script, and ``requirements.txt`` is a requirements file.
 
 The SageMaker PyTorch Model Server
 ==================================
@@ -435,7 +491,7 @@ The example below shows a custom ``input_fn`` for preparing pickled torch.Tensor
 
 
 Get Predictions from a PyTorch Model
-------------------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 After the inference request has been deserialized by ``input_fn``, the SageMaker PyTorch model server invokes
 ``predict_fn`` on the return value of ``input_fn``.
