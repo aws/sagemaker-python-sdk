@@ -583,9 +583,9 @@ Write an inference script
 -------------------------
 
 You must create an inference script that implements (at least) the ``predict_fn`` function that calls the loaded model to get a prediction.
-Optionally, you can also implement ``input_fn`` and ``output_fn`` to process input and output. 
+Optionally, you can also implement ``input_fn`` and ``output_fn`` to process input and output.
 For information about how to write an inference script, see `Serve a PyTorch Model <#serve-a-pytorch-model>`_.
-Save the inference script as ``inference.py`` in the same folder where you saved your PyTorch model. 
+Save the inference script as ``inference.py`` in the same folder where you saved your PyTorch model.
 
 Package model artifacts into a tar.gz file
 ------------------------------------------
@@ -596,7 +596,7 @@ The directory structure where you saved your PyTorch model should look something
 
     |   my_model
     |           |--model.pth
-    |        
+    |
     |           code
     |               |--inference.py
     |               |--requirements.txt
