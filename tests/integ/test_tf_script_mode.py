@@ -131,7 +131,9 @@ def test_mnist_distributed(sagemaker_session, instance_type, tf_full_version):
         train_instance_count=2,
         train_instance_type=instance_type,
         sagemaker_session=sagemaker_session,
-        py_version=tests.integ.PYTHON_VERSION,
+        py_version="py37"
+        if tf_full_version == TensorFlow._LATEST_1X_VERSION
+        else tests.integ.PYTHON_VERSION,
         script_mode=True,
         framework_version=tf_full_version,
         distributions=PARAMETER_SERVER_DISTRIBUTION,

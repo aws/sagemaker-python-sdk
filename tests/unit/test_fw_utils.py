@@ -297,6 +297,24 @@ def test_create_image_uri_cn_northwest_1():
     }
 
 
+def test_create_image_uri_py37_invalid_framework():
+    error_message = "{} does not support Python 3.7 yet.".format(MOCK_FRAMEWORK)
+
+    with pytest.raises(ValueError) as error:
+        fw_utils.create_image_uri(REGION, MOCK_FRAMEWORK, "ml.m4.xlarge", "1.4.0", "py37")
+    assert error_message in str(error)
+
+
+def test_create_image_uri_py37():
+    image_uri = fw_utils.create_image_uri(
+        REGION, "tensorflow-scriptmode", "ml.m4.xlarge", "1.15.2", "py37"
+    )
+    assert (
+        image_uri
+        == "763104351884.dkr.ecr.us-west-2.amazonaws.com/tensorflow-training:1.15.2-cpu-py37"
+    )
+
+
 def test_tf_eia_images():
     image_uri = fw_utils.create_image_uri(
         "us-west-2",
