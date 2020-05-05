@@ -298,7 +298,7 @@ def test_create_image_uri_cn_northwest_1():
 
 
 def test_create_image_uri_py37_invalid_framework():
-    error_message = "{} does not support Python 3.7 yet.".format(MOCK_FRAMEWORK)
+    error_message = "{} does not support Python 3.7 at this time.".format(MOCK_FRAMEWORK)
 
     with pytest.raises(ValueError) as error:
         fw_utils.create_image_uri(REGION, MOCK_FRAMEWORK, "ml.m4.xlarge", "1.4.0", "py37")

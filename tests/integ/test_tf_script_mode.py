@@ -52,7 +52,9 @@ def test_mnist_with_checkpoint_config(sagemaker_session, instance_type, tf_full_
         sagemaker_session=sagemaker_session,
         script_mode=True,
         framework_version=tf_full_version,
-        py_version=tests.integ.PYTHON_VERSION,
+        py_version="py37"
+        if tf_full_version == TensorFlow._LATEST_1X_VERSION
+        else tests.integ.PYTHON_VERSION,
         metric_definitions=[{"Name": "train:global_steps", "Regex": r"global_step\/sec:\s(.*)"}],
         checkpoint_s3_uri=checkpoint_s3_uri,
         checkpoint_local_path=checkpoint_local_path,
@@ -97,7 +99,9 @@ def test_server_side_encryption(sagemaker_session, tf_full_version):
             sagemaker_session=sagemaker_session,
             script_mode=True,
             framework_version=tf_full_version,
-            py_version=tests.integ.PYTHON_VERSION,
+            py_version="py37"
+            if tf_full_version == TensorFlow._LATEST_1X_VERSION
+            else tests.integ.PYTHON_VERSION,
             code_location=output_path,
             output_path=output_path,
             model_dir="/opt/ml/model",
@@ -151,13 +155,15 @@ def test_mnist_distributed(sagemaker_session, instance_type, tf_full_version):
     )
 
 
-def test_mnist_async(sagemaker_session, cpu_instance_type):
+def test_mnist_async(sagemaker_session, cpu_instance_type, tf_full_version):
     estimator = TensorFlow(
         entry_point=SCRIPT,
         role=ROLE,
         train_instance_count=1,
         train_instance_type="ml.c5.4xlarge",
-        py_version=tests.integ.PYTHON_VERSION,
+        py_version="py37"
+        if tf_full_version == TensorFlow._LATEST_1X_VERSION
+        else tests.integ.PYTHON_VERSION,
         sagemaker_session=sagemaker_session,
         script_mode=True,
         # testing py-sdk functionality, no need to run against all TF versions
@@ -200,7 +206,9 @@ def test_deploy_with_input_handlers(sagemaker_session, instance_type, tf_full_ve
         role=ROLE,
         train_instance_count=1,
         train_instance_type=instance_type,
-        py_version=tests.integ.PYTHON_VERSION,
+        py_version="py37"
+        if tf_full_version == TensorFlow._LATEST_1X_VERSION
+        else tests.integ.PYTHON_VERSION,
         sagemaker_session=sagemaker_session,
         script_mode=True,
         framework_version=tf_full_version,

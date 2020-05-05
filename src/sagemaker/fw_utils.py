@@ -259,7 +259,7 @@ def create_image_uri(
         raise ValueError("invalid py_version argument: {}".format(py_version))
 
     if py_version == "py37" and framework not in PY37_SUPPORTED_FRAMEWORKS:
-        raise ValueError("{} does not support Python 3.7 yet.".format(framework))
+        raise ValueError("{} does not support Python 3.7 at this time.".format(framework))
 
     if _accelerator_type_valid_for_framework(
         framework=framework,
