@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.56.2 (2020-05-05)
+
+### Bug Fixes and Other Changes
+
+ * training_config returns MetricDefinitions
+ * preserve inference script in model repack.
+
+### Testing and Release Infrastructure
+
+ * support Python 3.7
+
 ## v1.56.1.post1 (2020-04-29)
 
 ### Documentation Changes
