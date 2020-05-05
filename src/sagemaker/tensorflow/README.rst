@@ -69,7 +69,7 @@ The latest containers include the following Python packages:
 | tensorflow                     | 1.15.2        | 2.1.0         |
 +--------------------------------+---------------+---------------+
 
-Script Mode TensorFlow Docker images support both Python 2.7 and Python 3.6. The Docker images extend Ubuntu 16.04.
+Script Mode TensorFlow Docker images support Python 2.7 and Python 3.6, Python 3.7 for TensorFlow version 1.15.2. The Docker images extend Ubuntu 16.04.
 
 You can select version of TensorFlow by passing a ``framework_version`` keyword arg to the TensorFlow Estimator constructor. Currently supported versions are listed in the table above. You can also set ``framework_version`` to only specify major and minor version, e.g ``'1.6'``, which will cause your training script to be run on the latest supported patch version of that minor version, which in this example would be 1.6.0.
 Alternatively, you can build your own image by following the instructions in the SageMaker TensorFlow containers
