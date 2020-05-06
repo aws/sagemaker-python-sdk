@@ -39,6 +39,13 @@ MPI_DISTRIBUTION = {"mpi": {"enabled": True}}
 TAGS = [{"Key": "some-key", "Value": "some-value"}]
 
 
+@pytest.fixture(scope="module")
+def py_version(tf_full_version):
+    return (
+        "py37" if tf_full_version == TensorFlow._LATEST_1X_VERSION else tests.integ.PYTHON_VERSION
+    )
+
+
 def test_mnist_with_checkpoint_config(
     sagemaker_session, instance_type, tf_full_version, py_version
 ):
