@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.56.3 (2020-05-06)
+
+### Bug Fixes and Other Changes
+
+ * update xgboost latest image version
+
 ## v1.56.2 (2020-05-05)
 
 ### Bug Fixes and Other Changes
