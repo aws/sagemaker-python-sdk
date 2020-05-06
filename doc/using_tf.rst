@@ -42,7 +42,7 @@ To train a TensorFlow model by using the SageMaker Python SDK:
 Prepare a Script Mode Training Script
 ======================================
 
-Your TensorFlow training script must be a Python 2.7- or 3.6-compatible source file.
+Your TensorFlow training script must be a Python 2.7-, 3.6- or 3.7-compatible source file.
 
 The training script is very similar to a training script you might run outside of SageMaker, but you can access useful properties about the training environment through various environment variables, including the following:
 
@@ -142,6 +142,11 @@ To use Script Mode, set at least one of these args
 
 - ``py_version='py3'``
 - ``script_mode=True``
+
+To use Python 3.7, please specify both of the args:
+
+- ``py_version='py37'``
+- ``framework_version='1.15.2'``
 
 When using Script Mode, your training script needs to accept the following args:
 

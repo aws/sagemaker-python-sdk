@@ -62,7 +62,7 @@ UNSUPPORTED_FRAMEWORK_VERSION_ERROR = (
     "{} framework does not support version {}. Please use one of the following: {}."
 )
 
-VALID_PY_VERSIONS = ["py2", "py3"]
+VALID_PY_VERSIONS = ["py2", "py3", "py37"]
 VALID_EIA_FRAMEWORKS = [
     "tensorflow",
     "tensorflow-serving",
@@ -71,6 +71,7 @@ VALID_EIA_FRAMEWORKS = [
     "pytorch-serving",
 ]
 PY2_RESTRICTED_EIA_FRAMEWORKS = ["pytorch-serving"]
+PY37_SUPPORTED_FRAMEWORKS = ["tensorflow-scriptmode"]
 VALID_ACCOUNTS_BY_REGION = {
     "us-gov-west-1": "246785580436",
     "us-iso-east-1": "744548109606",
@@ -103,7 +104,7 @@ MERGED_FRAMEWORKS_REPO_MAP = {
 }
 
 MERGED_FRAMEWORKS_LOWEST_VERSIONS = {
-    "tensorflow-scriptmode": {"py3": [1, 13, 1], "py2": [1, 14, 0]},
+    "tensorflow-scriptmode": {"py3": [1, 13, 1], "py2": [1, 14, 0], "py37": [1, 15, 2]},
     "tensorflow-serving": [1, 13, 0],
     "tensorflow-serving-eia": [1, 14, 0],
     "mxnet": {"py3": [1, 4, 1], "py2": [1, 6, 0]},
@@ -256,6 +257,9 @@ def create_image_uri(
 
     if py_version and py_version not in VALID_PY_VERSIONS:
         raise ValueError("invalid py_version argument: {}".format(py_version))
+
+    if py_version == "py37" and framework not in PY37_SUPPORTED_FRAMEWORKS:
+        raise ValueError("{} does not support Python 3.7 at this time.".format(framework))
 
     if _accelerator_type_valid_for_framework(
         framework=framework,
