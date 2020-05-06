@@ -133,6 +133,13 @@ def custom_bucket_name(boto_session):
     return "{}-{}-{}".format(CUSTOM_BUCKET_NAME_PREFIX, region, account)
 
 
+@pytest.fixture(scope="module")
+def py_version():
+    return (
+        "py37" if tf_full_version == TensorFlow._LATEST_1X_VERSION else tests.integ.PYTHON_VERSION
+    )
+
+
 @pytest.fixture(scope="module", params=["4.0", "4.0.0", "4.1", "4.1.0", "5.0", "5.0.0"])
 def chainer_version(request):
     return request.param
