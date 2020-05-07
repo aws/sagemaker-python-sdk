@@ -90,7 +90,7 @@ Note that SageMaker doesn't support argparse actions. If you want to use, for ex
 you need to specify `type` as `bool` in your script and provide an explicit `True` or `False` value for this hyperparameter
 when instantiating PyTorch Estimator.
 
-For more on training environment variables, see `SageMaker Containers <https://github.com/aws/sagemaker-containers>`_.
+For more on training environment variables, see the `SageMaker Training Toolkit <https://github.com/aws/sagemaker-training-toolkit/blob/master/ENVIRONMENT_VARIABLES.md>`_.
 
 Save the Model
 --------------
@@ -575,8 +575,8 @@ Typically, you save a PyTorch model as a file with extension ``.pt`` or ``.pth``
 To do this, you need to:
 
 * Write an inference script.
-* Package the model artifacts into a tar.gz file.
-* Upload the tar.gz file to an S3 bucket.
+* Package the model artifacts into a ``tar.gz`` file.
+* Upload the ``tar.gz`` file to an S3 bucket.
 * Create the ``PyTorchModel`` object.
 
 Write an inference script
