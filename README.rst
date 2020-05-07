@@ -246,7 +246,7 @@ PyTorch SageMaker Estimators
 
 With PyTorch SageMaker Estimators, you can train and host PyTorch models on Amazon SageMaker.
 
-Supported versions of PyTorch: ``0.4.0``, ``1.0.0``, ``1.1.0``, ``1.2.0``, ``1.3.1``, ``1.4.0``.
+Supported versions of PyTorch: ``0.4.0``, ``1.0.0``, ``1.1.0``, ``1.2.0``, ``1.3.1``, ``1.4.0``, ``1.5.0``.
 
 Supported versions of PyTorch for Elastic Inference: ``1.3.1``.
 
