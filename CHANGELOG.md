@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.57.0 (2020-05-07)
+
+### Features
+
+ * add tensorflow training 1.15.2 py37 support
+ * PyTorch 1.5.0 support
+
 ## v1.56.3 (2020-05-06)
 
 ### Bug Fixes and Other Changes
