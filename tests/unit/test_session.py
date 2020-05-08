@@ -131,6 +131,7 @@ def test_process(boto_session):
         },
         "environment": {"my_env_variable": 20},
         "network_config": {
+            "EnableInterContainerTrafficEncryption": True,
             "EnableNetworkIsolation": True,
             "VpcConfig": {
                 "SecurityGroupIds": ["my_security_group_id"],
@@ -219,6 +220,7 @@ def test_process(boto_session):
         },
         "Environment": {"my_env_variable": 20},
         "NetworkConfig": {
+            "EnableInterContainerTrafficEncryption": True,
             "EnableNetworkIsolation": True,
             "VpcConfig": {
                 "SecurityGroupIds": ["my_security_group_id"],
