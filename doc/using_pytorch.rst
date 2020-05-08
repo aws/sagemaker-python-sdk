@@ -582,7 +582,10 @@ To do this, you need to:
 Write an inference script
 -------------------------
 
-You must create an inference script that implements (at least) the ``predict_fn`` function that calls the loaded model to get a prediction.
+You must create an inference script that implements (at least) the ``model_fn`` function that calls the loaded model to get a prediction.
+
+**Note**: If you use elastic inference with PyTorch, you can use the default ``model_fn`` implementation provided in the serving container.
+
 Optionally, you can also implement ``input_fn`` and ``output_fn`` to process input and output.
 For information about how to write an inference script, see `Serve a PyTorch Model <#serve-a-pytorch-model>`_.
 Save the inference script as ``inference.py`` in the same folder where you saved your PyTorch model.
@@ -591,6 +594,9 @@ Package model artifacts into a tar.gz file
 ------------------------------------------
 
 The directory structure where you saved your PyTorch model should look something like the following:
+
+**Note:** This directory struture is for PyTorch versions 1.2 and higher. For the directory structure for versions 1.1 and lower, 
+see `For versions 1.1 and lower <#for-versions-1.1-and-lower>`_.
 
 ::
 
@@ -610,7 +616,7 @@ With this file structure, run the following command to package your model as a `
 Upload model.tar.gz to S3
 -------------------------
 
-After you package your model into a ``tar.gz`` file, upload it to an S3 bucket by running the following python code:
+After you package your model into a ``tar.gz`` file, upload it to an S3 bucket by running the following Python code:
 
 .. code:: python
 
@@ -626,18 +632,18 @@ After you package your model into a ``tar.gz`` file, upload it to an S3 bucket b
 Where ``my-bucket`` is the name of your S3 bucket, and ``my-path`` is the folder where you want to store the model.
 
 
- You can also upload to S3 by using the AWS CLI:
+You can also upload to S3 by using the AWS CLI:
 
- .. code:: bash
-
-     aws s3 cp model.tar.gz s3://my-bucket/my-path/model.tar.gz
+.. code:: python
+ 
+    aws s3 cp model.tar.gz s3://my-bucket/my-path/model.tar.gz``
 
 
 To run this command, you'll need to have the AWS CLI tool installed. For information about installing the AWS CLI,
 see `Installing the AWS CLI <https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-install.html>`_.
 
-Create a PyTorchModel object
-----------------------------
+Create a ``PyTorchModel`` object
+--------------------------------
 
 Now call the :class:`sagemaker.pytorch.model.PyTorchModel` constructor to create a model object, and then call its ``deploy()`` method to deploy your model for inference.
 
@@ -651,8 +657,9 @@ Now call the :class:`sagemaker.pytorch.model.PyTorchModel` constructor to create
 
 Now you can call the ``predict()`` method to get predictions from your deployed model.
 
+***********************************************
 Attach an estimator to an existing training job
-===============================================
+***********************************************
 
 You can attach a PyTorch Estimator to an existing training job using the
 ``attach`` method.
