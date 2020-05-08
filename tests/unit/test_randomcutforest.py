@@ -89,7 +89,7 @@ def test_init_required_named(sagemaker_session):
     assert randomcutforest.train_instance_type == COMMON_TRAIN_ARGS["train_instance_type"]
 
 
-def test_all_hyperparameters(sagemaker_session):
+def test_all_hyperparameters(sagemaker_session, caplog):
     randomcutforest = RandomCutForest(
         sagemaker_session=sagemaker_session,
         num_trees=NUM_TREES,
@@ -102,6 +102,11 @@ def test_all_hyperparameters(sagemaker_session):
         num_trees=str(NUM_TREES),
         eval_metrics='["accuracy", "precision_recall_fscore"]',
     )
+    warning_message = (
+        "Parameter 'eval_metrics' hyperparameter will be deprecated for 1P estimators "
+        "in SageMaker Python SDK v2."
+    )
+    assert warning_message in caplog.text
 
 
 def test_image(sagemaker_session):

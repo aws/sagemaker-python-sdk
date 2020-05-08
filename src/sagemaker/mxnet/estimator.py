@@ -21,6 +21,7 @@ from sagemaker.fw_utils import (
     framework_version_from_tag,
     empty_framework_version_warning,
     python_deprecation_warning,
+    parameter_v2_rename_warning,
     is_version_equal_or_higher,
     warn_if_parameter_server_with_multi_gpu,
 )
@@ -128,6 +129,7 @@ class MXNet(Framework):
             )
 
         if distributions is not None:
+            logger.warning(parameter_v2_rename_warning("distributions", "distribution"))
             train_instance_type = kwargs.get("train_instance_type")
             warn_if_parameter_server_with_multi_gpu(
                 training_instance_type=train_instance_type, distributions=distributions

@@ -675,7 +675,8 @@ def test_attach_custom_image(sagemaker_session):
     assert estimator.train_image() == training_image
 
 
-def test_estimator_script_mode_launch_parameter_server(sagemaker_session):
+@patch("sagemaker.mxnet.estimator.parameter_v2_rename_warning")
+def test_estimator_script_mode_launch_parameter_server(warning, sagemaker_session):
     mx = MXNet(
         entry_point=SCRIPT_PATH,
         role=ROLE,
@@ -686,6 +687,7 @@ def test_estimator_script_mode_launch_parameter_server(sagemaker_session):
         framework_version="1.3.0",
     )
     assert mx.hyperparameters().get(MXNet.LAUNCH_PS_ENV_NAME) == "true"
+    warning.assert_called_with("distributions", "distribution")
 
 
 def test_estimator_script_mode_dont_launch_parameter_server(sagemaker_session):
@@ -844,7 +846,7 @@ def test_mx_enable_sm_metrics_if_fw_ver_is_at_least_1_6(sagemaker_session):
         assert mx.enable_sagemaker_metrics
 
 
-def test_custom_image_estimator_deploy(sagemaker_session):
+def test_custom_image_estimator_deploy(sagemaker_session, caplog):
     custom_image = "mycustomimage:latest"
     mx = MXNet(
         entry_point=SCRIPT_PATH,
@@ -856,3 +858,6 @@ def test_custom_image_estimator_deploy(sagemaker_session):
     mx.fit(inputs="s3://mybucket/train", job_name="new_name")
     model = mx.create_model(image=custom_image)
     assert model.image == custom_image
+
+    warning_message = "Parameter 'image' will be renamed to 'image_uri' in SageMaker Python SDK v2."
+    assert warning_message in caplog.text
