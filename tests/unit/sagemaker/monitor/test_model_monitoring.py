@@ -19,6 +19,8 @@ from mock import Mock  # , patch, mock_open, MagicMock
 
 # from sagemaker.model_monitor import ModelMonitor
 from sagemaker.model_monitor import DefaultModelMonitor
+from sagemaker.model_monitor import ModelMonitor
+from sagemaker.model_monitor import MonitoringOutput
 
 # from sagemaker.processing import ProcessingInput, ProcessingOutput, Processor, ScriptProcessor
 # from sagemaker.sklearn.processing import SKLearnProcessor
@@ -54,6 +56,11 @@ OUTPUT_S3_URI = "s3://output-s3-uri/"
 
 
 CUSTOM_IMAGE_URI = "012345678901.dkr.ecr.us-west-2.amazonaws.com/my-custom-image-uri"
+
+INTER_CONTAINER_ENCRYPTION_EXCEPTION_MSG = (
+    "EnableInterContainerTrafficEncryption is not supported in Model Monitor. Please ensure that "
+)
+"encrypt_inter_container_traffic=None when creating your NetworkConfig object."
 
 
 # TODO-reinvent-2019: Continue to flesh these out.
@@ -128,3 +135,39 @@ def test_default_model_monitor_suggest_baseline(sagemaker_session):
     # processor().run.assert_called_once(
     #
     # )
+
+
+def test_default_model_monitor_with_invalid_network_config(sagemaker_session):
+    invalid_network_config = NetworkConfig(encrypt_inter_container_traffic=False)
+    my_default_monitor = DefaultModelMonitor(
+        role=ROLE, sagemaker_session=sagemaker_session, network_config=invalid_network_config
+    )
+    with pytest.raises(ValueError) as exception:
+        my_default_monitor.create_monitoring_schedule(endpoint_input="test_endpoint")
+    assert INTER_CONTAINER_ENCRYPTION_EXCEPTION_MSG in str(exception.value)
+
+    with pytest.raises(ValueError) as exception:
+        my_default_monitor.update_monitoring_schedule()
+    assert INTER_CONTAINER_ENCRYPTION_EXCEPTION_MSG in str(exception.value)
+
+
+def test_model_monitor_with_invalid_network_config(sagemaker_session):
+    invalid_network_config = NetworkConfig(encrypt_inter_container_traffic=False)
+    my_model_monitor = ModelMonitor(
+        role=ROLE,
+        image_uri=CUSTOM_IMAGE_URI,
+        sagemaker_session=sagemaker_session,
+        network_config=invalid_network_config,
+    )
+    with pytest.raises(ValueError) as exception:
+        my_model_monitor.create_monitoring_schedule(
+            endpoint_input="test_endpoint",
+            output=MonitoringOutput(
+                source="/opt/ml/processing/output", destination="/opt/ml/processing/output"
+            ),
+        )
+    assert INTER_CONTAINER_ENCRYPTION_EXCEPTION_MSG in str(exception.value)
+
+    with pytest.raises(ValueError) as exception:
+        my_model_monitor.update_monitoring_schedule()
+    assert INTER_CONTAINER_ENCRYPTION_EXCEPTION_MSG in str(exception.value)
