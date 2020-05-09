@@ -20,6 +20,7 @@ import sys
 import sagemaker
 import sagemaker.cli.mxnet
 import sagemaker.cli.tensorflow
+import sagemaker.cli.pytorch
 
 logger = logging.getLogger(__name__)
 
@@ -90,6 +91,18 @@ def parse_arguments(args):
         "host", help="start a hosting endpoint", parents=[common_parser, common_host_parser]
     )
     mxnet_host_parser.set_defaults(func=sagemaker.cli.mxnet.host)
+
+    pytorch_parser = subparsers.add_parser("pytorch", help="use Pytorch", parents=[])
+    pytorch_subparsers = pytorch_parser.add_subparsers()
+    pytorch_train_parser = pytorch_subparsers.add_parser(
+        "train", help="start a training job", parents=[common_parser, common_train_parser]
+    )
+    pytorch_train_parser.set_defaults(func=sagemaker.cli.pytorch.train)
+
+    pytorch_host_parser = pytorch_subparsers.add_parser(
+        "host", help="start a hosting endpoint", parents=[common_parser, common_host_parser]
+    )
+    pytorch_host_parser.set_defaults(func=sagemaker.cli.pytorch.host)
 
     tensorflow_parser = subparsers.add_parser("tensorflow", help="use TensorFlow", parents=[])
     tensorflow_subparsers = tensorflow_parser.add_subparsers()

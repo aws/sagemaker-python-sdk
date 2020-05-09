@@ -69,6 +69,42 @@ def assert_host_non_defaults(args):
     assert args.env == ["ENV1=env1", "ENV2=env2"]
 
 
+def test_args_pytorch_train_defaults():
+    args = cli.parse_arguments("pytorch train --role-name role".split())
+    assert_common_defaults(args)
+    assert_train_defaults(args)
+    assert args.func.__module__ == "sagemaker.cli.pytorch"
+    assert args.func.__name__ == "train"
+
+
+def test_args_pytorch_train_non_defaults():
+    args = cli.parse_arguments(
+        "{} pytorch train --role-name role {} {}".format(LOG_ARGS, COMMON_ARGS, TRAIN_ARGS).split()
+    )
+    assert_common_non_defaults(args)
+    assert_train_non_defaults(args)
+    assert args.func.__module__ == "sagemaker.cli.pytorch"
+    assert args.func.__name__ == "train"
+
+
+def test_args_pytorch_host_defaults():
+    args = cli.parse_arguments("pytorch host --role-name role".split())
+    assert_common_defaults(args)
+    assert_host_defaults(args)
+    assert args.func.__module__ == "sagemaker.cli.pytorch"
+    assert args.func.__name__ == "host"
+
+
+def test_args_pytorch_host_non_defaults():
+    args = cli.parse_arguments(
+        "{} pytorch host --role-name role {} {}".format(LOG_ARGS, COMMON_ARGS, HOST_ARGS).split()
+    )
+    assert_common_non_defaults(args)
+    assert_host_non_defaults(args)
+    assert args.func.__module__ == "sagemaker.cli.pytorch"
+    assert args.func.__name__ == "host"
+
+
 def test_args_mxnet_train_defaults():
     args = cli.parse_arguments("mxnet train --role-name role".split())
     assert_common_defaults(args)
@@ -89,6 +125,7 @@ def test_args_mxnet_train_non_defaults():
 
 def test_args_mxnet_host_defaults():
     args = cli.parse_arguments("mxnet host --role-name role".split())
+    print(args)
     assert_common_defaults(args)
     assert_host_defaults(args)
     assert args.func.__module__ == "sagemaker.cli.mxnet"
@@ -165,6 +202,11 @@ def test_args_invalid_args():
 def test_args_invalid_mxnet_python():
     with pytest.raises(SystemExit):
         cli.parse_arguments("mxnet train --role-name role nython py2".split())
+
+
+def test_args_invalid_pytorch_python():
+    with pytest.raises(SystemExit):
+        cli.parse_arguments("pytorch train --role-name role nython py2".split())
 
 
 def test_args_invalid_host_args_in_train():
