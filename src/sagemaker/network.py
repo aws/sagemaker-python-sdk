@@ -20,7 +20,13 @@ class NetworkConfig(object):
     """Accepts network configuration parameters and provides a method to turn these parameters
     into a dictionary."""
 
-    def __init__(self, enable_network_isolation=False, security_group_ids=None, subnets=None):
+    def __init__(
+        self,
+        enable_network_isolation=False,
+        security_group_ids=None,
+        subnets=None,
+        encrypt_inter_container_traffic=None,
+    ):
         """Initialize a ``NetworkConfig`` instance. NetworkConfig accepts network configuration
         parameters and provides a method to turn these parameters into a dictionary.
 
@@ -29,14 +35,22 @@ class NetworkConfig(object):
                 network isolation.
             security_group_ids ([str]): A list of strings representing security group IDs.
             subnets ([str]): A list of strings representing subnets.
+            encrypt_inter_container_traffic (bool): Boolean that determines whether to
+                encrypt inter-container traffic. Default value is None.
         """
         self.enable_network_isolation = enable_network_isolation
         self.security_group_ids = security_group_ids
         self.subnets = subnets
+        self.encrypt_inter_container_traffic = encrypt_inter_container_traffic
 
     def _to_request_dict(self):
         """Generates a request dictionary using the parameters provided to the class."""
         network_config_request = {"EnableNetworkIsolation": self.enable_network_isolation}
+
+        if self.encrypt_inter_container_traffic is not None:
+            network_config_request[
+                "EnableInterContainerTrafficEncryption"
+            ] = self.encrypt_inter_container_traffic
 
         if self.security_group_ids is not None or self.subnets is not None:
             network_config_request["VpcConfig"] = {}

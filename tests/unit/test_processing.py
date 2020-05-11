@@ -141,6 +141,7 @@ def test_sklearn_with_all_parameters(exists_mock, isfile_mock, ecr_prefix, sagem
             subnets=["my_subnet_id"],
             security_group_ids=["my_security_group_id"],
             enable_network_isolation=True,
+            encrypt_inter_container_traffic=True,
         ),
         sagemaker_session=sagemaker_session,
     )
@@ -330,6 +331,7 @@ def test_script_processor_with_all_parameters(exists_mock, isfile_mock, sagemake
             subnets=["my_subnet_id"],
             security_group_ids=["my_security_group_id"],
             enable_network_isolation=True,
+            encrypt_inter_container_traffic=True,
         ),
         sagemaker_session=sagemaker_session,
     )
@@ -386,6 +388,49 @@ def test_processor_with_required_parameters(sagemaker_session):
     sagemaker_session.process.assert_called_with(**expected_args)
 
 
+def test_processor_with_missing_network_config_parameters(sagemaker_session):
+    processor = Processor(
+        role=ROLE,
+        image_uri=CUSTOM_IMAGE_URI,
+        instance_count=1,
+        instance_type="ml.m4.xlarge",
+        sagemaker_session=sagemaker_session,
+        network_config=NetworkConfig(enable_network_isolation=True),
+    )
+
+    processor.run()
+
+    expected_args = _get_expected_args(processor._current_job_name)
+    del expected_args["app_specification"]["ContainerEntrypoint"]
+    expected_args["inputs"] = []
+    expected_args["network_config"] = {"EnableNetworkIsolation": True}
+
+    sagemaker_session.process.assert_called_with(**expected_args)
+
+
+def test_processor_with_encryption_parameter_in_network_config(sagemaker_session):
+    processor = Processor(
+        role=ROLE,
+        image_uri=CUSTOM_IMAGE_URI,
+        instance_count=1,
+        instance_type="ml.m4.xlarge",
+        sagemaker_session=sagemaker_session,
+        network_config=NetworkConfig(encrypt_inter_container_traffic=False),
+    )
+
+    processor.run()
+
+    expected_args = _get_expected_args(processor._current_job_name)
+    del expected_args["app_specification"]["ContainerEntrypoint"]
+    expected_args["inputs"] = []
+    expected_args["network_config"] = {
+        "EnableNetworkIsolation": False,
+        "EnableInterContainerTrafficEncryption": False,
+    }
+
+    sagemaker_session.process.assert_called_with(**expected_args)
+
+
 def test_processor_with_all_parameters(sagemaker_session):
     processor = Processor(
         role=ROLE,
@@ -405,6 +450,7 @@ def test_processor_with_all_parameters(sagemaker_session):
             subnets=["my_subnet_id"],
             security_group_ids=["my_security_group_id"],
             enable_network_isolation=True,
+            encrypt_inter_container_traffic=True,
         ),
     )
 
@@ -580,6 +626,7 @@ def _get_expected_args_all_parameters(job_name):
         "environment": {"my_env_variable": "my_env_variable_value"},
         "network_config": {
             "EnableNetworkIsolation": True,
+            "EnableInterContainerTrafficEncryption": True,
             "VpcConfig": {
                 "SecurityGroupIds": ["my_security_group_id"],
                 "Subnets": ["my_subnet_id"],

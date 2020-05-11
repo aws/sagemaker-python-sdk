@@ -1,5 +1,10 @@
 hello
 
++-------------------------------------------------------------------------------------------------+
+| **NOTE**: We are working on v2.0.0. See https://github.com/aws/sagemaker-python-sdk/issues/1459 |
+| for more info on our plans and to leave feedback!                                               |
++-------------------------------------------------------------------------------------------------+
+
 .. image:: https://github.com/aws/sagemaker-python-sdk/raw/master/branding/icon/sagemaker-banner.png
     :height: 100px
     :alt: SageMaker
