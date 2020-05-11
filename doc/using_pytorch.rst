@@ -6,7 +6,7 @@ With PyTorch Estimators and Models, you can train and host PyTorch models on Ama
 
 Supported versions of PyTorch: ``0.4.0``, ``1.0.0``, ``1.1.0``, ``1.2.0``, ``1.3.1``, ``1.4.0``, ``1.5.0``.
 
-* Supported versions of PyTorch for Elastic Inference: ``1.3.1``.
+Supported versions of PyTorch for Elastic Inference: ``1.3.1``.
 
 We recommend that you use the latest supported version because that's where we focus our development efforts.
 
@@ -586,9 +586,11 @@ You must create an inference script that implements (at least) the ``model_fn`` 
 
 **Note**: If you use elastic inference with PyTorch, you can use the default ``model_fn`` implementation provided in the serving container.
 
-Optionally, you can also implement ``input_fn`` and ``output_fn`` to process input and output.
+Optionally, you can also implement ``input_fn`` and ``output_fn`` to process input and output,
+and ``predict_fn`` to customize how the model server gets predictions from the loaded model.
 For information about how to write an inference script, see `Serve a PyTorch Model <#serve-a-pytorch-model>`_.
-Save the inference script as ``inference.py`` in the same folder where you saved your PyTorch model.
+Save the inference script in the same folder where you saved your PyTorch model.
+Pass the filename of the inference script as the ``entry_point`` parameter when you create the ``PyTorchModel`` object.
 
 Package model artifacts into a tar.gz file
 ------------------------------------------
@@ -616,6 +618,10 @@ With this file structure, run the following command to package your model as a `
 Upload model.tar.gz to S3
 -------------------------
 
+**Note**: This step is optional. The ``PyTorchModel`` object will upload your model file to S3.
+You can specify a bucket location by providing a value for the ``code_location`` parameter when you create the ``PyTorchModel`` object,
+or you can use the default S3 session bucket.
+
 After you package your model into a ``tar.gz`` file, upload it to an S3 bucket by running the following Python code:
 
 .. code:: python
@@ -624,10 +630,8 @@ After you package your model into a ``tar.gz`` file, upload it to an S3 bucket b
     import sagemaker
     s3 = boto3.client('s3')
 
-    from sagemaker import get_execution_role
-    role = get_execution_role()
-
-    response = s3.upload_file('model.tar.gz', 'my-bucket', '%s/%s' %('my-path', 'model.tar.gz'))
+    from sagemaker.s3 import S3Uploader
+    S3Uploader.upload('model.tar.gz', s3:://my-bucket/my-path/model.tar.gz')
 
 Where ``my-bucket`` is the name of your S3 bucket, and ``my-path`` is the folder where you want to store the model.
 
@@ -636,7 +640,7 @@ You can also upload to S3 by using the AWS CLI:
 
 .. code:: python
  
-    aws s3 cp model.tar.gz s3://my-bucket/my-path/model.tar.gz``
+    aws s3 cp model.tar.gz s3://my-bucket/my-path/model.tar.gz
 
 
 To run this command, you'll need to have the AWS CLI tool installed. For information about installing the AWS CLI,
@@ -649,6 +653,9 @@ Now call the :class:`sagemaker.pytorch.model.PyTorchModel` constructor to create
 
 .. code:: python
 
+    from sagemaker import get_execution_role
+    role = get_execution_role()
+    
     pytorch_model = PyTorchModel(model_data='s3://my-bucket/my-path/model.tar.gz', role=role,
                                  entry_point='inference.py')
 
