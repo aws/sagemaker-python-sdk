@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.58.1 (2020-05-11)
+
+### Bug Fixes and Other Changes
+
+ * upgrade boto3 to 1.13.6
+
 ## v1.58.0 (2020-05-08)
 
 ### Features
