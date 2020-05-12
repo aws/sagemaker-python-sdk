@@ -39,7 +39,7 @@ class AutoML(object):
         encrypt_inter_container_traffic=False,
         vpc_config=None,
         problem_type=None,
-        max_candidates=250,
+        max_candidates=None,
         max_runtime_per_training_job_in_seconds=None,
         total_job_runtime_in_seconds=None,
         job_objective=None,
