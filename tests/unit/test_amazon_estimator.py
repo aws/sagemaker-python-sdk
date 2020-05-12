@@ -228,16 +228,16 @@ def test_fit_ndarray(time, sagemaker_session):
     labels = [99, 85, 87, 2]
     pca.fit(pca.record_set(np.array(train), np.array(labels)))
     mock_s3.Object.assert_any_call(
-        BUCKET_NAME, "key-prefix/PCA-2017-11-06-14:14:15.671/matrix_0.pbr".format(TIMESTAMP)
+        BUCKET_NAME, "key-prefix/PCA-2017-11-06-14:14:15.671/matrix_0.pbr"
     )
     mock_s3.Object.assert_any_call(
-        BUCKET_NAME, "key-prefix/PCA-2017-11-06-14:14:15.671/matrix_1.pbr".format(TIMESTAMP)
+        BUCKET_NAME, "key-prefix/PCA-2017-11-06-14:14:15.671/matrix_1.pbr"
     )
     mock_s3.Object.assert_any_call(
-        BUCKET_NAME, "key-prefix/PCA-2017-11-06-14:14:15.671/matrix_2.pbr".format(TIMESTAMP)
+        BUCKET_NAME, "key-prefix/PCA-2017-11-06-14:14:15.671/matrix_2.pbr"
     )
     mock_s3.Object.assert_any_call(
-        BUCKET_NAME, "key-prefix/PCA-2017-11-06-14:14:15.671/.amazon.manifest".format(TIMESTAMP)
+        BUCKET_NAME, "key-prefix/PCA-2017-11-06-14:14:15.671/.amazon.manifest"
     )
 
     assert mock_object.put.call_count == 4

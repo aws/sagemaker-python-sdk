@@ -32,7 +32,7 @@ REGION = "us-west-2"
 DEFAULT_S3_INPUT_DATA = "s3://{}/data".format(BUCKET_NAME)
 DEFAULT_OUTPUT_PATH = "s3://{}/".format(BUCKET_NAME)
 LOCAL_DATA_PATH = "file://data"
-DEFAULT_MAX_CANDIDATES = 500
+DEFAULT_MAX_CANDIDATES = 250
 DEFAULT_JOB_NAME = "automl-{}".format(TIMESTAMP)
 
 JOB_NAME = "default-job-name"
