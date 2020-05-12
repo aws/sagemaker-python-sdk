@@ -118,6 +118,6 @@ class FrameworkVersionEnforcer(Modifier):
             framework = node.func.attr
 
         if framework.endswith("Model"):
-            framework = framework[:framework.find("Model")]
+            framework = framework[: framework.find("Model")]
 
         return framework
