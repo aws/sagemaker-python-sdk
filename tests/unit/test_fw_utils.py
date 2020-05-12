@@ -735,7 +735,7 @@ def test_invalid_framework_accelerator():
 
 
 def test_invalid_framework_accelerator_with_neo():
-    error_message = "Neo does not support Amazon Elastic Inference.".format(MOCK_FRAMEWORK)
+    error_message = "Neo does not support Amazon Elastic Inference."
     # accelerator was chosen for unsupported framework
     with pytest.raises(ValueError) as error:
         fw_utils.create_image_uri(
