@@ -27,6 +27,7 @@ from sagemaker.processing import (
     ProcessingJob,
 )
 from sagemaker.sklearn.processing import SKLearnProcessor
+from sagemaker.network import NetworkConfig
 from tests.integ import DATA_DIR
 from tests.integ.kms_utils import get_or_create_kms_key
 
@@ -643,3 +644,33 @@ def test_processor_with_custom_bucket(
     assert ROLE in job_description["RoleArn"]
 
     assert job_description["StoppingCondition"] == {"MaxRuntimeInSeconds": 3600}
+
+
+def test_sklearn_with_network_config(sagemaker_session, sklearn_full_version, cpu_instance_type):
+    script_path = os.path.join(DATA_DIR, "dummy_script.py")
+    input_file_path = os.path.join(DATA_DIR, "dummy_input.txt")
+
+    sklearn_processor = SKLearnProcessor(
+        framework_version=sklearn_full_version,
+        role=ROLE,
+        instance_type=cpu_instance_type,
+        instance_count=1,
+        command=["python3"],
+        sagemaker_session=sagemaker_session,
+        base_job_name="test-sklearn-with-network-config",
+        network_config=NetworkConfig(
+            enable_network_isolation=True, encrypt_inter_container_traffic=True
+        ),
+    )
+
+    sklearn_processor.run(
+        code=script_path,
+        inputs=[ProcessingInput(source=input_file_path, destination="/opt/ml/processing/inputs/")],
+        wait=False,
+        logs=False,
+    )
+
+    job_description = sklearn_processor.latest_job.describe()
+    network_config = job_description["NetworkConfig"]
+    assert network_config["EnableInterContainerTrafficEncryption"]
+    assert network_config["EnableNetworkIsolation"]

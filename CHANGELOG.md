@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.58.1 (2020-05-11)
+
+### Bug Fixes and Other Changes
+
+ * upgrade boto3 to 1.13.6
+
+## v1.58.0 (2020-05-08)
+
+### Features
+
+ * support inter container traffic encryption for processing jobs
+
+### Documentation Changes
+
+ * add note that v2.0.0 plans have been posted
+
 ## v1.57.0 (2020-05-07)
 
 ### Features
