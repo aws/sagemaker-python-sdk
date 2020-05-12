@@ -1,4 +1,4 @@
-hello
+hello, world!
 
 +-------------------------------------------------------------------------------------------------+
 | **NOTE**: We are working on v2.0.0. See https://github.com/aws/sagemaker-python-sdk/issues/1459 |
