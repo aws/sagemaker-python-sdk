@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.58.2 (2020-05-13)
+
+### Bug Fixes and Other Changes
+
+ * address flake8 error
+
 ## v1.58.1 (2020-05-11)
 
 ### Bug Fixes and Other Changes
