@@ -575,8 +575,7 @@ Typically, you save a PyTorch model as a file with extension ``.pt`` or ``.pth``
 To do this, you need to:
 
 * Write an inference script.
-* Package the model artifacts into a ``tar.gz`` file.
-* Upload the ``tar.gz`` file to an S3 bucket.
+* Create the directory structure for your model files.
 * Create the ``PyTorchModel`` object.
 
 Write an inference script
@@ -592,12 +591,16 @@ For information about how to write an inference script, see `Serve a PyTorch Mod
 Save the inference script in the same folder where you saved your PyTorch model.
 Pass the filename of the inference script as the ``entry_point`` parameter when you create the ``PyTorchModel`` object.
 
-Package model artifacts into a tar.gz file
-------------------------------------------
+Create the directory structure for your model files
+---------------------------------------------------
+
+You have to create a directory structure and place your model files in the correct location.
+The ``PyTorchModel`` constructor packs the files into a ``tar.gz`` file and uploads it to S3.
 
 The directory structure where you saved your PyTorch model should look something like the following:
 
-**Note:** This directory struture is for PyTorch versions 1.2 and higher. For the directory structure for versions 1.1 and lower, 
+**Note:** This directory struture is for PyTorch versions 1.2 and higher.
+For the directory structure for versions 1.1 and lower,
 see `For versions 1.1 and lower <#for-versions-1.1-and-lower>`_.
 
 ::
@@ -611,41 +614,6 @@ see `For versions 1.1 and lower <#for-versions-1.1-and-lower>`_.
 
 Where ``requirments.txt`` is an optional file that specifies dependencies on third-party libraries.
 
-With this file structure, run the following command to package your model as a ``tar.gz`` file:
-
-``tar -czf model.tar.gz my_model code``
-
-Upload model.tar.gz to S3
--------------------------
-
-**Note**: This step is optional. The ``PyTorchModel`` object will upload your model file to S3.
-You can specify a bucket location by providing a value for the ``code_location`` parameter when you create the ``PyTorchModel`` object,
-or you can use the default S3 session bucket.
-
-After you package your model into a ``tar.gz`` file, upload it to an S3 bucket by running the following Python code:
-
-.. code:: python
-
-    import boto3
-    import sagemaker
-    s3 = boto3.client('s3')
-
-    from sagemaker.s3 import S3Uploader
-    S3Uploader.upload('model.tar.gz', s3:://my-bucket/my-path/model.tar.gz')
-
-Where ``my-bucket`` is the name of your S3 bucket, and ``my-path`` is the folder where you want to store the model.
-
-
-You can also upload to S3 by using the AWS CLI:
-
-.. code:: python
- 
-    aws s3 cp model.tar.gz s3://my-bucket/my-path/model.tar.gz
-
-
-To run this command, you'll need to have the AWS CLI tool installed. For information about installing the AWS CLI,
-see `Installing the AWS CLI <https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-install.html>`_.
-
 Create a ``PyTorchModel`` object
 --------------------------------
 
@@ -655,7 +623,7 @@ Now call the :class:`sagemaker.pytorch.model.PyTorchModel` constructor to create
 
     from sagemaker import get_execution_role
     role = get_execution_role()
-    
+
     pytorch_model = PyTorchModel(model_data='s3://my-bucket/my-path/model.tar.gz', role=role,
                                  entry_point='inference.py')
 
