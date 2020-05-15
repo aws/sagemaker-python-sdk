@@ -304,6 +304,7 @@ class ModelMonitor(object):
         network_config_dict = None
         if self.network_config is not None:
             network_config_dict = self.network_config._to_request_dict()
+            self._validate_network_config(network_config_dict)
 
         self.sagemaker_session.create_monitoring_schedule(
             monitoring_schedule_name=self.monitoring_schedule_name,
@@ -453,6 +454,7 @@ class ModelMonitor(object):
         network_config_dict = None
         if self.network_config is not None:
             network_config_dict = self.network_config._to_request_dict()
+            self._validate_network_config(network_config_dict)
 
         self.sagemaker_session.update_monitoring_schedule(
             monitoring_schedule_name=self.monitoring_schedule_name,
@@ -961,6 +963,29 @@ class ModelMonitor(object):
             if schedule_desc["MonitoringScheduleStatus"] != "Pending":
                 break
 
+    def _validate_network_config(self, network_config_dict):
+        """Validates that EnableInterContainerTrafficEncryption is not set in the provided
+        NetworkConfig request dictionary.
+
+        Args:
+            network_config_dict (dict): NetworkConfig request dictionary.
+                Contains parameters from :class:`~sagemaker.network.NetworkConfig` object
+                that configures network isolation, encryption of
+                inter-container traffic, security group IDs, and subnets.
+
+        """
+        if "EnableInterContainerTrafficEncryption" in network_config_dict:
+            message = (
+                "EnableInterContainerTrafficEncryption is not supported in Model Monitor. "
+                "Please ensure that encrypt_inter_container_traffic=None "
+                "when creating your NetworkConfig object. "
+                "Current encrypt_inter_container_traffic value: {}".format(
+                    self.network_config.encrypt_inter_container_traffic
+                )
+            )
+            _LOGGER.info(message)
+            raise ValueError(message)
+
 
 class DefaultModelMonitor(ModelMonitor):
     """Sets up Amazon SageMaker Monitoring Schedules and baseline suggestions. Use this class when
@@ -1272,6 +1297,7 @@ class DefaultModelMonitor(ModelMonitor):
         network_config_dict = None
         if self.network_config is not None:
             network_config_dict = self.network_config._to_request_dict()
+            super(DefaultModelMonitor, self)._validate_network_config(network_config_dict)
 
         self.sagemaker_session.create_monitoring_schedule(
             monitoring_schedule_name=self.monitoring_schedule_name,
@@ -1429,6 +1455,7 @@ class DefaultModelMonitor(ModelMonitor):
         network_config_dict = None
         if self.network_config is not None:
             network_config_dict = self.network_config._to_request_dict()
+            super(DefaultModelMonitor, self)._validate_network_config(network_config_dict)
 
         if role is not None:
             self.role = role
