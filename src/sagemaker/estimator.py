@@ -1480,10 +1480,11 @@ class Framework(EstimatorBase):
                     You can assign entry_point='src/train.py'.
             source_dir (str): Path (absolute, relative or an S3 URI) to a directory
                 with any other training source code dependencies aside from the entry
-                point file (default: None). If source_dir is an S3 URI, it must point
-                to a tar.gz file. Structure within this directory are preserved when
-                training on Amazon SageMaker. If 'git_config' is provided, 'source_dir'
-                should be a relative location to a directory in the Git repo.
+                point file (default: None). If ``source_dir`` is an S3 URI, it must
+                point to a tar.gz file. Structure within this directory are preserved
+                when training on Amazon SageMaker. If 'git_config' is provided,
+                'source_dir' should be a relative location to a directory in the Git
+                repo.
                 .. admonition:: Example
 
                     With the following GitHub repo directory structure:

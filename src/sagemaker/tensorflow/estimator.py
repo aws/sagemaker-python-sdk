@@ -569,8 +569,8 @@ class TensorFlow(Framework):
                 ``endpoint_type`` is also ``None``, then the training entry point is used.
             source_dir (str): Path (absolute or relative or an S3 URI ) to a directory with any
                 other serving source code dependencies aside from the entry point file. If
-                source_dir is an S3 URI, it must point to a tar.gz file.If not specified and
-                ``endpoint_type`` is 'tensorflow-serving', no source_dir is used. If
+                ``source_dir`` is an S3 URI, it must point to a tar.gz file. If not specified
+                and ``endpoint_type`` is 'tensorflow-serving', no source_dir is used. If
                 ``endpoint_type`` is also ``None``, then the model source directory from
                 training is used.
             dependencies (list[str]): A list of paths to directories (absolute or relative) with

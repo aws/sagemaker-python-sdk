@@ -71,9 +71,9 @@ class SKLearn(Framework):
                 https://github.com/aws/sagemaker-python-sdk#sklearn-sagemaker-estimators
             source_dir (str): Path (absolute, relative or an S3 URI) to a directory
                 with any other training source code dependencies aside from the entry
-                point file (default: None). If source_dir is an S3 URI, it must point
-                to a tar.gz file. Structure within this directory are preserved when
-                training on Amazon SageMaker.
+                point file (default: None). If ``source_dir`` is an S3 URI, it must
+                point to a tar.gz file. Structure within this directory are preserved
+                when training on Amazon SageMaker.
             hyperparameters (dict): Hyperparameters that will be used for
                 training (default: None). The hyperparameters are made
                 accessible as a dict[str, str] to the training code on
