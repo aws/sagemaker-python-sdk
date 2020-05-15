@@ -1980,6 +1980,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         output_config,
         resource_config,
         experiment_config,
+        model_client_config,
         tags,
         data_processing,
     ):
@@ -2002,6 +2003,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             experiment_config (dict): A dictionary describing the experiment configuration for the
                 job. Dictionary contains three optional keys,
                 'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+            model_client_config (dict): A dictionary describing the model configuration for the
+                job. Dictionary contains two optional keys,
+                'InvocationsTimeoutInSeconds', and 'InvocationsMaxRetries'.
             tags (list[dict]): List of tags for labeling a transform job.
             data_processing(dict): A dictionary describing config for combining the input data and
                 transformed data. For more, see
@@ -2035,6 +2039,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         if experiment_config and len(experiment_config) > 0:
             transform_request["ExperimentConfig"] = experiment_config
+
+        if model_client_config and len(model_client_config) > 0:
+            transform_request["ModelClientConfig"] = model_client_config
 
         LOGGER.info("Creating transform job with name: %s", job_name)
         LOGGER.debug("Transform request: %s", json.dumps(transform_request, indent=4))

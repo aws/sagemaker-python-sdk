@@ -229,6 +229,26 @@ def test_transform_mxnet_tags(
         assert tags == model_tags
 
 
+def test_transform_model_client_config(
+    mxnet_estimator, mxnet_transform_input, sagemaker_session, cpu_instance_type
+):
+    model_client_config = {"InvocationsTimeoutInSeconds": 60, "InvocationsMaxRetries": 2}
+    transformer = mxnet_estimator.transformer(1, cpu_instance_type)
+    transformer.transform(
+        mxnet_transform_input, content_type="text/csv", model_client_config=model_client_config
+    )
+
+    with timeout_and_delete_model_with_transformer(
+        transformer, sagemaker_session, minutes=TRANSFORM_DEFAULT_TIMEOUT_MINUTES
+    ):
+        transformer.wait()
+        transform_job_desc = sagemaker_session.sagemaker_client.describe_transform_job(
+            TransformJobName=transformer.latest_transform_job.name
+        )
+
+        assert model_client_config == transform_job_desc["ModelClientConfig"]
+
+
 def test_transform_byo_estimator(sagemaker_session, cpu_instance_type):
     data_path = os.path.join(DATA_DIR, "one_p_mnist")
     pickle_args = {} if sys.version_info.major == 2 else {"encoding": "latin1"}
