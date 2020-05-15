@@ -659,12 +659,12 @@ class FrameworkModel(Model):
                     >>>         |----- test.py
 
                     You can assign entry_point='src/inference.py'.
-            source_dir (str): Path (absolute or relative) to a directory with
-                any other training source code dependencies aside from the entry
-                point file (default: None). Structure within this directory will
-                be preserved when training on SageMaker. If 'git_config' is
-                provided, 'source_dir' should be a relative location to a
-                directory in the Git repo. If the directory points to S3, no
+            source_dir (str): Path (absolute or relative) to a directory or S3 URI
+                points to a tar.gz with any other training source code dependencies
+                aside from the entry point file (default: None). Structure within
+                this directory will be preserved when training on SageMaker. If
+                'git_config' is provided, 'source_dir' should be a relative location
+                to a directory in the Git repo. If the directory points to S3, no
                 code will be uploaded and the S3 location will be used instead.
                 .. admonition:: Example
 

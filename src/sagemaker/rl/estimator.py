@@ -109,10 +109,10 @@ class RLEstimator(Framework):
             framework (sagemaker.rl.RLFramework): Framework (MXNet or
                 TensorFlow) you want to be used as a toolkit backed for
                 reinforcement learning training.
-            source_dir (str): Path (absolute or relative) to a directory with
-                any other training source code dependencies aside from the entry
-                point file (default: None). Structure within this directory is
-                preserved when training on Amazon SageMaker.
+            source_dir (str): Path (absolute or relative) to a directory or S3 URI
+                points to a tar.gz. with any other training source code dependencies
+                aside from the entry point file (default: None). Structure within
+                this directory are preserved when training on Amazon SageMaker.
             hyperparameters (dict): Hyperparameters that will be used for
                 training (default: None). The hyperparameters are made
                 accessible as a dict[str, str] to the training code on
