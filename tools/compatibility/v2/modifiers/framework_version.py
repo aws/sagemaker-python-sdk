@@ -32,9 +32,13 @@ FRAMEWORK_MODULES = [fw.lower() for fw in FRAMEWORKS]
 
 
 class FrameworkVersionEnforcer(Modifier):
+    """A class to ensure that ``framework_version`` is defined when
+    instantiating a framework estimator or model.
+    """
+
     def node_should_be_modified(self, node):
-        """Check if the ast.Call node instantiates a framework estimator or model,
-        but doesn't specify the framework_version parameter.
+        """Checks if the ast.Call node instantiates a framework estimator or model,
+        but doesn't specify the ``framework_version`` parameter.
 
         This looks for the following formats:
 
@@ -57,34 +61,37 @@ class FrameworkVersionEnforcer(Modifier):
         return False
 
     def _is_framework_constructor(self, node):
-        """Check if the ``ast.Call`` node represents a call of the form
+        """Checks if the ``ast.Call`` node represents a call of the form
         <Framework> or sagemaker.<framework>.<Framework>.
         """
+        # Check for <Framework> call
         if isinstance(node.func, ast.Name):
             if node.func.id in FRAMEWORK_CLASSES:
                 return True
 
-        if (
-            isinstance(node.func, ast.Attribute)
-            and node.func.attr in FRAMEWORK_CLASSES
-            and isinstance(node.func.value, ast.Attribute)
+        # Check for sagemaker.<framework>.<Framework> call
+        ends_with_framework_constructor = (
+            isinstance(node.func, ast.Attribute) and node.func.attr in FRAMEWORK_CLASSES
+        )
+
+        is_in_framework_module = (
+            isinstance(node.func.value, ast.Attribute)
             and node.func.value.attr in FRAMEWORK_MODULES
             and isinstance(node.func.value.value, ast.Name)
             and node.func.value.value.id == "sagemaker"
-        ):
-            return True
+        )
 
-        return False
+        return ends_with_framework_constructor and is_in_framework_module
 
     def _fw_version_in_keywords(self, node):
-        """Check if the ``ast.Call`` node's keywords contain ``framework_version``."""
+        """Checks if the ``ast.Call`` node's keywords contain ``framework_version``."""
         for kw in node.keywords:
             if kw.arg == "framework_version" and kw.value:
                 return True
         return False
 
     def modify_node(self, node):
-        """Modify the ``ast.Call`` node's keywords to include ``framework_version``.
+        """Modifies the ``ast.Call`` node's keywords to include ``framework_version``.
 
         The ``framework_version`` value is determined by the framework:
 
@@ -103,7 +110,7 @@ class FrameworkVersionEnforcer(Modifier):
         )
 
     def _framework_name_from_node(self, node):
-        """Retrieve the framework name based on the function call.
+        """Retrieves the framework name based on the function call.
 
         Args:
             node (ast.Call): a node that represents the constructor of a framework class.

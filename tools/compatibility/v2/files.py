@@ -80,7 +80,7 @@ class PyFileUpdater(object):
             os.makedirs(output_dir)
 
         if os.path.exists(self.output_path):
-            LOGGER.warning("Overwriting file {}".format(self.output_path))
+            LOGGER.warning("Overwriting file %s", self.output_path)
 
         with open(self.output_path, "w") as output_file:
             output_file.write(pasta.dump(output))
