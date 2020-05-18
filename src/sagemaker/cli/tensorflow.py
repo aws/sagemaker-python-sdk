@@ -68,13 +68,12 @@ class TensorFlowHostCommand(HostCommand):
         Args:
             model_url:
         """
-        from sagemaker.tensorflow.model import TensorFlowModel
+        from sagemaker.tensorflow.serving import Model
 
-        return TensorFlowModel(
+        return Model(
             model_data=model_url,
             role=self.role_name,
             entry_point=self.script,
-            py_version=self.python,
             name=self.endpoint_name,
             env=self.environment,
         )

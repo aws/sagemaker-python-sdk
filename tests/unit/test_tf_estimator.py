@@ -19,7 +19,7 @@ import os
 import pytest
 from mock import patch, Mock, MagicMock
 
-from sagemaker.tensorflow import defaults, serving, TensorFlow, TensorFlowModel, TensorFlowPredictor
+from sagemaker.tensorflow import defaults, serving, TensorFlow
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 SCRIPT_FILE = "dummy_script.py"
@@ -220,13 +220,12 @@ def test_create_model(sagemaker_session, tf_version):
     model = tf.create_model()
 
     assert model.sagemaker_session == sagemaker_session
-    assert model.framework_version == tf_version
-    assert model.py_version == tf.py_version
-    assert model.entry_point == SCRIPT_PATH
+    assert model._framework_version == tf_version
+    assert model.entry_point is None
     assert model.role == ROLE
     assert model.name == job_name
-    assert model.container_log_level == container_log_level
-    assert model.source_dir == source_dir
+    assert model._container_log_level == container_log_level
+    assert model.source_dir is None
     assert model.vpc_config is None
     assert model.enable_network_isolation()
 
@@ -289,24 +288,6 @@ def test_create_model_with_custom_image(sagemaker_session):
     model = tf.create_model()
 
     assert model.image == custom_image
-
-
-@patch("sagemaker.utils.create_tar_file", MagicMock())
-def test_model(sagemaker_session, tf_version):
-    model = TensorFlowModel(
-        MODEL_DATA, role=ROLE, entry_point=SCRIPT_PATH, sagemaker_session=sagemaker_session
-    )
-    predictor = model.deploy(1, INSTANCE_TYPE)
-    assert isinstance(predictor, TensorFlowPredictor)
-
-
-@patch("sagemaker.fw_utils.tar_and_upload_dir", MagicMock())
-def test_model_image_accelerator(sagemaker_session):
-    model = TensorFlowModel(
-        MODEL_DATA, role=ROLE, entry_point=SCRIPT_PATH, sagemaker_session=sagemaker_session
-    )
-    container_def = model.prepare_container_def(INSTANCE_TYPE, accelerator_type=ACCELERATOR_TYPE)
-    assert container_def["Image"] == _get_full_cpu_image_uri_with_ei(defaults.TF_VERSION)
 
 
 @patch("sagemaker.utils.create_tar_file", MagicMock())
@@ -543,16 +524,6 @@ def test_estimator_py2_deprecation_warning(warning, sagemaker_session):
     assert estimator.py_version == "py2"
     warning.assert_called_with("tensorflow", "2.1.0")
 
-    model = TensorFlowModel(
-        MODEL_DATA,
-        role=ROLE,
-        entry_point=SCRIPT_PATH,
-        sagemaker_session=sagemaker_session,
-        py_version="py2",
-    )
-    assert model.py_version == "py2"
-    warning.assert_called_with(model.__framework_name__, defaults.LATEST_PY2_VERSION)
-
 
 @patch("sagemaker.fw_utils.empty_framework_version_warning")
 def test_empty_framework_version(warning, sagemaker_session):
@@ -567,17 +538,6 @@ def test_empty_framework_version(warning, sagemaker_session):
 
     assert estimator.framework_version == defaults.TF_VERSION
     warning.assert_called_with(defaults.TF_VERSION, estimator.LATEST_VERSION)
-
-    model = TensorFlowModel(
-        MODEL_DATA,
-        role=ROLE,
-        entry_point=SCRIPT_PATH,
-        sagemaker_session=sagemaker_session,
-        framework_version=None,
-    )
-
-    assert model.framework_version == defaults.TF_VERSION
-    warning.assert_called_with(defaults.TF_VERSION, defaults.LATEST_VERSION)
 
 
 def test_py2_version_deprecated(sagemaker_session):

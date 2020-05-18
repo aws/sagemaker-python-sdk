@@ -23,9 +23,7 @@ from sagemaker.debugger import DebuggerHookConfig
 from sagemaker.estimator import Framework
 import sagemaker.fw_utils as fw
 from sagemaker.tensorflow import defaults
-from sagemaker.tensorflow.model import TensorFlowModel
 from sagemaker.tensorflow.serving import Model
-from sagemaker.transformer import Transformer
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
 logger = logging.getLogger("sagemaker")
@@ -252,10 +250,8 @@ class TensorFlow(Framework):
 
     def create_model(
         self,
-        model_server_workers=None,
         role=None,
         vpc_config_override=VPC_CONFIG_DEFAULT,
-        endpoint_type=None,
         entry_point=None,
         source_dir=None,
         dependencies=None,
@@ -266,43 +262,25 @@ class TensorFlow(Framework):
 
         Args:
             role (str): The ``ExecutionRoleArn`` IAM Role ARN for the ``Model``, which is also
-                used during transform jobs. If not specified, the role from the Estimator will be
-                used.
-            model_server_workers (int): Optional. The number of worker processes used by the
-                inference server. If None, server will use one worker per vCPU.
+                used during transform jobs. If not specified, the role from the Estimator is used.
             vpc_config_override (dict[str, list[str]]): Optional override for VpcConfig set on the
-                model.
-                Default: use subnets and security groups from this Estimator.
+                model. Default: use subnets and security groups from this Estimator.
+
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
-            endpoint_type (str): Optional. Selects the software stack used by the inference server.
-                If  not specified, the model will be configured to use the default
-                SageMaker model server. If 'tensorflow-serving', the model will be configured to
-                use the SageMaker Tensorflow Serving container.
+
             entry_point (str): Path (absolute or relative) to the local Python source file which
-                should be executed as the entry point to training. If not specified and
-                ``endpoint_type`` is 'tensorflow-serving', no entry point is used. If
-                ``endpoint_type`` is also ``None``, then the training entry point is used.
+                should be executed as the entry point to training (default: None).
             source_dir (str): Path (absolute or relative) to a directory with any other serving
-                source code dependencies aside from the entry point file. If not specified and
-                ``endpoint_type`` is 'tensorflow-serving', no source_dir is used. If
-                ``endpoint_type`` is also ``None``, then the model source directory from training
-                is used.
+                source code dependencies aside from the entry point file (default: None).
             dependencies (list[str]): A list of paths to directories (absolute or relative) with
-                any additional libraries that will be exported to the container.
-                If not specified and ``endpoint_type`` is 'tensorflow-serving', ``dependencies`` is
-                set to ``None``.
-                If ``endpoint_type`` is also ``None``, then the dependencies from training are used.
-            **kwargs: Additional kwargs passed to :class:`~sagemaker.tensorflow.serving.Model`
-                and :class:`~sagemaker.tensorflow.model.TensorFlowModel` constructors.
+                any additional libraries that will be exported to the container (default: None).
+            **kwargs: Additional kwargs passed to :class:`~sagemaker.tensorflow.serving.Model`.
 
         Returns:
-            sagemaker.tensorflow.model.TensorFlowModel or sagemaker.tensorflow.serving.Model: A
-                ``Model`` object. See :class:`~sagemaker.tensorflow.serving.Model` or
-                :class:`~sagemaker.tensorflow.model.TensorFlowModel` for full details.
+            sagemaker.tensorflow.serving.Model: A ``Model`` object.
+                See :class:`~sagemaker.tensorflow.serving.Model` for full details.
         """
-        role = role or self.role
-
         if "image" not in kwargs:
             kwargs["image"] = self.image_name
 
@@ -312,74 +290,16 @@ class TensorFlow(Framework):
         if "enable_network_isolation" not in kwargs:
             kwargs["enable_network_isolation"] = self.enable_network_isolation()
 
-        if endpoint_type == "tensorflow-serving" or self._script_mode_enabled:
-            return self._create_tfs_model(
-                role=role,
-                vpc_config_override=vpc_config_override,
-                entry_point=entry_point,
-                source_dir=source_dir,
-                dependencies=dependencies,
-                **kwargs
-            )
-
-        return self._create_default_model(
-            model_server_workers=model_server_workers,
-            role=role,
-            vpc_config_override=vpc_config_override,
-            entry_point=entry_point,
-            source_dir=source_dir,
-            dependencies=dependencies,
-            **kwargs
-        )
-
-    def _create_tfs_model(
-        self,
-        role=None,
-        vpc_config_override=VPC_CONFIG_DEFAULT,
-        entry_point=None,
-        source_dir=None,
-        dependencies=None,
-        **kwargs
-    ):
-        """Placeholder docstring"""
         return Model(
             model_data=self.model_data,
-            role=role,
+            role=role or self.role,
             container_log_level=self.container_log_level,
-            framework_version=utils.get_short_version(self.framework_version),
+            framework_version=self.framework_version,
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
             entry_point=entry_point,
             source_dir=source_dir,
             dependencies=dependencies,
-            **kwargs
-        )
-
-    def _create_default_model(
-        self,
-        model_server_workers,
-        role,
-        vpc_config_override,
-        entry_point=None,
-        source_dir=None,
-        dependencies=None,
-        **kwargs
-    ):
-        """Placeholder docstring"""
-        return TensorFlowModel(
-            self.model_data,
-            role,
-            entry_point or self.entry_point,
-            source_dir=source_dir or self._model_source_dir(),
-            enable_cloudwatch_metrics=self.enable_cloudwatch_metrics,
-            container_log_level=self.container_log_level,
-            code_location=self.code_location,
-            py_version=self.py_version,
-            framework_version=self.framework_version,
-            model_server_workers=model_server_workers,
-            sagemaker_session=self.sagemaker_session,
-            vpc_config=self.get_vpc_config(vpc_config_override),
-            dependencies=dependencies or self.dependencies,
             **kwargs
         )
 
@@ -464,137 +384,3 @@ class TensorFlow(Framework):
             )
 
         return super(TensorFlow, self).train_image()
-
-    def transformer(
-        self,
-        instance_count,
-        instance_type,
-        strategy=None,
-        assemble_with=None,
-        output_path=None,
-        output_kms_key=None,
-        accept=None,
-        env=None,
-        max_concurrent_transforms=None,
-        max_payload=None,
-        tags=None,
-        role=None,
-        model_server_workers=None,
-        volume_kms_key=None,
-        endpoint_type=None,
-        entry_point=None,
-        vpc_config_override=VPC_CONFIG_DEFAULT,
-        enable_network_isolation=None,
-        model_name=None,
-    ):
-        """Return a ``Transformer`` that uses a SageMaker Model based on the training job. It
-        reuses the SageMaker Session and base job name used by the Estimator.
-
-        Args:
-            instance_count (int): Number of EC2 instances to use.
-            instance_type (str): Type of EC2 instance to use, for example, 'ml.c4.xlarge'.
-            strategy (str): The strategy used to decide how to batch records in a single request
-                (default: None). Valid values: 'MultiRecord' and 'SingleRecord'.
-            assemble_with (str): How the output is assembled (default: None). Valid values: 'Line'
-                or 'None'.
-            output_path (str): S3 location for saving the transform result. If not specified,
-                results are stored to a default bucket.
-            output_kms_key (str): Optional. KMS key ID for encrypting the transform output
-                (default: None).
-            accept (str): The accept header passed by the client to
-                the inference endpoint. If it is supported by the endpoint,
-                it will be the format of the batch transform output.
-            env (dict): Environment variables to be set for use during the transform job
-                (default: None).
-            max_concurrent_transforms (int): The maximum number of HTTP requests to be made to
-                each individual transform container at one time.
-            max_payload (int): Maximum size of the payload in a single HTTP request to the
-                container in MB.
-            tags (list[dict]): List of tags for labeling a transform job. If none specified, then
-                the tags used for the training job are used for the transform job.
-            role (str): The ``ExecutionRoleArn`` IAM Role ARN for the ``Model``, which is also
-                used during transform jobs. If not specified, the role from the Estimator will be
-                used.
-            model_server_workers (int): Optional. The number of worker processes used by the
-                inference server. If None, server will use one worker per vCPU.
-            volume_kms_key (str): Optional. KMS key ID for encrypting the volume attached to the ML
-                compute instance (default: None).
-            endpoint_type (str): Optional. Selects the software stack used by the inference server.
-                If not specified, the model will be configured to use the default
-                SageMaker model server.
-                If 'tensorflow-serving', the model will be configured to
-                use the SageMaker Tensorflow Serving container.
-            entry_point (str): Path (absolute or relative) to the local Python source file which
-                should be executed as the entry point to training. If not specified and
-                ``endpoint_type`` is 'tensorflow-serving', no entry point is used. If
-                ``endpoint_type`` is also ``None``, then the training entry point is used.
-            vpc_config_override (dict[str, list[str]]): Optional override for
-                the VpcConfig set on the model.
-                Default: use subnets and security groups from this Estimator.
-
-                * 'Subnets' (list[str]): List of subnet ids.
-                * 'SecurityGroupIds' (list[str]): List of security group ids.
-
-            enable_network_isolation (bool): Specifies whether container will
-                run in network isolation mode. Network isolation mode restricts
-                the container access to outside networks (such as the internet).
-                The container does not make any inbound or outbound network
-                calls. If True, a channel named "code" will be created for any
-                user entry script for inference. Also known as Internet-free mode.
-                If not specified, this setting is taken from the estimator's
-                current configuration.
-            model_name (str): Name to use for creating an Amazon SageMaker
-                model. If not specified, the name of the training job is used.
-        """
-        role = role or self.role
-
-        if self.latest_training_job is None:
-            logging.warning(
-                "No finished training job found associated with this estimator. Please make sure "
-                "this estimator is only used for building workflow config"
-            )
-            return Transformer(
-                model_name or self._current_job_name,
-                instance_count,
-                instance_type,
-                strategy=strategy,
-                assemble_with=assemble_with,
-                output_path=output_path,
-                output_kms_key=output_kms_key,
-                accept=accept,
-                max_concurrent_transforms=max_concurrent_transforms,
-                max_payload=max_payload,
-                env=env or {},
-                tags=tags,
-                base_transform_job_name=self.base_job_name,
-                volume_kms_key=volume_kms_key,
-                sagemaker_session=self.sagemaker_session,
-            )
-
-        if enable_network_isolation is None:
-            enable_network_isolation = self.enable_network_isolation()
-
-        model = self.create_model(
-            model_server_workers=model_server_workers,
-            role=role,
-            vpc_config_override=vpc_config_override,
-            endpoint_type=endpoint_type,
-            entry_point=entry_point,
-            enable_network_isolation=enable_network_isolation,
-            name=model_name,
-        )
-
-        return model.transformer(
-            instance_count,
-            instance_type,
-            strategy=strategy,
-            assemble_with=assemble_with,
-            output_path=output_path,
-            output_kms_key=output_kms_key,
-            accept=accept,
-            env=env,
-            max_concurrent_transforms=max_concurrent_transforms,
-            max_payload=max_payload,
-            tags=tags,
-            volume_kms_key=volume_kms_key,
-        )

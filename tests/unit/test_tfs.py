@@ -263,9 +263,7 @@ def test_estimator_deploy(sagemaker_session):
 
     job_name = "doing something"
     tf.fit(inputs="s3://mybucket/train", job_name=job_name)
-    predictor = tf.deploy(
-        INSTANCE_COUNT, INSTANCE_TYPE, endpoint_name="endpoint", endpoint_type="tensorflow-serving"
-    )
+    predictor = tf.deploy(INSTANCE_COUNT, INSTANCE_TYPE, endpoint_name="endpoint")
     assert isinstance(predictor, Predictor)
 
 
