@@ -13,10 +13,10 @@
 """Classes for updating code in files."""
 from __future__ import absolute_import
 
-import logging
-import json
-import os
 from abc import abstractmethod
+import json
+import logging
+import os
 
 import pasta
 
