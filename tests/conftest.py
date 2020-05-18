@@ -50,7 +50,7 @@ def pytest_addoption(parser):
     parser.addoption("--boto-config", action="store", default=None)
     parser.addoption("--chainer-full-version", action="store", default=Chainer.LATEST_VERSION)
     parser.addoption("--mxnet-full-version", action="store", default=MXNet.LATEST_VERSION)
-    parser.addoption("--ei-mxnet-full-version", action="store", default="1.4.1")
+    parser.addoption("--ei-mxnet-full-version", action="store", default="1.5.1")
     parser.addoption("--pytorch-full-version", action="store", default=PyTorch.LATEST_VERSION)
     parser.addoption(
         "--rl-coach-mxnet-full-version",
