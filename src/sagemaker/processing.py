@@ -70,7 +70,8 @@ class Processor(object):
             output_kms_key (str): The KMS key ID for processing job outputs (default: None).
             max_runtime_in_seconds (int): Timeout in seconds (default: None).
                 After this amount of time, Amazon SageMaker terminates the job,
-                regardless of its current status.
+                regardless of its current status. If `max_runtime_in_seconds` is not
+                specified, the default value is 24 hours.
             base_job_name (str): Prefix for processing job name. If not specified,
                 the processor generates a default job name, based on the
                 processing image name and current timestamp.
@@ -309,7 +310,8 @@ class ScriptProcessor(Processor):
             output_kms_key (str): The KMS key ID for processing job outputs (default: None).
             max_runtime_in_seconds (int): Timeout in seconds (default: None).
                 After this amount of time, Amazon SageMaker terminates the job,
-                regardless of its current status.
+                regardless of its current status. If `max_runtime_in_seconds` is not
+                specified, the default value is 24 hours.
             base_job_name (str): Prefix for processing name. If not specified,
                 the processor generates a default job name, based on the
                 processing image name and current timestamp.
