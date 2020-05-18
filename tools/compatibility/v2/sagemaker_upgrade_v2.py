@@ -14,30 +14,62 @@
 from __future__ import absolute_import
 
 import argparse
+import os
 
 import files
 
+_EXT_TO_UPDATER_CLS = {".py": files.PyFileUpdater, ".ipynb": files.JupyterNotebookFileUpdater}
 
-def _parse_and_validate_args():
+
+def _update_file(input_file, output_file):
+    """Update a file to be compatible with v2 of the SageMaker Python SDK,
+    and write the updated source to the output file.
+
+    Args:
+        input_file (str): The path to the file to be updated.
+        output_file (str): The output file destination.
+
+    Raises:
+        ValueError: If the input and output filename extensions don't match,
+            or if the file extensions are neither ".py" nor ".ipynb".
+    """
+    input_file_ext = os.path.splitext(input_file)[1]
+    output_file_ext = os.path.splitext(output_file)[1]
+
+    if input_file_ext != output_file_ext:
+        raise ValueError(
+            "Mismatched file extensions: input: {}, output: {}".format(
+                input_file_ext, output_file_ext
+            )
+        )
+
+    if input_file_ext not in _EXT_TO_UPDATER_CLS:
+        raise ValueError("Unrecognized file extension: {}".format(input_file_ext))
+
+    updater_cls = _EXT_TO_UPDATER_CLS[input_file_ext]
+    updater_cls(input_path=input_file, output_path=output_file).update()
+
+
+def _parse_args():
     """Parses CLI arguments"""
     parser = argparse.ArgumentParser(
-        description="A tool to convert files to be compatible with v2 of the SageMaker Python SDK."
-        "\nSimple usage: sagemaker_upgrade_v2.py --in-file foo.py --out-file bar.py"
+        description="A tool to convert files to be compatible with v2 of the SageMaker Python SDK. "
+        "Simple usage: sagemaker_upgrade_v2.py --in-file foo.py --out-file bar.py"
     )
     parser.add_argument(
-        "--in-file", help="If converting a single file, the name of the file to convert"
+        "--in-file", help="If converting a single file, the file to convert. The file's extension "
+        "must be either '.py' or '.ipynb'."
     )
     parser.add_argument(
         "--out-file",
-        help="If converting a single file, the output file destination. If needed, "
-        "directories in the output file path are created. If the output file already exists, "
-        "it is overwritten.",
+        help="If converting a single file, the output file destination. The file's extension "
+        "must be either '.py' or '.ipynb'. If needed, directories in the output path are created. "
+        "If the output file already exists, it is overwritten.",
     )
 
     return parser.parse_args()
 
 
 if __name__ == "__main__":
-    args = _parse_and_validate_args()
-
-    files.PyFileUpdater(input_path=args.in_file, output_path=args.out_file).update()
+    args = _parse_args()
+    _update_file(args.in_file, args.out_file)
