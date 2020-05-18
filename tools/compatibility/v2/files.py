@@ -26,6 +26,8 @@ LOGGER = logging.getLogger(__name__)
 
 
 class FileUpdater(object):
+    """An abstract class for updating files."""
+
     def __init__(self, input_path, output_path):
         """Creates a ``FileUpdater`` for updating a file so that
         it is compatible with v2 of the SageMaker Python SDK.

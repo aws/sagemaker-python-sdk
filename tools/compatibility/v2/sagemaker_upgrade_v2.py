@@ -57,8 +57,9 @@ def _parse_args():
         "Simple usage: sagemaker_upgrade_v2.py --in-file foo.py --out-file bar.py"
     )
     parser.add_argument(
-        "--in-file", help="If converting a single file, the file to convert. The file's extension "
-        "must be either '.py' or '.ipynb'."
+        "--in-file",
+        help="If converting a single file, the file to convert. The file's extension "
+        "must be either '.py' or '.ipynb'.",
     )
     parser.add_argument(
         "--out-file",
