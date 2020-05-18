@@ -194,10 +194,6 @@ def xgboost_version(request):
         "1.9.0",
         "1.10",
         "1.10.0",
-        "1.11",
-        "1.11.0",
-        "1.12",
-        "1.12.0",
     ],
 )
 def tf_version(request):
