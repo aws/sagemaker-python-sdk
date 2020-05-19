@@ -2583,6 +2583,18 @@ class Session(object):  # pylint: disable=too-many-public-methods
         self._check_job_status(job, desc, "HyperParameterTuningJobStatus")
         return desc
 
+    def describe_transform_job(self, job_name):
+        """Calls the DescribeTransformJob API for the given job name
+        and returns the response.
+
+        Args:
+            job_name (str): The name of the transform job to describe.
+
+        Returns:
+            dict: A dictionary response with the transform job description.
+        """
+        return self.sagemaker_client.describe_transform_job(TransformJobName=job_name)
+
     def wait_for_transform_job(self, job, poll=5):
         """Wait for an Amazon SageMaker transform job to complete.
 

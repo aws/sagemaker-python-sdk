@@ -1,5 +1,28 @@
 # Changelog
 
+## v1.58.3 (2020-05-19)
+
+### Bug Fixes and Other Changes
+
+ * update DatasetFormat key name for sagemakerCaptureJson
+
+### Documentation Changes
+
+ * update Processing job max_runtime_in_seconds docstring
+
+## v1.58.2.post0 (2020-05-18)
+
+### Documentation Changes
+
+ * specify S3 source_dir needs to point to a tar file
+ * update PyTorch BYOM topic
+
+## v1.58.2 (2020-05-13)
+
+### Bug Fixes and Other Changes
+
+ * address flake8 error
+
 ## v1.58.1 (2020-05-11)
 
 ### Bug Fixes and Other Changes
