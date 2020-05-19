@@ -393,9 +393,7 @@ def test_transform_tf_kms_network_isolation(sagemaker_session, cpu_instance_type
             )
             assert model_desc["EnableNetworkIsolation"]
 
-        job_desc = sagemaker_session.describe_transform_job(
-            job_name=job_name
-        )
+        job_desc = sagemaker_session.describe_transform_job(job_name=job_name)
         assert job_desc["TransformOutput"]["S3OutputPath"] == output_path
         assert job_desc["TransformOutput"]["KmsKeyId"] == kms_key
         assert job_desc["TransformResources"]["VolumeKmsKeyId"] == kms_key
