@@ -2583,8 +2583,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Returns:
             dict: A dictionary response with the transform job description.
         """
-        description = self.sagemaker_client.describe_transform_job(TransformJobName=job_name)
-        return description
+        return self.sagemaker_client.describe_transform_job(TransformJobName=job_name)
 
     def wait_for_transform_job(self, job, poll=5):
         """Wait for an Amazon SageMaker transform job to complete.
