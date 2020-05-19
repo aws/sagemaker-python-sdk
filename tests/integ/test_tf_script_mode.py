@@ -37,13 +37,12 @@ SCRIPT = os.path.join(MNIST_RESOURCE_PATH, "mnist.py")
 PARAMETER_SERVER_DISTRIBUTION = {"parameter_server": {"enabled": True}}
 MPI_DISTRIBUTION = {"mpi": {"enabled": True}}
 TAGS = [{"Key": "some-key", "Value": "some-value"}]
+PY37_SUPPORTED_VERSION = [TensorFlow._LATEST_1X_VERSION, TensorFlow.LATEST_VERSION]
 
 
 @pytest.fixture(scope="module")
 def py_version(tf_full_version):
-    return (
-        "py37" if tf_full_version == TensorFlow._LATEST_1X_VERSION else tests.integ.PYTHON_VERSION
-    )
+    return "py37" if tf_full_version in PY37_SUPPORTED_VERSION else tests.integ.PYTHON_VERSION
 
 
 def test_mnist_with_checkpoint_config(
