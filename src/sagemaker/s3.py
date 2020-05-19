@@ -153,4 +153,8 @@ class S3Downloader(object):
         bucket, key_prefix = parse_s3_url(url=s3_uri)
 
         file_keys = sagemaker_session.list_s3_files(bucket=bucket, key_prefix=key_prefix)
-        return [os.path.join("s3://", bucket, file_key) for file_key in file_keys]
+        path = ["s3://", bucket]
+        for file_key in file_keys:
+            path.append(os.sep)
+            path.append(file_key)
+        return "".join(path)
