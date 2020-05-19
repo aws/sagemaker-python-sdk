@@ -671,6 +671,9 @@ def transform_config(
     compression_type=None,
     split_type=None,
     job_name=None,
+    input_filter=None,
+    output_filter=None,
+    join_source=None,
 ):
     """Export Airflow transform config from a SageMaker transformer
 
@@ -686,6 +689,7 @@ def transform_config(
 
             * 'ManifestFile' - the S3 URI points to a single manifest file listing each S3 object
                   to use as an input for the transform job.
+
         content_type (str): MIME type of the input data (default: None).
         compression_type (str): Compression type of the input data, if
             compressed (default: None). Valid values: 'Gzip', None.
@@ -693,6 +697,30 @@ def transform_config(
             'None'). Valid values: 'None', 'Line', 'RecordIO', and 'TFRecord'.
         job_name (str): job name (default: None). If not specified, one will be
             generated.
+        input_filter (str): A JSONPath to select a portion of the input to
+            pass to the algorithm container for inference. If you omit the
+            field, it gets the value '$', representing the entire input.
+            For CSV data, each row is taken as a JSON array,
+            so only index-based JSONPaths can be applied, e.g. $[0], $[1:].
+            CSV data should follow the `RFC format <https://tools.ietf.org/html/rfc4180>`_.
+            See `Supported JSONPath Operators
+            <https://docs.aws.amazon.com/sagemaker/latest/dg/batch-transform-data-processing.html#data-processing-operators>`_
+            for a table of supported JSONPath operators.
+            For more information, see the SageMaker API documentation for
+            `CreateTransformJob
+            <https://docs.aws.amazon.com/sagemaker/latest/dg/API_CreateTransformJob.html>`_.
+            Some examples: "$[1:]", "$.features" (default: None).
+        output_filter (str): A JSONPath to select a portion of the
+            joined/original output to return as the output.
+            For more information, see the SageMaker API documentation for
+            `CreateTransformJob
+            <https://docs.aws.amazon.com/sagemaker/latest/dg/API_CreateTransformJob.html>`_.
+            Some examples: "$[1:]", "$.prediction" (default: None).
+        join_source (str): The source of data to be joined to the transform
+            output. It can be set to 'Input' meaning the entire input record
+            will be joined to the inference result. You can use OutputFilter
+            to select the useful portion before uploading to S3. (default:
+            None). Valid values: Input, None.
 
     Returns:
         dict: Transform config that can be directly used by
@@ -722,6 +750,12 @@ def transform_config(
         "TransformOutput": job_config["output_config"],
         "TransformResources": job_config["resource_config"],
     }
+
+    data_processing = sagemaker.transformer._TransformJob._prepare_data_processing(
+        input_filter, output_filter, join_source
+    )
+    if data_processing is not None:
+        config["DataProcessing"] = data_processing
 
     if transformer.strategy is not None:
         config["BatchStrategy"] = transformer.strategy
