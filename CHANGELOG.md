@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.58.2.post0 (2020-05-18)
+
+### Documentation Changes
+
+ * specify S3 source_dir needs to point to a tar file
+ * update PyTorch BYOM topic
+
 ## v1.58.2 (2020-05-13)
 
 ### Bug Fixes and Other Changes
