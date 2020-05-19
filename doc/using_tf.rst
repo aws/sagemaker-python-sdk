@@ -133,6 +133,26 @@ In your training script the channels will be stored in environment variables ``S
    ``output_path``.
 
 
+Use third-party libraries
+-------------------------
+
+If there are other packages you want to use with your script, you can use a ``requirements.txt`` to install other dependencies at runtime.
+
+Support for installing packages using ``requirements.txt`` varies with Tensorflow versions:
+
+- For Tensorflow 1.15.2 with Python 3.7 or newer, Tensorflow 2.2 or newer, and Script Mode without Horovod in any version:
+    - Include a ``requirements.txt`` file in the same directory as your training script.
+    - You must specify this directory using the ``source_dir`` argument when creating a Tensorflow estimator.
+- For older versions of Tensorflow using Script Mode with Horovod:
+    - Write a shell script for your entry point that first calls ``pip install -r requirements.txt``, then runs your training script.
+- For older versions of Tensorflow using Framework Mode:
+    - Specify the path to your ``requirements.txt`` file using the ``requirements_file`` argument.
+
+A ``requirements.txt`` file is a text file that contains a list of items that are installed by using ``pip install``.
+You can also specify the version of an item to install.
+For information about the format of a ``requirements.txt`` file, see `Requirements Files <https://pip.pypa.io/en/stable/user_guide/#requirements-files>`__ in the pip documentation.
+
+
 Create an Estimator
 ===================
 
@@ -882,8 +902,7 @@ in the following code:
 You can also bring in external dependencies to help with your data
 processing. There are 2 ways to do this:
 
-1. If you included ``requirements.txt`` in your ``source_dir`` or in
-   your dependencies, the container installs the Python dependencies at runtime using ``pip install -r``:
+1. Using a ``requirements.txt`` file. For more information, see :ref:`using_tf:Use third-party libraries`.
 
 .. code::
 
