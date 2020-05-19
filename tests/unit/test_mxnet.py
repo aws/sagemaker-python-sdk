@@ -846,7 +846,7 @@ def test_mx_enable_sm_metrics_if_fw_ver_is_at_least_1_6(sagemaker_session):
         assert mx.enable_sagemaker_metrics
 
 
-def test_custom_image_estimator_deploy(sagemaker_session, caplog):
+def test_custom_image_estimator_deploy(sagemaker_session):
     custom_image = "mycustomimage:latest"
     mx = MXNet(
         entry_point=SCRIPT_PATH,
@@ -858,6 +858,3 @@ def test_custom_image_estimator_deploy(sagemaker_session, caplog):
     mx.fit(inputs="s3://mybucket/train", job_name="new_name")
     model = mx.create_model(image=custom_image)
     assert model.image == custom_image
-
-    warning_message = "Parameter 'image' will be renamed to 'image_uri' in SageMaker Python SDK v2."
-    assert warning_message in caplog.text

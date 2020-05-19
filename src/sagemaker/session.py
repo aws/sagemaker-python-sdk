@@ -183,6 +183,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         # Generate a tuple for each file that we want to upload of the form (local_path, s3_key).
         LOGGER.warning(
             "'upload_data' method will be deprecated in favor of 'S3Uploader' class "
+            "(https://sagemaker.readthedocs.io/en/stable/s3.html#sagemaker.s3.S3Uploader) "
             "in SageMaker Python SDK v2."
         )
 
@@ -237,6 +238,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         """
         LOGGER.warning(
             "'upload_string_as_file_body' method will be deprecated in favor of 'S3Uploader' class "
+            "(https://sagemaker.readthedocs.io/en/stable/s3.html#sagemaker.s3.S3Uploader) "
             "in SageMaker Python SDK v2."
         )
 
@@ -3333,10 +3335,6 @@ def get_execution_role(sagemaker_session=None):
     Returns:
         (str): The role ARN
     """
-    LOGGER.warning(
-        "'get_execution_role' will be renamed to 'notebook_execution_role' "
-        "in SageMaker Python SDK v2."
-    )
 
     if not sagemaker_session:
         sagemaker_session = Session()

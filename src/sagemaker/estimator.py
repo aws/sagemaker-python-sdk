@@ -39,6 +39,7 @@ from sagemaker.fw_utils import (
     UploadedCode,
     validate_source_dir,
     _region_supports_debugger,
+    parameter_v2_rename_warning,
 )
 from sagemaker.job import _Job
 from sagemaker.local import LocalSession
@@ -1273,9 +1274,7 @@ class Estimator(EstimatorBase):
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_AlgorithmSpecification.html#SageMaker-Type-AlgorithmSpecification-EnableSageMakerMetricsTimeSeries
                 (default: ``None``).
         """
-        warnings.warn(
-            "Parameter 'image_name' will be renamed to 'image_uri' in SageMaker Python SDK v2."
-        )
+        logging.warning(parameter_v2_rename_warning("image_name", "image_uri"))
         self.image_name = image_name
         self.hyperparam_dict = hyperparameters.copy() if hyperparameters else {}
         super(Estimator, self).__init__(
@@ -1641,9 +1640,7 @@ class Framework(EstimatorBase):
         self.code_location = code_location
         self.image_name = image_name
         if image_name is not None:
-            warnings.warn(
-                "Parameter 'image_name' will be renamed to 'image_uri' in SageMaker Python SDK v2."
-            )
+            logging.warning(parameter_v2_rename_warning("image_name", "image_uri"))
 
         self.uploaded_code = None
 

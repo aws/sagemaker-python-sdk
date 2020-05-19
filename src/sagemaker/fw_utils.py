@@ -662,8 +662,8 @@ def python_deprecation_warning(framework, latest_supported_version):
 def parameter_v2_rename_warning(v1_parameter_name, v2_parameter_name):
     """
     Args:
-        v1_parameter_name:
-        v2_parameter_name:
+        v1_parameter_name: parameter name used in SageMaker Python SDK v1
+        v2_parameter_name: parameter name used in SageMaker Python SDK v2
     """
     return PARAMETER_V2_RENAME_WARNING.format(
         v1_parameter_name=v1_parameter_name, v2_parameter_name=v2_parameter_name

@@ -15,6 +15,7 @@ from __future__ import absolute_import
 
 import logging
 import importlib_metadata
+import sys
 
 from sagemaker import estimator, parameter, tuner  # noqa: F401
 from sagemaker.amazon.kmeans import KMeans, KMeansModel, KMeansPredictor  # noqa: F401
@@ -63,8 +64,9 @@ from sagemaker.automl.candidate_estimator import CandidateEstimator, CandidateSt
 
 __version__ = importlib_metadata.version("sagemaker")
 
-logging.getLogger("sagemaker").warning(
-    "SageMaker Python SDK v2 will no longer support Python 2. "
-    "Please see https://github.com/aws/sagemaker-python-sdk/issues/1459 "
-    "for more information"
-)
+if sys.version[0] == "2":
+    logging.getLogger("sagemaker").warning(
+        "SageMaker Python SDK v2 will no longer support Python 2. "
+        "Please see https://github.com/aws/sagemaker-python-sdk/issues/1459 "
+        "for more information"
+    )
