@@ -138,22 +138,22 @@ Use third-party libraries
 
 If there are other packages you want to use with your script, you can use a ``requirements.txt`` to install other dependencies at runtime.
 
-For training, support for installing packages using ``requirements.txt`` varies by Tensorflow version as follows:
+For training, support for installing packages using ``requirements.txt`` varies by TensorFlow version as follows:
 
-- For TensorFlow 1.11 or newer using Script Mode without Horovod, Tensorflow 1.15.2 with Python 3.7 or newer, and Tensorflow 2.2 or newer:
+- For TensorFlow 1.11 or newer using Script Mode without Horovod, TensorFlow 1.15.2 with Python 3.7 or newer, and TensorFlow 2.2 or newer:
     - Include a ``requirements.txt`` file in the same directory as your training script.
-    - You must specify this directory using the ``source_dir`` argument when creating a Tensorflow estimator.
-- For older versions of Tensorflow using Script Mode with Horovod:
+    - You must specify this directory using the ``source_dir`` argument when creating a TensorFlow estimator.
+- For older versions of TensorFlow using Script Mode with Horovod:
     - Write a shell script for your entry point that first calls ``pip install -r requirements.txt``, then runs your training script.
     - For an example of using shell scripts, see `this example notebook <https://github.com/awslabs/amazon-sagemaker-examples/blob/master/sagemaker-python-sdk/tensorflow_script_mode_using_shell_commands/tensorflow_script_mode_using_shell_commands.ipynb>`__.
-- For older versions of Tensorflow using Legacy Mode:
+- For older versions of TensorFlow using Legacy Mode:
     - Specify the path to your ``requirements.txt`` file using the ``requirements_file`` argument.
 
-For serving, support for installing packages using ``requirements.txt`` varies by Tensorflow version as follows:
+For serving, support for installing packages using ``requirements.txt`` varies by TensorFlow version as follows:
 
-- For Tensorflow 1.11 or newer:
+- For TensorFlow 1.11 or newer:
     - Include a ``requirements.txt`` file in the ``code`` directory.
-- For older versions of Tensorflow:
+- For older versions of TensorFlow:
     - Specify the path to your ``requirements.txt`` file using the ``SAGEMAKER_REQUIREMENTS`` environment variable.
 
 A ``requirements.txt`` file is a text file that contains a list of items that are installed by using ``pip install``.
@@ -243,7 +243,7 @@ Calling ``fit`` starts a SageMaker training job. The training job will execute t
   - starts asynchronous training
 
 If the ``wait=False`` flag is passed to ``fit``, then it returns immediately. The training job continues running
-asynchronously. Later, a Tensorflow estimator can be obtained by attaching to the existing training job.
+asynchronously. Later, a TensorFlow estimator can be obtained by attaching to the existing training job.
 If the training job is not finished, it starts showing the standard output of training and wait until it completes.
 After attaching, the estimator can be deployed as usual.
 
