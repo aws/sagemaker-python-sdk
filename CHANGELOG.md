@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.58.3 (2020-05-19)
+
+### Bug Fixes and Other Changes
+
+ * update DatasetFormat key name for sagemakerCaptureJson
+
+### Documentation Changes
+
+ * update Processing job max_runtime_in_seconds docstring
+
 ## v1.58.2.post0 (2020-05-18)
 
 ### Documentation Changes
