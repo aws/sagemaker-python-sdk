@@ -58,4 +58,4 @@ class DatasetFormat(object):
             dict: JSON string containing DatasetFormat to be used by DefaultModelMonitor.
 
         """
-        return {"sagemaker_capture_json": {}}
+        return {"sagemakerCaptureJson": {}}
