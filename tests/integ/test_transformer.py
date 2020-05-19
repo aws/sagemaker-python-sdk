@@ -97,8 +97,8 @@ def test_transform_mxnet(
     ):
         transformer.wait()
 
-    job_desc = transformer.sagemaker_session.sagemaker_client.describe_transform_job(
-        TransformJobName=transformer.latest_transform_job.name
+    job_desc = transformer.sagemaker_session.describe_transform_job(
+        job_name=transformer.latest_transform_job.name
     )
     assert kms_key_arn == job_desc["TransformResources"]["VolumeKmsKeyId"]
     assert output_filter == job_desc["DataProcessing"]["OutputFilter"]
@@ -323,8 +323,8 @@ def test_stop_transform_job(mxnet_estimator, mxnet_transform_input, cpu_instance
 
     transformer.stop_transform_job()
 
-    desc = transformer.latest_transform_job.sagemaker_session.sagemaker_client.describe_transform_job(
-        TransformJobName=latest_transform_job_name
+    desc = transformer.latest_transform_job.sagemaker_session.describe_transform_job(
+        job_name=latest_transform_job_name
     )
     assert desc["TransformJobStatus"] == "Stopped"
 
@@ -393,8 +393,8 @@ def test_transform_tf_kms_network_isolation(sagemaker_session, cpu_instance_type
             )
             assert model_desc["EnableNetworkIsolation"]
 
-        job_desc = sagemaker_session.sagemaker_client.describe_transform_job(
-            TransformJobName=job_name
+        job_desc = sagemaker_session.describe_transform_job(
+            job_name=job_name
         )
         assert job_desc["TransformOutput"]["S3OutputPath"] == output_path
         assert job_desc["TransformOutput"]["KmsKeyId"] == kms_key

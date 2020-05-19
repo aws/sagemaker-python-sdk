@@ -337,7 +337,7 @@ def test_ensure_last_transform_job_none(transformer):
     return_value=INIT_PARAMS,
 )
 def test_attach(prepare_init_params, transformer, sagemaker_session):
-    sagemaker_session.describe_transform_job = Mock(job_name="describe_transform_job")
+    sagemaker_session.sagemaker_client.describe_transform_job = Mock(name="describe_transform_job")
     attached = Transformer.attach(JOB_NAME, sagemaker_session)
 
     assert prepare_init_params.called_once
