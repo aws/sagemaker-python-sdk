@@ -1722,11 +1722,14 @@ class Framework(EstimatorBase):
             code_bucket = self.sagemaker_session.default_bucket()
             code_s3_prefix = "{}/{}".format(self._current_job_name, "source")
             kms_key = None
-
         elif self.code_location is None:
             code_bucket, _ = parse_s3_url(self.output_path)
             code_s3_prefix = "{}/{}".format(self._current_job_name, "source")
             kms_key = self.output_kms_key
+        elif local_mode:
+            code_bucket, key_prefix = parse_s3_url(self.code_location)
+            code_s3_prefix = "/".join(filter(None, [key_prefix, self._current_job_name, "source"]))
+            kms_key = None
         else:
             code_bucket, key_prefix = parse_s3_url(self.code_location)
             code_s3_prefix = "/".join(filter(None, [key_prefix, self._current_job_name, "source"]))
