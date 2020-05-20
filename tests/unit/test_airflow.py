@@ -10,7 +10,6 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-
 from __future__ import absolute_import
 
 import pytest
@@ -20,7 +19,6 @@ from sagemaker import chainer, estimator, model, mxnet, tensorflow, transformer,
 from sagemaker.workflow import airflow
 from sagemaker.amazon import amazon_estimator
 from sagemaker.amazon import knn, linear_learner, ntm, pca
-
 
 REGION = "us-west-2"
 BUCKET_NAME = "output"
@@ -1162,6 +1160,9 @@ def test_transform_config(sagemaker_session):
         content_type="{{ content_type }}",
         compression_type="{{ compression_type }}",
         split_type="{{ split_type }}",
+        input_filter="{{ input_filter }}",
+        output_filter="{{ output_filter }}",
+        join_source="{{ join_source }}",
     )
     expected_config = {
         "TransformJobName": "tensorflow-transform-%s" % TIME_STAMP,
@@ -1190,6 +1191,11 @@ def test_transform_config(sagemaker_session):
         "MaxPayloadInMB": "{{ max_payload }}",
         "Environment": {"{{ key }}": "{{ value }}"},
         "Tags": [{"{{ key }}": "{{ value }}"}],
+        "DataProcessing": {
+            "InputFilter": "{{ input_filter }}",
+            "JoinSource": "{{ join_source }}",
+            "OutputFilter": "{{ output_filter }}",
+        },
     }
 
     assert config == expected_config
@@ -1238,6 +1244,9 @@ def test_transform_config_from_framework_estimator(ecr_prefix, sagemaker_session
         instance_count="{{ instance_count }}",
         instance_type="ml.p2.xlarge",
         data=transform_data,
+        input_filter="{{ input_filter }}",
+        output_filter="{{ output_filter }}",
+        join_source="{{ join_source }}",
     )
     expected_config = {
         "Model": {
@@ -1272,6 +1281,11 @@ def test_transform_config_from_framework_estimator(ecr_prefix, sagemaker_session
                 "InstanceType": "ml.p2.xlarge",
             },
             "Environment": {},
+            "DataProcessing": {
+                "InputFilter": "{{ input_filter }}",
+                "JoinSource": "{{ join_source }}",
+                "OutputFilter": "{{ output_filter }}",
+            },
         },
     }
 
