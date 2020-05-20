@@ -1244,6 +1244,9 @@ def test_transform_config_from_framework_estimator(ecr_prefix, sagemaker_session
         instance_count="{{ instance_count }}",
         instance_type="ml.p2.xlarge",
         data=transform_data,
+        input_filter="{{ input_filter }}",
+        output_filter="{{ output_filter }}",
+        join_source="{{ join_source }}",
     )
     expected_config = {
         "Model": {
@@ -1278,6 +1281,11 @@ def test_transform_config_from_framework_estimator(ecr_prefix, sagemaker_session
                 "InstanceType": "ml.p2.xlarge",
             },
             "Environment": {},
+        },
+        "DataProcessing": {
+            "InputFilter": "{{ input_filter }}",
+            "JoinSource": "{{ join_source }}",
+            "OutputFilter": "{{ output_filter }}",
         },
     }
 
