@@ -732,6 +732,26 @@ You can install all necessary for this feature dependencies using pip:
 
     pip install 'sagemaker[local]' --upgrade
 
+If you want to keep everything local, and not use Amazon S3 either, you can enable "local code" in one of two ways:
+
+- Create a file at ``~/.sagemaker/config.yaml`` that contains:
+
+.. code:: yaml
+
+    local:
+      local_code: true
+
+- Create a ``LocalSession`` and configure it directly:
+
+.. code:: python
+
+    from sagemaker.local import LocalSession
+
+    sagemaker_session = LocalSession()
+    sagemaker_session.config = {'local': {'local_code': True}}
+
+    # pass sagemaker_session to your estimator or model
+
 We can take the example in  `Using Estimators <#using-estimators>`__ , and use either ``local`` or ``local_gpu`` as the instance type.
 
 .. code:: python
