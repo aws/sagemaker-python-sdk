@@ -37,7 +37,6 @@ required_packages = [
     "boto3>=1.13.6",
     "numpy>=1.9.0",
     "protobuf>=3.1",
-    "scipy>=0.19.0",
     "protobuf3-to-dict>=0.1.5",
     "smdebug-rulesconfig==0.1.2",
     "importlib-metadata>=1.4.0",

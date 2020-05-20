@@ -14,13 +14,14 @@
 from __future__ import absolute_import
 
 import io
+import logging
 import struct
 import sys
 
 import numpy as np
-from scipy.sparse import issparse
 
 from sagemaker.amazon.record_pb2 import Record
+from sagemaker.utils import DeferredError
 
 
 class numpy_to_record_serializer(object):
@@ -171,8 +172,14 @@ def write_spmatrix_to_sparse_tensor(file, array, labels=None):
         array:
         labels:
     """
+    try:
+        import scipy
+    except ImportError as e:
+        logging.warning("urllib3 failed to import. Local mode features will be impaired or broken.")
+        # Any subsequent attempt to use urllib3 will raise the ImportError
+        scipy = DeferredError(e)
 
-    if not issparse(array):
+    if not scipy.sparse.issparse(array):
         raise TypeError("Array must be sparse")
 
     # Validate shape of array and labels, resolve array and label types

@@ -1,4 +1,3 @@
 sphinx==2.2.2
 numpy
-scipy
 requests==2.20
