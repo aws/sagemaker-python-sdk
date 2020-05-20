@@ -39,6 +39,7 @@ from sagemaker.fw_utils import (
     UploadedCode,
     validate_source_dir,
     _region_supports_debugger,
+    parameter_v2_rename_warning,
 )
 from sagemaker.job import _Job
 from sagemaker.local import LocalSession
@@ -1273,6 +1274,7 @@ class Estimator(EstimatorBase):
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_AlgorithmSpecification.html#SageMaker-Type-AlgorithmSpecification-EnableSageMakerMetricsTimeSeries
                 (default: ``None``).
         """
+        logging.warning(parameter_v2_rename_warning("image_name", "image_uri"))
         self.image_name = image_name
         self.hyperparam_dict = hyperparameters.copy() if hyperparameters else {}
         super(Estimator, self).__init__(
@@ -1637,6 +1639,8 @@ class Framework(EstimatorBase):
         self.container_log_level = container_log_level
         self.code_location = code_location
         self.image_name = image_name
+        if image_name is not None:
+            logging.warning(parameter_v2_rename_warning("image_name", "image_uri"))
 
         self.uploaded_code = None
 
@@ -1722,11 +1726,14 @@ class Framework(EstimatorBase):
             code_bucket = self.sagemaker_session.default_bucket()
             code_s3_prefix = "{}/{}".format(self._current_job_name, "source")
             kms_key = None
-
         elif self.code_location is None:
             code_bucket, _ = parse_s3_url(self.output_path)
             code_s3_prefix = "{}/{}".format(self._current_job_name, "source")
             kms_key = self.output_kms_key
+        elif local_mode:
+            code_bucket, key_prefix = parse_s3_url(self.code_location)
+            code_s3_prefix = "/".join(filter(None, [key_prefix, self._current_job_name, "source"]))
+            kms_key = None
         else:
             code_bucket, key_prefix = parse_s3_url(self.code_location)
             code_s3_prefix = "/".join(filter(None, [key_prefix, self._current_job_name, "source"]))

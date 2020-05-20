@@ -1,5 +1,30 @@
 # Changelog
 
+## v1.58.4 (2020-05-20)
+
+### Bug Fixes and Other Changes
+
+ * update AutoML default max_candidate value to use the service default
+ * add describe_transform_job in session class
+
+### Documentation Changes
+
+ * clarify support for requirements.txt in Tensorflow docs
+
+### Testing and Release Infrastructure
+
+ * wait for DisassociateTrialComponent to take effect in experiment integ test cleanup
+
+## v1.58.3 (2020-05-19)
+
+### Bug Fixes and Other Changes
+
+ * update DatasetFormat key name for sagemakerCaptureJson
+
+### Documentation Changes
+
+ * update Processing job max_runtime_in_seconds docstring
+
 ## v1.58.2.post0 (2020-05-18)
 
 ### Documentation Changes

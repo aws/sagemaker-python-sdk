@@ -18,7 +18,7 @@ from sagemaker import s3_input
 from sagemaker.inputs import FileSystemInput
 
 
-def test_s3_input_all_defaults():
+def test_s3_input_all_defaults(caplog):
     prefix = "pre"
     actual = s3_input(s3_data=prefix)
     expected = {
@@ -31,6 +31,11 @@ def test_s3_input_all_defaults():
         }
     }
     assert actual.config == expected
+
+    warning_message = (
+        "'s3_input' class will be renamed to 'TrainingInput' in SageMaker Python SDK v2."
+    )
+    assert warning_message in caplog.text
 
 
 def test_s3_input_all_arguments():
