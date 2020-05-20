@@ -736,10 +736,10 @@ If you want to keep everything local, and not use Amazon S3 either, you can enab
 
 - Create a file at ``~/.sagemaker/config.yaml`` that contains:
 
-.. code::
+.. code:: yaml
 
     local:
-      local_code: True
+      local_code: true
 
 - Create a ``LocalSession`` and configure it directly:
 
