@@ -14,8 +14,8 @@
 from __future__ import absolute_import
 
 import logging
-import importlib_metadata
 import sys
+import importlib_metadata
 
 from sagemaker import estimator, parameter, tuner  # noqa: F401
 from sagemaker.amazon.kmeans import KMeans, KMeansModel, KMeansPredictor  # noqa: F401
