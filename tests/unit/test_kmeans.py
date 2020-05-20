@@ -82,7 +82,7 @@ def test_init_required_named(sagemaker_session):
     assert kmeans.k == ALL_REQ_ARGS["k"]
 
 
-def test_all_hyperparameters(sagemaker_session, caplog):
+def test_all_hyperparameters(sagemaker_session):
     kmeans = KMeans(
         sagemaker_session=sagemaker_session,
         init_method="random",
@@ -109,12 +109,6 @@ def test_all_hyperparameters(sagemaker_session, caplog):
         eval_metrics='["msd", "ssd"]',
         force_dense="True",
     )
-
-    warning_message = (
-        "Parameter 'eval_metrics' hyperparameter will be deprecated for 1P estimators "
-        "in SageMaker Python SDK v2."
-    )
-    assert warning_message in caplog.text
 
 
 def test_image(sagemaker_session):

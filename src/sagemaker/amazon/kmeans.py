@@ -13,8 +13,6 @@
 """Placeholder docstring"""
 from __future__ import absolute_import
 
-import logging
-
 from sagemaker.amazon.amazon_estimator import AmazonAlgorithmEstimatorBase, registry
 from sagemaker.amazon.common import numpy_to_record_serializer, record_deserializer
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
@@ -23,9 +21,6 @@ from sagemaker.predictor import RealTimePredictor
 from sagemaker.model import Model
 from sagemaker.session import Session
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
-
-
-logger = logging.getLogger("sagemaker")
 
 
 class KMeans(AmazonAlgorithmEstimatorBase):
@@ -158,12 +153,6 @@ class KMeans(AmazonAlgorithmEstimatorBase):
         self.epochs = epochs
         self.center_factor = center_factor
         self.eval_metrics = eval_metrics
-
-        if eval_metrics is not None:
-            logger.warning(
-                "Parameter 'eval_metrics' hyperparameter will be deprecated for 1P estimators "
-                "in SageMaker Python SDK v2."
-            )
 
     def create_model(self, vpc_config_override=VPC_CONFIG_DEFAULT, **kwargs):
         """Return a :class:`~sagemaker.amazon.kmeans.KMeansModel` referencing
