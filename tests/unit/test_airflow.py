@@ -1281,11 +1281,11 @@ def test_transform_config_from_framework_estimator(ecr_prefix, sagemaker_session
                 "InstanceType": "ml.p2.xlarge",
             },
             "Environment": {},
-        },
-        "DataProcessing": {
-            "InputFilter": "{{ input_filter }}",
-            "JoinSource": "{{ join_source }}",
-            "OutputFilter": "{{ output_filter }}",
+            "DataProcessing": {
+                "InputFilter": "{{ input_filter }}",
+                "JoinSource": "{{ join_source }}",
+                "OutputFilter": "{{ output_filter }}",
+            },
         },
     }
 
