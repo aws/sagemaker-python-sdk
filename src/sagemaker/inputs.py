@@ -13,8 +13,12 @@
 """Amazon SageMaker channel configurations for S3 data sources and file system data sources"""
 from __future__ import absolute_import, print_function
 
+import logging
+
 FILE_SYSTEM_TYPES = ["FSxLustre", "EFS"]
 FILE_SYSTEM_ACCESS_MODES = ["ro", "rw"]
+
+logger = logging.getLogger("sagemaker")
 
 
 class s3_input(object):
@@ -76,6 +80,9 @@ class s3_input(object):
                 this channel. See the SageMaker API documentation for more info:
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_ShuffleConfig.html
         """
+        logger.warning(
+            "'s3_input' class will be renamed to 'TrainingInput' in SageMaker Python SDK v2."
+        )
 
         self.config = {
             "DataSource": {"S3DataSource": {"S3DataType": s3_data_type, "S3Uri": s3_data}}

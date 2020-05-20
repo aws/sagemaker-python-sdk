@@ -34,7 +34,10 @@ This is for the source code used for the entry point with an ``Estimator``. It c
 instantiated with positional or keyword arguments.
 """
 
-EMPTY_FRAMEWORK_VERSION_WARNING = "No framework_version specified, defaulting to version {}."
+EMPTY_FRAMEWORK_VERSION_WARNING = (
+    "No framework_version specified, defaulting to version {}. "
+    "framework_version will be required in SageMaker Python SDK v2."
+)
 LATER_FRAMEWORK_VERSION_WARNING = (
     "This is not the latest supported version. "
     "If you would like to use version {latest}, "
@@ -51,6 +54,10 @@ PARAMETER_SERVER_MULTI_GPU_WARNING = (
     "Distributed training with the default parameter server configuration will not "
     "fully leverage all GPU cores; the parameter server will be configured to run "
     "only one worker per host regardless of the number of GPUs."
+)
+PARAMETER_V2_RENAME_WARNING = (
+    "Parameter {v1_parameter_name} will be renamed to {v2_parameter_name} "
+    "in SageMaker Python SDK v2."
 )
 
 
@@ -253,6 +260,11 @@ def create_image_uri(
     Returns:
         str: The appropriate image URI based on the given parameters.
     """
+    logger.warning(
+        "'create_image_uri' will be deprecated in favor of 'ImageURIProvider' class "
+        "in SageMaker Python SDK v2."
+    )
+
     optimized_families = optimized_families or []
 
     if py_version and py_version not in VALID_PY_VERSIONS:
@@ -644,6 +656,17 @@ def python_deprecation_warning(framework, latest_supported_version):
     """
     return PYTHON_2_DEPRECATION_WARNING.format(
         framework=framework, latest_supported_version=latest_supported_version
+    )
+
+
+def parameter_v2_rename_warning(v1_parameter_name, v2_parameter_name):
+    """
+    Args:
+        v1_parameter_name: parameter name used in SageMaker Python SDK v1
+        v2_parameter_name: parameter name used in SageMaker Python SDK v2
+    """
+    return PARAMETER_V2_RENAME_WARNING.format(
+        v1_parameter_name=v1_parameter_name, v2_parameter_name=v2_parameter_name
     )
 
 
