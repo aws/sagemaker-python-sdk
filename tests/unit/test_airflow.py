@@ -1194,7 +1194,7 @@ def test_transform_config(sagemaker_session):
         "DataProcessing": {
             "InputFilter": "{{ input_filter }}",
             "JoinSource": "{{ join_source }}",
-            "OutputFilter": "{{ output_filter }}"
+            "OutputFilter": "{{ output_filter }}",
         },
     }
 
