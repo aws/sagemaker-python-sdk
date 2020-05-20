@@ -179,7 +179,7 @@ class S3Downloader(object):
         """
         if session is not None:
             _session_v2_rename_warning(session)
-            
+
         sagemaker_session = session or Session()
         bucket, key_prefix = parse_s3_url(url=s3_uri)
 
