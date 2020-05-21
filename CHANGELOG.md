@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.59.0 (2020-05-21)
+
+### Features
+
+ * MXNet elastic inference support
+
+### Bug Fixes and Other Changes
+
+ * add Batch Transform data processing options to Airflow config
+ * add v2 warning messages
+ * don't try to use local output path for KMS key in Local Mode
+
+### Documentation Changes
+
+ * add instructions for how to enable 'local code' for Local Mode
+
 ## v1.58.4 (2020-05-20)
 
 ### Bug Fixes and Other Changes
