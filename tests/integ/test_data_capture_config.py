@@ -13,11 +13,13 @@
 from __future__ import absolute_import
 
 import os
+import pytest
 
 import sagemaker
 import tests.integ
 import tests.integ.timeout
 from sagemaker.model_monitor import DataCaptureConfig, NetworkConfig
+from sagemaker.tensorflow import TensorFlow
 from sagemaker.tensorflow.serving import Model
 from sagemaker.utils import unique_name_from_base
 from tests.integ.retry import retries
