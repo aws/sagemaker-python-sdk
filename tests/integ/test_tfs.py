@@ -26,19 +26,6 @@ import tests.integ.timeout
 from sagemaker.tensorflow.serving import Model, Predictor
 
 
-LATEST_1x_SERVING_VERSION = "1.15.2"
-LATEST_SERVING_VERSION = "2.1.0"
-
-
-@pytest.fixture(scope="module", params=[LATEST_1x_SERVING_VERSION, LATEST_SERVING_VERSION])
-def tf_full_version(request):
-    tf_version = request.config.getoption("--tf-full-version")
-    if tf_version is None:
-        return request.param
-    else:
-        return tf_version
-
-
 @pytest.fixture(scope="module")
 def tfs_predictor(sagemaker_session, tf_full_version):
     endpoint_name = sagemaker.utils.unique_name_from_base("sagemaker-tensorflow-serving")

@@ -40,13 +40,22 @@ TAGS = [{"Key": "some-key", "Value": "some-value"}]
 PY37_SUPPORTED_VERSION = [TensorFlow._LATEST_1X_VERSION, TensorFlow.LATEST_VERSION]
 
 
+@pytest.fixture(scope="module", params=[TensorFlow._LATEST_1X_VERSION, TensorFlow.LATEST_VERSION])
+def tf_training_version(request):
+    tf_version = request.config.getoption("--tf-full-version")
+    if tf_version is None:
+        return request.param
+    else:
+        return tf_version
+
+
 @pytest.fixture(scope="module")
 def py_version(tf_full_version):
     return "py37" if tf_full_version in PY37_SUPPORTED_VERSION else tests.integ.PYTHON_VERSION
 
 
 def test_mnist_with_checkpoint_config(
-    sagemaker_session, instance_type, tf_full_version, py_version
+    sagemaker_session, instance_type, tf_training_version, py_version
 ):
     checkpoint_s3_uri = "s3://{}/checkpoints/tf-{}".format(
         sagemaker_session.default_bucket(), sagemaker_timestamp()
@@ -59,7 +68,7 @@ def test_mnist_with_checkpoint_config(
         train_instance_type=instance_type,
         sagemaker_session=sagemaker_session,
         script_mode=True,
-        framework_version=tf_full_version,
+        framework_version=tf_training_version,
         py_version=py_version,
         metric_definitions=[{"Name": "train:global_steps", "Regex": r"global_step\/sec:\s(.*)"}],
         checkpoint_s3_uri=checkpoint_s3_uri,
@@ -132,7 +141,7 @@ def test_server_side_encryption(sagemaker_session, tf_full_version, py_version):
 
 
 @pytest.mark.canary_quick
-def test_mnist_distributed(sagemaker_session, instance_type, tf_full_version, py_version):
+def test_mnist_distributed(sagemaker_session, instance_type, tf_training_version, py_version):
     estimator = TensorFlow(
         entry_point=SCRIPT,
         role=ROLE,
@@ -141,7 +150,7 @@ def test_mnist_distributed(sagemaker_session, instance_type, tf_full_version, py
         sagemaker_session=sagemaker_session,
         py_version=py_version,
         script_mode=True,
-        framework_version=tf_full_version,
+        framework_version=tf_training_version,
         distributions=PARAMETER_SERVER_DISTRIBUTION,
     )
     inputs = estimator.sagemaker_session.upload_data(
@@ -167,7 +176,7 @@ def test_mnist_async(sagemaker_session, cpu_instance_type, tf_full_version, py_v
         sagemaker_session=sagemaker_session,
         script_mode=True,
         # testing py-sdk functionality, no need to run against all TF versions
-        framework_version=TensorFlow.LATEST_VERSION,
+        framework_version=TensorFlow.LATEST_SERVING_VERSION,
         tags=TAGS,
     )
     inputs = estimator.sagemaker_session.upload_data(

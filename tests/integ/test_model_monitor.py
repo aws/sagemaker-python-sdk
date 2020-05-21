@@ -86,18 +86,6 @@ INTEG_TEST_MONITORING_OUTPUT_BUCKET = "integ-test-monitoring-output-bucket"
 
 FIVE_MINUTE_CRON_EXPRESSION = "cron(0/5 * ? * * *)"
 
-LATEST_1x_SERVING_VERSION = "1.15.2"
-LATEST_SERVING_VERSION = "2.1.0"
-
-
-@pytest.fixture(scope="module", params=[LATEST_1x_SERVING_VERSION, LATEST_SERVING_VERSION])
-def tf_full_version(request):
-    tf_version = request.config.getoption("--tf-full-version")
-    if tf_version is None:
-        return request.param
-    else:
-        return tf_version
-
 
 @pytest.fixture(scope="module")
 def predictor(sagemaker_session, tf_full_version):

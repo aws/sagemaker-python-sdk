@@ -259,7 +259,9 @@ def sklearn_full_version(request):
     return request.config.getoption("--sklearn-full-version")
 
 
-@pytest.fixture(scope="module", params=[TensorFlow._LATEST_1X_VERSION, TensorFlow.LATEST_VERSION])
+@pytest.fixture(
+    scope="module", params=[TensorFlow._LATEST_1X_VERSION, TensorFlow.LATEST_SERVING_VERSION]
+)
 def tf_full_version(request):
     tf_version = request.config.getoption("--tf-full-version")
     if tf_version is None:
