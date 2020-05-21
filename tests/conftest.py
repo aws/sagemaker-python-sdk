@@ -260,7 +260,7 @@ def sklearn_full_version(request):
 
 
 @pytest.fixture(
-    scope="module", params=[TensorFlow._LATEST_1X_VERSION, TensorFlow.LATEST_SERVING_VERSION]
+    scope="module", params=[TensorFlow._LATEST_1X_VERSION, TensorFlow.LATEST_VERSION]
 )
 def tf_full_version(request):
     tf_version = request.config.getoption("--tf-full-version")
