@@ -495,6 +495,7 @@ def test_get_xgboost_image_uri_warning_with_legacy(caplog):
     get_image_uri(REGION, "xgboost", 1)
     assert "There is a more up to date SageMaker XGBoost image." in caplog.text
 
+
 def test_get_xgboost_image_uri_warning_with_no_sagemaker_version(caplog):
     get_image_uri(REGION, "xgboost", "0.90")
     assert "There is a more up to date SageMaker XGBoost image." in caplog.text
