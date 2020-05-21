@@ -201,6 +201,7 @@ class TensorFlow(Framework):
     __framework_name__ = "tensorflow"
 
     LATEST_VERSION = defaults.LATEST_VERSION
+    LATEST_SERVING_VERSION = defaults.LATEST_SERVING_VERSION
 
     _LATEST_1X_VERSION = "1.15.2"
 
