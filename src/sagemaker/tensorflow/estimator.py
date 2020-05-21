@@ -312,6 +312,7 @@ class TensorFlow(Framework):
             )
 
         if distributions is not None:
+            logger.warning(fw.parameter_v2_rename_warning("distribution", distributions))
             train_instance_type = kwargs.get("train_instance_type")
             fw.warn_if_parameter_server_with_multi_gpu(
                 training_instance_type=train_instance_type, distributions=distributions
@@ -386,7 +387,9 @@ class TensorFlow(Framework):
 
         if (not self._script_mode_enabled()) and self._only_script_mode_supported():
             logger.warning(
-                "Legacy mode is deprecated in versions 1.13 and higher. Using script mode instead."
+                "Legacy mode is deprecated in versions 1.13 and higher. Using script mode instead. "
+                "Legacy mode and its training parameters will be deprecated in "
+                "SageMaker Python SDK v2. Please use TF 1.13 or higher and script mode."
             )
             self.script_mode = True
 
