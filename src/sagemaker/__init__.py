@@ -13,6 +13,8 @@
 """Placeholder docstring"""
 from __future__ import absolute_import
 
+import logging
+import sys
 import importlib_metadata
 
 from sagemaker import estimator, parameter, tuner  # noqa: F401
@@ -61,3 +63,10 @@ from sagemaker.automl.automl import AutoML, AutoMLJob, AutoMLInput  # noqa: F401
 from sagemaker.automl.candidate_estimator import CandidateEstimator, CandidateStep  # noqa: F401
 
 __version__ = importlib_metadata.version("sagemaker")
+
+if sys.version[0] == "2":
+    logging.getLogger("sagemaker").warning(
+        "SageMaker Python SDK v2 will no longer support Python 2. "
+        "Please see https://github.com/aws/sagemaker-python-sdk/issues/1459 "
+        "for more information"
+    )

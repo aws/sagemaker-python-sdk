@@ -531,3 +531,12 @@ def test_is_latest_xgboost_version():
     assert _is_latest_xgboost_version("0.90-1-cpu-py3") is False
     assert _is_latest_xgboost_version("0.90-2-cpu-py3") is False
     assert _is_latest_xgboost_version(XGBOOST_LATEST_VERSION) is True
+
+
+def test_get_image_uri_warn(caplog):
+    warning_message = (
+        "'get_image_uri' method will be deprecated in favor of 'ImageURIProvider' class "
+        "in SageMaker Python SDK v2."
+    )
+    get_image_uri("us-west-2", "kmeans", "latest")
+    assert warning_message in caplog.text
