@@ -951,4 +951,9 @@ For information about the different TensorFlow-related classes in the SageMaker 
 SageMaker TensorFlow Docker containers
 **************************************
 
-For information about SageMaker TensorFlow Docker containers and their dependencies, see `SageMaker TensorFlow Docker containers <https://github.com/aws/sagemaker-python-sdk/tree/master/src/sagemaker/tensorflow#sagemaker-tensorflow-docker-containers>`_.
+For information about the SageMaker TensorFlow containers, see:
+
+- `SageMaker TensorFlow training toolkit <https://github.com/aws/sagemaker-tensorflow-container>`_
+- `SageMaker TensorFlow serving toolkit <https://github.com/aws/sagemaker-tensorflow-serving-container>`_
+- `Deep Learning Container (DLC) Dockerfiles for TensorFlow <https://github.com/aws/deep-learning-containers/tree/master/tensorflow>`_
+- `Deep Learning Container (DLC) Images <https://docs.aws.amazon.com/deep-learning-containers/latest/devguide/deep-learning-containers-images.html>`_ and `release notes <https://docs.aws.amazon.com/deep-learning-containers/latest/devguide/dlc-release-notes.html>`_
