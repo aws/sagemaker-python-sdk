@@ -22,6 +22,7 @@ import tests.integ
 import tests.integ.timeout
 
 from sagemaker.s3 import S3Uploader
+from sagemaker.tensorflow import TensorFlow
 from datetime import datetime, timedelta
 
 from tests.integ import DATA_DIR
@@ -88,7 +89,14 @@ FIVE_MINUTE_CRON_EXPRESSION = "cron(0/5 * ? * * *)"
 
 
 @pytest.fixture(scope="module")
-def predictor(sagemaker_session, tf_full_version):
+def tf_serving_version(tf_full_version):
+    if tf_full_version == TensorFlow.LATEST_VERSION:
+        return TensorFlow.LATEST_SERVING_VERSION
+    return tf_full_version
+
+
+@pytest.fixture(scope="module")
+def predictor(sagemaker_session, tf_serving_version):
     endpoint_name = unique_name_from_base("sagemaker-tensorflow-serving")
     model_data = sagemaker_session.upload_data(
         path=os.path.join(tests.integ.DATA_DIR, "tensorflow-serving-test-model.tar.gz"),
@@ -100,7 +108,7 @@ def predictor(sagemaker_session, tf_full_version):
         model = Model(
             model_data=model_data,
             role=ROLE,
-            framework_version=tf_full_version,
+            framework_version=tf_serving_version,
             sagemaker_session=sagemaker_session,
         )
         predictor = model.deploy(
