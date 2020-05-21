@@ -51,7 +51,7 @@ def tf_training_version(request):
 
 @pytest.fixture(scope="module")
 def py_version(tf_training_version):
-    return "py37" if tf_full_version in PY37_SUPPORTED_VERSION else tests.integ.PYTHON_VERSION
+    return "py37" if tf_training_version in PY37_SUPPORTED_VERSION else tests.integ.PYTHON_VERSION
 
 
 def test_mnist_with_checkpoint_config(
