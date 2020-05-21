@@ -205,7 +205,9 @@ def test_mnist_async(sagemaker_session, cpu_instance_type, tf_full_version, py_v
         _assert_model_name_match(sagemaker_session.sagemaker_client, endpoint_name, model_name)
 
 
-def test_deploy_with_input_handlers(sagemaker_session, instance_type, tf_serving_version, py_version):
+def test_deploy_with_input_handlers(
+    sagemaker_session, instance_type, tf_serving_version, py_version
+):
     estimator = TensorFlow(
         entry_point="training.py",
         source_dir=TFS_RESOURCE_PATH,

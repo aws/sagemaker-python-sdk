@@ -23,6 +23,7 @@ import sagemaker.predictor
 import sagemaker.utils
 import tests.integ
 import tests.integ.timeout
+from sagemaker.tensorflow import TensorFlow
 from sagemaker.tensorflow.serving import Model, Predictor
 
 
