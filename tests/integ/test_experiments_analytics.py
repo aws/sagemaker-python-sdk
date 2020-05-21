@@ -138,6 +138,7 @@ def _delete_resources(sagemaker_client, experiment_name, trials):
     for trial, tc in trials.items():
         with _ignore_resource_not_found(sagemaker_client):
             sagemaker_client.disassociate_trial_component(TrialName=trial, TrialComponentName=tc)
+            _wait_for_trial_component_disassociation(sagemaker_client, tc)
 
         with _ignore_resource_not_found(sagemaker_client):
             sagemaker_client.delete_trial_component(TrialComponentName=tc)
@@ -155,3 +156,14 @@ def _ignore_resource_not_found(sagemaker_client):
         yield
     except sagemaker_client.exceptions.ResourceNotFound:
         pass
+
+
+def _wait_for_trial_component_disassociation(sagemaker_client, tc):
+    # Sometimes it can take a bit of waiting for the trial component to be disassociated
+    for _ in range(5):
+        # Check that the trial component has been disassociated from the trial
+        trials = sagemaker_client.list_trials(TrialComponentName=tc)["TrialSummaries"]
+        if len(trials) == 0:
+            break
+
+        time.sleep(1)
