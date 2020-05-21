@@ -636,9 +636,10 @@ def get_image_uri(region_name, repo_name, repo_version=1):
                 if repo_version == version.split("-")[0]
             ]
             if xgboost_version_matches:
-                # Assumes that XGBOOST_SUPPORTED_VERSION is sorted from oldest version to latest,
-                # and the latest version is at the end of the list.
-                repo_version = xgboost_version_matches[-1]
+                # Assumes that XGBOOST_SUPPORTED_VERSION is sorted from oldest version to latest.
+                # When SageMaker version is not specified, we use the oldest one that matches
+                # XGBoost version for backward compatibility.
+                repo_version = xgboost_version_matches[0]
 
         supported_framework_versions = [
             version

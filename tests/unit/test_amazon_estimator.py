@@ -475,7 +475,7 @@ def test_get_xgboost_image_uri():
     )
     assert (
         get_image_uri(REGION, "xgboost", "0.90")
-        == "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost:0.90-2-cpu-py3"
+        == "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost:0.90-1-cpu-py3"
     )
     assert (
         get_image_uri(REGION, "xgboost", "1.0-1")
@@ -527,10 +527,8 @@ def test_is_latest_xgboost_version():
     for version in XGBOOST_SUPPORTED_VERSIONS:
         if version != XGBOOST_LATEST_VERSION:
             assert _is_latest_xgboost_version(version) is False
-
-    assert _is_latest_xgboost_version("0.90-1-cpu-py3") is False
-    assert _is_latest_xgboost_version("0.90-2-cpu-py3") is False
-    assert _is_latest_xgboost_version(XGBOOST_LATEST_VERSION) is True
+        else:
+            assert _is_latest_xgboost_version(version) is True
 
 
 def test_get_image_uri_warn(caplog):
