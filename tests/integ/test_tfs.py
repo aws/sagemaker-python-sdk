@@ -26,7 +26,7 @@ import tests.integ.timeout
 from sagemaker.tensorflow.serving import Model, Predictor
 
 
-LATEST_1x_SERVING_VERSION = "1.5.2"
+LATEST_1x_SERVING_VERSION = "1.15.2"
 LATEST_SERVING_VERSION = "2.1.0"
 
 
