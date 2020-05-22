@@ -23,15 +23,7 @@ import sagemaker.predictor
 import sagemaker.utils
 import tests.integ
 import tests.integ.timeout
-from sagemaker.tensorflow import TensorFlow
 from sagemaker.tensorflow.serving import Model, Predictor
-
-
-@pytest.fixture(scope="module")
-def tf_serving_version(tf_full_version):
-    if tf_full_version == TensorFlow.LATEST_VERSION:
-        return TensorFlow.LATEST_SERVING_VERSION
-    return tf_full_version
 
 
 @pytest.fixture(scope="module")

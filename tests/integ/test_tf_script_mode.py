@@ -40,14 +40,7 @@ TAGS = [{"Key": "some-key", "Value": "some-value"}]
 
 
 @pytest.fixture(scope="module")
-def tf_serving_version(tf_full_version):
-    if tf_full_version == TensorFlow.LATEST_VERSION:
-        return TensorFlow.LATEST_SERVING_VERSION
-    return tf_full_version
-
-
-@pytest.fixture(scope="module")
-def py_version(tf_full_version):
+def py_version(tf_full_version, tf_serving_version):
     return "py37" if tf_full_version == tf_serving_version else tests.integ.PYTHON_VERSION
 
 
@@ -66,7 +59,7 @@ def test_mnist_with_checkpoint_config(
         sagemaker_session=sagemaker_session,
         script_mode=True,
         framework_version=tf_full_version,
-        py_version="py37",
+        py_version=py_version,
         metric_definitions=[{"Name": "train:global_steps", "Regex": r"global_step\/sec:\s(.*)"}],
         checkpoint_s3_uri=checkpoint_s3_uri,
         checkpoint_local_path=checkpoint_local_path,
@@ -145,7 +138,7 @@ def test_mnist_distributed(sagemaker_session, instance_type, tf_full_version, py
         train_instance_count=2,
         train_instance_type=instance_type,
         sagemaker_session=sagemaker_session,
-        py_version="py37",
+        py_version=py_version,
         script_mode=True,
         framework_version=tf_full_version,
         distributions=PARAMETER_SERVER_DISTRIBUTION,

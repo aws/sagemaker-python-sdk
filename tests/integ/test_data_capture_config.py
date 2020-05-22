@@ -13,13 +13,11 @@
 from __future__ import absolute_import
 
 import os
-import pytest
 
 import sagemaker
 import tests.integ
 import tests.integ.timeout
 from sagemaker.model_monitor import DataCaptureConfig, NetworkConfig
-from sagemaker.tensorflow import TensorFlow
 from sagemaker.tensorflow.serving import Model
 from sagemaker.utils import unique_name_from_base
 from tests.integ.retry import retries
@@ -40,13 +38,6 @@ CUSTOM_SAMPLING_PERCENTAGE = 10
 CUSTOM_CAPTURE_OPTIONS = ["REQUEST"]
 CUSTOM_CSV_CONTENT_TYPES = ["text/csvtype1", "text/csvtype2"]
 CUSTOM_JSON_CONTENT_TYPES = ["application/jsontype1", "application/jsontype2"]
-
-
-@pytest.fixture(scope="module")
-def tf_serving_version(tf_full_version):
-    if tf_full_version == TensorFlow.LATEST_VERSION:
-        return TensorFlow.LATEST_SERVING_VERSION
-    return tf_full_version
 
 
 def test_enabling_data_capture_on_endpoint_shows_correct_data_capture_status(

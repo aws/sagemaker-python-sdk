@@ -37,6 +37,7 @@ from sagemaker.mxnet.estimator import MXNet
 from sagemaker.predictor import json_deserializer
 from sagemaker.pytorch import PyTorch
 from sagemaker.tensorflow import TensorFlow
+from sagemaker.tensorflow.defaults import _LATEST_1X_VERSION, LATEST_VERSION
 from sagemaker.tuner import (
     IntegerParameter,
     ContinuousParameter,
@@ -51,7 +52,7 @@ from sagemaker.utils import unique_name_from_base
 
 DATA_PATH = os.path.join(DATA_DIR, "iris", "data")
 
-PY37_SUPPORTED_FRAMEWORK_VERSION = [TensorFlow._LATEST_1X_VERSION, TensorFlow.LATEST_VERSION]
+PY37_SUPPORTED_FRAMEWORK_VERSION = [_LATEST_1X_VERSION, LATEST_VERSION]
 
 
 @pytest.fixture(scope="module")

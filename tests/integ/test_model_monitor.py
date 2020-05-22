@@ -22,7 +22,6 @@ import tests.integ
 import tests.integ.timeout
 
 from sagemaker.s3 import S3Uploader
-from sagemaker.tensorflow import TensorFlow
 from datetime import datetime, timedelta
 
 from tests.integ import DATA_DIR
@@ -86,13 +85,6 @@ CUSTOM_JSON_CONTENT_TYPES = ["application/jsontype1", "application/jsontype2"]
 INTEG_TEST_MONITORING_OUTPUT_BUCKET = "integ-test-monitoring-output-bucket"
 
 FIVE_MINUTE_CRON_EXPRESSION = "cron(0/5 * ? * * *)"
-
-
-@pytest.fixture(scope="module")
-def tf_serving_version(tf_full_version):
-    if tf_full_version == TensorFlow.LATEST_VERSION:
-        return TensorFlow.LATEST_SERVING_VERSION
-    return tf_full_version
 
 
 @pytest.fixture(scope="module")
