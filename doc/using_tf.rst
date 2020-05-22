@@ -21,7 +21,6 @@ For general information about using the SageMaker Python SDK, see :ref:`overview
 
 .. contents::
 
-
 *****************************
 Train a Model with TensorFlow
 *****************************
