@@ -4,9 +4,7 @@ Using PyTorch with the SageMaker Python SDK
 
 With PyTorch Estimators and Models, you can train and host PyTorch models on Amazon SageMaker.
 
-Supported versions of PyTorch: ``0.4.0``, ``1.0.0``, ``1.1.0``, ``1.2.0``, ``1.3.1``, ``1.4.0``, ``1.5.0``.
-
-Supported versions of PyTorch for Elastic Inference: ``1.3.1``.
+For information about supported versions of PyTorch, see the `AWS documentation <https://docs.aws.amazon.com/deep-learning-containers/latest/devguide/deep-learning-containers-images.html>`__.
 
 We recommend that you use the latest supported version because that's where we focus our development efforts.
 
@@ -758,6 +756,9 @@ The following are optional arguments. When you create a ``PyTorch`` object, you 
 SageMaker PyTorch Docker Containers
 ***********************************
 
-For information about SageMaker PyTorch containers, see  `the SageMaker PyTorch container repository <https://github.com/aws/sagemaker-pytorch-container>`_ and `SageMaker PyTorch Serving container repository <https://github.com/aws/sagemaker-pytorch-serving-container>`__.
+For information about the SageMaker PyTorch containers, see:
 
-For information about SageMaker PyTorch container dependencies, see `SageMaker PyTorch Containers <https://github.com/aws/sagemaker-python-sdk/tree/master/src/sagemaker/pytorch#sagemaker-pytorch-docker-containers>`_.
+- `SageMaker PyTorch training toolkit <https://github.com/aws/sagemaker-pytorch-container>`_
+- `SageMaker PyTorch serving toolkit <https://github.com/aws/sagemaker-pytorch-serving-container>`_
+- `Deep Learning Container (DLC) Dockerfiles for PyTorch <https://github.com/aws/deep-learning-containers/tree/master/pytorch>`_
+- `Deep Learning Container (DLC) Images <https://docs.aws.amazon.com/deep-learning-containers/latest/devguide/deep-learning-containers-images.html>`_ and `release notes <https://docs.aws.amazon.com/deep-learning-containers/latest/devguide/dlc-release-notes.html>`_
