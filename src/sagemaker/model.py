@@ -108,6 +108,8 @@ class Model(object):
             model_kms_key (str): KMS key ARN used to encrypt the repacked
                 model archive file if the model is repacked
         """
+        LOGGER.warning(fw_utils.parameter_v2_rename_warning("image", "image_uri"))
+
         self.model_data = model_data
         self.image = image
         self.role = role

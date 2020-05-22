@@ -616,6 +616,11 @@ def get_image_uri(region_name, repo_name, repo_version=1):
         repo_name:
         repo_version:
     """
+    logger.warning(
+        "'get_image_uri' method will be deprecated in favor of 'ImageURIProvider' class "
+        "in SageMaker Python SDK v2."
+    )
+
     if repo_name == "xgboost":
         if not _is_latest_xgboost_version(repo_version):
             logging.warning(
