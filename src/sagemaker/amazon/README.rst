@@ -1,13 +1,13 @@
-
 ===================================
 AWS SageMaker Estimators and Models
 ===================================
 
 Amazon SageMaker provides several built-in machine learning algorithms that you can use for a variety of problem types.
+SageMaker Python SDK includes Estimators for many of these algorithms, including K-means, Principal Components Analysis (PCA),
+Linear Learner, Factorization Machines, Latent Dirichlet Allocation (LDA), Neural Topic Model (NTM), Random Cut Forest,
+k-nearest neighbors (k-NN), Object2Vec, and IP Insights.
 
-The full list of algorithms is available on the AWS website: https://docs.aws.amazon.com/sagemaker/latest/dg/algos.html
-
-SageMaker Python SDK includes Estimator wrappers for the AWS K-means, Principal Components Analysis(PCA), Linear Learner, Factorization Machines, Latent Dirichlet Allocation(LDA), Neural Topic Model(NTM), Random Cut Forest algorithms, k-nearest neighbors (k-NN), Object2Vec, and IP Insights.
+For the full list of algorithms, visit `the AWS documentation <https://docs.aws.amazon.com/sagemaker/latest/dg/algos.html>`_.
 
 Definition and usage
 ~~~~~~~~~~~~~~~~~~~~
