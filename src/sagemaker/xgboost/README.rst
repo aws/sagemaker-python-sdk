@@ -1,10 +1,11 @@
-============================================
+=======================================
 XGBoost SageMaker Estimators and Models
-============================================
+=======================================
 
 With XGBoost Estimators, you can train and host XGBoost models on Amazon SageMaker.
 
-Supported versions of SageMaker XGBoost: ``0.90-1``
+For which XGBoost versions are supported, see `the AWS documentation <https://docs.aws.amazon.com/sagemaker/latest/dg/xgboost.html>`_.
+We recommend that you use the latest supported version because that's where we focus most of our development efforts.
 
 Note that the first part of the version refers to the upstream module version (aka, 0.90), while the second
 part refers to the SageMaker version for the container.
@@ -14,7 +15,7 @@ You can visit the XGBoost repository at https://github.com/dmlc/xgboost
 For information about using XGBoost with the SageMaker Python SDK, see https://sagemaker.readthedocs.io/en/stable/using_xgboost.html.
 
 XGBoost Training Examples
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Amazon provides an example Jupyter notebook that demonstrate end-to-end training on Amazon SageMaker using XGBoost.
 Please refer to:
@@ -25,7 +26,7 @@ These are also available in SageMaker Notebook Instance hosted Jupyter notebooks
 
 
 SageMaker XGBoost Docker Containers
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 When training and deploying training scripts, SageMaker runs your Python script in a Docker container with several
 libraries installed. When creating the Estimator and calling deploy to create the SageMaker Endpoint, you can control

@@ -5,7 +5,6 @@ Use MXNet with the SageMaker Python SDK
 With the SageMaker Python SDK, you can train and host MXNet models on Amazon SageMaker.
 
 For information about supported versions of MXNet, see the `AWS documentation <https://docs.aws.amazon.com/deep-learning-containers/latest/devguide/deep-learning-containers-images.html>`__.
-
 We recommend that you use the latest supported version because that's where we focus our development efforts.
 
 For general information about using the SageMaker Python SDK, see :ref:`overview:Using the SageMaker Python SDK`.

@@ -34,7 +34,7 @@ You can also train and deploy models with **Amazon algorithms**,
 which are scalable implementations of core machine learning algorithms that are optimized for SageMaker and GPU training.
 If you have **your own algorithms** built into SageMaker compatible Docker containers, you can train and host models using these as well.
 
-For detailed API reference please go to: `Read the Docs <https://sagemaker.readthedocs.io>`_
+For detailed documentation, including the API reference, see `Read the Docs <https://sagemaker.readthedocs.io>`_.
 
 Table of Contents
 -----------------
@@ -45,7 +45,7 @@ Table of Contents
 #. `Using TensorFlow <https://sagemaker.readthedocs.io/en/stable/using_tf.html>`__
 #. `Using Chainer <https://sagemaker.readthedocs.io/en/stable/using_chainer.html>`__
 #. `Using PyTorch <https://sagemaker.readthedocs.io/en/stable/using_pytorch.html>`__
-#. `Scikit-learn SageMaker Estimators <#scikit-learn-sagemaker-estimators>`__
+#. `Using Scikit-learn <https://sagemaker.readthedocs.io/en/stable/using_sklearn.html>`__
 #. `Using XGBoost <https://sagemaker.readthedocs.io/en/stable/using_xgboost.html>`__
 #. `SageMaker Reinforcement Learning Estimators <https://sagemaker.readthedocs.io/en/stable/using_rl.html>`__
 #. `SageMaker SparkML Serving <#sagemaker-sparkml-serving>`__
@@ -196,21 +196,6 @@ Preview the site with a Python web server:
     python -m http.server 8000
 
 View the website by visiting http://localhost:8000
-
-Scikit-learn SageMaker Estimators
----------------------------------
-
-With Scikit-learn SageMaker Estimators, you can train and host Scikit-learn models on Amazon SageMaker.
-
-Supported versions of Scikit-learn: ``0.20.0``.
-
-We recommend that you use the latest supported version, because that's where we focus most of our development efforts.
-
-For more information about Scikit-learn, see https://scikit-learn.org/stable/
-
-For more information about Scikit-learn SageMaker Estimators, see `Using Scikit-learn with the SageMaker Python SDK`_.
-
-.. _Using Scikit-learn with the SageMaker Python SDK: https://sagemaker.readthedocs.io/en/stable/using_sklearn.html
 
 SageMaker SparkML Serving
 -------------------------

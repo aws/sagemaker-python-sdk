@@ -2,9 +2,10 @@
 Using TensorFlow with the SageMaker Python SDK
 ##############################################
 
-TensorFlow SageMaker Estimators allow you to run your own TensorFlow
-training algorithms on SageMaker Learner, and to host your own TensorFlow
-models on SageMaker Hosting.
+With the SageMaker Python SDK, you can train and host TensorFlow models on Amazon SageMaker.
+
+For information about supported versions of TensorFlow, see the `AWS documentation <https://docs.aws.amazon.com/deep-learning-containers/latest/devguide/deep-learning-containers-images.html>`__.
+We recommend that you use the latest supported version because that's where we focus our development efforts.
 
 For general information about using the SageMaker Python SDK, see :ref:`overview:Using the SageMaker Python SDK`.
 
@@ -38,7 +39,7 @@ To train a TensorFlow model by using the SageMaker Python SDK:
 3. |call fit|_
 
 Prepare a Script Mode Training Script
-======================================
+=====================================
 
 Your TensorFlow training script must be a Python 2.7-, 3.6- or 3.7-compatible source file.
 

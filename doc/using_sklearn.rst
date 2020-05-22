@@ -4,7 +4,9 @@ Using Scikit-learn with the SageMaker Python SDK
 
 With Scikit-learn Estimators, you can train and host Scikit-learn models on Amazon SageMaker.
 
-For information about supported versions of Scikit-learn, see the `Chainer README <https://github.com/aws/sagemaker-python-sdk/blob/master/src/sagemaker/sklearn/README.rst>`__.
+For information about supported versions of Scikit-learn, see the `Scikit-learn README <https://github.com/aws/sagemaker-python-sdk/blob/master/src/sagemaker/sklearn/README.rst>`__.
+
+We recommend that you use the latest supported version because that's where we focus most of our development efforts.
 
 For general information about using the SageMaker Python SDK, see :ref:`overview:Using the SageMaker Python SDK`.
 
