@@ -621,11 +621,13 @@ The following content formats are supported without custom intput and output han
 * JSON - specify ``application/json`` as the value of the ``content_type`` parameter.
 * JSON lines - specify ``application/jsonlines`` as the value of the ``content_type`` parameter.
 
-For detailed information about how TensorFlow Serving formats these data types for input and output, see :ref:`using_tf:TensorFlow Serving Input and Output`.
+For detailed information about how TensorFlow Serving formats these data types for input and output, see :ref:`tensorflow-serving-input-output`.
 
 You can also accept any custom data format by writing input and output functions, and include them in the ``inference.py`` file in your model.
-For information, see :ref:`using_tf:Create Python Scripts for Custom Input and Output Formats`.
+For information, see :ref:`custom-input-output`.
 
+
+.. _tensorflow-serving-input-output:
 
 TensorFlow Serving Input and Output
 ===================================
@@ -750,6 +752,7 @@ convert them to CSV, but the client-size CSV conversion is more sophisticated th
 CSV parsing on the Endpoint, so if you encounter conversion problems, try using one of the
 JSON options instead.
 
+.. _custom-input-output:
 
 Create Python Scripts for Custom Input and Output Formats
 ---------------------------------------------------------
