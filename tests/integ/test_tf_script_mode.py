@@ -19,6 +19,7 @@ import time
 import pytest
 
 from sagemaker.tensorflow import TensorFlow
+from sagemaker.tensorflow.defaults import LATEST_SERVING_VERSION
 from sagemaker.utils import unique_name_from_base, sagemaker_timestamp
 
 import tests.integ
@@ -166,7 +167,7 @@ def test_mnist_async(sagemaker_session, cpu_instance_type, tf_full_version, py_v
         sagemaker_session=sagemaker_session,
         script_mode=True,
         # testing py-sdk functionality, no need to run against all TF versions
-        framework_version=TensorFlow.LATEST_SERVING_VERSION,
+        framework_version=LATEST_SERVING_VERSION,
         tags=TAGS,
     )
     inputs = estimator.sagemaker_session.upload_data(
