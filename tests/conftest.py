@@ -27,7 +27,8 @@ from sagemaker.mxnet import MXNet
 from sagemaker.pytorch import PyTorch
 from sagemaker.rl import RLEstimator
 from sagemaker.sklearn.defaults import SKLEARN_VERSION
-from sagemaker.tensorflow.defaults import _LATEST_1X_VERSION, LATEST_VERSION, LATEST_SERVING_VERSION
+from sagemaker.tensorflow import TensorFlow
+from sagemaker.tensorflow.defaults import LATEST_VERSION, LATEST_SERVING_VERSION
 
 DEFAULT_REGION = "us-west-2"
 CUSTOM_BUCKET_NAME_PREFIX = "sagemaker-custom-bucket"
@@ -259,7 +260,7 @@ def sklearn_full_version(request):
     return request.config.getoption("--sklearn-full-version")
 
 
-@pytest.fixture(scope="module", params=[_LATEST_1X_VERSION, LATEST_VERSION])
+@pytest.fixture(scope="module", params=[TensorFlow._LATEST_1X_VERSION, LATEST_VERSION])
 def tf_full_version(request):
     tf_version = request.config.getoption("--tf-full-version")
     if tf_version is None:
