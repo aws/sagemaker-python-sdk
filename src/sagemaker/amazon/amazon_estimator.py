@@ -28,10 +28,10 @@ from sagemaker.model import NEO_IMAGE_ACCOUNT
 from sagemaker.session import s3_input
 from sagemaker.utils import sagemaker_timestamp, get_ecr_image_uri_prefix
 from sagemaker.xgboost.defaults import (
+    XGBOOST_1P_VERSIONS,
     XGBOOST_LATEST_VERSION,
+    XGBOOST_NAME,
     XGBOOST_SUPPORTED_VERSIONS,
-    XGBOOST_VERSION_0_90_1,
-    XGBOOST_VERSION_0_90,
     XGBOOST_VERSION_EQUIVALENTS,
 )
 from sagemaker.xgboost.estimator import get_xgboost_image_uri
@@ -621,32 +621,59 @@ def get_image_uri(region_name, repo_name, repo_version=1):
         "in SageMaker Python SDK v2."
     )
 
-    if repo_name == "xgboost":
-        if not _is_latest_xgboost_version(repo_version):
-            logging.warning(
-                "There is a more up to date SageMaker XGBoost image. "
-                "To use the newer image, please set 'repo_version'="
-                "'%s'. For example:\n"
-                "\tget_image_uri(region, 'xgboost', '%s').",
-                XGBOOST_LATEST_VERSION,
-                XGBOOST_LATEST_VERSION,
-            )
+    repo_version = str(repo_version)
 
-        if repo_version in [XGBOOST_VERSION_0_90] + _generate_version_equivalents(
-            XGBOOST_VERSION_0_90_1
-        ):
-            return get_xgboost_image_uri(region_name, XGBOOST_VERSION_0_90_1)
+    if repo_name == XGBOOST_NAME:
 
-        supported_version = [
+        if repo_version in XGBOOST_1P_VERSIONS:
+            _warn_newer_xgboost_image()
+            return "{}/{}:{}".format(registry(region_name, repo_name), repo_name, repo_version)
+
+        if "-" not in repo_version:
+            xgboost_version_matches = [
+                version
+                for version in XGBOOST_SUPPORTED_VERSIONS
+                if repo_version == version.split("-")[0]
+            ]
+            if xgboost_version_matches:
+                # Assumes that XGBOOST_SUPPORTED_VERSION is sorted from oldest version to latest.
+                # When SageMaker version is not specified, we use the oldest one that matches
+                # XGBoost version for backward compatibility.
+                repo_version = xgboost_version_matches[0]
+
+        supported_framework_versions = [
             version
             for version in XGBOOST_SUPPORTED_VERSIONS
             if repo_version in _generate_version_equivalents(version)
         ]
-        if supported_version:
-            return get_xgboost_image_uri(region_name, supported_version[0])
+
+        if not supported_framework_versions:
+            raise ValueError(
+                "SageMaker XGBoost version {} is not supported. Supported versions: {}".format(
+                    repo_version, ", ".join(XGBOOST_SUPPORTED_VERSIONS)
+                )
+            )
+
+        if not _is_latest_xgboost_version(repo_version):
+            _warn_newer_xgboost_image()
+
+        return get_xgboost_image_uri(region_name, supported_framework_versions[-1])
 
     repo = "{}:{}".format(repo_name, repo_version)
     return "{}/{}".format(registry(region_name, repo_name), repo)
+
+
+def _warn_newer_xgboost_image():
+    """Print a warning when there is a newer XGBoost image"""
+    logging.warning(
+        "There is a more up to date SageMaker XGBoost image. "
+        "To use the newer image, please set 'repo_version'="
+        "'%s'. For example:\n"
+        "\tget_image_uri(region, '%s', '%s').",
+        XGBOOST_LATEST_VERSION,
+        XGBOOST_NAME,
+        XGBOOST_LATEST_VERSION,
+    )
 
 
 def _is_latest_xgboost_version(repo_version):
@@ -655,7 +682,7 @@ def _is_latest_xgboost_version(repo_version):
     Args:
         repo_version:
     """
-    if repo_version in (1, "latest"):
+    if repo_version in XGBOOST_1P_VERSIONS:
         return False
     return repo_version in _generate_version_equivalents(XGBOOST_LATEST_VERSION)
 
