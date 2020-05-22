@@ -175,8 +175,8 @@ def write_spmatrix_to_sparse_tensor(file, array, labels=None):
     try:
         import scipy
     except ImportError as e:
-        logging.warning("urllib3 failed to import. Local mode features will be impaired or broken.")
-        # Any subsequent attempt to use urllib3 will raise the ImportError
+        logging.warning("scipy is removed from SageMaker Python SDK v2.")
+        # Any subsequent attempt to use scipy will raise the ImportError
         scipy = DeferredError(e)
 
     if not scipy.sparse.issparse(array):

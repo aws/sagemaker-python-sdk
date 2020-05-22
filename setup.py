@@ -52,6 +52,7 @@ extras = {
         "PyYAML>=5.3, <6",  # PyYAML version has to match docker-compose requirements
     ],
     "tensorflow": ["tensorflow>=1.3.0"],
+    "scipy" : ["scipy>=0.19.0"],
 }
 # Meta dependency groups
 extras["all"] = [item for group in extras.values() for item in group]
