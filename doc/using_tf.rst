@@ -140,10 +140,10 @@ If there are other packages you want to use with your script, you can use a ``re
 
 For training, support for installing packages using ``requirements.txt`` varies by TensorFlow version as follows:
 
-- For TensorFlow 1.11 or newer using Script Mode without Horovod, TensorFlow 1.15.2 with Python 3.7 or newer, and TensorFlow 2.2 or newer:
+- For TensorFlow 1.15.2 with Python 3.7 or newer, and TensorFlow 2.2 or newer:
     - Include a ``requirements.txt`` file in the same directory as your training script.
     - You must specify this directory using the ``source_dir`` argument when creating a TensorFlow estimator.
-- For older versions of TensorFlow using Script Mode with Horovod:
+- For older versions of TensorFlow using Script Mode (TensorFlow 1.11-1.15.2, 2.0-2.1 with Python 2.7 or 3.6):
     - Write a shell script for your entry point that first calls ``pip install -r requirements.txt``, then runs your training script.
     - For an example of using shell scripts, see `this example notebook <https://github.com/awslabs/amazon-sagemaker-examples/blob/master/sagemaker-python-sdk/tensorflow_script_mode_using_shell_commands/tensorflow_script_mode_using_shell_commands.ipynb>`__.
 - For older versions of TensorFlow using Legacy Mode:
