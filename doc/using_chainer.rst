@@ -6,7 +6,7 @@ With Chainer Estimators, you can train and host Chainer models on Amazon SageMak
 
 Supported versions of Chainer: ``4.0.0``, ``4.1.0``, ``5.0.0``.
 
-We recommend that you use the latest supported version, because that's where we focus most of our development efforts.
+We recommend that you use the latest supported version because that's where we focus most of our development efforts.
 
 For more information about Chainer, see https://github.com/chainer/chainer.
 
