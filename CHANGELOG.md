@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.60.0.post0 (2020-05-26)
+
+### Documentation Changes
+
+ * remove some duplicated documentation from main README
+ * fix TF requirements.txt documentation
+
 ## v1.60.0 (2020-05-25)
 
 ### Features
