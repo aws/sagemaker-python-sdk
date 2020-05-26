@@ -1,5 +1,20 @@
 # Changelog
 
+## v1.60.0 (2020-05-25)
+
+### Features
+
+ * support TensorFlow training 2.2
+
+### Bug Fixes and Other Changes
+
+ * blacklist unknown xgboost image versions
+ * use format strings instead of os.path.join for S3 URI in S3Downloader
+
+### Documentation Changes
+
+ * consolidate framework version and image information
+
 ## v1.59.0 (2020-05-21)
 
 ### Features
