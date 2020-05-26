@@ -1467,10 +1467,11 @@ class Framework(EstimatorBase):
         Args:
             entry_point (str): Path (absolute or relative) to the local Python
                 source file which should be executed as the entry point to
-                training. This should be compatible with either Python 2.7 or
-                Python 3.5. If 'git_config' is provided, 'entry_point' should be
+                training. If ``source_dir`` is specified, then ``entry_point``
+                must point to a file located at the root of ``source_dir``.
+                If 'git_config' is provided, 'entry_point' should be
                 a relative location to the Python source file in the Git repo.
-                Example
+                Example:
 
                     With the following GitHub repo directory structure:
 
@@ -1487,6 +1488,7 @@ class Framework(EstimatorBase):
                 when training on Amazon SageMaker. If 'git_config' is provided,
                 'source_dir' should be a relative location to a directory in the Git
                 repo.
+
                 .. admonition:: Example
 
                     With the following GitHub repo directory structure:
@@ -1968,8 +1970,9 @@ class Framework(EstimatorBase):
             volume_kms_key (str): Optional. KMS key ID for encrypting the volume
                 attached to the ML compute instance (default: None).
             entry_point (str): Path (absolute or relative) to the local Python source file which
-                should be executed as the entry point to training. If not specified, the training
-                entry point is used.
+                should be executed as the entry point to training. If ``source_dir`` is specified,
+                then ``entry_point`` must point to a file located at the root of ``source_dir``.
+                If not specified, the training entry point is used.
             vpc_config_override (dict[str, list[str]]): Optional override for
                 the VpcConfig set on the model.
                 Default: use subnets and security groups from this Estimator.

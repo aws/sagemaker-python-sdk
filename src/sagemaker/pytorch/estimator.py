@@ -67,7 +67,8 @@ class PyTorch(Framework):
         Args:
             entry_point (str): Path (absolute or relative) to the Python source
                 file which should be executed as the entry point to training.
-                This should be compatible with either Python 2.7 or Python 3.5.
+                If ``source_dir`` is specified, then ``entry_point``
+                must point to a file located at the root of ``source_dir``.
             source_dir (str): Path (absolute, relative or an S3 URI) to a directory
                 with any other training source code dependencies aside from the entry
                 point file (default: None). If ``source_dir`` is an S3 URI, it must
@@ -150,8 +151,9 @@ class PyTorch(Framework):
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
             entry_point (str): Path (absolute or relative) to the local Python source file which
-                should be executed as the entry point to training. If not specified, the training
-                entry point is used.
+                should be executed as the entry point to training. If ``source_dir`` is specified,
+                then ``entry_point`` must point to a file located at the root of ``source_dir``.
+                If not specified, the training entry point is used.
             source_dir (str): Path (absolute or relative) to a directory with any other serving
                 source code dependencies aside from the entry point file.
                 If not specified, the model source directory from training is used.
