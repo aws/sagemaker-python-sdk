@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.60.1 (2020-05-27)
+
+### Bug Fixes and Other Changes
+
+ * refactor the navigation
+
+### Documentation Changes
+
+ * fix undoc directive; removes extra tabs
+
 ## v1.60.0.post0 (2020-05-26)
 
 ### Documentation Changes
