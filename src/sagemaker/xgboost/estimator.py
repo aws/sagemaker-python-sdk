@@ -70,8 +70,8 @@ class XGBoost(Framework):
 
         Args:
             entry_point (str): Path (absolute or relative) to the Python source file which should
-                be executed as the entry point to training.
-                This should be compatible with either Python 2.7 or Python 3.5.
+                be executed as the entry point to training.  If ``source_dir`` is specified,
+                then ``entry_point`` must point to a file located at the root of ``source_dir``.
             framework_version (str): XGBoost version you want to use for executing your model
                 training code.  List of supported versions
                 https://github.com/aws/sagemaker-python-sdk#xgboost-sagemaker-estimators

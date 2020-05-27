@@ -100,8 +100,8 @@ class RLEstimator(Framework):
         Args:
             entry_point (str): Path (absolute or relative) to the Python source
                 file which should be executed as the entry point to training.
-                This should be compatible with Python 3.5 for MXNet or Python
-                3.6 for TensorFlow.
+                If ``source_dir`` is specified, then ``entry_point``
+                must point to a file located at the root of ``source_dir``.
             toolkit (sagemaker.rl.RLToolkit): RL toolkit you want to use for
                 executing your model training code.
             toolkit_version (str): RL toolkit version you want to be use for
@@ -187,8 +187,8 @@ class RLEstimator(Framework):
 
             entry_point (str): Path (absolute or relative) to the Python source
                 file which should be executed as the entry point for MXNet
-                hosting. This should be compatible with Python 3.5 (default:
-                self.entry_point)
+                hosting (default: self.entry_point). If ``source_dir`` is specified,
+                then ``entry_point`` must point to a file located at the root of ``source_dir``.
             source_dir (str): Path (absolute or relative) to a directory with
                 any other training source code dependencies aside from the entry
                 point file (default: self.source_dir). Structure within this

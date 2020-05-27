@@ -558,19 +558,22 @@ class TensorFlow(Framework):
             model_server_workers (int): Optional. The number of worker processes used by the
                 inference server. If None, server will use one worker per vCPU.
             vpc_config_override (dict[str, list[str]]): Optional override for VpcConfig set on the
-                model.
-                Default: use subnets and security groups from this Estimator.
+                model. Default: use subnets and security groups from this Estimator.
+
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
+
             endpoint_type (str): Optional. Selects the software stack used by the inference server.
                 If  not specified, the model will be configured to use the default
                 SageMaker model server. If 'tensorflow-serving', the model will be configured to
                 use the SageMaker Tensorflow Serving container.
             entry_point (str): Path (absolute or relative) to the local Python source file which
-                should be executed as the entry point to training. If not specified and
-                ``endpoint_type`` is 'tensorflow-serving', no entry point is used. If
-                ``endpoint_type`` is also ``None``, then the training entry point is used.
-            source_dir (str): Path (absolute or relative or an S3 URI ) to a directory with any
+                should be executed as the entry point to training. If ``source_dir`` is specified,
+                then ``entry_point`` must point to a file located at the root of ``source_dir``.
+                If not specified and ``endpoint_type`` is 'tensorflow-serving',
+                no entry point is used. If ``endpoint_type`` is also ``None``,
+                then the training entry point is used.
+            source_dir (str): Path (absolute or relative or an S3 URI) to a directory with any
                 other serving source code dependencies aside from the entry point file. If
                 ``source_dir`` is an S3 URI, it must point to a tar.gz file. If not specified
                 and ``endpoint_type`` is 'tensorflow-serving', no source_dir is used. If
@@ -828,9 +831,11 @@ class TensorFlow(Framework):
                 If 'tensorflow-serving', the model will be configured to
                 use the SageMaker Tensorflow Serving container.
             entry_point (str): Path (absolute or relative) to the local Python source file which
-                should be executed as the entry point to training. If not specified and
-                ``endpoint_type`` is 'tensorflow-serving', no entry point is used. If
-                ``endpoint_type`` is also ``None``, then the training entry point is used.
+                should be executed as the entry point to training. If ``source_dir`` is specified,
+                then ``entry_point`` must point to a file located at the root of ``source_dir``.
+                If not specified and ``endpoint_type`` is 'tensorflow-serving',
+                no entry point is used. If ``endpoint_type`` is also ``None``,
+                then the training entry point is used.
             vpc_config_override (dict[str, list[str]]): Optional override for
                 the VpcConfig set on the model.
                 Default: use subnets and security groups from this Estimator.
