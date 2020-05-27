@@ -253,8 +253,6 @@ def test_estimator_deploy(sagemaker_session):
         entry_point="script.py",
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        training_steps=1000,
-        evaluation_steps=10,
         train_instance_count=INSTANCE_COUNT,
         train_instance_type=INSTANCE_TYPE,
         image_name=custom_image,
