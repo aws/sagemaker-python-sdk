@@ -20,7 +20,7 @@ import os
 
 import pasta
 
-from ast_transformer import ASTTransformer
+from sagemaker.cli.compatibility.v2.ast_transformer import ASTTransformer
 
 LOGGER = logging.getLogger(__name__)
 

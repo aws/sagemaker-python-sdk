@@ -15,7 +15,7 @@ from __future__ import absolute_import
 
 import ast
 
-from modifiers import framework_version
+from sagemaker.cli.compatibility.v2.modifiers import framework_version
 
 FUNCTION_CALL_MODIFIERS = [framework_version.FrameworkVersionEnforcer()]
 
