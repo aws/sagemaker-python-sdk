@@ -22,7 +22,7 @@ _EXT_TO_UPDATER_CLS = {".py": files.PyFileUpdater, ".ipynb": files.JupyterNotebo
 
 
 def _update_file(input_file, output_file):
-    """Update a file to be compatible with v2 of the SageMaker Python SDK,
+    """Updates a file to be compatible with v2 of the SageMaker Python SDK,
     and write the updated source to the output file.
 
     Args:
@@ -51,7 +51,7 @@ def _update_file(input_file, output_file):
 
 
 def _parse_args():
-    """Parses CLI arguments"""
+    """Parses CLI arguments."""
     parser = argparse.ArgumentParser(
         description="A tool to convert files to be compatible with v2 of the SageMaker Python SDK. "
         "Simple usage: sagemaker-upgrade-v2 --in-file foo.py --out-file bar.py"
@@ -72,5 +72,6 @@ def _parse_args():
 
 
 def main():
+    """Parses the CLI arguments and executes the file update."""
     args = _parse_args()
     _update_file(args.in_file, args.out_file)
