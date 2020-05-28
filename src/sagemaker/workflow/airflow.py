@@ -19,6 +19,7 @@ import re
 import sagemaker
 from sagemaker import fw_utils, job, utils, session, vpc_utils
 from sagemaker.amazon import amazon_estimator
+from sagemaker.tensorflow import TensorFlow
 
 
 def prepare_framework(estimator, s3_operations):
@@ -646,15 +647,19 @@ def model_config_from_estimator(
         )
     elif isinstance(estimator, sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase):
         model = estimator.create_model(vpc_config_override=vpc_config_override)
+    elif isinstance(estimator, TensorFlow):
+        model = estimator.create_model(
+            role=role,
+            vpc_config_override=vpc_config_override,
+            entry_point=estimator.entry_point,
+        )
     elif isinstance(estimator, sagemaker.estimator.Framework):
-        model_kwargs = {
-            "role": role,
-            "vpc_config_override": vpc_config_override,
-            "entry_point": estimator.entry_point,
-        }
-        if model_server_workers:
-            model_kwargs["model_server_workers"] = model_server_workers
-        model = estimator.create_model(**model_kwargs)
+        model = estimator.create_model(
+            model_server_workers=model_server_workers,
+            role=role,
+            vpc_config_override=vpc_config_override,
+            entry_point=estimator.entry_point,
+        )
     else:
         raise TypeError(
             "Estimator must be one of sagemaker.estimator.Estimator, sagemaker.estimator.Framework"

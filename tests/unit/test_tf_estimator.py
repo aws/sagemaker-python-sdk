@@ -19,6 +19,7 @@ import os
 import pytest
 from mock import patch, Mock, MagicMock
 
+from sagemaker.estimator import _TrainingJob
 from sagemaker.tensorflow import defaults, serving, TensorFlow
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
@@ -475,6 +476,114 @@ def test_attach_wrong_framework(sagemaker_session):
     with pytest.raises(ValueError) as error:
         TensorFlow.attach(training_job_name="neo", sagemaker_session=sagemaker_session)
     assert "didn't use image for requested framework" in str(error)
+
+
+@patch("sagemaker.tensorflow.estimator.TensorFlow.create_model")
+def test_transformer_creation_with_optional_args(create_model, sagemaker_session):
+    model = Mock()
+    create_model.return_value = model
+
+    tf = TensorFlow(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        train_instance_count=INSTANCE_COUNT,
+        train_instance_type=INSTANCE_TYPE,
+    )
+    tf.latest_training_job = _TrainingJob(sagemaker_session, "some-job-name")
+
+    strategy = "SingleRecord"
+    assemble_with = "Line"
+    output_path = "s3://{}/batch-output".format(BUCKET_NAME)
+    kms_key = "kms"
+    accept_type = "text/bytes"
+    env = {"foo": "bar"}
+    max_concurrent_transforms = 3
+    max_payload = 100
+    tags = {"Key": "foo", "Value": "bar"}
+    new_role = "role"
+    vpc_config = {"Subnets": ["1234"], "SecurityGroupIds": ["5678"]}
+    model_name = "model-name"
+
+    tf.transformer(
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        strategy=strategy,
+        assemble_with=assemble_with,
+        output_path=output_path,
+        output_kms_key=kms_key,
+        accept=accept_type,
+        env=env,
+        max_concurrent_transforms=max_concurrent_transforms,
+        max_payload=max_payload,
+        tags=tags,
+        role=new_role,
+        volume_kms_key=kms_key,
+        entry_point=SERVING_SCRIPT_FILE,
+        vpc_config_override=vpc_config,
+        enable_network_isolation=True,
+        model_name=model_name,
+    )
+
+    create_model.assert_called_with(
+        role=new_role,
+        vpc_config_override=vpc_config,
+        entry_point=SERVING_SCRIPT_FILE,
+        enable_network_isolation=True,
+        name=model_name,
+    )
+    model.transformer.assert_called_with(
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        accept=accept_type,
+        assemble_with=assemble_with,
+        env=env,
+        max_concurrent_transforms=max_concurrent_transforms,
+        max_payload=max_payload,
+        output_kms_key=kms_key,
+        output_path=output_path,
+        strategy=strategy,
+        tags=tags,
+        volume_kms_key=kms_key,
+    )
+
+
+@patch("sagemaker.tensorflow.estimator.TensorFlow.create_model")
+def test_transformer_creation_without_optional_args(create_model, sagemaker_session):
+    model = Mock()
+    create_model.return_value = model
+
+    tf = TensorFlow(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        train_instance_count=INSTANCE_COUNT,
+        train_instance_type=INSTANCE_TYPE,
+    )
+    tf.latest_training_job = _TrainingJob(sagemaker_session, "some-job-name")
+    tf.transformer(INSTANCE_COUNT, INSTANCE_TYPE)
+
+    create_model.assert_called_with(
+        role=ROLE,
+        vpc_config_override="VPC_CONFIG_DEFAULT",
+        entry_point=None,
+        enable_network_isolation=False,
+        name=None,
+    )
+    model.transformer.assert_called_with(
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        accept=None,
+        assemble_with=None,
+        env=None,
+        max_concurrent_transforms=None,
+        max_payload=None,
+        output_kms_key=None,
+        output_path=None,
+        strategy=None,
+        tags=None,
+        volume_kms_key=None,
+    )
 
 
 def test_attach_custom_image(sagemaker_session):

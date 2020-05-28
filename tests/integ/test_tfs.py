@@ -13,11 +13,11 @@
 from __future__ import absolute_import
 
 import tarfile
-import os
 
 import botocore.exceptions
-import pytest
+import os
 
+import pytest
 import sagemaker
 import sagemaker.predictor
 import sagemaker.utils
@@ -104,6 +104,7 @@ def tfs_predictor_with_model_and_entry_point_and_dependencies(
 
     predictor = model.deploy(1, "local", endpoint_name=endpoint_name)
     try:
+
         yield predictor
     finally:
         predictor.delete_endpoint()

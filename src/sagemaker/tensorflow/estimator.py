@@ -24,6 +24,7 @@ from sagemaker.estimator import Framework
 import sagemaker.fw_utils as fw
 from sagemaker.tensorflow import defaults
 from sagemaker.tensorflow.serving import Model
+from sagemaker.transformer import Transformer
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
 logger = logging.getLogger("sagemaker")
@@ -384,3 +385,126 @@ class TensorFlow(Framework):
             )
 
         return super(TensorFlow, self).train_image()
+
+    def transformer(
+        self,
+        instance_count,
+        instance_type,
+        strategy=None,
+        assemble_with=None,
+        output_path=None,
+        output_kms_key=None,
+        accept=None,
+        env=None,
+        max_concurrent_transforms=None,
+        max_payload=None,
+        tags=None,
+        role=None,
+        volume_kms_key=None,
+        entry_point=None,
+        vpc_config_override=VPC_CONFIG_DEFAULT,
+        enable_network_isolation=None,
+        model_name=None,
+    ):
+        """Return a ``Transformer`` that uses a SageMaker Model based on the training job. It
+        reuses the SageMaker Session and base job name used by the Estimator.
+
+        Args:
+            instance_count (int): Number of EC2 instances to use.
+            instance_type (str): Type of EC2 instance to use, for example, 'ml.c4.xlarge'.
+            strategy (str): The strategy used to decide how to batch records in a single request
+                (default: None). Valid values: 'MultiRecord' and 'SingleRecord'.
+            assemble_with (str): How the output is assembled (default: None). Valid values: 'Line'
+                or 'None'.
+            output_path (str): S3 location for saving the transform result. If not specified,
+                results are stored to a default bucket.
+            output_kms_key (str): Optional. KMS key ID for encrypting the transform output
+                (default: None).
+            accept (str): The accept header passed by the client to
+                the inference endpoint. If it is supported by the endpoint,
+                it will be the format of the batch transform output.
+            env (dict): Environment variables to be set for use during the transform job
+                (default: None).
+            max_concurrent_transforms (int): The maximum number of HTTP requests to be made to
+                each individual transform container at one time.
+            max_payload (int): Maximum size of the payload in a single HTTP request to the
+                container in MB.
+            tags (list[dict]): List of tags for labeling a transform job. If none specified, then
+                the tags used for the training job are used for the transform job.
+            role (str): The ``ExecutionRoleArn`` IAM Role ARN for the ``Model``, which is also
+                used during transform jobs. If not specified, the role from the Estimator will be
+                used.
+            volume_kms_key (str): Optional. KMS key ID for encrypting the volume attached to the ML
+                compute instance (default: None).
+            entry_point (str): Path (absolute or relative) to the local Python source file which
+                should be executed as the entry point to training. If not specified and
+                ``endpoint_type`` is 'tensorflow-serving', no entry point is used. If
+                ``endpoint_type`` is also ``None``, then the training entry point is used.
+            vpc_config_override (dict[str, list[str]]): Optional override for
+                the VpcConfig set on the model.
+                Default: use subnets and security groups from this Estimator.
+
+                * 'Subnets' (list[str]): List of subnet ids.
+                * 'SecurityGroupIds' (list[str]): List of security group ids.
+
+            enable_network_isolation (bool): Specifies whether container will
+                run in network isolation mode. Network isolation mode restricts
+                the container access to outside networks (such as the internet).
+                The container does not make any inbound or outbound network
+                calls. If True, a channel named "code" will be created for any
+                user entry script for inference. Also known as Internet-free mode.
+                If not specified, this setting is taken from the estimator's
+                current configuration.
+            model_name (str): Name to use for creating an Amazon SageMaker
+                model. If not specified, the name of the training job is used.
+        """
+        role = role or self.role
+
+        if self.latest_training_job is None:
+            logging.warning(
+                "No finished training job found associated with this estimator. Please make sure "
+                "this estimator is only used for building workflow config"
+            )
+            return Transformer(
+                model_name or self._current_job_name,
+                instance_count,
+                instance_type,
+                strategy=strategy,
+                assemble_with=assemble_with,
+                output_path=output_path,
+                output_kms_key=output_kms_key,
+                accept=accept,
+                max_concurrent_transforms=max_concurrent_transforms,
+                max_payload=max_payload,
+                env=env or {},
+                tags=tags,
+                base_transform_job_name=self.base_job_name,
+                volume_kms_key=volume_kms_key,
+                sagemaker_session=self.sagemaker_session,
+            )
+
+        if enable_network_isolation is None:
+            enable_network_isolation = self.enable_network_isolation()
+
+        model = self.create_model(
+            role=role,
+            vpc_config_override=vpc_config_override,
+            entry_point=entry_point,
+            enable_network_isolation=enable_network_isolation,
+            name=model_name,
+        )
+
+        return model.transformer(
+            instance_count,
+            instance_type,
+            strategy=strategy,
+            assemble_with=assemble_with,
+            output_path=output_path,
+            output_kms_key=output_kms_key,
+            accept=accept,
+            env=env,
+            max_concurrent_transforms=max_concurrent_transforms,
+            max_payload=max_payload,
+            tags=tags,
+            volume_kms_key=volume_kms_key,
+        )
