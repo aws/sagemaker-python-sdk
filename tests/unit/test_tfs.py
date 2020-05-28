@@ -19,8 +19,8 @@ import logging
 import mock
 import pytest
 from mock import Mock
+from sagemaker.predictor import csv_serializer
 from sagemaker.tensorflow import TensorFlow
-from sagemaker.tensorflow.predictor import csv_serializer
 from sagemaker.tensorflow.serving import Model, Predictor
 
 JSON_CONTENT_TYPE = "application/json"
