@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.60.1.post0 (2020-05-28)
+
+### Documentation Changes
+
+ * clarify that entry_point must be in the root of source_dir (if applicable)
+
 ## v1.60.1 (2020-05-27)
 
 ### Bug Fixes and Other Changes
