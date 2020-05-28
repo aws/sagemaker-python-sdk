@@ -647,12 +647,14 @@ def model_config_from_estimator(
     elif isinstance(estimator, sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase):
         model = estimator.create_model(vpc_config_override=vpc_config_override)
     elif isinstance(estimator, sagemaker.estimator.Framework):
-        model = estimator.create_model(
-            model_server_workers=model_server_workers,
-            role=role,
-            vpc_config_override=vpc_config_override,
-            entry_point=estimator.entry_point,
-        )
+        model_kwargs = {
+            "role": role,
+            "vpc_config_override": vpc_config_override,
+            "entry_point": estimator.entry_point,
+        }
+        if model_server_workers:
+            model_kwargs["model_server_workers"] = model_server_workers
+        model = estimator.create_model(**model_kwargs)
     else:
         raise TypeError(
             "Estimator must be one of sagemaker.estimator.Estimator, sagemaker.estimator.Framework"
