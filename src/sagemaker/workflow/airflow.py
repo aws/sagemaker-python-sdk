@@ -649,9 +649,7 @@ def model_config_from_estimator(
         model = estimator.create_model(vpc_config_override=vpc_config_override)
     elif isinstance(estimator, TensorFlow):
         model = estimator.create_model(
-            role=role,
-            vpc_config_override=vpc_config_override,
-            entry_point=estimator.entry_point,
+            role=role, vpc_config_override=vpc_config_override, entry_point=estimator.entry_point
         )
     elif isinstance(estimator, sagemaker.estimator.Framework):
         model = estimator.create_model(
