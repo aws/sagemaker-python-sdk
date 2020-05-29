@@ -11,7 +11,7 @@ managed service. This document assumes prior knowledge of Kubernetes and
 Kubeflow. 
 
 What is Kubeflow Pipelines?
-===========================
+---------------------------
 
 Kubeflow Pipelines (KFP) is a platform for building and deploying
 portable, scalable machine learning (ML) workflows based on Docker
@@ -43,7 +43,7 @@ For more information on Kubeflow Pipelines, see the \ `Kubeflow
 Pipelines documentation <https://www.kubeflow.org/docs/pipelines/>`__.
 
 Kubeflow Pipeline components
-============================
+----------------------------
 
 A Kubeflow Pipeline component is a set of code used to execute one step
 in a Kubeflow pipeline. Components are represented by a Python module
@@ -53,8 +53,7 @@ without having to interact with the underlying Kubernetes
 infrastructure. 
 
 What do Amazon SageMaker Components for Kubeflow Pipelines provide?
--------------------------------------------------------------------
-
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Amazon SageMaker Components for Kubeflow Pipelines offer an alternative
 to launching compute-intensive jobs in Amazon SageMaker. These
 components integrate Amazon SageMaker with the portability and
@@ -73,7 +72,7 @@ Kubeflow Pipelines. You incur charges for any Amazon SageMaker resources
 you use through these components.
 
 Training components
-~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^
 
 **Training**
 
@@ -91,7 +90,7 @@ hyperparameter optimization Kubeflow Pipeline
 component <https://github.com/kubeflow/pipelines/tree/master/components/aws/sagemaker/hyperparameter_tuning>`__.
 
 Inference components
-~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^
 
 **Hosting Deploy**
 
@@ -108,9 +107,9 @@ For more information, see \ `SageMaker Batch Transform Kubeflow Pipeline
 component <https://github.com/kubeflow/pipelines/tree/master/components/aws/sagemaker/batch_transform>`__.
 
 Ground Truth components
-~~~~~~~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^^^^^^^
 
-**Ground Truth **
+**Ground Truth**\
 
 The Ground Truth component enables you to to submit Amazon SageMaker
 Ground Truth labeling jobs directly from a Kubeflow Pipelines workflow.
@@ -125,7 +124,7 @@ information, see \ `SageMaker create private workteam Kubeflow Pipelines
 component <https://github.com/kubeflow/pipelines/tree/master/components/aws/sagemaker/workteam>`__.
 
 IAM permissions
-===============
+---------------
 
 Deploying Kubeflow Pipelines with Amazon SageMaker components requires
 the following three levels of IAM permissions:
@@ -194,8 +193,8 @@ When you have run the components and have created the Amazon SageMaker
 endpoint, you also need a role with the ``sagemaker:InvokeEndpoint``
 permission to query inference endpoints.
 
-**Converting Pipelines to use Amazon SageMaker**
-================================================
+Converting Pipelines to use Amazon SageMaker
+--------------------------------------------
 
 You can convert an existing pipeline to use Amazon SageMaker by porting
 your generic Python `processing

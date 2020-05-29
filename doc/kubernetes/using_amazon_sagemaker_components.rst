@@ -526,7 +526,7 @@ the sample classification pipeline file.
    -  **Batch Transform**: 
       ``batch_transform_ouput='s3://<your-s3-bucket-name>/output'``
 
--  **Region: **\ The default pipelines work in us-east-1. If your
+-  **Region:**\ The default pipelines work in us-east-1. If your
    cluster is in a different region, update the following:
 
    -  The ``region='us-east-1'`` Parameter in the input list.
