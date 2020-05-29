@@ -81,12 +81,12 @@ class SKLearnModel(FrameworkModel):
                 might use the IAM role, if it needs to access an AWS resource.
             entry_point (str): Path (absolute or relative) to the Python source
                 file which should be executed as the entry point to model
-                hosting. This should be compatible with either Python 2.7 or
-                Python 3.5.
+                hosting. If ``source_dir`` is specified, then ``entry_point``
+                must point to a file located at the root of ``source_dir``.
             image (str): A Docker image URI (default: None). If not specified, a
                 default image for Scikit-learn will be used.
             py_version (str): Python version you want to use for executing your
-                model training code (default: 'py2').
+                model training code (default: 'py3').
             framework_version (str): Scikit-learn version you want to use for
                 executing your model training code.
             predictor_cls (callable[str, sagemaker.session.Session]): A function

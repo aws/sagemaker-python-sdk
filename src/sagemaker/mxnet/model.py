@@ -84,8 +84,8 @@ class MXNetModel(FrameworkModel):
                 might use the IAM role, if it needs to access an AWS resource.
             entry_point (str): Path (absolute or relative) to the Python source
                 file which should be executed as the entry point to model
-                hosting. This should be compatible with either Python 2.7 or
-                Python 3.5.
+                hosting. If ``source_dir`` is specified, then ``entry_point``
+                must point to a file located at the root of ``source_dir``.
             image (str): A Docker image URI (default: None). If not specified, a
                 default image for MXNet will be used.
             py_version (str): Python version you want to use for executing your

@@ -42,9 +42,13 @@ Use the Open Source XGBoost Algorithm
 
 If you want the flexibility and additional features that it provides, use the SageMaker open source XGBoost algorithm.
 
+For which XGBoost versions are supported, see `the AWS documentation <https://docs.aws.amazon.com/sagemaker/latest/dg/xgboost.html>`_.
+We recommend that you use the latest supported version because that's where we focus most of our development efforts.
+
 For a complete example of using the open source XGBoost algorithm, see the sample notebook at
 https://github.com/awslabs/amazon-sagemaker-examples/blob/master/introduction_to_amazon_algorithms/xgboost_abalone/xgboost_abalone_dist_script_mode.ipynb.
 
+For more information about XGBoost, see `the XGBoost documentation <https://xgboost.readthedocs.io/en/latest>`_.
 
 Train a Model with Open Source XGBoost
 ======================================

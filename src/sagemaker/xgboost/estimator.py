@@ -70,14 +70,16 @@ class XGBoost(Framework):
 
         Args:
             entry_point (str): Path (absolute or relative) to the Python source file which should
-                be executed as the entry point to training.
-                This should be compatible with either Python 2.7 or Python 3.5.
+                be executed as the entry point to training.  If ``source_dir`` is specified,
+                then ``entry_point`` must point to a file located at the root of ``source_dir``.
             framework_version (str): XGBoost version you want to use for executing your model
                 training code.  List of supported versions
                 https://github.com/aws/sagemaker-python-sdk#xgboost-sagemaker-estimators
-            source_dir (str): Path (absolute or relative) to a directory with any other training
-                source code dependencies aside from the entry point file (default: None).
-                Structure within this directory are preserved when training on Amazon SageMaker.
+            source_dir (str): Path (absolute, relative or an S3 URI) to a directory
+                with any other training source code dependencies aside from the entry
+                point file (default: None). If ``source_dir`` is an S3 URI, it must
+                point to a tar.gz file. Structure within this directory are preserved
+                when training on Amazon SageMaker.
             hyperparameters (dict): Hyperparameters that will be used for training (default: None).
                 The hyperparameters are made accessible as a dict[str, str] to the training code
                 on SageMaker. For convenience, this accepts other types for keys and values, but

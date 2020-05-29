@@ -136,6 +136,7 @@ class Transformer(object):
 
                 * 'ManifestFile' - the S3 URI points to a single manifest file listing each S3
                     object to use as an input for the transform job.
+
             content_type (str): MIME type of the input data (default: None).
             compression_type (str): Compression type of the input data, if
                 compressed (default: None). Valid values: 'Gzip', None.

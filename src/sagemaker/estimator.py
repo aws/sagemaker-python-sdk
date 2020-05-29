@@ -39,6 +39,7 @@ from sagemaker.fw_utils import (
     UploadedCode,
     validate_source_dir,
     _region_supports_debugger,
+    parameter_v2_rename_warning,
 )
 from sagemaker.job import _Job
 from sagemaker.local import LocalSession
@@ -1273,6 +1274,7 @@ class Estimator(EstimatorBase):
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_AlgorithmSpecification.html#SageMaker-Type-AlgorithmSpecification-EnableSageMakerMetricsTimeSeries
                 (default: ``None``).
         """
+        logging.warning(parameter_v2_rename_warning("image_name", "image_uri"))
         self.image_name = image_name
         self.hyperparam_dict = hyperparameters.copy() if hyperparameters else {}
         super(Estimator, self).__init__(
@@ -1465,10 +1467,11 @@ class Framework(EstimatorBase):
         Args:
             entry_point (str): Path (absolute or relative) to the local Python
                 source file which should be executed as the entry point to
-                training. This should be compatible with either Python 2.7 or
-                Python 3.5. If 'git_config' is provided, 'entry_point' should be
+                training. If ``source_dir`` is specified, then ``entry_point``
+                must point to a file located at the root of ``source_dir``.
+                If 'git_config' is provided, 'entry_point' should be
                 a relative location to the Python source file in the Git repo.
-                Example
+                Example:
 
                     With the following GitHub repo directory structure:
 
@@ -1478,12 +1481,15 @@ class Framework(EstimatorBase):
                     >>>         |----- test.py
 
                     You can assign entry_point='src/train.py'.
-            source_dir (str): Path (absolute, relative, or an S3 URI) to a directory with
-                any other training source code dependencies aside from the entry
-                point file (default: None). Structure within this directory are
-                preserved when training on Amazon SageMaker. If 'git_config' is
-                provided, 'source_dir' should be a relative location to a
-                directory in the Git repo. .. admonition:: Example
+            source_dir (str): Path (absolute, relative or an S3 URI) to a directory
+                with any other training source code dependencies aside from the entry
+                point file (default: None). If ``source_dir`` is an S3 URI, it must
+                point to a tar.gz file. Structure within this directory are preserved
+                when training on Amazon SageMaker. If 'git_config' is provided,
+                'source_dir' should be a relative location to a directory in the Git
+                repo.
+
+                .. admonition:: Example
 
                     With the following GitHub repo directory structure:
 
@@ -1635,6 +1641,8 @@ class Framework(EstimatorBase):
         self.container_log_level = container_log_level
         self.code_location = code_location
         self.image_name = image_name
+        if image_name is not None:
+            logging.warning(parameter_v2_rename_warning("image_name", "image_uri"))
 
         self.uploaded_code = None
 
@@ -1720,11 +1728,14 @@ class Framework(EstimatorBase):
             code_bucket = self.sagemaker_session.default_bucket()
             code_s3_prefix = "{}/{}".format(self._current_job_name, "source")
             kms_key = None
-
         elif self.code_location is None:
             code_bucket, _ = parse_s3_url(self.output_path)
             code_s3_prefix = "{}/{}".format(self._current_job_name, "source")
             kms_key = self.output_kms_key
+        elif local_mode:
+            code_bucket, key_prefix = parse_s3_url(self.code_location)
+            code_s3_prefix = "/".join(filter(None, [key_prefix, self._current_job_name, "source"]))
+            kms_key = None
         else:
             code_bucket, key_prefix = parse_s3_url(self.code_location)
             code_s3_prefix = "/".join(filter(None, [key_prefix, self._current_job_name, "source"]))
@@ -1959,8 +1970,9 @@ class Framework(EstimatorBase):
             volume_kms_key (str): Optional. KMS key ID for encrypting the volume
                 attached to the ML compute instance (default: None).
             entry_point (str): Path (absolute or relative) to the local Python source file which
-                should be executed as the entry point to training. If not specified, the training
-                entry point is used.
+                should be executed as the entry point to training. If ``source_dir`` is specified,
+                then ``entry_point`` must point to a file located at the root of ``source_dir``.
+                If not specified, the training entry point is used.
             vpc_config_override (dict[str, list[str]]): Optional override for
                 the VpcConfig set on the model.
                 Default: use subnets and security groups from this Estimator.

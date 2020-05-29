@@ -31,13 +31,13 @@ TensorFlow Serving Model
 
 .. autoclass:: sagemaker.tensorflow.serving.Model
     :members:
-        :undoc-members:
-        :show-inheritance:
+    :undoc-members:
+    :show-inheritance:
 
 TensorFlow Serving Predictor
 ----------------------------
 
 .. autoclass:: sagemaker.tensorflow.serving.Predictor
     :members:
-        :undoc-members:
-        :show-inheritance:
+    :undoc-members:
+    :show-inheritance:

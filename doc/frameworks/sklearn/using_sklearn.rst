@@ -4,8 +4,10 @@ Using Scikit-learn with the SageMaker Python SDK
 
 With Scikit-learn Estimators, you can train and host Scikit-learn models on Amazon SageMaker.
 
-For information about supported versions of Scikit-learn, see the `Chainer README <https://github.com/aws/sagemaker-python-sdk/blob/master/src/sagemaker/sklearn/README.rst>`__.
+For information about supported versions of Scikit-learn, see the `AWS documentation <https://docs.aws.amazon.com/sagemaker/latest/dg/sklearn.html>`__.
+We recommend that you use the latest supported version because that's where we focus most of our development efforts.
 
+You can visit the Scikit-learn repository at https://github.com/scikit-learn/scikit-learn.
 For general information about using the SageMaker Python SDK, see :ref:`overview:Using the SageMaker Python SDK`.
 
 .. contents::
@@ -594,6 +596,4 @@ The following are optional arguments. When you create a ``SKLearn`` object, you 
 SageMaker Scikit-learn Docker Containers
 ****************************************
 
-You can visit the SageMaker Scikit-Learn containers repository here: hhttps://github.com/aws/sagemaker-scikit-learn-container
-
-For information about SageMaker TensorFlow Docker containers and their dependencies, see `SageMaker Scikit-learn Docker Containers <https://github.com/aws/sagemaker-python-sdk/tree/master/src/sagemaker/sklearn#sagemaker-scikit-learn-docker-containers>`_.
+You can visit the SageMaker Scikit-Learn containers repository here: https://github.com/aws/sagemaker-scikit-learn-container

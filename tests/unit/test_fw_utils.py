@@ -297,6 +297,24 @@ def test_create_image_uri_cn_northwest_1():
     }
 
 
+def test_create_image_uri_py37_invalid_framework():
+    error_message = "{} does not support Python 3.7 at this time.".format(MOCK_FRAMEWORK)
+
+    with pytest.raises(ValueError) as error:
+        fw_utils.create_image_uri(REGION, MOCK_FRAMEWORK, "ml.m4.xlarge", "1.4.0", "py37")
+    assert error_message in str(error)
+
+
+def test_create_image_uri_py37():
+    image_uri = fw_utils.create_image_uri(
+        REGION, "tensorflow-scriptmode", "ml.m4.xlarge", "1.15.2", "py37"
+    )
+    assert (
+        image_uri
+        == "763104351884.dkr.ecr.us-west-2.amazonaws.com/tensorflow-training:1.15.2-cpu-py37"
+    )
+
+
 def test_tf_eia_images():
     image_uri = fw_utils.create_image_uri(
         "us-west-2",
@@ -319,13 +337,13 @@ def test_mxnet_eia_images():
         "us-east-1",
         "mxnet-serving",
         "ml.c4.2xlarge",
-        "1.4.1",
+        "1.5.1",
         "py3",
         accelerator_type="ml.eia1.large",
     )
     assert (
         image_uri
-        == "{}.dkr.ecr.us-east-1.amazonaws.com/mxnet-inference-eia:1.4.1-cpu-py3".format(
+        == "{}.dkr.ecr.us-east-1.amazonaws.com/mxnet-inference-eia:1.5.1-cpu-py3".format(
             fw_utils.ASIMOV_PROD_ACCOUNT
         )
     )
@@ -717,7 +735,7 @@ def test_invalid_framework_accelerator():
 
 
 def test_invalid_framework_accelerator_with_neo():
-    error_message = "Neo does not support Amazon Elastic Inference.".format(MOCK_FRAMEWORK)
+    error_message = "Neo does not support Amazon Elastic Inference."
     # accelerator was chosen for unsupported framework
     with pytest.raises(ValueError) as error:
         fw_utils.create_image_uri(

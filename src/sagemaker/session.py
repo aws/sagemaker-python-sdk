@@ -181,6 +181,12 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 ``s3://{bucket name}/{key_prefix}``.
         """
         # Generate a tuple for each file that we want to upload of the form (local_path, s3_key).
+        LOGGER.warning(
+            "'upload_data' method will be deprecated in favor of 'S3Uploader' class "
+            "(https://sagemaker.readthedocs.io/en/stable/s3.html#sagemaker.s3.S3Uploader) "
+            "in SageMaker Python SDK v2."
+        )
+
         files = []
         key_suffix = None
         if os.path.isdir(path):
@@ -230,6 +236,12 @@ class Session(object):  # pylint: disable=too-many-public-methods
             str: The S3 URI of the uploaded file.
                 The URI format is: ``s3://{bucket name}/{key}``.
         """
+        LOGGER.warning(
+            "'upload_string_as_file_body' method will be deprecated in favor of 'S3Uploader' class "
+            "(https://sagemaker.readthedocs.io/en/stable/s3.html#sagemaker.s3.S3Uploader) "
+            "in SageMaker Python SDK v2."
+        )
+
         if self.s3_resource is None:
             s3 = self.boto_session.resource("s3", region_name=self.boto_region_name)
         else:
@@ -2580,6 +2592,18 @@ class Session(object):  # pylint: disable=too-many-public-methods
         self._check_job_status(job, desc, "HyperParameterTuningJobStatus")
         return desc
 
+    def describe_transform_job(self, job_name):
+        """Calls the DescribeTransformJob API for the given job name
+        and returns the response.
+
+        Args:
+            job_name (str): The name of the transform job to describe.
+
+        Returns:
+            dict: A dictionary response with the transform job description.
+        """
+        return self.sagemaker_client.describe_transform_job(TransformJobName=job_name)
+
     def wait_for_transform_job(self, job, poll=5):
         """Wait for an Amazon SageMaker transform job to complete.
 
@@ -3318,6 +3342,7 @@ def get_execution_role(sagemaker_session=None):
     Returns:
         (str): The role ARN
     """
+
     if not sagemaker_session:
         sagemaker_session = Session()
     arn = sagemaker_session.get_caller_identity_arn()

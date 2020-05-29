@@ -19,6 +19,7 @@ import time
 import pytest
 
 from sagemaker.tensorflow import TensorFlow
+from sagemaker.tensorflow.defaults import LATEST_SERVING_VERSION
 from sagemaker.utils import unique_name_from_base, sagemaker_timestamp
 
 import tests.integ
@@ -39,7 +40,14 @@ MPI_DISTRIBUTION = {"mpi": {"enabled": True}}
 TAGS = [{"Key": "some-key", "Value": "some-value"}]
 
 
-def test_mnist_with_checkpoint_config(sagemaker_session, instance_type, tf_full_version):
+@pytest.fixture(scope="module")
+def py_version(tf_full_version, tf_serving_version):
+    return "py37" if tf_full_version == tf_serving_version else tests.integ.PYTHON_VERSION
+
+
+def test_mnist_with_checkpoint_config(
+    sagemaker_session, instance_type, tf_full_version, py_version
+):
     checkpoint_s3_uri = "s3://{}/checkpoints/tf-{}".format(
         sagemaker_session.default_bucket(), sagemaker_timestamp()
     )
@@ -52,7 +60,7 @@ def test_mnist_with_checkpoint_config(sagemaker_session, instance_type, tf_full_
         sagemaker_session=sagemaker_session,
         script_mode=True,
         framework_version=tf_full_version,
-        py_version=tests.integ.PYTHON_VERSION,
+        py_version="py37",
         metric_definitions=[{"Name": "train:global_steps", "Regex": r"global_step\/sec:\s(.*)"}],
         checkpoint_s3_uri=checkpoint_s3_uri,
         checkpoint_local_path=checkpoint_local_path,
@@ -82,7 +90,7 @@ def test_mnist_with_checkpoint_config(sagemaker_session, instance_type, tf_full_
     assert actual_training_checkpoint_config == expected_training_checkpoint_config
 
 
-def test_server_side_encryption(sagemaker_session, tf_full_version):
+def test_server_side_encryption(sagemaker_session, tf_serving_version, py_version):
     with kms_utils.bucket_with_encryption(sagemaker_session, ROLE) as (bucket_with_kms, kms_key):
         output_path = os.path.join(
             bucket_with_kms, "test-server-side-encryption", time.strftime("%y%m%d-%H%M")
@@ -96,8 +104,8 @@ def test_server_side_encryption(sagemaker_session, tf_full_version):
             train_instance_type="ml.c5.xlarge",
             sagemaker_session=sagemaker_session,
             script_mode=True,
-            framework_version=tf_full_version,
-            py_version=tests.integ.PYTHON_VERSION,
+            framework_version=tf_serving_version,
+            py_version=py_version,
             code_location=output_path,
             output_path=output_path,
             model_dir="/opt/ml/model",
@@ -124,14 +132,14 @@ def test_server_side_encryption(sagemaker_session, tf_full_version):
 
 
 @pytest.mark.canary_quick
-def test_mnist_distributed(sagemaker_session, instance_type, tf_full_version):
+def test_mnist_distributed(sagemaker_session, instance_type, tf_full_version, py_version):
     estimator = TensorFlow(
         entry_point=SCRIPT,
         role=ROLE,
         train_instance_count=2,
         train_instance_type=instance_type,
         sagemaker_session=sagemaker_session,
-        py_version=tests.integ.PYTHON_VERSION,
+        py_version="py37",
         script_mode=True,
         framework_version=tf_full_version,
         distributions=PARAMETER_SERVER_DISTRIBUTION,
@@ -149,7 +157,7 @@ def test_mnist_distributed(sagemaker_session, instance_type, tf_full_version):
     )
 
 
-def test_mnist_async(sagemaker_session, cpu_instance_type):
+def test_mnist_async(sagemaker_session, cpu_instance_type, tf_full_version, py_version):
     estimator = TensorFlow(
         entry_point=SCRIPT,
         role=ROLE,
@@ -159,7 +167,7 @@ def test_mnist_async(sagemaker_session, cpu_instance_type):
         sagemaker_session=sagemaker_session,
         script_mode=True,
         # testing py-sdk functionality, no need to run against all TF versions
-        framework_version=TensorFlow.LATEST_VERSION,
+        framework_version=LATEST_SERVING_VERSION,
         tags=TAGS,
     )
     inputs = estimator.sagemaker_session.upload_data(
@@ -191,17 +199,19 @@ def test_mnist_async(sagemaker_session, cpu_instance_type):
         _assert_model_name_match(sagemaker_session.sagemaker_client, endpoint_name, model_name)
 
 
-def test_deploy_with_input_handlers(sagemaker_session, instance_type, tf_full_version):
+def test_deploy_with_input_handlers(
+    sagemaker_session, instance_type, tf_serving_version, py_version
+):
     estimator = TensorFlow(
         entry_point="training.py",
         source_dir=TFS_RESOURCE_PATH,
         role=ROLE,
         train_instance_count=1,
         train_instance_type=instance_type,
-        py_version=tests.integ.PYTHON_VERSION,
+        py_version=py_version,
         sagemaker_session=sagemaker_session,
         script_mode=True,
-        framework_version=tf_full_version,
+        framework_version=tf_serving_version,
         tags=TAGS,
     )
 
