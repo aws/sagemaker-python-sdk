@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.60.2 (2020-05-29)
+
+### Bug Fixes and Other Changes
+
+ * [doc] Added Amazon Components for Kubeflow Pipelines
+
 ## v1.60.1.post0 (2020-05-28)
 
 ### Documentation Changes
