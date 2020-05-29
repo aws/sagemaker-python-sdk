@@ -19,7 +19,8 @@ import os
 import pytest
 from mock import patch, Mock, MagicMock
 
-from sagemaker.tensorflow import defaults, serving, TensorFlow, TensorFlowModel, TensorFlowPredictor
+from sagemaker.estimator import _TrainingJob
+from sagemaker.tensorflow import defaults, serving, TensorFlow
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 SCRIPT_FILE = "dummy_script.py"
@@ -220,13 +221,12 @@ def test_create_model(sagemaker_session, tf_version):
     model = tf.create_model()
 
     assert model.sagemaker_session == sagemaker_session
-    assert model.framework_version == tf_version
-    assert model.py_version == tf.py_version
-    assert model.entry_point == SCRIPT_PATH
+    assert model._framework_version == tf_version
+    assert model.entry_point is None
     assert model.role == ROLE
     assert model.name == job_name
-    assert model.container_log_level == container_log_level
-    assert model.source_dir == source_dir
+    assert model._container_log_level == container_log_level
+    assert model.source_dir is None
     assert model.vpc_config is None
     assert model.enable_network_isolation()
 
@@ -289,24 +289,6 @@ def test_create_model_with_custom_image(sagemaker_session):
     model = tf.create_model()
 
     assert model.image == custom_image
-
-
-@patch("sagemaker.utils.create_tar_file", MagicMock())
-def test_model(sagemaker_session, tf_version):
-    model = TensorFlowModel(
-        MODEL_DATA, role=ROLE, entry_point=SCRIPT_PATH, sagemaker_session=sagemaker_session
-    )
-    predictor = model.deploy(1, INSTANCE_TYPE)
-    assert isinstance(predictor, TensorFlowPredictor)
-
-
-@patch("sagemaker.fw_utils.tar_and_upload_dir", MagicMock())
-def test_model_image_accelerator(sagemaker_session):
-    model = TensorFlowModel(
-        MODEL_DATA, role=ROLE, entry_point=SCRIPT_PATH, sagemaker_session=sagemaker_session
-    )
-    container_def = model.prepare_container_def(INSTANCE_TYPE, accelerator_type=ACCELERATOR_TYPE)
-    assert container_def["Image"] == _get_full_cpu_image_uri_with_ei(defaults.TF_VERSION)
 
 
 @patch("sagemaker.utils.create_tar_file", MagicMock())
@@ -496,6 +478,114 @@ def test_attach_wrong_framework(sagemaker_session):
     assert "didn't use image for requested framework" in str(error)
 
 
+@patch("sagemaker.tensorflow.estimator.TensorFlow.create_model")
+def test_transformer_creation_with_optional_args(create_model, sagemaker_session):
+    model = Mock()
+    create_model.return_value = model
+
+    tf = TensorFlow(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        train_instance_count=INSTANCE_COUNT,
+        train_instance_type=INSTANCE_TYPE,
+    )
+    tf.latest_training_job = _TrainingJob(sagemaker_session, "some-job-name")
+
+    strategy = "SingleRecord"
+    assemble_with = "Line"
+    output_path = "s3://{}/batch-output".format(BUCKET_NAME)
+    kms_key = "kms"
+    accept_type = "text/bytes"
+    env = {"foo": "bar"}
+    max_concurrent_transforms = 3
+    max_payload = 100
+    tags = {"Key": "foo", "Value": "bar"}
+    new_role = "role"
+    vpc_config = {"Subnets": ["1234"], "SecurityGroupIds": ["5678"]}
+    model_name = "model-name"
+
+    tf.transformer(
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        strategy=strategy,
+        assemble_with=assemble_with,
+        output_path=output_path,
+        output_kms_key=kms_key,
+        accept=accept_type,
+        env=env,
+        max_concurrent_transforms=max_concurrent_transforms,
+        max_payload=max_payload,
+        tags=tags,
+        role=new_role,
+        volume_kms_key=kms_key,
+        entry_point=SERVING_SCRIPT_FILE,
+        vpc_config_override=vpc_config,
+        enable_network_isolation=True,
+        model_name=model_name,
+    )
+
+    create_model.assert_called_with(
+        role=new_role,
+        vpc_config_override=vpc_config,
+        entry_point=SERVING_SCRIPT_FILE,
+        enable_network_isolation=True,
+        name=model_name,
+    )
+    model.transformer.assert_called_with(
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        accept=accept_type,
+        assemble_with=assemble_with,
+        env=env,
+        max_concurrent_transforms=max_concurrent_transforms,
+        max_payload=max_payload,
+        output_kms_key=kms_key,
+        output_path=output_path,
+        strategy=strategy,
+        tags=tags,
+        volume_kms_key=kms_key,
+    )
+
+
+@patch("sagemaker.tensorflow.estimator.TensorFlow.create_model")
+def test_transformer_creation_without_optional_args(create_model, sagemaker_session):
+    model = Mock()
+    create_model.return_value = model
+
+    tf = TensorFlow(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        train_instance_count=INSTANCE_COUNT,
+        train_instance_type=INSTANCE_TYPE,
+    )
+    tf.latest_training_job = _TrainingJob(sagemaker_session, "some-job-name")
+    tf.transformer(INSTANCE_COUNT, INSTANCE_TYPE)
+
+    create_model.assert_called_with(
+        role=ROLE,
+        vpc_config_override="VPC_CONFIG_DEFAULT",
+        entry_point=None,
+        enable_network_isolation=False,
+        name=None,
+    )
+    model.transformer.assert_called_with(
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        accept=None,
+        assemble_with=None,
+        env=None,
+        max_concurrent_transforms=None,
+        max_payload=None,
+        output_kms_key=None,
+        output_path=None,
+        strategy=None,
+        tags=None,
+        volume_kms_key=None,
+    )
+
+
 def test_attach_custom_image(sagemaker_session):
     training_image = "1.dkr.ecr.us-west-2.amazonaws.com/tensorflow_with_custom_binary:1.0"
     rjd = {
@@ -543,16 +633,6 @@ def test_estimator_py2_deprecation_warning(warning, sagemaker_session):
     assert estimator.py_version == "py2"
     warning.assert_called_with("tensorflow", "2.1.0")
 
-    model = TensorFlowModel(
-        MODEL_DATA,
-        role=ROLE,
-        entry_point=SCRIPT_PATH,
-        sagemaker_session=sagemaker_session,
-        py_version="py2",
-    )
-    assert model.py_version == "py2"
-    warning.assert_called_with(model.__framework_name__, defaults.LATEST_PY2_VERSION)
-
 
 @patch("sagemaker.fw_utils.empty_framework_version_warning")
 def test_empty_framework_version(warning, sagemaker_session):
@@ -567,17 +647,6 @@ def test_empty_framework_version(warning, sagemaker_session):
 
     assert estimator.framework_version == defaults.TF_VERSION
     warning.assert_called_with(defaults.TF_VERSION, estimator.LATEST_VERSION)
-
-    model = TensorFlowModel(
-        MODEL_DATA,
-        role=ROLE,
-        entry_point=SCRIPT_PATH,
-        sagemaker_session=sagemaker_session,
-        framework_version=None,
-    )
-
-    assert model.framework_version == defaults.TF_VERSION
-    warning.assert_called_with(defaults.TF_VERSION, defaults.LATEST_VERSION)
 
 
 def test_py2_version_deprecated(sagemaker_session):
