@@ -31,7 +31,7 @@ the steps in `Launching and Configuring a
 DLAMI <https://docs.aws.amazon.com/dlami/latest/devguide/launch-config.html>`__.
 
 Complete the following steps to set up your gateway node. Depending on
-your environment, you may have certain requirements already configured. 
+your environment, you may have certain requirements already configured.
 
 If you don’t have an existing Amazon EKS cluster, create a user named ``your_credentials`` using the steps in `Creating an IAM User in Your
 AWS
@@ -101,7 +101,7 @@ name for your cluster.
     eksctl create cluster --name <your-cluster-name> --region us-east-1 --auto-kubeconfig --timeout=50m --managed --nodes=1
 
 When cluster creation is complete, verify that you have access to the
-cluster using the following command. 
+cluster using the following command.
 
 ::
 
@@ -199,7 +199,7 @@ allows you to access the KFP UI from your browser.
     The port-forward from your remote machine drops if there is no
     activity. Run this command again if your dashboard is unable to get
     logs or updates. If the commands return an error, ensure that there
-    is no process already running on the port you are trying to use. 
+    is no process already running on the port you are trying to use.
 
 ::
 
@@ -220,7 +220,7 @@ Click **Pipelines** to access the pipelines UI.
 EC2 instance as the gateway node
 
 You need to setup an SSH tunnel on your EC2 instance to access the
-Kubeflow dashboard from your local machine’s browser. 
+Kubeflow dashboard from your local machine’s browser.
 
 From a new terminal session in your local machine, run the following.
 Replace ``<public-DNS-of-gateway-node>`` with the IP address of your
@@ -280,7 +280,7 @@ form ``https://oidc.eks.<region>.amazonaws.com/id/<OIDC_ID>`` .
 Run the following to create a file named ``trust.json``.
 Replace ``<OIDC_URL>`` with your OIDC issuer URL. Don’t
 include ``https://`` when in your OIDC issuer URL.
-Replace ``<AWS_account_number>`` with your AWS account number. 
+Replace ``<AWS_account_number>`` with your AWS account number.
 
 ::
 
@@ -327,14 +327,14 @@ Edit your pipeline-runner service account with the following command.
     kubectl edit -n kubeflow serviceaccount pipeline-runner
 
 In the file, add the following Amazon EKS role annotation and
-replace ``<role_arn>`` with your role ARN. 
+replace ``<role_arn>`` with your role ARN.
 
 ::
 
     eks.amazonaws.com/role-arn: <role-arn>
 
 Your file should look like the following when you’ve added the Amazon
-EKS role annotation. Save the file. 
+EKS role annotation. Save the file.
 
 ::
 
@@ -368,7 +368,7 @@ Create an Amazon SageMaker execution role
 The ``kfp-example-sagemaker-execution-role`` IAM role is used
 by Amazon SageMaker jobs to access AWS resources. For more information,
 see the IAM Permissions section. You provide this role as an input
-parameter when running the pipeline. 
+parameter when running the pipeline.
 
 Run the following to create the role. Note the ARN that is returned in
 your output.
@@ -472,7 +472,7 @@ To run the pipelines, you need to have the datasets in an S3 bucket in
 your account. This bucket must be located in the region where you want
 to run Amazon SageMaker jobs. If you don’t have a bucket, create one
 using the steps in `Creating a
-bucket <https://docs.aws.amazon.com/AmazonS3/latest/gsg/CreatingABucket.html>`__. 
+bucket <https://docs.aws.amazon.com/AmazonS3/latest/gsg/CreatingABucket.html>`__.
 
 From your gateway node, run the `sample dataset
 creation <https://github.com/kubeflow/pipelines/tree/34615cb19edfacf9f4d9f2417e9254d52dd53474/samples/contrib/aws-samples/mnist-kmeans-sagemaker#the-sample-dataset>`__
@@ -494,7 +494,7 @@ The full MNIST classification pipeline has run-specific parameters that
 you must provide values for when creating a run. You must provide these
 parameters for each component of your pipeline. These parameters can
 also be updated when using other pipelines. We have provided default
-values for all parameters in the sample classification pipeline file. 
+values for all parameters in the sample classification pipeline file.
 
 The following are the only parameters you may need to modify to run the
 sample pipelines. To modify these parameters, update their entries in
@@ -506,7 +506,7 @@ the sample classification pipeline file.
 
 -  **The Dataset Buckets**: You must change the S3 bucket with the input
    data for each of the components. Replace the following with the link
-   to your S3 bucket: 
+   to your S3 bucket:
 
    -  **Train channel:** ``"S3Uri": "s3://<your-s3-bucket-name>/data"``
 
@@ -520,10 +520,10 @@ the sample classification pipeline file.
    have write permission to. Replace the following with the link to your
    S3 bucket:
 
-   -  **Training/HPO**: 
+   -  **Training/HPO**:
       ``output_location='s3://<your-s3-bucket-name>/output'``
 
-   -  **Batch Transform**: 
+   -  **Batch Transform**:
       ``batch_transform_ouput='s3://<your-s3-bucket-name>/output'``
 
 -  **Region:**\ The default pipelines work in us-east-1. If your
@@ -536,7 +536,7 @@ the sample classification pipeline file.
       for your region. Construct the image name using the information
       in `Common parameters for built-in
       algorithms <https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-algo-docker-registry-paths.html>`__.
-      For Example: 
+      For Example:
 
       ::
 
@@ -578,8 +578,8 @@ Verify that ``dsl-compile`` has been installed correctly as follows:
 
     which dsl-compile
 
-Compile your pipeline 
-^^^^^^^^^^^^^^^^^^^^^^
+Compile your pipeline
+^^^^^^^^^^^^^^^^^^^^^
 
 You have three options to interact with Kubeflow Pipelines: KFP UI, KFP
 CLI, or the KFP SDK. The following sections illustrate the workflow
@@ -604,7 +604,7 @@ Upload and run the pipeline using the KFP CLI
 Complete the following steps from the command line of your gateway node.
 KFP organizes runs of your pipeline as experiments. You have the option
 to specify an experiment name. If you do not specify one, the run will
-be listed under ‘Default’ experiment. 
+be listed under ‘Default’ experiment.
 
 Upload your pipeline as follows:
 
@@ -695,7 +695,7 @@ Configure permissions to run predictions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 If you want to run predictions from your gateway node, skip this
-section. 
+section.
 
 If you want to use any other machine to run predictions, assign
 the ``sagemaker:InvokeEndpoint`` permission to the IAM role or IAM
@@ -748,7 +748,7 @@ Create a Python file from your client machine
 named ``mnist-predictions.py`` with the following content . Replace
 the ``ENDPOINT_NAME`` and ``REGION`` variables. This script loads the
 MNIST dataset, then creates a CSV from those digits and sends it to the
-endpoint for prediction. It then outputs the results.  
+endpoint for prediction. It then outputs the results.
 
 ::
 
@@ -793,7 +793,7 @@ View results and logs
 
 When the pipeline is running, you can click on any component to check
 execution details, such as inputs and outputs. This will list the names
-of created resources. 
+of created resources.
 
 If the KFP request is successfully processed and an Amazon SageMaker job
 is created, the component logs in the KFP UI will provide a link to the

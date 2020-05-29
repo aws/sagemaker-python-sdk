@@ -8,7 +8,7 @@ transform jobs in Amazon SageMaker. By running Kubeflow Pipeline jobs on
 Amazon SageMaker, you move data processing and training jobs from the
 Kubernetes cluster to Amazon SageMaker’s machine learning-optimized
 managed service. This document assumes prior knowledge of Kubernetes and
-Kubeflow. 
+Kubeflow.
 
 What is Kubeflow Pipelines?
 ---------------------------
@@ -37,7 +37,7 @@ If your data has been preprocessed, the standard pipeline takes a subset
 of the data and runs hyperparameter optimization of the model. The
 pipeline then trains a model with the full dataset using the optimal
 hyperparameters. This model is used for both batch inference and
-endpoint creation. 
+endpoint creation.
 
 For more information on Kubeflow Pipelines, see the \ `Kubeflow
 Pipelines documentation <https://www.kubeflow.org/docs/pipelines/>`__.
@@ -50,7 +50,7 @@ in a Kubeflow pipeline. Components are represented by a Python module
 that is converted into a Docker image. These components make it fast and
 easy to write pipelines for experimentation and production environments
 without having to interact with the underlying Kubernetes
-infrastructure. 
+infrastructure.
 
 What do Amazon SageMaker Components for Kubeflow Pipelines provide?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -65,7 +65,7 @@ from the Kubeflow Pipelines UI. The following Amazon SageMaker
 components have been created to integrate 6 key Amazon SageMaker
 features into your ML workflows. You can create a Kubeflow Pipeline
 built entirely using these components, or integrate individual
-components into your workflow as needed. 
+components into your workflow as needed.
 
 There is no additional charge for using Amazon SageMaker Components for
 Kubeflow Pipelines. You incur charges for any Amazon SageMaker resources
@@ -137,7 +137,7 @@ the following three levels of IAM permissions:
    You use this user/role from your gateway node, which can be your
    local machine or a remote instance, to:
 
-   -  Create an Amazon EKS cluster and install KFP  
+   -  Create an Amazon EKS cluster and install KFP
 
    -  Create IAM roles/users
 
@@ -167,14 +167,14 @@ the following three levels of IAM permissions:
 
    The role needs the following permission:
 
-   -  AmazonSageMakerFullAccess 
+   -  AmazonSageMakerFullAccess
 
 -  An IAM role used by SageMaker jobs to access resources such as Amazon
-   S3, ECR etc. (**kfp-example-sagemaker-execution-role**). 
+   S3, ECR etc. (**kfp-example-sagemaker-execution-role**).
 
    Your Amazon SageMaker jobs use this role to:
 
-   -  Access Amazon Sagemaker resources 
+   -  Access Amazon Sagemaker resources
 
    -  Input Data from S3
 
@@ -182,7 +182,7 @@ the following three levels of IAM permissions:
 
    The role needs the following permissions:
 
-   -  AmazonSageMakerFullAccess 
+   -  AmazonSageMakerFullAccess
 
    -  AmazonS3FullAccess
 
@@ -202,4 +202,4 @@ containers <https://docs.aws.amazon.com/sagemaker/latest/dg/amazon-sagemaker-con
 and \ `training
 containers <https://docs.aws.amazon.com/sagemaker/latest/dg/your-algorithms-training-algo.html>`__.
 If you are using Amazon SageMaker for inference, you also need to attach
-IAM permissions to your cluster and convert an artifact to a model. 
+IAM permissions to your cluster and convert an artifact to a model.
