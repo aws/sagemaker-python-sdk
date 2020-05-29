@@ -66,8 +66,7 @@ class FrameworkVersionEnforcer(Modifier):
         """
         # Check for <Framework> call
         if isinstance(node.func, ast.Name):
-            if node.func.id in FRAMEWORK_CLASSES:
-                return True
+            return node.func.id in FRAMEWORK_CLASSES
 
         # Check for sagemaker.<framework>.<Framework> call
         ends_with_framework_constructor = (
