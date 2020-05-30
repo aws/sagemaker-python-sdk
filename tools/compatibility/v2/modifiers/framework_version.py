@@ -15,7 +15,7 @@ from __future__ import absolute_import
 
 import ast
 
-from modifiers.modifier import Modifier
+from tools.compatibility.v2.modifiers.modifier import Modifier
 
 FRAMEWORK_DEFAULTS = {
     "Chainer": "4.1.0",

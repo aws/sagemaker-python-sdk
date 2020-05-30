@@ -1,0 +1,4 @@
+TensorFlow(entry_point="foo.py")
+sagemaker.tensorflow.TensorFlow()
+m = MXNet()
+sagemaker.mxnet.MXNet()
