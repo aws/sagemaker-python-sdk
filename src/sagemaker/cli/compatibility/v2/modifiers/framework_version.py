@@ -15,7 +15,7 @@ from __future__ import absolute_import
 
 import ast
 
-from modifiers.modifier import Modifier
+from sagemaker.cli.compatibility.v2.modifiers.modifier import Modifier
 
 FRAMEWORK_DEFAULTS = {
     "Chainer": "4.1.0",
@@ -66,8 +66,7 @@ class FrameworkVersionEnforcer(Modifier):
         """
         # Check for <Framework> call
         if isinstance(node.func, ast.Name):
-            if node.func.id in FRAMEWORK_CLASSES:
-                return True
+            return node.func.id in FRAMEWORK_CLASSES
 
         # Check for sagemaker.<framework>.<Framework> call
         ends_with_framework_constructor = (

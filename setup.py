@@ -105,6 +105,11 @@ setup(
     ],
     install_requires=required_packages,
     extras_require=extras,
-    entry_points={"console_scripts": ["sagemaker=sagemaker.cli.main:main"]},
+    entry_points={
+        "console_scripts": [
+            "sagemaker=sagemaker.cli.main:main",
+            "sagemaker-upgrade-v2=sagemaker.cli.compatibility.v2.sagemaker_upgrade_v2:main",
+        ]
+    },
     include_package_data=True,  # TODO-reinvent-2019 [knakad]: Remove after rule_configs is in PyPI
 )

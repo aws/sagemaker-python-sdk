@@ -20,7 +20,7 @@ import os
 
 import pasta
 
-from ast_transformer import ASTTransformer
+from sagemaker.cli.compatibility.v2.ast_transformer import ASTTransformer
 
 LOGGER = logging.getLogger(__name__)
 
@@ -47,6 +47,18 @@ class FileUpdater(object):
         compatible with v2 of the SageMaker Python SDK, and writes the
         updated code to an output file.
         """
+
+    def _make_output_dirs_if_needed(self):
+        """Checks if the directory path for ``self.output_path`` exists,
+        and creates the directories if not. This function also logs a warning if
+        ``self.output_path`` already exists.
+        """
+        output_dir = os.path.dirname(self.output_path)
+        if output_dir and not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+
+        if os.path.exists(self.output_path):
+            LOGGER.warning("Overwriting file %s", self.output_path)
 
 
 class PyFileUpdater(FileUpdater):
@@ -88,12 +100,7 @@ class PyFileUpdater(FileUpdater):
         Args:
             output (ast.Module): AST to save as the output file.
         """
-        output_dir = os.path.dirname(self.output_path)
-        if output_dir and not os.path.exists(output_dir):
-            os.makedirs(output_dir)
-
-        if os.path.exists(self.output_path):
-            LOGGER.warning("Overwriting file %s", self.output_path)
+        self._make_output_dirs_if_needed()
 
         with open(self.output_path, "w") as output_file:
             output_file.write(pasta.dump(output))
@@ -168,12 +175,7 @@ class JupyterNotebookFileUpdater(FileUpdater):
         Args:
             output (dict): JSON to save as the output file.
         """
-        output_dir = os.path.dirname(self.output_path)
-        if output_dir and not os.path.exists(output_dir):
-            os.makedirs(output_dir)
-
-        if os.path.exists(self.output_path):
-            LOGGER.warning("Overwriting file %s", self.output_path)
+        self._make_output_dirs_if_needed()
 
         with open(self.output_path, "w") as output_file:
             json.dump(output, output_file, indent=1)

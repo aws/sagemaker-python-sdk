@@ -10,5 +10,10 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Tools to assist with using the SageMake Python SDK."""
+"""Classes for modifying AST nodes"""
 from __future__ import absolute_import
+
+from sagemaker.cli.compatibility.v2.modifiers import (  # noqa: F401 (imported but unused)
+    framework_version,
+    tf_legacy_mode,
+)

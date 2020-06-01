@@ -15,9 +15,12 @@ from __future__ import absolute_import
 
 import ast
 
-from modifiers import framework_version
+from sagemaker.cli.compatibility.v2 import modifiers
 
-FUNCTION_CALL_MODIFIERS = [framework_version.FrameworkVersionEnforcer()]
+FUNCTION_CALL_MODIFIERS = [
+    modifiers.framework_version.FrameworkVersionEnforcer(),
+    modifiers.tf_legacy_mode.TensorFlowLegacyModeConstructorUpgrader(),
+]
 
 
 class ASTTransformer(ast.NodeTransformer):
@@ -38,4 +41,6 @@ class ASTTransformer(ast.NodeTransformer):
         """
         for function_checker in FUNCTION_CALL_MODIFIERS:
             function_checker.check_and_modify_node(node)
+
+        ast.fix_missing_locations(node)
         return node
