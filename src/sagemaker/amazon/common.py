@@ -175,7 +175,9 @@ def write_spmatrix_to_sparse_tensor(file, array, labels=None):
     try:
         import scipy
     except ImportError as e:
-        logging.warning("scipy is removed from SageMaker Python SDK v2.")
+        logging.warning(
+            "scipy failed to import. Sparse matrix functions will be impaired or broken."
+        )
         # Any subsequent attempt to use scipy will raise the ImportError
         scipy = DeferredError(e)
 
