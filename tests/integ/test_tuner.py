@@ -599,7 +599,6 @@ def test_tuning_tf_script_mode(sagemaker_session, cpu_instance_type, tf_full_ver
         role="SageMakerRole",
         train_instance_count=1,
         train_instance_type=cpu_instance_type,
-        script_mode=True,
         sagemaker_session=sagemaker_session,
         py_version=PYTHON_VERSION,
         framework_version=tf_full_version,

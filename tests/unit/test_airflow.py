@@ -169,21 +169,18 @@ def test_byo_training_config_all_args(sagemaker_session):
 @patch(
     "sagemaker.fw_utils.parse_s3_url",
     MagicMock(
-        return_value=[
-            "output",
-            "sagemaker-tensorflow-{}/source/sourcedir.tar.gz".format(TIME_STAMP),
-        ]
+        return_value=["output", "tensorflow-training-{}/source/sourcedir.tar.gz".format(TIME_STAMP)]
     ),
 )
 @patch(
     "sagemaker.fw_utils.get_ecr_image_uri_prefix",
-    return_value="520713654638.dkr.ecr.us-west-2.amazonaws.com",
+    return_value="763104351884.dkr.ecr.us-west-2.amazonaws.com",
 )
 def test_framework_training_config_required_args(ecr_prefix, sagemaker_session):
     tf = tensorflow.TensorFlow(
         entry_point="/some/script.py",
-        framework_version="1.10.0",
-        hyperparameters={"training_steps": 1000, "evaluation_steps": 100},
+        framework_version="1.15.2",
+        py_version="py3",
         role="{{ role }}",
         train_instance_count="{{ instance_count }}",
         train_instance_type="ml.c4.2xlarge",
@@ -195,11 +192,11 @@ def test_framework_training_config_required_args(ecr_prefix, sagemaker_session):
     config = airflow.training_config(tf, data)
     expected_config = {
         "AlgorithmSpecification": {
-            "TrainingImage": "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-tensorflow:1.10.0-cpu-py2",
+            "TrainingImage": "763104351884.dkr.ecr.us-west-2.amazonaws.com/tensorflow-training:1.15.2-cpu-py3",
             "TrainingInputMode": "File",
         },
         "OutputDataConfig": {"S3OutputPath": "s3://output/"},
-        "TrainingJobName": "sagemaker-tensorflow-%s" % TIME_STAMP,
+        "TrainingJobName": "tensorflow-training-%s" % TIME_STAMP,
         "StoppingCondition": {"MaxRuntimeInSeconds": 86400},
         "ResourceConfig": {
             "InstanceCount": "{{ instance_count }}",
@@ -220,22 +217,21 @@ def test_framework_training_config_required_args(ecr_prefix, sagemaker_session):
             }
         ],
         "HyperParameters": {
-            "sagemaker_submit_directory": '"s3://output/sagemaker-tensorflow-%s/source/sourcedir.tar.gz"'
+            "sagemaker_submit_directory": '"s3://output/tensorflow-training-%s/source/sourcedir.tar.gz"'
             % TIME_STAMP,
             "sagemaker_program": '"script.py"',
             "sagemaker_enable_cloudwatch_metrics": "false",
             "sagemaker_container_log_level": "20",
-            "sagemaker_job_name": '"sagemaker-tensorflow-%s"' % TIME_STAMP,
+            "sagemaker_job_name": '"tensorflow-training-%s"' % TIME_STAMP,
             "sagemaker_region": '"us-west-2"',
-            "training_steps": "1000",
-            "evaluation_steps": "100",
+            "model_dir": '"s3://output/tensorflow-training-%s/model"' % TIME_STAMP,
         },
         "S3Operations": {
             "S3Upload": [
                 {
                     "Path": "/some/script.py",
                     "Bucket": "output",
-                    "Key": "sagemaker-tensorflow-%s/source/sourcedir.tar.gz" % TIME_STAMP,
+                    "Key": "tensorflow-training-%s/source/sourcedir.tar.gz" % TIME_STAMP,
                     "Tar": True,
                 }
             ]
@@ -253,7 +249,7 @@ def test_framework_training_config_required_args(ecr_prefix, sagemaker_session):
 )
 @patch(
     "sagemaker.fw_utils.get_ecr_image_uri_prefix",
-    return_value="520713654638.dkr.ecr.us-west-2.amazonaws.com",
+    return_value="763104351884.dkr.ecr.us-west-2.amazonaws.com",
 )
 def test_framework_training_config_all_args(ecr_prefix, sagemaker_session):
     tf = tensorflow.TensorFlow(
@@ -262,14 +258,9 @@ def test_framework_training_config_all_args(ecr_prefix, sagemaker_session):
         enable_cloudwatch_metrics=False,
         container_log_level="{{ log_level }}",
         code_location="s3://{{ bucket_name }}/{{ prefix }}",
-        hyperparameters={
-            "training_steps": 1000,
-            "evaluation_steps": 100,
-            "checkpoint_path": "{{ checkpoint_path }}",
-            "sagemaker_requirements": "",
-        },
-        py_version="py2",
-        framework_version="1.10.0",
+        hyperparameters={"epochs": 1},
+        py_version="py3",
+        framework_version="1.15.2",
         role="{{ role }}",
         train_instance_count="{{ instance_count }}",
         train_instance_type="ml.c4.2xlarge",
@@ -292,7 +283,7 @@ def test_framework_training_config_all_args(ecr_prefix, sagemaker_session):
     config = airflow.training_config(tf, data)
     expected_config = {
         "AlgorithmSpecification": {
-            "TrainingImage": "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-tensorflow:1.10.0-cpu-py2",
+            "TrainingImage": "763104351884.dkr.ecr.us-west-2.amazonaws.com/tensorflow-training:1.15.2-cpu-py3",
             "TrainingInputMode": "Pipe",
             "MetricDefinitions": [{"Name": "{{ name }}", "Regex": "{{ regex }}"}],
         },
@@ -333,10 +324,8 @@ def test_framework_training_config_all_args(ecr_prefix, sagemaker_session):
             "sagemaker_container_log_level": '"{{ log_level }}"',
             "sagemaker_job_name": '"{{ base_job_name }}-%s"' % TIME_STAMP,
             "sagemaker_region": '"us-west-2"',
-            "checkpoint_path": '"{{ checkpoint_path }}"',
-            "training_steps": "1000",
-            "evaluation_steps": "100",
-            "sagemaker_requirements": '""',
+            "model_dir": '"{{ output_path }}/{{ base_job_name }}-%s/model"' % TIME_STAMP,
+            "epochs": "1",
         },
         "Tags": [{"{{ key }}": "{{ value }}"}],
         "S3Operations": {

@@ -18,13 +18,14 @@ import logging
 
 import mock
 import pytest
-from mock import Mock
+from mock import Mock, patch
 from sagemaker.predictor import csv_serializer
 from sagemaker.tensorflow import TensorFlow
 from sagemaker.tensorflow.serving import Model, Predictor
 
 JSON_CONTENT_TYPE = "application/json"
 CSV_CONTENT_TYPE = "text/csv"
+IMAGE = "tensorflow-inference:2.0.0-cpu"
 INSTANCE_COUNT = 1
 INSTANCE_TYPE = "ml.c4.4xlarge"
 ACCELERATOR_TYPE = "ml.eia1.medium"
@@ -69,7 +70,8 @@ def sagemaker_session():
     return session
 
 
-def test_tfs_model(sagemaker_session, tf_version):
+@patch("sagemaker.tensorflow.serving.create_image_uri", return_value=IMAGE)
+def test_tfs_model(create_image_uri, sagemaker_session, tf_version):
     model = Model(
         "s3://some/data.tar.gz",
         role=ROLE,
@@ -77,14 +79,18 @@ def test_tfs_model(sagemaker_session, tf_version):
         sagemaker_session=sagemaker_session,
     )
     cdef = model.prepare_container_def(INSTANCE_TYPE)
-    assert cdef["Image"].endswith("sagemaker-tensorflow-serving:{}-cpu".format(tf_version))
-    assert cdef["Environment"] == {}
+    create_image_uri.assert_called_with(
+        REGION, "tensorflow-serving", INSTANCE_TYPE, tf_version, accelerator_type=None
+    )
+    assert IMAGE == cdef["Image"]
+    assert {} == cdef["Environment"]
 
     predictor = model.deploy(INSTANCE_COUNT, INSTANCE_TYPE)
     assert isinstance(predictor, Predictor)
 
 
-def test_tfs_model_image_accelerator(sagemaker_session, tf_version):
+@patch("sagemaker.tensorflow.serving.create_image_uri", return_value=IMAGE)
+def test_tfs_model_accelerator(create_image_uri, sagemaker_session, tf_version):
     model = Model(
         "s3://some/data.tar.gz",
         role=ROLE,
@@ -92,7 +98,10 @@ def test_tfs_model_image_accelerator(sagemaker_session, tf_version):
         sagemaker_session=sagemaker_session,
     )
     cdef = model.prepare_container_def(INSTANCE_TYPE, accelerator_type=ACCELERATOR_TYPE)
-    assert cdef["Image"].endswith("sagemaker-tensorflow-serving-eia:{}-cpu".format(tf_version))
+    create_image_uri.assert_called_with(
+        REGION, "tensorflow-serving", INSTANCE_TYPE, tf_version, accelerator_type=ACCELERATOR_TYPE
+    )
+    assert IMAGE == cdef["Image"]
 
     predictor = model.deploy(INSTANCE_COUNT, INSTANCE_TYPE)
     assert isinstance(predictor, Predictor)

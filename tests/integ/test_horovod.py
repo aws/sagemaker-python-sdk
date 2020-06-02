@@ -58,7 +58,6 @@ def test_horovod_local_mode(sagemaker_local_session, instances, processes, tmpdi
         train_instance_type="local",
         sagemaker_session=sagemaker_local_session,
         py_version=integ.PYTHON_VERSION,
-        script_mode=True,
         output_path=output_path,
         framework_version="1.12",
         distributions={"mpi": {"enabled": True, "processes_per_host": processes}},
@@ -106,7 +105,6 @@ def _create_and_fit_estimator(sagemaker_session, instance_type, tmpdir):
         train_instance_type=instance_type,
         sagemaker_session=sagemaker_session,
         py_version=integ.PYTHON_VERSION,
-        script_mode=True,
         framework_version="1.12",
         distributions={"mpi": {"enabled": True}},
     )

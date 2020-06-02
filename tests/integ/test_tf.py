@@ -59,7 +59,6 @@ def test_mnist_with_checkpoint_config(
         train_instance_count=1,
         train_instance_type=instance_type,
         sagemaker_session=sagemaker_session,
-        script_mode=True,
         framework_version=tf_full_version,
         py_version=py_version,
         metric_definitions=[{"Name": "train:global_steps", "Regex": r"global_step\/sec:\s(.*)"}],
@@ -104,7 +103,6 @@ def test_server_side_encryption(sagemaker_session, tf_full_version, py_version):
             train_instance_count=1,
             train_instance_type="ml.c5.xlarge",
             sagemaker_session=sagemaker_session,
-            script_mode=True,
             framework_version=tf_full_version,
             py_version=py_version,
             code_location=output_path,
@@ -141,7 +139,6 @@ def test_mnist_distributed(sagemaker_session, instance_type, tf_full_version, py
         train_instance_type=instance_type,
         sagemaker_session=sagemaker_session,
         py_version=py_version,
-        script_mode=True,
         framework_version=tf_full_version,
         distributions=PARAMETER_SERVER_DISTRIBUTION,
     )
@@ -166,7 +163,6 @@ def test_mnist_async(sagemaker_session, cpu_instance_type, tf_full_version, py_v
         train_instance_type="ml.c5.4xlarge",
         py_version=tests.integ.PYTHON_VERSION,
         sagemaker_session=sagemaker_session,
-        script_mode=True,
         # testing py-sdk functionality, no need to run against all TF versions
         framework_version=TensorFlow.LATEST_VERSION,
         tags=TAGS,
@@ -209,7 +205,6 @@ def test_deploy_with_input_handlers(sagemaker_session, instance_type, tf_full_ve
         train_instance_type=instance_type,
         py_version=py_version,
         sagemaker_session=sagemaker_session,
-        script_mode=True,
         framework_version=tf_full_version,
         tags=TAGS,
     )

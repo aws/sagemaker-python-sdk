@@ -65,7 +65,6 @@ def test_mnist_efs(efs_fsx_setup, sagemaker_session, cpu_instance_type):
         train_instance_count=1,
         train_instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
-        script_mode=True,
         framework_version=TensorFlow.LATEST_VERSION,
         py_version=PY_VERSION,
         subnets=subnets,
@@ -105,7 +104,6 @@ def test_mnist_lustre(efs_fsx_setup, sagemaker_session, cpu_instance_type):
         train_instance_count=1,
         train_instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
-        script_mode=True,
         framework_version=TensorFlow.LATEST_VERSION,
         py_version=PY_VERSION,
         subnets=subnets,
@@ -130,7 +128,7 @@ def test_mnist_lustre(efs_fsx_setup, sagemaker_session, cpu_instance_type):
     tests.integ.test_region() not in tests.integ.EFS_TEST_ENABLED_REGION,
     reason="EFS integration tests need to be fixed before running in all regions.",
 )
-def test_tuning_tf_script_mode_efs(efs_fsx_setup, sagemaker_session, cpu_instance_type):
+def test_tuning_tf_efs(efs_fsx_setup, sagemaker_session, cpu_instance_type):
     role = efs_fsx_setup["role_name"]
     subnets = [efs_fsx_setup["subnet_id"]]
     security_group_ids = efs_fsx_setup["security_group_ids"]
@@ -140,7 +138,6 @@ def test_tuning_tf_script_mode_efs(efs_fsx_setup, sagemaker_session, cpu_instanc
         role=role,
         train_instance_count=1,
         train_instance_type=cpu_instance_type,
-        script_mode=True,
         sagemaker_session=sagemaker_session,
         py_version=PY_VERSION,
         framework_version=TensorFlow.LATEST_VERSION,
@@ -178,7 +175,7 @@ def test_tuning_tf_script_mode_efs(efs_fsx_setup, sagemaker_session, cpu_instanc
     tests.integ.test_region() not in tests.integ.EFS_TEST_ENABLED_REGION,
     reason="EFS integration tests need to be fixed before running in all regions.",
 )
-def test_tuning_tf_script_mode_lustre(efs_fsx_setup, sagemaker_session, cpu_instance_type):
+def test_tuning_tf_lustre(efs_fsx_setup, sagemaker_session, cpu_instance_type):
     role = efs_fsx_setup["role_name"]
     subnets = [efs_fsx_setup["subnet_id"]]
     security_group_ids = efs_fsx_setup["security_group_ids"]
@@ -188,7 +185,6 @@ def test_tuning_tf_script_mode_lustre(efs_fsx_setup, sagemaker_session, cpu_inst
         role=role,
         train_instance_count=1,
         train_instance_type=cpu_instance_type,
-        script_mode=True,
         sagemaker_session=sagemaker_session,
         py_version=PY_VERSION,
         framework_version=TensorFlow.LATEST_VERSION,
