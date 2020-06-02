@@ -16,7 +16,7 @@ import sys
 
 import pasta
 import pytest
-from mock import patch
+from mock import MagicMock, patch
 
 from sagemaker.cli.compatibility.v2.modifiers import tf_legacy_mode
 from tests.unit.sagemaker.cli.compatibility.v2.modifiers.ast_converter import ast_call
@@ -118,7 +118,9 @@ def test_modify_node_set_image_name_from_args(create_image_uri, boto_session):
     assert expected_string == pasta.dump(node)
 
 
-def test_modify_node_set_hyperparameters():
+@patch("boto3.Session", MagicMock())
+@patch("sagemaker.fw_utils.create_image_uri", return_value=IMAGE_URI)
+def test_modify_node_set_hyperparameters(create_image_uri):
     tf_constructor = """TensorFlow(
         checkpoint_path='s3://foo/bar',
         training_steps=100,
@@ -140,7 +142,9 @@ def test_modify_node_set_hyperparameters():
     assert expected_hyperparameters == _hyperparameters_from_node(node)
 
 
-def test_modify_node_preserve_other_hyperparameters():
+@patch("boto3.Session", MagicMock())
+@patch("sagemaker.fw_utils.create_image_uri", return_value=IMAGE_URI)
+def test_modify_node_preserve_other_hyperparameters(create_image_uri):
     tf_constructor = """sagemaker.tensorflow.TensorFlow(
         training_steps=100,
         evaluation_steps=10,
@@ -164,7 +168,9 @@ def test_modify_node_preserve_other_hyperparameters():
     assert expected_hyperparameters == _hyperparameters_from_node(node)
 
 
-def test_modify_node_prefer_param_over_hyperparameter():
+@patch("boto3.Session", MagicMock())
+@patch("sagemaker.fw_utils.create_image_uri", return_value=IMAGE_URI)
+def test_modify_node_prefer_param_over_hyperparameter(create_image_uri):
     tf_constructor = """sagemaker.tensorflow.TensorFlow(
         training_steps=100,
         requirements_file='source/requirements.txt',

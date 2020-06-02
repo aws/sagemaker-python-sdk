@@ -24,7 +24,7 @@ def test_node_should_be_modified_tf_constructor_script_mode():
         "sagemaker.tensorflow.TensorFlow(script_mode=True)",
     )
 
-    modifier = deprecated_params.TensorFlowScriptModeParamRemover()
+    modifier = deprecated_params.TensorFlowScriptModeParameterRemover()
 
     for constructor in tf_script_mode_constructors:
         node = ast_call(constructor)
@@ -32,7 +32,7 @@ def test_node_should_be_modified_tf_constructor_script_mode():
 
 
 def test_node_should_be_modified_not_tf_script_mode():
-    modifier = deprecated_params.TensorFlowScriptModeParamRemover()
+    modifier = deprecated_params.TensorFlowScriptModeParameterRemover()
 
     for call in ("TensorFlow()", "random()"):
         node = ast_call(call)
@@ -41,7 +41,7 @@ def test_node_should_be_modified_not_tf_script_mode():
 
 def test_modify_node():
     node = ast_call("TensorFlow(script_mode=True)")
-    modifier = deprecated_params.TensorFlowScriptModeParamRemover()
+    modifier = deprecated_params.TensorFlowScriptModeParameterRemover()
     modifier.modify_node(node)
 
     assert "TensorFlow()" == pasta.dump(node)

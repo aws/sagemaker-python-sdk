@@ -21,6 +21,7 @@ FUNCTION_CALL_MODIFIERS = [
     modifiers.framework_version.FrameworkVersionEnforcer(),
     modifiers.tf_legacy_mode.TensorFlowLegacyModeConstructorUpgrader(),
     modifiers.tf_legacy_mode.TensorBoardParameterRemover(),
+    modifiers.deprecated_params.TensorFlowScriptModeParameterRemover(),
 ]
 
 

@@ -18,7 +18,7 @@ import ast
 from sagemaker.cli.compatibility.v2.modifiers.modifier import Modifier
 
 
-class TensorFlowScriptModeParamRemover(Modifier):
+class TensorFlowScriptModeParameterRemover(Modifier):
     """A class to remove ``script_mode`` from TensorFlow estimators (because it's the only mode)."""
 
     def node_should_be_modified(self, node):
