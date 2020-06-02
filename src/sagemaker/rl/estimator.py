@@ -21,6 +21,7 @@ from sagemaker.estimator import Framework
 import sagemaker.fw_utils as fw_utils
 from sagemaker.model import FrameworkModel, SAGEMAKER_OUTPUT_LOCATION
 from sagemaker.mxnet.model import MXNetModel
+from sagemaker.tensorflow.model import TensorFlowModel
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
 logger = logging.getLogger("sagemaker")
@@ -90,7 +91,7 @@ class RLEstimator(Framework):
         :meth:`~sagemaker.amazon.estimator.Framework.deploy` creates a hosted
         SageMaker endpoint and based on the specified framework returns an
         :class:`~sagemaker.amazon.mxnet.model.MXNetPredictor` or
-        :class:`~sagemaker.amazon.tensorflow.serving.Predictor` instance that
+        :class:`~sagemaker.amazon.tensorflow.model.TensorFlowPredictor` instance that
         can be used to perform inference against the hosted model.
 
         Technical documentation on preparing RLEstimator scripts for
@@ -205,15 +206,15 @@ class RLEstimator(Framework):
             sagemaker.model.FrameworkModel: Depending on input parameters returns
                 one of the following:
 
-                * :class:`~sagemaker.model.FrameworkModel` - if ``image_name`` was specified
+                * :class:`~sagemaker.model.FrameworkModel` - if ``image_name`` is specified
                     on the estimator;
-                * :class:`~sagemaker.mxnet.MXNetModel` - if ``image_name`` wasn't specified and
-                    MXNet was used as the RL backend;
-                * :class:`~sagemaker.tensorflow.serving.Model` - if ``image_name`` wasn't specified
-                    and TensorFlow was used as the RL backend.
+                * :class:`~sagemaker.mxnet.MXNetModel` - if ``image_name`` isn't specified and
+                    MXNet is used as the RL backend;
+                * :class:`~sagemaker.tensorflow.model.TensorFlowModel` - if ``image_name`` isn't
+                    specified and TensorFlow is used as the RL backend.
 
         Raises:
-            ValueError: If image_name was not specified and framework enum is not valid.
+            ValueError: If image_name is not specified and framework enum is not valid.
         """
         base_args = dict(
             model_data=self.model_data,
@@ -252,9 +253,7 @@ class RLEstimator(Framework):
             )
 
         if self.framework == RLFramework.TENSORFLOW.value:
-            from sagemaker.tensorflow.serving import Model as tfsModel
-
-            return tfsModel(framework_version=self.framework_version, **base_args)
+            return TensorFlowModel(framework_version=self.framework_version, **base_args)
         if self.framework == RLFramework.MXNET.value:
             return MXNetModel(
                 framework_version=self.framework_version, py_version=PYTHON_VERSION, **extended_args

@@ -23,7 +23,7 @@ from sagemaker.debugger import DebuggerHookConfig
 from sagemaker.estimator import Framework
 import sagemaker.fw_utils as fw
 from sagemaker.tensorflow import defaults
-from sagemaker.tensorflow.serving import Model
+from sagemaker.tensorflow.model import TensorFlowModel
 from sagemaker.transformer import Transformer
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
@@ -249,12 +249,13 @@ class TensorFlow(Framework):
         dependencies=None,
         **kwargs
     ):
-        """Create a ``Model`` object that can be used for creating SageMaker model entities,
-        deploying to a SageMaker endpoint, or starting SageMaker Batch Transform jobs.
+        """Create a ``TensorFlowModel`` object that can be used for creating
+        SageMaker model entities, deploying to a SageMaker endpoint, or
+        starting SageMaker Batch Transform jobs.
 
         Args:
-            role (str): The ``ExecutionRoleArn`` IAM Role ARN for the ``Model``, which is also
-                used during transform jobs. If not specified, the role from the Estimator is used.
+            role (str): The ``TensorFlowModel``, which is also used during transform jobs.
+                If not specified, the role from the Estimator is used.
             vpc_config_override (dict[str, list[str]]): Optional override for VpcConfig set on the
                 model. Default: use subnets and security groups from this Estimator.
 
@@ -267,11 +268,12 @@ class TensorFlow(Framework):
                 source code dependencies aside from the entry point file (default: None).
             dependencies (list[str]): A list of paths to directories (absolute or relative) with
                 any additional libraries that will be exported to the container (default: None).
-            **kwargs: Additional kwargs passed to :class:`~sagemaker.tensorflow.serving.Model`.
+            **kwargs: Additional kwargs passed to
+                :class:`~sagemaker.tensorflow.model.TensorFlowModel`.
 
         Returns:
-            sagemaker.tensorflow.serving.Model: A ``Model`` object.
-                See :class:`~sagemaker.tensorflow.serving.Model` for full details.
+            sagemaker.tensorflow.model.TensorFlowModel: A ``TensorFlowModel`` object.
+                See :class:`~sagemaker.tensorflow.model.TensorFlowModel` for full details.
         """
         if "image" not in kwargs:
             kwargs["image"] = self.image_name
@@ -282,7 +284,7 @@ class TensorFlow(Framework):
         if "enable_network_isolation" not in kwargs:
             kwargs["enable_network_isolation"] = self.enable_network_isolation()
 
-        return Model(
+        return TensorFlowModel(
             model_data=self.model_data,
             role=role or self.role,
             container_log_level=self.container_log_level,
@@ -418,9 +420,8 @@ class TensorFlow(Framework):
                 container in MB.
             tags (list[dict]): List of tags for labeling a transform job. If none specified, then
                 the tags used for the training job are used for the transform job.
-            role (str): The ``ExecutionRoleArn`` IAM Role ARN for the ``Model``, which is also
-                used during transform jobs. If not specified, the role from the Estimator will be
-                used.
+            role (str): The IAM Role ARN for the ``TensorFlowModel``, which is also used
+                during transform jobs. If not specified, the role from the Estimator is used.
             volume_kms_key (str): Optional. KMS key ID for encrypting the volume attached to the ML
                 compute instance (default: None).
             entry_point (str): Path (absolute or relative) to the local Python source file which

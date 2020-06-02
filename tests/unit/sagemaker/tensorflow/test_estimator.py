@@ -21,7 +21,7 @@ from packaging import version
 import pytest
 
 from sagemaker.estimator import _TrainingJob
-from sagemaker.tensorflow import defaults, serving, TensorFlow
+from sagemaker.tensorflow import defaults, model, TensorFlow
 from tests.unit import DATA_DIR
 
 SCRIPT_FILE = "dummy_script.py"
@@ -188,7 +188,7 @@ def test_create_model(sagemaker_session, tf_version):
     model = tf.create_model()
 
     assert model.sagemaker_session == sagemaker_session
-    assert model._framework_version == tf_version
+    assert model.framework_version == tf_version
     assert model.entry_point is None
     assert model.role == ROLE
     assert model.name == job_name
@@ -372,17 +372,17 @@ def test_script_mode_create_model(sagemaker_session):
     )
     tf._prepare_for_training()  # set output_path and job name as if training happened
 
-    model = tf.create_model()
+    tf_model = tf.create_model()
 
-    assert isinstance(model, serving.Model)
+    assert isinstance(tf_model, model.TensorFlowModel)
 
-    assert model.model_data == tf.model_data
-    assert model.role == tf.role
-    assert model.name == tf._current_job_name
-    assert model.container_log_level == tf.container_log_level
-    assert model._framework_version == "1.11"
-    assert model.sagemaker_session == sagemaker_session
-    assert model.enable_network_isolation()
+    assert tf_model.model_data == tf.model_data
+    assert tf_model.role == tf.role
+    assert tf_model.name == tf._current_job_name
+    assert tf_model.container_log_level == tf.container_log_level
+    assert tf_model.framework_version == "1.11"
+    assert tf_model.sagemaker_session == sagemaker_session
+    assert tf_model.enable_network_isolation()
 
 
 @patch("time.strftime", return_value=TIMESTAMP)

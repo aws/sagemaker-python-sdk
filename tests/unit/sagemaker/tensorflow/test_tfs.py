@@ -21,7 +21,7 @@ import pytest
 from mock import Mock, patch
 from sagemaker.predictor import csv_serializer
 from sagemaker.tensorflow import TensorFlow
-from sagemaker.tensorflow.serving import Model, Predictor
+from sagemaker.tensorflow.model import TensorFlowModel, TensorFlowPredictor
 
 JSON_CONTENT_TYPE = "application/json"
 CSV_CONTENT_TYPE = "text/csv"
@@ -70,9 +70,9 @@ def sagemaker_session():
     return session
 
 
-@patch("sagemaker.tensorflow.serving.create_image_uri", return_value=IMAGE)
+@patch("sagemaker.tensorflow.model.create_image_uri", return_value=IMAGE)
 def test_tfs_model(create_image_uri, sagemaker_session, tf_version):
-    model = Model(
+    model = TensorFlowModel(
         "s3://some/data.tar.gz",
         role=ROLE,
         framework_version=tf_version,
@@ -86,12 +86,12 @@ def test_tfs_model(create_image_uri, sagemaker_session, tf_version):
     assert {} == cdef["Environment"]
 
     predictor = model.deploy(INSTANCE_COUNT, INSTANCE_TYPE)
-    assert isinstance(predictor, Predictor)
+    assert isinstance(predictor, TensorFlowPredictor)
 
 
-@patch("sagemaker.tensorflow.serving.create_image_uri", return_value=IMAGE)
+@patch("sagemaker.tensorflow.model.create_image_uri", return_value=IMAGE)
 def test_tfs_model_accelerator(create_image_uri, sagemaker_session, tf_version):
-    model = Model(
+    model = TensorFlowModel(
         "s3://some/data.tar.gz",
         role=ROLE,
         framework_version=tf_version,
@@ -104,11 +104,11 @@ def test_tfs_model_accelerator(create_image_uri, sagemaker_session, tf_version):
     assert IMAGE == cdef["Image"]
 
     predictor = model.deploy(INSTANCE_COUNT, INSTANCE_TYPE)
-    assert isinstance(predictor, Predictor)
+    assert isinstance(predictor, TensorFlowPredictor)
 
 
 def test_tfs_model_image_accelerator_not_supported(sagemaker_session):
-    model = Model(
+    model = TensorFlowModel(
         "s3://some/data.tar.gz",
         role=ROLE,
         framework_version="1.13.1",
@@ -121,7 +121,7 @@ def test_tfs_model_image_accelerator_not_supported(sagemaker_session):
         instance_type="ml.c4.xlarge", initial_instance_count=1, accelerator_type="ml.eia1.medium"
     )
 
-    model = Model(
+    model = TensorFlowModel(
         "s3://some/data.tar.gz",
         role=ROLE,
         framework_version="2.1",
@@ -143,7 +143,7 @@ def test_tfs_model_image_accelerator_not_supported(sagemaker_session):
 
 
 def test_tfs_model_with_log_level(sagemaker_session, tf_version):
-    model = Model(
+    model = TensorFlowModel(
         "s3://some/data.tar.gz",
         role=ROLE,
         framework_version=tf_version,
@@ -151,11 +151,11 @@ def test_tfs_model_with_log_level(sagemaker_session, tf_version):
         sagemaker_session=sagemaker_session,
     )
     cdef = model.prepare_container_def(INSTANCE_TYPE)
-    assert cdef["Environment"] == {Model.LOG_LEVEL_PARAM_NAME: "info"}
+    assert cdef["Environment"] == {TensorFlowModel.LOG_LEVEL_PARAM_NAME: "info"}
 
 
 def test_tfs_model_with_custom_image(sagemaker_session, tf_version):
-    model = Model(
+    model = TensorFlowModel(
         "s3://some/data.tar.gz",
         role=ROLE,
         framework_version=tf_version,
@@ -171,7 +171,7 @@ def test_tfs_model_with_custom_image(sagemaker_session, tf_version):
 def test_tfs_model_with_entry_point(
     repack_model, model_code_key_prefix, sagemaker_session, tf_version
 ):
-    model = Model(
+    model = TensorFlowModel(
         "s3://some/data.tar.gz",
         entry_point="train.py",
         role=ROLE,
@@ -199,7 +199,7 @@ def test_tfs_model_with_entry_point(
 @mock.patch("sagemaker.fw_utils.model_code_key_prefix", return_value="key-prefix")
 @mock.patch("sagemaker.utils.repack_model")
 def test_tfs_model_with_source(repack_model, model_code_key_prefix, sagemaker_session, tf_version):
-    model = Model(
+    model = TensorFlowModel(
         "s3://some/data.tar.gz",
         entry_point="train.py",
         source_dir="src",
@@ -229,7 +229,7 @@ def test_tfs_model_with_source(repack_model, model_code_key_prefix, sagemaker_se
 def test_tfs_model_with_dependencies(
     repack_model, model_code_key_prefix, sagemaker_session, tf_version
 ):
-    model = Model(
+    model = TensorFlowModel(
         "s3://some/data.tar.gz",
         entry_point="train.py",
         dependencies=["src", "lib"],
@@ -273,11 +273,11 @@ def test_estimator_deploy(sagemaker_session):
     job_name = "doing something"
     tf.fit(inputs="s3://mybucket/train", job_name=job_name)
     predictor = tf.deploy(INSTANCE_COUNT, INSTANCE_TYPE, endpoint_name="endpoint")
-    assert isinstance(predictor, Predictor)
+    assert isinstance(predictor, TensorFlowPredictor)
 
 
 def test_predictor(sagemaker_session):
-    predictor = Predictor("endpoint", sagemaker_session)
+    predictor = TensorFlowPredictor("endpoint", sagemaker_session)
 
     mock_response(json.dumps(PREDICT_RESPONSE).encode("utf-8"), sagemaker_session)
     result = predictor.predict(PREDICT_INPUT)
@@ -294,7 +294,7 @@ def test_predictor(sagemaker_session):
 
 
 def test_predictor_jsons(sagemaker_session):
-    predictor = Predictor(
+    predictor = TensorFlowPredictor(
         "endpoint", sagemaker_session, serializer=None, content_type="application/jsons"
     )
 
@@ -313,7 +313,7 @@ def test_predictor_jsons(sagemaker_session):
 
 
 def test_predictor_csv(sagemaker_session):
-    predictor = Predictor("endpoint", sagemaker_session, serializer=csv_serializer)
+    predictor = TensorFlowPredictor("endpoint", sagemaker_session, serializer=csv_serializer)
 
     mock_response(json.dumps(PREDICT_RESPONSE).encode("utf-8"), sagemaker_session)
     result = predictor.predict([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
@@ -330,7 +330,9 @@ def test_predictor_csv(sagemaker_session):
 
 
 def test_predictor_model_attributes(sagemaker_session):
-    predictor = Predictor("endpoint", sagemaker_session, model_name="model", model_version="123")
+    predictor = TensorFlowPredictor(
+        "endpoint", sagemaker_session, model_name="model", model_version="123"
+    )
 
     mock_response(json.dumps(PREDICT_RESPONSE).encode("utf-8"), sagemaker_session)
     result = predictor.predict(PREDICT_INPUT)
@@ -348,7 +350,7 @@ def test_predictor_model_attributes(sagemaker_session):
 
 
 def test_predictor_classify(sagemaker_session):
-    predictor = Predictor("endpoint", sagemaker_session)
+    predictor = TensorFlowPredictor("endpoint", sagemaker_session)
 
     mock_response(json.dumps(CLASSIFY_RESPONSE).encode("utf-8"), sagemaker_session)
     result = predictor.classify(CLASSIFY_INPUT)
@@ -366,7 +368,9 @@ def test_predictor_classify(sagemaker_session):
 
 
 def test_predictor_regress(sagemaker_session):
-    predictor = Predictor("endpoint", sagemaker_session, model_name="model", model_version="123")
+    predictor = TensorFlowPredictor(
+        "endpoint", sagemaker_session, model_name="model", model_version="123"
+    )
 
     mock_response(json.dumps(REGRESS_RESPONSE).encode("utf-8"), sagemaker_session)
     result = predictor.regress(REGRESS_INPUT)
@@ -384,14 +388,14 @@ def test_predictor_regress(sagemaker_session):
 
 
 def test_predictor_regress_bad_content_type(sagemaker_session):
-    predictor = Predictor("endpoint", sagemaker_session, csv_serializer)
+    predictor = TensorFlowPredictor("endpoint", sagemaker_session, csv_serializer)
 
     with pytest.raises(ValueError):
         predictor.regress(REGRESS_INPUT)
 
 
 def test_predictor_classify_bad_content_type(sagemaker_session):
-    predictor = Predictor("endpoint", sagemaker_session, csv_serializer)
+    predictor = TensorFlowPredictor("endpoint", sagemaker_session, csv_serializer)
 
     with pytest.raises(ValueError):
         predictor.classify(CLASSIFY_INPUT)
