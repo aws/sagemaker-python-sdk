@@ -561,7 +561,6 @@ def test_tf_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_inst
             train_instance_count=SINGLE_INSTANCE_COUNT,
             train_instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
-            script_mode=True,
             framework_version=TensorFlow.LATEST_VERSION,
             py_version=PYTHON_VERSION,
             metric_definitions=[

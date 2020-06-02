@@ -352,7 +352,6 @@ def test_transform_tf_kms_network_isolation(sagemaker_session, cpu_instance_type
         train_instance_count=1,
         train_instance_type=cpu_instance_type,
         framework_version=TensorFlow.LATEST_VERSION,
-        script_mode=True,
         py_version=PYTHON_VERSION,
         sagemaker_session=sagemaker_session,
     )
