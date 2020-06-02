@@ -15,6 +15,7 @@ from __future__ import absolute_import
 import pasta
 
 from sagemaker.cli.compatibility.v2.modifiers import tf_legacy_mode
+from tests.unit.sagemaker.cli.compatibility.v2.modifiers.ast_converter import ast_call
 
 
 def test_node_should_be_modified_fit_with_tensorboard():
@@ -26,7 +27,7 @@ def test_node_should_be_modified_fit_with_tensorboard():
     modifier = tf_legacy_mode.TensorBoardParameterRemover()
 
     for call in fit_calls:
-        node = _ast_call(call)
+        node = ast_call(call)
         assert modifier.node_should_be_modified(node) is True
 
 
@@ -36,12 +37,12 @@ def test_node_should_be_modified_fit_without_tensorboard():
     modifier = tf_legacy_mode.TensorBoardParameterRemover()
 
     for call in fit_calls:
-        node = _ast_call(call)
+        node = ast_call(call)
         assert modifier.node_should_be_modified(node) is False
 
 
 def test_node_should_be_modified_random_function_call():
-    node = _ast_call("estimator.deploy(1, 'local')")
+    node = ast_call("estimator.deploy(1, 'local')")
     modifier = tf_legacy_mode.TensorBoardParameterRemover()
     assert modifier.node_should_be_modified(node) is False
 
@@ -54,10 +55,6 @@ def test_modify_node():
     modifier = tf_legacy_mode.TensorBoardParameterRemover()
 
     for call in fit_calls:
-        node = _ast_call(call)
+        node = ast_call(call)
         modifier.modify_node(node)
         assert "estimator.fit()" == pasta.dump(node)
-
-
-def _ast_call(code):
-    return pasta.parse(code).body[0].value
