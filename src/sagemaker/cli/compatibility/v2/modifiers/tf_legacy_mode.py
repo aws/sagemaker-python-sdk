@@ -11,7 +11,6 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Classes to modify TensorFlow legacy mode code to be compatible with SageMaker Python SDK v2."""
-# TODO: handle fit(run_tensorboard_locally=True)
 from __future__ import absolute_import
 
 import ast
@@ -148,3 +147,38 @@ class TensorFlowLegacyModeConstructorUpgrader(Modifier):
             return ast.keyword(arg="hyperparameters", value=ast.Dict(keys=keys, values=values))
 
         return None
+
+
+class TensorBoardParameterRemover(Modifier):
+    """A class for removing the ``run_tensorboard_locally`` parameter from ``fit()``."""
+
+    def node_should_be_modified(self, node):
+        """Checks if the ``ast.Call`` node invokes a function named "fit" and
+        contains a keyword argument named "run_tensorboard_locally".
+
+        Args:
+            node (ast.Call): a node that represents a function call. For more,
+                see https://docs.python.org/3/library/ast.html#abstract-grammar.
+
+        Returns:
+            bool: If the ``ast.Call`` is invoking a function named "fit" with
+                a parameter named "run_tensorboard_locally".
+        """
+        is_fit_call = isinstance(node.func, ast.Attribute) and node.func.attr == "fit"
+        if is_fit_call:
+            for kw in node.keywords:
+                if kw.arg == "run_tensorboard_locally":
+                    return True
+
+        return False
+
+    def modify_node(self, node):
+        """Removes ``run_tensorboard_locally`` from the ``ast.Call`` node's keywords.
+
+        Args:
+            node (ast.Call): a node that represents ``fit`` being called with
+                ``run_tensorboard_locally`` set.
+        """
+        for kw in node.keywords:
+            if kw.arg == "run_tensorboard_locally":
+                node.keywords.remove(kw)
