@@ -118,7 +118,7 @@ def test_require_image_name_if_fw_ver_is_less_than_1_11(sagemaker_session, tf_ve
         "TF {version} supports only legacy mode. Please supply the image URI directly with "
         "'image_name=520713654638.dkr.ecr.{region}.amazonaws.com/"
         "sagemaker-tensorflow:{version}-cpu-py2' and set 'model_dir=False'. "
-        "If you were using any legacy mode parameters (training_steps, evaluation_steps, "
+        "If you are using any legacy parameters (training_steps, evaluation_steps, "
         "checkpoint_path, requirements_file), make sure to pass them directly as hyperparameters instead."
     ).format(version=tf_version, region=REGION)
 

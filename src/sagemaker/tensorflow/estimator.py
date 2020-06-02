@@ -161,10 +161,6 @@ class TensorFlow(Framework):
             raise AttributeError(msg)
 
         if self._only_legacy_mode_supported() and self.image_name is None:
-            additional_instructions = ""
-            if self.model_dir is not False:
-                additional_instructions = " and set 'model_dir=False'"
-
             legacy_image_uri = fw.create_image_uri(
                 self.sagemaker_session.boto_region_name,
                 "tensorflow",
@@ -176,10 +172,10 @@ class TensorFlow(Framework):
             # TODO: add link to docs to explain how to use legacy mode with v2
             msg = (
                 "TF {} supports only legacy mode. Please supply the image URI directly with "
-                "'image_name={}'{}. If you were using any legacy mode parameters "
+                "'image_name={}' and set 'model_dir=False'. If you are using any legacy parameters "
                 "(training_steps, evaluation_steps, checkpoint_path, requirements_file), "
                 "make sure to pass them directly as hyperparameters instead."
-            ).format(self.framework_version, legacy_image_uri, additional_instructions)
+            ).format(self.framework_version, legacy_image_uri)
 
             raise ValueError(msg)
 
