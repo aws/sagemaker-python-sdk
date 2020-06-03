@@ -18,6 +18,7 @@ import pasta
 import pytest
 
 from sagemaker.cli.compatibility.v2.modifiers import framework_version
+from tests.unit.sagemaker.cli.compatibility.v2.modifiers.ast_converter import ast_call
 
 
 @pytest.fixture(autouse=True)
@@ -54,7 +55,7 @@ def test_node_should_be_modified_fw_constructor_no_fw_version():
     modifier = framework_version.FrameworkVersionEnforcer()
 
     for constructor in fw_constructors:
-        node = _ast_call(constructor)
+        node = ast_call(constructor)
         assert modifier.node_should_be_modified(node) is True
 
 
@@ -85,12 +86,12 @@ def test_node_should_be_modified_fw_constructor_with_fw_version():
     modifier = framework_version.FrameworkVersionEnforcer()
 
     for constructor in fw_constructors:
-        node = _ast_call(constructor)
+        node = ast_call(constructor)
         assert modifier.node_should_be_modified(node) is False
 
 
 def test_node_should_be_modified_random_function_call():
-    node = _ast_call("sagemaker.session.Session()")
+    node = ast_call("sagemaker.session.Session()")
     modifier = framework_version.FrameworkVersionEnforcer()
     assert modifier.node_should_be_modified(node) is False
 
@@ -139,14 +140,10 @@ def test_modify_node_sklearn():
     _test_modify_node(classes, "0.20.0")
 
 
-def _ast_call(code):
-    return pasta.parse(code).body[0].value
-
-
 def _test_modify_node(classes, default_version):
     modifier = framework_version.FrameworkVersionEnforcer()
     for cls in classes:
-        node = _ast_call("{}()".format(cls))
+        node = ast_call("{}()".format(cls))
         modifier.modify_node(node)
 
         expected_result = "{}(framework_version='{}')".format(cls, default_version)

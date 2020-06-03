@@ -15,14 +15,17 @@ from __future__ import absolute_import
 
 import ast
 
+import boto3
 import six
 
+from sagemaker.cli.compatibility.v2.modifiers import framework_version
 from sagemaker.cli.compatibility.v2.modifiers.modifier import Modifier
+from sagemaker import fw_utils
 
 
 class TensorFlowLegacyModeConstructorUpgrader(Modifier):
-    """A class to turn legacy mode parameters into hyperparameters when
-    instantiating a TensorFlow estimator.
+    """A class to turn legacy mode parameters into hyperparameters, disable the ``model_dir``
+    hyperparameter, and set the image URI when instantiating a TensorFlow estimator.
     """
 
     LEGACY_MODE_PARAMETERS = (
@@ -31,6 +34,18 @@ class TensorFlowLegacyModeConstructorUpgrader(Modifier):
         "requirements_file",
         "training_steps",
     )
+
+    def __init__(self):
+        """Initializes a ``TensorFlowLegacyModeConstructorUpgrader``."""
+        self._region = None
+
+    @property
+    def region(self):
+        """Returns the AWS region for constructing an ECR image URI."""
+        if self._region is None:
+            self._region = boto3.Session().region_name
+
+        return self._region
 
     def node_should_be_modified(self, node):
         """Checks if the ``ast.Call`` node instantiates a TensorFlow estimator with legacy mode.
@@ -89,7 +104,7 @@ class TensorFlowLegacyModeConstructorUpgrader(Modifier):
 
     def modify_node(self, node):
         """Modifies the ``ast.Call`` node's keywords to turn TensorFlow legacy mode parameters
-        into hyperparameters and set ``script_mode=False``.
+        into hyperparameters and sets ``model_dir=False``.
 
         The parameters that are converted into hyperparameters:
 
@@ -105,9 +120,11 @@ class TensorFlowLegacyModeConstructorUpgrader(Modifier):
         additional_hps = {}
         kw_to_remove = []  # remove keyword args after so that none are skipped during iteration
 
+        add_image_uri = True
+
         for kw in node.keywords:
-            if kw.arg == "script_mode":
-                # remove here because is set to False later regardless of current value
+            if kw.arg in ("script_mode", "model_dir"):
+                # model_dir is removed so that it can be set to False later
                 kw_to_remove.append(kw)
             if kw.arg == "hyperparameters" and kw.value:
                 base_hps = dict(zip(kw.value.keys, kw.value.values))
@@ -116,11 +133,17 @@ class TensorFlowLegacyModeConstructorUpgrader(Modifier):
                 hp_key = self._hyperparameter_key_for_param(kw.arg)
                 additional_hps[hp_key] = kw.value
                 kw_to_remove.append(kw)
+            if kw.arg == "image_name":
+                add_image_uri = False
 
         self._remove_keywords(node, kw_to_remove)
         self._add_updated_hyperparameters(node, base_hps, additional_hps)
 
-        node.keywords.append(ast.keyword(arg="script_mode", value=ast.NameConstant(value=False)))
+        if add_image_uri:
+            image_uri = self._image_uri_from_args(node.keywords)
+            node.keywords.append(ast.keyword(arg="image_name", value=ast.Str(s=image_uri)))
+
+        node.keywords.append(ast.keyword(arg="model_dir", value=ast.NameConstant(value=False)))
 
     def _hyperparameter_key_for_param(self, arg):
         """Returns an ``ast.Str`` for a hyperparameter key replacing a legacy mode parameter."""
@@ -147,6 +170,21 @@ class TensorFlowLegacyModeConstructorUpgrader(Modifier):
             return ast.keyword(arg="hyperparameters", value=ast.Dict(keys=keys, values=values))
 
         return None
+
+    def _image_uri_from_args(self, keywords):
+        """Returns a legacy TensorFlow image URI based on the estimator arguments."""
+        tf_version = framework_version.FRAMEWORK_DEFAULTS["TensorFlow"]
+        instance_type = "ml.m4.xlarge"  # CPU default (exact type doesn't matter)
+
+        for kw in keywords:
+            if kw.arg == "framework_version":
+                tf_version = kw.value.s
+            if kw.arg == "train_instance_type":
+                instance_type = kw.value.s
+
+        return fw_utils.create_image_uri(
+            self.region, "tensorflow", instance_type, tf_version, "py2"
+        )
 
 
 class TensorBoardParameterRemover(Modifier):

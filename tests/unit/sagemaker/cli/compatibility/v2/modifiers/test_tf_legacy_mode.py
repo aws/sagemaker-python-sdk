@@ -16,8 +16,13 @@ import sys
 
 import pasta
 import pytest
+from mock import MagicMock, patch
 
 from sagemaker.cli.compatibility.v2.modifiers import tf_legacy_mode
+from tests.unit.sagemaker.cli.compatibility.v2.modifiers.ast_converter import ast_call
+
+IMAGE_URI = "sagemaker-tensorflow:latest"
+REGION_NAME = "us-west-2"
 
 
 @pytest.fixture(autouse=True)
@@ -42,7 +47,7 @@ def test_node_should_be_modified_tf_constructor_legacy_mode():
     modifier = tf_legacy_mode.TensorFlowLegacyModeConstructorUpgrader()
 
     for constructor in tf_legacy_mode_constructors:
-        node = _ast_call(constructor)
+        node = ast_call(constructor)
         assert modifier.node_should_be_modified(node) is True
 
 
@@ -61,31 +66,61 @@ def test_node_should_be_modified_tf_constructor_script_mode():
     modifier = tf_legacy_mode.TensorFlowLegacyModeConstructorUpgrader()
 
     for constructor in tf_script_mode_constructors:
-        node = _ast_call(constructor)
+        node = ast_call(constructor)
         assert modifier.node_should_be_modified(node) is False
 
 
 def test_node_should_be_modified_random_function_call():
-    node = _ast_call("MXNet(py_version='py3')")
+    node = ast_call("MXNet(py_version='py3')")
     modifier = tf_legacy_mode.TensorFlowLegacyModeConstructorUpgrader()
     assert modifier.node_should_be_modified(node) is False
 
 
-def test_modify_node_set_script_mode_false():
+@patch("boto3.Session")
+@patch("sagemaker.fw_utils.create_image_uri", return_value=IMAGE_URI)
+def test_modify_node_set_model_dir_and_image_name(create_image_uri, boto_session):
+    boto_session.return_value.region_name = REGION_NAME
+
     tf_constructors = (
         "TensorFlow()",
         "TensorFlow(script_mode=False)",
-        "TensorFlow(script_mode=None)",
+        "TensorFlow(model_dir='s3//bucket/model')",
     )
     modifier = tf_legacy_mode.TensorFlowLegacyModeConstructorUpgrader()
 
     for constructor in tf_constructors:
-        node = _ast_call(constructor)
+        node = ast_call(constructor)
         modifier.modify_node(node)
-        assert "TensorFlow(script_mode=False)" == pasta.dump(node)
+
+        assert "TensorFlow(image_name='{}', model_dir=False)".format(IMAGE_URI) == pasta.dump(node)
+        create_image_uri.assert_called_with(
+            REGION_NAME, "tensorflow", "ml.m4.xlarge", "1.11.0", "py2"
+        )
 
 
-def test_modify_node_set_hyperparameters():
+@patch("boto3.Session")
+@patch("sagemaker.fw_utils.create_image_uri", return_value=IMAGE_URI)
+def test_modify_node_set_image_name_from_args(create_image_uri, boto_session):
+    boto_session.return_value.region_name = REGION_NAME
+
+    tf_constructor = "TensorFlow(train_instance_type='ml.p2.xlarge', framework_version='1.4.0')"
+
+    node = ast_call(tf_constructor)
+    modifier = tf_legacy_mode.TensorFlowLegacyModeConstructorUpgrader()
+    modifier.modify_node(node)
+
+    create_image_uri.assert_called_with(REGION_NAME, "tensorflow", "ml.p2.xlarge", "1.4.0", "py2")
+
+    expected_string = (
+        "TensorFlow(train_instance_type='ml.p2.xlarge', framework_version='1.4.0', "
+        "image_name='{}', model_dir=False)".format(IMAGE_URI)
+    )
+    assert expected_string == pasta.dump(node)
+
+
+@patch("boto3.Session", MagicMock())
+@patch("sagemaker.fw_utils.create_image_uri", return_value=IMAGE_URI)
+def test_modify_node_set_hyperparameters(create_image_uri):
     tf_constructor = """TensorFlow(
         checkpoint_path='s3://foo/bar',
         training_steps=100,
@@ -93,7 +128,7 @@ def test_modify_node_set_hyperparameters():
         requirements_file='source/requirements.txt',
     )"""
 
-    node = _ast_call(tf_constructor)
+    node = ast_call(tf_constructor)
     modifier = tf_legacy_mode.TensorFlowLegacyModeConstructorUpgrader()
     modifier.modify_node(node)
 
@@ -107,7 +142,9 @@ def test_modify_node_set_hyperparameters():
     assert expected_hyperparameters == _hyperparameters_from_node(node)
 
 
-def test_modify_node_preserve_other_hyperparameters():
+@patch("boto3.Session", MagicMock())
+@patch("sagemaker.fw_utils.create_image_uri", return_value=IMAGE_URI)
+def test_modify_node_preserve_other_hyperparameters(create_image_uri):
     tf_constructor = """sagemaker.tensorflow.TensorFlow(
         training_steps=100,
         evaluation_steps=10,
@@ -115,7 +152,7 @@ def test_modify_node_preserve_other_hyperparameters():
         hyperparameters={'optimizer': 'sgd', 'lr': 0.1, 'checkpoint_path': 's3://foo/bar'},
     )"""
 
-    node = _ast_call(tf_constructor)
+    node = ast_call(tf_constructor)
     modifier = tf_legacy_mode.TensorFlowLegacyModeConstructorUpgrader()
     modifier.modify_node(node)
 
@@ -131,14 +168,16 @@ def test_modify_node_preserve_other_hyperparameters():
     assert expected_hyperparameters == _hyperparameters_from_node(node)
 
 
-def test_modify_node_prefer_param_over_hyperparameter():
+@patch("boto3.Session", MagicMock())
+@patch("sagemaker.fw_utils.create_image_uri", return_value=IMAGE_URI)
+def test_modify_node_prefer_param_over_hyperparameter(create_image_uri):
     tf_constructor = """sagemaker.tensorflow.TensorFlow(
         training_steps=100,
         requirements_file='source/requirements.txt',
         hyperparameters={'training_steps': 10, 'sagemaker_requirements': 'foo.txt'},
     )"""
 
-    node = _ast_call(tf_constructor)
+    node = ast_call(tf_constructor)
     modifier = tf_legacy_mode.TensorFlowLegacyModeConstructorUpgrader()
     modifier.modify_node(node)
 
@@ -156,7 +195,3 @@ def _hyperparameters_from_node(node):
             keys = [k.s for k in kw.value.keys]
             values = [getattr(v, v._fields[0]) for v in kw.value.values]
             return dict(zip(keys, values))
-
-
-def _ast_call(code):
-    return pasta.parse(code).body[0].value
