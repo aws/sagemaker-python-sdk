@@ -326,13 +326,13 @@ def test_mxnet_eia_images():
         "us-east-1",
         "mxnet-serving",
         "ml.c4.2xlarge",
-        "1.4.1",
+        "1.5.1",
         "py3",
         accelerator_type="ml.eia1.large",
     )
     assert (
         image_uri
-        == "{}.dkr.ecr.us-east-1.amazonaws.com/mxnet-inference-eia:1.4.1-cpu-py3".format(
+        == "{}.dkr.ecr.us-east-1.amazonaws.com/mxnet-inference-eia:1.5.1-cpu-py3".format(
             fw_utils.ASIMOV_PROD_ACCOUNT
         )
     )

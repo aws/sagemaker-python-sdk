@@ -452,6 +452,10 @@ def test_file_system_record_set_data_channel():
 def test_get_xgboost_image_uri():
     legacy_xgb_image_uri = get_image_uri(REGION, "xgboost")
     assert legacy_xgb_image_uri == "433757028032.dkr.ecr.us-west-2.amazonaws.com/xgboost:1"
+    legacy_xgb_image_uri = get_image_uri(REGION, "xgboost", 1)
+    assert legacy_xgb_image_uri == "433757028032.dkr.ecr.us-west-2.amazonaws.com/xgboost:1"
+    legacy_xgb_image_uri = get_image_uri(REGION, "xgboost", "latest")
+    assert legacy_xgb_image_uri == "433757028032.dkr.ecr.us-west-2.amazonaws.com/xgboost:latest"
 
     updated_xgb_image_uri = get_image_uri(REGION, "xgboost", "0.90-1")
     assert (
@@ -464,6 +468,52 @@ def test_get_xgboost_image_uri():
         updated_xgb_image_uri_v2
         == "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost:0.90-2-cpu-py3"
     )
+
+    assert (
+        get_image_uri(REGION, "xgboost", "0.90-2-cpu-py3")
+        == "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost:0.90-2-cpu-py3"
+    )
+    assert (
+        get_image_uri(REGION, "xgboost", "0.90")
+        == "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost:0.90-1-cpu-py3"
+    )
+    assert (
+        get_image_uri(REGION, "xgboost", "1.0-1")
+        == "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost:1.0-1-cpu-py3"
+    )
+    assert (
+        get_image_uri(REGION, "xgboost", "1.0-1-cpu-py3")
+        == "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost:1.0-1-cpu-py3"
+    )
+    assert (
+        get_image_uri(REGION, "xgboost", "1.0")
+        == "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost:1.0-1-cpu-py3"
+    )
+
+
+def test_get_xgboost_image_uri_warning_with_legacy(caplog):
+    get_image_uri(REGION, "xgboost", 1)
+    assert "There is a more up to date SageMaker XGBoost image." in caplog.text
+
+
+def test_get_xgboost_image_uri_warning_with_no_sagemaker_version(caplog):
+    get_image_uri(REGION, "xgboost", "0.90")
+    assert "There is a more up to date SageMaker XGBoost image." in caplog.text
+
+
+def test_get_xgboost_image_uri_no_warning_with_latest(caplog):
+    get_image_uri(REGION, "xgboost", XGBOOST_LATEST_VERSION.split("-")[0])
+    assert "There is a more up to date SageMaker XGBoost image." not in caplog.text
+
+
+def test_get_xgboost_image_uri_throws_error_for_unsupported_version():
+    with pytest.raises(ValueError) as error:
+        get_image_uri(REGION, "xgboost", "99.99-9")
+    assert "SageMaker XGBoost version 99.99-9 is not supported" in str(error)
+
+    with pytest.raises(ValueError) as error:
+        get_image_uri(REGION, "xgboost", "0.90-1-gpu-py3")
+    assert "SageMaker XGBoost version 0.90-1-gpu-py3 is not supported" in str(error)
 
 
 def test_regitry_throws_error_if_mapping_does_not_exist_for_lda():
@@ -482,7 +532,14 @@ def test_is_latest_xgboost_version():
     for version in XGBOOST_SUPPORTED_VERSIONS:
         if version != XGBOOST_LATEST_VERSION:
             assert _is_latest_xgboost_version(version) is False
+        else:
+            assert _is_latest_xgboost_version(version) is True
 
-    assert _is_latest_xgboost_version("0.90-1-cpu-py3") is False
 
-    assert _is_latest_xgboost_version(XGBOOST_LATEST_VERSION) is True
+def test_get_image_uri_warn(caplog):
+    warning_message = (
+        "'get_image_uri' method will be deprecated in favor of 'ImageURIProvider' class "
+        "in SageMaker Python SDK v2."
+    )
+    get_image_uri("us-west-2", "kmeans", "latest")
+    assert warning_message in caplog.text

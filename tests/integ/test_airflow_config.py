@@ -681,6 +681,8 @@ def _build_airflow_workflow(estimator, instance_type, inputs=None, mini_batch_si
         instance_type=estimator.train_instance_type,
         data=inputs,
         content_type="text/csv",
+        input_filter="$",
+        output_filter="$",
     )
 
     default_args = {

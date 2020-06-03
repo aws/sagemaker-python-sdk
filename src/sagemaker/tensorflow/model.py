@@ -149,9 +149,14 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
             model_data (str): The S3 location of a SageMaker model data
                 ``.tar.gz`` file.
             role (str): An AWS IAM role (either name or full ARN). The Amazon
-                SageMaker APIs that create Amazon SageMaker endpoints use this
-                role to access model artifacts.
-            entry_point:
+                SageMaker training jobs and APIs that create Amazon SageMaker
+                endpoints use this role to access training data and model
+                artifacts. After the endpoint is created, the inference code
+                might use the IAM role, if it needs to access an AWS resource.
+            entry_point (str): Path (absolute or relative) to the Python source
+                file which should be executed as the entry point to model
+                hosting. If ``source_dir`` is specified, then ``entry_point``
+                must point to a file located at the root of ``source_dir``.
             image (str): A Docker image URI (default: None). If not specified, a
                 default image for TensorFlow Serving will be used.
             framework_version (str): Optional. TensorFlow Serving version you

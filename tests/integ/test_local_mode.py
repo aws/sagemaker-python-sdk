@@ -218,6 +218,7 @@ def test_mxnet_training_failure(sagemaker_local_session, mxnet_full_version, tmp
         train_instance_count=1,
         train_instance_type="local",
         sagemaker_session=sagemaker_local_session,
+        code_location="s3://{}".format(sagemaker_local_session.default_bucket()),
         output_path="file://{}".format(tmpdir),
     )
 

@@ -1,5 +1,97 @@
 # Changelog
 
+## v1.60.2 (2020-05-29)
+
+### Bug Fixes and Other Changes
+
+ * [doc] Added Amazon Components for Kubeflow Pipelines
+
+## v1.60.1.post0 (2020-05-28)
+
+### Documentation Changes
+
+ * clarify that entry_point must be in the root of source_dir (if applicable)
+
+## v1.60.1 (2020-05-27)
+
+### Bug Fixes and Other Changes
+
+ * refactor the navigation
+
+### Documentation Changes
+
+ * fix undoc directive; removes extra tabs
+
+## v1.60.0.post0 (2020-05-26)
+
+### Documentation Changes
+
+ * remove some duplicated documentation from main README
+ * fix TF requirements.txt documentation
+
+## v1.60.0 (2020-05-25)
+
+### Features
+
+ * support TensorFlow training 2.2
+
+### Bug Fixes and Other Changes
+
+ * blacklist unknown xgboost image versions
+ * use format strings instead of os.path.join for S3 URI in S3Downloader
+
+### Documentation Changes
+
+ * consolidate framework version and image information
+
+## v1.59.0 (2020-05-21)
+
+### Features
+
+ * MXNet elastic inference support
+
+### Bug Fixes and Other Changes
+
+ * add Batch Transform data processing options to Airflow config
+ * add v2 warning messages
+ * don't try to use local output path for KMS key in Local Mode
+
+### Documentation Changes
+
+ * add instructions for how to enable 'local code' for Local Mode
+
+## v1.58.4 (2020-05-20)
+
+### Bug Fixes and Other Changes
+
+ * update AutoML default max_candidate value to use the service default
+ * add describe_transform_job in session class
+
+### Documentation Changes
+
+ * clarify support for requirements.txt in Tensorflow docs
+
+### Testing and Release Infrastructure
+
+ * wait for DisassociateTrialComponent to take effect in experiment integ test cleanup
+
+## v1.58.3 (2020-05-19)
+
+### Bug Fixes and Other Changes
+
+ * update DatasetFormat key name for sagemakerCaptureJson
+
+### Documentation Changes
+
+ * update Processing job max_runtime_in_seconds docstring
+
+## v1.58.2.post0 (2020-05-18)
+
+### Documentation Changes
+
+ * specify S3 source_dir needs to point to a tar file
+ * update PyTorch BYOM topic
+
 ## v1.58.2 (2020-05-13)
 
 ### Bug Fixes and Other Changes

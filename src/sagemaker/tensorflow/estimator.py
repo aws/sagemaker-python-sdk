@@ -128,6 +128,7 @@ class TensorFlow(Framework):
             )
 
         if distributions is not None:
+            logger.warning(fw.parameter_v2_rename_warning("distribution", distributions))
             train_instance_type = kwargs.get("train_instance_type")
             fw.warn_if_parameter_server_with_multi_gpu(
                 training_instance_type=train_instance_type, distributions=distributions
@@ -263,9 +264,13 @@ class TensorFlow(Framework):
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
 
             entry_point (str): Path (absolute or relative) to the local Python source file which
-                should be executed as the entry point to training (default: None).
-            source_dir (str): Path (absolute or relative) to a directory with any other serving
-                source code dependencies aside from the entry point file (default: None).
+                should be executed as the entry point to training. If ``source_dir`` is specified,
+                then ``entry_point`` must point to a file located at the root of ``source_dir``.
+                If not specified and ``endpoint_type`` is 'tensorflow-serving',
+                no entry point is used. If ``endpoint_type`` is also ``None``,
+                then the training entry point is used.
+            source_dir (str): Path (absolute or relative or an S3 URI) to a directory with any other
+                serving source code dependencies aside from the entry point file (default: None).
             dependencies (list[str]): A list of paths to directories (absolute or relative) with
                 any additional libraries that will be exported to the container (default: None).
             **kwargs: Additional kwargs passed to
@@ -425,9 +430,11 @@ class TensorFlow(Framework):
             volume_kms_key (str): Optional. KMS key ID for encrypting the volume attached to the ML
                 compute instance (default: None).
             entry_point (str): Path (absolute or relative) to the local Python source file which
-                should be executed as the entry point to training. If not specified and
-                ``endpoint_type`` is 'tensorflow-serving', no entry point is used. If
-                ``endpoint_type`` is also ``None``, then the training entry point is used.
+                should be executed as the entry point to training. If ``source_dir`` is specified,
+                then ``entry_point`` must point to a file located at the root of ``source_dir``.
+                If not specified and ``endpoint_type`` is 'tensorflow-serving',
+                no entry point is used. If ``endpoint_type`` is also ``None``,
+                then the training entry point is used.
             vpc_config_override (dict[str, list[str]]): Optional override for
                 the VpcConfig set on the model.
                 Default: use subnets and security groups from this Estimator.
