@@ -217,7 +217,7 @@ which was run when you called ``fit``. This was the model you saved to ``model_d
 In case if ``image_name`` was specified it would use provided image for the deployment.
 
 ``deploy`` returns a ``sagemaker.mxnet.MXNetPredictor`` for MXNet or
-``sagemaker.tensorflow.serving.Predictor`` for TensorFlow.
+``sagemaker.tensorflow.TensorFlowPredictor`` for TensorFlow.
 
 ``predict`` returns the result of inference against your model.
 
@@ -241,7 +241,7 @@ In case if ``image_name`` was specified it would use provided image for the depl
     response = predictor.predict(data)
 
 For more information please see `The SageMaker MXNet Model Server <https://sagemaker.readthedocs.io/en/stable/using_mxnet.html#the-sagemaker-mxnet-model-server>`_
-and `Deploying to TensorFlow Serving Endpoints <https://github.com/aws/sagemaker-python-sdk/blob/master/src/sagemaker/tensorflow/deploying_tensorflow_serving.rst>`_ documentation.
+and `Deploying to TensorFlow Serving Endpoints <deploying_tensorflow_serving.html>`_ documentation.
 
 
 Working with Existing Training Jobs
