@@ -35,6 +35,18 @@ class TensorFlowLegacyModeConstructorUpgrader(Modifier):
         "training_steps",
     )
 
+    def __init__(self):
+        """Initializes a ``TensorFlowLegacyModeConstructorUpgrader``."""
+        self._region = None
+
+    @property
+    def region(self):
+        """Returns the AWS region for constructing an ECR image URI."""
+        if self._region is None:
+            self._region = boto3.Session().region_name
+
+        return self._region
+
     def node_should_be_modified(self, node):
         """Checks if the ``ast.Call`` node instantiates a TensorFlow estimator with legacy mode.
 
@@ -170,8 +182,9 @@ class TensorFlowLegacyModeConstructorUpgrader(Modifier):
             if kw.arg == "train_instance_type":
                 instance_type = kw.value.s
 
-        region = boto3.Session().region_name
-        return fw_utils.create_image_uri(region, "tensorflow", instance_type, tf_version, "py2")
+        return fw_utils.create_image_uri(
+            self.region, "tensorflow", instance_type, tf_version, "py2"
+        )
 
 
 class TensorBoardParameterRemover(Modifier):
