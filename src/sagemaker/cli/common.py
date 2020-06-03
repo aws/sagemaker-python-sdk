@@ -41,7 +41,7 @@ class HostCommand(object):
         self.script = args.script
         self.instance_type = args.instance_type
         self.instance_count = args.instance_count
-        self.environment = {k: v for k, v in (kv.split("=") for kv in args.env)}
+        self.environment = dict((kv.split("=") for kv in args.env))
 
         self.session = sagemaker.Session()
 

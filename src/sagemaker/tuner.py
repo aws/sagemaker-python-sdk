@@ -92,10 +92,10 @@ class WarmStartConfig(object):
                 warm start the new tuning job.
         """
 
-        if warm_start_type not in WarmStartTypes:
+        if warm_start_type not in list(WarmStartTypes):
             raise ValueError(
-                "Invalid type: {}, valid warm start types are: [{}]".format(
-                    warm_start_type, [t for t in WarmStartTypes]
+                "Invalid type: {}, valid warm start types are: {}".format(
+                    warm_start_type, list(WarmStartTypes)
                 )
             )
 
