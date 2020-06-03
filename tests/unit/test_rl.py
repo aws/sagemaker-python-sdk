@@ -22,7 +22,7 @@ from mock import patch
 
 from sagemaker.mxnet import MXNetModel, MXNetPredictor
 from sagemaker.rl import RLEstimator, RLFramework, RLToolkit, TOOLKIT_FRAMEWORK_VERSION_MAP
-import sagemaker.tensorflow.serving as tfs
+from sagemaker.tensorflow import TensorFlowModel, TensorFlowPredictor
 
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
@@ -184,9 +184,9 @@ def test_create_tf_model(sagemaker_session, rl_coach_tf_version):
     supported_versions = TOOLKIT_FRAMEWORK_VERSION_MAP[RLToolkit.COACH.value]
     framework_version = supported_versions[rl_coach_tf_version][RLFramework.TENSORFLOW.value]
 
-    assert isinstance(model, tfs.Model)
+    assert isinstance(model, TensorFlowModel)
     assert model.sagemaker_session == sagemaker_session
-    assert model._framework_version == framework_version
+    assert model.framework_version == framework_version
     assert model.role == ROLE
     assert model.name == job_name
     assert model._container_log_level == container_log_level
@@ -366,7 +366,7 @@ def test_deploy_tfs(sagemaker_session, rl_coach_tf_version):
     )
     rl.fit()
     predictor = rl.deploy(1, GPU)
-    assert isinstance(predictor, tfs.Predictor)
+    assert isinstance(predictor, TensorFlowPredictor)
 
 
 @patch("sagemaker.utils.create_tar_file", MagicMock())

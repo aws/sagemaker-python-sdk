@@ -10,7 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Placeholder docstring"""
+"""Classes for using TensorFlow on Amazon SageMaker for inference."""
 from __future__ import absolute_import
 
 import logging
@@ -22,7 +22,7 @@ from sagemaker.predictor import json_serializer, json_deserializer
 from sagemaker.tensorflow.defaults import TF_VERSION
 
 
-class Predictor(sagemaker.RealTimePredictor):
+class TensorFlowPredictor(sagemaker.RealTimePredictor):
     """A ``RealTimePredictor`` implementation for inference against TensorFlow
     Serving endpoints.
     """
@@ -37,7 +37,7 @@ class Predictor(sagemaker.RealTimePredictor):
         model_name=None,
         model_version=None,
     ):
-        """Initialize a ``TFSPredictor``. See ``sagemaker.RealTimePredictor``
+        """Initialize a ``TensorFlowPredictor``. See :class:`~sagemaker.predictor.RealTimePredictor`
         for more info about parameters.
 
         Args:
@@ -61,7 +61,7 @@ class Predictor(sagemaker.RealTimePredictor):
                 that should handle the request. If not specified, the latest
                 version of the model will be used.
         """
-        super(Predictor, self).__init__(
+        super(TensorFlowPredictor, self).__init__(
             endpoint_name, sagemaker_session, serializer, deserializer, content_type
         )
 
@@ -115,13 +115,13 @@ class Predictor(sagemaker.RealTimePredictor):
             else:
                 args["CustomAttributes"] = self._model_attributes
 
-        return super(Predictor, self).predict(data, args)
+        return super(TensorFlowPredictor, self).predict(data, args)
 
 
-class Model(sagemaker.model.FrameworkModel):
-    """Placeholder docstring"""
+class TensorFlowModel(sagemaker.model.FrameworkModel):
+    """A ``FrameworkModel`` implementation for inference with TensorFlow Serving."""
 
-    FRAMEWORK_NAME = "tensorflow-serving"
+    __framework_name__ = "tensorflow-serving"
     LOG_LEVEL_PARAM_NAME = "SAGEMAKER_TFS_NGINX_LOGLEVEL"
     LOG_LEVEL_MAP = {
         logging.DEBUG: "debug",
@@ -140,7 +140,7 @@ class Model(sagemaker.model.FrameworkModel):
         image=None,
         framework_version=TF_VERSION,
         container_log_level=None,
-        predictor_cls=Predictor,
+        predictor_cls=TensorFlowPredictor,
         **kwargs
     ):
         """Initialize a Model.
@@ -171,7 +171,7 @@ class Model(sagemaker.model.FrameworkModel):
             :class:`~sagemaker.model.FrameworkModel` and
             :class:`~sagemaker.model.Model`.
         """
-        super(Model, self).__init__(
+        super(TensorFlowModel, self).__init__(
             model_data=model_data,
             role=role,
             image=image,
@@ -179,7 +179,7 @@ class Model(sagemaker.model.FrameworkModel):
             entry_point=entry_point,
             **kwargs
         )
-        self._framework_version = framework_version
+        self.framework_version = framework_version
         self._container_log_level = container_log_level
 
     def deploy(
@@ -196,10 +196,10 @@ class Model(sagemaker.model.FrameworkModel):
     ):
 
         if accelerator_type and not self._eia_supported():
-            msg = "The TensorFlow version %s doesn't support EIA." % self._framework_version
-
+            msg = "The TensorFlow version %s doesn't support EIA." % self.framework_version
             raise AttributeError(msg)
-        return super(Model, self).deploy(
+
+        return super(TensorFlowModel, self).deploy(
             initial_instance_count=initial_instance_count,
             instance_type=instance_type,
             accelerator_type=accelerator_type,
@@ -213,7 +213,7 @@ class Model(sagemaker.model.FrameworkModel):
 
     def _eia_supported(self):
         """Return true if TF version is EIA enabled"""
-        return [int(s) for s in self._framework_version.split(".")][:2] <= self.LATEST_EIA_VERSION
+        return [int(s) for s in self.framework_version.split(".")][:2] <= self.LATEST_EIA_VERSION
 
     def prepare_container_def(self, instance_type, accelerator_type=None):
         """
@@ -249,12 +249,12 @@ class Model(sagemaker.model.FrameworkModel):
         if not self._container_log_level:
             return self.env
 
-        if self._container_log_level not in Model.LOG_LEVEL_MAP:
+        if self._container_log_level not in self.LOG_LEVEL_MAP:
             logging.warning("ignoring invalid container log level: %s", self._container_log_level)
             return self.env
 
         env = dict(self.env)
-        env[Model.LOG_LEVEL_PARAM_NAME] = Model.LOG_LEVEL_MAP[self._container_log_level]
+        env[self.LOG_LEVEL_PARAM_NAME] = self.LOG_LEVEL_MAP[self._container_log_level]
         return env
 
     def _get_image_uri(self, instance_type, accelerator_type=None):
@@ -269,9 +269,9 @@ class Model(sagemaker.model.FrameworkModel):
         region_name = self.sagemaker_session.boto_region_name
         return create_image_uri(
             region_name,
-            Model.FRAMEWORK_NAME,
+            self.__framework_name__,
             instance_type,
-            self._framework_version,
+            self.framework_version,
             accelerator_type=accelerator_type,
         )
 
