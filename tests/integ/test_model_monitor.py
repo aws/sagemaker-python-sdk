@@ -36,7 +36,7 @@ from sagemaker.model_monitor.data_capture_config import _DATA_CAPTURE_S3_PATH
 from sagemaker.model_monitor import CronExpressionGenerator
 from sagemaker.processing import ProcessingInput
 from sagemaker.processing import ProcessingOutput
-from sagemaker.tensorflow.serving import Model
+from sagemaker.tensorflow.model import TensorFlowModel
 from sagemaker.utils import unique_name_from_base
 
 from tests.integ.kms_utils import get_or_create_kms_key
@@ -97,7 +97,7 @@ def predictor(sagemaker_session, tf_full_version):
     with tests.integ.timeout.timeout_and_delete_endpoint_by_name(
         endpoint_name=endpoint_name, sagemaker_session=sagemaker_session, hours=2
     ):
-        model = Model(
+        model = TensorFlowModel(
             model_data=model_data,
             role=ROLE,
             framework_version=tf_full_version,

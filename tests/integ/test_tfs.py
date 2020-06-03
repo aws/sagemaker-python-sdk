@@ -23,7 +23,7 @@ import sagemaker.predictor
 import sagemaker.utils
 import tests.integ
 import tests.integ.timeout
-from sagemaker.tensorflow.serving import Model, Predictor
+from sagemaker.tensorflow.model import TensorFlowModel, TensorFlowPredictor
 
 
 @pytest.fixture(scope="module")
@@ -34,7 +34,7 @@ def tfs_predictor(sagemaker_session, tf_full_version):
         key_prefix="tensorflow-serving/models",
     )
     with tests.integ.timeout.timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
-        model = Model(
+        model = TensorFlowModel(
             model_data=model_data,
             role="SageMakerRole",
             framework_version=tf_full_version,
@@ -62,7 +62,7 @@ def tfs_predictor_with_model_and_entry_point_same_tar(
         os.path.join(tests.integ.DATA_DIR, "tfs/tfs-test-model-with-inference"), tmpdir
     )
 
-    model = Model(
+    model = TensorFlowModel(
         model_data="file://" + model_tar,
         role="SageMakerRole",
         framework_version=tf_full_version,
@@ -93,7 +93,7 @@ def tfs_predictor_with_model_and_entry_point_and_dependencies(
         tests.integ.DATA_DIR, "tensorflow-serving-test-model.tar.gz"
     )
 
-    model = Model(
+    model = TensorFlowModel(
         entry_point=entry_point,
         model_data=model_data,
         role="SageMakerRole",
@@ -118,7 +118,7 @@ def tfs_predictor_with_accelerator(sagemaker_session, ei_tf_full_version, cpu_in
         key_prefix="tensorflow-serving/models",
     )
     with tests.integ.timeout.timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
-        model = Model(
+        model = TensorFlowModel(
             model_data=model_data,
             role="SageMakerRole",
             framework_version=ei_tf_full_version,
@@ -235,7 +235,7 @@ def test_predict_csv(tfs_predictor):
     input_data = "1.0,2.0,5.0\n1.0,2.0,5.0"
     expected_result = {"predictions": [[3.5, 4.0, 5.5], [3.5, 4.0, 5.5]]}
 
-    predictor = Predictor(
+    predictor = TensorFlowPredictor(
         tfs_predictor.endpoint,
         tfs_predictor.sagemaker_session,
         serializer=sagemaker.predictor.csv_serializer,

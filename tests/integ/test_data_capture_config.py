@@ -18,7 +18,7 @@ import sagemaker
 import tests.integ
 import tests.integ.timeout
 from sagemaker.model_monitor import DataCaptureConfig, NetworkConfig
-from sagemaker.tensorflow.serving import Model
+from sagemaker.tensorflow.model import TensorFlowModel
 from sagemaker.utils import unique_name_from_base
 from tests.integ.retry import retries
 
@@ -49,7 +49,7 @@ def test_enabling_data_capture_on_endpoint_shows_correct_data_capture_status(
         key_prefix="tensorflow-serving/models",
     )
     with tests.integ.timeout.timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
-        model = Model(
+        model = TensorFlowModel(
             model_data=model_data,
             role=ROLE,
             framework_version=tf_full_version,
@@ -106,7 +106,7 @@ def test_disabling_data_capture_on_endpoint_shows_correct_data_capture_status(
         key_prefix="tensorflow-serving/models",
     )
     with tests.integ.timeout.timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
-        model = Model(
+        model = TensorFlowModel(
             model_data=model_data,
             role=ROLE,
             framework_version=tf_full_version,
@@ -192,7 +192,7 @@ def test_updating_data_capture_on_endpoint_shows_correct_data_capture_status(
         key_prefix="tensorflow-serving/models",
     )
     with tests.integ.timeout.timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
-        model = Model(
+        model = TensorFlowModel(
             model_data=model_data,
             role=ROLE,
             framework_version=tf_full_version,
