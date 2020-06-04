@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2018-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -310,9 +310,24 @@ def test_generate_tensorboard_url_domain_non_string():
 @patch("os.makedirs")
 def test_download_folder(makedirs):
     boto_mock = Mock(name="boto_session")
-    boto_mock.client("sts").get_caller_identity.return_value = {"Account": "123"}
-
     session = sagemaker.Session(boto_session=boto_mock, sagemaker_client=Mock())
+    s3_mock = boto_mock.resource("s3")
+
+    obj_mock = Mock()
+    s3_mock.Object.return_value = obj_mock
+
+    def obj_mock_download(path):
+        # Mock the S3 object to raise an error when the input to download_file
+        # is a "folder"
+        if path in ("/tmp/", os.path.join("/tmp", "prefix")):
+            raise botocore.exceptions.ClientError(
+                error_response={"Error": {"Code": "404", "Message": "Not Found"}},
+                operation_name="HeadObject",
+            )
+        else:
+            return Mock()
+
+    obj_mock.download_file.side_effect = obj_mock_download
 
     train_data = Mock()
     validation_data = Mock()
@@ -323,26 +338,27 @@ def test_download_folder(makedirs):
     validation_data.key = "prefix/train/validation_data.csv"
 
     s3_files = [train_data, validation_data]
-    boto_mock.resource("s3").Bucket(BUCKET_NAME).objects.filter.return_value = s3_files
-
-    obj_mock = Mock()
-    boto_mock.resource("s3").Object.return_value = obj_mock
+    s3_mock.Bucket(BUCKET_NAME).objects.filter.return_value = s3_files
 
     # all the S3 mocks are set, the test itself begins now.
     sagemaker.utils.download_folder(BUCKET_NAME, "/prefix", "/tmp", session)
 
     obj_mock.download_file.assert_called()
     calls = [
-        call(os.path.join("/tmp", "train/train_data.csv")),
-        call(os.path.join("/tmp", "train/validation_data.csv")),
+        call(os.path.join("/tmp", "train", "train_data.csv")),
+        call(os.path.join("/tmp", "train", "validation_data.csv")),
     ]
     obj_mock.download_file.assert_has_calls(calls)
+    assert s3_mock.Object.call_count == 3
+
+    s3_mock.reset_mock()
     obj_mock.reset_mock()
 
-    # Testing with a trailing slash for the prefix.
+    # Test with a trailing slash for the prefix.
     sagemaker.utils.download_folder(BUCKET_NAME, "/prefix/", "/tmp", session)
     obj_mock.download_file.assert_called()
     obj_mock.download_file.assert_has_calls(calls)
+    assert s3_mock.Object.call_count == 2
 
 
 @patch("os.makedirs")
@@ -369,7 +385,7 @@ def test_download_folder_points_to_single_file(makedirs):
     obj_mock.download_file.assert_called()
     calls = [call(os.path.join("/tmp", "train_data.csv"))]
     obj_mock.download_file.assert_has_calls(calls)
-    assert boto_mock.resource("s3").Bucket(BUCKET_NAME).objects.filter.call_count == 1
+    boto_mock.resource("s3").Bucket(BUCKET_NAME).objects.filter.assert_not_called()
     obj_mock.reset_mock()
 
 
@@ -602,6 +618,65 @@ def test_repack_model_from_file_to_folder(tmp):
     }
 
 
+def test_repack_model_with_inference_code_and_requirements(tmp, fake_s3):
+    create_file_tree(
+        tmp,
+        [
+            "new-inference.py",
+            "model-dir/model",
+            "model-dir/code/old-inference.py",
+            "model-dir/code/requirements.txt",
+        ],
+    )
+
+    fake_s3.tar_and_upload("model-dir", "s3://fake/location")
+
+    sagemaker.utils.repack_model(
+        os.path.join(tmp, "new-inference.py"),
+        None,
+        None,
+        "s3://fake/location",
+        "s3://destination-bucket/repacked-model",
+        fake_s3.sagemaker_session,
+    )
+
+    assert list_tar_files(fake_s3.fake_upload_path, tmp) == {
+        "/code/requirements.txt",
+        "/code/new-inference.py",
+        "/code/old-inference.py",
+        "/model",
+    }
+
+
+def test_repack_model_with_same_inference_file_name(tmp, fake_s3):
+    create_file_tree(
+        tmp,
+        [
+            "inference.py",
+            "model-dir/model",
+            "model-dir/code/inference.py",
+            "model-dir/code/requirements.txt",
+        ],
+    )
+
+    fake_s3.tar_and_upload("model-dir", "s3://fake/location")
+
+    sagemaker.utils.repack_model(
+        os.path.join(tmp, "inference.py"),
+        None,
+        None,
+        "s3://fake/location",
+        "s3://destination-bucket/repacked-model",
+        fake_s3.sagemaker_session,
+    )
+
+    assert list_tar_files(fake_s3.fake_upload_path, tmp) == {
+        "/code/requirements.txt",
+        "/code/inference.py",
+        "/model",
+    }
+
+
 class FakeS3(object):
     def __init__(self, tmp):
         self.tmp = tmp
@@ -671,6 +746,14 @@ def list_tar_files(tar_ball, tmp):
     return result if result else {}
 
 
+def test_get_ecr_image_uri_prefix():
+    ecr_prefix = sagemaker.utils.get_ecr_image_uri_prefix("123456789012", "us-west-2")
+    assert ecr_prefix == "123456789012.dkr.ecr.us-west-2.amazonaws.com"
+
+    ecr_prefix = sagemaker.utils.get_ecr_image_uri_prefix("123456789012", "us-iso-east-1")
+    assert ecr_prefix == "123456789012.dkr.ecr.us-iso-east-1.c2s.ic.gov"
+
+
 def test_sts_regional_endpoint():
     endpoint = sagemaker.utils.sts_regional_endpoint("us-west-2")
     assert endpoint == "https://sts.us-west-2.amazonaws.com"
@@ -679,3 +762,11 @@ def test_sts_regional_endpoint():
     endpoint = sagemaker.utils.sts_regional_endpoint("us-iso-east-1")
     assert endpoint == "https://sts.us-iso-east-1.c2s.ic.gov"
     assert botocore.utils.is_valid_endpoint_url(endpoint)
+
+
+def test_partition_by_region():
+    assert sagemaker.utils._aws_partition("us-west-2") == "aws"
+    assert sagemaker.utils._aws_partition("cn-north-1") == "aws-cn"
+    assert sagemaker.utils._aws_partition("us-gov-east-1") == "aws-us-gov"
+    assert sagemaker.utils._aws_partition("us-iso-east-1") == "aws-iso"
+    assert sagemaker.utils._aws_partition("us-isob-east-1") == "aws-iso-b"

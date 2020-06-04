@@ -14,7 +14,6 @@
 from __future__ import absolute_import
 
 import logging
-import os
 
 import sagemaker
 from sagemaker.content_types import CONTENT_TYPE_JSON
@@ -131,7 +130,7 @@ class Model(sagemaker.model.FrameworkModel):
         logging.ERROR: "error",
         logging.CRITICAL: "crit",
     }
-    LATEST_EIA_VERSION = [1, 14]
+    LATEST_EIA_VERSION = [2, 0]
 
     def __init__(
         self,
@@ -229,7 +228,7 @@ class Model(sagemaker.model.FrameworkModel):
             key_prefix = sagemaker.fw_utils.model_code_key_prefix(self.key_prefix, self.name, image)
 
             bucket = self.bucket or self.sagemaker_session.default_bucket()
-            model_data = "s3://" + os.path.join(bucket, key_prefix, "model.tar.gz")
+            model_data = "s3://{}/{}/model.tar.gz".format(bucket, key_prefix)
 
             sagemaker.utils.repack_model(
                 self.entry_point,

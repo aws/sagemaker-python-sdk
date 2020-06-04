@@ -70,7 +70,8 @@ class Processor(object):
             output_kms_key (str): The KMS key ID for processing job outputs (default: None).
             max_runtime_in_seconds (int): Timeout in seconds (default: None).
                 After this amount of time, Amazon SageMaker terminates the job,
-                regardless of its current status.
+                regardless of its current status. If `max_runtime_in_seconds` is not
+                specified, the default value is 24 hours.
             base_job_name (str): Prefix for processing job name. If not specified,
                 the processor generates a default job name, based on the
                 processing image name and current timestamp.
@@ -213,11 +214,9 @@ class Processor(object):
                 # and save the S3 uri in the ProcessingInput source.
                 parse_result = urlparse(file_input.source)
                 if parse_result.scheme != "s3":
-                    desired_s3_uri = os.path.join(
-                        "s3://",
+                    desired_s3_uri = "s3://{}/{}/input/{}".format(
                         self.sagemaker_session.default_bucket(),
                         self._current_job_name,
-                        "input",
                         file_input.input_name,
                     )
                     s3_uri = S3Uploader.upload(
@@ -259,11 +258,9 @@ class Processor(object):
                 # If the output's destination is not an s3_uri, create one.
                 parse_result = urlparse(output.destination)
                 if parse_result.scheme != "s3":
-                    s3_uri = os.path.join(
-                        "s3://",
+                    s3_uri = "s3://{}/{}/output/{}".format(
                         self.sagemaker_session.default_bucket(),
                         self._current_job_name,
-                        "output",
                         output.output_name,
                     )
                     output.destination = s3_uri
@@ -313,7 +310,8 @@ class ScriptProcessor(Processor):
             output_kms_key (str): The KMS key ID for processing job outputs (default: None).
             max_runtime_in_seconds (int): Timeout in seconds (default: None).
                 After this amount of time, Amazon SageMaker terminates the job,
-                regardless of its current status.
+                regardless of its current status. If `max_runtime_in_seconds` is not
+                specified, the default value is 24 hours.
             base_job_name (str): Prefix for processing name. If not specified,
                 the processor generates a default job name, based on the
                 processing image name and current timestamp.
@@ -475,11 +473,9 @@ class ScriptProcessor(Processor):
             str: The S3 URI of the uploaded file or directory.
 
         """
-        desired_s3_uri = os.path.join(
-            "s3://",
+        desired_s3_uri = "s3://{}/{}/input/{}".format(
             self.sagemaker_session.default_bucket(),
             self._current_job_name,
-            "input",
             self._CODE_CONTAINER_INPUT_NAME,
         )
         return S3Uploader.upload(
@@ -501,7 +497,7 @@ class ScriptProcessor(Processor):
         """
         code_file_input = ProcessingInput(
             source=s3_uri,
-            destination=os.path.join(
+            destination="{}{}".format(
                 self._CODE_CONTAINER_BASE_PATH, self._CODE_CONTAINER_INPUT_NAME
             ),
             input_name=self._CODE_CONTAINER_INPUT_NAME,
@@ -514,7 +510,7 @@ class ScriptProcessor(Processor):
         Args:
             user_script_name (str): A filename with an extension.
         """
-        user_script_location = os.path.join(
+        user_script_location = "{}{}/{}".format(
             self._CODE_CONTAINER_BASE_PATH, self._CODE_CONTAINER_INPUT_NAME, user_script_name
         )
         self.entrypoint = command + [user_script_location]
@@ -648,10 +644,9 @@ class ProcessingJob(_Job):
         """
         job_desc = sagemaker_session.describe_processing_job(job_name=processing_job_name)
 
-        return cls(
-            sagemaker_session=sagemaker_session,
-            job_name=processing_job_name,
-            inputs=[
+        inputs = None
+        if job_desc.get("ProcessingInputs"):
+            inputs = [
                 ProcessingInput(
                     source=processing_input["S3Input"]["S3Uri"],
                     destination=processing_input["S3Input"]["LocalPath"],
@@ -664,19 +659,31 @@ class ProcessingJob(_Job):
                     s3_compression_type=processing_input["S3Input"].get("S3CompressionType"),
                 )
                 for processing_input in job_desc["ProcessingInputs"]
-            ],
-            outputs=[
+            ]
+
+        outputs = None
+        if job_desc.get("ProcessingOutputConfig") and job_desc["ProcessingOutputConfig"].get(
+            "Outputs"
+        ):
+            outputs = [
                 ProcessingOutput(
-                    source=job_desc["ProcessingOutputConfig"]["Outputs"][0]["S3Output"][
-                        "LocalPath"
-                    ],
-                    destination=job_desc["ProcessingOutputConfig"]["Outputs"][0]["S3Output"][
-                        "S3Uri"
-                    ],
-                    output_name=job_desc["ProcessingOutputConfig"]["Outputs"][0]["OutputName"],
+                    source=processing_output["S3Output"]["LocalPath"],
+                    destination=processing_output["S3Output"]["S3Uri"],
+                    output_name=processing_output["OutputName"],
                 )
-            ],
-            output_kms_key=job_desc["ProcessingOutputConfig"].get("KmsKeyId"),
+                for processing_output in job_desc["ProcessingOutputConfig"]["Outputs"]
+            ]
+
+        output_kms_key = None
+        if job_desc.get("ProcessingOutputConfig"):
+            output_kms_key = job_desc["ProcessingOutputConfig"].get("KmsKeyId")
+
+        return cls(
+            sagemaker_session=sagemaker_session,
+            job_name=processing_job_name,
+            inputs=inputs,
+            outputs=outputs,
+            output_kms_key=output_kms_key,
         )
 
     @classmethod

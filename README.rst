@@ -1,3 +1,8 @@
++-------------------------------------------------------------------------------------------------+
+| **NOTE**: We are working on v2.0.0. See https://github.com/aws/sagemaker-python-sdk/issues/1459 |
+| for more info on our plans and to leave feedback!                                               |
++-------------------------------------------------------------------------------------------------+
+
 .. image:: https://github.com/aws/sagemaker-python-sdk/raw/master/branding/icon/sagemaker-banner.png
     :height: 100px
     :alt: SageMaker
@@ -29,36 +34,36 @@ You can also train and deploy models with **Amazon algorithms**,
 which are scalable implementations of core machine learning algorithms that are optimized for SageMaker and GPU training.
 If you have **your own algorithms** built into SageMaker compatible Docker containers, you can train and host models using these as well.
 
-For detailed API reference please go to: `Read the Docs <https://sagemaker.readthedocs.io>`_
+For detailed documentation, including the API reference, see `Read the Docs <https://sagemaker.readthedocs.io>`_.
 
 Table of Contents
 -----------------
 
-1. `Installing SageMaker Python SDK <#installing-the-sagemaker-python-sdk>`__
-2. `Using the SageMaker Python SDK <https://sagemaker.readthedocs.io/en/stable/overview.html>`__
-3. `MXNet SageMaker Estimators <#mxnet-sagemaker-estimators>`__
-4. `TensorFlow SageMaker Estimators <#tensorflow-sagemaker-estimators>`__
-5. `Chainer SageMaker Estimators <#chainer-sagemaker-estimators>`__
-6. `PyTorch SageMaker Estimators <#pytorch-sagemaker-estimators>`__
-7. `Scikit-learn SageMaker Estimators <#scikit-learn-sagemaker-estimators>`__
-8. `XGBoost SageMaker Estimators <#xgboost-sagemaker-estimators>`__
-9. `SageMaker Reinforcement Learning Estimators <#sagemaker-reinforcement-learning-estimators>`__
-10. `SageMaker SparkML Serving <#sagemaker-sparkml-serving>`__
-11. `AWS SageMaker Estimators <#aws-sagemaker-estimators>`__
-12. `Using SageMaker AlgorithmEstimators <https://sagemaker.readthedocs.io/en/stable/overview.html#using-sagemaker-algorithmestimators>`__
-13. `Consuming SageMaker Model Packages <https://sagemaker.readthedocs.io/en/stable/overview.html#consuming-sagemaker-model-packages>`__
-14. `BYO Docker Containers with SageMaker Estimators <https://sagemaker.readthedocs.io/en/stable/overview.html#byo-docker-containers-with-sagemaker-estimators>`__
-15. `SageMaker Automatic Model Tuning <https://sagemaker.readthedocs.io/en/stable/overview.html#sagemaker-automatic-model-tuning>`__
-16. `SageMaker Batch Transform <https://sagemaker.readthedocs.io/en/stable/overview.html#sagemaker-batch-transform>`__
-17. `Secure Training and Inference with VPC <https://sagemaker.readthedocs.io/en/stable/overview.html#secure-training-and-inference-with-vpc>`__
-18. `BYO Model <https://sagemaker.readthedocs.io/en/stable/overview.html#byo-model>`__
-19. `Inference Pipelines <https://sagemaker.readthedocs.io/en/stable/overview.html#inference-pipelines>`__
-20. `Amazon SageMaker Operators for Kubernetes <#amazon-sagemaker-operators-for-kubernetes>`__
-21. `SageMaker Workflow <#sagemaker-workflow>`__
-22. `SageMaker Autopilot <#sagemaker-autopilot>`__
-23. `Model Monitoring <#amazon-sagemaker-model-monitoring>`__
-24. `SageMaker Debugger <#amazon-sagemaker-debugger>`__
-25. `SageMaker Processing <#amazon-sagemaker-processing>`__
+#. `Installing SageMaker Python SDK <#installing-the-sagemaker-python-sdk>`__
+#. `Using the SageMaker Python SDK <https://sagemaker.readthedocs.io/en/stable/overview.html>`__
+#. `Using MXNet <https://sagemaker.readthedocs.io/en/stable/using_mxnet.html>`__
+#. `Using TensorFlow <https://sagemaker.readthedocs.io/en/stable/using_tf.html>`__
+#. `Using Chainer <https://sagemaker.readthedocs.io/en/stable/using_chainer.html>`__
+#. `Using PyTorch <https://sagemaker.readthedocs.io/en/stable/using_pytorch.html>`__
+#. `Using Scikit-learn <https://sagemaker.readthedocs.io/en/stable/using_sklearn.html>`__
+#. `Using XGBoost <https://sagemaker.readthedocs.io/en/stable/using_xgboost.html>`__
+#. `SageMaker Reinforcement Learning Estimators <https://sagemaker.readthedocs.io/en/stable/using_rl.html>`__
+#. `SageMaker SparkML Serving <#sagemaker-sparkml-serving>`__
+#. `Amazon SageMaker Built-in Algorithm Estimators <src/sagemaker/amazon/README.rst>`__
+#. `Using SageMaker AlgorithmEstimators <https://sagemaker.readthedocs.io/en/stable/overview.html#using-sagemaker-algorithmestimators>`__
+#. `Consuming SageMaker Model Packages <https://sagemaker.readthedocs.io/en/stable/overview.html#consuming-sagemaker-model-packages>`__
+#. `BYO Docker Containers with SageMaker Estimators <https://sagemaker.readthedocs.io/en/stable/overview.html#byo-docker-containers-with-sagemaker-estimators>`__
+#. `SageMaker Automatic Model Tuning <https://sagemaker.readthedocs.io/en/stable/overview.html#sagemaker-automatic-model-tuning>`__
+#. `SageMaker Batch Transform <https://sagemaker.readthedocs.io/en/stable/overview.html#sagemaker-batch-transform>`__
+#. `Secure Training and Inference with VPC <https://sagemaker.readthedocs.io/en/stable/overview.html#secure-training-and-inference-with-vpc>`__
+#. `BYO Model <https://sagemaker.readthedocs.io/en/stable/overview.html#byo-model>`__
+#. `Inference Pipelines <https://sagemaker.readthedocs.io/en/stable/overview.html#inference-pipelines>`__
+#. `Amazon SageMaker Operators for Kubernetes <https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_operators_for_kubernetes.html>`__
+#. `Amazon SageMaker Operators in Apache Airflow <https://sagemaker.readthedocs.io/en/stable/using_workflow.html>`__
+#. `SageMaker Autopilot <src/sagemaker/automl/README.rst>`__
+#. `Model Monitoring <https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_model_monitoring.html>`__
+#. `SageMaker Debugger <https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_debugger.html>`__
+#. `SageMaker Processing <https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_processing.html>`__
 
 
 Installing the SageMaker Python SDK
@@ -90,6 +95,7 @@ SageMaker Python SDK is tested on:
 
 - Python 2.7
 - Python 3.6
+- Python 3.7
 
 AWS Permissions
 ~~~~~~~~~~~~~~~
@@ -117,8 +123,8 @@ You can install the libraries needed to run the tests by running :code:`pip inst
 
 
 We run unit tests with tox, which is a program that lets you run unit tests for multiple Python versions, and also make sure the
-code fits our style guidelines. We run tox with Python 2.7 and 3.6, so to run unit tests
-with the same configuration we do, you'll need to have interpreters for Python 2.7 and Python 3.6 installed.
+code fits our style guidelines. We run tox with Python 2.7, 3.6 and 3.7, so to run unit tests
+with the same configuration we do, you'll need to have interpreters for Python 2.7, Python 3.6 and Python 3.7 installed.
 
 To run the unit tests with tox, run:
 
@@ -155,116 +161,41 @@ You can also run them in parallel:
     tox -- -n auto tests/integ
 
 
-MXNet SageMaker Estimators
---------------------------
+Building Sphinx docs
+~~~~~~~~~~~~~~~~~~~~
 
-By using MXNet SageMaker Estimators, you can train and host MXNet models on Amazon SageMaker.
+Setup a Python environment with ``sphinx`` and ``sagemaker``:
 
-Supported versions of MXNet: ``0.12.1``, ``1.0.0``, ``1.1.0``, ``1.2.1``, ``1.3.0``, ``1.4.0``, ``1.4.1``, ``1.6.0``.
+::
 
-Supported versions of MXNet for Elastic Inference: ``1.3.0``, ``1.4.0``, ``1.4.1``.
+    conda create -n sagemaker python=3.7
+    conda activate sagemaker
+    conda install sphinx==2.2.2
+    pip install sagemaker --user
 
-We recommend that you use the latest supported version, because that's where we focus most of our development efforts.
+Install the Read The Docs theme:
 
-For more information, see `Using MXNet with the SageMaker Python SDK`_.
+::
 
-.. _Using MXNet with the SageMaker Python SDK: https://sagemaker.readthedocs.io/en/stable/using_mxnet.html
-
-
-TensorFlow SageMaker Estimators
--------------------------------
-
-By using TensorFlow SageMaker Estimators, you can train and host TensorFlow models on Amazon SageMaker.
-
-Supported versions of TensorFlow: ``1.4.1``, ``1.5.0``, ``1.6.0``, ``1.7.0``, ``1.8.0``, ``1.9.0``, ``1.10.0``, ``1.11.0``, ``1.12.0``, ``1.13.1``, ``1.14.0``, ``1.15.0``, ``2.0.0``.
-
-Supported versions of TensorFlow for Elastic Inference: ``1.11.0``, ``1.12.0``, ``1.13.1``, ``1.14.0``.
-
-We recommend that you use the latest supported version, because that's where we focus most of our development efforts.
-
-For more information, see `Using TensorFlow with the SageMaker Python SDK`_.
-
-.. _Using TensorFlow with the SageMaker Python SDK: https://sagemaker.readthedocs.io/en/stable/using_tf.html
+    pip install sphinx_rtd_theme --user
 
 
-Chainer SageMaker Estimators
-----------------------------
+Clone/fork the repo, ``cd`` into the ``sagemaker-python-sdk/doc`` directory and run:
 
-By using Chainer SageMaker Estimators, you can train and host Chainer models on Amazon SageMaker.
+::
 
-Supported versions of Chainer: ``4.0.0``, ``4.1.0``, ``5.0.0``.
+    make html
 
-We recommend that you use the latest supported version, because that's where we focus most of our development efforts.
+You can edit the templates for any of the pages in the docs by editing the .rst files in the ``doc`` directory and then running ``make html`` again.
 
-For more information about Chainer, see https://github.com/chainer/chainer.
+Preview the site with a Python web server:
 
-For more information about Chainer SageMaker Estimators, see `Using Chainer with the SageMaker Python SDK`_.
+::
 
-.. _Using Chainer with the SageMaker Python SDK: https://sagemaker.readthedocs.io/en/stable/using_chainer.html
+    cd _build/html
+    python -m http.server 8000
 
-
-PyTorch SageMaker Estimators
-----------------------------
-
-With PyTorch SageMaker Estimators, you can train and host PyTorch models on Amazon SageMaker.
-
-Supported versions of PyTorch: ``0.4.0``, ``1.0.0``, ``1.1.0``, ``1.2.0``, ``1.3.1``.
-
-We recommend that you use the latest supported version, because that's where we focus most of our development efforts.
-
-For more information about PyTorch, see https://github.com/pytorch/pytorch.
-
-For more information about PyTorch SageMaker Estimators, see `Using PyTorch with the SageMaker Python SDK`_.
-
-.. _Using PyTorch with the SageMaker Python SDK: https://sagemaker.readthedocs.io/en/stable/using_pytorch.html
-
-
-Scikit-learn SageMaker Estimators
----------------------------------
-
-With Scikit-learn SageMaker Estimators, you can train and host Scikit-learn models on Amazon SageMaker.
-
-Supported versions of Scikit-learn: ``0.20.0``.
-
-We recommend that you use the latest supported version, because that's where we focus most of our development efforts.
-
-For more information about Scikit-learn, see https://scikit-learn.org/stable/
-
-For more information about Scikit-learn SageMaker Estimators, see `Using Scikit-learn with the SageMaker Python SDK`_.
-
-.. _Using Scikit-learn with the SageMaker Python SDK: https://sagemaker.readthedocs.io/en/stable/using_sklearn.html
-
-XGBoost SageMaker Estimators
-----------------------------
-
-With XGBoost SageMaker Estimators, you can train and host XGBoost models on Amazon SageMaker.
-
-Supported versions of XGBoost: ``0.90-1``.
-
-We recommend that you use the latest supported version, because that's where we focus most of our development efforts.
-
-For more information about XGBoost, see https://xgboost.readthedocs.io/en/latest/
-
-For more information about XGBoost SageMaker Estimators, see `Using XGBoost with the SageMaker Python SDK`_.
-
-.. _Using XGBoost with the SageMaker Python SDK: https://sagemaker.readthedocs.io/en/stable/using_xgboost.html
-
-
-SageMaker Reinforcement Learning Estimators
--------------------------------------------
-
-With Reinforcement Learning (RL) Estimators, you can use reinforcement learning to train models on Amazon SageMaker.
-
-Supported versions of Coach: ``0.10.1``, ``0.11.1`` with TensorFlow, ``0.11.0`` with TensorFlow or MXNet.
-For more information about Coach, see https://github.com/NervanaSystems/coach
-
-Supported versions of Ray: ``0.5.3``, ``0.6.5`` with TensorFlow.
-For more information about Ray, see https://github.com/ray-project/ray
-
-For more information about SageMaker RL Estimators, see `SageMaker Reinforcement Learning Estimators`_.
-
-.. _SageMaker Reinforcement Learning Estimators: src/sagemaker/rl/README.rst
-
+View the website by visiting http://localhost:8000
 
 SageMaker SparkML Serving
 -------------------------
@@ -298,74 +229,3 @@ For more information about the different ``content-type`` and ``Accept`` formats
 ``schema`` that SageMaker SparkML Serving recognizes, please see `SageMaker SparkML Serving Container`_.
 
 .. _SageMaker SparkML Serving Container: https://github.com/aws/sagemaker-sparkml-serving-container
-
-AWS SageMaker Estimators
-------------------------
-Amazon SageMaker provides several built-in machine learning algorithms that you can use to solve a variety of problems.
-
-The full list of algorithms is available at: https://docs.aws.amazon.com/sagemaker/latest/dg/algos.html
-
-The SageMaker Python SDK includes estimator wrappers for the AWS K-means, Principal Components Analysis (PCA), Linear Learner, Factorization Machines,
-Latent Dirichlet Allocation (LDA), Neural Topic Model (NTM), Random Cut Forest, k-nearest neighbors (k-NN), Object2Vec, and IP Insights algorithms.
-
-For more information, see `AWS SageMaker Estimators and Models`_.
-
-.. _AWS SageMaker Estimators and Models: src/sagemaker/amazon/README.rst
-
-Amazon SageMaker Operators for Kubernetes
------------------------------------------
-
-You can use Amazon SageMaker Operators for Kubernetes to optimize hyperparameters for a given model, run batch transform jobs over existing models, and set up inference endpoints.
-
-For more information, see `Amazon SageMaker Operators for Kubernetes`_.
-
-.. _Amazon SageMaker Operators for Kubernetes: https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_operators_for_kubernetes.html
-
-SageMaker Workflow
-------------------
-
-You can use Apache Airflow to author, schedule and monitor SageMaker workflow.
-
-For more information, see `SageMaker Workflow in Apache Airflow`_.
-
-.. _SageMaker Workflow in Apache Airflow: https://sagemaker.readthedocs.io/en/stable/using_workflow.html
-
-SageMaker Autopilot
--------------------
-
-Amazon SageMaker Autopilot is an automated machine learning solution (commonly referred to as "AutoML") for tabular
-datasets. It automatically trains and tunes the best machine learning models for classification or regression based
-on your data, and hosts a series of models on an Inference Pipeline.
-
-For more information about SageMaker Autopilot, see `SageMaker Autopilot`_.
-
-.. _SageMaker Autopilot: src/sagemaker/automl/README.rst
-
-Amazon SageMaker Model Monitoring
----------------------------------
-
-You can use Amazon SageMaker Model Monitoring to automatically detect concept drift by monitoring your machine learning models.
-
-For more information, see `Amazon SageMaker Model Monitoring`_.
-
-.. _Amazon SageMaker Model Monitoring: https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_model_monitoring.html
-
-Amazon SageMaker Debugger
--------------------------
-
-You can use Amazon SageMaker Debugger to automatically detect anomalies while training your machine learning models.
-
-For more information, see `Amazon SageMaker Debugger`_.
-
-.. _Amazon SageMaker Debugger: https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_debugger.html
-
-
-Amazon SageMaker Processing
----------------------------------
-
-You can use Amazon SageMaker Processing to perform data processing tasks such as data pre- and post-processing, feature engineering, data validation, and model evaluation
-
-
-For more information, see `Amazon SageMaker Processing`_.
-
-.. _Amazon SageMaker Processing: https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_processing.html

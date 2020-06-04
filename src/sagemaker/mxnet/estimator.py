@@ -21,7 +21,9 @@ from sagemaker.fw_utils import (
     framework_version_from_tag,
     empty_framework_version_warning,
     python_deprecation_warning,
+    parameter_v2_rename_warning,
     is_version_equal_or_higher,
+    warn_if_parameter_server_with_multi_gpu,
 )
 from sagemaker.mxnet import defaults
 from sagemaker.mxnet.model import MXNetModel
@@ -69,11 +71,13 @@ class MXNet(Framework):
         Args:
             entry_point (str): Path (absolute or relative) to the Python source
                 file which should be executed as the entry point to training.
-                This should be compatible with either Python 2.7 or Python 3.5.
-            source_dir (str): Path (absolute or relative) to a directory with
-                any other training source code dependencies aside from the entry
-                point file (default: None). Structure within this directory are
-                preserved when training on Amazon SageMaker.
+                If ``source_dir`` is specified, then ``entry_point``
+                must point to a file located at the root of ``source_dir``.
+            source_dir (str): Path (absolute, relative or an S3 URI) to a directory
+                with any other training source code dependencies aside from the entry
+                point file (default: None). If ``source_dir`` is an S3 URI, it must
+                point to a tar.gz file. Structure within this directory are preserved
+                when training on Amazon SageMaker.
             hyperparameters (dict): Hyperparameters that will be used for
                 training (default: None). The hyperparameters are made
                 accessible as a dict[str, str] to the training code on
@@ -126,6 +130,13 @@ class MXNet(Framework):
                 python_deprecation_warning(self.__framework_name__, defaults.LATEST_PY2_VERSION)
             )
 
+        if distributions is not None:
+            logger.warning(parameter_v2_rename_warning("distributions", "distribution"))
+            train_instance_type = kwargs.get("train_instance_type")
+            warn_if_parameter_server_with_multi_gpu(
+                training_instance_type=train_instance_type, distributions=distributions
+            )
+
         self.py_version = py_version
         self._configure_distribution(distributions)
 
@@ -176,8 +187,9 @@ class MXNet(Framework):
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
 
             entry_point (str): Path (absolute or relative) to the local Python source file which
-                should be executed as the entry point to training. If not specified, the training
-                entry point is used.
+                should be executed as the entry point to training. If ``source_dir`` is specified,
+                then ``entry_point`` must point to a file located at the root of ``source_dir``.
+                If not specified, the training entry point is used.
             source_dir (str): Path (absolute or relative) to a directory with any other serving
                 source code dependencies aside from the entry point file.
                 If not specified, the model source directory from training is used.
@@ -199,22 +211,27 @@ class MXNet(Framework):
             sagemaker.mxnet.model.MXNetModel: A SageMaker ``MXNetModel`` object.
             See :func:`~sagemaker.mxnet.model.MXNetModel` for full details.
         """
+        if "image" not in kwargs:
+            kwargs["image"] = image_name or self.image_name
+
+        if "name" not in kwargs:
+            kwargs["name"] = self._current_job_name
+
         model = MXNetModel(
             self.model_data,
             role or self.role,
             entry_point,
             source_dir=(source_dir or self._model_source_dir()),
             enable_cloudwatch_metrics=self.enable_cloudwatch_metrics,
-            name=self._current_job_name,
             container_log_level=self.container_log_level,
             code_location=self.code_location,
             py_version=self.py_version,
             framework_version=self.framework_version,
-            image=(image_name or self.image_name),
             model_server_workers=model_server_workers,
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
             dependencies=(dependencies or self.dependencies),
+            **kwargs
         )
 
         if entry_point is None:

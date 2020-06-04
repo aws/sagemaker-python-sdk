@@ -14,30 +14,30 @@ from __future__ import absolute_import
 
 import os
 
-import boto3
 import pytest
 from botocore.config import Config
 from sagemaker import Session
 from sagemaker.fw_registry import default_framework_uri
 
-from sagemaker.processing import ProcessingInput, ProcessingOutput, ScriptProcessor, Processor
+from sagemaker.processing import (
+    ProcessingInput,
+    ProcessingOutput,
+    ScriptProcessor,
+    Processor,
+    ProcessingJob,
+)
 from sagemaker.sklearn.processing import SKLearnProcessor
-from sagemaker.utils import sts_regional_endpoint
+from sagemaker.network import NetworkConfig
 from tests.integ import DATA_DIR
 from tests.integ.kms_utils import get_or_create_kms_key
 
 ROLE = "SageMakerRole"
-DEFAULT_REGION = "us-west-2"
-CUSTOM_BUCKET_PATH_PREFIX = "sagemaker-custom-bucket"
 
 
 @pytest.fixture(scope="module")
 def sagemaker_session_with_custom_bucket(
-    boto_config, sagemaker_client_config, sagemaker_runtime_config
+    boto_session, sagemaker_client_config, sagemaker_runtime_config, custom_bucket_name
 ):
-    boto_session = (
-        boto3.Session(**boto_config) if boto_config else boto3.Session(region_name=DEFAULT_REGION)
-    )
     sagemaker_client_config.setdefault("config", Config(retries=dict(max_attempts=10)))
     sagemaker_client = (
         boto_session.client("sagemaker", **sagemaker_client_config)
@@ -50,17 +50,11 @@ def sagemaker_session_with_custom_bucket(
         else None
     )
 
-    region = boto_session.region_name
-    account = boto_session.client(
-        "sts", region_name=region, endpoint_url=sts_regional_endpoint(region)
-    ).get_caller_identity()["Account"]
-    custom_default_bucket = "{}-{}-{}".format(CUSTOM_BUCKET_PATH_PREFIX, region, account)
-
     return Session(
         boto_session=boto_session,
         sagemaker_client=sagemaker_client,
         sagemaker_runtime_client=runtime_client,
-        default_bucket=custom_default_bucket,
+        default_bucket=custom_bucket_name,
     )
 
 
@@ -215,6 +209,7 @@ def test_sklearn_with_customizations(
 
 def test_sklearn_with_custom_default_bucket(
     sagemaker_session_with_custom_bucket,
+    custom_bucket_name,
     image_uri,
     sklearn_full_version,
     cpu_instance_type,
@@ -266,10 +261,10 @@ def test_sklearn_with_custom_default_bucket(
     job_description = sklearn_processor.latest_job.describe()
 
     assert job_description["ProcessingInputs"][0]["InputName"] == "dummy_input"
-    assert CUSTOM_BUCKET_PATH_PREFIX in job_description["ProcessingInputs"][0]["S3Input"]["S3Uri"]
+    assert custom_bucket_name in job_description["ProcessingInputs"][0]["S3Input"]["S3Uri"]
 
     assert job_description["ProcessingInputs"][1]["InputName"] == "code"
-    assert CUSTOM_BUCKET_PATH_PREFIX in job_description["ProcessingInputs"][1]["S3Input"]["S3Uri"]
+    assert custom_bucket_name in job_description["ProcessingInputs"][1]["S3Input"]["S3Uri"]
 
     assert job_description["ProcessingJobName"].startswith("test-sklearn-with-customizations")
 
@@ -475,6 +470,37 @@ def test_script_processor_with_no_inputs_or_outputs(
 
     assert job_description["StoppingCondition"] == {"MaxRuntimeInSeconds": 3600}
 
+    job_from_name = ProcessingJob.from_processing_name(
+        sagemaker_session=sagemaker_session,
+        processing_job_name=job_description["ProcessingJobName"],
+    )
+    job_description = job_from_name.describe()
+
+    assert job_description["ProcessingInputs"][0]["InputName"] == "code"
+
+    assert job_description["ProcessingJobName"].startswith("test-script-processor-with-no-inputs")
+
+    assert job_description["ProcessingJobStatus"] == "Completed"
+
+    assert job_description["ProcessingResources"]["ClusterConfig"]["InstanceCount"] == 1
+    assert (
+        job_description["ProcessingResources"]["ClusterConfig"]["InstanceType"] == cpu_instance_type
+    )
+    assert job_description["ProcessingResources"]["ClusterConfig"]["VolumeSizeInGB"] == 100
+
+    assert job_description["AppSpecification"]["ContainerArguments"] == ["-v"]
+    assert job_description["AppSpecification"]["ContainerEntrypoint"] == [
+        "python3",
+        "/opt/ml/processing/input/code/dummy_script.py",
+    ]
+    assert job_description["AppSpecification"]["ImageUri"] == image_uri
+
+    assert job_description["Environment"] == {"DUMMY_ENVIRONMENT_VARIABLE": "dummy-value"}
+
+    assert ROLE in job_description["RoleArn"]
+
+    assert job_description["StoppingCondition"] == {"MaxRuntimeInSeconds": 3600}
+
 
 @pytest.mark.canary_quick
 def test_processor(sagemaker_session, image_uri, cpu_instance_type, output_kms_key):
@@ -546,7 +572,11 @@ def test_processor(sagemaker_session, image_uri, cpu_instance_type, output_kms_k
 
 
 def test_processor_with_custom_bucket(
-    sagemaker_session_with_custom_bucket, image_uri, cpu_instance_type, output_kms_key
+    sagemaker_session_with_custom_bucket,
+    custom_bucket_name,
+    image_uri,
+    cpu_instance_type,
+    output_kms_key,
 ):
     script_path = os.path.join(DATA_DIR, "dummy_script.py")
 
@@ -587,7 +617,7 @@ def test_processor_with_custom_bucket(
     job_description = processor.latest_job.describe()
 
     assert job_description["ProcessingInputs"][0]["InputName"] == "code"
-    assert CUSTOM_BUCKET_PATH_PREFIX in job_description["ProcessingInputs"][0]["S3Input"]["S3Uri"]
+    assert custom_bucket_name in job_description["ProcessingInputs"][0]["S3Input"]["S3Uri"]
 
     assert job_description["ProcessingJobName"].startswith("test-processor")
 
@@ -614,3 +644,33 @@ def test_processor_with_custom_bucket(
     assert ROLE in job_description["RoleArn"]
 
     assert job_description["StoppingCondition"] == {"MaxRuntimeInSeconds": 3600}
+
+
+def test_sklearn_with_network_config(sagemaker_session, sklearn_full_version, cpu_instance_type):
+    script_path = os.path.join(DATA_DIR, "dummy_script.py")
+    input_file_path = os.path.join(DATA_DIR, "dummy_input.txt")
+
+    sklearn_processor = SKLearnProcessor(
+        framework_version=sklearn_full_version,
+        role=ROLE,
+        instance_type=cpu_instance_type,
+        instance_count=1,
+        command=["python3"],
+        sagemaker_session=sagemaker_session,
+        base_job_name="test-sklearn-with-network-config",
+        network_config=NetworkConfig(
+            enable_network_isolation=True, encrypt_inter_container_traffic=True
+        ),
+    )
+
+    sklearn_processor.run(
+        code=script_path,
+        inputs=[ProcessingInput(source=input_file_path, destination="/opt/ml/processing/inputs/")],
+        wait=False,
+        logs=False,
+    )
+
+    job_description = sklearn_processor.latest_job.describe()
+    network_config = job_description["NetworkConfig"]
+    assert network_config["EnableInterContainerTrafficEncryption"]
+    assert network_config["EnableNetworkIsolation"]

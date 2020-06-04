@@ -27,7 +27,13 @@ from sagemaker.inputs import FileSystemInput
 from sagemaker.model import NEO_IMAGE_ACCOUNT
 from sagemaker.session import s3_input
 from sagemaker.utils import sagemaker_timestamp, get_ecr_image_uri_prefix
-from sagemaker.xgboost.defaults import XGBOOST_VERSION_1, XGBOOST_SUPPORTED_VERSIONS
+from sagemaker.xgboost.defaults import (
+    XGBOOST_1P_VERSIONS,
+    XGBOOST_LATEST_VERSION,
+    XGBOOST_NAME,
+    XGBOOST_SUPPORTED_VERSIONS,
+    XGBOOST_VERSION_EQUIVALENTS,
+)
 from sagemaker.xgboost.estimator import get_xgboost_image_uri
 
 logger = logging.getLogger(__name__)
@@ -82,14 +88,17 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
             :class:`~sagemaker.estimator.EstimatorBase`.
         """
         super(AmazonAlgorithmEstimatorBase, self).__init__(
-            role, train_instance_count, train_instance_type, **kwargs
+            role,
+            train_instance_count,
+            train_instance_type,
+            enable_network_isolation=enable_network_isolation,
+            **kwargs
         )
 
         data_location = data_location or "s3://{}/sagemaker-record-sets/".format(
             self.sagemaker_session.default_bucket()
         )
         self._data_location = data_location
-        self._enable_network_isolation = enable_network_isolation
 
     def train_image(self):
         """Placeholder docstring"""
@@ -100,14 +109,6 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
     def hyperparameters(self):
         """Placeholder docstring"""
         return hp.serialize_all(self)
-
-    def enable_network_isolation(self):
-        """If this Estimator can use network isolation when running.
-
-        Returns:
-            bool: Whether this Estimator can use network isolation or not.
-        """
-        return self._enable_network_isolation
 
     @property
     def data_location(self):
@@ -281,7 +282,9 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
             RecordSet: A RecordSet referencing the encoded, uploading training
             and label data.
         """
-        s3 = self.sagemaker_session.boto_session.resource("s3")
+        s3 = self.sagemaker_session.boto_session.resource(
+            "s3", region_name=self.sagemaker_session.boto_region_name
+        )
         parsed_s3_url = urlparse(self.data_location)
         bucket, key_prefix = parsed_s3_url.netloc, parsed_s3_url.path
         key_prefix = key_prefix + "{}-{}/".format(type(self).__name__, sagemaker_timestamp())
@@ -467,9 +470,14 @@ def registry(region_name, algorithm=None):
     https://github.com/aws/sagemaker-python-sdk/tree/master/src/sagemaker/amazon
 
     Args:
-        region_name:
-        algorithm:
+        region_name (str): The region name for the account.
+        algorithm (str): The algorithm for the account.
+
+    Raises:
+        ValueError: If invalid algorithm passed in or if mapping does not exist for given algorithm
+            and region.
     """
+    region_to_accounts = {}
     if algorithm in [
         None,
         "pca",
@@ -482,7 +490,7 @@ def registry(region_name, algorithm=None):
         "object2vec",
         "ipinsights",
     ]:
-        account_id = {
+        region_to_accounts = {
             "us-east-1": "382416733822",
             "us-east-2": "404615174143",
             "us-west-2": "174872318107",
@@ -503,9 +511,11 @@ def registry(region_name, algorithm=None):
             "eu-west-3": "749696950732",
             "sa-east-1": "855470959533",
             "me-south-1": "249704162688",
-        }[region_name]
+            "cn-north-1": "390948362332",
+            "cn-northwest-1": "387376663083",
+        }
     elif algorithm in ["lda"]:
-        account_id = {
+        region_to_accounts = {
             "us-east-1": "766337827248",
             "us-east-2": "999911452149",
             "us-west-2": "266724342769",
@@ -521,9 +531,9 @@ def registry(region_name, algorithm=None):
             "eu-west-2": "644912444149",
             "us-west-1": "632365934929",
             "us-iso-east-1": "490574956308",
-        }[region_name]
+        }
     elif algorithm in ["forecasting-deepar"]:
-        account_id = {
+        region_to_accounts = {
             "us-east-1": "522234722520",
             "us-east-2": "566113047672",
             "us-west-2": "156387875391",
@@ -544,7 +554,9 @@ def registry(region_name, algorithm=None):
             "eu-west-3": "749696950732",
             "sa-east-1": "855470959533",
             "me-south-1": "249704162688",
-        }[region_name]
+            "cn-north-1": "390948362332",
+            "cn-northwest-1": "387376663083",
+        }
     elif algorithm in [
         "xgboost",
         "seq2seq",
@@ -553,7 +565,7 @@ def registry(region_name, algorithm=None):
         "object-detection",
         "semantic-segmentation",
     ]:
-        account_id = {
+        region_to_accounts = {
             "us-east-1": "811284229777",
             "us-east-2": "825641698319",
             "us-west-2": "433757028032",
@@ -574,15 +586,25 @@ def registry(region_name, algorithm=None):
             "eu-west-3": "749696950732",
             "sa-east-1": "855470959533",
             "me-south-1": "249704162688",
-        }[region_name]
+            "cn-north-1": "390948362332",
+            "cn-northwest-1": "387376663083",
+        }
     elif algorithm in ["image-classification-neo", "xgboost-neo"]:
-        account_id = NEO_IMAGE_ACCOUNT[region_name]
+        region_to_accounts = NEO_IMAGE_ACCOUNT
     else:
         raise ValueError(
             "Algorithm class:{} does not have mapping to account_id with images".format(algorithm)
         )
 
-    return get_ecr_image_uri_prefix(account_id, region_name)
+    if region_name in region_to_accounts:
+        account_id = region_to_accounts[region_name]
+        return get_ecr_image_uri_prefix(account_id, region_name)
+
+    raise ValueError(
+        "Algorithm ({algorithm}) is unsupported for region ({region_name}).".format(
+            algorithm=algorithm, region_name=region_name
+        )
+    )
 
 
 def get_image_uri(region_name, repo_name, repo_version=1):
@@ -594,25 +616,81 @@ def get_image_uri(region_name, repo_name, repo_version=1):
         repo_name:
         repo_version:
     """
-    if repo_name == "xgboost":
-        if repo_version in ["0.90", "0.90-1", "0.90-1-cpu-py3"]:
-            return get_xgboost_image_uri(region_name, XGBOOST_VERSION_1)
+    logger.warning(
+        "'get_image_uri' method will be deprecated in favor of 'ImageURIProvider' class "
+        "in SageMaker Python SDK v2."
+    )
 
-        supported_version = [
+    repo_version = str(repo_version)
+
+    if repo_name == XGBOOST_NAME:
+
+        if repo_version in XGBOOST_1P_VERSIONS:
+            _warn_newer_xgboost_image()
+            return "{}/{}:{}".format(registry(region_name, repo_name), repo_name, repo_version)
+
+        if "-" not in repo_version:
+            xgboost_version_matches = [
+                version
+                for version in XGBOOST_SUPPORTED_VERSIONS
+                if repo_version == version.split("-")[0]
+            ]
+            if xgboost_version_matches:
+                # Assumes that XGBOOST_SUPPORTED_VERSION is sorted from oldest version to latest.
+                # When SageMaker version is not specified, we use the oldest one that matches
+                # XGBoost version for backward compatibility.
+                repo_version = xgboost_version_matches[0]
+
+        supported_framework_versions = [
             version
             for version in XGBOOST_SUPPORTED_VERSIONS
-            if repo_version in (version, version + "-cpu-py3")
+            if repo_version in _generate_version_equivalents(version)
         ]
-        if supported_version:
-            return get_xgboost_image_uri(region_name, supported_version[0])
 
-        logging.warning(
-            "There is a more up to date SageMaker XGBoost image. "
-            "To use the newer image, please set 'repo_version'="
-            "'%s'. For example:\n"
-            "\tget_image_uri(region, 'xgboost', '%s').",
-            XGBOOST_VERSION_1,
-            XGBOOST_VERSION_1,
-        )
+        if not supported_framework_versions:
+            raise ValueError(
+                "SageMaker XGBoost version {} is not supported. Supported versions: {}".format(
+                    repo_version, ", ".join(XGBOOST_SUPPORTED_VERSIONS)
+                )
+            )
+
+        if not _is_latest_xgboost_version(repo_version):
+            _warn_newer_xgboost_image()
+
+        return get_xgboost_image_uri(region_name, supported_framework_versions[-1])
+
     repo = "{}:{}".format(repo_name, repo_version)
     return "{}/{}".format(registry(region_name, repo_name), repo)
+
+
+def _warn_newer_xgboost_image():
+    """Print a warning when there is a newer XGBoost image"""
+    logging.warning(
+        "There is a more up to date SageMaker XGBoost image. "
+        "To use the newer image, please set 'repo_version'="
+        "'%s'. For example:\n"
+        "\tget_image_uri(region, '%s', '%s').",
+        XGBOOST_LATEST_VERSION,
+        XGBOOST_NAME,
+        XGBOOST_LATEST_VERSION,
+    )
+
+
+def _is_latest_xgboost_version(repo_version):
+    """Compare xgboost image version with latest version
+
+    Args:
+        repo_version:
+    """
+    if repo_version in XGBOOST_1P_VERSIONS:
+        return False
+    return repo_version in _generate_version_equivalents(XGBOOST_LATEST_VERSION)
+
+
+def _generate_version_equivalents(version):
+    """Returns a list of version equivalents for XGBoost
+
+    Args:
+        version:
+    """
+    return [version + suffix for suffix in XGBOOST_VERSION_EQUIVALENTS] + [version]

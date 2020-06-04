@@ -92,7 +92,13 @@ class MultiDataModel(Model):
         self.model = model
         self.container_mode = MULTI_MODEL_CONTAINER_MODE
         self.sagemaker_session = sagemaker_session or Session()
-        self.s3_client = self.sagemaker_session.boto_session.client("s3")
+
+        if self.sagemaker_session.s3_client is None:
+            self.s3_client = self.sagemaker_session.boto_session.client(
+                "s3", region_name=self.sagemaker_session.boto_session.region_name
+            )
+        else:
+            self.s3_client = self.sagemaker_session.s3_client
 
         # Set the ``Model`` parameters if the model parameter is not specified
         if not self.model:

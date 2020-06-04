@@ -15,7 +15,7 @@ from __future__ import absolute_import
 
 import logging
 
-from sagemaker.estimator import Framework
+from sagemaker.estimator import Framework, _TrainingJob
 from sagemaker.fw_registry import default_framework_uri
 from sagemaker.fw_utils import (
     framework_name_from_image,
@@ -23,14 +23,8 @@ from sagemaker.fw_utils import (
     get_unsupported_framework_version_error,
     UploadedCode,
 )
-
-
 from sagemaker.session import Session
-
-from sagemaker.estimator import _TrainingJob
-
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
-
 from sagemaker.xgboost import defaults
 from sagemaker.xgboost.model import XGBoostModel
 
@@ -67,8 +61,8 @@ class XGBoost(Framework):
         Training is started by calling :meth:`~sagemaker.amazon.estimator.Framework.fit` on this
         Estimator. After training is complete, calling
         :meth:`~sagemaker.amazon.estimator.Framework.deploy` creates a hosted SageMaker endpoint
-         and returns an :class:`~sagemaker.amazon.xgboost.model.XGBoostPredictor` instance that
-         can be used to perform inference against the hosted model.
+        and returns an :class:`~sagemaker.amazon.xgboost.model.XGBoostPredictor` instance that
+        can be used to perform inference against the hosted model.
 
         Technical documentation on preparing XGBoost scripts for SageMaker training and using the
         XGBoost Estimator is available on the project home-page:
@@ -76,14 +70,16 @@ class XGBoost(Framework):
 
         Args:
             entry_point (str): Path (absolute or relative) to the Python source file which should
-                be executed as the entry point to training.
-                This should be compatible with either Python 2.7 or Python 3.5.
+                be executed as the entry point to training.  If ``source_dir`` is specified,
+                then ``entry_point`` must point to a file located at the root of ``source_dir``.
             framework_version (str): XGBoost version you want to use for executing your model
                 training code.  List of supported versions
                 https://github.com/aws/sagemaker-python-sdk#xgboost-sagemaker-estimators
-            source_dir (str): Path (absolute or relative) to a directory with any other training
-                source code dependencies aside from the entry point file (default: None).
-                Structure within this directory are preserved when training on Amazon SageMaker.
+            source_dir (str): Path (absolute, relative or an S3 URI) to a directory
+                with any other training source code dependencies aside from the entry
+                point file (default: None). If ``source_dir`` is an S3 URI, it must
+                point to a tar.gz file. Structure within this directory are preserved
+                when training on Amazon SageMaker.
             hyperparameters (dict): Hyperparameters that will be used for training (default: None).
                 The hyperparameters are made accessible as a dict[str, str] to the training code
                 on SageMaker. For convenience, this accepts other types for keys and values, but
@@ -129,7 +125,14 @@ class XGBoost(Framework):
             )
 
     def create_model(
-        self, model_server_workers=None, role=None, vpc_config_override=VPC_CONFIG_DEFAULT, **kwargs
+        self,
+        model_server_workers=None,
+        role=None,
+        vpc_config_override=VPC_CONFIG_DEFAULT,
+        entry_point=None,
+        source_dir=None,
+        dependencies=None,
+        **kwargs
     ):
         """Create a SageMaker ``XGBoostModel`` object that can be deployed to an ``Endpoint``.
 
@@ -143,7 +146,18 @@ class XGBoost(Framework):
                 Default: use subnets and security groups from this Estimator.
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
-            **kwargs: Passed to initialization of ``XGBoostModel``.
+            entry_point (str): Path (absolute or relative) to the local Python source file which
+                should be executed as the entry point to training. If ``source_dir`` is specified,
+                then ``entry_point`` must point to a file located at the root of ``source_dir``.
+                If not specified, the training entry point is used.
+            source_dir (str): Path (absolute or relative) to a directory with any other serving
+                source code dependencies aside from the entry point file.
+                If not specified, the model source directory from training is used.
+            dependencies (list[str]): A list of paths to directories (absolute or relative) with
+                any additional libraries that will be exported to the container.
+                If not specified, the dependencies from training are used.
+            **kwargs: Additional kwargs passed to the :class:`~sagemaker.xgboost.model.XGBoostModel`
+                constructor.
 
         Returns:
             sagemaker.xgboost.model.XGBoostModel: A SageMaker ``XGBoostModel`` object.
@@ -151,26 +165,26 @@ class XGBoost(Framework):
         """
         role = role or self.role
 
-        # Remove unwanted entry_point kwarg
-        if "entry_point" in kwargs:
-            logger.debug("Removing unused entry_point argument: %s", str(kwargs["entry_point"]))
-            kwargs = {k: v for k, v in kwargs.items() if k != "entry_point"}
+        if "image" not in kwargs:
+            kwargs["image"] = self.image_name
+
+        if "name" not in kwargs:
+            kwargs["name"] = self._current_job_name
 
         return XGBoostModel(
             self.model_data,
             role,
-            self.uploaded_code.script_name,
+            entry_point or self.uploaded_code.script_name,
             framework_version=self.framework_version,
-            source_dir=self._model_source_dir(),
+            source_dir=(source_dir or self._model_source_dir()),
             enable_cloudwatch_metrics=self.enable_cloudwatch_metrics,
-            name=self._current_job_name,
             container_log_level=self.container_log_level,
             code_location=self.code_location,
             py_version=self.py_version,
             model_server_workers=model_server_workers,
-            image=self.image_name,
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
+            dependencies=(dependencies or self.dependencies),
             **kwargs
         )
 

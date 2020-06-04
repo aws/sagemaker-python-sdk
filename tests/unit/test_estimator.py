@@ -30,6 +30,7 @@ from sagemaker.predictor import RealTimePredictor
 from sagemaker.session import s3_input, ShuffleConfig
 from sagemaker.transformer import Transformer
 from botocore.exceptions import ClientError
+import sagemaker.local
 
 MODEL_DATA = "s3://bucket/model.tar.gz"
 MODEL_IMAGE = "mi"
@@ -120,13 +121,17 @@ class DummyFramework(Framework):
         model_server_workers=None,
         entry_point=None,
         vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT,
+        enable_network_isolation=None,
         **kwargs
     ):
+        if enable_network_isolation is None:
+            enable_network_isolation = self.enable_network_isolation()
+
         return DummyFrameworkModel(
             self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
             entry_point=entry_point,
-            enable_network_isolation=self.enable_network_isolation(),
+            enable_network_isolation=enable_network_isolation,
             role=role,
             **kwargs
         )
@@ -173,6 +178,8 @@ def sagemaker_session():
         boto_region_name=REGION,
         config=None,
         local_mode=False,
+        s3_client=None,
+        s3_resource=None,
     )
     sms.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
     sms.sagemaker_client.describe_training_job = Mock(
@@ -206,6 +213,7 @@ def test_framework_all_init_args(sagemaker_session):
         checkpoint_s3_uri="s3://bucket/checkpoint",
         checkpoint_local_path="file://local/checkpoint",
         enable_sagemaker_metrics=True,
+        enable_network_isolation=True,
     )
     _TrainingJob.start_new(f, "s3://mydata", None)
     sagemaker_session.train.assert_called_once()
@@ -244,6 +252,7 @@ def test_framework_all_init_args(sagemaker_session):
         "checkpoint_s3_uri": "s3://bucket/checkpoint",
         "checkpoint_local_path": "file://local/checkpoint",
         "enable_sagemaker_metrics": True,
+        "enable_network_isolation": True,
     }
 
 
@@ -560,6 +569,7 @@ def test_local_code_location():
         boto_region_name=REGION,
         config=config,
         local_mode=True,
+        spec=sagemaker.local.LocalSession,
     )
     t = DummyFramework(
         entry_point=SCRIPT_PATH,
@@ -1351,7 +1361,7 @@ def test_framework_transformer_creation_with_optional_params(name_from_image, sa
         base_job_name=base_name,
         subnets=vpc_config["Subnets"],
         security_group_ids=vpc_config["SecurityGroupIds"],
-        enable_network_isolation=True,
+        enable_network_isolation=False,
     )
     fw.latest_training_job = _TrainingJob(sagemaker_session, JOB_NAME)
 
@@ -1364,6 +1374,7 @@ def test_framework_transformer_creation_with_optional_params(name_from_image, sa
     env = {"FOO": "BAR"}
     new_role = "dummy-model-role"
     new_vpc_config = {"Subnets": ["x"], "SecurityGroupIds": ["y"]}
+    model_name = "model-name"
 
     transformer = fw.transformer(
         INSTANCE_COUNT,
@@ -1381,10 +1392,12 @@ def test_framework_transformer_creation_with_optional_params(name_from_image, sa
         role=new_role,
         model_server_workers=1,
         vpc_config_override=new_vpc_config,
+        enable_network_isolation=True,
+        model_name=model_name,
     )
 
     sagemaker_session.create_model.assert_called_with(
-        MODEL_IMAGE,
+        model_name,
         new_role,
         MODEL_CONTAINER_DEF,
         vpc_config=new_vpc_config,
@@ -1402,6 +1415,7 @@ def test_framework_transformer_creation_with_optional_params(name_from_image, sa
     assert transformer.base_transform_job_name == base_name
     assert transformer.tags == TAGS
     assert transformer.volume_kms_key == kms_key
+    assert transformer.model_name == model_name
 
 
 def test_ensure_latest_training_job(sagemaker_session):
@@ -1431,8 +1445,8 @@ def test_ensure_latest_training_job_failure(sagemaker_session):
     assert "Estimator is not associated with a training job" in str(e)
 
 
-@patch("sagemaker.estimator.Estimator.create_model", return_value=Mock())
-def test_estimator_transformer_creation(sagemaker_session):
+@patch("sagemaker.estimator.Estimator.create_model")
+def test_estimator_transformer_creation(create_model, sagemaker_session):
     estimator = Estimator(
         image_name=IMAGE_NAME,
         role=ROLE,
@@ -1444,6 +1458,12 @@ def test_estimator_transformer_creation(sagemaker_session):
 
     transformer = estimator.transformer(INSTANCE_COUNT, INSTANCE_TYPE)
 
+    create_model.assert_called_with(
+        vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT,
+        model_kms_key=estimator.output_kms_key,
+        enable_network_isolation=False,
+    )
+
     assert isinstance(transformer, Transformer)
     assert transformer.sagemaker_session == sagemaker_session
     assert transformer.instance_count == INSTANCE_COUNT
@@ -1452,9 +1472,11 @@ def test_estimator_transformer_creation(sagemaker_session):
     assert transformer.tags is None
 
 
-@patch("sagemaker.estimator.Estimator.create_model", return_value=Mock())
-def test_estimator_transformer_creation_with_optional_params(sagemaker_session):
+@patch("sagemaker.estimator.Estimator.create_model")
+def test_estimator_transformer_creation_with_optional_params(create_model, sagemaker_session):
     base_name = "foo"
+    kms_key = "key"
+
     estimator = Estimator(
         image_name=IMAGE_NAME,
         role=ROLE,
@@ -1462,16 +1484,18 @@ def test_estimator_transformer_creation_with_optional_params(sagemaker_session):
         train_instance_type=INSTANCE_TYPE,
         sagemaker_session=sagemaker_session,
         base_job_name=base_name,
+        output_kms_key=kms_key,
     )
     estimator.latest_training_job = _TrainingJob(sagemaker_session, JOB_NAME)
 
     strategy = "MultiRecord"
     assemble_with = "Line"
-    kms_key = "key"
     accept = "text/csv"
     max_concurrent_transforms = 1
     max_payload = 6
     env = {"FOO": "BAR"}
+    new_vpc_config = {"Subnets": ["x"], "SecurityGroupIds": ["y"]}
+    model_name = "model-name"
 
     transformer = estimator.transformer(
         INSTANCE_COUNT,
@@ -1486,6 +1510,13 @@ def test_estimator_transformer_creation_with_optional_params(sagemaker_session):
         max_payload=max_payload,
         env=env,
         role=ROLE,
+        vpc_config_override=new_vpc_config,
+        enable_network_isolation=True,
+        model_name=model_name,
+    )
+
+    create_model.assert_called_with(
+        vpc_config_override=new_vpc_config, model_kms_key=kms_key, enable_network_isolation=True
     )
 
     assert transformer.strategy == strategy
@@ -1498,6 +1529,7 @@ def test_estimator_transformer_creation_with_optional_params(sagemaker_session):
     assert transformer.env == env
     assert transformer.base_transform_job_name == base_name
     assert transformer.tags == TAGS
+    assert transformer.model_name == model_name
 
 
 # _TrainingJob 'utils'
@@ -2231,7 +2263,7 @@ def test_deploy_with_no_model_name(sagemaker_session):
 @patch("sagemaker.estimator.LocalSession")
 @patch("sagemaker.estimator.Session")
 def test_local_mode(session_class, local_session_class):
-    local_session = Mock()
+    local_session = Mock(spec=sagemaker.local.LocalSession)
     local_session.local_mode = True
 
     session = Mock()
@@ -2259,7 +2291,7 @@ def test_distributed_gpu_local_mode(LocalSession):
 
 @patch("sagemaker.estimator.LocalSession")
 def test_local_mode_file_output_path(local_session_class):
-    local_session = Mock()
+    local_session = Mock(spec=sagemaker.local.LocalSession)
     local_session.local_mode = True
     local_session_class.return_value = local_session
 
@@ -2391,4 +2423,29 @@ def test_encryption_flag_in_non_vpc_mode_invalid(sagemaker_session):
     assert (
         '"EnableInterContainerTrafficEncryption" and "VpcConfig" must be provided together'
         in str(error)
+    )
+
+
+def test_estimator_local_mode_error(sagemaker_session):
+    # When using instance local with a session which is not LocalSession we should error out
+    with pytest.raises(RuntimeError):
+        Estimator(
+            image_name="some-image",
+            role="some_image",
+            train_instance_count=1,
+            train_instance_type="local",
+            sagemaker_session=sagemaker_session,
+            base_job_name="base_job_name",
+        )
+
+
+def test_estimator_local_mode_ok(sagemaker_local_session):
+    # When using instance local with a session which is not LocalSession we should error out
+    Estimator(
+        image_name="some-image",
+        role="some_image",
+        train_instance_count=1,
+        train_instance_type="local",
+        sagemaker_session=sagemaker_local_session,
+        base_job_name="base_job_name",
     )

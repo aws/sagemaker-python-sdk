@@ -22,12 +22,12 @@ from mock import patch
 
 
 from sagemaker.xgboost.defaults import XGBOOST_LATEST_VERSION
-from sagemaker.xgboost import XGBoost
-from sagemaker.xgboost import XGBoostPredictor, XGBoostModel
+from sagemaker.xgboost import XGBoost, XGBoostModel, XGBoostPredictor
 
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 SCRIPT_PATH = os.path.join(DATA_DIR, "dummy_script.py")
+SERVING_SCRIPT_FILE = "another_dummy_script.py"
 TIMESTAMP = "2017-11-06-14:14:15.672"
 TIME = 1507167947
 BUCKET_NAME = "mybucket"
@@ -65,6 +65,8 @@ def sagemaker_session():
         boto_region_name=REGION,
         config=None,
         local_mode=False,
+        s3_resource=None,
+        s3_client=None,
     )
 
     describe = {"ModelArtifacts": {"S3ModelArtifacts": "s3://m/m.tar.gz"}}
@@ -237,16 +239,32 @@ def test_create_model_with_optional_params(sagemaker_session):
 
     xgboost.fit(inputs="s3://mybucket/train", job_name="new_name")
 
+    custom_image = "ubuntu:latest"
     new_role = "role"
     model_server_workers = 2
     vpc_config = {"Subnets": ["foo"], "SecurityGroupIds": ["bar"]}
+    new_source_dir = "s3://myotherbucket/source"
+    dependencies = ["/directory/a", "/directory/b"]
+    model_name = "model-name"
     model = xgboost.create_model(
-        role=new_role, model_server_workers=model_server_workers, vpc_config_override=vpc_config
+        image=custom_image,
+        role=new_role,
+        model_server_workers=model_server_workers,
+        vpc_config_override=vpc_config,
+        entry_point=SERVING_SCRIPT_FILE,
+        source_dir=new_source_dir,
+        dependencies=dependencies,
+        name=model_name,
     )
 
+    assert model.image == custom_image
     assert model.role == new_role
     assert model.model_server_workers == model_server_workers
     assert model.vpc_config == vpc_config
+    assert model.entry_point == SERVING_SCRIPT_FILE
+    assert model.source_dir == new_source_dir
+    assert model.dependencies == dependencies
+    assert model.name == model_name
 
 
 def test_create_model_with_custom_image(sagemaker_session):

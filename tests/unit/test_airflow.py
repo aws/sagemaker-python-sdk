@@ -10,7 +10,6 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-
 from __future__ import absolute_import
 
 import pytest
@@ -20,7 +19,6 @@ from sagemaker import chainer, estimator, model, mxnet, tensorflow, transformer,
 from sagemaker.workflow import airflow
 from sagemaker.amazon import amazon_estimator
 from sagemaker.amazon import knn, linear_learner, ntm, pca
-
 
 REGION = "us-west-2"
 BUCKET_NAME = "output"
@@ -36,6 +34,8 @@ def sagemaker_session():
         boto_region_name=REGION,
         config=None,
         local_mode=False,
+        s3_resource=None,
+        s3_client=None,
     )
     session.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
     session._default_bucket = BUCKET_NAME
@@ -173,7 +173,11 @@ def test_byo_training_config_all_args(sagemaker_session):
         ]
     ),
 )
-def test_framework_training_config_required_args(sagemaker_session):
+@patch(
+    "sagemaker.fw_utils.get_ecr_image_uri_prefix",
+    return_value="520713654638.dkr.ecr.us-west-2.amazonaws.com",
+)
+def test_framework_training_config_required_args(ecr_prefix, sagemaker_session):
     tf = tensorflow.TensorFlow(
         entry_point="/some/script.py",
         framework_version="1.10.0",
@@ -248,7 +252,11 @@ def test_framework_training_config_required_args(sagemaker_session):
     "sagemaker.estimator.parse_s3_url",
     MagicMock(return_value=["{{ output_path }}", "{{ output_path }}"]),
 )
-def test_framework_training_config_all_args(sagemaker_session):
+@patch(
+    "sagemaker.fw_utils.get_ecr_image_uri_prefix",
+    return_value="520713654638.dkr.ecr.us-west-2.amazonaws.com",
+)
+def test_framework_training_config_all_args(ecr_prefix, sagemaker_session):
     tf = tensorflow.TensorFlow(
         entry_point="{{ entry_point }}",
         source_dir="{{ source_dir }}",
@@ -274,6 +282,7 @@ def test_framework_training_config_all_args(sagemaker_session):
         tags=[{"{{ key }}": "{{ value }}"}],
         subnets=["{{ subnet }}"],
         security_group_ids=["{{ security_group_ids }}"],
+        metric_definitions=[{"Name": "{{ name }}", "Regex": "{{ regex }}"}],
         sagemaker_session=sagemaker_session,
     )
 
@@ -284,6 +293,7 @@ def test_framework_training_config_all_args(sagemaker_session):
         "AlgorithmSpecification": {
             "TrainingImage": "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-tensorflow:1.10.0-cpu-py2",
             "TrainingInputMode": "Pipe",
+            "MetricDefinitions": [{"Name": "{{ name }}", "Regex": "{{ regex }}"}],
         },
         "OutputDataConfig": {
             "S3OutputPath": "{{ output_path }}",
@@ -478,7 +488,11 @@ def test_amazon_alg_training_config_all_args(sagemaker_session):
         ]
     ),
 )
-def test_framework_tuning_config(sagemaker_session):
+@patch(
+    "sagemaker.fw_utils.get_ecr_image_uri_prefix",
+    return_value="520713654638.dkr.ecr.us-west-2.amazonaws.com",
+)
+def test_framework_tuning_config(ecr_prefix, sagemaker_session):
     mxnet_estimator = mxnet.MXNet(
         entry_point="{{ entry_point }}",
         source_dir="{{ source_dir }}",
@@ -617,7 +631,15 @@ def test_framework_tuning_config(sagemaker_session):
         ]
     ),
 )
-def test_multi_estimator_tuning_config(sagemaker_session):
+@patch(
+    "sagemaker.fw_utils.get_ecr_image_uri_prefix",
+    return_value="520713654638.dkr.ecr.us-west-2.amazonaws.com",
+)
+@patch(
+    "sagemaker.amazon.amazon_estimator.get_ecr_image_uri_prefix",
+    return_value="174872318107.dkr.ecr.us-west-2.amazonaws.com",
+)
+def test_multi_estimator_tuning_config(algo_ecr_prefix, fw_ecr_prefix, sagemaker_session):
     estimator_dict = {}
     hyperparameter_ranges_dict = {}
     objective_metric_name_dict = {}
@@ -1025,7 +1047,11 @@ def test_amazon_alg_model_config(sagemaker_session):
         ]
     ),
 )
-def test_model_config_from_framework_estimator(sagemaker_session):
+@patch(
+    "sagemaker.fw_utils.get_ecr_image_uri_prefix",
+    return_value="763104351884.dkr.ecr.us-west-2.amazonaws.com",
+)
+def test_model_config_from_framework_estimator(ecr_prefix, sagemaker_session):
     mxnet_estimator = mxnet.MXNet(
         entry_point="{{ entry_point }}",
         source_dir="{{ source_dir }}",
@@ -1134,6 +1160,9 @@ def test_transform_config(sagemaker_session):
         content_type="{{ content_type }}",
         compression_type="{{ compression_type }}",
         split_type="{{ split_type }}",
+        input_filter="{{ input_filter }}",
+        output_filter="{{ output_filter }}",
+        join_source="{{ join_source }}",
     )
     expected_config = {
         "TransformJobName": "tensorflow-transform-%s" % TIME_STAMP,
@@ -1162,6 +1191,11 @@ def test_transform_config(sagemaker_session):
         "MaxPayloadInMB": "{{ max_payload }}",
         "Environment": {"{{ key }}": "{{ value }}"},
         "Tags": [{"{{ key }}": "{{ value }}"}],
+        "DataProcessing": {
+            "InputFilter": "{{ input_filter }}",
+            "JoinSource": "{{ join_source }}",
+            "OutputFilter": "{{ output_filter }}",
+        },
     }
 
     assert config == expected_config
@@ -1179,7 +1213,11 @@ def test_transform_config(sagemaker_session):
         ]
     ),
 )
-def test_transform_config_from_framework_estimator(sagemaker_session):
+@patch(
+    "sagemaker.fw_utils.get_ecr_image_uri_prefix",
+    return_value="763104351884.dkr.ecr.us-west-2.amazonaws.com",
+)
+def test_transform_config_from_framework_estimator(ecr_prefix, sagemaker_session):
     mxnet_estimator = mxnet.MXNet(
         entry_point="{{ entry_point }}",
         source_dir="{{ source_dir }}",
@@ -1206,6 +1244,9 @@ def test_transform_config_from_framework_estimator(sagemaker_session):
         instance_count="{{ instance_count }}",
         instance_type="ml.p2.xlarge",
         data=transform_data,
+        input_filter="{{ input_filter }}",
+        output_filter="{{ output_filter }}",
+        join_source="{{ join_source }}",
     )
     expected_config = {
         "Model": {
@@ -1240,6 +1281,11 @@ def test_transform_config_from_framework_estimator(sagemaker_session):
                 "InstanceType": "ml.p2.xlarge",
             },
             "Environment": {},
+            "DataProcessing": {
+                "InputFilter": "{{ input_filter }}",
+                "JoinSource": "{{ join_source }}",
+                "OutputFilter": "{{ output_filter }}",
+            },
         },
     }
 
@@ -1420,7 +1466,11 @@ def test_deploy_amazon_alg_model_config(sagemaker_session):
         ]
     ),
 )
-def test_deploy_config_from_framework_estimator(sagemaker_session):
+@patch(
+    "sagemaker.fw_utils.get_ecr_image_uri_prefix",
+    return_value="763104351884.dkr.ecr.us-west-2.amazonaws.com",
+)
+def test_deploy_config_from_framework_estimator(ecr_prefix, sagemaker_session):
     mxnet_estimator = mxnet.MXNet(
         entry_point="{{ entry_point }}",
         source_dir="{{ source_dir }}",

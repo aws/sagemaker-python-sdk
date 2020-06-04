@@ -12,19 +12,23 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-import numpy
 import os
+
+import numpy
 import pytest
+
 from sagemaker.mxnet.estimator import MXNet
 from sagemaker.mxnet.model import MXNetModel
-from sagemaker.utils import sagemaker_timestamp
+from sagemaker.utils import unique_name_from_base
 from tests.integ import DATA_DIR, PYTHON_VERSION, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
-import time
+
+NEO_MXNET_VERSION = "1.4.1"  # Neo doesn't support MXNet 1.6 yet.
+INF_MXNET_VERSION = "1.5.1"
 
 
 @pytest.fixture(scope="module")
-def mxnet_training_job(sagemaker_session, mxnet_full_version, cpu_instance_type):
+def mxnet_training_job(sagemaker_session, cpu_instance_type):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         script_path = os.path.join(DATA_DIR, "mxnet_mnist", "mnist_neo.py")
         data_path = os.path.join(DATA_DIR, "mxnet_mnist")
@@ -32,7 +36,7 @@ def mxnet_training_job(sagemaker_session, mxnet_full_version, cpu_instance_type)
         mx = MXNet(
             entry_point=script_path,
             role="SageMakerRole",
-            framework_version=mxnet_full_version,
+            framework_version=NEO_MXNET_VERSION,
             py_version=PYTHON_VERSION,
             train_instance_count=1,
             train_instance_type=cpu_instance_type,
@@ -52,13 +56,10 @@ def mxnet_training_job(sagemaker_session, mxnet_full_version, cpu_instance_type)
 
 @pytest.mark.canary_quick
 @pytest.mark.regional_testing
-@pytest.mark.skip(
-    reason="This should be enabled along with the Boto SDK release for Neo API changes"
-)
 def test_attach_deploy(
     mxnet_training_job, sagemaker_session, cpu_instance_type, cpu_instance_family
 ):
-    endpoint_name = "test-mxnet-attach-deploy-{}".format(sagemaker_timestamp())
+    endpoint_name = unique_name_from_base("test-neo-attach-deploy")
 
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         estimator = MXNet.attach(mxnet_training_job, sagemaker_session=sagemaker_session)
@@ -77,13 +78,10 @@ def test_attach_deploy(
         predictor.predict(data)
 
 
-@pytest.mark.skip(
-    reason="This should be enabled along with the Boto SDK release for Neo API changes"
-)
 def test_deploy_model(
     mxnet_training_job, sagemaker_session, cpu_instance_type, cpu_instance_family
 ):
-    endpoint_name = "test-mxnet-deploy-model-{}".format(sagemaker_timestamp())
+    endpoint_name = unique_name_from_base("test-neo-deploy-model")
 
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         desc = sagemaker_session.sagemaker_client.describe_training_job(
@@ -97,6 +95,7 @@ def test_deploy_model(
             role,
             entry_point=script_path,
             py_version=PYTHON_VERSION,
+            framework_version=NEO_MXNET_VERSION,
             sagemaker_session=sagemaker_session,
         )
 
@@ -104,10 +103,45 @@ def test_deploy_model(
             target_instance_family=cpu_instance_family,
             input_shape={"data": [1, 1, 28, 28]},
             role=role,
-            job_name="test-deploy-model-compilation-job-{}".format(int(time.time())),
+            job_name=unique_name_from_base("test-deploy-model-compilation-job"),
             output_path="/".join(model_data.split("/")[:-1]),
         )
         predictor = model.deploy(1, cpu_instance_type, endpoint_name=endpoint_name)
+
+        predictor.content_type = "application/vnd+python.numpy+binary"
+        data = numpy.zeros(shape=(1, 1, 28, 28))
+        predictor.predict(data)
+
+
+@pytest.mark.skip(reason="Inferentia is not supported yet.")
+def test_inferentia_deploy_model(
+    mxnet_training_job, sagemaker_session, inf_instance_type, inf_instance_family
+):
+    endpoint_name = unique_name_from_base("test-neo-deploy-model")
+
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
+        desc = sagemaker_session.sagemaker_client.describe_training_job(
+            TrainingJobName=mxnet_training_job
+        )
+        model_data = desc["ModelArtifacts"]["S3ModelArtifacts"]
+        script_path = os.path.join(DATA_DIR, "mxnet_mnist", "mnist_neo.py")
+        role = "SageMakerRole"
+        model = MXNetModel(
+            model_data,
+            role,
+            entry_point=script_path,
+            framework_version=INF_MXNET_VERSION,
+            sagemaker_session=sagemaker_session,
+        )
+
+        model.compile(
+            target_instance_family=inf_instance_family,
+            input_shape={"data": [1, 1, 28, 28]},
+            role=role,
+            job_name=unique_name_from_base("test-deploy-model-compilation-job"),
+            output_path="/".join(model_data.split("/")[:-1]),
+        )
+        predictor = model.deploy(1, inf_instance_type, endpoint_name=endpoint_name)
 
         predictor.content_type = "application/vnd+python.numpy+binary"
         data = numpy.zeros(shape=(1, 1, 28, 28))

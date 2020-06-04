@@ -13,10 +13,25 @@
 """This module contains Enums and helper methods related to S3."""
 from __future__ import print_function, absolute_import
 
-import os
+import logging
 
 from six.moves.urllib.parse import urlparse
 from sagemaker.session import Session
+
+logger = logging.getLogger("sagemaker")
+
+SESSION_V2_RENAME_MESSAGE = (
+    "Parameter 'session' will be renamed to 'sagemaker_session' in SageMaker Python SDK v2."
+)
+
+
+def _session_v2_rename_warning(session):
+    """
+    Args:
+        session (sagemaker.session.Session):
+    """
+    if session is not None:
+        logger.warning(SESSION_V2_RENAME_MESSAGE)
 
 
 def parse_s3_url(url):
@@ -54,6 +69,9 @@ class S3Uploader(object):
             The S3 uri of the uploaded file(s).
 
         """
+        if session is not None:
+            _session_v2_rename_warning(session)
+
         sagemaker_session = session or Session()
         bucket, key_prefix = parse_s3_url(url=desired_s3_uri)
         if kms_key is not None:
@@ -80,6 +98,9 @@ class S3Uploader(object):
             str: The S3 uri of the uploaded file(s).
 
         """
+        if session is not None:
+            _session_v2_rename_warning(session)
+
         sagemaker_session = session or Session()
         bucket, key = parse_s3_url(desired_s3_uri)
 
@@ -107,10 +128,13 @@ class S3Downloader(object):
                 using the default AWS configuration chain.
 
         """
+        if session is not None:
+            _session_v2_rename_warning(session)
+
         sagemaker_session = session or Session()
         bucket, key_prefix = parse_s3_url(url=s3_uri)
         if kms_key is not None:
-            extra_args = {"SSEKMSKeyId": kms_key}
+            extra_args = {"SSECustomerKey": kms_key}
         else:
             extra_args = None
 
@@ -131,6 +155,9 @@ class S3Downloader(object):
             str: The body of the file.
 
         """
+        if session is not None:
+            _session_v2_rename_warning(session)
+
         sagemaker_session = session or Session()
         bucket, key_prefix = parse_s3_url(url=s3_uri)
 
@@ -149,8 +176,11 @@ class S3Downloader(object):
             [str]: The list of S3 URIs in the given S3 base uri.
 
         """
+        if session is not None:
+            _session_v2_rename_warning(session)
+
         sagemaker_session = session or Session()
         bucket, key_prefix = parse_s3_url(url=s3_uri)
 
         file_keys = sagemaker_session.list_s3_files(bucket=bucket, key_prefix=key_prefix)
-        return [os.path.join("s3://", bucket, file_key) for file_key in file_keys]
+        return ["s3://{}/{}".format(bucket, file_key) for file_key in file_keys]

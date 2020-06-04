@@ -21,10 +21,10 @@ import sys
 import time
 import warnings
 
-import six
 import boto3
 import botocore.config
 from botocore.exceptions import ClientError
+import six
 
 import sagemaker.logs
 from sagemaker import vpc_utils
@@ -107,8 +107,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         """
         self._default_bucket = None
         self._default_bucket_name_override = default_bucket
-
-        # currently is used for local_code in local mode
+        self.s3_resource = None
+        self.s3_client = None
         self.config = None
 
         self._initialize(
@@ -181,6 +181,12 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 ``s3://{bucket name}/{key_prefix}``.
         """
         # Generate a tuple for each file that we want to upload of the form (local_path, s3_key).
+        LOGGER.warning(
+            "'upload_data' method will be deprecated in favor of 'S3Uploader' class "
+            "(https://sagemaker.readthedocs.io/en/stable/s3.html#sagemaker.s3.S3Uploader) "
+            "in SageMaker Python SDK v2."
+        )
+
         files = []
         key_suffix = None
         if os.path.isdir(path):
@@ -199,7 +205,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
             key_suffix = name
 
         bucket = bucket or self.default_bucket()
-        s3 = self.boto_session.resource("s3")
+        if self.s3_resource is None:
+            s3 = self.boto_session.resource("s3", region_name=self.boto_region_name)
+        else:
+            s3 = self.s3_resource
 
         for local_path, s3_key in files:
             s3.Object(bucket, s3_key).upload_file(local_path, ExtraArgs=extra_args)
@@ -227,7 +236,17 @@ class Session(object):  # pylint: disable=too-many-public-methods
             str: The S3 URI of the uploaded file.
                 The URI format is: ``s3://{bucket name}/{key}``.
         """
-        s3 = self.boto_session.resource("s3")
+        LOGGER.warning(
+            "'upload_string_as_file_body' method will be deprecated in favor of 'S3Uploader' class "
+            "(https://sagemaker.readthedocs.io/en/stable/s3.html#sagemaker.s3.S3Uploader) "
+            "in SageMaker Python SDK v2."
+        )
+
+        if self.s3_resource is None:
+            s3 = self.boto_session.resource("s3", region_name=self.boto_region_name)
+        else:
+            s3 = self.s3_resource
+
         s3_object = s3.Object(bucket_name=bucket, key=key)
 
         if kms_key is not None:
@@ -254,7 +273,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         """
         # Initialize the S3 client.
-        s3 = self.boto_session.client("s3")
+        if self.s3_client is None:
+            s3 = self.boto_session.client("s3", region_name=self.boto_region_name)
+        else:
+            s3 = self.s3_client
 
         # Initialize the variables used to loop through the contents of the S3 bucket.
         keys = []
@@ -299,7 +321,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
             str: The body of the s3 file as a string.
 
         """
-        s3 = self.boto_session.client("s3")
+        if self.s3_client is None:
+            s3 = self.boto_session.client("s3", region_name=self.boto_region_name)
+        else:
+            s3 = self.s3_client
 
         # Explicitly passing a None kms_key to boto3 throws a validation error.
         s3_object = s3.get_object(Bucket=bucket, Key=key_prefix)
@@ -317,7 +342,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
             [str]: The list of files at the S3 path.
 
         """
-        s3 = self.boto_session.resource("s3")
+        if self.s3_resource is None:
+            s3 = self.boto_session.resource("s3", region_name=self.boto_region_name)
+        else:
+            s3 = self.s3_resource
 
         s3_bucket = s3.Bucket(name=bucket)
         s3_objects = s3_bucket.objects.filter(Prefix=key_prefix).all()
@@ -330,6 +358,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             str: The name of the default bucket, which is of the form:
                 ``sagemaker-{region}-{AWS account ID}``.
         """
+
         if self._default_bucket:
             return self._default_bucket
 
@@ -364,10 +393,14 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 already being created, no exception is raised.
 
         """
-        bucket = self.boto_session.resource("s3", region_name=region).Bucket(name=bucket_name)
+        if self.s3_resource is None:
+            s3 = self.boto_session.resource("s3", region_name=region)
+        else:
+            s3 = self.s3_resource
+
+        bucket = s3.Bucket(name=bucket_name)
         if bucket.creation_date is None:
             try:
-                s3 = self.boto_session.resource("s3", region_name=region)
                 if region == "us-east-1":
                     # 'us-east-1' cannot be specified because it is the default region:
                     # https://github.com/boto/boto3/issues/125
@@ -1968,7 +2001,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             job_name (str): Name of the transform job being created.
             model_name (str): Name of the SageMaker model being used for the transform job.
             strategy (str): The strategy used to decide how to batch records in a single request.
-                Possible values are 'MULTI_RECORD' and 'SINGLE_RECORD'.
+                Possible values are 'MultiRecord' and 'SingleRecord'.
             max_concurrent_transforms (int): The maximum number of HTTP requests to be made to
                 each individual transform container at one time.
             max_payload (int): Maximum size of the payload in a single HTTP request to the
@@ -2312,11 +2345,16 @@ class Session(object):  # pylint: disable=too-many-public-methods
             existing_config_name (str): Name of the existing Amazon SageMaker endpoint
                 configuration.
             new_tags(List[dict[str, str]]): Optional. The list of tags to add to the endpoint
-                config.
+                config. If not specified, the tags of the existing endpoint configuration are used.
+                If any of the existing tags are reserved AWS ones (i.e. begin with "aws"),
+                they are not carried over to the new endpoint configuration.
             new_kms_key (str): The KMS key that is used to encrypt the data on the storage volume
-                attached to the instance hosting the endpoint.
+                attached to the instance hosting the endpoint (default: None). If not specified,
+                the KMS key of the existing endpoint configuration is used.
             new_data_capture_config_dict (dict): Specifies configuration related to Endpoint data
-                capture for use with Amazon SageMaker Model Monitoring. Default: None.
+                capture for use with Amazon SageMaker Model Monitoring (default: None).
+                If not specified, the data capture configuration of the existing
+                endpoint configuration is used.
 
         Returns:
             str: Name of the endpoint point configuration created.
@@ -2328,17 +2366,14 @@ class Session(object):  # pylint: disable=too-many-public-methods
             EndpointConfigName=existing_config_name
         )
 
-        existing_tags = self.sagemaker_client.list_tags(
-            ResourceArn=existing_endpoint_config_desc["EndpointConfigArn"]
-        )
-
-        request_tags = new_tags or existing_tags["Tags"]
-
         request = {
             "EndpointConfigName": new_config_name,
             "ProductionVariants": existing_endpoint_config_desc["ProductionVariants"],
         }
 
+        request_tags = new_tags or self.list_tags(
+            existing_endpoint_config_desc["EndpointConfigArn"]
+        )
         if request_tags:
             request["Tags"] = request_tags
 
@@ -2549,6 +2584,18 @@ class Session(object):  # pylint: disable=too-many-public-methods
         desc = _wait_until(lambda: _tuning_job_status(self.sagemaker_client, job), poll)
         self._check_job_status(job, desc, "HyperParameterTuningJobStatus")
         return desc
+
+    def describe_transform_job(self, job_name):
+        """Calls the DescribeTransformJob API for the given job name
+        and returns the response.
+
+        Args:
+            job_name (str): The name of the transform job to describe.
+
+        Returns:
+            dict: A dictionary response with the transform job description.
+        """
+        return self.sagemaker_client.describe_transform_job(TransformJobName=job_name)
 
     def wait_for_transform_job(self, job, poll=5):
         """Wait for an Amazon SageMaker transform job to complete.
@@ -3288,6 +3335,7 @@ def get_execution_role(sagemaker_session=None):
     Returns:
         (str): The role ARN
     """
+
     if not sagemaker_session:
         sagemaker_session = Session()
     arn = sagemaker_session.get_caller_identity_arn()

@@ -28,6 +28,7 @@ DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 SCRIPT_PATH = os.path.join(DATA_DIR, "dummy_script.py")
 SERVING_SCRIPT_FILE = "another_dummy_script.py"
 MODEL_DATA = "s3://some/data.tar.gz"
+ENV = {"DUMMY_ENV_VAR": "dummy_value"}
 TIMESTAMP = "2017-11-06-14:14:15.672"
 TIME = 1507167947
 BUCKET_NAME = "mybucket"
@@ -65,6 +66,8 @@ def fixture_sagemaker_session():
         boto_region_name=REGION,
         config=None,
         local_mode=False,
+        s3_resource=None,
+        s3_client=None,
     )
 
     describe = {"ModelArtifacts": {"S3ModelArtifacts": "s3://m/m.tar.gz"}}
@@ -205,17 +208,22 @@ def test_create_model_with_optional_params(sagemaker_session):
     new_role = "role"
     model_server_workers = 2
     vpc_config = {"Subnets": ["foo"], "SecurityGroupIds": ["bar"]}
+    model_name = "model-name"
     model = pytorch.create_model(
         role=new_role,
         model_server_workers=model_server_workers,
         vpc_config_override=vpc_config,
         entry_point=SERVING_SCRIPT_FILE,
+        env=ENV,
+        name=model_name,
     )
 
     assert model.role == new_role
     assert model.model_server_workers == model_server_workers
     assert model.vpc_config == vpc_config
     assert model.entry_point == SERVING_SCRIPT_FILE
+    assert model.env == ENV
+    assert model.name == model_name
 
 
 def test_create_model_with_custom_image(sagemaker_session):
@@ -345,11 +353,19 @@ def test_non_mms_model(repack_model, sagemaker_session):
 
 @patch("sagemaker.fw_utils.tar_and_upload_dir", MagicMock())
 def test_model_image_accelerator(sagemaker_session):
-    model = PyTorchModel(
-        MODEL_DATA, role=ROLE, entry_point=SCRIPT_PATH, sagemaker_session=sagemaker_session
+    with pytest.raises(ValueError) as error:
+        model = PyTorchModel(
+            MODEL_DATA,
+            role=ROLE,
+            entry_point=SCRIPT_PATH,
+            sagemaker_session=sagemaker_session,
+            framework_version="1.3.1",
+            py_version="py2",
+        )
+        model.deploy(1, CPU, accelerator_type=ACCELERATOR_TYPE)
+    assert "pytorch-serving is not supported with Amazon Elastic Inference in Python 2." in str(
+        error
     )
-    with pytest.raises(ValueError):
-        model.prepare_container_def(INSTANCE_TYPE, accelerator_type=ACCELERATOR_TYPE)
 
 
 def test_train_image_default(sagemaker_session):
@@ -594,3 +610,11 @@ def test_pt_enable_sm_metrics_if_fw_ver_is_at_least_1_15(sagemaker_session):
     for fw_version in ["1.3", "1.4", "2.0", "2.1"]:
         pytorch = _pytorch_estimator(sagemaker_session, framework_version=fw_version)
         assert pytorch.enable_sagemaker_metrics
+
+
+def test_custom_image_estimator_deploy(sagemaker_session):
+    custom_image = "mycustomimage:latest"
+    pytorch = _pytorch_estimator(sagemaker_session)
+    pytorch.fit(inputs="s3://mybucket/train", job_name="new_name")
+    model = pytorch.create_model(image=custom_image)
+    assert model.image == custom_image

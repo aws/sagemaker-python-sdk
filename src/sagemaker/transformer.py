@@ -135,6 +135,7 @@ class Transformer(object):
 
                 * 'ManifestFile' - the S3 URI points to a single manifest file listing each S3
                     object to use as an input for the transform job.
+
             content_type (str): MIME type of the input data (default: None).
             compression_type (str): Compression type of the input data, if
                 compressed (default: None). Valid values: 'Gzip', None.
@@ -172,7 +173,7 @@ class Transformer(object):
                 'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
                 (default: ``None``).
             wait (bool): Whether the call should wait until the job completes
-                (default: True).
+                (default: False).
             logs (bool): Whether to show the logs produced by the job.
                 Only meaningful when wait is True (default: False).
         """

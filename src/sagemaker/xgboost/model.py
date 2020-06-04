@@ -74,8 +74,8 @@ class XGBoostModel(FrameworkModel):
                 training data and model artifacts. After the endpoint is created, the inference
                 code might use the IAM role, if it needs to access an AWS resource.
             entry_point (str): Path (absolute or relative) to the Python source file which should
-                be executed  as the entry point to model hosting.
-                This should be compatible with either Python 2.7 or Python 3.5.
+                be executed  as the entry point to model hosting. If ``source_dir`` is specified,
+                then ``entry_point`` must point to a file located at the root of ``source_dir``.
             image (str): A Docker image URI (default: None). If not specified, a default image for
                 XGBoos will be used.
             py_version (str): Python version you want to use for executing your model training code
@@ -108,16 +108,16 @@ class XGBoostModel(FrameworkModel):
         self.model_server_workers = model_server_workers
 
     def prepare_container_def(self, instance_type, accelerator_type=None):
-        """Return a container definition with framework configuration set in model environment
-            variables.
+        """Return a container definition with framework configuration
+        set in model environment variables.
 
         Args:
             instance_type (str): The EC2 instance type to deploy this Model to. For example,
                 'ml.m5.xlarge'.
             accelerator_type (str): The Elastic Inference accelerator type to deploy to the
-                instance for loading and making inferences to the model. For example,
-                    'ml.eia1.medium'.
-                Note: accelerator types are not supported by XGBoostModel.
+            instance for loading and making inferences to the model. For example,
+                'ml.eia1.medium'.
+            Note: accelerator types are not supported by XGBoostModel.
 
         Returns:
             dict[str, str]: A container definition object usable with the CreateModel API.

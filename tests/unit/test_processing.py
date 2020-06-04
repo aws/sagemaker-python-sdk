@@ -28,6 +28,7 @@ from sagemaker.network import NetworkConfig
 BUCKET_NAME = "mybucket"
 REGION = "us-west-2"
 ROLE = "arn:aws:iam::012345678901:role/SageMakerRole"
+ECR_PREFIX = "246618743249.dkr.ecr.us-west-2.amazonaws.com"
 CUSTOM_IMAGE_URI = "012345678901.dkr.ecr.us-west-2.amazonaws.com/my-custom-image-uri"
 
 PROCESSING_JOB_DESCRIPTION = {
@@ -94,9 +95,12 @@ def sagemaker_session():
     return session_mock
 
 
+@patch("sagemaker.fw_registry.get_ecr_image_uri_prefix", return_value=ECR_PREFIX)
 @patch("os.path.exists", return_value=True)
 @patch("os.path.isfile", return_value=True)
-def test_sklearn_processor_with_required_parameters(exists_mock, isfile_mock, sagemaker_session):
+def test_sklearn_processor_with_required_parameters(
+    exists_mock, isfile_mock, ecr_prefix, sagemaker_session
+):
     processor = SKLearnProcessor(
         role=ROLE,
         instance_type="ml.m4.xlarge",
@@ -117,9 +121,10 @@ def test_sklearn_processor_with_required_parameters(exists_mock, isfile_mock, sa
     sagemaker_session.process.assert_called_with(**expected_args)
 
 
+@patch("sagemaker.fw_registry.get_ecr_image_uri_prefix", return_value=ECR_PREFIX)
 @patch("os.path.exists", return_value=True)
 @patch("os.path.isfile", return_value=True)
-def test_sklearn_with_all_parameters(exists_mock, isfile_mock, sagemaker_session):
+def test_sklearn_with_all_parameters(exists_mock, isfile_mock, ecr_prefix, sagemaker_session):
     processor = SKLearnProcessor(
         role=ROLE,
         framework_version="0.20.0",
@@ -136,6 +141,7 @@ def test_sklearn_with_all_parameters(exists_mock, isfile_mock, sagemaker_session
             subnets=["my_subnet_id"],
             security_group_ids=["my_security_group_id"],
             enable_network_isolation=True,
+            encrypt_inter_container_traffic=True,
         ),
         sagemaker_session=sagemaker_session,
     )
@@ -325,6 +331,7 @@ def test_script_processor_with_all_parameters(exists_mock, isfile_mock, sagemake
             subnets=["my_subnet_id"],
             security_group_ids=["my_security_group_id"],
             enable_network_isolation=True,
+            encrypt_inter_container_traffic=True,
         ),
         sagemaker_session=sagemaker_session,
     )
@@ -381,6 +388,49 @@ def test_processor_with_required_parameters(sagemaker_session):
     sagemaker_session.process.assert_called_with(**expected_args)
 
 
+def test_processor_with_missing_network_config_parameters(sagemaker_session):
+    processor = Processor(
+        role=ROLE,
+        image_uri=CUSTOM_IMAGE_URI,
+        instance_count=1,
+        instance_type="ml.m4.xlarge",
+        sagemaker_session=sagemaker_session,
+        network_config=NetworkConfig(enable_network_isolation=True),
+    )
+
+    processor.run()
+
+    expected_args = _get_expected_args(processor._current_job_name)
+    del expected_args["app_specification"]["ContainerEntrypoint"]
+    expected_args["inputs"] = []
+    expected_args["network_config"] = {"EnableNetworkIsolation": True}
+
+    sagemaker_session.process.assert_called_with(**expected_args)
+
+
+def test_processor_with_encryption_parameter_in_network_config(sagemaker_session):
+    processor = Processor(
+        role=ROLE,
+        image_uri=CUSTOM_IMAGE_URI,
+        instance_count=1,
+        instance_type="ml.m4.xlarge",
+        sagemaker_session=sagemaker_session,
+        network_config=NetworkConfig(encrypt_inter_container_traffic=False),
+    )
+
+    processor.run()
+
+    expected_args = _get_expected_args(processor._current_job_name)
+    del expected_args["app_specification"]["ContainerEntrypoint"]
+    expected_args["inputs"] = []
+    expected_args["network_config"] = {
+        "EnableNetworkIsolation": False,
+        "EnableInterContainerTrafficEncryption": False,
+    }
+
+    sagemaker_session.process.assert_called_with(**expected_args)
+
+
 def test_processor_with_all_parameters(sagemaker_session):
     processor = Processor(
         role=ROLE,
@@ -400,6 +450,7 @@ def test_processor_with_all_parameters(sagemaker_session):
             subnets=["my_subnet_id"],
             security_group_ids=["my_security_group_id"],
             enable_network_isolation=True,
+            encrypt_inter_container_traffic=True,
         ),
     )
 
@@ -575,6 +626,7 @@ def _get_expected_args_all_parameters(job_name):
         "environment": {"my_env_variable": "my_env_variable_value"},
         "network_config": {
             "EnableNetworkIsolation": True,
+            "EnableInterContainerTrafficEncryption": True,
             "VpcConfig": {
                 "SecurityGroupIds": ["my_security_group_id"],
                 "Subnets": ["my_subnet_id"],

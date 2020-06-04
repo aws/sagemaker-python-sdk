@@ -85,8 +85,8 @@ class PyTorchModel(FrameworkModel):
                 might use the IAM role, if it needs to access an AWS resource.
             entry_point (str): Path (absolute or relative) to the Python source
                 file which should be executed as the entry point to model
-                hosting. This should be compatible with either Python 2.7 or
-                Python 3.5.
+                hosting. If ``source_dir`` is specified, then ``entry_point``
+                must point to a file located at the root of ``source_dir``.
             image (str): A Docker image URI (default: None). If not specified, a
                 default image for PyTorch will be used.
             py_version (str): Python version you want to use for executing your
@@ -136,7 +136,7 @@ class PyTorchModel(FrameworkModel):
                 For example, 'ml.p2.xlarge'.
             accelerator_type (str): The Elastic Inference accelerator type to
                 deploy to the instance for loading and making inferences to the
-                model. Currently unsupported with PyTorch.
+                model.
 
         Returns:
             dict[str, str]: A container definition object usable with the
@@ -169,7 +169,7 @@ class PyTorchModel(FrameworkModel):
                 (cpu/gpu/family-specific optimized).
             accelerator_type (str): The Elastic Inference accelerator type to
                 deploy to the instance for loading and making inferences to the
-                model. Currently unsupported with PyTorch.
+                model.
 
         Returns:
             str: The appropriate image URI based on the given parameters.

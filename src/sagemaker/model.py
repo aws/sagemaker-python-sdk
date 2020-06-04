@@ -24,7 +24,9 @@ from sagemaker.transformer import Transformer
 
 LOGGER = logging.getLogger("sagemaker")
 
-NEO_ALLOWED_FRAMEWORKS = set(["mxnet", "tensorflow", "keras", "pytorch", "onnx", "xgboost"])
+NEO_ALLOWED_FRAMEWORKS = set(
+    ["mxnet", "tensorflow", "keras", "pytorch", "onnx", "xgboost", "tflite"]
+)
 
 NEO_IMAGE_ACCOUNT = {
     "us-west-1": "710691900526",
@@ -45,7 +47,12 @@ NEO_IMAGE_ACCOUNT = {
     "sa-east-1": "756306329178",
     "ca-central-1": "464438896020",
     "me-south-1": "836785723513",
+    "cn-north-1": "472730292857",
+    "cn-northwest-1": "474822919863",
+    "us-gov-west-1": "263933020539",
 }
+
+INFERENTIA_INSTANCE_PREFIX = "ml_inf"
 
 
 class Model(object):
@@ -101,6 +108,8 @@ class Model(object):
             model_kms_key (str): KMS key ARN used to encrypt the repacked
                 model archive file if the model is repacked
         """
+        LOGGER.warning(fw_utils.parameter_v2_rename_warning("image", "image_uri"))
+
         self.model_data = model_data
         self.image = image
         self.role = role
@@ -283,6 +292,23 @@ class Model(object):
             account=self._neo_image_account(region),
         )
 
+    def _inferentia_image(self, region, target_instance_type, framework, framework_version):
+        """
+                Args:
+                    region:
+                    target_instance_type:
+                    framework:
+                    framework_version:
+                """
+        return fw_utils.create_image_uri(
+            region,
+            "neo-" + framework.lower(),
+            target_instance_type.replace("_", "."),
+            framework_version,
+            py_version="py3",
+            account=self._neo_image_account(region),
+        )
+
     def compile(
         self,
         target_instance_family,
@@ -304,8 +330,8 @@ class Model(object):
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_OutputConfig.html.
             input_shape (dict): Specifies the name and shape of the expected
                 inputs for your trained model in json dictionary form, for
-                example: {'data':[1,3,1024,1024]}, or {'var1': [1,1,28,28],
-                'var2':[1,1,28,28]}
+                example: {'data': [1,3,1024,1024]}, or {'var1': [1,1,28,28],
+                'var2': [1,1,28,28]}
             output_path (str): Specifies where to store the compiled model
             role (str): Execution role
             tags (list[dict]): List of tags for labeling a compilation job. For
@@ -355,6 +381,14 @@ class Model(object):
         self.model_data = job_status["ModelArtifacts"]["S3ModelArtifacts"]
         if target_instance_family.startswith("ml_"):
             self.image = self._neo_image(
+                self.sagemaker_session.boto_region_name,
+                target_instance_family,
+                framework,
+                framework_version,
+            )
+            self._is_compiled_model = True
+        elif target_instance_family.startswith(INFERENTIA_INSTANCE_PREFIX):
+            self.image = self._inferentia_image(
                 self.sagemaker_session.boto_region_name,
                 target_instance_family,
                 framework,
@@ -434,9 +468,15 @@ class Model(object):
         if self.role is None:
             raise ValueError("Role can not be null for deploying a model")
 
+        if instance_type.startswith("ml.inf") and not self._is_compiled_model:
+            LOGGER.warning(
+                "Your model is not compiled. Please compile your model before using Inferentia."
+            )
+
         compiled_model_suffix = "-".join(instance_type.split(".")[:-1])
         if self._is_compiled_model:
-            self.name += compiled_model_suffix
+            name_prefix = self.name or utils.name_from_image(self.image)
+            self.name = "{}{}".format(name_prefix, compiled_model_suffix)
 
         self._create_sagemaker_model(instance_type, accelerator_type, tags)
         production_variant = sagemaker.production_variant(
@@ -503,8 +543,8 @@ class Model(object):
             instance_type (str): Type of EC2 instance to use, for example,
                 'ml.c4.xlarge'.
             strategy (str): The strategy used to decide how to batch records in
-                a single request (default: None). Valid values: 'MULTI_RECORD'
-                and 'SINGLE_RECORD'.
+                a single request (default: None). Valid values: 'MultiRecord'
+                and 'SingleRecord'.
             assemble_with (str): How the output is assembled (default: None).
                 Valid values: 'Line' or 'None'.
             output_path (str): S3 location for saving the transform result. If
@@ -608,10 +648,11 @@ class FrameworkModel(Model):
                 resources on your behalf.
             entry_point (str): Path (absolute or relative) to the Python source
                 file which should be executed as the entry point to model
-                hosting. This should be compatible with either Python 2.7 or
-                Python 3.5. If 'git_config' is provided, 'entry_point' should be
+                hosting. If ``source_dir`` is specified, then ``entry_point``
+                must point to a file located at the root of ``source_dir``.
+                If 'git_config' is provided, 'entry_point' should be
                 a relative location to the Python source file in the Git repo.
-                Example
+                Example:
 
                     With the following GitHub repo directory structure:
 
@@ -621,13 +662,14 @@ class FrameworkModel(Model):
                     >>>         |----- test.py
 
                     You can assign entry_point='src/inference.py'.
-            source_dir (str): Path (absolute or relative) to a directory with
-                any other training source code dependencies aside from the entry
-                point file (default: None). Structure within this directory will
-                be preserved when training on SageMaker. If 'git_config' is
-                provided, 'source_dir' should be a relative location to a
-                directory in the Git repo. If the directory points to S3, no
-                code will be uploaded and the S3 location will be used instead.
+            source_dir (str): Path (absolute, relative or an S3 URI) to a directory
+                with any other training source code dependencies aside from the entry
+                point file (default: None). If ``source_dir`` is an S3 URI, it must
+                point to a tar.gz file. Structure within this directory are preserved
+                when training on Amazon SageMaker. If 'git_config' is provided,
+                'source_dir' should be a relative location to a directory in the Git repo.
+                If the directory points to S3, no code will be uploaded and the S3 location
+                will be used instead.
                 .. admonition:: Example
 
                     With the following GitHub repo directory structure:

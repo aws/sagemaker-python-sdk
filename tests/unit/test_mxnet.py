@@ -31,6 +31,7 @@ SCRIPT_NAME = "dummy_script.py"
 SCRIPT_PATH = os.path.join(DATA_DIR, SCRIPT_NAME)
 SERVING_SCRIPT_FILE = "another_dummy_script.py"
 MODEL_DATA = "s3://mybucket/model"
+ENV = {"DUMMY_ENV_VAR": "dummy_value"}
 TIMESTAMP = "2017-11-06-14:14:15.672"
 TIME = 1507167947
 BUCKET_NAME = "mybucket"
@@ -72,6 +73,8 @@ def sagemaker_session():
         boto_region_name=REGION,
         config=None,
         local_mode=False,
+        s3_resource=None,
+        s3_client=None,
     )
 
     describe = {"ModelArtifacts": {"S3ModelArtifacts": "s3://m/m.tar.gz"}}
@@ -161,7 +164,7 @@ def _create_compilation_job(input_shape, output_location):
         "job_name": COMPILATION_JOB_NAME,
         "output_model_config": {"S3OutputLocation": output_location, "TargetDevice": "ml_c4"},
         "role": ROLE,
-        "stop_condition": {"MaxRuntimeInSeconds": 300},
+        "stop_condition": {"MaxRuntimeInSeconds": 900},
         "tags": None,
     }
 
@@ -260,17 +263,22 @@ def test_create_model_with_optional_params(sagemaker_session):
     new_role = "role"
     model_server_workers = 2
     vpc_config = {"Subnets": ["foo"], "SecurityGroupIds": ["bar"]}
+    model_name = "model-name"
     model = mx.create_model(
         role=new_role,
         model_server_workers=model_server_workers,
         vpc_config_override=vpc_config,
         entry_point=SERVING_SCRIPT_FILE,
+        env=ENV,
+        name=model_name,
     )
 
     assert model.role == new_role
     assert model.model_server_workers == model_server_workers
     assert model.vpc_config == vpc_config
     assert model.entry_point == SERVING_SCRIPT_FILE
+    assert model.env == ENV
+    assert model.name == model_name
 
 
 def test_create_model_with_custom_image(sagemaker_session):
@@ -703,7 +711,8 @@ def test_attach_custom_image(sagemaker_session):
     assert estimator.train_image() == training_image
 
 
-def test_estimator_script_mode_launch_parameter_server(sagemaker_session):
+@patch("sagemaker.mxnet.estimator.parameter_v2_rename_warning")
+def test_estimator_script_mode_launch_parameter_server(warning, sagemaker_session):
     mx = MXNet(
         entry_point=SCRIPT_PATH,
         role=ROLE,
@@ -714,6 +723,7 @@ def test_estimator_script_mode_launch_parameter_server(sagemaker_session):
         framework_version="1.3.0",
     )
     assert mx.hyperparameters().get(MXNet.LAUNCH_PS_ENV_NAME) == "true"
+    warning.assert_called_with("distributions", "distribution")
 
 
 def test_estimator_script_mode_dont_launch_parameter_server(sagemaker_session):
@@ -870,3 +880,17 @@ def test_mx_enable_sm_metrics_if_fw_ver_is_at_least_1_6(sagemaker_session):
             framework_version=fw_version,
         )
         assert mx.enable_sagemaker_metrics
+
+
+def test_custom_image_estimator_deploy(sagemaker_session):
+    custom_image = "mycustomimage:latest"
+    mx = MXNet(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        train_instance_count=INSTANCE_COUNT,
+        train_instance_type=INSTANCE_TYPE,
+    )
+    mx.fit(inputs="s3://mybucket/train", job_name="new_name")
+    model = mx.create_model(image=custom_image)
+    assert model.image == custom_image

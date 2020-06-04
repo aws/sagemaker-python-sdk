@@ -34,12 +34,12 @@ def read_version():
 
 # Declare minimal set for installation
 required_packages = [
-    "boto3>=1.10.44",
+    "boto3>=1.13.6",
     "numpy>=1.9.0",
     "protobuf>=3.1",
     "scipy>=0.19.0",
     "protobuf3-to-dict>=0.1.5",
-    "smdebug-rulesconfig==0.1.2",
+    "smdebug-rulesconfig==0.1.4",
     "importlib-metadata>=1.4.0",
     "packaging>=20.0",
 ]
@@ -101,6 +101,7 @@ setup(
         "Programming Language :: Python",
         "Programming Language :: Python :: 2.7",
         "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
     ],
     install_requires=required_packages,
     extras_require=extras,

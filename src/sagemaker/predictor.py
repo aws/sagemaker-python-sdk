@@ -192,14 +192,22 @@ class RealTimePredictor(object):
         to enable data capture. For a more customized experience, refer to
         update_data_capture_config, instead.
         """
-        self.update_data_capture_config(data_capture_config=DataCaptureConfig(enable_capture=True))
+        self.update_data_capture_config(
+            data_capture_config=DataCaptureConfig(
+                enable_capture=True, sagemaker_session=self.sagemaker_session
+            )
+        )
 
     def disable_data_capture(self):
         """Updates the DataCaptureConfig for the Predictor's associated Amazon SageMaker Endpoint
         to disable data capture. For a more customized experience, refer to
         update_data_capture_config, instead.
         """
-        self.update_data_capture_config(data_capture_config=DataCaptureConfig(enable_capture=False))
+        self.update_data_capture_config(
+            data_capture_config=DataCaptureConfig(
+                enable_capture=False, sagemaker_session=self.sagemaker_session
+            )
+        )
 
     def update_data_capture_config(self, data_capture_config):
         """Updates the DataCaptureConfig for the Predictor's associated Amazon SageMaker Endpoint

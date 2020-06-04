@@ -76,7 +76,8 @@ class Chainer(Framework):
         Args:
             entry_point (str): Path (absolute or relative) to the Python source
                 file which should be executed as the entry point to training.
-                This should be compatible with either Python 2.7 or Python 3.5.
+                If ``source_dir`` is specified, then ``entry_point``
+                must point to a file located at the root of ``source_dir``.
             use_mpi (bool): If true, entry point is run as an MPI script. By
                 default, the Chainer Framework runs the entry point with
                 'mpirun' if more than one instance is used.
@@ -186,11 +187,14 @@ class Chainer(Framework):
                 role from the Estimator will be used.
             vpc_config_override (dict[str, list[str]]): Optional override for VpcConfig set on
                 the model. Default: use subnets and security groups from this Estimator.
+
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
+
             entry_point (str): Path (absolute or relative) to the local Python source file which
-                should be executed as the entry point to training. If not specified, the training
-                entry point is used.
+                should be executed as the entry point to training. If ``source_dir`` is specified,
+                then ``entry_point`` must point to a file located at the root of ``source_dir``.
+                If not specified, the training entry point is used.
             source_dir (str): Path (absolute or relative) to a directory with any other serving
                 source code dependencies aside from the entry point file.
                 If not specified, the model source directory from training is used.
@@ -203,22 +207,27 @@ class Chainer(Framework):
             sagemaker.chainer.model.ChainerModel: A SageMaker ``ChainerModel``
             object. See :func:`~sagemaker.chainer.model.ChainerModel` for full details.
         """
+        if "image" not in kwargs:
+            kwargs["image"] = self.image_name
+
+        if "name" not in kwargs:
+            kwargs["name"] = self._current_job_name
+
         return ChainerModel(
             self.model_data,
             role or self.role,
             entry_point or self.uploaded_code.script_name,
             source_dir=(source_dir or self._model_source_dir()),
             enable_cloudwatch_metrics=self.enable_cloudwatch_metrics,
-            name=self._current_job_name,
             container_log_level=self.container_log_level,
             code_location=self.code_location,
             py_version=self.py_version,
             framework_version=self.framework_version,
             model_server_workers=model_server_workers,
-            image=self.image_name,
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
             dependencies=(dependencies or self.dependencies),
+            **kwargs
         )
 
     @classmethod
