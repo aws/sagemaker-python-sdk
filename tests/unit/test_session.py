@@ -19,7 +19,6 @@ import os
 
 import pytest
 import six
-import boto3
 from botocore.exceptions import ClientError
 from mock import ANY, MagicMock, Mock, patch, call, mock_open
 
