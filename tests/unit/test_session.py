@@ -19,6 +19,7 @@ import os
 
 import pytest
 import six
+import boto3
 from botocore.exceptions import ClientError
 from mock import ANY, MagicMock, Mock, patch, call, mock_open
 
@@ -50,6 +51,18 @@ def boto_session():
     )
     boto_mock.client.return_value = client_mock
     return boto_mock
+
+
+@patch("boto3.DEFAULT_SESSION")
+def test_default_session(boto3_default_session):
+    sess = Session()
+    assert sess.boto_session is boto3_default_session
+
+
+@patch("boto3.Session")
+def test_new_session_created(boto3_session):
+    sess = Session()
+    assert sess.boto_session is boto3_session.return_value
 
 
 def test_process(boto_session):
