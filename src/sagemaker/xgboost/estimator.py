@@ -174,7 +174,7 @@ class XGBoost(Framework):
         return XGBoostModel(
             self.model_data,
             role,
-            entry_point or self.uploaded_code.script_name,
+            entry_point or self._model_entry_point(),
             framework_version=self.framework_version,
             source_dir=(source_dir or self._model_source_dir()),
             enable_cloudwatch_metrics=self.enable_cloudwatch_metrics,

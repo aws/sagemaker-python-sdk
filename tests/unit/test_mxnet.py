@@ -180,7 +180,8 @@ def test_create_model(sagemaker_session, mxnet_version):
     container_log_level = '"logging.INFO"'
     source_dir = "s3://mybucket/source"
     mx = MXNet(
-        entry_point=SCRIPT_PATH,
+        entry_point=SCRIPT_NAME,
+        source_dir=source_dir,
         role=ROLE,
         sagemaker_session=sagemaker_session,
         train_instance_count=INSTANCE_COUNT,
@@ -188,7 +189,6 @@ def test_create_model(sagemaker_session, mxnet_version):
         framework_version=mxnet_version,
         container_log_level=container_log_level,
         base_job_name="job",
-        source_dir=source_dir,
     )
 
     job_name = "new_name"
@@ -198,6 +198,7 @@ def test_create_model(sagemaker_session, mxnet_version):
     assert model.sagemaker_session == sagemaker_session
     assert model.framework_version == mxnet_version
     assert model.py_version == mx.py_version
+    assert model.entry_point == SCRIPT_NAME
     assert model.role == ROLE
     assert model.name == job_name
     assert model.container_log_level == container_log_level
@@ -206,55 +207,19 @@ def test_create_model(sagemaker_session, mxnet_version):
     assert model.vpc_config is None
 
 
-@patch("sagemaker.utils.create_tar_file", MagicMock())
-def test_create_model_default_entry_with_mms(
-    sagemaker_session, mxnet_version, skip_if_not_mms_version
-):
-    mx = MXNet(
-        entry_point=SCRIPT_PATH,
-        role=ROLE,
-        sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
-        framework_version=mxnet_version,
-    )
-
-    mx.fit()
-    model = mx.create_model()
-
-    assert model.entry_point == SCRIPT_PATH
-
-
-@patch("sagemaker.utils.create_tar_file", MagicMock())
-def test_create_model_default_entry_not_mms(sagemaker_session, mxnet_version, skip_if_mms_version):
-    mx = MXNet(
-        entry_point=SCRIPT_PATH,
-        role=ROLE,
-        sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
-        framework_version=mxnet_version,
-    )
-
-    mx.fit()
-    model = mx.create_model()
-
-    assert model.entry_point == SCRIPT_NAME
-
-
 def test_create_model_with_optional_params(sagemaker_session):
     container_log_level = '"logging.INFO"'
     source_dir = "s3://mybucket/source"
     enable_cloudwatch_metrics = "true"
     mx = MXNet(
-        entry_point=SCRIPT_PATH,
+        entry_point=SCRIPT_NAME,
+        source_dir=source_dir,
         role=ROLE,
         sagemaker_session=sagemaker_session,
         train_instance_count=INSTANCE_COUNT,
         train_instance_type=INSTANCE_TYPE,
         container_log_level=container_log_level,
         base_job_name="job",
-        source_dir=source_dir,
         enable_cloudwatch_metrics=enable_cloudwatch_metrics,
     )
 
@@ -286,7 +251,8 @@ def test_create_model_with_custom_image(sagemaker_session):
     source_dir = "s3://mybucket/source"
     custom_image = "mxnet:2.0"
     mx = MXNet(
-        entry_point=SCRIPT_PATH,
+        entry_point=SCRIPT_NAME,
+        source_dir=source_dir,
         role=ROLE,
         sagemaker_session=sagemaker_session,
         train_instance_count=INSTANCE_COUNT,
@@ -294,7 +260,6 @@ def test_create_model_with_custom_image(sagemaker_session):
         image_name=custom_image,
         container_log_level=container_log_level,
         base_job_name="job",
-        source_dir=source_dir,
     )
 
     job_name = "new_name"
@@ -303,7 +268,7 @@ def test_create_model_with_custom_image(sagemaker_session):
 
     assert model.sagemaker_session == sagemaker_session
     assert model.image == custom_image
-    assert model.entry_point == SCRIPT_PATH
+    assert model.entry_point == SCRIPT_NAME
     assert model.role == ROLE
     assert model.name == job_name
     assert model.container_log_level == container_log_level
@@ -823,7 +788,6 @@ def test_create_model_with_custom_hosting_image(sagemaker_session):
         image_name=custom_image,
         container_log_level=container_log_level,
         base_job_name="job",
-        source_dir=source_dir,
     )
 
     mx.fit(inputs="s3://mybucket/train", job_name="new_name")

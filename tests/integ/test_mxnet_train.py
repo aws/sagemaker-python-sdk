@@ -39,7 +39,7 @@ def mxnet_training_job(sagemaker_session, mxnet_full_version, cpu_instance_type)
         )
 
         mx = MXNet(
-            entry_point=os.path.join("mxnet_mnist", "mnist.py"),
+            entry_point="mxnet_mnist/mnist.py",
             source_dir=s3_source,
             role="SageMakerRole",
             framework_version=mxnet_full_version,

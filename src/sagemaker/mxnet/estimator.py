@@ -217,10 +217,10 @@ class MXNet(Framework):
         if "name" not in kwargs:
             kwargs["name"] = self._current_job_name
 
-        model = MXNetModel(
+        return MXNetModel(
             self.model_data,
             role or self.role,
-            entry_point,
+            entry_point or self._model_entry_point(),
             source_dir=(source_dir or self._model_source_dir()),
             enable_cloudwatch_metrics=self.enable_cloudwatch_metrics,
             container_log_level=self.container_log_level,
@@ -233,13 +233,6 @@ class MXNet(Framework):
             dependencies=(dependencies or self.dependencies),
             **kwargs
         )
-
-        if entry_point is None:
-            model.entry_point = (
-                self.entry_point if model._is_mms_version() else self.uploaded_code.script_name
-            )
-
-        return model
 
     @classmethod
     def _prepare_init_params_from_job_description(cls, job_details, model_channel_name=None):
