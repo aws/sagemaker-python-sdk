@@ -776,7 +776,6 @@ def test_model_empty_framework_version(warning, sagemaker_session):
 
 def test_create_model_with_custom_hosting_image(sagemaker_session):
     container_log_level = '"logging.INFO"'
-    source_dir = "s3://mybucket/source"
     custom_image = "mxnet:2.0"
     custom_hosting_image = "mxnet_hosting:2.0"
     mx = MXNet(
