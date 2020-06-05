@@ -42,6 +42,10 @@ def test_node_should_be_modified_tf_constructor_legacy_mode():
         "sagemaker.tensorflow.TensorFlow(script_mode=None)",
         "sagemaker.tensorflow.TensorFlow(py_version='py2')",
         "sagemaker.tensorflow.TensorFlow()",
+        "sagemaker.tensorflow.estimator.TensorFlow(script_mode=False)",
+        "sagemaker.tensorflow.estimator.TensorFlow(script_mode=None)",
+        "sagemaker.tensorflow.estimator.TensorFlow(py_version='py2')",
+        "sagemaker.tensorflow.estimator.TensorFlow()",
     )
 
     modifier = tf_legacy_mode.TensorFlowLegacyModeConstructorUpgrader()
@@ -61,6 +65,10 @@ def test_node_should_be_modified_tf_constructor_script_mode():
         "sagemaker.tensorflow.TensorFlow(py_version='py3')",
         "sagemaker.tensorflow.TensorFlow(py_version='py37')",
         "sagemaker.tensorflow.TensorFlow(py_version='py3', script_mode=False)",
+        "sagemaker.tensorflow.estimator.TensorFlow(script_mode=True)",
+        "sagemaker.tensorflow.estimator.TensorFlow(py_version='py3')",
+        "sagemaker.tensorflow.estimator.TensorFlow(py_version='py37')",
+        "sagemaker.tensorflow.estimator.TensorFlow(py_version='py3', script_mode=False)",
     )
 
     modifier = tf_legacy_mode.TensorFlowLegacyModeConstructorUpgrader()
