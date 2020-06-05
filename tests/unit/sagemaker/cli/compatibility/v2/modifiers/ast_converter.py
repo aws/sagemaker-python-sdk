@@ -17,3 +17,7 @@ import pasta
 
 def ast_call(code):
     return pasta.parse(code).body[0].value
+
+
+def ast_import(code):
+    return pasta.parse(code).body[0]
