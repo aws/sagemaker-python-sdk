@@ -1772,7 +1772,10 @@ class Framework(EstimatorBase):
             str: The path to the entry point script. This can be either an absolute path or
                 a path relative to ``self._model_source_dir()``.
         """
-        return self.uploaded_code.script_name if self._model_source_dir() else self.entry_point
+        if self.sagemaker_session.local_mode or (self._model_source_dir() is None):
+            return self.entry_point
+
+        return self.uploaded_code.script_name
 
     def hyperparameters(self):
         """Return the hyperparameters as a dictionary to use for training.
