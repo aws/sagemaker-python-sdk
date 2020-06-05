@@ -123,7 +123,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Creates or uses a boto_session, sagemaker_client and sagemaker_runtime_client.
         Sets the region_name.
         """
-        self.boto_session = boto_session or boto3.Session()
+        self.boto_session = boto_session or boto3.DEFAULT_SESSION or boto3.Session()
 
         self._region_name = self.boto_session.region_name
         if self._region_name is None:
