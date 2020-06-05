@@ -54,6 +54,7 @@ class TensorFlowLegacyModeConstructorUpgrader(Modifier):
 
         - ``TensorFlow``
         - ``sagemaker.tensorflow.TensorFlow``
+        - ``sagemaker.tensorflow.estimator.TensorFlow``
 
         Legacy mode is enabled if (1) ``script_mode`` is ``False``, ``None``, or not specified,
         and (2) if ``py_version`` is ``py2`` or not specified.
@@ -68,26 +69,34 @@ class TensorFlowLegacyModeConstructorUpgrader(Modifier):
         return self._is_tf_constructor(node) and self._is_legacy_mode(node)
 
     def _is_tf_constructor(self, node):
-        """Checks if the ``ast.Call`` node represents a call of the form
-        ``TensorFlow`` or ``sagemaker.tensorflow.TensorFlow``.
+        """Checks if the ``ast.Call`` node represents a call of the form ``TensorFlow``,
+        ``sagemaker.tensorflow.TensorFlow``, or ``sagemaker.tensorflow.estimator.TensorFlow``.
         """
         # Check for TensorFlow()
         if isinstance(node.func, ast.Name):
             return node.func.id == "TensorFlow"
 
+        # Check for something.that.ends.with.TensorFlow()
+        if not (isinstance(node.func, ast.Attribute) and node.func.attr == "TensorFlow"):
+            return False
+
+        # Check for sagemaker.tensorflow.estimator.TensorFlow()
+        if isinstance(node.func.value, ast.Attribute) and node.func.value.attr == "estimator":
+            return self._is_in_tensorflow_module(node.func.value)
+
         # Check for sagemaker.tensorflow.TensorFlow()
-        ends_with_tensorflow_constructor = (
-            isinstance(node.func, ast.Attribute) and node.func.attr == "TensorFlow"
-        )
+        return self._is_in_tensorflow_module(node.func)
 
-        is_in_tensorflow_module = (
-            isinstance(node.func.value, ast.Attribute)
-            and node.func.value.attr == "tensorflow"
-            and isinstance(node.func.value.value, ast.Name)
-            and node.func.value.value.id == "sagemaker"
+    def _is_in_tensorflow_module(self, node):
+        """Checks if the node is an ``ast.Attribute`` that represents the
+        ``sagemaker.tensorflow`` module.
+        """
+        return (
+            isinstance(node.value, ast.Attribute)
+            and node.value.attr == "tensorflow"
+            and isinstance(node.value.value, ast.Name)
+            and node.value.value.id == "sagemaker"
         )
-
-        return ends_with_tensorflow_constructor and is_in_tensorflow_module
 
     def _is_legacy_mode(self, node):
         """Checks if the ``ast.Call`` node's keywords signal using legacy mode."""
