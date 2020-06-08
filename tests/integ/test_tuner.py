@@ -37,6 +37,7 @@ from sagemaker.mxnet.estimator import MXNet
 from sagemaker.predictor import json_deserializer
 from sagemaker.pytorch import PyTorch
 from sagemaker.tensorflow import TensorFlow
+from sagemaker.tensorflow.defaults import LATEST_VERSION
 from sagemaker.tuner import (
     IntegerParameter,
     ContinuousParameter,
@@ -50,6 +51,13 @@ from sagemaker.tuner import (
 from sagemaker.utils import unique_name_from_base
 
 DATA_PATH = os.path.join(DATA_DIR, "iris", "data")
+
+PY37_SUPPORTED_FRAMEWORK_VERSION = [TensorFlow._LATEST_1X_VERSION, LATEST_VERSION]
+
+
+@pytest.fixture(scope="module")
+def py_version(tf_full_version):
+    return "py37" if tf_full_version in PY37_SUPPORTED_FRAMEWORK_VERSION else PYTHON_VERSION
 
 
 @pytest.fixture(scope="module")
@@ -590,7 +598,7 @@ def test_tuning_mxnet(sagemaker_session, mxnet_full_version, cpu_instance_type):
 
 
 @pytest.mark.canary_quick
-def test_tuning_tf_script_mode(sagemaker_session, cpu_instance_type, tf_full_version):
+def test_tuning_tf_script_mode(sagemaker_session, cpu_instance_type, tf_full_version, py_version):
     resource_path = os.path.join(DATA_DIR, "tensorflow_mnist")
     script_path = os.path.join(resource_path, "mnist.py")
 
@@ -601,7 +609,7 @@ def test_tuning_tf_script_mode(sagemaker_session, cpu_instance_type, tf_full_ver
         train_instance_type=cpu_instance_type,
         script_mode=True,
         sagemaker_session=sagemaker_session,
-        py_version=PYTHON_VERSION,
+        py_version=py_version,
         framework_version=tf_full_version,
     )
 

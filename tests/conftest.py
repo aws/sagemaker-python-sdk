@@ -27,7 +27,8 @@ from sagemaker.mxnet import MXNet
 from sagemaker.pytorch import PyTorch
 from sagemaker.rl import RLEstimator
 from sagemaker.sklearn.defaults import SKLEARN_VERSION
-from sagemaker.tensorflow.estimator import TensorFlow
+from sagemaker.tensorflow import TensorFlow
+from sagemaker.tensorflow.defaults import LATEST_VERSION, LATEST_SERVING_VERSION
 
 DEFAULT_REGION = "us-west-2"
 CUSTOM_BUCKET_NAME_PREFIX = "sagemaker-custom-bucket"
@@ -50,7 +51,7 @@ def pytest_addoption(parser):
     parser.addoption("--boto-config", action="store", default=None)
     parser.addoption("--chainer-full-version", action="store", default=Chainer.LATEST_VERSION)
     parser.addoption("--mxnet-full-version", action="store", default=MXNet.LATEST_VERSION)
-    parser.addoption("--ei-mxnet-full-version", action="store", default="1.4.1")
+    parser.addoption("--ei-mxnet-full-version", action="store", default="1.5.1")
     parser.addoption("--pytorch-full-version", action="store", default=PyTorch.LATEST_VERSION)
     parser.addoption(
         "--rl-coach-mxnet-full-version",
@@ -259,7 +260,7 @@ def sklearn_full_version(request):
     return request.config.getoption("--sklearn-full-version")
 
 
-@pytest.fixture(scope="module", params=[TensorFlow._LATEST_1X_VERSION, TensorFlow.LATEST_VERSION])
+@pytest.fixture(scope="module", params=[TensorFlow._LATEST_1X_VERSION, LATEST_VERSION])
 def tf_full_version(request):
     tf_version = request.config.getoption("--tf-full-version")
     if tf_version is None:
@@ -335,3 +336,10 @@ def pytest_generate_tests(metafunc):
 @pytest.fixture(scope="module")
 def xgboost_full_version(request):
     return request.config.getoption("--xgboost-full-version")
+
+
+@pytest.fixture(scope="module")
+def tf_serving_version(tf_full_version):
+    if tf_full_version == LATEST_VERSION:
+        return LATEST_SERVING_VERSION
+    return tf_full_version

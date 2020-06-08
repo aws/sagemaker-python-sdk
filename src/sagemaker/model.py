@@ -108,6 +108,8 @@ class Model(object):
             model_kms_key (str): KMS key ARN used to encrypt the repacked
                 model archive file if the model is repacked
         """
+        LOGGER.warning(fw_utils.parameter_v2_rename_warning("image", "image_uri"))
+
         self.model_data = model_data
         self.image = image
         self.role = role
@@ -646,10 +648,11 @@ class FrameworkModel(Model):
                 resources on your behalf.
             entry_point (str): Path (absolute or relative) to the Python source
                 file which should be executed as the entry point to model
-                hosting. This should be compatible with either Python 2.7 or
-                Python 3.5. If 'git_config' is provided, 'entry_point' should be
+                hosting. If ``source_dir`` is specified, then ``entry_point``
+                must point to a file located at the root of ``source_dir``.
+                If 'git_config' is provided, 'entry_point' should be
                 a relative location to the Python source file in the Git repo.
-                Example
+                Example:
 
                     With the following GitHub repo directory structure:
 
@@ -659,13 +662,14 @@ class FrameworkModel(Model):
                     >>>         |----- test.py
 
                     You can assign entry_point='src/inference.py'.
-            source_dir (str): Path (absolute or relative) to a directory with
-                any other training source code dependencies aside from the entry
-                point file (default: None). Structure within this directory will
-                be preserved when training on SageMaker. If 'git_config' is
-                provided, 'source_dir' should be a relative location to a
-                directory in the Git repo. If the directory points to S3, no
-                code will be uploaded and the S3 location will be used instead.
+            source_dir (str): Path (absolute, relative or an S3 URI) to a directory
+                with any other training source code dependencies aside from the entry
+                point file (default: None). If ``source_dir`` is an S3 URI, it must
+                point to a tar.gz file. Structure within this directory are preserved
+                when training on Amazon SageMaker. If 'git_config' is provided,
+                'source_dir' should be a relative location to a directory in the Git repo.
+                If the directory points to S3, no code will be uploaded and the S3 location
+                will be used instead.
                 .. admonition:: Example
 
                     With the following GitHub repo directory structure:

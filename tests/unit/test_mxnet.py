@@ -675,7 +675,8 @@ def test_attach_custom_image(sagemaker_session):
     assert estimator.train_image() == training_image
 
 
-def test_estimator_script_mode_launch_parameter_server(sagemaker_session):
+@patch("sagemaker.mxnet.estimator.parameter_v2_rename_warning")
+def test_estimator_script_mode_launch_parameter_server(warning, sagemaker_session):
     mx = MXNet(
         entry_point=SCRIPT_PATH,
         role=ROLE,
@@ -686,6 +687,7 @@ def test_estimator_script_mode_launch_parameter_server(sagemaker_session):
         framework_version="1.3.0",
     )
     assert mx.hyperparameters().get(MXNet.LAUNCH_PS_ENV_NAME) == "true"
+    warning.assert_called_with("distributions", "distribution")
 
 
 def test_estimator_script_mode_dont_launch_parameter_server(sagemaker_session):

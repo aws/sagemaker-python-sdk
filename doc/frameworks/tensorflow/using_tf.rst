@@ -2,9 +2,10 @@
 Using TensorFlow with the SageMaker Python SDK
 ##############################################
 
-TensorFlow SageMaker Estimators allow you to run your own TensorFlow
-training algorithms on SageMaker Learner, and to host your own TensorFlow
-models on SageMaker Hosting.
+With the SageMaker Python SDK, you can train and host TensorFlow models on Amazon SageMaker.
+
+For information about supported versions of TensorFlow, see the `AWS documentation <https://docs.aws.amazon.com/deep-learning-containers/latest/devguide/deep-learning-containers-images.html>`__.
+We recommend that you use the latest supported version because that's where we focus our development efforts.
 
 For general information about using the SageMaker Python SDK, see :ref:`overview:Using the SageMaker Python SDK`.
 
@@ -19,9 +20,6 @@ For general information about using the SageMaker Python SDK, see :ref:`overview
     You can find the Legacy Mode README `here <https://github.com/aws/sagemaker-python-sdk/tree/v1.12.0/src/sagemaker/tensorflow#tensorflow-sagemaker-estimators-and-models>`_.
 
 .. contents::
-
-Supported versions of TensorFlow for Elastic Inference: ``1.11``, ``1.12``, ``1.13``, ``1.14``.
-
 
 *****************************
 Train a Model with TensorFlow
@@ -40,7 +38,7 @@ To train a TensorFlow model by using the SageMaker Python SDK:
 3. |call fit|_
 
 Prepare a Script Mode Training Script
-======================================
+=====================================
 
 Your TensorFlow training script must be a Python 2.7-, 3.6- or 3.7-compatible source file.
 
@@ -133,6 +131,34 @@ In your training script the channels will be stored in environment variables ``S
    ``output_path``.
 
 
+Use third-party libraries
+-------------------------
+
+If there are other packages you want to use with your script, you can use a ``requirements.txt`` to install other dependencies at runtime.
+
+For training, support for installing packages using ``requirements.txt`` varies by TensorFlow version as follows:
+
+- For TensorFlow 1.15.2 with Python 3.7 or newer, and TensorFlow 2.2 or newer:
+    - Include a ``requirements.txt`` file in the same directory as your training script.
+    - You must specify this directory using the ``source_dir`` argument when creating a TensorFlow estimator.
+- For older versions of TensorFlow using Script Mode (TensorFlow 1.11-1.15.2, 2.0-2.1 with Python 2.7 or 3.6):
+    - Write a shell script for your entry point that first calls ``pip install -r requirements.txt``, then runs your training script.
+    - For an example of using shell scripts, see `this example notebook <https://github.com/awslabs/amazon-sagemaker-examples/blob/master/sagemaker-python-sdk/tensorflow_script_mode_using_shell_commands/tensorflow_script_mode_using_shell_commands.ipynb>`__.
+- For older versions of TensorFlow using Legacy Mode:
+    - Specify the path to your ``requirements.txt`` file using the ``requirements_file`` argument.
+
+For serving, support for installing packages using ``requirements.txt`` varies by TensorFlow version as follows:
+
+- For TensorFlow 1.11 or newer:
+    - Include a ``requirements.txt`` file in the ``code`` directory.
+- For older versions of TensorFlow:
+    - Specify the path to your ``requirements.txt`` file using the ``SAGEMAKER_REQUIREMENTS`` environment variable.
+
+A ``requirements.txt`` file is a text file that contains a list of items that are installed by using ``pip install``.
+You can also specify the version of an item to install.
+For information about the format of a ``requirements.txt`` file, see `Requirements Files <https://pip.pypa.io/en/stable/user_guide/#requirements-files>`__ in the pip documentation.
+
+
 Create an Estimator
 ===================
 
@@ -215,7 +241,7 @@ Calling ``fit`` starts a SageMaker training job. The training job will execute t
   - starts asynchronous training
 
 If the ``wait=False`` flag is passed to ``fit``, then it returns immediately. The training job continues running
-asynchronously. Later, a Tensorflow estimator can be obtained by attaching to the existing training job.
+asynchronously. Later, a TensorFlow estimator can be obtained by attaching to the existing training job.
 If the training job is not finished, it starts showing the standard output of training and wait until it completes.
 After attaching, the estimator can be deployed as usual.
 
@@ -595,11 +621,13 @@ The following content formats are supported without custom intput and output han
 * JSON - specify ``application/json`` as the value of the ``content_type`` parameter.
 * JSON lines - specify ``application/jsonlines`` as the value of the ``content_type`` parameter.
 
-For detailed information about how TensorFlow Serving formats these data types for input and output, see :ref:`using_tf:TensorFlow Serving Input and Output`.
+For detailed information about how TensorFlow Serving formats these data types for input and output, see :ref:`tensorflow-serving-input-output`.
 
 You can also accept any custom data format by writing input and output functions, and include them in the ``inference.py`` file in your model.
-For information, see :ref:`using_tf:Create Python Scripts for Custom Input and Output Formats`.
+For information, see :ref:`custom-input-output`.
 
+
+.. _tensorflow-serving-input-output:
 
 TensorFlow Serving Input and Output
 ===================================
@@ -724,6 +752,7 @@ convert them to CSV, but the client-size CSV conversion is more sophisticated th
 CSV parsing on the Endpoint, so if you encounter conversion problems, try using one of the
 JSON options instead.
 
+.. _custom-input-output:
 
 Create Python Scripts for Custom Input and Output Formats
 ---------------------------------------------------------
@@ -882,8 +911,7 @@ in the following code:
 You can also bring in external dependencies to help with your data
 processing. There are 2 ways to do this:
 
-1. If you included ``requirements.txt`` in your ``source_dir`` or in
-   your dependencies, the container installs the Python dependencies at runtime using ``pip install -r``:
+1. If your model archive contains ``code/requirements.txt``, the container will install the Python dependencies at runtime using ``pip install -r``.
 
 .. code::
 
@@ -924,4 +952,9 @@ For information about the different TensorFlow-related classes in the SageMaker 
 SageMaker TensorFlow Docker containers
 **************************************
 
-For information about SageMaker TensorFlow Docker containers and their dependencies, see `SageMaker TensorFlow Docker containers <https://github.com/aws/sagemaker-python-sdk/tree/master/src/sagemaker/tensorflow#sagemaker-tensorflow-docker-containers>`_.
+For information about the SageMaker TensorFlow containers, see:
+
+- `SageMaker TensorFlow training toolkit <https://github.com/aws/sagemaker-tensorflow-container>`_
+- `SageMaker TensorFlow serving toolkit <https://github.com/aws/sagemaker-tensorflow-serving-container>`_
+- `Deep Learning Container (DLC) Dockerfiles for TensorFlow <https://github.com/aws/deep-learning-containers/tree/master/tensorflow>`_
+- `Deep Learning Container (DLC) Images <https://docs.aws.amazon.com/deep-learning-containers/latest/devguide/deep-learning-containers-images.html>`_ and `release notes <https://docs.aws.amazon.com/deep-learning-containers/latest/devguide/dlc-release-notes.html>`_

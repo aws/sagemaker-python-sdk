@@ -4,7 +4,8 @@ Use MXNet with the SageMaker Python SDK
 
 With the SageMaker Python SDK, you can train and host MXNet models on Amazon SageMaker.
 
-For information about supported versions of MXNet, see the `MXNet README <https://github.com/aws/sagemaker-python-sdk/blob/master/src/sagemaker/mxnet/README.rst>`__.
+For information about supported versions of MXNet, see the `AWS documentation <https://docs.aws.amazon.com/deep-learning-containers/latest/devguide/deep-learning-containers-images.html>`__.
+We recommend that you use the latest supported version because that's where we focus our development efforts.
 
 For general information about using the SageMaker Python SDK, see :ref:`overview:Using the SageMaker Python SDK`.
 
@@ -807,9 +808,9 @@ For information about the different MXNet-related classes in the SageMaker Pytho
 SageMaker MXNet Containers
 **************************
 
-For information about SageMaker MXNet containers, see the following topics:
+For information about the SageMaker MXNet containers, see:
 
-- training: https://github.com/aws/sagemaker-mxnet-container
-- serving: https://github.com/aws/sagemaker-mxnet-serving-container
-
-For information about the dependencies installed in SageMaker MXNet containers, see https://github.com/aws/sagemaker-python-sdk/blob/master/src/sagemaker/mxnet/README.rst#sagemaker-mxnet-containers.
+- `SageMaker MXNet training toolkit <https://github.com/aws/sagemaker-mxnet-container>`_
+- `SageMaker MXNet serving toolkit <https://github.com/aws/sagemaker-mxnet-serving-container>`_
+- `Deep Learning Container (DLC) Dockerfiles for MXNet <https://github.com/aws/deep-learning-containers/tree/master/mxnet>`_
+- `Deep Learning Container (DLC) Images <https://docs.aws.amazon.com/deep-learning-containers/latest/devguide/deep-learning-containers-images.html>`_ and `release notes <https://docs.aws.amazon.com/deep-learning-containers/latest/devguide/dlc-release-notes.html>`_

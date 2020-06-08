@@ -21,6 +21,7 @@ from sagemaker.fw_utils import (
     framework_version_from_tag,
     empty_framework_version_warning,
     python_deprecation_warning,
+    parameter_v2_rename_warning,
     is_version_equal_or_higher,
     warn_if_parameter_server_with_multi_gpu,
 )
@@ -70,11 +71,13 @@ class MXNet(Framework):
         Args:
             entry_point (str): Path (absolute or relative) to the Python source
                 file which should be executed as the entry point to training.
-                This should be compatible with either Python 2.7 or Python 3.5.
-            source_dir (str): Path (absolute or relative) to a directory with
-                any other training source code dependencies aside from the entry
-                point file (default: None). Structure within this directory are
-                preserved when training on Amazon SageMaker.
+                If ``source_dir`` is specified, then ``entry_point``
+                must point to a file located at the root of ``source_dir``.
+            source_dir (str): Path (absolute, relative or an S3 URI) to a directory
+                with any other training source code dependencies aside from the entry
+                point file (default: None). If ``source_dir`` is an S3 URI, it must
+                point to a tar.gz file. Structure within this directory are preserved
+                when training on Amazon SageMaker.
             hyperparameters (dict): Hyperparameters that will be used for
                 training (default: None). The hyperparameters are made
                 accessible as a dict[str, str] to the training code on
@@ -128,6 +131,7 @@ class MXNet(Framework):
             )
 
         if distributions is not None:
+            logger.warning(parameter_v2_rename_warning("distributions", "distribution"))
             train_instance_type = kwargs.get("train_instance_type")
             warn_if_parameter_server_with_multi_gpu(
                 training_instance_type=train_instance_type, distributions=distributions
@@ -183,8 +187,9 @@ class MXNet(Framework):
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
 
             entry_point (str): Path (absolute or relative) to the local Python source file which
-                should be executed as the entry point to training. If not specified, the training
-                entry point is used.
+                should be executed as the entry point to training. If ``source_dir`` is specified,
+                then ``entry_point`` must point to a file located at the root of ``source_dir``.
+                If not specified, the training entry point is used.
             source_dir (str): Path (absolute or relative) to a directory with any other serving
                 source code dependencies aside from the entry point file.
                 If not specified, the model source directory from training is used.
