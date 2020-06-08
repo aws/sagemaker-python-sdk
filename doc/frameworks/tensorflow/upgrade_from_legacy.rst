@@ -140,10 +140,10 @@ To specify the number of model server workers, you need to set it through an env
     # v2
     estimator.deploy(..., env={"MODEL_SERVER_WORKERS": 4})
 
-From a Model
-------------
+From a Trained Model
+--------------------
 
-If you are starting with a model, v2 requires the following changes:
+If you are starting with a trained model, v2 requires the following changes:
 
 #. Use the the :class:`sagemaker.model.FrameworkModel` class.
 #. Explicitly specify the ECR image URI via ``image``.
