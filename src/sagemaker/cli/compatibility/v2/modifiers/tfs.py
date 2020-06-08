@@ -10,7 +10,9 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Classes to modify TensorFlow Serving code to be compatible with SageMaker Python SDK v2."""
+"""Classes to modify TensorFlow Serving code to be compatible
+with version 2.0 or later of the SageMaker Python SDK.
+"""
 from __future__ import absolute_import
 
 import ast
@@ -57,7 +59,8 @@ class TensorFlowServingConstructorRenamer(Modifier):
         )
 
     def modify_node(self, node):
-        """Modifies the ``ast.Call`` node to use the v2 classes for TensorFlow Serving:
+        """Modifies the ``ast.Call`` node to use the classes for TensorFlow Serving available in
+        version 2.0 or later of the Python SDK:
 
         - ``sagemaker.tensorflow.TensorFlowModel``
         - ``sagemaker.tensorflow.TensorFlowPredictor``
@@ -72,7 +75,7 @@ class TensorFlowServingConstructorRenamer(Modifier):
             node.func.value = node.func.value.value
 
     def _new_cls_name(self, cls_name):
-        """Returns the v2 class name."""
+        """Returns the updated class name."""
         return "TensorFlow{}".format(cls_name)
 
 

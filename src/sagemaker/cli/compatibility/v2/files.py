@@ -30,7 +30,7 @@ class FileUpdater(object):
 
     def __init__(self, input_path, output_path):
         """Creates a ``FileUpdater`` for updating a file so that
-        it is compatible with v2 of the SageMaker Python SDK.
+        it is compatible with version 2.0 or later of the SageMaker Python SDK.
 
         Args:
             input_path (str): Location of the input file.
@@ -44,8 +44,8 @@ class FileUpdater(object):
     @abstractmethod
     def update(self):
         """Reads the input file, updates the code so that it is
-        compatible with v2 of the SageMaker Python SDK, and writes the
-        updated code to an output file.
+        compatible with version 2.0 or later of the SageMaker Python SDK,
+        and writes the updated code to an output file.
         """
 
     def _make_output_dirs_if_needed(self):
@@ -66,21 +66,22 @@ class PyFileUpdater(FileUpdater):
 
     def update(self):
         """Reads the input Python file, updates the code so that it is
-        compatible with v2 of the SageMaker Python SDK, and writes the
-        updated code to an output file.
+        compatible with version 2.0 or later of the SageMaker Python SDK,
+        and writes the updated code to an output file.
         """
         output = self._update_ast(self._read_input_file())
         self._write_output_file(output)
 
     def _update_ast(self, input_ast):
         """Updates an abstract syntax tree (AST) so that it is compatible
-        with v2 of the SageMaker Python SDK.
+        with version 2.0 or later of the SageMaker Python SDK.
 
         Args:
-            input_ast (ast.Module): AST to be updated for use with Python SDK v2.
+            input_ast (ast.Module): AST to be updated for use with
+                the Python SDK version 2.0 or later.
 
         Returns:
-            ast.Module: Updated AST that is compatible with Python SDK v2.
+            ast.Module: Updated AST that is compatible with the Python SDK version 2.0 or later.
         """
         return ASTTransformer().visit(input_ast)
 
@@ -115,7 +116,7 @@ class JupyterNotebookFileUpdater(FileUpdater):
 
     def update(self):
         """Reads the input Jupyter notebook file, updates the code so that it is
-        compatible with v2 of the SageMaker Python SDK, and writes the
+        compatible with version 2.0 or later of the SageMaker Python SDK, and writes the
         updated code to an output file.
         """
         nb_json = self._read_input_file()
@@ -128,7 +129,7 @@ class JupyterNotebookFileUpdater(FileUpdater):
 
     def _update_code_from_cell(self, cell):
         """Updates the code from a code cell so that it is
-        compatible with v2 of the SageMaker Python SDK.
+        compatible with version 2.0 or later of the SageMaker Python SDK.
 
         Args:
             cell (dict): A dictionary representation of a code cell from
