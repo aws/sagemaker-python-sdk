@@ -29,6 +29,7 @@ FRAMEWORKS = list(FRAMEWORK_DEFAULTS.keys())
 # TODO: check for sagemaker.tensorflow.serving.Model
 FRAMEWORK_CLASSES = FRAMEWORKS + ["{}Model".format(fw) for fw in FRAMEWORKS]
 FRAMEWORK_MODULES = [fw.lower() for fw in FRAMEWORKS]
+FRAMEWORK_SUBMODULES = ("model", "estimator")
 
 
 class FrameworkVersionEnforcer(Modifier):
@@ -68,19 +69,30 @@ class FrameworkVersionEnforcer(Modifier):
         if isinstance(node.func, ast.Name):
             return node.func.id in FRAMEWORK_CLASSES
 
-        # Check for sagemaker.<framework>.<Framework> call
-        ends_with_framework_constructor = (
-            isinstance(node.func, ast.Attribute) and node.func.attr in FRAMEWORK_CLASSES
-        )
+        # Check for something.that.ends.with.<framework>.<Framework> call
+        if not (isinstance(node.func, ast.Attribute) and node.func.attr in FRAMEWORK_CLASSES):
+            return False
 
-        is_in_framework_module = (
+        # Check for sagemaker.<frameworks>.<estimator/model>.<Framework> call
+        if (
             isinstance(node.func.value, ast.Attribute)
-            and node.func.value.attr in FRAMEWORK_MODULES
-            and isinstance(node.func.value.value, ast.Name)
-            and node.func.value.value.id == "sagemaker"
-        )
+            and node.func.value.attr in FRAMEWORK_SUBMODULES
+        ):
+            return self._is_in_framework_module(node.func.value)
 
-        return ends_with_framework_constructor and is_in_framework_module
+        # Check for sagemaker.<framework>.<Framework> call
+        return self._is_in_framework_module(node.func)
+
+    def _is_in_framework_module(self, node):
+        """Checks if the node is an ``ast.Attribute`` that represents a
+        ``sagemaker.<framework>`` module.
+        """
+        return (
+            isinstance(node.value, ast.Attribute)
+            and node.value.attr in FRAMEWORK_MODULES
+            and isinstance(node.value.value, ast.Name)
+            and node.value.value.id == "sagemaker"
+        )
 
     def _fw_version_in_keywords(self, node):
         """Checks if the ``ast.Call`` node's keywords contain ``framework_version``."""

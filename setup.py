@@ -35,6 +35,7 @@ def read_version():
 # Declare minimal set for installation
 required_packages = [
     "boto3>=1.13.6",
+    "google-pasta",
     "numpy>=1.9.0",
     "protobuf>=3.1",
     "protobuf3-to-dict>=0.1.5",
@@ -51,7 +52,6 @@ extras = {
         "docker-compose>=1.25.2",
         "PyYAML>=5.3, <6",  # PyYAML version has to match docker-compose requirements
     ],
-    "tensorflow": ["tensorflow>=1.3.0"],
     "scipy": ["scipy>=0.19.0"],
 }
 # Meta dependency groups
