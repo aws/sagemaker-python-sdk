@@ -22,7 +22,12 @@ FUNCTION_CALL_MODIFIERS = [
     modifiers.tf_legacy_mode.TensorFlowLegacyModeConstructorUpgrader(),
     modifiers.tf_legacy_mode.TensorBoardParameterRemover(),
     modifiers.deprecated_params.TensorFlowScriptModeParameterRemover(),
+    modifiers.tfs.TensorFlowServingConstructorRenamer(),
 ]
+
+IMPORT_MODIFIERS = [modifiers.tfs.TensorFlowServingImportRenamer()]
+
+IMPORT_FROM_MODIFIERS = [modifiers.tfs.TensorFlowServingImportFromRenamer()]
 
 
 class ASTTransformer(ast.NodeTransformer):
@@ -43,6 +48,40 @@ class ASTTransformer(ast.NodeTransformer):
         """
         for function_checker in FUNCTION_CALL_MODIFIERS:
             function_checker.check_and_modify_node(node)
+
+        ast.fix_missing_locations(node)
+        return node
+
+    def visit_Import(self, node):
+        """Visits an ``ast.Import`` node and returns a modified node, if needed.
+        See https://docs.python.org/3/library/ast.html#ast.NodeTransformer.
+
+        Args:
+            node (ast.Import): a node that represents an import statement.
+
+        Returns:
+            ast.Import: a node that represents an import statement, which has
+                potentially been modified from the original input.
+        """
+        for import_checker in IMPORT_MODIFIERS:
+            import_checker.check_and_modify_node(node)
+
+        ast.fix_missing_locations(node)
+        return node
+
+    def visit_ImportFrom(self, node):
+        """Visits an ``ast.ImportFrom`` node and returns a modified node, if needed.
+        See https://docs.python.org/3/library/ast.html#ast.NodeTransformer.
+
+        Args:
+            node (ast.ImportFrom): a node that represents an import statement.
+
+        Returns:
+            ast.ImportFrom: a node that represents an import statement, which has
+                potentially been modified from the original input.
+        """
+        for import_checker in IMPORT_FROM_MODIFIERS:
+            import_checker.check_and_modify_node(node)
 
         ast.fix_missing_locations(node)
         return node
