@@ -1,5 +1,5 @@
 ##################################
-Use v2 of the SageMaker Python SDK
+Use v2 of the SageMaker Python SDK (experimental)
 ##################################
 
 Development on v2.0.0 of the SageMaker Python SDK is underway.
