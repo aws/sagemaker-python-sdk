@@ -67,7 +67,13 @@ def test_attach_deploy(mxnet_training_job, sagemaker_session, cpu_instance_type)
 
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         estimator = MXNet.attach(mxnet_training_job, sagemaker_session=sagemaker_session)
-        predictor = estimator.deploy(1, cpu_instance_type, endpoint_name=endpoint_name)
+        predictor = estimator.deploy(
+            1,
+            cpu_instance_type,
+            entry_point="mnist.py",
+            source_dir=os.path.join(DATA_DIR, "mxnet_mnist", "mnist.py"),
+            endpoint_name=endpoint_name,
+        )
         data = numpy.zeros(shape=(1, 1, 28, 28))
         result = predictor.predict(data)
         assert result is not None
