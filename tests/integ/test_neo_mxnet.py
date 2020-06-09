@@ -131,6 +131,7 @@ def test_inferentia_deploy_model(
             role,
             entry_point=script_path,
             framework_version=INF_MXNET_VERSION,
+            py_version=PYTHON_VERSION,
             sagemaker_session=sagemaker_session,
         )
 

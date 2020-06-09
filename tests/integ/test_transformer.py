@@ -51,6 +51,7 @@ def mxnet_estimator(sagemaker_session, mxnet_full_version, cpu_instance_type):
         train_instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
         framework_version=mxnet_full_version,
+        py_version=PYTHON_VERSION,
     )
 
     train_input = mx.sagemaker_session.upload_data(

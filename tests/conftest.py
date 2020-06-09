@@ -163,6 +163,11 @@ def mxnet_version(request):
     return request.param
 
 
+@pytest.fixture(scope="module", params=["py2", "py3"])
+def mxnet_py_version(request):
+    return request.param
+
+
 @pytest.fixture(scope="module", params=["0.4", "0.4.0", "1.0", "1.0.0"])
 def pytorch_version(request):
     return request.param
