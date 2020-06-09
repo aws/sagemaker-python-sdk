@@ -1,6 +1,6 @@
-##################################
-Use v2 of the SageMaker Python SDK (experimental)
-##################################
+##########################################################
+Use Version 2.0 of the SageMaker Python SDK (experimental)
+##########################################################
 
 Development on v2.0.0 of the SageMaker Python SDK is underway.
 For more info on our plans, see https://github.com/aws/sagemaker-python-sdk/issues/1459.
@@ -13,7 +13,7 @@ Installation
 ************
 
 .. warning::
-    v2 is currently experimental, so proceed with caution. If you do run into issues or have any other feedback,
+    Version 2.0.0 is currently experimental, so proceed with caution. If you do run into issues or have any other feedback,
     please let us know by `opening an issue <https://github.com/aws/sagemaker-python-sdk/issues/new/choose>`_
     or `commenting on our planning issue <https://github.com/aws/sagemaker-python-sdk/issues/1459>`_.
 
