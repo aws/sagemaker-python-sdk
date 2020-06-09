@@ -58,9 +58,9 @@ If you already have existing model artifacts in S3, you can skip training and de
 
 .. code:: python
 
-  from sagemaker.tensorflow.serving import Model
+  from sagemaker.tensorflow import TensorFlowModel
 
-  model = Model(model_data='s3://mybucket/model.tar.gz', role='MySageMakerRole')
+  model = TensorFlowModel(model_data='s3://mybucket/model.tar.gz', role='MySageMakerRole')
 
   predictor = model.deploy(initial_instance_count=1, instance_type='ml.c5.xlarge')
 
@@ -68,9 +68,9 @@ Python-based TensorFlow serving on SageMaker has support for `Elastic Inference 
 
 .. code:: python
 
-    from sagemaker.tensorflow.serving import Model
+    from sagemaker.tensorflow import TensorFlowModel
 
-    model = Model(model_data='s3://mybucket/model.tar.gz', role='MySageMakerRole')
+    model = TensorFlowModel(model_data='s3://mybucket/model.tar.gz', role='MySageMakerRole')
 
     predictor = model.deploy(initial_instance_count=1, instance_type='ml.c5.xlarge', accelerator_type='ml.eia1.medium')
 
@@ -276,7 +276,7 @@ This customized Python code must be named ``inference.py`` and specified through
 
 .. code::
 
-    from sagemaker.tensorflow.serving import Model
+    from sagemaker.tensorflow import TensorFlowModel
 
     model = Model(entry_point='inference.py',
                   model_data='s3://mybucket/model.tar.gz',
@@ -429,7 +429,7 @@ processing. There are 2 ways to do this:
 
 .. code::
 
-    from sagemaker.tensorflow.serving import Model
+    from sagemaker.tensorflow import TensorFlowModel
 
     model = Model(entry_point='inference.py',
                   source_dir='source/directory',
@@ -447,7 +447,7 @@ processing. There are 2 ways to do this:
 
 .. code::
 
-    from sagemaker.tensorflow.serving import Model
+    from sagemaker.tensorflow import TensorFlowModel
 
     model = Model(entry_point='inference.py',
                   dependencies=['/path/to/folder/named/lib'],
@@ -546,7 +546,7 @@ For the remaining steps, let's return to python code using the SageMaker Python 
 
 .. code:: python
 
-  from sagemaker.tensorflow.serving import Model, Predictor
+  from sagemaker.tensorflow import TensorFlowModel, TensorFlowPredictor
 
   # change this to the name or ARN of your SageMaker execution role
   role = 'SageMakerRole'
