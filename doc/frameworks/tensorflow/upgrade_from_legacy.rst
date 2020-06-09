@@ -2,7 +2,7 @@
 Upgrade from Legacy TensorFlow Support
 ######################################
 
-With v2 of the SageMaker Python SDK, support for legacy SageMaker TensorFlow images has been deprecated.
+With version 2.0 and later of the SageMaker Python SDK, support for legacy SageMaker TensorFlow images has been deprecated.
 This guide explains how to upgrade your SageMaker Python SDK usage.
 
 For more information about using TensorFlow with the SageMaker Python SDK, see `Use TensorFlow with the SageMaker Python SDK <using_tf.html>`_.
@@ -67,13 +67,13 @@ For more information about implementing your own handlers, see `How to implement
 Continue with Legacy Versions
 *****************************
 
-While not recommended, you can still use a legacy TensorFlow version with v2 of the SageMaker Python SDK.
+While not recommended, you can still use a legacy TensorFlow version with version 2.0 and later of the SageMaker Python SDK.
 In order to do so, you need to change how a few parameters are defined.
 
 Training
 ========
 
-When creating an estimator, v2 requires the following changes:
+When creating an estimator, the Python SDK version 2.0 and later requires the following changes:
 
 #. Explicitly specify the ECR image URI via ``image_name``.
    To determine the URI, you can use :func:`sagemaker.fw_utils.create_image_uri`.
@@ -87,7 +87,7 @@ the difference in code would be as follows:
 
     from sagemaker.tensorflow import TensorFlow
 
-    # v1
+    # v1.x
     estimator = TensorFlow(
         ...
         source_dir="code",
@@ -99,7 +99,7 @@ the difference in code would be as follows:
         requirements_file="requirements.txt",
     )
 
-    # v2
+    # v2.0 and later
     estimator = TensorFlow(
         ...
         source_dir="code",
@@ -123,7 +123,7 @@ To provide a requirements file, define a hyperparameter named "sagemaker_require
 Inference
 =========
 
-Using a legacy TensorFlow version for endpoints and batch transform can be achieved with v2 of the SageMaker Python SDK with some minor changes to your code.
+Using a legacy TensorFlow version for endpoints and batch transform can be achieved with version 2.0 and later of the SageMaker Python SDK with some minor changes to your code.
 
 From an Estimator
 -----------------
@@ -134,16 +134,16 @@ To specify the number of model server workers, you need to set it through an env
 
 .. code:: python
 
-    # v1
+    # v1.x
     estimator.deploy(..., model_server_workers=4)
 
-    # v2
+    # v2.0 and later
     estimator.deploy(..., env={"MODEL_SERVER_WORKERS": 4})
 
 From a Trained Model
 --------------------
 
-If you are starting with a trained model, v2 requires the following changes:
+If you are starting with a trained model, the Python SDK version 2.0 and later requires the following changes:
 
 #. Use the the :class:`sagemaker.model.FrameworkModel` class.
 #. Explicitly specify the ECR image URI via ``image``.
@@ -155,7 +155,7 @@ the difference in code would be as follows:
 
 .. code:: python
 
-    # v1
+    # v1.x
     from sagemaker.tensorflow import TensorFlowModel
 
     model = TensorFlowModel(
@@ -165,7 +165,7 @@ the difference in code would be as follows:
         model_server_workers=4,
     )
 
-    # v2
+    # v2.0 and later
     from sagemaker.model import FrameworkModel
 
     model = FrameworkModel(
