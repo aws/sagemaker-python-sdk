@@ -10,7 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""A tool to upgrade SageMaker Python SDK code to be compatible with version 2.0 or later."""
+"""A tool to upgrade SageMaker Python SDK code to be compatible with version 2.0 and later."""
 from __future__ import absolute_import
 
 import argparse
@@ -22,7 +22,7 @@ _EXT_TO_UPDATER_CLS = {".py": files.PyFileUpdater, ".ipynb": files.JupyterNotebo
 
 
 def _update_file(input_file, output_file):
-    """Updates a file to be compatible with version 2.0 or later of the SageMaker Python SDK,
+    """Updates a file to be compatible with version 2.0 and later of the SageMaker Python SDK,
     and write the updated source to the output file.
 
     Args:
@@ -54,7 +54,7 @@ def _parse_args():
     """Parses CLI arguments."""
     parser = argparse.ArgumentParser(
         description="A tool to convert files to be compatible with "
-        "version 2.0 or later of the SageMaker Python SDK. "
+        "version 2.0 and later of the SageMaker Python SDK. "
         "Simple usage: sagemaker-upgrade-v2 --in-file foo.py --out-file bar.py"
     )
     parser.add_argument(
