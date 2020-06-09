@@ -557,21 +557,20 @@ def prepare_framework_container_def(model, instance_type, s3_operations):
     return sagemaker.container_def(deploy_image, model.model_data, deploy_env)
 
 
-def model_config(instance_type, model, role=None, image=None):
+def model_config(model, instance_type=None, role=None, image=None):
     """Export Airflow model config from a SageMaker model
 
     Args:
+        model (sagemaker.model.Model): The Model object from which to export the Airflow config
         instance_type (str): The EC2 instance type to deploy this Model to. For
             example, 'ml.p2.xlarge'
-        model (sagemaker.model.FrameworkModel): The SageMaker model to export
-            Airflow config from
         role (str): The ``ExecutionRoleArn`` IAM Role ARN for the model
         image (str): An container image to use for deploying the model
 
     Returns:
         dict: Model config that can be directly used by SageMakerModelOperator
-        in Airflow. It can also be part of the config used by
-        SageMakerEndpointOperator and SageMakerTransformOperator in Airflow.
+            in Airflow. It can also be part of the config used by
+            SageMakerEndpointOperator and SageMakerTransformOperator in Airflow.
     """
     s3_operations = {}
     model.image = image or model.image
@@ -579,7 +578,7 @@ def model_config(instance_type, model, role=None, image=None):
     if isinstance(model, sagemaker.model.FrameworkModel):
         container_def = prepare_framework_container_def(model, instance_type, s3_operations)
     else:
-        container_def = model.prepare_container_def(instance_type)
+        container_def = model.prepare_container_def()
         base_name = utils.base_name_from_image(container_def["Image"])
         model.name = model.name or utils.name_from_base(base_name)
 
@@ -601,10 +600,10 @@ def model_config(instance_type, model, role=None, image=None):
 
 
 def model_config_from_estimator(
-    instance_type,
     estimator,
     task_id,
     task_type,
+    instance_type=None,
     role=None,
     image=None,
     name=None,
@@ -614,8 +613,6 @@ def model_config_from_estimator(
     """Export Airflow model config from a SageMaker estimator
 
     Args:
-        instance_type (str): The EC2 instance type to deploy this Model to. For
-            example, 'ml.p2.xlarge'
         estimator (sagemaker.model.EstimatorBase): The SageMaker estimator to
             export Airflow config from. It has to be an estimator associated
             with a training job.
@@ -627,6 +624,8 @@ def model_config_from_estimator(
         task_type (str): Whether the task is from SageMakerTrainingOperator or
             SageMakerTuningOperator. Values can be 'training', 'tuning' or None
             (which means training job is not from any task).
+        instance_type (str): The EC2 instance type to deploy this Model to. For
+            example, 'ml.p2.xlarge'
         role (str): The ``ExecutionRoleArn`` IAM Role ARN for the model
         image (str): An container image to use for deploying the model
         name (str): Name of the model
@@ -667,7 +666,7 @@ def model_config_from_estimator(
         )
     model.name = name
 
-    return model_config(instance_type, model, role, image)
+    return model_config(model, instance_type, role, image)
 
 
 def transform_config(
@@ -914,10 +913,10 @@ def transform_config_from_estimator(
         SageMakerTransformOperator in Airflow.
     """
     model_base_config = model_config_from_estimator(
-        instance_type=instance_type,
         estimator=estimator,
         task_id=task_id,
         task_type=task_type,
+        instance_type=instance_type,
         role=role,
         image=image,
         name=model_name,
@@ -997,7 +996,7 @@ def deploy_config(model, initial_instance_count, instance_type, endpoint_name=No
         dict: Deploy config that can be directly used by
         SageMakerEndpointOperator in Airflow.
     """
-    model_base_config = model_config(instance_type, model)
+    model_base_config = model_config(model, instance_type)
 
     production_variant = sagemaker.production_variant(
         model.name, instance_type, initial_instance_count
