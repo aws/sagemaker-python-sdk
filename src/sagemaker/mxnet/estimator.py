@@ -239,6 +239,8 @@ class MXNet(Framework):
                 self.entry_point if model._is_mms_version() else self._model_entry_point()
             )
 
+        return model
+
     @classmethod
     def _prepare_init_params_from_job_description(cls, job_details, model_channel_name=None):
         """Convert the job description to init params that can be handled by the
