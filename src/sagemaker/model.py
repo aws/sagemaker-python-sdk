@@ -138,7 +138,7 @@ class Model(object):
             self.sagemaker_session = session.Session()
 
     def prepare_container_def(
-        self, instance_type, accelerator_type=None
+        self, instance_type=None, accelerator_type=None
     ):  # pylint: disable=unused-argument
         """Return a dict created by ``sagemaker.container_def()`` for deploying
         this model to a specified instance type.
@@ -166,7 +166,7 @@ class Model(object):
         """
         return self._enable_network_isolation
 
-    def _create_sagemaker_model(self, instance_type, accelerator_type=None, tags=None):
+    def _create_sagemaker_model(self, instance_type=None, accelerator_type=None, tags=None):
         """Create a SageMaker Model Entity
 
         Args:
@@ -808,7 +808,7 @@ class FrameworkModel(Model):
         self.repacked_model_data = None
 
     def prepare_container_def(
-        self, instance_type, accelerator_type=None
+        self, instance_type=None, accelerator_type=None
     ):  # pylint disable=unused-argument
         """Return a container definition with framework configuration set in
         model environment variables.
