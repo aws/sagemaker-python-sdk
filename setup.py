@@ -15,7 +15,6 @@ from __future__ import absolute_import
 
 import os
 from glob import glob
-import sys
 
 from setuptools import setup, find_packages
 
@@ -77,10 +76,6 @@ extras["test"] = (
     ],
 )
 
-# enum is introduced in Python 3.4. Installing enum back port
-if sys.version_info < (3, 4):
-    required_packages.append("enum34>=1.1.6")
-
 setup(
     name="sagemaker",
     version=read_version(),
@@ -99,7 +94,6 @@ setup(
         "Natural Language :: English",
         "License :: OSI Approved :: Apache Software License",
         "Programming Language :: Python",
-        "Programming Language :: Python :: 2.7",
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
     ],
