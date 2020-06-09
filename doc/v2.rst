@@ -1,0 +1,86 @@
+##########################################################
+Use Version 2.0 of the SageMaker Python SDK (experimental)
+##########################################################
+
+Development on v2.0.0 of the SageMaker Python SDK is underway.
+For more info on our plans, see https://github.com/aws/sagemaker-python-sdk/issues/1459.
+
+.. contents::
+    :local:
+
+************
+Installation
+************
+
+.. warning::
+    Version 2.0.0 is currently experimental, so proceed with caution. If you do run into issues or have any other feedback,
+    please let us know by `opening an issue <https://github.com/aws/sagemaker-python-sdk/issues/new/choose>`_
+    or `commenting on our planning issue <https://github.com/aws/sagemaker-python-sdk/issues/1459>`_.
+
+To install the latest release candidate:
+
+.. code:: bash
+
+    pip install git+git@github.com:aws/sagemaker-python-sdk.git@v2.0.0.rc0
+
+To install the latest version of v2:
+
+.. code:: bash
+
+    pip install git+git@github.com:aws/sagemaker-python-sdk.git@zwei
+
+If you are executing this pip install command in a notebook, make sure to restart your kernel.
+
+*******
+Changes
+*******
+
+To see what changes have been made, see the `CHANGELOG <https://github.com/aws/sagemaker-python-sdk/blob/zwei/CHANGELOG.md>`_.
+
+*******************************
+Automatically Upgrade Your Code
+*******************************
+
+To help make your transition as seamless as possible, v2 of the SageMaker Python SDK comes with a command-line tool to automate updating your code.
+It automates as much as possible, but there are still syntactical and stylistic changes that cannot be performed by the script.
+
+.. warning::
+    While the tool is intended to be easy to use, we recommend using it as part of a process that includes testing before and after you run the tool.
+
+Usage
+=====
+
+Currently, the tool supports only converting one file at a time:
+
+.. code::
+
+    $ sagemaker-upgrade-v2 --in-file input.py --out-file output.py
+    $ sagemaker-upgrade-v2 --in-file input.ipynb --out-file output.ipynb
+
+You can apply it to a set of files using a loop:
+
+.. code:: bash
+
+    $ for file in $(find input-dir); do sagemaker-upgrade-v2 --in-file $file --out-file output-dir/$file; done
+
+Limitations
+===========
+
+Aliased Imports
+---------------
+
+The tool checks for a limited number of patterns when looking for constructors.
+For example, if you are using a TensorFlow estimator, only the following invocation styles are handled:
+
+.. code:: python
+
+    TensorFlow()
+    sagemaker.tensorflow.TensorFlow()
+    sagemaker.tensorflow.estimator.TensorFlow()
+
+If you have aliased an import, e.g. ``from sagemaker.tensorflow import TensorFlow as TF``, the tool does not take care of updating its parameters.
+
+TensorFlow Serving
+------------------
+
+If you are using the ``sagemaker.tensorflow.serving.Model`` class, the tool does not take care of adding a framework version or changing it to ``sagemaker.tensorflow.TensorFlowModel``.
