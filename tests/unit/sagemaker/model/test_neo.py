@@ -37,7 +37,7 @@ def sagemaker_session():
 
 
 def _create_model(sagemaker_session=None):
-    return Model(MODEL_DATA, MODEL_IMAGE, sagemaker_session=sagemaker_session)
+    return Model(MODEL_IMAGE, MODEL_DATA, sagemaker_session=sagemaker_session)
 
 
 def test_compile_model_for_inferentia(sagemaker_session):
@@ -142,6 +142,62 @@ def test_compile_creates_session(session):
     )
 
     assert session.return_value == model.sagemaker_session
+
+
+def test_compile_validates_framework():
+    model = _create_model()
+
+    with pytest.raises(ValueError) as e:
+        model.compile(
+            target_instance_family="ml_c4",
+            input_shape={"data": [1, 3, 1024, 1024]},
+            output_path="s3://output",
+            role="role",
+        )
+
+    assert "You must specify framework" in str(e)
+
+    with pytest.raises(ValueError) as e:
+        model.compile(
+            target_instance_family="ml_c4",
+            input_shape={"data": [1, 3, 1024, 1024]},
+            output_path="s3://output",
+            role="role",
+            framework="not-a-real-framework",
+        )
+
+    assert "You must provide valid framework" in str(e)
+
+
+def test_compile_validates_job_name():
+    model = _create_model()
+
+    with pytest.raises(ValueError) as e:
+        model.compile(
+            target_instance_family="ml_c4",
+            input_shape={"data": [1, 3, 1024, 1024]},
+            output_path="s3://output",
+            role="role",
+            framework="tensorflow",
+        )
+
+    assert "You must provide a compilation job name" in str(e)
+
+
+def test_compile_validates_model_data():
+    model = Model(MODEL_IMAGE)
+
+    with pytest.raises(ValueError) as e:
+        model.compile(
+            target_instance_family="ml_c4",
+            input_shape={"data": [1, 3, 1024, 1024]},
+            output_path="s3://output",
+            role="role",
+            framework="tensorflow",
+            job_name="compile-model",
+        )
+
+    assert "You must provide an S3 path to the compressed model artifacts." in str(e)
 
 
 def test_check_neo_region(sagemaker_session):

@@ -241,8 +241,8 @@ class KMeansModel(Model):
         repo = "{}:{}".format(KMeans.repo_name, KMeans.repo_version)
         image = "{}/{}".format(registry(sagemaker_session.boto_session.region_name), repo)
         super(KMeansModel, self).__init__(
-            model_data,
             image,
+            model_data,
             role,
             predictor_cls=KMeansPredictor,
             sagemaker_session=sagemaker_session,

@@ -245,8 +245,8 @@ class NTMModel(Model):
             registry(sagemaker_session.boto_session.region_name, NTM.repo_name), repo
         )
         super(NTMModel, self).__init__(
-            model_data,
             image,
+            model_data,
             role,
             predictor_cls=NTMPredictor,
             sagemaker_session=sagemaker_session,
