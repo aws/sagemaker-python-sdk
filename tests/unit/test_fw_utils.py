@@ -1275,13 +1275,16 @@ def test_warn_if_parameter_server_with_multi_gpu(caplog):
 
 
 def test_validate_version_or_image_args():
-    for good_args in [("", "", None), (None, "", ""), ("", None, "")]:
-        kwargs = dict(zip(("framework_version", "py_version", "image_name"), good_args))
-        assert fw_utils.validate_version_or_image_args(**kwargs)
+    good_args = [("1.0", "py3", None), (None, "py3", "my:uri"), ("1.0", None, "my:uri")]
+    for framework_version, py_version, image_name in good_args:
+        assert (
+            fw_utils.validate_version_or_image_args(framework_version, py_version, image_name)
+            is None
+        )
 
 
 def test_validate_version_or_image_args_raises():
-    for bad_args in [(None, None, None), (None, "", None), ("", None, None)]:
-        kwargs = dict(zip(("framework_version", "py_version", "image_name"), bad_args))
+    bad_args = [(None, None, None), (None, "py3", None), ("1.0", None, None)]
+    for framework_version, py_version, image_name in bad_args:
         with pytest.raises(ValueError):
-            fw_utils.validate_version_or_image_args(**kwargs)
+            fw_utils.validate_version_or_image_args(framework_version, py_version, image_name)

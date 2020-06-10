@@ -87,9 +87,11 @@ class MXNetModel(FrameworkModel):
                 hosting. If ``source_dir`` is specified, then ``entry_point``
                 must point to a file located at the root of ``source_dir``.
             framework_version (str): MXNet version you want to use for executing
-                your model training code. Defaults to ``None``.
+                your model training code. Defaults to ``None``. Required unless
+                ``image_name`` is provided.
             py_version (str): Python version you want to use for executing your
-                model training code. Defaults to ``None``.
+                model training code. Defaults to ``None``. Required unless
+                ``image_name`` is provided.
             image (str): A Docker image URI (default: None). If not specified, a
                 default image for MXNet will be used.
 
@@ -112,7 +114,6 @@ class MXNetModel(FrameworkModel):
             :class:`~sagemaker.model.FrameworkModel` and
             :class:`~sagemaker.model.Model`.
         """
-        # TODO: rename/unify image attribute to match across code base
         validate_version_or_image_args(framework_version, py_version, image)
         if py_version and py_version == "py2":
             logger.warning(

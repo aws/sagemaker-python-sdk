@@ -37,7 +37,7 @@ BUCKET_NAME = "mybucket"
 INSTANCE_COUNT = 1
 INSTANCE_TYPE = "ml.c4.4xlarge"
 ACCELERATOR_TYPE = "ml.eia.medium"
-IMAGE = "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet:1.6.0-cpu-py3"
+IMAGE = "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet:1.4.0-cpu-py3"
 COMPILATION_JOB_NAME = "{}-{}".format("compilation-sagemaker-mxnet", TIMESTAMP)
 FRAMEWORK = "mxnet"
 ROLE = "Dummy"
@@ -85,25 +85,25 @@ def sagemaker_session():
     return session
 
 
-def is_mms_version(mxnet_version):
+def _is_mms_version(mxnet_version):
     return parse_version(MXNetModel._LOWEST_MMS_VERSION) <= parse_version(mxnet_version)
 
 
 @pytest.fixture()
 def skip_if_mms_version(mxnet_version):
-    if is_mms_version(mxnet_version):
+    if _is_mms_version(mxnet_version):
         pytest.skip("Skipping because this version uses MMS")
 
 
 @pytest.fixture()
 def skip_if_not_mms_version(mxnet_version):
-    if not is_mms_version(mxnet_version):
+    if not _is_mms_version(mxnet_version):
         pytest.skip("Skipping because this version does not use MMS")
 
 
-def _get_train_args(job_name, image_name):
+def _get_train_args(job_name):
     return {
-        "image": image_name,
+        "image": IMAGE,
         "input_mode": "File",
         "input_config": [
             {
@@ -321,7 +321,7 @@ def test_mxnet(
 
     actual_train_args = sagemaker_session.method_calls[0][2]
     job_name = actual_train_args["job_name"]
-    expected_train_args = _get_train_args(job_name, IMAGE)
+    expected_train_args = _get_train_args(job_name)
     expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
     expected_train_args["experiment_config"] = EXPERIMENT_CONFIG
 
@@ -338,7 +338,7 @@ def test_mxnet(
     assert "cpu" in model.prepare_container_def(CPU)["Image"]
     predictor = mx.deploy(1, GPU)
     assert isinstance(predictor, MXNetPredictor)
-    assert is_mms_version(mxnet_version) ^ (create_tar_file.called and not repack_model.called)
+    assert _is_mms_version(mxnet_version) ^ (create_tar_file.called and not repack_model.called)
 
 
 @patch("sagemaker.utils.create_tar_file", MagicMock())
@@ -464,7 +464,7 @@ def test_model_image_accelerator(
     )
     container_def = model.prepare_container_def(INSTANCE_TYPE, accelerator_type=ACCELERATOR_TYPE)
     assert container_def["Image"] == IMAGE
-    assert is_mms_version(mxnet_version) ^ (tar_and_upload.called and not repack_model.called)
+    assert _is_mms_version(mxnet_version) ^ (tar_and_upload.called and not repack_model.called)
 
 
 def test_attach(sagemaker_session, mxnet_version, mxnet_py_version):
