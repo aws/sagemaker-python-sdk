@@ -284,7 +284,7 @@ def test_deploy_best_candidate(sagemaker_session, cpu_instance_type):
 def test_create_model_best_candidate(sagemaker_session, cpu_instance_type):
     auto_ml_utils.create_auto_ml_job_if_not_exist(sagemaker_session)
 
-    auto_ml = AutoML.attach(job_name=AUTO_ML_JOB_NAME)
+    auto_ml = AutoML.attach(job_name=AUTO_ML_JOB_NAME, sagemaker_session=sagemaker_session)
     best_candidate = auto_ml.best_candidate()
 
     with timeout(minutes=2):

@@ -1,3 +1,4 @@
+# %load /home/ec2-user/anaconda3/envs/python3/lib/python3.6/site-packages/sagemaker/automl/automl.py
 # Copyright 2019-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
@@ -123,33 +124,34 @@ class AutoML(object):
         amlj = AutoML(
             role=_auto_ml_job_desc["RoleArn"],
             target_attribute_name=_auto_ml_job_desc["InputDataConfig"][0]["TargetAttributeName"],
-            problem_type=_auto_ml_job_desc["ProblemType"],
-            output_path=_auto_ml_job_desc["OutputDataConfig"]["S3OutputPath"],
             output_kms_key=_auto_ml_job_desc["OutputDataConfig"].get("KmsKeyId"),
+            output_path=_auto_ml_job_desc["OutputDataConfig"]["S3OutputPath"],
             base_job_name=job_name,
+            compression_type=_auto_ml_job_desc["InputDataConfig"][0].get("CompressionType"),
             sagemaker_session=sagemaker_session,
-            volume_kms_key=_auto_ml_job_desc["AutoMLJobConfig"]
+            volume_kms_key=_auto_ml_job_desc.get("AutoMLJobConfig", {})
             .get("SecurityConfig", {})
             .get("VolumeKmsKeyId"),
-            encrypt_inter_container_traffic=_auto_ml_job_desc["AutoMLJobConfig"]
+            encrypt_inter_container_traffic=_auto_ml_job_desc.get("AutoMLJobConfig", {})
             .get("SecurityConfig", {})
             .get("EnableInterContainerTrafficEncryption", False),
-            vpc_config=_auto_ml_job_desc["AutoMLJobConfig"]
+            vpc_config=_auto_ml_job_desc.get("AutoMLJobConfig", {})
             .get("SecurityConfig", {})
             .get("VpcConfig"),
-            max_candidates=_auto_ml_job_desc["AutoMLJobConfig"]["CompletionCriteria"][
-                "MaxCandidates"
-            ],
-            max_runtime_per_training_job_in_seconds=_auto_ml_job_desc["AutoMLJobConfig"][
-                "CompletionCriteria"
-            ]["MaxRuntimePerTrainingJobInSeconds"],
-            total_job_runtime_in_seconds=_auto_ml_job_desc["AutoMLJobConfig"]["CompletionCriteria"][
-                "MaxAutoMLJobRuntimeInSeconds"
-            ],
-            job_objective=_auto_ml_job_desc["AutoMLJobObjective"]["MetricName"],
-            generate_candidate_definitions_only=_auto_ml_job_desc[
-                "GenerateCandidateDefinitionsOnly"
-            ],
+            problem_type=_auto_ml_job_desc.get("ProblemType"),
+            max_candidates=_auto_ml_job_desc.get("AutoMLJobConfig", {})
+            .get("CompletionCriteria", {})
+            .get("MaxCandidates"),
+            max_runtime_per_training_job_in_seconds=_auto_ml_job_desc.get("AutoMLJobConfig", {})
+            .get("CompletionCriteria", {})
+            .get("MaxRuntimePerTrainingJobInSeconds"),
+            total_job_runtime_in_seconds=_auto_ml_job_desc.get("AutoMLJobConfig", {})
+            .get("CompletionCriteria", {})
+            .get("MaxAutoMLJobRuntimeInSeconds"),
+            job_objective=_auto_ml_job_desc.get("AutoMLJobObjective", {}).get("MetricName"),
+            generate_candidate_definitions_only=_auto_ml_job_desc.get(
+                "GenerateCandidateDefinitionsOnly", False
+            ),
             tags=automl_job_tags,
         )
         amlj.current_job_name = job_name
