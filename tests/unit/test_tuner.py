@@ -257,8 +257,9 @@ def test_s3_input_mode(sagemaker_session, tuner):
     script_path = os.path.join(DATA_DIR, "mxnet_mnist", "failure_script.py")
     mxnet = MXNet(
         entry_point=script_path,
-        role=ROLE,
         framework_version=FRAMEWORK_VERSION,
+        py_version=PY_VERSION,
+        role=ROLE,
         train_instance_count=TRAIN_INSTANCE_COUNT,
         train_instance_type=TRAIN_INSTANCE_TYPE,
         sagemaker_session=sagemaker_session,
@@ -423,8 +424,9 @@ def _create_multi_estimator_tuner(sagemaker_session):
     mxnet_script_path = os.path.join(DATA_DIR, "mxnet_mnist", "failure_script.py")
     mxnet = MXNet(
         entry_point=mxnet_script_path,
-        role=ROLE,
         framework_version=FRAMEWORK_VERSION,
+        py_version=PY_VERSION,
+        role=ROLE,
         train_instance_count=TRAIN_INSTANCE_COUNT,
         train_instance_type=TRAIN_INSTANCE_TYPE,
         sagemaker_session=sagemaker_session,
@@ -664,8 +666,9 @@ def test_analytics(tuner):
 def test_serialize_categorical_ranges_for_frameworks(sagemaker_session, tuner):
     tuner.estimator = MXNet(
         entry_point=SCRIPT_NAME,
-        role=ROLE,
         framework_version=FRAMEWORK_VERSION,
+        py_version=PY_VERSION,
+        role=ROLE,
         train_instance_count=TRAIN_INSTANCE_COUNT,
         train_instance_type=TRAIN_INSTANCE_TYPE,
         sagemaker_session=sagemaker_session,
@@ -915,8 +918,9 @@ def test_fit_no_inputs(tuner, sagemaker_session):
     script_path = os.path.join(DATA_DIR, "mxnet_mnist", "failure_script.py")
     tuner.estimator = MXNet(
         entry_point=script_path,
-        role=ROLE,
         framework_version=FRAMEWORK_VERSION,
+        py_version=PY_VERSION,
+        role=ROLE,
         train_instance_count=TRAIN_INSTANCE_COUNT,
         train_instance_type=TRAIN_INSTANCE_TYPE,
         sagemaker_session=sagemaker_session,
