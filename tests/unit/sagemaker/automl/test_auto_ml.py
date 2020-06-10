@@ -12,6 +12,8 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import copy
+
 import pytest
 from mock import Mock, patch
 from sagemaker import AutoML, AutoMLJob, AutoMLInput, CandidateEstimator, PipelineModel
@@ -600,7 +602,7 @@ def test_candidate_estimator_fit(sagemaker_session):
 
 
 def test_validate_and_update_inference_response():
-    cic = CLASSIFICATION_INFERENCE_CONTAINERS.copy()
+    cic = copy.copy(CLASSIFICATION_INFERENCE_CONTAINERS)
 
     AutoML.validate_and_update_inference_response(
         inference_containers=cic,
@@ -622,7 +624,7 @@ def test_validate_and_update_inference_response():
 
 
 def test_validate_and_update_inference_response_wrong_input():
-    cic = CLASSIFICATION_INFERENCE_CONTAINERS.copy()
+    cic = copy.copy(CLASSIFICATION_INFERENCE_CONTAINERS)
 
     with pytest.raises(
         ValueError,
@@ -661,4 +663,4 @@ def test_attach(sagemaker_session):
     assert aml.target_attribute_name == "y"
     assert aml.problem_type == "Auto"
     assert aml.output_path == "s3://output_prefix"
-    assert aml.tags == LIST_TAGS_RESULT
+    assert aml.tags == LIST_TAGS_RESULT["Tags"]

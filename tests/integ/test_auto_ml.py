@@ -277,7 +277,10 @@ def test_deploy_best_candidate(sagemaker_session, cpu_instance_type):
     sagemaker_session.sagemaker_client.delete_endpoint(EndpointName=endpoint_name)
 
 
-@pytest.mark.canary_quick
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.NO_AUTO_ML_REGIONS,
+    reason="AutoML is not supported in the region yet.",
+)
 def test_create_model_best_candidate(sagemaker_session, cpu_instance_type):
     auto_ml_utils.create_auto_ml_job_if_not_exist(sagemaker_session)
 

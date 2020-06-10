@@ -117,8 +117,8 @@ class AutoML(object):
 
         _auto_ml_job_desc = sagemaker_session.describe_auto_ml_job(job_name)
         automl_job_tags = sagemaker_session.sagemaker_client.list_tags(
-            _auto_ml_job_desc["AutoMLJobArn"]
-        )
+            ResourceArn=_auto_ml_job_desc["AutoMLJobArn"])["Tags"]
+
         amlj = AutoML(
             role=_auto_ml_job_desc["RoleArn"],
             target_attribute_name=_auto_ml_job_desc["InputDataConfig"][0]["TargetAttributeName"],
