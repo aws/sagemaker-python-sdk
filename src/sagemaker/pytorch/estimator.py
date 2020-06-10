@@ -70,10 +70,12 @@ class PyTorch(Framework):
                 If ``source_dir`` is specified, then ``entry_point``
                 must point to a file located at the root of ``source_dir``.
             framework_version (str): PyTorch version you want to use for
-                executing your model training code. Defaults to None. List of supported versions.
+                executing your model training code. Defaults to ``None``. Required unless
+                ``image_name`` is provided. List of supported versions:
                 https://github.com/aws/sagemaker-python-sdk#pytorch-sagemaker-estimators.
             py_version (str): Python version you want to use for executing your
-                model training code. One of 'py2' or 'py3'. Defaults to None.
+                model training code. One of 'py2' or 'py3'. Defaults to ``None``. Required
+                unless ``image_name`` is provided.
             source_dir (str): Path (absolute, relative or an S3 URI) to a directory
                 with any other training source code dependencies aside from the entry
                 point file (default: None). If ``source_dir`` is an S3 URI, it must

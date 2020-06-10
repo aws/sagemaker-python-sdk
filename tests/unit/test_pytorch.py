@@ -80,7 +80,6 @@ def fixture_sagemaker_session():
     return session
 
 
-# TODO: push assertions regarding uri generation particulars to create_image_uri tests
 def _get_full_cpu_image_uri(version, py_version=PYTHON_VERSION):
     return IMAGE_URI_FORMAT_STRING.format(REGION, IMAGE_NAME, version, "cpu", py_version)
 

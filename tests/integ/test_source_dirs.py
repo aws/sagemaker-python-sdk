@@ -20,11 +20,10 @@ import tests.integ.lock as lock
 from tests.integ import DATA_DIR, PYTHON_VERSION
 
 from sagemaker.pytorch.estimator import PyTorch
-from sagemaker.pytorch.defaults import PYTORCH_VERSION
 
 
 @pytest.mark.local_mode
-def test_source_dirs(tmpdir, sagemaker_local_session):
+def test_source_dirs(tmpdir, sagemaker_local_session, pytorch_full_version):
     source_dir = os.path.join(DATA_DIR, "pytorch_source_dirs")
     lib = os.path.join(str(tmpdir), "alexa.py")
 
@@ -36,7 +35,7 @@ def test_source_dirs(tmpdir, sagemaker_local_session):
         role="SageMakerRole",
         source_dir=source_dir,
         dependencies=[lib],
-        framework_version=PYTORCH_VERSION,
+        framework_version=pytorch_full_version,
         py_version=PYTHON_VERSION,
         train_instance_count=1,
         train_instance_type="local",

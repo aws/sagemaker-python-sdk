@@ -98,10 +98,6 @@ def test_fit_deploy(sagemaker_local_session, pytorch_full_version):
         predictor.delete_endpoint()
 
 
-@pytest.mark.skipif(
-    PYTHON_VERSION == "py2",
-    reason="Python 2 is supported by PyTorch {} and lower versions.".format(LATEST_PY2_VERSION),
-)
 def test_deploy_model(
     pytorch_training_job, sagemaker_session, cpu_instance_type, pytorch_full_version
 ):
@@ -129,10 +125,6 @@ def test_deploy_model(
         assert output.shape == (batch_size, 10)
 
 
-@pytest.mark.skipif(
-    PYTHON_VERSION == "py2",
-    reason="Python 2 is supported by PyTorch {} and lower versions.".format(LATEST_PY2_VERSION),
-)
 def test_deploy_packed_model_with_entry_point_name(sagemaker_session, cpu_instance_type):
     endpoint_name = "test-pytorch-deploy-model-{}".format(sagemaker_timestamp())
 

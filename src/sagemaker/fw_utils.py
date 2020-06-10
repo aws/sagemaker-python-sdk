@@ -686,17 +686,15 @@ def _region_supports_debugger(region_name):
 def validate_version_or_image_args(framework_version, py_version, image_name):
     """Checks if version or image arguments are specified.
 
-    Used to validate framework and model arguments to enforce version or image specification.
-    Raises ValueError if version or image arguments are not specified.
+    Validates framework and model arguments to enforce version or image specification.
 
     Args:
-        framework_version (str): the version of the framework
-        py_version (str): the version of python
-        image_name (str): the uri of the image
+        framework_version (str): The version of the framework.
+        py_version (str): The version of Python.
+        image_name (str): The URI of the image.
     """
     if (framework_version is None or py_version is None) and image_name is None:
         raise ValueError(
             "framework_version or py_version was None, yet image_name was also None. "
             "Either specify both framework_version and py_version, or specify image_name."
         )
-    return True

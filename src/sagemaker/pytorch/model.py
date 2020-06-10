@@ -88,14 +88,16 @@ class PyTorchModel(FrameworkModel):
                 hosting. If ``source_dir`` is specified, then ``entry_point``
                 must point to a file located at the root of ``source_dir``.
             framework_version (str): PyTorch version you want to use for
-                executing your model training code. Defaults to None.
+                executing your model training code. Defaults to None. Required
+                unless ``image`` is provided.
             py_version (str): Python version you want to use for executing your
-                model training code. Defaults to None.
+                model training code. Defaults to ``None``. Required unless
+                ``image`` is provided.
             image (str): A Docker image URI (default: None). If not specified, a
                 default image for PyTorch will be used.
 
                 If ``framework_version`` or ``py_version`` are ``None``, then
-                ``image_name`` is required. If also ``None``, then a ``ValueError``
+                ``image`` is required. If also ``None``, then a ``ValueError``
                 will be raised.
             predictor_cls (callable[str, sagemaker.session.Session]): A function
                 to call to create a predictor with an endpoint name and
