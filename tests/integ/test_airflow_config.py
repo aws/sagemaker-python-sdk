@@ -582,6 +582,7 @@ def test_tf_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_inst
 
 
 @pytest.mark.canary_quick
+@pytest.mark.skipif(PYTHON_VERSION == "py2", reason="XGBoost container does not support Python 2.")
 def test_xgboost_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_instance_type):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         xgboost = XGBoost(
