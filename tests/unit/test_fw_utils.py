@@ -1272,3 +1272,16 @@ def test_warn_if_parameter_server_with_multi_gpu(caplog):
         training_instance_type=train_instance_type, distributions=distributions
     )
     assert fw_utils.PARAMETER_SERVER_MULTI_GPU_WARNING in caplog.text
+
+
+def test_validate_version_or_image_args_not_raises():
+    good_args = [("1.0", "py3", None), (None, "py3", "my:uri"), ("1.0", None, "my:uri")]
+    for framework_version, py_version, image_name in good_args:
+        fw_utils.validate_version_or_image_args(framework_version, py_version, image_name)
+
+
+def test_validate_version_or_image_args_raises():
+    bad_args = [(None, None, None), (None, "py3", None), ("1.0", None, None)]
+    for framework_version, py_version, image_name in bad_args:
+        with pytest.raises(ValueError):
+            fw_utils.validate_version_or_image_args(framework_version, py_version, image_name)

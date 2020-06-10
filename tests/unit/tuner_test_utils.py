@@ -37,6 +37,7 @@ NUM_COMPONENTS = 5
 
 SCRIPT_NAME = "my_script.py"
 FRAMEWORK_VERSION = "1.0.0"
+PY_VERSION = "py3"
 
 INPUTS = "s3://mybucket/train"
 

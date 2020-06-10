@@ -19,10 +19,10 @@ from sagemaker.estimator import Framework
 from sagemaker.fw_utils import (
     framework_name_from_image,
     framework_version_from_tag,
-    empty_framework_version_warning,
+    is_version_equal_or_higher,
     python_deprecation_warning,
     parameter_v2_rename_warning,
-    is_version_equal_or_higher,
+    validate_version_or_image_args,
     warn_if_parameter_server_with_multi_gpu,
 )
 from sagemaker.mxnet import defaults
@@ -43,10 +43,10 @@ class MXNet(Framework):
     def __init__(
         self,
         entry_point,
+        framework_version=None,
+        py_version=None,
         source_dir=None,
         hyperparameters=None,
-        py_version="py2",
-        framework_version=None,
         image_name=None,
         distributions=None,
         **kwargs
@@ -73,6 +73,13 @@ class MXNet(Framework):
                 file which should be executed as the entry point to training.
                 If ``source_dir`` is specified, then ``entry_point``
                 must point to a file located at the root of ``source_dir``.
+            framework_version (str): MXNet version you want to use for executing
+                your model training code. Defaults to `None`. Required unless
+                ``image_name`` is provided. List of supported versions.
+                https://github.com/aws/sagemaker-python-sdk#mxnet-sagemaker-estimators.
+            py_version (str): Python version you want to use for executing your
+                model training code. One of 'py2' or 'py3'. Defaults to ``None``. Required
+                unless ``image_name`` is provided.
             source_dir (str): Path (absolute, relative or an S3 URI) to a directory
                 with any other training source code dependencies aside from the entry
                 point file (default: None). If ``source_dir`` is an S3 URI, it must
@@ -84,12 +91,6 @@ class MXNet(Framework):
                 SageMaker. For convenience, this accepts other types for keys
                 and values, but ``str()`` will be called to convert them before
                 training.
-            py_version (str): Python version you want to use for executing your
-                model training code (default: 'py2'). One of 'py2' or 'py3'.
-            framework_version (str): MXNet version you want to use for executing
-                your model training code. List of supported versions
-                https://github.com/aws/sagemaker-python-sdk#mxnet-sagemaker-estimators.
-                If not specified, this will default to 1.2.1.
             image_name (str): If specified, the estimator will use this image for training and
                 hosting, instead of selecting the appropriate SageMaker official image based on
                 framework_version and py_version. It can be an ECR url or dockerhub image and tag.
@@ -98,6 +99,9 @@ class MXNet(Framework):
                     * ``123412341234.dkr.ecr.us-west-2.amazonaws.com/my-custom-image:1.0``
                     * ``custom-image:latest``
 
+                If ``framework_version`` or ``py_version`` are ``None``, then
+                ``image_name`` is required. If also ``None``, then a ``ValueError``
+                will be raised.
             distributions (dict): A dictionary with information on how to run distributed
                 training (default: None). To have parameter servers launched for training,
                 set this value to be ``{'parameter_server': {'enabled': True}}``.
@@ -110,25 +114,24 @@ class MXNet(Framework):
             :class:`~sagemaker.estimator.Framework` and
             :class:`~sagemaker.estimator.EstimatorBase`.
         """
-        if framework_version is None:
+        validate_version_or_image_args(framework_version, py_version, image_name)
+        if py_version and py_version == "py2":
             logger.warning(
-                empty_framework_version_warning(defaults.MXNET_VERSION, self.LATEST_VERSION)
+                python_deprecation_warning(self.__framework_name__, defaults.LATEST_PY2_VERSION)
             )
-        self.framework_version = framework_version or defaults.MXNET_VERSION
+        self.framework_version = framework_version
+        self.py_version = py_version
 
         if "enable_sagemaker_metrics" not in kwargs:
             # enable sagemaker metrics for MXNet v1.6 or greater:
-            if is_version_equal_or_higher([1, 6], self.framework_version):
+            if self.framework_version and is_version_equal_or_higher(
+                [1, 6], self.framework_version
+            ):
                 kwargs["enable_sagemaker_metrics"] = True
 
         super(MXNet, self).__init__(
             entry_point, source_dir, hyperparameters, image_name=image_name, **kwargs
         )
-
-        if py_version == "py2":
-            logger.warning(
-                python_deprecation_warning(self.__framework_name__, defaults.LATEST_PY2_VERSION)
-            )
 
         if distributions is not None:
             logger.warning(parameter_v2_rename_warning("distributions", "distribution"))
@@ -137,7 +140,6 @@ class MXNet(Framework):
                 training_instance_type=train_instance_type, distributions=distributions
             )
 
-        self.py_version = py_version
         self._configure_distribution(distributions)
 
     def _configure_distribution(self, distributions):
@@ -148,7 +150,10 @@ class MXNet(Framework):
         if distributions is None:
             return
 
-        if self.framework_version.split(".") < self._LOWEST_SCRIPT_MODE_VERSION:
+        if (
+            self.framework_version
+            and self.framework_version.split(".") < self._LOWEST_SCRIPT_MODE_VERSION
+        ):
             raise ValueError(
                 "The distributions option is valid for only versions {} and higher".format(
                     ".".join(self._LOWEST_SCRIPT_MODE_VERSION)
@@ -221,12 +226,12 @@ class MXNet(Framework):
             self.model_data,
             role or self.role,
             entry_point or self.entry_point,
+            framework_version=self.framework_version,
+            py_version=self.py_version,
             source_dir=(source_dir or self._model_source_dir()),
             enable_cloudwatch_metrics=self.enable_cloudwatch_metrics,
             container_log_level=self.container_log_level,
             code_location=self.code_location,
-            py_version=self.py_version,
-            framework_version=self.framework_version,
             model_server_workers=model_server_workers,
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
@@ -254,21 +259,24 @@ class MXNet(Framework):
         image_name = init_params.pop("image")
         framework, py_version, tag, _ = framework_name_from_image(image_name)
 
+        # We switched image tagging scheme from regular image version (e.g. '1.0') to more
+        # expressive containing framework version, device type and python version
+        # (e.g. '0.12-gpu-py2'). For backward compatibility map deprecated image tag '1.0' to a
+        # '0.12' framework version otherwise extract framework version from the tag itself.
+        if tag is None:
+            framework_version = None
+        elif tag == "1.0":
+            framework_version = "0.12"
+        else:
+            framework_version = framework_version_from_tag(tag)
+        init_params["framework_version"] = framework_version
+        init_params["py_version"] = py_version
+
         if not framework:
             # If we were unable to parse the framework name from the image it is not one of our
             # officially supported images, in this case just add the image to the init params.
             init_params["image_name"] = image_name
             return init_params
-
-        init_params["py_version"] = py_version
-
-        # We switched image tagging scheme from regular image version (e.g. '1.0') to more
-        # expressive containing framework version, device type and python version
-        # (e.g. '0.12-gpu-py2'). For backward compatibility map deprecated image tag '1.0' to a
-        # '0.12' framework version otherwise extract framework version from the tag itself.
-        init_params["framework_version"] = (
-            "0.12" if tag == "1.0" else framework_version_from_tag(tag)
-        )
 
         training_job_name = init_params["base_job_name"]
 

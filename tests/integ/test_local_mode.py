@@ -66,6 +66,7 @@ def mxnet_model(sagemaker_local_session, mxnet_full_version):
             train_instance_type="local",
             output_path=output_path,
             framework_version=mxnet_full_version,
+            py_version=PYTHON_VERSION,
             sagemaker_session=sagemaker_local_session,
         )
 
@@ -188,6 +189,7 @@ def test_mxnet_local_data_local_script(mxnet_full_version):
         train_instance_count=1,
         train_instance_type="local",
         framework_version=mxnet_full_version,
+        py_version=PYTHON_VERSION,
         sagemaker_session=LocalNoS3Session(),
     )
 
@@ -242,6 +244,7 @@ def test_local_transform_mxnet(
         train_instance_count=1,
         train_instance_type="local",
         framework_version=mxnet_full_version,
+        py_version=PYTHON_VERSION,
         sagemaker_session=sagemaker_local_session,
     )
 

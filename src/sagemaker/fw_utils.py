@@ -692,6 +692,10 @@ def validate_version_or_image_args(framework_version, py_version, image_name):
         framework_version (str): The version of the framework.
         py_version (str): The version of Python.
         image_name (str): The URI of the image.
+
+    Raises:
+        ValueError: if `image_name` is None and either `framework_version` or `py_version` is
+            None.
     """
     if (framework_version is None or py_version is None) and image_name is None:
         raise ValueError(
