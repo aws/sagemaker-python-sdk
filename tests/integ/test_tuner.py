@@ -45,7 +45,6 @@ from tests.integ import (
     datasets,
     vpc_test_utils,
     DATA_DIR,
-    PYTHON_VERSION,
     TUNING_DEFAULT_TIMEOUT_MINUTES,
 )
 from tests.integ.record_set import prepare_record_set_from_local_files
@@ -687,7 +686,9 @@ def test_tuning_tf_vpc_multi(
 
 
 @pytest.mark.canary_quick
-def test_tuning_chainer(sagemaker_session, chainer_full_version, cpu_instance_type):
+def test_tuning_chainer(
+    sagemaker_session, chainer_full_version, chainer_full_py_version, cpu_instance_type
+):
     with timeout(minutes=TUNING_DEFAULT_TIMEOUT_MINUTES):
         script_path = os.path.join(DATA_DIR, "chainer_mnist", "mnist.py")
         data_path = os.path.join(DATA_DIR, "chainer_mnist")
@@ -696,7 +697,7 @@ def test_tuning_chainer(sagemaker_session, chainer_full_version, cpu_instance_ty
             entry_point=script_path,
             role="SageMakerRole",
             framework_version=chainer_full_version,
-            py_version=PYTHON_VERSION,
+            py_version=chainer_full_py_version,
             train_instance_count=1,
             train_instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
