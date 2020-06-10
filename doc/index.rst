@@ -20,6 +20,7 @@ Overview
     :maxdepth: 2
 
     overview
+    v2
 
 The SageMaker Python SDK APIs:
 
