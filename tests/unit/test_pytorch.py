@@ -80,6 +80,7 @@ def fixture_sagemaker_session():
     return session
 
 
+# TODO: push assertions regarding uri generation particulars to create_image_uri tests
 def _get_full_cpu_image_uri(version, py_version=PYTHON_VERSION):
     return IMAGE_URI_FORMAT_STRING.format(REGION, IMAGE_NAME, version, "cpu", py_version)
 
@@ -157,7 +158,7 @@ def _create_train_job(version):
     }
 
 
-def test_create_model(sagemaker_session, pytorch_version):
+def test_create_model(sagemaker_session, pytorch_version, pytorch_py_version):
     container_log_level = '"logging.INFO"'
     source_dir = "s3://mybucket/source"
     pytorch = PyTorch(
@@ -167,6 +168,7 @@ def test_create_model(sagemaker_session, pytorch_version):
         train_instance_count=INSTANCE_COUNT,
         train_instance_type=INSTANCE_TYPE,
         framework_version=pytorch_version,
+        py_version=pytorch_py_version,
         container_log_level=container_log_level,
         base_job_name="job",
         source_dir=source_dir,
@@ -178,7 +180,7 @@ def test_create_model(sagemaker_session, pytorch_version):
 
     assert model.sagemaker_session == sagemaker_session
     assert model.framework_version == pytorch_version
-    assert model.py_version == pytorch.py_version
+    assert model.py_version == pytorch_py_version
     assert model.entry_point == SCRIPT_PATH
     assert model.role == ROLE
     assert model.name == job_name
@@ -187,12 +189,14 @@ def test_create_model(sagemaker_session, pytorch_version):
     assert model.vpc_config is None
 
 
-def test_create_model_with_optional_params(sagemaker_session):
+def test_create_model_with_optional_params(sagemaker_session, pytorch_version, pytorch_py_version):
     container_log_level = '"logging.INFO"'
     source_dir = "s3://mybucket/source"
     enable_cloudwatch_metrics = "true"
     pytorch = PyTorch(
         entry_point=SCRIPT_PATH,
+        framework_version=pytorch_version,
+        py_version=pytorch_py_version,
         role=ROLE,
         sagemaker_session=sagemaker_session,
         train_instance_count=INSTANCE_COUNT,
@@ -307,9 +311,14 @@ def test_pytorch(strftime, sagemaker_session, pytorch_version):
 
 
 @patch("sagemaker.utils.create_tar_file", MagicMock())
-def test_model(sagemaker_session):
+def test_model(sagemaker_session, pytorch_version, pytorch_py_version):
     model = PyTorchModel(
-        MODEL_DATA, role=ROLE, entry_point=SCRIPT_PATH, sagemaker_session=sagemaker_session
+        MODEL_DATA,
+        role=ROLE,
+        entry_point=SCRIPT_PATH,
+        framework_version=pytorch_version,
+        py_version=pytorch_py_version,
+        sagemaker_session=sagemaker_session,
     )
     predictor = model.deploy(1, GPU)
     assert isinstance(predictor, PyTorchPredictor)
@@ -324,6 +333,7 @@ def test_mms_model(repack_model, sagemaker_session):
         entry_point=SCRIPT_PATH,
         sagemaker_session=sagemaker_session,
         framework_version="1.2",
+        py_version=PYTHON_VERSION,
     ).deploy(1, GPU)
 
     repack_model.assert_called_with(
@@ -346,6 +356,7 @@ def test_non_mms_model(repack_model, sagemaker_session):
         entry_point=SCRIPT_PATH,
         sagemaker_session=sagemaker_session,
         framework_version="1.1",
+        py_version=PYTHON_VERSION,
     ).deploy(1, GPU)
 
     repack_model.assert_not_called()
@@ -368,19 +379,18 @@ def test_model_image_accelerator(sagemaker_session):
     )
 
 
-def test_train_image_default(sagemaker_session):
+def test_train_image_default(sagemaker_session, pytorch_version, pytorch_py_version):
     pytorch = PyTorch(
         entry_point=SCRIPT_PATH,
+        framework_version=pytorch_version,
+        py_version=pytorch_py_version,
         role=ROLE,
         sagemaker_session=sagemaker_session,
         train_instance_count=INSTANCE_COUNT,
         train_instance_type=INSTANCE_TYPE,
     )
 
-    assert (
-        _get_full_cpu_image_uri(defaults.PYTORCH_VERSION, defaults.PYTHON_VERSION)
-        in pytorch.train_image()
-    )
+    assert _get_full_cpu_image_uri(pytorch_version, pytorch_py_version) in pytorch.train_image()
 
 
 def test_train_image_cpu_instances(sagemaker_session, pytorch_version):
@@ -534,13 +544,14 @@ def test_attach_custom_image(sagemaker_session):
 
 
 @patch("sagemaker.pytorch.estimator.python_deprecation_warning")
-def test_estimator_py2_warning(warning, sagemaker_session):
+def test_estimator_py2_warning(warning, sagemaker_session, pytorch_version):
     estimator = PyTorch(
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
         train_instance_count=INSTANCE_COUNT,
         train_instance_type=INSTANCE_TYPE,
+        framework_version=pytorch_version,
         py_version="py2",
     )
 
@@ -549,45 +560,17 @@ def test_estimator_py2_warning(warning, sagemaker_session):
 
 
 @patch("sagemaker.pytorch.model.python_deprecation_warning")
-def test_model_py2_warning(warning, sagemaker_session):
+def test_model_py2_warning(warning, sagemaker_session, pytorch_version):
     model = PyTorchModel(
         MODEL_DATA,
         role=ROLE,
         entry_point=SCRIPT_PATH,
         sagemaker_session=sagemaker_session,
+        framework_version=pytorch_version,
         py_version="py2",
     )
     assert model.py_version == "py2"
     warning.assert_called_with(model.__framework_name__, defaults.LATEST_PY2_VERSION)
-
-
-@patch("sagemaker.pytorch.estimator.empty_framework_version_warning")
-def test_empty_framework_version(warning, sagemaker_session):
-    estimator = PyTorch(
-        entry_point=SCRIPT_PATH,
-        role=ROLE,
-        sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
-        framework_version=None,
-    )
-
-    assert estimator.framework_version == defaults.PYTORCH_VERSION
-    warning.assert_called_with(defaults.PYTORCH_VERSION, estimator.LATEST_VERSION)
-
-
-@patch("sagemaker.pytorch.model.empty_framework_version_warning")
-def test_model_empty_framework_version(warning, sagemaker_session):
-    model = PyTorchModel(
-        MODEL_DATA,
-        role=ROLE,
-        entry_point=SCRIPT_PATH,
-        sagemaker_session=sagemaker_session,
-        framework_version=None,
-    )
-
-    assert model.framework_version == defaults.PYTORCH_VERSION
-    warning.assert_called_with(defaults.PYTORCH_VERSION, defaults.LATEST_VERSION)
 
 
 def test_pt_enable_sm_metrics(sagemaker_session):

@@ -613,7 +613,8 @@ def test_pytorch_airflow_config_uploads_data_source_to_s3_when_inputs_not_provid
         estimator = PyTorch(
             entry_point=PYTORCH_MNIST_SCRIPT,
             role=ROLE,
-            framework_version="1.1.0",
+            framework_version="1.3.1",
+            py_version="py3",
             train_instance_count=2,
             train_instance_type=cpu_instance_type,
             hyperparameters={"epochs": 6, "backend": "gloo"},
@@ -638,6 +639,7 @@ def test_pytorch_12_airflow_config_uploads_data_source_to_s3_when_inputs_not_pro
             entry_point=PYTORCH_MNIST_SCRIPT,
             role=ROLE,
             framework_version="1.2.0",
+            py_version="py3",
             train_instance_count=2,
             train_instance_type=cpu_instance_type,
             hyperparameters={"epochs": 6, "backend": "gloo"},

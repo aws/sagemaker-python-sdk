@@ -102,7 +102,9 @@ def test_fit_deploy(sagemaker_local_session, pytorch_full_version):
     PYTHON_VERSION == "py2",
     reason="Python 2 is supported by PyTorch {} and lower versions.".format(LATEST_PY2_VERSION),
 )
-def test_deploy_model(pytorch_training_job, sagemaker_session, cpu_instance_type):
+def test_deploy_model(
+    pytorch_training_job, sagemaker_session, cpu_instance_type, pytorch_full_version
+):
     endpoint_name = "test-pytorch-deploy-model-{}".format(sagemaker_timestamp())
 
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
@@ -114,6 +116,8 @@ def test_deploy_model(pytorch_training_job, sagemaker_session, cpu_instance_type
             model_data,
             "SageMakerRole",
             entry_point=MNIST_SCRIPT,
+            framework_version=pytorch_full_version,
+            py_version="py3",
             sagemaker_session=sagemaker_session,
         )
         predictor = model.deploy(1, cpu_instance_type, endpoint_name=endpoint_name)
@@ -139,6 +143,7 @@ def test_deploy_packed_model_with_entry_point_name(sagemaker_session, cpu_instan
             "SageMakerRole",
             entry_point="mnist.py",
             framework_version="1.4.0",
+            py_version="py3",
             sagemaker_session=sagemaker_session,
         )
         predictor = model.deploy(1, cpu_instance_type, endpoint_name=endpoint_name)
@@ -160,8 +165,9 @@ def test_deploy_model_with_accelerator(sagemaker_session, cpu_instance_type):
     pytorch = PyTorchModel(
         model_data,
         "SageMakerRole",
-        framework_version="1.3.1",
         entry_point=EIA_SCRIPT,
+        framework_version="1.3.1",
+        py_version="py3",
         sagemaker_session=sagemaker_session,
     )
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
