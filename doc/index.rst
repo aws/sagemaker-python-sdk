@@ -53,15 +53,14 @@ Amazon SageMaker provides implementations of some common machine learning algori
 
 
 *************
-Orchestration
+Workflows
 *************
-Orchestrate your SageMaker training and inference jobs with Kubernetes and Airflow.
+Orchestrate your SageMaker training and inference workflows with Airflow and Kubernetes.
 
 .. toctree::
-    :maxdepth: 1
+    :maxdepth: 2
 
-    kubernetes/index
-    airflow/index
+    workflows/index
 
 
 *************************
