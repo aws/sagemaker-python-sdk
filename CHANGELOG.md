@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.61.0 (2020-06-09)
+
+### Features
+
+ * Use boto3 DEFAULT_SESSION when no boto3 session specified.
+
+### Bug Fixes and Other Changes
+
+ * remove v2 Session warnings
+ * upgrade smdebug-rulesconfig to 0.1.4
+ * explicitly handle arguments in create_model for sklearn and xgboost
+
 ## v1.60.2 (2020-05-29)
 
 ### Bug Fixes and Other Changes

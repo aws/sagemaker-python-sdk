@@ -181,12 +181,6 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 ``s3://{bucket name}/{key_prefix}``.
         """
         # Generate a tuple for each file that we want to upload of the form (local_path, s3_key).
-        LOGGER.warning(
-            "'upload_data' method will be deprecated in favor of 'S3Uploader' class "
-            "(https://sagemaker.readthedocs.io/en/stable/s3.html#sagemaker.s3.S3Uploader) "
-            "in SageMaker Python SDK v2."
-        )
-
         files = []
         key_suffix = None
         if os.path.isdir(path):
@@ -236,12 +230,6 @@ class Session(object):  # pylint: disable=too-many-public-methods
             str: The S3 URI of the uploaded file.
                 The URI format is: ``s3://{bucket name}/{key}``.
         """
-        LOGGER.warning(
-            "'upload_string_as_file_body' method will be deprecated in favor of 'S3Uploader' class "
-            "(https://sagemaker.readthedocs.io/en/stable/s3.html#sagemaker.s3.S3Uploader) "
-            "in SageMaker Python SDK v2."
-        )
-
         if self.s3_resource is None:
             s3 = self.boto_session.resource("s3", region_name=self.boto_region_name)
         else:
@@ -3335,7 +3323,6 @@ def get_execution_role(sagemaker_session=None):
     Returns:
         (str): The role ARN
     """
-
     if not sagemaker_session:
         sagemaker_session = Session()
     arn = sagemaker_session.get_caller_identity_arn()
