@@ -73,8 +73,7 @@ class XGBoost(Framework):
                 be executed as the entry point to training.  If ``source_dir`` is specified,
                 then ``entry_point`` must point to a file located at the root of ``source_dir``.
             framework_version (str): XGBoost version you want to use for executing your model
-                training code.  List of supported versions
-                https://github.com/aws/sagemaker-python-sdk#xgboost-sagemaker-estimators
+                training code.
             source_dir (str): Path (absolute, relative or an S3 URI) to a directory
                 with any other training source code dependencies aside from the entry
                 point file (default: None). If ``source_dir`` is an S3 URI, it must
