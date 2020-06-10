@@ -114,7 +114,7 @@ CLASSIFICATION_INFERENCE_CONTAINERS = [
     {
         "Environment": {
             "MAX_CONTENT_LENGTH": "20000000",
-            "SAGEMAKER_INFERENCE_SUPPORT": "probability,probabilities,predicted_label",
+            "SAGEMAKER_INFERENCE_SUPPORTED": "probability,probabilities,predicted_label",
             "SAGEMAKER_INFERENCE_OUTPUT": "predicted_label",
         },
         "Image": "account.dkr.ecr.us-west-2.amazonaws.com/sagemaker-auto-ml-training:1.0-cpu-py3",
@@ -123,7 +123,7 @@ CLASSIFICATION_INFERENCE_CONTAINERS = [
     {
         "Environment": {
             "INVERSE_LABEL_TRANSFORM": "1",
-            "SAGEMAKER_INFERENCE_SUPPORT": "probability,probabilities,predicted_label,labels",
+            "SAGEMAKER_INFERENCE_SUPPORTED": "probability,probabilities,predicted_label,labels",
             "SAGEMAKER_INFERENCE_OUTPUT": "predicted_label",
             "SAGEMAKER_INFERENCE_INPUT": "predicted_label",
         },

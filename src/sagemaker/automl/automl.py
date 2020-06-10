@@ -467,7 +467,7 @@ class AutoML(object):
         try:
             return [
                 x.strip()
-                for x in container["Environment"]["SAGEMAKER_INFERENCE_SUPPORT"].split(",")
+                for x in container["Environment"]["SAGEMAKER_INFERENCE_SUPPORTED"].split(",")
             ]
         except KeyError:
             if default is None:
