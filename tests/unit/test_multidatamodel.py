@@ -27,7 +27,11 @@ ENTRY_POINT = "mock.py"
 MXNET_MODEL_DATA = "s3://mybucket/mxnet_path/model.tar.gz"
 MXNET_MODEL_NAME = "dummy-mxnet-model"
 MXNET_ROLE = "DummyMXNetRole"
-MXNET_IMAGE = "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet:1.2-cpu-py2"
+MXNET_FRAMEWORK_VERSION = "1.2"
+MXNET_PY_VERSION = "py2"
+MXNET_IMAGE = "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet:{}-cpu-{}".format(
+    MXNET_FRAMEWORK_VERSION, MXNET_PY_VERSION
+)
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 IMAGE = "123456789012.dkr.ecr.dummyregion.amazonaws.com/dummyimage:latest"
@@ -100,8 +104,10 @@ def multi_data_model(sagemaker_session):
 def mxnet_model(sagemaker_session):
     return MXNetModel(
         MXNET_MODEL_DATA,
-        role=MXNET_ROLE,
         entry_point=ENTRY_POINT,
+        framework_version=MXNET_FRAMEWORK_VERSION,
+        py_version=MXNET_PY_VERSION,
+        role=MXNET_ROLE,
         sagemaker_session=sagemaker_session,
         name=MXNET_MODEL_NAME,
         enable_network_isolation=True,
