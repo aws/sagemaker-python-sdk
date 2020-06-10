@@ -807,9 +807,7 @@ class FrameworkModel(Model):
         self.uploaded_code = None
         self.repacked_model_data = None
 
-    def prepare_container_def(
-        self, instance_type=None, accelerator_type=None
-    ):
+    def prepare_container_def(self, instance_type=None, accelerator_type=None):
         """Return a container definition with framework configuration set in
         model environment variables.
 
