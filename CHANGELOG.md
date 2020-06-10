@@ -1,5 +1,29 @@
 # Changelog
 
+## v2.0.0.rc0
+
+### Breaking Changes
+
+ * remove estimator parameters for TF legacy mode
+ * remove legacy `TensorFlowModel` and `TensorFlowPredictor` classes
+ * force image URI to be passed for legacy TF images
+ * rename `sagemaker.tensorflow.serving` to `sagemaker.tensorflow.model`
+ * require `framework_version` and `py_version` for framework estimator and model classes
+
+### Bug Fixes and Other Changes
+
+ * add v2 migration tool
+
+### Documentation Changes
+
+ * update TF documentation to reflect breaking changes and how to upgrade
+ * start v2 usage and migration documentation
+
+### Testing and Release Infrastructure
+
+ * remove scipy from dependencies
+ * remove TF from optional dependencies
+
 ## v1.60.2 (2020-05-29)
 
 ### Bug Fixes and Other Changes
