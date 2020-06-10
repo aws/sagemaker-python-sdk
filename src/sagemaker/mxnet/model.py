@@ -126,7 +126,7 @@ class MXNetModel(FrameworkModel):
         self.framework_version = framework_version or defaults.MXNET_VERSION
         self.model_server_workers = model_server_workers
 
-    def prepare_container_def(self, instance_type, accelerator_type=None):
+    def prepare_container_def(self, instance_type=None, accelerator_type=None):
         """Return a container definition with framework configuration set in
         model environment variables.
 
@@ -143,6 +143,11 @@ class MXNetModel(FrameworkModel):
         """
         deploy_image = self.image
         if not deploy_image:
+            if instance_type is None:
+                raise ValueError(
+                    "Must supply either an instance type (for choosing CPU vs GPU) or an image URI."
+                )
+
             region_name = self.sagemaker_session.boto_session.region_name
             deploy_image = self.serving_image_uri(
                 region_name, instance_type, accelerator_type=accelerator_type

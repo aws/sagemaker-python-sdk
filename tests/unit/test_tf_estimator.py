@@ -575,6 +575,16 @@ def test_model_image_accelerator(sagemaker_session):
     assert container_def["Image"] == _get_full_cpu_image_uri_with_ei(defaults.TF_VERSION)
 
 
+def test_model_prepare_container_def_no_instance_type_or_image():
+    model = TensorFlowModel(MODEL_DATA, role=ROLE, entry_point=SCRIPT_PATH)
+
+    with pytest.raises(ValueError) as e:
+        model.prepare_container_def()
+
+    expected_msg = "Must supply either an instance type (for choosing CPU vs GPU) or an image URI."
+    assert expected_msg in str(e)
+
+
 @patch("time.strftime", return_value=TIMESTAMP)
 @patch("time.time", return_value=TIME)
 @patch("subprocess.Popen")
