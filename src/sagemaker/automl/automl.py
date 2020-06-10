@@ -117,7 +117,8 @@ class AutoML(object):
 
         _auto_ml_job_desc = sagemaker_session.describe_auto_ml_job(job_name)
         automl_job_tags = sagemaker_session.sagemaker_client.list_tags(
-            ResourceArn=_auto_ml_job_desc["AutoMLJobArn"])["Tags"]
+            ResourceArn=_auto_ml_job_desc["AutoMLJobArn"]
+        )["Tags"]
 
         amlj = AutoML(
             role=_auto_ml_job_desc["RoleArn"],
