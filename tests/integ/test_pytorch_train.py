@@ -15,15 +15,13 @@ from __future__ import absolute_import
 import numpy
 import os
 import pytest
-from sagemaker.pytorch.defaults import LATEST_PY2_VERSION
+
 from sagemaker.pytorch.estimator import PyTorch
 from sagemaker.pytorch.model import PyTorchModel
 from sagemaker.utils import sagemaker_timestamp
-
 from tests.integ import (
     test_region,
     DATA_DIR,
-    PYTHON_VERSION,
     TRAINING_DEFAULT_TIMEOUT_MINUTES,
     EI_SUPPORTED_REGIONS,
 )
@@ -39,9 +37,13 @@ EIA_SCRIPT = os.path.join(EIA_DIR, "empty_inference_script.py")
 
 
 @pytest.fixture(scope="module", name="pytorch_training_job")
-def fixture_training_job(sagemaker_session, pytorch_full_version, cpu_instance_type):
+def fixture_training_job(
+    sagemaker_session, pytorch_full_version, pytorch_full_py_version, cpu_instance_type
+):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
-        pytorch = _get_pytorch_estimator(sagemaker_session, pytorch_full_version, cpu_instance_type)
+        pytorch = _get_pytorch_estimator(
+            sagemaker_session, pytorch_full_version, pytorch_full_py_version, cpu_instance_type
+        )
 
         pytorch.fit({"training": _upload_training_data(pytorch)})
         return pytorch.latest_training_job.name
@@ -49,12 +51,7 @@ def fixture_training_job(sagemaker_session, pytorch_full_version, cpu_instance_t
 
 @pytest.mark.canary_quick
 @pytest.mark.regional_testing
-@pytest.mark.skipif(
-    PYTHON_VERSION == "py2",
-    reason="Python 2 is supported by PyTorch {} and lower versions.".format(LATEST_PY2_VERSION),
-)
-def test_sync_fit_deploy(pytorch_training_job, sagemaker_session, cpu_instance_type):
-    # TODO: add tests against local mode when it's ready to be used
+def test_fit_deploy(pytorch_training_job, sagemaker_session, cpu_instance_type):
     endpoint_name = "test-pytorch-sync-fit-attach-deploy{}".format(sagemaker_timestamp())
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         estimator = PyTorch.attach(pytorch_training_job, sagemaker_session=sagemaker_session)
@@ -70,16 +67,12 @@ def test_sync_fit_deploy(pytorch_training_job, sagemaker_session, cpu_instance_t
 
 
 @pytest.mark.local_mode
-@pytest.mark.skipif(
-    PYTHON_VERSION == "py2",
-    reason="Python 2 is supported by PyTorch {} and lower versions.".format(LATEST_PY2_VERSION),
-)
-def test_fit_deploy(sagemaker_local_session, pytorch_full_version):
+def test_local_fit_deploy(sagemaker_local_session, pytorch_full_version, pytorch_full_py_version):
     pytorch = PyTorch(
         entry_point=MNIST_SCRIPT,
         role="SageMakerRole",
         framework_version=pytorch_full_version,
-        py_version="py3",
+        py_version=pytorch_full_py_version,
         train_instance_count=1,
         train_instance_type="local",
         sagemaker_session=sagemaker_local_session,
@@ -99,7 +92,11 @@ def test_fit_deploy(sagemaker_local_session, pytorch_full_version):
 
 
 def test_deploy_model(
-    pytorch_training_job, sagemaker_session, cpu_instance_type, pytorch_full_version
+    pytorch_training_job,
+    sagemaker_session,
+    cpu_instance_type,
+    pytorch_full_version,
+    pytorch_full_py_version,
 ):
     endpoint_name = "test-pytorch-deploy-model-{}".format(sagemaker_timestamp())
 
@@ -113,7 +110,7 @@ def test_deploy_model(
             "SageMakerRole",
             entry_point=MNIST_SCRIPT,
             framework_version=pytorch_full_version,
-            py_version="py3",
+            py_version=pytorch_full_py_version,
             sagemaker_session=sagemaker_session,
         )
         predictor = model.deploy(1, cpu_instance_type, endpoint_name=endpoint_name)
@@ -125,7 +122,9 @@ def test_deploy_model(
         assert output.shape == (batch_size, 10)
 
 
-def test_deploy_packed_model_with_entry_point_name(sagemaker_session, cpu_instance_type):
+def test_deploy_packed_model_with_entry_point_name(
+    sagemaker_session, cpu_instance_type, pytorch_full_version, pytorch_full_py_version
+):
     endpoint_name = "test-pytorch-deploy-model-{}".format(sagemaker_timestamp())
 
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
@@ -134,8 +133,8 @@ def test_deploy_packed_model_with_entry_point_name(sagemaker_session, cpu_instan
             model_data,
             "SageMakerRole",
             entry_point="mnist.py",
-            framework_version="1.4.0",
-            py_version="py3",
+            framework_version=pytorch_full_version,
+            py_version=pytorch_full_py_version,
             sagemaker_session=sagemaker_session,
         )
         predictor = model.deploy(1, cpu_instance_type, endpoint_name=endpoint_name)
@@ -147,19 +146,20 @@ def test_deploy_packed_model_with_entry_point_name(sagemaker_session, cpu_instan
         assert output.shape == (batch_size, 10)
 
 
-@pytest.mark.skipif(PYTHON_VERSION == "py2", reason="PyTorch EIA does not support Python 2.")
 @pytest.mark.skipif(
     test_region() not in EI_SUPPORTED_REGIONS, reason="EI isn't supported in that specific region."
 )
-def test_deploy_model_with_accelerator(sagemaker_session, cpu_instance_type):
+def test_deploy_model_with_accelerator(
+    sagemaker_session, cpu_instance_type, pytorch_full_ei_version, pytorch_full_py_version
+):
     endpoint_name = "test-pytorch-deploy-eia-{}".format(sagemaker_timestamp())
     model_data = sagemaker_session.upload_data(path=EIA_MODEL)
     pytorch = PyTorchModel(
         model_data,
         "SageMakerRole",
         entry_point=EIA_SCRIPT,
-        framework_version="1.3.1",
-        py_version="py3",
+        framework_version=pytorch_full_ei_version,
+        py_version=pytorch_full_py_version,
         sagemaker_session=sagemaker_session,
     )
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
@@ -185,13 +185,13 @@ def _upload_training_data(pytorch):
 
 
 def _get_pytorch_estimator(
-    sagemaker_session, pytorch_full_version, instance_type, entry_point=MNIST_SCRIPT
+    sagemaker_session, pytorch_version, py_version, instance_type, entry_point=MNIST_SCRIPT
 ):
     return PyTorch(
         entry_point=entry_point,
         role="SageMakerRole",
-        framework_version=pytorch_full_version,
-        py_version="py3",
+        framework_version=pytorch_version,
+        py_version=py_version,
         train_instance_count=1,
         train_instance_type=instance_type,
         sagemaker_session=sagemaker_session,

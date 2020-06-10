@@ -46,7 +46,6 @@ def pytest_addoption(parser):
     parser.addoption("--chainer-full-version", action="store", default="5.0.0")
     parser.addoption("--mxnet-full-version", action="store", default="1.6.0")
     parser.addoption("--ei-mxnet-full-version", action="store", default="1.5.1")
-    parser.addoption("--pytorch-full-version", action="store", default="1.5.0")
     parser.addoption(
         "--rl-coach-mxnet-full-version",
         action="store",
@@ -266,8 +265,18 @@ def ei_mxnet_full_version(request):
 
 
 @pytest.fixture(scope="module")
-def pytorch_full_version(request):
-    return request.config.getoption("--pytorch-full-version")
+def pytorch_full_version():
+    return "1.5.0"
+
+
+@pytest.fixture(scope="module")
+def pytorch_full_py_version():
+    return "py3"
+
+
+@pytest.fixture(scope="module")
+def pytorch_full_ei_version():
+    return "1.3.1"
 
 
 @pytest.fixture(scope="module")

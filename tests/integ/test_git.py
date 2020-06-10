@@ -26,7 +26,6 @@ from sagemaker.sklearn.estimator import SKLearn
 from sagemaker.sklearn.model import SKLearnModel
 from tests.integ import DATA_DIR, PYTHON_VERSION
 
-MNIST_FOLDER_NAME = "MNIST"
 
 GIT_REPO = "https://github.com/aws/sagemaker-python-sdk.git"
 BRANCH = "test-branch-git-config"
@@ -51,33 +50,31 @@ LOCK_PATH = os.path.join(tempfile.gettempdir(), "sagemaker_test_git_lock")
 
 
 @pytest.mark.local_mode
-def test_github(sagemaker_local_session):
+def test_github(sagemaker_local_session, pytorch_full_version, pytorch_full_py_version):
     script_path = "mnist.py"
-    data_path = os.path.join(DATA_DIR, "pytorch_mnist")
     git_config = {"repo": GIT_REPO, "branch": BRANCH, "commit": COMMIT}
 
-    # TODO: fails for newer pytorch versions when using MNIST from torchvision due to missing dataset
-    # "algo-1-v767u_1  | RuntimeError: Dataset not found. You can use download=True to download it"
     pytorch = PyTorch(
         entry_point=script_path,
         role="SageMakerRole",
         source_dir="pytorch",
-        framework_version="0.4",  # hard-code to last known good pytorch for now (see TODO above)
-        py_version=PYTHON_VERSION,
+        framework_version=pytorch_full_version,
+        py_version=pytorch_full_py_version,
         train_instance_count=1,
         train_instance_type="local",
         sagemaker_session=sagemaker_local_session,
         git_config=git_config,
     )
 
-    pytorch.fit({"training": "file://" + os.path.join(data_path, "training", MNIST_FOLDER_NAME)})
+    data_path = os.path.join(DATA_DIR, "pytorch_mnist")
+    pytorch.fit({"training": "file://" + os.path.join(data_path, "training")})
 
     with lock.lock(LOCK_PATH):
         try:
             predictor = pytorch.deploy(initial_instance_count=1, instance_type="local")
             data = numpy.zeros(shape=(1, 1, 28, 28)).astype(numpy.float32)
             result = predictor.predict(data)
-            assert result is not None
+            assert 10 == len(result[0])  # check that there is a probability for each label
         finally:
             predictor.delete_endpoint()
 

@@ -762,7 +762,9 @@ def test_tuning_chainer(sagemaker_session, chainer_full_version, cpu_instance_ty
     reason="This test has always failed, but the failure was masked by a bug. "
     "This test should be fixed. Details in https://github.com/aws/sagemaker-python-sdk/pull/968"
 )
-def test_attach_tuning_pytorch(sagemaker_session, cpu_instance_type, pytorch_full_version):
+def test_attach_tuning_pytorch(
+    sagemaker_session, cpu_instance_type, pytorch_full_version, pytorch_full_py_version
+):
     mnist_dir = os.path.join(DATA_DIR, "pytorch_mnist")
     mnist_script = os.path.join(mnist_dir, "mnist.py")
 
@@ -771,7 +773,7 @@ def test_attach_tuning_pytorch(sagemaker_session, cpu_instance_type, pytorch_ful
         role="SageMakerRole",
         train_instance_count=1,
         framework_version=pytorch_full_version,
-        py_version="py3",
+        py_version=pytorch_full_py_version,
         train_instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
     )
