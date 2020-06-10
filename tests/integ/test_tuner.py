@@ -36,7 +36,6 @@ from sagemaker.estimator import Estimator
 from sagemaker.mxnet.estimator import MXNet
 from sagemaker.predictor import json_deserializer
 from sagemaker.pytorch import PyTorch
-from sagemaker.pytorch.defaults import PYTORCH_VERSION
 from sagemaker.tensorflow import TensorFlow
 from sagemaker.tensorflow.defaults import LATEST_VERSION
 from sagemaker.tuner import (
@@ -820,7 +819,7 @@ def test_tuning_chainer(sagemaker_session, cpu_instance_type):
     reason="This test has always failed, but the failure was masked by a bug. "
     "This test should be fixed. Details in https://github.com/aws/sagemaker-python-sdk/pull/968"
 )
-def test_attach_tuning_pytorch(sagemaker_session, cpu_instance_type):
+def test_attach_tuning_pytorch(sagemaker_session, cpu_instance_type, pytorch_full_version):
     mnist_dir = os.path.join(DATA_DIR, "pytorch_mnist")
     mnist_script = os.path.join(mnist_dir, "mnist.py")
 
@@ -828,7 +827,7 @@ def test_attach_tuning_pytorch(sagemaker_session, cpu_instance_type):
         entry_point=mnist_script,
         role="SageMakerRole",
         train_instance_count=1,
-        framework_version=PYTORCH_VERSION,
+        framework_version=pytorch_full_version,
         py_version=PYTHON_VERSION,
         train_instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,

@@ -93,11 +93,7 @@ def _get_full_cpu_image_uri_with_ei(version, py_version=PYTHON_VERSION):
 
 
 def _pytorch_estimator(
-    sagemaker_session,
-    framework_version=defaults.PYTORCH_VERSION,
-    train_instance_type=None,
-    base_job_name=None,
-    **kwargs
+    sagemaker_session, framework_version, train_instance_type=None, base_job_name=None, **kwargs
 ):
     return PyTorch(
         entry_point=SCRIPT_PATH,
@@ -572,13 +568,17 @@ def test_model_py2_warning(warning, sagemaker_session, pytorch_version):
     warning.assert_called_with(model.__framework_name__, defaults.LATEST_PY2_VERSION)
 
 
-def test_pt_enable_sm_metrics(sagemaker_session):
-    pytorch = _pytorch_estimator(sagemaker_session, enable_sagemaker_metrics=True)
+def test_pt_enable_sm_metrics(sagemaker_session, pytorch_full_version):
+    pytorch = _pytorch_estimator(
+        sagemaker_session, framework_version=pytorch_full_version, enable_sagemaker_metrics=True
+    )
     assert pytorch.enable_sagemaker_metrics
 
 
-def test_pt_disable_sm_metrics(sagemaker_session):
-    pytorch = _pytorch_estimator(sagemaker_session, enable_sagemaker_metrics=False)
+def test_pt_disable_sm_metrics(sagemaker_session, pytorch_full_version):
+    pytorch = _pytorch_estimator(
+        sagemaker_session, framework_version=pytorch_full_version, enable_sagemaker_metrics=False
+    )
     assert not pytorch.enable_sagemaker_metrics
 
 
@@ -594,9 +594,9 @@ def test_pt_enable_sm_metrics_if_fw_ver_is_at_least_1_15(sagemaker_session):
         assert pytorch.enable_sagemaker_metrics
 
 
-def test_custom_image_estimator_deploy(sagemaker_session):
+def test_custom_image_estimator_deploy(sagemaker_session, pytorch_full_version):
     custom_image = "mycustomimage:latest"
-    pytorch = _pytorch_estimator(sagemaker_session)
+    pytorch = _pytorch_estimator(sagemaker_session, framework_version=pytorch_full_version)
     pytorch.fit(inputs="s3://mybucket/train", job_name="new_name")
     model = pytorch.create_model(image=custom_image)
     assert model.image == custom_image
