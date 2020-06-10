@@ -57,7 +57,6 @@ def pytest_addoption(parser):
     parser.addoption(
         "--rl-ray-full-version", action="store", default=RLEstimator.RAY_LATEST_VERSION
     )
-    parser.addoption("--sklearn-full-version", action="store", default="0.20.0")
     parser.addoption("--ei-tf-full-version", action="store")
     parser.addoption("--xgboost-full-version", action="store", default="1.0-1")
 
@@ -299,8 +298,13 @@ def rl_ray_full_version(request):
 
 
 @pytest.fixture(scope="module")
-def sklearn_full_version(request):
-    return request.config.getoption("--sklearn-full-version")
+def sklearn_full_version():
+    return "0.20.0"
+
+
+@pytest.fixture(scope="module")
+def sklearn_full_py_version():
+    return "py3"
 
 
 @pytest.fixture(scope="module")
