@@ -51,8 +51,6 @@ from tests.integ import (
 from tests.integ.record_set import prepare_record_set_from_local_files
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
-DATA_PATH = os.path.join(DATA_DIR, "iris", "data")
-
 
 @pytest.fixture(scope="module")
 def kmeans_train_set(sagemaker_session):
@@ -588,9 +586,7 @@ def test_tuning_mxnet(sagemaker_session, mxnet_full_version, cpu_instance_type):
 
 
 @pytest.mark.canary_quick
-def test_tuning_tf_script_mode(
-    sagemaker_session, cpu_instance_type, tf_full_version, tf_full_py_version
-):
+def test_tuning_tf(sagemaker_session, cpu_instance_type, tf_full_version, tf_full_py_version):
     resource_path = os.path.join(DATA_DIR, "tensorflow_mnist")
     script_path = os.path.join(resource_path, "mnist.py")
 
@@ -622,7 +618,7 @@ def test_tuning_tf_script_mode(
             path=os.path.join(resource_path, "data"), key_prefix="scriptmode/mnist"
         )
 
-        tuning_job_name = unique_name_from_base("tune-tf-script-mode", max_length=32)
+        tuning_job_name = unique_name_from_base("tune-tf", max_length=32)
         tuner.fit(inputs, job_name=tuning_job_name)
 
         print("Started hyperparameter tuning job with name: " + tuning_job_name)
@@ -631,13 +627,15 @@ def test_tuning_tf_script_mode(
         tuner.wait()
 
 
-@pytest.mark.skipif(PYTHON_VERSION != "py2", reason="TensorFlow image supports only python 2.")
-def test_tuning_tf_vpc_multi(sagemaker_session, cpu_instance_type):
+def test_tuning_tf_vpc_multi(
+    sagemaker_session, cpu_instance_type, tf_full_version, tf_full_py_version
+):
     """Test Tensorflow multi-instance using the same VpcConfig for training and inference"""
     instance_type = cpu_instance_type
     instance_count = 2
 
-    script_path = os.path.join(DATA_DIR, "iris", "iris-dnn-classifier.py")
+    resource_path = os.path.join(DATA_DIR, "tensorflow_mnist")
+    script_path = os.path.join(resource_path, "mnist.py")
 
     ec2_client = sagemaker_session.boto_session.client("ec2")
     subnet_ids, security_group_id = vpc_test_utils.get_or_create_vpc_resources(ec2_client)
@@ -646,9 +644,8 @@ def test_tuning_tf_vpc_multi(sagemaker_session, cpu_instance_type):
     estimator = TensorFlow(
         entry_point=script_path,
         role="SageMakerRole",
-        training_steps=1,
-        evaluation_steps=1,
-        hyperparameters={"input_tensor_name": "inputs"},
+        framework_version=tf_full_version,
+        py_version=tf_full_py_version,
         train_instance_count=instance_count,
         train_instance_type=instance_type,
         sagemaker_session=sagemaker_session,
@@ -656,31 +653,30 @@ def test_tuning_tf_vpc_multi(sagemaker_session, cpu_instance_type):
         subnets=subnet_ids,
         security_group_ids=[security_group_id],
         encrypt_inter_container_traffic=True,
-        framework_version="1.11",
-        py_version=PYTHON_VERSION,
     )
 
-    inputs = sagemaker_session.upload_data(path=DATA_PATH, key_prefix="integ-test-data/tf_iris")
-    hyperparameter_ranges = {"learning_rate": ContinuousParameter(0.05, 0.2)}
-
-    objective_metric_name = "loss"
-    metric_definitions = [{"Name": "loss", "Regex": "loss = ([0-9\\.]+)"}]
+    hyperparameter_ranges = {"epochs": IntegerParameter(1, 2)}
+    objective_metric_name = "accuracy"
+    metric_definitions = [{"Name": objective_metric_name, "Regex": "accuracy = ([0-9\\.]+)"}]
 
     tuner = HyperparameterTuner(
         estimator,
         objective_metric_name,
         hyperparameter_ranges,
         metric_definitions,
-        objective_type="Minimize",
         max_jobs=2,
         max_parallel_jobs=2,
     )
 
-    tuning_job_name = unique_name_from_base("tune-tf", max_length=32)
     with timeout(minutes=TUNING_DEFAULT_TIMEOUT_MINUTES):
+        inputs = estimator.sagemaker_session.upload_data(
+            path=os.path.join(resource_path, "data"), key_prefix="scriptmode/mnist"
+        )
+
+        tuning_job_name = unique_name_from_base("tune-tf", max_length=32)
         tuner.fit(inputs, job_name=tuning_job_name)
 
-        print("Started hyperparameter tuning job with name:" + tuning_job_name)
+        print("Started hyperparameter tuning job with name: " + tuning_job_name)
 
         time.sleep(15)
         tuner.wait()

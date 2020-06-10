@@ -58,7 +58,6 @@ def pytest_addoption(parser):
         "--rl-ray-full-version", action="store", default=RLEstimator.RAY_LATEST_VERSION
     )
     parser.addoption("--sklearn-full-version", action="store", default="0.20.0")
-    parser.addoption("--tf-full-version", action="store", default="2.2.0")
     parser.addoption("--ei-tf-full-version", action="store")
     parser.addoption("--xgboost-full-version", action="store", default="1.0-1")
 
@@ -300,32 +299,17 @@ def sklearn_full_version(request):
 
 
 @pytest.fixture(scope="module")
-def tf_full_version(request):
-    return request.config.getoption("--tf-full-version")
+def tf_full_version():
+    return "2.2.0"
 
 
 @pytest.fixture(scope="module")
-def tf_full_py_version(tf_full_version):
-    """fixture to match tf_full_version
-
-    Fixture exists as such, since tf_full_version may be overridden --tf-full-version.
-    Otherwise, this would simply be py37 to match the latest version support.
-
-    TODO: Evaluate use of --tf-full-version with possible eye to remove and simplify code.
-    """
-    version = [int(val) for val in tf_full_version.split(".")]
-    if version < [1, 11]:
-        return "py2"
-    if version < [2, 2]:
-        return "py3"
+def tf_full_py_version():
     return "py37"
 
 
 @pytest.fixture(scope="module")
-def tf_serving_version(tf_full_version):
-    full_version = [int(val) for val in tf_full_version.split(".")]
-    if full_version < [2, 2]:
-        return tf_full_version
+def tf_serving_version():
     return "2.1.0"
 
 
