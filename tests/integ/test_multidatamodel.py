@@ -28,7 +28,7 @@ from sagemaker.multidatamodel import MultiDataModel
 from sagemaker.mxnet import MXNet
 from sagemaker.predictor import RealTimePredictor, StringDeserializer, npy_serializer
 from sagemaker.utils import sagemaker_timestamp, unique_name_from_base, get_ecr_image_uri_prefix
-from tests.integ import DATA_DIR, PYTHON_VERSION, TRAINING_DEFAULT_TIMEOUT_MINUTES
+from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.retry import retries
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
@@ -309,7 +309,12 @@ def test_multi_data_model_deploy_trained_model_from_framework_estimator(
 
 
 def __mxnet_training_job(
-    sagemaker_session, container_image, mxnet_full_version, cpu_instance_type, learning_rate
+    sagemaker_session,
+    container_image,
+    mxnet_full_version,
+    mxnet_full_py_version,
+    cpu_instance_type,
+    learning_rate,
 ):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         script_path = os.path.join(DATA_DIR, "mxnet_mnist", "mnist.py")
@@ -319,7 +324,7 @@ def __mxnet_training_job(
             entry_point=script_path,
             role=ROLE,
             framework_version=mxnet_full_version,
-            py_version=PYTHON_VERSION,
+            py_version=mxnet_full_py_version,
             train_instance_count=1,
             train_instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,

@@ -44,7 +44,6 @@ def pytest_addoption(parser):
     parser.addoption("--sagemaker-runtime-config", action="store", default=None)
     parser.addoption("--boto-config", action="store", default=None)
     parser.addoption("--chainer-full-version", action="store", default="5.0.0")
-    parser.addoption("--mxnet-full-version", action="store", default="1.6.0")
     parser.addoption("--ei-mxnet-full-version", action="store", default="1.5.1")
     parser.addoption(
         "--rl-coach-mxnet-full-version",
@@ -255,8 +254,13 @@ def chainer_full_version(request):
 
 
 @pytest.fixture(scope="module")
-def mxnet_full_version(request):
-    return request.config.getoption("--mxnet-full-version")
+def mxnet_full_version():
+    return "1.6.0"
+
+
+@pytest.fixture(scope="module")
+def mxnet_full_py_version():
+    return "py3"
 
 
 @pytest.fixture(scope="module")

@@ -480,7 +480,7 @@ def test_chainer_airflow_config_uploads_data_source_to_s3(
 
 @pytest.mark.canary_quick
 def test_mxnet_airflow_config_uploads_data_source_to_s3(
-    sagemaker_session, cpu_instance_type, mxnet_full_version
+    sagemaker_session, cpu_instance_type, mxnet_full_version, mxnet_full_py_version
 ):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         script_path = os.path.join(DATA_DIR, "chainer_mnist", "mnist.py")
@@ -490,7 +490,7 @@ def test_mxnet_airflow_config_uploads_data_source_to_s3(
             entry_point=script_path,
             role=ROLE,
             framework_version=mxnet_full_version,
-            py_version=PYTHON_VERSION,
+            py_version=mxnet_full_py_version,
             train_instance_count=SINGLE_INSTANCE_COUNT,
             train_instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
