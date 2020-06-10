@@ -16,7 +16,6 @@ import gzip
 import json
 import os
 import pickle
-import sys
 import time
 
 import pytest
@@ -109,12 +108,11 @@ def test_transform_mxnet(
 @pytest.mark.canary_quick
 def test_attach_transform_kmeans(sagemaker_session, cpu_instance_type):
     data_path = os.path.join(DATA_DIR, "one_p_mnist")
-    pickle_args = {} if sys.version_info.major == 2 else {"encoding": "latin1"}
 
     # Load the data into memory as numpy arrays
     train_set_path = os.path.join(data_path, "mnist.pkl.gz")
     with gzip.open(train_set_path, "rb") as f:
-        train_set, _, _ = pickle.load(f, **pickle_args)
+        train_set, _, _ = pickle.load(f, encoding="latin1")
 
     kmeans = KMeans(
         role="SageMakerRole",
@@ -177,7 +175,7 @@ def test_transform_pytorch_vpc_custom_model_bucket(
         entry_point=os.path.join(data_dir, "mnist.py"),
         role="SageMakerRole",
         framework_version=pytorch_full_version,
-        py_version="py3",
+        py_version=PYTHON_VERSION,
         sagemaker_session=sagemaker_session,
         vpc_config={"Subnets": subnet_ids, "SecurityGroupIds": [security_group_id]},
         code_location="s3://{}".format(custom_bucket_name),
@@ -232,13 +230,12 @@ def test_transform_mxnet_tags(
 
 def test_transform_byo_estimator(sagemaker_session, cpu_instance_type):
     data_path = os.path.join(DATA_DIR, "one_p_mnist")
-    pickle_args = {} if sys.version_info.major == 2 else {"encoding": "latin1"}
     tags = [{"Key": "some-tag", "Value": "value-for-tag"}]
 
     # Load the data into memory as numpy arrays
     train_set_path = os.path.join(data_path, "mnist.pkl.gz")
     with gzip.open(train_set_path, "rb") as f:
-        train_set, _, _ = pickle.load(f, **pickle_args)
+        train_set, _, _ = pickle.load(f, encoding="latin1")
 
     kmeans = KMeans(
         role="SageMakerRole",

@@ -29,11 +29,10 @@ def test_factorization_machines(sagemaker_session, cpu_instance_type):
 
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         data_path = os.path.join(DATA_DIR, "one_p_mnist", "mnist.pkl.gz")
-        pickle_args = {} if sys.version_info.major == 2 else {"encoding": "latin1"}
 
         # Load the data into memory as numpy arrays
         with gzip.open(data_path, "rb") as f:
-            train_set, _, _ = pickle.load(f, **pickle_args)
+            train_set, _, _ = pickle.load(f, encoding="latin1")
 
         fm = FactorizationMachines(
             role="SageMakerRole",
@@ -71,11 +70,10 @@ def test_async_factorization_machines(sagemaker_session, cpu_instance_type):
 
     with timeout(minutes=5):
         data_path = os.path.join(DATA_DIR, "one_p_mnist", "mnist.pkl.gz")
-        pickle_args = {} if sys.version_info.major == 2 else {"encoding": "latin1"}
 
         # Load the data into memory as numpy arrays
         with gzip.open(data_path, "rb") as f:
-            train_set, _, _ = pickle.load(f, **pickle_args)
+            train_set, _, _ = pickle.load(f, encoding="latin1")
 
         fm = FactorizationMachines(
             role="SageMakerRole",

@@ -15,7 +15,6 @@ from __future__ import absolute_import
 import gzip
 import os
 import pickle
-import sys
 import pytest
 import tests.integ
 
@@ -102,11 +101,10 @@ def test_byo_airflow_config_uploads_data_source_to_s3_when_inputs_provided(
 def test_kmeans_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_instance_type):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         data_path = os.path.join(DATA_DIR, "one_p_mnist", "mnist.pkl.gz")
-        pickle_args = {} if sys.version_info.major == 2 else {"encoding": "latin1"}
 
         # Load the data into memory as numpy arrays
         with gzip.open(data_path, "rb") as f:
-            train_set, _, _ = pickle.load(f, **pickle_args)
+            train_set, _, _ = pickle.load(f, encoding="latin1")
 
         kmeans = KMeans(
             role=ROLE,
@@ -141,11 +139,10 @@ def test_kmeans_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_
 def test_fm_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_instance_type):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         data_path = os.path.join(DATA_DIR, "one_p_mnist", "mnist.pkl.gz")
-        pickle_args = {} if sys.version_info.major == 2 else {"encoding": "latin1"}
 
         # Load the data into memory as numpy arrays
         with gzip.open(data_path, "rb") as f:
-            train_set, _, _ = pickle.load(f, **pickle_args)
+            train_set, _, _ = pickle.load(f, encoding="latin1")
 
         fm = FactorizationMachines(
             role=ROLE,
@@ -207,11 +204,10 @@ def test_ipinsights_airflow_config_uploads_data_source_to_s3(sagemaker_session, 
 def test_knn_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_instance_type):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         data_path = os.path.join(DATA_DIR, "one_p_mnist", "mnist.pkl.gz")
-        pickle_args = {} if sys.version_info.major == 2 else {"encoding": "latin1"}
 
         # Load the data into memory as numpy arrays
         with gzip.open(data_path, "rb") as f:
-            train_set, _, _ = pickle.load(f, **pickle_args)
+            train_set, _, _ = pickle.load(f, encoding="latin1")
 
         knn = KNN(
             role=ROLE,
@@ -278,11 +274,10 @@ def test_linearlearner_airflow_config_uploads_data_source_to_s3(
 ):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         data_path = os.path.join(DATA_DIR, "one_p_mnist", "mnist.pkl.gz")
-        pickle_args = {} if sys.version_info.major == 2 else {"encoding": "latin1"}
 
         # Load the data into memory as numpy arrays
         with gzip.open(data_path, "rb") as f:
-            train_set, _, _ = pickle.load(f, **pickle_args)
+            train_set, _, _ = pickle.load(f, encoding="latin1")
 
         train_set[1][:100] = 1
         train_set[1][100:200] = 0
@@ -381,11 +376,10 @@ def test_ntm_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_ins
 def test_pca_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_instance_type):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         data_path = os.path.join(DATA_DIR, "one_p_mnist", "mnist.pkl.gz")
-        pickle_args = {} if sys.version_info.major == 2 else {"encoding": "latin1"}
 
         # Load the data into memory as numpy arrays
         with gzip.open(data_path, "rb") as f:
-            train_set, _, _ = pickle.load(f, **pickle_args)
+            train_set, _, _ = pickle.load(f, encoding="latin1")
 
         pca = PCA(
             role=ROLE,

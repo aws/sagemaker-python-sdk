@@ -16,7 +16,6 @@ import gzip
 import json
 import os
 import pickle
-import sys
 import time
 
 import numpy as np
@@ -55,10 +54,10 @@ DATA_PATH = os.path.join(DATA_DIR, "iris", "data")
 @pytest.fixture(scope="module")
 def kmeans_train_set(sagemaker_session):
     data_path = os.path.join(DATA_DIR, "one_p_mnist", "mnist.pkl.gz")
-    pickle_args = {} if sys.version_info.major == 2 else {"encoding": "latin1"}
+
     # Load the data into memory as numpy arrays
     with gzip.open(data_path, "rb") as f:
-        train_set, _, _ = pickle.load(f, **pickle_args)
+        train_set, _, _ = pickle.load(f, encoding="latin1")
 
     return train_set
 
@@ -847,10 +846,9 @@ def test_tuning_byo_estimator(sagemaker_session, cpu_instance_type):
 
     with timeout(minutes=TUNING_DEFAULT_TIMEOUT_MINUTES):
         data_path = os.path.join(DATA_DIR, "one_p_mnist", "mnist.pkl.gz")
-        pickle_args = {} if sys.version_info.major == 2 else {"encoding": "latin1"}
 
         with gzip.open(data_path, "rb") as f:
-            train_set, _, _ = pickle.load(f, **pickle_args)
+            train_set, _, _ = pickle.load(f, encoding="latin1")
 
         prefix = "test_byo_estimator"
         key = "recordio-pb-data"

@@ -16,7 +16,6 @@ import gzip
 import json
 import os
 import pickle
-import sys
 
 import pytest
 
@@ -58,10 +57,9 @@ def test_byo_estimator(sagemaker_session, region, cpu_instance_type):
 
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         data_path = os.path.join(DATA_DIR, "one_p_mnist", "mnist.pkl.gz")
-        pickle_args = {} if sys.version_info.major == 2 else {"encoding": "latin1"}
 
         with gzip.open(data_path, "rb") as f:
-            train_set, _, _ = pickle.load(f, **pickle_args)
+            train_set, _, _ = pickle.load(f, encoding="latin1")
 
         prefix = "test_byo_estimator"
         key = "recordio-pb-data"
@@ -107,10 +105,9 @@ def test_async_byo_estimator(sagemaker_session, region, cpu_instance_type):
 
     with timeout(minutes=5):
         data_path = os.path.join(DATA_DIR, "one_p_mnist", "mnist.pkl.gz")
-        pickle_args = {} if sys.version_info.major == 2 else {"encoding": "latin1"}
 
         with gzip.open(data_path, "rb") as f:
-            train_set, _, _ = pickle.load(f, **pickle_args)
+            train_set, _, _ = pickle.load(f, encoding="latin1")
 
         prefix = "test_byo_estimator"
         key = "recordio-pb-data"

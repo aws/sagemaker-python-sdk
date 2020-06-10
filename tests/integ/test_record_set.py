@@ -15,7 +15,6 @@ from __future__ import absolute_import
 import gzip
 import os
 import pickle
-import sys
 
 from six.moves.urllib.parse import urlparse
 
@@ -29,9 +28,8 @@ def test_record_set(sagemaker_session, cpu_instance_type):
     In particular, test that the objects uploaded to the S3 bucket are encrypted.
     """
     data_path = os.path.join(DATA_DIR, "one_p_mnist", "mnist.pkl.gz")
-    pickle_args = {} if sys.version_info.major == 2 else {"encoding": "latin1"}
     with gzip.open(data_path, "rb") as file_object:
-        train_set, _, _ = pickle.load(file_object, **pickle_args)
+        train_set, _, _ = pickle.load(file_object, encoding="latin1")
     kmeans = KMeans(
         role="SageMakerRole",
         train_instance_count=1,

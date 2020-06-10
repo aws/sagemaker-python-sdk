@@ -16,7 +16,6 @@ import gzip
 import json
 import os
 import pickle
-import sys
 import time
 
 import pytest
@@ -31,11 +30,10 @@ def test_kmeans(sagemaker_session, cpu_instance_type):
     job_name = unique_name_from_base("kmeans")
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         data_path = os.path.join(DATA_DIR, "one_p_mnist", "mnist.pkl.gz")
-        pickle_args = {} if sys.version_info.major == 2 else {"encoding": "latin1"}
 
         # Load the data into memory as numpy arrays
         with gzip.open(data_path, "rb") as f:
-            train_set, _, _ = pickle.load(f, **pickle_args)
+            train_set, _, _ = pickle.load(f, encoding="latin1")
 
         kmeans = KMeans(
             role="SageMakerRole",
@@ -94,11 +92,10 @@ def test_async_kmeans(sagemaker_session, cpu_instance_type):
 
     with timeout(minutes=5):
         data_path = os.path.join(DATA_DIR, "one_p_mnist", "mnist.pkl.gz")
-        pickle_args = {} if sys.version_info.major == 2 else {"encoding": "latin1"}
 
         # Load the data into memory as numpy arrays
         with gzip.open(data_path, "rb") as f:
-            train_set, _, _ = pickle.load(f, **pickle_args)
+            train_set, _, _ = pickle.load(f, encoding="latin1")
 
         kmeans = KMeans(
             role="SageMakerRole",

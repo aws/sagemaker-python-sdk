@@ -16,9 +16,9 @@ import gzip
 import json
 import os
 import pickle
-import sys
 
 import pytest
+
 from sagemaker import utils
 from sagemaker.amazon.amazon_estimator import get_image_uri
 from sagemaker.analytics import HyperparameterTuningJobAnalytics
@@ -26,7 +26,6 @@ from sagemaker.content_types import CONTENT_TYPE_JSON
 from sagemaker.estimator import Estimator
 from sagemaker.predictor import json_deserializer
 from sagemaker.tuner import ContinuousParameter, IntegerParameter, HyperparameterTuner
-
 from tests.integ import DATA_DIR, TUNING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
@@ -63,9 +62,8 @@ MAX_PARALLEL_JOBS = 2
 
 @pytest.fixture(scope="module")
 def data_set():
-    pickle_args = {} if sys.version_info.major == 2 else {"encoding": "latin1"}
     with gzip.open(DATA_PATH, "rb") as f:
-        data_set, _, _ = pickle.load(f, **pickle_args)
+        data_set, _, _ = pickle.load(f, encoding="latin1")
     return data_set
 
 
