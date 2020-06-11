@@ -36,7 +36,7 @@ EFS_DIR_PATH = "/tensorflow"
 FSX_DIR_PATH = "/fsx/tensorflow"
 MAX_JOBS = 2
 MAX_PARALLEL_JOBS = 2
-PY_VERSION = "py3"
+PY_VERSION = "py37"
 
 
 @pytest.fixture(scope="module")
@@ -139,8 +139,8 @@ def test_tuning_tf_efs(efs_fsx_setup, sagemaker_session, cpu_instance_type):
         train_instance_count=1,
         train_instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
-        py_version=PY_VERSION,
         framework_version=TensorFlow.LATEST_VERSION,
+        py_version=PY_VERSION,
         subnets=subnets,
         security_group_ids=security_group_ids,
     )
@@ -186,8 +186,8 @@ def test_tuning_tf_lustre(efs_fsx_setup, sagemaker_session, cpu_instance_type):
         train_instance_count=1,
         train_instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
-        py_version=PY_VERSION,
         framework_version=TensorFlow.LATEST_VERSION,
+        py_version=PY_VERSION,
         subnets=subnets,
         security_group_ids=security_group_ids,
     )

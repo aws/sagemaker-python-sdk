@@ -59,7 +59,7 @@ def test_mnist_with_checkpoint_config(
         train_instance_type=instance_type,
         sagemaker_session=sagemaker_session,
         framework_version=tf_full_version,
-        py_version="py37",
+        py_version=py_version,
         metric_definitions=[{"Name": "train:global_steps", "Regex": r"global_step\/sec:\s(.*)"}],
         checkpoint_s3_uri=checkpoint_s3_uri,
         checkpoint_local_path=checkpoint_local_path,
@@ -137,8 +137,8 @@ def test_mnist_distributed(sagemaker_session, instance_type, tf_full_version, py
         train_instance_count=2,
         train_instance_type=instance_type,
         sagemaker_session=sagemaker_session,
-        py_version="py37",
         framework_version=tf_full_version,
+        py_version=py_version,
         distributions=PARAMETER_SERVER_DISTRIBUTION,
     )
     inputs = estimator.sagemaker_session.upload_data(

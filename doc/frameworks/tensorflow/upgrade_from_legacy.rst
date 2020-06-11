@@ -104,6 +104,7 @@ the difference in code would be as follows:
         ...
         source_dir="code",
         framework_version="1.10.0",
+        py_version="py3",
         train_instance_type="ml.m4.xlarge",
         image_name="520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-tensorflow:1.10.0-cpu-py2",
         hyperparameters={

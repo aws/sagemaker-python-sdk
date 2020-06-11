@@ -88,7 +88,12 @@ FIVE_MINUTE_CRON_EXPRESSION = "cron(0/5 * ? * * *)"
 
 
 @pytest.fixture(scope="module")
-def predictor(sagemaker_session, tf_serving_version):
+def py_version(tf_full_version, tf_serving_version):
+    return "py37" if tf_full_version == tf_serving_version else tests.integ.PYTHON_VERSION
+
+
+@pytest.fixture(scope="module")
+def predictor(sagemaker_session, tf_serving_version, py_version):
     endpoint_name = unique_name_from_base("sagemaker-tensorflow-serving")
     model_data = sagemaker_session.upload_data(
         path=os.path.join(tests.integ.DATA_DIR, "tensorflow-serving-test-model.tar.gz"),
@@ -101,6 +106,7 @@ def predictor(sagemaker_session, tf_serving_version):
             model_data=model_data,
             role=ROLE,
             framework_version=tf_serving_version,
+            py_version=py_version,
             sagemaker_session=sagemaker_session,
         )
         predictor = model.deploy(

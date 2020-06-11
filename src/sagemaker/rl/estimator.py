@@ -254,7 +254,9 @@ class RLEstimator(Framework):
             )
 
         if self.framework == RLFramework.TENSORFLOW.value:
-            return TensorFlowModel(framework_version=self.framework_version, **base_args)
+            return TensorFlowModel(
+                framework_version=self.framework_version, py_version=PYTHON_VERSION, **base_args
+            )
         if self.framework == RLFramework.MXNET.value:
             return MXNetModel(
                 framework_version=self.framework_version, py_version=PYTHON_VERSION, **extended_args

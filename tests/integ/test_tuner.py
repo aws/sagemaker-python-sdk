@@ -608,8 +608,8 @@ def test_tuning_tf_script_mode(sagemaker_session, cpu_instance_type, tf_full_ver
         train_instance_count=1,
         train_instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
-        py_version=py_version,
         framework_version=tf_full_version,
+        py_version=py_version,
     )
 
     hyperparameter_ranges = {"epochs": IntegerParameter(1, 2)}
@@ -641,7 +641,7 @@ def test_tuning_tf_script_mode(sagemaker_session, cpu_instance_type, tf_full_ver
 
 @pytest.mark.canary_quick
 @pytest.mark.skipif(PYTHON_VERSION != "py2", reason="TensorFlow image supports only python 2.")
-def test_tuning_tf(sagemaker_session, cpu_instance_type):
+def test_tuning_tf(sagemaker_session, cpu_instance_type, tf_full_version, py_version):
     with timeout(minutes=TUNING_DEFAULT_TIMEOUT_MINUTES):
         script_path = os.path.join(DATA_DIR, "iris", "iris-dnn-classifier.py")
 
@@ -654,6 +654,8 @@ def test_tuning_tf(sagemaker_session, cpu_instance_type):
             train_instance_count=1,
             train_instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
+            framework_version=tf_full_version,
+            py_version=py_version,
         )
 
         inputs = sagemaker_session.upload_data(path=DATA_PATH, key_prefix="integ-test-data/tf_iris")
@@ -694,7 +696,7 @@ def test_tuning_tf(sagemaker_session, cpu_instance_type):
 
 
 @pytest.mark.skipif(PYTHON_VERSION != "py2", reason="TensorFlow image supports only python 2.")
-def test_tuning_tf_vpc_multi(sagemaker_session, cpu_instance_type):
+def test_tuning_tf_vpc_multi(sagemaker_session, cpu_instance_type, tf_full_version, py_version):
     """Test Tensorflow multi-instance using the same VpcConfig for training and inference"""
     instance_type = cpu_instance_type
     instance_count = 2
@@ -718,6 +720,8 @@ def test_tuning_tf_vpc_multi(sagemaker_session, cpu_instance_type):
         subnets=subnet_ids,
         security_group_ids=[security_group_id],
         encrypt_inter_container_traffic=True,
+        framework_version=tf_full_version,
+        py_version=py_version,
     )
 
     inputs = sagemaker_session.upload_data(path=DATA_PATH, key_prefix="integ-test-data/tf_iris")

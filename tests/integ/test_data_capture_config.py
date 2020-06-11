@@ -13,6 +13,7 @@
 from __future__ import absolute_import
 
 import os
+import pytest
 
 import sagemaker
 import tests.integ
@@ -40,8 +41,13 @@ CUSTOM_CSV_CONTENT_TYPES = ["text/csvtype1", "text/csvtype2"]
 CUSTOM_JSON_CONTENT_TYPES = ["application/jsontype1", "application/jsontype2"]
 
 
+@pytest.fixture(scope="module")
+def py_version(tf_full_version, tf_serving_version):
+    return "py37" if tf_full_version == tf_serving_version else tests.integ.PYTHON_VERSION
+
+
 def test_enabling_data_capture_on_endpoint_shows_correct_data_capture_status(
-    sagemaker_session, tf_serving_version
+    sagemaker_session, tf_serving_version, py_version
 ):
     endpoint_name = unique_name_from_base("sagemaker-tensorflow-serving")
     model_data = sagemaker_session.upload_data(
@@ -53,6 +59,7 @@ def test_enabling_data_capture_on_endpoint_shows_correct_data_capture_status(
             model_data=model_data,
             role=ROLE,
             framework_version=tf_serving_version,
+            py_version=py_version,
             sagemaker_session=sagemaker_session,
         )
         predictor = model.deploy(
@@ -98,7 +105,7 @@ def test_enabling_data_capture_on_endpoint_shows_correct_data_capture_status(
 
 
 def test_disabling_data_capture_on_endpoint_shows_correct_data_capture_status(
-    sagemaker_session, tf_serving_version
+    sagemaker_session, tf_serving_version, py_version
 ):
     endpoint_name = unique_name_from_base("sagemaker-tensorflow-serving")
     model_data = sagemaker_session.upload_data(
@@ -110,6 +117,7 @@ def test_disabling_data_capture_on_endpoint_shows_correct_data_capture_status(
             model_data=model_data,
             role=ROLE,
             framework_version=tf_serving_version,
+            py_version=py_version,
             sagemaker_session=sagemaker_session,
         )
         destination_s3_uri = os.path.join(
@@ -184,7 +192,7 @@ def test_disabling_data_capture_on_endpoint_shows_correct_data_capture_status(
 
 
 def test_updating_data_capture_on_endpoint_shows_correct_data_capture_status(
-    sagemaker_session, tf_serving_version
+    sagemaker_session, tf_serving_version, py_version
 ):
     endpoint_name = sagemaker.utils.unique_name_from_base("sagemaker-tensorflow-serving")
     model_data = sagemaker_session.upload_data(
@@ -196,6 +204,7 @@ def test_updating_data_capture_on_endpoint_shows_correct_data_capture_status(
             model_data=model_data,
             role=ROLE,
             framework_version=tf_serving_version,
+            py_version=py_version,
             sagemaker_session=sagemaker_session,
         )
         destination_s3_uri = os.path.join(
