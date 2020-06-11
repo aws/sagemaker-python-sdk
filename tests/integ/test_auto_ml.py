@@ -38,6 +38,8 @@ BASE_JOB_NAME = "auto-ml"
 
 # use a succeeded AutoML job to test describe and list candidates method, otherwise tests will run too long
 AUTO_ML_JOB_NAME = "python-sdk-integ-test-base-job"
+DEFAULT_MODEL_NAME = "python-sdk-automl"
+
 
 EXPECTED_DEFAULT_JOB_CONFIG = {
     "CompletionCriteria": {"MaxCandidates": 3},
@@ -287,8 +289,9 @@ def test_create_model_best_candidate(sagemaker_session, cpu_instance_type):
     auto_ml = AutoML.attach(job_name=AUTO_ML_JOB_NAME, sagemaker_session=sagemaker_session)
     best_candidate = auto_ml.best_candidate()
 
-    with timeout(minutes=2):
+    with timeout(minutes=5):
         pipeline_model = auto_ml.create_model(
+            name=DEFAULT_MODEL_NAME,
             candidate=best_candidate,
             sagemaker_session=sagemaker_session,
             vpc_config=None,
