@@ -21,7 +21,7 @@ from sagemaker.fw_utils import (
     create_image_uri,
     model_code_key_prefix,
     python_deprecation_warning,
-    empty_framework_version_warning,
+    validate_version_or_image_args,
 )
 from sagemaker.model import FrameworkModel, MODEL_SERVER_WORKERS_PARAM_NAME
 from sagemaker.pytorch import defaults
@@ -66,9 +66,9 @@ class PyTorchModel(FrameworkModel):
         model_data,
         role,
         entry_point,
-        image=None,
-        py_version=defaults.PYTHON_VERSION,
         framework_version=None,
+        py_version=None,
+        image=None,
         predictor_cls=PyTorchPredictor,
         model_server_workers=None,
         **kwargs
@@ -87,12 +87,16 @@ class PyTorchModel(FrameworkModel):
                 file which should be executed as the entry point to model
                 hosting. If ``source_dir`` is specified, then ``entry_point``
                 must point to a file located at the root of ``source_dir``.
-            image (str): A Docker image URI (default: None). If not specified, a
-                default image for PyTorch will be used.
-            py_version (str): Python version you want to use for executing your
-                model training code (default: 'py3').
             framework_version (str): PyTorch version you want to use for
-                executing your model training code.
+                executing your model training code. Defaults to None. Required
+                unless ``image`` is provided.
+            py_version (str): Python version you want to use for executing your
+                model training code. Defaults to ``None``. Required unless
+                ``image`` is provided.
+            image (str): A Docker image URI (default: None). If not specified, a
+                default image for PyTorch will be used. If ``framework_version``
+                or ``py_version`` are ``None``, then ``image`` is required. If
+                also ``None``, then a ``ValueError`` will be raised.
             predictor_cls (callable[str, sagemaker.session.Session]): A function
                 to call to create a predictor with an endpoint name and
                 SageMaker ``Session``. If specified, ``deploy()`` returns the
@@ -109,22 +113,18 @@ class PyTorchModel(FrameworkModel):
             :class:`~sagemaker.model.FrameworkModel` and
             :class:`~sagemaker.model.Model`.
         """
+        validate_version_or_image_args(framework_version, py_version, image)
+        if py_version and py_version == "py2":
+            logger.warning(
+                python_deprecation_warning(self.__framework_name__, defaults.LATEST_PY2_VERSION)
+            )
+        self.framework_version = framework_version
+        self.py_version = py_version
+
         super(PyTorchModel, self).__init__(
             model_data, image, role, entry_point, predictor_cls=predictor_cls, **kwargs
         )
 
-        if py_version == "py2":
-            logger.warning(
-                python_deprecation_warning(self.__framework_name__, defaults.LATEST_PY2_VERSION)
-            )
-
-        if framework_version is None:
-            logger.warning(
-                empty_framework_version_warning(defaults.PYTORCH_VERSION, defaults.LATEST_VERSION)
-            )
-
-        self.py_version = py_version
-        self.framework_version = framework_version or defaults.PYTORCH_VERSION
         self.model_server_workers = model_server_workers
 
     def prepare_container_def(self, instance_type, accelerator_type=None):

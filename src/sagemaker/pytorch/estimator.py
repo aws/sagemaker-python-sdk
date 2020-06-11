@@ -19,9 +19,9 @@ from sagemaker.estimator import Framework
 from sagemaker.fw_utils import (
     framework_name_from_image,
     framework_version_from_tag,
-    empty_framework_version_warning,
-    python_deprecation_warning,
     is_version_equal_or_higher,
+    python_deprecation_warning,
+    validate_version_or_image_args,
 )
 from sagemaker.pytorch import defaults
 from sagemaker.pytorch.model import PyTorchModel
@@ -40,10 +40,10 @@ class PyTorch(Framework):
     def __init__(
         self,
         entry_point,
+        framework_version=None,
+        py_version=None,
         source_dir=None,
         hyperparameters=None,
-        py_version=defaults.PYTHON_VERSION,
-        framework_version=None,
         image_name=None,
         **kwargs
     ):
@@ -69,6 +69,13 @@ class PyTorch(Framework):
                 file which should be executed as the entry point to training.
                 If ``source_dir`` is specified, then ``entry_point``
                 must point to a file located at the root of ``source_dir``.
+            framework_version (str): PyTorch version you want to use for
+                executing your model training code. Defaults to ``None``. Required unless
+                ``image_name`` is provided. List of supported versions:
+                https://github.com/aws/sagemaker-python-sdk#pytorch-sagemaker-estimators.
+            py_version (str): Python version you want to use for executing your
+                model training code. One of 'py2' or 'py3'. Defaults to ``None``. Required
+                unless ``image_name`` is provided.
             source_dir (str): Path (absolute, relative or an S3 URI) to a directory
                 with any other training source code dependencies aside from the entry
                 point file (default: None). If ``source_dir`` is an S3 URI, it must
@@ -80,12 +87,6 @@ class PyTorch(Framework):
                 SageMaker. For convenience, this accepts other types for keys
                 and values, but ``str()`` will be called to convert them before
                 training.
-            py_version (str): Python version you want to use for executing your
-                model training code (default: 'py3'). One of 'py2' or 'py3'.
-            framework_version (str): PyTorch version you want to use for
-                executing your model training code. List of supported versions
-                https://github.com/aws/sagemaker-python-sdk#pytorch-sagemaker-estimators.
-                If not specified, this will default to 0.4.
             image_name (str): If specified, the estimator will use this image
                 for training and hosting, instead of selecting the appropriate
                 SageMaker official image based on framework_version and
@@ -95,6 +96,9 @@ class PyTorch(Framework):
                     * ``123412341234.dkr.ecr.us-west-2.amazonaws.com/my-custom-image:1.0``
                     * ``custom-image:latest``
 
+                If ``framework_version`` or ``py_version`` are ``None``, then
+                ``image_name`` is required. If also ``None``, then a ``ValueError``
+                will be raised.
             **kwargs: Additional kwargs passed to the :class:`~sagemaker.estimator.Framework`
                 constructor.
 
@@ -104,27 +108,24 @@ class PyTorch(Framework):
             :class:`~sagemaker.estimator.Framework` and
             :class:`~sagemaker.estimator.EstimatorBase`.
         """
-        if framework_version is None:
+        validate_version_or_image_args(framework_version, py_version, image_name)
+        if py_version == "py2":
             logger.warning(
-                empty_framework_version_warning(defaults.PYTORCH_VERSION, self.LATEST_VERSION)
+                python_deprecation_warning(self.__framework_name__, defaults.LATEST_PY2_VERSION)
             )
-        self.framework_version = framework_version or defaults.PYTORCH_VERSION
+        self.framework_version = framework_version
+        self.py_version = py_version
 
         if "enable_sagemaker_metrics" not in kwargs:
             # enable sagemaker metrics for PT v1.3 or greater:
-            if is_version_equal_or_higher([1, 3], self.framework_version):
+            if self.framework_version and is_version_equal_or_higher(
+                [1, 3], self.framework_version
+            ):
                 kwargs["enable_sagemaker_metrics"] = True
 
         super(PyTorch, self).__init__(
             entry_point, source_dir, hyperparameters, image_name=image_name, **kwargs
         )
-
-        if py_version == "py2":
-            logger.warning(
-                python_deprecation_warning(self.__framework_name__, defaults.LATEST_PY2_VERSION)
-            )
-
-        self.py_version = py_version
 
     def create_model(
         self,
@@ -177,12 +178,12 @@ class PyTorch(Framework):
             self.model_data,
             role or self.role,
             entry_point or self.entry_point,
+            framework_version=self.framework_version,
+            py_version=self.py_version,
             source_dir=(source_dir or self._model_source_dir()),
             enable_cloudwatch_metrics=self.enable_cloudwatch_metrics,
             container_log_level=self.container_log_level,
             code_location=self.code_location,
-            py_version=self.py_version,
-            framework_version=self.framework_version,
             model_server_workers=model_server_workers,
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
@@ -210,14 +211,18 @@ class PyTorch(Framework):
         image_name = init_params.pop("image")
         framework, py_version, tag, _ = framework_name_from_image(image_name)
 
+        if tag is None:
+            framework_version = None
+        else:
+            framework_version = framework_version_from_tag(tag)
+        init_params["framework_version"] = framework_version
+        init_params["py_version"] = py_version
+
         if not framework:
             # If we were unable to parse the framework name from the image it is not one of our
             # officially supported images, in this case just add the image to the init params.
             init_params["image_name"] = image_name
             return init_params
-
-        init_params["py_version"] = py_version
-        init_params["framework_version"] = framework_version_from_tag(tag)
 
         training_job_name = init_params["base_job_name"]
 
