@@ -12,8 +12,6 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-import sys
-
 import pasta
 import pytest
 
@@ -104,13 +102,6 @@ TEMPLATES = [
 
 def constructors(versions=False, image=False):
     return [ctr for template in TEMPLATES for ctr in template.constructors(versions, image)]
-
-
-@pytest.fixture(autouse=True)
-def skip_if_py2():
-    # Remove once https://github.com/aws/sagemaker-python-sdk/issues/1461 is addressed.
-    if sys.version_info.major < 3:
-        pytest.skip("v2 migration script doesn't support Python 2.")
 
 
 @pytest.fixture

@@ -12,10 +12,7 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-import sys
-
 import pasta
-import pytest
 from mock import MagicMock, patch
 
 from sagemaker.cli.compatibility.v2.modifiers import tf_legacy_mode
@@ -23,13 +20,6 @@ from tests.unit.sagemaker.cli.compatibility.v2.modifiers.ast_converter import as
 
 IMAGE_URI = "sagemaker-tensorflow:latest"
 REGION_NAME = "us-west-2"
-
-
-@pytest.fixture(autouse=True)
-def skip_if_py2():
-    # Remove once https://github.com/aws/sagemaker-python-sdk/issues/1461 is addressed.
-    if sys.version_info.major < 3:
-        pytest.skip("v2 migration script doesn't support Python 2.")
 
 
 def test_node_should_be_modified_tf_constructor_legacy_mode():

@@ -133,6 +133,11 @@ def chainer_version(request):
     return request.param
 
 
+@pytest.fixture(scope="module", params=["py2", "py3"])
+def chainer_py_version(request):
+    return request.param
+
+
 # TODO: current version fixtures are legacy fixtures that aren't useful
 # and no longer verify whether images are valid
 @pytest.fixture(
