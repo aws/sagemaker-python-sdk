@@ -79,7 +79,7 @@ class XGBoostModel(FrameworkModel):
             image (str): A Docker image URI (default: None). If not specified, a default image for
                 XGBoos will be used.
             py_version (str): Python version you want to use for executing your model training code
-                (default: 'py2').
+                (default: 'py3').
             framework_version (str): XGBoost version you want to use for executing your model
                 training code.
             predictor_cls (callable[str, sagemaker.session.Session]): A function to call to create

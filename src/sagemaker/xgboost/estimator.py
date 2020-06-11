@@ -85,7 +85,7 @@ class XGBoost(Framework):
                 on SageMaker. For convenience, this accepts other types for keys and values, but
                 ``str()`` will be called to convert them before training.
             py_version (str): Python version you want to use for executing your model
-                training code (default: 'py3'). One of 'py2' or 'py3'.
+                training code (default: 'py3').
             image_name (str): If specified, the estimator will use this image for training and
                 hosting, instead of selecting the appropriate SageMaker official image
                 based on framework_version and py_version. It can be an ECR url or
