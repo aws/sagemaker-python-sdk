@@ -54,7 +54,7 @@ def test_deploy(name_from_image, prepare_container_def, production_variant, sage
     container_def = {"Image": MODEL_IMAGE, "Environment": {}, "ModelDataUrl": MODEL_DATA}
     prepare_container_def.return_value = container_def
 
-    model = Model(MODEL_DATA, MODEL_IMAGE, role=ROLE, sagemaker_session=sagemaker_session)
+    model = Model(MODEL_IMAGE, MODEL_DATA, role=ROLE, sagemaker_session=sagemaker_session)
     model.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=INSTANCE_COUNT)
 
     name_from_image.assert_called_with(MODEL_IMAGE)
@@ -81,7 +81,7 @@ def test_deploy(name_from_image, prepare_container_def, production_variant, sage
 @patch("sagemaker.production_variant")
 def test_deploy_accelerator_type(production_variant, create_sagemaker_model, sagemaker_session):
     model = Model(
-        MODEL_DATA, MODEL_IMAGE, role=ROLE, name=MODEL_NAME, sagemaker_session=sagemaker_session
+        MODEL_IMAGE, MODEL_DATA, role=ROLE, name=MODEL_NAME, sagemaker_session=sagemaker_session
     )
 
     production_variant_result = copy.deepcopy(BASE_PRODUCTION_VARIANT)
@@ -113,7 +113,7 @@ def test_deploy_accelerator_type(production_variant, create_sagemaker_model, sag
 @patch("sagemaker.model.Model._create_sagemaker_model", Mock())
 @patch("sagemaker.production_variant", return_value=BASE_PRODUCTION_VARIANT)
 def test_deploy_endpoint_name(sagemaker_session):
-    model = Model(MODEL_DATA, MODEL_IMAGE, role=ROLE, sagemaker_session=sagemaker_session)
+    model = Model(MODEL_IMAGE, MODEL_DATA, role=ROLE, sagemaker_session=sagemaker_session)
 
     endpoint_name = "blah"
     model.deploy(
@@ -136,7 +136,7 @@ def test_deploy_endpoint_name(sagemaker_session):
 @patch("sagemaker.model.Model._create_sagemaker_model")
 def test_deploy_tags(create_sagemaker_model, production_variant, sagemaker_session):
     model = Model(
-        MODEL_DATA, MODEL_IMAGE, role=ROLE, name=MODEL_NAME, sagemaker_session=sagemaker_session
+        MODEL_IMAGE, MODEL_DATA, role=ROLE, name=MODEL_NAME, sagemaker_session=sagemaker_session
     )
 
     tags = [{"Key": "ModelName", "Value": "TestModel"}]
@@ -157,7 +157,7 @@ def test_deploy_tags(create_sagemaker_model, production_variant, sagemaker_sessi
 @patch("sagemaker.production_variant", return_value=BASE_PRODUCTION_VARIANT)
 def test_deploy_kms_key(production_variant, sagemaker_session):
     model = Model(
-        MODEL_DATA, MODEL_IMAGE, role=ROLE, name=MODEL_NAME, sagemaker_session=sagemaker_session
+        MODEL_IMAGE, MODEL_DATA, role=ROLE, name=MODEL_NAME, sagemaker_session=sagemaker_session
     )
 
     key = "some-key-arn"
@@ -177,7 +177,7 @@ def test_deploy_kms_key(production_variant, sagemaker_session):
 @patch("sagemaker.production_variant", return_value=BASE_PRODUCTION_VARIANT)
 def test_deploy_async(production_variant, sagemaker_session):
     model = Model(
-        MODEL_DATA, MODEL_IMAGE, role=ROLE, name=MODEL_NAME, sagemaker_session=sagemaker_session
+        MODEL_IMAGE, MODEL_DATA, role=ROLE, name=MODEL_NAME, sagemaker_session=sagemaker_session
     )
 
     model.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=INSTANCE_COUNT, wait=False)
@@ -196,7 +196,7 @@ def test_deploy_async(production_variant, sagemaker_session):
 @patch("sagemaker.production_variant", return_value=BASE_PRODUCTION_VARIANT)
 def test_deploy_data_capture_config(production_variant, sagemaker_session):
     model = Model(
-        MODEL_DATA, MODEL_IMAGE, role=ROLE, name=MODEL_NAME, sagemaker_session=sagemaker_session
+        MODEL_IMAGE, MODEL_DATA, role=ROLE, name=MODEL_NAME, sagemaker_session=sagemaker_session
     )
 
     data_capture_config = Mock()
@@ -223,12 +223,12 @@ def test_deploy_data_capture_config(production_variant, sagemaker_session):
 @patch("sagemaker.local.LocalSession")
 def test_deploy_creates_correct_session(local_session, session):
     # We expect a LocalSession when deploying to instance_type = 'local'
-    model = Model(MODEL_DATA, MODEL_IMAGE, role=ROLE)
+    model = Model(MODEL_IMAGE, MODEL_DATA, role=ROLE)
     model.deploy(endpoint_name="blah", instance_type="local", initial_instance_count=1)
     assert model.sagemaker_session == local_session.return_value
 
     # We expect a real Session when deploying to instance_type != local/local_gpu
-    model = Model(MODEL_DATA, MODEL_IMAGE, role=ROLE)
+    model = Model(MODEL_IMAGE, MODEL_DATA, role=ROLE)
     model.deploy(
         endpoint_name="remote_endpoint", instance_type="ml.m4.4xlarge", initial_instance_count=2
     )
@@ -236,7 +236,7 @@ def test_deploy_creates_correct_session(local_session, session):
 
 
 def test_deploy_no_role(sagemaker_session):
-    model = Model(MODEL_DATA, MODEL_IMAGE, sagemaker_session=sagemaker_session)
+    model = Model(MODEL_IMAGE, MODEL_DATA, sagemaker_session=sagemaker_session)
 
     with pytest.raises(ValueError, match="Role can not be null for deploying a model"):
         model.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=INSTANCE_COUNT)
@@ -248,8 +248,8 @@ def test_deploy_no_role(sagemaker_session):
 @patch("sagemaker.production_variant", return_value=BASE_PRODUCTION_VARIANT)
 def test_deploy_predictor_cls(production_variant, sagemaker_session):
     model = Model(
-        MODEL_DATA,
         MODEL_IMAGE,
+        MODEL_DATA,
         role=ROLE,
         name=MODEL_NAME,
         predictor_cls=sagemaker.predictor.RealTimePredictor,
@@ -269,7 +269,7 @@ def test_deploy_predictor_cls(production_variant, sagemaker_session):
 
 
 def test_deploy_update_endpoint(sagemaker_session):
-    model = Model(MODEL_DATA, MODEL_IMAGE, role=ROLE, sagemaker_session=sagemaker_session)
+    model = Model(MODEL_IMAGE, MODEL_DATA, role=ROLE, sagemaker_session=sagemaker_session)
     model.deploy(
         instance_type=INSTANCE_TYPE, initial_instance_count=INSTANCE_COUNT, update_endpoint=True
     )
@@ -300,7 +300,7 @@ def test_deploy_update_endpoint_optional_args(sagemaker_session):
     kms_key = "foo"
     data_capture_config = Mock()
 
-    model = Model(MODEL_DATA, MODEL_IMAGE, role=ROLE, sagemaker_session=sagemaker_session)
+    model = Model(MODEL_IMAGE, MODEL_DATA, role=ROLE, sagemaker_session=sagemaker_session)
     model.deploy(
         instance_type=INSTANCE_TYPE,
         initial_instance_count=INSTANCE_COUNT,

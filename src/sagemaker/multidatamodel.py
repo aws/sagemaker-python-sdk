@@ -103,8 +103,8 @@ class MultiDataModel(Model):
         # Set the ``Model`` parameters if the model parameter is not specified
         if not self.model:
             super(MultiDataModel, self).__init__(
-                self.model_data_prefix,
                 image,
+                self.model_data_prefix,
                 role,
                 name=self.name,
                 sagemaker_session=self.sagemaker_session,

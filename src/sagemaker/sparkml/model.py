@@ -96,8 +96,8 @@ class SparkMLModel(Model):
         region_name = (sagemaker_session or Session()).boto_region_name
         image = "{}/{}:{}".format(registry(region_name, framework_name), repo_name, spark_version)
         super(SparkMLModel, self).__init__(
-            model_data,
             image,
+            model_data,
             role,
             predictor_cls=SparkMLPredictor,
             sagemaker_session=sagemaker_session,
