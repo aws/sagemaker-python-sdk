@@ -191,7 +191,7 @@ def _get_pytorch_estimator(
         entry_point=entry_point,
         role="SageMakerRole",
         framework_version=pytorch_full_version,
-        py_version=PYTHON_VERSION,
+        py_version="py3",
         train_instance_count=1,
         train_instance_type=instance_type,
         sagemaker_session=sagemaker_session,

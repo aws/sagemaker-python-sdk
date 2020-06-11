@@ -19,23 +19,26 @@ import pytest
 import tests.integ.lock as lock
 from tests.integ import DATA_DIR, PYTHON_VERSION
 
+from sagemaker.pytorch.defaults import PYTORCH_VERSION
 from sagemaker.pytorch.estimator import PyTorch
 
 
 @pytest.mark.local_mode
-def test_source_dirs(tmpdir, sagemaker_local_session, pytorch_full_version):
+def test_source_dirs(tmpdir, sagemaker_local_session):
     source_dir = os.path.join(DATA_DIR, "pytorch_source_dirs")
     lib = os.path.join(str(tmpdir), "alexa.py")
 
     with open(lib, "w") as f:
         f.write("def question(to_anything): return 42")
 
+    # TODO: fails on newer versions of pytorch in call to np.load(BytesIO(stream.read()))
+    # "ValueError: Cannot load file containing pickled data when allow_pickle=False"
     estimator = PyTorch(
         entry_point="train.py",
         role="SageMakerRole",
         source_dir=source_dir,
         dependencies=[lib],
-        framework_version=pytorch_full_version,
+        framework_version=PYTORCH_VERSION,
         py_version=PYTHON_VERSION,
         train_instance_count=1,
         train_instance_type="local",
