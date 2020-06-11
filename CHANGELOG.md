@@ -9,6 +9,7 @@
  * force image URI to be passed for legacy TF images
  * rename `sagemaker.tensorflow.serving` to `sagemaker.tensorflow.model`
  * require `framework_version` and `py_version` for framework estimator and model classes
+ * change `Model` parameter order to make `model_data` optional
 
 ### Bug Fixes and Other Changes
 
