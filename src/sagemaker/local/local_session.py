@@ -343,7 +343,6 @@ class LocalSagemakerRuntimeClient(object):
         Accept=None,
         CustomAttributes=None,
         TargetModel=None,
-        TargetVariant=None,
     ):
         """
 
@@ -370,9 +369,6 @@ class LocalSagemakerRuntimeClient(object):
 
         if TargetModel is not None:
             headers["X-Amzn-SageMaker-Target-Model"] = TargetModel
-
-        if TargetVariant is not None:
-            headers["X-Amzn-SageMaker-Target-Variant"] = TargetVariant
 
         r = self.http.request("POST", url, body=Body, preload_content=False, headers=headers)
 
