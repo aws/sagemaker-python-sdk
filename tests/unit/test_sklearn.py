@@ -167,7 +167,7 @@ def test_train_image(sagemaker_session, sklearn_version):
     )
 
 
-def test_create_model(sagemaker_session):
+def test_create_model(sagemaker_session, sklearn_version):
     source_dir = "s3://mybucket/source"
 
     sklearn_model = SKLearnModel(
@@ -175,14 +175,15 @@ def test_create_model(sagemaker_session):
         role=ROLE,
         sagemaker_session=sagemaker_session,
         entry_point=SCRIPT_PATH,
+        framework_version=sklearn_version,
     )
-    default_image_uri = _get_full_cpu_image_uri("0.20.0")
+    image_uri = _get_full_cpu_image_uri(sklearn_version)
     model_values = sklearn_model.prepare_container_def(CPU)
-    assert model_values["Image"] == default_image_uri
+    assert model_values["Image"] == image_uri
 
 
 @patch("sagemaker.model.FrameworkModel._upload_code")
-def test_create_model_with_network_isolation(upload, sagemaker_session):
+def test_create_model_with_network_isolation(upload, sagemaker_session, sklearn_version):
     source_dir = "s3://mybucket/source"
     repacked_model_data = "s3://mybucket/prefix/model.tar.gz"
 
@@ -192,6 +193,7 @@ def test_create_model_with_network_isolation(upload, sagemaker_session):
         sagemaker_session=sagemaker_session,
         entry_point=SCRIPT_PATH,
         enable_network_isolation=True,
+        framework_version=sklearn_version,
     )
     sklearn_model.uploaded_code = UploadedCode(s3_prefix=repacked_model_data, script_name="script")
     sklearn_model.repacked_model_data = repacked_model_data
@@ -232,7 +234,7 @@ def test_create_model_from_estimator(sagemaker_session, sklearn_version):
     assert model.enable_network_isolation()
 
 
-def test_create_model_with_optional_params(sagemaker_session):
+def test_create_model_with_optional_params(sagemaker_session, sklearn_version):
     container_log_level = '"logging.INFO"'
     source_dir = "s3://mybucket/source"
     enable_cloudwatch_metrics = "true"
@@ -242,6 +244,7 @@ def test_create_model_with_optional_params(sagemaker_session):
         sagemaker_session=sagemaker_session,
         train_instance_type=INSTANCE_TYPE,
         container_log_level=container_log_level,
+        framework_version=sklearn_version,
         py_version=PYTHON_VERSION,
         base_job_name="job",
         source_dir=source_dir,
@@ -398,24 +401,26 @@ def test_fail_GPU_training(sagemaker_session, sklearn_version):
     assert "GPU training in not supported for Scikit-Learn." in str(error)
 
 
-def test_model(sagemaker_session):
+def test_model(sagemaker_session, sklearn_version):
     model = SKLearnModel(
         "s3://some/data.tar.gz",
         role=ROLE,
         entry_point=SCRIPT_PATH,
+        framework_version=sklearn_version,
         sagemaker_session=sagemaker_session,
     )
     predictor = model.deploy(1, CPU)
     assert isinstance(predictor, SKLearnPredictor)
 
 
-def test_train_image_default(sagemaker_session):
+def test_train_image_default(sagemaker_session, sklearn_version):
     sklearn = SKLearn(
         entry_point=SCRIPT_PATH,
+        framework_version=sklearn_version,
+        py_version=PYTHON_VERSION,
         role=ROLE,
         sagemaker_session=sagemaker_session,
         train_instance_type=INSTANCE_TYPE,
-        py_version=PYTHON_VERSION,
     )
 
     assert _get_full_cpu_image_uri(defaults.SKLEARN_VERSION) in sklearn.train_image()
@@ -559,34 +564,31 @@ def test_attach_custom_image(sagemaker_session):
     assert estimator.train_image() == training_image
 
 
-@patch("sagemaker.sklearn.estimator.python_deprecation_warning")
-def test_estimator_py2_warning(warning, sagemaker_session):
-    estimator = SKLearn(
-        entry_point=SCRIPT_PATH,
-        role=ROLE,
-        sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
-        py_version="py2",
-    )
-
-    assert estimator.py_version == "py2"
-    warning.assert_called_with(estimator.__framework_name__, defaults.LATEST_PY2_VERSION)
+def test_estimator_py2_raises(sagemaker_session, sklearn_version):
+    with pytest.raises(AttributeError):
+        SKLearn(
+            entry_point=SCRIPT_PATH,
+            role=ROLE,
+            sagemaker_session=sagemaker_session,
+            train_instance_count=INSTANCE_COUNT,
+            train_instance_type=INSTANCE_TYPE,
+            framework_version=sklearn_version,
+            py_version="py2",
+        )
 
 
-@patch("sagemaker.sklearn.model.python_deprecation_warning")
-def test_model_py2_warning(warning, sagemaker_session):
+def test_model_py2_raises(sagemaker_session, sklearn_version):
     source_dir = "s3://mybucket/source"
 
-    model = SKLearnModel(
-        model_data=source_dir,
-        role=ROLE,
-        entry_point=SCRIPT_PATH,
-        sagemaker_session=sagemaker_session,
-        py_version="py2",
-    )
-    assert model.py_version == "py2"
-    warning.assert_called_with(model.__framework_name__, defaults.LATEST_PY2_VERSION)
+    with pytest.raises(AttributeError):
+        SKLearnModel(
+            model_data=source_dir,
+            role=ROLE,
+            entry_point=SCRIPT_PATH,
+            sagemaker_session=sagemaker_session,
+            framework_version=sklearn_version,
+            py_version="py2",
+        )
 
 
 def test_custom_image_estimator_deploy(sagemaker_session):
