@@ -1,4 +1,3 @@
-# %load /home/ec2-user/anaconda3/envs/python3/lib/python3.6/site-packages/sagemaker/automl/automl.py
 # Copyright 2019-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
@@ -102,60 +101,64 @@ class AutoML(object):
             self.latest_auto_ml_job.wait(logs=logs)
 
     @classmethod
-    def attach(cls, job_name, sagemaker_session=None):
+    def attach(cls, auto_ml_job_name, sagemaker_session=None):
         """Attach to an existing AutoML job.
 
+        Creates and returns a AutoML bound to an existing automl job.
+
         Args:
-            job_name (str): AutoML job name
+            auto_ml_job_name (str): AutoML job name
             sagemaker_session (sagemaker.session.Session): A SageMaker Session
                 object, used for SageMaker interactions (default: None). If not
-                specified, the one originally associated with the ``AutoML`` instance is used.:
+                specified, the one originally associated with the ``AutoML`` instance is used.
 
         Returns:
+            sagemaker.automl.AutoML: A ``AutoML`` instance with the attached automl job.
 
         """
         sagemaker_session = sagemaker_session or Session()
 
-        _auto_ml_job_desc = sagemaker_session.describe_auto_ml_job(job_name)
+        auto_ml_job_desc = sagemaker_session.describe_auto_ml_job(auto_ml_job_name)
         automl_job_tags = sagemaker_session.sagemaker_client.list_tags(
-            ResourceArn=_auto_ml_job_desc["AutoMLJobArn"]
+            ResourceArn=auto_ml_job_desc["AutoMLJobArn"]
         )["Tags"]
 
         amlj = AutoML(
-            role=_auto_ml_job_desc["RoleArn"],
-            target_attribute_name=_auto_ml_job_desc["InputDataConfig"][0]["TargetAttributeName"],
-            output_kms_key=_auto_ml_job_desc["OutputDataConfig"].get("KmsKeyId"),
-            output_path=_auto_ml_job_desc["OutputDataConfig"]["S3OutputPath"],
-            base_job_name=job_name,
-            compression_type=_auto_ml_job_desc["InputDataConfig"][0].get("CompressionType"),
+            role=auto_ml_job_desc["RoleArn"],
+            target_attribute_name=auto_ml_job_desc["InputDataConfig"][0]["TargetAttributeName"],
+            output_kms_key=auto_ml_job_desc["OutputDataConfig"].get("KmsKeyId"),
+            output_path=auto_ml_job_desc["OutputDataConfig"]["S3OutputPath"],
+            base_job_name=auto_ml_job_name,
+            compression_type=auto_ml_job_desc["InputDataConfig"][0].get("CompressionType"),
             sagemaker_session=sagemaker_session,
-            volume_kms_key=_auto_ml_job_desc.get("AutoMLJobConfig", {})
+            volume_kms_key=auto_ml_job_desc.get("AutoMLJobConfig", {})
             .get("SecurityConfig", {})
             .get("VolumeKmsKeyId"),
-            encrypt_inter_container_traffic=_auto_ml_job_desc.get("AutoMLJobConfig", {})
+            encrypt_inter_container_traffic=auto_ml_job_desc.get("AutoMLJobConfig", {})
             .get("SecurityConfig", {})
             .get("EnableInterContainerTrafficEncryption", False),
-            vpc_config=_auto_ml_job_desc.get("AutoMLJobConfig", {})
+            vpc_config=auto_ml_job_desc.get("AutoMLJobConfig", {})
             .get("SecurityConfig", {})
             .get("VpcConfig"),
-            problem_type=_auto_ml_job_desc.get("ProblemType"),
-            max_candidates=_auto_ml_job_desc.get("AutoMLJobConfig", {})
+            problem_type=auto_ml_job_desc.get("ProblemType"),
+            max_candidates=auto_ml_job_desc.get("AutoMLJobConfig", {})
             .get("CompletionCriteria", {})
             .get("MaxCandidates"),
-            max_runtime_per_training_job_in_seconds=_auto_ml_job_desc.get("AutoMLJobConfig", {})
+            max_runtime_per_training_job_in_seconds=auto_ml_job_desc.get("AutoMLJobConfig", {})
             .get("CompletionCriteria", {})
             .get("MaxRuntimePerTrainingJobInSeconds"),
-            total_job_runtime_in_seconds=_auto_ml_job_desc.get("AutoMLJobConfig", {})
+            total_job_runtime_in_seconds=auto_ml_job_desc.get("AutoMLJobConfig", {})
             .get("CompletionCriteria", {})
             .get("MaxAutoMLJobRuntimeInSeconds"),
-            job_objective=_auto_ml_job_desc.get("AutoMLJobObjective", {}).get("MetricName"),
-            generate_candidate_definitions_only=_auto_ml_job_desc.get(
+            job_objective=auto_ml_job_desc.get("AutoMLJobObjective", {}).get("MetricName"),
+            generate_candidate_definitions_only=auto_ml_job_desc.get(
                 "GenerateCandidateDefinitionsOnly", False
             ),
             tags=automl_job_tags,
         )
-        amlj.current_job_name = job_name
-        amlj._auto_ml_job_desc = _auto_ml_job_desc
+        amlj.current_job_name = auto_ml_job_name
+        amlj.latest_auto_ml_job = auto_ml_job_name  # pylint: disable=W0201
+        amlj._auto_ml_job_desc = auto_ml_job_desc
         return amlj
 
     def describe_auto_ml_job(self, job_name=None):

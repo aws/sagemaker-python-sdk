@@ -657,7 +657,7 @@ def test_create_model(sagemaker_session):
 
 
 def test_attach(sagemaker_session):
-    aml = AutoML.attach(job_name=JOB_NAME_3, sagemaker_session=sagemaker_session)
+    aml = AutoML.attach(auto_ml_job_name=JOB_NAME_3, sagemaker_session=sagemaker_session)
     assert aml.current_job_name == JOB_NAME_3
     assert aml.role == "mock_role_arn"
     assert aml.target_attribute_name == "y"
