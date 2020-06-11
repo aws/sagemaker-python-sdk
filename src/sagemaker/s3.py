@@ -57,8 +57,9 @@ class S3Uploader(object):
         """Static method that uploads a given file or directory to S3.
 
         Args:
-            local_path (str): A local path to a file or directory.
-            desired_s3_uri (str): The desired S3 uri to upload to.
+            local_path (str): Path (absolute or relative) of local file or directory to upload.
+            desired_s3_uri (str): The desired S3 location to upload to. It is the prefix to
+                which the local filename will be added.
             kms_key (str): The KMS key to use to encrypt the files.
             session (sagemaker.session.Session): Session object which
                 manages interactions with Amazon SageMaker APIs and any other
