@@ -80,6 +80,22 @@ To use those versions of TensorFlow, you must specify the Docker image URI expli
 and configure settings via hyperparameters or environment variables rather than using SDK parameters.
 For more information, see `Upgrade from Legacy TensorFlow Support <frameworks/tensorflow/upgrade_from_legacy.html>`_.
 
+Parameter Changes for ``sagemaker.model.Model``
+===============================================
+
+The parameter order for :class:`sagemaker.model.Model` changed: instead of ``model_data`` being first, ``image`` now is first.
+As a result, ``model_data`` has now been made into an optional parameter.
+
+If you are using the :class:`sagemaker.model.Model` class, your code should be changed as follows:
+
+.. code:: python
+
+    # v1.x
+    Model("s3://bucket/path/model.tar.gz", "my-image:latest")
+
+    # v2.0 and later
+    Model("my-image:latest", model_data="s3://bucket/path/model.tar.gz")
+
 Dependency Changes
 ==================
 
@@ -149,3 +165,8 @@ TensorFlow Serving
 ------------------
 
 If you are using the ``sagemaker.tensorflow.serving.Model`` class, the tool does not take care of adding a framework version or changing it to ``sagemaker.tensorflow.TensorFlowModel``.
+
+``sagemaker.model.Model``
+-------------------------
+
+If you are using the :class:`sagemaker.model.Model` class, the tool does not take care of switching the order between ``model_data`` and ``image``.
