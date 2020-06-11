@@ -18,8 +18,8 @@ import logging
 from sagemaker import fw_utils
 
 import sagemaker
-from sagemaker.fw_utils import model_code_key_prefix, python_deprecation_warning
 from sagemaker.fw_registry import default_framework_uri
+from sagemaker.fw_utils import model_code_key_prefix, validate_version_or_image_args
 from sagemaker.model import FrameworkModel, MODEL_SERVER_WORKERS_PARAM_NAME
 from sagemaker.predictor import RealTimePredictor, npy_serializer, numpy_deserializer
 from sagemaker.sklearn import defaults
@@ -62,9 +62,9 @@ class SKLearnModel(FrameworkModel):
         model_data,
         role,
         entry_point,
-        image=None,
+        framework_version=None,
         py_version="py3",
-        framework_version=defaults.SKLEARN_VERSION,
+        image=None,
         predictor_cls=SKLearnPredictor,
         model_server_workers=None,
         **kwargs
@@ -83,12 +83,19 @@ class SKLearnModel(FrameworkModel):
                 file which should be executed as the entry point to model
                 hosting. If ``source_dir`` is specified, then ``entry_point``
                 must point to a file located at the root of ``source_dir``.
+            framework_version (str): Scikit-learn version you want to use for
+                executing your model training code. Defaults to ``None``. Required
+                unless ``image`` is provided.
+            py_version (str): Python version you want to use for executing your
+                model training code (default: 'py3'). Currently, 'py3' is the only
+                supported version. If ``None`` is passed in, ``image`` must be
+                provided.
             image (str): A Docker image URI (default: None). If not specified, a
                 default image for Scikit-learn will be used.
-            py_version (str): Python version you want to use for executing your
-                model training code (default: 'py3').
-            framework_version (str): Scikit-learn version you want to use for
-                executing your model training code.
+
+                If ``framework_version`` or ``py_version`` are ``None``, then
+                ``image`` is required. If also ``None``, then a ``ValueError``
+                will be raised.
             predictor_cls (callable[str, sagemaker.session.Session]): A function
                 to call to create a predictor with an endpoint name and
                 SageMaker ``Session``. If specified, ``deploy()`` returns the
@@ -105,17 +112,18 @@ class SKLearnModel(FrameworkModel):
             :class:`~sagemaker.model.FrameworkModel` and
             :class:`~sagemaker.model.Model`.
         """
+        validate_version_or_image_args(framework_version, py_version, image)
+        if py_version and py_version != "py3":
+            raise AttributeError(
+                "Scikit-learn image only supports Python 3. Please use 'py3' for py_version."
+            )
+        self.framework_version = framework_version
+        self.py_version = py_version
+
         super(SKLearnModel, self).__init__(
             model_data, image, role, entry_point, predictor_cls=predictor_cls, **kwargs
         )
 
-        if py_version == "py2":
-            logger.warning(
-                python_deprecation_warning(self.__framework_name__, defaults.LATEST_PY2_VERSION)
-            )
-
-        self.py_version = py_version
-        self.framework_version = framework_version
         self.model_server_workers = model_server_workers
 
     def prepare_container_def(self, instance_type, accelerator_type=None):

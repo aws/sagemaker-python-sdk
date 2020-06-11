@@ -175,6 +175,7 @@ def test_private_github_with_2fa(sagemaker_local_session, sklearn_full_version):
                 model_data,
                 "SageMakerRole",
                 entry_point=script_path,
+                framework_version=sklearn_full_version,
                 source_dir=source_dir,
                 sagemaker_session=sagemaker_local_session,
                 git_config=git_config,

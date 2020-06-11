@@ -19,8 +19,8 @@ from sagemaker.estimator import Framework
 from sagemaker.fw_registry import default_framework_uri
 from sagemaker.fw_utils import (
     framework_name_from_image,
-    empty_framework_version_warning,
-    python_deprecation_warning,
+    framework_version_from_tag,
+    validate_version_or_image_args,
 )
 from sagemaker.sklearn import defaults
 from sagemaker.sklearn.model import SKLearnModel
@@ -37,10 +37,10 @@ class SKLearn(Framework):
     def __init__(
         self,
         entry_point,
-        framework_version=defaults.SKLEARN_VERSION,
+        framework_version=None,
+        py_version="py3",
         source_dir=None,
         hyperparameters=None,
-        py_version="py3",
         image_name=None,
         **kwargs
     ):
@@ -68,8 +68,13 @@ class SKLearn(Framework):
                 If ``source_dir`` is specified, then ``entry_point``
                 must point to a file located at the root of ``source_dir``.
             framework_version (str): Scikit-learn version you want to use for
-                executing your model training code. List of supported versions
+                executing your model training code. Defaults to ``None``. Required
+                unless ``image_name`` is provided. List of supported versions:
                 https://github.com/aws/sagemaker-python-sdk#sklearn-sagemaker-estimators
+            py_version (str): Python version you want to use for executing your
+                model training code (default: 'py3'). Currently, 'py3' is the only
+                supported version. If ``None`` is passed in, ``image_name`` must be
+                provided.
             source_dir (str): Path (absolute, relative or an S3 URI) to a directory
                 with any other training source code dependencies aside from the entry
                 point file (default: None). If ``source_dir`` is an S3 URI, it must
@@ -81,15 +86,18 @@ class SKLearn(Framework):
                 SageMaker. For convenience, this accepts other types for keys
                 and values, but ``str()`` will be called to convert them before
                 training.
-            py_version (str): Python version you want to use for executing your
-                model training code (default: 'py3'). One of 'py2' or 'py3'.
             image_name (str): If specified, the estimator will use this image
                 for training and hosting, instead of selecting the appropriate
                 SageMaker official image based on framework_version and
                 py_version. It can be an ECR url or dockerhub image and tag.
+
                 Examples:
                     123.dkr.ecr.us-west-2.amazonaws.com/my-custom-image:1.0
                     custom-image:latest.
+
+                If ``framework_version`` or ``py_version`` are ``None``, then
+                ``image_name`` is required. If also ``None``, then a ``ValueError``
+                will be raised.
             **kwargs: Additional kwargs passed to the
                 :class:`~sagemaker.estimator.Framework` constructor.
 
@@ -99,6 +107,14 @@ class SKLearn(Framework):
             :class:`~sagemaker.estimator.Framework` and
             :class:`~sagemaker.estimator.EstimatorBase`.
         """
+        validate_version_or_image_args(framework_version, py_version, image_name)
+        if py_version and py_version != "py3":
+            raise AttributeError(
+                "Scikit-learn image only supports Python 3. Please use 'py3' for py_version."
+            )
+        self.framework_version = framework_version
+        self.py_version = py_version
+
         # SciKit-Learn does not support distributed training or training on GPU instance types.
         # Fail fast.
         train_instance_type = kwargs.get("train_instance_type")
@@ -112,6 +128,7 @@ class SKLearn(Framework):
                     "Please remove the 'train_instance_count' argument or set "
                     "'train_instance_count=1' when initializing SKLearn."
                 )
+
         super(SKLearn, self).__init__(
             entry_point,
             source_dir,
@@ -119,19 +136,6 @@ class SKLearn(Framework):
             image_name=image_name,
             **dict(kwargs, train_instance_count=1)
         )
-
-        if py_version == "py2":
-            logger.warning(
-                python_deprecation_warning(self.__framework_name__, defaults.LATEST_PY2_VERSION)
-            )
-
-        self.py_version = py_version
-
-        if framework_version is None:
-            logger.warning(
-                empty_framework_version_warning(defaults.SKLEARN_VERSION, defaults.SKLEARN_VERSION)
-            )
-        self.framework_version = framework_version or defaults.SKLEARN_VERSION
 
         if image_name is None:
             image_tag = "{}-{}-{}".format(framework_version, "cpu", py_version)
@@ -216,28 +220,40 @@ class SKLearn(Framework):
         Args:
             job_details: the returned job details from a describe_training_job
                 API call.
-            model_channel_name:
+            model_channel_name (str): Name of the channel where pre-trained
+                model data will be downloaded (default: None).
 
         Returns:
             dictionary: The transformed init_params
         """
-        init_params = super(SKLearn, cls)._prepare_init_params_from_job_description(job_details)
-
+        init_params = super(SKLearn, cls)._prepare_init_params_from_job_description(
+            job_details, model_channel_name
+        )
         image_name = init_params.pop("image")
-        framework, py_version, _, _ = framework_name_from_image(image_name)
+        framework, py_version, tag, _ = framework_name_from_image(image_name)
+
+        if tag is None:
+            framework_version = None
+        else:
+            framework_version = framework_version_from_tag(tag)
+        init_params["framework_version"] = framework_version
         init_params["py_version"] = py_version
 
+        if not framework:
+            # If we were unable to parse the framework name from the image it is not one of our
+            # officially supported images, in this case just add the image to the init params.
+            init_params["image_name"] = image_name
+            return init_params
+
+        training_job_name = init_params["base_job_name"]
+
         if framework and framework != cls.__framework_name__:
-            training_job_name = init_params["base_job_name"]
             raise ValueError(
                 "Training job: {} didn't use image for requested framework".format(
                     training_job_name
                 )
             )
-        if not framework:
-            # If we were unable to parse the framework name from the image it is not one of our
-            # officially supported images, in this case just add the image to the init params.
-            init_params["image_name"] = image_name
+
         return init_params
 
 
