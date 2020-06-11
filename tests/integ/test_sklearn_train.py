@@ -36,7 +36,7 @@ def sklearn_training_job(sagemaker_session, sklearn_full_version, cpu_instance_t
     sagemaker_session.boto_region_name
 
 
-@pytest.mark.skipif(PYTHON_VERSION != "py3", reason="Scikit-learn image supports only python 3.")
+@pytest.mark.skipif(PYTHON_VERSION != "py3", reason="Scikit-learn image supports only Python 3.")
 def test_training_with_additional_hyperparameters(
     sagemaker_session, sklearn_full_version, cpu_instance_type
 ):
@@ -66,7 +66,7 @@ def test_training_with_additional_hyperparameters(
         return sklearn.latest_training_job.name
 
 
-@pytest.mark.skipif(PYTHON_VERSION != "py3", reason="Scikit-learn image supports only python 3.")
+@pytest.mark.skipif(PYTHON_VERSION != "py3", reason="Scikit-learn image supports only Python 3.")
 def test_training_with_network_isolation(
     sagemaker_session, sklearn_full_version, cpu_instance_type
 ):
@@ -121,7 +121,9 @@ def test_attach_deploy(sklearn_training_job, sagemaker_session, cpu_instance_typ
     reason="This test has always failed, but the failure was masked by a bug. "
     "This test should be fixed. Details in https://github.com/aws/sagemaker-python-sdk/pull/968"
 )
-def test_deploy_model(sklearn_training_job, sagemaker_session, cpu_instance_type):
+def test_deploy_model(
+    sklearn_training_job, sagemaker_session, cpu_instance_type, sklearn_full_version
+):
     endpoint_name = "test-sklearn-deploy-model-{}".format(sagemaker_timestamp())
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         desc = sagemaker_session.sagemaker_client.describe_training_job(
@@ -133,6 +135,7 @@ def test_deploy_model(sklearn_training_job, sagemaker_session, cpu_instance_type
             model_data,
             "SageMakerRole",
             entry_point=script_path,
+            framework_version=sklearn_full_version,
             sagemaker_session=sagemaker_session,
         )
         predictor = model.deploy(1, cpu_instance_type, endpoint_name=endpoint_name)
