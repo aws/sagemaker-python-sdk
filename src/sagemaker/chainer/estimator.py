@@ -105,9 +105,8 @@ class Chainer(Framework):
             py_version (str): Python version you want to use for executing your
                 model training code (default: 'py2'). One of 'py2' or 'py3'.
             framework_version (str): Chainer version you want to use for
-                executing your model training code. List of supported versions
-                https://github.com/aws/sagemaker-python-sdk#chainer-sagemaker-estimators.
-                If not specified, this will default to 4.1.
+                executing your model training code. If not specified, this will
+                default to 4.1.
             image_name (str): If specified, the estimator will use this image
                 for training and hosting, instead of selecting the appropriate
                 SageMaker official image based on framework_version and

@@ -176,7 +176,7 @@ The default serialization system generates three files:
 -  ``model-symbol.json``: The MXNet ``Module`` ``Symbol`` serialization,
    produced by invoking ``save`` on the ``symbol`` property of the
    ``Module`` being saved.
--  ``modle.params``: The MXNet ``Module`` parameters, produced by
+-  ``model.params``: The MXNet ``Module`` parameters, produced by
    invoking ``save_params`` on the ``Module`` being saved.
 
 You can provide your own save function. This is useful if you are not working with the ``Module`` API or you need special processing.
