@@ -608,13 +608,13 @@ def test_xgboost_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu
 
 @pytest.mark.canary_quick
 def test_pytorch_airflow_config_uploads_data_source_to_s3_when_inputs_not_provided(
-    sagemaker_session, cpu_instance_type
+    sagemaker_session, cpu_instance_type, pytorch_full_version
 ):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         estimator = PyTorch(
             entry_point=PYTORCH_MNIST_SCRIPT,
             role=ROLE,
-            framework_version="1.3.1",
+            framework_version=pytorch_full_version,
             py_version="py3",
             train_instance_count=2,
             train_instance_type=cpu_instance_type,

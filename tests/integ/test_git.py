@@ -21,7 +21,6 @@ import tempfile
 
 from tests.integ import lock as lock
 from sagemaker.mxnet.estimator import MXNet
-from sagemaker.pytorch.defaults import PYTORCH_VERSION
 from sagemaker.pytorch.estimator import PyTorch
 from sagemaker.sklearn.estimator import SKLearn
 from sagemaker.sklearn.model import SKLearnModel
@@ -63,7 +62,7 @@ def test_github(sagemaker_local_session):
         entry_point=script_path,
         role="SageMakerRole",
         source_dir="pytorch",
-        framework_version=PYTORCH_VERSION,
+        framework_version="0.4",  # hard-code to last known good pytorch for now (see TODO above)
         py_version=PYTHON_VERSION,
         train_instance_count=1,
         train_instance_type="local",

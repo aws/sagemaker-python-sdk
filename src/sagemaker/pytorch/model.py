@@ -94,11 +94,9 @@ class PyTorchModel(FrameworkModel):
                 model training code. Defaults to ``None``. Required unless
                 ``image`` is provided.
             image (str): A Docker image URI (default: None). If not specified, a
-                default image for PyTorch will be used.
-
-                If ``framework_version`` or ``py_version`` are ``None``, then
-                ``image`` is required. If also ``None``, then a ``ValueError``
-                will be raised.
+                default image for PyTorch will be used. If ``framework_version``
+                or ``py_version`` are ``None``, then ``image`` is required. If
+                also ``None``, then a ``ValueError`` will be raised.
             predictor_cls (callable[str, sagemaker.session.Session]): A function
                 to call to create a predictor with an endpoint name and
                 SageMaker ``Session``. If specified, ``deploy()`` returns the

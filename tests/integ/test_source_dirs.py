@@ -19,7 +19,6 @@ import pytest
 import tests.integ.lock as lock
 from tests.integ import DATA_DIR, PYTHON_VERSION
 
-from sagemaker.pytorch.defaults import PYTORCH_VERSION
 from sagemaker.pytorch.estimator import PyTorch
 
 
@@ -38,7 +37,7 @@ def test_source_dirs(tmpdir, sagemaker_local_session):
         role="SageMakerRole",
         source_dir=source_dir,
         dependencies=[lib],
-        framework_version=PYTORCH_VERSION,
+        framework_version="0.4",  # hard-code to last known good pytorch for now (see TODO above)
         py_version=PYTHON_VERSION,
         train_instance_count=1,
         train_instance_type="local",
