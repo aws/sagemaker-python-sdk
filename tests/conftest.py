@@ -209,6 +209,7 @@ def xgboost_version(request):
         "1.11.0",
         "1.12",
         "1.12.0",
+        "1.13",
         "1.14",
         "1.14.0",
         "1.15",
@@ -228,7 +229,7 @@ def tf_version(request):
 @pytest.fixture(scope="module", params=["py2", "py3"])
 def tf_py_version(tf_version, request):
     version = [int(val) for val in tf_version.split(".")]
-    if version < [1, 13]:
+    if version < [1, 11]:
         return "py2"
     if version < [2, 2]:
         return request.param
@@ -309,7 +310,7 @@ def tf_full_py_version(tf_full_version, request):
     TODO: Evaluate use of --tf-full-version with possible eye to remove and simplify code.
     """
     version = [int(val) for val in tf_full_version.split(".")]
-    if version < [1, 13]:
+    if version < [1, 11]:
         return "py2"
     if tf_full_version in [TensorFlow._LATEST_1X_VERSION, LATEST_VERSION]:
         return "py37"

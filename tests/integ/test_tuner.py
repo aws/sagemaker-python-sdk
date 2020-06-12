@@ -633,64 +633,6 @@ def test_tuning_tf_script_mode(
         tuner.wait()
 
 
-# TODO: evaluate skip mark and default framework_version 1.11
-@pytest.mark.canary_quick
-@pytest.mark.skipif(PYTHON_VERSION != "py2", reason="TensorFlow image supports only python 2.")
-def test_tuning_tf(sagemaker_session, cpu_instance_type):
-    with timeout(minutes=TUNING_DEFAULT_TIMEOUT_MINUTES):
-        script_path = os.path.join(DATA_DIR, "iris", "iris-dnn-classifier.py")
-
-        estimator = TensorFlow(
-            entry_point=script_path,
-            role="SageMakerRole",
-            training_steps=1,
-            evaluation_steps=1,
-            hyperparameters={"input_tensor_name": "inputs"},
-            train_instance_count=1,
-            train_instance_type=cpu_instance_type,
-            sagemaker_session=sagemaker_session,
-            framework_version="1.11",
-            py_version=PYTHON_VERSION,
-        )
-
-        inputs = sagemaker_session.upload_data(path=DATA_PATH, key_prefix="integ-test-data/tf_iris")
-        hyperparameter_ranges = {"learning_rate": ContinuousParameter(0.05, 0.2)}
-
-        objective_metric_name = "loss"
-        metric_definitions = [{"Name": "loss", "Regex": "loss = ([0-9\\.]+)"}]
-
-        tuner = HyperparameterTuner(
-            estimator,
-            objective_metric_name,
-            hyperparameter_ranges,
-            metric_definitions,
-            objective_type="Minimize",
-            max_jobs=2,
-            max_parallel_jobs=2,
-        )
-
-        tuning_job_name = unique_name_from_base("tune-tf", max_length=32)
-        tuner.fit(inputs, job_name=tuning_job_name)
-
-        print("Started hyperparameter tuning job with name:" + tuning_job_name)
-
-        time.sleep(15)
-        tuner.wait()
-
-    best_training_job = tuner.best_training_job()
-    with timeout_and_delete_endpoint_by_name(best_training_job, sagemaker_session):
-        predictor = tuner.deploy(1, cpu_instance_type)
-
-        features = [6.4, 3.2, 4.5, 1.5]
-        dict_result = predictor.predict({"inputs": features})
-        print("predict result: {}".format(dict_result))
-        list_result = predictor.predict(features)
-        print("predict result: {}".format(list_result))
-
-        assert dict_result == list_result
-
-
-# TODO: evaluate skip mark and default framework_version 1.11
 @pytest.mark.skipif(PYTHON_VERSION != "py2", reason="TensorFlow image supports only python 2.")
 def test_tuning_tf_vpc_multi(sagemaker_session, cpu_instance_type):
     """Test Tensorflow multi-instance using the same VpcConfig for training and inference"""
