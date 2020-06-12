@@ -587,8 +587,16 @@ def empty_framework_version_warning(default_version, latest_version):
     """
     msgs = [EMPTY_FRAMEWORK_VERSION_WARNING.format(default_version)]
     if default_version != latest_version:
-        msgs.append(LATER_FRAMEWORK_VERSION_WARNING.format(latest=latest_version))
+        msgs.append(later_framework_version_warning(latest_version))
     return " ".join(msgs)
+
+
+def later_framework_version_warning(latest_version):
+    """
+    Args:
+        latest_version:
+    """
+    return LATER_FRAMEWORK_VERSION_WARNING.format(latest=latest_version)
 
 
 def warn_if_parameter_server_with_multi_gpu(training_instance_type, distributions):
