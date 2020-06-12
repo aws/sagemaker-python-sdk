@@ -206,8 +206,8 @@ class RandomCutForestModel(Model):
             registry(sagemaker_session.boto_session.region_name, RandomCutForest.repo_name), repo
         )
         super(RandomCutForestModel, self).__init__(
-            model_data,
             image,
+            model_data,
             role,
             predictor_cls=RandomCutForestPredictor,
             sagemaker_session=sagemaker_session,

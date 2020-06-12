@@ -216,8 +216,8 @@ class IPInsightsModel(Model):
         )
 
         super(IPInsightsModel, self).__init__(
-            model_data,
             image,
+            model_data,
             role,
             predictor_cls=IPInsightsPredictor,
             sagemaker_session=sagemaker_session,

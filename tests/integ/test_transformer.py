@@ -178,7 +178,7 @@ def test_transform_pytorch_vpc_custom_model_bucket(
         entry_point=os.path.join(data_dir, "mnist.py"),
         role="SageMakerRole",
         framework_version=pytorch_full_version,
-        py_version=PYTHON_VERSION,
+        py_version="py3",
         sagemaker_session=sagemaker_session,
         vpc_config={"Subnets": subnet_ids, "SecurityGroupIds": [security_group_id]},
         code_location="s3://{}".format(custom_bucket_name),

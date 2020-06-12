@@ -21,7 +21,6 @@ import tempfile
 
 from tests.integ import lock as lock
 from sagemaker.mxnet.estimator import MXNet
-from sagemaker.pytorch.defaults import PYTORCH_VERSION
 from sagemaker.pytorch.estimator import PyTorch
 from sagemaker.sklearn.estimator import SKLearn
 from sagemaker.sklearn.model import SKLearnModel
@@ -56,11 +55,14 @@ def test_github(sagemaker_local_session):
     script_path = "mnist.py"
     data_path = os.path.join(DATA_DIR, "pytorch_mnist")
     git_config = {"repo": GIT_REPO, "branch": BRANCH, "commit": COMMIT}
+
+    # TODO: fails for newer pytorch versions when using MNIST from torchvision due to missing dataset
+    # "algo-1-v767u_1  | RuntimeError: Dataset not found. You can use download=True to download it"
     pytorch = PyTorch(
         entry_point=script_path,
         role="SageMakerRole",
         source_dir="pytorch",
-        framework_version=PYTORCH_VERSION,
+        framework_version="0.4",  # hard-code to last known good pytorch for now (see TODO above)
         py_version=PYTHON_VERSION,
         train_instance_count=1,
         train_instance_type="local",

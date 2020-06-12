@@ -173,6 +173,11 @@ def pytorch_version(request):
     return request.param
 
 
+@pytest.fixture(scope="module", params=["py2", "py3"])
+def pytorch_py_version(request):
+    return request.param
+
+
 @pytest.fixture(scope="module", params=["0.20.0"])
 def sklearn_version(request):
     return request.param

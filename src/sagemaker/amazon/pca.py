@@ -225,8 +225,8 @@ class PCAModel(Model):
         repo = "{}:{}".format(PCA.repo_name, PCA.repo_version)
         image = "{}/{}".format(registry(sagemaker_session.boto_session.region_name), repo)
         super(PCAModel, self).__init__(
-            model_data,
             image,
+            model_data,
             role,
             predictor_cls=PCAPredictor,
             sagemaker_session=sagemaker_session,

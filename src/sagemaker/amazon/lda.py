@@ -215,8 +215,8 @@ class LDAModel(Model):
             registry(sagemaker_session.boto_session.region_name, LDA.repo_name), repo
         )
         super(LDAModel, self).__init__(
-            model_data,
             image,
+            model_data,
             role,
             predictor_cls=LDAPredictor,
             sagemaker_session=sagemaker_session,

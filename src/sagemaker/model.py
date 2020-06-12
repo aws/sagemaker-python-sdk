@@ -60,8 +60,8 @@ class Model(object):
 
     def __init__(
         self,
-        model_data,
         image,
+        model_data=None,
         role=None,
         predictor_cls=None,
         env=None,
@@ -74,9 +74,9 @@ class Model(object):
         """Initialize an SageMaker ``Model``.
 
         Args:
-            model_data (str): The S3 location of a SageMaker model data
-                ``.tar.gz`` file.
             image (str): A Docker image URI.
+            model_data (str): The S3 location of a SageMaker model data
+                ``.tar.gz`` file (default: None).
             role (str): An AWS IAM role (either name or full ARN). The Amazon
                 SageMaker training jobs and APIs that create Amazon SageMaker
                 endpoints use this role to access training data and model
@@ -361,6 +361,8 @@ class Model(object):
             )
         if job_name is None:
             raise ValueError("You must provide a compilation job name")
+        if self.model_data is None:
+            raise ValueError("You must provide an S3 path to the compressed model artifacts.")
 
         framework = framework.upper()
         framework_version = self._get_framework_version() or framework_version
@@ -778,8 +780,8 @@ class FrameworkModel(Model):
             :class:`~sagemaker.model.Model`.
         """
         super(FrameworkModel, self).__init__(
-            model_data,
             image,
+            model_data,
             role,
             predictor_cls=predictor_cls,
             env=env,
