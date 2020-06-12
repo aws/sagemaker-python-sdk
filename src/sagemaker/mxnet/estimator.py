@@ -99,8 +99,43 @@ class MXNet(Framework):
                     * ``custom-image:latest``
 
             distributions (dict): A dictionary with information on how to run distributed
-                training (default: None). To have parameter servers launched for training,
-                set this value to be ``{'parameter_server': {'enabled': True}}``.
+                training (default: None). Currently we support distributed training with parameter server
+                and MPI [Horovod].
+                To enable parameter server use the following setup:
+
+                .. code:: python
+
+                    {
+                        'parameter_server':
+                        {
+                            'enabled': True
+                        }
+                    }
+
+                To enable MPI:
+
+                .. code:: python
+
+                    {
+                        'mpi':
+                        {
+                            'enabled': True
+                        }
+                    }
+
+                Option parameters within `mpi` are `processes_per_host` and `custom_mpi_options`.
+
+                .. code:: python
+
+                    {
+                        'mpi':
+                        {
+                            'enabled': True,
+                            'processes_per_host': 2,
+                            'custom_mpi_options': '-verbose --NCCL_DEBUG=INFO'
+                        }
+                    }
+
             **kwargs: Additional kwargs passed to the
                 :class:`~sagemaker.estimator.Framework` constructor.
 
