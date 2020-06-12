@@ -1274,7 +1274,7 @@ def test_warn_if_parameter_server_with_multi_gpu(caplog):
     assert fw_utils.PARAMETER_SERVER_MULTI_GPU_WARNING in caplog.text
 
 
-def test_war_if_parameter_server_with_multi_gpu(caplog):
+def test_warn_if_parameter_server_with_local_multi_gpu(caplog):
     train_instance_type = "local_gpu"
     distributions = {"parameter_server": {"enabled": True}}
 
