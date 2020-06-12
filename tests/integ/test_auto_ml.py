@@ -208,7 +208,7 @@ def test_auto_ml_attach(sagemaker_session):
     auto_ml_utils.create_auto_ml_job_if_not_exist(sagemaker_session)
 
     attached_automl_job = AutoML.attach(
-        job_name=AUTO_ML_JOB_NAME, sagemaker_session=sagemaker_session
+        auto_ml_job_name=AUTO_ML_JOB_NAME, sagemaker_session=sagemaker_session
     )
     attached_desc = attached_automl_job.describe_auto_ml_job()
     assert attached_desc["AutoMLJobName"] == AUTO_ML_JOB_NAME
