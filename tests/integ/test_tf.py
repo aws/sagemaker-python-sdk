@@ -19,12 +19,11 @@ import time
 import pytest
 
 from sagemaker.tensorflow import TensorFlow
-from sagemaker.tensorflow.defaults import LATEST_SERVING_VERSION
+from sagemaker.tensorflow.defaults import LATEST_VERSION, LATEST_SERVING_VERSION
 from sagemaker.utils import unique_name_from_base, sagemaker_timestamp
 
 import tests.integ
-from tests.integ import timeout
-from tests.integ import kms_utils
+from tests.integ import kms_utils, timeout, PYTHON_VERSION
 from tests.integ.retry import retries
 from tests.integ.s3_utils import assert_s3_files_exist
 
@@ -39,10 +38,12 @@ PARAMETER_SERVER_DISTRIBUTION = {"parameter_server": {"enabled": True}}
 MPI_DISTRIBUTION = {"mpi": {"enabled": True}}
 TAGS = [{"Key": "some-key", "Value": "some-value"}]
 
+PY37_SUPPORTED_FRAMEWORK_VERSION = [TensorFlow._LATEST_1X_VERSION, LATEST_VERSION]
+
 
 @pytest.fixture(scope="module")
-def py_version(tf_full_version, tf_serving_version):
-    return "py37" if tf_full_version == tf_serving_version else tests.integ.PYTHON_VERSION
+def py_version(tf_full_version):
+    return "py37" if tf_full_version in PY37_SUPPORTED_FRAMEWORK_VERSION else PYTHON_VERSION
 
 
 def test_mnist_with_checkpoint_config(
@@ -89,7 +90,7 @@ def test_mnist_with_checkpoint_config(
     assert actual_training_checkpoint_config == expected_training_checkpoint_config
 
 
-def test_server_side_encryption(sagemaker_session, tf_serving_version, py_version):
+def test_server_side_encryption(sagemaker_session, tf_serving_version):
     with kms_utils.bucket_with_encryption(sagemaker_session, ROLE) as (bucket_with_kms, kms_key):
         output_path = os.path.join(
             bucket_with_kms, "test-server-side-encryption", time.strftime("%y%m%d-%H%M")
@@ -103,7 +104,7 @@ def test_server_side_encryption(sagemaker_session, tf_serving_version, py_versio
             train_instance_type="ml.c5.xlarge",
             sagemaker_session=sagemaker_session,
             framework_version=tf_serving_version,
-            py_version=py_version,
+            py_version=PYTHON_VERSION,
             code_location=output_path,
             output_path=output_path,
             model_dir="/opt/ml/model",
@@ -154,13 +155,13 @@ def test_mnist_distributed(sagemaker_session, instance_type, tf_full_version, py
     )
 
 
-def test_mnist_async(sagemaker_session, cpu_instance_type, tf_full_version, py_version):
+def test_mnist_async(sagemaker_session, cpu_instance_type):
     estimator = TensorFlow(
         entry_point=SCRIPT,
         role=ROLE,
         train_instance_count=1,
         train_instance_type="ml.c5.4xlarge",
-        py_version=tests.integ.PYTHON_VERSION,
+        py_version=PYTHON_VERSION,
         sagemaker_session=sagemaker_session,
         # testing py-sdk functionality, no need to run against all TF versions
         framework_version=LATEST_SERVING_VERSION,
@@ -195,18 +196,16 @@ def test_mnist_async(sagemaker_session, cpu_instance_type, tf_full_version, py_v
         _assert_model_name_match(sagemaker_session.sagemaker_client, endpoint_name, model_name)
 
 
-def test_deploy_with_input_handlers(
-    sagemaker_session, instance_type, tf_serving_version, py_version
-):
+def test_deploy_with_input_handlers(sagemaker_session, instance_type, tf_serving_version):
     estimator = TensorFlow(
         entry_point="training.py",
         source_dir=TFS_RESOURCE_PATH,
         role=ROLE,
         train_instance_count=1,
         train_instance_type=instance_type,
-        py_version=py_version,
-        sagemaker_session=sagemaker_session,
         framework_version=tf_serving_version,
+        py_version=PYTHON_VERSION,
+        sagemaker_session=sagemaker_session,
         tags=TAGS,
     )
 
