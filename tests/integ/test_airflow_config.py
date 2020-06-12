@@ -562,7 +562,7 @@ def test_tf_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_inst
             train_instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
             framework_version=TensorFlow.LATEST_VERSION,
-            py_version=PYTHON_VERSION,
+            py_version="py37",  # only version available with 2.2.0
             metric_definitions=[
                 {"Name": "train:global_steps", "Regex": r"global_step\/sec:\s(.*)"}
             ],

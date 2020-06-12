@@ -37,7 +37,6 @@ from sagemaker.mxnet.estimator import MXNet
 from sagemaker.predictor import json_deserializer
 from sagemaker.pytorch import PyTorch
 from sagemaker.tensorflow import TensorFlow
-from sagemaker.tensorflow.defaults import LATEST_VERSION
 from sagemaker.tuner import (
     IntegerParameter,
     ContinuousParameter,
@@ -51,13 +50,6 @@ from sagemaker.tuner import (
 from sagemaker.utils import unique_name_from_base
 
 DATA_PATH = os.path.join(DATA_DIR, "iris", "data")
-
-PY37_SUPPORTED_FRAMEWORK_VERSION = [TensorFlow._LATEST_1X_VERSION, LATEST_VERSION]
-
-
-@pytest.fixture(scope="module")
-def py_version(tf_full_version):
-    return "py37" if tf_full_version in PY37_SUPPORTED_FRAMEWORK_VERSION else PYTHON_VERSION
 
 
 @pytest.fixture(scope="module")
@@ -598,7 +590,9 @@ def test_tuning_mxnet(sagemaker_session, mxnet_full_version, cpu_instance_type):
 
 
 @pytest.mark.canary_quick
-def test_tuning_tf_script_mode(sagemaker_session, cpu_instance_type, tf_full_version, py_version):
+def test_tuning_tf_script_mode(
+    sagemaker_session, cpu_instance_type, tf_full_version, tf_full_py_version
+):
     resource_path = os.path.join(DATA_DIR, "tensorflow_mnist")
     script_path = os.path.join(resource_path, "mnist.py")
 
@@ -609,7 +603,7 @@ def test_tuning_tf_script_mode(sagemaker_session, cpu_instance_type, tf_full_ver
         train_instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
         framework_version=tf_full_version,
-        py_version=py_version,
+        py_version=tf_full_py_version,
     )
 
     hyperparameter_ranges = {"epochs": IntegerParameter(1, 2)}
@@ -639,9 +633,10 @@ def test_tuning_tf_script_mode(sagemaker_session, cpu_instance_type, tf_full_ver
         tuner.wait()
 
 
+# TODO: evaluate skip mark and default framework_version 1.11
 @pytest.mark.canary_quick
 @pytest.mark.skipif(PYTHON_VERSION != "py2", reason="TensorFlow image supports only python 2.")
-def test_tuning_tf(sagemaker_session, cpu_instance_type, tf_full_version, py_version):
+def test_tuning_tf(sagemaker_session, cpu_instance_type):
     with timeout(minutes=TUNING_DEFAULT_TIMEOUT_MINUTES):
         script_path = os.path.join(DATA_DIR, "iris", "iris-dnn-classifier.py")
 
@@ -654,8 +649,8 @@ def test_tuning_tf(sagemaker_session, cpu_instance_type, tf_full_version, py_ver
             train_instance_count=1,
             train_instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
-            framework_version=tf_full_version,
-            py_version=py_version,
+            framework_version="1.11",
+            py_version=PYTHON_VERSION,
         )
 
         inputs = sagemaker_session.upload_data(path=DATA_PATH, key_prefix="integ-test-data/tf_iris")
@@ -695,8 +690,9 @@ def test_tuning_tf(sagemaker_session, cpu_instance_type, tf_full_version, py_ver
         assert dict_result == list_result
 
 
+# TODO: evaluate skip mark and default framework_version 1.11
 @pytest.mark.skipif(PYTHON_VERSION != "py2", reason="TensorFlow image supports only python 2.")
-def test_tuning_tf_vpc_multi(sagemaker_session, cpu_instance_type, tf_full_version, py_version):
+def test_tuning_tf_vpc_multi(sagemaker_session, cpu_instance_type):
     """Test Tensorflow multi-instance using the same VpcConfig for training and inference"""
     instance_type = cpu_instance_type
     instance_count = 2
@@ -720,8 +716,8 @@ def test_tuning_tf_vpc_multi(sagemaker_session, cpu_instance_type, tf_full_versi
         subnets=subnet_ids,
         security_group_ids=[security_group_id],
         encrypt_inter_container_traffic=True,
-        framework_version=tf_full_version,
-        py_version=py_version,
+        framework_version="1.11",
+        py_version=PYTHON_VERSION,
     )
 
     inputs = sagemaker_session.upload_data(path=DATA_PATH, key_prefix="integ-test-data/tf_iris")

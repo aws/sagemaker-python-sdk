@@ -24,7 +24,6 @@ import sagemaker.utils
 import tests.integ
 import tests.integ.timeout
 from sagemaker.tensorflow.model import TensorFlowModel, TensorFlowPredictor
-from tests.integ import PYTHON_VERSION
 
 
 @pytest.fixture(scope="module")
@@ -39,7 +38,6 @@ def tfs_predictor(sagemaker_session, tf_serving_version):
             model_data=model_data,
             role="SageMakerRole",
             framework_version=tf_serving_version,
-            py_version=PYTHON_VERSION,
             sagemaker_session=sagemaker_session,
         )
         predictor = model.deploy(1, "ml.c5.xlarge", endpoint_name=endpoint_name)
@@ -68,7 +66,6 @@ def tfs_predictor_with_model_and_entry_point_same_tar(
         model_data="file://" + model_tar,
         role="SageMakerRole",
         framework_version=tf_serving_version,
-        py_version=PYTHON_VERSION,
         sagemaker_session=sagemaker_local_session,
     )
     predictor = model.deploy(1, "local", endpoint_name=endpoint_name)
@@ -102,7 +99,6 @@ def tfs_predictor_with_model_and_entry_point_and_dependencies(
         role="SageMakerRole",
         dependencies=dependencies,
         framework_version=tf_serving_version,
-        py_version=PYTHON_VERSION,
         sagemaker_session=sagemaker_local_session,
     )
 
@@ -126,7 +122,6 @@ def tfs_predictor_with_accelerator(sagemaker_session, ei_tf_full_version, cpu_in
             model_data=model_data,
             role="SageMakerRole",
             framework_version=ei_tf_full_version,
-            py_version=PYTHON_VERSION,
             sagemaker_session=sagemaker_session,
         )
         predictor = model.deploy(

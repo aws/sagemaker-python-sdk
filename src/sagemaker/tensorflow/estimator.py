@@ -56,8 +56,7 @@ class TensorFlow(Framework):
 
         Args:
             py_version (str): Python version you want to use for executing your model training
-                code. One of 'py2', 'py3', or 'py37'. Defaults to ``None``. Required unless
-                ``image_name`` is provided.
+                code. Defaults to ``None``. Required unless ``image_name`` is provided.
             framework_version (str): TensorFlow version you want to use for executing your model
                 training code. Defaults to ``None``. Required unless ``image_name`` is provided.
                 List of supported versions:
@@ -144,14 +143,10 @@ class TensorFlow(Framework):
         self.model_dir = model_dir
         self.distributions = distributions or {}
 
-        self._validate_args(py_version=py_version, framework_version=self.framework_version)
+        self._validate_args(py_version=py_version)
 
-    def _validate_args(self, py_version, framework_version):
+    def _validate_args(self, py_version):
         """Placeholder docstring"""
-
-        if py_version:
-            if framework_version is None:
-                raise AttributeError(fw.EMPTY_FRAMEWORK_VERSION_ERROR)
 
         if py_version == "py2" and self._only_python_3_supported():
             msg = (
@@ -293,7 +288,6 @@ class TensorFlow(Framework):
             role=role or self.role,
             container_log_level=self.container_log_level,
             framework_version=self.framework_version,
-            py_version=self.py_version,
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
             entry_point=entry_point,

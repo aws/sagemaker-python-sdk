@@ -17,7 +17,7 @@ import logging
 
 import sagemaker
 from sagemaker.content_types import CONTENT_TYPE_JSON
-from sagemaker.fw_utils import create_image_uri, validate_version_or_image_args
+from sagemaker.fw_utils import create_image_uri
 from sagemaker.predictor import json_serializer, json_deserializer
 
 
@@ -138,7 +138,6 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
         entry_point=None,
         image=None,
         framework_version=None,
-        py_version=None,
         container_log_level=None,
         predictor_cls=TensorFlowPredictor,
         **kwargs
@@ -159,15 +158,11 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
                 must point to a file located at the root of ``source_dir``.
             image (str): A Docker image URI (default: None). If not specified, a
                 default image for TensorFlow Serving will be used. If
-                ``framework_version`` or ``py_version`` are ``None``, then
-                ``image`` is required. If also ``None``, then a ``ValueError``
-                will be raised.
+                ``framework_version`` is ``None``, then ``image`` is required.
+                If also ``None``, then a ``ValueError`` will be raised.
             framework_version (str): Optional. TensorFlow Serving version you
                 want to use. Defaults to ``None``. Required unless ``image`` is
                 provided.
-            py_version (str): Python version you want to use for executing your
-                model training code. One of 'py2', 'py3', or 'py37'. Defaults to
-                ``None``. Required unless ``image`` is provided.
             container_log_level (int): Log level to use within the container
                 (default: logging.ERROR). Valid values are defined in the Python
                 logging module.
@@ -183,9 +178,12 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
             :class:`~sagemaker.model.FrameworkModel` and
             :class:`~sagemaker.model.Model`.
         """
-        validate_version_or_image_args(framework_version, py_version, image)
+        if framework_version is None and image is None:
+            raise ValueError(
+                "Both framework_version and image were None. "
+                "Either specify framework_version or specify image_name."
+            )
         self.framework_version = framework_version
-        self.py_version = py_version
 
         super(TensorFlowModel, self).__init__(
             model_data=model_data,

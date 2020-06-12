@@ -22,7 +22,6 @@ from mock import Mock, patch
 from sagemaker.predictor import csv_serializer
 from sagemaker.tensorflow import TensorFlow
 from sagemaker.tensorflow.model import TensorFlowModel, TensorFlowPredictor
-from tests.unit import PY_VERSION
 
 JSON_CONTENT_TYPE = "application/json"
 CSV_CONTENT_TYPE = "text/csv"
@@ -77,7 +76,6 @@ def test_tfs_model(create_image_uri, sagemaker_session, tf_version):
         "s3://some/data.tar.gz",
         role=ROLE,
         framework_version=tf_version,
-        py_version=PY_VERSION,
         sagemaker_session=sagemaker_session,
     )
     cdef = model.prepare_container_def(INSTANCE_TYPE)
@@ -97,7 +95,6 @@ def test_tfs_model_accelerator(create_image_uri, sagemaker_session, tf_version):
         "s3://some/data.tar.gz",
         role=ROLE,
         framework_version=tf_version,
-        py_version=PY_VERSION,
         sagemaker_session=sagemaker_session,
     )
     cdef = model.prepare_container_def(INSTANCE_TYPE, accelerator_type=ACCELERATOR_TYPE)
@@ -115,7 +112,6 @@ def test_tfs_model_image_accelerator_not_supported(sagemaker_session):
         "s3://some/data.tar.gz",
         role=ROLE,
         framework_version="1.13.1",
-        py_version=PY_VERSION,
         sagemaker_session=sagemaker_session,
     )
 
@@ -129,7 +125,6 @@ def test_tfs_model_image_accelerator_not_supported(sagemaker_session):
         "s3://some/data.tar.gz",
         role=ROLE,
         framework_version="2.1",
-        py_version=PY_VERSION,
         sagemaker_session=sagemaker_session,
     )
 
@@ -152,7 +147,6 @@ def test_tfs_model_with_log_level(sagemaker_session, tf_version):
         "s3://some/data.tar.gz",
         role=ROLE,
         framework_version=tf_version,
-        py_version=PY_VERSION,
         container_log_level=logging.INFO,
         sagemaker_session=sagemaker_session,
     )

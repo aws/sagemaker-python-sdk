@@ -24,7 +24,7 @@ import tests.integ.timeout
 from sagemaker.s3 import S3Uploader
 from datetime import datetime, timedelta
 
-from tests.integ import DATA_DIR, PYTHON_VERSION
+from tests.integ import DATA_DIR
 from sagemaker.model_monitor import DatasetFormat
 from sagemaker.model_monitor import NetworkConfig, Statistics, Constraints
 from sagemaker.model_monitor import ModelMonitor
@@ -101,7 +101,6 @@ def predictor(sagemaker_session, tf_serving_version):
             model_data=model_data,
             role=ROLE,
             framework_version=tf_serving_version,
-            py_version=PYTHON_VERSION,
             sagemaker_session=sagemaker_session,
         )
         predictor = model.deploy(

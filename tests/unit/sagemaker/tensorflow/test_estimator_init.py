@@ -88,30 +88,37 @@ def test_disable_sm_metrics(sagemaker_session):
     assert not tf.enable_sagemaker_metrics
 
 
-def test_disable_sm_metrics_if_fw_ver_is_less_than_1_15(sagemaker_session, tf_version):
+def test_disable_sm_metrics_if_fw_ver_is_less_than_1_15(
+    sagemaker_session, tf_version, tf_py_version
+):
     if version.Version(tf_version) > version.Version("1.14"):
         pytest.skip("This test is for TF 1.14 and lower.")
 
     tf = _build_tf(
-        sagemaker_session, framework_version=tf_version, py_version="py2", image_name="old-image"
+        sagemaker_session,
+        framework_version=tf_version,
+        py_version=tf_py_version,
+        image_name="old-image",
     )
     assert tf.enable_sagemaker_metrics is None
 
 
-def test_enable_sm_metrics_if_fw_ver_is_at_least_1_15(sagemaker_session, tf_version):
+def test_enable_sm_metrics_if_fw_ver_is_at_least_1_15(sagemaker_session, tf_version, tf_py_version):
     if version.Version(tf_version) < version.Version("1.15"):
         pytest.skip("This test is for TF 1.15 and higher.")
 
-    tf = _build_tf(sagemaker_session, framework_version=tf_version, py_version="py3")
+    tf = _build_tf(sagemaker_session, framework_version=tf_version, py_version=tf_py_version)
     assert tf.enable_sagemaker_metrics
 
 
-def test_require_image_name_if_fw_ver_is_less_than_1_11(sagemaker_session, tf_version):
+def test_require_image_name_if_fw_ver_is_less_than_1_11(
+    sagemaker_session, tf_version, tf_py_version
+):
     if version.Version(tf_version) > version.Version("1.10"):
         pytest.skip("This test is for TF 1.10 and lower.")
 
     with pytest.raises(ValueError) as e:
-        _build_tf(sagemaker_session, framework_version=tf_version, py_version="py2")
+        _build_tf(sagemaker_session, framework_version=tf_version, py_version=tf_py_version)
 
     expected_msg = (
         "TF {version} supports only legacy mode. Please supply the image URI directly with "
