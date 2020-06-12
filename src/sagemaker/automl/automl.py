@@ -467,8 +467,8 @@ class AutoML(object):
             List of keys the container support or default
 
         Raises:
-            Value error if the default is None and the container definition has
-            no marker environment variable.
+            KeyError if the default is None and the container definition has
+            no marker environment variable SAGEMAKER_INFERENCE_SUPPORTED.
         """
         try:
             return [
