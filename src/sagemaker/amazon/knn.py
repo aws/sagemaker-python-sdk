@@ -231,8 +231,8 @@ class KNNModel(Model):
             registry(sagemaker_session.boto_session.region_name, KNN.repo_name), repo
         )
         super(KNNModel, self).__init__(
-            model_data,
             image,
+            model_data,
             role,
             predictor_cls=KNNPredictor,
             sagemaker_session=sagemaker_session,

@@ -30,11 +30,14 @@ def test_source_dirs(tmpdir, sagemaker_local_session):
     with open(lib, "w") as f:
         f.write("def question(to_anything): return 42")
 
+    # TODO: fails on newer versions of pytorch in call to np.load(BytesIO(stream.read()))
+    # "ValueError: Cannot load file containing pickled data when allow_pickle=False"
     estimator = PyTorch(
         entry_point="train.py",
         role="SageMakerRole",
         source_dir=source_dir,
         dependencies=[lib],
+        framework_version="0.4",  # hard-code to last known good pytorch for now (see TODO above)
         py_version=PYTHON_VERSION,
         train_instance_count=1,
         train_instance_type="local",

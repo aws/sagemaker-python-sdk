@@ -474,8 +474,8 @@ class LinearLearnerModel(Model):
         repo = "{}:{}".format(LinearLearner.repo_name, LinearLearner.repo_version)
         image = "{}/{}".format(registry(sagemaker_session.boto_session.region_name), repo)
         super(LinearLearnerModel, self).__init__(
-            model_data,
             image,
+            model_data,
             role,
             predictor_cls=LinearLearnerPredictor,
             sagemaker_session=sagemaker_session,

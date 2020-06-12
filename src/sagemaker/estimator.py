@@ -1398,8 +1398,8 @@ class Estimator(EstimatorBase):
             kwargs["enable_network_isolation"] = self.enable_network_isolation()
 
         return Model(
-            self.model_data,
             image or self.train_image(),
+            self.model_data,
             role,
             vpc_config=self.get_vpc_config(vpc_config_override),
             sagemaker_session=self.sagemaker_session,
