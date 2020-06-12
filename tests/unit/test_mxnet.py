@@ -491,6 +491,16 @@ def test_model_image_accelerator_mms_version(sagemaker_session):
     )
 
 
+def test_model_prepare_container_def_no_instance_type_or_image():
+    model = MXNetModel(MODEL_DATA, role=ROLE, entry_point=SCRIPT_PATH)
+
+    with pytest.raises(ValueError) as e:
+        model.prepare_container_def()
+
+    expected_msg = "Must supply either an instance type (for choosing CPU vs GPU) or an image URI."
+    assert expected_msg in str(e)
+
+
 def test_train_image_default(sagemaker_session):
     mx = MXNet(
         entry_point=SCRIPT_PATH,

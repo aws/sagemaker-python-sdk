@@ -37,9 +37,12 @@ def test_prepare_container_def():
     env = {"FOO": "BAR"}
     model = Model(MODEL_DATA, MODEL_IMAGE, env=env)
 
-    container_def = model.prepare_container_def(INSTANCE_TYPE, "ml.eia.medium")
-
     expected = {"Image": MODEL_IMAGE, "Environment": env, "ModelDataUrl": MODEL_DATA}
+
+    container_def = model.prepare_container_def(INSTANCE_TYPE, "ml.eia.medium")
+    assert expected == container_def
+
+    container_def = model.prepare_container_def()
     assert expected == container_def
 
 
@@ -60,14 +63,23 @@ def test_create_sagemaker_model(name_from_image, prepare_container_def, sagemake
     prepare_container_def.return_value = container_def
 
     model = Model(MODEL_DATA, MODEL_IMAGE, sagemaker_session=sagemaker_session)
-    model._create_sagemaker_model(INSTANCE_TYPE)
+    model._create_sagemaker_model()
 
-    prepare_container_def.assert_called_with(INSTANCE_TYPE, accelerator_type=None)
+    prepare_container_def.assert_called_with(None, accelerator_type=None)
     name_from_image.assert_called_with(MODEL_IMAGE)
 
     sagemaker_session.create_model.assert_called_with(
         MODEL_NAME, None, container_def, vpc_config=None, enable_network_isolation=False, tags=None
     )
+
+
+@patch("sagemaker.utils.name_from_image", Mock())
+@patch("sagemaker.model.Model.prepare_container_def")
+def test_create_sagemaker_model_instance_type(prepare_container_def, sagemaker_session):
+    model = Model(MODEL_DATA, MODEL_IMAGE, sagemaker_session=sagemaker_session)
+    model._create_sagemaker_model(INSTANCE_TYPE)
+
+    prepare_container_def.assert_called_with(INSTANCE_TYPE, accelerator_type=None)
 
 
 @patch("sagemaker.utils.name_from_image", Mock())
