@@ -39,3 +39,5 @@ NEO_REGION_LIST = [
     "cn-northwest-1",
     "us-gov-west-1",
 ]
+
+PY_VERSION = "py3"

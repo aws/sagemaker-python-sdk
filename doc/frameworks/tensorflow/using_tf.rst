@@ -319,7 +319,7 @@ To run training job with Pipe input mode, pass in ``input_mode='Pipe'`` to your 
     tf_estimator = TensorFlow(entry_point='tf-train-with-pipemodedataset.py', role='SageMakerRole',
                               training_steps=10000, evaluation_steps=100,
                               train_instance_count=1, train_instance_type='ml.p2.xlarge',
-                              framework_version='1.10.0', input_mode='Pipe')
+                              framework_version='1.10.0', py_version='py3', input_mode='Pipe')
 
     tf_estimator.fit('s3://bucket/path/to/training/data')
 
@@ -383,7 +383,8 @@ estimator object to create a SageMaker Endpoint:
   from sagemaker.tensorflow import TensorFlow
 
   estimator = TensorFlow(entry_point='tf-train.py', ..., train_instance_count=1,
-                         train_instance_type='ml.c4.xlarge', framework_version='1.11')
+                         train_instance_type='ml.c4.xlarge', framework_version='1.11',
+                         py_version='py3')
 
   estimator.fit(inputs)
 

@@ -19,7 +19,6 @@ import sagemaker
 from sagemaker.content_types import CONTENT_TYPE_JSON
 from sagemaker.fw_utils import create_image_uri
 from sagemaker.predictor import json_serializer, json_deserializer
-from sagemaker.tensorflow.defaults import TF_VERSION
 
 
 class TensorFlowPredictor(sagemaker.RealTimePredictor):
@@ -138,7 +137,7 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
         role,
         entry_point=None,
         image=None,
-        framework_version=TF_VERSION,
+        framework_version=None,
         container_log_level=None,
         predictor_cls=TensorFlowPredictor,
         **kwargs
@@ -158,9 +157,12 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
                 hosting. If ``source_dir`` is specified, then ``entry_point``
                 must point to a file located at the root of ``source_dir``.
             image (str): A Docker image URI (default: None). If not specified, a
-                default image for TensorFlow Serving will be used.
+                default image for TensorFlow Serving will be used. If
+                ``framework_version`` is ``None``, then ``image`` is required.
+                If also ``None``, then a ``ValueError`` will be raised.
             framework_version (str): Optional. TensorFlow Serving version you
-                want to use.
+                want to use. Defaults to ``None``. Required unless ``image`` is
+                provided.
             container_log_level (int): Log level to use within the container
                 (default: logging.ERROR). Valid values are defined in the Python
                 logging module.
@@ -176,6 +178,13 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
             :class:`~sagemaker.model.FrameworkModel` and
             :class:`~sagemaker.model.Model`.
         """
+        if framework_version is None and image is None:
+            raise ValueError(
+                "Both framework_version and image were None. "
+                "Either specify framework_version or specify image_name."
+            )
+        self.framework_version = framework_version
+
         super(TensorFlowModel, self).__init__(
             model_data=model_data,
             role=role,
@@ -184,7 +193,6 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
             entry_point=entry_point,
             **kwargs
         )
-        self.framework_version = framework_version
         self._container_log_level = container_log_level
 
     def deploy(

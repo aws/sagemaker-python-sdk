@@ -56,11 +56,11 @@ class TensorFlow(Framework):
 
         Args:
             py_version (str): Python version you want to use for executing your model training
-                code (default: 'py2').
+                code. Defaults to ``None``. Required unless ``image_name`` is provided.
             framework_version (str): TensorFlow version you want to use for executing your model
-                training code. List of supported versions
+                training code. Defaults to ``None``. Required unless ``image_name`` is provided.
+                List of supported versions:
                 https://github.com/aws/sagemaker-python-sdk#tensorflow-sagemaker-estimators.
-                If not specified, this will default to 1.11.
             model_dir (str): S3 location where the checkpoint data and models can be exported to
                 during training (default: None). It will be passed in the training script as one of
                 the command line arguments. If not specified, one is provided based on
@@ -81,6 +81,10 @@ class TensorFlow(Framework):
                 Examples:
                     123.dkr.ecr.us-west-2.amazonaws.com/my-custom-image:1.0
                     custom-image:latest.
+
+                If ``framework_version`` or ``py_version`` are ``None``, then
+                ``image_name`` is required. If also ``None``, then a ``ValueError``
+                will be raised.
             distributions (dict): A dictionary with information on how to run distributed training
                 (default: None). Currently we support distributed training with parameter servers
                 and MPI.
@@ -114,18 +118,13 @@ class TensorFlow(Framework):
             :class:`~sagemaker.estimator.Framework` and
             :class:`~sagemaker.estimator.EstimatorBase`.
         """
-        if framework_version is None:
-            logger.warning(
-                fw.empty_framework_version_warning(defaults.TF_VERSION, self.LATEST_VERSION)
-            )
-        self.framework_version = framework_version or defaults.TF_VERSION
-
-        if not py_version:
-            py_version = "py3" if self._only_python_3_supported() else "py2"
+        fw.validate_version_or_image_args(framework_version, py_version, image_name)
         if py_version == "py2":
             logger.warning(
                 fw.python_deprecation_warning(self.__framework_name__, defaults.LATEST_PY2_VERSION)
             )
+        self.framework_version = framework_version
+        self.py_version = py_version
 
         if distributions is not None:
             logger.warning(fw.parameter_v2_rename_warning("distribution", distributions))
@@ -136,23 +135,18 @@ class TensorFlow(Framework):
 
         if "enable_sagemaker_metrics" not in kwargs:
             # enable sagemaker metrics for TF v1.15 or greater:
-            if fw.is_version_equal_or_higher([1, 15], self.framework_version):
+            if framework_version and fw.is_version_equal_or_higher([1, 15], framework_version):
                 kwargs["enable_sagemaker_metrics"] = True
 
         super(TensorFlow, self).__init__(image_name=image_name, **kwargs)
 
-        self.py_version = py_version
         self.model_dir = model_dir
         self.distributions = distributions or {}
 
-        self._validate_args(py_version=py_version, framework_version=self.framework_version)
+        self._validate_args(py_version=py_version)
 
-    def _validate_args(self, py_version, framework_version):
+    def _validate_args(self, py_version):
         """Placeholder docstring"""
-
-        if py_version == "py3":
-            if framework_version is None:
-                raise AttributeError(fw.EMPTY_FRAMEWORK_VERSION_ERROR)
 
         if py_version == "py2" and self._only_python_3_supported():
             msg = (
@@ -161,7 +155,7 @@ class TensorFlow(Framework):
             )
             raise AttributeError(msg)
 
-        if self._only_legacy_mode_supported() and self.image_name is None:
+        if self.image_name is None and self._only_legacy_mode_supported():
             legacy_image_uri = fw.create_image_uri(
                 self.sagemaker_session.boto_region_name,
                 "tensorflow",
