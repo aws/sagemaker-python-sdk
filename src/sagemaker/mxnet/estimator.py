@@ -159,6 +159,18 @@ class MXNet(Framework):
             enabled = distributions["parameter_server"].get("enabled", False)
             self._hyperparameters[self.LAUNCH_PS_ENV_NAME] = enabled
 
+        if "mpi" in self.distributions:
+            mpi_dict = self.distributions["mpi"]
+            mpi_enabled = mpi_dict.get("enabled", False)
+            additional_hyperparameters[self.LAUNCH_MPI_ENV_NAME] = mpi_enabled
+
+            if mpi_dict.get("processes_per_host"):
+                additional_hyperparameters[self.MPI_NUM_PROCESSES_PER_HOST] = mpi_dict.get(
+                "processes_per_host")
+
+                additional_hyperparameters[self.MPI_CUSTOM_MPI_OPTIONS] = mpi_dict.get(
+                "custom_mpi_options", "")
+
     def create_model(
         self,
         model_server_workers=None,
