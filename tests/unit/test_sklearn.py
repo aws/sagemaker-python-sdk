@@ -574,6 +574,35 @@ def test_estimator_py2_warning(warning, sagemaker_session):
     warning.assert_called_with(estimator.__framework_name__, defaults.LATEST_PY2_VERSION)
 
 
+@patch("sagemaker.sklearn.estimator.later_framework_version_warning")
+def test_estimator_later_framework_version_warning(warning, sagemaker_session):
+    estimator = SKLearn(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        train_instance_count=INSTANCE_COUNT,
+        train_instance_type=INSTANCE_TYPE,
+    )
+
+    assert estimator.framework_version == defaults.SKLEARN_VERSION
+    warning.assert_called_with(defaults.SKLEARN_LATEST_VERSION)
+
+
+@patch("sagemaker.sklearn.estimator.get_unsupported_framework_version_error")
+def test_estimator_throws_error_for_unsupported_version(error, sagemaker_session):
+    with pytest.raises(ValueError):
+        estimator = SKLearn(
+            entry_point=SCRIPT_PATH,
+            role=ROLE,
+            sagemaker_session=sagemaker_session,
+            train_instance_count=INSTANCE_COUNT,
+            train_instance_type=INSTANCE_TYPE,
+            framework_version="foo",
+        )
+        assert estimator.framework_version not in defaults.SKLEARN_SUPPORTED_VERSIONS
+        error.assert_called_with(defaults.SKLEARN_NAME, "foo", defaults.SKLEARN_SUPPORT_VERSIONS)
+
+
 @patch("sagemaker.sklearn.model.python_deprecation_warning")
 def test_model_py2_warning(warning, sagemaker_session):
     source_dir = "s3://mybucket/source"
