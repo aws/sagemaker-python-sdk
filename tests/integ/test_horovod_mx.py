@@ -37,7 +37,7 @@ def test_horovod_local_mode(sagemaker_local_session, instances, processes, tmpdi
         entry_point=os.path.join(horovod_dir, "hvd_mnist_mxnet.py"),
         role="SageMakerRole",
         image_name="preprod-mxnet:1.6.0-gpu-py3",
-        train_instance_count=1,
+        train_instance_count=instances,
         train_instance_type="local_gpu",
         sagemaker_session=sagemaker_local_session,
         py_version=integ.PYTHON_VERSION,
@@ -66,3 +66,40 @@ def extract_files(output_path, tmpdir):
 def read_json(file, tmp):
     with open(os.path.join(tmp, file)) as f:
         return json.load(f)
+
+
+@pytest.mark.parametrize("instances, processes", [[2, 4]])
+def test_horovod(sagemaker_session, gpu_instance_type, tmpdir):
+    job_name = sagemaker.utils.unique_name_from_base("mx-horovod")
+    estimator = MXNet(
+        entry_point=os.path.join(horovod_dir, "hvd_mnist_mxnet.py"),
+        role="SageMakerRole",
+        image_name="preprod-mxnet:1.6.0-gpu-py3",
+        train_instance_count=instances,
+        train_instance_type=gpu_instance_type,
+        sagemaker_session=sagemaker_session,
+        py_version=integ.PYTHON_VERSION,
+        #output_path=output_path,
+        framework_version="1.6.0",
+        distributions={"mpi": {"enabled": True, "processes_per_host": processes}},
+    )
+
+    with timeout.timeout(minutes=integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
+        estimator.fit(job_name=job_name)
+
+        tmp = str(tmpdir)
+        extract_files_from_s3(estimator.model_data, tmp, sagemaker_session)
+
+        for rank in range(2):
+            assert read_json("rank-%s" % rank, tmp)["rank"] == rank
+
+
+def extract_files_from_s3(s3_url, tmpdir, sagemaker_session):
+    parsed_url = urlparse(s3_url)
+    s3 = boto3.resource("s3", region_name=sagemaker_session.boto_region_name)
+
+    model = os.path.join(tmpdir, "model")
+    s3.Bucket(parsed_url.netloc).download_file(parsed_url.path.lstrip("/"), model)
+
+    with tarfile.open(model, "r") as tar_file:
+        tar_file.extractall(tmpdir)
