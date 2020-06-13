@@ -226,6 +226,16 @@ def tf_version(request):
     return request.param
 
 
+@pytest.fixture(scope="module", params=["py2", "py3"])
+def tf_py_version(tf_version, request):
+    version = [int(val) for val in tf_version.split(".")]
+    if version < [1, 11]:
+        return "py2"
+    if version < [2, 2]:
+        return request.param
+    return "py37"
+
+
 @pytest.fixture(scope="module", params=["0.10.1", "0.10.1", "0.11", "0.11.0", "0.11.1"])
 def rl_coach_tf_version(request):
     return request.param
@@ -288,6 +298,23 @@ def tf_full_version(request):
         return request.param
     else:
         return tf_version
+
+
+@pytest.fixture(scope="module")
+def tf_full_py_version(tf_full_version, request):
+    """fixture to match tf_full_version
+
+    Fixture exists as such, since tf_full_version may be overridden --tf-full-version.
+    Otherwise, this would simply be py37 to match the latest version support.
+
+    TODO: Evaluate use of --tf-full-version with possible eye to remove and simplify code.
+    """
+    version = [int(val) for val in tf_full_version.split(".")]
+    if version < [1, 11]:
+        return "py2"
+    if tf_full_version in [TensorFlow._LATEST_1X_VERSION, LATEST_VERSION]:
+        return "py37"
+    return "py3"
 
 
 @pytest.fixture(scope="module", params=["1.15.0", "2.0.0"])
