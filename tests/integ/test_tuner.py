@@ -689,7 +689,7 @@ def test_tuning_tf_vpc_multi(sagemaker_session, cpu_instance_type):
 
 
 @pytest.mark.canary_quick
-def test_tuning_chainer(sagemaker_session, cpu_instance_type):
+def test_tuning_chainer(sagemaker_session, chainer_full_version, cpu_instance_type):
     with timeout(minutes=TUNING_DEFAULT_TIMEOUT_MINUTES):
         script_path = os.path.join(DATA_DIR, "chainer_mnist", "mnist.py")
         data_path = os.path.join(DATA_DIR, "chainer_mnist")
@@ -697,6 +697,7 @@ def test_tuning_chainer(sagemaker_session, cpu_instance_type):
         estimator = Chainer(
             entry_point=script_path,
             role="SageMakerRole",
+            framework_version=chainer_full_version,
             py_version=PYTHON_VERSION,
             train_instance_count=1,
             train_instance_type=cpu_instance_type,
