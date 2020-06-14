@@ -114,7 +114,7 @@ class PyTorchModel(FrameworkModel):
             :class:`~sagemaker.model.Model`.
         """
         validate_version_or_image_args(framework_version, py_version, image)
-        if py_version and py_version == "py2":
+        if py_version == "py2":
             logger.warning(
                 python_deprecation_warning(self.__framework_name__, defaults.LATEST_PY2_VERSION)
             )

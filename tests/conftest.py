@@ -21,14 +21,8 @@ import tests.integ
 from botocore.config import Config
 
 from sagemaker import Session, utils
-from sagemaker.chainer import Chainer
 from sagemaker.local import LocalSession
-from sagemaker.mxnet import MXNet
-from sagemaker.pytorch import PyTorch
 from sagemaker.rl import RLEstimator
-from sagemaker.sklearn.defaults import SKLEARN_VERSION
-from sagemaker.tensorflow import TensorFlow
-from sagemaker.tensorflow.defaults import LATEST_VERSION, LATEST_SERVING_VERSION
 
 DEFAULT_REGION = "us-west-2"
 CUSTOM_BUCKET_NAME_PREFIX = "sagemaker-custom-bucket"
@@ -44,15 +38,19 @@ NO_M4_REGIONS = [
 
 NO_T2_REGIONS = ["eu-north-1", "ap-east-1", "me-south-1"]
 
+# TODO: refactor handling of versions, repo, image uris, validations for all frameworks
+TENSORFLOW_LATEST_VERSION = "2.2.0"
+TENSORFLOW_LATEST_1X_VERSION = "1.15.2"
+
 
 def pytest_addoption(parser):
     parser.addoption("--sagemaker-client-config", action="store", default=None)
     parser.addoption("--sagemaker-runtime-config", action="store", default=None)
     parser.addoption("--boto-config", action="store", default=None)
-    parser.addoption("--chainer-full-version", action="store", default=Chainer.LATEST_VERSION)
-    parser.addoption("--mxnet-full-version", action="store", default=MXNet.LATEST_VERSION)
+    parser.addoption("--chainer-full-version", action="store", default="5.0.0")
+    parser.addoption("--mxnet-full-version", action="store", default="1.6.0")
     parser.addoption("--ei-mxnet-full-version", action="store", default="1.5.1")
-    parser.addoption("--pytorch-full-version", action="store", default=PyTorch.LATEST_VERSION)
+    parser.addoption("--pytorch-full-version", action="store", default="1.5.0")
     parser.addoption(
         "--rl-coach-mxnet-full-version",
         action="store",
@@ -64,10 +62,10 @@ def pytest_addoption(parser):
     parser.addoption(
         "--rl-ray-full-version", action="store", default=RLEstimator.RAY_LATEST_VERSION
     )
-    parser.addoption("--sklearn-full-version", action="store", default=SKLEARN_VERSION)
+    parser.addoption("--sklearn-full-version", action="store", default="0.20.0")
     parser.addoption("--tf-full-version", action="store")
     parser.addoption("--ei-tf-full-version", action="store")
-    parser.addoption("--xgboost-full-version", action="store", default=SKLEARN_VERSION)
+    parser.addoption("--xgboost-full-version", action="store", default="1.0-1")
 
 
 def pytest_configure(config):
@@ -291,7 +289,27 @@ def sklearn_full_version(request):
     return request.config.getoption("--sklearn-full-version")
 
 
-@pytest.fixture(scope="module", params=[TensorFlow._LATEST_1X_VERSION, LATEST_VERSION])
+@pytest.fixture(scope="module", params=[TENSORFLOW_LATEST_VERSION])
+def tf_latest_version(request):
+    return request.param
+
+
+@pytest.fixture(scope="module")
+def tf_latest_py_version():
+    return "py37"
+
+
+@pytest.fixture(scope="module", params=[TENSORFLOW_LATEST_1X_VERSION])
+def tf_latest_1x_version(request):
+    return request.param
+
+
+@pytest.fixture(scope="module")
+def tf_latest_serving_version():
+    return "2.1.0"
+
+
+@pytest.fixture(scope="module", params=[TENSORFLOW_LATEST_VERSION, TENSORFLOW_LATEST_1X_VERSION])
 def tf_full_version(request):
     tf_version = request.config.getoption("--tf-full-version")
     if tf_version is None:
@@ -301,7 +319,7 @@ def tf_full_version(request):
 
 
 @pytest.fixture(scope="module")
-def tf_full_py_version(tf_full_version, request):
+def tf_full_py_version(tf_full_version, tf_latest_version, tf_latest_1x_version):
     """fixture to match tf_full_version
 
     Fixture exists as such, since tf_full_version may be overridden --tf-full-version.
@@ -312,9 +330,16 @@ def tf_full_py_version(tf_full_version, request):
     version = [int(val) for val in tf_full_version.split(".")]
     if version < [1, 11]:
         return "py2"
-    if tf_full_version in [TensorFlow._LATEST_1X_VERSION, LATEST_VERSION]:
+    if tf_full_version in [tf_latest_version, tf_latest_1x_version]:
         return "py37"
     return "py3"
+
+
+@pytest.fixture(scope="module")
+def tf_serving_version(tf_full_version, tf_latest_version, tf_latest_serving_version):
+    if tf_full_version == tf_latest_version:
+        return tf_latest_serving_version
+    return tf_full_version
 
 
 @pytest.fixture(scope="module", params=["1.15.0", "2.0.0"])
@@ -384,10 +409,3 @@ def pytest_generate_tests(metafunc):
 @pytest.fixture(scope="module")
 def xgboost_full_version(request):
     return request.config.getoption("--xgboost-full-version")
-
-
-@pytest.fixture(scope="module")
-def tf_serving_version(tf_full_version):
-    if tf_full_version == LATEST_VERSION:
-        return LATEST_SERVING_VERSION
-    return tf_full_version

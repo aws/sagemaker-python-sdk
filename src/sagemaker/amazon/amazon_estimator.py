@@ -611,6 +611,8 @@ def get_image_uri(region_name, repo_name, repo_version=1):
     """Return algorithm image URI for the given AWS region, repository name, and
     repository version
 
+    TODO: consider refactoring version/repo validation into a module for all frameworks
+
     Args:
         region_name:
         repo_name:

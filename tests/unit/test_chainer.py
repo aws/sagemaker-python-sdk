@@ -91,7 +91,7 @@ def _get_full_cpu_image_uri_with_ei(version, py_version=PYTHON_VERSION):
 
 def _chainer_estimator(
     sagemaker_session,
-    framework_version=defaults.CHAINER_VERSION,
+    framework_version,
     train_instance_type=None,
     base_job_name=None,
     use_mpi=None,
@@ -202,13 +202,14 @@ def _create_train_job_with_additional_hyperparameters(version):
     }
 
 
-def test_additional_hyperparameters(sagemaker_session):
+def test_additional_hyperparameters(sagemaker_session, chainer_version):
     chainer = _chainer_estimator(
         sagemaker_session,
         use_mpi=True,
         num_processes=4,
         process_slots_per_host=10,
         additional_mpi_options="-x MY_ENVIRONMENT_VARIABLE",
+        framework_version=chainer_version,
     )
     assert bool(strtobool(chainer.hyperparameters()["sagemaker_use_mpi"]))
     assert int(chainer.hyperparameters()["sagemaker_num_processes"]) == 4
@@ -434,17 +435,18 @@ def test_model_prepare_container_def_accelerator_error(sagemaker_session):
         model.prepare_container_def(INSTANCE_TYPE, accelerator_type=ACCELERATOR_TYPE)
 
 
-def test_train_image_default(sagemaker_session):
+def test_train_image_default(sagemaker_session, chainer_version):
     chainer = Chainer(
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
         train_instance_count=INSTANCE_COUNT,
         train_instance_type=INSTANCE_TYPE,
+        framework_version=chainer_version,
         py_version=PYTHON_VERSION,
     )
 
-    assert _get_full_cpu_image_uri(defaults.CHAINER_VERSION) in chainer.train_image()
+    assert _get_full_cpu_image_uri(chainer_version) in chainer.train_image()
 
 
 def test_train_image_cpu_instances(sagemaker_session, chainer_version):
@@ -624,37 +626,9 @@ def test_model_py2_warning(warning, sagemaker_session):
     warning.assert_called_with(model.__framework_name__, defaults.LATEST_PY2_VERSION)
 
 
-@patch("sagemaker.chainer.estimator.empty_framework_version_warning")
-def test_empty_framework_version(warning, sagemaker_session):
-    estimator = Chainer(
-        entry_point=SCRIPT_PATH,
-        role=ROLE,
-        sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
-        framework_version=None,
-    )
-
-    assert estimator.framework_version == defaults.CHAINER_VERSION
-    warning.assert_called_with(defaults.CHAINER_VERSION, Chainer.LATEST_VERSION)
-
-
-@patch("sagemaker.chainer.model.empty_framework_version_warning")
-def test_model_empty_framework_version(warning, sagemaker_session):
-    model = ChainerModel(
-        MODEL_DATA,
-        role=ROLE,
-        entry_point=SCRIPT_PATH,
-        sagemaker_session=sagemaker_session,
-        framework_version=None,
-    )
-    assert model.framework_version == defaults.CHAINER_VERSION
-    warning.assert_called_with(defaults.CHAINER_VERSION, defaults.LATEST_VERSION)
-
-
-def test_custom_image_estimator_deploy(sagemaker_session):
+def test_custom_image_estimator_deploy(sagemaker_session, chainer_version):
     custom_image = "mycustomimage:latest"
-    chainer = _chainer_estimator(sagemaker_session)
+    chainer = _chainer_estimator(sagemaker_session, framework_version=chainer_version)
     chainer.fit(inputs="s3://mybucket/train", job_name="new_name")
     model = chainer.create_model(image=custom_image)
     assert model.image == custom_image

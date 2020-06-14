@@ -19,7 +19,6 @@ from sagemaker.estimator import Framework
 from sagemaker.fw_utils import (
     framework_name_from_image,
     framework_version_from_tag,
-    empty_framework_version_warning,
     python_deprecation_warning,
 )
 from sagemaker.chainer import defaults
@@ -39,8 +38,6 @@ class Chainer(Framework):
     _num_processes = "sagemaker_num_processes"
     _process_slots_per_host = "sagemaker_process_slots_per_host"
     _additional_mpi_options = "sagemaker_additional_mpi_options"
-
-    LATEST_VERSION = defaults.LATEST_VERSION
 
     def __init__(
         self,
@@ -126,11 +123,7 @@ class Chainer(Framework):
             :class:`~sagemaker.estimator.Framework` and
             :class:`~sagemaker.estimator.EstimatorBase`.
         """
-        if framework_version is None:
-            logger.warning(
-                empty_framework_version_warning(defaults.CHAINER_VERSION, self.LATEST_VERSION)
-            )
-        self.framework_version = framework_version or defaults.CHAINER_VERSION
+        self.framework_version = framework_version
 
         super(Chainer, self).__init__(
             entry_point, source_dir, hyperparameters, image_name=image_name, **kwargs

@@ -20,7 +20,7 @@ import pytest
 from mock import Mock
 from mock import patch
 
-from sagemaker.sklearn import defaults, SKLearn, SKLearnModel, SKLearnPredictor
+from sagemaker.sklearn import SKLearn, SKLearnModel, SKLearnPredictor
 from sagemaker.fw_utils import UploadedCode
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
@@ -82,11 +82,7 @@ def _get_full_cpu_image_uri(version):
 
 
 def _sklearn_estimator(
-    sagemaker_session,
-    framework_version=defaults.SKLEARN_VERSION,
-    train_instance_type=None,
-    base_job_name=None,
-    **kwargs
+    sagemaker_session, framework_version, train_instance_type=None, base_job_name=None, **kwargs
 ):
     return SKLearn(
         entry_point=SCRIPT_PATH,
@@ -423,7 +419,7 @@ def test_train_image_default(sagemaker_session, sklearn_version):
         train_instance_type=INSTANCE_TYPE,
     )
 
-    assert _get_full_cpu_image_uri(defaults.SKLEARN_VERSION) in sklearn.train_image()
+    assert _get_full_cpu_image_uri(sklearn_version) in sklearn.train_image()
 
 
 def test_train_image_cpu_instances(sagemaker_session, sklearn_version):
@@ -591,9 +587,9 @@ def test_model_py2_raises(sagemaker_session, sklearn_version):
         )
 
 
-def test_custom_image_estimator_deploy(sagemaker_session):
+def test_custom_image_estimator_deploy(sagemaker_session, sklearn_version):
     custom_image = "mycustomimage:latest"
-    sklearn = _sklearn_estimator(sagemaker_session)
+    sklearn = _sklearn_estimator(sagemaker_session, sklearn_version)
     sklearn.fit(inputs="s3://mybucket/train", job_name="new_name")
     model = sklearn.create_model(image=custom_image)
     assert model.image == custom_image

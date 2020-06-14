@@ -54,7 +54,9 @@ def efs_fsx_setup(sagemaker_session, ec2_instance_type):
     tests.integ.test_region() not in tests.integ.EFS_TEST_ENABLED_REGION,
     reason="EFS integration tests need to be fixed before running in all regions.",
 )
-def test_mnist_efs(efs_fsx_setup, sagemaker_session, cpu_instance_type):
+def test_mnist_efs(
+    efs_fsx_setup, sagemaker_session, cpu_instance_type, tf_latest_version, tf_latest_py_version
+):
     role = efs_fsx_setup["role_name"]
     subnets = [efs_fsx_setup["subnet_id"]]
     security_group_ids = efs_fsx_setup["security_group_ids"]
@@ -65,8 +67,8 @@ def test_mnist_efs(efs_fsx_setup, sagemaker_session, cpu_instance_type):
         train_instance_count=1,
         train_instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
-        framework_version=TensorFlow.LATEST_VERSION,
-        py_version=PY_VERSION,
+        framework_version=tf_latest_version,
+        py_version=tf_latest_py_version,
         subnets=subnets,
         security_group_ids=security_group_ids,
     )
@@ -93,7 +95,9 @@ def test_mnist_efs(efs_fsx_setup, sagemaker_session, cpu_instance_type):
     tests.integ.test_region() not in tests.integ.EFS_TEST_ENABLED_REGION,
     reason="EFS integration tests need to be fixed before running in all regions.",
 )
-def test_mnist_lustre(efs_fsx_setup, sagemaker_session, cpu_instance_type):
+def test_mnist_lustre(
+    efs_fsx_setup, sagemaker_session, cpu_instance_type, tf_latest_version, tf_latest_py_version
+):
     role = efs_fsx_setup["role_name"]
     subnets = [efs_fsx_setup["subnet_id"]]
     security_group_ids = efs_fsx_setup["security_group_ids"]
@@ -104,8 +108,8 @@ def test_mnist_lustre(efs_fsx_setup, sagemaker_session, cpu_instance_type):
         train_instance_count=1,
         train_instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
-        framework_version=TensorFlow.LATEST_VERSION,
-        py_version=PY_VERSION,
+        framework_version=tf_latest_version,
+        py_version=tf_latest_py_version,
         subnets=subnets,
         security_group_ids=security_group_ids,
     )
@@ -128,7 +132,9 @@ def test_mnist_lustre(efs_fsx_setup, sagemaker_session, cpu_instance_type):
     tests.integ.test_region() not in tests.integ.EFS_TEST_ENABLED_REGION,
     reason="EFS integration tests need to be fixed before running in all regions.",
 )
-def test_tuning_tf_efs(efs_fsx_setup, sagemaker_session, cpu_instance_type):
+def test_tuning_tf_efs(
+    efs_fsx_setup, sagemaker_session, cpu_instance_type, tf_latest_version, tf_latest_py_version
+):
     role = efs_fsx_setup["role_name"]
     subnets = [efs_fsx_setup["subnet_id"]]
     security_group_ids = efs_fsx_setup["security_group_ids"]
@@ -139,8 +145,8 @@ def test_tuning_tf_efs(efs_fsx_setup, sagemaker_session, cpu_instance_type):
         train_instance_count=1,
         train_instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
-        framework_version=TensorFlow.LATEST_VERSION,
-        py_version=PY_VERSION,
+        framework_version=tf_latest_version,
+        py_version=tf_latest_py_version,
         subnets=subnets,
         security_group_ids=security_group_ids,
     )
@@ -175,7 +181,9 @@ def test_tuning_tf_efs(efs_fsx_setup, sagemaker_session, cpu_instance_type):
     tests.integ.test_region() not in tests.integ.EFS_TEST_ENABLED_REGION,
     reason="EFS integration tests need to be fixed before running in all regions.",
 )
-def test_tuning_tf_lustre(efs_fsx_setup, sagemaker_session, cpu_instance_type):
+def test_tuning_tf_lustre(
+    efs_fsx_setup, sagemaker_session, cpu_instance_type, tf_latest_version, tf_latest_py_version
+):
     role = efs_fsx_setup["role_name"]
     subnets = [efs_fsx_setup["subnet_id"]]
     security_group_ids = efs_fsx_setup["security_group_ids"]
@@ -186,8 +194,8 @@ def test_tuning_tf_lustre(efs_fsx_setup, sagemaker_session, cpu_instance_type):
         train_instance_count=1,
         train_instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
-        framework_version=TensorFlow.LATEST_VERSION,
-        py_version=PY_VERSION,
+        framework_version=tf_latest_version,
+        py_version=tf_latest_py_version,
         subnets=subnets,
         security_group_ids=security_group_ids,
     )

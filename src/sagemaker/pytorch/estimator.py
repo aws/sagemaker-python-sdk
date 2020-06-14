@@ -35,8 +35,6 @@ class PyTorch(Framework):
 
     __framework_name__ = "pytorch"
 
-    LATEST_VERSION = defaults.LATEST_VERSION
-
     def __init__(
         self,
         entry_point,

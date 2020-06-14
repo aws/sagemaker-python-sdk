@@ -38,8 +38,6 @@ class MXNet(Framework):
     __framework_name__ = "mxnet"
     _LOWEST_SCRIPT_MODE_VERSION = ["1", "3"]
 
-    LATEST_VERSION = defaults.LATEST_VERSION
-
     def __init__(
         self,
         entry_point,
@@ -115,7 +113,7 @@ class MXNet(Framework):
             :class:`~sagemaker.estimator.EstimatorBase`.
         """
         validate_version_or_image_args(framework_version, py_version, image_name)
-        if py_version and py_version == "py2":
+        if py_version == "py2":
             logger.warning(
                 python_deprecation_warning(self.__framework_name__, defaults.LATEST_PY2_VERSION)
             )

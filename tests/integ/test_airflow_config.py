@@ -40,7 +40,6 @@ from sagemaker.mxnet import MXNet
 from sagemaker.pytorch.estimator import PyTorch
 from sagemaker.sklearn import SKLearn
 from sagemaker.tensorflow import TensorFlow
-from sagemaker.xgboost.defaults import XGBOOST_LATEST_VERSION
 from sagemaker.workflow import airflow as sm_airflow
 from sagemaker.utils import sagemaker_timestamp
 
@@ -550,7 +549,9 @@ def test_sklearn_airflow_config_uploads_data_source_to_s3(
 
 
 @pytest.mark.canary_quick
-def test_tf_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_instance_type):
+def test_tf_airflow_config_uploads_data_source_to_s3(
+    sagemaker_session, cpu_instance_type, tf_latest_version, tf_latest_py_version
+):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         tf = TensorFlow(
             image_name=get_image_uri(
@@ -561,8 +562,8 @@ def test_tf_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_inst
             train_instance_count=SINGLE_INSTANCE_COUNT,
             train_instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
-            framework_version=TensorFlow.LATEST_VERSION,
-            py_version="py37",  # only version available with 2.2.0
+            framework_version=tf_latest_version,
+            py_version=tf_latest_py_version,
             metric_definitions=[
                 {"Name": "train:global_steps", "Regex": r"global_step\/sec:\s(.*)"}
             ],
@@ -583,11 +584,13 @@ def test_tf_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_inst
 
 @pytest.mark.canary_quick
 @pytest.mark.skipif(PYTHON_VERSION == "py2", reason="XGBoost container does not support Python 2.")
-def test_xgboost_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_instance_type):
+def test_xgboost_airflow_config_uploads_data_source_to_s3(
+    sagemaker_session, cpu_instance_type, xgboost_full_version
+):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         xgboost = XGBoost(
             entry_point=os.path.join(DATA_DIR, "dummy_script.py"),
-            framework_version=XGBOOST_LATEST_VERSION,
+            framework_version=xgboost_full_version,
             role=ROLE,
             sagemaker_session=sagemaker_session,
             train_instance_type=cpu_instance_type,
