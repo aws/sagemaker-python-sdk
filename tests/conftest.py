@@ -336,10 +336,3 @@ def pytest_generate_tests(metafunc):
 @pytest.fixture(scope="module")
 def xgboost_full_version(request):
     return request.config.getoption("--xgboost-full-version")
-
-
-@pytest.fixture(scope="module")
-def tf_serving_version(tf_full_version):
-    if tf_full_version == LATEST_VERSION:
-        return LATEST_SERVING_VERSION
-    return tf_full_version
