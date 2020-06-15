@@ -100,7 +100,7 @@ def test_attach_deploy(sagemaker_session, chainer_full_version, cpu_instance_typ
 
 
 @pytest.mark.local_mode
-def test_deploy_model(chainer_local_training_job, sagemaker_local_session):
+def test_deploy_model(chainer_local_training_job, sagemaker_local_session, chainer_full_version):
     script_path = os.path.join(DATA_DIR, "chainer_mnist", "mnist.py")
 
     model = ChainerModel(
@@ -108,6 +108,8 @@ def test_deploy_model(chainer_local_training_job, sagemaker_local_session):
         "SageMakerRole",
         entry_point=script_path,
         sagemaker_session=sagemaker_local_session,
+        framework_version=chainer_full_version,
+        py_version=PYTHON_VERSION,
     )
 
     predictor = model.deploy(1, "local")
