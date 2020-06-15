@@ -248,7 +248,7 @@ def test_auto_ml_additional_optional_params(sagemaker_session):
         tags=TAGS,
     )
     inputs = DEFAULT_S3_INPUT_DATA
-    auto_ml.fit(inputs, job_name=JOB_NAME)
+    auto_ml.fit(inputs, job_name=JOB_NAME, wait=False, logs=True)
     sagemaker_session.auto_ml.assert_called_once()
     _, args = sagemaker_session.auto_ml.call_args
 
