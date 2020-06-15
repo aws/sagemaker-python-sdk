@@ -35,7 +35,88 @@ If you are executing this pip install command in a notebook, make sure to restar
 Changes
 *******
 
-To see what changes have been made, see the `CHANGELOG <https://github.com/aws/sagemaker-python-sdk/blob/zwei/CHANGELOG.md>`_.
+This section is for major changes that may require updates to your SageMaker Python SDK code.
+You can also see what changes have been made in the `CHANGELOG <https://github.com/aws/sagemaker-python-sdk/blob/zwei/CHANGELOG.md>`_.
+
+Require ``framework_version`` and ``py_version`` for Frameworks
+===============================================================
+
+Framework estimator and model classes now require ``framework_version`` and ``py_version`` instead of supplying defaults,
+unless an image URI is explicitly supplied.
+
+For example:
+
+.. code:: python
+
+    from sagemaker.tensorflow import TensorFlow
+
+    TensorFlow(
+        entry_point="script.py",
+        framework_version="2.2.0",  # now required
+        py_version="py37",  # now required
+        role="my-role",
+        train_instance_type="ml.m5.xlarge",
+        train_instance_count=1,
+    )
+
+    from sagemaker.mxnet import MXNetModel
+
+    MXNetModel(
+        model_data="s3://bucket/model.tar.gz",
+        role="my-role",
+        entry_point="inference.py",
+        framework_version="1.6.0",  # now required
+        py_version="py3",  # now required
+    )
+
+Deprecate Legacy TensorFlow
+===========================
+
+TensorFlow versions 1.4-1.10 and some variations of versions 1.11-1.12
+(see `What Constitutes "Legacy TensorFlow Support" <frameworks/tensorflow/upgrade_from_legacy.html#what-constitutes-legacy-tensorflow-support>`_)
+are no longer natively supported by the SageMaker Python SDK.
+
+To use those versions of TensorFlow, you must specify the Docker image URI explicitly,
+and configure settings via hyperparameters or environment variables rather than using SDK parameters.
+For more information, see `Upgrade from Legacy TensorFlow Support <frameworks/tensorflow/upgrade_from_legacy.html>`_.
+
+Parameter Changes for ``sagemaker.model.Model``
+===============================================
+
+The parameter order for :class:`sagemaker.model.Model` changed: instead of ``model_data`` being first, ``image`` now is first.
+As a result, ``model_data`` has now been made into an optional parameter.
+
+If you are using the :class:`sagemaker.model.Model` class, your code should be changed as follows:
+
+.. code:: python
+
+    # v1.x
+    Model("s3://bucket/path/model.tar.gz", "my-image:latest")
+
+    # v2.0 and later
+    Model("my-image:latest", model_data="s3://bucket/path/model.tar.gz")
+
+Dependency Changes
+==================
+
+SciPy
+-----
+
+SciPy is no longer a required dependency of the SageMaker Python SDK.
+
+If you use :func:`sagemaker.amazon.common.write_spmatrix_to_sparse_tensor` and
+don't already install SciPy in your environment, you can use our ``scipy`` installation target:
+
+.. code:: bash
+
+    pip install sagemaker[scipy]
+
+TensorFlow
+----------
+
+The ``tensorflow`` installation target has been removed, as it is no longer needed for any SageMaker Python SDK functionality.
+
+If you want to install TensorFlow, see `the TensorFlow documentation <https://www.tensorflow.org/install>`_.
 
 *******************************
 Automatically Upgrade Your Code
@@ -84,3 +165,8 @@ TensorFlow Serving
 ------------------
 
 If you are using the ``sagemaker.tensorflow.serving.Model`` class, the tool does not take care of adding a framework version or changing it to ``sagemaker.tensorflow.TensorFlowModel``.
+
+``sagemaker.model.Model``
+-------------------------
+
+If you are using the :class:`sagemaker.model.Model` class, the tool does not take care of switching the order between ``model_data`` and ``image``.
