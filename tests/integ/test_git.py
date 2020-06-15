@@ -84,7 +84,7 @@ def test_github(sagemaker_local_session):
 
 @pytest.mark.local_mode
 @pytest.mark.skip("needs a secure authentication approach")
-def test_private_github(sagemaker_local_session):
+def test_private_github(sagemaker_local_session, mxnet_full_version):
     script_path = "mnist.py"
     data_path = os.path.join(DATA_DIR, "mxnet_mnist")
     git_config = {
@@ -102,7 +102,7 @@ def test_private_github(sagemaker_local_session):
         role="SageMakerRole",
         source_dir=source_dir,
         dependencies=dependencies,
-        framework_version=MXNet.LATEST_VERSION,
+        framework_version=mxnet_full_version,
         py_version=PYTHON_VERSION,
         train_instance_count=1,
         train_instance_type="local",
@@ -222,7 +222,7 @@ def test_github_with_ssh_passphrase_not_configured(sagemaker_local_session, skle
 
 @pytest.mark.local_mode
 @pytest.mark.skip("needs a secure authentication approach")
-def test_codecommit(sagemaker_local_session):
+def test_codecommit(sagemaker_local_session, mxnet_full_version):
     script_path = "mnist.py"
     data_path = os.path.join(DATA_DIR, "mxnet_mnist")
     git_config = {
@@ -238,7 +238,7 @@ def test_codecommit(sagemaker_local_session):
         role="SageMakerRole",
         source_dir=source_dir,
         dependencies=dependencies,
-        framework_version=MXNet.LATEST_VERSION,
+        framework_version=mxnet_full_version,
         py_version=PYTHON_VERSION,
         train_instance_count=1,
         train_instance_type="local",

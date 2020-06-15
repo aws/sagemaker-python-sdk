@@ -25,7 +25,6 @@ from sagemaker import KMeans, s3
 from sagemaker.mxnet import MXNet
 from sagemaker.pytorch import PyTorchModel
 from sagemaker.tensorflow import TensorFlow
-from sagemaker.tensorflow.defaults import LATEST_SERVING_VERSION
 from sagemaker.transformer import Transformer
 from sagemaker.estimator import Estimator
 from sagemaker.utils import unique_name_from_base
@@ -345,7 +344,9 @@ def test_transform_mxnet_logs(
         transformer.wait()
 
 
-def test_transform_tf_kms_network_isolation(sagemaker_session, cpu_instance_type, tmpdir):
+def test_transform_tf_kms_network_isolation(
+    sagemaker_session, cpu_instance_type, tmpdir, tf_serving_version
+):
     data_path = os.path.join(DATA_DIR, "tensorflow_mnist")
 
     tf = TensorFlow(
@@ -353,7 +354,7 @@ def test_transform_tf_kms_network_isolation(sagemaker_session, cpu_instance_type
         role="SageMakerRole",
         train_instance_count=1,
         train_instance_type=cpu_instance_type,
-        framework_version=LATEST_SERVING_VERSION,
+        framework_version=tf_serving_version,
         py_version=PYTHON_VERSION,
         sagemaker_session=sagemaker_session,
     )

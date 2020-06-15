@@ -37,7 +37,6 @@ from sagemaker.mxnet.estimator import MXNet
 from sagemaker.predictor import json_deserializer
 from sagemaker.pytorch import PyTorch
 from sagemaker.tensorflow import TensorFlow
-from sagemaker.tensorflow.defaults import LATEST_VERSION
 from sagemaker.tuner import (
     IntegerParameter,
     ContinuousParameter,
@@ -51,13 +50,6 @@ from sagemaker.tuner import (
 from sagemaker.utils import unique_name_from_base
 
 DATA_PATH = os.path.join(DATA_DIR, "iris", "data")
-
-PY37_SUPPORTED_FRAMEWORK_VERSION = [TensorFlow._LATEST_1X_VERSION, LATEST_VERSION]
-
-
-@pytest.fixture(scope="module")
-def py_version(tf_full_version):
-    return "py37" if tf_full_version in PY37_SUPPORTED_FRAMEWORK_VERSION else PYTHON_VERSION
 
 
 @pytest.fixture(scope="module")
@@ -598,7 +590,9 @@ def test_tuning_mxnet(sagemaker_session, mxnet_full_version, cpu_instance_type):
 
 
 @pytest.mark.canary_quick
-def test_tuning_tf_script_mode(sagemaker_session, cpu_instance_type, tf_full_version, py_version):
+def test_tuning_tf_script_mode(
+    sagemaker_session, cpu_instance_type, tf_full_version, tf_full_py_version
+):
     resource_path = os.path.join(DATA_DIR, "tensorflow_mnist")
     script_path = os.path.join(resource_path, "mnist.py")
 
@@ -608,8 +602,8 @@ def test_tuning_tf_script_mode(sagemaker_session, cpu_instance_type, tf_full_ver
         train_instance_count=1,
         train_instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
-        py_version=py_version,
         framework_version=tf_full_version,
+        py_version=tf_full_py_version,
     )
 
     hyperparameter_ranges = {"epochs": IntegerParameter(1, 2)}
@@ -639,60 +633,6 @@ def test_tuning_tf_script_mode(sagemaker_session, cpu_instance_type, tf_full_ver
         tuner.wait()
 
 
-@pytest.mark.canary_quick
-@pytest.mark.skipif(PYTHON_VERSION != "py2", reason="TensorFlow image supports only python 2.")
-def test_tuning_tf(sagemaker_session, cpu_instance_type):
-    with timeout(minutes=TUNING_DEFAULT_TIMEOUT_MINUTES):
-        script_path = os.path.join(DATA_DIR, "iris", "iris-dnn-classifier.py")
-
-        estimator = TensorFlow(
-            entry_point=script_path,
-            role="SageMakerRole",
-            training_steps=1,
-            evaluation_steps=1,
-            hyperparameters={"input_tensor_name": "inputs"},
-            train_instance_count=1,
-            train_instance_type=cpu_instance_type,
-            sagemaker_session=sagemaker_session,
-        )
-
-        inputs = sagemaker_session.upload_data(path=DATA_PATH, key_prefix="integ-test-data/tf_iris")
-        hyperparameter_ranges = {"learning_rate": ContinuousParameter(0.05, 0.2)}
-
-        objective_metric_name = "loss"
-        metric_definitions = [{"Name": "loss", "Regex": "loss = ([0-9\\.]+)"}]
-
-        tuner = HyperparameterTuner(
-            estimator,
-            objective_metric_name,
-            hyperparameter_ranges,
-            metric_definitions,
-            objective_type="Minimize",
-            max_jobs=2,
-            max_parallel_jobs=2,
-        )
-
-        tuning_job_name = unique_name_from_base("tune-tf", max_length=32)
-        tuner.fit(inputs, job_name=tuning_job_name)
-
-        print("Started hyperparameter tuning job with name:" + tuning_job_name)
-
-        time.sleep(15)
-        tuner.wait()
-
-    best_training_job = tuner.best_training_job()
-    with timeout_and_delete_endpoint_by_name(best_training_job, sagemaker_session):
-        predictor = tuner.deploy(1, cpu_instance_type)
-
-        features = [6.4, 3.2, 4.5, 1.5]
-        dict_result = predictor.predict({"inputs": features})
-        print("predict result: {}".format(dict_result))
-        list_result = predictor.predict(features)
-        print("predict result: {}".format(list_result))
-
-        assert dict_result == list_result
-
-
 @pytest.mark.skipif(PYTHON_VERSION != "py2", reason="TensorFlow image supports only python 2.")
 def test_tuning_tf_vpc_multi(sagemaker_session, cpu_instance_type):
     """Test Tensorflow multi-instance using the same VpcConfig for training and inference"""
@@ -718,6 +658,8 @@ def test_tuning_tf_vpc_multi(sagemaker_session, cpu_instance_type):
         subnets=subnet_ids,
         security_group_ids=[security_group_id],
         encrypt_inter_container_traffic=True,
+        framework_version="1.11",
+        py_version=PYTHON_VERSION,
     )
 
     inputs = sagemaker_session.upload_data(path=DATA_PATH, key_prefix="integ-test-data/tf_iris")
@@ -747,7 +689,7 @@ def test_tuning_tf_vpc_multi(sagemaker_session, cpu_instance_type):
 
 
 @pytest.mark.canary_quick
-def test_tuning_chainer(sagemaker_session, cpu_instance_type):
+def test_tuning_chainer(sagemaker_session, chainer_full_version, cpu_instance_type):
     with timeout(minutes=TUNING_DEFAULT_TIMEOUT_MINUTES):
         script_path = os.path.join(DATA_DIR, "chainer_mnist", "mnist.py")
         data_path = os.path.join(DATA_DIR, "chainer_mnist")
@@ -755,6 +697,7 @@ def test_tuning_chainer(sagemaker_session, cpu_instance_type):
         estimator = Chainer(
             entry_point=script_path,
             role="SageMakerRole",
+            framework_version=chainer_full_version,
             py_version=PYTHON_VERSION,
             train_instance_count=1,
             train_instance_type=cpu_instance_type,

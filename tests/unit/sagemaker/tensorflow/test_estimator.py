@@ -21,7 +21,7 @@ from packaging import version
 import pytest
 
 from sagemaker.estimator import _TrainingJob
-from sagemaker.tensorflow import defaults, model, TensorFlow
+from sagemaker.tensorflow import model, TensorFlow
 from tests.unit import DATA_DIR
 
 SCRIPT_FILE = "dummy_script.py"
@@ -144,7 +144,8 @@ def _create_train_job(tf_version, horovod=False, ps=False, py_version="py2"):
 
 def _build_tf(
     sagemaker_session,
-    framework_version=defaults.TF_VERSION,
+    framework_version=None,
+    py_version=None,
     train_instance_type=None,
     base_job_name=None,
     **kwargs
@@ -152,6 +153,7 @@ def _build_tf(
     return TensorFlow(
         entry_point=SCRIPT_PATH,
         framework_version=framework_version,
+        py_version=py_version,
         role=ROLE,
         sagemaker_session=sagemaker_session,
         train_instance_count=INSTANCE_COUNT,
@@ -161,7 +163,7 @@ def _build_tf(
     )
 
 
-def test_create_model(sagemaker_session, tf_version):
+def test_create_model(sagemaker_session, tf_version, tf_py_version):
     if version.Version(tf_version) < version.Version("1.11"):
         pytest.skip(
             "Legacy TF version requires explicit image URI, and "
@@ -172,11 +174,12 @@ def test_create_model(sagemaker_session, tf_version):
     source_dir = "s3://mybucket/source"
     tf = TensorFlow(
         entry_point=SCRIPT_PATH,
+        framework_version=tf_version,
+        py_version=tf_py_version,
         role=ROLE,
         sagemaker_session=sagemaker_session,
         train_instance_count=INSTANCE_COUNT,
         train_instance_type=INSTANCE_TYPE,
-        framework_version=tf_version,
         container_log_level=container_log_level,
         base_job_name="job",
         source_dir=source_dir,
@@ -198,12 +201,20 @@ def test_create_model(sagemaker_session, tf_version):
     assert model.enable_network_isolation()
 
 
-def test_create_model_with_optional_params(sagemaker_session):
+def test_create_model_with_optional_params(sagemaker_session, tf_version, tf_py_version):
+    if version.Version(tf_version) < version.Version("1.11"):
+        pytest.skip(
+            "Legacy TF version requires explicit image URI, and "
+            "this logic is tested in test_create_model_with_custom_image."
+        )
+
     container_log_level = '"logging.INFO"'
     source_dir = "s3://mybucket/source"
     enable_cloudwatch_metrics = "true"
     tf = TensorFlow(
         entry_point=SCRIPT_PATH,
+        framework_version=tf_version,
+        py_version=tf_py_version,
         role=ROLE,
         sagemaker_session=sagemaker_session,
         train_instance_count=INSTANCE_COUNT,
@@ -259,12 +270,22 @@ def test_create_model_with_custom_image(sagemaker_session):
 
 
 @patch("sagemaker.tensorflow.estimator.TensorFlow.create_model")
-def test_transformer_creation_with_optional_args(create_model, sagemaker_session):
+def test_transformer_creation_with_optional_args(
+    create_model, sagemaker_session, tf_version, tf_py_version
+):
+    if version.Version(tf_version) < version.Version("1.11"):
+        pytest.skip(
+            "Legacy TF version requires explicit image URI, and "
+            "this logic is tested in test_create_model_with_custom_image."
+        )
+
     model = Mock()
     create_model.return_value = model
 
     tf = TensorFlow(
         entry_point=SCRIPT_PATH,
+        framework_version=tf_version,
+        py_version=tf_py_version,
         role=ROLE,
         sagemaker_session=sagemaker_session,
         train_instance_count=INSTANCE_COUNT,
@@ -329,12 +350,22 @@ def test_transformer_creation_with_optional_args(create_model, sagemaker_session
 
 
 @patch("sagemaker.tensorflow.estimator.TensorFlow.create_model")
-def test_transformer_creation_without_optional_args(create_model, sagemaker_session):
+def test_transformer_creation_without_optional_args(
+    create_model, sagemaker_session, tf_version, tf_py_version
+):
+    if version.Version(tf_version) < version.Version("1.11"):
+        pytest.skip(
+            "Legacy TF version requires explicit image URI, and "
+            "this logic is tested in test_create_model_with_custom_image."
+        )
+
     model = Mock()
     create_model.return_value = model
 
     tf = TensorFlow(
         entry_point=SCRIPT_PATH,
+        framework_version=tf_version,
+        py_version=tf_py_version,
         role=ROLE,
         sagemaker_session=sagemaker_session,
         train_instance_count=INSTANCE_COUNT,
@@ -368,7 +399,10 @@ def test_transformer_creation_without_optional_args(create_model, sagemaker_sess
 
 def test_script_mode_create_model(sagemaker_session):
     tf = _build_tf(
-        sagemaker_session=sagemaker_session, py_version="py3", enable_network_isolation=True
+        sagemaker_session=sagemaker_session,
+        framework_version="1.11",
+        py_version="py2",
+        enable_network_isolation=True,
     )
     tf._prepare_for_training()  # set output_path and job name as if training happened
 
@@ -391,12 +425,12 @@ def test_script_mode_create_model(sagemaker_session):
 def test_fit(time, strftime, sagemaker_session):
     tf = TensorFlow(
         entry_point=SCRIPT_FILE,
+        framework_version="1.11",
+        py_version="py2",
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        py_version="py3",
         train_instance_type=INSTANCE_TYPE,
         train_instance_count=1,
-        framework_version="1.11",
         source_dir=DATA_DIR,
     )
 
@@ -406,7 +440,7 @@ def test_fit(time, strftime, sagemaker_session):
     call_names = [c[0] for c in sagemaker_session.method_calls]
     assert call_names == ["train", "logs_for_job"]
 
-    expected_train_args = _create_train_job("1.11", py_version="py3")
+    expected_train_args = _create_train_job("1.11", py_version="py2")
     expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
 
     actual_train_args = sagemaker_session.method_calls[0][2]
@@ -419,12 +453,12 @@ def test_fit(time, strftime, sagemaker_session):
 def test_fit_ps(time, strftime, sagemaker_session):
     tf = TensorFlow(
         entry_point=SCRIPT_FILE,
+        framework_version="1.11",
+        py_version="py2",
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        py_version="py3",
         train_instance_type=INSTANCE_TYPE,
         train_instance_count=1,
-        framework_version="1.11",
         source_dir=DATA_DIR,
         distributions=DISTRIBUTION_ENABLED,
     )
@@ -435,7 +469,7 @@ def test_fit_ps(time, strftime, sagemaker_session):
     call_names = [c[0] for c in sagemaker_session.method_calls]
     assert call_names == ["train", "logs_for_job"]
 
-    expected_train_args = _create_train_job("1.11", ps=True, py_version="py3")
+    expected_train_args = _create_train_job("1.11", ps=True, py_version="py2")
     expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
     expected_train_args["hyperparameters"][TensorFlow.LAUNCH_PS_ENV_NAME] = json.dumps(True)
 
@@ -449,12 +483,12 @@ def test_fit_ps(time, strftime, sagemaker_session):
 def test_fit_mpi(time, strftime, sagemaker_session):
     tf = TensorFlow(
         entry_point=SCRIPT_FILE,
+        framework_version="1.11",
+        py_version="py2",
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        py_version="py3",
         train_instance_type=INSTANCE_TYPE,
         train_instance_count=1,
-        framework_version="1.11",
         source_dir=DATA_DIR,
         distributions=DISTRIBUTION_MPI_ENABLED,
     )
@@ -465,7 +499,7 @@ def test_fit_mpi(time, strftime, sagemaker_session):
     call_names = [c[0] for c in sagemaker_session.method_calls]
     assert call_names == ["train", "logs_for_job"]
 
-    expected_train_args = _create_train_job("1.11", horovod=True, py_version="py3")
+    expected_train_args = _create_train_job("1.11", horovod=True, py_version="py2")
     expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
     expected_train_args["hyperparameters"][TensorFlow.LAUNCH_MPI_ENV_NAME] = json.dumps(True)
     expected_train_args["hyperparameters"][TensorFlow.MPI_NUM_PROCESSES_PER_HOST] = json.dumps(2)
@@ -477,16 +511,18 @@ def test_fit_mpi(time, strftime, sagemaker_session):
     assert actual_train_args == expected_train_args
 
 
-def test_hyperparameters_no_model_dir(sagemaker_session):
-    tf = _build_tf(sagemaker_session, model_dir=False)
+def test_hyperparameters_no_model_dir(sagemaker_session, tf_version, tf_py_version):
+    if version.Version(tf_version) < version.Version("1.11"):
+        pytest.skip(
+            "Legacy TF version requires explicit image URI, and "
+            "this logic is tested in test_create_model_with_custom_image."
+        )
+
+    tf = _build_tf(
+        sagemaker_session, framework_version=tf_version, py_version=tf_py_version, model_dir=False
+    )
     hyperparameters = tf.hyperparameters()
     assert "model_dir" not in hyperparameters
-
-
-def test_train_image_default(sagemaker_session):
-    tf = _build_tf(sagemaker_session)
-    expected_image = _image_uri(defaults.TF_VERSION, "py2")
-    assert expected_image == tf.train_image()
 
 
 def test_train_image_custom_image(sagemaker_session):
