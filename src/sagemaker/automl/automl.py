@@ -13,6 +13,7 @@
 """A class for SageMaker AutoML Jobs."""
 from __future__ import absolute_import
 
+import logging
 from six import string_types
 
 from sagemaker import Model, PipelineModel
@@ -20,6 +21,8 @@ from sagemaker.automl.candidate_estimator import CandidateEstimator
 from sagemaker.job import _Job
 from sagemaker.session import Session
 from sagemaker.utils import name_from_base
+
+logger = logging.getLogger("sagemaker")
 
 
 class AutoML(object):
@@ -83,8 +86,11 @@ class AutoML(object):
             job_name (str): Training job name. If not specified, the estimator generates
                 a default job name, based on the training image name and current timestamp.
         """
-        if not wait:
+        if not wait and logs:
             logs = False
+            logger.warning(
+                "logs will be set to False. logs is only meaningful when wait is True."
+            )
 
         # upload data for users if provided local path
         # validations are done in _Job._format_inputs_to_input_config

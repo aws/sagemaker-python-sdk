@@ -228,7 +228,7 @@ def test_auto_ml_only_one_of_problem_type_and_job_objective_provided(sagemaker_s
         )
 
 
-def test_auto_ml_additional_optional_params(sagemaker_session):
+def test_auto_ml_additional_optional_params(sagemaker_session, caplog):
     auto_ml = AutoML(
         role=ROLE,
         target_attribute_name=TARGET_ATTRIBUTE_NAME,
@@ -282,6 +282,7 @@ def test_auto_ml_additional_optional_params(sagemaker_session):
         "generate_candidate_definitions_only": GENERATE_CANDIDATE_DEFINITIONS_ONLY,
         "tags": TAGS,
     }
+    assert "logs will be set to False. logs is only meaningful when wait is True." in caplog.text
 
 
 @patch("time.strftime", return_value=TIMESTAMP)
