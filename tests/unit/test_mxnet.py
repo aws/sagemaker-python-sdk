@@ -181,10 +181,13 @@ def _neo_inference_image(mxnet_version):
     )
 
 
+@patch("sagemaker.utils.name_from_base")
 @patch("sagemaker.utils.create_tar_file", MagicMock())
-def test_create_model(sagemaker_session, mxnet_version, mxnet_py_version):
+def test_create_model(name_from_base, sagemaker_session, mxnet_version, mxnet_py_version):
     container_log_level = '"logging.INFO"'
     source_dir = "s3://mybucket/source"
+    base_job_name = "job"
+
     mx = MXNet(
         entry_point=SCRIPT_PATH,
         framework_version=mxnet_version,
@@ -194,12 +197,14 @@ def test_create_model(sagemaker_session, mxnet_version, mxnet_py_version):
         train_instance_count=INSTANCE_COUNT,
         train_instance_type=INSTANCE_TYPE,
         container_log_level=container_log_level,
-        base_job_name="job",
+        base_job_name=base_job_name,
         source_dir=source_dir,
     )
 
-    job_name = "new_name"
-    mx.fit(inputs="s3://mybucket/train", job_name=job_name)
+    mx.fit(inputs="s3://mybucket/train", job_name="new_name")
+
+    model_name = "model_name"
+    name_from_base.return_value = model_name
     model = mx.create_model()
 
     assert model.sagemaker_session == sagemaker_session
@@ -207,11 +212,13 @@ def test_create_model(sagemaker_session, mxnet_version, mxnet_py_version):
     assert model.py_version == mxnet_py_version
     assert model.entry_point == SCRIPT_PATH
     assert model.role == ROLE
-    assert model.name == job_name
+    assert model.name == model_name
     assert model.container_log_level == container_log_level
     assert model.source_dir == source_dir
     assert model.image is None
     assert model.vpc_config is None
+
+    name_from_base.assert_called_with(base_job_name)
 
 
 def test_create_model_with_optional_params(sagemaker_session, mxnet_version, mxnet_py_version):
@@ -255,10 +262,13 @@ def test_create_model_with_optional_params(sagemaker_session, mxnet_version, mxn
     assert model.name == model_name
 
 
-def test_create_model_with_custom_image(sagemaker_session):
+@patch("sagemaker.utils.name_from_base")
+def test_create_model_with_custom_image(name_from_base, sagemaker_session):
     container_log_level = '"logging.INFO"'
     source_dir = "s3://mybucket/source"
     custom_image = "mxnet:2.0"
+    base_job_name = "job"
+
     mx = MXNet(
         entry_point=SCRIPT_PATH,
         framework_version="2.0",
@@ -269,21 +279,25 @@ def test_create_model_with_custom_image(sagemaker_session):
         train_instance_type=INSTANCE_TYPE,
         image_name=custom_image,
         container_log_level=container_log_level,
-        base_job_name="job",
+        base_job_name=base_job_name,
         source_dir=source_dir,
     )
 
-    job_name = "new_name"
     mx.fit(inputs="s3://mybucket/train", job_name="new_name")
+
+    model_name = "model_name"
+    name_from_base.return_value = model_name
     model = mx.create_model()
 
     assert model.sagemaker_session == sagemaker_session
     assert model.image == custom_image
     assert model.entry_point == SCRIPT_PATH
     assert model.role == ROLE
-    assert model.name == job_name
+    assert model.name == model_name
     assert model.container_log_level == container_log_level
     assert model.source_dir == source_dir
+
+    name_from_base.assert_called_with(base_job_name)
 
 
 @patch("sagemaker.utils.create_tar_file")

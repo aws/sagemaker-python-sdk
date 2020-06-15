@@ -231,9 +231,12 @@ def test_attach_with_additional_hyperparameters(
     assert estimator.additional_mpi_options == "-x MY_ENVIRONMENT_VARIABLE"
 
 
-def test_create_model(sagemaker_session, chainer_version, chainer_py_version):
+@patch("sagemaker.utils.name_from_base")
+def test_create_model(name_from_base, sagemaker_session, chainer_version, chainer_py_version):
     container_log_level = '"logging.INFO"'
     source_dir = "s3://mybucket/source"
+    base_job_name = "job"
+
     chainer = Chainer(
         entry_point=SCRIPT_PATH,
         role=ROLE,
@@ -243,12 +246,14 @@ def test_create_model(sagemaker_session, chainer_version, chainer_py_version):
         framework_version=chainer_version,
         container_log_level=container_log_level,
         py_version=chainer_py_version,
-        base_job_name="job",
+        base_job_name=base_job_name,
         source_dir=source_dir,
     )
 
-    job_name = "new_name"
-    chainer.fit(inputs="s3://mybucket/train", job_name=job_name)
+    chainer.fit(inputs="s3://mybucket/train", job_name="new_name")
+
+    model_name = "model_name"
+    name_from_base.return_value = model_name
     model = chainer.create_model()
 
     assert model.sagemaker_session == sagemaker_session
@@ -256,10 +261,12 @@ def test_create_model(sagemaker_session, chainer_version, chainer_py_version):
     assert model.py_version == chainer.py_version
     assert model.entry_point == SCRIPT_PATH
     assert model.role == ROLE
-    assert model.name == job_name
+    assert model.name == model_name
     assert model.container_log_level == container_log_level
     assert model.source_dir == source_dir
     assert model.vpc_config is None
+
+    name_from_base.assert_called_with(base_job_name)
 
 
 def test_create_model_with_optional_params(sagemaker_session, chainer_version, chainer_py_version):

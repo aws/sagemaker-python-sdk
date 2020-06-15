@@ -801,7 +801,7 @@ def test_deploy_default(tuner):
 
     tuner.sagemaker_session.create_model.assert_called_once()
     args = tuner.sagemaker_session.create_model.call_args[0]
-    assert args[0] == TRAINING_JOB_NAME
+    assert args[0].startswith(TRAINING_JOB_NAME)
     assert args[1] == ROLE
     assert args[2]["Image"] == IMAGE_NAME
     assert args[2]["ModelDataUrl"] == MODEL_DATA
@@ -840,7 +840,7 @@ def test_deploy_estimator_dict(tuner):
 
     tuner.sagemaker_session.create_model.assert_called_once()
     args = tuner.sagemaker_session.create_model.call_args[0]
-    assert args[0] == TRAINING_JOB_NAME
+    assert args[0].startswith(TRAINING_JOB_NAME)
     assert args[1] == ROLE
     assert args[2]["Image"] == IMAGE_NAME
     assert args[2]["ModelDataUrl"] == MODEL_DATA

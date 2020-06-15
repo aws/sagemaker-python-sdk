@@ -198,9 +198,12 @@ def test_create_model_with_network_isolation(upload, sagemaker_session, sklearn_
     assert model_values["ModelDataUrl"] == repacked_model_data
 
 
-def test_create_model_from_estimator(sagemaker_session, sklearn_version):
+@patch("sagemaker.utils.name_from_base")
+def test_create_model_from_estimator(name_from_base, sagemaker_session, sklearn_version):
     container_log_level = '"logging.INFO"'
     source_dir = "s3://mybucket/source"
+    base_job_name = "job"
+
     sklearn = SKLearn(
         entry_point=SCRIPT_PATH,
         role=ROLE,
@@ -209,13 +212,15 @@ def test_create_model_from_estimator(sagemaker_session, sklearn_version):
         framework_version=sklearn_version,
         container_log_level=container_log_level,
         py_version=PYTHON_VERSION,
-        base_job_name="job",
+        base_job_name=base_job_name,
         source_dir=source_dir,
         enable_network_isolation=True,
     )
 
-    job_name = "new_name"
-    sklearn.fit(inputs="s3://mybucket/train", job_name=job_name)
+    sklearn.fit(inputs="s3://mybucket/train", job_name="new_name")
+
+    model_name = "model_name"
+    name_from_base.return_value = model_name
     model = sklearn.create_model()
 
     assert model.sagemaker_session == sagemaker_session
@@ -223,11 +228,13 @@ def test_create_model_from_estimator(sagemaker_session, sklearn_version):
     assert model.py_version == sklearn.py_version
     assert model.entry_point == SCRIPT_PATH
     assert model.role == ROLE
-    assert model.name == job_name
+    assert model.name == model_name
     assert model.container_log_level == container_log_level
     assert model.source_dir == source_dir
     assert model.vpc_config is None
     assert model.enable_network_isolation()
+
+    name_from_base.assert_called_with(base_job_name)
 
 
 def test_create_model_with_optional_params(sagemaker_session, sklearn_version):

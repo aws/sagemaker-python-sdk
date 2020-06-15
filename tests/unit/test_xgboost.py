@@ -187,9 +187,12 @@ def test_create_model(sagemaker_session, xgboost_full_version):
     assert model_values["Image"] == default_image_uri
 
 
-def test_create_model_from_estimator(sagemaker_session, xgboost_version):
+@patch("sagemaker.utils.name_from_base")
+def test_create_model_from_estimator(name_from_base, sagemaker_session, xgboost_version):
     container_log_level = '"logging.INFO"'
     source_dir = "s3://mybucket/source"
+    base_job_name = "job"
+
     xgboost = XGBoost(
         entry_point=SCRIPT_PATH,
         role=ROLE,
@@ -199,12 +202,14 @@ def test_create_model_from_estimator(sagemaker_session, xgboost_version):
         framework_version=xgboost_version,
         container_log_level=container_log_level,
         py_version=PYTHON_VERSION,
-        base_job_name="job",
+        base_job_name=base_job_name,
         source_dir=source_dir,
     )
 
-    job_name = "new_name"
-    xgboost.fit(inputs="s3://mybucket/train", job_name=job_name)
+    xgboost.fit(inputs="s3://mybucket/train", job_name="new_name")
+
+    model_name = "model_name"
+    name_from_base.return_value = model_name
     model = xgboost.create_model()
 
     assert model.sagemaker_session == sagemaker_session
@@ -212,10 +217,12 @@ def test_create_model_from_estimator(sagemaker_session, xgboost_version):
     assert model.py_version == xgboost.py_version
     assert model.entry_point == SCRIPT_PATH
     assert model.role == ROLE
-    assert model.name == job_name
+    assert model.name == model_name
     assert model.container_log_level == container_log_level
     assert model.source_dir == source_dir
     assert model.vpc_config is None
+
+    name_from_base.assert_called_with(base_job_name)
 
 
 def test_create_model_with_optional_params(sagemaker_session, xgboost_full_version):

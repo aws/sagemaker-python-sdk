@@ -21,7 +21,7 @@ from packaging import version
 import pytest
 
 from sagemaker.estimator import _TrainingJob
-from sagemaker.tensorflow import model, TensorFlow
+from sagemaker.tensorflow import TensorFlow
 from tests.unit import DATA_DIR
 
 SCRIPT_FILE = "dummy_script.py"
@@ -163,7 +163,8 @@ def _build_tf(
     )
 
 
-def test_create_model(sagemaker_session, tf_version, tf_py_version):
+@patch("sagemaker.utils.name_from_base")
+def test_create_model(name_from_base, sagemaker_session, tf_version, tf_py_version):
     if version.Version(tf_version) < version.Version("1.11"):
         pytest.skip(
             "Legacy TF version requires explicit image URI, and "
@@ -171,9 +172,10 @@ def test_create_model(sagemaker_session, tf_version, tf_py_version):
         )
 
     container_log_level = '"logging.INFO"'
-    source_dir = "s3://mybucket/source"
+    base_job_name = "job"
     tf = TensorFlow(
         entry_point=SCRIPT_PATH,
+        source_dir="s3://mybucket/source",
         framework_version=tf_version,
         py_version=tf_py_version,
         role=ROLE,
@@ -181,20 +183,24 @@ def test_create_model(sagemaker_session, tf_version, tf_py_version):
         train_instance_count=INSTANCE_COUNT,
         train_instance_type=INSTANCE_TYPE,
         container_log_level=container_log_level,
-        base_job_name="job",
-        source_dir=source_dir,
+        base_job_name=base_job_name,
         enable_network_isolation=True,
     )
 
     job_name = "doing something"
     tf.fit(inputs="s3://mybucket/train", job_name=job_name)
+
+    model_name = "doing something else"
+    name_from_base.return_value = model_name
     model = tf.create_model()
+
+    name_from_base.assert_called_with("job")
 
     assert model.sagemaker_session == sagemaker_session
     assert model.framework_version == tf_version
     assert model.entry_point is None
     assert model.role == ROLE
-    assert model.name == job_name
+    assert model.name == model_name
     assert model._container_log_level == container_log_level
     assert model.source_dir is None
     assert model.vpc_config is None
@@ -350,8 +356,9 @@ def test_transformer_creation_with_optional_args(
 
 
 @patch("sagemaker.tensorflow.estimator.TensorFlow.create_model")
+@patch("sagemaker.utils.name_from_base")
 def test_transformer_creation_without_optional_args(
-    create_model, sagemaker_session, tf_version, tf_py_version
+    name_from_base, create_model, sagemaker_session, tf_version, tf_py_version
 ):
     if version.Version(tf_version) < version.Version("1.11"):
         pytest.skip(
@@ -359,9 +366,13 @@ def test_transformer_creation_without_optional_args(
             "this logic is tested in test_create_model_with_custom_image."
         )
 
+    model_name = "generated-model-name"
+    name_from_base.return_value = model_name
+
     model = Mock()
     create_model.return_value = model
 
+    base_job_name = "tensorflow"
     tf = TensorFlow(
         entry_point=SCRIPT_PATH,
         framework_version=tf_version,
@@ -370,16 +381,18 @@ def test_transformer_creation_without_optional_args(
         sagemaker_session=sagemaker_session,
         train_instance_count=INSTANCE_COUNT,
         train_instance_type=INSTANCE_TYPE,
+        base_job_name=base_job_name,
     )
     tf.latest_training_job = _TrainingJob(sagemaker_session, "some-job-name")
     tf.transformer(INSTANCE_COUNT, INSTANCE_TYPE)
 
+    name_from_base.assert_called_with(base_job_name)
     create_model.assert_called_with(
         role=ROLE,
         vpc_config_override="VPC_CONFIG_DEFAULT",
         entry_point=None,
         enable_network_isolation=False,
-        name=None,
+        name=model_name,
     )
     model.transformer.assert_called_with(
         INSTANCE_COUNT,
@@ -395,28 +408,6 @@ def test_transformer_creation_without_optional_args(
         tags=None,
         volume_kms_key=None,
     )
-
-
-def test_script_mode_create_model(sagemaker_session):
-    tf = _build_tf(
-        sagemaker_session=sagemaker_session,
-        framework_version="1.11",
-        py_version="py2",
-        enable_network_isolation=True,
-    )
-    tf._prepare_for_training()  # set output_path and job name as if training happened
-
-    tf_model = tf.create_model()
-
-    assert isinstance(tf_model, model.TensorFlowModel)
-
-    assert tf_model.model_data == tf.model_data
-    assert tf_model.role == tf.role
-    assert tf_model.name == tf._current_job_name
-    assert tf_model.container_log_level == tf.container_log_level
-    assert tf_model.framework_version == "1.11"
-    assert tf_model.sagemaker_session == sagemaker_session
-    assert tf_model.enable_network_isolation()
 
 
 @patch("time.strftime", return_value=TIMESTAMP)

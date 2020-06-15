@@ -157,9 +157,12 @@ def _create_train_job(version, py_version):
     }
 
 
-def test_create_model(sagemaker_session, pytorch_version, pytorch_py_version):
+@patch("sagemaker.utils.name_from_base")
+def test_create_model(name_from_base, sagemaker_session, pytorch_version, pytorch_py_version):
     container_log_level = '"logging.INFO"'
     source_dir = "s3://mybucket/source"
+    base_job_name = "job"
+
     pytorch = PyTorch(
         entry_point=SCRIPT_PATH,
         role=ROLE,
@@ -169,12 +172,14 @@ def test_create_model(sagemaker_session, pytorch_version, pytorch_py_version):
         framework_version=pytorch_version,
         py_version=pytorch_py_version,
         container_log_level=container_log_level,
-        base_job_name="job",
+        base_job_name=base_job_name,
         source_dir=source_dir,
     )
 
-    job_name = "new_name"
     pytorch.fit(inputs="s3://mybucket/train", job_name="new_name")
+
+    model_name = "model_name"
+    name_from_base.return_value = model_name
     model = pytorch.create_model()
 
     assert model.sagemaker_session == sagemaker_session
@@ -182,10 +187,12 @@ def test_create_model(sagemaker_session, pytorch_version, pytorch_py_version):
     assert model.py_version == pytorch_py_version
     assert model.entry_point == SCRIPT_PATH
     assert model.role == ROLE
-    assert model.name == job_name
+    assert model.name == model_name
     assert model.container_log_level == container_log_level
     assert model.source_dir == source_dir
     assert model.vpc_config is None
+
+    name_from_base.assert_called_with(base_job_name)
 
 
 def test_create_model_with_optional_params(sagemaker_session, pytorch_version, pytorch_py_version):
@@ -229,10 +236,13 @@ def test_create_model_with_optional_params(sagemaker_session, pytorch_version, p
     assert model.name == model_name
 
 
-def test_create_model_with_custom_image(sagemaker_session):
+@patch("sagemaker.utils.name_from_base")
+def test_create_model_with_custom_image(name_from_base, sagemaker_session):
     container_log_level = '"logging.INFO"'
     source_dir = "s3://mybucket/source"
     image = "pytorch:9000"
+    base_job_name = "job"
+
     pytorch = PyTorch(
         entry_point=SCRIPT_PATH,
         role=ROLE,
@@ -241,21 +251,25 @@ def test_create_model_with_custom_image(sagemaker_session):
         train_instance_type=INSTANCE_TYPE,
         container_log_level=container_log_level,
         image_name=image,
-        base_job_name="job",
+        base_job_name=base_job_name,
         source_dir=source_dir,
     )
 
-    job_name = "new_name"
     pytorch.fit(inputs="s3://mybucket/train", job_name="new_name")
+
+    model_name = "model_name"
+    name_from_base.return_value = model_name
     model = pytorch.create_model()
 
     assert model.sagemaker_session == sagemaker_session
     assert model.image == image
     assert model.entry_point == SCRIPT_PATH
     assert model.role == ROLE
-    assert model.name == job_name
+    assert model.name == model_name
     assert model.container_log_level == container_log_level
     assert model.source_dir == source_dir
+
+    name_from_base.assert_called_with(base_job_name)
 
 
 @patch("sagemaker.utils.create_tar_file", MagicMock())

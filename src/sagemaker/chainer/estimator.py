@@ -15,6 +15,7 @@ from __future__ import absolute_import
 
 import logging
 
+from sagemaker import utils
 from sagemaker.estimator import Framework
 from sagemaker.fw_utils import (
     framework_name_from_image,
@@ -210,7 +211,8 @@ class Chainer(Framework):
             kwargs["image"] = self.image_name
 
         if "name" not in kwargs:
-            kwargs["name"] = self._current_job_name
+            self._ensure_base_job_name()
+            kwargs["name"] = utils.name_from_base(self.base_job_name)
 
         return ChainerModel(
             self.model_data,

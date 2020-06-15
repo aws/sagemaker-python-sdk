@@ -274,7 +274,8 @@ class TensorFlow(Framework):
             kwargs["image"] = self.image_name
 
         if "name" not in kwargs:
-            kwargs["name"] = self._current_job_name
+            self._ensure_base_job_name()
+            kwargs["name"] = utils.name_from_base(self.base_job_name)
 
         if "enable_network_isolation" not in kwargs:
             kwargs["enable_network_isolation"] = self.enable_network_isolation()
@@ -441,9 +442,13 @@ class TensorFlow(Framework):
                 If not specified, this setting is taken from the estimator's
                 current configuration.
             model_name (str): Name to use for creating an Amazon SageMaker
-                model. If not specified, the name of the training job is used.
+                model. If not specified, the estimator generates a default job name
+                based on the training image name and current timestamp.
         """
         role = role or self.role
+
+        self._ensure_base_job_name()
+        model_name = model_name or utils.name_from_base(self.base_job_name)
 
         if self.latest_training_job is None:
             logging.warning(
@@ -451,7 +456,7 @@ class TensorFlow(Framework):
                 "this estimator is only used for building workflow config"
             )
             return Transformer(
-                model_name or self._current_job_name,
+                model_name,
                 instance_count,
                 instance_type,
                 strategy=strategy,

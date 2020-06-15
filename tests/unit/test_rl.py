@@ -162,7 +162,8 @@ def _create_train_job(toolkit, toolkit_version, framework):
     }
 
 
-def test_create_tf_model(sagemaker_session, rl_coach_tf_version):
+@patch("sagemaker.utils.name_from_base")
+def test_create_tf_model(name_from_base, sagemaker_session, rl_coach_tf_version):
     container_log_level = '"logging.INFO"'
     source_dir = "s3://mybucket/source"
     rl = RLEstimator(
@@ -178,9 +179,12 @@ def test_create_tf_model(sagemaker_session, rl_coach_tf_version):
         source_dir=source_dir,
     )
 
-    job_name = "new_name"
     rl.fit(inputs="s3://mybucket/train", job_name="new_name")
+
+    model_name = "model_name"
+    name_from_base.return_value = model_name
     model = rl.create_model()
+
     supported_versions = TOOLKIT_FRAMEWORK_VERSION_MAP[RLToolkit.COACH.value]
     framework_version = supported_versions[rl_coach_tf_version][RLFramework.TENSORFLOW.value]
 
@@ -188,12 +192,15 @@ def test_create_tf_model(sagemaker_session, rl_coach_tf_version):
     assert model.sagemaker_session == sagemaker_session
     assert model.framework_version == framework_version
     assert model.role == ROLE
-    assert model.name == job_name
+    assert model.name == model_name
     assert model._container_log_level == container_log_level
     assert model.vpc_config is None
 
+    name_from_base.assert_called_with("sagemaker-rl-tensorflow")
 
-def test_create_mxnet_model(sagemaker_session, rl_coach_mxnet_version):
+
+@patch("sagemaker.utils.name_from_base")
+def test_create_mxnet_model(name_from_base, sagemaker_session, rl_coach_mxnet_version):
     container_log_level = '"logging.INFO"'
     source_dir = "s3://mybucket/source"
     rl = RLEstimator(
@@ -209,9 +216,12 @@ def test_create_mxnet_model(sagemaker_session, rl_coach_mxnet_version):
         source_dir=source_dir,
     )
 
-    job_name = "new_name"
     rl.fit(inputs="s3://mybucket/train", job_name="new_name")
+
+    model_name = "model_name"
+    name_from_base.return_value = model_name
     model = rl.create_model()
+
     supported_versions = TOOLKIT_FRAMEWORK_VERSION_MAP[RLToolkit.COACH.value]
     framework_version = supported_versions[rl_coach_mxnet_version][RLFramework.MXNET.value]
 
@@ -221,10 +231,12 @@ def test_create_mxnet_model(sagemaker_session, rl_coach_mxnet_version):
     assert model.py_version == PYTHON_VERSION
     assert model.entry_point == SCRIPT_PATH
     assert model.role == ROLE
-    assert model.name == job_name
+    assert model.name == model_name
     assert model.container_log_level == container_log_level
     assert model.source_dir == source_dir
     assert model.vpc_config is None
+
+    name_from_base.assert_called_with("sagemaker-rl-mxnet")
 
 
 def test_create_model_with_optional_params(sagemaker_session, rl_coach_mxnet_version):
@@ -259,7 +271,8 @@ def test_create_model_with_optional_params(sagemaker_session, rl_coach_mxnet_ver
     assert model.name == model_name
 
 
-def test_create_model_with_custom_image(sagemaker_session):
+@patch("sagemaker.utils.name_from_base")
+def test_create_model_with_custom_image(name_from_base, sagemaker_session):
     container_log_level = '"logging.INFO"'
     source_dir = "s3://mybucket/source"
     image = "selfdrivingcars:9000"
@@ -276,6 +289,9 @@ def test_create_model_with_custom_image(sagemaker_session):
 
     job_name = "new_name"
     rl.fit(job_name=job_name)
+
+    model_name = "model_name"
+    name_from_base.return_value = model_name
     new_entry_point = "deploy_script.py"
     model = rl.create_model(entry_point=new_entry_point)
 
@@ -283,9 +299,11 @@ def test_create_model_with_custom_image(sagemaker_session):
     assert model.image == image
     assert model.entry_point == new_entry_point
     assert model.role == ROLE
-    assert model.name == job_name
+    assert model.name == model_name
     assert model.container_log_level == container_log_level
     assert model.source_dir == source_dir
+
+    name_from_base.assert_called_with("selfdrivingcars")
 
 
 @patch("sagemaker.utils.create_tar_file", MagicMock())
