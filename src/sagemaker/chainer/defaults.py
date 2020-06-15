@@ -13,12 +13,4 @@
 """Placeholder docstring"""
 from __future__ import absolute_import
 
-CHAINER_VERSION = "4.1.0"
-"""Default Chainer version for when the framework version is not specified.
-This is no longer updated so as to not break existing workflows.
-"""
-
-LATEST_VERSION = "5.0.0"
-"""The latest version of Chainer included in the SageMaker pre-built Docker images."""
-
 LATEST_PY2_VERSION = "5.0.0"

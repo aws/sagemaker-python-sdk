@@ -40,8 +40,6 @@ class Chainer(Framework):
     _process_slots_per_host = "sagemaker_process_slots_per_host"
     _additional_mpi_options = "sagemaker_additional_mpi_options"
 
-    LATEST_VERSION = defaults.LATEST_VERSION
-
     def __init__(
         self,
         entry_point,

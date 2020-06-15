@@ -18,7 +18,6 @@ import time
 import pytest
 import numpy
 
-from sagemaker.sklearn.defaults import SKLEARN_VERSION
 from sagemaker.sklearn import SKLearn
 from sagemaker.sklearn import SKLearnModel
 from sagemaker.utils import sagemaker_timestamp, unique_name_from_base
@@ -147,12 +146,15 @@ def test_deploy_model(
     reason="This test has always failed, but the failure was masked by a bug. "
     "This test should be fixed. Details in https://github.com/aws/sagemaker-python-sdk/pull/968"
 )
-def test_async_fit(sagemaker_session, cpu_instance_type):
+def test_async_fit(sagemaker_session, cpu_instance_type, sklearn_full_version):
     endpoint_name = "test-sklearn-attach-deploy-{}".format(sagemaker_timestamp())
 
     with timeout(minutes=5):
         training_job_name = _run_mnist_training_job(
-            sagemaker_session, cpu_instance_type, sklearn_full_version=SKLEARN_VERSION, wait=False
+            sagemaker_session,
+            cpu_instance_type,
+            sklearn_full_version=sklearn_full_version,
+            wait=False,
         )
 
         print("Waiting to re-attach to the training job: %s" % training_job_name)

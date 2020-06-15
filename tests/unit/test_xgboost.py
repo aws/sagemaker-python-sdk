@@ -21,7 +21,6 @@ from mock import Mock
 from mock import patch
 
 
-from sagemaker.xgboost.defaults import XGBOOST_LATEST_VERSION
 from sagemaker.xgboost import XGBoost, XGBoostModel, XGBoostPredictor
 
 
@@ -85,7 +84,7 @@ def _get_full_cpu_image_uri(version):
 
 def _xgboost_estimator(
     sagemaker_session,
-    framework_version=XGBOOST_LATEST_VERSION,
+    framework_version,
     train_instance_type=None,
     train_instance_count=1,
     base_job_name=None,
@@ -173,7 +172,7 @@ def test_train_image(sagemaker_session, xgboost_version):
     )
 
 
-def test_create_model(sagemaker_session):
+def test_create_model(sagemaker_session, xgboost_full_version):
     source_dir = "s3://mybucket/source"
 
     xgboost_model = XGBoostModel(
@@ -181,9 +180,9 @@ def test_create_model(sagemaker_session):
         role=ROLE,
         sagemaker_session=sagemaker_session,
         entry_point=SCRIPT_PATH,
-        framework_version=XGBOOST_LATEST_VERSION,
+        framework_version=xgboost_full_version,
     )
-    default_image_uri = _get_full_cpu_image_uri(XGBOOST_LATEST_VERSION)
+    default_image_uri = _get_full_cpu_image_uri(xgboost_full_version)
     model_values = xgboost_model.prepare_container_def(CPU)
     assert model_values["Image"] == default_image_uri
 
@@ -219,14 +218,14 @@ def test_create_model_from_estimator(sagemaker_session, xgboost_version):
     assert model.vpc_config is None
 
 
-def test_create_model_with_optional_params(sagemaker_session):
+def test_create_model_with_optional_params(sagemaker_session, xgboost_full_version):
     container_log_level = '"logging.INFO"'
     source_dir = "s3://mybucket/source"
     enable_cloudwatch_metrics = "true"
     xgboost = XGBoost(
         entry_point=SCRIPT_PATH,
         role=ROLE,
-        framework_version=XGBOOST_LATEST_VERSION,
+        framework_version=xgboost_full_version,
         sagemaker_session=sagemaker_session,
         train_instance_type=INSTANCE_TYPE,
         train_instance_count=1,
@@ -267,14 +266,14 @@ def test_create_model_with_optional_params(sagemaker_session):
     assert model.name == model_name
 
 
-def test_create_model_with_custom_image(sagemaker_session):
+def test_create_model_with_custom_image(sagemaker_session, xgboost_full_version):
     container_log_level = '"logging.INFO"'
     source_dir = "s3://mybucket/source"
     custom_image = "ubuntu:latest"
     xgboost = XGBoost(
         entry_point=SCRIPT_PATH,
         role=ROLE,
-        framework_version=XGBOOST_LATEST_VERSION,
+        framework_version=xgboost_full_version,
         sagemaker_session=sagemaker_session,
         train_instance_type=INSTANCE_TYPE,
         train_instance_count=1,
@@ -390,11 +389,11 @@ def test_distributed_training(strftime, sagemaker_session, xgboost_version):
     assert isinstance(predictor, XGBoostPredictor)
 
 
-def test_model(sagemaker_session):
+def test_model(sagemaker_session, xgboost_full_version):
     model = XGBoostModel(
         "s3://some/data.tar.gz",
         role=ROLE,
-        framework_version=XGBOOST_LATEST_VERSION,
+        framework_version=xgboost_full_version,
         entry_point=SCRIPT_PATH,
         sagemaker_session=sagemaker_session,
     )
@@ -402,18 +401,18 @@ def test_model(sagemaker_session):
     assert isinstance(predictor, XGBoostPredictor)
 
 
-def test_train_image_default(sagemaker_session):
+def test_train_image_default(sagemaker_session, xgboost_full_version):
     xgboost = XGBoost(
         entry_point=SCRIPT_PATH,
         role=ROLE,
-        framework_version=XGBOOST_LATEST_VERSION,
+        framework_version=xgboost_full_version,
         sagemaker_session=sagemaker_session,
         train_instance_type=INSTANCE_TYPE,
         train_instance_count=1,
         py_version=PYTHON_VERSION,
     )
 
-    assert _get_full_cpu_image_uri(XGBOOST_LATEST_VERSION) in xgboost.train_image()
+    assert _get_full_cpu_image_uri(xgboost_full_version) in xgboost.train_image()
 
 
 def test_train_image_cpu_instances(sagemaker_session, xgboost_version):
@@ -554,12 +553,12 @@ def test_attach_custom_image(sagemaker_session):
     assert "expected string" in str(error)
 
 
-def test_py2_xgboost_attribute_error(sagemaker_session):
+def test_py2_xgboost_attribute_error(sagemaker_session, xgboost_full_version):
     with pytest.raises(AttributeError) as error1:
         XGBoost(
             entry_point=SCRIPT_PATH,
             role=ROLE,
-            framework_version=XGBOOST_LATEST_VERSION,
+            framework_version=xgboost_full_version,
             sagemaker_session=sagemaker_session,
             train_instance_type=INSTANCE_TYPE,
             train_instance_count=1,
@@ -572,7 +571,7 @@ def test_py2_xgboost_attribute_error(sagemaker_session):
             role=ROLE,
             sagemaker_session=sagemaker_session,
             entry_point=SCRIPT_PATH,
-            framework_version=XGBOOST_LATEST_VERSION,
+            framework_version=xgboost_full_version,
             py_version="py2",
         )
 

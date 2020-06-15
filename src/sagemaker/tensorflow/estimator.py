@@ -36,10 +36,6 @@ class TensorFlow(Framework):
     __framework_name__ = "tensorflow"
     _ECR_REPO_NAME = "tensorflow-scriptmode"
 
-    LATEST_VERSION = defaults.LATEST_VERSION
-
-    _LATEST_1X_VERSION = "1.15.2"
-
     _HIGHEST_LEGACY_MODE_ONLY_VERSION = version.Version("1.10.0")
     _HIGHEST_PYTHON_2_VERSION = version.Version("2.1.0")
 
