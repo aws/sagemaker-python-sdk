@@ -286,21 +286,6 @@ def sklearn_full_version(request):
 
 
 @pytest.fixture(scope="module")
-def tf_latest_version(request, tf_full_version):
-    return request.param
-
-
-@pytest.fixture(scope="module")
-def tf_latest_py_version():
-    return "py37"
-
-
-@pytest.fixture(scope="module")
-def tf_latest_serving_version():
-    return "2.1.0"
-
-
-@pytest.fixture(scope="module")
 def tf_full_version(request):
     return request.config.getoption("--tf-full-version")
 
@@ -323,10 +308,11 @@ def tf_full_py_version(tf_full_version):
 
 
 @pytest.fixture(scope="module")
-def tf_serving_version(tf_full_version, tf_latest_version, tf_latest_serving_version):
-    if tf_full_version == tf_latest_version:
-        return tf_latest_serving_version
-    return tf_full_version
+def tf_serving_version(tf_full_version):
+    full_version = [int(val) for val in tf_full_version.split(".")]
+    if full_version < [2, 2]:
+        return tf_full_version
+    return "2.1.0"
 
 
 @pytest.fixture(scope="module", params=["1.15.0", "2.0.0"])

@@ -55,7 +55,7 @@ def efs_fsx_setup(sagemaker_session, ec2_instance_type):
     reason="EFS integration tests need to be fixed before running in all regions.",
 )
 def test_mnist_efs(
-    efs_fsx_setup, sagemaker_session, cpu_instance_type, tf_latest_version, tf_latest_py_version
+    efs_fsx_setup, sagemaker_session, cpu_instance_type, tf_full_version, tf_full_py_version
 ):
     role = efs_fsx_setup["role_name"]
     subnets = [efs_fsx_setup["subnet_id"]]
@@ -67,8 +67,8 @@ def test_mnist_efs(
         train_instance_count=1,
         train_instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
-        framework_version=tf_latest_version,
-        py_version=tf_latest_py_version,
+        framework_version=tf_full_version,
+        py_version=tf_full_py_version,
         subnets=subnets,
         security_group_ids=security_group_ids,
     )
@@ -96,7 +96,7 @@ def test_mnist_efs(
     reason="EFS integration tests need to be fixed before running in all regions.",
 )
 def test_mnist_lustre(
-    efs_fsx_setup, sagemaker_session, cpu_instance_type, tf_latest_version, tf_latest_py_version
+    efs_fsx_setup, sagemaker_session, cpu_instance_type, tf_full_version, tf_full_py_version
 ):
     role = efs_fsx_setup["role_name"]
     subnets = [efs_fsx_setup["subnet_id"]]
@@ -108,8 +108,8 @@ def test_mnist_lustre(
         train_instance_count=1,
         train_instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
-        framework_version=tf_latest_version,
-        py_version=tf_latest_py_version,
+        framework_version=tf_full_version,
+        py_version=tf_full_py_version,
         subnets=subnets,
         security_group_ids=security_group_ids,
     )
@@ -133,7 +133,7 @@ def test_mnist_lustre(
     reason="EFS integration tests need to be fixed before running in all regions.",
 )
 def test_tuning_tf_efs(
-    efs_fsx_setup, sagemaker_session, cpu_instance_type, tf_latest_version, tf_latest_py_version
+    efs_fsx_setup, sagemaker_session, cpu_instance_type, tf_full_version, tf_full_py_version
 ):
     role = efs_fsx_setup["role_name"]
     subnets = [efs_fsx_setup["subnet_id"]]
@@ -145,8 +145,8 @@ def test_tuning_tf_efs(
         train_instance_count=1,
         train_instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
-        framework_version=tf_latest_version,
-        py_version=tf_latest_py_version,
+        framework_version=tf_full_version,
+        py_version=tf_full_py_version,
         subnets=subnets,
         security_group_ids=security_group_ids,
     )
@@ -182,7 +182,7 @@ def test_tuning_tf_efs(
     reason="EFS integration tests need to be fixed before running in all regions.",
 )
 def test_tuning_tf_lustre(
-    efs_fsx_setup, sagemaker_session, cpu_instance_type, tf_latest_version, tf_latest_py_version
+    efs_fsx_setup, sagemaker_session, cpu_instance_type, tf_full_version, tf_full_py_version
 ):
     role = efs_fsx_setup["role_name"]
     subnets = [efs_fsx_setup["subnet_id"]]
@@ -194,8 +194,8 @@ def test_tuning_tf_lustre(
         train_instance_count=1,
         train_instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
-        framework_version=tf_latest_version,
-        py_version=tf_latest_py_version,
+        framework_version=tf_full_version,
+        py_version=tf_full_py_version,
         subnets=subnets,
         security_group_ids=security_group_ids,
     )

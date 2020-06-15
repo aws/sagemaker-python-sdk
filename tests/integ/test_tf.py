@@ -147,7 +147,7 @@ def test_mnist_distributed(sagemaker_session, instance_type, tf_full_version, tf
     )
 
 
-def test_mnist_async(sagemaker_session, cpu_instance_type, tf_latest_serving_version):
+def test_mnist_async(sagemaker_session, cpu_instance_type, tf_serving_version):
     estimator = TensorFlow(
         entry_point=SCRIPT,
         role=ROLE,
@@ -156,7 +156,7 @@ def test_mnist_async(sagemaker_session, cpu_instance_type, tf_latest_serving_ver
         py_version=PYTHON_VERSION,
         sagemaker_session=sagemaker_session,
         # testing py-sdk functionality, no need to run against all TF versions
-        framework_version=tf_latest_serving_version,
+        framework_version=tf_serving_version,
         tags=TAGS,
     )
     inputs = estimator.sagemaker_session.upload_data(
