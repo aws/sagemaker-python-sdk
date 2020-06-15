@@ -88,9 +88,7 @@ class AutoML(object):
         """
         if not wait and logs:
             logs = False
-            logger.warning(
-                "logs will be set to False. logs is only meaningful when wait is True."
-            )
+            logger.warning("logs will be set to False. logs is only meaningful when wait is True.")
 
         # upload data for users if provided local path
         # validations are done in _Job._format_inputs_to_input_config
