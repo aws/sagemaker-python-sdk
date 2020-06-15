@@ -228,12 +228,17 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
         """Return true if TF version is EIA enabled"""
         return [int(s) for s in self.framework_version.split(".")][:2] <= self.LATEST_EIA_VERSION
 
-    def prepare_container_def(self, instance_type, accelerator_type=None):
+    def prepare_container_def(self, instance_type=None, accelerator_type=None):
         """
         Args:
             instance_type:
             accelerator_type:
         """
+        if self.image is None and instance_type is None:
+            raise ValueError(
+                "Must supply either an instance type (for choosing CPU vs GPU) or an image URI."
+            )
+
         image = self._get_image_uri(instance_type, accelerator_type)
         env = self._get_container_env()
 

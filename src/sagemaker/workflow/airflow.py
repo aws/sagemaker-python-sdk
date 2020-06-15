@@ -316,15 +316,17 @@ def tuning_config(tuner, inputs, job_name=None, include_cls_metadata=False, mini
     }
 
     if tuner.estimator:
-        tune_config[
-            "TrainingJobDefinition"
-        ], s3_operations = _extract_training_config_from_estimator(
+        (
+            tune_config["TrainingJobDefinition"],
+            s3_operations,
+        ) = _extract_training_config_from_estimator(
             tuner, inputs, include_cls_metadata, mini_batch_size
         )
     else:
-        tune_config[
-            "TrainingJobDefinitions"
-        ], s3_operations = _extract_training_config_list_from_estimator_dict(
+        (
+            tune_config["TrainingJobDefinitions"],
+            s3_operations,
+        ) = _extract_training_config_list_from_estimator_dict(
             tuner, inputs, include_cls_metadata, mini_batch_size
         )
 

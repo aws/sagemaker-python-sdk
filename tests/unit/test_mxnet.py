@@ -467,6 +467,22 @@ def test_model_image_accelerator(
     assert _is_mms_version(mxnet_version) ^ (tar_and_upload.called and not repack_model.called)
 
 
+def test_model_prepare_container_def_no_instance_type_or_image(mxnet_version, mxnet_py_version):
+    model = MXNetModel(
+        MODEL_DATA,
+        role=ROLE,
+        entry_point=SCRIPT_PATH,
+        framework_version=mxnet_version,
+        py_version=mxnet_py_version,
+    )
+
+    with pytest.raises(ValueError) as e:
+        model.prepare_container_def()
+
+    expected_msg = "Must supply either an instance type (for choosing CPU vs GPU) or an image URI."
+    assert expected_msg in str(e)
+
+
 def test_attach(sagemaker_session, mxnet_version, mxnet_py_version):
     training_image = "1.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet-{0}-cpu:{1}-cpu-{0}".format(
         mxnet_py_version, mxnet_version

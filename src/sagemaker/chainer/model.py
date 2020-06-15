@@ -15,8 +15,6 @@ from __future__ import absolute_import
 
 import logging
 
-from sagemaker import fw_utils
-
 import sagemaker
 from sagemaker.fw_utils import (
     create_image_uri,
@@ -127,7 +125,7 @@ class ChainerModel(FrameworkModel):
 
         self.model_server_workers = model_server_workers
 
-    def prepare_container_def(self, instance_type, accelerator_type=None):
+    def prepare_container_def(self, instance_type=None, accelerator_type=None):
         """Return a container definition with framework configuration set in
         model environment variables.
 
@@ -144,14 +142,14 @@ class ChainerModel(FrameworkModel):
         """
         deploy_image = self.image
         if not deploy_image:
+            if instance_type is None:
+                raise ValueError(
+                    "Must supply either an instance type (for choosing CPU vs GPU) or an image URI."
+                )
+
             region_name = self.sagemaker_session.boto_session.region_name
-            deploy_image = create_image_uri(
-                region_name,
-                self.__framework_name__,
-                instance_type,
-                self.framework_version,
-                self.py_version,
-                accelerator_type=accelerator_type,
+            deploy_image = self.serving_image_uri(
+                region_name, instance_type, accelerator_type=accelerator_type
             )
 
         deploy_key_prefix = model_code_key_prefix(self.key_prefix, self.name, deploy_image)
@@ -163,7 +161,7 @@ class ChainerModel(FrameworkModel):
             deploy_env[MODEL_SERVER_WORKERS_PARAM_NAME.upper()] = str(self.model_server_workers)
         return sagemaker.container_def(deploy_image, self.model_data, deploy_env)
 
-    def serving_image_uri(self, region_name, instance_type):
+    def serving_image_uri(self, region_name, instance_type, accelerator_type=None):
         """Create a URI for the serving image.
 
         Args:
@@ -175,10 +173,11 @@ class ChainerModel(FrameworkModel):
             str: The appropriate image URI based on the given parameters.
 
         """
-        return fw_utils.create_image_uri(
+        return create_image_uri(
             region_name,
             self.__framework_name__,
             instance_type,
             self.framework_version,
             self.py_version,
+            accelerator_type=accelerator_type,
         )

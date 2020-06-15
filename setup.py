@@ -34,7 +34,7 @@ def read_version():
 
 # Declare minimal set for installation
 required_packages = [
-    "boto3>=1.13.6",
+    "boto3>=1.13.24",
     "google-pasta",
     "numpy>=1.9.0",
     "protobuf>=3.1",
@@ -60,16 +60,16 @@ extras["all"] = [item for group in extras.values() for item in group]
 extras["test"] = (
     [
         extras["all"],
-        "tox==3.13.1",
+        "tox==3.15.1",
         "flake8",
-        "pytest==4.4.1",
+        "pytest==4.6.10",
         "pytest-cov",
         "pytest-rerunfailures",
         "pytest-xdist",
         "mock",
         "contextlib2",
         "awslogs",
-        "black==19.3b0 ; python_version >= '3.6'",
+        "black==19.10b0 ; python_version >= '3.6'",
         "stopit==1.1.2",
         "apache-airflow==1.10.5",
         "fabric>=2.0",

@@ -519,7 +519,7 @@ def test_attach_tuning_job_with_estimator_from_hyperparameters(sagemaker_session
 
 
 def test_attach_tuning_job_with_estimator_from_hyperparameters_with_early_stopping(
-    sagemaker_session
+    sagemaker_session,
 ):
     job_details = copy.deepcopy(TUNING_JOB_DETAILS)
     job_details["HyperParameterTuningJobConfig"]["TrainingJobEarlyStoppingType"] = "Auto"

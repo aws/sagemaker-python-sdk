@@ -15,8 +15,6 @@ from __future__ import absolute_import
 
 import logging
 
-from sagemaker import fw_utils
-
 import sagemaker
 from sagemaker.fw_registry import default_framework_uri
 from sagemaker.fw_utils import model_code_key_prefix, validate_version_or_image_args
@@ -126,16 +124,16 @@ class SKLearnModel(FrameworkModel):
 
         self.model_server_workers = model_server_workers
 
-    def prepare_container_def(self, instance_type, accelerator_type=None):
+    def prepare_container_def(self, instance_type=None, accelerator_type=None):
         """Return a container definition with framework configuration set in
         model environment variables.
 
         Args:
             instance_type (str): The EC2 instance type to deploy this Model to.
-                For example, 'ml.p2.xlarge'.
+                This parameter is unused because Scikit-learn supports only CPU.
             accelerator_type (str): The Elastic Inference accelerator type to
                 deploy to the instance for loading and making inferences to the
-                model. For example, 'ml.eia1.medium'. Note: accelerator types
+                model. This parameter is unused because accelerator types
                 are not supported by SKLearnModel.
 
         Returns:
@@ -147,9 +145,8 @@ class SKLearnModel(FrameworkModel):
 
         deploy_image = self.image
         if not deploy_image:
-            image_tag = "{}-{}-{}".format(self.framework_version, "cpu", self.py_version)
-            deploy_image = default_framework_uri(
-                self.__framework_name__, self.sagemaker_session.boto_region_name, image_tag
+            deploy_image = self.serving_image_uri(
+                self.sagemaker_session.boto_region_name, instance_type
             )
 
         deploy_key_prefix = model_code_key_prefix(self.key_prefix, self.name, deploy_image)
@@ -164,22 +161,17 @@ class SKLearnModel(FrameworkModel):
         )
         return sagemaker.container_def(deploy_image, model_data_uri, deploy_env)
 
-    def serving_image_uri(self, region_name, instance_type):
+    def serving_image_uri(self, region_name, instance_type):  # pylint: disable=unused-argument
         """Create a URI for the serving image.
 
         Args:
             region_name (str): AWS region where the image is uploaded.
-            instance_type (str): SageMaker instance type. Used to determine device type
-                (cpu/gpu/family-specific optimized).
+            instance_type (str): SageMaker instance type. This parameter is unused because
+                Scikit-learn supports only CPU.
 
         Returns:
             str: The appropriate image URI based on the given parameters.
 
         """
-        return fw_utils.create_image_uri(
-            region_name,
-            self.__framework_name__,
-            instance_type,
-            self.framework_version,
-            self.py_version,
-        )
+        image_tag = "{}-{}-{}".format(self.framework_version, "cpu", self.py_version)
+        return default_framework_uri(self.__framework_name__, region_name, image_tag)

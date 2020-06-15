@@ -374,6 +374,18 @@ def test_model_image_accelerator(sagemaker_session):
     )
 
 
+def test_model_prepare_container_def_no_instance_type_or_image():
+    model = PyTorchModel(
+        MODEL_DATA, role=ROLE, entry_point=SCRIPT_PATH, framework_version="1.3.1", py_version="py3",
+    )
+
+    with pytest.raises(ValueError) as e:
+        model.prepare_container_def()
+
+    expected_msg = "Must supply either an instance type (for choosing CPU vs GPU) or an image URI."
+    assert expected_msg in str(e)
+
+
 def test_train_image_default(sagemaker_session, pytorch_version, pytorch_py_version):
     pytorch = PyTorch(
         entry_point=SCRIPT_PATH,

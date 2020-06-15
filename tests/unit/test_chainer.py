@@ -443,6 +443,22 @@ def test_model_prepare_container_def_accelerator_error(sagemaker_session, chaine
         model.prepare_container_def(INSTANCE_TYPE, accelerator_type=ACCELERATOR_TYPE)
 
 
+def test_model_prepare_container_def_no_instance_type_or_image(chainer_version):
+    model = ChainerModel(
+        MODEL_DATA,
+        role=ROLE,
+        entry_point=SCRIPT_PATH,
+        framework_version=chainer_version,
+        py_version=PYTHON_VERSION,
+    )
+
+    with pytest.raises(ValueError) as e:
+        model.prepare_container_def()
+
+    expected_msg = "Must supply either an instance type (for choosing CPU vs GPU) or an image URI."
+    assert expected_msg in str(e)
+
+
 def test_train_image_default(sagemaker_session, chainer_version):
     chainer = Chainer(
         entry_point=SCRIPT_PATH,

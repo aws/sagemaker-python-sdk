@@ -111,7 +111,7 @@ class MultiDataModel(Model):
                 **kwargs
             )
 
-    def prepare_container_def(self, instance_type, accelerator_type=None):
+    def prepare_container_def(self, instance_type=None, accelerator_type=None):
         """Return a container definition set with MultiModel mode,
         model data and other parameters from the model (if available).
 

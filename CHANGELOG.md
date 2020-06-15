@@ -25,6 +25,51 @@
  * remove scipy from dependencies
  * remove TF from optional dependencies
 
+## v1.64.0 (2020-06-15)
+
+### Features
+
+ * add support for SKLearn 0.23
+
+## v1.63.0 (2020-06-12)
+
+### Features
+
+ * Allow selecting inference response content for automl generated models
+ * Support for multi variant endpoint invocation with target variant param
+
+### Documentation Changes
+
+ * improve docstring and remove unavailable links
+
+## v1.62.0 (2020-06-11)
+
+### Features
+
+ * Support for multi variant endpoint invocation with target variant param
+
+### Bug Fixes and Other Changes
+
+ * Revert "feature: Support for multi variant endpoint invocation with target variant param (#1571)"
+ * make instance_type optional for prepare_container_def
+ * docs: workflows navigation
+
+### Documentation Changes
+
+ * fix typo in MXNet documentation
+
+## v1.61.0 (2020-06-09)
+
+### Features
+
+ * Use boto3 DEFAULT_SESSION when no boto3 session specified.
+
+### Bug Fixes and Other Changes
+
+ * remove v2 Session warnings
+ * upgrade smdebug-rulesconfig to 0.1.4
+ * explicitly handle arguments in create_model for sklearn and xgboost
+
 ## v1.60.2 (2020-05-29)
 
 ### Bug Fixes and Other Changes
