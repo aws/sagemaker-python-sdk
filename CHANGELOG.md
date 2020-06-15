@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.64.0 (2020-06-15)
+
+### Features
+
+ * add support for SKLearn 0.23
+
 ## v1.63.0 (2020-06-12)
 
 ### Features
