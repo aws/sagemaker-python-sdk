@@ -38,10 +38,6 @@ NO_M4_REGIONS = [
 
 NO_T2_REGIONS = ["eu-north-1", "ap-east-1", "me-south-1"]
 
-# TODO: refactor handling of versions, repo, image uris, validations for all frameworks
-TENSORFLOW_LATEST_VERSION = "2.2.0"
-TENSORFLOW_LATEST_1X_VERSION = "1.15.2"
-
 
 def pytest_addoption(parser):
     parser.addoption("--sagemaker-client-config", action="store", default=None)
@@ -63,7 +59,7 @@ def pytest_addoption(parser):
         "--rl-ray-full-version", action="store", default=RLEstimator.RAY_LATEST_VERSION
     )
     parser.addoption("--sklearn-full-version", action="store", default="0.20.0")
-    parser.addoption("--tf-full-version", action="store")
+    parser.addoption("--tf-full-version", action="store", default="2.2.0")
     parser.addoption("--ei-tf-full-version", action="store")
     parser.addoption("--xgboost-full-version", action="store", default="1.0-1")
 
@@ -289,8 +285,8 @@ def sklearn_full_version(request):
     return request.config.getoption("--sklearn-full-version")
 
 
-@pytest.fixture(scope="module", params=[TENSORFLOW_LATEST_VERSION])
-def tf_latest_version(request):
+@pytest.fixture(scope="module")
+def tf_latest_version(request, tf_full_version):
     return request.param
 
 
@@ -299,27 +295,18 @@ def tf_latest_py_version():
     return "py37"
 
 
-@pytest.fixture(scope="module", params=[TENSORFLOW_LATEST_1X_VERSION])
-def tf_latest_1x_version(request):
-    return request.param
-
-
 @pytest.fixture(scope="module")
 def tf_latest_serving_version():
     return "2.1.0"
 
 
-@pytest.fixture(scope="module", params=[TENSORFLOW_LATEST_VERSION, TENSORFLOW_LATEST_1X_VERSION])
+@pytest.fixture(scope="module")
 def tf_full_version(request):
-    tf_version = request.config.getoption("--tf-full-version")
-    if tf_version is None:
-        return request.param
-    else:
-        return tf_version
+    return request.config.getoption("--tf-full-version")
 
 
 @pytest.fixture(scope="module")
-def tf_full_py_version(tf_full_version, tf_latest_version, tf_latest_1x_version):
+def tf_full_py_version(tf_full_version):
     """fixture to match tf_full_version
 
     Fixture exists as such, since tf_full_version may be overridden --tf-full-version.
@@ -330,9 +317,9 @@ def tf_full_py_version(tf_full_version, tf_latest_version, tf_latest_1x_version)
     version = [int(val) for val in tf_full_version.split(".")]
     if version < [1, 11]:
         return "py2"
-    if tf_full_version in [tf_latest_version, tf_latest_1x_version]:
-        return "py37"
-    return "py3"
+    if version < [2, 2]:
+        return "py3"
+    return "py37"
 
 
 @pytest.fixture(scope="module")

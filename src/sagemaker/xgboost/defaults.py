@@ -16,7 +16,6 @@ from __future__ import absolute_import
 XGBOOST_NAME = "xgboost"
 XGBOOST_1P_VERSIONS = ["1", "latest"]
 
-# TODO: evaluate usefulness of these constants. they are defined here and only used here
 XGBOOST_VERSION_0_90_1 = "0.90-1"
 XGBOOST_VERSION_0_90_2 = "0.90-2"
 
