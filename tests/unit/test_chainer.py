@@ -301,7 +301,7 @@ def test_create_model(sagemaker_session, chainer_version):
     assert model.vpc_config is None
 
 
-def test_create_model_with_optional_params(sagemaker_session):
+def test_create_model_with_optional_params(sagemaker_session, chainer_version):
     container_log_level = '"logging.INFO"'
     source_dir = "s3://mybucket/source"
     enable_cloudwatch_metrics = "true"
@@ -312,6 +312,7 @@ def test_create_model_with_optional_params(sagemaker_session):
         train_instance_count=INSTANCE_COUNT,
         train_instance_type=INSTANCE_TYPE,
         container_log_level=container_log_level,
+        framework_version=chainer_version,
         py_version=PYTHON_VERSION,
         base_job_name="job",
         source_dir=source_dir,
@@ -373,8 +374,8 @@ def test_chainer(strftime, sagemaker_session, chainer_version):
         sagemaker_session=sagemaker_session,
         train_instance_count=INSTANCE_COUNT,
         train_instance_type=INSTANCE_TYPE,
-        py_version=PYTHON_VERSION,
         framework_version=chainer_version,
+        py_version=PYTHON_VERSION,
     )
 
     inputs = "s3://mybucket/train"
@@ -415,21 +416,28 @@ def test_chainer(strftime, sagemaker_session, chainer_version):
 
 
 @patch("sagemaker.utils.create_tar_file", MagicMock())
-def test_model(sagemaker_session):
+def test_model(sagemaker_session, chainer_version):
     model = ChainerModel(
         "s3://some/data.tar.gz",
         role=ROLE,
         entry_point=SCRIPT_PATH,
         sagemaker_session=sagemaker_session,
+        framework_version=chainer_version,
+        py_version=PYTHON_VERSION,
     )
     predictor = model.deploy(1, GPU)
     assert isinstance(predictor, ChainerPredictor)
 
 
 @patch("sagemaker.fw_utils.tar_and_upload_dir", MagicMock())
-def test_model_prepare_container_def_accelerator_error(sagemaker_session):
+def test_model_prepare_container_def_accelerator_error(sagemaker_session, chainer_version):
     model = ChainerModel(
-        MODEL_DATA, role=ROLE, entry_point=SCRIPT_PATH, sagemaker_session=sagemaker_session
+        MODEL_DATA,
+        role=ROLE,
+        entry_point=SCRIPT_PATH,
+        sagemaker_session=sagemaker_session,
+        framework_version=chainer_version,
+        py_version=PYTHON_VERSION,
     )
     with pytest.raises(ValueError):
         model.prepare_container_def(INSTANCE_TYPE, accelerator_type=ACCELERATOR_TYPE)
@@ -451,27 +459,29 @@ def test_train_image_default(sagemaker_session, chainer_version):
 
 def test_train_image_cpu_instances(sagemaker_session, chainer_version):
     chainer = _chainer_estimator(
-        sagemaker_session, chainer_version, train_instance_type="ml.c2.2xlarge"
+        sagemaker_session, framework_version=chainer_version, train_instance_type="ml.c2.2xlarge"
     )
     assert chainer.train_image() == _get_full_cpu_image_uri(chainer_version)
 
     chainer = _chainer_estimator(
-        sagemaker_session, chainer_version, train_instance_type="ml.c4.2xlarge"
+        sagemaker_session, framework_version=chainer_version, train_instance_type="ml.c4.2xlarge"
     )
     assert chainer.train_image() == _get_full_cpu_image_uri(chainer_version)
 
-    chainer = _chainer_estimator(sagemaker_session, chainer_version, train_instance_type="ml.m16")
+    chainer = _chainer_estimator(
+        sagemaker_session, framework_version=chainer_version, train_instance_type="ml.m16"
+    )
     assert chainer.train_image() == _get_full_cpu_image_uri(chainer_version)
 
 
 def test_train_image_gpu_instances(sagemaker_session, chainer_version):
     chainer = _chainer_estimator(
-        sagemaker_session, chainer_version, train_instance_type="ml.g2.2xlarge"
+        sagemaker_session, framework_version=chainer_version, train_instance_type="ml.g2.2xlarge"
     )
     assert chainer.train_image() == _get_full_gpu_image_uri(chainer_version)
 
     chainer = _chainer_estimator(
-        sagemaker_session, chainer_version, train_instance_type="ml.p2.2xlarge"
+        sagemaker_session, framework_version=chainer_version, train_instance_type="ml.p2.2xlarge"
     )
     assert chainer.train_image() == _get_full_gpu_image_uri(chainer_version)
 
@@ -599,13 +609,14 @@ def test_attach_custom_image(sagemaker_session):
 
 
 @patch("sagemaker.chainer.estimator.python_deprecation_warning")
-def test_estimator_py2_warning(warning, sagemaker_session):
+def test_estimator_py2_warning(warning, sagemaker_session, chainer_version):
     estimator = Chainer(
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
         train_instance_count=INSTANCE_COUNT,
         train_instance_type=INSTANCE_TYPE,
+        framework_version=chainer_version,
         py_version="py2",
     )
 
@@ -614,12 +625,13 @@ def test_estimator_py2_warning(warning, sagemaker_session):
 
 
 @patch("sagemaker.chainer.model.python_deprecation_warning")
-def test_model_py2_warning(warning, sagemaker_session):
+def test_model_py2_warning(warning, sagemaker_session, chainer_version):
     model = ChainerModel(
         MODEL_DATA,
         role=ROLE,
         entry_point=SCRIPT_PATH,
         sagemaker_session=sagemaker_session,
+        framework_version=chainer_version,
         py_version="py2",
     )
     assert model.py_version == "py2"

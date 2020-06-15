@@ -18,7 +18,12 @@ import logging
 from sagemaker import fw_utils
 
 import sagemaker
-from sagemaker.fw_utils import create_image_uri, model_code_key_prefix, python_deprecation_warning
+from sagemaker.fw_utils import (
+    create_image_uri,
+    model_code_key_prefix,
+    python_deprecation_warning,
+    validate_version_or_image_args,
+)
 from sagemaker.model import FrameworkModel, MODEL_SERVER_WORKERS_PARAM_NAME
 from sagemaker.chainer import defaults
 from sagemaker.predictor import RealTimePredictor, npy_serializer, numpy_deserializer
@@ -62,8 +67,8 @@ class ChainerModel(FrameworkModel):
         role,
         entry_point,
         image=None,
-        py_version="py3",
         framework_version=None,
+        py_version=None,
         predictor_cls=ChainerPredictor,
         model_server_workers=None,
         **kwargs
@@ -83,11 +88,15 @@ class ChainerModel(FrameworkModel):
                 hosting. If ``source_dir`` is specified, then ``entry_point``
                 must point to a file located at the root of ``source_dir``.
             image (str): A Docker image URI (default: None). If not specified, a
-                default image for Chainer will be used.
-            py_version (str): Python version you want to use for executing your
-                model training code (default: 'py2').
+                default image for Chainer will be used. If ``framework_version``
+                or ``py_version`` are ``None``, then ``image`` is required. If
+                also ``None``, then a ``ValueError`` will be raised.
             framework_version (str): Chainer version you want to use for
-                executing your model training code.
+                executing your model training code. Defaults to ``None``. Required
+                unless ``image`` is provided.
+            py_version (str): Python version you want to use for executing your
+                model training code. Defaults to ``None``. Required unless
+                ``image`` is provided.
             predictor_cls (callable[str, sagemaker.session.Session]): A function
                 to call to create a predictor with an endpoint name and
                 SageMaker ``Session``. If specified, ``deploy()`` returns the
@@ -104,16 +113,18 @@ class ChainerModel(FrameworkModel):
             :class:`~sagemaker.model.FrameworkModel` and
             :class:`~sagemaker.model.Model`.
         """
-        super(ChainerModel, self).__init__(
-            model_data, image, role, entry_point, predictor_cls=predictor_cls, **kwargs
-        )
+        validate_version_or_image_args(framework_version, py_version, image)
         if py_version == "py2":
             logger.warning(
                 python_deprecation_warning(self.__framework_name__, defaults.LATEST_PY2_VERSION)
             )
-
-        self.py_version = py_version
         self.framework_version = framework_version
+        self.py_version = py_version
+
+        super(ChainerModel, self).__init__(
+            model_data, image, role, entry_point, predictor_cls=predictor_cls, **kwargs
+        )
+
         self.model_server_workers = model_server_workers
 
     def prepare_container_def(self, instance_type, accelerator_type=None):
