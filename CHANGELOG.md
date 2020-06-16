@@ -1,5 +1,28 @@
 # Changelog
 
+## v1.64.1 (2020-06-16)
+
+### Bug Fixes and Other Changes
+
+ * include py38 tox env and some dependency upgrades
+
+## v1.64.0 (2020-06-15)
+
+### Features
+
+ * add support for SKLearn 0.23
+
+## v1.63.0 (2020-06-12)
+
+### Features
+
+ * Allow selecting inference response content for automl generated models
+ * Support for multi variant endpoint invocation with target variant param
+
+### Documentation Changes
+
+ * improve docstring and remove unavailable links
+
 ## v1.62.0 (2020-06-11)
 
 ### Features

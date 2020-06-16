@@ -799,7 +799,7 @@ def test__aws_credentials_with_long_lived_credentials():
 
 @patch("sagemaker.local.image._aws_credentials_available_in_metadata_service")
 def test__aws_credentials_with_short_lived_credentials_and_ec2_metadata_service_having_credentials(
-    mock
+    mock,
 ):
     credentials = Credentials(
         access_key=_random_string(), secret_key=_random_string(), token=_random_string()
@@ -814,7 +814,7 @@ def test__aws_credentials_with_short_lived_credentials_and_ec2_metadata_service_
 
 @patch("sagemaker.local.image._aws_credentials_available_in_metadata_service")
 def test__aws_credentials_with_short_lived_credentials_and_ec2_metadata_service_having_no_credentials(
-    mock
+    mock,
 ):
     credentials = Credentials(
         access_key=_random_string(), secret_key=_random_string(), token=_random_string()
