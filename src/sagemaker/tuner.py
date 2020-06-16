@@ -751,7 +751,7 @@ class HyperparameterTuner(object):
         self.latest_tuning_job.stop()
 
     def describe(self):
-        """Returns a response from the DescribrHyperParameterTuningJob API call."""
+        """Returns a response from the DescribeHyperParameterTuningJob API call."""
         return self.sagemaker_session.describe_tuning_job(self._current_job_name)
 
     def wait(self):

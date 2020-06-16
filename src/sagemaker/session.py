@@ -1724,7 +1724,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
     def describe_tuning_job(self, job_name):
         """Calls the DescribeHyperParameterTuningJob API for the given job name
-            and returns the response.
+        and returns the response.
 
             Args:
                 job_name (str): The name of the hyperparameter tuning job to describe.
