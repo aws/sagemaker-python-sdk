@@ -82,7 +82,7 @@ class AutoML(object):
                 be uploaded to an S3 location.
             wait (bool): Whether the call should wait until the job completes (default: True).
             logs (bool): Whether to show the logs produced by the job. Only meaningful when wait
-                is True (default: True). if ``wait`` is False, ``logs`` will be set to False as 
+                is True (default: True). if ``wait`` is False, ``logs`` will be set to False as
                 well.
             job_name (str): Training job name. If not specified, the estimator generates
                 a default job name, based on the training image name and current timestamp.
