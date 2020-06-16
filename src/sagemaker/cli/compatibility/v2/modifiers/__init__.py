@@ -16,6 +16,7 @@ from __future__ import absolute_import
 from sagemaker.cli.compatibility.v2.modifiers import (  # noqa: F401 (imported but unused)
     deprecated_params,
     framework_version,
+    py_version,
     tf_legacy_mode,
     tfs,
 )
