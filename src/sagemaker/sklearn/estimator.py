@@ -19,7 +19,8 @@ from sagemaker.estimator import Framework
 from sagemaker.fw_registry import default_framework_uri
 from sagemaker.fw_utils import (
     framework_name_from_image,
-    empty_framework_version_warning,
+    get_unsupported_framework_version_error,
+    later_framework_version_warning,
     python_deprecation_warning,
 )
 from sagemaker.sklearn import defaults
@@ -126,11 +127,17 @@ class SKLearn(Framework):
 
         self.py_version = py_version
 
-        if framework_version is None:
-            logger.warning(
-                empty_framework_version_warning(defaults.SKLEARN_VERSION, defaults.SKLEARN_VERSION)
+        if framework_version in defaults.SKLEARN_SUPPORTED_VERSIONS:
+            self.framework_version = framework_version
+        else:
+            raise ValueError(
+                get_unsupported_framework_version_error(
+                    self.__framework_name__, framework_version, defaults.SKLEARN_SUPPORTED_VERSIONS
+                )
             )
-        self.framework_version = framework_version or defaults.SKLEARN_VERSION
+
+        if framework_version != defaults.SKLEARN_LATEST_VERSION:
+            logger.warning(later_framework_version_warning(defaults.SKLEARN_LATEST_VERSION))
 
         if image_name is None:
             image_tag = "{}-{}-{}".format(framework_version, "cpu", py_version)

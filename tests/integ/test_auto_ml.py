@@ -32,11 +32,14 @@ TARGET_ATTRIBUTE_NAME = "virginica"
 DATA_DIR = os.path.join(DATA_DIR, "automl", "data")
 TRAINING_DATA = os.path.join(DATA_DIR, "iris_training.csv")
 TEST_DATA = os.path.join(DATA_DIR, "iris_test.csv")
+TRANSFORM_DATA = os.path.join(DATA_DIR, "iris_transform.csv")
 PROBLEM_TYPE = "MultiClassClassification"
 BASE_JOB_NAME = "auto-ml"
 
 # use a succeeded AutoML job to test describe and list candidates method, otherwise tests will run too long
 AUTO_ML_JOB_NAME = "python-sdk-integ-test-base-job"
+DEFAULT_MODEL_NAME = "python-sdk-automl"
+
 
 EXPECTED_DEFAULT_JOB_CONFIG = {
     "CompletionCriteria": {"MaxCandidates": 3},
@@ -184,6 +187,42 @@ def test_auto_ml_describe_auto_ml_job(sagemaker_session):
     tests.integ.test_region() in tests.integ.NO_AUTO_ML_REGIONS,
     reason="AutoML is not supported in the region yet.",
 )
+def test_auto_ml_attach(sagemaker_session):
+    expected_default_input_config = [
+        {
+            "DataSource": {
+                "S3DataSource": {
+                    "S3DataType": "S3Prefix",
+                    "S3Uri": "s3://{}/{}/input/iris_training.csv".format(
+                        sagemaker_session.default_bucket(), PREFIX
+                    ),
+                }
+            },
+            "TargetAttributeName": TARGET_ATTRIBUTE_NAME,
+        }
+    ]
+    expected_default_output_config = {
+        "S3OutputPath": "s3://{}/".format(sagemaker_session.default_bucket())
+    }
+
+    auto_ml_utils.create_auto_ml_job_if_not_exist(sagemaker_session)
+
+    attached_automl_job = AutoML.attach(
+        auto_ml_job_name=AUTO_ML_JOB_NAME, sagemaker_session=sagemaker_session
+    )
+    attached_desc = attached_automl_job.describe_auto_ml_job()
+    assert attached_desc["AutoMLJobName"] == AUTO_ML_JOB_NAME
+    assert attached_desc["AutoMLJobStatus"] == "Completed"
+    assert isinstance(attached_desc["BestCandidate"], dict)
+    assert attached_desc["InputDataConfig"] == expected_default_input_config
+    assert attached_desc["AutoMLJobConfig"] == EXPECTED_DEFAULT_JOB_CONFIG
+    assert attached_desc["OutputDataConfig"] == expected_default_output_config
+
+
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.NO_AUTO_ML_REGIONS,
+    reason="AutoML is not supported in the region yet.",
+)
 def test_list_candidates(sagemaker_session):
     auto_ml_utils.create_auto_ml_job_if_not_exist(sagemaker_session)
 
@@ -238,6 +277,38 @@ def test_deploy_best_candidate(sagemaker_session, cpu_instance_type):
     )["EndpointStatus"]
     assert endpoint_status == "InService"
     sagemaker_session.sagemaker_client.delete_endpoint(EndpointName=endpoint_name)
+
+
+@pytest.mark.skipif(
+    tests.integ.test_region() in tests.integ.NO_AUTO_ML_REGIONS,
+    reason="AutoML is not supported in the region yet.",
+)
+def test_create_model_best_candidate(sagemaker_session, cpu_instance_type):
+    auto_ml_utils.create_auto_ml_job_if_not_exist(sagemaker_session)
+
+    auto_ml = AutoML.attach(auto_ml_job_name=AUTO_ML_JOB_NAME, sagemaker_session=sagemaker_session)
+    best_candidate = auto_ml.best_candidate()
+
+    with timeout(minutes=5):
+        pipeline_model = auto_ml.create_model(
+            name=DEFAULT_MODEL_NAME,
+            candidate=best_candidate,
+            sagemaker_session=sagemaker_session,
+            vpc_config=None,
+            enable_network_isolation=False,
+            model_kms_key=None,
+            predictor_cls=None,
+        )
+    inputs = sagemaker_session.upload_data(
+        path=TRANSFORM_DATA, key_prefix=PREFIX + "/transform_input"
+    )
+    pipeline_model.transformer(
+        instance_count=1,
+        instance_type=cpu_instance_type,
+        assemble_with="Line",
+        output_path="s3://{}/{}".format(sagemaker_session.default_bucket(), "transform_test"),
+        accept="text/csv",
+    ).transform(data=inputs, content_type="text/csv", split_type="Line", join_source="Input")
 
 
 @pytest.mark.skipif(
