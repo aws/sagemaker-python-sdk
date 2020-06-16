@@ -362,10 +362,10 @@ class RLEstimator(Framework):
         Args:
             framework:
         """
-        if framework and framework not in RLFramework:
+        if framework and framework not in list(RLFramework):
             raise ValueError(
-                "Invalid type: {}, valid RL frameworks types are: [{}]".format(
-                    framework, [t for t in RLFramework]
+                "Invalid type: {}, valid RL frameworks types are: {}".format(
+                    framework, list(RLFramework)
                 )
             )
 
@@ -375,11 +375,9 @@ class RLEstimator(Framework):
         Args:
             toolkit:
         """
-        if toolkit and toolkit not in RLToolkit:
+        if toolkit and toolkit not in list(RLToolkit):
             raise ValueError(
-                "Invalid type: {}, valid RL toolkits types are: [{}]".format(
-                    toolkit, [t for t in RLToolkit]
-                )
+                "Invalid type: {}, valid RL toolkits types are: {}".format(toolkit, list(RLToolkit))
             )
 
     @classmethod

@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.64.1 (2020-06-16)
+
+### Bug Fixes and Other Changes
+
+ * include py38 tox env and some dependency upgrades
+
 ## v1.64.0 (2020-06-15)
 
 ### Features

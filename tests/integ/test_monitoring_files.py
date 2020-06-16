@@ -319,7 +319,7 @@ def test_constraint_violations_object_creation_from_file_path_with_customization
 
 
 def test_constraint_violations_object_creation_from_file_path_without_customizations(
-    sagemaker_session
+    sagemaker_session,
 ):
     constraint_violations = ConstraintViolations.from_file_path(
         constraint_violations_file_path=os.path.join(
@@ -354,7 +354,7 @@ def test_constraint_violations_object_creation_from_string_with_customizations(
 
 
 def test_constraint_violations_object_creation_from_string_without_customizations(
-    sagemaker_session
+    sagemaker_session,
 ):
     with open(os.path.join(tests.integ.DATA_DIR, "monitor/constraint_violations.json"), "r") as f:
         file_body = f.read()
@@ -404,7 +404,7 @@ def test_constraint_violations_object_creation_from_s3_uri_with_customizations(
 
 
 def test_constraint_violations_object_creation_from_s3_uri_without_customizations(
-    sagemaker_session
+    sagemaker_session,
 ):
     with open(os.path.join(tests.integ.DATA_DIR, "monitor/constraint_violations.json"), "r") as f:
         file_body = f.read()
