@@ -269,7 +269,9 @@ class Processor(object):
 
 
 class ScriptProcessor(Processor):
-    """Handles Amazon SageMaker processing tasks for jobs using a machine learning framework."""
+    """Handles Amazon SageMaker processing tasks for jobs using a machine learning framework,
+    which allows for providing a script to be run as part of the Processing Job.
+    """
 
     def __init__(
         self,
