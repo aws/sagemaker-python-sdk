@@ -21,6 +21,91 @@ from sagemaker.cli.compatibility.v2.modifiers import framework_version
 from tests.unit.sagemaker.cli.compatibility.v2.modifiers.ast_converter import ast_call
 
 
+class Template:
+    """Essentially a data class with a parametrized format method
+
+    Helper to interpolate various combinations of framework_version, py_version, and image
+    as expected by framework and model classes
+
+    TODO: use attrs package and eliminate the boilerplate...
+    """
+
+    def __init__(
+        self, framework, framework_version, py_version, py_version_for_model=True,
+    ):
+        self.framework = framework
+        self.framework_version = framework_version
+        self.py_version = py_version
+        self.py_version_for_model = py_version_for_model
+
+    def constructors(self, versions=False, image=False):
+        return self._frameworks(versions, image) + self._models(versions, image)
+
+    def _templates(self, model=False):
+        module = self.framework.lower()
+        submodule = "model" if model else "estimator"
+        suffix = "Model" if model else ""
+        classname = "{framework}{suffix}".format(framework=self.framework, suffix=suffix)
+        templates = (
+            "{classname}({{}})",
+            "sagemaker.{module}.{classname}({{}})",
+            "sagemaker.{module}.{submodule}.{classname}({{}})",
+        )
+        return tuple(
+            template.format(classname=classname, module=module, submodule=submodule)
+            for template in templates
+        )
+
+    def _frameworks(self, versions=False, image=False):
+        keywords = dict()
+        if image:
+            keywords["image_name"] = "my:image"
+        if versions:
+            keywords["framework_version"] = self.framework_version
+            keywords["py_version"] = self.py_version
+        return _format_templates(keywords, self._templates())
+
+    def _models(self, versions=False, image=False):
+        keywords = dict()
+        if image:
+            keywords["image"] = "my:image"
+        if versions:
+            keywords["framework_version"] = self.framework_version
+            if self.py_version_for_model:
+                keywords["py_version"] = self.py_version
+        return _format_templates(keywords, self._templates(model=True))
+
+
+def _format_templates(keywords, templates):
+    args = ", ".join(
+        "{key}='{value}'".format(key=key, value=value) for key, value in keywords.items()
+    )
+    return [template.format(args) for template in templates]
+
+
+TEMPLATES = [
+    Template(
+        framework="TensorFlow",
+        framework_version="1.11.0",
+        py_version="py2",
+        py_version_for_model=False,
+    ),
+    Template(framework="MXNet", framework_version="1.2.0", py_version="py2",),
+    Template(framework="Chainer", framework_version="4.1.0", py_version="py3",),
+    Template(framework="PyTorch", framework_version="0.4.0", py_version="py3",),
+    Template(
+        framework="SKLearn",
+        framework_version="0.20.0",
+        py_version="py3",
+        py_version_for_model=False,
+    ),
+]
+
+
+def constructors(versions=False, image=False):
+    return [ctr for template in TEMPLATES for ctr in template.constructors(versions, image)]
+
+
 @pytest.fixture(autouse=True)
 def skip_if_py2():
     # Remove once https://github.com/aws/sagemaker-python-sdk/issues/1461 is addressed.
@@ -28,128 +113,68 @@ def skip_if_py2():
         pytest.skip("v2 migration script doesn't support Python 2.")
 
 
-def test_node_should_be_modified_fw_constructor_no_fw_version():
-    fw_constructors = (
-        "TensorFlow()",
-        "sagemaker.tensorflow.TensorFlow()",
-        "sagemaker.tensorflow.estimator.TensorFlow()",
-        "TensorFlowModel()",
-        "sagemaker.tensorflow.TensorFlowModel()",
-        "sagemaker.tensorflow.model.TensorFlowModel()",
-        "MXNet()",
-        "sagemaker.mxnet.MXNet()",
-        "sagemaker.mxnet.estimator.MXNet()",
-        "MXNetModel()",
-        "sagemaker.mxnet.MXNetModel()",
-        "sagemaker.mxnet.model.MXNetModel()",
-        "Chainer()",
-        "sagemaker.chainer.Chainer()",
-        "sagemaker.chainer.estimator.Chainer()",
-        "ChainerModel()",
-        "sagemaker.chainer.ChainerModel()",
-        "sagemaker.chainer.model.ChainerModel()",
-        "PyTorch()",
-        "sagemaker.pytorch.PyTorch()",
-        "sagemaker.pytorch.estimator.PyTorch()",
-        "PyTorchModel()",
-        "sagemaker.pytorch.PyTorchModel()",
-        "sagemaker.pytorch.model.PyTorchModel()",
-        "SKLearn()",
-        "sagemaker.sklearn.SKLearn()",
-        "sagemaker.sklearn.estimator.SKLearn()",
-        "SKLearnModel()",
-        "sagemaker.sklearn.SKLearnModel()",
-        "sagemaker.sklearn.model.SKLearnModel()",
-    )
+@pytest.fixture
+def constructors_empty():
+    return constructors()
 
+
+@pytest.fixture
+def constructors_with_versions():
+    return constructors(versions=True)
+
+
+@pytest.fixture
+def constructors_with_image():
+    return constructors(image=True)
+
+
+@pytest.fixture
+def constructors_with_both():
+    return constructors(versions=True, image=True)
+
+
+def _test_node_should_be_modified(ctrs, should_modify=True):
     modifier = framework_version.FrameworkVersionEnforcer()
+    for ctr in ctrs:
+        node = ast_call(ctr)
+        if should_modify:
+            assert modifier.node_should_be_modified(node), "{} wasn't modified.".format(ctr)
+        else:
+            assert not modifier.node_should_be_modified(node), "{} was modified.".format(ctr)
 
-    for constructor in fw_constructors:
-        node = ast_call(constructor)
-        assert modifier.node_should_be_modified(node) is True
+
+def test_node_should_be_modified_empty(constructors_empty):
+    _test_node_should_be_modified(constructors_empty, should_modify=True)
 
 
-def test_node_should_be_modified_fw_constructor_with_fw_version():
-    fw_constructors = (
-        "TensorFlow(framework_version='2.2')",
-        "sagemaker.tensorflow.TensorFlow(framework_version='2.2')",
-        "sagemaker.tensorflow.estimator.TensorFlow(framework_version='2.2')",
-        "TensorFlowModel(framework_version='1.10')",
-        "sagemaker.tensorflow.TensorFlowModel(framework_version='1.10')",
-        "sagemaker.tensorflow.model.TensorFlowModel(framework_version='1.10')",
-        "MXNet(framework_version='1.6')",
-        "sagemaker.mxnet.MXNet(framework_version='1.6')",
-        "sagemaker.mxnet.estimator.MXNet(framework_version='1.6')",
-        "MXNetModel(framework_version='1.6')",
-        "sagemaker.mxnet.MXNetModel(framework_version='1.6')",
-        "sagemaker.mxnet.model.MXNetModel(framework_version='1.6')",
-        "PyTorch(framework_version='1.4')",
-        "sagemaker.pytorch.PyTorch(framework_version='1.4')",
-        "sagemaker.pytorch.estimator.PyTorch(framework_version='1.4')",
-        "PyTorchModel(framework_version='1.4')",
-        "sagemaker.pytorch.PyTorchModel(framework_version='1.4')",
-        "sagemaker.pytorch.model.PyTorchModel(framework_version='1.4')",
-        "Chainer(framework_version='5.0')",
-        "sagemaker.chainer.Chainer(framework_version='5.0')",
-        "sagemaker.chainer.estimator.Chainer(framework_version='5.0')",
-        "ChainerModel(framework_version='5.0')",
-        "sagemaker.chainer.ChainerModel(framework_version='5.0')",
-        "sagemaker.chainer.model.ChainerModel(framework_version='5.0')",
-        "SKLearn(framework_version='0.20.0')",
-        "sagemaker.sklearn.SKLearn(framework_version='0.20.0')",
-        "sagemaker.sklearn.estimator.SKLearn(framework_version='0.20.0')",
-        "SKLearnModel(framework_version='0.20.0')",
-        "sagemaker.sklearn.SKLearnModel(framework_version='0.20.0')",
-        "sagemaker.sklearn.model.SKLearnModel(framework_version='0.20.0')",
-    )
+def test_node_should_be_modified_with_versions(constructors_with_versions):
+    _test_node_should_be_modified(constructors_with_versions, should_modify=False)
 
-    modifier = framework_version.FrameworkVersionEnforcer()
 
-    for constructor in fw_constructors:
-        node = ast_call(constructor)
-        assert modifier.node_should_be_modified(node) is False
+def test_node_should_be_modified_with_image(constructors_with_image):
+    _test_node_should_be_modified(constructors_with_image, should_modify=False)
 
 
 def test_node_should_be_modified_random_function_call():
-    node = ast_call("sagemaker.session.Session()")
+    _test_node_should_be_modified(["sagemaker.session.Session()"], should_modify=False)
+
+
+def _test_modify_node(ctrs_before, ctrs_expected):
     modifier = framework_version.FrameworkVersionEnforcer()
-    assert modifier.node_should_be_modified(node) is False
-
-
-def test_modify_node_tf():
-    _test_modify_node("TensorFlow", "1.11.0")
-
-
-def test_modify_node_mx():
-    _test_modify_node("MXNet", "1.2.0")
-
-
-def test_modify_node_chainer():
-    _test_modify_node("Chainer", "4.1.0")
-
-
-def test_modify_node_pt():
-    _test_modify_node("PyTorch", "0.4.0")
-
-
-def test_modify_node_sklearn():
-    _test_modify_node("SKLearn", "0.20.0")
-
-
-def _test_modify_node(framework, default_version):
-    modifier = framework_version.FrameworkVersionEnforcer()
-
-    classes = (
-        "{}".format(framework),
-        "sagemaker.{}.{}".format(framework.lower(), framework),
-        "sagemaker.{}.estimator.{}".format(framework.lower(), framework),
-        "{}Model".format(framework),
-        "sagemaker.{}.{}Model".format(framework.lower(), framework),
-        "sagemaker.{}.model.{}Model".format(framework.lower(), framework),
-    )
-    for cls in classes:
-        node = ast_call("{}()".format(cls))
+    for before, expected in zip(ctrs_before, ctrs_expected):
+        node = ast_call(before)
         modifier.modify_node(node)
+        # NOTE: this type of equality with pasta depends on ordering of args...
+        assert expected == pasta.dump(node)
 
-        expected_result = "{}(framework_version='{}')".format(cls, default_version)
-        assert expected_result == pasta.dump(node)
+
+def test_modify_node_empty(constructors_empty, constructors_with_versions):
+    _test_modify_node(constructors_empty, constructors_with_versions)
+
+
+def test_modify_node_with_versions(constructors_with_versions):
+    _test_modify_node(constructors_with_versions, constructors_with_versions)
+
+
+def test_modify_node_with_image(constructors_with_image, constructors_with_both):
+    _test_modify_node(constructors_with_image, constructors_with_both)
