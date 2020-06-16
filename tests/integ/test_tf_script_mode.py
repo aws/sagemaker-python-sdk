@@ -163,11 +163,11 @@ def test_mnist_async(sagemaker_session, cpu_instance_type, tf_full_version, py_v
         role=ROLE,
         train_instance_count=1,
         train_instance_type="ml.c5.4xlarge",
-        py_version=tests.integ.PYTHON_VERSION,
+        py_version=py_version,
         sagemaker_session=sagemaker_session,
         script_mode=True,
         # testing py-sdk functionality, no need to run against all TF versions
-        framework_version=LATEST_SERVING_VERSION,
+        framework_version=tf_full_version,
         tags=TAGS,
     )
     inputs = estimator.sagemaker_session.upload_data(

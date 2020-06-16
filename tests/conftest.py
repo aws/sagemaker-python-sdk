@@ -28,7 +28,7 @@ from sagemaker.pytorch import PyTorch
 from sagemaker.rl import RLEstimator
 from sagemaker.sklearn.defaults import SKLEARN_VERSION
 from sagemaker.tensorflow import TensorFlow
-from sagemaker.tensorflow.defaults import LATEST_VERSION, LATEST_SERVING_VERSION
+from sagemaker.tensorflow.defaults import LATEST_VERSION
 
 DEFAULT_REGION = "us-west-2"
 CUSTOM_BUCKET_NAME_PREFIX = "sagemaker-custom-bucket"
