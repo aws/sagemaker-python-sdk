@@ -24,10 +24,10 @@ The fastest way to run get started with Amazon SageMaker Processing is by runnin
 You can run notebooks on Amazon SageMaker that demonstrate end-to-end examples of using processing jobs to perform data pre-processing, feature engineering and model evaluation steps. See `Learn More`_ at the bottom of this page for more in-depth information.
 
 
-Data Pre-Processing and Model Evaluation with Scikit-Learn
-==================================================================
+Data Pre-Processing and Model Evaluation with scikit-learn
+==========================================================
 
-You can run a Scikit-Learn script to do data processing on SageMaker using the :class:`sagemaker.sklearn.processing.SKLearnProcessor` class.
+You can run a scikit-learn script to do data processing on SageMaker using the :class:`sagemaker.sklearn.processing.SKLearnProcessor` class.
 
 You first create a ``SKLearnProcessor``
 
@@ -36,35 +36,35 @@ You first create a ``SKLearnProcessor``
     from sagemaker.sklearn.processing import SKLearnProcessor
 
     sklearn_processor = SKLearnProcessor(
-        framework_version='0.20.0',
-        role='[Your SageMaker-compatible IAM role]',
-        instance_type='ml.m5.xlarge',
+        framework_version="0.20.0",
+        role="[Your SageMaker-compatible IAM role]",
+        instance_type="ml.m5.xlarge",
         instance_count=1,
     )
 
-Then you can run a Scikit-Learn script ``preprocessing.py`` in a processing job. In this example, our script takes one input from S3 and one command-line argument, processes the data, then splits the data into two datasets for output. When the job is finished, we can retrive the output from S3.
+Then you can run a scikit-learn script ``preprocessing.py`` in a processing job. In this example, our script takes one input from S3 and one command-line argument, processes the data, then splits the data into two datasets for output. When the job is finished, we can retrive the output from S3.
 
 .. code:: python
 
     from sagemaker.processing import ProcessingInput, ProcessingOutput
 
     sklearn_processor.run(
-        code='preprocessing.py',
+        code="preprocessing.py",
         inputs=[
-            ProcessingInput(source='s3://your-bucket/path/to/your/data, destination='/opt/ml/processing/input'),
+            ProcessingInput(source="s3://your-bucket/path/to/your/data", destination="/opt/ml/processing/input"),
         ],
         outputs=[
-            ProcessingOutput(output_name='train_data', source='/opt/ml/processing/train'),
-            ProcessingOutput(output_name='test_data', source='/opt/ml/processing/test'),
+            ProcessingOutput(output_name="train_data", source="/opt/ml/processing/train"),
+            ProcessingOutput(output_name="test_data", source="/opt/ml/processing/test"),
         ],
-        arguments=['--train-test-split-ratio', '0.2'],
+        arguments=["--train-test-split-ratio", "0.2"],
     )
 
     preprocessing_job_description = sklearn_processor.jobs[-1].describe()
 
-For an in-depth look, please see the `Scikit-Learn Data Processing and Model Evaluation`_ example notebook.
+For an in-depth look, please see the `Scikit-learn Data Processing and Model Evaluation`_ example notebook.
 
-.. _Scikit-Learn Data Processing and Model Evaluation: https://github.com/awslabs/amazon-sagemaker-examples/blob/master/sagemaker_processing/scikit_learn_data_processing_and_model_evaluation/scikit_learn_data_processing_and_model_evaluation.ipynb
+.. _Scikit-learn Data Processing and Model Evaluation: https://github.com/awslabs/amazon-sagemaker-examples/blob/master/sagemaker_processing/scikit_learn_data_processing_and_model_evaluation/scikit_learn_data_processing_and_model_evaluation.ipynb
 
 
 Data Pre-Processing with Spark
@@ -79,26 +79,26 @@ This example shows how you can run a processing job inside of a container that c
     from sagemaker.processing import ScriptProcessor, ProcessingInput
 
     spark_processor = ScriptProcessor(
-        base_job_name='spark-preprocessor',
-        image_uri='<ECR repository URI to your Spark processing image>',
-        command=['/opt/program/submit'],
+        base_job_name="spark-preprocessor",
+        image_uri="<ECR repository URI to your Spark processing image>",
+        command=["/opt/program/submit"],
         role=role,
         instance_count=2,
-        instance_type='ml.r5.xlarge',
+        instance_type="ml.r5.xlarge",
         max_runtime_in_seconds=1200,
-        env={'mode': 'python'},
+        env={"mode": "python"},
     )
 
     spark_processor.run(
-        code='preprocess.py',
+        code="preprocess.py",
         arguments=[
-            's3_input_bucket',
+            "s3_input_bucket",
             bucket,
-            's3_input_key_prefix',
+            "s3_input_key_prefix",
             input_prefix,
-            's3_output_bucket',
+            "s3_output_bucket",
             bucket,
-            's3_output_key_prefix',
+            "s3_output_key_prefix",
             input_preprocessed_prefix,
         ],
         logs=False,
