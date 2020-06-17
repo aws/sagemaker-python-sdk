@@ -1722,6 +1722,20 @@ class Session(object):  # pylint: disable=too-many-public-methods
         LOGGER.debug("tune request: %s", json.dumps(tune_request, indent=4))
         self.sagemaker_client.create_hyper_parameter_tuning_job(**tune_request)
 
+    def describe_tuning_job(self, job_name):
+        """Calls the DescribeHyperParameterTuningJob API for the given job name
+        and returns the response.
+
+            Args:
+                job_name (str): The name of the hyperparameter tuning job to describe.
+
+            Returns:
+                dict: A dictionary response with the hyperparameter tuning job description.
+        """
+        return self.sagemaker_client.describe_hyper_parameter_tuning_job(
+            HyperParameterTuningJobName=job_name
+        )
+
     @classmethod
     def _map_tuning_config(
         cls,
