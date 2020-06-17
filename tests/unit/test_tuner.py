@@ -1423,6 +1423,11 @@ def test_create_warm_start_tuner_with_single_estimator_dict(
     assert tuner.warm_start_config.parents == additional_parents
 
 
+def test_describe(tuner):
+    tuner.describe()
+    tuner.sagemaker_session.describe_tuning_job.assert_called_once()
+
+
 def _convert_tuning_job_details(job_details, estimator_name):
     """Convert a tuning job description using the 'TrainingJobDefinition' field into a new one using a single-item
        'TrainingJobDefinitions' field (list).
