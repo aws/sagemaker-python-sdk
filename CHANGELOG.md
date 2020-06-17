@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.65.0 (2020-06-17)
+
+### Features
+
+ * support for describing hyperparameter tuning job
+
+### Bug Fixes and Other Changes
+
+ * update distributed GPU utilization warning message
+ * set logs to False if wait is False in AutoML
+ * workflow passing spot training param to training job
+
 ## v1.64.1 (2020-06-16)
 
 ### Bug Fixes and Other Changes
