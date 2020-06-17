@@ -53,8 +53,8 @@ SPARK_ML_MODEL_LOCAL_PATH = os.path.join(
     tests.integ.DATA_DIR, "sparkml_model", "mleap_model.tar.gz"
 )
 SPARK_ML_DEFAULT_VARIANT_NAME = (
-    "AllTraffic"
-)  # default defined in src/sagemaker/session.py def production_variant
+    "AllTraffic"  # default defined in src/sagemaker/session.py def production_variant
+)
 SPARK_ML_WRONG_VARIANT_NAME = "WRONG_VARIANT"
 SPARK_ML_TEST_DATA = "1.0,C,38.0,71.5,1.0,female"
 SPARK_ML_MODEL_SCHEMA = json.dumps(

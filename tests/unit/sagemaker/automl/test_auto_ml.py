@@ -294,6 +294,17 @@ def test_auto_ml_only_one_of_problem_type_and_job_objective_provided(sagemaker_s
         )
 
 
+@patch("sagemaker.automl.automl.AutoMLJob.start_new")
+def test_auto_ml_fit_set_logs_to_false(start_new, sagemaker_session, caplog):
+    auto_ml = AutoML(
+        role=ROLE, target_attribute_name=TARGET_ATTRIBUTE_NAME, sagemaker_session=sagemaker_session
+    )
+    inputs = DEFAULT_S3_INPUT_DATA
+    auto_ml.fit(inputs, job_name=JOB_NAME, wait=False, logs=True)
+    start_new.wait.assert_not_called()
+    assert "Setting logs to False. logs is only meaningful when wait is True." in caplog.text
+
+
 def test_auto_ml_additional_optional_params(sagemaker_session):
     auto_ml = AutoML(
         role=ROLE,
