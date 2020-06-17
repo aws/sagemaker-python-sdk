@@ -344,7 +344,7 @@ def test_transform_mxnet_logs(
         transformer.wait()
 
 
-def test_transform_tf_kms_network_isolation(sagemaker_session, cpu_instance_type, tmpdir):
+def test_transform_tf_kms_network_isolation(sagemaker_session, cpu_instance_type, tmpdir, tf_full_version, py_version):
     data_path = os.path.join(DATA_DIR, "tensorflow_mnist")
 
     tf = TensorFlow(
@@ -352,9 +352,9 @@ def test_transform_tf_kms_network_isolation(sagemaker_session, cpu_instance_type
         role="SageMakerRole",
         train_instance_count=1,
         train_instance_type=cpu_instance_type,
-        framework_version=LATEST_SERVING_VERSION,
+        framework_version=tf_full_version,
         script_mode=True,
-        py_version=PYTHON_VERSION,
+        py_version=py_version,
         sagemaker_session=sagemaker_session,
     )
 
