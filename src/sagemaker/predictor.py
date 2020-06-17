@@ -83,7 +83,7 @@ class RealTimePredictor(object):
         self._endpoint_config_name = self._get_endpoint_config_name()
         self._model_names = self._get_model_names()
 
-    def predict(self, data, initial_args=None, target_model=None):
+    def predict(self, data, initial_args=None, target_model=None, target_variant=None):
         """Return the inference from the specified endpoint.
 
         Args:
@@ -98,6 +98,9 @@ class RealTimePredictor(object):
             target_model (str): S3 model artifact path to run an inference request on,
                 in case of a multi model endpoint. Does not apply to endpoints hosting
                 single model (Default: None)
+            target_variant (str): The name of the production variant to run an inference
+            request on (Default: None). Note that the ProductionVariant identifies the model
+            you want to host and the resources you want to deploy for hosting it.
 
         Returns:
             object: Inference for the given input. If a deserializer was specified when creating
@@ -106,7 +109,7 @@ class RealTimePredictor(object):
                 as is.
         """
 
-        request_args = self._create_request_args(data, initial_args, target_model)
+        request_args = self._create_request_args(data, initial_args, target_model, target_variant)
         response = self.sagemaker_session.sagemaker_runtime_client.invoke_endpoint(**request_args)
         return self._handle_response(response)
 
@@ -123,12 +126,13 @@ class RealTimePredictor(object):
         response_body.close()
         return data
 
-    def _create_request_args(self, data, initial_args=None, target_model=None):
+    def _create_request_args(self, data, initial_args=None, target_model=None, target_variant=None):
         """
         Args:
             data:
             initial_args:
             target_model:
+            target_variant:
         """
         args = dict(initial_args) if initial_args else {}
 
@@ -143,6 +147,9 @@ class RealTimePredictor(object):
 
         if target_model:
             args["TargetModel"] = target_model
+
+        if target_variant:
+            args["TargetVariant"] = target_variant
 
         if self.serializer is not None:
             data = self.serializer(data)

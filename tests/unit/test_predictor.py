@@ -346,6 +346,7 @@ DEFAULT_CONTENT_TYPE = "application/json"
 CSV_CONTENT_TYPE = "text/csv"
 RETURN_VALUE = 0
 CSV_RETURN_VALUE = "1,2,3\r\n"
+PRODUCTION_VARIANT_1 = "PRODUCTION_VARIANT_1"
 
 ENDPOINT_DESC = {"EndpointConfigName": ENDPOINT}
 
@@ -401,6 +402,31 @@ def test_predict_call_with_headers():
         "ContentType": DEFAULT_CONTENT_TYPE,
         "EndpointName": ENDPOINT,
     }
+    call_args, kwargs = sagemaker_session.sagemaker_runtime_client.invoke_endpoint.call_args
+    assert kwargs == expected_request_args
+
+    assert result == RETURN_VALUE
+
+
+def test_predict_call_with_target_variant():
+    sagemaker_session = empty_sagemaker_session()
+    predictor = RealTimePredictor(
+        ENDPOINT, sagemaker_session, content_type=DEFAULT_CONTENT_TYPE, accept=DEFAULT_CONTENT_TYPE
+    )
+
+    data = "untouched"
+    result = predictor.predict(data, target_variant=PRODUCTION_VARIANT_1)
+
+    assert sagemaker_session.sagemaker_runtime_client.invoke_endpoint.called
+
+    expected_request_args = {
+        "Accept": DEFAULT_CONTENT_TYPE,
+        "Body": data,
+        "ContentType": DEFAULT_CONTENT_TYPE,
+        "EndpointName": ENDPOINT,
+        "TargetVariant": PRODUCTION_VARIANT_1,
+    }
+
     call_args, kwargs = sagemaker_session.sagemaker_runtime_client.invoke_endpoint.call_args
     assert kwargs == expected_request_args
 

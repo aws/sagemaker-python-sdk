@@ -261,11 +261,11 @@ def read_recordio(f):
     """
     while True:
         try:
-            read_kmagic, = struct.unpack("I", f.read(4))
+            (read_kmagic,) = struct.unpack("I", f.read(4))
         except struct.error:
             return
         assert read_kmagic == _kmagic
-        len_record, = struct.unpack("I", f.read(4))
+        (len_record,) = struct.unpack("I", f.read(4))
         pad = (((len_record + 3) >> 2) << 2) - len_record
         yield f.read(len_record)
         if pad:

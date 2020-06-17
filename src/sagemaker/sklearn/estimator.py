@@ -19,7 +19,8 @@ from sagemaker.estimator import Framework
 from sagemaker.fw_registry import default_framework_uri
 from sagemaker.fw_utils import (
     framework_name_from_image,
-    empty_framework_version_warning,
+    get_unsupported_framework_version_error,
+    later_framework_version_warning,
     python_deprecation_warning,
 )
 from sagemaker.sklearn import defaults
@@ -68,8 +69,7 @@ class SKLearn(Framework):
                 If ``source_dir`` is specified, then ``entry_point``
                 must point to a file located at the root of ``source_dir``.
             framework_version (str): Scikit-learn version you want to use for
-                executing your model training code. List of supported versions
-                https://github.com/aws/sagemaker-python-sdk#sklearn-sagemaker-estimators
+                executing your model training code.
             source_dir (str): Path (absolute, relative or an S3 URI) to a directory
                 with any other training source code dependencies aside from the entry
                 point file (default: None). If ``source_dir`` is an S3 URI, it must
@@ -127,11 +127,17 @@ class SKLearn(Framework):
 
         self.py_version = py_version
 
-        if framework_version is None:
-            logger.warning(
-                empty_framework_version_warning(defaults.SKLEARN_VERSION, defaults.SKLEARN_VERSION)
+        if framework_version in defaults.SKLEARN_SUPPORTED_VERSIONS:
+            self.framework_version = framework_version
+        else:
+            raise ValueError(
+                get_unsupported_framework_version_error(
+                    self.__framework_name__, framework_version, defaults.SKLEARN_SUPPORTED_VERSIONS
+                )
             )
-        self.framework_version = framework_version or defaults.SKLEARN_VERSION
+
+        if framework_version != defaults.SKLEARN_LATEST_VERSION:
+            logger.warning(later_framework_version_warning(defaults.SKLEARN_LATEST_VERSION))
 
         if image_name is None:
             image_tag = "{}-{}-{}".format(framework_version, "cpu", py_version)

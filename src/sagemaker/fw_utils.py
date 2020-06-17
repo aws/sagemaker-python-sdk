@@ -49,8 +49,8 @@ PYTHON_2_DEPRECATION_WARNING = (
     "Please set the argument \"py_version='py3'\" to use the Python 3 {framework} image."
 )
 PARAMETER_SERVER_MULTI_GPU_WARNING = (
-    "You have selected a multi-GPU training instance type. "
-    "You have also enabled parameter server for distributed training. "
+    "If you have selected a multi-GPU training instance type, "
+    "and have also enabled parameter server for distributed training. "
     "Distributed training with the default parameter server configuration will not "
     "fully leverage all GPU cores; the parameter server will be configured to run "
     "only one worker per host regardless of the number of GPUs."
@@ -587,8 +587,16 @@ def empty_framework_version_warning(default_version, latest_version):
     """
     msgs = [EMPTY_FRAMEWORK_VERSION_WARNING.format(default_version)]
     if default_version != latest_version:
-        msgs.append(LATER_FRAMEWORK_VERSION_WARNING.format(latest=latest_version))
+        msgs.append(later_framework_version_warning(latest_version))
     return " ".join(msgs)
+
+
+def later_framework_version_warning(latest_version):
+    """
+    Args:
+        latest_version:
+    """
+    return LATER_FRAMEWORK_VERSION_WARNING.format(latest=latest_version)
 
 
 def warn_if_parameter_server_with_multi_gpu(training_instance_type, distributions):
@@ -617,9 +625,9 @@ def warn_if_parameter_server_with_multi_gpu(training_instance_type, distribution
         return
 
     is_multi_gpu_instance = (
-        training_instance_type.split(".")[1].startswith("p")
-        and training_instance_type not in SINGLE_GPU_INSTANCE_TYPES
-    )
+        training_instance_type == "local_gpu"
+        or training_instance_type.split(".")[1].startswith("p")
+    ) and training_instance_type not in SINGLE_GPU_INSTANCE_TYPES
 
     ps_enabled = "parameter_server" in distributions and distributions["parameter_server"].get(
         "enabled", False

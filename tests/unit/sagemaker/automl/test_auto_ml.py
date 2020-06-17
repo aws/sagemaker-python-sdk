@@ -12,9 +12,11 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import copy
+
 import pytest
 from mock import Mock, patch
-from sagemaker import AutoML, AutoMLJob, AutoMLInput, CandidateEstimator
+from sagemaker import AutoML, AutoMLJob, AutoMLInput, CandidateEstimator, PipelineModel
 from sagemaker.predictor import RealTimePredictor
 
 MODEL_DATA = "s3://bucket/model.tar.gz"
@@ -37,12 +39,14 @@ DEFAULT_JOB_NAME = "automl-{}".format(TIMESTAMP)
 
 JOB_NAME = "default-job-name"
 JOB_NAME_2 = "banana-auto-ml-job"
+JOB_NAME_3 = "descriptive-auto-ml-job"
 VOLUME_KMS_KEY = "volume-kms-key-id-string"
 OUTPUT_KMS_KEY = "output-kms-key-id-string"
 OUTPUT_PATH = "s3://my_other_bucket/"
 BASE_JOB_NAME = "banana"
 PROBLEM_TYPE = "BinaryClassification"
 BLACKLISTED_ALGORITHM = ["xgboost"]
+LIST_TAGS_RESULT = {"Tags": [{"Key": "key1", "Value": "value1"}]}
 MAX_CANDIDATES = 10
 MAX_RUNTIME_PER_TRAINING_JOB = 3600
 TOTAL_JOB_RUNTIME = 36000
@@ -57,6 +61,33 @@ BEST_CANDIDATE = {"best-candidate": "best-trial"}
 BEST_CANDIDATE_2 = {"best-candidate": "best-trial-2"}
 AUTO_ML_DESC = {"AutoMLJobName": JOB_NAME, "BestCandidate": BEST_CANDIDATE}
 AUTO_ML_DESC_2 = {"AutoMLJobName": JOB_NAME_2, "BestCandidate": BEST_CANDIDATE_2}
+AUTO_ML_DESC_3 = {
+    "AutoMLJobArn": "automl_job_arn",
+    "AutoMLJobConfig": {
+        "CompletionCriteria": {
+            "MaxAutoMLJobRuntimeInSeconds": 3000,
+            "MaxCandidates": 28,
+            "MaxRuntimePerTrainingJobInSeconds": 100,
+        },
+        "SecurityConfig": {"EnableInterContainerTrafficEncryption": True},
+    },
+    "AutoMLJobName": "mock_automl_job_name",
+    "AutoMLJobObjective": {"MetricName": "Auto"},
+    "AutoMLJobSecondaryStatus": "Completed",
+    "AutoMLJobStatus": "Completed",
+    "GenerateCandidateDefinitionsOnly": False,
+    "InputDataConfig": [
+        {
+            "DataSource": {
+                "S3DataSource": {"S3DataType": "S3Prefix", "S3Uri": "s3://input/prefix"}
+            },
+            "TargetAttributeName": "y",
+        }
+    ],
+    "OutputDataConfig": {"KmsKeyId": "string", "S3OutputPath": "s3://output_prefix"},
+    "ProblemType": "Auto",
+    "RoleArn": "mock_role_arn",
+}
 
 INFERENCE_CONTAINERS = [
     {
@@ -71,6 +102,33 @@ INFERENCE_CONTAINERS = [
     },
     {
         "Environment": {"INVERSE_LABEL_TRANSFORM": "1"},
+        "Image": "account.dkr.ecr.us-west-2.amazonaws.com/sagemaker-auto-ml-transform:1.0-cpu-py3",
+        "ModelDataUrl": "s3://sagemaker-us-west-2-account/sagemaker-auto-ml-gamma/transform/output",
+    },
+]
+
+CLASSIFICATION_INFERENCE_CONTAINERS = [
+    {
+        "Environment": {"SAGEMAKER_PROGRAM": "sagemaker_serve"},
+        "Image": "account.dkr.ecr.us-west-2.amazonaws.com/sagemaker-auto-ml-data-processing:1.0-cpu-py3",
+        "ModelDataUrl": "s3://sagemaker-us-west-2-account/sagemaker-auto-ml-gamma/data-processing/output",
+    },
+    {
+        "Environment": {
+            "MAX_CONTENT_LENGTH": "20000000",
+            "SAGEMAKER_INFERENCE_SUPPORTED": "probability,probabilities,predicted_label",
+            "SAGEMAKER_INFERENCE_OUTPUT": "predicted_label",
+        },
+        "Image": "account.dkr.ecr.us-west-2.amazonaws.com/sagemaker-auto-ml-training:1.0-cpu-py3",
+        "ModelDataUrl": "s3://sagemaker-us-west-2-account/sagemaker-auto-ml-gamma/training/output",
+    },
+    {
+        "Environment": {
+            "INVERSE_LABEL_TRANSFORM": "1",
+            "SAGEMAKER_INFERENCE_SUPPORTED": "probability,probabilities,predicted_label,labels",
+            "SAGEMAKER_INFERENCE_OUTPUT": "predicted_label",
+            "SAGEMAKER_INFERENCE_INPUT": "predicted_label",
+        },
         "Image": "account.dkr.ecr.us-west-2.amazonaws.com/sagemaker-auto-ml-transform:1.0-cpu-py3",
         "ModelDataUrl": "s3://sagemaker-us-west-2-account/sagemaker-auto-ml-gamma/transform/output",
     },
@@ -94,6 +152,12 @@ CANDIDATE_STEPS = [
 CANDIDATE_DICT = {
     "CandidateName": "candidate_mock",
     "InferenceContainers": INFERENCE_CONTAINERS,
+    "CandidateSteps": CANDIDATE_STEPS,
+}
+
+CLASSIFICATION_CANDIDATE_DICT = {
+    "CandidateName": "candidate_mock",
+    "InferenceContainers": CLASSIFICATION_INFERENCE_CONTAINERS,
     "CandidateSteps": CANDIDATE_STEPS,
 }
 
@@ -143,6 +207,8 @@ def describe_auto_ml_job_mock(job_name=None):
         return AUTO_ML_DESC
     elif job_name == JOB_NAME_2:
         return AUTO_ML_DESC_2
+    elif job_name == JOB_NAME_3:
+        return AUTO_ML_DESC_3
 
 
 @pytest.fixture()
@@ -168,7 +234,7 @@ def sagemaker_session():
         name="describe_transform_job", return_value=TRANSFORM_JOB
     )
     sms.list_candidates = Mock(name="list_candidates", return_value={"Candidates": []})
-
+    sms.sagemaker_client.list_tags = Mock(name="list_tags", return_value=LIST_TAGS_RESULT)
     return sms
 
 
@@ -226,6 +292,17 @@ def test_auto_ml_only_one_of_problem_type_and_job_objective_provided(sagemaker_s
             sagemaker_session=sagemaker_session,
             problem_type=PROBLEM_TYPE,
         )
+
+
+@patch("sagemaker.automl.automl.AutoMLJob.start_new")
+def test_auto_ml_fit_set_logs_to_false(start_new, sagemaker_session, caplog):
+    auto_ml = AutoML(
+        role=ROLE, target_attribute_name=TARGET_ATTRIBUTE_NAME, sagemaker_session=sagemaker_session
+    )
+    inputs = DEFAULT_S3_INPUT_DATA
+    auto_ml.fit(inputs, job_name=JOB_NAME, wait=False, logs=True)
+    start_new.wait.assert_not_called()
+    assert "Setting logs to False. logs is only meaningful when wait is True." in caplog.text
 
 
 def test_auto_ml_additional_optional_params(sagemaker_session):
@@ -452,29 +529,17 @@ def test_deploy(sagemaker_session, candidate_mock):
     auto_ml = AutoML(
         role=ROLE, target_attribute_name=TARGET_ATTRIBUTE_NAME, sagemaker_session=sagemaker_session
     )
+    mock_pipeline = Mock(name="pipeline_model")
+    mock_pipeline.deploy = Mock(name="model_deploy")
     auto_ml.best_candidate = Mock(name="best_candidate", return_value=CANDIDATE_DICT)
-    auto_ml._deploy_inference_pipeline = Mock("_deploy_inference_pipeline", return_value=None)
+    auto_ml.create_model = Mock(name="create_model", return_value=mock_pipeline)
     auto_ml.deploy(
         initial_instance_count=INSTANCE_COUNT,
         instance_type=INSTANCE_TYPE,
         sagemaker_session=sagemaker_session,
     )
-    auto_ml._deploy_inference_pipeline.assert_called_once()
-    auto_ml._deploy_inference_pipeline.assert_called_with(
-        candidate_mock.containers,
-        initial_instance_count=INSTANCE_COUNT,
-        instance_type=INSTANCE_TYPE,
-        name=None,
-        sagemaker_session=sagemaker_session,
-        endpoint_name=None,
-        tags=None,
-        wait=True,
-        update_endpoint=False,
-        vpc_config=None,
-        enable_network_isolation=False,
-        model_kms_key=None,
-        predictor_cls=None,
-    )
+    auto_ml.create_model.assert_called_once()
+    mock_pipeline.deploy.assert_called_once()
 
 
 @patch("sagemaker.automl.automl.CandidateEstimator")
@@ -484,7 +549,10 @@ def test_deploy_optional_args(candidate_estimator, sagemaker_session, candidate_
     auto_ml = AutoML(
         role=ROLE, target_attribute_name=TARGET_ATTRIBUTE_NAME, sagemaker_session=sagemaker_session
     )
-    auto_ml._deploy_inference_pipeline = Mock("_deploy_inference_pipeline", return_value=None)
+    mock_pipeline = Mock(name="pipeline_model")
+    mock_pipeline.deploy = Mock(name="model_deploy")
+    auto_ml.best_candidate = Mock(name="best_candidate", return_value=CANDIDATE_DICT)
+    auto_ml.create_model = Mock(name="create_model", return_value=mock_pipeline)
 
     auto_ml.deploy(
         initial_instance_count=INSTANCE_COUNT,
@@ -500,25 +568,31 @@ def test_deploy_optional_args(candidate_estimator, sagemaker_session, candidate_
         enable_network_isolation=True,
         model_kms_key=OUTPUT_KMS_KEY,
         predictor_cls=RealTimePredictor,
+        inference_response_keys=None,
     )
-    auto_ml._deploy_inference_pipeline.assert_called_once()
-    auto_ml._deploy_inference_pipeline.assert_called_with(
-        candidate_mock.containers,
-        initial_instance_count=INSTANCE_COUNT,
-        instance_type=INSTANCE_TYPE,
+
+    auto_ml.create_model.assert_called_once()
+    auto_ml.create_model.assert_called_with(
         name=JOB_NAME,
         sagemaker_session=sagemaker_session,
-        endpoint_name=JOB_NAME,
-        tags=TAGS,
-        wait=False,
-        update_endpoint=True,
+        candidate=CANDIDATE_DICT,
+        inference_response_keys=None,
         vpc_config=VPC_CONFIG,
         enable_network_isolation=True,
         model_kms_key=OUTPUT_KMS_KEY,
         predictor_cls=RealTimePredictor,
     )
 
-    candidate_estimator.assert_called_with(CANDIDATE_DICT, sagemaker_session=sagemaker_session)
+    mock_pipeline.deploy.assert_called_once()
+
+    mock_pipeline.deploy.assert_called_with(
+        initial_instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        endpoint_name=JOB_NAME,
+        tags=TAGS,
+        wait=False,
+        update_endpoint=True,
+    )
 
 
 def test_candidate_estimator_get_steps(sagemaker_session):
@@ -536,3 +610,68 @@ def test_candidate_estimator_fit(sagemaker_session):
     candidate_estimator.fit(inputs)
     sagemaker_session.train.assert_called()
     sagemaker_session.transform.assert_called()
+
+
+def test_validate_and_update_inference_response():
+    cic = copy.copy(CLASSIFICATION_INFERENCE_CONTAINERS)
+
+    AutoML.validate_and_update_inference_response(
+        inference_containers=cic,
+        inference_response_keys=["predicted_label", "labels", "probabilities", "probability"],
+    )
+
+    assert (
+        cic[2]["Environment"]["SAGEMAKER_INFERENCE_OUTPUT"]
+        == "predicted_label,labels,probabilities,probability"
+    )
+    assert (
+        cic[2]["Environment"]["SAGEMAKER_INFERENCE_INPUT"]
+        == "predicted_label,probabilities,probability"
+    )
+    assert (
+        cic[1]["Environment"]["SAGEMAKER_INFERENCE_OUTPUT"]
+        == "predicted_label,probabilities,probability"
+    )
+
+
+def test_validate_and_update_inference_response_wrong_input():
+    cic = copy.copy(CLASSIFICATION_INFERENCE_CONTAINERS)
+
+    with pytest.raises(
+        ValueError,
+        message="Requested inference output keys [wrong_key, wrong_label] are unsupported. "
+        "The supported inference keys are [probability, probabilities, predicted_label, labels]",
+    ):
+        AutoML.validate_and_update_inference_response(
+            inference_containers=cic,
+            inference_response_keys=["wrong_key", "wrong_label", "probabilities", "probability"],
+        )
+
+
+def test_create_model(sagemaker_session):
+    auto_ml = AutoML(
+        role=ROLE, target_attribute_name=TARGET_ATTRIBUTE_NAME, sagemaker_session=sagemaker_session
+    )
+
+    pipeline_model = auto_ml.create_model(
+        name=JOB_NAME,
+        sagemaker_session=sagemaker_session,
+        candidate=CLASSIFICATION_CANDIDATE_DICT,
+        vpc_config=VPC_CONFIG,
+        enable_network_isolation=True,
+        model_kms_key=None,
+        predictor_cls=None,
+        inference_response_keys=None,
+    )
+
+    assert isinstance(pipeline_model, PipelineModel)
+
+
+def test_attach(sagemaker_session):
+    aml = AutoML.attach(auto_ml_job_name=JOB_NAME_3, sagemaker_session=sagemaker_session)
+    assert aml.current_job_name == JOB_NAME_3
+    assert aml.role == "mock_role_arn"
+    assert aml.target_attribute_name == "y"
+    assert aml.problem_type == "Auto"
+    assert aml.output_path == "s3://output_prefix"
+    assert aml.tags == LIST_TAGS_RESULT["Tags"]
