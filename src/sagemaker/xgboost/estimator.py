@@ -155,6 +155,7 @@ class XGBoost(Framework):
             dependencies (list[str]): A list of paths to directories (absolute or relative) with
                 any additional libraries that will be exported to the container.
                 If not specified, the dependencies from training are used.
+                This is not supported with "local code" in Local Mode.
             **kwargs: Additional kwargs passed to the :class:`~sagemaker.xgboost.model.XGBoostModel`
                 constructor.
 

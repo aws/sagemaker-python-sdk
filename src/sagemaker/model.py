@@ -709,11 +709,16 @@ class FrameworkModel(Model):
                 list of relative locations to directories with any additional
                 libraries needed in the Git repo. If the ```source_dir``` points
                 to S3, code will be uploaded and the S3 location will be used
-                instead. .. admonition:: Example
+                instead.
 
-                    The following call >>> Estimator(entry_point='inference.py',
-                    dependencies=['my/libs/common', 'virtual-env']) results in
-                    the following inside the container:
+                .. admonition:: Example
+
+                    The following call
+
+                    >>> Model(entry_point='inference.py',
+                    ...       dependencies=['my/libs/common', 'virtual-env'])
+
+                    results in the following inside the container:
 
                     >>> $ ls
 
@@ -721,6 +726,8 @@ class FrameworkModel(Model):
                     >>>     |------ inference.py
                     >>>     |------ common
                     >>>     |------ virtual-env
+
+                This is not supported with "local code" in Local Mode.
             git_config (dict[str, str]): Git configurations used for cloning
                 files, including ``repo``, ``branch``, ``commit``,
                 ``2FA_enabled``, ``username``, ``password`` and ``token``. The
