@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.65.1 (2020-06-18)
+
+### Bug Fixes and Other Changes
+
+ * remove include_package_data=True from setup.py
+
+### Documentation Changes
+
+ * add some clarification to Processing docs
+
+### Testing and Release Infrastructure
+
+ * specify what kinds of clients in PR template
+
 ## v1.65.0 (2020-06-17)
 
 ### Features
