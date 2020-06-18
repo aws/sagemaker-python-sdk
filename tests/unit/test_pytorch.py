@@ -17,6 +17,7 @@ import json
 import os
 import pytest
 from mock import ANY, MagicMock, Mock, patch
+from packaging.version import Version
 
 from sagemaker.pytorch import defaults
 from sagemaker.pytorch import PyTorch
@@ -585,46 +586,40 @@ def test_model_py2_warning(warning, sagemaker_session, pytorch_version):
     warning.assert_called_with(model.__framework_name__, defaults.LATEST_PY2_VERSION)
 
 
-def test_pt_enable_sm_metrics(sagemaker_session, pytorch_full_version):
+def test_pt_enable_sm_metrics(sagemaker_session, pytorch_version, pytorch_py_version):
     pytorch = _pytorch_estimator(
         sagemaker_session,
-        framework_version=pytorch_full_version,
-        py_version="py3",
+        framework_version=pytorch_version,
+        py_version=pytorch_py_version,
         enable_sagemaker_metrics=True,
     )
     assert pytorch.enable_sagemaker_metrics
 
 
-def test_pt_disable_sm_metrics(sagemaker_session, pytorch_full_version):
+def test_pt_disable_sm_metrics(sagemaker_session, pytorch_version, pytorch_py_version):
     pytorch = _pytorch_estimator(
         sagemaker_session,
-        framework_version=pytorch_full_version,
-        py_version="py3",
+        framework_version=pytorch_version,
+        py_version=pytorch_py_version,
         enable_sagemaker_metrics=False,
     )
     assert not pytorch.enable_sagemaker_metrics
 
 
-def test_pt_disable_sm_metrics_if_pt_ver_is_less_than_1_15(sagemaker_session):
-    for fw_version in ["1.1", "1.2"]:
-        pytorch = _pytorch_estimator(
-            sagemaker_session, framework_version=fw_version, py_version="py3"
-        )
+def test_pt_default_sm_metrics(sagemaker_session, pytorch_version, pytorch_py_version):
+    pytorch = _pytorch_estimator(
+        sagemaker_session, framework_version=pytorch_version, py_version=pytorch_py_version
+    )
+    if Version(pytorch_version) < Version("1.3"):
         assert pytorch.enable_sagemaker_metrics is None
-
-
-def test_pt_enable_sm_metrics_if_fw_ver_is_at_least_1_15(sagemaker_session):
-    for fw_version in ["1.3", "1.4", "2.0", "2.1"]:
-        pytorch = _pytorch_estimator(
-            sagemaker_session, framework_version=fw_version, py_version="py3"
-        )
+    else:
         assert pytorch.enable_sagemaker_metrics
 
 
-def test_custom_image_estimator_deploy(sagemaker_session, pytorch_full_version):
+def test_custom_image_estimator_deploy(sagemaker_session, pytorch_version, pytorch_py_version):
     custom_image = "mycustomimage:latest"
     pytorch = _pytorch_estimator(
-        sagemaker_session, framework_version=pytorch_full_version, py_version="py3"
+        sagemaker_session, framework_version=pytorch_version, py_version=pytorch_py_version
     )
     pytorch.fit(inputs="s3://mybucket/train", job_name="new_name")
     model = pytorch.create_model(image=custom_image)
