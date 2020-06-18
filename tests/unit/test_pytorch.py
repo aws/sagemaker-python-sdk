@@ -91,7 +91,12 @@ def _get_full_cpu_image_uri_with_ei(version, py_version):
 
 
 def _pytorch_estimator(
-    sagemaker_session, framework_version, py_version, train_instance_type=None, base_job_name=None, **kwargs
+    sagemaker_session,
+    framework_version,
+    py_version,
+    train_instance_type=None,
+    base_job_name=None,
+    **kwargs
 ):
     return PyTorch(
         entry_point=SCRIPT_PATH,
@@ -409,7 +414,9 @@ def test_train_image_cpu_instances(sagemaker_session, pytorch_version, pytorch_p
     )
     assert pytorch.train_image() == _get_full_cpu_image_uri(pytorch_version, pytorch_py_version)
 
-    pytorch = _pytorch_estimator(sagemaker_session, pytorch_version, pytorch_py_version, train_instance_type="ml.m16")
+    pytorch = _pytorch_estimator(
+        sagemaker_session, pytorch_version, pytorch_py_version, train_instance_type="ml.m16"
+    )
     assert pytorch.train_image() == _get_full_cpu_image_uri(pytorch_version, pytorch_py_version)
 
 
@@ -580,33 +587,45 @@ def test_model_py2_warning(warning, sagemaker_session, pytorch_version):
 
 def test_pt_enable_sm_metrics(sagemaker_session, pytorch_full_version):
     pytorch = _pytorch_estimator(
-        sagemaker_session, framework_version=pytorch_full_version, py_version="py3", enable_sagemaker_metrics=True
+        sagemaker_session,
+        framework_version=pytorch_full_version,
+        py_version="py3",
+        enable_sagemaker_metrics=True,
     )
     assert pytorch.enable_sagemaker_metrics
 
 
 def test_pt_disable_sm_metrics(sagemaker_session, pytorch_full_version):
     pytorch = _pytorch_estimator(
-        sagemaker_session, framework_version=pytorch_full_version, py_version="py3", enable_sagemaker_metrics=False
+        sagemaker_session,
+        framework_version=pytorch_full_version,
+        py_version="py3",
+        enable_sagemaker_metrics=False,
     )
     assert not pytorch.enable_sagemaker_metrics
 
 
 def test_pt_disable_sm_metrics_if_pt_ver_is_less_than_1_15(sagemaker_session):
     for fw_version in ["1.1", "1.2"]:
-        pytorch = _pytorch_estimator(sagemaker_session, framework_version=fw_version, py_version="py3")
+        pytorch = _pytorch_estimator(
+            sagemaker_session, framework_version=fw_version, py_version="py3"
+        )
         assert pytorch.enable_sagemaker_metrics is None
 
 
 def test_pt_enable_sm_metrics_if_fw_ver_is_at_least_1_15(sagemaker_session):
     for fw_version in ["1.3", "1.4", "2.0", "2.1"]:
-        pytorch = _pytorch_estimator(sagemaker_session, framework_version=fw_version, py_version="py3")
+        pytorch = _pytorch_estimator(
+            sagemaker_session, framework_version=fw_version, py_version="py3"
+        )
         assert pytorch.enable_sagemaker_metrics
 
 
 def test_custom_image_estimator_deploy(sagemaker_session, pytorch_full_version):
     custom_image = "mycustomimage:latest"
-    pytorch = _pytorch_estimator(sagemaker_session, framework_version=pytorch_full_version, py_version="py3")
+    pytorch = _pytorch_estimator(
+        sagemaker_session, framework_version=pytorch_full_version, py_version="py3"
+    )
     pytorch.fit(inputs="s3://mybucket/train", job_name="new_name")
     model = pytorch.create_model(image=custom_image)
     assert model.image == custom_image
