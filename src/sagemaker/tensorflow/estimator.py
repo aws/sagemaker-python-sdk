@@ -582,6 +582,7 @@ class TensorFlow(Framework):
                 If not specified and ``endpoint_type`` is 'tensorflow-serving', ``dependencies`` is
                 set to ``None``.
                 If ``endpoint_type`` is also ``None``, then the dependencies from training are used.
+                This is not supported with "local code" in Local Mode.
             **kwargs: Additional kwargs passed to :class:`~sagemaker.tensorflow.serving.Model`
                 and :class:`~sagemaker.tensorflow.model.TensorFlowModel` constructors.
 
