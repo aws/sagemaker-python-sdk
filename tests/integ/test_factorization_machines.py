@@ -15,7 +15,6 @@ from __future__ import absolute_import
 import gzip
 import os
 import pickle
-import sys
 import time
 
 from sagemaker import FactorizationMachines, FactorizationMachinesModel
