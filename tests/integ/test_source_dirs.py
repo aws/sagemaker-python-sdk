@@ -17,9 +17,8 @@ import os
 import pytest
 
 import tests.integ.lock as lock
-from tests.integ import DATA_DIR, PYTHON_VERSION
-
 from sagemaker.pytorch.estimator import PyTorch
+from tests.integ import DATA_DIR
 
 
 @pytest.mark.local_mode
@@ -38,7 +37,7 @@ def test_source_dirs(tmpdir, sagemaker_local_session):
         source_dir=source_dir,
         dependencies=[lib],
         framework_version="0.4",  # hard-code to last known good pytorch for now (see TODO above)
-        py_version=PYTHON_VERSION,
+        py_version="py3",
         train_instance_count=1,
         train_instance_type="local",
         sagemaker_session=sagemaker_local_session,
