@@ -57,7 +57,7 @@ def test_knn_regressor(sagemaker_session, cpu_instance_type, training_set):
             assert record.label["score"] is not None
 
 
-def test_async_knn_classifier(sagemaker_session, cpu_instance_type):
+def test_async_knn_classifier(sagemaker_session, cpu_instance_type, training_set):
     job_name = unique_name_from_base("knn")
 
     with timeout(minutes=5):
