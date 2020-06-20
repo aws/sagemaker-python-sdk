@@ -12,10 +12,8 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-import gzip
 import json
 import os
-import pickle
 
 import pytest
 
@@ -23,13 +21,18 @@ import sagemaker
 from sagemaker.amazon.amazon_estimator import get_image_uri
 from sagemaker.estimator import Estimator
 from sagemaker.utils import unique_name_from_base
-from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
+from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES, datasets
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 
 @pytest.fixture(scope="module")
 def region(sagemaker_session):
     return sagemaker_session.boto_session.region_name
+
+
+@pytest.fixture
+def training_set():
+    return datasets.one_p_mnist()
 
 
 def fm_serializer(data):
@@ -40,7 +43,7 @@ def fm_serializer(data):
 
 
 @pytest.mark.canary_quick
-def test_byo_estimator(sagemaker_session, region, cpu_instance_type):
+def test_byo_estimator(sagemaker_session, region, cpu_instance_type, training_set):
     """Use Factorization Machines algorithm as an example here.
 
     First we need to prepare data for training. We take standard data set, convert it to the
@@ -56,11 +59,6 @@ def test_byo_estimator(sagemaker_session, region, cpu_instance_type):
     job_name = unique_name_from_base("byo")
 
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
-        data_path = os.path.join(DATA_DIR, "one_p_mnist", "mnist.pkl.gz")
-
-        with gzip.open(data_path, "rb") as f:
-            train_set, _, _ = pickle.load(f, encoding="latin1")
-
         prefix = "test_byo_estimator"
         key = "recordio-pb-data"
 
@@ -90,25 +88,20 @@ def test_byo_estimator(sagemaker_session, region, cpu_instance_type):
         predictor.content_type = "application/json"
         predictor.deserializer = sagemaker.predictor.json_deserializer
 
-        result = predictor.predict(train_set[0][:10])
+        result = predictor.predict(training_set[0][:10])
 
         assert len(result["predictions"]) == 10
         for prediction in result["predictions"]:
             assert prediction["score"] is not None
 
 
-def test_async_byo_estimator(sagemaker_session, region, cpu_instance_type):
+def test_async_byo_estimator(sagemaker_session, region, cpu_instance_type, training_set):
     image_name = get_image_uri(region, "factorization-machines")
     endpoint_name = unique_name_from_base("byo")
     training_data_path = os.path.join(DATA_DIR, "dummy_tensor")
     job_name = unique_name_from_base("byo")
 
     with timeout(minutes=5):
-        data_path = os.path.join(DATA_DIR, "one_p_mnist", "mnist.pkl.gz")
-
-        with gzip.open(data_path, "rb") as f:
-            train_set, _, _ = pickle.load(f, encoding="latin1")
-
         prefix = "test_byo_estimator"
         key = "recordio-pb-data"
 
@@ -141,7 +134,7 @@ def test_async_byo_estimator(sagemaker_session, region, cpu_instance_type):
         predictor.content_type = "application/json"
         predictor.deserializer = sagemaker.predictor.json_deserializer
 
-        result = predictor.predict(train_set[0][:10])
+        result = predictor.predict(training_set[0][:10])
 
         assert len(result["predictions"]) == 10
         for prediction in result["predictions"]:

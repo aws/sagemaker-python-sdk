@@ -12,27 +12,25 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-import gzip
-import os
-import pickle
 import time
+
+import pytest
 
 from sagemaker import KNN, KNNModel
 from sagemaker.utils import unique_name_from_base
-from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
+from tests.integ import datasets, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 
-def test_knn_regressor(sagemaker_session, cpu_instance_type):
+@pytest.fixture
+def training_set():
+    return datasets.one_p_mnist()
+
+
+def test_knn_regressor(sagemaker_session, cpu_instance_type, training_set):
     job_name = unique_name_from_base("knn")
 
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
-        data_path = os.path.join(DATA_DIR, "one_p_mnist", "mnist.pkl.gz")
-
-        # Load the data into memory as numpy arrays
-        with gzip.open(data_path, "rb") as f:
-            train_set, _, _ = pickle.load(f, encoding="latin1")
-
         knn = KNN(
             role="SageMakerRole",
             train_instance_count=1,
@@ -45,14 +43,14 @@ def test_knn_regressor(sagemaker_session, cpu_instance_type):
 
         # training labels must be 'float32'
         knn.fit(
-            knn.record_set(train_set[0][:200], train_set[1][:200].astype("float32")),
+            knn.record_set(training_set[0][:200], training_set[1][:200].astype("float32")),
             job_name=job_name,
         )
 
     with timeout_and_delete_endpoint_by_name(job_name, sagemaker_session):
         model = KNNModel(knn.model_data, role="SageMakerRole", sagemaker_session=sagemaker_session)
         predictor = model.deploy(1, cpu_instance_type, endpoint_name=job_name)
-        result = predictor.predict(train_set[0][:10])
+        result = predictor.predict(training_set[0][:10])
 
         assert len(result) == 10
         for record in result:
@@ -63,12 +61,6 @@ def test_async_knn_classifier(sagemaker_session, cpu_instance_type):
     job_name = unique_name_from_base("knn")
 
     with timeout(minutes=5):
-        data_path = os.path.join(DATA_DIR, "one_p_mnist", "mnist.pkl.gz")
-
-        # Load the data into memory as numpy arrays
-        with gzip.open(data_path, "rb") as f:
-            train_set, _, _ = pickle.load(f, encoding="latin1")
-
         knn = KNN(
             role="SageMakerRole",
             train_instance_count=1,
@@ -83,7 +75,7 @@ def test_async_knn_classifier(sagemaker_session, cpu_instance_type):
 
         # training labels must be 'float32'
         knn.fit(
-            knn.record_set(train_set[0][:200], train_set[1][:200].astype("float32")),
+            knn.record_set(training_set[0][:200], training_set[1][:200].astype("float32")),
             wait=False,
             job_name=job_name,
         )
@@ -98,7 +90,7 @@ def test_async_knn_classifier(sagemaker_session, cpu_instance_type):
             estimator.model_data, role="SageMakerRole", sagemaker_session=sagemaker_session
         )
         predictor = model.deploy(1, cpu_instance_type, endpoint_name=job_name)
-        result = predictor.predict(train_set[0][:10])
+        result = predictor.predict(training_set[0][:10])
 
         assert len(result) == 10
         for record in result:

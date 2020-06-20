@@ -12,27 +12,25 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-import gzip
-import os
-import pickle
 import time
+
+import pytest
 
 import sagemaker.amazon.pca
 from sagemaker.utils import unique_name_from_base
-from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
+from tests.integ import datasets, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 
-def test_pca(sagemaker_session, cpu_instance_type):
+@pytest.fixture
+def training_set():
+    return datasets.one_p_mnist()
+
+
+def test_pca(sagemaker_session, cpu_instance_type, training_set):
     job_name = unique_name_from_base("pca")
 
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
-        data_path = os.path.join(DATA_DIR, "one_p_mnist", "mnist.pkl.gz")
-
-        # Load the data into memory as numpy arrays
-        with gzip.open(data_path, "rb") as f:
-            train_set, _, _ = pickle.load(f, encoding="latin1")
-
         pca = sagemaker.amazon.pca.PCA(
             role="SageMakerRole",
             train_instance_count=1,
@@ -45,7 +43,7 @@ def test_pca(sagemaker_session, cpu_instance_type):
         pca.algorithm_mode = "randomized"
         pca.subtract_mean = True
         pca.extra_components = 5
-        pca.fit(pca.record_set(train_set[0][:100]), job_name=job_name)
+        pca.fit(pca.record_set(training_set[0][:100]), job_name=job_name)
 
     with timeout_and_delete_endpoint_by_name(job_name, sagemaker_session):
         pca_model = sagemaker.amazon.pca.PCAModel(
@@ -58,23 +56,17 @@ def test_pca(sagemaker_session, cpu_instance_type):
             initial_instance_count=1, instance_type=cpu_instance_type, endpoint_name=job_name
         )
 
-        result = predictor.predict(train_set[0][:5])
+        result = predictor.predict(training_set[0][:5])
 
         assert len(result) == 5
         for record in result:
             assert record.label["projection"] is not None
 
 
-def test_async_pca(sagemaker_session, cpu_instance_type):
+def test_async_pca(sagemaker_session, cpu_instance_type, training_set):
     job_name = unique_name_from_base("pca")
 
     with timeout(minutes=5):
-        data_path = os.path.join(DATA_DIR, "one_p_mnist", "mnist.pkl.gz")
-
-        # Load the data into memory as numpy arrays
-        with gzip.open(data_path, "rb") as f:
-            train_set, _, _ = pickle.load(f, encoding="latin1")
-
         pca = sagemaker.amazon.pca.PCA(
             role="SageMakerRole",
             train_instance_count=1,
@@ -87,7 +79,7 @@ def test_async_pca(sagemaker_session, cpu_instance_type):
         pca.algorithm_mode = "randomized"
         pca.subtract_mean = True
         pca.extra_components = 5
-        pca.fit(pca.record_set(train_set[0][:100]), wait=False, job_name=job_name)
+        pca.fit(pca.record_set(training_set[0][:100]), wait=False, job_name=job_name)
 
         print("Detached from training job. Will re-attach in 20 seconds")
         time.sleep(20)
@@ -104,7 +96,7 @@ def test_async_pca(sagemaker_session, cpu_instance_type):
             initial_instance_count=1, instance_type=cpu_instance_type, endpoint_name=job_name
         )
 
-        result = predictor.predict(train_set[0][:5])
+        result = predictor.predict(training_set[0][:5])
 
         assert len(result) == 5
         for record in result:

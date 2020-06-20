@@ -12,10 +12,8 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-import gzip
 import json
 import os
-import pickle
 
 import pytest
 
@@ -26,12 +24,10 @@ from sagemaker.content_types import CONTENT_TYPE_JSON
 from sagemaker.estimator import Estimator
 from sagemaker.predictor import json_deserializer
 from sagemaker.tuner import ContinuousParameter, IntegerParameter, HyperparameterTuner
-from tests.integ import DATA_DIR, TUNING_DEFAULT_TIMEOUT_MINUTES
+from tests.integ import datasets, DATA_DIR, TUNING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 BASE_TUNING_JOB_NAME = "multi-algo-pysdk"
-
-DATA_PATH = os.path.join(DATA_DIR, "one_p_mnist", "mnist.pkl.gz")
 
 EXECUTION_ROLE = "SageMakerRole"
 
@@ -62,9 +58,7 @@ MAX_PARALLEL_JOBS = 2
 
 @pytest.fixture(scope="module")
 def data_set():
-    with gzip.open(DATA_PATH, "rb") as f:
-        data_set, _, _ = pickle.load(f, encoding="latin1")
-    return data_set
+    return datasets.one_p_mnist()
 
 
 @pytest.fixture(scope="function")

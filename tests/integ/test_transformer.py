@@ -12,10 +12,8 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-import gzip
 import json
 import os
-import pickle
 import time
 
 import pytest
@@ -28,6 +26,7 @@ from sagemaker.transformer import Transformer
 from sagemaker.estimator import Estimator
 from sagemaker.utils import unique_name_from_base
 from tests.integ import (
+    datasets,
     DATA_DIR,
     PYTHON_VERSION,
     TRAINING_DEFAULT_TIMEOUT_MINUTES,
@@ -107,13 +106,6 @@ def test_transform_mxnet(
 
 @pytest.mark.canary_quick
 def test_attach_transform_kmeans(sagemaker_session, cpu_instance_type):
-    data_path = os.path.join(DATA_DIR, "one_p_mnist")
-
-    # Load the data into memory as numpy arrays
-    train_set_path = os.path.join(data_path, "mnist.pkl.gz")
-    with gzip.open(train_set_path, "rb") as f:
-        train_set, _, _ = pickle.load(f, encoding="latin1")
-
     kmeans = KMeans(
         role="SageMakerRole",
         train_instance_count=1,
@@ -132,14 +124,14 @@ def test_attach_transform_kmeans(sagemaker_session, cpu_instance_type):
     kmeans.half_life_time_size = 1
     kmeans.epochs = 1
 
-    records = kmeans.record_set(train_set[0][:100])
+    records = kmeans.record_set(datasets.one_p_mnist()[0][:100])
 
     job_name = unique_name_from_base("test-kmeans-attach")
 
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         kmeans.fit(records, job_name=job_name)
 
-    transform_input_path = os.path.join(data_path, "transform_input.csv")
+    transform_input_path = os.path.join(DATA_DIR, "one_p_mnist", "transform_input.csv")
     transform_input_key_prefix = "integ-test-data/one_p_mnist/transform"
     transform_input = kmeans.sagemaker_session.upload_data(
         path=transform_input_path, key_prefix=transform_input_key_prefix
@@ -229,13 +221,7 @@ def test_transform_mxnet_tags(
 
 
 def test_transform_byo_estimator(sagemaker_session, cpu_instance_type):
-    data_path = os.path.join(DATA_DIR, "one_p_mnist")
     tags = [{"Key": "some-tag", "Value": "value-for-tag"}]
-
-    # Load the data into memory as numpy arrays
-    train_set_path = os.path.join(data_path, "mnist.pkl.gz")
-    with gzip.open(train_set_path, "rb") as f:
-        train_set, _, _ = pickle.load(f, encoding="latin1")
 
     kmeans = KMeans(
         role="SageMakerRole",
@@ -255,7 +241,7 @@ def test_transform_byo_estimator(sagemaker_session, cpu_instance_type):
     kmeans.half_life_time_size = 1
     kmeans.epochs = 1
 
-    records = kmeans.record_set(train_set[0][:100])
+    records = kmeans.record_set(datasets.one_p_mnist()[0][:100])
 
     job_name = unique_name_from_base("test-kmeans-attach")
 
@@ -265,7 +251,7 @@ def test_transform_byo_estimator(sagemaker_session, cpu_instance_type):
     estimator = Estimator.attach(training_job_name=job_name, sagemaker_session=sagemaker_session)
     estimator._enable_network_isolation = True
 
-    transform_input_path = os.path.join(data_path, "transform_input.csv")
+    transform_input_path = os.path.join(DATA_DIR, "one_p_mnist", "transform_input.csv")
     transform_input_key_prefix = "integ-test-data/one_p_mnist/transform"
     transform_input = kmeans.sagemaker_session.upload_data(
         path=transform_input_path, key_prefix=transform_input_key_prefix
