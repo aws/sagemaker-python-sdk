@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.65.1.post0 (2020-06-22)
+
+### Documentation Changes
+
+ * document that Local Mode + local code doesn't support dependencies arg
+
+### Testing and Release Infrastructure
+
+ * upgrade Sphinx to 3.1.1
+
 ## v1.65.1 (2020-06-18)
 
 ### Bug Fixes and Other Changes
