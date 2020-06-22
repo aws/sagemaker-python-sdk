@@ -573,39 +573,14 @@ def test_xgboost_airflow_config_uploads_data_source_to_s3(
 
 @pytest.mark.canary_quick
 def test_pytorch_airflow_config_uploads_data_source_to_s3_when_inputs_not_provided(
-    sagemaker_session, cpu_instance_type, pytorch_full_version
+    sagemaker_session, cpu_instance_type, pytorch_full_version, pytorch_full_py_version,
 ):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         estimator = PyTorch(
             entry_point=PYTORCH_MNIST_SCRIPT,
             role=ROLE,
             framework_version=pytorch_full_version,
-            py_version="py3",
-            train_instance_count=2,
-            train_instance_type=cpu_instance_type,
-            hyperparameters={"epochs": 6, "backend": "gloo"},
-            sagemaker_session=sagemaker_session,
-        )
-
-        training_config = _build_airflow_workflow(
-            estimator=estimator, instance_type=cpu_instance_type
-        )
-
-        _assert_that_s3_url_contains_data(
-            sagemaker_session,
-            training_config["HyperParameters"]["sagemaker_submit_directory"].strip('"'),
-        )
-
-
-def test_pytorch_12_airflow_config_uploads_data_source_to_s3_when_inputs_not_provided(
-    sagemaker_session, cpu_instance_type
-):
-    with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
-        estimator = PyTorch(
-            entry_point=PYTORCH_MNIST_SCRIPT,
-            role=ROLE,
-            framework_version="1.2.0",
-            py_version="py3",
+            py_version=pytorch_full_py_version,
             train_instance_count=2,
             train_instance_type=cpu_instance_type,
             hyperparameters={"epochs": 6, "backend": "gloo"},
