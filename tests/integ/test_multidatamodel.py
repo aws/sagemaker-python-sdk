@@ -320,8 +320,8 @@ def test_multi_data_model_deploy_trained_model_from_framework_estimator(
 def _mxnet_training_job(
     sagemaker_session,
     container_image,
-    mxnet_full_version,
-    mxnet_full_py_version,
+    mxnet_version,
+    py_version,
     cpu_instance_type,
     learning_rate,
 ):
@@ -332,8 +332,8 @@ def _mxnet_training_job(
         mx = MXNet(
             entry_point=script_path,
             role=ROLE,
-            framework_version=mxnet_full_version,
-            py_version=mxnet_full_py_version,
+            framework_version=mxnet_version,
+            py_version=py_version,
             train_instance_count=1,
             train_instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
