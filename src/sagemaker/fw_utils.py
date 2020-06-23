@@ -69,7 +69,7 @@ UNSUPPORTED_FRAMEWORK_VERSION_ERROR = (
     "{} framework does not support version {}. Please use one of the following: {}."
 )
 
-VALID_PY_VERSIONS = ["py2", "py3", "py37"]
+VALID_PY_VERSIONS = ["py2", "py3", "py37", "py36"]
 VALID_EIA_FRAMEWORKS = [
     "tensorflow",
     "tensorflow-serving",

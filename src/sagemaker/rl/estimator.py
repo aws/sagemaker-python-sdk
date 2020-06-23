@@ -25,6 +25,7 @@ from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
 logger = logging.getLogger("sagemaker")
 
+DEFAULT_RL_ACCOUNT = "462105765813"
 SAGEMAKER_ESTIMATOR = "sagemaker_estimator"
 SAGEMAKER_ESTIMATOR_VALUE = "RLEstimator"
 PYTHON_VERSION = "py3"
@@ -41,6 +42,8 @@ TOOLKIT_FRAMEWORK_VERSION_MAP = {
         "0.5": {"tensorflow": "1.11"},
         "0.6.5": {"tensorflow": "1.12"},
         "0.6": {"tensorflow": "1.12"},
+        "0.8.2":{"tensorflow": "2.1"},
+        "0.8.5":{"tensorflow": "2.1", "pytorch": "1.5"}
     },
 }
 
@@ -57,6 +60,7 @@ class RLFramework(enum.Enum):
 
     TENSORFLOW = "tensorflow"
     MXNET = "mxnet"
+    PYTORCH = "pytorch"
 
 
 class RLEstimator(Framework):
@@ -64,7 +68,7 @@ class RLEstimator(Framework):
 
     COACH_LATEST_VERSION_TF = "0.11.1"
     COACH_LATEST_VERSION_MXNET = "0.11.0"
-    RAY_LATEST_VERSION = "0.6.5"
+    RAY_LATEST_VERSION = "0.8.5"
 
     def __init__(
         self,
@@ -277,6 +281,18 @@ class RLEstimator(Framework):
         """
         if self.image_name:
             return self.image_name
+
+        # use different account for rl images if ray version is later than 0.8.2
+        if self.toolkit == RLToolkit.RAY.value and self.toolkit_version >= "0.8.2":
+            return fw_utils.create_image_uri(
+                self.sagemaker_session.boto_region_name,
+                "rl-ray-container",
+                self.train_instance_type,
+                self._image_version(),
+                py_version="py36",
+                account=DEFAULT_RL_ACCOUNT
+             )
+
         return fw_utils.create_image_uri(
             self.sagemaker_session.boto_region_name,
             self._image_framework(),
@@ -454,6 +470,13 @@ class RLEstimator(Framework):
 
     def _image_version(self):
         """Placeholder docstring"""
+        if self.toolkit == RLToolkit.RAY.value and self.toolkit_version >= "0.8.2":
+            frameworkd_tag = None
+            if self.framework == RLFramework.TENSORFLOW.value:
+                frameworkd_tag = "tf"
+            elif self.framework == RLFramework.PYTORCH.value:
+                frameworkd_tag = "torch"
+            return "{}-{}-{}".format(self.toolkit, self.toolkit_version, frameworkd_tag)
         return "{}{}".format(self.toolkit, self.toolkit_version)
 
     def _image_framework(self):
