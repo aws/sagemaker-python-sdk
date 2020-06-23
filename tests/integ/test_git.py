@@ -24,7 +24,7 @@ from sagemaker.mxnet.estimator import MXNet
 from sagemaker.pytorch.estimator import PyTorch
 from sagemaker.sklearn.estimator import SKLearn
 from sagemaker.sklearn.model import SKLearnModel
-from tests.integ import DATA_DIR, PYTHON_VERSION
+from tests.integ import DATA_DIR
 
 
 GIT_REPO = "https://github.com/aws/sagemaker-python-sdk.git"

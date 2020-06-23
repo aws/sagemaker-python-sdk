@@ -538,7 +538,9 @@ def test_stop_tuning_job(sagemaker_session, cpu_instance_type):
 
 
 @pytest.mark.canary_quick
-def test_tuning_mxnet(sagemaker_session, mxnet_full_version, mxnet_full_py_version, cpu_instance_type):
+def test_tuning_mxnet(
+    sagemaker_session, mxnet_full_version, mxnet_full_py_version, cpu_instance_type
+):
     with timeout(minutes=TUNING_DEFAULT_TIMEOUT_MINUTES):
         script_path = os.path.join(DATA_DIR, "mxnet_mnist", "mnist.py")
         data_path = os.path.join(DATA_DIR, "mxnet_mnist")

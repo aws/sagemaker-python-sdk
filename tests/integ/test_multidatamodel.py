@@ -240,16 +240,20 @@ def test_multi_data_model_deploy_pretrained_models_local_mode(container_image, s
 
 
 def test_multi_data_model_deploy_trained_model_from_framework_estimator(
-    container_image, sagemaker_session, cpu_instance_type
+    container_image, sagemaker_session, cpu_instance_type, mxnet_full_version, mxnet_full_py_version
 ):
     timestamp = sagemaker_timestamp()
     endpoint_name = "test-multimodel-endpoint-{}".format(timestamp)
     model_name = "test-multimodel-{}".format(timestamp)
-    mxnet_version = "1.4.1"
 
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
-        mxnet_model_1 = __mxnet_training_job(
-            sagemaker_session, container_image, mxnet_version, cpu_instance_type, 0.1
+        mxnet_model_1 = _mxnet_training_job(
+            sagemaker_session,
+            container_image,
+            mxnet_full_version,
+            mxnet_full_py_version,
+            cpu_instance_type,
+            0.1,
         )
         model_data_prefix = os.path.join(
             "s3://", sagemaker_session.default_bucket(), "multimodel-{}/".format(timestamp)
@@ -267,8 +271,13 @@ def test_multi_data_model_deploy_trained_model_from_framework_estimator(
         multi_data_model.deploy(1, cpu_instance_type, endpoint_name=endpoint_name)
 
         # Train another model
-        mxnet_model_2 = __mxnet_training_job(
-            sagemaker_session, container_image, mxnet_version, cpu_instance_type, 0.01
+        mxnet_model_2 = _mxnet_training_job(
+            sagemaker_session,
+            container_image,
+            mxnet_full_version,
+            mxnet_full_py_version,
+            cpu_instance_type,
+            0.01,
         )
         # Deploy newly trained model
         multi_data_model.add_model(mxnet_model_2.model_data, PRETRAINED_MODEL_PATH_2)
@@ -308,7 +317,7 @@ def test_multi_data_model_deploy_trained_model_from_framework_estimator(
         assert "Could not find endpoint" in str(exception.value)
 
 
-def __mxnet_training_job(
+def _mxnet_training_job(
     sagemaker_session,
     container_image,
     mxnet_full_version,
