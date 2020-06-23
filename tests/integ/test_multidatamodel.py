@@ -318,12 +318,7 @@ def test_multi_data_model_deploy_trained_model_from_framework_estimator(
 
 
 def _mxnet_training_job(
-    sagemaker_session,
-    container_image,
-    mxnet_version,
-    py_version,
-    cpu_instance_type,
-    learning_rate,
+    sagemaker_session, container_image, mxnet_version, py_version, cpu_instance_type, learning_rate
 ):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         script_path = os.path.join(DATA_DIR, "mxnet_mnist", "mnist.py")
