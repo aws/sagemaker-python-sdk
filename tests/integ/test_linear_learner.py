@@ -12,10 +12,6 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-import gzip
-import os
-import pickle
-import sys
 import time
 
 import numpy as np
@@ -23,25 +19,23 @@ import pytest
 
 from sagemaker.amazon.linear_learner import LinearLearner, LinearLearnerModel
 from sagemaker.utils import unique_name_from_base
-from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
+from tests.integ import datasets, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 
+@pytest.fixture
+def training_set():
+    return datasets.one_p_mnist()
+
+
 @pytest.mark.canary_quick
-def test_linear_learner(sagemaker_session, cpu_instance_type):
+def test_linear_learner(sagemaker_session, cpu_instance_type, training_set):
     job_name = unique_name_from_base("linear-learner")
 
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
-        data_path = os.path.join(DATA_DIR, "one_p_mnist", "mnist.pkl.gz")
-        pickle_args = {} if sys.version_info.major == 2 else {"encoding": "latin1"}
-
-        # Load the data into memory as numpy arrays
-        with gzip.open(data_path, "rb") as f:
-            train_set, _, _ = pickle.load(f, **pickle_args)
-
-        train_set[1][:100] = 1
-        train_set[1][100:200] = 0
-        train_set = train_set[0], train_set[1].astype(np.dtype("float32"))
+        training_set[1][:100] = 1
+        training_set[1][100:200] = 0
+        training_set = training_set[0], training_set[1].astype(np.dtype("float32"))
 
         ll = LinearLearner(
             "SageMakerRole",
@@ -85,30 +79,23 @@ def test_linear_learner(sagemaker_session, cpu_instance_type):
         ll.huber_delta = 0.1
         ll.early_stopping_tolerance = 0.0001
         ll.early_stopping_patience = 3
-        ll.fit(ll.record_set(train_set[0][:200], train_set[1][:200]), job_name=job_name)
+        ll.fit(ll.record_set(training_set[0][:200], training_set[1][:200]), job_name=job_name)
 
     with timeout_and_delete_endpoint_by_name(job_name, sagemaker_session):
         predictor = ll.deploy(1, cpu_instance_type, endpoint_name=job_name)
 
-        result = predictor.predict(train_set[0][0:100])
+        result = predictor.predict(training_set[0][0:100])
         assert len(result) == 100
         for record in result:
             assert record.label["predicted_label"] is not None
             assert record.label["score"] is not None
 
 
-def test_linear_learner_multiclass(sagemaker_session, cpu_instance_type):
+def test_linear_learner_multiclass(sagemaker_session, cpu_instance_type, training_set):
     job_name = unique_name_from_base("linear-learner")
 
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
-        data_path = os.path.join(DATA_DIR, "one_p_mnist", "mnist.pkl.gz")
-        pickle_args = {} if sys.version_info.major == 2 else {"encoding": "latin1"}
-
-        # Load the data into memory as numpy arrays
-        with gzip.open(data_path, "rb") as f:
-            train_set, _, _ = pickle.load(f, **pickle_args)
-
-        train_set = train_set[0], train_set[1].astype(np.dtype("float32"))
+        training_set = training_set[0], training_set[1].astype(np.dtype("float32"))
 
         ll = LinearLearner(
             "SageMakerRole",
@@ -120,32 +107,25 @@ def test_linear_learner_multiclass(sagemaker_session, cpu_instance_type):
         )
 
         ll.epochs = 1
-        ll.fit(ll.record_set(train_set[0][:200], train_set[1][:200]), job_name=job_name)
+        ll.fit(ll.record_set(training_set[0][:200], training_set[1][:200]), job_name=job_name)
 
     with timeout_and_delete_endpoint_by_name(job_name, sagemaker_session):
         predictor = ll.deploy(1, cpu_instance_type, endpoint_name=job_name)
 
-        result = predictor.predict(train_set[0][0:100])
+        result = predictor.predict(training_set[0][0:100])
         assert len(result) == 100
         for record in result:
             assert record.label["predicted_label"] is not None
             assert record.label["score"] is not None
 
 
-def test_async_linear_learner(sagemaker_session, cpu_instance_type):
+def test_async_linear_learner(sagemaker_session, cpu_instance_type, training_set):
     job_name = unique_name_from_base("linear-learner")
 
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
-        data_path = os.path.join(DATA_DIR, "one_p_mnist", "mnist.pkl.gz")
-        pickle_args = {} if sys.version_info.major == 2 else {"encoding": "latin1"}
-
-        # Load the data into memory as numpy arrays
-        with gzip.open(data_path, "rb") as f:
-            train_set, _, _ = pickle.load(f, **pickle_args)
-
-        train_set[1][:100] = 1
-        train_set[1][100:200] = 0
-        train_set = train_set[0], train_set[1].astype(np.dtype("float32"))
+        training_set[1][:100] = 1
+        training_set[1][100:200] = 0
+        training_set = training_set[0], training_set[1].astype(np.dtype("float32"))
 
         ll = LinearLearner(
             "SageMakerRole",
@@ -189,7 +169,11 @@ def test_async_linear_learner(sagemaker_session, cpu_instance_type):
         ll.huber_delta = 0.1
         ll.early_stopping_tolerance = 0.0001
         ll.early_stopping_patience = 3
-        ll.fit(ll.record_set(train_set[0][:200], train_set[1][:200]), wait=False, job_name=job_name)
+        ll.fit(
+            ll.record_set(training_set[0][:200], training_set[1][:200]),
+            wait=False,
+            job_name=job_name,
+        )
 
         print("Waiting to re-attach to the training job: %s" % job_name)
         time.sleep(20)
@@ -203,7 +187,7 @@ def test_async_linear_learner(sagemaker_session, cpu_instance_type):
         )
         predictor = model.deploy(1, cpu_instance_type, endpoint_name=job_name)
 
-        result = predictor.predict(train_set[0][0:100])
+        result = predictor.predict(training_set[0][0:100])
         assert len(result) == 100
         for record in result:
             assert record.label["predicted_label"] is not None

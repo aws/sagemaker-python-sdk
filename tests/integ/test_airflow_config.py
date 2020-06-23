@@ -12,15 +12,17 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-import gzip
 import os
-import pickle
-import sys
+
+import airflow
 import pytest
-import tests.integ
-
 import numpy as np
+from airflow import DAG
+from airflow.contrib.operators.sagemaker_training_operator import SageMakerTrainingOperator
+from airflow.contrib.operators.sagemaker_transform_operator import SageMakerTransformOperator
+from six.moves.urllib.parse import urlparse
 
+import tests.integ
 from sagemaker import (
     KMeans,
     FactorizationMachines,
@@ -40,20 +42,12 @@ from sagemaker.mxnet import MXNet
 from sagemaker.pytorch.estimator import PyTorch
 from sagemaker.sklearn import SKLearn
 from sagemaker.tensorflow import TensorFlow
-from sagemaker.workflow import airflow as sm_airflow
 from sagemaker.utils import sagemaker_timestamp
-
-import airflow
-from airflow import DAG
-from airflow.contrib.operators.sagemaker_training_operator import SageMakerTrainingOperator
-from airflow.contrib.operators.sagemaker_transform_operator import SageMakerTransformOperator
-
+from sagemaker.workflow import airflow as sm_airflow
 from sagemaker.xgboost import XGBoost
-from tests.integ import DATA_DIR, PYTHON_VERSION
+from tests.integ import datasets, DATA_DIR, PYTHON_VERSION
 from tests.integ.record_set import prepare_record_set_from_local_files
 from tests.integ.timeout import timeout
-
-from six.moves.urllib.parse import urlparse
 
 PYTORCH_MNIST_DIR = os.path.join(DATA_DIR, "pytorch_mnist")
 PYTORCH_MNIST_SCRIPT = os.path.join(PYTORCH_MNIST_DIR, "mnist.py")
@@ -101,13 +95,6 @@ def test_byo_airflow_config_uploads_data_source_to_s3_when_inputs_provided(
 @pytest.mark.canary_quick
 def test_kmeans_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_instance_type):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
-        data_path = os.path.join(DATA_DIR, "one_p_mnist", "mnist.pkl.gz")
-        pickle_args = {} if sys.version_info.major == 2 else {"encoding": "latin1"}
-
-        # Load the data into memory as numpy arrays
-        with gzip.open(data_path, "rb") as f:
-            train_set, _, _ = pickle.load(f, **pickle_args)
-
         kmeans = KMeans(
             role=ROLE,
             train_instance_count=SINGLE_INSTANCE_COUNT,
@@ -126,7 +113,7 @@ def test_kmeans_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_
         kmeans.center_factor = 1
         kmeans.eval_metrics = ["ssd", "msd"]
 
-        records = kmeans.record_set(train_set[0][:100])
+        records = kmeans.record_set(datasets.one_p_mnist()[0][:100])
 
         training_config = _build_airflow_workflow(
             estimator=kmeans, instance_type=cpu_instance_type, inputs=records
@@ -140,13 +127,6 @@ def test_kmeans_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_
 
 def test_fm_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_instance_type):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
-        data_path = os.path.join(DATA_DIR, "one_p_mnist", "mnist.pkl.gz")
-        pickle_args = {} if sys.version_info.major == 2 else {"encoding": "latin1"}
-
-        # Load the data into memory as numpy arrays
-        with gzip.open(data_path, "rb") as f:
-            train_set, _, _ = pickle.load(f, **pickle_args)
-
         fm = FactorizationMachines(
             role=ROLE,
             train_instance_count=SINGLE_INSTANCE_COUNT,
@@ -160,7 +140,8 @@ def test_fm_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_inst
             sagemaker_session=sagemaker_session,
         )
 
-        records = fm.record_set(train_set[0][:200], train_set[1][:200].astype("float32"))
+        training_set = datasets.one_p_mnist()
+        records = fm.record_set(training_set[0][:200], training_set[1][:200].astype("float32"))
 
         training_config = _build_airflow_workflow(
             estimator=fm, instance_type=cpu_instance_type, inputs=records
@@ -206,13 +187,6 @@ def test_ipinsights_airflow_config_uploads_data_source_to_s3(sagemaker_session, 
 
 def test_knn_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_instance_type):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
-        data_path = os.path.join(DATA_DIR, "one_p_mnist", "mnist.pkl.gz")
-        pickle_args = {} if sys.version_info.major == 2 else {"encoding": "latin1"}
-
-        # Load the data into memory as numpy arrays
-        with gzip.open(data_path, "rb") as f:
-            train_set, _, _ = pickle.load(f, **pickle_args)
-
         knn = KNN(
             role=ROLE,
             train_instance_count=SINGLE_INSTANCE_COUNT,
@@ -223,7 +197,8 @@ def test_knn_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_ins
             sagemaker_session=sagemaker_session,
         )
 
-        records = knn.record_set(train_set[0][:200], train_set[1][:200].astype("float32"))
+        training_set = datasets.one_p_mnist()
+        records = knn.record_set(training_set[0][:200], training_set[1][:200].astype("float32"))
 
         training_config = _build_airflow_workflow(
             estimator=knn, instance_type=cpu_instance_type, inputs=records
@@ -277,16 +252,10 @@ def test_linearlearner_airflow_config_uploads_data_source_to_s3(
     sagemaker_session, cpu_instance_type
 ):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
-        data_path = os.path.join(DATA_DIR, "one_p_mnist", "mnist.pkl.gz")
-        pickle_args = {} if sys.version_info.major == 2 else {"encoding": "latin1"}
-
-        # Load the data into memory as numpy arrays
-        with gzip.open(data_path, "rb") as f:
-            train_set, _, _ = pickle.load(f, **pickle_args)
-
-        train_set[1][:100] = 1
-        train_set[1][100:200] = 0
-        train_set = train_set[0], train_set[1].astype(np.dtype("float32"))
+        training_set = datasets.one_p_mnist()
+        training_set[1][:100] = 1
+        training_set[1][100:200] = 0
+        training_set = training_set[0], training_set[1].astype(np.dtype("float32"))
 
         ll = LinearLearner(
             ROLE,
@@ -331,7 +300,7 @@ def test_linearlearner_airflow_config_uploads_data_source_to_s3(
         ll.early_stopping_tolerance = 0.0001
         ll.early_stopping_patience = 3
 
-        records = ll.record_set(train_set[0][:200], train_set[1][:200])
+        records = ll.record_set(training_set[0][:200], training_set[1][:200])
 
         training_config = _build_airflow_workflow(
             estimator=ll, instance_type=cpu_instance_type, inputs=records
@@ -380,13 +349,6 @@ def test_ntm_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_ins
 @pytest.mark.canary_quick
 def test_pca_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_instance_type):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
-        data_path = os.path.join(DATA_DIR, "one_p_mnist", "mnist.pkl.gz")
-        pickle_args = {} if sys.version_info.major == 2 else {"encoding": "latin1"}
-
-        # Load the data into memory as numpy arrays
-        with gzip.open(data_path, "rb") as f:
-            train_set, _, _ = pickle.load(f, **pickle_args)
-
         pca = PCA(
             role=ROLE,
             train_instance_count=SINGLE_INSTANCE_COUNT,
@@ -399,7 +361,7 @@ def test_pca_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_ins
         pca.subtract_mean = True
         pca.extra_components = 5
 
-        records = pca.record_set(train_set[0][:100])
+        records = pca.record_set(datasets.one_p_mnist()[0][:100])
 
         training_config = _build_airflow_workflow(
             estimator=pca, instance_type=cpu_instance_type, inputs=records

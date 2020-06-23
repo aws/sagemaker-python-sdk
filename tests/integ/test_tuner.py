@@ -12,22 +12,15 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-import gzip
 import json
 import os
-import pickle
-import sys
 import time
 
 import numpy as np
 import pytest
-import tests.integ
 from botocore.exceptions import ClientError
-from tests.integ import DATA_DIR, PYTHON_VERSION, TUNING_DEFAULT_TIMEOUT_MINUTES
-from tests.integ.record_set import prepare_record_set_from_local_files
-from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
-from tests.integ import vpc_test_utils
 
+import tests.integ
 from sagemaker import KMeans, LDA, RandomCutForest
 from sagemaker.amazon.amazon_estimator import get_image_uri
 from sagemaker.amazon.common import read_records
@@ -48,19 +41,22 @@ from sagemaker.tuner import (
     create_identical_dataset_and_algorithm_tuner,
 )
 from sagemaker.utils import unique_name_from_base
+from tests.integ import (
+    datasets,
+    vpc_test_utils,
+    DATA_DIR,
+    PYTHON_VERSION,
+    TUNING_DEFAULT_TIMEOUT_MINUTES,
+)
+from tests.integ.record_set import prepare_record_set_from_local_files
+from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 DATA_PATH = os.path.join(DATA_DIR, "iris", "data")
 
 
 @pytest.fixture(scope="module")
 def kmeans_train_set(sagemaker_session):
-    data_path = os.path.join(DATA_DIR, "one_p_mnist", "mnist.pkl.gz")
-    pickle_args = {} if sys.version_info.major == 2 else {"encoding": "latin1"}
-    # Load the data into memory as numpy arrays
-    with gzip.open(data_path, "rb") as f:
-        train_set, _, _ = pickle.load(f, **pickle_args)
-
-    return train_set
+    return datasets.one_p_mnist()
 
 
 @pytest.fixture(scope="module")
@@ -383,8 +379,10 @@ def test_create_transfer_learning_tuner(
 def test_tuning_kmeans_identical_dataset_algorithm_tuner_from_non_terminal_parent(
     sagemaker_session, kmeans_train_set, kmeans_estimator, hyperparameter_ranges
 ):
-    """Tests Identical dataset and algorithm use case with one non terminal parent and child job launched with
-    .identical_dataset_and_algorithm_tuner() """
+    """Tests Identical dataset and algorithm use case with
+    one non terminal parent and child job launched with
+    .identical_dataset_and_algorithm_tuner()
+    """
     parent_tuning_job_name = unique_name_from_base("km-non-term", max_length=32)
     child_tuning_job_name = unique_name_from_base("km-non-term-child", max_length=32)
 
@@ -850,12 +848,6 @@ def test_tuning_byo_estimator(sagemaker_session, cpu_instance_type):
     training_data_path = os.path.join(DATA_DIR, "dummy_tensor")
 
     with timeout(minutes=TUNING_DEFAULT_TIMEOUT_MINUTES):
-        data_path = os.path.join(DATA_DIR, "one_p_mnist", "mnist.pkl.gz")
-        pickle_args = {} if sys.version_info.major == 2 else {"encoding": "latin1"}
-
-        with gzip.open(data_path, "rb") as f:
-            train_set, _, _ = pickle.load(f, **pickle_args)
-
         prefix = "test_byo_estimator"
         key = "recordio-pb-data"
         s3_train_data = sagemaker_session.upload_data(
@@ -902,7 +894,7 @@ def test_tuning_byo_estimator(sagemaker_session, cpu_instance_type):
         predictor.content_type = "application/json"
         predictor.deserializer = json_deserializer
 
-        result = predictor.predict(train_set[0][:10])
+        result = predictor.predict(datasets.one_p_mnist()[0][:10])
 
         assert len(result["predictions"]) == 10
         for prediction in result["predictions"]:
