@@ -22,14 +22,16 @@ import tests.integ
 from sagemaker.mxnet.estimator import MXNet
 from sagemaker.mxnet.model import MXNetModel
 from sagemaker.utils import sagemaker_timestamp
-from tests.integ import DATA_DIR, PYTHON_VERSION, TRAINING_DEFAULT_TIMEOUT_MINUTES
+from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.kms_utils import get_or_create_kms_key
 from tests.integ.retry import retries
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 
 @pytest.fixture(scope="module")
-def mxnet_training_job(sagemaker_session, mxnet_full_version, cpu_instance_type):
+def mxnet_training_job(
+    sagemaker_session, mxnet_full_version, mxnet_full_py_version, cpu_instance_type
+):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         script_path = os.path.join(DATA_DIR, "mxnet_mnist", "mnist.py")
         data_path = os.path.join(DATA_DIR, "mxnet_mnist")
@@ -38,7 +40,7 @@ def mxnet_training_job(sagemaker_session, mxnet_full_version, cpu_instance_type)
             entry_point=script_path,
             role="SageMakerRole",
             framework_version=mxnet_full_version,
-            py_version=PYTHON_VERSION,
+            py_version=mxnet_full_py_version,
             train_instance_count=1,
             train_instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
@@ -68,7 +70,13 @@ def test_attach_deploy(mxnet_training_job, sagemaker_session, cpu_instance_type)
         assert result is not None
 
 
-def test_deploy_model(mxnet_training_job, sagemaker_session, mxnet_full_version, cpu_instance_type):
+def test_deploy_model(
+    mxnet_training_job,
+    sagemaker_session,
+    mxnet_full_version,
+    mxnet_full_py_version,
+    cpu_instance_type,
+):
     endpoint_name = "test-mxnet-deploy-model-{}".format(sagemaker_timestamp())
 
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
@@ -81,7 +89,7 @@ def test_deploy_model(mxnet_training_job, sagemaker_session, mxnet_full_version,
             model_data,
             "SageMakerRole",
             entry_point=script_path,
-            py_version=PYTHON_VERSION,
+            py_version=mxnet_full_py_version,
             sagemaker_session=sagemaker_session,
             framework_version=mxnet_full_version,
         )
@@ -98,7 +106,11 @@ def test_deploy_model(mxnet_training_job, sagemaker_session, mxnet_full_version,
 
 
 def test_deploy_model_with_tags_and_kms(
-    mxnet_training_job, sagemaker_session, mxnet_full_version, cpu_instance_type
+    mxnet_training_job,
+    sagemaker_session,
+    mxnet_full_version,
+    mxnet_full_py_version,
+    cpu_instance_type,
 ):
     endpoint_name = "test-mxnet-deploy-model-{}".format(sagemaker_timestamp())
 
@@ -112,7 +124,7 @@ def test_deploy_model_with_tags_and_kms(
             model_data,
             "SageMakerRole",
             entry_point=script_path,
-            py_version=PYTHON_VERSION,
+            py_version=mxnet_full_py_version,
             sagemaker_session=sagemaker_session,
             framework_version=mxnet_full_version,
         )
@@ -155,6 +167,7 @@ def test_deploy_model_with_update_endpoint(
     mxnet_training_job,
     sagemaker_session,
     mxnet_full_version,
+    mxnet_full_py_version,
     cpu_instance_type,
     alternative_cpu_instance_type,
 ):
@@ -170,7 +183,7 @@ def test_deploy_model_with_update_endpoint(
             model_data,
             "SageMakerRole",
             entry_point=script_path,
-            py_version=PYTHON_VERSION,
+            py_version=mxnet_full_py_version,
             sagemaker_session=sagemaker_session,
             framework_version=mxnet_full_version,
         )
@@ -205,6 +218,7 @@ def test_deploy_model_with_update_non_existing_endpoint(
     mxnet_training_job,
     sagemaker_session,
     mxnet_full_version,
+    mxnet_full_py_version,
     cpu_instance_type,
     alternative_cpu_instance_type,
 ):
@@ -224,7 +238,7 @@ def test_deploy_model_with_update_non_existing_endpoint(
             model_data,
             "SageMakerRole",
             entry_point=script_path,
-            py_version=PYTHON_VERSION,
+            py_version=mxnet_full_py_version,
             sagemaker_session=sagemaker_session,
             framework_version=mxnet_full_version,
         )
@@ -244,7 +258,11 @@ def test_deploy_model_with_update_non_existing_endpoint(
     reason="EI isn't supported in that specific region.",
 )
 def test_deploy_model_with_accelerator(
-    mxnet_training_job, sagemaker_session, ei_mxnet_full_version, cpu_instance_type
+    mxnet_training_job,
+    sagemaker_session,
+    ei_mxnet_full_version,
+    mxnet_full_py_version,
+    cpu_instance_type,
 ):
     endpoint_name = "test-mxnet-deploy-model-ei-{}".format(sagemaker_timestamp())
 
@@ -259,7 +277,7 @@ def test_deploy_model_with_accelerator(
             "SageMakerRole",
             entry_point=script_path,
             framework_version=ei_mxnet_full_version,
-            py_version=PYTHON_VERSION,
+            py_version=mxnet_full_py_version,
             sagemaker_session=sagemaker_session,
         )
         predictor = model.deploy(
@@ -271,7 +289,7 @@ def test_deploy_model_with_accelerator(
         assert result is not None
 
 
-def test_async_fit(sagemaker_session, mxnet_full_version, cpu_instance_type):
+def test_async_fit(sagemaker_session, mxnet_full_version, mxnet_full_py_version, cpu_instance_type):
     endpoint_name = "test-mxnet-attach-deploy-{}".format(sagemaker_timestamp())
 
     with timeout(minutes=5):
@@ -281,7 +299,7 @@ def test_async_fit(sagemaker_session, mxnet_full_version, cpu_instance_type):
         mx = MXNet(
             entry_point=script_path,
             role="SageMakerRole",
-            py_version=PYTHON_VERSION,
+            py_version=mxnet_full_py_version,
             train_instance_count=1,
             train_instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
