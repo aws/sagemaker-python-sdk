@@ -184,7 +184,7 @@ def test_predict_jsons_json_content_type(tfs_predictor):
     input_data = "[1.0, 2.0, 5.0]\n[1.0, 2.0, 5.0]"
     expected_result = {"predictions": [[3.5, 4.0, 5.5], [3.5, 4.0, 5.5]]}
 
-    predictor = sagemaker.RealTimePredictor(
+    predictor = sagemaker.Predictor(
         tfs_predictor.endpoint,
         tfs_predictor.sagemaker_session,
         serializer=None,
@@ -201,7 +201,7 @@ def test_predict_jsons(tfs_predictor):
     input_data = "[1.0, 2.0, 5.0]\n[1.0, 2.0, 5.0]"
     expected_result = {"predictions": [[3.5, 4.0, 5.5], [3.5, 4.0, 5.5]]}
 
-    predictor = sagemaker.RealTimePredictor(
+    predictor = sagemaker.Predictor(
         tfs_predictor.endpoint,
         tfs_predictor.sagemaker_session,
         serializer=None,
@@ -218,7 +218,7 @@ def test_predict_jsonlines(tfs_predictor):
     input_data = "[1.0, 2.0, 5.0]\n[1.0, 2.0, 5.0]"
     expected_result = {"predictions": [[3.5, 4.0, 5.5], [3.5, 4.0, 5.5]]}
 
-    predictor = sagemaker.RealTimePredictor(
+    predictor = sagemaker.Predictor(
         tfs_predictor.endpoint,
         tfs_predictor.sagemaker_session,
         serializer=None,

@@ -206,16 +206,16 @@ From a model:
 Predictors
 ----------
 
-If you want to use your model for endpoints, then you can use the :class:`sagemaker.predictor.RealTimePredictor` class instead of the legacy ``sagemaker.tensorflow.TensorFlowPredictor`` class:
+If you want to use your model for endpoints, then you can use the :class:`sagemaker.predictor.Predictor` class instead of the legacy ``sagemaker.tensorflow.TensorFlowPredictor`` class:
 
 .. code:: python
 
     from sagemaker.model import FrameworkModel
-    from sagemaker.predictor import RealTimePredictor
+    from sagemaker.predictor import Predictor
 
     model = FrameworkModel(
         ...
-        predictor_cls=RealTimePredictor,
+        predictor_cls=Predictor,
     )
 
     predictor = model.deploy(...)

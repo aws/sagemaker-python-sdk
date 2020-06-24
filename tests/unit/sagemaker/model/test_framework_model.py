@@ -16,7 +16,7 @@ import os
 import subprocess
 
 from sagemaker.model import FrameworkModel
-from sagemaker.predictor import RealTimePredictor
+from sagemaker.predictor import Predictor
 
 import pytest
 from mock import MagicMock, Mock, patch
@@ -60,7 +60,7 @@ class DummyFrameworkModel(FrameworkModel):
         )
 
     def create_predictor(self, endpoint_name):
-        return RealTimePredictor(endpoint_name, sagemaker_session=self.sagemaker_session)
+        return Predictor(endpoint_name, sagemaker_session=self.sagemaker_session)
 
 
 class DummyFrameworkModelForGit(FrameworkModel):
@@ -75,7 +75,7 @@ class DummyFrameworkModelForGit(FrameworkModel):
         )
 
     def create_predictor(self, endpoint_name):
-        return RealTimePredictor(endpoint_name, sagemaker_session=self.sagemaker_session)
+        return Predictor(endpoint_name, sagemaker_session=self.sagemaker_session)
 
 
 @pytest.fixture()

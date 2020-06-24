@@ -26,13 +26,13 @@ from sagemaker.fw_utils import (
 )
 from sagemaker.model import FrameworkModel, MODEL_SERVER_WORKERS_PARAM_NAME
 from sagemaker.mxnet import defaults
-from sagemaker.predictor import RealTimePredictor, json_serializer, json_deserializer
+from sagemaker.predictor import Predictor, json_serializer, json_deserializer
 
 logger = logging.getLogger("sagemaker")
 
 
-class MXNetPredictor(RealTimePredictor):
-    """A RealTimePredictor for inference against MXNet Endpoints.
+class MXNetPredictor(Predictor):
+    """A Predictor for inference against MXNet Endpoints.
 
     This is able to serialize Python lists, dictionaries, and numpy arrays to
     multidimensional tensors for MXNet inference.
