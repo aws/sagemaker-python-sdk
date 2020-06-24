@@ -92,16 +92,6 @@ def test_unique_name_from_base_truncated():
     )
 
 
-def test_to_str_with_native_string():
-    value = "some string"
-    assert sagemaker.utils.to_str(value) == value
-
-
-def test_to_str_with_unicode_string():
-    value = u"åñøthér strîng"
-    assert sagemaker.utils.to_str(value) == value
-
-
 def test_name_from_tuning_arn():
     arn = "arn:aws:sagemaker:us-west-2:968277160000:hyper-parameter-tuning-job/resnet-sgd-tuningjob-11-07-34-11"
     name = sagemaker.utils.extract_name_from_job_arn(arn)

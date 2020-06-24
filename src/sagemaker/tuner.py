@@ -37,7 +37,7 @@ from sagemaker.parameter import (
 )
 from sagemaker.session import Session
 from sagemaker.session import s3_input
-from sagemaker.utils import base_name_from_image, name_from_base, to_str
+from sagemaker.utils import base_name_from_image, name_from_base
 
 AMAZON_ESTIMATOR_MODULE = "sagemaker"
 AMAZON_ESTIMATOR_CLS_NAMES = {
@@ -345,9 +345,7 @@ class HyperparameterTuner(object):
     ):
         """Prepare static hyperparameters for one estimator before tuning"""
         # Remove any hyperparameter that will be tuned
-        static_hyperparameters = {
-            to_str(k): to_str(v) for (k, v) in estimator.hyperparameters().items()
-        }
+        static_hyperparameters = {str(k): str(v) for (k, v) in estimator.hyperparameters().items()}
         for hyperparameter_name in hyperparameter_ranges.keys():
             static_hyperparameters.pop(hyperparameter_name, None)
 
