@@ -24,7 +24,7 @@ from sagemaker.mxnet.estimator import MXNet
 from sagemaker.pytorch.estimator import PyTorch
 from sagemaker.sklearn.estimator import SKLearn
 from sagemaker.sklearn.model import SKLearnModel
-from tests.integ import DATA_DIR, PYTHON_VERSION
+from tests.integ import DATA_DIR
 
 
 GIT_REPO = "https://github.com/aws/sagemaker-python-sdk.git"
@@ -81,7 +81,7 @@ def test_github(sagemaker_local_session, pytorch_full_version, pytorch_full_py_v
 
 @pytest.mark.local_mode
 @pytest.mark.skip("needs a secure authentication approach")
-def test_private_github(sagemaker_local_session, mxnet_full_version):
+def test_private_github(sagemaker_local_session, mxnet_full_version, mxnet_full_py_version):
     script_path = "mnist.py"
     data_path = os.path.join(DATA_DIR, "mxnet_mnist")
     git_config = {
@@ -100,7 +100,7 @@ def test_private_github(sagemaker_local_session, mxnet_full_version):
         source_dir=source_dir,
         dependencies=dependencies,
         framework_version=mxnet_full_version,
-        py_version=PYTHON_VERSION,
+        py_version=mxnet_full_py_version,
         train_instance_count=1,
         train_instance_type="local",
         sagemaker_session=sagemaker_local_session,
@@ -219,7 +219,7 @@ def test_github_with_ssh_passphrase_not_configured(sagemaker_local_session, skle
 
 @pytest.mark.local_mode
 @pytest.mark.skip("needs a secure authentication approach")
-def test_codecommit(sagemaker_local_session, mxnet_full_version):
+def test_codecommit(sagemaker_local_session, mxnet_full_version, mxnet_full_py_version):
     script_path = "mnist.py"
     data_path = os.path.join(DATA_DIR, "mxnet_mnist")
     git_config = {
@@ -236,7 +236,7 @@ def test_codecommit(sagemaker_local_session, mxnet_full_version):
         source_dir=source_dir,
         dependencies=dependencies,
         framework_version=mxnet_full_version,
-        py_version=PYTHON_VERSION,
+        py_version=mxnet_full_py_version,
         train_instance_count=1,
         train_instance_type="local",
         sagemaker_session=sagemaker_local_session,
