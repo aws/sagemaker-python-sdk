@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.65.1.post1 (2020-06-24)
+
+### Testing and Release Infrastructure
+
+ * add py38 to buildspecs
+
 ## v1.65.1.post0 (2020-06-22)
 
 ### Documentation Changes
