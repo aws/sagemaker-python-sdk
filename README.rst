@@ -96,6 +96,7 @@ SageMaker Python SDK is tested on:
 - Python 2.7
 - Python 3.6
 - Python 3.7
+- Python 3.8
 
 AWS Permissions
 ~~~~~~~~~~~~~~~
@@ -123,8 +124,8 @@ You can install the libraries needed to run the tests by running :code:`pip inst
 
 
 We run unit tests with tox, which is a program that lets you run unit tests for multiple Python versions, and also make sure the
-code fits our style guidelines. We run tox with Python 2.7, 3.6 and 3.7, so to run unit tests
-with the same configuration we do, you'll need to have interpreters for Python 2.7, Python 3.6 and Python 3.7 installed.
+code fits our style guidelines. We run tox with Python 2.7, 3.6, 3.7, and 3.8, so to run unit tests
+with the same configuration we do, you'll need to have interpreters for Python 2.7, Python 3.6, Python 3.7, and Python 3.8 installed.
 
 To run the unit tests with tox, run:
 
