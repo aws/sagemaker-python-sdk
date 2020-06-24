@@ -395,10 +395,7 @@ def _is_sequence_like(obj):
     Args:
         obj:
     """
-    # Need to explicitly check on str since str lacks the iterable magic methods in Python 2
-    return (  # pylint: disable=consider-using-ternary
-        hasattr(obj, "__iter__") and hasattr(obj, "__getitem__")
-    ) or isinstance(obj, str)
+    return hasattr(obj, "__iter__") and hasattr(obj, "__getitem__")
 
 
 def _row_to_csv(obj):
