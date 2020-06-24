@@ -325,7 +325,7 @@ def tf_full_version(tf_training_latest_version, tf_serving_latest_version):
     Fixture exists as such, since TF training and TFS have different latest versions.
     Otherwise, this would simply be a single latest version.
     """
-    return min(Version(tf_training_latest_version), Version(tf_serving_latest_version))
+    return str(min(Version(tf_training_latest_version), Version(tf_serving_latest_version)))
 
 
 @pytest.fixture(scope="module")
