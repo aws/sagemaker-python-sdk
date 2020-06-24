@@ -71,7 +71,7 @@ extras["test"] = (
         "awslogs",
         "black==19.10b0 ; python_version >= '3.6'",
         "stopit==1.1.2",
-        "apache-airflow==1.10.5",
+        "apache-airflow==1.10.9",
         "fabric>=2.0",
         "requests>=2.20.0, <3",
     ],
