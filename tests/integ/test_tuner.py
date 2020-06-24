@@ -588,7 +588,9 @@ def test_tuning_mxnet(
 
 
 @pytest.mark.canary_quick
-def test_tuning_tf(sagemaker_session, cpu_instance_type, tf_full_version, tf_full_py_version):
+def test_tuning_tf(
+    sagemaker_session, cpu_instance_type, tf_training_latest_version, tf_training_latest_py_version
+):
     resource_path = os.path.join(DATA_DIR, "tensorflow_mnist")
     script_path = os.path.join(resource_path, "mnist.py")
 
@@ -598,8 +600,8 @@ def test_tuning_tf(sagemaker_session, cpu_instance_type, tf_full_version, tf_ful
         train_instance_count=1,
         train_instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
-        framework_version=tf_full_version,
-        py_version=tf_full_py_version,
+        framework_version=tf_training_latest_version,
+        py_version=tf_training_latest_py_version,
     )
 
     hyperparameter_ranges = {"epochs": IntegerParameter(1, 2)}
@@ -630,7 +632,7 @@ def test_tuning_tf(sagemaker_session, cpu_instance_type, tf_full_version, tf_ful
 
 
 def test_tuning_tf_vpc_multi(
-    sagemaker_session, cpu_instance_type, tf_full_version, tf_full_py_version
+    sagemaker_session, cpu_instance_type, tf_training_latest_version, tf_training_latest_py_version
 ):
     """Test Tensorflow multi-instance using the same VpcConfig for training and inference"""
     instance_type = cpu_instance_type
@@ -646,8 +648,8 @@ def test_tuning_tf_vpc_multi(
     estimator = TensorFlow(
         entry_point=script_path,
         role="SageMakerRole",
-        framework_version=tf_full_version,
-        py_version=tf_full_py_version,
+        framework_version=tf_training_latest_version,
+        py_version=tf_training_latest_py_version,
         train_instance_count=instance_count,
         train_instance_type=instance_type,
         sagemaker_session=sagemaker_session,
@@ -678,7 +680,7 @@ def test_tuning_tf_vpc_multi(
         tuning_job_name = unique_name_from_base("tune-tf", max_length=32)
         tuner.fit(inputs, job_name=tuning_job_name)
 
-        print("Started hyperparameter tuning job with name: " + tuning_job_name)
+        print(f"Started hyperparameter tuning job with name: {tuning_job_name}")
 
         time.sleep(15)
         tuner.wait()

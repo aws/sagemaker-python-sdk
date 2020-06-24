@@ -39,7 +39,7 @@ TAGS = [{"Key": "some-key", "Value": "some-value"}]
 
 
 def test_mnist_with_checkpoint_config(
-    sagemaker_session, instance_type, tf_full_version, tf_full_py_version
+    sagemaker_session, instance_type, tf_training_latest_version, tf_training_latest_py_version
 ):
     checkpoint_s3_uri = "s3://{}/checkpoints/tf-{}".format(
         sagemaker_session.default_bucket(), sagemaker_timestamp()
@@ -51,8 +51,8 @@ def test_mnist_with_checkpoint_config(
         train_instance_count=1,
         train_instance_type=instance_type,
         sagemaker_session=sagemaker_session,
-        framework_version=tf_full_version,
-        py_version=tf_full_py_version,
+        framework_version=tf_training_latest_version,
+        py_version=tf_training_latest_py_version,
         metric_definitions=[{"Name": "train:global_steps", "Regex": r"global_step\/sec:\s(.*)"}],
         checkpoint_s3_uri=checkpoint_s3_uri,
         checkpoint_local_path=checkpoint_local_path,
@@ -82,7 +82,7 @@ def test_mnist_with_checkpoint_config(
     assert actual_training_checkpoint_config == expected_training_checkpoint_config
 
 
-def test_server_side_encryption(sagemaker_session, tf_serving_version, tf_full_py_version):
+def test_server_side_encryption(sagemaker_session, tf_full_version, tf_full_py_version):
     with kms_utils.bucket_with_encryption(sagemaker_session, ROLE) as (bucket_with_kms, kms_key):
         output_path = os.path.join(
             bucket_with_kms, "test-server-side-encryption", time.strftime("%y%m%d-%H%M")
@@ -95,7 +95,7 @@ def test_server_side_encryption(sagemaker_session, tf_serving_version, tf_full_p
             train_instance_count=1,
             train_instance_type="ml.c5.xlarge",
             sagemaker_session=sagemaker_session,
-            framework_version=tf_serving_version,
+            framework_version=tf_full_version,
             py_version=tf_full_py_version,
             code_location=output_path,
             output_path=output_path,
@@ -123,15 +123,17 @@ def test_server_side_encryption(sagemaker_session, tf_serving_version, tf_full_p
 
 
 @pytest.mark.canary_quick
-def test_mnist_distributed(sagemaker_session, instance_type, tf_full_version, tf_full_py_version):
+def test_mnist_distributed(
+    sagemaker_session, instance_type, tf_training_latest_version, tf_training_latest_py_version
+):
     estimator = TensorFlow(
         entry_point=SCRIPT,
         role=ROLE,
         train_instance_count=2,
         train_instance_type=instance_type,
         sagemaker_session=sagemaker_session,
-        framework_version=tf_full_version,
-        py_version=tf_full_py_version,
+        framework_version=tf_training_latest_version,
+        py_version=tf_training_latest_py_version,
         distributions=PARAMETER_SERVER_DISTRIBUTION,
     )
     inputs = estimator.sagemaker_session.upload_data(
@@ -147,14 +149,14 @@ def test_mnist_distributed(sagemaker_session, instance_type, tf_full_version, tf
     )
 
 
-def test_mnist_async(sagemaker_session, cpu_instance_type, tf_serving_version, tf_full_py_version):
+def test_mnist_async(sagemaker_session, cpu_instance_type, tf_full_version, tf_full_py_version):
     estimator = TensorFlow(
         entry_point=SCRIPT,
         role=ROLE,
         train_instance_count=1,
         train_instance_type="ml.c5.4xlarge",
         sagemaker_session=sagemaker_session,
-        framework_version=tf_serving_version,
+        framework_version=tf_full_version,
         py_version=tf_full_py_version,
         tags=TAGS,
     )
@@ -188,7 +190,7 @@ def test_mnist_async(sagemaker_session, cpu_instance_type, tf_serving_version, t
 
 
 def test_deploy_with_input_handlers(
-    sagemaker_session, instance_type, tf_serving_version, tf_full_py_version
+    sagemaker_session, instance_type, tf_full_version, tf_full_py_version
 ):
     estimator = TensorFlow(
         entry_point="training.py",
@@ -196,7 +198,7 @@ def test_deploy_with_input_handlers(
         role=ROLE,
         train_instance_count=1,
         train_instance_type=instance_type,
-        framework_version=tf_serving_version,
+        framework_version=tf_full_version,
         py_version=tf_full_py_version,
         sagemaker_session=sagemaker_session,
         tags=TAGS,
