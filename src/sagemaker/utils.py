@@ -20,7 +20,6 @@ import os
 import random
 import re
 import shutil
-import sys
 import tarfile
 import tempfile
 import time
@@ -160,25 +159,6 @@ def get_short_version(framework_version):
         str: The short version string
     """
     return ".".join(framework_version.split(".")[:2])
-
-
-def to_str(value):
-    """Convert the input to a string, unless it is a unicode string in Python 2.
-
-    Unicode strings are supported as native strings in Python 3, but
-    ``str()`` cannot be invoked on unicode strings in Python 2, so we need to
-    check for that case when converting user-specified values to strings.
-
-    Args:
-        value: The value to convert to a string.
-
-    Returns:
-        str or unicode: The string representation of the value or the unicode
-        string itself.
-    """
-    if sys.version_info.major < 3 and isinstance(value, six.string_types):
-        return value
-    return str(value)
 
 
 def extract_name_from_job_arn(arn):
