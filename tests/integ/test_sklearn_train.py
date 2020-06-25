@@ -21,7 +21,7 @@ import numpy
 from sagemaker.sklearn import SKLearn
 from sagemaker.sklearn import SKLearnModel
 from sagemaker.utils import sagemaker_timestamp, unique_name_from_base
-from tests.integ import DATA_DIR, PYTHON_VERSION, TRAINING_DEFAULT_TIMEOUT_MINUTES
+from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 
@@ -30,14 +30,17 @@ from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
     reason="This test has always failed, but the failure was masked by a bug. "
     "This test should be fixed. Details in https://github.com/aws/sagemaker-python-sdk/pull/968"
 )
-def sklearn_training_job(sagemaker_session, sklearn_full_version, cpu_instance_type):
-    return _run_mnist_training_job(sagemaker_session, cpu_instance_type, sklearn_full_version)
+def sklearn_training_job(
+    sagemaker_session, sklearn_full_version, sklearn_full_py_version, cpu_instance_type
+):
+    return _run_mnist_training_job(
+        sagemaker_session, cpu_instance_type, sklearn_full_version, sklearn_full_py_version
+    )
     sagemaker_session.boto_region_name
 
 
-@pytest.mark.skipif(PYTHON_VERSION != "py3", reason="Scikit-learn image supports only Python 3.")
 def test_training_with_additional_hyperparameters(
-    sagemaker_session, sklearn_full_version, cpu_instance_type
+    sagemaker_session, sklearn_full_version, sklearn_full_py_version, cpu_instance_type
 ):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         script_path = os.path.join(DATA_DIR, "sklearn_mnist", "mnist.py")
@@ -48,7 +51,7 @@ def test_training_with_additional_hyperparameters(
             role="SageMakerRole",
             train_instance_type=cpu_instance_type,
             framework_version=sklearn_full_version,
-            py_version=PYTHON_VERSION,
+            py_version=sklearn_full_py_version,
             sagemaker_session=sagemaker_session,
             hyperparameters={"epochs": 1},
         )
@@ -65,9 +68,8 @@ def test_training_with_additional_hyperparameters(
         return sklearn.latest_training_job.name
 
 
-@pytest.mark.skipif(PYTHON_VERSION != "py3", reason="Scikit-learn image supports only Python 3.")
 def test_training_with_network_isolation(
-    sagemaker_session, sklearn_full_version, cpu_instance_type
+    sagemaker_session, sklearn_full_version, sklearn_full_py_version, cpu_instance_type
 ):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         script_path = os.path.join(DATA_DIR, "sklearn_mnist", "mnist.py")
@@ -78,7 +80,7 @@ def test_training_with_network_isolation(
             role="SageMakerRole",
             train_instance_type=cpu_instance_type,
             framework_version=sklearn_full_version,
-            py_version=PYTHON_VERSION,
+            py_version=sklearn_full_py_version,
             sagemaker_session=sagemaker_session,
             hyperparameters={"epochs": 1},
             enable_network_isolation=True,
@@ -101,7 +103,6 @@ def test_training_with_network_isolation(
 
 @pytest.mark.canary_quick
 @pytest.mark.regional_testing
-@pytest.mark.skipif(PYTHON_VERSION != "py3", reason="Scikit-learn image supports only python 3.")
 @pytest.mark.skip(
     reason="This test has always failed, but the failure was masked by a bug. "
     "This test should be fixed. Details in https://github.com/aws/sagemaker-python-sdk/pull/968"
@@ -115,13 +116,16 @@ def test_attach_deploy(sklearn_training_job, sagemaker_session, cpu_instance_typ
         _predict_and_assert(predictor)
 
 
-@pytest.mark.skipif(PYTHON_VERSION != "py3", reason="Scikit-learn image supports only python 3.")
 @pytest.mark.skip(
     reason="This test has always failed, but the failure was masked by a bug. "
     "This test should be fixed. Details in https://github.com/aws/sagemaker-python-sdk/pull/968"
 )
 def test_deploy_model(
-    sklearn_training_job, sagemaker_session, cpu_instance_type, sklearn_full_version
+    sklearn_training_job,
+    sagemaker_session,
+    cpu_instance_type,
+    sklearn_full_version,
+    sklearn_full_py_version,
 ):
     endpoint_name = "test-sklearn-deploy-model-{}".format(sagemaker_timestamp())
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
@@ -141,12 +145,13 @@ def test_deploy_model(
         _predict_and_assert(predictor)
 
 
-@pytest.mark.skipif(PYTHON_VERSION != "py3", reason="Scikit-learn image supports only python 3.")
 @pytest.mark.skip(
     reason="This test has always failed, but the failure was masked by a bug. "
     "This test should be fixed. Details in https://github.com/aws/sagemaker-python-sdk/pull/968"
 )
-def test_async_fit(sagemaker_session, cpu_instance_type, sklearn_full_version):
+def test_async_fit(
+    sagemaker_session, cpu_instance_type, sklearn_full_version, sklearn_full_py_version
+):
     endpoint_name = "test-sklearn-attach-deploy-{}".format(sagemaker_timestamp())
 
     with timeout(minutes=5):
@@ -169,8 +174,9 @@ def test_async_fit(sagemaker_session, cpu_instance_type, sklearn_full_version):
         _predict_and_assert(predictor)
 
 
-@pytest.mark.skipif(PYTHON_VERSION != "py3", reason="Scikit-learn image supports only python 3.")
-def test_failed_training_job(sagemaker_session, sklearn_full_version, cpu_instance_type):
+def test_failed_training_job(
+    sagemaker_session, sklearn_full_version, sklearn_full_py_version, cpu_instance_type
+):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         script_path = os.path.join(DATA_DIR, "sklearn_mnist", "failure_script.py")
         data_path = os.path.join(DATA_DIR, "sklearn_mnist")
@@ -179,7 +185,7 @@ def test_failed_training_job(sagemaker_session, sklearn_full_version, cpu_instan
             entry_point=script_path,
             role="SageMakerRole",
             framework_version=sklearn_full_version,
-            py_version=PYTHON_VERSION,
+            py_version=sklearn_full_py_version,
             train_instance_count=1,
             train_instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
@@ -194,7 +200,9 @@ def test_failed_training_job(sagemaker_session, sklearn_full_version, cpu_instan
             sklearn.fit(train_input, job_name=job_name)
 
 
-def _run_mnist_training_job(sagemaker_session, instance_type, sklearn_full_version, wait=True):
+def _run_mnist_training_job(
+    sagemaker_session, instance_type, sklearn_version, py_version, wait=True
+):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
 
         script_path = os.path.join(DATA_DIR, "sklearn_mnist", "mnist.py")
@@ -204,8 +212,8 @@ def _run_mnist_training_job(sagemaker_session, instance_type, sklearn_full_versi
         sklearn = SKLearn(
             entry_point=script_path,
             role="SageMakerRole",
-            framework_version=sklearn_full_version,
-            py_version=PYTHON_VERSION,
+            framework_version=sklearn_version,
+            py_version=py_version,
             train_instance_type=instance_type,
             sagemaker_session=sagemaker_session,
             hyperparameters={"epochs": 1},
