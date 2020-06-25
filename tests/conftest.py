@@ -44,22 +44,6 @@ def pytest_addoption(parser):
     parser.addoption("--sagemaker-client-config", action="store", default=None)
     parser.addoption("--sagemaker-runtime-config", action="store", default=None)
     parser.addoption("--boto-config", action="store", default=None)
-    parser.addoption("--chainer-full-version", action="store", default="5.0.0")
-    parser.addoption("--ei-mxnet-full-version", action="store", default="1.5.1")
-    parser.addoption(
-        "--rl-coach-mxnet-full-version",
-        action="store",
-        default=RLEstimator.COACH_LATEST_VERSION_MXNET,
-    )
-    parser.addoption(
-        "--rl-coach-tf-full-version", action="store", default=RLEstimator.COACH_LATEST_VERSION_TF
-    )
-    parser.addoption(
-        "--rl-ray-full-version", action="store", default=RLEstimator.RAY_LATEST_VERSION
-    )
-    parser.addoption("--sklearn-full-version", action="store", default="0.20.0")
-    parser.addoption("--ei-tf-full-version", action="store")
-    parser.addoption("--xgboost-full-version", action="store", default="1.0-1")
 
 
 def pytest_configure(config):
@@ -249,8 +233,13 @@ def rl_ray_version(request):
 
 
 @pytest.fixture(scope="module")
-def chainer_full_version(request):
-    return request.config.getoption("--chainer-full-version")
+def chainer_full_version():
+    return "5.0.0"
+
+
+@pytest.fixture(scope="module")
+def chainer_full_py_version():
+    return "py3"
 
 
 @pytest.fixture(scope="module")
@@ -264,8 +253,8 @@ def mxnet_full_py_version():
 
 
 @pytest.fixture(scope="module")
-def ei_mxnet_full_version(request):
-    return request.config.getoption("--ei-mxnet-full-version")
+def ei_mxnet_full_version():
+    return "1.5.1"
 
 
 @pytest.fixture(scope="module")
@@ -284,23 +273,28 @@ def pytorch_full_ei_version():
 
 
 @pytest.fixture(scope="module")
-def rl_coach_mxnet_full_version(request):
-    return request.config.getoption("--rl-coach-mxnet-full-version")
+def rl_coach_mxnet_full_version():
+    return RLEstimator.COACH_LATEST_VERSION_MXNET
 
 
 @pytest.fixture(scope="module")
-def rl_coach_tf_full_version(request):
-    return request.config.getoption("--rl-coach-tf-full-version")
+def rl_coach_tf_full_version():
+    return RLEstimator.COACH_LATEST_VERSION_TF
 
 
 @pytest.fixture(scope="module")
-def rl_ray_full_version(request):
-    return request.config.getoption("--rl-ray-full-version")
+def rl_ray_full_version():
+    return RLEstimator.RAY_LATEST_VERSION
 
 
 @pytest.fixture(scope="module")
-def sklearn_full_version(request):
-    return request.config.getoption("--sklearn-full-version")
+def sklearn_full_version():
+    return "0.20.0"
+
+
+@pytest.fixture(scope="module")
+def sklearn_full_py_version():
+    return "py3"
 
 
 @pytest.fixture(scope="module")
@@ -343,13 +337,19 @@ def tf_full_py_version(tf_full_version):
     return "py37"
 
 
-@pytest.fixture(scope="module", params=["1.15.0", "2.0.0"])
-def ei_tf_full_version(request):
-    tf_ei_version = request.config.getoption("--ei-tf-full-version")
-    if tf_ei_version is None:
-        return request.param
-    else:
-        tf_ei_version
+@pytest.fixture(scope="module")
+def ei_tf_full_version():
+    return "2.0.0"
+
+
+@pytest.fixture(scope="module")
+def xgboost_full_version():
+    return "1.0-1"
+
+
+@pytest.fixture(scope="module")
+def xgboost_full_py_version():
+    return "py3"
 
 
 @pytest.fixture(scope="session")
@@ -405,8 +405,3 @@ def pytest_generate_tests(metafunc):
         ):
             params.append("ml.p2.xlarge")
         metafunc.parametrize("instance_type", params, scope="session")
-
-
-@pytest.fixture(scope="module")
-def xgboost_full_version(request):
-    return request.config.getoption("--xgboost-full-version")

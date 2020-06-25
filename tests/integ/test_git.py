@@ -133,7 +133,9 @@ def test_private_github(sagemaker_local_session, mxnet_full_version, mxnet_full_
 
 @pytest.mark.local_mode
 @pytest.mark.skip("needs a secure authentication approach")
-def test_private_github_with_2fa(sagemaker_local_session, sklearn_full_version):
+def test_private_github_with_2fa(
+    sagemaker_local_session, sklearn_full_version, sklearn_full_py_version
+):
     script_path = "mnist.py"
     data_path = os.path.join(DATA_DIR, "sklearn_mnist")
     git_config = {
@@ -149,7 +151,7 @@ def test_private_github_with_2fa(sagemaker_local_session, sklearn_full_version):
         entry_point=script_path,
         role="SageMakerRole",
         source_dir=source_dir,
-        py_version="py3",  # Scikit-learn supports only Python 3
+        py_version=sklearn_full_py_version,
         train_instance_count=1,
         train_instance_type="local",
         sagemaker_session=sagemaker_local_session,
@@ -187,7 +189,9 @@ def test_private_github_with_2fa(sagemaker_local_session, sklearn_full_version):
 
 
 @pytest.mark.local_mode
-def test_github_with_ssh_passphrase_not_configured(sagemaker_local_session, sklearn_full_version):
+def test_github_with_ssh_passphrase_not_configured(
+    sagemaker_local_session, sklearn_full_version, sklearn_full_py_version
+):
     script_path = "mnist.py"
     data_path = os.path.join(DATA_DIR, "sklearn_mnist")
     git_config = {
@@ -201,11 +205,11 @@ def test_github_with_ssh_passphrase_not_configured(sagemaker_local_session, skle
         entry_point=script_path,
         role="SageMakerRole",
         source_dir=source_dir,
-        py_version="py3",  # Scikit-learn supports only Python 3
         train_instance_count=1,
         train_instance_type="local",
         sagemaker_session=sagemaker_local_session,
         framework_version=sklearn_full_version,
+        py_version=sklearn_full_py_version,
         hyperparameters={"epochs": 1},
         git_config=git_config,
     )

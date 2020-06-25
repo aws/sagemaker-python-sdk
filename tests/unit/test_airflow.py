@@ -900,7 +900,7 @@ def test_byo_model_config(sagemaker_session):
         sagemaker_session=sagemaker_session,
     )
 
-    config = airflow.model_config(instance_type="ml.c4.xlarge", model=byo_model)
+    config = airflow.model_config(model=byo_model)
     expected_config = {
         "ModelName": "model",
         "PrimaryContainer": {
@@ -926,7 +926,7 @@ def test_byo_framework_model_config(sagemaker_session):
         sagemaker_session=sagemaker_session,
     )
 
-    config = airflow.model_config(instance_type="ml.c4.xlarge", model=byo_model)
+    config = airflow.model_config(model=byo_model, instance_type="ml.c4.xlarge")
     expected_config = {
         "ModelName": "model",
         "PrimaryContainer": {
@@ -971,7 +971,7 @@ def test_framework_model_config(sagemaker_session):
         sagemaker_session=sagemaker_session,
     )
 
-    config = airflow.model_config(instance_type="ml.c4.xlarge", model=chainer_model)
+    config = airflow.model_config(model=chainer_model, instance_type="ml.c4.xlarge")
     expected_config = {
         "ModelName": "sagemaker-chainer-%s" % TIME_STAMP,
         "PrimaryContainer": {
@@ -1009,7 +1009,7 @@ def test_amazon_alg_model_config(sagemaker_session):
         model_data="{{ model_data }}", role="{{ role }}", sagemaker_session=sagemaker_session
     )
 
-    config = airflow.model_config(instance_type="ml.c4.xlarge", model=pca_model)
+    config = airflow.model_config(model=pca_model)
     expected_config = {
         "ModelName": "pca-%s" % TIME_STAMP,
         "PrimaryContainer": {
@@ -1059,10 +1059,10 @@ def test_model_config_from_framework_estimator(ecr_prefix, sagemaker_session):
     airflow.training_config(mxnet_estimator, data)
 
     config = airflow.model_config_from_estimator(
-        instance_type="ml.c4.xlarge",
         estimator=mxnet_estimator,
         task_id="task_id",
         task_type="training",
+        instance_type="ml.c4.xlarge",
     )
     expected_config = {
         "ModelName": "mxnet-inference-%s" % TIME_STAMP,
@@ -1103,7 +1103,7 @@ def test_model_config_from_amazon_alg_estimator(sagemaker_session):
     airflow.training_config(knn_estimator, record, mini_batch_size=256)
 
     config = airflow.model_config_from_estimator(
-        instance_type="ml.c4.xlarge", estimator=knn_estimator, task_id="task_id", task_type="tuning"
+        estimator=knn_estimator, task_id="task_id", task_type="tuning"
     )
     expected_config = {
         "ModelName": "knn-%s" % TIME_STAMP,

@@ -45,7 +45,7 @@ from sagemaker.tensorflow import TensorFlow
 from sagemaker.utils import sagemaker_timestamp
 from sagemaker.workflow import airflow as sm_airflow
 from sagemaker.xgboost import XGBoost
-from tests.integ import datasets, DATA_DIR, PYTHON_VERSION
+from tests.integ import datasets, DATA_DIR
 from tests.integ.record_set import prepare_record_set_from_local_files
 from tests.integ.timeout import timeout
 
@@ -404,7 +404,7 @@ def test_rcf_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_ins
 
 @pytest.mark.canary_quick
 def test_chainer_airflow_config_uploads_data_source_to_s3(
-    sagemaker_local_session, cpu_instance_type, chainer_full_version
+    sagemaker_local_session, cpu_instance_type, chainer_full_version, chainer_full_py_version
 ):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         script_path = os.path.join(DATA_DIR, "chainer_mnist", "mnist.py")
@@ -416,7 +416,7 @@ def test_chainer_airflow_config_uploads_data_source_to_s3(
             train_instance_count=SINGLE_INSTANCE_COUNT,
             train_instance_type="local",
             framework_version=chainer_full_version,
-            py_version=PYTHON_VERSION,
+            py_version=chainer_full_py_version,
             sagemaker_session=sagemaker_local_session,
             hyperparameters={"epochs": 1},
             use_mpi=True,
@@ -475,7 +475,7 @@ def test_mxnet_airflow_config_uploads_data_source_to_s3(
 
 @pytest.mark.canary_quick
 def test_sklearn_airflow_config_uploads_data_source_to_s3(
-    sagemaker_session, cpu_instance_type, sklearn_full_version
+    sagemaker_session, cpu_instance_type, sklearn_full_version, sklearn_full_py_version
 ):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         script_path = os.path.join(DATA_DIR, "sklearn_mnist", "mnist.py")
@@ -486,7 +486,7 @@ def test_sklearn_airflow_config_uploads_data_source_to_s3(
             role=ROLE,
             train_instance_type=cpu_instance_type,
             framework_version=sklearn_full_version,
-            py_version=PYTHON_VERSION,
+            py_version=sklearn_full_py_version,
             sagemaker_session=sagemaker_session,
             hyperparameters={"epochs": 1},
         )
@@ -545,20 +545,19 @@ def test_tf_airflow_config_uploads_data_source_to_s3(
 
 
 @pytest.mark.canary_quick
-@pytest.mark.skipif(PYTHON_VERSION == "py2", reason="XGBoost container does not support Python 2.")
 def test_xgboost_airflow_config_uploads_data_source_to_s3(
-    sagemaker_session, cpu_instance_type, xgboost_full_version
+    sagemaker_session, cpu_instance_type, xgboost_full_version, xgboost_full_py_version
 ):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         xgboost = XGBoost(
             entry_point=os.path.join(DATA_DIR, "dummy_script.py"),
             framework_version=xgboost_full_version,
+            py_version=xgboost_full_py_version,
             role=ROLE,
             sagemaker_session=sagemaker_session,
             train_instance_type=cpu_instance_type,
             train_instance_count=SINGLE_INSTANCE_COUNT,
             base_job_name="XGBoost job",
-            py_version=PYTHON_VERSION,
         )
 
         training_config = _build_airflow_workflow(
@@ -613,7 +612,7 @@ def _build_airflow_workflow(estimator, instance_type, inputs=None, mini_batch_si
     model = estimator.create_model()
     assert model is not None
 
-    model_config = sm_airflow.model_config(instance_type, model)
+    model_config = sm_airflow.model_config(model, instance_type)
     assert model_config is not None
 
     transform_config = sm_airflow.transform_config_from_estimator(
