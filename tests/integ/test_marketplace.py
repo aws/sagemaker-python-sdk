@@ -165,9 +165,7 @@ def test_marketplace_model(sagemaker_session, cpu_instance_type):
     )
 
     def predict_wrapper(endpoint, session):
-        return sagemaker.RealTimePredictor(
-            endpoint, session, serializer=sagemaker.predictor.csv_serializer
-        )
+        return sagemaker.Predictor(endpoint, session, serializer=sagemaker.predictor.csv_serializer)
 
     model = ModelPackage(
         role="SageMakerRole",

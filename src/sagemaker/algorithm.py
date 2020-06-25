@@ -18,7 +18,7 @@ import sagemaker.parameter
 from sagemaker import vpc_utils
 from sagemaker.estimator import EstimatorBase
 from sagemaker.transformer import Transformer
-from sagemaker.predictor import RealTimePredictor
+from sagemaker.predictor import Predictor
 
 
 class AlgorithmEstimator(EstimatorBase):
@@ -246,7 +246,7 @@ class AlgorithmEstimator(EstimatorBase):
         """Create a model to deploy.
 
         The serializer, deserializer, content_type, and accept arguments are
-        only used to define a default RealTimePredictor. They are ignored if an
+        only used to define a default Predictor. They are ignored if an
         explicit predictor class is passed in. Other arguments are passed
         through to the Model class.
 
@@ -254,7 +254,7 @@ class AlgorithmEstimator(EstimatorBase):
             role (str): The ``ExecutionRoleArn`` IAM Role ARN for the ``Model``,
                 which is also used during transform jobs. If not specified, the
                 role from the Estimator will be used.
-            predictor_cls (RealTimePredictor): The predictor class to use when
+            predictor_cls (Predictor): The predictor class to use when
                 deploying the model.
             serializer (callable): Should accept a single argument, the input
                 data, and return a sequence of bytes. May provide a content_type
@@ -285,9 +285,7 @@ class AlgorithmEstimator(EstimatorBase):
         if predictor_cls is None:
 
             def predict_wrapper(endpoint, session):
-                return RealTimePredictor(
-                    endpoint, session, serializer, deserializer, content_type, accept
-                )
+                return Predictor(endpoint, session, serializer, deserializer, content_type, accept)
 
             predictor_cls = predict_wrapper
 

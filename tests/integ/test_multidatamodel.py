@@ -26,7 +26,7 @@ from sagemaker import utils
 from sagemaker.amazon.randomcutforest import RandomCutForest
 from sagemaker.multidatamodel import MultiDataModel
 from sagemaker.mxnet import MXNet
-from sagemaker.predictor import RealTimePredictor, StringDeserializer, npy_serializer
+from sagemaker.predictor import Predictor, StringDeserializer, npy_serializer
 from sagemaker.utils import sagemaker_timestamp, unique_name_from_base, get_ecr_image_uri_prefix
 from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.retry import retries
@@ -154,7 +154,7 @@ def test_multi_data_model_deploy_pretrained_models(
         assert PRETRAINED_MODEL_PATH_1 in endpoint_models
         assert PRETRAINED_MODEL_PATH_2 in endpoint_models
 
-        predictor = RealTimePredictor(
+        predictor = Predictor(
             endpoint=endpoint_name,
             sagemaker_session=sagemaker_session,
             serializer=npy_serializer,
@@ -212,7 +212,7 @@ def test_multi_data_model_deploy_pretrained_models_local_mode(container_image, s
         assert PRETRAINED_MODEL_PATH_1 in endpoint_models
         assert PRETRAINED_MODEL_PATH_2 in endpoint_models
 
-        predictor = RealTimePredictor(
+        predictor = Predictor(
             endpoint=endpoint_name,
             sagemaker_session=multi_data_model.sagemaker_session,
             serializer=npy_serializer,
@@ -291,7 +291,7 @@ def test_multi_data_model_deploy_trained_model_from_framework_estimator(
         # Define a predictor to set `serializer` parameter with npy_serializer
         # instead of `json_serializer` in the default predictor returned by `MXNetPredictor`
         # Since we are using a placeholder container image the prediction results are not accurate.
-        predictor = RealTimePredictor(
+        predictor = Predictor(
             endpoint=endpoint_name,
             sagemaker_session=sagemaker_session,
             serializer=npy_serializer,
@@ -392,7 +392,7 @@ def test_multi_data_model_deploy_train_model_from_amazon_first_party_estimator(
         # Define a predictor to set `serializer` parameter with npy_serializer
         # instead of `json_serializer` in the default predictor returned by `MXNetPredictor`
         # Since we are using a placeholder container image the prediction results are not accurate.
-        predictor = RealTimePredictor(
+        predictor = Predictor(
             endpoint=endpoint_name,
             sagemaker_session=sagemaker_session,
             serializer=npy_serializer,
@@ -482,7 +482,7 @@ def test_multi_data_model_deploy_pretrained_models_update_endpoint(
         assert PRETRAINED_MODEL_PATH_1 in endpoint_models
         assert PRETRAINED_MODEL_PATH_2 in endpoint_models
 
-        predictor = RealTimePredictor(
+        predictor = Predictor(
             endpoint=endpoint_name,
             sagemaker_session=sagemaker_session,
             serializer=npy_serializer,

@@ -19,14 +19,14 @@ import sagemaker
 from sagemaker.fw_utils import model_code_key_prefix
 from sagemaker.fw_registry import default_framework_uri
 from sagemaker.model import FrameworkModel, MODEL_SERVER_WORKERS_PARAM_NAME
-from sagemaker.predictor import RealTimePredictor, npy_serializer, csv_deserializer
+from sagemaker.predictor import Predictor, npy_serializer, csv_deserializer
 from sagemaker.xgboost.defaults import XGBOOST_NAME
 
 logger = logging.getLogger("sagemaker")
 
 
-class XGBoostPredictor(RealTimePredictor):
-    """A RealTimePredictor for inference against XGBoost Endpoints.
+class XGBoostPredictor(Predictor):
+    """A Predictor for inference against XGBoost Endpoints.
 
     This is able to serialize Python lists, dictionaries, and numpy arrays to xgb.DMatrix
      for XGBoost inference."""

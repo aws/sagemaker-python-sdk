@@ -18,11 +18,11 @@ import logging
 import sagemaker
 from sagemaker.content_types import CONTENT_TYPE_JSON
 from sagemaker.fw_utils import create_image_uri
-from sagemaker.predictor import json_serializer, json_deserializer
+from sagemaker.predictor import json_serializer, json_deserializer, Predictor
 
 
-class TensorFlowPredictor(sagemaker.RealTimePredictor):
-    """A ``RealTimePredictor`` implementation for inference against TensorFlow
+class TensorFlowPredictor(Predictor):
+    """A ``Predictor`` implementation for inference against TensorFlow
     Serving endpoints.
     """
 
@@ -36,7 +36,7 @@ class TensorFlowPredictor(sagemaker.RealTimePredictor):
         model_name=None,
         model_version=None,
     ):
-        """Initialize a ``TensorFlowPredictor``. See :class:`~sagemaker.predictor.RealTimePredictor`
+        """Initialize a ``TensorFlowPredictor``. See :class:`~sagemaker.predictor.Predictor`
         for more info about parameters.
 
         Args:

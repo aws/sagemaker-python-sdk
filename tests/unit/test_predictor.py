@@ -20,7 +20,7 @@ from mock import Mock, call
 
 import numpy as np
 
-from sagemaker.predictor import RealTimePredictor
+from sagemaker.predictor import Predictor
 from sagemaker.predictor import (
     json_serializer,
     json_deserializer,
@@ -371,7 +371,7 @@ def empty_sagemaker_session():
 
 def test_predict_call_pass_through():
     sagemaker_session = empty_sagemaker_session()
-    predictor = RealTimePredictor(ENDPOINT, sagemaker_session)
+    predictor = Predictor(ENDPOINT, sagemaker_session)
 
     data = "untouched"
     result = predictor.predict(data)
@@ -387,7 +387,7 @@ def test_predict_call_pass_through():
 
 def test_predict_call_with_headers():
     sagemaker_session = empty_sagemaker_session()
-    predictor = RealTimePredictor(
+    predictor = Predictor(
         ENDPOINT, sagemaker_session, content_type=DEFAULT_CONTENT_TYPE, accept=DEFAULT_CONTENT_TYPE
     )
 
@@ -410,7 +410,7 @@ def test_predict_call_with_headers():
 
 def test_predict_call_with_target_variant():
     sagemaker_session = empty_sagemaker_session()
-    predictor = RealTimePredictor(
+    predictor = Predictor(
         ENDPOINT, sagemaker_session, content_type=DEFAULT_CONTENT_TYPE, accept=DEFAULT_CONTENT_TYPE
     )
 
@@ -435,7 +435,7 @@ def test_predict_call_with_target_variant():
 
 def test_multi_model_predict_call_with_headers():
     sagemaker_session = empty_sagemaker_session()
-    predictor = RealTimePredictor(
+    predictor = Predictor(
         ENDPOINT, sagemaker_session, content_type=DEFAULT_CONTENT_TYPE, accept=DEFAULT_CONTENT_TYPE
     )
 
@@ -479,7 +479,7 @@ def json_sagemaker_session():
 
 def test_predict_call_with_headers_and_json():
     sagemaker_session = json_sagemaker_session()
-    predictor = RealTimePredictor(
+    predictor = Predictor(
         ENDPOINT,
         sagemaker_session,
         content_type="not/json",
@@ -526,7 +526,7 @@ def ret_csv_sagemaker_session():
 
 def test_predict_call_with_headers_and_csv():
     sagemaker_session = ret_csv_sagemaker_session()
-    predictor = RealTimePredictor(
+    predictor = Predictor(
         ENDPOINT, sagemaker_session, accept=CSV_CONTENT_TYPE, serializer=csv_serializer
     )
 
@@ -552,7 +552,7 @@ def test_delete_endpoint_with_config():
     sagemaker_session.sagemaker_client.describe_endpoint = Mock(
         return_value={"EndpointConfigName": "endpoint-config"}
     )
-    predictor = RealTimePredictor(ENDPOINT, sagemaker_session=sagemaker_session)
+    predictor = Predictor(ENDPOINT, sagemaker_session=sagemaker_session)
     predictor.delete_endpoint()
 
     sagemaker_session.delete_endpoint.assert_called_with(ENDPOINT)
@@ -561,7 +561,7 @@ def test_delete_endpoint_with_config():
 
 def test_delete_endpoint_only():
     sagemaker_session = empty_sagemaker_session()
-    predictor = RealTimePredictor(ENDPOINT, sagemaker_session=sagemaker_session)
+    predictor = Predictor(ENDPOINT, sagemaker_session=sagemaker_session)
     predictor.delete_endpoint(delete_endpoint_config=False)
 
     sagemaker_session.delete_endpoint.assert_called_with(ENDPOINT)
@@ -570,7 +570,7 @@ def test_delete_endpoint_only():
 
 def test_delete_model():
     sagemaker_session = empty_sagemaker_session()
-    predictor = RealTimePredictor(ENDPOINT, sagemaker_session=sagemaker_session)
+    predictor = Predictor(ENDPOINT, sagemaker_session=sagemaker_session)
 
     predictor.delete_model()
 
@@ -587,7 +587,7 @@ def test_delete_model_fail():
     )
     expected_error_message = "One or more models cannot be deleted, please retry."
 
-    predictor = RealTimePredictor(ENDPOINT, sagemaker_session=sagemaker_session)
+    predictor = Predictor(ENDPOINT, sagemaker_session=sagemaker_session)
 
     with pytest.raises(Exception) as exception:
         predictor.delete_model()
