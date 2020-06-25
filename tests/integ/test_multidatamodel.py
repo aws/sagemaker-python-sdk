@@ -155,7 +155,7 @@ def test_multi_data_model_deploy_pretrained_models(
         assert PRETRAINED_MODEL_PATH_2 in endpoint_models
 
         predictor = RealTimePredictor(
-            endpoint=endpoint_name,
+            endpoint_name=endpoint_name,
             sagemaker_session=sagemaker_session,
             serializer=npy_serializer,
             deserializer=string_deserializer,
@@ -213,7 +213,7 @@ def test_multi_data_model_deploy_pretrained_models_local_mode(container_image, s
         assert PRETRAINED_MODEL_PATH_2 in endpoint_models
 
         predictor = RealTimePredictor(
-            endpoint=endpoint_name,
+            endpoint_name=endpoint_name,
             sagemaker_session=multi_data_model.sagemaker_session,
             serializer=npy_serializer,
             deserializer=string_deserializer,
@@ -292,7 +292,7 @@ def test_multi_data_model_deploy_trained_model_from_framework_estimator(
         # instead of `json_serializer` in the default predictor returned by `MXNetPredictor`
         # Since we are using a placeholder container image the prediction results are not accurate.
         predictor = RealTimePredictor(
-            endpoint=endpoint_name,
+            endpoint_name=endpoint_name,
             sagemaker_session=sagemaker_session,
             serializer=npy_serializer,
             deserializer=string_deserializer,
@@ -393,7 +393,7 @@ def test_multi_data_model_deploy_train_model_from_amazon_first_party_estimator(
         # instead of `json_serializer` in the default predictor returned by `MXNetPredictor`
         # Since we are using a placeholder container image the prediction results are not accurate.
         predictor = RealTimePredictor(
-            endpoint=endpoint_name,
+            endpoint_name=endpoint_name,
             sagemaker_session=sagemaker_session,
             serializer=npy_serializer,
             deserializer=string_deserializer,
@@ -483,7 +483,7 @@ def test_multi_data_model_deploy_pretrained_models_update_endpoint(
         assert PRETRAINED_MODEL_PATH_2 in endpoint_models
 
         predictor = RealTimePredictor(
-            endpoint=endpoint_name,
+            endpoint_name=endpoint_name,
             sagemaker_session=sagemaker_session,
             serializer=npy_serializer,
             deserializer=string_deserializer,

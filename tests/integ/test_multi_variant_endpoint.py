@@ -167,7 +167,7 @@ def test_target_variant_invocation(sagemaker_session, multi_variant_endpoint):
 
 def test_predict_invocation_with_target_variant(sagemaker_session, multi_variant_endpoint):
     predictor = RealTimePredictor(
-        endpoint=multi_variant_endpoint.endpoint_name,
+        endpoint_name=multi_variant_endpoint.endpoint_name,
         sagemaker_session=sagemaker_session,
         serializer=csv_serializer,
         content_type=CONTENT_TYPE_CSV,
@@ -295,7 +295,7 @@ def test_predict_invocation_with_target_variant_local_mode(
         sagemaker_session._region_name = DEFAULT_REGION
 
     predictor = RealTimePredictor(
-        endpoint=multi_variant_endpoint.endpoint_name,
+        endpoint_name=multi_variant_endpoint.endpoint_name,
         sagemaker_session=sagemaker_session,
         serializer=csv_serializer,
         content_type=CONTENT_TYPE_CSV,
