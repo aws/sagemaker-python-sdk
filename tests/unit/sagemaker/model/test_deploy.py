@@ -264,7 +264,7 @@ def test_deploy_predictor_cls(production_variant, sagemaker_session):
     )
 
     assert isinstance(predictor, sagemaker.predictor.Predictor)
-    assert predictor.endpoint == endpoint_name
+    assert predictor.endpoint_name == endpoint_name
     assert predictor.sagemaker_session == sagemaker_session
 
 

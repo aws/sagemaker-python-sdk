@@ -37,7 +37,7 @@ class Predictor(object):
 
     def __init__(
         self,
-        endpoint,
+        endpoint_name,
         sagemaker_session=None,
         serializer=None,
         deserializer=None,
@@ -53,7 +53,7 @@ class Predictor(object):
         sequence of bytes from the prediction result without any modifications.
 
         Args:
-            endpoint (str): Name of the Amazon SageMaker endpoint to which
+            endpoint_name (str): Name of the Amazon SageMaker endpoint to which
                 requests are sent.
             sagemaker_session (sagemaker.session.Session): A SageMaker Session
                 object, used for SageMaker interactions (default: None). If not
@@ -74,7 +74,7 @@ class Predictor(object):
             accept (str): The invocation's "Accept", overriding any accept from
                 the deserializer (default: None).
         """
-        self.endpoint = endpoint
+        self.endpoint_name = endpoint_name
         self.sagemaker_session = sagemaker_session or Session()
         self.serializer = serializer
         self.deserializer = deserializer
@@ -137,7 +137,7 @@ class Predictor(object):
         args = dict(initial_args) if initial_args else {}
 
         if "EndpointName" not in args:
-            args["EndpointName"] = self.endpoint
+            args["EndpointName"] = self.endpoint_name
 
         if self.content_type and "ContentType" not in args:
             args["ContentType"] = self.content_type
@@ -175,7 +175,7 @@ class Predictor(object):
         if delete_endpoint_config:
             self._delete_endpoint_config()
 
-        self.sagemaker_session.delete_endpoint(self.endpoint)
+        self.sagemaker_session.delete_endpoint(self.endpoint_name)
 
     def delete_model(self):
         """Deletes the Amazon SageMaker models backing this predictor."""
@@ -225,10 +225,10 @@ class Predictor(object):
                 DataCaptureConfig to update the predictor's endpoint to use.
         """
         endpoint_desc = self.sagemaker_session.sagemaker_client.describe_endpoint(
-            EndpointName=self.endpoint
+            EndpointName=self.endpoint_name
         )
 
-        new_config_name = name_from_base(base=self.endpoint)
+        new_config_name = name_from_base(base=self.endpoint_name)
 
         data_capture_config_dict = None
         if data_capture_config is not None:
@@ -241,7 +241,7 @@ class Predictor(object):
         )
 
         self.sagemaker_session.update_endpoint(
-            endpoint_name=self.endpoint, endpoint_config_name=new_config_name
+            endpoint_name=self.endpoint_name, endpoint_config_name=new_config_name
         )
 
     def list_monitors(self):
@@ -254,10 +254,10 @@ class Predictor(object):
 
         """
         monitoring_schedules_dict = self.sagemaker_session.list_monitoring_schedules(
-            endpoint_name=self.endpoint
+            endpoint_name=self.endpoint_name
         )
         if len(monitoring_schedules_dict["MonitoringScheduleSummaries"]) == 0:
-            print("No monitors found for endpoint. endpoint: {}".format(self.endpoint))
+            print("No monitors found for endpoint. endpoint: {}".format(self.endpoint_name))
             return []
 
         monitors = []
@@ -292,7 +292,7 @@ class Predictor(object):
     def _get_endpoint_config_name(self):
         """Placeholder docstring"""
         endpoint_desc = self.sagemaker_session.sagemaker_client.describe_endpoint(
-            EndpointName=self.endpoint
+            EndpointName=self.endpoint_name
         )
         endpoint_config_name = endpoint_desc["EndpointConfigName"]
         return endpoint_config_name

@@ -185,7 +185,7 @@ def test_predict_jsons_json_content_type(tfs_predictor):
     expected_result = {"predictions": [[3.5, 4.0, 5.5], [3.5, 4.0, 5.5]]}
 
     predictor = sagemaker.Predictor(
-        tfs_predictor.endpoint,
+        tfs_predictor.endpoint_name,
         tfs_predictor.sagemaker_session,
         serializer=None,
         deserializer=sagemaker.predictor.json_deserializer,
@@ -202,7 +202,7 @@ def test_predict_jsons(tfs_predictor):
     expected_result = {"predictions": [[3.5, 4.0, 5.5], [3.5, 4.0, 5.5]]}
 
     predictor = sagemaker.Predictor(
-        tfs_predictor.endpoint,
+        tfs_predictor.endpoint_name,
         tfs_predictor.sagemaker_session,
         serializer=None,
         deserializer=sagemaker.predictor.json_deserializer,
@@ -219,7 +219,7 @@ def test_predict_jsonlines(tfs_predictor):
     expected_result = {"predictions": [[3.5, 4.0, 5.5], [3.5, 4.0, 5.5]]}
 
     predictor = sagemaker.Predictor(
-        tfs_predictor.endpoint,
+        tfs_predictor.endpoint_name,
         tfs_predictor.sagemaker_session,
         serializer=None,
         deserializer=sagemaker.predictor.json_deserializer,
@@ -236,7 +236,7 @@ def test_predict_csv(tfs_predictor):
     expected_result = {"predictions": [[3.5, 4.0, 5.5], [3.5, 4.0, 5.5]]}
 
     predictor = TensorFlowPredictor(
-        tfs_predictor.endpoint,
+        tfs_predictor.endpoint_name,
         tfs_predictor.sagemaker_session,
         serializer=sagemaker.predictor.csv_serializer,
     )

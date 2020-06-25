@@ -130,7 +130,7 @@ def test_inference_pipeline_model_deploy(sagemaker_session, cpu_instance_type):
         )
         model.deploy(1, cpu_instance_type, endpoint_name=endpoint_name)
         predictor = Predictor(
-            endpoint=endpoint_name,
+            endpoint_name=endpoint_name,
             sagemaker_session=sagemaker_session,
             serializer=json_serializer,
             content_type=CONTENT_TYPE_CSV,

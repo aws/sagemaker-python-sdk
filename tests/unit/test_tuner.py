@@ -807,7 +807,7 @@ def test_deploy_default(tuner):
     assert args[2]["ModelDataUrl"] == MODEL_DATA
 
     assert isinstance(predictor, Predictor)
-    assert predictor.endpoint.startswith(JOB_NAME)
+    assert predictor.endpoint_name.startswith(JOB_NAME)
     assert predictor.sagemaker_session == tuner.sagemaker_session
 
 
@@ -846,7 +846,7 @@ def test_deploy_estimator_dict(tuner):
     assert args[2]["ModelDataUrl"] == MODEL_DATA
 
     assert isinstance(predictor, Predictor)
-    assert predictor.endpoint.startswith(JOB_NAME)
+    assert predictor.endpoint_name.startswith(JOB_NAME)
     assert predictor.sagemaker_session == tuner.sagemaker_session
 
 
