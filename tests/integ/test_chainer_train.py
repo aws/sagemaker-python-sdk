@@ -25,13 +25,21 @@ from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 
 @pytest.fixture(scope="module")
-def chainer_local_training_job(sagemaker_local_session, chainer_full_version):
-    return _run_mnist_training_job(sagemaker_local_session, "local", 1, chainer_full_version)
+def chainer_local_training_job(
+    sagemaker_local_session, chainer_full_version, chainer_full_py_version
+):
+    return _run_mnist_training_job(
+        sagemaker_local_session, "local", 1, chainer_full_version, chainer_full_py_version
+    )
 
 
 @pytest.mark.local_mode
-def test_distributed_cpu_training(sagemaker_local_session, chainer_full_version):
-    _run_mnist_training_job(sagemaker_local_session, "local", 2, chainer_full_version)
+def test_distributed_cpu_training(
+    sagemaker_local_session, chainer_full_version, chainer_full_py_version
+):
+    _run_mnist_training_job(
+        sagemaker_local_session, "local", 2, chainer_full_version, chainer_full_py_version
+    )
 
 
 @pytest.mark.local_mode
@@ -129,7 +137,7 @@ def test_deploy_model(
 
 
 def _run_mnist_training_job(
-    sagemaker_session, instance_type, instance_count, chainer_version, py_version, wait=True
+    sagemaker_session, instance_type, instance_count, chainer_version, py_version
 ):
     script_path = (
         os.path.join(DATA_DIR, "chainer_mnist", "mnist.py")
@@ -156,7 +164,7 @@ def _run_mnist_training_job(
     test_input = "file://" + os.path.join(data_path, "test")
 
     job_name = unique_name_from_base("test-chainer-training")
-    chainer.fit({"train": train_input, "test": test_input}, wait=wait, job_name=job_name)
+    chainer.fit({"train": train_input, "test": test_input}, job_name=job_name)
     return chainer
 
 
