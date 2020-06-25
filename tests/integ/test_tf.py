@@ -183,7 +183,9 @@ def test_mnist_async(sagemaker_session, cpu_instance_type, tf_serving_version):
 
         result = predictor.predict(np.zeros(784))
         print("predict result: {}".format(result))
-        _assert_endpoint_tags_match(sagemaker_session.sagemaker_client, predictor.endpoint, TAGS)
+        _assert_endpoint_tags_match(
+            sagemaker_session.sagemaker_client, predictor.endpoint_name, TAGS
+        )
         _assert_model_tags_match(sagemaker_session.sagemaker_client, model_name, TAGS)
         _assert_model_name_match(sagemaker_session.sagemaker_client, endpoint_name, model_name)
 

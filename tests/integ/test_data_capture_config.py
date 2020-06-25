@@ -62,7 +62,7 @@ def test_enabling_data_capture_on_endpoint_shows_correct_data_capture_status(
         )
 
         endpoint_desc = sagemaker_session.sagemaker_client.describe_endpoint(
-            EndpointName=predictor.endpoint
+            EndpointName=predictor.endpoint_name
         )
 
         endpoint_config_desc = sagemaker_session.sagemaker_client.describe_endpoint_config(
@@ -81,13 +81,13 @@ def test_enabling_data_capture_on_endpoint_shows_correct_data_capture_status(
             seconds_to_sleep=60,
         ):
             new_endpoint = sagemaker_session.sagemaker_client.describe_endpoint(
-                EndpointName=predictor.endpoint
+                EndpointName=predictor.endpoint_name
             )
             if new_endpoint["EndpointStatus"] == "InService":
                 break
 
         endpoint_desc = sagemaker_session.sagemaker_client.describe_endpoint(
-            EndpointName=predictor.endpoint
+            EndpointName=predictor.endpoint_name
         )
 
         endpoint_config_desc = sagemaker_session.sagemaker_client.describe_endpoint_config(
@@ -131,7 +131,7 @@ def test_disabling_data_capture_on_endpoint_shows_correct_data_capture_status(
         )
 
         endpoint_desc = sagemaker_session.sagemaker_client.describe_endpoint(
-            EndpointName=predictor.endpoint
+            EndpointName=predictor.endpoint_name
         )
 
         endpoint_config_desc = sagemaker_session.sagemaker_client.describe_endpoint_config(
@@ -167,13 +167,13 @@ def test_disabling_data_capture_on_endpoint_shows_correct_data_capture_status(
             seconds_to_sleep=60,
         ):
             new_endpoint = sagemaker_session.sagemaker_client.describe_endpoint(
-                EndpointName=predictor.endpoint
+                EndpointName=predictor.endpoint_name
             )
             if new_endpoint["EndpointStatus"] == "InService":
                 break
 
         endpoint_desc = sagemaker_session.sagemaker_client.describe_endpoint(
-            EndpointName=predictor.endpoint
+            EndpointName=predictor.endpoint_name
         )
 
         endpoint_config_desc = sagemaker_session.sagemaker_client.describe_endpoint_config(
@@ -208,7 +208,7 @@ def test_updating_data_capture_on_endpoint_shows_correct_data_capture_status(
         )
 
         endpoint_desc = sagemaker_session.sagemaker_client.describe_endpoint(
-            EndpointName=predictor.endpoint
+            EndpointName=predictor.endpoint_name
         )
 
         endpoint_config_desc = sagemaker_session.sagemaker_client.describe_endpoint_config(
@@ -237,13 +237,13 @@ def test_updating_data_capture_on_endpoint_shows_correct_data_capture_status(
             seconds_to_sleep=60,
         ):
             new_endpoint = sagemaker_session.sagemaker_client.describe_endpoint(
-                EndpointName=predictor.endpoint
+                EndpointName=predictor.endpoint_name
             )
             if new_endpoint["EndpointStatus"] == "InService":
                 break
 
         endpoint_desc = sagemaker_session.sagemaker_client.describe_endpoint(
-            EndpointName=predictor.endpoint
+            EndpointName=predictor.endpoint_name
         )
 
         endpoint_config_desc = sagemaker_session.sagemaker_client.describe_endpoint_config(

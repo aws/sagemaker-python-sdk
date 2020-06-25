@@ -578,7 +578,7 @@ additional ``Predictor`` instances. Here's how:
   # ... continuing from the previous example
 
   # get the endpoint name from the default predictor
-  endpoint = predictor.endpoint
+  endpoint = predictor.endpoint_name
 
   # get a predictor for 'model2'
   model2_predictor = Predictor(endpoint, model_name='model2')

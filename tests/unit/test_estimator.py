@@ -2044,7 +2044,7 @@ def test_generic_to_deploy(sagemaker_session):
     assert kwargs["vpc_config"] is None
 
     assert isinstance(predictor, RealTimePredictor)
-    assert predictor.endpoint.startswith(IMAGE_NAME)
+    assert predictor.endpoint_name.startswith(IMAGE_NAME)
     assert predictor.sagemaker_session == sagemaker_session
 
 

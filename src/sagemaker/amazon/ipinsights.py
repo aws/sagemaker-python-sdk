@@ -184,14 +184,21 @@ class IPInsightsPredictor(RealTimePredictor):
     second column should contain the IPv4 address in dot notation.
     """
 
-    def __init__(self, endpoint, sagemaker_session=None):
+    def __init__(self, endpoint_name, sagemaker_session=None):
         """
         Args:
-            endpoint:
-            sagemaker_session:
+            endpoint_name (str): Name of the Amazon SageMaker endpoint to which
+                requests are sent.
+            sagemaker_session (sagemaker.session.Session): A SageMaker Session
+                object, used for SageMaker interactions (default: None). If not
+                specified, one is created using the default AWS configuration
+                chain.
         """
         super(IPInsightsPredictor, self).__init__(
-            endpoint, sagemaker_session, serializer=csv_serializer, deserializer=json_deserializer
+            endpoint_name,
+            sagemaker_session,
+            serializer=csv_serializer,
+            deserializer=json_deserializer,
         )
 
 
