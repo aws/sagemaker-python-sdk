@@ -2081,7 +2081,6 @@ def test_generic_to_deploy_kms(create_model, sagemaker_session):
         initial_instance_count=INSTANCE_COUNT,
         accelerator_type=None,
         endpoint_name=endpoint_name,
-        update_endpoint=False,
         tags=None,
         wait=True,
         kms_key=kms_key,
@@ -2188,29 +2187,6 @@ def test_generic_deploy_accelerator_type(sagemaker_session):
     assert args["production_variants"][0]["AcceleratorType"] == ACCELERATOR_TYPE
     assert args["production_variants"][0]["InitialInstanceCount"] == INSTANCE_COUNT
     assert args["production_variants"][0]["InstanceType"] == INSTANCE_TYPE
-
-
-def test_deploy_with_update_endpoint(sagemaker_session):
-    estimator = Estimator(
-        IMAGE_NAME,
-        ROLE,
-        INSTANCE_COUNT,
-        INSTANCE_TYPE,
-        output_path=OUTPUT_PATH,
-        sagemaker_session=sagemaker_session,
-    )
-    estimator.set_hyperparameters(**HYPERPARAMS)
-    estimator.fit({"train": "s3://bucket/training-prefix"})
-    endpoint_name = "endpoint-name"
-    estimator.deploy(
-        INSTANCE_COUNT, INSTANCE_TYPE, endpoint_name=endpoint_name, update_endpoint=True
-    )
-
-    update_endpoint_args = sagemaker_session.update_endpoint.call_args[0]
-    assert update_endpoint_args[0] == endpoint_name
-    assert update_endpoint_args[1].startWith(IMAGE_NAME)
-
-    sagemaker_session.create_endpoint.assert_not_called()
 
 
 def test_deploy_with_model_name(sagemaker_session):

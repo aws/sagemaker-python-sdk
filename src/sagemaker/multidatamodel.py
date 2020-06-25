@@ -144,7 +144,6 @@ class MultiDataModel(Model):
         instance_type,
         accelerator_type=None,
         endpoint_name=None,
-        update_endpoint=False,
         tags=None,
         kms_key=None,
         wait=True,
@@ -179,11 +178,6 @@ class MultiDataModel(Model):
                 https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html
             endpoint_name (str): The name of the endpoint to create (default:
                 None). If not specified, a unique endpoint name will be created.
-            update_endpoint (bool): Flag to update the model in an existing
-                Amazon SageMaker endpoint. If True, this will deploy a new
-                EndpointConfig to an already existing endpoint and delete
-                resources corresponding to the previous EndpointConfig. If
-                False, a new endpoint will be created. Default: False
             tags (List[dict[str, str]]): The list of tags to attach to this
                 specific endpoint.
             kms_key (str): The ARN of the KMS key that is used to encrypt the
@@ -241,29 +235,14 @@ class MultiDataModel(Model):
         if data_capture_config is not None:
             data_capture_config_dict = data_capture_config._to_request_dict()
 
-        if update_endpoint:
-            endpoint_config_name = self.sagemaker_session.create_endpoint_config(
-                name=self.name,
-                model_name=self.name,
-                initial_instance_count=initial_instance_count,
-                instance_type=instance_type,
-                accelerator_type=accelerator_type,
-                tags=tags,
-                kms_key=kms_key,
-                data_capture_config_dict=data_capture_config_dict,
-            )
-            self.sagemaker_session.update_endpoint(
-                self.endpoint_name, endpoint_config_name, wait=wait
-            )
-        else:
-            self.sagemaker_session.endpoint_from_production_variants(
-                name=self.endpoint_name,
-                production_variants=[production_variant],
-                tags=tags,
-                kms_key=kms_key,
-                wait=wait,
-                data_capture_config_dict=data_capture_config_dict,
-            )
+        self.sagemaker_session.endpoint_from_production_variants(
+            name=self.endpoint_name,
+            production_variants=[production_variant],
+            tags=tags,
+            kms_key=kms_key,
+            wait=wait,
+            data_capture_config_dict=data_capture_config_dict,
+        )
 
         if predictor:
             return predictor(self.endpoint_name, self.sagemaker_session)

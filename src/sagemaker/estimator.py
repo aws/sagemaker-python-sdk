@@ -640,7 +640,6 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         accelerator_type=None,
         endpoint_name=None,
         use_compiled_model=False,
-        update_endpoint=False,
         wait=True,
         model_name=None,
         kms_key=None,
@@ -670,11 +669,6 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                 used.
             use_compiled_model (bool): Flag to select whether to use compiled
                 (optimized) model. Default: False.
-            update_endpoint (bool): Flag to update the model in an existing
-                Amazon SageMaker endpoint. If True, this will deploy a new
-                EndpointConfig to an already existing endpoint and delete
-                resources corresponding to the previous EndpointConfig. Default:
-                False
             wait (bool): Whether the call should wait until the deployment of
                 model completes (default: True).
             model_name (str): Name to use for creating an Amazon SageMaker
@@ -728,7 +722,6 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             initial_instance_count=initial_instance_count,
             accelerator_type=accelerator_type,
             endpoint_name=endpoint_name,
-            update_endpoint=update_endpoint,
             tags=tags or self.tags,
             wait=wait,
             kms_key=kms_key,

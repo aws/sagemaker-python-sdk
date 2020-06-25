@@ -267,48 +267,6 @@ def test_deploy_multi_data_framework_model(sagemaker_session, mxnet_model):
     assert isinstance(predictor, MXNetPredictor)
 
 
-@patch("sagemaker.fw_utils.tar_and_upload_dir", MagicMock())
-def test_deploy_model_update(sagemaker_session):
-    model = MultiDataModel(
-        name=MODEL_NAME,
-        model_data_prefix=VALID_MULTI_MODEL_DATA_PREFIX,
-        image=IMAGE,
-        role=ROLE,
-        sagemaker_session=sagemaker_session,
-    )
-
-    model.deploy(
-        initial_instance_count=INSTANCE_COUNT,
-        instance_type=INSTANCE_TYPE,
-        endpoint_name=MULTI_MODEL_ENDPOINT_NAME,
-        update_endpoint=True,
-    )
-
-    sagemaker_session.create_model.assert_called()
-    sagemaker_session.create_endpoint_config.assert_called_with(
-        name=model.name,
-        model_name=model.name,
-        initial_instance_count=INSTANCE_COUNT,
-        instance_type=INSTANCE_TYPE,
-        accelerator_type=None,
-        tags=None,
-        kms_key=None,
-        data_capture_config_dict=None,
-    )
-
-    config_name = sagemaker_session.create_endpoint_config(
-        name=model.name,
-        model_name=model.name,
-        initial_instance_count=INSTANCE_COUNT,
-        instance_type=INSTANCE_TYPE,
-        accelerator_type=None,
-    )
-    sagemaker_session.update_endpoint.assert_called_with(
-        MULTI_MODEL_ENDPOINT_NAME, config_name, wait=True
-    )
-    sagemaker_session.create_endpoint.assert_not_called()
-
-
 def test_add_model_local_file_path(multi_data_model):
     valid_local_model_artifact_path = os.path.join(DATA_DIR, "sparkml_model", "mleap_model.tar.gz")
     uploaded_s3_path = multi_data_model.add_model(valid_local_model_artifact_path)

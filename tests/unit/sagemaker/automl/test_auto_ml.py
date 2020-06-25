@@ -563,7 +563,6 @@ def test_deploy_optional_args(candidate_estimator, sagemaker_session, candidate_
         endpoint_name=JOB_NAME,
         tags=TAGS,
         wait=False,
-        update_endpoint=True,
         vpc_config=VPC_CONFIG,
         enable_network_isolation=True,
         model_kms_key=OUTPUT_KMS_KEY,
@@ -591,7 +590,6 @@ def test_deploy_optional_args(candidate_estimator, sagemaker_session, candidate_
         endpoint_name=JOB_NAME,
         tags=TAGS,
         wait=False,
-        update_endpoint=True,
     )
 
 
