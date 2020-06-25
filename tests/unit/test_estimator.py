@@ -636,42 +636,6 @@ def test_start_new_wait_called(strftime, sagemaker_session):
     assert sagemaker_session.wait_for_job.assert_called_once
 
 
-def test_delete_endpoint(sagemaker_session):
-    t = DummyFramework(
-        entry_point=SCRIPT_PATH,
-        role="DummyRole",
-        sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
-        container_log_level=logging.INFO,
-    )
-
-    class tj(object):
-        @property
-        def name(self):
-            return "myjob"
-
-    t.latest_training_job = tj()
-
-    t.delete_endpoint()
-
-    sagemaker_session.delete_endpoint.assert_called_with("myjob")
-
-
-def test_delete_endpoint_without_endpoint(sagemaker_session):
-    t = DummyFramework(
-        entry_point=SCRIPT_PATH,
-        role="DummyRole",
-        sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
-    )
-
-    with pytest.raises(ValueError) as error:
-        t.delete_endpoint()
-    assert "Endpoint was not created yet" in str(error)
-
-
 def test_enable_cloudwatch_metrics(sagemaker_session):
     fw = DummyFramework(
         entry_point=SCRIPT_PATH,

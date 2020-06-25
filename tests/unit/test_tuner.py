@@ -917,18 +917,6 @@ def test_wait(tuner):
     tuner.estimator.sagemaker_session.wait_for_tuning_job.assert_called_once_with(JOB_NAME)
 
 
-def test_delete_endpoint(tuner):
-    tuner.latest_tuning_job = _TuningJob(tuner.estimator.sagemaker_session, JOB_NAME)
-
-    tuning_job_description = {"BestTrainingJob": {"TrainingJobName": JOB_NAME}}
-    tuner.estimator.sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job = Mock(
-        name="describe_hyper_parameter_tuning_job", return_value=tuning_job_description
-    )
-
-    tuner.delete_endpoint()
-    tuner.sagemaker_session.delete_endpoint.assert_called_with(JOB_NAME)
-
-
 def test_fit_no_inputs(tuner, sagemaker_session):
     script_path = os.path.join(DATA_DIR, "mxnet_mnist", "failure_script.py")
     tuner.estimator = MXNet(

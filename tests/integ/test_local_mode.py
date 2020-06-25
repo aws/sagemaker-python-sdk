@@ -151,7 +151,7 @@ def test_mxnet_local_mode(sagemaker_local_session, mxnet_full_version, mxnet_ful
             data = numpy.zeros(shape=(1, 1, 28, 28))
             predictor.predict(data)
         finally:
-            mx.delete_endpoint()
+            predictor.delete_endpoint()
 
 
 @pytest.mark.local_mode
@@ -209,7 +209,7 @@ def test_mxnet_local_data_local_script(mxnet_full_version, mxnet_full_py_version
             data = numpy.zeros(shape=(1, 1, 28, 28))
             predictor.predict(data)
         finally:
-            mx.delete_endpoint()
+            predictor.delete_endpoint()
 
 
 @pytest.mark.local_mode

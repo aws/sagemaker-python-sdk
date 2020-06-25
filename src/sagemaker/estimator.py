@@ -820,15 +820,6 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
 
         return init_params
 
-    def delete_endpoint(self):
-        """Delete an Amazon SageMaker ``Endpoint``.
-
-        Raises:
-            botocore.exceptions.ClientError: If the endpoint does not exist.
-        """
-        self._ensure_latest_training_job(error_message="Endpoint was not created yet")
-        self.sagemaker_session.delete_endpoint(self.latest_training_job.name)
-
     def transformer(
         self,
         instance_count,

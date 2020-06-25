@@ -51,4 +51,4 @@ def test_source_dirs(tmpdir, sagemaker_local_session):
             predict_response = predictor.predict([7])
             assert predict_response == [49]
         finally:
-            estimator.delete_endpoint()
+            predictor.delete_endpoint()
