@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.66.0 (2020-06-25)
+
+### Features
+
+ * add 3.8 as supported python version
+
+### Testing and Release Infrastructure
+
+ * upgrade airflow to latest stable version
+ * update feature request issue template
+
 ## v1.65.1.post1 (2020-06-24)
 
 ### Testing and Release Infrastructure
