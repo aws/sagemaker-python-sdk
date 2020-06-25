@@ -23,6 +23,7 @@ FUNCTION_CALL_MODIFIERS = [
     modifiers.tf_legacy_mode.TensorBoardParameterRemover(),
     modifiers.deprecated_params.TensorFlowScriptModeParameterRemover(),
     modifiers.tfs.TensorFlowServingConstructorRenamer(),
+    modifiers.airflow.ModelConfigArgModifier(),
 ]
 
 IMPORT_MODIFIERS = [modifiers.tfs.TensorFlowServingImportRenamer()]

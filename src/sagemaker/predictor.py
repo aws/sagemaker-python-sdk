@@ -32,7 +32,7 @@ from sagemaker.model_monitor.model_monitoring import (
 )
 
 
-class RealTimePredictor(object):
+class Predictor(object):
     """Make prediction requests to an Amazon SageMaker endpoint."""
 
     def __init__(
@@ -44,7 +44,7 @@ class RealTimePredictor(object):
         content_type=None,
         accept=None,
     ):
-        """Initialize a ``RealTimePredictor``.
+        """Initialize a ``Predictor``.
 
         Behavior for serialization of input data and deserialization of
         result data can be configured through initializer arguments. If not
@@ -89,7 +89,7 @@ class RealTimePredictor(object):
         Args:
             data (object): Input data for which you want the model to provide
                 inference. If a serializer was specified when creating the
-                RealTimePredictor, the result of the serializer is sent as input
+                Predictor, the result of the serializer is sent as input
                 data. Otherwise the data must be sequence of bytes, and the
                 predict method then sends the bytes in the request body as is.
             initial_args (dict[str,str]): Optional. Default arguments for boto3
@@ -104,7 +104,7 @@ class RealTimePredictor(object):
 
         Returns:
             object: Inference for the given input. If a deserializer was specified when creating
-                the RealTimePredictor, the result of the deserializer is
+                the Predictor, the result of the deserializer is
                 returned. Otherwise the response returns the sequence of bytes
                 as is.
         """

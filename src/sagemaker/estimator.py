@@ -52,7 +52,7 @@ from sagemaker.model import (
     JOB_NAME_PARAM_NAME,
     SAGEMAKER_REGION_PARAM_NAME,
 )
-from sagemaker.predictor import RealTimePredictor
+from sagemaker.predictor import Predictor
 from sagemaker.session import Session
 from sagemaker.session import s3_input
 from sagemaker.transformer import Transformer
@@ -638,7 +638,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         **kwargs
     ):
         """Deploy the trained model to an Amazon SageMaker endpoint and return a
-        ``sagemaker.RealTimePredictor`` object.
+        ``sagemaker.Predictor`` object.
 
         More information:
         http://docs.aws.amazon.com/sagemaker/latest/dg/how-it-works-training.html
@@ -686,7 +686,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                 For more, see the implementation docs.
 
         Returns:
-            sagemaker.predictor.RealTimePredictor: A predictor that provides a ``predict()`` method,
+            sagemaker.predictor.Predictor: A predictor that provides a ``predict()`` method,
                 which can be used to send requests to the Amazon SageMaker
                 endpoint and obtain inferences.
         """
@@ -1346,7 +1346,7 @@ class Estimator(EstimatorBase):
         """Create a model to deploy.
 
         The serializer, deserializer, content_type, and accept arguments are only used to define a
-        default RealTimePredictor. They are ignored if an explicit predictor class is passed in.
+        default Predictor. They are ignored if an explicit predictor class is passed in.
         Other arguments are passed through to the Model class.
 
         Args:
@@ -1355,7 +1355,7 @@ class Estimator(EstimatorBase):
                 role from the Estimator will be used.
             image (str): An container image to use for deploying the model.
                 Defaults to the image used for training.
-            predictor_cls (RealTimePredictor): The predictor class to use when
+            predictor_cls (Predictor): The predictor class to use when
                 deploying the model.
             serializer (callable): Should accept a single argument, the input
                 data, and return a sequence of bytes. May provide a content_type
@@ -1386,9 +1386,7 @@ class Estimator(EstimatorBase):
         if predictor_cls is None:
 
             def predict_wrapper(endpoint, session):
-                return RealTimePredictor(
-                    endpoint, session, serializer, deserializer, content_type, accept
-                )
+                return Predictor(endpoint, session, serializer, deserializer, content_type, accept)
 
             predictor_cls = predict_wrapper
 

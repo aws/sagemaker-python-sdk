@@ -19,7 +19,7 @@ import re
 import pytest
 from mock import Mock, patch
 
-from sagemaker import RealTimePredictor
+from sagemaker import Predictor
 from sagemaker.amazon.amazon_estimator import RecordSet
 from sagemaker.estimator import Framework
 from sagemaker.mxnet import MXNet
@@ -806,7 +806,7 @@ def test_deploy_default(tuner):
     assert args[2]["Image"] == IMAGE_NAME
     assert args[2]["ModelDataUrl"] == MODEL_DATA
 
-    assert isinstance(predictor, RealTimePredictor)
+    assert isinstance(predictor, Predictor)
     assert predictor.endpoint.startswith(JOB_NAME)
     assert predictor.sagemaker_session == tuner.sagemaker_session
 
@@ -845,7 +845,7 @@ def test_deploy_estimator_dict(tuner):
     assert args[2]["Image"] == IMAGE_NAME
     assert args[2]["ModelDataUrl"] == MODEL_DATA
 
-    assert isinstance(predictor, RealTimePredictor)
+    assert isinstance(predictor, Predictor)
     assert predictor.endpoint.startswith(JOB_NAME)
     assert predictor.sagemaker_session == tuner.sagemaker_session
 

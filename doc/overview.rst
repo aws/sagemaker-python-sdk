@@ -1124,7 +1124,7 @@ How do I make predictions against an existing endpoint?
 Create a ``Predictor`` object and provide it with your endpoint name,
 then call its ``predict()`` method with your input.
 
-You can use either the generic ``RealTimePredictor`` class, which by default does not perform any serialization/deserialization transformations on your input,
+You can use either the generic ``Predictor`` class, which by default does not perform any serialization/deserialization transformations on your input,
 but can be configured to do so through constructor arguments:
 http://sagemaker.readthedocs.io/en/stable/predictors.html
 

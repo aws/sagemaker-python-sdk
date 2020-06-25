@@ -613,7 +613,7 @@ def _build_airflow_workflow(estimator, instance_type, inputs=None, mini_batch_si
     model = estimator.create_model()
     assert model is not None
 
-    model_config = sm_airflow.model_config(instance_type, model)
+    model_config = sm_airflow.model_config(model, instance_type)
     assert model_config is not None
 
     transform_config = sm_airflow.transform_config_from_estimator(
