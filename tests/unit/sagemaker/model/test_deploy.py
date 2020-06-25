@@ -243,8 +243,8 @@ def test_deploy_no_role(sagemaker_session):
 
 
 @patch("sagemaker.model.Model._create_sagemaker_model", Mock())
-@patch("sagemaker.predictor.RealTimePredictor._get_endpoint_config_name", Mock())
-@patch("sagemaker.predictor.RealTimePredictor._get_model_names", Mock())
+@patch("sagemaker.predictor.Predictor._get_endpoint_config_name", Mock())
+@patch("sagemaker.predictor.Predictor._get_model_names", Mock())
 @patch("sagemaker.production_variant", return_value=BASE_PRODUCTION_VARIANT)
 def test_deploy_predictor_cls(production_variant, sagemaker_session):
     model = Model(
@@ -252,7 +252,7 @@ def test_deploy_predictor_cls(production_variant, sagemaker_session):
         MODEL_DATA,
         role=ROLE,
         name=MODEL_NAME,
-        predictor_cls=sagemaker.predictor.RealTimePredictor,
+        predictor_cls=sagemaker.predictor.Predictor,
         sagemaker_session=sagemaker_session,
     )
 
@@ -263,7 +263,7 @@ def test_deploy_predictor_cls(production_variant, sagemaker_session):
         endpoint_name=endpoint_name,
     )
 
-    assert isinstance(predictor, sagemaker.predictor.RealTimePredictor)
+    assert isinstance(predictor, sagemaker.predictor.Predictor)
     assert predictor.endpoint_name == endpoint_name
     assert predictor.sagemaker_session == sagemaker_session
 

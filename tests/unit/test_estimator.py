@@ -26,7 +26,7 @@ from sagemaker.amazon.amazon_estimator import registry
 from sagemaker.algorithm import AlgorithmEstimator
 from sagemaker.estimator import Estimator, EstimatorBase, Framework, _TrainingJob
 from sagemaker.model import FrameworkModel
-from sagemaker.predictor import RealTimePredictor
+from sagemaker.predictor import Predictor
 from sagemaker.session import s3_input, ShuffleConfig
 from sagemaker.transformer import Transformer
 from botocore.exceptions import ClientError
@@ -2043,7 +2043,7 @@ def test_generic_to_deploy(sagemaker_session):
     assert args[2]["ModelDataUrl"] == MODEL_DATA
     assert kwargs["vpc_config"] is None
 
-    assert isinstance(predictor, RealTimePredictor)
+    assert isinstance(predictor, Predictor)
     assert predictor.endpoint_name.startswith(IMAGE_NAME)
     assert predictor.sagemaker_session == sagemaker_session
 

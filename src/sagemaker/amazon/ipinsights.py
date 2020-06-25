@@ -16,7 +16,7 @@ from __future__ import absolute_import
 from sagemaker.amazon.amazon_estimator import AmazonAlgorithmEstimatorBase, registry
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
 from sagemaker.amazon.validation import ge, le
-from sagemaker.predictor import RealTimePredictor, csv_serializer, json_deserializer
+from sagemaker.predictor import Predictor, csv_serializer, json_deserializer
 from sagemaker.model import Model
 from sagemaker.session import Session
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
@@ -173,13 +173,13 @@ class IPInsights(AmazonAlgorithmEstimatorBase):
         )
 
 
-class IPInsightsPredictor(RealTimePredictor):
+class IPInsightsPredictor(Predictor):
     """Returns dot product of entity and IP address embeddings as a score for
     compatibility.
 
     The implementation of
-    :meth:`~sagemaker.predictor.RealTimePredictor.predict` in this
-    `RealTimePredictor` requires a numpy ``ndarray`` as input. The array should
+    :meth:`~sagemaker.predictor.Predictor.predict` in this
+    `Predictor` requires a numpy ``ndarray`` as input. The array should
     contain two columns. The first column should contain the entity ID. The
     second column should contain the IPv4 address in dot notation.
     """

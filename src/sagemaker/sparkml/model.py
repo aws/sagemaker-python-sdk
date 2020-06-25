@@ -13,7 +13,7 @@
 """Placeholder docstring"""
 from __future__ import absolute_import
 
-from sagemaker import Model, RealTimePredictor, Session
+from sagemaker import Model, Predictor, Session
 from sagemaker.content_types import CONTENT_TYPE_CSV
 from sagemaker.fw_registry import registry
 from sagemaker.predictor import csv_serializer
@@ -22,12 +22,12 @@ framework_name = "sparkml-serving"
 repo_name = "sagemaker-sparkml-serving"
 
 
-class SparkMLPredictor(RealTimePredictor):
+class SparkMLPredictor(Predictor):
     """Performs predictions against an MLeap serialized SparkML model.
 
     The implementation of
-    :meth:`~sagemaker.predictor.RealTimePredictor.predict` in this
-    `RealTimePredictor` requires a json as input. The input should follow the
+    :meth:`~sagemaker.predictor.Predictor.predict` in this
+    `Predictor` requires a json as input. The input should follow the
     json format as documented.
 
     ``predict()`` returns a csv output, comma separated if the output is a

@@ -25,13 +25,13 @@ from sagemaker.fw_utils import (
 )
 from sagemaker.model import FrameworkModel, MODEL_SERVER_WORKERS_PARAM_NAME
 from sagemaker.pytorch import defaults
-from sagemaker.predictor import RealTimePredictor, npy_serializer, numpy_deserializer
+from sagemaker.predictor import Predictor, npy_serializer, numpy_deserializer
 
 logger = logging.getLogger("sagemaker")
 
 
-class PyTorchPredictor(RealTimePredictor):
-    """A RealTimePredictor for inference against PyTorch Endpoints.
+class PyTorchPredictor(Predictor):
+    """A Predictor for inference against PyTorch Endpoints.
 
     This is able to serialize Python lists, dictionaries, and numpy arrays to
     multidimensional tensors for PyTorch inference.

@@ -25,7 +25,7 @@ from sagemaker.utils import sagemaker_timestamp
 from sagemaker.content_types import CONTENT_TYPE_CSV
 from sagemaker.utils import unique_name_from_base
 from sagemaker.amazon.amazon_estimator import get_image_uri
-from sagemaker.predictor import csv_serializer, RealTimePredictor
+from sagemaker.predictor import csv_serializer, Predictor
 
 
 import tests.integ
@@ -166,7 +166,7 @@ def test_target_variant_invocation(sagemaker_session, multi_variant_endpoint):
 
 
 def test_predict_invocation_with_target_variant(sagemaker_session, multi_variant_endpoint):
-    predictor = RealTimePredictor(
+    predictor = Predictor(
         endpoint_name=multi_variant_endpoint.endpoint_name,
         sagemaker_session=sagemaker_session,
         serializer=csv_serializer,
@@ -294,7 +294,7 @@ def test_predict_invocation_with_target_variant_local_mode(
     if sagemaker_session._region_name is None:
         sagemaker_session._region_name = DEFAULT_REGION
 
-    predictor = RealTimePredictor(
+    predictor = Predictor(
         endpoint_name=multi_variant_endpoint.endpoint_name,
         sagemaker_session=sagemaker_session,
         serializer=csv_serializer,

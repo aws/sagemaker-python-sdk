@@ -17,7 +17,7 @@ from sagemaker.amazon.amazon_estimator import AmazonAlgorithmEstimatorBase, regi
 from sagemaker.amazon.common import numpy_to_record_serializer, record_deserializer
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
 from sagemaker.amazon.validation import gt, isin
-from sagemaker.predictor import RealTimePredictor
+from sagemaker.predictor import Predictor
 from sagemaker.model import Model
 from sagemaker.session import Session
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
@@ -178,12 +178,12 @@ class PCA(AmazonAlgorithmEstimatorBase):
         )
 
 
-class PCAPredictor(RealTimePredictor):
+class PCAPredictor(Predictor):
     """Transforms input vectors to lower-dimesional representations.
 
     The implementation of
-    :meth:`~sagemaker.predictor.RealTimePredictor.predict` in this
-    `RealTimePredictor` requires a numpy ``ndarray`` as input. The array should
+    :meth:`~sagemaker.predictor.Predictor.predict` in this
+    `Predictor` requires a numpy ``ndarray`` as input. The array should
     contain the same number of columns as the feature-dimension of the data used
     to fit the model this Predictor performs inference on.
 

@@ -690,7 +690,7 @@ class HyperparameterTuner(object):
         **kwargs
     ):
         """Deploy the best trained or user specified model to an Amazon
-        SageMaker endpoint and return a ``sagemaker.RealTimePredictor`` object.
+        SageMaker endpoint and return a ``sagemaker.Predictor`` object.
 
         For more information:
         http://docs.aws.amazon.com/sagemaker/latest/dg/how-it-works-training.html
@@ -724,7 +724,7 @@ class HyperparameterTuner(object):
                 what other arguments are needed.
 
         Returns:
-            sagemaker.predictor.RealTimePredictor: A predictor that provides a ``predict()``
+            sagemaker.predictor.Predictor: A predictor that provides a ``predict()``
                 method, which can be used to send requests to the Amazon SageMaker endpoint
                 and obtain inferences.
         """
@@ -755,7 +755,7 @@ class HyperparameterTuner(object):
 
     def best_estimator(self, best_training_job=None):
         """Return the estimator that has best training job attached. The trained model can then
-        be deployed to an Amazon SageMaker endpoint and return a ``sagemaker.RealTimePredictor``
+        be deployed to an Amazon SageMaker endpoint and return a ``sagemaker.Predictor``
         object.
 
         Args:

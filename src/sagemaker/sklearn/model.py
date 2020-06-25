@@ -19,14 +19,14 @@ import sagemaker
 from sagemaker.fw_registry import default_framework_uri
 from sagemaker.fw_utils import model_code_key_prefix, validate_version_or_image_args
 from sagemaker.model import FrameworkModel, MODEL_SERVER_WORKERS_PARAM_NAME
-from sagemaker.predictor import RealTimePredictor, npy_serializer, numpy_deserializer
+from sagemaker.predictor import Predictor, npy_serializer, numpy_deserializer
 from sagemaker.sklearn import defaults
 
 logger = logging.getLogger("sagemaker")
 
 
-class SKLearnPredictor(RealTimePredictor):
-    """A RealTimePredictor for inference against Scikit-learn Endpoints.
+class SKLearnPredictor(Predictor):
+    """A Predictor for inference against Scikit-learn Endpoints.
 
     This is able to serialize Python lists, dictionaries, and numpy arrays to
     multidimensional tensors for Scikit-learn inference.

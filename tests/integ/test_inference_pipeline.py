@@ -26,7 +26,7 @@ from sagemaker.amazon.amazon_estimator import get_image_uri
 from sagemaker.content_types import CONTENT_TYPE_CSV
 from sagemaker.model import Model
 from sagemaker.pipeline import PipelineModel
-from sagemaker.predictor import RealTimePredictor, json_serializer
+from sagemaker.predictor import Predictor, json_serializer
 from sagemaker.sparkml.model import SparkMLModel
 from sagemaker.utils import sagemaker_timestamp
 from tests.integ.retry import retries
@@ -129,7 +129,7 @@ def test_inference_pipeline_model_deploy(sagemaker_session, cpu_instance_type):
             name=endpoint_name,
         )
         model.deploy(1, cpu_instance_type, endpoint_name=endpoint_name)
-        predictor = RealTimePredictor(
+        predictor = Predictor(
             endpoint_name=endpoint_name,
             sagemaker_session=sagemaker_session,
             serializer=json_serializer,
