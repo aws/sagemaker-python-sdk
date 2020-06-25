@@ -2333,6 +2333,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         new_tags=None,
         new_kms_key=None,
         new_data_capture_config_dict=None,
+        new_production_variants=None,
     ):
         """Create an Amazon SageMaker endpoint configuration from an existing one. Updating any
         values that were passed in.
@@ -2346,7 +2347,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             new_config_name (str): Name of the Amazon SageMaker endpoint configuration to create.
             existing_config_name (str): Name of the existing Amazon SageMaker endpoint
                 configuration.
-            new_tags(List[dict[str, str]]): Optional. The list of tags to add to the endpoint
+            new_tags (list[dict[str, str]]): Optional. The list of tags to add to the endpoint
                 config. If not specified, the tags of the existing endpoint configuration are used.
                 If any of the existing tags are reserved AWS ones (i.e. begin with "aws"),
                 they are not carried over to the new endpoint configuration.
@@ -2357,6 +2358,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 capture for use with Amazon SageMaker Model Monitoring (default: None).
                 If not specified, the data capture configuration of the existing
                 endpoint configuration is used.
+            new_production_variants (list[dict]): The configuration for which model(s) to host and
+                the resources to deploy for hosting the model(s). If not specified,
+                the ``ProductionVariants`` of the existing endpoint configuration is used.
 
         Returns:
             str: Name of the endpoint point configuration created.
@@ -2370,8 +2374,11 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         request = {
             "EndpointConfigName": new_config_name,
-            "ProductionVariants": existing_endpoint_config_desc["ProductionVariants"],
         }
+
+        request["ProductionVariants"] = (
+            new_production_variants or existing_endpoint_config_desc["ProductionVariants"]
+        )
 
         request_tags = new_tags or self.list_tags(
             existing_endpoint_config_desc["EndpointConfigArn"]

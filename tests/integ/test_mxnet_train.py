@@ -24,7 +24,6 @@ from sagemaker.mxnet.model import MXNetModel
 from sagemaker.utils import sagemaker_timestamp
 from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.kms_utils import get_or_create_kms_key
-from tests.integ.retry import retries
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 
@@ -203,7 +202,7 @@ def test_deploy_model_with_tags_and_kms(
         assert endpoint_config["KmsKeyId"] == kms_key_arn
 
 
-def test_deploy_model_with_update_endpoint(
+def test_deploy_model_and_update_endpoint(
     mxnet_training_job,
     sagemaker_session,
     mxnet_full_version,
@@ -227,24 +226,18 @@ def test_deploy_model_with_update_endpoint(
             sagemaker_session=sagemaker_session,
             framework_version=mxnet_full_version,
         )
-        model.deploy(1, alternative_cpu_instance_type, endpoint_name=endpoint_name)
-        old_endpoint = sagemaker_session.sagemaker_client.describe_endpoint(
+        predictor = model.deploy(1, alternative_cpu_instance_type, endpoint_name=endpoint_name)
+        endpoint_desc = sagemaker_session.sagemaker_client.describe_endpoint(
             EndpointName=endpoint_name
         )
-        old_config_name = old_endpoint["EndpointConfigName"]
+        old_config_name = endpoint_desc["EndpointConfigName"]
 
-        model.deploy(1, cpu_instance_type, update_endpoint=True, endpoint_name=endpoint_name)
+        predictor.update_endpoint(initial_instance_count=1, instance_type=cpu_instance_type)
 
-        # Wait for endpoint to finish updating
-        # Endpoint update takes ~7min. 40 retries * 30s sleeps = 20min timeout
-        for _ in retries(40, "Waiting for 'InService' endpoint status", seconds_to_sleep=30):
-            new_endpoint = sagemaker_session.sagemaker_client.describe_endpoint(
-                EndpointName=endpoint_name
-            )
-            if new_endpoint["EndpointStatus"] == "InService":
-                break
-
-        new_config_name = new_endpoint["EndpointConfigName"]
+        endpoint_desc = sagemaker_session.sagemaker_client.describe_endpoint(
+            EndpointName=endpoint_name
+        )
+        new_config_name = endpoint_desc["EndpointConfigName"]
         new_config = sagemaker_session.sagemaker_client.describe_endpoint_config(
             EndpointConfigName=new_config_name
         )

@@ -496,25 +496,20 @@ def test_multi_data_model_deploy_pretrained_models_update_endpoint(
         result = predictor.predict(data, target_model=PRETRAINED_MODEL_PATH_2)
         assert result == "Invoked model: {}".format(PRETRAINED_MODEL_PATH_2)
 
-        old_endpoint = sagemaker_session.sagemaker_client.describe_endpoint(
+        endpoint_desc = sagemaker_session.sagemaker_client.describe_endpoint(
             EndpointName=endpoint_name
         )
-        old_config_name = old_endpoint["EndpointConfigName"]
+        old_config_name = endpoint_desc["EndpointConfigName"]
 
         # Update endpoint
-        multi_data_model.deploy(
-            1, alternative_cpu_instance_type, endpoint_name=endpoint_name, update_endpoint=True
+        predictor.update_endpoint(
+            initial_instance_count=1, instance_type=alternative_cpu_instance_type
         )
 
-        # Wait for endpoint to finish updating
-        for _ in retries(40, "Waiting for 'InService' endpoint status", seconds_to_sleep=30):
-            new_endpoint = sagemaker_session.sagemaker_client.describe_endpoint(
-                EndpointName=endpoint_name
-            )
-            if new_endpoint["EndpointStatus"] == "InService":
-                break
-
-        new_config_name = new_endpoint["EndpointConfigName"]
+        endpoint_desc = sagemaker_session.sagemaker_client.describe_endpoint(
+            EndpointName=endpoint_name
+        )
+        new_config_name = endpoint_desc["EndpointConfigName"]
 
         new_config = sagemaker_session.sagemaker_client.describe_endpoint_config(
             EndpointConfigName=new_config_name
@@ -531,6 +526,7 @@ def test_multi_data_model_deploy_pretrained_models_update_endpoint(
             EndpointConfigName=new_config_name
         )
         multi_data_model.delete_model()
+
     with pytest.raises(Exception) as exception:
         sagemaker_session.sagemaker_client.describe_model(ModelName=model_name)
         assert "Could not find model" in str(exception.value)
