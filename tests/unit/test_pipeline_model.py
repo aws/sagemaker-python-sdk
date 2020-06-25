@@ -17,7 +17,7 @@ from mock import Mock, patch
 
 from sagemaker.model import FrameworkModel
 from sagemaker.pipeline import PipelineModel
-from sagemaker.predictor import RealTimePredictor
+from sagemaker.predictor import Predictor
 from sagemaker.session import ModelContainer
 from sagemaker.sparkml import SparkMLModel
 
@@ -54,7 +54,7 @@ class DummyFrameworkModel(FrameworkModel):
         )
 
     def create_predictor(self, endpoint_name):
-        return RealTimePredictor(endpoint_name, self.sagemaker_session)
+        return Predictor(endpoint_name, self.sagemaker_session)
 
 
 @pytest.fixture()

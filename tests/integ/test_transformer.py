@@ -28,7 +28,6 @@ from sagemaker.utils import unique_name_from_base
 from tests.integ import (
     datasets,
     DATA_DIR,
-    PYTHON_VERSION,
     TRAINING_DEFAULT_TIMEOUT_MINUTES,
     TRANSFORM_DEFAULT_TIMEOUT_MINUTES,
 )
@@ -334,7 +333,7 @@ def test_transform_mxnet_logs(
 
 
 def test_transform_tf_kms_network_isolation(
-    sagemaker_session, cpu_instance_type, tmpdir, tf_serving_version
+    sagemaker_session, cpu_instance_type, tmpdir, tf_full_version, tf_full_py_version
 ):
     data_path = os.path.join(DATA_DIR, "tensorflow_mnist")
 
@@ -343,8 +342,8 @@ def test_transform_tf_kms_network_isolation(
         role="SageMakerRole",
         train_instance_count=1,
         train_instance_type=cpu_instance_type,
-        framework_version=tf_serving_version,
-        py_version=PYTHON_VERSION,
+        framework_version=tf_full_version,
+        py_version=tf_full_py_version,
         sagemaker_session=sagemaker_session,
     )
 

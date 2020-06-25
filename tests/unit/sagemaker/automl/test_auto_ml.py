@@ -17,7 +17,7 @@ import copy
 import pytest
 from mock import Mock, patch
 from sagemaker import AutoML, AutoMLJob, AutoMLInput, CandidateEstimator, PipelineModel
-from sagemaker.predictor import RealTimePredictor
+from sagemaker.predictor import Predictor
 
 MODEL_DATA = "s3://bucket/model.tar.gz"
 MODEL_IMAGE = "mi"
@@ -556,7 +556,7 @@ def test_deploy_optional_args(candidate_estimator, sagemaker_session, candidate_
         vpc_config=VPC_CONFIG,
         enable_network_isolation=True,
         model_kms_key=OUTPUT_KMS_KEY,
-        predictor_cls=RealTimePredictor,
+        predictor_cls=Predictor,
         inference_response_keys=None,
     )
 
@@ -569,7 +569,7 @@ def test_deploy_optional_args(candidate_estimator, sagemaker_session, candidate_
         vpc_config=VPC_CONFIG,
         enable_network_isolation=True,
         model_kms_key=OUTPUT_KMS_KEY,
-        predictor_cls=RealTimePredictor,
+        predictor_cls=Predictor,
     )
 
     mock_pipeline.deploy.assert_called_once()

@@ -512,7 +512,7 @@ def test_sklearn_airflow_config_uploads_data_source_to_s3(
 
 @pytest.mark.canary_quick
 def test_tf_airflow_config_uploads_data_source_to_s3(
-    sagemaker_session, cpu_instance_type, tf_full_version, tf_full_py_version
+    sagemaker_session, cpu_instance_type, tf_training_latest_version, tf_training_latest_py_version
 ):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         tf = TensorFlow(
@@ -524,8 +524,8 @@ def test_tf_airflow_config_uploads_data_source_to_s3(
             train_instance_count=SINGLE_INSTANCE_COUNT,
             train_instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
-            framework_version=tf_full_version,
-            py_version=tf_full_py_version,
+            framework_version=tf_training_latest_version,
+            py_version=tf_training_latest_py_version,
             metric_definitions=[
                 {"Name": "train:global_steps", "Regex": r"global_step\/sec:\s(.*)"}
             ],

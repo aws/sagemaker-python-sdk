@@ -417,7 +417,7 @@ You can provide your own implementations for these functions in your hosting scr
 If you omit any definition then the SageMaker PyTorch model server will use its default implementation for that
 function.
 
-The ``RealTimePredictor`` used by PyTorch in the SageMaker Python SDK serializes NumPy arrays to the `NPY <https://docs.scipy.org/doc/numpy/neps/npy-format.html>`_ format
+The ``Predictor`` used by PyTorch in the SageMaker Python SDK serializes NumPy arrays to the `NPY <https://docs.scipy.org/doc/numpy/neps/npy-format.html>`_ format
 by default, with Content-Type ``application/x-npy``. The SageMaker PyTorch model server can deserialize NPY-formatted
 data (along with JSON and CSV data).
 

@@ -16,7 +16,7 @@ import os
 
 import pytest
 
-from sagemaker.predictor import RealTimePredictor
+from sagemaker.predictor import Predictor
 from sagemaker import Object2Vec, Object2VecModel
 from sagemaker.utils import unique_name_from_base
 from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
@@ -67,7 +67,7 @@ def test_object2vec(sagemaker_session, cpu_instance_type):
             object2vec.model_data, role="SageMakerRole", sagemaker_session=sagemaker_session
         )
         predictor = model.deploy(1, cpu_instance_type, endpoint_name=job_name)
-        assert isinstance(predictor, RealTimePredictor)
+        assert isinstance(predictor, Predictor)
 
         predict_input = {"instances": [{"in0": [354, 623], "in1": [16]}]}
 
