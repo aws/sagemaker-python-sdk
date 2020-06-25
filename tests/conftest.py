@@ -19,6 +19,7 @@ import boto3
 import pytest
 import tests.integ
 from botocore.config import Config
+from packaging.version import Version
 
 from sagemaker import Session, utils
 from sagemaker.local import LocalSession
@@ -57,7 +58,6 @@ def pytest_addoption(parser):
         "--rl-ray-full-version", action="store", default=RLEstimator.RAY_LATEST_VERSION
     )
     parser.addoption("--sklearn-full-version", action="store", default="0.20.0")
-    parser.addoption("--tf-full-version", action="store", default="2.2.0")
     parser.addoption("--ei-tf-full-version", action="store")
     parser.addoption("--xgboost-full-version", action="store", default="1.0-1")
 
@@ -304,33 +304,43 @@ def sklearn_full_version(request):
 
 
 @pytest.fixture(scope="module")
-def tf_full_version(request):
-    return request.config.getoption("--tf-full-version")
+def tf_training_latest_version():
+    return "2.2.0"
 
 
 @pytest.fixture(scope="module")
-def tf_full_py_version(tf_full_version):
-    """fixture to match tf_full_version
-
-    Fixture exists as such, since tf_full_version may be overridden --tf-full-version.
-    Otherwise, this would simply be py37 to match the latest version support.
-
-    TODO: Evaluate use of --tf-full-version with possible eye to remove and simplify code.
-    """
-    version = [int(val) for val in tf_full_version.split(".")]
-    if version < [1, 11]:
-        return "py2"
-    if version < [2, 2]:
-        return "py3"
+def tf_training_latest_py_version():
     return "py37"
 
 
 @pytest.fixture(scope="module")
-def tf_serving_version(tf_full_version):
-    full_version = [int(val) for val in tf_full_version.split(".")]
-    if full_version < [2, 2]:
-        return tf_full_version
+def tf_serving_latest_version():
     return "2.1.0"
+
+
+@pytest.fixture(scope="module")
+def tf_full_version(tf_training_latest_version, tf_serving_latest_version):
+    """Fixture for TF tests that test both training and inference.
+
+    Fixture exists as such, since TF training and TFS have different latest versions.
+    Otherwise, this would simply be a single latest version.
+    """
+    return str(min(Version(tf_training_latest_version), Version(tf_serving_latest_version)))
+
+
+@pytest.fixture(scope="module")
+def tf_full_py_version(tf_full_version):
+    """Fixture to match tf_full_version
+
+    Fixture exists as such, since TF training and TFS have different latest versions.
+    Otherwise, this would simply be py37 to match the latest version support.
+    """
+    version = Version(tf_full_version)
+    if version < Version("1.11"):
+        return "py2"
+    if version < Version("2.2"):
+        return "py3"
+    return "py37"
 
 
 @pytest.fixture(scope="module", params=["1.15.0", "2.0.0"])
