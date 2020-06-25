@@ -200,6 +200,7 @@ class RLEstimator(Framework):
                 folders will be copied to SageMaker in the same folder where the
                 entry_point is copied. If the ```source_dir``` points to S3,
                 code will be uploaded and the S3 location will be used instead.
+                This is not supported with "local code" in Local Mode.
             **kwargs: Additional kwargs passed to the :class:`~sagemaker.model.FrameworkModel`
                 constructor.
 

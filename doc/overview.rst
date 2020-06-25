@@ -752,6 +752,9 @@ If you want to keep everything local, and not use Amazon S3 either, you can enab
 
     # pass sagemaker_session to your estimator or model
 
+.. note::
+    If you enable "local code," then you cannot use the ``dependencies`` parameter in your estimator or model.
+
 We can take the example in  `Using Estimators <#using-estimators>`__ , and use either ``local`` or ``local_gpu`` as the instance type.
 
 .. code:: python

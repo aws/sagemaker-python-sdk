@@ -70,7 +70,7 @@ extras["test"] = (
         "awslogs",
         "black==19.10b0 ; python_version >= '3.6'",
         "stopit==1.1.2",
-        "apache-airflow==1.10.5",
+        "apache-airflow==1.10.9",
         "fabric>=2.0",
         "requests>=2.20.0, <3",
     ],
@@ -96,6 +96,7 @@ setup(
         "Programming Language :: Python",
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
     ],
     install_requires=required_packages,
     extras_require=extras,
@@ -105,5 +106,4 @@ setup(
             "sagemaker-upgrade-v2=sagemaker.cli.compatibility.v2.sagemaker_upgrade_v2:main",
         ]
     },
-    include_package_data=True,  # TODO-reinvent-2019 [knakad]: Remove after rule_configs is in PyPI
 )

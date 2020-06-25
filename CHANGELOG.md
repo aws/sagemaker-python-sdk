@@ -1,6 +1,59 @@
 # Changelog
 
-## v2.0.0.rc0
+## v1.66.0 (2020-06-25)
+
+### Features
+
+ * add 3.8 as supported python version
+
+### Testing and Release Infrastructure
+
+ * upgrade airflow to latest stable version
+ * update feature request issue template
+
+## v1.65.1.post1 (2020-06-24)
+
+### Testing and Release Infrastructure
+
+ * add py38 to buildspecs
+
+## v1.65.1.post0 (2020-06-22)
+
+### Documentation Changes
+
+ * document that Local Mode + local code doesn't support dependencies arg
+
+### Testing and Release Infrastructure
+
+ * upgrade Sphinx to 3.1.1
+
+## v1.65.1 (2020-06-18)
+
+### Bug Fixes and Other Changes
+
+ * remove include_package_data=True from setup.py
+
+### Documentation Changes
+
+ * add some clarification to Processing docs
+
+### Testing and Release Infrastructure
+
+ * specify what kinds of clients in PR template
+
+## v1.65.0 (2020-06-17)
+
+### Features
+
+ * support for describing hyperparameter tuning job
+
+### Bug Fixes and Other Changes
+
+ * update distributed GPU utilization warning message
+ * set logs to False if wait is False in AutoML
+ * workflow passing spot training param to training job
+
+## v2.0.0.rc0 (2020-06-17)
 
 ### Breaking Changes
 
@@ -24,6 +77,12 @@
 
  * remove scipy from dependencies
  * remove TF from optional dependencies
+
+## v1.64.1 (2020-06-16)
+
+### Bug Fixes and Other Changes
+
+ * include py38 tox env and some dependency upgrades
 
 ## v1.64.0 (2020-06-15)
 
