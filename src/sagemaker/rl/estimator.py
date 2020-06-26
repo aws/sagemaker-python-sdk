@@ -42,8 +42,8 @@ TOOLKIT_FRAMEWORK_VERSION_MAP = {
         "0.5": {"tensorflow": "1.11"},
         "0.6.5": {"tensorflow": "1.12"},
         "0.6": {"tensorflow": "1.12"},
-        "0.8.2":{"tensorflow": "2.1"},
-        "0.8.5":{"tensorflow": "2.1", "pytorch": "1.5"}
+        "0.8.2": {"tensorflow": "2.1"},
+        "0.8.5": {"tensorflow": "2.1", "pytorch": "1.5"},
     },
 }
 
@@ -290,8 +290,8 @@ class RLEstimator(Framework):
                 self.train_instance_type,
                 self._image_version(),
                 py_version="py36",
-                account=DEFAULT_RL_ACCOUNT
-             )
+                account=DEFAULT_RL_ACCOUNT,
+            )
 
         return fw_utils.create_image_uri(
             self.sagemaker_session.boto_region_name,
@@ -506,7 +506,10 @@ class RLEstimator(Framework):
             float_regex = "[-+]?[0-9]*[.]?[0-9]+([eE][-+]?[0-9]+)?"  # noqa: W605, E501
 
             return [
-                {"Name": "episode_reward_mean", "Regex": "episode_reward_mean: (%s)" % float_regex},
-                {"Name": "episode_reward_max", "Regex": "episode_reward_max: (%s)" % float_regex},
+                {
+                    "Name": "episode_reward_mean",
+                    "Regex": "episode_reward_mean: (%s)" % float_regex,
+                },
+                {"Name": "episode_reward_max", "Regex": "episode_reward_max: (%s)" % float_regex, },
             ]
         raise ValueError("An unknown RLToolkit enum was passed in. toolkit: {}".format(toolkit))
