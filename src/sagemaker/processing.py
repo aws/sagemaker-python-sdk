@@ -801,8 +801,8 @@ class ProcessingJob(_Job):
 
         Returns:
             dict: Represents ProcessingResources which identifies the resources,
-            ML compute instances, and ML storage volumes to deploy
-            for a processing job.
+                ML compute instances, and ML storage volumes to deploy
+                for a processing job.
         """
         processing_resources = {}
         cluster_config = {
