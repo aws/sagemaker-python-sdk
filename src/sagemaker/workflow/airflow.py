@@ -1107,7 +1107,7 @@ def processing_config(
 
     Returns:
         dict: Processing config that can be directly used by
-        SageMakerProcessingOperator in Airflow.
+            SageMakerProcessingOperator in Airflow.
     """
     if job_name is not None:
         processor._current_job_name = job_name
