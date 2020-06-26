@@ -273,25 +273,29 @@ def test_auto_ml_invalid_input_data_format(sagemaker_session):
     )
     inputs = {}
 
-    expected_error_msg = "Cannot format input {}. Expecting one of str or list of strings."
-    with pytest.raises(ValueError, message=expected_error_msg.format(inputs)):
+    with pytest.raises(ValueError) as excinfo:
         AutoMLJob.start_new(auto_ml, inputs)
+
+    expected_error_msg = "Cannot format input {}. Expecting a string or a list of strings."
+    assert expected_error_msg.format(inputs) in str(excinfo.value)
+
     sagemaker_session.auto_ml.assert_not_called()
 
 
 def test_auto_ml_only_one_of_problem_type_and_job_objective_provided(sagemaker_session):
-    with pytest.raises(
-        ValueError,
-        message="One of problem type and objective metric provided. "
-        "Either both of them should be provided or none of "
-        "them should be provided.",
-    ):
+    with pytest.raises(ValueError) as excinfo:
         AutoML(
             role=ROLE,
             target_attribute_name=TARGET_ATTRIBUTE_NAME,
             sagemaker_session=sagemaker_session,
             problem_type=PROBLEM_TYPE,
         )
+
+    message = (
+        "One of problem type and objective metric provided. Either both of them "
+        "should be provided or none of them should be provided."
+    )
+    assert message in str(excinfo.value)
 
 
 @patch("sagemaker.automl.automl.AutoMLJob.start_new")
@@ -637,15 +641,16 @@ def test_validate_and_update_inference_response():
 def test_validate_and_update_inference_response_wrong_input():
     cic = copy.copy(CLASSIFICATION_INFERENCE_CONTAINERS)
 
-    with pytest.raises(
-        ValueError,
-        message="Requested inference output keys [wrong_key, wrong_label] are unsupported. "
-        "The supported inference keys are [probability, probabilities, predicted_label, labels]",
-    ):
+    with pytest.raises(ValueError) as excinfo:
         AutoML.validate_and_update_inference_response(
             inference_containers=cic,
             inference_response_keys=["wrong_key", "wrong_label", "probabilities", "probability"],
         )
+    message = (
+        "Requested inference output keys [wrong_key, wrong_label] are unsupported. "
+        "The supported inference keys are [probability, probabilities, predicted_label, labels]"
+    )
+    assert message in str(excinfo.value)
 
 
 def test_create_model(sagemaker_session):
