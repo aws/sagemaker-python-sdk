@@ -115,6 +115,14 @@ def test_name_from_training_arn():
     assert name == "resnet-sgd-tuningjob-11-22-38-46-002-2927640b"
 
 
+def test_base_from_name():
+    name = "mxnet-training-2020-06-29-15-19-25-475"
+    assert "mxnet-training" == sagemaker.utils.base_from_name(name)
+
+    name = "sagemaker-pytorch-200629-1611"
+    assert "sagemaker-pytorch" == sagemaker.utils.base_from_name(name)
+
+
 MESSAGE = "message"
 STATUS = "status"
 TRAINING_JOB_DESCRIPTION_1 = {

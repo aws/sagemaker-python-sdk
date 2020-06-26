@@ -221,11 +221,10 @@ class TensorFlow(Framework):
         if not script_mode:
             init_params["image_name"] = image_name
 
-        training_job_name = init_params["base_job_name"]
         if framework != cls.__framework_name__:
             raise ValueError(
                 "Training job: {} didn't use image for requested framework".format(
-                    training_job_name
+                    job_details["TrainingJobName"]
                 )
             )
 
