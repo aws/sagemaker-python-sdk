@@ -95,6 +95,7 @@ SageMaker Python SDK is tested on:
 
 - Python 3.6
 - Python 3.7
+- Python 3.8
 
 AWS Permissions
 ~~~~~~~~~~~~~~~
@@ -162,23 +163,26 @@ You can also run them in parallel:
 Building Sphinx docs
 ~~~~~~~~~~~~~~~~~~~~
 
-Setup a Python environment with ``sphinx`` and ``sagemaker``:
+Setup a Python environment, and install the dependencies listed in ``doc/requirements.txt``:
 
 ::
 
+    # conda
     conda create -n sagemaker python=3.7
     conda activate sagemaker
-    conda install sphinx==2.2.2
-    pip install sagemaker --user
+    conda install --file doc/requirements.txt
 
-Install the Read The Docs theme:
+    # pip
+    pip install -r doc/requirements.txt
+
+
+Clone/fork the repo, and install your local version:
 
 ::
 
-    pip install sphinx_rtd_theme --user
+    pip install --upgrade .
 
-
-Clone/fork the repo, ``cd`` into the ``sagemaker-python-sdk/doc`` directory and run:
+Then ``cd`` into the ``sagemaker-python-sdk/doc`` directory and run:
 
 ::
 

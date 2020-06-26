@@ -13,6 +13,7 @@
 """A class for SageMaker AutoML Jobs."""
 from __future__ import absolute_import
 
+import logging
 from six import string_types
 
 from sagemaker import Model, PipelineModel
@@ -20,6 +21,8 @@ from sagemaker.automl.candidate_estimator import CandidateEstimator
 from sagemaker.job import _Job
 from sagemaker.session import Session
 from sagemaker.utils import name_from_base
+
+logger = logging.getLogger("sagemaker")
 
 
 class AutoML(object):
@@ -78,16 +81,15 @@ class AutoML(object):
                 is stored. Or an AutoMLInput object. If a local path is provided, the dataset will
                 be uploaded to an S3 location.
             wait (bool): Whether the call should wait until the job completes (default: True).
-            logs (bool): Whether to show the logs produced by the job.
-                Only meaningful when wait is True (default: True).
+            logs (bool): Whether to show the logs produced by the job. Only meaningful when wait
+                is True (default: True). if ``wait`` is False, ``logs`` will be set to False as
+                well.
             job_name (str): Training job name. If not specified, the estimator generates
                 a default job name, based on the training image name and current timestamp.
         """
-        if logs and not wait:
-            raise ValueError(
-                """Logs can only be shown if wait is set to True.
-                Please either set wait to True or set logs to False."""
-            )
+        if not wait and logs:
+            logs = False
+            logger.warning("Setting logs to False. logs is only meaningful when wait is True.")
 
         # upload data for users if provided local path
         # validations are done in _Job._format_inputs_to_input_config
