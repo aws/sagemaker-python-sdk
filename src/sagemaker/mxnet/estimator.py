@@ -196,6 +196,7 @@ class MXNet(Framework):
             dependencies (list[str]): A list of paths to directories (absolute or relative) with
                 any additional libraries that will be exported to the container.
                 If not specified, the dependencies from training are used.
+                This is not supported with "local code" in Local Mode.
             image_name (str): If specified, the estimator will use this image for hosting, instead
                 of selecting the appropriate SageMaker official image based on framework_version
                 and py_version. It can be an ECR url or dockerhub image and tag.

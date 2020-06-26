@@ -52,6 +52,18 @@ def boto_session():
     return boto_mock
 
 
+@patch("boto3.DEFAULT_SESSION")
+def test_default_session(boto3_default_session):
+    sess = Session()
+    assert sess.boto_session is boto3_default_session
+
+
+@patch("boto3.Session")
+def test_new_session_created(boto3_session):
+    sess = Session()
+    assert sess.boto_session is boto3_session.return_value
+
+
 def test_process(boto_session):
     session = Session(boto_session)
 
@@ -2112,4 +2124,12 @@ def test_list_candidates_for_auto_ml_job_with_optional_args(sagemaker_session):
     sagemaker_session.sagemaker_client.list_candidates_for_auto_ml_job.assert_called_once()
     sagemaker_session.sagemaker_client.list_candidates_for_auto_ml_job.assert_called_with(
         **COMPLETE_EXPECTED_LIST_CANDIDATES_ARGS
+    )
+
+
+def test_describe_tuning_Job(sagemaker_session):
+    job_name = "hyper-parameter-tuning"
+    sagemaker_session.describe_tuning_job(job_name=job_name)
+    sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job.assert_called_with(
+        HyperParameterTuningJobName=job_name
     )

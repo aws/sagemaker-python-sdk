@@ -73,8 +73,7 @@ class XGBoost(Framework):
                 be executed as the entry point to training.  If ``source_dir`` is specified,
                 then ``entry_point`` must point to a file located at the root of ``source_dir``.
             framework_version (str): XGBoost version you want to use for executing your model
-                training code.  List of supported versions
-                https://github.com/aws/sagemaker-python-sdk#xgboost-sagemaker-estimators
+                training code.
             source_dir (str): Path (absolute, relative or an S3 URI) to a directory
                 with any other training source code dependencies aside from the entry
                 point file (default: None). If ``source_dir`` is an S3 URI, it must
@@ -125,7 +124,14 @@ class XGBoost(Framework):
             )
 
     def create_model(
-        self, model_server_workers=None, role=None, vpc_config_override=VPC_CONFIG_DEFAULT, **kwargs
+        self,
+        model_server_workers=None,
+        role=None,
+        vpc_config_override=VPC_CONFIG_DEFAULT,
+        entry_point=None,
+        source_dir=None,
+        dependencies=None,
+        **kwargs
     ):
         """Create a SageMaker ``XGBoostModel`` object that can be deployed to an ``Endpoint``.
 
@@ -139,7 +145,19 @@ class XGBoost(Framework):
                 Default: use subnets and security groups from this Estimator.
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
-            **kwargs: Passed to initialization of ``XGBoostModel``.
+            entry_point (str): Path (absolute or relative) to the local Python source file which
+                should be executed as the entry point to training. If ``source_dir`` is specified,
+                then ``entry_point`` must point to a file located at the root of ``source_dir``.
+                If not specified, the training entry point is used.
+            source_dir (str): Path (absolute or relative) to a directory with any other serving
+                source code dependencies aside from the entry point file.
+                If not specified, the model source directory from training is used.
+            dependencies (list[str]): A list of paths to directories (absolute or relative) with
+                any additional libraries that will be exported to the container.
+                If not specified, the dependencies from training are used.
+                This is not supported with "local code" in Local Mode.
+            **kwargs: Additional kwargs passed to the :class:`~sagemaker.xgboost.model.XGBoostModel`
+                constructor.
 
         Returns:
             sagemaker.xgboost.model.XGBoostModel: A SageMaker ``XGBoostModel`` object.
@@ -147,10 +165,8 @@ class XGBoost(Framework):
         """
         role = role or self.role
 
-        # Remove unwanted entry_point kwarg
-        if "entry_point" in kwargs:
-            logger.debug("Removing unused entry_point argument: %s", str(kwargs["entry_point"]))
-            del kwargs["entry_point"]
+        if "image" not in kwargs:
+            kwargs["image"] = self.image_name
 
         if "name" not in kwargs:
             kwargs["name"] = self._current_job_name
@@ -158,17 +174,17 @@ class XGBoost(Framework):
         return XGBoostModel(
             self.model_data,
             role,
-            self.entry_point,
+            entry_point or self.entry_point,
             framework_version=self.framework_version,
-            source_dir=self._model_source_dir(),
+            source_dir=(source_dir or self._model_source_dir()),
             enable_cloudwatch_metrics=self.enable_cloudwatch_metrics,
             container_log_level=self.container_log_level,
             code_location=self.code_location,
             py_version=self.py_version,
             model_server_workers=model_server_workers,
-            image=self.image_name,
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
+            dependencies=(dependencies or self.dependencies),
             **kwargs
         )
 

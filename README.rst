@@ -96,6 +96,7 @@ SageMaker Python SDK is tested on:
 - Python 2.7
 - Python 3.6
 - Python 3.7
+- Python 3.8
 
 AWS Permissions
 ~~~~~~~~~~~~~~~
@@ -123,8 +124,8 @@ You can install the libraries needed to run the tests by running :code:`pip inst
 
 
 We run unit tests with tox, which is a program that lets you run unit tests for multiple Python versions, and also make sure the
-code fits our style guidelines. We run tox with Python 2.7, 3.6 and 3.7, so to run unit tests
-with the same configuration we do, you'll need to have interpreters for Python 2.7, Python 3.6 and Python 3.7 installed.
+code fits our style guidelines. We run tox with Python 2.7, 3.6, 3.7, and 3.8, so to run unit tests
+with the same configuration we do, you'll need to have interpreters for Python 2.7, Python 3.6, Python 3.7, and Python 3.8 installed.
 
 To run the unit tests with tox, run:
 
@@ -164,23 +165,26 @@ You can also run them in parallel:
 Building Sphinx docs
 ~~~~~~~~~~~~~~~~~~~~
 
-Setup a Python environment with ``sphinx`` and ``sagemaker``:
+Setup a Python environment, and install the dependencies listed in ``doc/requirements.txt``:
 
 ::
 
+    # conda
     conda create -n sagemaker python=3.7
     conda activate sagemaker
-    conda install sphinx==2.2.2
-    pip install sagemaker --user
+    conda install --file doc/requirements.txt
 
-Install the Read The Docs theme:
+    # pip
+    pip install -r doc/requirements.txt
+
+
+Clone/fork the repo, and install your local version:
 
 ::
 
-    pip install sphinx_rtd_theme --user
+    pip install --upgrade .
 
-
-Clone/fork the repo, ``cd`` into the ``sagemaker-python-sdk/doc`` directory and run:
+Then ``cd`` into the ``sagemaker-python-sdk/doc`` directory and run:
 
 ::
 

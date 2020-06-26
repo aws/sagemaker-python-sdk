@@ -34,12 +34,12 @@ def read_version():
 
 # Declare minimal set for installation
 required_packages = [
-    "boto3>=1.13.6",
+    "boto3>=1.13.24",
     "numpy>=1.9.0",
     "protobuf>=3.1",
     "scipy>=0.19.0",
     "protobuf3-to-dict>=0.1.5",
-    "smdebug-rulesconfig==0.1.2",
+    "smdebug-rulesconfig==0.1.4",
     "importlib-metadata>=1.4.0",
     "packaging>=20.0",
 ]
@@ -60,18 +60,18 @@ extras["all"] = [item for group in extras.values() for item in group]
 extras["test"] = (
     [
         extras["all"],
-        "tox==3.13.1",
+        "tox==3.15.1",
         "flake8",
-        "pytest==4.4.1",
+        "pytest==4.6.10",
         "pytest-cov",
         "pytest-rerunfailures",
         "pytest-xdist",
         "mock",
         "contextlib2",
         "awslogs",
-        "black==19.3b0 ; python_version >= '3.6'",
+        "black==19.10b0 ; python_version >= '3.6'",
         "stopit==1.1.2",
-        "apache-airflow==1.10.5",
+        "apache-airflow==1.10.9",
         "fabric>=2.0",
         "requests>=2.20.0, <3",
     ],
@@ -102,9 +102,9 @@ setup(
         "Programming Language :: Python :: 2.7",
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
     ],
     install_requires=required_packages,
     extras_require=extras,
     entry_points={"console_scripts": ["sagemaker=sagemaker.cli.main:main"]},
-    include_package_data=True,  # TODO-reinvent-2019 [knakad]: Remove after rule_configs is in PyPI
 )

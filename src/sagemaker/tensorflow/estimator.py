@@ -237,9 +237,7 @@ class TensorFlow(Framework):
             py_version (str): Python version you want to use for executing your model training
                 code (default: 'py2').
             framework_version (str): TensorFlow version you want to use for executing your model
-                training code. List of supported versions
-                https://github.com/aws/sagemaker-python-sdk#tensorflow-sagemaker-estimators.
-                If not specified, this will default to 1.11.
+                training code. If not specified, this will default to 1.11.
             model_dir (str): S3 location where the checkpoint data and models can be exported to
                 during training (default: None). It will be passed in the training script as one of
                 the command line arguments. If not specified, one is provided based on
@@ -584,6 +582,7 @@ class TensorFlow(Framework):
                 If not specified and ``endpoint_type`` is 'tensorflow-serving', ``dependencies`` is
                 set to ``None``.
                 If ``endpoint_type`` is also ``None``, then the dependencies from training are used.
+                This is not supported with "local code" in Local Mode.
             **kwargs: Additional kwargs passed to :class:`~sagemaker.tensorflow.serving.Model`
                 and :class:`~sagemaker.tensorflow.model.TensorFlowModel` constructors.
 

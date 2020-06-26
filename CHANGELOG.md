@@ -1,5 +1,109 @@
 # Changelog
 
+## v1.66.0 (2020-06-25)
+
+### Features
+
+ * add 3.8 as supported python version
+
+### Testing and Release Infrastructure
+
+ * upgrade airflow to latest stable version
+ * update feature request issue template
+
+## v1.65.1.post1 (2020-06-24)
+
+### Testing and Release Infrastructure
+
+ * add py38 to buildspecs
+
+## v1.65.1.post0 (2020-06-22)
+
+### Documentation Changes
+
+ * document that Local Mode + local code doesn't support dependencies arg
+
+### Testing and Release Infrastructure
+
+ * upgrade Sphinx to 3.1.1
+
+## v1.65.1 (2020-06-18)
+
+### Bug Fixes and Other Changes
+
+ * remove include_package_data=True from setup.py
+
+### Documentation Changes
+
+ * add some clarification to Processing docs
+
+### Testing and Release Infrastructure
+
+ * specify what kinds of clients in PR template
+
+## v1.65.0 (2020-06-17)
+
+### Features
+
+ * support for describing hyperparameter tuning job
+
+### Bug Fixes and Other Changes
+
+ * update distributed GPU utilization warning message
+ * set logs to False if wait is False in AutoML
+ * workflow passing spot training param to training job
+
+## v1.64.1 (2020-06-16)
+
+### Bug Fixes and Other Changes
+
+ * include py38 tox env and some dependency upgrades
+
+## v1.64.0 (2020-06-15)
+
+### Features
+
+ * add support for SKLearn 0.23
+
+## v1.63.0 (2020-06-12)
+
+### Features
+
+ * Allow selecting inference response content for automl generated models
+ * Support for multi variant endpoint invocation with target variant param
+
+### Documentation Changes
+
+ * improve docstring and remove unavailable links
+
+## v1.62.0 (2020-06-11)
+
+### Features
+
+ * Support for multi variant endpoint invocation with target variant param
+
+### Bug Fixes and Other Changes
+
+ * Revert "feature: Support for multi variant endpoint invocation with target variant param (#1571)"
+ * make instance_type optional for prepare_container_def
+ * docs: workflows navigation
+
+### Documentation Changes
+
+ * fix typo in MXNet documentation
+
+## v1.61.0 (2020-06-09)
+
+### Features
+
+ * Use boto3 DEFAULT_SESSION when no boto3 session specified.
+
+### Bug Fixes and Other Changes
+
+ * remove v2 Session warnings
+ * upgrade smdebug-rulesconfig to 0.1.4
+ * explicitly handle arguments in create_model for sklearn and xgboost
+
 ## v1.60.2 (2020-05-29)
 
 ### Bug Fixes and Other Changes

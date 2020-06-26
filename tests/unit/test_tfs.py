@@ -245,6 +245,16 @@ def test_tfs_model_with_dependencies(
     )
 
 
+def test_model_prepare_container_def_no_instance_type_or_image():
+    model = Model("s3://some/data.tar.gz", role=ROLE)
+
+    with pytest.raises(ValueError) as e:
+        model.prepare_container_def()
+
+    expected_msg = "Must supply either an instance type (for choosing CPU vs GPU) or an image URI."
+    assert expected_msg in str(e)
+
+
 def test_estimator_deploy(sagemaker_session):
     container_log_level = '"logging.INFO"'
     source_dir = "s3://mybucket/source"

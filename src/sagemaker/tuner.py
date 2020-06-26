@@ -92,10 +92,10 @@ class WarmStartConfig(object):
                 warm start the new tuning job.
         """
 
-        if warm_start_type not in WarmStartTypes:
+        if warm_start_type not in list(WarmStartTypes):
             raise ValueError(
-                "Invalid type: {}, valid warm start types are: [{}]".format(
-                    warm_start_type, [t for t in WarmStartTypes]
+                "Invalid type: {}, valid warm start types are: {}".format(
+                    warm_start_type, list(WarmStartTypes)
                 )
             )
 
@@ -749,6 +749,10 @@ class HyperparameterTuner(object):
         """Stop latest running hyperparameter tuning job."""
         self._ensure_last_tuning_job()
         self.latest_tuning_job.stop()
+
+    def describe(self):
+        """Returns a response from the DescribeHyperParameterTuningJob API call."""
+        return self.sagemaker_session.describe_tuning_job(self._current_job_name)
 
     def wait(self):
         """Wait for latest hyperparameter tuning job to finish."""

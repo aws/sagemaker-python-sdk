@@ -19,7 +19,8 @@ from sagemaker.estimator import Framework
 from sagemaker.fw_registry import default_framework_uri
 from sagemaker.fw_utils import (
     framework_name_from_image,
-    empty_framework_version_warning,
+    get_unsupported_framework_version_error,
+    later_framework_version_warning,
     python_deprecation_warning,
 )
 from sagemaker.sklearn import defaults
@@ -68,8 +69,7 @@ class SKLearn(Framework):
                 If ``source_dir`` is specified, then ``entry_point``
                 must point to a file located at the root of ``source_dir``.
             framework_version (str): Scikit-learn version you want to use for
-                executing your model training code. List of supported versions
-                https://github.com/aws/sagemaker-python-sdk#sklearn-sagemaker-estimators
+                executing your model training code.
             source_dir (str): Path (absolute, relative or an S3 URI) to a directory
                 with any other training source code dependencies aside from the entry
                 point file (default: None). If ``source_dir`` is an S3 URI, it must
@@ -127,11 +127,17 @@ class SKLearn(Framework):
 
         self.py_version = py_version
 
-        if framework_version is None:
-            logger.warning(
-                empty_framework_version_warning(defaults.SKLEARN_VERSION, defaults.SKLEARN_VERSION)
+        if framework_version in defaults.SKLEARN_SUPPORTED_VERSIONS:
+            self.framework_version = framework_version
+        else:
+            raise ValueError(
+                get_unsupported_framework_version_error(
+                    self.__framework_name__, framework_version, defaults.SKLEARN_SUPPORTED_VERSIONS
+                )
             )
-        self.framework_version = framework_version or defaults.SKLEARN_VERSION
+
+        if framework_version != defaults.SKLEARN_LATEST_VERSION:
+            logger.warning(later_framework_version_warning(defaults.SKLEARN_LATEST_VERSION))
 
         if image_name is None:
             image_tag = "{}-{}-{}".format(framework_version, "cpu", py_version)
@@ -140,7 +146,14 @@ class SKLearn(Framework):
             )
 
     def create_model(
-        self, model_server_workers=None, role=None, vpc_config_override=VPC_CONFIG_DEFAULT, **kwargs
+        self,
+        model_server_workers=None,
+        role=None,
+        vpc_config_override=VPC_CONFIG_DEFAULT,
+        entry_point=None,
+        source_dir=None,
+        dependencies=None,
+        **kwargs
     ):
         """Create a SageMaker ``SKLearnModel`` object that can be deployed to an
         ``Endpoint``.
@@ -156,7 +169,19 @@ class SKLearn(Framework):
                 the model. Default: use subnets and security groups from this Estimator.
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
-            **kwargs: Passed to initialization of ``SKLearnModel``.
+            entry_point (str): Path (absolute or relative) to the local Python source file which
+                should be executed as the entry point to training. If ``source_dir`` is specified,
+                then ``entry_point`` must point to a file located at the root of ``source_dir``.
+                If not specified, the training entry point is used.
+            source_dir (str): Path (absolute or relative) to a directory with any other serving
+                source code dependencies aside from the entry point file.
+                If not specified, the model source directory from training is used.
+            dependencies (list[str]): A list of paths to directories (absolute or relative) with
+                any additional libraries that will be exported to the container.
+                If not specified, the dependencies from training are used.
+                This is not supported with "local code" in Local Mode.
+            **kwargs: Additional kwargs passed to the :class:`~sagemaker.sklearn.model.SKLearnModel`
+                constructor.
 
         Returns:
             sagemaker.sklearn.model.SKLearnModel: A SageMaker ``SKLearnModel``
@@ -164,17 +189,8 @@ class SKLearn(Framework):
         """
         role = role or self.role
 
-        # remove unwanted entry_point kwarg
-        if "entry_point" in kwargs:
-            logger.debug("removing unused entry_point argument: %s", str(kwargs["entry_point"]))
-            del kwargs["entry_point"]
-
-        # remove image kwarg
-        if "image" in kwargs:
-            image = kwargs["image"]
-            del kwargs["image"]
-        else:
-            image = None
+        if "image" not in kwargs:
+            kwargs["image"] = self.image_name
 
         if "enable_network_isolation" not in kwargs:
             kwargs["enable_network_isolation"] = self.enable_network_isolation()
@@ -185,17 +201,17 @@ class SKLearn(Framework):
         return SKLearnModel(
             self.model_data,
             role,
-            self.entry_point,
-            source_dir=self._model_source_dir(),
+            entry_point or self.entry_point,
+            source_dir=(source_dir or self._model_source_dir()),
             enable_cloudwatch_metrics=self.enable_cloudwatch_metrics,
             container_log_level=self.container_log_level,
             code_location=self.code_location,
             py_version=self.py_version,
             framework_version=self.framework_version,
             model_server_workers=model_server_workers,
-            image=image or self.image_name,
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
+            dependencies=(dependencies or self.dependencies),
             **kwargs
         )
 

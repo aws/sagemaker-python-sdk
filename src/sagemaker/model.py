@@ -138,7 +138,7 @@ class Model(object):
             self.sagemaker_session = session.Session()
 
     def prepare_container_def(
-        self, instance_type, accelerator_type=None
+        self, instance_type=None, accelerator_type=None
     ):  # pylint: disable=unused-argument
         """Return a dict created by ``sagemaker.container_def()`` for deploying
         this model to a specified instance type.
@@ -166,7 +166,7 @@ class Model(object):
         """
         return self._enable_network_isolation
 
-    def _create_sagemaker_model(self, instance_type, accelerator_type=None, tags=None):
+    def _create_sagemaker_model(self, instance_type=None, accelerator_type=None, tags=None):
         """Create a SageMaker Model Entity
 
         Args:
@@ -709,11 +709,16 @@ class FrameworkModel(Model):
                 list of relative locations to directories with any additional
                 libraries needed in the Git repo. If the ```source_dir``` points
                 to S3, code will be uploaded and the S3 location will be used
-                instead. .. admonition:: Example
+                instead.
 
-                    The following call >>> Estimator(entry_point='inference.py',
-                    dependencies=['my/libs/common', 'virtual-env']) results in
-                    the following inside the container:
+                .. admonition:: Example
+
+                    The following call
+
+                    >>> Model(entry_point='inference.py',
+                    ...       dependencies=['my/libs/common', 'virtual-env'])
+
+                    results in the following inside the container:
 
                     >>> $ ls
 
@@ -721,6 +726,8 @@ class FrameworkModel(Model):
                     >>>     |------ inference.py
                     >>>     |------ common
                     >>>     |------ virtual-env
+
+                This is not supported with "local code" in Local Mode.
             git_config (dict[str, str]): Git configurations used for cloning
                 files, including ``repo``, ``branch``, ``commit``,
                 ``2FA_enabled``, ``username``, ``password`` and ``token``. The
@@ -807,9 +814,7 @@ class FrameworkModel(Model):
         self.uploaded_code = None
         self.repacked_model_data = None
 
-    def prepare_container_def(
-        self, instance_type, accelerator_type=None
-    ):  # pylint disable=unused-argument
+    def prepare_container_def(self, instance_type=None, accelerator_type=None):
         """Return a container definition with framework configuration set in
         model environment variables.
 

@@ -106,6 +106,7 @@ def test_byo_training_config_all_args(sagemaker_session):
         model_uri="{{ model_uri }}",
         model_channel_name="{{ model_chanel }}",
         sagemaker_session=sagemaker_session,
+        train_use_spot_instances=True,
     )
 
     byo.set_hyperparameters(epochs=32, feature_dim=1024, mini_batch_size=256)
@@ -156,6 +157,7 @@ def test_byo_training_config_all_args(sagemaker_session):
             "Subnets": ["{{ subnet }}"],
             "SecurityGroupIds": ["{{ security_group_ids }}"],
         },
+        "EnableManagedSpotTraining": True,
         "HyperParameters": {"epochs": "32", "feature_dim": "1024", "mini_batch_size": "256"},
         "Tags": [{"{{ key }}": "{{ value }}"}],
     }
