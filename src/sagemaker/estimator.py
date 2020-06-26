@@ -329,10 +329,12 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         self._prepare_for_training(job_name=job_name)
 
     def _ensure_base_job_name(self):
+        """Set ``self.base_job_name`` if it is not set already."""
         # honor supplied base_job_name or generate it
         if self.base_job_name:
             return
-        elif isinstance(self, sagemaker.algorithm.AlgorithmEstimator):
+
+        if isinstance(self, sagemaker.algorithm.AlgorithmEstimator):
             self.base_job_name = self.algorithm_arn.split("/")[-1]  # pylint: disable=no-member
         else:
             self.base_job_name = base_name_from_image(self.train_image())

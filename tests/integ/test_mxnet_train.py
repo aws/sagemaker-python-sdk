@@ -71,10 +71,7 @@ def test_attach_deploy(mxnet_training_job, sagemaker_session, cpu_instance_type)
 
 
 def test_deploy_estimator_with_different_instance_types(
-    mxnet_training_job,
-    sagemaker_session,
-    cpu_instance_type,
-    alternative_cpu_instance_type,
+    mxnet_training_job, sagemaker_session, cpu_instance_type, alternative_cpu_instance_type,
 ):
     def _deploy_estimator_and_assert_instance_type(estimator, instance_type):
         # don't use timeout_and_delete_endpoint_by_name because this tests if
@@ -100,6 +97,7 @@ def test_deploy_estimator_with_different_instance_types(
         return (model_name, endpoint_name, config_name)
 
     estimator = MXNet.attach(mxnet_training_job, sagemaker_session)
+    estimator.base_job_name = "test-mxnet-deploy-twice"
 
     old_model_name, old_endpoint_name, old_config_name = _deploy_estimator_and_assert_instance_type(
         estimator, cpu_instance_type
