@@ -1,6 +1,4 @@
 [run]
 concurrency = threading
 omit = sagemaker/tests/*
-
-[report]
-show_missing = True
+timid = True
