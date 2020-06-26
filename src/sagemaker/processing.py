@@ -740,6 +740,93 @@ class ProcessingJob(_Job):
         """Stops the processing job."""
         self.sagemaker_session.stop_processing_job(self.name)
 
+    @staticmethod
+    def prepare_app_specification(container_arguments, container_entrypoint, image_uri):
+        """Prepares a dict that represents a ProcessingJob's AppSpecification.
+
+        Args:
+            container_arguments (list[str]): The arguments for a container
+                used to run a processing job.
+            container_entrypoint (list[str]): The entrypoint for a container
+                used to run a processing job.
+            image_uri (str): The container image to be run by the processing job.
+
+        Returns:
+            dict: Represents AppSpecification which configures the
+            processing job to run a specified Docker container image.
+        """
+        config = {"ImageUri": image_uri}
+        if container_arguments is not None:
+            config["ContainerArguments"] = container_arguments
+        if container_entrypoint is not None:
+            config["ContainerEntrypoint"] = container_entrypoint
+        return config
+
+    @staticmethod
+    def prepare_output_config(kms_key_id, outputs):
+        """Prepares a dict that represents a ProcessingOutputConfig.
+
+        Args:
+            kms_key_id (str): The AWS Key Management Service (AWS KMS) key that
+                Amazon SageMaker uses to encrypt the processing job output.
+                KmsKeyId can be an ID of a KMS key, ARN of a KMS key, alias of a KMS key,
+                or alias of a KMS key. The KmsKeyId is applied to all outputs.
+            outputs (list[dict]): Output configuration information for a processing job.
+
+        Returns:
+            dict: Represents output configuration for the processing job.
+        """
+        config = {"Outputs": outputs}
+        if kms_key_id is not None:
+            config["KmsKeyId"] = kms_key_id
+        return config
+
+    @staticmethod
+    def prepare_processing_resources(
+        instance_count, instance_type, volume_kms_key_id, volume_size_in_gb
+    ):
+        """Prepares a dict that represents the ProcessingResources.
+
+        Args:
+            instance_count (int): The number of ML compute instances
+                to use in the processing job. For distributed processing jobs,
+                specify a value greater than 1. The default value is 1.
+            instance_type (str): The ML compute instance type for the processing job.
+            volume_kms_key_id (str): The AWS Key Management Service (AWS KMS) key
+                that Amazon SageMaker uses to encrypt data on the storage
+                volume attached to the ML compute instance(s) that run the processing job.
+            volume_size_in_gb (int): The size of the ML storage volume in gigabytes
+                that you want to provision. You must specify sufficient
+                ML storage for your scenario.
+
+        Returns:
+            dict: Represents ProcessingResources which identifies the resources,
+                ML compute instances, and ML storage volumes to deploy
+                for a processing job.
+        """
+        processing_resources = {}
+        cluster_config = {
+            "InstanceCount": instance_count,
+            "InstanceType": instance_type,
+            "VolumeSizeInGB": volume_size_in_gb,
+        }
+        if volume_kms_key_id is not None:
+            cluster_config["VolumeKmsKeyId"] = volume_kms_key_id
+        processing_resources["ClusterConfig"] = cluster_config
+        return processing_resources
+
+    @staticmethod
+    def prepare_stopping_condition(max_runtime_in_seconds):
+        """Prepares a dict that represents the job's StoppingCondition.
+
+        Args:
+            max_runtime_in_seconds (int): Specifies the maximum runtime in seconds.
+
+        Returns:
+            dict
+        """
+        return {"MaxRuntimeInSeconds": max_runtime_in_seconds}
+
 
 class ProcessingInput(object):
     """Accepts parameters that specify an Amazon S3 input for a processing job and
