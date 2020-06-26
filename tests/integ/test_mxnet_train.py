@@ -56,7 +56,6 @@ def mxnet_training_job(sagemaker_session, mxnet_full_version, cpu_instance_type)
 
 
 @pytest.mark.canary_quick
-@pytest.mark.regional_testing
 def test_attach_deploy(mxnet_training_job, sagemaker_session, cpu_instance_type):
     endpoint_name = "test-mxnet-attach-deploy-{}".format(sagemaker_timestamp())
 
@@ -238,7 +237,6 @@ def test_deploy_model_with_update_non_existing_endpoint(
 
 
 @pytest.mark.canary_quick
-@pytest.mark.regional_testing
 @pytest.mark.skipif(
     tests.integ.test_region() not in tests.integ.EI_SUPPORTED_REGIONS,
     reason="EI isn't supported in that specific region.",

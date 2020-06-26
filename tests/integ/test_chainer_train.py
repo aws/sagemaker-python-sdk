@@ -61,7 +61,6 @@ def test_training_with_additional_hyperparameters(sagemaker_local_session, chain
 
 
 @pytest.mark.canary_quick
-@pytest.mark.regional_testing
 def test_attach_deploy(sagemaker_session, chainer_full_version, cpu_instance_type):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         script_path = os.path.join(DATA_DIR, "chainer_mnist", "mnist.py")
