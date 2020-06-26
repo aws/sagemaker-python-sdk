@@ -1,2 +1,3 @@
 [run]
-omit = sagemaker/tests/*, sagemaker/tensorflow/tensorflow_serving/*
+omit = sagemaker/tests/*
+show_missing = True
