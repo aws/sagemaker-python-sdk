@@ -14,10 +14,15 @@ from __future__ import absolute_import
 
 import logging
 import os
+import tempfile
 
 import boto3
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
+
+# Local Mode endpoints all use the same port, so we use this lock to prevent concurrent execution
+LOCAL_MODE_LOCK_PATH = os.path.join(tempfile.gettempdir(), "sagemaker_test_local_mode_lock")
+
 TRAINING_DEFAULT_TIMEOUT_MINUTES = 20
 TUNING_DEFAULT_TIMEOUT_MINUTES = 20
 TRANSFORM_DEFAULT_TIMEOUT_MINUTES = 20

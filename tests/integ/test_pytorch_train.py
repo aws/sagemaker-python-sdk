@@ -22,9 +22,11 @@ from sagemaker.utils import sagemaker_timestamp
 from tests.integ import (
     test_region,
     DATA_DIR,
+    LOCAL_MODE_LOCK_PATH,
     TRAINING_DEFAULT_TIMEOUT_MINUTES,
     EI_SUPPORTED_REGIONS,
 )
+from tests.integ.lock import lock
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 MNIST_DIR = os.path.join(DATA_DIR, "pytorch_mnist")
@@ -80,15 +82,16 @@ def test_local_fit_deploy(sagemaker_local_session, pytorch_full_version, pytorch
 
     pytorch.fit({"training": "file://" + os.path.join(MNIST_DIR, "training")})
 
-    predictor = pytorch.deploy(1, "local")
-    try:
-        batch_size = 100
-        data = numpy.random.rand(batch_size, 1, 28, 28).astype(numpy.float32)
-        output = predictor.predict(data)
+    with lock(LOCAL_MODE_LOCK_PATH):
+        predictor = pytorch.deploy(1, "local")
+        try:
+            batch_size = 100
+            data = numpy.random.rand(batch_size, 1, 28, 28).astype(numpy.float32)
+            output = predictor.predict(data)
 
-        assert output.shape == (batch_size, 10)
-    finally:
-        predictor.delete_endpoint()
+            assert output.shape == (batch_size, 10)
+        finally:
+            predictor.delete_endpoint()
 
 
 def test_deploy_model(

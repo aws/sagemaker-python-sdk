@@ -18,18 +18,14 @@ import tarfile
 import boto3
 import numpy
 import pytest
-import tempfile
 
 import stopit
 
 import tests.integ.lock as lock
-from tests.integ import DATA_DIR
-
 from sagemaker.local import LocalSession, LocalSagemakerRuntimeClient, LocalSagemakerClient
 from sagemaker.mxnet import MXNet
+from tests.integ import DATA_DIR, LOCAL_MODE_LOCK_PATH
 
-# endpoint tests all use the same port, so we use this lock to prevent concurrent execution
-LOCK_PATH = os.path.join(tempfile.gettempdir(), "sagemaker_test_local_mode_lock")
 DATA_PATH = os.path.join(DATA_DIR, "iris", "data")
 DEFAULT_REGION = "us-west-2"
 
@@ -93,7 +89,7 @@ def test_local_mode_serving_from_s3_model(
     s3_model.sagemaker_session = sagemaker_local_session
 
     predictor = None
-    with lock.lock(LOCK_PATH):
+    with lock.lock(LOCAL_MODE_LOCK_PATH):
         try:
             predictor = s3_model.deploy(initial_instance_count=1, instance_type="local")
             data = numpy.zeros(shape=(1, 1, 28, 28))
@@ -107,7 +103,7 @@ def test_local_mode_serving_from_s3_model(
 def test_local_mode_serving_from_local_model(tmpdir, sagemaker_local_session, mxnet_model):
     predictor = None
 
-    with lock.lock(LOCK_PATH):
+    with lock.lock(LOCAL_MODE_LOCK_PATH):
         try:
             path = "file://%s" % (str(tmpdir))
             model = mxnet_model(path)
@@ -145,7 +141,7 @@ def test_mxnet_local_mode(sagemaker_local_session, mxnet_full_version, mxnet_ful
     mx.fit({"train": train_input, "test": test_input})
     endpoint_name = mx.latest_training_job.name
 
-    with lock.lock(LOCK_PATH):
+    with lock.lock(LOCAL_MODE_LOCK_PATH):
         try:
             predictor = mx.deploy(1, "local", endpoint_name=endpoint_name)
             data = numpy.zeros(shape=(1, 1, 28, 28))
@@ -203,7 +199,7 @@ def test_mxnet_local_data_local_script(mxnet_full_version, mxnet_full_py_version
     mx.fit({"train": train_input, "test": test_input})
     endpoint_name = mx.latest_training_job.name
 
-    with lock.lock(LOCK_PATH):
+    with lock.lock(LOCAL_MODE_LOCK_PATH):
         try:
             predictor = mx.deploy(1, "local", endpoint_name=endpoint_name)
             data = numpy.zeros(shape=(1, 1, 28, 28))
@@ -280,7 +276,7 @@ def test_local_transform_mxnet(
         output_path=output_path,
     )
 
-    with lock.lock(LOCK_PATH):
+    with lock.lock(LOCAL_MODE_LOCK_PATH):
         transformer.transform(transform_input, content_type="text/csv", split_type="Line")
         transformer.wait()
 

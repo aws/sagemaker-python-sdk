@@ -17,15 +17,13 @@ import os
 import numpy
 import pytest
 import subprocess
-import tempfile
 
 from tests.integ import lock as lock
 from sagemaker.mxnet.estimator import MXNet
 from sagemaker.pytorch.estimator import PyTorch
 from sagemaker.sklearn.estimator import SKLearn
 from sagemaker.sklearn.model import SKLearnModel
-from tests.integ import DATA_DIR
-
+from tests.integ import DATA_DIR, LOCAL_MODE_LOCK_PATH
 
 GIT_REPO = "https://github.com/aws/sagemaker-python-sdk.git"
 BRANCH = "test-branch-git-config"
@@ -44,9 +42,6 @@ CODECOMMIT_REPO = (
     "https://git-codecommit.us-west-2.amazonaws.com/v1/repos/sagemaker-python-sdk-git-testing-repo/"
 )
 CODECOMMIT_BRANCH = "master"
-
-# endpoint tests all use the same port, so we use this lock to prevent concurrent execution
-LOCK_PATH = os.path.join(tempfile.gettempdir(), "sagemaker_test_git_lock")
 
 
 @pytest.mark.local_mode
@@ -69,7 +64,7 @@ def test_github(sagemaker_local_session, pytorch_full_version, pytorch_full_py_v
     data_path = os.path.join(DATA_DIR, "pytorch_mnist")
     pytorch.fit({"training": "file://" + os.path.join(data_path, "training")})
 
-    with lock.lock(LOCK_PATH):
+    with lock.lock(LOCAL_MODE_LOCK_PATH):
         try:
             predictor = pytorch.deploy(initial_instance_count=1, instance_type="local")
             data = numpy.zeros(shape=(1, 1, 28, 28)).astype(numpy.float32)
@@ -119,7 +114,7 @@ def test_private_github(sagemaker_local_session, mxnet_full_version, mxnet_full_
     assert "mnist.py" in files
     assert os.path.exists(mx.dependencies[0])
 
-    with lock.lock(LOCK_PATH):
+    with lock.lock(LOCAL_MODE_LOCK_PATH):
         try:
             serving_script_path = "mnist_hosting_with_custom_handlers.py"
             predictor = mx.deploy(1, "local", entry_point=serving_script_path)
@@ -165,7 +160,7 @@ def test_private_github_with_2fa(
 
     assert os.path.isdir(sklearn.source_dir)
 
-    with lock.lock(LOCK_PATH):
+    with lock.lock(LOCAL_MODE_LOCK_PATH):
         try:
             client = sagemaker_local_session.sagemaker_client
             desc = client.describe_training_job(TrainingJobName=sklearn.latest_training_job.name)
@@ -259,7 +254,7 @@ def test_codecommit(sagemaker_local_session, mxnet_full_version, mxnet_full_py_v
     assert "mnist.py" in files
     assert os.path.exists(mx.dependencies[0])
 
-    with lock.lock(LOCK_PATH):
+    with lock.lock(LOCAL_MODE_LOCK_PATH):
         try:
             predictor = mx.deploy(1, "local")
 

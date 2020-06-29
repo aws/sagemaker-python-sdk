@@ -28,7 +28,8 @@ from sagemaker.multidatamodel import MultiDataModel
 from sagemaker.mxnet import MXNet
 from sagemaker.predictor import Predictor, StringDeserializer, npy_serializer
 from sagemaker.utils import sagemaker_timestamp, unique_name_from_base, get_ecr_image_uri_prefix
-from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
+from tests.integ import DATA_DIR, LOCAL_MODE_LOCK_PATH, TRAINING_DEFAULT_TIMEOUT_MINUTES
+from tests.integ.lock import lock
 from tests.integ.retry import retries
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
@@ -199,39 +200,40 @@ def test_multi_data_model_deploy_pretrained_models_local_mode(container_image, s
             sagemaker_session=sagemaker_session,
         )
 
-        # Add model before deploy
-        multi_data_model.add_model(pretrained_model_data_local_path, PRETRAINED_MODEL_PATH_1)
-        # Deploy model to an endpoint
-        multi_data_model.deploy(1, "local", endpoint_name=endpoint_name)
-        # Add models after deploy
-        multi_data_model.add_model(pretrained_model_data_local_path, PRETRAINED_MODEL_PATH_2)
+        with lock(LOCAL_MODE_LOCK_PATH):
+            # Add model before deploy
+            multi_data_model.add_model(pretrained_model_data_local_path, PRETRAINED_MODEL_PATH_1)
+            # Deploy model to an endpoint
+            multi_data_model.deploy(1, "local", endpoint_name=endpoint_name)
+            # Add models after deploy
+            multi_data_model.add_model(pretrained_model_data_local_path, PRETRAINED_MODEL_PATH_2)
 
-        endpoint_models = []
-        for model_path in multi_data_model.list_models():
-            endpoint_models.append(model_path)
-        assert PRETRAINED_MODEL_PATH_1 in endpoint_models
-        assert PRETRAINED_MODEL_PATH_2 in endpoint_models
+            endpoint_models = []
+            for model_path in multi_data_model.list_models():
+                endpoint_models.append(model_path)
+            assert PRETRAINED_MODEL_PATH_1 in endpoint_models
+            assert PRETRAINED_MODEL_PATH_2 in endpoint_models
 
-        predictor = Predictor(
-            endpoint_name=endpoint_name,
-            sagemaker_session=multi_data_model.sagemaker_session,
-            serializer=npy_serializer,
-            deserializer=string_deserializer,
-        )
+            predictor = Predictor(
+                endpoint=endpoint_name,
+                sagemaker_session=multi_data_model.sagemaker_session,
+                serializer=npy_serializer,
+                deserializer=string_deserializer,
+            )
 
-        data = numpy.zeros(shape=(1, 1, 28, 28))
-        result = predictor.predict(data, target_model=PRETRAINED_MODEL_PATH_1)
-        assert result == "Invoked model: {}".format(PRETRAINED_MODEL_PATH_1)
+            data = numpy.zeros(shape=(1, 1, 28, 28))
+            result = predictor.predict(data, target_model=PRETRAINED_MODEL_PATH_1)
+            assert result == "Invoked model: {}".format(PRETRAINED_MODEL_PATH_1)
 
-        result = predictor.predict(data, target_model=PRETRAINED_MODEL_PATH_2)
-        assert result == "Invoked model: {}".format(PRETRAINED_MODEL_PATH_2)
+            result = predictor.predict(data, target_model=PRETRAINED_MODEL_PATH_2)
+            assert result == "Invoked model: {}".format(PRETRAINED_MODEL_PATH_2)
 
-        # Cleanup
-        multi_data_model.sagemaker_session.sagemaker_client.delete_endpoint_config(
-            EndpointConfigName=endpoint_name
-        )
-        multi_data_model.sagemaker_session.delete_endpoint(endpoint_name)
-        multi_data_model.delete_model()
+            # Cleanup
+            multi_data_model.sagemaker_session.sagemaker_client.delete_endpoint_config(
+                EndpointConfigName=endpoint_name
+            )
+            multi_data_model.sagemaker_session.delete_endpoint(endpoint_name)
+            multi_data_model.delete_model()
     with pytest.raises(Exception) as exception:
         sagemaker_session.sagemaker_client.describe_model(ModelName=multi_data_model.name)
         assert "Could not find model" in str(exception.value)

@@ -20,7 +20,8 @@ import pytest
 from sagemaker.chainer.estimator import Chainer
 from sagemaker.chainer.model import ChainerModel
 from sagemaker.utils import unique_name_from_base
-from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
+from tests.integ import DATA_DIR, LOCAL_MODE_LOCK_PATH, TRAINING_DEFAULT_TIMEOUT_MINUTES
+from tests.integ.lock import lock
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 
@@ -129,11 +130,12 @@ def test_deploy_model(
         py_version=chainer_full_py_version,
     )
 
-    predictor = model.deploy(1, "local")
-    try:
-        _predict_and_assert(predictor)
-    finally:
-        predictor.delete_endpoint()
+    with lock(LOCAL_MODE_LOCK_PATH):
+        predictor = model.deploy(1, "local")
+        try:
+            _predict_and_assert(predictor)
+        finally:
+            predictor.delete_endpoint()
 
 
 def _run_mnist_training_job(

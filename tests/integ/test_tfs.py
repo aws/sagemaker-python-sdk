@@ -22,6 +22,7 @@ import sagemaker
 import sagemaker.predictor
 import sagemaker.utils
 import tests.integ
+import tests.integ.lock
 import tests.integ.timeout
 from sagemaker.tensorflow.model import TensorFlowModel, TensorFlowPredictor
 
@@ -68,12 +69,13 @@ def tfs_predictor_with_model_and_entry_point_same_tar(
         framework_version=tf_serving_latest_version,
         sagemaker_session=sagemaker_local_session,
     )
-    predictor = model.deploy(1, "local", endpoint_name=endpoint_name)
 
-    try:
-        yield predictor
-    finally:
-        predictor.delete_endpoint()
+    with tests.integ.lock.lock(tests.integ.LOCAL_MODE_LOCK_PATH):
+        predictor = model.deploy(1, "local", endpoint_name=endpoint_name)
+        try:
+            yield predictor
+        finally:
+            predictor.delete_endpoint()
 
 
 @pytest.fixture(scope="module")
@@ -102,12 +104,12 @@ def tfs_predictor_with_model_and_entry_point_and_dependencies(
         sagemaker_session=sagemaker_local_session,
     )
 
-    predictor = model.deploy(1, "local", endpoint_name=endpoint_name)
-    try:
-
-        yield predictor
-    finally:
-        predictor.delete_endpoint()
+    with tests.integ.lock.lock(tests.integ.LOCAL_MODE_LOCK_PATH):
+        predictor = model.deploy(1, "local", endpoint_name=endpoint_name)
+        try:
+            yield predictor
+        finally:
+            predictor.delete_endpoint()
 
 
 @pytest.fixture(scope="module")
