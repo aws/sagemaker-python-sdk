@@ -218,7 +218,6 @@ class RLEstimator(Framework):
         Raises:
             ValueError: If image_name is not specified and framework enum is not valid.
         """
-
         base_args = dict(
             model_data=self.model_data,
             role=role or self.role,
