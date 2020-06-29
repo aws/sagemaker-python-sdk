@@ -391,6 +391,11 @@ class AlgorithmEstimator(EstimatorBase):
         """Placeholder docstring"""
         return "ProductId" in self.algorithm_spec
 
+    def _ensure_base_job_name(self):
+        """Set ``self.base_job_name`` if it is not set already."""
+        if self.base_job_name is None:
+            self.base_job_name = self.algorithm_arn.split("/")[-1]
+
     def _prepare_for_training(self, job_name=None):
         # Validate hyperparameters
         # an explicit call to set_hyperparameters() will also validate the hyperparameters

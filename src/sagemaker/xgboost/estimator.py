@@ -15,7 +15,6 @@ from __future__ import absolute_import
 
 import logging
 
-from sagemaker import utils
 from sagemaker.estimator import Framework, _TrainingJob
 from sagemaker.fw_registry import default_framework_uri
 from sagemaker.fw_utils import (
@@ -165,13 +164,10 @@ class XGBoost(Framework):
                 See :func:`~sagemaker.xgboost.model.XGBoostModel` for full details.
         """
         role = role or self.role
+        kwargs["name"] = self._get_or_create_name(kwargs.get("name"))
 
         if "image" not in kwargs:
             kwargs["image"] = self.image_name
-
-        if "name" not in kwargs:
-            self._ensure_base_job_name()
-            kwargs["name"] = utils.name_from_base(self.base_job_name)
 
         return XGBoostModel(
             self.model_data,

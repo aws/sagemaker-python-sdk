@@ -15,7 +15,6 @@ from __future__ import absolute_import
 
 import logging
 
-from sagemaker import utils
 from sagemaker.estimator import Framework
 from sagemaker.fw_registry import default_framework_uri
 from sagemaker.fw_utils import (
@@ -187,16 +186,13 @@ class SKLearn(Framework):
             object. See :func:`~sagemaker.sklearn.model.SKLearnModel` for full details.
         """
         role = role or self.role
+        kwargs["name"] = self._get_or_create_name(kwargs.get("name"))
 
         if "image" not in kwargs:
             kwargs["image"] = self.image_name
 
         if "enable_network_isolation" not in kwargs:
             kwargs["enable_network_isolation"] = self.enable_network_isolation()
-
-        if "name" not in kwargs:
-            self._ensure_base_job_name()
-            kwargs["name"] = utils.name_from_base(self.base_job_name)
 
         return SKLearnModel(
             self.model_data,

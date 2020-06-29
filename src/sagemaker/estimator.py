@@ -331,13 +331,24 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
     def _ensure_base_job_name(self):
         """Set ``self.base_job_name`` if it is not set already."""
         # honor supplied base_job_name or generate it
-        if self.base_job_name:
-            return
-
-        if isinstance(self, sagemaker.algorithm.AlgorithmEstimator):
-            self.base_job_name = self.algorithm_arn.split("/")[-1]  # pylint: disable=no-member
-        else:
+        if self.base_job_name is None:
             self.base_job_name = base_name_from_image(self.train_image())
+
+    def _get_or_create_name(self, name=None):
+        """Generate a name based on the base job name or training image if needed.
+
+        Args:
+            name (str): User-supplied name. If not specified, a name is generated from
+                the base job name or training image.
+
+        Returns:
+            str: Either the user-supplied name or a generated name.
+        """
+        if name:
+            return name
+
+        self._ensure_base_job_name()
+        return name_from_base(self.base_job_name)
 
     def _prepare_for_training(self, job_name=None):
         """Set any values in the estimator that need to be set before training.
@@ -347,11 +358,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                 specified, one is generated, using the base name given to the
                 constructor if applicable.
         """
-        if job_name is not None:
-            self._current_job_name = job_name
-        else:
-            self._ensure_base_job_name()
-            self._current_job_name = name_from_base(self.base_job_name)
+        self._current_job_name = self._get_or_create_name(job_name)
 
         # if output_path was specified we use it otherwise initialize here.
         # For Local Mode with local_code=True we don't need an explicit output_path
@@ -910,9 +917,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                 based on the training image name and current timestamp.
         """
         tags = tags or self.tags
-
-        self._ensure_base_job_name()
-        model_name = model_name or name_from_base(self.base_job_name)
+        model_name = self._get_or_create_name(model_name)
 
         if self.latest_training_job is None:
             logging.warning(
@@ -2012,9 +2017,7 @@ class Framework(EstimatorBase):
         """
         role = role or self.role
         tags = tags or self.tags
-
-        self._ensure_base_job_name()
-        model_name = model_name or name_from_base(self.base_job_name)
+        model_name = self._get_or_create_name(model_name)
 
         if self.latest_training_job is not None:
             if enable_network_isolation is None:

@@ -270,12 +270,10 @@ class TensorFlow(Framework):
             sagemaker.tensorflow.model.TensorFlowModel: A ``TensorFlowModel`` object.
                 See :class:`~sagemaker.tensorflow.model.TensorFlowModel` for full details.
         """
+        kwargs["name"] = self._get_or_create_name(kwargs.get("name"))
+
         if "image" not in kwargs:
             kwargs["image"] = self.image_name
-
-        if "name" not in kwargs:
-            self._ensure_base_job_name()
-            kwargs["name"] = utils.name_from_base(self.base_job_name)
 
         if "enable_network_isolation" not in kwargs:
             kwargs["enable_network_isolation"] = self.enable_network_isolation()
@@ -446,9 +444,7 @@ class TensorFlow(Framework):
                 based on the training image name and current timestamp.
         """
         role = role or self.role
-
-        self._ensure_base_job_name()
-        model_name = model_name or utils.name_from_base(self.base_job_name)
+        model_name = self._get_or_create_name(model_name)
 
         if self.latest_training_job is None:
             logging.warning(

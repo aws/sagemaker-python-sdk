@@ -17,7 +17,7 @@ import enum
 import logging
 import re
 
-from sagemaker import fw_utils, utils
+from sagemaker import fw_utils
 from sagemaker.estimator import Framework
 from sagemaker.model import FrameworkModel, SAGEMAKER_OUTPUT_LOCATION
 from sagemaker.mxnet.model import MXNetModel
@@ -218,17 +218,17 @@ class RLEstimator(Framework):
         Raises:
             ValueError: If image_name is not specified and framework enum is not valid.
         """
-        self._ensure_base_job_name()
 
         base_args = dict(
             model_data=self.model_data,
             role=role or self.role,
             image=kwargs.get("image", self.image_name),
-            name=kwargs.get("name", utils.name_from_base(self.base_job_name)),
             container_log_level=self.container_log_level,
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
         )
+
+        base_args["name"] = self._get_or_create_name(kwargs.get("name"))
 
         if not entry_point and (source_dir or dependencies):
             raise AttributeError("Please provide an `entry_point`.")
