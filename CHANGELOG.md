@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.67.0 (2020-06-29)
+
+### Features
+
+ * Apache Airflow integration for SageMaker Processing Jobs
+
+### Bug Fixes and Other Changes
+
+ * fix punctuation in warning message
+
+### Testing and Release Infrastructure
+
+ * address warnings about pytest custom marks, error message checking, and yaml loading
+ * mark long-running cron tests
+ * fix tox test dependencies and bump coverage threshold to 86%
+
 ## v1.66.0 (2020-06-25)
 
 ### Features
