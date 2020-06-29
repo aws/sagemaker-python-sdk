@@ -69,6 +69,17 @@ def test_bad_import():
         pd.DataFrame()
 
 
+@patch("sagemaker.utils.name_from_base")
+@patch("sagemaker.utils.base_name_from_image")
+def test_name_from_image(base_name_from_image, name_from_base):
+    image = "image:latest"
+    max_length = 32
+
+    sagemaker.utils.name_from_image(image, max_length=max_length)
+    base_name_from_image.assert_called_with(image)
+    name_from_base.assert_called_with(base_name_from_image.return_value, max_length=max_length)
+
+
 @patch("sagemaker.utils.sagemaker_timestamp")
 def test_name_from_base(sagemaker_timestamp):
     sagemaker.utils.name_from_base(NAME, short=False)

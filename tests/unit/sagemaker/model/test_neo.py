@@ -210,3 +210,16 @@ def test_check_neo_region(sagemaker_session):
     for partition in boto_session.get_available_partitions():
         for region_name in boto_session.get_available_regions("ec2", partition_name=partition):
             assert (region_name in NEO_REGION_LIST) is model.check_neo_region(region_name)
+
+
+def test_deploy_valid_model_name(sagemaker_session):
+    model = Model(
+        image="long-base-name-that-is-over-the-63-character-limit-for-model-names",
+        model_data=MODEL_DATA,
+        role="role",
+        sagemaker_session=sagemaker_session,
+    )
+    model._is_compiled_model = True
+
+    model.deploy(1, "ml.c4.xlarge")
+    assert len(model.name) <= 63
