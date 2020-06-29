@@ -826,6 +826,11 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         Raises:
             botocore.exceptions.ClientError: If the endpoint does not exist.
         """
+        logging.warning(
+            "estimator.delete_endpoint() will be deprecated in SageMaker Python SDK v2. "
+            "Please use the delete_endpoint() function on your predictor instead."
+        )
+
         self._ensure_latest_training_job(error_message="Endpoint was not created yet")
         self.sagemaker_session.delete_endpoint(self.latest_training_job.name)
 
