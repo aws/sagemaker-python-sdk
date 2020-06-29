@@ -160,12 +160,12 @@ class TensorFlow(Framework):
                 self.py_version,
             )
 
-            # TODO: add link to docs to explain how to use legacy mode with v2
             msg = (
                 "TF {} supports only legacy mode. Please supply the image URI directly with "
                 "'image_name={}' and set 'model_dir=False'. If you are using any legacy parameters "
                 "(training_steps, evaluation_steps, checkpoint_path, requirements_file), "
-                "make sure to pass them directly as hyperparameters instead."
+                "make sure to pass them directly as hyperparameters instead. For more, see "
+                "https://sagemaker.readthedocs.io/en/v2.0.0.rc0/frameworks/tensorflow/upgrade_from_legacy.html."
             ).format(self.framework_version, legacy_image_uri)
 
             raise ValueError(msg)
