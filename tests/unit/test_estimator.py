@@ -1737,7 +1737,8 @@ EXP_TRAIN_CALL.update(
 )
 
 
-def test_fit_deploy_tags_in_estimator(sagemaker_session):
+@patch("sagemaker.estimator.name_from_base")
+def test_fit_deploy_tags_in_estimator(name_from_base, sagemaker_session):
     tags = [{"Key": "TagtestKey", "Value": "TagtestValue"}]
     estimator = Estimator(
         IMAGE_NAME,
@@ -1750,21 +1751,25 @@ def test_fit_deploy_tags_in_estimator(sagemaker_session):
 
     estimator.fit()
 
+    model_name = "model_name"
+    name_from_base.return_value = model_name
+
     estimator.deploy(INSTANCE_COUNT, INSTANCE_TYPE)
 
     variant = [
         {
             "InstanceType": "c4.4xlarge",
             "VariantName": "AllTraffic",
-            "ModelName": ANY,
+            "ModelName": model_name,
             "InitialVariantWeight": 1,
             "InitialInstanceCount": 1,
         }
     ]
 
-    job_name = estimator._current_job_name
+    name_from_base.assert_called_with(IMAGE_NAME)
+
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
-        name=job_name,
+        name=model_name,
         production_variants=variant,
         tags=tags,
         kms_key=None,
@@ -1773,7 +1778,7 @@ def test_fit_deploy_tags_in_estimator(sagemaker_session):
     )
 
     sagemaker_session.create_model.assert_called_with(
-        ANY,
+        model_name,
         "DummyRole",
         {"ModelDataUrl": "s3://bucket/model.tar.gz", "Environment": {}, "Image": "fakeimage"},
         enable_network_isolation=False,
