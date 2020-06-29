@@ -198,7 +198,7 @@ def test_create_model_with_network_isolation(upload, sagemaker_session, sklearn_
     assert model_values["ModelDataUrl"] == repacked_model_data
 
 
-@patch("sagemaker.utils.name_from_base")
+@patch("sagemaker.estimator.name_from_base")
 def test_create_model_from_estimator(name_from_base, sagemaker_session, sklearn_version):
     container_log_level = '"logging.INFO"'
     source_dir = "s3://mybucket/source"

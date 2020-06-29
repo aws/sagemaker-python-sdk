@@ -231,7 +231,7 @@ def test_attach_with_additional_hyperparameters(
     assert estimator.additional_mpi_options == "-x MY_ENVIRONMENT_VARIABLE"
 
 
-@patch("sagemaker.utils.name_from_base")
+@patch("sagemaker.estimator.name_from_base")
 def test_create_model(name_from_base, sagemaker_session, chainer_version, chainer_py_version):
     container_log_level = '"logging.INFO"'
     source_dir = "s3://mybucket/source"

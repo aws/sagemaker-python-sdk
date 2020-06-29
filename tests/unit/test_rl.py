@@ -162,7 +162,7 @@ def _create_train_job(toolkit, toolkit_version, framework):
     }
 
 
-@patch("sagemaker.utils.name_from_base")
+@patch("sagemaker.estimator.name_from_base")
 def test_create_tf_model(name_from_base, sagemaker_session, rl_coach_tf_version):
     container_log_level = '"logging.INFO"'
     source_dir = "s3://mybucket/source"
@@ -199,7 +199,7 @@ def test_create_tf_model(name_from_base, sagemaker_session, rl_coach_tf_version)
     name_from_base.assert_called_with("sagemaker-rl-tensorflow")
 
 
-@patch("sagemaker.utils.name_from_base")
+@patch("sagemaker.estimator.name_from_base")
 def test_create_mxnet_model(name_from_base, sagemaker_session, rl_coach_mxnet_version):
     container_log_level = '"logging.INFO"'
     source_dir = "s3://mybucket/source"
@@ -271,7 +271,7 @@ def test_create_model_with_optional_params(sagemaker_session, rl_coach_mxnet_ver
     assert model.name == model_name
 
 
-@patch("sagemaker.utils.name_from_base")
+@patch("sagemaker.estimator.name_from_base")
 def test_create_model_with_custom_image(name_from_base, sagemaker_session):
     container_log_level = '"logging.INFO"'
     source_dir = "s3://mybucket/source"

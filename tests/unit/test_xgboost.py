@@ -187,7 +187,7 @@ def test_create_model(sagemaker_session, xgboost_full_version):
     assert model_values["Image"] == default_image_uri
 
 
-@patch("sagemaker.utils.name_from_base")
+@patch("sagemaker.estimator.name_from_base")
 def test_create_model_from_estimator(name_from_base, sagemaker_session, xgboost_version):
     container_log_level = '"logging.INFO"'
     source_dir = "s3://mybucket/source"

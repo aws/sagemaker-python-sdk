@@ -181,7 +181,7 @@ def _neo_inference_image(mxnet_version):
     )
 
 
-@patch("sagemaker.utils.name_from_base")
+@patch("sagemaker.estimator.name_from_base")
 @patch("sagemaker.utils.create_tar_file", MagicMock())
 def test_create_model(name_from_base, sagemaker_session, mxnet_version, mxnet_py_version):
     container_log_level = '"logging.INFO"'
@@ -262,7 +262,7 @@ def test_create_model_with_optional_params(sagemaker_session, mxnet_version, mxn
     assert model.name == model_name
 
 
-@patch("sagemaker.utils.name_from_base")
+@patch("sagemaker.estimator.name_from_base")
 def test_create_model_with_custom_image(name_from_base, sagemaker_session):
     container_log_level = '"logging.INFO"'
     source_dir = "s3://mybucket/source"

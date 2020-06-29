@@ -163,7 +163,7 @@ def _build_tf(
     )
 
 
-@patch("sagemaker.utils.name_from_base")
+@patch("sagemaker.estimator.name_from_base")
 def test_create_model(name_from_base, sagemaker_session, tf_version, tf_py_version):
     if version.Version(tf_version) < version.Version("1.11"):
         pytest.skip(
@@ -356,7 +356,7 @@ def test_transformer_creation_with_optional_args(
 
 
 @patch("sagemaker.tensorflow.estimator.TensorFlow.create_model")
-@patch("sagemaker.utils.name_from_base")
+@patch("sagemaker.estimator.name_from_base")
 def test_transformer_creation_without_optional_args(
     name_from_base, create_model, sagemaker_session, tf_version, tf_py_version
 ):

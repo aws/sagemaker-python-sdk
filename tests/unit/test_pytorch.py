@@ -157,7 +157,7 @@ def _create_train_job(version, py_version):
     }
 
 
-@patch("sagemaker.utils.name_from_base")
+@patch("sagemaker.estimator.name_from_base")
 def test_create_model(name_from_base, sagemaker_session, pytorch_version, pytorch_py_version):
     container_log_level = '"logging.INFO"'
     source_dir = "s3://mybucket/source"
@@ -236,7 +236,7 @@ def test_create_model_with_optional_params(sagemaker_session, pytorch_version, p
     assert model.name == model_name
 
 
-@patch("sagemaker.utils.name_from_base")
+@patch("sagemaker.estimator.name_from_base")
 def test_create_model_with_custom_image(name_from_base, sagemaker_session):
     container_log_level = '"logging.INFO"'
     source_dir = "s3://mybucket/source"
