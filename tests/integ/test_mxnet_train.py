@@ -81,9 +81,8 @@ def test_deploy_estimator_with_different_instance_types(
                 predictor = estimator.deploy(1, instance_type)
 
                 model_name = predictor._model_names[0]
-                endpoint_name = predictor.endpoint
                 config_name = sagemaker_session.sagemaker_client.describe_endpoint(
-                    EndpointName=endpoint_name
+                    EndpointName=predictor.endpoint_name
                 )["EndpointConfigName"]
                 config = sagemaker_session.sagemaker_client.describe_endpoint_config(
                     EndpointConfigName=config_name
@@ -94,7 +93,7 @@ def test_deploy_estimator_with_different_instance_types(
 
         assert config["ProductionVariants"][0]["InstanceType"] == instance_type
 
-        return (model_name, endpoint_name, config_name)
+        return (model_name, predictor.endpoint_name, config_name)
 
     estimator = MXNet.attach(mxnet_training_job, sagemaker_session)
     estimator.base_job_name = "test-mxnet-deploy-twice"
