@@ -42,7 +42,7 @@ logger = logging.getLogger(__name__)
 
 
 # Use the base name of the image as the job name if the user doesn't give us one
-def name_from_image(image):
+def name_from_image(image, max_length=63):
     """Create a training job name based on the image name and a timestamp.
 
     Args:
@@ -50,9 +50,10 @@ def name_from_image(image):
 
     Returns:
         str: Training job name using the algorithm from the image name and a
-        timestamp.
+            timestamp.
+        max_length (int): Maximum length for the resulting string (default: 63).
     """
-    return name_from_base(base_name_from_image(image))
+    return name_from_base(base_name_from_image(image), max_length=max_length)
 
 
 def name_from_base(base, max_length=63, short=False):
@@ -64,8 +65,8 @@ def name_from_base(base, max_length=63, short=False):
 
     Args:
         base (str): String used as prefix to generate the unique name.
-        max_length (int): Maximum length for the resulting string.
-        short (bool): Whether or not to use a truncated timestamp.
+        max_length (int): Maximum length for the resulting string (default: 63).
+        short (bool): Whether or not to use a truncated timestamp (default: False).
 
     Returns:
         str: Input parameter with appended timestamp.

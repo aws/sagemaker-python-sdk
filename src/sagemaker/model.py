@@ -477,8 +477,10 @@ class Model(object):
 
         compiled_model_suffix = "-".join(instance_type.split(".")[:-1])
         if self._is_compiled_model:
-            name_prefix = self.name or utils.name_from_image(self.image)
-            self.name = "{}{}".format(name_prefix, compiled_model_suffix)
+            name_prefix = self.name or utils.name_from_image(
+                self.image, max_length=(62 - len(compiled_model_suffix))
+            )
+            self.name = "{}-{}".format(name_prefix, compiled_model_suffix)
 
         self._create_sagemaker_model(instance_type, accelerator_type, tags)
         production_variant = sagemaker.production_variant(
