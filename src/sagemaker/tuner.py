@@ -840,6 +840,11 @@ class HyperparameterTuner(object):
         Args:
             endpoint_name (str): Name of the endpoint to delete
         """
+        logging.warning(
+            "HyperparameterTuner.delete_endpoint() will be deprecated in SageMaker Python SDK v2. "
+            "Please use the delete_endpoint() function on your predictor instead."
+        )
+
         endpoint_name = endpoint_name or self.best_training_job()
         self.sagemaker_session.delete_endpoint(endpoint_name)
 
