@@ -820,18 +820,6 @@ class HyperparameterTuner(object):
                 )
             )
 
-    def delete_endpoint(self, endpoint_name=None):
-        """Delete an Amazon SageMaker endpoint.
-
-        If an endpoint name is not specified, this defaults to looking for an
-        endpoint that shares a name with the best training job for deletion.
-
-        Args:
-            endpoint_name (str): Name of the endpoint to delete
-        """
-        endpoint_name = endpoint_name or self.best_training_job()
-        self.sagemaker_session.delete_endpoint(endpoint_name)
-
     def _ensure_last_tuning_job(self):
         """Placeholder docstring"""
         if self.latest_tuning_job is None:
