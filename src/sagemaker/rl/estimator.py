@@ -315,10 +315,9 @@ class RLEstimator(Framework):
         toolkit, toolkit_version = cls._toolkit_and_version_from_tag(tag)
 
         if not cls._is_combination_supported(toolkit, toolkit_version, framework):
-            training_job_name = init_params["base_job_name"]
             raise ValueError(
                 "Training job: {} didn't use image for requested framework".format(
-                    training_job_name
+                    job_details["TrainingJobName"]
                 )
             )
 

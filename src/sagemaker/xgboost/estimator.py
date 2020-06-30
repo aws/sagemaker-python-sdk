@@ -236,7 +236,7 @@ class XGBoost(Framework):
 
         estimator = cls(sagemaker_session=sagemaker_session, **init_params)
         estimator.latest_training_job = _TrainingJob(
-            sagemaker_session=sagemaker_session, job_name=init_params["base_job_name"]
+            sagemaker_session=sagemaker_session, job_name=training_job_name
         )
         estimator._current_job_name = estimator.latest_training_job.name
         estimator.latest_training_job.wait()
@@ -266,10 +266,9 @@ class XGBoost(Framework):
         init_params["py_version"] = py_version
 
         if framework and framework != cls.__framework_name__:
-            training_job_name = init_params["base_job_name"]
             raise ValueError(
                 "Training job: {} didn't use image for requested framework".format(
-                    training_job_name
+                    job_details["TrainingJobName"]
                 )
             )
         init_params["framework_version"] = framework_version_from_tag(tag)

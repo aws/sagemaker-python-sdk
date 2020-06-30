@@ -244,12 +244,10 @@ class SKLearn(Framework):
             init_params["image_name"] = image_name
             return init_params
 
-        training_job_name = init_params["base_job_name"]
-
         if framework and framework != cls.__framework_name__:
             raise ValueError(
                 "Training job: {} didn't use image for requested framework".format(
-                    training_job_name
+                    job_details["TrainingJobName"]
                 )
             )
 

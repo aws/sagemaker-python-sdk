@@ -21,7 +21,7 @@ from time import sleep
 import pytest
 from mock import ANY, MagicMock, Mock, patch
 
-from sagemaker import vpc_utils
+from sagemaker import utils, vpc_utils
 from sagemaker.amazon.amazon_estimator import registry
 from sagemaker.algorithm import AlgorithmEstimator
 from sagemaker.estimator import Estimator, EstimatorBase, Framework, _TrainingJob
@@ -794,6 +794,19 @@ def test_attach_framework_with_inter_container_traffic_encryption_flag(sagemaker
     )
 
     assert framework_estimator.encrypt_inter_container_traffic is True
+
+
+def test_attach_framework_base_from_generated_name(sagemaker_session):
+    sagemaker_session.sagemaker_client.describe_training_job = Mock(
+        name="describe_training_job", return_value=RETURNED_JOB_DESCRIPTION
+    )
+
+    base_job_name = "neo"
+    framework_estimator = DummyFramework.attach(
+        training_job_name=utils.name_from_base("neo"), sagemaker_session=sagemaker_session
+    )
+
+    assert framework_estimator.base_job_name == base_job_name
 
 
 @patch("time.strftime", return_value=TIMESTAMP)

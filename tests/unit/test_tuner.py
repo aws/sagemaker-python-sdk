@@ -787,7 +787,7 @@ def test_deploy_default(tuner):
 
     tuner.sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job = Mock(
         name="describe_hyper_parameter_tuning_job",
-        return_value={"BestTrainingJob": {"TrainingJobName": JOB_NAME}},
+        return_value={"BestTrainingJob": {"TrainingJobName": TRAINING_JOB_NAME}},
     )
 
     tuner.sagemaker_session.sagemaker_client.list_tags = Mock(
@@ -807,7 +807,7 @@ def test_deploy_default(tuner):
     assert args[2]["ModelDataUrl"] == MODEL_DATA
 
     assert isinstance(predictor, Predictor)
-    assert predictor.endpoint_name.startswith(JOB_NAME)
+    assert predictor.endpoint_name.startswith(TRAINING_JOB_NAME)
     assert predictor.sagemaker_session == tuner.sagemaker_session
 
 
@@ -823,7 +823,7 @@ def test_deploy_estimator_dict(tuner):
         name="describe_hyper_parameter_tuning_job",
         return_value={
             "BestTrainingJob": {
-                "TrainingJobName": JOB_NAME,
+                "TrainingJobName": TRAINING_JOB_NAME,
                 "TrainingJobDefinitionName": ESTIMATOR_NAME,
             }
         },
@@ -846,7 +846,7 @@ def test_deploy_estimator_dict(tuner):
     assert args[2]["ModelDataUrl"] == MODEL_DATA
 
     assert isinstance(predictor, Predictor)
-    assert predictor.endpoint_name.startswith(JOB_NAME)
+    assert predictor.endpoint_name.startswith(TRAINING_JOB_NAME)
     assert predictor.sagemaker_session == tuner.sagemaker_session
 
 
