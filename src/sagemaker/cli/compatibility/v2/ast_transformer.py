@@ -18,12 +18,12 @@ import ast
 from sagemaker.cli.compatibility.v2 import modifiers
 
 FUNCTION_CALL_MODIFIERS = [
-    modifiers.predictors.PredictorConstructorRefactor(),
     modifiers.framework_version.FrameworkVersionEnforcer(),
     modifiers.tf_legacy_mode.TensorFlowLegacyModeConstructorUpgrader(),
     modifiers.tf_legacy_mode.TensorBoardParameterRemover(),
     modifiers.deprecated_params.TensorFlowScriptModeParameterRemover(),
     modifiers.tfs.TensorFlowServingConstructorRenamer(),
+    modifiers.predictors.PredictorConstructorRefactor(),
     modifiers.airflow.ModelConfigArgModifier(),
 ]
 
