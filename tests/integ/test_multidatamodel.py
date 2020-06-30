@@ -215,7 +215,7 @@ def test_multi_data_model_deploy_pretrained_models_local_mode(container_image, s
             assert PRETRAINED_MODEL_PATH_2 in endpoint_models
 
             predictor = Predictor(
-                endpoint=endpoint_name,
+                endpoint_name=endpoint_name,
                 sagemaker_session=multi_data_model.sagemaker_session,
                 serializer=npy_serializer,
                 deserializer=string_deserializer,
