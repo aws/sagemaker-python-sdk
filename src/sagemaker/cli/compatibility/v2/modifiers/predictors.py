@@ -1,0 +1,146 @@
+# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"). You
+# may not use this file except in compliance with the License. A copy of
+# the License is located at
+#
+#     http://aws.amazon.com/apache2.0/
+#
+# or in the "license" file accompanying this file. This file is
+# distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
+# ANY KIND, either express or implied. See the License for the specific
+# language governing permissions and limitations under the License.
+"""Classes to modify Predictor code to be compatible
+with version 2.0 and later of the SageMaker Python SDK.
+"""
+from __future__ import absolute_import
+
+import ast
+
+from sagemaker.cli.compatibility.v2.modifiers.modifier import Modifier
+
+BASE_PREDICTOR = "RealTimePredictor"
+PREDICTORS = {
+    "FactorizationMachinesPredictor": ("sagemaker", "sagemaker.amazon.factorization_machines"),
+    "IPInsightsPredictor": ("sagemaker", "sagemaker.amazon.ipinsights"),
+    "KMeansPredictor": ("sagemaker", "sagemaker.amazon.kmeans"),
+    "KNNPredictor": ("sagemaker", "sagemaker.amazon.knn"),
+    "LDAPredictor": ("sagemaker", "sagemaker.amazon.lda"),
+    "LinearLearnerPredictor": ("sagemaker", "sagemaker.amazon.linear_learner"),
+    "NTMPredictor": ("sagemaker", "sagemaker.amazon.ntm"),
+    "PCAPredictor": ("sagemaker", "sagemaker.amazon.pca"),
+    "RandomCutForestPredictor": ("sagemaker", "sagemaker.amazon.randomcutforest"),
+    "RealTimePredictor": ("sagemaker", "sagemaker.predictor"),
+    "SparkMLPredictor": ("sagemaker.sparkml", "sagemaker.sparkml.model"),
+}
+
+
+class PredictorConstructorRefactor(Modifier):
+    """A class to refactor *Predictor class and refactor endpoint attribute."""
+
+    def node_should_be_modified(self, node):
+        """Checks if the ``ast.Call`` node instantiates a class of interest.
+
+        This looks for the following calls:
+
+        - ``sagemaker.<my>.<namespace>.<MyPredictor>``
+        - ``sagemaker.<namespace>.<MyPredictor>``
+        - ``<MyPredictor>``
+
+        Args:
+            node (ast.Call): a node that represents a function call. For more,
+                see https://docs.python.org/3/library/ast.html#abstract-grammar.
+
+        Returns:
+            bool: If the ``ast.Call`` instantiates a class of interest.
+        """
+        return any(_matching(node, name, namespaces) for name, namespaces in PREDICTORS.items())
+
+    def modify_node(self, node):
+        """Modifies the ``ast.Call`` node to call ``Predictor`` instead.
+
+        Also renames ``endpoint`` attribute to ``endpoint_name``.
+
+        Args:
+            node (ast.Call): a node that represents a *Predictor constructor.
+        """
+        _rename_class(node)
+        _rename_endpoint(node)
+
+
+def _matching(node, name, namespaces):
+    """Determines if the node matches the constructor name in the right namespace"""
+    if _matching_name(node, name):
+        return True
+
+    if not _matching_attr(node, name):
+        return False
+
+    return any(_matching_namespace(node, namespace) for namespace in namespaces)
+
+
+def _matching_name(node, name):
+    """Determines if the node is an ast.Name node with a matching name"""
+    return isinstance(node.func, ast.Name) and node.func.id == name
+
+
+def _matching_attr(node, name):
+    """Determines if the node is an ast.Attribute node with a matching name"""
+    return isinstance(node.func, ast.Attribute) and node.func.attr == name
+
+
+def _matching_namespace(node, namespace):
+    """Determines if the node corresponds to a matching namespace"""
+    names = namespace.split(".")
+    name, value = names.pop(), node.func.value
+    while isinstance(value, ast.Attribute) and len(names) > 0:
+        if value.attr != name:
+            return False
+        name, value = names.pop(), value.value
+
+    return isinstance(value, ast.Name) and value.id == name
+
+
+def _rename_class(node):
+    """Renames the RealTimePredictor base class to Predictor"""
+    if _matching_name(node, BASE_PREDICTOR):
+        node.func.id = "Predictor"
+    elif _matching_attr(node, BASE_PREDICTOR):
+        node.func.attr = "Predictor"
+
+
+def _rename_endpoint(node):
+    """Renames keyword endpoint argument to endpoint_name"""
+    for keyword in node.keywords:
+        if keyword.arg == "endpoint":
+            keyword.arg = "endpoint_name"
+            break
+
+
+class PredictorImportFromRenamer(Modifier):
+    """A class to update import statements of ``RealTimePredictor``."""
+
+    def node_should_be_modified(self, node):
+        """Checks if the import statement imports ``RealTimePredictor`` from the correct module.
+
+        Args:
+            node (ast.ImportFrom): a node that represents a ``from ... import ... `` statement.
+                For more, see https://docs.python.org/3/library/ast.html#abstract-grammar.
+
+        Returns:
+            bool: If the import statement imports ``RealTimePredictor`` from the correct module.
+        """
+        return node.module in PREDICTORS[BASE_PREDICTOR] and any(
+            name.name == BASE_PREDICTOR for name in node.names
+        )
+
+    def modify_node(self, node):
+        """Changes the ``ast.ImportFrom`` node's name from ``RealTimePredictor`` to ``Predictor``.
+
+        Args:
+            node (ast.ImportFrom): a node that represents a ``from ... import ... `` statement.
+                For more, see https://docs.python.org/3/library/ast.html#abstract-grammar.
+        """
+        for name in node.names:
+            if name.name == BASE_PREDICTOR:
+                name.name = "Predictor"
