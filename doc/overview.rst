@@ -116,7 +116,7 @@ Here is an end to end example of how to use a SageMaker Estimator:
     # Deletes the SageMaker model
     mxnet_predictor.delete_model()
 
-The example above will eventually delete both the SageMaker endpoint and endpoint configuration through `delete_endpoint()`. If you want to keep your SageMaker endpoint configuration, use the value False for the `delete_endpoint_config` parameter, as shown below.
+The example above will eventually delete both the SageMaker endpoint and endpoint configuration through ``delete_endpoint()``. If you want to keep your SageMaker endpoint configuration, use the value ``False`` for the ``delete_endpoint_config`` parameter, as shown below.
 
 .. code:: python
 
@@ -180,10 +180,10 @@ Here is an example:
         train_input = algo.sagemaker_session.upload_data(path='/path/to/your/data')
 
         algo.fit({'training': train_input})
-        algo.deploy(1, 'ml.m4.xlarge')
+        predictor = algo.deploy(1, 'ml.m4.xlarge')
 
         # When you are done using your endpoint
-        algo.delete_endpoint()
+        predictor.delete_endpoint()
 
 Use Scripts Stored in a Git Repository
 --------------------------------------
@@ -609,7 +609,7 @@ Here is a basic example of how to use it:
     response = my_predictor.predict(my_prediction_data)
 
     # Tear down the SageMaker endpoint
-    my_tuner.delete_endpoint()
+    my_predictor.delete_endpoint()
 
 This example shows a hyperparameter tuning job that creates up to 100 training jobs, running up to 10 training jobs at a time.
 Each training job's learning rate is a value between 0.05 and 0.06, but this value will differ between training jobs.

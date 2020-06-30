@@ -21,7 +21,7 @@ from time import sleep
 import pytest
 from mock import ANY, MagicMock, Mock, patch
 
-from sagemaker import vpc_utils
+from sagemaker import utils, vpc_utils
 from sagemaker.amazon.amazon_estimator import registry
 from sagemaker.algorithm import AlgorithmEstimator
 from sagemaker.estimator import Estimator, EstimatorBase, Framework, _TrainingJob
@@ -636,42 +636,6 @@ def test_start_new_wait_called(strftime, sagemaker_session):
     assert sagemaker_session.wait_for_job.assert_called_once
 
 
-def test_delete_endpoint(sagemaker_session):
-    t = DummyFramework(
-        entry_point=SCRIPT_PATH,
-        role="DummyRole",
-        sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
-        container_log_level=logging.INFO,
-    )
-
-    class tj(object):
-        @property
-        def name(self):
-            return "myjob"
-
-    t.latest_training_job = tj()
-
-    t.delete_endpoint()
-
-    sagemaker_session.delete_endpoint.assert_called_with("myjob")
-
-
-def test_delete_endpoint_without_endpoint(sagemaker_session):
-    t = DummyFramework(
-        entry_point=SCRIPT_PATH,
-        role="DummyRole",
-        sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
-    )
-
-    with pytest.raises(ValueError) as error:
-        t.delete_endpoint()
-    assert "Endpoint was not created yet" in str(error)
-
-
 def test_enable_cloudwatch_metrics(sagemaker_session):
     fw = DummyFramework(
         entry_point=SCRIPT_PATH,
@@ -794,6 +758,19 @@ def test_attach_framework_with_inter_container_traffic_encryption_flag(sagemaker
     )
 
     assert framework_estimator.encrypt_inter_container_traffic is True
+
+
+def test_attach_framework_base_from_generated_name(sagemaker_session):
+    sagemaker_session.sagemaker_client.describe_training_job = Mock(
+        name="describe_training_job", return_value=RETURNED_JOB_DESCRIPTION
+    )
+
+    base_job_name = "neo"
+    framework_estimator = DummyFramework.attach(
+        training_job_name=utils.name_from_base("neo"), sagemaker_session=sagemaker_session
+    )
+
+    assert framework_estimator.base_job_name == base_job_name
 
 
 @patch("time.strftime", return_value=TIMESTAMP)

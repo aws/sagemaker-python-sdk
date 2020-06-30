@@ -19,14 +19,12 @@ import re
 import pytest
 from mock import Mock, patch
 
-from sagemaker import Predictor
+from sagemaker import Predictor, utils
 from sagemaker.amazon.amazon_estimator import RecordSet
 from sagemaker.estimator import Framework
 from sagemaker.mxnet import MXNet
-
-from sagemaker.session import s3_input
-
 from sagemaker.parameter import ParameterRange
+from sagemaker.session import s3_input
 from sagemaker.tuner import (
     _TuningJob,
     create_identical_dataset_and_algorithm_tuner,
@@ -498,6 +496,9 @@ def test_attach_tuning_job_with_estimator_from_hyperparameters(sagemaker_session
     tuner = HyperparameterTuner.attach(JOB_NAME, sagemaker_session=sagemaker_session)
 
     assert tuner.latest_tuning_job.name == JOB_NAME
+    assert tuner.base_tuning_job_name == JOB_NAME
+    assert tuner._current_job_name == JOB_NAME
+
     assert tuner.objective_metric_name == OBJECTIVE_METRIC_NAME
     assert tuner.max_jobs == 1
     assert tuner.max_parallel_jobs == 1
@@ -578,6 +579,20 @@ def test_attach_with_no_specified_estimator(sagemaker_session):
 
     tuner = HyperparameterTuner.attach(JOB_NAME, sagemaker_session=sagemaker_session)
     assert isinstance(tuner.estimator, Estimator)
+
+
+def test_attach_with_generated_job_name(sagemaker_session):
+    job_name = utils.name_from_base(BASE_JOB_NAME, max_length=32, short=True)
+
+    job_details = copy.deepcopy(TUNING_JOB_DETAILS)
+    job_details["HyperParameterTuningJobName"] = job_name
+
+    sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job = Mock(
+        name="describe_tuning_job", return_value=job_details
+    )
+
+    tuner = HyperparameterTuner.attach(job_name, sagemaker_session=sagemaker_session)
+    assert BASE_JOB_NAME == tuner.base_tuning_job_name
 
 
 def test_attach_with_warm_start_config(sagemaker_session):
@@ -787,7 +802,7 @@ def test_deploy_default(tuner):
 
     tuner.sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job = Mock(
         name="describe_hyper_parameter_tuning_job",
-        return_value={"BestTrainingJob": {"TrainingJobName": JOB_NAME}},
+        return_value={"BestTrainingJob": {"TrainingJobName": TRAINING_JOB_NAME}},
     )
 
     tuner.sagemaker_session.sagemaker_client.list_tags = Mock(
@@ -807,7 +822,7 @@ def test_deploy_default(tuner):
     assert args[2]["ModelDataUrl"] == MODEL_DATA
 
     assert isinstance(predictor, Predictor)
-    assert predictor.endpoint_name.startswith(JOB_NAME)
+    assert predictor.endpoint_name.startswith(TRAINING_JOB_NAME)
     assert predictor.sagemaker_session == tuner.sagemaker_session
 
 
@@ -823,7 +838,7 @@ def test_deploy_estimator_dict(tuner):
         name="describe_hyper_parameter_tuning_job",
         return_value={
             "BestTrainingJob": {
-                "TrainingJobName": JOB_NAME,
+                "TrainingJobName": TRAINING_JOB_NAME,
                 "TrainingJobDefinitionName": ESTIMATOR_NAME,
             }
         },
@@ -846,7 +861,7 @@ def test_deploy_estimator_dict(tuner):
     assert args[2]["ModelDataUrl"] == MODEL_DATA
 
     assert isinstance(predictor, Predictor)
-    assert predictor.endpoint_name.startswith(JOB_NAME)
+    assert predictor.endpoint_name.startswith(TRAINING_JOB_NAME)
     assert predictor.sagemaker_session == tuner.sagemaker_session
 
 
@@ -900,18 +915,6 @@ def test_wait(tuner):
     tuner.wait()
 
     tuner.estimator.sagemaker_session.wait_for_tuning_job.assert_called_once_with(JOB_NAME)
-
-
-def test_delete_endpoint(tuner):
-    tuner.latest_tuning_job = _TuningJob(tuner.estimator.sagemaker_session, JOB_NAME)
-
-    tuning_job_description = {"BestTrainingJob": {"TrainingJobName": JOB_NAME}}
-    tuner.estimator.sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job = Mock(
-        name="describe_hyper_parameter_tuning_job", return_value=tuning_job_description
-    )
-
-    tuner.delete_endpoint()
-    tuner.sagemaker_session.delete_endpoint.assert_called_with(JOB_NAME)
 
 
 def test_fit_no_inputs(tuner, sagemaker_session):

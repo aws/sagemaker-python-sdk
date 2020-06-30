@@ -56,7 +56,7 @@ from sagemaker.predictor import Predictor
 from sagemaker.session import Session
 from sagemaker.session import s3_input
 from sagemaker.transformer import Transformer
-from sagemaker.utils import base_name_from_image, name_from_base, get_config_value
+from sagemaker.utils import base_from_name, base_name_from_image, name_from_base, get_config_value
 from sagemaker import vpc_utils
 
 
@@ -627,7 +627,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
 
         estimator = cls(sagemaker_session=sagemaker_session, **init_params)
         estimator.latest_training_job = _TrainingJob(
-            sagemaker_session=sagemaker_session, job_name=init_params["base_job_name"]
+            sagemaker_session=sagemaker_session, job_name=training_job_name
         )
         estimator._current_job_name = estimator.latest_training_job.name
         estimator.latest_training_job.wait()
@@ -791,7 +791,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         init_params["train_volume_size"] = job_details["ResourceConfig"]["VolumeSizeInGB"]
         init_params["train_max_run"] = job_details["StoppingCondition"]["MaxRuntimeInSeconds"]
         init_params["input_mode"] = job_details["AlgorithmSpecification"]["TrainingInputMode"]
-        init_params["base_job_name"] = job_details["TrainingJobName"]
+        init_params["base_job_name"] = base_from_name(job_details["TrainingJobName"])
         init_params["output_path"] = job_details["OutputDataConfig"]["S3OutputPath"]
         init_params["output_kms_key"] = job_details["OutputDataConfig"]["KmsKeyId"]
         if "EnableNetworkIsolation" in job_details:
@@ -834,15 +834,6 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                     break
 
         return init_params
-
-    def delete_endpoint(self):
-        """Delete an Amazon SageMaker ``Endpoint``.
-
-        Raises:
-            botocore.exceptions.ClientError: If the endpoint does not exist.
-        """
-        self._ensure_latest_training_job(error_message="Endpoint was not created yet")
-        self.sagemaker_session.delete_endpoint(self.latest_training_job.name)
 
     def transformer(
         self,
