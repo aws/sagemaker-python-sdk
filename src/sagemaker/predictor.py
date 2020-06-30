@@ -303,7 +303,7 @@ class Predictor(object):
             EndpointConfigName=self._endpoint_config_name
         )
         production_variants = endpoint_config["ProductionVariants"]
-        return map(lambda d: d["ModelName"], production_variants)
+        return [d["ModelName"] for d in production_variants]
 
 
 class _CsvSerializer(object):

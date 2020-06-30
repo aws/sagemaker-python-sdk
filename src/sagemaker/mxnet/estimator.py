@@ -218,8 +218,7 @@ class MXNet(Framework):
         if "image" not in kwargs:
             kwargs["image"] = image_name or self.image_name
 
-        if "name" not in kwargs:
-            kwargs["name"] = self._current_job_name
+        kwargs["name"] = self._get_or_create_name(kwargs.get("name"))
 
         return MXNetModel(
             self.model_data,

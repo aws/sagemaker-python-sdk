@@ -1290,8 +1290,8 @@ def test_init_with_source_dir_s3(strftime, sagemaker_session):
     assert fw._hyperparameters == expected_hyperparameters
 
 
-@patch("sagemaker.model.utils.name_from_image", return_value=MODEL_IMAGE)
-def test_framework_transformer_creation(name_from_image, sagemaker_session):
+@patch("sagemaker.estimator.name_from_base", return_value=MODEL_IMAGE)
+def test_framework_transformer_creation(name_from_base, sagemaker_session):
     vpc_config = {"Subnets": ["foo"], "SecurityGroupIds": ["bar"]}
     fw = DummyFramework(
         entry_point=SCRIPT_PATH,
@@ -1306,7 +1306,7 @@ def test_framework_transformer_creation(name_from_image, sagemaker_session):
 
     transformer = fw.transformer(INSTANCE_COUNT, INSTANCE_TYPE)
 
-    name_from_image.assert_called_with(MODEL_IMAGE)
+    name_from_base.assert_called_with(IMAGE_NAME)
     sagemaker_session.create_model.assert_called_with(
         MODEL_IMAGE,
         ROLE,
@@ -1423,7 +1423,8 @@ def test_ensure_latest_training_job_failure(sagemaker_session):
 
 
 @patch("sagemaker.estimator.Estimator.create_model")
-def test_estimator_transformer_creation(create_model, sagemaker_session):
+@patch("sagemaker.estimator.name_from_base")
+def test_estimator_transformer_creation(name_from_base, create_model, sagemaker_session):
     estimator = Estimator(
         image_name=IMAGE_NAME,
         role=ROLE,
@@ -1433,6 +1434,8 @@ def test_estimator_transformer_creation(create_model, sagemaker_session):
     )
     estimator.latest_training_job = _TrainingJob(sagemaker_session, JOB_NAME)
 
+    model_name = "model_name"
+    name_from_base.return_value = model_name
     transformer = estimator.transformer(INSTANCE_COUNT, INSTANCE_TYPE)
 
     create_model.assert_called_with(
@@ -1445,7 +1448,7 @@ def test_estimator_transformer_creation(create_model, sagemaker_session):
     assert transformer.sagemaker_session == sagemaker_session
     assert transformer.instance_count == INSTANCE_COUNT
     assert transformer.instance_type == INSTANCE_TYPE
-    assert transformer.model_name == JOB_NAME
+    assert transformer.model_name == model_name
     assert transformer.tags is None
 
 
@@ -1711,7 +1714,8 @@ EXP_TRAIN_CALL.update(
 )
 
 
-def test_fit_deploy_tags_in_estimator(sagemaker_session):
+@patch("sagemaker.estimator.name_from_base")
+def test_fit_deploy_tags_in_estimator(name_from_base, sagemaker_session):
     tags = [{"Key": "TagtestKey", "Value": "TagtestValue"}]
     estimator = Estimator(
         IMAGE_NAME,
@@ -1724,21 +1728,25 @@ def test_fit_deploy_tags_in_estimator(sagemaker_session):
 
     estimator.fit()
 
+    model_name = "model_name"
+    name_from_base.return_value = model_name
+
     estimator.deploy(INSTANCE_COUNT, INSTANCE_TYPE)
 
     variant = [
         {
             "InstanceType": "c4.4xlarge",
             "VariantName": "AllTraffic",
-            "ModelName": ANY,
+            "ModelName": model_name,
             "InitialVariantWeight": 1,
             "InitialInstanceCount": 1,
         }
     ]
 
-    job_name = estimator._current_job_name
+    name_from_base.assert_called_with(IMAGE_NAME)
+
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
-        name=job_name,
+        name=model_name,
         production_variants=variant,
         tags=tags,
         kms_key=None,
@@ -1747,7 +1755,7 @@ def test_fit_deploy_tags_in_estimator(sagemaker_session):
     )
 
     sagemaker_session.create_model.assert_called_with(
-        ANY,
+        model_name,
         "DummyRole",
         {"ModelDataUrl": "s3://bucket/model.tar.gz", "Environment": {}, "Image": "fakeimage"},
         enable_network_isolation=False,
@@ -1756,12 +1764,16 @@ def test_fit_deploy_tags_in_estimator(sagemaker_session):
     )
 
 
-def test_fit_deploy_tags(sagemaker_session):
+@patch("sagemaker.estimator.name_from_base")
+def test_fit_deploy_tags(name_from_base, sagemaker_session):
     estimator = Estimator(
         IMAGE_NAME, ROLE, INSTANCE_COUNT, INSTANCE_TYPE, sagemaker_session=sagemaker_session
     )
 
     estimator.fit()
+
+    model_name = "model_name"
+    name_from_base.return_value = model_name
 
     tags = [{"Key": "TagtestKey", "Value": "TagtestValue"}]
     estimator.deploy(INSTANCE_COUNT, INSTANCE_TYPE, tags=tags)
@@ -1770,15 +1782,16 @@ def test_fit_deploy_tags(sagemaker_session):
         {
             "InstanceType": "c4.4xlarge",
             "VariantName": "AllTraffic",
-            "ModelName": ANY,
+            "ModelName": model_name,
             "InitialVariantWeight": 1,
             "InitialInstanceCount": 1,
         }
     ]
 
-    job_name = estimator._current_job_name
+    name_from_base.assert_called_with(IMAGE_NAME)
+
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
-        name=job_name,
+        name=model_name,
         production_variants=variant,
         tags=tags,
         kms_key=None,

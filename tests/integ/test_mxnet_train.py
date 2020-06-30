@@ -70,6 +70,46 @@ def test_attach_deploy(mxnet_training_job, sagemaker_session, cpu_instance_type)
         assert result is not None
 
 
+def test_deploy_estimator_with_different_instance_types(
+    mxnet_training_job, sagemaker_session, cpu_instance_type, alternative_cpu_instance_type,
+):
+    def _deploy_estimator_and_assert_instance_type(estimator, instance_type):
+        # don't use timeout_and_delete_endpoint_by_name because this tests if
+        # deploy() creates a new endpoint config/endpoint each time
+        with timeout(minutes=45):
+            try:
+                predictor = estimator.deploy(1, instance_type)
+
+                model_name = predictor._model_names[0]
+                config_name = sagemaker_session.sagemaker_client.describe_endpoint(
+                    EndpointName=predictor.endpoint_name
+                )["EndpointConfigName"]
+                config = sagemaker_session.sagemaker_client.describe_endpoint_config(
+                    EndpointConfigName=config_name
+                )
+            finally:
+                predictor.delete_model()
+                predictor.delete_endpoint()
+
+        assert config["ProductionVariants"][0]["InstanceType"] == instance_type
+
+        return (model_name, predictor.endpoint_name, config_name)
+
+    estimator = MXNet.attach(mxnet_training_job, sagemaker_session)
+    estimator.base_job_name = "test-mxnet-deploy-twice"
+
+    old_model_name, old_endpoint_name, old_config_name = _deploy_estimator_and_assert_instance_type(
+        estimator, cpu_instance_type
+    )
+    new_model_name, new_endpoint_name, new_config_name = _deploy_estimator_and_assert_instance_type(
+        estimator, alternative_cpu_instance_type
+    )
+
+    assert old_model_name != new_model_name
+    assert old_endpoint_name != new_endpoint_name
+    assert old_config_name != new_config_name
+
+
 def test_deploy_model(
     mxnet_training_job,
     sagemaker_session,

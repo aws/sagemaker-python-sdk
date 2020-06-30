@@ -206,11 +206,10 @@ class Chainer(Framework):
             sagemaker.chainer.model.ChainerModel: A SageMaker ``ChainerModel``
             object. See :func:`~sagemaker.chainer.model.ChainerModel` for full details.
         """
+        kwargs["name"] = self._get_or_create_name(kwargs.get("name"))
+
         if "image" not in kwargs:
             kwargs["image"] = self.image_name
-
-        if "name" not in kwargs:
-            kwargs["name"] = self._current_job_name
 
         return ChainerModel(
             self.model_data,
