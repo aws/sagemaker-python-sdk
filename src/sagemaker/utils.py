@@ -104,6 +104,22 @@ def base_name_from_image(image):
     return algo_name
 
 
+def base_from_name(name):
+    """Extract the base name of the resource name (for use with future resource name generation).
+
+    This function looks for timestamps that match the ones produced by
+    :func:`~sagemaker.utils.name_from_base`.
+
+    Args:
+        name (str): The resource name.
+
+    Returns:
+        str: The base name, as extracted from the resource name.
+    """
+    m = re.match(r"^(.+)-(\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}-\d{3}|\d{6}-\d{4})", name)
+    return m.group(1) if m else name
+
+
 def sagemaker_timestamp():
     """Return a timestamp with millisecond precision."""
     moment = time.time()
