@@ -15,6 +15,7 @@ from __future__ import absolute_import
 
 import ast
 
+from sagemaker.cli.compatibility.v2.modifiers import matching
 from sagemaker.cli.compatibility.v2.modifiers.modifier import Modifier
 
 FRAMEWORK_ARG = "framework_version"
@@ -29,11 +30,19 @@ FRAMEWORK_DEFAULTS = {
 }
 
 FRAMEWORK_CLASSES = list(FRAMEWORK_DEFAULTS.keys())
-MODEL_CLASSES = ["{}Model".format(fw) for fw in FRAMEWORK_CLASSES]
 
+ESTIMATORS = {
+    fw: ("sagemaker.{}".format(fw.lower()), "sagemaker.{}.estimator".format(fw.lower()))
+    for fw in FRAMEWORK_CLASSES
+}
 # TODO: check for sagemaker.tensorflow.serving.Model
-FRAMEWORK_MODULES = [fw.lower() for fw in FRAMEWORK_CLASSES]
-FRAMEWORK_SUBMODULES = ("model", "estimator")
+MODELS = {
+    "{}Model".format(fw): (
+        "sagemaker.{}".format(fw.lower()),
+        "sagemaker.{}.model".format(fw.lower()),
+    )
+    for fw in FRAMEWORK_CLASSES
+}
 
 
 class FrameworkVersionEnforcer(Modifier):
@@ -61,10 +70,10 @@ class FrameworkVersionEnforcer(Modifier):
             bool: If the ``ast.Call`` is instantiating a framework class that
                 should specify ``framework_version``, but doesn't.
         """
-        if _is_named_constructor(node, FRAMEWORK_CLASSES):
+        if matching.matches_any(node, ESTIMATORS):
             return _version_args_needed(node, "image_name")
 
-        if _is_named_constructor(node, MODEL_CLASSES):
+        if matching.matches_any(node, MODELS):
             return _version_args_needed(node, "image")
 
         return False
@@ -158,38 +167,6 @@ def _framework_from_node(node):
         framework = framework[: framework.find("Model")]
 
     return framework, is_model
-
-
-def _is_named_constructor(node, names):
-    """Checks if the ``ast.Call`` node represents a call to particular named constructors.
-
-    Forms that qualify are either <Framework> or sagemaker.<framework>.<Framework>
-    where <Framework> belongs to the list of names passed in.
-    """
-    # Check for call from particular names of constructors
-    if isinstance(node.func, ast.Name):
-        return node.func.id in names
-
-    # Check for something.that.ends.with.<framework>.<Framework> call for Framework in names
-    if not (isinstance(node.func, ast.Attribute) and node.func.attr in names):
-        return False
-
-    # Check for sagemaker.<frameworks>.<estimator/model>.<Framework> call
-    if isinstance(node.func.value, ast.Attribute) and node.func.value.attr in FRAMEWORK_SUBMODULES:
-        return _is_in_framework_module(node.func.value)
-
-    # Check for sagemaker.<framework>.<Framework> call
-    return _is_in_framework_module(node.func)
-
-
-def _is_in_framework_module(node):
-    """Checks if node is an ``ast.Attribute`` representing a ``sagemaker.<framework>`` module."""
-    return (
-        isinstance(node.value, ast.Attribute)
-        and node.value.attr in FRAMEWORK_MODULES
-        and isinstance(node.value.value, ast.Name)
-        and node.value.value.id == "sagemaker"
-    )
 
 
 def _version_args_needed(node, image_arg):

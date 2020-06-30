@@ -20,22 +20,23 @@ import ast
 import boto3
 import six
 
-from sagemaker.cli.compatibility.v2.modifiers import framework_version
+from sagemaker.cli.compatibility.v2.modifiers import framework_version, matching
 from sagemaker.cli.compatibility.v2.modifiers.modifier import Modifier
 from sagemaker import fw_utils
+
+TF_NAMESPACES = ("sagemaker.tensorflow", "sagemaker.tensorflow.estimator")
+LEGACY_MODE_PARAMETERS = (
+    "checkpoint_path",
+    "evaluation_steps",
+    "requirements_file",
+    "training_steps",
+)
 
 
 class TensorFlowLegacyModeConstructorUpgrader(Modifier):
     """A class to turn legacy mode parameters into hyperparameters, disable the ``model_dir``
     hyperparameter, and set the image URI when instantiating a TensorFlow estimator.
     """
-
-    LEGACY_MODE_PARAMETERS = (
-        "checkpoint_path",
-        "evaluation_steps",
-        "requirements_file",
-        "training_steps",
-    )
 
     def __init__(self):
         """Initializes a ``TensorFlowLegacyModeConstructorUpgrader``."""
@@ -68,37 +69,8 @@ class TensorFlowLegacyModeConstructorUpgrader(Modifier):
         Returns:
             bool: If the ``ast.Call`` is instantiating a TensorFlow estimator with legacy mode.
         """
-        return self._is_tf_constructor(node) and self._is_legacy_mode(node)
-
-    def _is_tf_constructor(self, node):
-        """Checks if the ``ast.Call`` node represents a call of the form ``TensorFlow``,
-        ``sagemaker.tensorflow.TensorFlow``, or ``sagemaker.tensorflow.estimator.TensorFlow``.
-        """
-        # Check for TensorFlow()
-        if isinstance(node.func, ast.Name):
-            return node.func.id == "TensorFlow"
-
-        # Check for something.that.ends.with.TensorFlow()
-        if not (isinstance(node.func, ast.Attribute) and node.func.attr == "TensorFlow"):
-            return False
-
-        # Check for sagemaker.tensorflow.estimator.TensorFlow()
-        if isinstance(node.func.value, ast.Attribute) and node.func.value.attr == "estimator":
-            return self._is_in_tensorflow_module(node.func.value)
-
-        # Check for sagemaker.tensorflow.TensorFlow()
-        return self._is_in_tensorflow_module(node.func)
-
-    def _is_in_tensorflow_module(self, node):
-        """Checks if the node is an ``ast.Attribute`` that represents the
-        ``sagemaker.tensorflow`` module.
-        """
-        return (
-            isinstance(node.value, ast.Attribute)
-            and node.value.attr == "tensorflow"
-            and isinstance(node.value.value, ast.Name)
-            and node.value.value.id == "sagemaker"
-        )
+        is_tf_constructor = matching.matches_name_or_namespaces(node, "TensorFlow", TF_NAMESPACES)
+        return is_tf_constructor and self._is_legacy_mode(node)
 
     def _is_legacy_mode(self, node):
         """Checks if the ``ast.Call`` node's keywords signal using legacy mode."""
@@ -140,7 +112,7 @@ class TensorFlowLegacyModeConstructorUpgrader(Modifier):
             if kw.arg == "hyperparameters" and kw.value:
                 base_hps = dict(zip(kw.value.keys, kw.value.values))
                 kw_to_remove.append(kw)
-            if kw.arg in self.LEGACY_MODE_PARAMETERS and kw.value:
+            if kw.arg in LEGACY_MODE_PARAMETERS and kw.value:
                 hp_key = self._hyperparameter_key_for_param(kw.arg)
                 additional_hps[hp_key] = kw.value
                 kw_to_remove.append(kw)

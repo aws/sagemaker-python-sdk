@@ -15,8 +15,7 @@ with version 2.0 and later of the SageMaker Python SDK.
 """
 from __future__ import absolute_import
 
-import ast
-
+from sagemaker.cli.compatibility.v2.modifiers import matching
 from sagemaker.cli.compatibility.v2.modifiers.modifier import Modifier
 
 BASE_PREDICTOR = "RealTimePredictor"
@@ -54,7 +53,7 @@ class PredictorConstructorRefactor(Modifier):
         Returns:
             bool: If the ``ast.Call`` instantiates a class of interest.
         """
-        return any(_matching(node, name, namespaces) for name, namespaces in PREDICTORS.items())
+        return matching.matches_any(node, PREDICTORS)
 
     def modify_node(self, node):
         """Modifies the ``ast.Call`` node to call ``Predictor`` instead.
@@ -68,44 +67,11 @@ class PredictorConstructorRefactor(Modifier):
         _rename_endpoint(node)
 
 
-def _matching(node, name, namespaces):
-    """Determines if the node matches the constructor name in the right namespace"""
-    if _matching_name(node, name):
-        return True
-
-    if not _matching_attr(node, name):
-        return False
-
-    return any(_matching_namespace(node, namespace) for namespace in namespaces)
-
-
-def _matching_name(node, name):
-    """Determines if the node is an ast.Name node with a matching name"""
-    return isinstance(node.func, ast.Name) and node.func.id == name
-
-
-def _matching_attr(node, name):
-    """Determines if the node is an ast.Attribute node with a matching name"""
-    return isinstance(node.func, ast.Attribute) and node.func.attr == name
-
-
-def _matching_namespace(node, namespace):
-    """Determines if the node corresponds to a matching namespace"""
-    names = namespace.split(".")
-    name, value = names.pop(), node.func.value
-    while isinstance(value, ast.Attribute) and len(names) > 0:
-        if value.attr != name:
-            return False
-        name, value = names.pop(), value.value
-
-    return isinstance(value, ast.Name) and value.id == name
-
-
 def _rename_class(node):
     """Renames the RealTimePredictor base class to Predictor"""
-    if _matching_name(node, BASE_PREDICTOR):
+    if matching.matches_name(node, BASE_PREDICTOR):
         node.func.id = "Predictor"
-    elif _matching_attr(node, BASE_PREDICTOR):
+    elif matching.matches_attr(node, BASE_PREDICTOR):
         node.func.attr = "Predictor"
 
 

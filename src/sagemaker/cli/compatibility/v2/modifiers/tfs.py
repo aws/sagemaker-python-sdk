@@ -17,7 +17,11 @@ from __future__ import absolute_import
 
 import ast
 
+from sagemaker.cli.compatibility.v2.modifiers import matching
 from sagemaker.cli.compatibility.v2.modifiers.modifier import Modifier
+
+CLASS_NAMES = ("Model", "Predictor")
+TFS_CLASSES = {name: ("sagemaker.tensorflow.serving",) for name in CLASS_NAMES}
 
 
 class TensorFlowServingConstructorRenamer(Modifier):
@@ -46,17 +50,7 @@ class TensorFlowServingConstructorRenamer(Modifier):
         if isinstance(node.func, ast.Name):
             return node.func.id == "Predictor"
 
-        if not (isinstance(node.func, ast.Attribute) and node.func.attr in ("Model", "Predictor")):
-            return False
-
-        return (
-            isinstance(node.func.value, ast.Attribute)
-            and node.func.value.attr == "serving"
-            and isinstance(node.func.value.value, ast.Attribute)
-            and node.func.value.value.attr == "tensorflow"
-            and isinstance(node.func.value.value.value, ast.Name)
-            and node.func.value.value.value.id == "sagemaker"
-        )
+        return matching.matches_any(node, TFS_CLASSES)
 
     def modify_node(self, node):
         """Modifies the ``ast.Call`` node to use the classes for TensorFlow Serving available in
