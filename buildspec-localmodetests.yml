@@ -11,5 +11,6 @@ phases:
 
       # local mode tests
       - start_time=`date +%s`
-      - execute-command-if-has-matching-changes "tox -e py38 -- tests/integ -m local_mode --durations 50" "tests/integ" "tests/data" "tests/conftest.py" "tests/__init__.py" "src/*.py" "setup.py" "setup.cfg" "buildspec-localmodetests.yml"
+      # - execute-command-if-has-matching-changes "tox -e py38 -- tests/integ -m local_mode --durations 50" "tests/integ" "tests/data" "tests/conftest.py" "tests/__init__.py" "src/*.py" "setup.py" "setup.cfg" "buildspec-localmodetests.yml"
+      - tox -e py36 -- -s tests/integ/test_tfs.py -m local_mode
       - ./ci-scripts/displaytime.sh 'py38 local mode' $start_time
