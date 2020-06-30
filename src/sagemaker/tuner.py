@@ -37,7 +37,7 @@ from sagemaker.parameter import (
 )
 from sagemaker.session import Session
 from sagemaker.session import s3_input
-from sagemaker.utils import base_name_from_image, name_from_base
+from sagemaker.utils import base_from_name, base_name_from_image, name_from_base
 
 AMAZON_ESTIMATOR_MODULE = "sagemaker"
 AMAZON_ESTIMATOR_CLS_NAMES = {
@@ -587,18 +587,21 @@ class HyperparameterTuner(object):
             )
 
         if "TrainingJobDefinition" in job_details:
-            return cls._attach_with_training_details(
-                tuning_job_name, sagemaker_session, estimator_cls, job_details
+            tuner = cls._attach_with_training_details(sagemaker_session, estimator_cls, job_details)
+        else:
+            tuner = cls._attach_with_training_details_list(
+                sagemaker_session, estimator_cls, job_details
             )
 
-        return cls._attach_with_training_details_list(
-            tuning_job_name, sagemaker_session, estimator_cls, job_details
+        tuner.latest_tuning_job = _TuningJob(
+            sagemaker_session=sagemaker_session, job_name=tuning_job_name
         )
+        tuner._current_job_name = tuning_job_name
+
+        return tuner
 
     @classmethod
-    def _attach_with_training_details(
-        cls, tuning_job_name, sagemaker_session, estimator_cls, job_details
-    ):
+    def _attach_with_training_details(cls, sagemaker_session, estimator_cls, job_details):
         """Create a HyperparameterTuner bound to an existing hyperparameter
         tuning job that has the ``TrainingJobDefinition`` field set."""
         estimator = cls._prepare_estimator(
@@ -609,17 +612,10 @@ class HyperparameterTuner(object):
         )
         init_params = cls._prepare_init_params_from_job_description(job_details)
 
-        tuner = cls(estimator=estimator, **init_params)
-        tuner.latest_tuning_job = _TuningJob(
-            sagemaker_session=sagemaker_session, job_name=tuning_job_name
-        )
-
-        return tuner
+        return cls(estimator=estimator, **init_params)
 
     @classmethod
-    def _attach_with_training_details_list(
-        cls, tuning_job_name, sagemaker_session, estimator_cls, job_details
-    ):
+    def _attach_with_training_details_list(cls, sagemaker_session, estimator_cls, job_details):
         """Create a HyperparameterTuner bound to an existing hyperparameter
         tuning job that has the ``TrainingJobDefinitions`` field set."""
         estimator_names = sorted(
@@ -664,18 +660,13 @@ class HyperparameterTuner(object):
 
         init_params = cls._prepare_init_params_from_job_description(job_details)
 
-        tuner = HyperparameterTuner.create(
+        return HyperparameterTuner.create(
             estimator_dict=estimator_dict,
             objective_metric_name_dict=objective_metric_name_dict,
             hyperparameter_ranges_dict=hyperparameter_ranges_dict,
             metric_definitions_dict=metric_definitions_dict,
             **init_params
         )
-        tuner.latest_tuning_job = _TuningJob(
-            sagemaker_session=sagemaker_session, job_name=tuning_job_name
-        )
-
-        return tuner
 
     def deploy(
         self,
@@ -941,6 +932,7 @@ class HyperparameterTuner(object):
                 job_details.get("WarmStartConfig", None)
             ),
             "early_stopping_type": tuning_config["TrainingJobEarlyStoppingType"],
+            "base_tuning_job_name": base_from_name(job_details["HyperParameterTuningJobName"]),
         }
 
         if "HyperParameterTuningJobObjective" in tuning_config:
