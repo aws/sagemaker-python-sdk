@@ -18,6 +18,7 @@ import ast
 from sagemaker.cli.compatibility.v2 import modifiers
 
 FUNCTION_CALL_MODIFIERS = [
+    modifiers.predictors.PredictorConstructorRefactor(),
     modifiers.framework_version.FrameworkVersionEnforcer(),
     modifiers.tf_legacy_mode.TensorFlowLegacyModeConstructorUpgrader(),
     modifiers.tf_legacy_mode.TensorBoardParameterRemover(),
@@ -28,7 +29,10 @@ FUNCTION_CALL_MODIFIERS = [
 
 IMPORT_MODIFIERS = [modifiers.tfs.TensorFlowServingImportRenamer()]
 
-IMPORT_FROM_MODIFIERS = [modifiers.tfs.TensorFlowServingImportFromRenamer()]
+IMPORT_FROM_MODIFIERS = [
+    modifiers.predictors.PredictorImportFromRenamer(),
+    modifiers.tfs.TensorFlowServingImportFromRenamer(),
+]
 
 
 class ASTTransformer(ast.NodeTransformer):

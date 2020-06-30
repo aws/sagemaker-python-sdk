@@ -17,6 +17,7 @@ from sagemaker.cli.compatibility.v2.modifiers import (  # noqa: F401 (imported b
     airflow,
     deprecated_params,
     framework_version,
+    predictors,
     tf_legacy_mode,
     tfs,
 )
