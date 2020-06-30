@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.67.1 (2020-06-30)
+
+### Bug Fixes and Other Changes
+
+ * add deprecation warnings for estimator.delete_endpoint() and tuner.delete_endpoint()
+
 ## v1.67.0 (2020-06-29)
 
 ### Features
