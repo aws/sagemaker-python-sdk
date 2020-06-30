@@ -212,12 +212,12 @@ Distributed Training
 
 To run your training job with multiple instances in a distributed fashion, set ``train_instance_count``
 to a number larger than 1. We support two different types of distributed training, parameter server and Horovod.
-The ``distributions`` parameter is used to configure which distributed training strategy to use.
+The ``distribution`` parameter is used to configure which distributed training strategy to use.
 
 Training with parameter servers
 -------------------------------
 
-If you specify parameter_server as the value of the distributions parameter, the container launches a parameter server
+If you specify parameter_server as the value of the distribution parameter, the container launches a parameter server
 thread on each instance in the training cluster, and then executes your training code. You can find more information on
 TensorFlow distributed training at `TensorFlow docs <https://www.tensorflow.org/deploy/distributed>`__.
 To enable parameter server training:
@@ -229,7 +229,7 @@ To enable parameter server training:
   tf_estimator = TensorFlow(entry_point='tf-train.py', role='SageMakerRole',
                             train_instance_count=2, train_instance_type='ml.p2.xlarge',
                             framework_version='1.11', py_version='py3',
-                            distributions={'parameter_server': {'enabled': True}})
+                            distribution={'parameter_server': {'enabled': True}})
   tf_estimator.fit('s3://bucket/path/to/training/data')
 
 Training with Horovod
@@ -241,7 +241,7 @@ You can find more details at `Horovod README <https://github.com/uber/horovod>`_
 The container sets up the MPI environment and executes the ``mpirun`` command, enabling you to run any Horovod
 training script.
 
-Training with ``MPI`` is configured by specifying following fields in ``distributions``:
+Training with ``MPI`` is configured by specifying following fields in ``distribution``:
 
 - ``enabled (bool)``: If set to ``True``, the MPI setup is performed and ``mpirun`` command is executed.
 - ``processes_per_host (int)``: Number of processes MPI should launch on each host. Note, this should not be
@@ -260,7 +260,7 @@ In the below example we create an estimator to launch Horovod distributed traini
     tf_estimator = TensorFlow(entry_point='tf-train.py', role='SageMakerRole',
                               train_instance_count=1, train_instance_type='ml.p3.8xlarge',
                               framework_version='2.1.0', py_version='py3',
-                              distributions={
+                              distribution={
                                   'mpi': {
                                       'enabled': True,
                                       'processes_per_host': 4,

@@ -45,7 +45,7 @@ REGION = "us-west-2"
 GPU = "ml.p2.xlarge"
 CPU = "ml.c4.xlarge"
 CPU_C5 = "ml.c5.xlarge"
-LAUNCH_PS_DISTRIBUTIONS_DICT = {"parameter_server": {"enabled": True}}
+LAUNCH_PS_DISTRIBUTION_DICT = {"parameter_server": {"enabled": True}}
 
 ENDPOINT_DESC = {"EndpointConfigName": "test-endpoint"}
 
@@ -669,22 +669,6 @@ def test_attach_custom_image(sagemaker_session):
     assert estimator.train_image() == training_image
 
 
-@patch("sagemaker.mxnet.estimator.parameter_v2_rename_warning")
-def test_estimator_script_mode_launch_parameter_server(warning, sagemaker_session):
-    mx = MXNet(
-        entry_point=SCRIPT_PATH,
-        framework_version="1.3.0",
-        py_version="py2",
-        role=ROLE,
-        sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
-        distributions=LAUNCH_PS_DISTRIBUTIONS_DICT,
-    )
-    assert mx.hyperparameters().get(MXNet.LAUNCH_PS_ENV_NAME) == "true"
-    warning.assert_called_with("distributions", "distribution")
-
-
 def test_estimator_script_mode_dont_launch_parameter_server(sagemaker_session):
     mx = MXNet(
         entry_point=SCRIPT_PATH,
@@ -694,7 +678,7 @@ def test_estimator_script_mode_dont_launch_parameter_server(sagemaker_session):
         sagemaker_session=sagemaker_session,
         train_instance_count=INSTANCE_COUNT,
         train_instance_type=INSTANCE_TYPE,
-        distributions={"parameter_server": {"enabled": False}},
+        distribution={"parameter_server": {"enabled": False}},
     )
     assert mx.hyperparameters().get(MXNet.LAUNCH_PS_ENV_NAME) == "false"
 
@@ -709,9 +693,9 @@ def test_estimator_wrong_version_launch_parameter_server(sagemaker_session):
             sagemaker_session=sagemaker_session,
             train_instance_count=INSTANCE_COUNT,
             train_instance_type=INSTANCE_TYPE,
-            distributions=LAUNCH_PS_DISTRIBUTIONS_DICT,
+            distribution=LAUNCH_PS_DISTRIBUTION_DICT,
         )
-    assert "The distributions option is valid for only versions 1.3 and higher" in str(e)
+    assert "The distribution option is valid for only versions 1.3 and higher" in str(e)
 
 
 @patch("sagemaker.mxnet.estimator.python_deprecation_warning")

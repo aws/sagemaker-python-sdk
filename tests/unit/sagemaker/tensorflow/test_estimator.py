@@ -38,7 +38,7 @@ REGION = "us-west-2"
 IMAGE_URI_FORMAT_STRING = (
     "520713654638.dkr.ecr.{}.amazonaws.com/sagemaker-tensorflow-scriptmode:{}-cpu-{}"
 )
-DISTRIBUTION_ENABLED = {"parameter_server": {"enabled": True}}
+DISTRIBUTION_PS_ENABLED = {"parameter_server": {"enabled": True}}
 DISTRIBUTION_MPI_ENABLED = {
     "mpi": {"enabled": True, "custom_mpi_options": "options", "processes_per_host": 2}
 }
@@ -451,7 +451,7 @@ def test_fit_ps(time, strftime, sagemaker_session):
         train_instance_type=INSTANCE_TYPE,
         train_instance_count=1,
         source_dir=DATA_DIR,
-        distributions=DISTRIBUTION_ENABLED,
+        distribution=DISTRIBUTION_PS_ENABLED,
     )
 
     inputs = "s3://mybucket/train"
@@ -481,7 +481,7 @@ def test_fit_mpi(time, strftime, sagemaker_session):
         train_instance_type=INSTANCE_TYPE,
         train_instance_count=1,
         source_dir=DATA_DIR,
-        distributions=DISTRIBUTION_MPI_ENABLED,
+        distribution=DISTRIBUTION_MPI_ENABLED,
     )
 
     inputs = "s3://mybucket/train"

@@ -45,7 +45,7 @@ class TensorFlow(Framework):
         framework_version=None,
         model_dir=None,
         image_name=None,
-        distributions=None,
+        distribution=None,
         **kwargs
     ):
         """Initialize a ``TensorFlow`` estimator.
@@ -81,7 +81,7 @@ class TensorFlow(Framework):
                 If ``framework_version`` or ``py_version`` are ``None``, then
                 ``image_name`` is required. If also ``None``, then a ``ValueError``
                 will be raised.
-            distributions (dict): A dictionary with information on how to run distributed training
+            distribution (dict): A dictionary with information on how to run distributed training
                 (default: None). Currently we support distributed training with parameter servers
                 and MPI.
                 To enable parameter server use the following setup:
@@ -122,11 +122,10 @@ class TensorFlow(Framework):
         self.framework_version = framework_version
         self.py_version = py_version
 
-        if distributions is not None:
-            logger.warning(fw.parameter_v2_rename_warning("distribution", distributions))
+        if distribution is not None:
             train_instance_type = kwargs.get("train_instance_type")
             fw.warn_if_parameter_server_with_multi_gpu(
-                training_instance_type=train_instance_type, distributions=distributions
+                training_instance_type=train_instance_type, distribution=distribution
             )
 
         if "enable_sagemaker_metrics" not in kwargs:
@@ -137,7 +136,7 @@ class TensorFlow(Framework):
         super(TensorFlow, self).__init__(image_name=image_name, **kwargs)
 
         self.model_dir = model_dir
-        self.distributions = distributions or {}
+        self.distribution = distribution or {}
 
         self._validate_args(py_version=py_version)
 
@@ -295,13 +294,13 @@ class TensorFlow(Framework):
         hyperparameters = super(TensorFlow, self).hyperparameters()
         additional_hyperparameters = {}
 
-        if "parameter_server" in self.distributions:
-            ps_enabled = self.distributions["parameter_server"].get("enabled", False)
+        if "parameter_server" in self.distribution:
+            ps_enabled = self.distribution["parameter_server"].get("enabled", False)
             additional_hyperparameters[self.LAUNCH_PS_ENV_NAME] = ps_enabled
 
         mpi_enabled = False
-        if "mpi" in self.distributions:
-            mpi_dict = self.distributions["mpi"]
+        if "mpi" in self.distribution:
+            mpi_dict = self.distribution["mpi"]
             mpi_enabled = mpi_dict.get("enabled", False)
             additional_hyperparameters[self.LAUNCH_MPI_ENV_NAME] = mpi_enabled
 
@@ -338,7 +337,7 @@ class TensorFlow(Framework):
 
         Else, set default HookConfig
         """
-        ps_enabled = "parameter_server" in self.distributions and self.distributions[
+        ps_enabled = "parameter_server" in self.distribution and self.distribution[
             "parameter_server"
         ].get("enabled", False)
         if ps_enabled:

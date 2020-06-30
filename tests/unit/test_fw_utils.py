@@ -1266,20 +1266,20 @@ def test_region_supports_debugger_feature_returns_false_for_unsupported_regions(
 
 def test_warn_if_parameter_server_with_multi_gpu(caplog):
     train_instance_type = "ml.p2.8xlarge"
-    distributions = {"parameter_server": {"enabled": True}}
+    distribution = {"parameter_server": {"enabled": True}}
 
     fw_utils.warn_if_parameter_server_with_multi_gpu(
-        training_instance_type=train_instance_type, distributions=distributions
+        training_instance_type=train_instance_type, distribution=distribution
     )
     assert fw_utils.PARAMETER_SERVER_MULTI_GPU_WARNING in caplog.text
 
 
 def test_warn_if_parameter_server_with_local_multi_gpu(caplog):
     train_instance_type = "local_gpu"
-    distributions = {"parameter_server": {"enabled": True}}
+    distribution = {"parameter_server": {"enabled": True}}
 
     fw_utils.warn_if_parameter_server_with_multi_gpu(
-        training_instance_type=train_instance_type, distributions=distributions
+        training_instance_type=train_instance_type, distribution=distribution
     )
     assert fw_utils.PARAMETER_SERVER_MULTI_GPU_WARNING in caplog.text
 
