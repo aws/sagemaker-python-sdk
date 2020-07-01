@@ -15,7 +15,8 @@ from __future__ import absolute_import
 import pytest
 from mock import Mock, MagicMock, patch
 
-from sagemaker import chainer, estimator, model, mxnet, tensorflow, transformer, tuner
+from sagemaker import chainer, estimator, model, mxnet, tensorflow, transformer, tuner, processing
+from sagemaker.processing import ProcessingInput, ProcessingOutput
 from sagemaker.workflow import airflow
 from sagemaker.amazon import amazon_estimator
 from sagemaker.amazon import knn, linear_learner, ntm, pca
@@ -1591,4 +1592,112 @@ def test_deploy_config_from_amazon_alg_estimator(sagemaker_session):
         },
     }
 
+    assert config == expected_config
+
+
+@patch("sagemaker.utils.sagemaker_timestamp", MagicMock(return_value=TIME_STAMP))
+def test_processing_config(sagemaker_session):
+
+    processor = processing.Processor(
+        role="arn:aws:iam::0122345678910:role/SageMakerPowerUser",
+        image_uri="{{ image_uri }}",
+        instance_count=2,
+        instance_type="ml.p2.xlarge",
+        entrypoint="{{ entrypoint }}",
+        volume_size_in_gb=30,
+        volume_kms_key="{{ kms_key }}",
+        output_kms_key="{{ kms_key }}",
+        max_runtime_in_seconds=3600,
+        base_job_name="processing_base_job_name",
+        sagemaker_session=sagemaker_session,
+        tags=[{"{{ key }}": "{{ value }}"}],
+        env={"{{ key }}": "{{ value }}"},
+    )
+
+    outputs = [
+        ProcessingOutput(
+            output_name="AnalyticsOutputName",
+            source="{{ Local Path }}",
+            destination="{{ S3Uri }}",
+            s3_upload_mode="EndOfJob",
+        )
+    ]
+    inputs = [
+        ProcessingInput(
+            input_name="AnalyticsInputName",
+            source="{{ S3Uri }}",
+            destination="{{ Local Path }}",
+            s3_data_type="S3Prefix",
+            s3_input_mode="File",
+            s3_data_distribution_type="FullyReplicated",
+            s3_compression_type="None",
+        )
+    ]
+
+    experiment_config = {}
+    experiment_config["ExperimentName"] = "ExperimentName"
+    experiment_config["TrialName"] = "TrialName"
+    experiment_config["TrialComponentDisplayName"] = "TrialComponentDisplayName"
+
+    config = airflow.processing_config(
+        processor,
+        inputs=inputs,
+        outputs=outputs,
+        job_name="ProcessingJobName",
+        container_arguments=["container_arg"],
+        container_entrypoint=["container_entrypoint"],
+        kms_key_id="KmsKeyID",
+        experiment_config=experiment_config,
+    )
+    expected_config = {
+        "AppSpecification": {
+            "ContainerArguments": ["container_arg"],
+            "ContainerEntrypoint": ["container_entrypoint"],
+            "ImageUri": "{{ image_uri }}",
+        },
+        "Environment": {"{{ key }}": "{{ value }}"},
+        "ExperimentConfig": {
+            "ExperimentName": "ExperimentName",
+            "TrialComponentDisplayName": "TrialComponentDisplayName",
+            "TrialName": "TrialName",
+        },
+        "ProcessingInputs": [
+            {
+                "InputName": "AnalyticsInputName",
+                "S3Input": {
+                    "LocalPath": "{{ Local Path }}",
+                    "S3CompressionType": "None",
+                    "S3DataDistributionType": "FullyReplicated",
+                    "S3DataType": "S3Prefix",
+                    "S3InputMode": "File",
+                    "S3Uri": "{{ S3Uri }}",
+                },
+            }
+        ],
+        "ProcessingJobName": "ProcessingJobName",
+        "ProcessingOutputConfig": {
+            "KmsKeyId": "KmsKeyID",
+            "Outputs": [
+                {
+                    "OutputName": "AnalyticsOutputName",
+                    "S3Output": {
+                        "LocalPath": "{{ Local Path }}",
+                        "S3UploadMode": "EndOfJob",
+                        "S3Uri": "{{ S3Uri }}",
+                    },
+                }
+            ],
+        },
+        "ProcessingResources": {
+            "ClusterConfig": {
+                "InstanceCount": 2,
+                "InstanceType": "ml.p2.xlarge",
+                "VolumeSizeInGB": 30,
+                "VolumeKmsKeyId": "{{ kms_key }}",
+            }
+        },
+        "RoleArn": "arn:aws:iam::0122345678910:role/SageMakerPowerUser",
+        "StoppingCondition": {"MaxRuntimeInSeconds": 3600},
+        "Tags": [{"{{ key }}": "{{ value }}"}],
+    }
     assert config == expected_config

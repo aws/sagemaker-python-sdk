@@ -672,6 +672,25 @@ def test_delete_endpoint_without_endpoint(sagemaker_session):
     assert "Endpoint was not created yet" in str(error)
 
 
+def test_delete_endpoint_deprecation_warning(sagemaker_session, caplog):
+    fw = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role="DummyRole",
+        sagemaker_session=sagemaker_session,
+        train_instance_count=INSTANCE_COUNT,
+        train_instance_type=INSTANCE_TYPE,
+    )
+    fw.latest_training_job = Mock(name="job")
+
+    fw.delete_endpoint()
+
+    expected_warning = (
+        "estimator.delete_endpoint() will be deprecated in SageMaker Python SDK v2. "
+        "Please use the delete_endpoint() function on your predictor instead."
+    )
+    assert expected_warning in caplog.text
+
+
 def test_enable_cloudwatch_metrics(sagemaker_session):
     fw = DummyFramework(
         entry_point=SCRIPT_PATH,

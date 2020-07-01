@@ -911,6 +911,17 @@ def test_delete_endpoint(tuner):
     tuner.sagemaker_session.delete_endpoint.assert_called_with(JOB_NAME)
 
 
+def test_delete_endpoint_deprecation_warning(tuner, caplog):
+    tuner.best_training_job = Mock()
+    tuner.delete_endpoint()
+
+    expected_warning = (
+        "HyperparameterTuner.delete_endpoint() will be deprecated in SageMaker Python SDK v2. "
+        "Please use the delete_endpoint() function on your predictor instead."
+    )
+    assert expected_warning in caplog.text
+
+
 def test_fit_no_inputs(tuner, sagemaker_session):
     script_path = os.path.join(DATA_DIR, "mxnet_mnist", "failure_script.py")
     tuner.estimator = MXNet(

@@ -826,6 +826,11 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         Raises:
             botocore.exceptions.ClientError: If the endpoint does not exist.
         """
+        logging.warning(
+            "estimator.delete_endpoint() will be deprecated in SageMaker Python SDK v2. "
+            "Please use the delete_endpoint() function on your predictor instead."
+        )
+
         self._ensure_latest_training_job(error_message="Endpoint was not created yet")
         self.sagemaker_session.delete_endpoint(self.latest_training_job.name)
 
@@ -1528,11 +1533,16 @@ class Framework(EstimatorBase):
                 copied to SageMaker in the same folder where the entrypoint is
                 copied. If 'git_config' is provided, 'dependencies' should be a
                 list of relative locations to directories with any additional
-                libraries needed in the Git repo. .. admonition:: Example
+                libraries needed in the Git repo.
 
-                    The following call >>> Estimator(entry_point='train.py',
-                    dependencies=['my/libs/common', 'virtual-env']) results in
-                    the following inside the container:
+                .. admonition:: Example
+
+                    The following call
+
+                    >>> Estimator(entry_point='train.py',
+                    ...           dependencies=['my/libs/common', 'virtual-env'])
+
+                    results in the following inside the container:
 
                     >>> $ ls
 
@@ -1541,6 +1551,7 @@ class Framework(EstimatorBase):
                     >>>     |------ common
                     >>>     |------ virtual-env
 
+                This is not supported with "local code" in Local Mode.
             enable_network_isolation (bool): Specifies whether container will
                 run in network isolation mode. Network isolation mode restricts
                 the container access to outside networks (such as the internet).
