@@ -178,6 +178,7 @@ def test_inference_pipeline_model_deploy_and_update_endpoint(
         model = PipelineModel(
             models=[sparkml_model, xgb_model],
             role="SageMakerRole",
+            predictor_cls=Predictor,
             sagemaker_session=sagemaker_session,
         )
         predictor = model.deploy(1, alternative_cpu_instance_type, endpoint_name=endpoint_name)
