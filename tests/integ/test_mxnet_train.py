@@ -247,43 +247,6 @@ def test_deploy_model_and_update_endpoint(
         assert new_config["ProductionVariants"][0]["InitialInstanceCount"] == 1
 
 
-def test_deploy_model_with_update_non_existing_endpoint(
-    mxnet_training_job,
-    sagemaker_session,
-    mxnet_full_version,
-    mxnet_full_py_version,
-    cpu_instance_type,
-    alternative_cpu_instance_type,
-):
-    endpoint_name = "test-mxnet-deploy-model-{}".format(sagemaker_timestamp())
-    expected_error_message = (
-        'Endpoint with name "{}" does not exist; '
-        "please use an existing endpoint name".format(endpoint_name)
-    )
-
-    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
-        desc = sagemaker_session.sagemaker_client.describe_training_job(
-            TrainingJobName=mxnet_training_job
-        )
-        model_data = desc["ModelArtifacts"]["S3ModelArtifacts"]
-        script_path = os.path.join(DATA_DIR, "mxnet_mnist", "mnist.py")
-        model = MXNetModel(
-            model_data,
-            "SageMakerRole",
-            entry_point=script_path,
-            py_version=mxnet_full_py_version,
-            sagemaker_session=sagemaker_session,
-            framework_version=mxnet_full_version,
-        )
-        model.deploy(1, alternative_cpu_instance_type, endpoint_name=endpoint_name)
-        sagemaker_session.sagemaker_client.describe_endpoint(EndpointName=endpoint_name)
-
-        with pytest.raises(ValueError, message=expected_error_message):
-            model.deploy(
-                1, cpu_instance_type, update_endpoint=True, endpoint_name="non-existing-endpoint"
-            )
-
-
 @pytest.mark.canary_quick
 @pytest.mark.regional_testing
 @pytest.mark.skipif(

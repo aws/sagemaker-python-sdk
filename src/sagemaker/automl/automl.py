@@ -343,7 +343,6 @@ class AutoML(object):
         endpoint_name=None,
         tags=None,
         wait=True,
-        update_endpoint=False,
         vpc_config=None,
         enable_network_isolation=False,
         model_kms_key=None,
@@ -372,11 +371,6 @@ class AutoML(object):
                 specific endpoint.
             wait (bool): Whether the call should wait until the deployment of
                 model completes (default: True).
-            update_endpoint (bool): Flag to update the model in an existing
-                Amazon SageMaker endpoint. If True, this will deploy a new
-                EndpointConfig to an already existing endpoint and delete
-                resources corresponding to the previous EndpointConfig. If
-                False, a new endpoint will be created. Default: False
             vpc_config (dict): Specifies a VPC that your training jobs and hosted models have
                 access to. Contents include "SecurityGroupIds" and "Subnets".
             enable_network_isolation (bool): Isolates the training container. No inbound or
@@ -414,7 +408,6 @@ class AutoML(object):
             endpoint_name=endpoint_name,
             tags=tags,
             wait=wait,
-            update_endpoint=update_endpoint,
         )
 
     def _check_problem_type_and_job_objective(self, problem_type, job_objective):
