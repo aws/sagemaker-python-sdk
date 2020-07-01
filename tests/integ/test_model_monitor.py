@@ -1509,7 +1509,7 @@ def test_default_monitor_monitoring_execution_interactions(
     desired_s3_uri = os.path.join(executions[-1].output.destination, file_name)
 
     S3Uploader.upload_string_as_file_body(
-        body=file_body, desired_s3_uri=desired_s3_uri, session=sagemaker_session
+        body=file_body, desired_s3_uri=desired_s3_uri, sagemaker_session=sagemaker_session
     )
 
     statistics = my_attached_monitor.latest_monitoring_statistics()
@@ -1522,7 +1522,7 @@ def test_default_monitor_monitoring_execution_interactions(
     desired_s3_uri = os.path.join(executions[-1].output.destination, file_name)
 
     S3Uploader.upload_string_as_file_body(
-        body=file_body, desired_s3_uri=desired_s3_uri, session=sagemaker_session
+        body=file_body, desired_s3_uri=desired_s3_uri, sagemaker_session=sagemaker_session
     )
 
     constraint_violations = my_attached_monitor.latest_monitoring_constraint_violations()
@@ -2473,7 +2473,7 @@ def test_byoc_monitor_monitoring_execution_interactions(
     desired_s3_uri = os.path.join(executions[-1].output.destination, file_name)
 
     S3Uploader.upload_string_as_file_body(
-        body=file_body, desired_s3_uri=desired_s3_uri, session=sagemaker_session
+        body=file_body, desired_s3_uri=desired_s3_uri, sagemaker_session=sagemaker_session
     )
 
     statistics = my_attached_monitor.latest_monitoring_statistics()
@@ -2486,7 +2486,7 @@ def test_byoc_monitor_monitoring_execution_interactions(
     desired_s3_uri = os.path.join(executions[-1].output.destination, file_name)
 
     S3Uploader.upload_string_as_file_body(
-        body=file_body, desired_s3_uri=desired_s3_uri, session=sagemaker_session
+        body=file_body, desired_s3_uri=desired_s3_uri, sagemaker_session=sagemaker_session
     )
 
     constraint_violations = my_attached_monitor.latest_monitoring_constraint_violations()
@@ -2557,10 +2557,10 @@ def _upload_captured_data_to_endpoint(sagemaker_session, predictor):
     S3Uploader.upload(
         local_path=os.path.join(DATA_DIR, "monitor/captured-data.jsonl"),
         desired_s3_uri=s3_uri_previous_hour,
-        session=sagemaker_session,
+        sagemaker_session=sagemaker_session,
     )
     S3Uploader.upload(
         local_path=os.path.join(DATA_DIR, "monitor/captured-data.jsonl"),
         desired_s3_uri=s3_uri_current_hour,
-        session=sagemaker_session,
+        sagemaker_session=sagemaker_session,
     )

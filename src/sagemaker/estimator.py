@@ -404,7 +404,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                         s3_uri = S3Uploader.upload(
                             local_path=rule.rule_parameters["source_s3_uri"],
                             desired_s3_uri=desired_s3_uri,
-                            session=self.sagemaker_session,
+                            sagemaker_session=self.sagemaker_session,
                         )
                         rule.rule_parameters["source_s3_uri"] = s3_uri
                 # Save the request dictionary for the rule.
