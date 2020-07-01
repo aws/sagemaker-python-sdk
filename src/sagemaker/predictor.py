@@ -172,22 +172,22 @@ class Predictor(object):
 
         This creates a new EndpointConfig in the process. If ``initial_instance_count``,
         ``instance_type``, ``accelerator_type``, or ``model_name`` is specified, then a new
-        ``ProductionVariant`` configuration is created; values from the existing configuration
+        ProductionVariant configuration is created; values from the existing configuration
         are not preserved if any of those parameters are specified.
 
         Args:
             initial_instance_count (int): The initial number of instances to run in the endpoint.
                 This is required if ``instance_type``, ``accelerator_type``, or ``model_name`` is
                 specified. Otherwise, the values from the existing endpoint configuration's
-                ``ProductionVariant``s are used.
+                ProductionVariants are used.
             instance_type (str): The EC2 instance type to deploy the endpoint to.
                 This is required if ``initial_instance_count`` or ``accelerator_type`` is specified.
                 Otherwise, the values from the existing endpoint configuration's
-                ``ProductionVariant``s are used.
+                ``ProductionVariants`` are used.
             accelerator_type (str): The type of Elastic Inference accelerator to attach to
-                the endpoint, e.g. 'ml.eia1.medium'. If not specified, and
+                the endpoint, e.g. "ml.eia1.medium". If not specified, and
                 ``initial_instance_count``, ``instance_type``, and ``model_name`` are also ``None``,
-                the values from the existing endpoint configuration's ``ProductionVariant``s are
+                the values from the existing endpoint configuration's ``ProductionVariants`` are
                 used. Otherwise, no Elastic Inference accelerator is attached to the endpoint.
             model_name (str): The name of the model to be associated with the endpoint.
                 This is required if ``initial_instance_count``, ``instance_type``, or
