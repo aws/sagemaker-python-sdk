@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.67.1.post0 (2020-07-01)
+
+### Documentation Changes
+
+ * add Step Functions SDK info
+
 ## v1.67.1 (2020-06-30)
 
 ### Bug Fixes and Other Changes
