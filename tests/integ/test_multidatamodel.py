@@ -346,7 +346,7 @@ def _mxnet_training_job(
 
         # Replace the container image value for now since the frameworks do not support
         # multi-model container image yet.
-        return mx.create_model(image_name=container_image)
+        return mx.create_model(image_uri=container_image)
 
 
 def test_multi_data_model_deploy_train_model_from_amazon_first_party_estimator(

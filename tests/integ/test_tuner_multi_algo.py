@@ -68,7 +68,7 @@ def estimator_fm(sagemaker_session, cpu_instance_type):
     )
 
     estimator = Estimator(
-        image_name=fm_image,
+        image_uri=fm_image,
         role=EXECUTION_ROLE,
         train_instance_count=1,
         train_instance_type=cpu_instance_type,
@@ -87,7 +87,7 @@ def estimator_knn(sagemaker_session, cpu_instance_type):
     knn_image = get_image_uri(sagemaker_session.boto_session.region_name, "knn", repo_version="1")
 
     estimator = Estimator(
-        image_name=knn_image,
+        image_uri=knn_image,
         role=EXECUTION_ROLE,
         train_instance_count=1,
         train_instance_type=cpu_instance_type,

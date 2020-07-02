@@ -46,7 +46,7 @@ def sagemaker_session():
 @patch("sagemaker.utils.sagemaker_timestamp", MagicMock(return_value=TIME_STAMP))
 def test_byo_training_config_required_args(sagemaker_session):
     byo = estimator.Estimator(
-        image_name="byo",
+        image_uri="byo",
         role="{{ role }}",
         train_instance_count="{{ instance_count }}",
         train_instance_type="ml.c4.2xlarge",
@@ -89,7 +89,7 @@ def test_byo_training_config_required_args(sagemaker_session):
 @patch("sagemaker.utils.sagemaker_timestamp", MagicMock(return_value=TIME_STAMP))
 def test_byo_training_config_all_args(sagemaker_session):
     byo = estimator.Estimator(
-        image_name="byo",
+        image_uri="byo",
         role="{{ role }}",
         train_instance_count="{{ instance_count }}",
         train_instance_type="ml.c4.2xlarge",
