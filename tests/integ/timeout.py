@@ -20,7 +20,7 @@ from awslogs.core import AWSLogs
 from botocore.exceptions import ClientError
 import stopit
 
-from sagemaker import RealTimePredictor
+from sagemaker import Predictor
 from tests.integ.retry import retries
 
 LOGGER = logging.getLogger("timeout")
@@ -129,7 +129,7 @@ def _delete_schedules_associated_with_endpoint(sagemaker_session, endpoint_name)
         endpoint_name (str): The name of the endpoint to delete schedules from.
 
     """
-    predictor = RealTimePredictor(endpoint=endpoint_name, sagemaker_session=sagemaker_session)
+    predictor = Predictor(endpoint_name=endpoint_name, sagemaker_session=sagemaker_session)
     monitors = predictor.list_monitors()
     for monitor in monitors:
         try:

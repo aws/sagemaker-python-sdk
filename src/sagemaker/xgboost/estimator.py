@@ -73,8 +73,7 @@ class XGBoost(Framework):
                 be executed as the entry point to training.  If ``source_dir`` is specified,
                 then ``entry_point`` must point to a file located at the root of ``source_dir``.
             framework_version (str): XGBoost version you want to use for executing your model
-                training code.  List of supported versions
-                https://github.com/aws/sagemaker-python-sdk#xgboost-sagemaker-estimators
+                training code.
             source_dir (str): Path (absolute, relative or an S3 URI) to a directory
                 with any other training source code dependencies aside from the entry
                 point file (default: None). If ``source_dir`` is an S3 URI, it must
@@ -85,7 +84,7 @@ class XGBoost(Framework):
                 on SageMaker. For convenience, this accepts other types for keys and values, but
                 ``str()`` will be called to convert them before training.
             py_version (str): Python version you want to use for executing your model
-                training code (default: 'py3'). One of 'py2' or 'py3'.
+                training code (default: 'py3').
             image_name (str): If specified, the estimator will use this image for training and
                 hosting, instead of selecting the appropriate SageMaker official image
                 based on framework_version and py_version. It can be an ECR url or
@@ -156,6 +155,7 @@ class XGBoost(Framework):
             dependencies (list[str]): A list of paths to directories (absolute or relative) with
                 any additional libraries that will be exported to the container.
                 If not specified, the dependencies from training are used.
+                This is not supported with "local code" in Local Mode.
             **kwargs: Additional kwargs passed to the :class:`~sagemaker.xgboost.model.XGBoostModel`
                 constructor.
 
@@ -164,12 +164,10 @@ class XGBoost(Framework):
                 See :func:`~sagemaker.xgboost.model.XGBoostModel` for full details.
         """
         role = role or self.role
+        kwargs["name"] = self._get_or_create_name(kwargs.get("name"))
 
         if "image" not in kwargs:
             kwargs["image"] = self.image_name
-
-        if "name" not in kwargs:
-            kwargs["name"] = self._current_job_name
 
         return XGBoostModel(
             self.model_data,
@@ -238,7 +236,7 @@ class XGBoost(Framework):
 
         estimator = cls(sagemaker_session=sagemaker_session, **init_params)
         estimator.latest_training_job = _TrainingJob(
-            sagemaker_session=sagemaker_session, job_name=init_params["base_job_name"]
+            sagemaker_session=sagemaker_session, job_name=training_job_name
         )
         estimator._current_job_name = estimator.latest_training_job.name
         estimator.latest_training_job.wait()
@@ -268,10 +266,9 @@ class XGBoost(Framework):
         init_params["py_version"] = py_version
 
         if framework and framework != cls.__framework_name__:
-            training_job_name = init_params["base_job_name"]
             raise ValueError(
                 "Training job: {} didn't use image for requested framework".format(
-                    training_job_name
+                    job_details["TrainingJobName"]
                 )
             )
         init_params["framework_version"] = framework_version_from_tag(tag)

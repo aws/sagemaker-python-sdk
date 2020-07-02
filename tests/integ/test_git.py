@@ -21,13 +21,11 @@ import tempfile
 
 from tests.integ import lock as lock
 from sagemaker.mxnet.estimator import MXNet
-from sagemaker.pytorch.defaults import PYTORCH_VERSION
 from sagemaker.pytorch.estimator import PyTorch
 from sagemaker.sklearn.estimator import SKLearn
 from sagemaker.sklearn.model import SKLearnModel
-from tests.integ import DATA_DIR, PYTHON_VERSION
+from tests.integ import DATA_DIR
 
-MNIST_FOLDER_NAME = "MNIST"
 
 GIT_REPO = "https://github.com/aws/sagemaker-python-sdk.git"
 BRANCH = "test-branch-git-config"
@@ -52,37 +50,38 @@ LOCK_PATH = os.path.join(tempfile.gettempdir(), "sagemaker_test_git_lock")
 
 
 @pytest.mark.local_mode
-def test_github(sagemaker_local_session):
+def test_github(sagemaker_local_session, pytorch_full_version, pytorch_full_py_version):
     script_path = "mnist.py"
-    data_path = os.path.join(DATA_DIR, "pytorch_mnist")
     git_config = {"repo": GIT_REPO, "branch": BRANCH, "commit": COMMIT}
+
     pytorch = PyTorch(
         entry_point=script_path,
         role="SageMakerRole",
         source_dir="pytorch",
-        framework_version=PYTORCH_VERSION,
-        py_version=PYTHON_VERSION,
+        framework_version=pytorch_full_version,
+        py_version=pytorch_full_py_version,
         train_instance_count=1,
         train_instance_type="local",
         sagemaker_session=sagemaker_local_session,
         git_config=git_config,
     )
 
-    pytorch.fit({"training": "file://" + os.path.join(data_path, "training", MNIST_FOLDER_NAME)})
+    data_path = os.path.join(DATA_DIR, "pytorch_mnist")
+    pytorch.fit({"training": "file://" + os.path.join(data_path, "training")})
 
     with lock.lock(LOCK_PATH):
         try:
             predictor = pytorch.deploy(initial_instance_count=1, instance_type="local")
             data = numpy.zeros(shape=(1, 1, 28, 28)).astype(numpy.float32)
             result = predictor.predict(data)
-            assert result is not None
+            assert 10 == len(result[0])  # check that there is a probability for each label
         finally:
             predictor.delete_endpoint()
 
 
 @pytest.mark.local_mode
 @pytest.mark.skip("needs a secure authentication approach")
-def test_private_github(sagemaker_local_session):
+def test_private_github(sagemaker_local_session, mxnet_full_version, mxnet_full_py_version):
     script_path = "mnist.py"
     data_path = os.path.join(DATA_DIR, "mxnet_mnist")
     git_config = {
@@ -100,8 +99,8 @@ def test_private_github(sagemaker_local_session):
         role="SageMakerRole",
         source_dir=source_dir,
         dependencies=dependencies,
-        framework_version=MXNet.LATEST_VERSION,
-        py_version=PYTHON_VERSION,
+        framework_version=mxnet_full_version,
+        py_version=mxnet_full_py_version,
         train_instance_count=1,
         train_instance_type="local",
         sagemaker_session=sagemaker_local_session,
@@ -134,7 +133,9 @@ def test_private_github(sagemaker_local_session):
 
 @pytest.mark.local_mode
 @pytest.mark.skip("needs a secure authentication approach")
-def test_private_github_with_2fa(sagemaker_local_session, sklearn_full_version):
+def test_private_github_with_2fa(
+    sagemaker_local_session, sklearn_full_version, sklearn_full_py_version
+):
     script_path = "mnist.py"
     data_path = os.path.join(DATA_DIR, "sklearn_mnist")
     git_config = {
@@ -150,7 +151,7 @@ def test_private_github_with_2fa(sagemaker_local_session, sklearn_full_version):
         entry_point=script_path,
         role="SageMakerRole",
         source_dir=source_dir,
-        py_version="py3",  # Scikit-learn supports only Python 3
+        py_version=sklearn_full_py_version,
         train_instance_count=1,
         train_instance_type="local",
         sagemaker_session=sagemaker_local_session,
@@ -173,6 +174,7 @@ def test_private_github_with_2fa(sagemaker_local_session, sklearn_full_version):
                 model_data,
                 "SageMakerRole",
                 entry_point=script_path,
+                framework_version=sklearn_full_version,
                 source_dir=source_dir,
                 sagemaker_session=sagemaker_local_session,
                 git_config=git_config,
@@ -187,7 +189,9 @@ def test_private_github_with_2fa(sagemaker_local_session, sklearn_full_version):
 
 
 @pytest.mark.local_mode
-def test_github_with_ssh_passphrase_not_configured(sagemaker_local_session, sklearn_full_version):
+def test_github_with_ssh_passphrase_not_configured(
+    sagemaker_local_session, sklearn_full_version, sklearn_full_py_version
+):
     script_path = "mnist.py"
     data_path = os.path.join(DATA_DIR, "sklearn_mnist")
     git_config = {
@@ -201,11 +205,11 @@ def test_github_with_ssh_passphrase_not_configured(sagemaker_local_session, skle
         entry_point=script_path,
         role="SageMakerRole",
         source_dir=source_dir,
-        py_version="py3",  # Scikit-learn supports only Python 3
         train_instance_count=1,
         train_instance_type="local",
         sagemaker_session=sagemaker_local_session,
         framework_version=sklearn_full_version,
+        py_version=sklearn_full_py_version,
         hyperparameters={"epochs": 1},
         git_config=git_config,
     )
@@ -219,7 +223,7 @@ def test_github_with_ssh_passphrase_not_configured(sagemaker_local_session, skle
 
 @pytest.mark.local_mode
 @pytest.mark.skip("needs a secure authentication approach")
-def test_codecommit(sagemaker_local_session):
+def test_codecommit(sagemaker_local_session, mxnet_full_version, mxnet_full_py_version):
     script_path = "mnist.py"
     data_path = os.path.join(DATA_DIR, "mxnet_mnist")
     git_config = {
@@ -235,8 +239,8 @@ def test_codecommit(sagemaker_local_session):
         role="SageMakerRole",
         source_dir=source_dir,
         dependencies=dependencies,
-        framework_version=MXNet.LATEST_VERSION,
-        py_version=PYTHON_VERSION,
+        framework_version=mxnet_full_version,
+        py_version=mxnet_full_py_version,
         train_instance_count=1,
         train_instance_type="local",
         sagemaker_session=sagemaker_local_session,

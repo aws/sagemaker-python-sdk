@@ -17,10 +17,11 @@ import enum
 import logging
 import re
 
+from sagemaker import fw_utils
 from sagemaker.estimator import Framework
-import sagemaker.fw_utils as fw_utils
 from sagemaker.model import FrameworkModel, SAGEMAKER_OUTPUT_LOCATION
 from sagemaker.mxnet.model import MXNetModel
+from sagemaker.tensorflow.model import TensorFlowModel
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
 logger = logging.getLogger("sagemaker")
@@ -90,7 +91,7 @@ class RLEstimator(Framework):
         :meth:`~sagemaker.amazon.estimator.Framework.deploy` creates a hosted
         SageMaker endpoint and based on the specified framework returns an
         :class:`~sagemaker.amazon.mxnet.model.MXNetPredictor` or
-        :class:`~sagemaker.amazon.tensorflow.serving.Predictor` instance that
+        :class:`~sagemaker.amazon.tensorflow.model.TensorFlowPredictor` instance that
         can be used to perform inference against the hosted model.
 
         Technical documentation on preparing RLEstimator scripts for
@@ -199,6 +200,7 @@ class RLEstimator(Framework):
                 folders will be copied to SageMaker in the same folder where the
                 entry_point is copied. If the ```source_dir``` points to S3,
                 code will be uploaded and the S3 location will be used instead.
+                This is not supported with "local code" in Local Mode.
             **kwargs: Additional kwargs passed to the :class:`~sagemaker.model.FrameworkModel`
                 constructor.
 
@@ -206,25 +208,26 @@ class RLEstimator(Framework):
             sagemaker.model.FrameworkModel: Depending on input parameters returns
                 one of the following:
 
-                * :class:`~sagemaker.model.FrameworkModel` - if ``image_name`` was specified
+                * :class:`~sagemaker.model.FrameworkModel` - if ``image_name`` is specified
                     on the estimator;
-                * :class:`~sagemaker.mxnet.MXNetModel` - if ``image_name`` wasn't specified and
-                    MXNet was used as the RL backend;
-                * :class:`~sagemaker.tensorflow.serving.Model` - if ``image_name`` wasn't specified
-                    and TensorFlow was used as the RL backend.
+                * :class:`~sagemaker.mxnet.MXNetModel` - if ``image_name`` isn't specified and
+                    MXNet is used as the RL backend;
+                * :class:`~sagemaker.tensorflow.model.TensorFlowModel` - if ``image_name`` isn't
+                    specified and TensorFlow is used as the RL backend.
 
         Raises:
-            ValueError: If image_name was not specified and framework enum is not valid.
+            ValueError: If image_name is not specified and framework enum is not valid.
         """
         base_args = dict(
             model_data=self.model_data,
             role=role or self.role,
             image=kwargs.get("image", self.image_name),
-            name=kwargs.get("name", self._current_job_name),
             container_log_level=self.container_log_level,
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
         )
+
+        base_args["name"] = self._get_or_create_name(kwargs.get("name"))
 
         if not entry_point and (source_dir or dependencies):
             raise AttributeError("Please provide an `entry_point`.")
@@ -253,9 +256,7 @@ class RLEstimator(Framework):
             )
 
         if self.framework == RLFramework.TENSORFLOW.value:
-            from sagemaker.tensorflow.serving import Model as tfsModel
-
-            return tfsModel(framework_version=self.framework_version, **base_args)
+            return TensorFlowModel(framework_version=self.framework_version, **base_args)
         if self.framework == RLFramework.MXNET.value:
             return MXNetModel(
                 framework_version=self.framework_version, py_version=PYTHON_VERSION, **extended_args
@@ -314,10 +315,9 @@ class RLEstimator(Framework):
         toolkit, toolkit_version = cls._toolkit_and_version_from_tag(tag)
 
         if not cls._is_combination_supported(toolkit, toolkit_version, framework):
-            training_job_name = init_params["base_job_name"]
             raise ValueError(
                 "Training job: {} didn't use image for requested framework".format(
-                    training_job_name
+                    job_details["TrainingJobName"]
                 )
             )
 
@@ -362,10 +362,10 @@ class RLEstimator(Framework):
         Args:
             framework:
         """
-        if framework and framework not in RLFramework:
+        if framework and framework not in list(RLFramework):
             raise ValueError(
-                "Invalid type: {}, valid RL frameworks types are: [{}]".format(
-                    framework, [t for t in RLFramework]
+                "Invalid type: {}, valid RL frameworks types are: {}".format(
+                    framework, list(RLFramework)
                 )
             )
 
@@ -375,11 +375,9 @@ class RLEstimator(Framework):
         Args:
             toolkit:
         """
-        if toolkit and toolkit not in RLToolkit:
+        if toolkit and toolkit not in list(RLToolkit):
             raise ValueError(
-                "Invalid type: {}, valid RL toolkits types are: [{}]".format(
-                    toolkit, [t for t in RLToolkit]
-                )
+                "Invalid type: {}, valid RL toolkits types are: {}".format(toolkit, list(RLToolkit))
             )
 
     @classmethod

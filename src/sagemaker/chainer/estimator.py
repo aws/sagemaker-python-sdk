@@ -19,8 +19,8 @@ from sagemaker.estimator import Framework
 from sagemaker.fw_utils import (
     framework_name_from_image,
     framework_version_from_tag,
-    empty_framework_version_warning,
     python_deprecation_warning,
+    validate_version_or_image_args,
 )
 from sagemaker.chainer import defaults
 from sagemaker.chainer.model import ChainerModel
@@ -40,8 +40,6 @@ class Chainer(Framework):
     _process_slots_per_host = "sagemaker_process_slots_per_host"
     _additional_mpi_options = "sagemaker_additional_mpi_options"
 
-    LATEST_VERSION = defaults.LATEST_VERSION
-
     def __init__(
         self,
         entry_point,
@@ -51,8 +49,8 @@ class Chainer(Framework):
         additional_mpi_options=None,
         source_dir=None,
         hyperparameters=None,
-        py_version="py3",
         framework_version=None,
+        py_version=None,
         image_name=None,
         **kwargs
     ):
@@ -103,11 +101,12 @@ class Chainer(Framework):
                 and values, but ``str()`` will be called to convert them before
                 training.
             py_version (str): Python version you want to use for executing your
-                model training code (default: 'py2'). One of 'py2' or 'py3'.
+                model training code. Defaults to ``None``. Required unless ``image_name``
+                is provided.
             framework_version (str): Chainer version you want to use for
-                executing your model training code. List of supported versions
+                executing your model training code. Defaults to ``None``. Required unless
+                ``image_name`` is provided. List of supported versions:
                 https://github.com/aws/sagemaker-python-sdk#chainer-sagemaker-estimators.
-                If not specified, this will default to 4.1.
             image_name (str): If specified, the estimator will use this image
                 for training and hosting, instead of selecting the appropriate
                 SageMaker official image based on framework_version and
@@ -117,6 +116,9 @@ class Chainer(Framework):
                     * ``123412341234.dkr.ecr.us-west-2.amazonaws.com/my-custom-image:1.0``
                     * ``custom-image:latest``
 
+                If ``framework_version`` or ``py_version`` are ``None``, then
+                ``image_name`` is required. If also ``None``, then a ``ValueError``
+                will be raised.
             **kwargs: Additional kwargs passed to the
                 :class:`~sagemaker.estimator.Framework` constructor.
 
@@ -126,22 +128,18 @@ class Chainer(Framework):
             :class:`~sagemaker.estimator.Framework` and
             :class:`~sagemaker.estimator.EstimatorBase`.
         """
-        if framework_version is None:
+        validate_version_or_image_args(framework_version, py_version, image_name)
+        if py_version == "py2":
             logger.warning(
-                empty_framework_version_warning(defaults.CHAINER_VERSION, self.LATEST_VERSION)
+                python_deprecation_warning(self.__framework_name__, defaults.LATEST_PY2_VERSION)
             )
-        self.framework_version = framework_version or defaults.CHAINER_VERSION
+        self.framework_version = framework_version
+        self.py_version = py_version
 
         super(Chainer, self).__init__(
             entry_point, source_dir, hyperparameters, image_name=image_name, **kwargs
         )
 
-        if py_version == "py2":
-            logger.warning(
-                python_deprecation_warning(self.__framework_name__, defaults.LATEST_PY2_VERSION)
-            )
-
-        self.py_version = py_version
         self.use_mpi = use_mpi
         self.num_processes = num_processes
         self.process_slots_per_host = process_slots_per_host
@@ -201,17 +199,17 @@ class Chainer(Framework):
             dependencies (list[str]): A list of paths to directories (absolute or relative) with
                 any additional libraries that will be exported to the container.
                 If not specified, the dependencies from training are used.
+                This is not supported with "local code" in Local Mode.
             **kwargs: Additional kwargs passed to the ChainerModel constructor.
 
         Returns:
             sagemaker.chainer.model.ChainerModel: A SageMaker ``ChainerModel``
             object. See :func:`~sagemaker.chainer.model.ChainerModel` for full details.
         """
+        kwargs["name"] = self._get_or_create_name(kwargs.get("name"))
+
         if "image" not in kwargs:
             kwargs["image"] = self.image_name
-
-        if "name" not in kwargs:
-            kwargs["name"] = self._current_job_name
 
         return ChainerModel(
             self.model_data,
@@ -262,21 +260,23 @@ class Chainer(Framework):
         image_name = init_params.pop("image")
         framework, py_version, tag, _ = framework_name_from_image(image_name)
 
+        if tag is None:
+            framework_version = None
+        else:
+            framework_version = framework_version_from_tag(tag)
+        init_params["framework_version"] = framework_version
+        init_params["py_version"] = py_version
+
         if not framework:
             # If we were unable to parse the framework name from the image it is not one of our
             # officially supported images, in this case just add the image to the init params.
             init_params["image_name"] = image_name
             return init_params
 
-        init_params["py_version"] = py_version
-        init_params["framework_version"] = framework_version_from_tag(tag)
-
-        training_job_name = init_params["base_job_name"]
-
         if framework != cls.__framework_name__:
             raise ValueError(
                 "Training job: {} didn't use image for requested framework".format(
-                    training_job_name
+                    job_details["TrainingJobName"]
                 )
             )
         return init_params

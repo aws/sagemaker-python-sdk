@@ -15,6 +15,8 @@ from __future__ import absolute_import
 
 from sagemaker.cli.common import HostCommand, TrainCommand
 
+MXNET_VERSION = "1.2"
+
 
 def train(args):
     """
@@ -40,13 +42,14 @@ class MXNetTrainCommand(TrainCommand):
         from sagemaker.mxnet.estimator import MXNet
 
         return MXNet(
-            self.script,
+            entry_point=self.script,
+            framework_version=MXNET_VERSION,
+            py_version=self.python,
             role=self.role_name,
             base_job_name=self.job_name,
             train_instance_count=self.instance_count,
             train_instance_type=self.instance_type,
             hyperparameters=self.hyperparameters,
-            py_version=self.python,
         )
 
 
@@ -64,6 +67,7 @@ class MXNetHostCommand(HostCommand):
             model_data=model_url,
             role=self.role_name,
             entry_point=self.script,
+            framework_version=MXNET_VERSION,
             py_version=self.python,
             name=self.endpoint_name,
             env=self.environment,

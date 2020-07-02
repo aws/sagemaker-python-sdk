@@ -60,8 +60,8 @@ class Model(object):
 
     def __init__(
         self,
-        model_data,
         image,
+        model_data=None,
         role=None,
         predictor_cls=None,
         env=None,
@@ -74,9 +74,9 @@ class Model(object):
         """Initialize an SageMaker ``Model``.
 
         Args:
-            model_data (str): The S3 location of a SageMaker model data
-                ``.tar.gz`` file.
             image (str): A Docker image URI.
+            model_data (str): The S3 location of a SageMaker model data
+                ``.tar.gz`` file (default: None).
             role (str): An AWS IAM role (either name or full ARN). The Amazon
                 SageMaker training jobs and APIs that create Amazon SageMaker
                 endpoints use this role to access training data and model
@@ -138,7 +138,7 @@ class Model(object):
             self.sagemaker_session = session.Session()
 
     def prepare_container_def(
-        self, instance_type, accelerator_type=None
+        self, instance_type=None, accelerator_type=None
     ):  # pylint: disable=unused-argument
         """Return a dict created by ``sagemaker.container_def()`` for deploying
         this model to a specified instance type.
@@ -166,7 +166,7 @@ class Model(object):
         """
         return self._enable_network_isolation
 
-    def _create_sagemaker_model(self, instance_type, accelerator_type=None, tags=None):
+    def _create_sagemaker_model(self, instance_type=None, accelerator_type=None, tags=None):
         """Create a SageMaker Model Entity
 
         Args:
@@ -361,6 +361,8 @@ class Model(object):
             )
         if job_name is None:
             raise ValueError("You must provide a compilation job name")
+        if self.model_data is None:
+            raise ValueError("You must provide an S3 path to the compressed model artifacts.")
 
         framework = framework.upper()
         framework_version = self._get_framework_version() or framework_version
@@ -409,7 +411,6 @@ class Model(object):
         instance_type,
         accelerator_type=None,
         endpoint_name=None,
-        update_endpoint=False,
         tags=None,
         kms_key=None,
         wait=True,
@@ -442,11 +443,6 @@ class Model(object):
                 https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html
             endpoint_name (str): The name of the endpoint to create (default:
                 None). If not specified, a unique endpoint name will be created.
-            update_endpoint (bool): Flag to update the model in an existing
-                Amazon SageMaker endpoint. If True, this will deploy a new
-                EndpointConfig to an already existing endpoint and delete
-                resources corresponding to the previous EndpointConfig. If
-                False, a new endpoint will be created. Default: False
             tags (List[dict[str, str]]): The list of tags to attach to this
                 specific endpoint.
             kms_key (str): The ARN of the KMS key that is used to encrypt the
@@ -475,8 +471,10 @@ class Model(object):
 
         compiled_model_suffix = "-".join(instance_type.split(".")[:-1])
         if self._is_compiled_model:
-            name_prefix = self.name or utils.name_from_image(self.image)
-            self.name = "{}{}".format(name_prefix, compiled_model_suffix)
+            name_prefix = self.name or utils.name_from_image(
+                self.image, max_length=(62 - len(compiled_model_suffix))
+            )
+            self.name = "{}-{}".format(name_prefix, compiled_model_suffix)
 
         self._create_sagemaker_model(instance_type, accelerator_type, tags)
         production_variant = sagemaker.production_variant(
@@ -493,29 +491,14 @@ class Model(object):
         if data_capture_config is not None:
             data_capture_config_dict = data_capture_config._to_request_dict()
 
-        if update_endpoint:
-            endpoint_config_name = self.sagemaker_session.create_endpoint_config(
-                name=self.name,
-                model_name=self.name,
-                initial_instance_count=initial_instance_count,
-                instance_type=instance_type,
-                accelerator_type=accelerator_type,
-                tags=tags,
-                kms_key=kms_key,
-                data_capture_config_dict=data_capture_config_dict,
-            )
-            self.sagemaker_session.update_endpoint(
-                self.endpoint_name, endpoint_config_name, wait=wait
-            )
-        else:
-            self.sagemaker_session.endpoint_from_production_variants(
-                name=self.endpoint_name,
-                production_variants=[production_variant],
-                tags=tags,
-                kms_key=kms_key,
-                wait=wait,
-                data_capture_config_dict=data_capture_config_dict,
-            )
+        self.sagemaker_session.endpoint_from_production_variants(
+            name=self.endpoint_name,
+            production_variants=[production_variant],
+            tags=tags,
+            kms_key=kms_key,
+            wait=wait,
+            data_capture_config_dict=data_capture_config_dict,
+        )
 
         if self.predictor_cls:
             return self.predictor_cls(self.endpoint_name, self.sagemaker_session)
@@ -709,11 +692,16 @@ class FrameworkModel(Model):
                 list of relative locations to directories with any additional
                 libraries needed in the Git repo. If the ```source_dir``` points
                 to S3, code will be uploaded and the S3 location will be used
-                instead. .. admonition:: Example
+                instead.
 
-                    The following call >>> Estimator(entry_point='inference.py',
-                    dependencies=['my/libs/common', 'virtual-env']) results in
-                    the following inside the container:
+                .. admonition:: Example
+
+                    The following call
+
+                    >>> Model(entry_point='inference.py',
+                    ...       dependencies=['my/libs/common', 'virtual-env'])
+
+                    results in the following inside the container:
 
                     >>> $ ls
 
@@ -721,6 +709,8 @@ class FrameworkModel(Model):
                     >>>     |------ inference.py
                     >>>     |------ common
                     >>>     |------ virtual-env
+
+                This is not supported with "local code" in Local Mode.
             git_config (dict[str, str]): Git configurations used for cloning
                 files, including ``repo``, ``branch``, ``commit``,
                 ``2FA_enabled``, ``username``, ``password`` and ``token``. The
@@ -778,8 +768,8 @@ class FrameworkModel(Model):
             :class:`~sagemaker.model.Model`.
         """
         super(FrameworkModel, self).__init__(
-            model_data,
             image,
+            model_data,
             role,
             predictor_cls=predictor_cls,
             env=env,
@@ -807,9 +797,7 @@ class FrameworkModel(Model):
         self.uploaded_code = None
         self.repacked_model_data = None
 
-    def prepare_container_def(
-        self, instance_type, accelerator_type=None
-    ):  # pylint disable=unused-argument
+    def prepare_container_def(self, instance_type=None, accelerator_type=None):
         """Return a container definition with framework configuration set in
         model environment variables.
 

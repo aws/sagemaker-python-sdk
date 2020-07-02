@@ -16,7 +16,7 @@ import pytest
 from mock import Mock, patch
 
 from sagemaker.amazon.object2vec import Object2Vec
-from sagemaker.predictor import RealTimePredictor
+from sagemaker.predictor import Predictor
 from sagemaker.amazon.amazon_estimator import registry, RecordSet
 
 ROLE = "myrole"
@@ -323,4 +323,4 @@ def test_predictor_type(sagemaker_session):
     model = object2vec.create_model()
     predictor = model.deploy(1, TRAIN_INSTANCE_TYPE)
 
-    assert isinstance(predictor, RealTimePredictor)
+    assert isinstance(predictor, Predictor)

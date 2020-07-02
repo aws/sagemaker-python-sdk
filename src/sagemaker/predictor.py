@@ -22,7 +22,7 @@ import numpy as np
 
 from sagemaker.content_types import CONTENT_TYPE_JSON, CONTENT_TYPE_CSV, CONTENT_TYPE_NPY
 from sagemaker.model_monitor import DataCaptureConfig
-from sagemaker.session import Session
+from sagemaker.session import production_variant, Session
 from sagemaker.utils import name_from_base
 
 from sagemaker.model_monitor.model_monitoring import (
@@ -32,19 +32,19 @@ from sagemaker.model_monitor.model_monitoring import (
 )
 
 
-class RealTimePredictor(object):
+class Predictor(object):
     """Make prediction requests to an Amazon SageMaker endpoint."""
 
     def __init__(
         self,
-        endpoint,
+        endpoint_name,
         sagemaker_session=None,
         serializer=None,
         deserializer=None,
         content_type=None,
         accept=None,
     ):
-        """Initialize a ``RealTimePredictor``.
+        """Initialize a ``Predictor``.
 
         Behavior for serialization of input data and deserialization of
         result data can be configured through initializer arguments. If not
@@ -53,7 +53,7 @@ class RealTimePredictor(object):
         sequence of bytes from the prediction result without any modifications.
 
         Args:
-            endpoint (str): Name of the Amazon SageMaker endpoint to which
+            endpoint_name (str): Name of the Amazon SageMaker endpoint to which
                 requests are sent.
             sagemaker_session (sagemaker.session.Session): A SageMaker Session
                 object, used for SageMaker interactions (default: None). If not
@@ -74,7 +74,7 @@ class RealTimePredictor(object):
             accept (str): The invocation's "Accept", overriding any accept from
                 the deserializer (default: None).
         """
-        self.endpoint = endpoint
+        self.endpoint_name = endpoint_name
         self.sagemaker_session = sagemaker_session or Session()
         self.serializer = serializer
         self.deserializer = deserializer
@@ -83,13 +83,13 @@ class RealTimePredictor(object):
         self._endpoint_config_name = self._get_endpoint_config_name()
         self._model_names = self._get_model_names()
 
-    def predict(self, data, initial_args=None, target_model=None):
+    def predict(self, data, initial_args=None, target_model=None, target_variant=None):
         """Return the inference from the specified endpoint.
 
         Args:
             data (object): Input data for which you want the model to provide
                 inference. If a serializer was specified when creating the
-                RealTimePredictor, the result of the serializer is sent as input
+                Predictor, the result of the serializer is sent as input
                 data. Otherwise the data must be sequence of bytes, and the
                 predict method then sends the bytes in the request body as is.
             initial_args (dict[str,str]): Optional. Default arguments for boto3
@@ -98,15 +98,18 @@ class RealTimePredictor(object):
             target_model (str): S3 model artifact path to run an inference request on,
                 in case of a multi model endpoint. Does not apply to endpoints hosting
                 single model (Default: None)
+            target_variant (str): The name of the production variant to run an inference
+            request on (Default: None). Note that the ProductionVariant identifies the model
+            you want to host and the resources you want to deploy for hosting it.
 
         Returns:
             object: Inference for the given input. If a deserializer was specified when creating
-                the RealTimePredictor, the result of the deserializer is
+                the Predictor, the result of the deserializer is
                 returned. Otherwise the response returns the sequence of bytes
                 as is.
         """
 
-        request_args = self._create_request_args(data, initial_args, target_model)
+        request_args = self._create_request_args(data, initial_args, target_model, target_variant)
         response = self.sagemaker_session.sagemaker_runtime_client.invoke_endpoint(**request_args)
         return self._handle_response(response)
 
@@ -123,17 +126,18 @@ class RealTimePredictor(object):
         response_body.close()
         return data
 
-    def _create_request_args(self, data, initial_args=None, target_model=None):
+    def _create_request_args(self, data, initial_args=None, target_model=None, target_variant=None):
         """
         Args:
             data:
             initial_args:
             target_model:
+            target_variant:
         """
         args = dict(initial_args) if initial_args else {}
 
         if "EndpointName" not in args:
-            args["EndpointName"] = self.endpoint
+            args["EndpointName"] = self.endpoint_name
 
         if self.content_type and "ContentType" not in args:
             args["ContentType"] = self.content_type
@@ -144,11 +148,114 @@ class RealTimePredictor(object):
         if target_model:
             args["TargetModel"] = target_model
 
+        if target_variant:
+            args["TargetVariant"] = target_variant
+
         if self.serializer is not None:
             data = self.serializer(data)
 
         args["Body"] = data
         return args
+
+    def update_endpoint(
+        self,
+        initial_instance_count=None,
+        instance_type=None,
+        accelerator_type=None,
+        model_name=None,
+        tags=None,
+        kms_key=None,
+        data_capture_config_dict=None,
+        wait=True,
+    ):
+        """Update the existing endpoint with the provided attributes.
+
+        This creates a new EndpointConfig in the process. If ``initial_instance_count``,
+        ``instance_type``, ``accelerator_type``, or ``model_name`` is specified, then a new
+        ProductionVariant configuration is created; values from the existing configuration
+        are not preserved if any of those parameters are specified.
+
+        Args:
+            initial_instance_count (int): The initial number of instances to run in the endpoint.
+                This is required if ``instance_type``, ``accelerator_type``, or ``model_name`` is
+                specified. Otherwise, the values from the existing endpoint configuration's
+                ProductionVariants are used.
+            instance_type (str): The EC2 instance type to deploy the endpoint to.
+                This is required if ``initial_instance_count`` or ``accelerator_type`` is specified.
+                Otherwise, the values from the existing endpoint configuration's
+                ``ProductionVariants`` are used.
+            accelerator_type (str): The type of Elastic Inference accelerator to attach to
+                the endpoint, e.g. "ml.eia1.medium". If not specified, and
+                ``initial_instance_count``, ``instance_type``, and ``model_name`` are also ``None``,
+                the values from the existing endpoint configuration's ``ProductionVariants`` are
+                used. Otherwise, no Elastic Inference accelerator is attached to the endpoint.
+            model_name (str): The name of the model to be associated with the endpoint.
+                This is required if ``initial_instance_count``, ``instance_type``, or
+                ``accelerator_type`` is specified and if there is more than one model associated
+                with the endpoint. Otherwise, the existing model for the endpoint is used.
+            tags (list[dict[str, str]]): The list of tags to add to the endpoint
+                config. If not specified, the tags of the existing endpoint configuration are used.
+                If any of the existing tags are reserved AWS ones (i.e. begin with "aws"),
+                they are not carried over to the new endpoint configuration.
+            kms_key (str): The KMS key that is used to encrypt the data on the storage volume
+                attached to the instance hosting the endpoint If not specified,
+                the KMS key of the existing endpoint configuration is used.
+            data_capture_config_dict (dict): The endpoint data capture configuration
+                for use with Amazon SageMaker Model Monitoring. If not specified,
+                the data capture configuration of the existing endpoint configuration is used.
+
+        Raises:
+            ValueError: If there is not enough information to create a new ``ProductionVariant``:
+
+                - If ``initial_instance_count``, ``accelerator_type``, or ``model_name`` is
+                  specified, but ``instance_type`` is ``None``.
+                - If ``initial_instance_count``, ``instance_type``, or ``accelerator_type`` is
+                  specified and either ``model_name`` is ``None`` or there are multiple models
+                  associated with the endpoint.
+        """
+        production_variants = None
+
+        if initial_instance_count or instance_type or accelerator_type or model_name:
+            if instance_type is None or initial_instance_count is None:
+                raise ValueError(
+                    "Missing initial_instance_count and/or instance_type. Provided values: "
+                    "initial_instance_count={}, instance_type={}, accelerator_type={}, "
+                    "model_name={}.".format(
+                        initial_instance_count, instance_type, accelerator_type, model_name
+                    )
+                )
+
+            if model_name is None:
+                if len(self._model_names) > 1:
+                    raise ValueError(
+                        "Unable to choose a default model for a new EndpointConfig because "
+                        "the endpoint has multiple models: {}".format(", ".join(self._model_names))
+                    )
+                model_name = self._model_names[0]
+            else:
+                self._model_names = [model_name]
+
+            production_variant_config = production_variant(
+                model_name,
+                instance_type,
+                initial_instance_count=initial_instance_count,
+                accelerator_type=accelerator_type,
+            )
+            production_variants = [production_variant_config]
+
+        new_endpoint_config_name = name_from_base(self._endpoint_config_name)
+        self.sagemaker_session.create_endpoint_config_from_existing(
+            self._endpoint_config_name,
+            new_endpoint_config_name,
+            new_tags=tags,
+            new_kms_key=kms_key,
+            new_data_capture_config_dict=data_capture_config_dict,
+            new_production_variants=production_variants,
+        )
+        self.sagemaker_session.update_endpoint(
+            self.endpoint_name, new_endpoint_config_name, wait=wait
+        )
+        self._endpoint_config_name = new_endpoint_config_name
 
     def _delete_endpoint_config(self):
         """Delete the Amazon SageMaker endpoint configuration"""
@@ -168,7 +275,7 @@ class RealTimePredictor(object):
         if delete_endpoint_config:
             self._delete_endpoint_config()
 
-        self.sagemaker_session.delete_endpoint(self.endpoint)
+        self.sagemaker_session.delete_endpoint(self.endpoint_name)
 
     def delete_model(self):
         """Deletes the Amazon SageMaker models backing this predictor."""
@@ -218,10 +325,10 @@ class RealTimePredictor(object):
                 DataCaptureConfig to update the predictor's endpoint to use.
         """
         endpoint_desc = self.sagemaker_session.sagemaker_client.describe_endpoint(
-            EndpointName=self.endpoint
+            EndpointName=self.endpoint_name
         )
 
-        new_config_name = name_from_base(base=self.endpoint)
+        new_config_name = name_from_base(base=self.endpoint_name)
 
         data_capture_config_dict = None
         if data_capture_config is not None:
@@ -234,7 +341,7 @@ class RealTimePredictor(object):
         )
 
         self.sagemaker_session.update_endpoint(
-            endpoint_name=self.endpoint, endpoint_config_name=new_config_name
+            endpoint_name=self.endpoint_name, endpoint_config_name=new_config_name
         )
 
     def list_monitors(self):
@@ -247,10 +354,10 @@ class RealTimePredictor(object):
 
         """
         monitoring_schedules_dict = self.sagemaker_session.list_monitoring_schedules(
-            endpoint_name=self.endpoint
+            endpoint_name=self.endpoint_name
         )
         if len(monitoring_schedules_dict["MonitoringScheduleSummaries"]) == 0:
-            print("No monitors found for endpoint. endpoint: {}".format(self.endpoint))
+            print("No monitors found for endpoint. endpoint: {}".format(self.endpoint_name))
             return []
 
         monitors = []
@@ -285,7 +392,7 @@ class RealTimePredictor(object):
     def _get_endpoint_config_name(self):
         """Placeholder docstring"""
         endpoint_desc = self.sagemaker_session.sagemaker_client.describe_endpoint(
-            EndpointName=self.endpoint
+            EndpointName=self.endpoint_name
         )
         endpoint_config_name = endpoint_desc["EndpointConfigName"]
         return endpoint_config_name
@@ -296,7 +403,7 @@ class RealTimePredictor(object):
             EndpointConfigName=self._endpoint_config_name
         )
         production_variants = endpoint_config["ProductionVariants"]
-        return map(lambda d: d["ModelName"], production_variants)
+        return [d["ModelName"] for d in production_variants]
 
 
 class _CsvSerializer(object):
@@ -388,10 +495,7 @@ def _is_sequence_like(obj):
     Args:
         obj:
     """
-    # Need to explicitly check on str since str lacks the iterable magic methods in Python 2
-    return (  # pylint: disable=consider-using-ternary
-        hasattr(obj, "__iter__") and hasattr(obj, "__getitem__")
-    ) or isinstance(obj, str)
+    return hasattr(obj, "__iter__") and hasattr(obj, "__getitem__")
 
 
 def _row_to_csv(obj):

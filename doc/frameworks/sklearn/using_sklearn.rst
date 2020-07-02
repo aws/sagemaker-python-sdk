@@ -31,7 +31,7 @@ To train a Scikit-learn model by using the SageMaker Python SDK:
 Prepare a Scikit-learn Training Script
 ======================================
 
-Your Scikit-learn training script must be a Python 2.7 or 3.6 compatible source file.
+Your Scikit-learn training script must be a Python 3.6 compatible source file.
 
 The training script is similar to a training script you might run outside of SageMaker, but you
 can access useful properties about the training environment through various environment variables.
@@ -299,7 +299,7 @@ You can provide your own implementations for these functions in your hosting scr
 If you omit any definition then the SageMaker Scikit-learn model server will use its default implementation for that
 function.
 
-The ``RealTimePredictor`` used by Scikit-learn in the SageMaker Python SDK serializes NumPy arrays to the `NPY <https://docs.scipy.org/doc/numpy/neps/npy-format.html>`_ format
+The ``Predictor`` used by Scikit-learn in the SageMaker Python SDK serializes NumPy arrays to the `NPY <https://docs.scipy.org/doc/numpy/neps/npy-format.html>`_ format
 by default, with Content-Type ``application/x-npy``. The SageMaker Scikit-learn model server can deserialize NPY-formatted
 data (along with JSON and CSV data).
 
@@ -465,8 +465,10 @@ The following code sample shows how to do this, using the ``SKLearnModel`` class
 
 .. code:: python
 
-    sklearn_model = SKLearnModel(model_data="s3://bucket/model.tar.gz", role="SageMakerRole",
-        entry_point="transform_script.py")
+    sklearn_model = SKLearnModel(model_data="s3://bucket/model.tar.gz",
+                                 role="SageMakerRole",
+                                 entry_point="transform_script.py",
+                                 framework_version="0.20.0")
 
     predictor = sklearn_model.deploy(instance_type="ml.c4.xlarge", initial_instance_count=1)
 

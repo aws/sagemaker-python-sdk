@@ -17,7 +17,7 @@ from sagemaker.amazon.amazon_estimator import AmazonAlgorithmEstimatorBase, regi
 from sagemaker.amazon.common import numpy_to_record_serializer, record_deserializer
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
 from sagemaker.amazon.validation import ge, isin
-from sagemaker.predictor import RealTimePredictor
+from sagemaker.predictor import Predictor
 from sagemaker.model import Model
 from sagemaker.session import Session
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
@@ -182,12 +182,12 @@ class KNN(AmazonAlgorithmEstimatorBase):
         )
 
 
-class KNNPredictor(RealTimePredictor):
+class KNNPredictor(Predictor):
     """Performs classification or regression prediction from input vectors.
 
     The implementation of
-    :meth:`~sagemaker.predictor.RealTimePredictor.predict` in this
-    `RealTimePredictor` requires a numpy ``ndarray`` as input. The array should
+    :meth:`~sagemaker.predictor.Predictor.predict` in this
+    `Predictor` requires a numpy ``ndarray`` as input. The array should
     contain the same number of columns as the feature-dimension of the data used
     to fit the model this Predictor performs inference on.
 
@@ -197,14 +197,18 @@ class KNNPredictor(RealTimePredictor):
     key of the ``Record.label`` field.
     """
 
-    def __init__(self, endpoint, sagemaker_session=None):
+    def __init__(self, endpoint_name, sagemaker_session=None):
         """
         Args:
-            endpoint:
-            sagemaker_session:
+            endpoint_name (str): Name of the Amazon SageMaker endpoint to which
+                requests are sent.
+            sagemaker_session (sagemaker.session.Session): A SageMaker Session
+                object, used for SageMaker interactions (default: None). If not
+                specified, one is created using the default AWS configuration
+                chain.
         """
         super(KNNPredictor, self).__init__(
-            endpoint,
+            endpoint_name,
             sagemaker_session,
             serializer=numpy_to_record_serializer(),
             deserializer=record_deserializer(),
@@ -231,8 +235,8 @@ class KNNModel(Model):
             registry(sagemaker_session.boto_session.region_name, KNN.repo_name), repo
         )
         super(KNNModel, self).__init__(
-            model_data,
             image,
+            model_data,
             role,
             predictor_cls=KNNPredictor,
             sagemaker_session=sagemaker_session,

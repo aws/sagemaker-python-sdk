@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2018-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -10,35 +10,34 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Placeholder docstring"""
+"""Classes for using TensorFlow on Amazon SageMaker for inference."""
 from __future__ import absolute_import
 
 import logging
 
 import sagemaker
-from sagemaker.fw_utils import (
-    create_image_uri,
-    model_code_key_prefix,
-    python_deprecation_warning,
-    empty_framework_version_warning,
-)
-from sagemaker.model import FrameworkModel, MODEL_SERVER_WORKERS_PARAM_NAME
-from sagemaker.predictor import RealTimePredictor
-from sagemaker.tensorflow import defaults
-from sagemaker.tensorflow.predictor import tf_json_serializer, tf_json_deserializer
-
-logger = logging.getLogger("sagemaker")
+from sagemaker.content_types import CONTENT_TYPE_JSON
+from sagemaker.fw_utils import create_image_uri
+from sagemaker.predictor import json_serializer, json_deserializer, Predictor
 
 
-class TensorFlowPredictor(RealTimePredictor):
-    """A ``RealTimePredictor`` for inference against TensorFlow endpoint.
-
-    This is able to serialize Python lists, dictionaries, and numpy arrays to
-    multidimensional tensors for inference
+class TensorFlowPredictor(Predictor):
+    """A ``Predictor`` implementation for inference against TensorFlow
+    Serving endpoints.
     """
 
-    def __init__(self, endpoint_name, sagemaker_session=None):
-        """Initialize an ``TensorFlowPredictor``.
+    def __init__(
+        self,
+        endpoint_name,
+        sagemaker_session=None,
+        serializer=json_serializer,
+        deserializer=json_deserializer,
+        content_type=None,
+        model_name=None,
+        model_version=None,
+    ):
+        """Initialize a ``TensorFlowPredictor``. See :class:`~sagemaker.predictor.Predictor`
+        for more info about parameters.
 
         Args:
             endpoint_name (str): The name of the endpoint to perform inference
@@ -47,30 +46,103 @@ class TensorFlowPredictor(RealTimePredictor):
                 manages interactions with Amazon SageMaker APIs and any other
                 AWS services needed. If not specified, the estimator creates one
                 using the default AWS configuration chain.
+            serializer (callable): Optional. Default serializes input data to
+                json. Handles dicts, lists, and numpy arrays.
+            deserializer (callable): Optional. Default parses the response using
+                ``json.load(...)``.
+            content_type (str): Optional. The "ContentType" for invocation
+                requests. If specified, overrides the ``content_type`` from the
+                serializer (default: None).
+            model_name (str): Optional. The name of the SavedModel model that
+                should handle the request. If not specified, the endpoint's
+                default model will handle the request.
+            model_version (str): Optional. The version of the SavedModel model
+                that should handle the request. If not specified, the latest
+                version of the model will be used.
         """
         super(TensorFlowPredictor, self).__init__(
-            endpoint_name, sagemaker_session, tf_json_serializer, tf_json_deserializer
+            endpoint_name, sagemaker_session, serializer, deserializer, content_type
         )
 
+        attributes = []
+        if model_name:
+            attributes.append("tfs-model-name={}".format(model_name))
+        if model_version:
+            attributes.append("tfs-model-version={}".format(model_version))
+        self._model_attributes = ",".join(attributes) if attributes else None
 
-class TensorFlowModel(FrameworkModel):
-    """Placeholder docstring"""
+    def classify(self, data):
+        """
+        Args:
+            data:
+        """
+        return self._classify_or_regress(data, "classify")
 
-    __framework_name__ = "tensorflow"
+    def regress(self, data):
+        """
+        Args:
+            data:
+        """
+        return self._classify_or_regress(data, "regress")
+
+    def _classify_or_regress(self, data, method):
+        """
+        Args:
+            data:
+            method:
+        """
+        if method not in ["classify", "regress"]:
+            raise ValueError("invalid TensorFlow Serving method: {}".format(method))
+
+        if self.content_type != CONTENT_TYPE_JSON:
+            raise ValueError("The {} api requires json requests.".format(method))
+
+        args = {"CustomAttributes": "tfs-method={}".format(method)}
+
+        return self.predict(data, args)
+
+    def predict(self, data, initial_args=None):
+        """
+        Args:
+            data:
+            initial_args:
+        """
+        args = dict(initial_args) if initial_args else {}
+        if self._model_attributes:
+            if "CustomAttributes" in args:
+                args["CustomAttributes"] += "," + self._model_attributes
+            else:
+                args["CustomAttributes"] = self._model_attributes
+
+        return super(TensorFlowPredictor, self).predict(data, args)
+
+
+class TensorFlowModel(sagemaker.model.FrameworkModel):
+    """A ``FrameworkModel`` implementation for inference with TensorFlow Serving."""
+
+    __framework_name__ = "tensorflow-serving"
+    LOG_LEVEL_PARAM_NAME = "SAGEMAKER_TFS_NGINX_LOGLEVEL"
+    LOG_LEVEL_MAP = {
+        logging.DEBUG: "debug",
+        logging.INFO: "info",
+        logging.WARNING: "warn",
+        logging.ERROR: "error",
+        logging.CRITICAL: "crit",
+    }
+    LATEST_EIA_VERSION = [2, 0]
 
     def __init__(
         self,
         model_data,
         role,
-        entry_point,
+        entry_point=None,
         image=None,
-        py_version="py2",
         framework_version=None,
+        container_log_level=None,
         predictor_cls=TensorFlowPredictor,
-        model_server_workers=None,
         **kwargs
     ):
-        """Initialize an TensorFlowModel.
+        """Initialize a Model.
 
         Args:
             model_data (str): The S3 location of a SageMaker model data
@@ -85,20 +157,20 @@ class TensorFlowModel(FrameworkModel):
                 hosting. If ``source_dir`` is specified, then ``entry_point``
                 must point to a file located at the root of ``source_dir``.
             image (str): A Docker image URI (default: None). If not specified, a
-                default image for TensorFlow will be used.
-            py_version (str): Python version you want to use for executing your
-                model training code (default: 'py2').
-            framework_version (str): TensorFlow version you want to use for
-                executing your model training code.
+                default image for TensorFlow Serving will be used. If
+                ``framework_version`` is ``None``, then ``image`` is required.
+                If also ``None``, then a ``ValueError`` will be raised.
+            framework_version (str): Optional. TensorFlow Serving version you
+                want to use. Defaults to ``None``. Required unless ``image`` is
+                provided.
+            container_log_level (int): Log level to use within the container
+                (default: logging.ERROR). Valid values are defined in the Python
+                logging module.
             predictor_cls (callable[str, sagemaker.session.Session]): A function
                 to call to create a predictor with an endpoint name and
                 SageMaker ``Session``. If specified, ``deploy()`` returns the
                 result of invoking this function on the created endpoint name.
-            model_server_workers (int): Optional. The number of worker processes
-                used by the inference server. If None, server will use one
-                worker per vCPU.
-            **kwargs: Keyword arguments passed to the ``FrameworkModel``
-                initializer.
+            **kwargs: Keyword arguments passed to the ``Model`` initializer.
 
         .. tip::
 
@@ -106,59 +178,122 @@ class TensorFlowModel(FrameworkModel):
             :class:`~sagemaker.model.FrameworkModel` and
             :class:`~sagemaker.model.Model`.
         """
+        if framework_version is None and image is None:
+            raise ValueError(
+                "Both framework_version and image were None. "
+                "Either specify framework_version or specify image_name."
+            )
+        self.framework_version = framework_version
+
         super(TensorFlowModel, self).__init__(
-            model_data, image, role, entry_point, predictor_cls=predictor_cls, **kwargs
+            model_data=model_data,
+            role=role,
+            image=image,
+            predictor_cls=predictor_cls,
+            entry_point=entry_point,
+            **kwargs
+        )
+        self._container_log_level = container_log_level
+
+    def deploy(
+        self,
+        initial_instance_count,
+        instance_type,
+        accelerator_type=None,
+        endpoint_name=None,
+        tags=None,
+        kms_key=None,
+        wait=True,
+        data_capture_config=None,
+    ):
+
+        if accelerator_type and not self._eia_supported():
+            msg = "The TensorFlow version %s doesn't support EIA." % self.framework_version
+            raise AttributeError(msg)
+
+        return super(TensorFlowModel, self).deploy(
+            initial_instance_count=initial_instance_count,
+            instance_type=instance_type,
+            accelerator_type=accelerator_type,
+            endpoint_name=endpoint_name,
+            tags=tags,
+            kms_key=kms_key,
+            wait=wait,
+            data_capture_config=data_capture_config,
         )
 
-        if py_version == "py2":
-            logger.warning(
-                python_deprecation_warning(self.__framework_name__, defaults.LATEST_PY2_VERSION)
-            )
+    def _eia_supported(self):
+        """Return true if TF version is EIA enabled"""
+        return [int(s) for s in self.framework_version.split(".")][:2] <= self.LATEST_EIA_VERSION
 
-        if framework_version is None:
-            logger.warning(
-                empty_framework_version_warning(defaults.TF_VERSION, defaults.LATEST_VERSION)
-            )
-
-        self.py_version = py_version
-        self.framework_version = framework_version or defaults.TF_VERSION
-        self.model_server_workers = model_server_workers
-
-    def prepare_container_def(self, instance_type, accelerator_type=None):
-        """Return a container definition with framework configuration set in
-        model environment variables.
-
-        This also uploads user-supplied code to S3.
-
-        Args:
-            instance_type (str): The EC2 instance type to deploy this Model to.
-                For example, 'ml.p2.xlarge'.
-            accelerator_type (str): The Elastic Inference accelerator type to
-                deploy to the instance for loading and making inferences to the
-                model. For example, 'ml.eia1.medium'.
-
-        Returns:
-            dict[str, str]: A container definition object usable with the
-            CreateModel API.
+    def prepare_container_def(self, instance_type=None, accelerator_type=None):
         """
-        deploy_image = self.image
-        if not deploy_image:
-            region_name = self.sagemaker_session.boto_region_name
-            deploy_image = self.serving_image_uri(
-                region_name, instance_type, accelerator_type=accelerator_type
+        Args:
+            instance_type:
+            accelerator_type:
+        """
+        if self.image is None and instance_type is None:
+            raise ValueError(
+                "Must supply either an instance type (for choosing CPU vs GPU) or an image URI."
             )
 
-        deploy_key_prefix = model_code_key_prefix(self.key_prefix, self.name, deploy_image)
-        self._upload_code(deploy_key_prefix)
-        deploy_env = dict(self.env)
-        deploy_env.update(self._framework_env_vars())
+        image = self._get_image_uri(instance_type, accelerator_type)
+        env = self._get_container_env()
 
-        if self.model_server_workers:
-            deploy_env[MODEL_SERVER_WORKERS_PARAM_NAME.upper()] = str(self.model_server_workers)
+        if self.entry_point:
+            key_prefix = sagemaker.fw_utils.model_code_key_prefix(self.key_prefix, self.name, image)
 
-        return sagemaker.container_def(deploy_image, self.model_data, deploy_env)
+            bucket = self.bucket or self.sagemaker_session.default_bucket()
+            model_data = "s3://{}/{}/model.tar.gz".format(bucket, key_prefix)
 
-    def serving_image_uri(self, region_name, instance_type, accelerator_type=None):
+            sagemaker.utils.repack_model(
+                self.entry_point,
+                self.source_dir,
+                self.dependencies,
+                self.model_data,
+                model_data,
+                self.sagemaker_session,
+                kms_key=self.model_kms_key,
+            )
+        else:
+            model_data = self.model_data
+
+        return sagemaker.container_def(image, model_data, env)
+
+    def _get_container_env(self):
+        """Placeholder docstring"""
+        if not self._container_log_level:
+            return self.env
+
+        if self._container_log_level not in self.LOG_LEVEL_MAP:
+            logging.warning("ignoring invalid container log level: %s", self._container_log_level)
+            return self.env
+
+        env = dict(self.env)
+        env[self.LOG_LEVEL_PARAM_NAME] = self.LOG_LEVEL_MAP[self._container_log_level]
+        return env
+
+    def _get_image_uri(self, instance_type, accelerator_type=None):
+        """
+        Args:
+            instance_type:
+            accelerator_type:
+        """
+        if self.image:
+            return self.image
+
+        region_name = self.sagemaker_session.boto_region_name
+        return create_image_uri(
+            region_name,
+            self.__framework_name__,
+            instance_type,
+            self.framework_version,
+            accelerator_type=accelerator_type,
+        )
+
+    def serving_image_uri(
+        self, region_name, instance_type, accelerator_type=None
+    ):  # pylint: disable=unused-argument
         """Create a URI for the serving image.
 
         Args:
@@ -173,11 +308,4 @@ class TensorFlowModel(FrameworkModel):
             str: The appropriate image URI based on the given parameters.
 
         """
-        return create_image_uri(
-            region_name,
-            self.__framework_name__,
-            instance_type,
-            self.framework_version,
-            self.py_version,
-            accelerator_type=accelerator_type,
-        )
+        return self._get_image_uri(instance_type=instance_type, accelerator_type=accelerator_type)

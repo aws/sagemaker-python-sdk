@@ -16,7 +16,7 @@ from __future__ import absolute_import
 from sagemaker.amazon.amazon_estimator import AmazonAlgorithmEstimatorBase, registry
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
 from sagemaker.amazon.validation import ge, le, isin
-from sagemaker.predictor import RealTimePredictor
+from sagemaker.predictor import Predictor
 from sagemaker.model import Model
 from sagemaker.session import Session
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
@@ -184,7 +184,7 @@ class Object2Vec(AmazonAlgorithmEstimatorBase):
         may be deployed to an Amazon SageMaker Endpoint by invoking
         :meth:`~sagemaker.amazon.estimator.EstimatorBase.deploy`. As well as
         deploying an Endpoint, deploy returns a
-        :class:`~sagemaker.amazon.RealTimePredictor` object that can be used for
+        :class:`~sagemaker.amazon.Predictor` object that can be used for
         inference calls using the trained model hosted in the SageMaker
         Endpoint.
 
@@ -355,10 +355,10 @@ class Object2VecModel(Model):
             registry(sagemaker_session.boto_session.region_name, Object2Vec.repo_name), repo
         )
         super(Object2VecModel, self).__init__(
-            model_data,
             image,
+            model_data,
             role,
-            predictor_cls=RealTimePredictor,
+            predictor_cls=Predictor,
             sagemaker_session=sagemaker_session,
             **kwargs
         )

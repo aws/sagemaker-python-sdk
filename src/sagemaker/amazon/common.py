@@ -14,13 +14,14 @@
 from __future__ import absolute_import
 
 import io
+import logging
 import struct
 import sys
 
 import numpy as np
-from scipy.sparse import issparse
 
 from sagemaker.amazon.record_pb2 import Record
+from sagemaker.utils import DeferredError
 
 
 class numpy_to_record_serializer(object):
@@ -171,8 +172,16 @@ def write_spmatrix_to_sparse_tensor(file, array, labels=None):
         array:
         labels:
     """
+    try:
+        import scipy
+    except ImportError as e:
+        logging.warning(
+            "scipy failed to import. Sparse matrix functions will be impaired or broken."
+        )
+        # Any subsequent attempt to use scipy will raise the ImportError
+        scipy = DeferredError(e)
 
-    if not issparse(array):
+    if not scipy.sparse.issparse(array):
         raise TypeError("Array must be sparse")
 
     # Validate shape of array and labels, resolve array and label types
@@ -261,11 +270,11 @@ def read_recordio(f):
     """
     while True:
         try:
-            read_kmagic, = struct.unpack("I", f.read(4))
+            (read_kmagic,) = struct.unpack("I", f.read(4))
         except struct.error:
             return
         assert read_kmagic == _kmagic
-        len_record, = struct.unpack("I", f.read(4))
+        (len_record,) = struct.unpack("I", f.read(4))
         pad = (((len_record + 3) >> 2) << 2) - len_record
         yield f.read(len_record)
         if pad:

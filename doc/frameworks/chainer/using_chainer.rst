@@ -141,6 +141,7 @@ directories ('train' and 'test').
                                 train_instance_type='ml.p3.2xlarge',
                                 train_instance_count=1,
                                 framework_version='5.0.0',
+                                py_version='py3',
                                 hyperparameters = {'epochs': 20, 'batch-size': 64, 'learning-rate': 0.1})
     chainer_estimator.fit({'train': 's3://my-data-bucket/path/to/my/training/data',
                            'test': 's3://my-data-bucket/path/to/my/test/data'})
@@ -222,7 +223,8 @@ operation.
     chainer_estimator = Chainer(entry_point='train_and_deploy.py',
                                 train_instance_type='ml.p3.2xlarge',
                                 train_instance_count=1,
-                                framework_version='5.0.0')
+                                framework_version='5.0.0',
+                                py_version='py3')
     chainer_estimator.fit('s3://my_bucket/my_training_data/')
 
     # Deploy my estimator to a SageMaker Endpoint and get a Predictor
@@ -323,7 +325,7 @@ You can provide your own implementations for these functions in your hosting scr
 If you omit any definition then the SageMaker Chainer model server will use its default implementation for that
 function.
 
-The ``RealTimePredictor`` used by Chainer in the SageMaker Python SDK serializes NumPy arrays to the `NPY <https://docs.scipy.org/doc/numpy/neps/npy-format.html>`_ format
+The ``Predictor`` used by Chainer in the SageMaker Python SDK serializes NumPy arrays to the `NPY <https://docs.scipy.org/doc/numpy/neps/npy-format.html>`_ format
 by default, with Content-Type ``application/x-npy``. The SageMaker Chainer model server can deserialize NPY-formatted
 data (along with JSON and CSV data).
 

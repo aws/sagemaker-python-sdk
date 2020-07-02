@@ -74,7 +74,6 @@ class TensorFlowHostCommand(HostCommand):
             model_data=model_url,
             role=self.role_name,
             entry_point=self.script,
-            py_version=self.python,
             name=self.endpoint_name,
             env=self.environment,
         )

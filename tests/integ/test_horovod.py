@@ -15,10 +15,10 @@ from __future__ import absolute_import
 import json
 import os
 import tarfile
-from six.moves.urllib.parse import urlparse
 
 import boto3
 import pytest
+from six.moves.urllib.parse import urlparse
 
 import sagemaker.utils
 import tests.integ as integ
@@ -28,27 +28,49 @@ from tests.integ import timeout
 horovod_dir = os.path.join(os.path.dirname(__file__), "..", "data", "horovod")
 
 
-@pytest.fixture(scope="module")
-def gpu_instance_type(request):
-    return "ml.p2.xlarge"
-
-
 @pytest.mark.canary_quick
-def test_hvd_cpu(sagemaker_session, cpu_instance_type, tmpdir):
-    _create_and_fit_estimator(sagemaker_session, cpu_instance_type, tmpdir)
+def test_hvd_cpu(
+    sagemaker_session,
+    tf_training_latest_version,
+    tf_training_latest_py_version,
+    cpu_instance_type,
+    tmpdir,
+):
+    _create_and_fit_estimator(
+        sagemaker_session,
+        tf_training_latest_version,
+        tf_training_latest_py_version,
+        cpu_instance_type,
+        tmpdir,
+    )
 
 
 @pytest.mark.canary_quick
 @pytest.mark.skipif(
     integ.test_region() in integ.TRAINING_NO_P2_REGIONS, reason="no ml.p2 instances in this region"
 )
-def test_hvd_gpu(sagemaker_session, gpu_instance_type, tmpdir):
-    _create_and_fit_estimator(sagemaker_session, gpu_instance_type, tmpdir)
+def test_hvd_gpu(
+    sagemaker_session, tf_training_latest_version, tf_training_latest_py_version, tmpdir
+):
+    _create_and_fit_estimator(
+        sagemaker_session,
+        tf_training_latest_version,
+        tf_training_latest_py_version,
+        "ml.p2.xlarge",
+        tmpdir,
+    )
 
 
 @pytest.mark.local_mode
 @pytest.mark.parametrize("instances, processes", [[1, 2], (2, 1), (2, 2)])
-def test_horovod_local_mode(sagemaker_local_session, instances, processes, tmpdir):
+def test_horovod_local_mode(
+    sagemaker_local_session,
+    tf_training_latest_version,
+    tf_training_latest_py_version,
+    instances,
+    processes,
+    tmpdir,
+):
     output_path = "file://%s" % tmpdir
     job_name = sagemaker.utils.unique_name_from_base("tf-horovod")
     estimator = TensorFlow(
@@ -57,10 +79,9 @@ def test_horovod_local_mode(sagemaker_local_session, instances, processes, tmpdi
         train_instance_count=2,
         train_instance_type="local",
         sagemaker_session=sagemaker_local_session,
-        py_version=integ.PYTHON_VERSION,
-        script_mode=True,
         output_path=output_path,
-        framework_version="1.12",
+        framework_version=tf_training_latest_version,
+        py_version=tf_training_latest_py_version,
         distributions={"mpi": {"enabled": True, "processes_per_host": processes}},
     )
 
@@ -97,7 +118,7 @@ def extract_files_from_s3(s3_url, tmpdir, sagemaker_session):
         tar_file.extractall(tmpdir)
 
 
-def _create_and_fit_estimator(sagemaker_session, instance_type, tmpdir):
+def _create_and_fit_estimator(sagemaker_session, tf_version, py_version, instance_type, tmpdir):
     job_name = sagemaker.utils.unique_name_from_base("tf-horovod")
     estimator = TensorFlow(
         entry_point=os.path.join(horovod_dir, "hvd_basic.py"),
@@ -105,9 +126,8 @@ def _create_and_fit_estimator(sagemaker_session, instance_type, tmpdir):
         train_instance_count=2,
         train_instance_type=instance_type,
         sagemaker_session=sagemaker_session,
-        py_version=integ.PYTHON_VERSION,
-        script_mode=True,
-        framework_version="1.12",
+        py_version=py_version,
+        framework_version=tf_version,
         distributions={"mpi": {"enabled": True}},
     )
 

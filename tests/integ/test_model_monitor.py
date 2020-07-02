@@ -36,7 +36,7 @@ from sagemaker.model_monitor.data_capture_config import _DATA_CAPTURE_S3_PATH
 from sagemaker.model_monitor import CronExpressionGenerator
 from sagemaker.processing import ProcessingInput
 from sagemaker.processing import ProcessingOutput
-from sagemaker.tensorflow.serving import Model
+from sagemaker.tensorflow.model import TensorFlowModel
 from sagemaker.utils import unique_name_from_base
 
 from tests.integ.kms_utils import get_or_create_kms_key
@@ -84,11 +84,11 @@ CUSTOM_JSON_CONTENT_TYPES = ["application/jsontype1", "application/jsontype2"]
 
 INTEG_TEST_MONITORING_OUTPUT_BUCKET = "integ-test-monitoring-output-bucket"
 
-FIVE_MINUTE_CRON_EXPRESSION = "cron(0/5 * ? * * *)"
+FIVE_MIN_CRON_EXPRESSION = "cron(0/5 * ? * * *)"
 
 
 @pytest.fixture(scope="module")
-def predictor(sagemaker_session, tf_serving_version):
+def predictor(sagemaker_session, tf_serving_latest_version):
     endpoint_name = unique_name_from_base("sagemaker-tensorflow-serving")
     model_data = sagemaker_session.upload_data(
         path=os.path.join(tests.integ.DATA_DIR, "tensorflow-serving-test-model.tar.gz"),
@@ -97,10 +97,10 @@ def predictor(sagemaker_session, tf_serving_version):
     with tests.integ.timeout.timeout_and_delete_endpoint_by_name(
         endpoint_name=endpoint_name, sagemaker_session=sagemaker_session, hours=2
     ):
-        model = Model(
+        model = TensorFlowModel(
             model_data=model_data,
             role=ROLE,
-            framework_version=tf_serving_version,
+            framework_version=tf_serving_latest_version,
             sagemaker_session=sagemaker_session,
         )
         predictor = model.deploy(
@@ -146,11 +146,11 @@ def default_monitoring_schedule_name(sagemaker_session, output_kms_key, volume_k
     )
 
     my_default_monitor.create_monitoring_schedule(
-        endpoint_input=predictor.endpoint,
+        endpoint_input=predictor.endpoint_name,
         output_s3_uri=output_s3_uri,
         statistics=statistics,
         constraints=constraints,
-        schedule_cron_expression=FIVE_MINUTE_CRON_EXPRESSION,
+        schedule_cron_expression=FIVE_MIN_CRON_EXPRESSION,
         enable_cloudwatch_metrics=ENABLE_CLOUDWATCH_METRICS,
     )
 
@@ -206,11 +206,11 @@ def byoc_monitoring_schedule_name(sagemaker_session, output_kms_key, volume_kms_
     )
 
     my_byoc_monitor.create_monitoring_schedule(
-        endpoint_input=predictor.endpoint,
+        endpoint_input=predictor.endpoint_name,
         output=MonitoringOutput(source="/opt/ml/processing/output", destination=output_s3_uri),
         statistics=statistics,
         constraints=constraints,
-        schedule_cron_expression=FIVE_MINUTE_CRON_EXPRESSION,
+        schedule_cron_expression=FIVE_MIN_CRON_EXPRESSION,
     )
 
     _wait_for_schedule_changes_to_apply(monitor=my_byoc_monitor)
@@ -365,7 +365,7 @@ def test_default_monitor_suggest_baseline_and_create_monitoring_schedule_with_cu
     constraints.save()
 
     my_default_monitor.create_monitoring_schedule(
-        endpoint_input=predictor.endpoint,
+        endpoint_input=predictor.endpoint_name,
         output_s3_uri=output_s3_uri,
         statistics=my_default_monitor.baseline_statistics(),
         constraints=my_default_monitor.suggested_constraints(),
@@ -546,7 +546,8 @@ def test_default_monitor_suggest_baseline_and_create_monitoring_schedule_without
     constraints.save()
 
     my_default_monitor.create_monitoring_schedule(
-        endpoint_input=predictor.endpoint, schedule_cron_expression=CronExpressionGenerator.daily()
+        endpoint_input=predictor.endpoint_name,
+        schedule_cron_expression=CronExpressionGenerator.daily(),
     )
     schedule_description = my_default_monitor.describe_schedule()
     assert (
@@ -690,7 +691,7 @@ def test_default_monitor_create_stop_and_start_monitoring_schedule_with_customiz
     )
 
     my_default_monitor.create_monitoring_schedule(
-        endpoint_input=predictor.endpoint,
+        endpoint_input=predictor.endpoint_name,
         output_s3_uri=output_s3_uri,
         statistics=statistics,
         constraints=constraints,
@@ -860,7 +861,7 @@ def test_default_monitor_create_and_update_schedule_config_with_customizations(
     )
 
     my_default_monitor.create_monitoring_schedule(
-        endpoint_input=predictor.endpoint,
+        endpoint_input=predictor.endpoint_name,
         output_s3_uri=output_s3_uri,
         statistics=statistics,
         constraints=constraints,
@@ -1112,7 +1113,8 @@ def test_default_monitor_create_and_update_schedule_config_without_customization
     my_default_monitor = DefaultModelMonitor(role=ROLE, sagemaker_session=sagemaker_session)
 
     my_default_monitor.create_monitoring_schedule(
-        endpoint_input=predictor.endpoint, schedule_cron_expression=CronExpressionGenerator.daily()
+        endpoint_input=predictor.endpoint_name,
+        schedule_cron_expression=CronExpressionGenerator.daily(),
     )
 
     schedule_description = my_default_monitor.describe_schedule()
@@ -1330,6 +1332,7 @@ def test_default_monitor_create_and_update_schedule_config_without_customization
     tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
     reason="ModelMonitoring is not yet supported in this region.",
 )
+@pytest.mark.cron
 def test_default_monitor_attach_followed_by_baseline_and_update_monitoring_schedule(
     sagemaker_session,
     default_monitoring_schedule_name,
@@ -1486,6 +1489,7 @@ def test_default_monitor_attach_followed_by_baseline_and_update_monitoring_sched
     tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
     reason="ModelMonitoring is not yet supported in this region.",
 )
+@pytest.mark.cron
 def test_default_monitor_monitoring_execution_interactions(
     sagemaker_session, default_monitoring_schedule_name
 ):
@@ -1630,7 +1634,7 @@ def test_byoc_monitor_suggest_baseline_and_create_monitoring_schedule_with_custo
     constraints.save()
 
     my_byoc_monitor.create_monitoring_schedule(
-        endpoint_input=predictor.endpoint,
+        endpoint_input=predictor.endpoint_name,
         output=MonitoringOutput(source="/opt/ml/processing/output", destination=output_s3_uri),
         statistics=my_byoc_monitor.baseline_statistics(),
         constraints=my_byoc_monitor.suggested_constraints(),
@@ -1836,7 +1840,7 @@ def test_byoc_monitor_suggest_baseline_and_create_monitoring_schedule_without_cu
     constraints.save()
 
     my_byoc_monitor.create_monitoring_schedule(
-        endpoint_input=predictor.endpoint,
+        endpoint_input=predictor.endpoint_name,
         output=MonitoringOutput(source="/opt/ml/processing/output", destination=output_s3_uri),
         schedule_cron_expression=CronExpressionGenerator.daily(),
     )
@@ -1990,7 +1994,7 @@ def test_byoc_monitor_create_and_update_schedule_config_with_customizations(
     )
 
     my_byoc_monitor.create_monitoring_schedule(
-        endpoint_input=predictor.endpoint,
+        endpoint_input=predictor.endpoint_name,
         output=MonitoringOutput(source="/opt/ml/processing/output", destination=output_s3_uri),
         statistics=statistics,
         constraints=constraints,
@@ -2098,7 +2102,7 @@ def test_byoc_monitor_create_and_update_schedule_config_with_customizations(
     byoc_env.update(UPDATED_ENVIRONMENT)
 
     my_byoc_monitor.update_monitoring_schedule(
-        endpoint_input=predictor.endpoint,
+        endpoint_input=predictor.endpoint_name,
         output=MonitoringOutput(source="/opt/ml/processing/output", destination=output_s3_uri),
         statistics=statistics,
         constraints=constraints,
@@ -2226,6 +2230,7 @@ def test_byoc_monitor_create_and_update_schedule_config_with_customizations(
     tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
     reason="ModelMonitoring is not yet supported in this region.",
 )
+@pytest.mark.cron
 def test_byoc_monitor_attach_followed_by_baseline_and_update_monitoring_schedule(
     sagemaker_session,
     predictor,
@@ -2322,7 +2327,7 @@ def test_byoc_monitor_attach_followed_by_baseline_and_update_monitoring_schedule
     byoc_env.update(UPDATED_ENVIRONMENT)
 
     my_attached_monitor.update_monitoring_schedule(
-        endpoint_input=predictor.endpoint,
+        endpoint_input=predictor.endpoint_name,
         output=MonitoringOutput(source="/opt/ml/processing/output", destination=output_s3_uri),
         statistics=statistics,
         constraints=constraints,
@@ -2448,6 +2453,7 @@ def test_byoc_monitor_attach_followed_by_baseline_and_update_monitoring_schedule
     tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
     reason="ModelMonitoring is not yet supported in this region.",
 )
+@pytest.mark.cron
 def test_byoc_monitor_monitoring_execution_interactions(
     sagemaker_session, byoc_monitoring_schedule_name
 ):
@@ -2543,7 +2549,7 @@ def _upload_captured_data_to_endpoint(sagemaker_session, predictor):
         sagemaker_session.default_bucket(),
         _MODEL_MONITOR_S3_PATH,
         _DATA_CAPTURE_S3_PATH,
-        predictor.endpoint,
+        predictor.endpoint_name,
         "AllTraffic",
     )
     s3_uri_previous_hour = os.path.join(s3_uri_base, previous_hour_folder_structure)

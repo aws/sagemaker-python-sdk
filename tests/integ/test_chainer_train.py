@@ -20,22 +20,32 @@ import pytest
 from sagemaker.chainer.estimator import Chainer
 from sagemaker.chainer.model import ChainerModel
 from sagemaker.utils import unique_name_from_base
-from tests.integ import DATA_DIR, PYTHON_VERSION, TRAINING_DEFAULT_TIMEOUT_MINUTES
+from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 
 @pytest.fixture(scope="module")
-def chainer_local_training_job(sagemaker_local_session, chainer_full_version):
-    return _run_mnist_training_job(sagemaker_local_session, "local", 1, chainer_full_version)
+def chainer_local_training_job(
+    sagemaker_local_session, chainer_full_version, chainer_full_py_version
+):
+    return _run_mnist_training_job(
+        sagemaker_local_session, "local", 1, chainer_full_version, chainer_full_py_version
+    )
 
 
 @pytest.mark.local_mode
-def test_distributed_cpu_training(sagemaker_local_session, chainer_full_version):
-    _run_mnist_training_job(sagemaker_local_session, "local", 2, chainer_full_version)
+def test_distributed_cpu_training(
+    sagemaker_local_session, chainer_full_version, chainer_full_py_version
+):
+    _run_mnist_training_job(
+        sagemaker_local_session, "local", 2, chainer_full_version, chainer_full_py_version
+    )
 
 
 @pytest.mark.local_mode
-def test_training_with_additional_hyperparameters(sagemaker_local_session, chainer_full_version):
+def test_training_with_additional_hyperparameters(
+    sagemaker_local_session, chainer_full_version, chainer_full_py_version
+):
     script_path = os.path.join(DATA_DIR, "chainer_mnist", "mnist.py")
     data_path = os.path.join(DATA_DIR, "chainer_mnist")
 
@@ -45,7 +55,7 @@ def test_training_with_additional_hyperparameters(sagemaker_local_session, chain
         train_instance_count=1,
         train_instance_type="local",
         framework_version=chainer_full_version,
-        py_version=PYTHON_VERSION,
+        py_version=chainer_full_py_version,
         sagemaker_session=sagemaker_local_session,
         hyperparameters={"epochs": 1},
         use_mpi=True,
@@ -62,7 +72,9 @@ def test_training_with_additional_hyperparameters(sagemaker_local_session, chain
 
 @pytest.mark.canary_quick
 @pytest.mark.regional_testing
-def test_attach_deploy(sagemaker_session, chainer_full_version, cpu_instance_type):
+def test_attach_deploy(
+    sagemaker_session, chainer_full_version, chainer_full_py_version, cpu_instance_type
+):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         script_path = os.path.join(DATA_DIR, "chainer_mnist", "mnist.py")
         data_path = os.path.join(DATA_DIR, "chainer_mnist")
@@ -71,7 +83,7 @@ def test_attach_deploy(sagemaker_session, chainer_full_version, cpu_instance_typ
             entry_point=script_path,
             role="SageMakerRole",
             framework_version=chainer_full_version,
-            py_version=PYTHON_VERSION,
+            py_version=chainer_full_py_version,
             train_instance_count=1,
             train_instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
@@ -100,7 +112,12 @@ def test_attach_deploy(sagemaker_session, chainer_full_version, cpu_instance_typ
 
 
 @pytest.mark.local_mode
-def test_deploy_model(chainer_local_training_job, sagemaker_local_session):
+def test_deploy_model(
+    chainer_local_training_job,
+    sagemaker_local_session,
+    chainer_full_version,
+    chainer_full_py_version,
+):
     script_path = os.path.join(DATA_DIR, "chainer_mnist", "mnist.py")
 
     model = ChainerModel(
@@ -108,6 +125,8 @@ def test_deploy_model(chainer_local_training_job, sagemaker_local_session):
         "SageMakerRole",
         entry_point=script_path,
         sagemaker_session=sagemaker_local_session,
+        framework_version=chainer_full_version,
+        py_version=chainer_full_py_version,
     )
 
     predictor = model.deploy(1, "local")
@@ -118,7 +137,7 @@ def test_deploy_model(chainer_local_training_job, sagemaker_local_session):
 
 
 def _run_mnist_training_job(
-    sagemaker_session, instance_type, instance_count, chainer_full_version, wait=True
+    sagemaker_session, instance_type, instance_count, chainer_version, py_version
 ):
     script_path = (
         os.path.join(DATA_DIR, "chainer_mnist", "mnist.py")
@@ -131,8 +150,8 @@ def _run_mnist_training_job(
     chainer = Chainer(
         entry_point=script_path,
         role="SageMakerRole",
-        framework_version=chainer_full_version,
-        py_version=PYTHON_VERSION,
+        framework_version=chainer_version,
+        py_version=py_version,
         train_instance_count=instance_count,
         train_instance_type=instance_type,
         sagemaker_session=sagemaker_session,
@@ -145,7 +164,7 @@ def _run_mnist_training_job(
     test_input = "file://" + os.path.join(data_path, "test")
 
     job_name = unique_name_from_base("test-chainer-training")
-    chainer.fit({"train": train_input, "test": test_input}, wait=wait, job_name=job_name)
+    chainer.fit({"train": train_input, "test": test_input}, job_name=job_name)
     return chainer
 
 

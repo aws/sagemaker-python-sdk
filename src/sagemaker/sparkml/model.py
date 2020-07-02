@@ -13,7 +13,7 @@
 """Placeholder docstring"""
 from __future__ import absolute_import
 
-from sagemaker import Model, RealTimePredictor, Session
+from sagemaker import Model, Predictor, Session
 from sagemaker.content_types import CONTENT_TYPE_CSV
 from sagemaker.fw_registry import registry
 from sagemaker.predictor import csv_serializer
@@ -22,19 +22,19 @@ framework_name = "sparkml-serving"
 repo_name = "sagemaker-sparkml-serving"
 
 
-class SparkMLPredictor(RealTimePredictor):
+class SparkMLPredictor(Predictor):
     """Performs predictions against an MLeap serialized SparkML model.
 
     The implementation of
-    :meth:`~sagemaker.predictor.RealTimePredictor.predict` in this
-    `RealTimePredictor` requires a json as input. The input should follow the
+    :meth:`~sagemaker.predictor.Predictor.predict` in this
+    `Predictor` requires a json as input. The input should follow the
     json format as documented.
 
     ``predict()`` returns a csv output, comma separated if the output is a
     list.
     """
 
-    def __init__(self, endpoint, sagemaker_session=None):
+    def __init__(self, endpoint_name, sagemaker_session=None):
         """Initializes a SparkMLPredictor which should be used with SparkMLModel
         to perform predictions against SparkML models serialized via MLeap. The
         response is returned in text/csv format which is the default response
@@ -49,7 +49,7 @@ class SparkMLPredictor(RealTimePredictor):
         """
         sagemaker_session = sagemaker_session or Session()
         super(SparkMLPredictor, self).__init__(
-            endpoint=endpoint,
+            endpoint_name=endpoint_name,
             sagemaker_session=sagemaker_session,
             serializer=csv_serializer,
             content_type=CONTENT_TYPE_CSV,
@@ -96,8 +96,8 @@ class SparkMLModel(Model):
         region_name = (sagemaker_session or Session()).boto_region_name
         image = "{}/{}:{}".format(registry(region_name, framework_name), repo_name, spark_version)
         super(SparkMLModel, self).__init__(
-            model_data,
             image,
+            model_data,
             role,
             predictor_cls=SparkMLPredictor,
             sagemaker_session=sagemaker_session,

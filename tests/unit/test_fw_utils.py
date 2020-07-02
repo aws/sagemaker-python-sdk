@@ -57,10 +57,6 @@ ORIGINAL_FW_VERSIONS = {
         "1.9.0",
         "1.10",
         "1.10.0",
-        "1.11",
-        "1.11.0",
-        "1.12",
-        "1.12.0",
     ],
 }
 
@@ -106,13 +102,6 @@ def get_repo_name(framework, framework_version, is_serving=False, py_version="py
 
 def is_mxnet_1_4_py2(framework, framework_version, py_version):
     return framework == "mxnet" and py_version == "py2" and framework_version in ["1.4", "1.4.1"]
-
-
-@pytest.fixture(
-    scope="module", params=["1.11", "1.11.0", "1.12", "1.12.0", "1.14", "1.14.0", "1.15", "1.15.0"]
-)
-def tf_version(request):
-    return request.param
 
 
 @pytest.fixture(
@@ -630,14 +619,25 @@ def test_create_image_uri_mxnet(mxnet_version):
 
 
 def test_create_image_uri_tensorflow(tf_version):
-    image_uri = fw_utils.create_image_uri(
-        "us-west-2", "tensorflow-scriptmode", "ml.p3.2xlarge", tf_version, "py3"
-    )
-    assert image_uri == "{}.dkr.ecr.us-west-2.amazonaws.com/{}:{}-gpu-py3".format(
-        get_account("tensorflow", tf_version), get_repo_name("tensorflow", tf_version), tf_version
-    )
+    if tf_version in ORIGINAL_FW_VERSIONS["tensorflow"]:
+        image_uri = fw_utils.create_image_uri(
+            "us-west-2", "tensorflow", "ml.p3.2xlarge", tf_version, "py2"
+        )
+        assert image_uri == "{}.dkr.ecr.us-west-2.amazonaws.com/{}:{}-gpu-py2".format(
+            get_account("tensorflow", tf_version),
+            get_repo_name("tensorflow", tf_version),
+            tf_version,
+        )
+    else:
+        image_uri = fw_utils.create_image_uri(
+            "us-west-2", "tensorflow-scriptmode", "ml.p3.2xlarge", tf_version, "py3"
+        )
+        assert image_uri == "{}.dkr.ecr.us-west-2.amazonaws.com/{}:{}-gpu-py3".format(
+            get_account("tensorflow", tf_version),
+            get_repo_name("tensorflow", tf_version),
+            tf_version,
+        )
 
-    if tf_version not in ORIGINAL_FW_VERSIONS:
         image_uri = fw_utils.create_image_uri(
             "us-west-2", "tensorflow-serving", "ml.c4.2xlarge", tf_version
         )
@@ -1272,3 +1272,26 @@ def test_warn_if_parameter_server_with_multi_gpu(caplog):
         training_instance_type=train_instance_type, distributions=distributions
     )
     assert fw_utils.PARAMETER_SERVER_MULTI_GPU_WARNING in caplog.text
+
+
+def test_warn_if_parameter_server_with_local_multi_gpu(caplog):
+    train_instance_type = "local_gpu"
+    distributions = {"parameter_server": {"enabled": True}}
+
+    fw_utils.warn_if_parameter_server_with_multi_gpu(
+        training_instance_type=train_instance_type, distributions=distributions
+    )
+    assert fw_utils.PARAMETER_SERVER_MULTI_GPU_WARNING in caplog.text
+
+
+def test_validate_version_or_image_args_not_raises():
+    good_args = [("1.0", "py3", None), (None, "py3", "my:uri"), ("1.0", None, "my:uri")]
+    for framework_version, py_version, image_name in good_args:
+        fw_utils.validate_version_or_image_args(framework_version, py_version, image_name)
+
+
+def test_validate_version_or_image_args_raises():
+    bad_args = [(None, None, None), (None, "py3", None), ("1.0", None, None)]
+    for framework_version, py_version, image_name in bad_args:
+        with pytest.raises(ValueError):
+            fw_utils.validate_version_or_image_args(framework_version, py_version, image_name)

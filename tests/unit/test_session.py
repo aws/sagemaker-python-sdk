@@ -2125,3 +2125,11 @@ def test_list_candidates_for_auto_ml_job_with_optional_args(sagemaker_session):
     sagemaker_session.sagemaker_client.list_candidates_for_auto_ml_job.assert_called_with(
         **COMPLETE_EXPECTED_LIST_CANDIDATES_ARGS
     )
+
+
+def test_describe_tuning_Job(sagemaker_session):
+    job_name = "hyper-parameter-tuning"
+    sagemaker_session.describe_tuning_job(job_name=job_name)
+    sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job.assert_called_with(
+        HyperParameterTuningJobName=job_name
+    )
