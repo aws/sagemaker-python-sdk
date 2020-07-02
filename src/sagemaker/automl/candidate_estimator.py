@@ -270,7 +270,6 @@ class CandidateEstimator(object):
         transform_args["max_payload"] = None
         transform_args["env"] = None
         transform_args["experiment_config"] = None
-        transform_args["model_client_config"] = None
 
         input_config = desc["TransformInput"]
         input_config["DataSource"]["S3DataSource"]["S3Uri"] = inputs

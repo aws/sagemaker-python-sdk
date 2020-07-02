@@ -1994,9 +1994,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
         output_config,
         resource_config,
         experiment_config,
-        model_client_config,
         tags,
         data_processing,
+        model_client_config=None,
     ):
         """Create an Amazon SageMaker transform job.
 
@@ -2017,13 +2017,13 @@ class Session(object):  # pylint: disable=too-many-public-methods
             experiment_config (dict): A dictionary describing the experiment configuration for the
                 job. Dictionary contains three optional keys,
                 'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
-            model_client_config (dict): A dictionary describing the model configuration for the
-                job. Dictionary contains two optional keys,
-                'InvocationsTimeoutInSeconds', and 'InvocationsMaxRetries'.
             tags (list[dict]): List of tags for labeling a transform job.
             data_processing(dict): A dictionary describing config for combining the input data and
                 transformed data. For more, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
+            model_client_config (dict): A dictionary describing the model configuration for the
+                job. Dictionary contains two optional keys,
+                'InvocationsTimeoutInSeconds', and 'InvocationsMaxRetries'.
         """
         transform_request = {
             "TransformJobName": job_name,
