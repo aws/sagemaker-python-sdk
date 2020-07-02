@@ -21,7 +21,9 @@ from six import StringIO, BytesIO
 import numpy as np
 
 from sagemaker.content_types import CONTENT_TYPE_JSON, CONTENT_TYPE_CSV, CONTENT_TYPE_NPY
+from sagemaker.deserializers import BaseDeserializer
 from sagemaker.model_monitor import DataCaptureConfig
+from sagemaker.serializers import BaseSerializer
 from sagemaker.session import production_variant, Session
 from sagemaker.utils import name_from_base
 
@@ -59,18 +61,14 @@ class Predictor(object):
                 object, used for SageMaker interactions (default: None). If not
                 specified, one is created using the default AWS configuration
                 chain.
-            serializer (callable): Accepts a single argument, the input data,
-                and returns a sequence of bytes. It may provide a
-                ``content_type`` attribute that defines the endpoint request
-                content type. If not specified, a sequence of bytes is expected
-                for the data.
-            deserializer (callable): Accepts two arguments, the result data and
-                the response content type, and returns a sequence of bytes. It
-                may provide a ``content_type`` attribute that defines the
-                endpoint response's "Accept" content type. If not specified, a
-                sequence of bytes is expected for the data.
+            serializer (sagemaker.serializers.BaseSerializer): A serializer
+                object, used to encode data for an inference endpoint
+                (default: None).
+            deserializer (sagemaker.deserializers.BaseDeserializer): A
+                deserializer object, used to decode data from an inference
+                endpoint (default: None).
             content_type (str): The invocation's "ContentType", overriding any
-                ``content_type`` from the serializer (default: None).
+                ``CONTENT_TYPE`` from the serializer (default: None).
             accept (str): The invocation's "Accept", overriding any accept from
                 the deserializer (default: None).
         """
@@ -78,8 +76,8 @@ class Predictor(object):
         self.sagemaker_session = sagemaker_session or Session()
         self.serializer = serializer
         self.deserializer = deserializer
-        self.content_type = content_type or getattr(serializer, "content_type", None)
-        self.accept = accept or getattr(deserializer, "accept", None)
+        self.content_type = content_type or getattr(serializer, "CONTENT_TYPE", None)
+        self.accept = accept or getattr(deserializer, "ACCEPT", None)
         self._endpoint_config_name = self._get_endpoint_config_name()
         self._model_names = self._get_model_names()
 
@@ -121,7 +119,7 @@ class Predictor(object):
         response_body = response["Body"]
         if self.deserializer is not None:
             # It's the deserializer's responsibility to close the stream
-            return self.deserializer(response_body, response["ContentType"])
+            return self.deserializer.deserialize(response_body, response["ContentType"])
         data = response_body.read()
         response_body.close()
         return data
@@ -152,7 +150,7 @@ class Predictor(object):
             args["TargetVariant"] = target_variant
 
         if self.serializer is not None:
-            data = self.serializer(data)
+            data = self.serializer.serialize(data)
 
         args["Body"] = data
         return args
@@ -406,6 +404,88 @@ class Predictor(object):
         return [d["ModelName"] for d in production_variants]
 
 
+class LegacySerializer(BaseSerializer):
+    """Wrapper that makes legacy serializers forward compatibile."""
+
+    def __init__(self, serializer):
+        """Placeholder docstring.
+
+        Args:
+            serializer (callable): A legacy serializer.
+        """
+        self.serializer = serializer
+        self.content_type = self.serializer.content_type
+
+    def __call__(self, *args, **kwargs):
+        """Wraps the call method of the legacy serializer.
+
+        Args:
+            data (object): Data to be serialized.
+
+        Returns:
+            object: Serialized data used for a request.
+        """
+        return self.serializer(*args, **kwargs)
+
+    def serialize(self, data):
+        """Wraps the call method of the legacy serializer.
+
+        Args:
+            data (object): Data to be serialized.
+
+        Returns:
+            object: Serialized data used for a request.
+        """
+        return self.serializer(data)
+
+    @property
+    def CONTENT_TYPE(self):
+        """The MIME type of the data sent to the inference endpoint."""
+        return self.content_type
+
+
+class LegacyDeserializer(BaseDeserializer):
+    """Wrapper that makes legacy deserializers forward compatibile."""
+
+    def __init__(self, deserializer):
+        """Placeholder docstring.
+
+        Args:
+            deserializer (callable): A legacy deserializer.
+        """
+        self.deserializer = deserializer
+        self.accept = deserializer.accept
+
+    def __call__(self, *args, **kwargs):
+        """Wraps the call method of the legacy deserializer.
+
+        Args:
+            data (object): Data to be deserialized.
+            content_type (str): The MIME type of the data.
+
+        Returns:
+            object: The data deserialized into an object.
+        """
+        return self.deserializer(*args, **kwargs)
+
+    def deserialize(self, data, content_type):
+        """Wraps the call method of the legacy deserializer.
+
+        Args:
+            data (object): Data to be deserialized.
+            content_type (str): The MIME type of the data.
+
+        Returns:
+            object: The data deserialized into an object.
+        """
+        return self.deserializer(data, content_type)
+
+    @property
+    def ACCEPT(self):
+        """The content type that is expected from the inference endpoint."""
+        return self.accept
+
+
 class _CsvSerializer(object):
     """Placeholder docstring"""
 
@@ -479,7 +559,7 @@ def _csv_serialize_object(data):
     return csv_buffer.getvalue().rstrip("\r\n")
 
 
-csv_serializer = _CsvSerializer()
+csv_serializer = LegacySerializer(_CsvSerializer())
 
 
 def _is_mutable_sequence_like(obj):
@@ -531,7 +611,7 @@ class _CsvDeserializer(object):
             stream.close()
 
 
-csv_deserializer = _CsvDeserializer()
+csv_deserializer = LegacyDeserializer(_CsvDeserializer())
 
 
 class BytesDeserializer(object):
@@ -644,7 +724,7 @@ class _JsonSerializer(object):
         return json.dumps(_ndarray_to_list(data))
 
 
-json_serializer = _JsonSerializer()
+json_serializer = LegacySerializer(_JsonSerializer())
 
 
 def _ndarray_to_list(data):
@@ -686,7 +766,7 @@ class _JsonDeserializer(object):
             stream.close()
 
 
-json_deserializer = _JsonDeserializer()
+json_deserializer = LegacyDeserializer(_JsonDeserializer())
 
 
 class _NumpyDeserializer(object):
@@ -730,7 +810,7 @@ class _NumpyDeserializer(object):
         )
 
 
-numpy_deserializer = _NumpyDeserializer()
+numpy_deserializer = LegacyDeserializer(_NumpyDeserializer())
 
 
 class _NPYSerializer(object):
@@ -778,4 +858,4 @@ def _npy_serialize(data):
     return buffer.getvalue()
 
 
-npy_serializer = _NPYSerializer()
+npy_serializer = LegacySerializer(_NPYSerializer())
