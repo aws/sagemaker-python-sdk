@@ -200,7 +200,7 @@ If you want to use parameter servers for distributed training, set the following
 
 .. code:: python
 
-    distributions={'parameter_server': {'enabled': True}}
+    distribution={'parameter_server': {'enabled': True}}
 
 Then, when writing a distributed training script, use an MXNet kvstore to store and share model parameters.
 During training, Amazon SageMaker automatically starts an MXNet kvstore server and scheduler processes on hosts in your training job cluster.

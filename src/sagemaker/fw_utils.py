@@ -599,7 +599,7 @@ def later_framework_version_warning(latest_version):
     return LATER_FRAMEWORK_VERSION_WARNING.format(latest=latest_version)
 
 
-def warn_if_parameter_server_with_multi_gpu(training_instance_type, distributions):
+def warn_if_parameter_server_with_multi_gpu(training_instance_type, distribution):
     """Warn the user that training will not fully leverage all the GPU
     cores if parameter server is enabled and a multi-GPU instance is selected.
     Distributed training with the default parameter server setup doesn't
@@ -607,7 +607,7 @@ def warn_if_parameter_server_with_multi_gpu(training_instance_type, distribution
 
     Args:
         training_instance_type (str): A string representing the type of training instance selected.
-        distributions (dict): A dictionary with information to enable distributed training.
+        distribution (dict): A dictionary with information to enable distributed training.
             (Defaults to None if distributed training is not enabled.) For example:
 
             .. code:: python
@@ -621,7 +621,7 @@ def warn_if_parameter_server_with_multi_gpu(training_instance_type, distribution
 
 
     """
-    if training_instance_type == "local" or distributions is None:
+    if training_instance_type == "local" or distribution is None:
         return
 
     is_multi_gpu_instance = (
@@ -629,7 +629,7 @@ def warn_if_parameter_server_with_multi_gpu(training_instance_type, distribution
         or training_instance_type.split(".")[1].startswith("p")
     ) and training_instance_type not in SINGLE_GPU_INSTANCE_TYPES
 
-    ps_enabled = "parameter_server" in distributions and distributions["parameter_server"].get(
+    ps_enabled = "parameter_server" in distribution and distribution["parameter_server"].get(
         "enabled", False
     )
 

@@ -300,7 +300,7 @@ def test_async_fit(sagemaker_session, mxnet_full_version, mxnet_full_py_version,
             train_instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
             framework_version=mxnet_full_version,
-            distributions={"parameter_server": {"enabled": True}},
+            distribution={"parameter_server": {"enabled": True}},
         )
 
         train_input = mx.sagemaker_session.upload_data(

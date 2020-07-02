@@ -21,7 +21,6 @@ from sagemaker.fw_utils import (
     framework_version_from_tag,
     is_version_equal_or_higher,
     python_deprecation_warning,
-    parameter_v2_rename_warning,
     validate_version_or_image_args,
     warn_if_parameter_server_with_multi_gpu,
 )
@@ -46,7 +45,7 @@ class MXNet(Framework):
         source_dir=None,
         hyperparameters=None,
         image_name=None,
-        distributions=None,
+        distribution=None,
         **kwargs
     ):
         """This ``Estimator`` executes an MXNet script in a managed MXNet
@@ -100,7 +99,7 @@ class MXNet(Framework):
                 If ``framework_version`` or ``py_version`` are ``None``, then
                 ``image_name`` is required. If also ``None``, then a ``ValueError``
                 will be raised.
-            distributions (dict): A dictionary with information on how to run distributed
+            distribution (dict): A dictionary with information on how to run distributed
                 training (default: None). To have parameter servers launched for training,
                 set this value to be ``{'parameter_server': {'enabled': True}}``.
             **kwargs: Additional kwargs passed to the
@@ -131,21 +130,20 @@ class MXNet(Framework):
             entry_point, source_dir, hyperparameters, image_name=image_name, **kwargs
         )
 
-        if distributions is not None:
-            logger.warning(parameter_v2_rename_warning("distributions", "distribution"))
+        if distribution is not None:
             train_instance_type = kwargs.get("train_instance_type")
             warn_if_parameter_server_with_multi_gpu(
-                training_instance_type=train_instance_type, distributions=distributions
+                training_instance_type=train_instance_type, distribution=distribution
             )
 
-        self._configure_distribution(distributions)
+        self._configure_distribution(distribution)
 
-    def _configure_distribution(self, distributions):
+    def _configure_distribution(self, distribution):
         """
         Args:
-            distributions:
+            distribution:
         """
-        if distributions is None:
+        if distribution is None:
             return
 
         if (
@@ -153,13 +151,13 @@ class MXNet(Framework):
             and self.framework_version.split(".") < self._LOWEST_SCRIPT_MODE_VERSION
         ):
             raise ValueError(
-                "The distributions option is valid for only versions {} and higher".format(
+                "The distribution option is valid for only versions {} and higher".format(
                     ".".join(self._LOWEST_SCRIPT_MODE_VERSION)
                 )
             )
 
-        if "parameter_server" in distributions:
-            enabled = distributions["parameter_server"].get("enabled", False)
+        if "parameter_server" in distribution:
+            enabled = distribution["parameter_server"].get("enabled", False)
             self._hyperparameters[self.LAUNCH_PS_ENV_NAME] = enabled
 
     def create_model(
