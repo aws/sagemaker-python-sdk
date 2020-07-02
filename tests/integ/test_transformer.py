@@ -391,7 +391,7 @@ def test_transform_tf_kms_network_isolation(
         s3.S3Downloader.download(
             s3_uri=output_path,
             local_path=os.path.join(tmpdir, "tf-batch-output"),
-            session=sagemaker_session,
+            sagemaker_session=sagemaker_session,
         )
 
         with open(os.path.join(tmpdir, "tf-batch-output", "data.csv.out")) as f:

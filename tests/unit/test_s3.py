@@ -43,7 +43,9 @@ def sagemaker_session():
 def test_upload(sagemaker_session, caplog):
     desired_s3_uri = os.path.join("s3://", BUCKET_NAME, CURRENT_JOB_NAME, SOURCE_NAME)
     S3Uploader.upload(
-        local_path="/path/to/app.jar", desired_s3_uri=desired_s3_uri, session=sagemaker_session
+        local_path="/path/to/app.jar",
+        desired_s3_uri=desired_s3_uri,
+        sagemaker_session=sagemaker_session,
     )
     sagemaker_session.upload_data.assert_called_with(
         path="/path/to/app.jar",
@@ -51,10 +53,6 @@ def test_upload(sagemaker_session, caplog):
         key_prefix=os.path.join(CURRENT_JOB_NAME, SOURCE_NAME),
         extra_args=None,
     )
-    warning_message = (
-        "Parameter 'session' will be renamed to 'sagemaker_session' " "in SageMaker Python SDK v2."
-    )
-    assert warning_message in caplog.text
 
 
 def test_upload_with_kms_key(sagemaker_session):
@@ -63,7 +61,7 @@ def test_upload_with_kms_key(sagemaker_session):
         local_path="/path/to/app.jar",
         desired_s3_uri=desired_s3_uri,
         kms_key=KMS_KEY,
-        session=sagemaker_session,
+        sagemaker_session=sagemaker_session,
     )
     sagemaker_session.upload_data.assert_called_with(
         path="/path/to/app.jar",
@@ -76,7 +74,7 @@ def test_upload_with_kms_key(sagemaker_session):
 def test_download(sagemaker_session):
     s3_uri = os.path.join("s3://", BUCKET_NAME, CURRENT_JOB_NAME, SOURCE_NAME)
     S3Downloader.download(
-        s3_uri=s3_uri, local_path="/path/for/download/", session=sagemaker_session
+        s3_uri=s3_uri, local_path="/path/for/download/", sagemaker_session=sagemaker_session
     )
     sagemaker_session.download_data.assert_called_with(
         path="/path/for/download/",
@@ -89,7 +87,10 @@ def test_download(sagemaker_session):
 def test_download_with_kms_key(sagemaker_session):
     s3_uri = os.path.join("s3://", BUCKET_NAME, CURRENT_JOB_NAME, SOURCE_NAME)
     S3Downloader.download(
-        s3_uri=s3_uri, local_path="/path/for/download/", kms_key=KMS_KEY, session=sagemaker_session
+        s3_uri=s3_uri,
+        local_path="/path/for/download/",
+        kms_key=KMS_KEY,
+        sagemaker_session=sagemaker_session,
     )
     sagemaker_session.download_data.assert_called_with(
         path="/path/for/download/",

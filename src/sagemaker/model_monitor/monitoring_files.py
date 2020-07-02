@@ -72,7 +72,7 @@ class ModelMonitoringFile(object):
             body=json.dumps(self.body_dict),
             desired_s3_uri=self.file_s3_uri,
             kms_key=self.kms_key,
-            session=self.session,
+            sagemaker_session=self.session,
         )
 
 
@@ -119,7 +119,9 @@ class Statistics(ModelMonitoringFile):
         """
         try:
             body_dict = json.loads(
-                S3Downloader.read_file(s3_uri=statistics_file_s3_uri, session=sagemaker_session)
+                S3Downloader.read_file(
+                    s3_uri=statistics_file_s3_uri, sagemaker_session=sagemaker_session
+                )
             )
         except ClientError as error:
             print(
@@ -163,7 +165,7 @@ class Statistics(ModelMonitoringFile):
             body=statistics_file_string,
             desired_s3_uri=desired_s3_uri,
             kms_key=kms_key,
-            session=sagemaker_session,
+            sagemaker_session=sagemaker_session,
         )
 
         return Statistics.from_s3_uri(
@@ -243,7 +245,9 @@ class Constraints(ModelMonitoringFile):
         """
         try:
             body_dict = json.loads(
-                S3Downloader.read_file(s3_uri=constraints_file_s3_uri, session=sagemaker_session)
+                S3Downloader.read_file(
+                    s3_uri=constraints_file_s3_uri, sagemaker_session=sagemaker_session
+                )
             )
         except ClientError as error:
             print(
@@ -290,7 +294,7 @@ class Constraints(ModelMonitoringFile):
             body=constraints_file_string,
             desired_s3_uri=desired_s3_uri,
             kms_key=kms_key,
-            session=sagemaker_session,
+            sagemaker_session=sagemaker_session,
         )
 
         return Constraints.from_s3_uri(
@@ -396,7 +400,7 @@ class ConstraintViolations(ModelMonitoringFile):
         try:
             body_dict = json.loads(
                 S3Downloader.read_file(
-                    s3_uri=constraint_violations_file_s3_uri, session=sagemaker_session
+                    s3_uri=constraint_violations_file_s3_uri, sagemaker_session=sagemaker_session
                 )
             )
         except ClientError as error:
@@ -445,7 +449,7 @@ class ConstraintViolations(ModelMonitoringFile):
             body=constraint_violations_file_string,
             desired_s3_uri=desired_s3_uri,
             kms_key=kms_key,
-            session=sagemaker_session,
+            sagemaker_session=sagemaker_session,
         )
 
         return ConstraintViolations.from_s3_uri(
