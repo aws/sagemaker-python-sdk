@@ -508,8 +508,11 @@ class RLEstimator(Framework):
             return [
                 {
                     "Name": "episode_reward_mean",
-                    "Regex": "episode_reward_mean: (%s)" % float_regex,
+                    "Regex": "episode_reward_mean: {}".format(float_regex),
                 },
-                {"Name": "episode_reward_max", "Regex": "episode_reward_max: (%s)" % float_regex, },
+                {
+                    "Name": "episode_reward_max",
+                    "Regex": "episode_reward_max: {}".format(float_regex),
+                },
             ]
         raise ValueError("An unknown RLToolkit enum was passed in. toolkit: {}".format(toolkit))
