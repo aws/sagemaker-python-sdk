@@ -33,10 +33,8 @@ class BaseSerializer(abc.ABC):
         Returns:
             object: Serialized data used for a request.
         """
-        raise NotImplementedError
 
     @property
     @abc.abstractmethod
     def CONTENT_TYPE(self):
         """The MIME type of the data sent to the inference endpoint."""
-        raise NotImplementedError

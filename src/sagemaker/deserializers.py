@@ -34,10 +34,8 @@ class BaseDeserializer(abc.ABC):
         Returns:
             object: The data deserialized into an object.
         """
-        raise NotImplementedError
 
     @property
     @abc.abstractmethod
     def ACCEPT(self):
         """The content type that is expected from the inference endpoint."""
-        raise NotImplementedError
