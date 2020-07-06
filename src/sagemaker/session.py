@@ -2777,7 +2777,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
     def endpoint_from_model_data(
         self,
         model_s3_location,
-        deployment_image_uri,
+        image_uri,
         initial_instance_count,
         instance_type,
         name=None,
@@ -2792,7 +2792,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         Args:
             model_s3_location (str): S3 URI of the model artifacts to use for the endpoint.
-            deployment_image_uri (str): The Docker image URI which defines the runtime code to be
+            image_uri (str): The Docker image URI which defines the runtime code to be
                 used as the entry point for accepting prediction requests.
             initial_instance_count (int): Minimum number of EC2 instances to launch. The actual
                 number of active instances for an endpoint at any given time varies due to
@@ -2824,7 +2824,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         """
         model_environment_vars = model_environment_vars or {}
-        name = name or name_from_image(deployment_image_uri)
+        name = name or name_from_image(image_uri)
         model_vpc_config = vpc_utils.sanitize(model_vpc_config)
 
         if _deployment_entity_exists(
@@ -2838,7 +2838,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             lambda: self.sagemaker_client.describe_model(ModelName=name)
         ):
             primary_container = container_def(
-                image_uri=deployment_image_uri,
+                image_uri=image_uri,
                 model_data_url=model_s3_location,
                 env=model_environment_vars,
             )
