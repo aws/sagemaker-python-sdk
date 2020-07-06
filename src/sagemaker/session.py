@@ -2156,7 +2156,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         training_job_name,
         name=None,
         role=None,
-        primary_container_image_uri=None,
+        image_uri=None,
         model_data_url=None,
         env=None,
         vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT,
@@ -2171,7 +2171,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             role (str): The ``ExecutionRoleArn`` IAM Role ARN for the ``Model``, specified either
                 by an IAM role name or role ARN. If None, the ``RoleArn`` from the SageMaker
                 Training Job will be used.
-            primary_container_image_uri (str): The Docker image URI (default: None). If None, it
+            image_uri (str): The Docker image URI (default: None). If None, it
                 defaults to the training image URI from ``training_job_name``.
             model_data_url (str): S3 location of the model data (default: None). If None, defaults
                 to the ``ModelS3Artifacts`` of ``training_job_name``.
@@ -2194,7 +2194,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         role = role or training_job["RoleArn"]
         env = env or {}
         primary_container = container_def(
-            primary_container_image_uri or training_job["AlgorithmSpecification"]["TrainingImage"],
+            image_uri or training_job["AlgorithmSpecification"]["TrainingImage"],
             model_data_url=model_data_url or training_job["ModelArtifacts"]["S3ModelArtifacts"],
             env=env,
         )
@@ -2700,7 +2700,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         job_name,
         initial_instance_count,
         instance_type,
-        deployment_image_uri=None,
+        image_uri=None,
         name=None,
         role=None,
         wait=True,
@@ -2725,7 +2725,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 autoscaling.
             instance_type (str): Type of EC2 instance to deploy to an endpoint for prediction,
                 for example, 'ml.c4.xlarge'.
-            deployment_image_uri (str): The Docker image which defines the inference code to be used
+            image_uri (str): The Docker image which defines the inference code to be used
                 as the entry point for accepting prediction requests. If not specified, uses the
                 image used for the training job.
             name (str): Name of the ``Endpoint`` to create. If not specified, uses the training job
@@ -2755,16 +2755,14 @@ class Session(object):  # pylint: disable=too-many-public-methods
         """
         job_desc = self.sagemaker_client.describe_training_job(TrainingJobName=job_name)
         output_url = job_desc["ModelArtifacts"]["S3ModelArtifacts"]
-        deployment_image_uri = (
-            deployment_image_uri or job_desc["AlgorithmSpecification"]["TrainingImage"]
-        )
+        image_uri = image_uri or job_desc["AlgorithmSpecification"]["TrainingImage"]
         role = role or job_desc["RoleArn"]
         name = name or job_name
         vpc_config_override = _vpc_config_from_training_job(job_desc, vpc_config_override)
 
         return self.endpoint_from_model_data(
             model_s3_location=output_url,
-            deployment_image_uri=deployment_image_uri,
+            image_uri=image_uri,
             initial_instance_count=initial_instance_count,
             instance_type=instance_type,
             name=name,
