@@ -246,7 +246,7 @@ def test_attach_custom_image(sagemaker_session):
     )
 
     estimator = TensorFlow.attach(training_job_name="neo", sagemaker_session=sagemaker_session)
-    assert estimator.image_name == training_image
+    assert estimator.image_uri == training_image
     assert estimator.train_image() == training_image
 
 

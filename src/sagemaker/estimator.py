@@ -39,7 +39,6 @@ from sagemaker.fw_utils import (
     UploadedCode,
     validate_source_dir,
     _region_supports_debugger,
-    parameter_v2_rename_warning,
 )
 from sagemaker.job import _Job
 from sagemaker.local import LocalSession
@@ -1131,7 +1130,7 @@ class Estimator(EstimatorBase):
 
     def __init__(
         self,
-        image_name,
+        image_uri,
         role,
         train_instance_count,
         train_instance_type,
@@ -1164,7 +1163,7 @@ class Estimator(EstimatorBase):
         """Initialize an ``Estimator`` instance.
 
         Args:
-            image_name (str): The container image to use for training.
+            image_uri (str): The container image to use for training.
             role (str): An AWS IAM role (either name or full ARN). The Amazon
                 SageMaker training jobs and APIs that create Amazon SageMaker
                 endpoints use this role to access training data and model
@@ -1273,8 +1272,7 @@ class Estimator(EstimatorBase):
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_AlgorithmSpecification.html#SageMaker-Type-AlgorithmSpecification-EnableSageMakerMetricsTimeSeries
                 (default: ``None``).
         """
-        logging.warning(parameter_v2_rename_warning("image_name", "image_uri"))
-        self.image_name = image_name
+        self.image_uri = image_uri
         self.hyperparam_dict = hyperparameters.copy() if hyperparameters else {}
         super(Estimator, self).__init__(
             role,
@@ -1312,7 +1310,7 @@ class Estimator(EstimatorBase):
         The fit() method, that does the model training, calls this method to
         find the image to use for model training.
         """
-        return self.image_name
+        return self.image_uri
 
     def set_hyperparameters(self, **kwargs):
         """
@@ -1422,7 +1420,7 @@ class Estimator(EstimatorBase):
             job_details, model_channel_name
         )
 
-        init_params["image_name"] = init_params.pop("image")
+        init_params["image_uri"] = init_params.pop("image")
         return init_params
 
 
@@ -1449,7 +1447,7 @@ class Framework(EstimatorBase):
         enable_cloudwatch_metrics=False,
         container_log_level=logging.INFO,
         code_location=None,
-        image_name=None,
+        image_uri=None,
         dependencies=None,
         enable_network_isolation=False,
         git_config=None,
@@ -1515,7 +1513,7 @@ class Framework(EstimatorBase):
                 a string prepended with a "/" is appended to ``code_location``. The code
                 file uploaded to S3 is 'code_location/job-name/source/sourcedir.tar.gz'.
                 If not specified, the default ``code location`` is s3://output_bucket/job-name/.
-            image_name (str): An alternate image name to use instead of the
+            image_uri (str): An alternate image name to use instead of the
                 official Sagemaker image for the framework. This is useful to
                 run one of the Sagemaker supported frameworks with an image
                 containing custom dependencies.
@@ -1635,6 +1633,8 @@ class Framework(EstimatorBase):
         self.git_config = git_config
         self.source_dir = source_dir
         self.dependencies = dependencies or []
+        self.uploaded_code = None
+
         if enable_cloudwatch_metrics:
             warnings.warn(
                 "enable_cloudwatch_metrics is now deprecated and will be removed in the future.",
@@ -1643,11 +1643,7 @@ class Framework(EstimatorBase):
         self.enable_cloudwatch_metrics = False
         self.container_log_level = container_log_level
         self.code_location = code_location
-        self.image_name = image_name
-        if image_name is not None:
-            logging.warning(parameter_v2_rename_warning("image_name", "image_uri"))
-
-        self.uploaded_code = None
+        self.image_uri = image_uri
 
         self._hyperparameters = hyperparameters or {}
         self.checkpoint_s3_uri = checkpoint_s3_uri
@@ -1833,8 +1829,8 @@ class Framework(EstimatorBase):
         Returns:
             str: The URI of the Docker image.
         """
-        if self.image_name:
-            return self.image_name
+        if self.image_uri:
+            return self.image_uri
         return create_image_uri(
             self.sagemaker_session.boto_region_name,
             self.__framework_name__,

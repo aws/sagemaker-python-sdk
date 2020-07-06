@@ -181,7 +181,7 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
         if framework_version is None and image is None:
             raise ValueError(
                 "Both framework_version and image were None. "
-                "Either specify framework_version or specify image_name."
+                "Either specify framework_version or specify image."
             )
         self.framework_version = framework_version
 

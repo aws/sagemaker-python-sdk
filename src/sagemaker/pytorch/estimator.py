@@ -42,7 +42,7 @@ class PyTorch(Framework):
         py_version=None,
         source_dir=None,
         hyperparameters=None,
-        image_name=None,
+        image_uri=None,
         **kwargs
     ):
         """This ``Estimator`` executes an PyTorch script in a managed PyTorch
@@ -69,11 +69,11 @@ class PyTorch(Framework):
                 must point to a file located at the root of ``source_dir``.
             framework_version (str): PyTorch version you want to use for
                 executing your model training code. Defaults to ``None``. Required unless
-                ``image_name`` is provided. List of supported versions:
+                ``image_uri`` is provided. List of supported versions:
                 https://github.com/aws/sagemaker-python-sdk#pytorch-sagemaker-estimators.
             py_version (str): Python version you want to use for executing your
                 model training code. One of 'py2' or 'py3'. Defaults to ``None``. Required
-                unless ``image_name`` is provided.
+                unless ``image_uri`` is provided.
             source_dir (str): Path (absolute, relative or an S3 URI) to a directory
                 with any other training source code dependencies aside from the entry
                 point file (default: None). If ``source_dir`` is an S3 URI, it must
@@ -85,7 +85,7 @@ class PyTorch(Framework):
                 SageMaker. For convenience, this accepts other types for keys
                 and values, but ``str()`` will be called to convert them before
                 training.
-            image_name (str): If specified, the estimator will use this image
+            image_uri (str): If specified, the estimator will use this image
                 for training and hosting, instead of selecting the appropriate
                 SageMaker official image based on framework_version and
                 py_version. It can be an ECR url or dockerhub image and tag.
@@ -95,7 +95,7 @@ class PyTorch(Framework):
                     * ``custom-image:latest``
 
                 If ``framework_version`` or ``py_version`` are ``None``, then
-                ``image_name`` is required. If also ``None``, then a ``ValueError``
+                ``image_uri`` is required. If also ``None``, then a ``ValueError``
                 will be raised.
             **kwargs: Additional kwargs passed to the :class:`~sagemaker.estimator.Framework`
                 constructor.
@@ -106,7 +106,7 @@ class PyTorch(Framework):
             :class:`~sagemaker.estimator.Framework` and
             :class:`~sagemaker.estimator.EstimatorBase`.
         """
-        validate_version_or_image_args(framework_version, py_version, image_name)
+        validate_version_or_image_args(framework_version, py_version, image_uri)
         if py_version == "py2":
             logger.warning(
                 python_deprecation_warning(self.__framework_name__, defaults.LATEST_PY2_VERSION)
@@ -122,7 +122,7 @@ class PyTorch(Framework):
                 kwargs["enable_sagemaker_metrics"] = True
 
         super(PyTorch, self).__init__(
-            entry_point, source_dir, hyperparameters, image_name=image_name, **kwargs
+            entry_point, source_dir, hyperparameters, image_uri=image_uri, **kwargs
         )
 
     def create_model(
@@ -168,7 +168,7 @@ class PyTorch(Framework):
             object. See :func:`~sagemaker.pytorch.model.PyTorchModel` for full details.
         """
         if "image" not in kwargs:
-            kwargs["image"] = self.image_name
+            kwargs["image"] = self.image_uri
 
         kwargs["name"] = self._get_or_create_name(kwargs.get("name"))
 
@@ -206,8 +206,8 @@ class PyTorch(Framework):
         init_params = super(PyTorch, cls)._prepare_init_params_from_job_description(
             job_details, model_channel_name
         )
-        image_name = init_params.pop("image")
-        framework, py_version, tag, _ = framework_name_from_image(image_name)
+        image_uri = init_params.pop("image")
+        framework, py_version, tag, _ = framework_name_from_image(image_uri)
 
         if tag is None:
             framework_version = None
@@ -219,7 +219,7 @@ class PyTorch(Framework):
         if not framework:
             # If we were unable to parse the framework name from the image it is not one of our
             # officially supported images, in this case just add the image to the init params.
-            init_params["image_name"] = image_name
+            init_params["image_uri"] = image_uri
             return init_params
 
         if framework != cls.__framework_name__:
