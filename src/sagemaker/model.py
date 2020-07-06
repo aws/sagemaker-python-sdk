@@ -116,9 +116,9 @@ class Model(object):
         self.predictor_cls = predictor_cls
         self.env = env or {}
         self.name = name
+        self._base_name = None
         self.vpc_config = vpc_config
         self.sagemaker_session = sagemaker_session
-        self._model_name = None
         self.endpoint_name = None
         self._is_compiled_model = False
         self._enable_network_isolation = enable_network_isolation
@@ -184,7 +184,10 @@ class Model(object):
                 /api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags
         """
         container_def = self.prepare_container_def(instance_type, accelerator_type=accelerator_type)
-        self.name = self.name or utils.name_from_image(container_def["Image"])
+
+        self._ensure_base_name_if_needed(container_def["Image"])
+        self._set_model_name_if_needed()
+
         enable_network_isolation = self.enable_network_isolation()
 
         self._init_sagemaker_session_if_does_not_exist(instance_type)
@@ -196,6 +199,16 @@ class Model(object):
             enable_network_isolation=enable_network_isolation,
             tags=tags,
         )
+
+    def _ensure_base_name_if_needed(self, image):
+        """Create a base name from the image if there is no model name provided."""
+        if self.name is None:
+            self._base_name = self._base_name or utils.base_name_from_image(image)
+
+    def _set_model_name_if_needed(self):
+        """Generate a new model name if ``self._base_name`` is present."""
+        if self._base_name:
+            self.name = utils.name_from_base(self._base_name)
 
     def _framework(self):
         """Placeholder docstring"""
@@ -471,10 +484,9 @@ class Model(object):
 
         compiled_model_suffix = "-".join(instance_type.split(".")[:-1])
         if self._is_compiled_model:
-            name_prefix = self.name or utils.name_from_image(
-                self.image, max_length=(62 - len(compiled_model_suffix))
-            )
-            self.name = "{}-{}".format(name_prefix, compiled_model_suffix)
+            self._ensure_base_name_if_needed(self.image)
+            if self._base_name is not None:
+                self._base_name = "-".join((self._base_name, compiled_model_suffix))
 
         self._create_sagemaker_model(instance_type, accelerator_type, tags)
         production_variant = sagemaker.production_variant(
@@ -483,9 +495,10 @@ class Model(object):
         if endpoint_name:
             self.endpoint_name = endpoint_name
         else:
-            self.endpoint_name = self.name
-            if self._is_compiled_model and not self.endpoint_name.endswith(compiled_model_suffix):
-                self.endpoint_name += compiled_model_suffix
+            base_endpoint_name = self._base_name or utils.base_from_name(self.name)
+            if self._is_compiled_model and not base_endpoint_name.endswith(compiled_model_suffix):
+                base_endpoint_name = "-".join((base_endpoint_name, compiled_model_suffix))
+            self.endpoint_name = utils.name_from_base(base_endpoint_name)
 
         data_capture_config_dict = None
         if data_capture_config is not None:
@@ -568,7 +581,7 @@ class Model(object):
             max_payload=max_payload,
             env=env,
             tags=tags,
-            base_transform_job_name=self.name,
+            base_transform_job_name=self._base_name or self.name,
             volume_kms_key=volume_kms_key,
             sagemaker_session=self.sagemaker_session,
         )
@@ -994,13 +1007,18 @@ class ModelPackage(Model):
         if self.env != {}:
             container_def["Environment"] = self.env
 
-        model_package_short_name = model_package_name.split("/")[-1]
-        enable_network_isolation = self.enable_network_isolation()
-        self.name = self.name or utils.name_from_base(model_package_short_name)
+        self._ensure_base_name_if_needed(model_package_name.split("/")[-1])
+        self._set_model_name_if_needed()
+
         self.sagemaker_session.create_model(
             self.name,
             self.role,
             container_def,
             vpc_config=self.vpc_config,
-            enable_network_isolation=enable_network_isolation,
+            enable_network_isolation=self.enable_network_isolation(),
         )
+
+    def _ensure_base_name_if_needed(self, base_name):
+        """Set the base name if there is no model name provided."""
+        if self.name is None:
+            self._base_name = base_name

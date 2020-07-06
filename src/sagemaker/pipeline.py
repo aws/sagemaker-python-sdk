@@ -60,7 +60,6 @@ class PipelineModel(object):
         self.name = name
         self.vpc_config = vpc_config
         self.sagemaker_session = sagemaker_session
-        self._model_name = None
         self.endpoint_name = None
 
     def pipeline_container_def(self, instance_type):
