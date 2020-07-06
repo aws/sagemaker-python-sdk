@@ -262,7 +262,7 @@ def test_create_model_with_custom_image(sagemaker_session):
         sagemaker_session=sagemaker_session,
         train_instance_count=INSTANCE_COUNT,
         train_instance_type=INSTANCE_TYPE,
-        image_name=custom_image,
+        image_uri=custom_image,
         container_log_level=container_log_level,
         base_job_name="job",
         source_dir=source_dir,
@@ -518,5 +518,5 @@ def test_hyperparameters_no_model_dir(sagemaker_session, tf_version, tf_py_versi
 
 def test_train_image_custom_image(sagemaker_session):
     custom_image = "tensorflow:latest"
-    tf = _build_tf(sagemaker_session, image_name=custom_image)
+    tf = _build_tf(sagemaker_session, image_uri=custom_image)
     assert custom_image == tf.train_image()

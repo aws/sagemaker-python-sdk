@@ -146,7 +146,7 @@ def _get_train_args(job_name):
     }
 
 
-def _get_environment(submit_directory, model_url, image_name):
+def _get_environment(submit_directory, model_url, image_uri):
     return {
         "Environment": {
             "SAGEMAKER_SUBMIT_DIRECTORY": submit_directory,
@@ -155,7 +155,7 @@ def _get_environment(submit_directory, model_url, image_name):
             "SAGEMAKER_REGION": "us-west-2",
             "SAGEMAKER_CONTAINER_LOG_LEVEL": "20",
         },
-        "Image": image_name,
+        "Image": image_uri,
         "ModelDataUrl": model_url,
     }
 
@@ -277,7 +277,7 @@ def test_create_model_with_custom_image(name_from_base, sagemaker_session):
         sagemaker_session=sagemaker_session,
         train_instance_count=INSTANCE_COUNT,
         train_instance_type=INSTANCE_TYPE,
-        image_name=custom_image,
+        image_uri=custom_image,
         container_log_level=container_log_level,
         base_job_name=base_job_name,
         source_dir=source_dir,
@@ -665,7 +665,7 @@ def test_attach_custom_image(sagemaker_session):
     )
 
     estimator = MXNet.attach(training_job_name="neo", sagemaker_session=sagemaker_session)
-    assert estimator.image_name == training_image
+    assert estimator.image_uri == training_image
     assert estimator.train_image() == training_image
 
 
@@ -741,14 +741,14 @@ def test_create_model_with_custom_hosting_image(sagemaker_session):
         sagemaker_session=sagemaker_session,
         train_instance_count=INSTANCE_COUNT,
         train_instance_type=INSTANCE_TYPE,
-        image_name=custom_image,
+        image_uri=custom_image,
         container_log_level=container_log_level,
         base_job_name="job",
         source_dir=source_dir,
     )
 
     mx.fit(inputs="s3://mybucket/train", job_name="new_name")
-    model = mx.create_model(image_name=custom_hosting_image)
+    model = mx.create_model(image_uri=custom_hosting_image)
 
     assert model.image == custom_hosting_image
 

@@ -274,7 +274,7 @@ def test_estimator_deploy(sagemaker_session):
         sagemaker_session=sagemaker_session,
         train_instance_count=INSTANCE_COUNT,
         train_instance_type=INSTANCE_TYPE,
-        image_name=custom_image,
+        image_uri=custom_image,
         container_log_level=container_log_level,
         base_job_name="job",
         source_dir=source_dir,

@@ -79,6 +79,6 @@ minor version, which will cause your training script to be run on the latest sup
 version.
 
 Alternatively, you can build your own image by following the instructions in the SageMaker XGBoost containers
-repository, and passing ``image_name`` to the XGBoost Estimator constructor.
+repository, and passing ``image_uri`` to the XGBoost Estimator constructor.
 
 You can visit the SageMaker XGBoost containers repository here: https://github.com/aws/sagemaker-xgboost-container

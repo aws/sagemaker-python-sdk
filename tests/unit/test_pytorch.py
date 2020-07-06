@@ -35,8 +35,8 @@ BUCKET_NAME = "mybucket"
 INSTANCE_COUNT = 1
 INSTANCE_TYPE = "ml.c4.4xlarge"
 ACCELERATOR_TYPE = "ml.eia.medium"
-IMAGE_NAME = "sagemaker-pytorch"
-JOB_NAME = "{}-{}".format(IMAGE_NAME, TIMESTAMP)
+IMAGE_URI = "sagemaker-pytorch"
+JOB_NAME = "{}-{}".format(IMAGE_URI, TIMESTAMP)
 IMAGE_URI_FORMAT_STRING = "520713654638.dkr.ecr.{}.amazonaws.com/{}:{}-{}-{}"
 ROLE = "Dummy"
 REGION = "us-west-2"
@@ -80,11 +80,11 @@ def fixture_sagemaker_session():
 
 
 def _get_full_cpu_image_uri(version, py_version):
-    return IMAGE_URI_FORMAT_STRING.format(REGION, IMAGE_NAME, version, "cpu", py_version)
+    return IMAGE_URI_FORMAT_STRING.format(REGION, IMAGE_URI, version, "cpu", py_version)
 
 
 def _get_full_gpu_image_uri(version, py_version):
-    return IMAGE_URI_FORMAT_STRING.format(REGION, IMAGE_NAME, version, "gpu", py_version)
+    return IMAGE_URI_FORMAT_STRING.format(REGION, IMAGE_URI, version, "gpu", py_version)
 
 
 def _get_full_cpu_image_uri_with_ei(version, py_version):
@@ -250,7 +250,7 @@ def test_create_model_with_custom_image(name_from_base, sagemaker_session):
         train_instance_count=INSTANCE_COUNT,
         train_instance_type=INSTANCE_TYPE,
         container_log_level=container_log_level,
-        image_name=image,
+        image_uri=image,
         base_job_name=base_job_name,
         source_dir=source_dir,
     )
@@ -566,7 +566,7 @@ def test_attach_custom_image(sagemaker_session):
 
     estimator = PyTorch.attach(training_job_name="neo", sagemaker_session=sagemaker_session)
     assert estimator.latest_training_job.job_name == "neo"
-    assert estimator.image_name == training_image
+    assert estimator.image_uri == training_image
     assert estimator.train_image() == training_image
 
 

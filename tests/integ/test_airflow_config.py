@@ -73,7 +73,7 @@ def test_byo_airflow_config_uploads_data_source_to_s3_when_inputs_provided(
         )
 
         estimator = Estimator(
-            image_name=get_image_uri(
+            image_uri=get_image_uri(
                 sagemaker_session.boto_session.region_name, "factorization-machines"
             ),
             role=ROLE,
@@ -516,7 +516,7 @@ def test_tf_airflow_config_uploads_data_source_to_s3(
 ):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         tf = TensorFlow(
-            image_name=get_image_uri(
+            image_uri=get_image_uri(
                 sagemaker_session.boto_session.region_name, "factorization-machines"
             ),
             entry_point=SCRIPT,
