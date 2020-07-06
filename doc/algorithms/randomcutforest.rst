@@ -8,7 +8,7 @@ The Amazon SageMaker Random Cut Forest algorithm.
     :undoc-members:
     :show-inheritance:
     :inherited-members:
-    :exclude-members: image, num_trees, num_samples_per_tree, eval_metrics, feature_dim, MINI_BATCH_SIZE
+    :exclude-members: image_uri, num_trees, num_samples_per_tree, eval_metrics, feature_dim, MINI_BATCH_SIZE
 
 
 .. autoclass:: sagemaker.RandomCutForestModel
