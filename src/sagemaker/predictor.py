@@ -72,6 +72,11 @@ class Predictor(object):
             accept (str): The invocation's "Accept", overriding any accept from
                 the deserializer (default: None).
         """
+        if serializer is not None and not isinstance(serializer, BaseSerializer):
+            serializer = LegacySerializer(serializer)
+        if deserializer is not None and not isinstance(deserializer, BaseDeserializer):
+            deserializer = LegacyDeserializer(deserializer)
+
         self.endpoint_name = endpoint_name
         self.sagemaker_session = sagemaker_session or Session()
         self.serializer = serializer
@@ -414,7 +419,7 @@ class LegacySerializer(BaseSerializer):
             serializer (callable): A legacy serializer.
         """
         self.serializer = serializer
-        self.content_type = self.serializer.content_type
+        self.content_type = getattr(serializer, "content_type", None)
 
     def __call__(self, *args, **kwargs):
         """Wraps the call method of the legacy serializer.
@@ -454,7 +459,7 @@ class LegacyDeserializer(BaseDeserializer):
             deserializer (callable): A legacy deserializer.
         """
         self.deserializer = deserializer
-        self.accept = deserializer.accept
+        self.accept = getattr(deserializer, "accept", None)
 
     def __call__(self, *args, **kwargs):
         """Wraps the call method of the legacy deserializer.
@@ -559,7 +564,7 @@ def _csv_serialize_object(data):
     return csv_buffer.getvalue().rstrip("\r\n")
 
 
-csv_serializer = LegacySerializer(_CsvSerializer())
+csv_serializer = _CsvSerializer()
 
 
 def _is_mutable_sequence_like(obj):
@@ -611,7 +616,7 @@ class _CsvDeserializer(object):
             stream.close()
 
 
-csv_deserializer = LegacyDeserializer(_CsvDeserializer())
+csv_deserializer = _CsvDeserializer()
 
 
 class BytesDeserializer(object):
@@ -724,7 +729,7 @@ class _JsonSerializer(object):
         return json.dumps(_ndarray_to_list(data))
 
 
-json_serializer = LegacySerializer(_JsonSerializer())
+json_serializer = _JsonSerializer()
 
 
 def _ndarray_to_list(data):
@@ -766,7 +771,7 @@ class _JsonDeserializer(object):
             stream.close()
 
 
-json_deserializer = LegacyDeserializer(_JsonDeserializer())
+json_deserializer = _JsonDeserializer()
 
 
 class _NumpyDeserializer(object):
@@ -810,7 +815,7 @@ class _NumpyDeserializer(object):
         )
 
 
-numpy_deserializer = LegacyDeserializer(_NumpyDeserializer())
+numpy_deserializer = _NumpyDeserializer()
 
 
 class _NPYSerializer(object):
@@ -858,4 +863,4 @@ def _npy_serialize(data):
     return buffer.getvalue()
 
 
-npy_serializer = LegacySerializer(_NPYSerializer())
+npy_serializer = _NPYSerializer()
