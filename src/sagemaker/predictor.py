@@ -123,6 +123,8 @@ class Predictor(object):
         """
         response_body = response["Body"]
         if self.deserializer is not None:
+            if not isinstance(self.deserializer, BaseDeserializer):
+                self.deserializer = LegacyDeserializer(self.deserializer)
             # It's the deserializer's responsibility to close the stream
             return self.deserializer.deserialize(response_body, response["ContentType"])
         data = response_body.read()
@@ -155,6 +157,8 @@ class Predictor(object):
             args["TargetVariant"] = target_variant
 
         if self.serializer is not None:
+            if not isinstance(self.serializer, BaseSerializer):
+                self.serializer = LegacySerializer(self.serializer)
             data = self.serializer.serialize(data)
 
         args["Body"] = data
