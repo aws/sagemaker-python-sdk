@@ -312,9 +312,9 @@ class FactorizationMachinesModel(Model):
         """
         sagemaker_session = sagemaker_session or Session()
         repo = "{}:{}".format(FactorizationMachines.repo_name, FactorizationMachines.repo_version)
-        image = "{}/{}".format(registry(sagemaker_session.boto_session.region_name), repo)
+        image_uri = "{}/{}".format(registry(sagemaker_session.boto_session.region_name), repo)
         super(FactorizationMachinesModel, self).__init__(
-            image,
+            image_uri,
             model_data,
             role,
             predictor_cls=FactorizationMachinesPredictor,

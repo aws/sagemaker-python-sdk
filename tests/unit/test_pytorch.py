@@ -114,7 +114,7 @@ def _pytorch_estimator(
 
 def _create_train_job(version, py_version):
     return {
-        "image": _get_full_cpu_image_uri(version, py_version),
+        "image_uri": _get_full_cpu_image_uri(version, py_version),
         "input_mode": "File",
         "input_config": [
             {
@@ -262,7 +262,7 @@ def test_create_model_with_custom_image(name_from_base, sagemaker_session):
     model = pytorch.create_model()
 
     assert model.sagemaker_session == sagemaker_session
-    assert model.image == image
+    assert model.image_uri == image
     assert model.entry_point == SCRIPT_PATH
     assert model.role == ROLE
     assert model.name == model_name
@@ -636,5 +636,5 @@ def test_custom_image_estimator_deploy(sagemaker_session, pytorch_version, pytor
         sagemaker_session, framework_version=pytorch_version, py_version=pytorch_py_version
     )
     pytorch.fit(inputs="s3://mybucket/train", job_name="new_name")
-    model = pytorch.create_model(image=custom_image)
-    assert model.image == custom_image
+    model = pytorch.create_model(image_uri=custom_image)
+    assert model.image_uri == custom_image

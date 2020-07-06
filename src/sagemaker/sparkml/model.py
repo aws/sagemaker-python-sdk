@@ -94,9 +94,11 @@ class SparkMLModel(Model):
         # For local mode, sagemaker_session should be passed as None but we need a session to get
         # boto_region_name
         region_name = (sagemaker_session or Session()).boto_region_name
-        image = "{}/{}:{}".format(registry(region_name, framework_name), repo_name, spark_version)
+        image_uri = "{}/{}:{}".format(
+            registry(region_name, framework_name), repo_name, spark_version
+        )
         super(SparkMLModel, self).__init__(
-            image,
+            image_uri,
             model_data,
             role,
             predictor_cls=SparkMLPredictor,

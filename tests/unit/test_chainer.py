@@ -117,7 +117,7 @@ def _chainer_estimator(
 
 def _create_train_job(version, py_version):
     return {
-        "image": _get_full_cpu_image_uri(version, py_version),
+        "image_uri": _get_full_cpu_image_uri(version, py_version),
         "input_mode": "File",
         "input_config": [
             {
@@ -329,7 +329,7 @@ def test_create_model_with_custom_image(sagemaker_session):
     chainer.fit(inputs="s3://mybucket/train", job_name="new_name")
     model = chainer.create_model()
 
-    assert model.image == custom_image
+    assert model.image_uri == custom_image
 
 
 @patch("sagemaker.utils.create_tar_file", MagicMock())

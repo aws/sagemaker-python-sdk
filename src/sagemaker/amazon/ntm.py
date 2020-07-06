@@ -245,11 +245,11 @@ class NTMModel(Model):
         """
         sagemaker_session = sagemaker_session or Session()
         repo = "{}:{}".format(NTM.repo_name, NTM.repo_version)
-        image = "{}/{}".format(
+        image_uri = "{}/{}".format(
             registry(sagemaker_session.boto_session.region_name, NTM.repo_name), repo
         )
         super(NTMModel, self).__init__(
-            image,
+            image_uri,
             model_data,
             role,
             predictor_cls=NTMPredictor,

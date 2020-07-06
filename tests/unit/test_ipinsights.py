@@ -288,7 +288,7 @@ def test_model_image(sagemaker_session):
     ipinsights.fit(data, MINI_BATCH_SIZE)
 
     model = ipinsights.create_model()
-    assert model.image == registry(REGION, "ipinsights") + "/ipinsights:1"
+    assert model.image_uri == registry(REGION, "ipinsights") + "/ipinsights:1"
 
 
 def test_predictor_type(sagemaker_session):

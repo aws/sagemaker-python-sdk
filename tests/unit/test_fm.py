@@ -313,7 +313,7 @@ def test_model_image(sagemaker_session):
     fm.fit(data, MINI_BATCH_SIZE)
 
     model = fm.create_model()
-    assert model.image == registry(REGION, "factorization-machines") + "/factorization-machines:1"
+    assert model.image_uri == registry(REGION, "factorization-machines") + "/factorization-machines:1"
 
 
 def test_predictor_type(sagemaker_session):

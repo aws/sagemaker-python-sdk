@@ -235,7 +235,7 @@ def test_model_image(sagemaker_session):
     pca.fit(data, MINI_BATCH_SIZE)
 
     model = pca.create_model()
-    assert model.image == registry(REGION, "pca") + "/pca:1"
+    assert model.image_uri == registry(REGION, "pca") + "/pca:1"
 
 
 def test_predictor_type(sagemaker_session):

@@ -64,7 +64,7 @@ class ChainerModel(FrameworkModel):
         model_data,
         role,
         entry_point,
-        image=None,
+        image_uri=None,
         framework_version=None,
         py_version=None,
         predictor_cls=ChainerPredictor,
@@ -85,16 +85,16 @@ class ChainerModel(FrameworkModel):
                 file which should be executed as the entry point to model
                 hosting. If ``source_dir`` is specified, then ``entry_point``
                 must point to a file located at the root of ``source_dir``.
-            image (str): A Docker image URI (default: None). If not specified, a
+            image_uri (str): A Docker image URI (default: None). If not specified, a
                 default image for Chainer will be used. If ``framework_version``
-                or ``py_version`` are ``None``, then ``image`` is required. If
+                or ``py_version`` are ``None``, then ``image_uri`` is required. If
                 also ``None``, then a ``ValueError`` will be raised.
             framework_version (str): Chainer version you want to use for
                 executing your model training code. Defaults to ``None``. Required
-                unless ``image`` is provided.
+                unless ``image_uri`` is provided.
             py_version (str): Python version you want to use for executing your
                 model training code. Defaults to ``None``. Required unless
-                ``image`` is provided.
+                ``image_uri`` is provided.
             predictor_cls (callable[str, sagemaker.session.Session]): A function
                 to call to create a predictor with an endpoint name and
                 SageMaker ``Session``. If specified, ``deploy()`` returns the
@@ -111,7 +111,7 @@ class ChainerModel(FrameworkModel):
             :class:`~sagemaker.model.FrameworkModel` and
             :class:`~sagemaker.model.Model`.
         """
-        validate_version_or_image_args(framework_version, py_version, image)
+        validate_version_or_image_args(framework_version, py_version, image_uri)
         if py_version == "py2":
             logger.warning(
                 python_deprecation_warning(self.__framework_name__, defaults.LATEST_PY2_VERSION)
@@ -120,7 +120,7 @@ class ChainerModel(FrameworkModel):
         self.py_version = py_version
 
         super(ChainerModel, self).__init__(
-            model_data, image, role, entry_point, predictor_cls=predictor_cls, **kwargs
+            model_data, image_uri, role, entry_point, predictor_cls=predictor_cls, **kwargs
         )
 
         self.model_server_workers = model_server_workers
@@ -140,7 +140,7 @@ class ChainerModel(FrameworkModel):
             dict[str, str]: A container definition object usable with the
             CreateModel API.
         """
-        deploy_image = self.image
+        deploy_image = self.image_uri
         if not deploy_image:
             if instance_type is None:
                 raise ValueError(

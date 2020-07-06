@@ -232,7 +232,7 @@ def test_model_image(sagemaker_session):
     randomcutforest.fit(data, MINI_BATCH_SIZE)
 
     model = randomcutforest.create_model()
-    assert model.image == registry(REGION, "randomcutforest") + "/randomcutforest:1"
+    assert model.image_uri == registry(REGION, "randomcutforest") + "/randomcutforest:1"
 
 
 def test_predictor_type(sagemaker_session):

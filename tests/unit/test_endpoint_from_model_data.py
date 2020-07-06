@@ -56,7 +56,7 @@ def sagemaker_session():
 def test_all_defaults_no_existing_entities(name_from_image_mock, sagemaker_session):
     returned_name = sagemaker_session.endpoint_from_model_data(
         model_s3_location=S3_MODEL_ARTIFACTS,
-        deployment_image=DEPLOY_IMAGE,
+        deployment_image_uri=DEPLOY_IMAGE,
         initial_instance_count=INITIAL_INSTANCE_COUNT,
         instance_type=INSTANCE_TYPE,
         role=DEPLOY_ROLE,
@@ -96,7 +96,7 @@ def test_no_defaults_no_existing_entities(name_from_image_mock, sagemaker_sessio
 
     returned_name = sagemaker_session.endpoint_from_model_data(
         model_s3_location=S3_MODEL_ARTIFACTS,
-        deployment_image=DEPLOY_IMAGE,
+        deployment_image_uri=DEPLOY_IMAGE,
         initial_instance_count=INITIAL_INSTANCE_COUNT,
         instance_type=INSTANCE_TYPE,
         role=DEPLOY_ROLE,
@@ -145,7 +145,7 @@ def test_model_and_endpoint_config_exist(name_from_image_mock, sagemaker_session
 
     sagemaker_session.endpoint_from_model_data(
         model_s3_location=S3_MODEL_ARTIFACTS,
-        deployment_image=DEPLOY_IMAGE,
+        deployment_image_uri=DEPLOY_IMAGE,
         initial_instance_count=INITIAL_INSTANCE_COUNT,
         instance_type=INSTANCE_TYPE,
         wait=False,

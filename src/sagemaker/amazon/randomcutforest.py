@@ -206,11 +206,11 @@ class RandomCutForestModel(Model):
         """
         sagemaker_session = sagemaker_session or Session()
         repo = "{}:{}".format(RandomCutForest.repo_name, RandomCutForest.repo_version)
-        image = "{}/{}".format(
+        image_uri = "{}/{}".format(
             registry(sagemaker_session.boto_session.region_name, RandomCutForest.repo_name), repo
         )
         super(RandomCutForestModel, self).__init__(
-            image,
+            image_uri,
             model_data,
             role,
             predictor_cls=RandomCutForestPredictor,
