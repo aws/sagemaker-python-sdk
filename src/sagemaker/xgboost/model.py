@@ -57,7 +57,7 @@ class XGBoostModel(FrameworkModel):
         role,
         entry_point,
         framework_version,
-        image=None,
+        image_uri=None,
         py_version="py3",
         predictor_cls=XGBoostPredictor,
         model_server_workers=None,
@@ -74,8 +74,8 @@ class XGBoostModel(FrameworkModel):
             entry_point (str): Path (absolute or relative) to the Python source file which should
                 be executed  as the entry point to model hosting. If ``source_dir`` is specified,
                 then ``entry_point`` must point to a file located at the root of ``source_dir``.
-            image (str): A Docker image URI (default: None). If not specified, a default image for
-                XGBoos will be used.
+            image_uri (str): A Docker image URI (default: None). If not specified, a default image
+                for XGBoost is be used.
             py_version (str): Python version you want to use for executing your model training code
                 (default: 'py3').
             framework_version (str): XGBoost version you want to use for executing your model
@@ -95,7 +95,7 @@ class XGBoostModel(FrameworkModel):
             :class:`~sagemaker.model.Model`.
         """
         super(XGBoostModel, self).__init__(
-            model_data, image, role, entry_point, predictor_cls=predictor_cls, **kwargs
+            model_data, image_uri, role, entry_point, predictor_cls=predictor_cls, **kwargs
         )
 
         if py_version == "py2":
@@ -119,7 +119,7 @@ class XGBoostModel(FrameworkModel):
         Returns:
             dict[str, str]: A container definition object usable with the CreateModel API.
         """
-        deploy_image = self.image
+        deploy_image = self.image_uri
         if not deploy_image:
             deploy_image = self.serving_image_uri(
                 self.sagemaker_session.boto_region_name, instance_type

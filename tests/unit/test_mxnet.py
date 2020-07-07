@@ -103,7 +103,7 @@ def skip_if_not_mms_version(mxnet_version):
 
 def _get_train_args(job_name):
     return {
-        "image": IMAGE,
+        "image_uri": IMAGE,
         "input_mode": "File",
         "input_config": [
             {
@@ -215,7 +215,7 @@ def test_create_model(name_from_base, sagemaker_session, mxnet_version, mxnet_py
     assert model.name == model_name
     assert model.container_log_level == container_log_level
     assert model.source_dir == source_dir
-    assert model.image is None
+    assert model.image_uri is None
     assert model.vpc_config is None
 
     name_from_base.assert_called_with(base_job_name)
@@ -290,7 +290,7 @@ def test_create_model_with_custom_image(name_from_base, sagemaker_session):
     model = mx.create_model()
 
     assert model.sagemaker_session == sagemaker_session
-    assert model.image == custom_image
+    assert model.image_uri == custom_image
     assert model.entry_point == SCRIPT_PATH
     assert model.role == ROLE
     assert model.name == model_name
@@ -394,7 +394,7 @@ def test_mxnet_neo(
     actual_compile_model_args = sagemaker_session.method_calls[3][2]
     assert expected_compile_model_args == actual_compile_model_args
 
-    assert compiled_model.image == _neo_inference_image(mxnet_version)
+    assert compiled_model.image_uri == _neo_inference_image(mxnet_version)
 
     predictor = mx.deploy(1, CPU, use_compiled_model=True)
     assert isinstance(predictor, MXNetPredictor)
@@ -750,7 +750,7 @@ def test_create_model_with_custom_hosting_image(sagemaker_session):
     mx.fit(inputs="s3://mybucket/train", job_name="new_name")
     model = mx.create_model(image_uri=custom_hosting_image)
 
-    assert model.image == custom_hosting_image
+    assert model.image_uri == custom_hosting_image
 
 
 def test_mx_enable_sm_metrics(sagemaker_session, mxnet_version, mxnet_py_version):
@@ -811,5 +811,5 @@ def test_custom_image_estimator_deploy(sagemaker_session, mxnet_version, mxnet_p
         train_instance_type=INSTANCE_TYPE,
     )
     mx.fit(inputs="s3://mybucket/train", job_name="new_name")
-    model = mx.create_model(image=custom_image)
-    assert model.image == custom_image
+    model = mx.create_model(image_uri=custom_image)
+    assert model.image_uri == custom_image

@@ -279,7 +279,7 @@ def test_model_image(sagemaker_session):
     knn.fit(data, MINI_BATCH_SIZE)
 
     model = knn.create_model()
-    assert model.image == registry(REGION, "knn") + "/knn:1"
+    assert model.image_uri == registry(REGION, "knn") + "/knn:1"
 
 
 def test_predictor_type(sagemaker_session):

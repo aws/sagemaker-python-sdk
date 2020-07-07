@@ -136,7 +136,7 @@ def test_multi_data_model_deploy_pretrained_models(
         multi_data_model = MultiDataModel(
             name=model_name,
             model_data_prefix=model_data_prefix,
-            image=container_image,
+            image_uri=container_image,
             role=ROLE,
             sagemaker_session=sagemaker_session,
         )
@@ -194,7 +194,7 @@ def test_multi_data_model_deploy_pretrained_models_local_mode(container_image, s
         multi_data_model = MultiDataModel(
             name=model_name,
             model_data_prefix=model_data_prefix,
-            image=container_image,
+            image_uri=container_image,
             role=ROLE,
             sagemaker_session=sagemaker_session,
         )
@@ -442,7 +442,7 @@ def __rcf_training_job(
         # Replace the container image value with a multi-model container image for now since the
         # frameworks do not support multi-model container image yet.
         rcf_model = rcf.create_model()
-        rcf_model.image = container_image
+        rcf_model.image_uri = container_image
         return rcf_model
 
 
@@ -463,7 +463,7 @@ def test_multi_data_model_deploy_pretrained_models_update_endpoint(
         multi_data_model = MultiDataModel(
             name=model_name,
             model_data_prefix=model_data_prefix,
-            image=container_image,
+            image_uri=container_image,
             role=ROLE,
             sagemaker_session=sagemaker_session,
         )

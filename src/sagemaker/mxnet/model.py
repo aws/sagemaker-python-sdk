@@ -67,7 +67,7 @@ class MXNetModel(FrameworkModel):
         entry_point,
         framework_version=None,
         py_version=None,
-        image=None,
+        image_uri=None,
         predictor_cls=MXNetPredictor,
         model_server_workers=None,
         **kwargs
@@ -88,15 +88,15 @@ class MXNetModel(FrameworkModel):
                 must point to a file located at the root of ``source_dir``.
             framework_version (str): MXNet version you want to use for executing
                 your model training code. Defaults to ``None``. Required unless
-                ``image`` is provided.
+                ``image_uri`` is provided.
             py_version (str): Python version you want to use for executing your
                 model training code. Defaults to ``None``. Required unless
-                ``image`` is provided.
-            image (str): A Docker image URI (default: None). If not specified, a
+                ``image_uri`` is provided.
+            image_uri (str): A Docker image URI (default: None). If not specified, a
                 default image for MXNet will be used.
 
                 If ``framework_version`` or ``py_version`` are ``None``, then
-                ``image`` is required. If also ``None``, then a ``ValueError``
+                ``image_uri`` is required. If also ``None``, then a ``ValueError``
                 will be raised.
             predictor_cls (callable[str, sagemaker.session.Session]): A function
                 to call to create a predictor with an endpoint name and
@@ -114,7 +114,7 @@ class MXNetModel(FrameworkModel):
             :class:`~sagemaker.model.FrameworkModel` and
             :class:`~sagemaker.model.Model`.
         """
-        validate_version_or_image_args(framework_version, py_version, image)
+        validate_version_or_image_args(framework_version, py_version, image_uri)
         if py_version == "py2":
             logger.warning(
                 python_deprecation_warning(self.__framework_name__, defaults.LATEST_PY2_VERSION)
@@ -123,7 +123,7 @@ class MXNetModel(FrameworkModel):
         self.py_version = py_version
 
         super(MXNetModel, self).__init__(
-            model_data, image, role, entry_point, predictor_cls=predictor_cls, **kwargs
+            model_data, image_uri, role, entry_point, predictor_cls=predictor_cls, **kwargs
         )
 
         self.model_server_workers = model_server_workers
@@ -143,7 +143,7 @@ class MXNetModel(FrameworkModel):
             dict[str, str]: A container definition object usable with the
             CreateModel API.
         """
-        deploy_image = self.image
+        deploy_image = self.image_uri
         if not deploy_image:
             if instance_type is None:
                 raise ValueError(

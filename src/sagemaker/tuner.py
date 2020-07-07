@@ -1511,7 +1511,7 @@ class _TuningJob(_Job):
         if isinstance(estimator, sagemaker.algorithm.AlgorithmEstimator):
             training_config["algorithm_arn"] = estimator.algorithm_arn
         else:
-            training_config["image"] = estimator.train_image()
+            training_config["image_uri"] = estimator.train_image()
 
         training_config["enable_network_isolation"] = estimator.enable_network_isolation()
         training_config[

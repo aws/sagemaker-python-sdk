@@ -156,7 +156,7 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
                     init_params[attribute] = init_params["hyperparameters"][value.name]
 
         del init_params["hyperparameters"]
-        del init_params["image"]
+        del init_params["image_uri"]
         return init_params
 
     def prepare_workflow_for_training(self, records=None, mini_batch_size=None, job_name=None):

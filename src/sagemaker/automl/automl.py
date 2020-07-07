@@ -307,12 +307,12 @@ class AutoML(object):
         models = []
 
         for container in inference_containers:
-            image = container["Image"]
+            image_uri = container["Image"]
             model_data = container["ModelDataUrl"]
             env = container["Environment"]
 
             model = Model(
-                image=image,
+                image_uri=image_uri,
                 model_data=model_data,
                 role=self.role,
                 env=env,

@@ -95,7 +95,7 @@ class DummyFramework(Framework):
         init_params = super(DummyFramework, cls)._prepare_init_params_from_job_description(
             job_details, model_channel_name
         )
-        init_params.pop("image", None)
+        init_params.pop("image_uri", None)
         return init_params
 
 

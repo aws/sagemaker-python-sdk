@@ -114,7 +114,7 @@ def _rl_estimator(
 def _create_train_job(toolkit, toolkit_version, framework):
     job_name = "{}-{}-{}".format(IMAGE_URI, framework, TIMESTAMP)
     return {
-        "image": _get_full_cpu_image_uri(toolkit, toolkit_version, framework),
+        "image_uri": _get_full_cpu_image_uri(toolkit, toolkit_version, framework),
         "input_mode": "File",
         "input_config": [
             {
@@ -296,7 +296,7 @@ def test_create_model_with_custom_image(name_from_base, sagemaker_session):
     model = rl.create_model(entry_point=new_entry_point)
 
     assert model.sagemaker_session == sagemaker_session
-    assert model.image == image
+    assert model.image_uri == image
     assert model.entry_point == new_entry_point
     assert model.role == ROLE
     assert model.name == model_name
@@ -646,5 +646,5 @@ def test_custom_image_estimator_deploy(sagemaker_session):
     custom_image = "mycustomimage:latest"
     rl = _rl_estimator(sagemaker_session)
     rl.fit(inputs="s3://mybucket/train", job_name="new_name")
-    model = rl.create_model(image=custom_image)
-    assert model.image == custom_image
+    model = rl.create_model(image_uri=custom_image)
+    assert model.image_uri == custom_image

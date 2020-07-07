@@ -213,8 +213,8 @@ class MXNet(Framework):
             sagemaker.mxnet.model.MXNetModel: A SageMaker ``MXNetModel`` object.
             See :func:`~sagemaker.mxnet.model.MXNetModel` for full details.
         """
-        if "image" not in kwargs:
-            kwargs["image"] = image_uri or self.image_uri
+        if "image_uri" not in kwargs:
+            kwargs["image_uri"] = image_uri or self.image_uri
 
         kwargs["name"] = self._get_or_create_name(kwargs.get("name"))
 
@@ -252,7 +252,7 @@ class MXNet(Framework):
         init_params = super(MXNet, cls)._prepare_init_params_from_job_description(
             job_details, model_channel_name
         )
-        image_uri = init_params.pop("image")
+        image_uri = init_params.pop("image_uri")
         framework, py_version, tag, _ = framework_name_from_image(image_uri)
 
         # We switched image tagging scheme from regular image version (e.g. '1.0') to more
