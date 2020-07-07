@@ -50,7 +50,7 @@ class XGBoost(Framework):
         source_dir=None,
         hyperparameters=None,
         py_version="py3",
-        image_name=None,
+        image_uri=None,
         **kwargs
     ):
         """
@@ -85,7 +85,7 @@ class XGBoost(Framework):
                 ``str()`` will be called to convert them before training.
             py_version (str): Python version you want to use for executing your model
                 training code (default: 'py3').
-            image_name (str): If specified, the estimator will use this image for training and
+            image_uri (str): If specified, the estimator will use this image for training and
                 hosting, instead of selecting the appropriate SageMaker official image
                 based on framework_version and py_version. It can be an ECR url or
                 dockerhub image and tag.
@@ -102,7 +102,7 @@ class XGBoost(Framework):
             :class:`~sagemaker.estimator.EstimatorBase`.
         """
         super(XGBoost, self).__init__(
-            entry_point, source_dir, hyperparameters, image_name=image_name, **kwargs
+            entry_point, source_dir, hyperparameters, image_uri=image_uri, **kwargs
         )
 
         if py_version == "py2":
@@ -118,8 +118,8 @@ class XGBoost(Framework):
                 )
             )
 
-        if image_name is None:
-            self.image_name = get_xgboost_image_uri(
+        if image_uri is None:
+            self.image_uri = get_xgboost_image_uri(
                 self.sagemaker_session.boto_region_name, framework_version
             )
 
@@ -166,8 +166,8 @@ class XGBoost(Framework):
         role = role or self.role
         kwargs["name"] = self._get_or_create_name(kwargs.get("name"))
 
-        if "image" not in kwargs:
-            kwargs["image"] = self.image_name
+        if "image_uri" not in kwargs:
+            kwargs["image_uri"] = self.image_uri
 
         return XGBoostModel(
             self.model_data,
@@ -261,8 +261,8 @@ class XGBoost(Framework):
         """
         init_params = super(XGBoost, cls)._prepare_init_params_from_job_description(job_details)
 
-        image_name = init_params.pop("image")
-        framework, py_version, tag, _ = framework_name_from_image(image_name)
+        image_uri = init_params.pop("image_uri")
+        framework, py_version, tag, _ = framework_name_from_image(image_uri)
         init_params["py_version"] = py_version
 
         if framework and framework != cls.__framework_name__:
@@ -276,5 +276,5 @@ class XGBoost(Framework):
         if not framework:
             # If we were unable to parse the framework name from the image it is not one of our
             # officially supported images, in this case just add the image to the init params.
-            init_params["image_name"] = image_name
+            init_params["image_uri"] = image_uri
         return init_params

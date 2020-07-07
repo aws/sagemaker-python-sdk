@@ -418,7 +418,7 @@ Here is an example of how to define metrics:
 .. code:: python
 
     # Configure an BYO Estimator with metric definitions (no training happens yet)
-    byo_estimator = Estimator(image_name=image_name,
+    byo_estimator = Estimator(image_uri=image_uri,
                               role='SageMakerRole', train_instance_count=1,
                               train_instance_type='ml.c4.xlarge',
                               sagemaker_session=sagemaker_session,
@@ -994,7 +994,7 @@ the ML Pipeline.
 .. code:: python
 
    xgb_image = get_image_uri(sess.boto_region_name, 'xgboost', repo_version="latest")
-   xgb_model = Model(model_data='s3://path/to/model.tar.gz', image=xgb_image)
+   xgb_model = Model(model_data='s3://path/to/model.tar.gz', image_uri=xgb_image)
    sparkml_model = SparkMLModel(model_data='s3://path/to/model.tar.gz', env={'SAGEMAKER_SPARKML_SCHEMA': schema})
 
    model_name = 'inference-pipeline-model'

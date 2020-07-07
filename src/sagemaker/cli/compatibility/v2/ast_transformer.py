@@ -25,6 +25,8 @@ FUNCTION_CALL_MODIFIERS = [
     modifiers.tfs.TensorFlowServingConstructorRenamer(),
     modifiers.predictors.PredictorConstructorRefactor(),
     modifiers.airflow.ModelConfigArgModifier(),
+    modifiers.renamed_params.DistributionParameterRenamer(),
+    modifiers.renamed_params.S3SessionRenamer(),
 ]
 
 IMPORT_MODIFIERS = [modifiers.tfs.TensorFlowServingImportRenamer()]

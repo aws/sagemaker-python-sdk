@@ -51,7 +51,7 @@ class Chainer(Framework):
         hyperparameters=None,
         framework_version=None,
         py_version=None,
-        image_name=None,
+        image_uri=None,
         **kwargs
     ):
         """This ``Estimator`` executes an Chainer script in a managed Chainer
@@ -101,13 +101,13 @@ class Chainer(Framework):
                 and values, but ``str()`` will be called to convert them before
                 training.
             py_version (str): Python version you want to use for executing your
-                model training code. Defaults to ``None``. Required unless ``image_name``
+                model training code. Defaults to ``None``. Required unless ``image_uri``
                 is provided.
             framework_version (str): Chainer version you want to use for
                 executing your model training code. Defaults to ``None``. Required unless
-                ``image_name`` is provided. List of supported versions:
+                ``image_uri`` is provided. List of supported versions:
                 https://github.com/aws/sagemaker-python-sdk#chainer-sagemaker-estimators.
-            image_name (str): If specified, the estimator will use this image
+            image_uri (str): If specified, the estimator will use this image
                 for training and hosting, instead of selecting the appropriate
                 SageMaker official image based on framework_version and
                 py_version. It can be an ECR url or dockerhub image and tag.
@@ -117,7 +117,7 @@ class Chainer(Framework):
                     * ``custom-image:latest``
 
                 If ``framework_version`` or ``py_version`` are ``None``, then
-                ``image_name`` is required. If also ``None``, then a ``ValueError``
+                ``image_uri`` is required. If also ``None``, then a ``ValueError``
                 will be raised.
             **kwargs: Additional kwargs passed to the
                 :class:`~sagemaker.estimator.Framework` constructor.
@@ -128,7 +128,7 @@ class Chainer(Framework):
             :class:`~sagemaker.estimator.Framework` and
             :class:`~sagemaker.estimator.EstimatorBase`.
         """
-        validate_version_or_image_args(framework_version, py_version, image_name)
+        validate_version_or_image_args(framework_version, py_version, image_uri)
         if py_version == "py2":
             logger.warning(
                 python_deprecation_warning(self.__framework_name__, defaults.LATEST_PY2_VERSION)
@@ -137,7 +137,7 @@ class Chainer(Framework):
         self.py_version = py_version
 
         super(Chainer, self).__init__(
-            entry_point, source_dir, hyperparameters, image_name=image_name, **kwargs
+            entry_point, source_dir, hyperparameters, image_uri=image_uri, **kwargs
         )
 
         self.use_mpi = use_mpi
@@ -208,8 +208,8 @@ class Chainer(Framework):
         """
         kwargs["name"] = self._get_or_create_name(kwargs.get("name"))
 
-        if "image" not in kwargs:
-            kwargs["image"] = self.image_name
+        if "image_uri" not in kwargs:
+            kwargs["image_uri"] = self.image_uri
 
         return ChainerModel(
             self.model_data,
@@ -257,8 +257,8 @@ class Chainer(Framework):
             if value:
                 init_params[argument[len("sagemaker_") :]] = value
 
-        image_name = init_params.pop("image")
-        framework, py_version, tag, _ = framework_name_from_image(image_name)
+        image_uri = init_params.pop("image_uri")
+        framework, py_version, tag, _ = framework_name_from_image(image_uri)
 
         if tag is None:
             framework_version = None
@@ -270,7 +270,7 @@ class Chainer(Framework):
         if not framework:
             # If we were unable to parse the framework name from the image it is not one of our
             # officially supported images, in this case just add the image to the init params.
-            init_params["image_name"] = image_name
+            init_params["image_uri"] = image_uri
             return init_params
 
         if framework != cls.__framework_name__:

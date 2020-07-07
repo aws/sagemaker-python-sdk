@@ -62,7 +62,7 @@ class SKLearnModel(FrameworkModel):
         entry_point,
         framework_version=None,
         py_version="py3",
-        image=None,
+        image_uri=None,
         predictor_cls=SKLearnPredictor,
         model_server_workers=None,
         **kwargs
@@ -83,16 +83,16 @@ class SKLearnModel(FrameworkModel):
                 must point to a file located at the root of ``source_dir``.
             framework_version (str): Scikit-learn version you want to use for
                 executing your model training code. Defaults to ``None``. Required
-                unless ``image`` is provided.
+                unless ``image_uri`` is provided.
             py_version (str): Python version you want to use for executing your
                 model training code (default: 'py3'). Currently, 'py3' is the only
-                supported version. If ``None`` is passed in, ``image`` must be
+                supported version. If ``None`` is passed in, ``image_uri`` must be
                 provided.
-            image (str): A Docker image URI (default: None). If not specified, a
+            image_uri (str): A Docker image URI (default: None). If not specified, a
                 default image for Scikit-learn will be used.
 
                 If ``framework_version`` or ``py_version`` are ``None``, then
-                ``image`` is required. If also ``None``, then a ``ValueError``
+                ``image_uri`` is required. If also ``None``, then a ``ValueError``
                 will be raised.
             predictor_cls (callable[str, sagemaker.session.Session]): A function
                 to call to create a predictor with an endpoint name and
@@ -110,7 +110,7 @@ class SKLearnModel(FrameworkModel):
             :class:`~sagemaker.model.FrameworkModel` and
             :class:`~sagemaker.model.Model`.
         """
-        validate_version_or_image_args(framework_version, py_version, image)
+        validate_version_or_image_args(framework_version, py_version, image_uri)
         if py_version and py_version != "py3":
             raise AttributeError(
                 "Scikit-learn image only supports Python 3. Please use 'py3' for py_version."
@@ -119,7 +119,7 @@ class SKLearnModel(FrameworkModel):
         self.py_version = py_version
 
         super(SKLearnModel, self).__init__(
-            model_data, image, role, entry_point, predictor_cls=predictor_cls, **kwargs
+            model_data, image_uri, role, entry_point, predictor_cls=predictor_cls, **kwargs
         )
 
         self.model_server_workers = model_server_workers
@@ -143,7 +143,7 @@ class SKLearnModel(FrameworkModel):
         if accelerator_type:
             raise ValueError("Accelerator types are not supported for Scikit-Learn.")
 
-        deploy_image = self.image
+        deploy_image = self.image_uri
         if not deploy_image:
             deploy_image = self.serving_image_uri(
                 self.sagemaker_session.boto_region_name, instance_type

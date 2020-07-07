@@ -284,7 +284,7 @@ def test_model_image(sagemaker_session):
     ntm.fit(data, MINI_BATCH_SIZE)
 
     model = ntm.create_model()
-    assert model.image == registry(REGION, "ntm") + "/ntm:1"
+    assert model.image_uri == registry(REGION, "ntm") + "/ntm:1"
 
 
 def test_predictor_type(sagemaker_session):

@@ -21,7 +21,6 @@ from sagemaker.fw_utils import (
     framework_version_from_tag,
     is_version_equal_or_higher,
     python_deprecation_warning,
-    parameter_v2_rename_warning,
     validate_version_or_image_args,
     warn_if_parameter_server_with_multi_gpu,
 )
@@ -45,8 +44,8 @@ class MXNet(Framework):
         py_version=None,
         source_dir=None,
         hyperparameters=None,
-        image_name=None,
-        distributions=None,
+        image_uri=None,
+        distribution=None,
         **kwargs
     ):
         """This ``Estimator`` executes an MXNet script in a managed MXNet
@@ -73,11 +72,11 @@ class MXNet(Framework):
                 must point to a file located at the root of ``source_dir``.
             framework_version (str): MXNet version you want to use for executing
                 your model training code. Defaults to `None`. Required unless
-                ``image_name`` is provided. List of supported versions.
+                ``image_uri`` is provided. List of supported versions.
                 https://github.com/aws/sagemaker-python-sdk#mxnet-sagemaker-estimators.
             py_version (str): Python version you want to use for executing your
                 model training code. One of 'py2' or 'py3'. Defaults to ``None``. Required
-                unless ``image_name`` is provided.
+                unless ``image_uri`` is provided.
             source_dir (str): Path (absolute, relative or an S3 URI) to a directory
                 with any other training source code dependencies aside from the entry
                 point file (default: None). If ``source_dir`` is an S3 URI, it must
@@ -89,7 +88,7 @@ class MXNet(Framework):
                 SageMaker. For convenience, this accepts other types for keys
                 and values, but ``str()`` will be called to convert them before
                 training.
-            image_name (str): If specified, the estimator will use this image for training and
+            image_uri (str): If specified, the estimator will use this image for training and
                 hosting, instead of selecting the appropriate SageMaker official image based on
                 framework_version and py_version. It can be an ECR url or dockerhub image and tag.
 
@@ -98,9 +97,9 @@ class MXNet(Framework):
                     * ``custom-image:latest``
 
                 If ``framework_version`` or ``py_version`` are ``None``, then
-                ``image_name`` is required. If also ``None``, then a ``ValueError``
+                ``image_uri`` is required. If also ``None``, then a ``ValueError``
                 will be raised.
-            distributions (dict): A dictionary with information on how to run distributed
+            distribution (dict): A dictionary with information on how to run distributed
                 training (default: None). To have parameter servers launched for training,
                 set this value to be ``{'parameter_server': {'enabled': True}}``.
             **kwargs: Additional kwargs passed to the
@@ -112,7 +111,7 @@ class MXNet(Framework):
             :class:`~sagemaker.estimator.Framework` and
             :class:`~sagemaker.estimator.EstimatorBase`.
         """
-        validate_version_or_image_args(framework_version, py_version, image_name)
+        validate_version_or_image_args(framework_version, py_version, image_uri)
         if py_version == "py2":
             logger.warning(
                 python_deprecation_warning(self.__framework_name__, defaults.LATEST_PY2_VERSION)
@@ -128,24 +127,23 @@ class MXNet(Framework):
                 kwargs["enable_sagemaker_metrics"] = True
 
         super(MXNet, self).__init__(
-            entry_point, source_dir, hyperparameters, image_name=image_name, **kwargs
+            entry_point, source_dir, hyperparameters, image_uri=image_uri, **kwargs
         )
 
-        if distributions is not None:
-            logger.warning(parameter_v2_rename_warning("distributions", "distribution"))
+        if distribution is not None:
             train_instance_type = kwargs.get("train_instance_type")
             warn_if_parameter_server_with_multi_gpu(
-                training_instance_type=train_instance_type, distributions=distributions
+                training_instance_type=train_instance_type, distribution=distribution
             )
 
-        self._configure_distribution(distributions)
+        self._configure_distribution(distribution)
 
-    def _configure_distribution(self, distributions):
+    def _configure_distribution(self, distribution):
         """
         Args:
-            distributions:
+            distribution:
         """
-        if distributions is None:
+        if distribution is None:
             return
 
         if (
@@ -153,13 +151,13 @@ class MXNet(Framework):
             and self.framework_version.split(".") < self._LOWEST_SCRIPT_MODE_VERSION
         ):
             raise ValueError(
-                "The distributions option is valid for only versions {} and higher".format(
+                "The distribution option is valid for only versions {} and higher".format(
                     ".".join(self._LOWEST_SCRIPT_MODE_VERSION)
                 )
             )
 
-        if "parameter_server" in distributions:
-            enabled = distributions["parameter_server"].get("enabled", False)
+        if "parameter_server" in distribution:
+            enabled = distribution["parameter_server"].get("enabled", False)
             self._hyperparameters[self.LAUNCH_PS_ENV_NAME] = enabled
 
     def create_model(
@@ -170,7 +168,7 @@ class MXNet(Framework):
         entry_point=None,
         source_dir=None,
         dependencies=None,
-        image_name=None,
+        image_uri=None,
         **kwargs
     ):
         """Create a SageMaker ``MXNetModel`` object that can be deployed to an
@@ -200,7 +198,7 @@ class MXNet(Framework):
                 any additional libraries that will be exported to the container.
                 If not specified, the dependencies from training are used.
                 This is not supported with "local code" in Local Mode.
-            image_name (str): If specified, the estimator will use this image for hosting, instead
+            image_uri (str): If specified, the estimator will use this image for hosting, instead
                 of selecting the appropriate SageMaker official image based on framework_version
                 and py_version. It can be an ECR url or dockerhub image and tag.
 
@@ -215,8 +213,8 @@ class MXNet(Framework):
             sagemaker.mxnet.model.MXNetModel: A SageMaker ``MXNetModel`` object.
             See :func:`~sagemaker.mxnet.model.MXNetModel` for full details.
         """
-        if "image" not in kwargs:
-            kwargs["image"] = image_name or self.image_name
+        if "image_uri" not in kwargs:
+            kwargs["image_uri"] = image_uri or self.image_uri
 
         kwargs["name"] = self._get_or_create_name(kwargs.get("name"))
 
@@ -254,8 +252,8 @@ class MXNet(Framework):
         init_params = super(MXNet, cls)._prepare_init_params_from_job_description(
             job_details, model_channel_name
         )
-        image_name = init_params.pop("image")
-        framework, py_version, tag, _ = framework_name_from_image(image_name)
+        image_uri = init_params.pop("image_uri")
+        framework, py_version, tag, _ = framework_name_from_image(image_uri)
 
         # We switched image tagging scheme from regular image version (e.g. '1.0') to more
         # expressive containing framework version, device type and python version
@@ -273,7 +271,7 @@ class MXNet(Framework):
         if not framework:
             # If we were unable to parse the framework name from the image it is not one of our
             # officially supported images, in this case just add the image to the init params.
-            init_params["image_name"] = image_name
+            init_params["image_uri"] = image_uri
             return init_params
 
         if framework != cls.__framework_name__:

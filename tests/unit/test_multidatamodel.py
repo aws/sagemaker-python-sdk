@@ -94,7 +94,7 @@ def multi_data_model(sagemaker_session):
     return MultiDataModel(
         name=MODEL_NAME,
         model_data_prefix=VALID_MULTI_MODEL_DATA_PREFIX,
-        image=IMAGE,
+        image_uri=IMAGE,
         role=ROLE,
         sagemaker_session=sagemaker_session,
     )
@@ -118,7 +118,7 @@ def test_multi_data_model_create_with_invalid_model_data_prefix():
     invalid_model_data_prefix = "https://mybucket/path/"
     with pytest.raises(ValueError) as ex:
         MultiDataModel(
-            name=MODEL_NAME, model_data_prefix=invalid_model_data_prefix, image=IMAGE, role=ROLE
+            name=MODEL_NAME, model_data_prefix=invalid_model_data_prefix, image_uri=IMAGE, role=ROLE
         )
     err_msg = 'ValueError: Expecting S3 model prefix beginning with "s3://". Received: "{}"'.format(
         invalid_model_data_prefix
@@ -131,13 +131,13 @@ def test_multi_data_model_create_with_invalid_arguments(sagemaker_session, mxnet
         MultiDataModel(
             name=MODEL_NAME,
             model_data_prefix=VALID_MULTI_MODEL_DATA_PREFIX,
-            image=IMAGE,
+            image_uri=IMAGE,
             role=ROLE,
             sagemaker_session=sagemaker_session,
             model=mxnet_model,
         )
     assert (
-        "Parameters image, role or kwargs are not permitted when model parameter is passed."
+        "Parameters image_uri, role, and kwargs are not permitted when model parameter is passed."
         in str(ex)
     )
 
@@ -146,7 +146,7 @@ def test_multi_data_model_create(sagemaker_session):
     model = MultiDataModel(
         name=MODEL_NAME,
         model_data_prefix=VALID_MULTI_MODEL_DATA_PREFIX,
-        image=IMAGE,
+        image_uri=IMAGE,
         role=ROLE,
         sagemaker_session=sagemaker_session,
     )
@@ -155,7 +155,7 @@ def test_multi_data_model_create(sagemaker_session):
     assert model.name == MODEL_NAME
     assert model.model_data_prefix == VALID_MULTI_MODEL_DATA_PREFIX
     assert model.role == ROLE
-    assert model.image == IMAGE
+    assert model.image_uri == IMAGE
     assert model.vpc_config is None
 
 
@@ -168,7 +168,7 @@ def test_multi_data_model_create_with_model_arg_only(mxnet_model):
     assert model.model_data_prefix == VALID_MULTI_MODEL_DATA_PREFIX
     assert model.model == mxnet_model
     assert hasattr(model, "role") is False
-    assert hasattr(model, "image") is False
+    assert hasattr(model, "image_uri") is False
 
 
 @patch("sagemaker.fw_utils.tar_and_upload_dir", MagicMock())
@@ -202,7 +202,7 @@ def test_deploy_multi_data_model(sagemaker_session):
     model = MultiDataModel(
         name=MODEL_NAME,
         model_data_prefix=VALID_MULTI_MODEL_DATA_PREFIX,
-        image=IMAGE,
+        image_uri=IMAGE,
         role=ROLE,
         sagemaker_session=sagemaker_session,
         env={"EXTRA_ENV_MOCK": "MockValue"},

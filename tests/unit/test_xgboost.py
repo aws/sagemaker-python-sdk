@@ -35,8 +35,8 @@ DIST_INSTANCE_COUNT = 2
 INSTANCE_TYPE = "ml.c4.4xlarge"
 GPU_INSTANCE_TYPE = "ml.p2.xlarge"
 PYTHON_VERSION = "py3"
-IMAGE_NAME = "sagemaker-xgboost"
-JOB_NAME = "{}-{}".format(IMAGE_NAME, TIMESTAMP)
+IMAGE_URI = "sagemaker-xgboost"
+JOB_NAME = "{}-{}".format(IMAGE_URI, TIMESTAMP)
 IMAGE_URI_FORMAT_STRING = "246618743249.dkr.ecr.{}.amazonaws.com/{}:{}-{}-{}"
 ROLE = "Dummy"
 REGION = "us-west-2"
@@ -79,7 +79,7 @@ def sagemaker_session():
 
 
 def _get_full_cpu_image_uri(version):
-    return IMAGE_URI_FORMAT_STRING.format(REGION, IMAGE_NAME, version, "cpu", PYTHON_VERSION)
+    return IMAGE_URI_FORMAT_STRING.format(REGION, IMAGE_URI, version, "cpu", PYTHON_VERSION)
 
 
 def _xgboost_estimator(
@@ -106,7 +106,7 @@ def _xgboost_estimator(
 
 def _create_train_job(version, instance_count=1):
     return {
-        "image": _get_full_cpu_image_uri(version),
+        "image_uri": _get_full_cpu_image_uri(version),
         "input_mode": "File",
         "input_config": [
             {
@@ -253,7 +253,7 @@ def test_create_model_with_optional_params(sagemaker_session, xgboost_full_versi
     dependencies = ["/directory/a", "/directory/b"]
     model_name = "model-name"
     model = xgboost.create_model(
-        image=custom_image,
+        image_uri=custom_image,
         role=new_role,
         model_server_workers=model_server_workers,
         vpc_config_override=vpc_config,
@@ -263,7 +263,7 @@ def test_create_model_with_optional_params(sagemaker_session, xgboost_full_versi
         name=model_name,
     )
 
-    assert model.image == custom_image
+    assert model.image_uri == custom_image
     assert model.role == new_role
     assert model.model_server_workers == model_server_workers
     assert model.vpc_config == vpc_config
@@ -284,7 +284,7 @@ def test_create_model_with_custom_image(sagemaker_session, xgboost_full_version)
         sagemaker_session=sagemaker_session,
         train_instance_type=INSTANCE_TYPE,
         train_instance_count=1,
-        image_name=custom_image,
+        image_uri=custom_image,
         container_log_level=container_log_level,
         py_version=PYTHON_VERSION,
         base_job_name="job",
@@ -294,7 +294,7 @@ def test_create_model_with_custom_image(sagemaker_session, xgboost_full_version)
     xgboost.fit(inputs="s3://mybucket/train", job_name="new_name")
     model = xgboost.create_model()
 
-    assert model.image == custom_image
+    assert model.image_uri == custom_image
 
 
 @patch("time.strftime", return_value=TIMESTAMP)

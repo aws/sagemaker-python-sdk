@@ -45,7 +45,7 @@ REGION = "us-west-2"
 GPU = "ml.p2.xlarge"
 CPU = "ml.c4.xlarge"
 CPU_C5 = "ml.c5.xlarge"
-LAUNCH_PS_DISTRIBUTIONS_DICT = {"parameter_server": {"enabled": True}}
+LAUNCH_PS_DISTRIBUTION_DICT = {"parameter_server": {"enabled": True}}
 
 ENDPOINT_DESC = {"EndpointConfigName": "test-endpoint"}
 
@@ -103,7 +103,7 @@ def skip_if_not_mms_version(mxnet_version):
 
 def _get_train_args(job_name):
     return {
-        "image": IMAGE,
+        "image_uri": IMAGE,
         "input_mode": "File",
         "input_config": [
             {
@@ -146,7 +146,7 @@ def _get_train_args(job_name):
     }
 
 
-def _get_environment(submit_directory, model_url, image_name):
+def _get_environment(submit_directory, model_url, image_uri):
     return {
         "Environment": {
             "SAGEMAKER_SUBMIT_DIRECTORY": submit_directory,
@@ -155,7 +155,7 @@ def _get_environment(submit_directory, model_url, image_name):
             "SAGEMAKER_REGION": "us-west-2",
             "SAGEMAKER_CONTAINER_LOG_LEVEL": "20",
         },
-        "Image": image_name,
+        "Image": image_uri,
         "ModelDataUrl": model_url,
     }
 
@@ -215,7 +215,7 @@ def test_create_model(name_from_base, sagemaker_session, mxnet_version, mxnet_py
     assert model.name == model_name
     assert model.container_log_level == container_log_level
     assert model.source_dir == source_dir
-    assert model.image is None
+    assert model.image_uri is None
     assert model.vpc_config is None
 
     name_from_base.assert_called_with(base_job_name)
@@ -277,7 +277,7 @@ def test_create_model_with_custom_image(name_from_base, sagemaker_session):
         sagemaker_session=sagemaker_session,
         train_instance_count=INSTANCE_COUNT,
         train_instance_type=INSTANCE_TYPE,
-        image_name=custom_image,
+        image_uri=custom_image,
         container_log_level=container_log_level,
         base_job_name=base_job_name,
         source_dir=source_dir,
@@ -290,7 +290,7 @@ def test_create_model_with_custom_image(name_from_base, sagemaker_session):
     model = mx.create_model()
 
     assert model.sagemaker_session == sagemaker_session
-    assert model.image == custom_image
+    assert model.image_uri == custom_image
     assert model.entry_point == SCRIPT_PATH
     assert model.role == ROLE
     assert model.name == model_name
@@ -394,7 +394,7 @@ def test_mxnet_neo(
     actual_compile_model_args = sagemaker_session.method_calls[3][2]
     assert expected_compile_model_args == actual_compile_model_args
 
-    assert compiled_model.image == _neo_inference_image(mxnet_version)
+    assert compiled_model.image_uri == _neo_inference_image(mxnet_version)
 
     predictor = mx.deploy(1, CPU, use_compiled_model=True)
     assert isinstance(predictor, MXNetPredictor)
@@ -665,24 +665,8 @@ def test_attach_custom_image(sagemaker_session):
     )
 
     estimator = MXNet.attach(training_job_name="neo", sagemaker_session=sagemaker_session)
-    assert estimator.image_name == training_image
+    assert estimator.image_uri == training_image
     assert estimator.train_image() == training_image
-
-
-@patch("sagemaker.mxnet.estimator.parameter_v2_rename_warning")
-def test_estimator_script_mode_launch_parameter_server(warning, sagemaker_session):
-    mx = MXNet(
-        entry_point=SCRIPT_PATH,
-        framework_version="1.3.0",
-        py_version="py2",
-        role=ROLE,
-        sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
-        distributions=LAUNCH_PS_DISTRIBUTIONS_DICT,
-    )
-    assert mx.hyperparameters().get(MXNet.LAUNCH_PS_ENV_NAME) == "true"
-    warning.assert_called_with("distributions", "distribution")
 
 
 def test_estimator_script_mode_dont_launch_parameter_server(sagemaker_session):
@@ -694,7 +678,7 @@ def test_estimator_script_mode_dont_launch_parameter_server(sagemaker_session):
         sagemaker_session=sagemaker_session,
         train_instance_count=INSTANCE_COUNT,
         train_instance_type=INSTANCE_TYPE,
-        distributions={"parameter_server": {"enabled": False}},
+        distribution={"parameter_server": {"enabled": False}},
     )
     assert mx.hyperparameters().get(MXNet.LAUNCH_PS_ENV_NAME) == "false"
 
@@ -709,9 +693,9 @@ def test_estimator_wrong_version_launch_parameter_server(sagemaker_session):
             sagemaker_session=sagemaker_session,
             train_instance_count=INSTANCE_COUNT,
             train_instance_type=INSTANCE_TYPE,
-            distributions=LAUNCH_PS_DISTRIBUTIONS_DICT,
+            distribution=LAUNCH_PS_DISTRIBUTION_DICT,
         )
-    assert "The distributions option is valid for only versions 1.3 and higher" in str(e)
+    assert "The distribution option is valid for only versions 1.3 and higher" in str(e)
 
 
 @patch("sagemaker.mxnet.estimator.python_deprecation_warning")
@@ -757,16 +741,16 @@ def test_create_model_with_custom_hosting_image(sagemaker_session):
         sagemaker_session=sagemaker_session,
         train_instance_count=INSTANCE_COUNT,
         train_instance_type=INSTANCE_TYPE,
-        image_name=custom_image,
+        image_uri=custom_image,
         container_log_level=container_log_level,
         base_job_name="job",
         source_dir=source_dir,
     )
 
     mx.fit(inputs="s3://mybucket/train", job_name="new_name")
-    model = mx.create_model(image_name=custom_hosting_image)
+    model = mx.create_model(image_uri=custom_hosting_image)
 
-    assert model.image == custom_hosting_image
+    assert model.image_uri == custom_hosting_image
 
 
 def test_mx_enable_sm_metrics(sagemaker_session, mxnet_version, mxnet_py_version):
@@ -827,5 +811,5 @@ def test_custom_image_estimator_deploy(sagemaker_session, mxnet_version, mxnet_p
         train_instance_type=INSTANCE_TYPE,
     )
     mx.fit(inputs="s3://mybucket/train", job_name="new_name")
-    model = mx.create_model(image=custom_image)
-    assert model.image == custom_image
+    model = mx.create_model(image_uri=custom_image)
+    assert model.image_uri == custom_image

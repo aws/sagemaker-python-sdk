@@ -75,7 +75,7 @@ class RLEstimator(Framework):
         framework=None,
         source_dir=None,
         hyperparameters=None,
-        image_name=None,
+        image_uri=None,
         metric_definitions=None,
         **kwargs
     ):
@@ -120,7 +120,7 @@ class RLEstimator(Framework):
                 accessible as a dict[str, str] to the training code on
                 SageMaker. For convenience, this accepts other types for keys
                 and values.
-            image_name (str): An ECR url. If specified, the estimator will use
+            image_uri (str): An ECR url. If specified, the estimator will use
                 this image for training and hosting, instead of selecting the
                 appropriate SageMaker official image based on framework_version
                 and py_version. Example:
@@ -140,9 +140,9 @@ class RLEstimator(Framework):
             :class:`~sagemaker.estimator.Framework` and
             :class:`~sagemaker.estimator.EstimatorBase`.
         """
-        self._validate_images_args(toolkit, toolkit_version, framework, image_name)
+        self._validate_images_args(toolkit, toolkit_version, framework, image_uri)
 
-        if not image_name:
+        if not image_uri:
             self._validate_toolkit_support(toolkit.value, toolkit_version, framework.value)
             self.toolkit = toolkit.value
             self.toolkit_version = toolkit_version
@@ -159,7 +159,7 @@ class RLEstimator(Framework):
             entry_point,
             source_dir,
             hyperparameters,
-            image_name=image_name,
+            image_uri=image_uri,
             metric_definitions=metric_definitions,
             **kwargs
         )
@@ -208,20 +208,20 @@ class RLEstimator(Framework):
             sagemaker.model.FrameworkModel: Depending on input parameters returns
                 one of the following:
 
-                * :class:`~sagemaker.model.FrameworkModel` - if ``image_name`` is specified
+                * :class:`~sagemaker.model.FrameworkModel` - if ``image_uri`` is specified
                     on the estimator;
-                * :class:`~sagemaker.mxnet.MXNetModel` - if ``image_name`` isn't specified and
+                * :class:`~sagemaker.mxnet.MXNetModel` - if ``image_uri`` isn't specified and
                     MXNet is used as the RL backend;
-                * :class:`~sagemaker.tensorflow.model.TensorFlowModel` - if ``image_name`` isn't
+                * :class:`~sagemaker.tensorflow.model.TensorFlowModel` - if ``image_uri`` isn't
                     specified and TensorFlow is used as the RL backend.
 
         Raises:
-            ValueError: If image_name is not specified and framework enum is not valid.
+            ValueError: If image_uri is not specified and framework enum is not valid.
         """
         base_args = dict(
             model_data=self.model_data,
             role=role or self.role,
-            image=kwargs.get("image", self.image_name),
+            image_uri=kwargs.get("image_uri", self.image_uri),
             container_log_level=self.container_log_level,
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
@@ -245,7 +245,7 @@ class RLEstimator(Framework):
         )
         extended_args.update(base_args)
 
-        if self.image_name:
+        if self.image_uri:
             return FrameworkModel(**extended_args)
 
         if self.toolkit == RLToolkit.RAY.value:
@@ -275,8 +275,8 @@ class RLEstimator(Framework):
         Returns:
             str: The URI of the Docker image.
         """
-        if self.image_name:
-            return self.image_name
+        if self.image_uri:
+            return self.image_uri
         return fw_utils.create_image_uri(
             self.sagemaker_session.boto_region_name,
             self._image_framework(),
@@ -303,13 +303,13 @@ class RLEstimator(Framework):
             job_details, model_channel_name
         )
 
-        image_name = init_params.pop("image")
-        framework, _, tag, _ = fw_utils.framework_name_from_image(image_name)
+        image_uri = init_params.pop("image_uri")
+        framework, _, tag, _ = fw_utils.framework_name_from_image(image_uri)
 
         if not framework:
             # If we were unable to parse the framework name from the image it is not one of our
             # officially supported images, in this case just add the image to the init params.
-            init_params["image_name"] = image_name
+            init_params["image_uri"] = image_uri
             return init_params
 
         toolkit, toolkit_version = cls._toolkit_and_version_from_tag(tag)
@@ -381,18 +381,18 @@ class RLEstimator(Framework):
             )
 
     @classmethod
-    def _validate_images_args(cls, toolkit, toolkit_version, framework, image_name):
+    def _validate_images_args(cls, toolkit, toolkit_version, framework, image_uri):
         """
         Args:
             toolkit:
             toolkit_version:
             framework:
-            image_name:
+            image_uri:
         """
         cls._validate_toolkit_format(toolkit)
         cls._validate_framework_format(framework)
 
-        if not image_name:
+        if not image_uri:
             not_found_args = []
             if not toolkit:
                 not_found_args.append("toolkit")
@@ -402,7 +402,7 @@ class RLEstimator(Framework):
                 not_found_args.append("framework")
             if not_found_args:
                 raise AttributeError(
-                    "Please provide `{}` or `image_name` parameter.".format(
+                    "Please provide `{}` or `image_uri` parameter.".format(
                         "`, `".join(not_found_args)
                     )
                 )
@@ -416,7 +416,7 @@ class RLEstimator(Framework):
                 found_args.append("framework")
             if found_args:
                 logger.warning(
-                    "Parameter `image_name` is specified, "
+                    "Parameter `image_uri` is specified, "
                     "`%s` are going to be ignored when choosing the image.",
                     "`, `".join(found_args),
                 )

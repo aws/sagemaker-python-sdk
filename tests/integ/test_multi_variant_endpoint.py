@@ -92,8 +92,8 @@ def multi_variant_endpoint(sagemaker_session):
         prefix = "sagemaker/DEMO-VariantTargeting"
         model_url = S3Uploader.upload(
             local_path=XG_BOOST_MODEL_LOCAL_PATH,
-            desired_s3_uri="s3://" + bucket + "/" + prefix,
-            session=sagemaker_session,
+            desired_s3_uri="s3://{}/{}".format(bucket, prefix),
+            sagemaker_session=sagemaker_session,
         )
 
         image_uri = get_image_uri(sagemaker_session.boto_session.region_name, "xgboost", "0.90-1")

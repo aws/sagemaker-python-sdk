@@ -351,11 +351,11 @@ class Object2VecModel(Model):
         """
         sagemaker_session = sagemaker_session or Session()
         repo = "{}:{}".format(Object2Vec.repo_name, Object2Vec.repo_version)
-        image = "{}/{}".format(
+        image_uri = "{}/{}".format(
             registry(sagemaker_session.boto_session.region_name, Object2Vec.repo_name), repo
         )
         super(Object2VecModel, self).__init__(
-            image,
+            image_uri,
             model_data,
             role,
             predictor_cls=Predictor,

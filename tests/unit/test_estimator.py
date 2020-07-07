@@ -45,9 +45,9 @@ INSTANCE_COUNT = 1
 INSTANCE_TYPE = "c4.4xlarge"
 ACCELERATOR_TYPE = "ml.eia.medium"
 ROLE = "DummyRole"
-IMAGE_NAME = "fakeimage"
+IMAGE_URI = "fakeimage"
 REGION = "us-west-2"
-JOB_NAME = "{}-{}".format(IMAGE_NAME, TIMESTAMP)
+JOB_NAME = "{}-{}".format(IMAGE_URI, TIMESTAMP)
 TAGS = [{"Name": "some-tag", "Value": "value-for-tag"}]
 OUTPUT_PATH = "s3://bucket/prefix"
 GIT_REPO = "https://github.com/aws/sagemaker-python-sdk.git"
@@ -67,7 +67,7 @@ DESCRIBE_TRAINING_JOB_RESULT = {"ModelArtifacts": {"S3ModelArtifacts": MODEL_DAT
 RETURNED_JOB_DESCRIPTION = {
     "AlgorithmSpecification": {
         "TrainingInputMode": "File",
-        "TrainingImage": "1.dkr.ecr.us-west-2.amazonaws.com/sagemaker-other-py2-cpu:1.0.4",
+        "TrainingImage": "1.dkr.ecr.us-west-2.amazonaws.com/sagemaker-other:1.0.4",
     },
     "HyperParameters": {
         "sagemaker_submit_directory": '"s3://some/sourcedir.tar.gz"',
@@ -113,7 +113,7 @@ class DummyFramework(Framework):
     __framework_name__ = "dummy"
 
     def train_image(self):
-        return IMAGE_NAME
+        return IMAGE_URI
 
     def create_model(
         self,
@@ -141,7 +141,7 @@ class DummyFramework(Framework):
         init_params = super(DummyFramework, cls)._prepare_init_params_from_job_description(
             job_details, model_channel_name
         )
-        init_params.pop("image", None)
+        init_params.pop("image_uri", None)
         return init_params
 
 
@@ -222,7 +222,7 @@ def test_framework_all_init_args(sagemaker_session):
         "input_mode": "inputmode",
         "tags": [{"foo": "bar"}],
         "hyperparameters": {},
-        "image": "fakeimage",
+        "image_uri": "fakeimage",
         "input_config": [
             {
                 "ChannelName": "training",
@@ -287,7 +287,7 @@ def test_framework_with_spot_and_checkpoints(sagemaker_session):
         "input_mode": "inputmode",
         "tags": [{"foo": "bar"}],
         "hyperparameters": {},
-        "image": "fakeimage",
+        "image_uri": "fakeimage",
         "input_config": [
             {
                 "ChannelName": "training",
@@ -577,7 +577,7 @@ def test_local_code_location():
         sagemaker_session=sms,
         train_instance_count=1,
         train_instance_type="local",
-        base_job_name=IMAGE_NAME,
+        base_job_name=IMAGE_URI,
         hyperparameters={123: [456], "learning_rate": 0.1},
     )
 
@@ -596,7 +596,7 @@ def test_start_new_convert_hyperparameters_to_str(strftime, sagemaker_session):
         sagemaker_session=sagemaker_session,
         train_instance_count=INSTANCE_COUNT,
         train_instance_type=INSTANCE_TYPE,
-        base_job_name=IMAGE_NAME,
+        base_job_name=IMAGE_URI,
         hyperparameters={123: [456], "learning_rate": 0.1},
     )
     t.fit("s3://{}".format(uri))
@@ -790,7 +790,7 @@ def test_fit_verify_job_name(strftime, sagemaker_session):
     _, _, train_kwargs = sagemaker_session.train.mock_calls[0]
 
     assert train_kwargs["hyperparameters"]["sagemaker_enable_cloudwatch_metrics"]
-    assert train_kwargs["image"] == IMAGE_NAME
+    assert train_kwargs["image_uri"] == IMAGE_URI
     assert train_kwargs["input_mode"] == "File"
     assert train_kwargs["tags"] == TAGS
     assert train_kwargs["job_name"] == JOB_NAME
@@ -1306,7 +1306,7 @@ def test_framework_transformer_creation(name_from_base, sagemaker_session):
 
     transformer = fw.transformer(INSTANCE_COUNT, INSTANCE_TYPE)
 
-    name_from_base.assert_called_with(IMAGE_NAME)
+    name_from_base.assert_called_with(IMAGE_URI)
     sagemaker_session.create_model.assert_called_with(
         MODEL_IMAGE,
         ROLE,
@@ -1426,7 +1426,7 @@ def test_ensure_latest_training_job_failure(sagemaker_session):
 @patch("sagemaker.estimator.name_from_base")
 def test_estimator_transformer_creation(name_from_base, create_model, sagemaker_session):
     estimator = Estimator(
-        image_name=IMAGE_NAME,
+        image_uri=IMAGE_URI,
         role=ROLE,
         train_instance_count=INSTANCE_COUNT,
         train_instance_type=INSTANCE_TYPE,
@@ -1458,7 +1458,7 @@ def test_estimator_transformer_creation_with_optional_params(create_model, sagem
     kms_key = "key"
 
     estimator = Estimator(
-        image_name=IMAGE_NAME,
+        image_uri=IMAGE_URI,
         role=ROLE,
         train_instance_count=INSTANCE_COUNT,
         train_instance_type=INSTANCE_TYPE,
@@ -1519,7 +1519,7 @@ def test_start_new(sagemaker_session):
     inputs = "s3://mybucket/train"
 
     estimator = Estimator(
-        IMAGE_NAME,
+        IMAGE_URI,
         ROLE,
         INSTANCE_COUNT,
         INSTANCE_TYPE,
@@ -1544,7 +1544,7 @@ def test_start_new_not_local_mode_error(sagemaker_session):
     inputs = "file://mybucket/train"
 
     estimator = Estimator(
-        IMAGE_NAME,
+        IMAGE_URI,
         ROLE,
         INSTANCE_COUNT,
         INSTANCE_TYPE,
@@ -1665,7 +1665,7 @@ def test_unsupported_type_in_dict():
 
 NO_INPUT_TRAIN_CALL = {
     "hyperparameters": {},
-    "image": IMAGE_NAME,
+    "image_uri": IMAGE_URI,
     "input_config": None,
     "input_mode": "File",
     "output_config": {"S3OutputPath": OUTPUT_PATH},
@@ -1718,7 +1718,7 @@ EXP_TRAIN_CALL.update(
 def test_fit_deploy_tags_in_estimator(name_from_base, sagemaker_session):
     tags = [{"Key": "TagtestKey", "Value": "TagtestValue"}]
     estimator = Estimator(
-        IMAGE_NAME,
+        IMAGE_URI,
         ROLE,
         INSTANCE_COUNT,
         INSTANCE_TYPE,
@@ -1743,7 +1743,7 @@ def test_fit_deploy_tags_in_estimator(name_from_base, sagemaker_session):
         }
     ]
 
-    name_from_base.assert_called_with(IMAGE_NAME)
+    name_from_base.assert_called_with(IMAGE_URI)
 
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
         name=model_name,
@@ -1767,7 +1767,7 @@ def test_fit_deploy_tags_in_estimator(name_from_base, sagemaker_session):
 @patch("sagemaker.estimator.name_from_base")
 def test_fit_deploy_tags(name_from_base, sagemaker_session):
     estimator = Estimator(
-        IMAGE_NAME, ROLE, INSTANCE_COUNT, INSTANCE_TYPE, sagemaker_session=sagemaker_session
+        IMAGE_URI, ROLE, INSTANCE_COUNT, INSTANCE_TYPE, sagemaker_session=sagemaker_session
     )
 
     estimator.fit()
@@ -1788,7 +1788,7 @@ def test_fit_deploy_tags(name_from_base, sagemaker_session):
         }
     ]
 
-    name_from_base.assert_called_with(IMAGE_NAME)
+    name_from_base.assert_called_with(IMAGE_URI)
 
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
         name=model_name,
@@ -1811,7 +1811,7 @@ def test_fit_deploy_tags(name_from_base, sagemaker_session):
 
 def test_generic_to_fit_no_input(sagemaker_session):
     e = Estimator(
-        IMAGE_NAME,
+        IMAGE_URI,
         ROLE,
         INSTANCE_COUNT,
         INSTANCE_TYPE,
@@ -1824,7 +1824,7 @@ def test_generic_to_fit_no_input(sagemaker_session):
     sagemaker_session.train.assert_called_once()
     assert len(sagemaker_session.train.call_args[0]) == 0
     args = sagemaker_session.train.call_args[1]
-    assert args["job_name"].startswith(IMAGE_NAME)
+    assert args["job_name"].startswith(IMAGE_URI)
 
     args.pop("job_name")
     args.pop("role")
@@ -1834,7 +1834,7 @@ def test_generic_to_fit_no_input(sagemaker_session):
 
 def test_generic_to_fit_no_hps(sagemaker_session):
     e = Estimator(
-        IMAGE_NAME,
+        IMAGE_URI,
         ROLE,
         INSTANCE_COUNT,
         INSTANCE_TYPE,
@@ -1847,7 +1847,7 @@ def test_generic_to_fit_no_hps(sagemaker_session):
     sagemaker_session.train.assert_called_once()
     assert len(sagemaker_session.train.call_args[0]) == 0
     args = sagemaker_session.train.call_args[1]
-    assert args["job_name"].startswith(IMAGE_NAME)
+    assert args["job_name"].startswith(IMAGE_URI)
 
     args.pop("job_name")
     args.pop("role")
@@ -1857,7 +1857,7 @@ def test_generic_to_fit_no_hps(sagemaker_session):
 
 def test_generic_to_fit_with_hps(sagemaker_session):
     e = Estimator(
-        IMAGE_NAME,
+        IMAGE_URI,
         ROLE,
         INSTANCE_COUNT,
         INSTANCE_TYPE,
@@ -1872,7 +1872,7 @@ def test_generic_to_fit_with_hps(sagemaker_session):
     sagemaker_session.train.assert_called_once()
     assert len(sagemaker_session.train.call_args[0]) == 0
     args = sagemaker_session.train.call_args[1]
-    assert args["job_name"].startswith(IMAGE_NAME)
+    assert args["job_name"].startswith(IMAGE_URI)
 
     args.pop("job_name")
     args.pop("role")
@@ -1882,7 +1882,7 @@ def test_generic_to_fit_with_hps(sagemaker_session):
 
 def test_generic_to_fit_with_experiment_config(sagemaker_session):
     e = Estimator(
-        IMAGE_NAME,
+        IMAGE_URI,
         ROLE,
         INSTANCE_COUNT,
         INSTANCE_TYPE,
@@ -1902,7 +1902,7 @@ def test_generic_to_fit_with_experiment_config(sagemaker_session):
     sagemaker_session.train.assert_called_once()
     assert len(sagemaker_session.train.call_args[0]) == 0
     args = sagemaker_session.train.call_args[1]
-    assert args["job_name"].startswith(IMAGE_NAME)
+    assert args["job_name"].startswith(IMAGE_URI)
 
     args.pop("job_name")
     args.pop("role")
@@ -1912,7 +1912,7 @@ def test_generic_to_fit_with_experiment_config(sagemaker_session):
 
 def test_generic_to_fit_with_encrypt_inter_container_traffic_flag(sagemaker_session):
     e = Estimator(
-        IMAGE_NAME,
+        IMAGE_URI,
         ROLE,
         INSTANCE_COUNT,
         INSTANCE_TYPE,
@@ -1930,7 +1930,7 @@ def test_generic_to_fit_with_encrypt_inter_container_traffic_flag(sagemaker_sess
 
 def test_generic_to_fit_with_network_isolation(sagemaker_session):
     e = Estimator(
-        IMAGE_NAME,
+        IMAGE_URI,
         ROLE,
         INSTANCE_COUNT,
         INSTANCE_TYPE,
@@ -1948,7 +1948,7 @@ def test_generic_to_fit_with_network_isolation(sagemaker_session):
 
 def test_generic_to_fit_with_sagemaker_metrics_missing(sagemaker_session):
     e = Estimator(
-        IMAGE_NAME,
+        IMAGE_URI,
         ROLE,
         INSTANCE_COUNT,
         INSTANCE_TYPE,
@@ -1965,7 +1965,7 @@ def test_generic_to_fit_with_sagemaker_metrics_missing(sagemaker_session):
 
 def test_generic_to_fit_with_sagemaker_metrics_enabled(sagemaker_session):
     e = Estimator(
-        IMAGE_NAME,
+        IMAGE_URI,
         ROLE,
         INSTANCE_COUNT,
         INSTANCE_TYPE,
@@ -1983,7 +1983,7 @@ def test_generic_to_fit_with_sagemaker_metrics_enabled(sagemaker_session):
 
 def test_generic_to_fit_with_sagemaker_metrics_disabled(sagemaker_session):
     e = Estimator(
-        IMAGE_NAME,
+        IMAGE_URI,
         ROLE,
         INSTANCE_COUNT,
         INSTANCE_TYPE,
@@ -2001,7 +2001,7 @@ def test_generic_to_fit_with_sagemaker_metrics_disabled(sagemaker_session):
 
 def test_generic_to_deploy(sagemaker_session):
     e = Estimator(
-        IMAGE_NAME,
+        IMAGE_URI,
         ROLE,
         INSTANCE_COUNT,
         INSTANCE_TYPE,
@@ -2018,7 +2018,7 @@ def test_generic_to_deploy(sagemaker_session):
     sagemaker_session.train.assert_called_once()
     assert len(sagemaker_session.train.call_args[0]) == 0
     args = sagemaker_session.train.call_args[1]
-    assert args["job_name"].startswith(IMAGE_NAME)
+    assert args["job_name"].startswith(IMAGE_URI)
 
     args.pop("job_name")
     args.pop("role")
@@ -2027,20 +2027,20 @@ def test_generic_to_deploy(sagemaker_session):
 
     sagemaker_session.create_model.assert_called_once()
     args, kwargs = sagemaker_session.create_model.call_args
-    assert args[0].startswith(IMAGE_NAME)
+    assert args[0].startswith(IMAGE_URI)
     assert args[1] == ROLE
-    assert args[2]["Image"] == IMAGE_NAME
+    assert args[2]["Image"] == IMAGE_URI
     assert args[2]["ModelDataUrl"] == MODEL_DATA
     assert kwargs["vpc_config"] is None
 
     assert isinstance(predictor, Predictor)
-    assert predictor.endpoint_name.startswith(IMAGE_NAME)
+    assert predictor.endpoint_name.startswith(IMAGE_URI)
     assert predictor.sagemaker_session == sagemaker_session
 
 
 def test_generic_to_deploy_network_isolation(sagemaker_session):
     e = Estimator(
-        IMAGE_NAME,
+        IMAGE_URI,
         ROLE,
         INSTANCE_COUNT,
         INSTANCE_TYPE,
@@ -2060,7 +2060,7 @@ def test_generic_to_deploy_network_isolation(sagemaker_session):
 @patch("sagemaker.estimator.Estimator.create_model")
 def test_generic_to_deploy_kms(create_model, sagemaker_session):
     e = Estimator(
-        IMAGE_NAME,
+        IMAGE_URI,
         ROLE,
         INSTANCE_COUNT,
         INSTANCE_TYPE,
@@ -2106,7 +2106,7 @@ def test_generic_training_job_analytics(sagemaker_session):
     )
 
     e = Estimator(
-        IMAGE_NAME,
+        IMAGE_URI,
         ROLE,
         INSTANCE_COUNT,
         INSTANCE_TYPE,
@@ -2130,7 +2130,7 @@ def test_generic_create_model_vpc_config_override(sagemaker_session):
     vpc_config_b = {"Subnets": ["foo", "bar"], "SecurityGroupIds": ["baz"]}
 
     e = Estimator(
-        IMAGE_NAME, ROLE, INSTANCE_COUNT, INSTANCE_TYPE, sagemaker_session=sagemaker_session
+        IMAGE_URI, ROLE, INSTANCE_COUNT, INSTANCE_TYPE, sagemaker_session=sagemaker_session
     )
     e.fit({"train": "s3://bucket/training-prefix"})
     assert e.get_vpc_config() is None
@@ -2156,7 +2156,7 @@ def test_generic_deploy_vpc_config_override(sagemaker_session):
     vpc_config_b = {"Subnets": ["foo", "bar"], "SecurityGroupIds": ["baz"]}
 
     e = Estimator(
-        IMAGE_NAME, ROLE, INSTANCE_COUNT, INSTANCE_TYPE, sagemaker_session=sagemaker_session
+        IMAGE_URI, ROLE, INSTANCE_COUNT, INSTANCE_TYPE, sagemaker_session=sagemaker_session
     )
     e.fit({"train": "s3://bucket/training-prefix"})
     e.deploy(INSTANCE_COUNT, INSTANCE_TYPE)
@@ -2176,14 +2176,14 @@ def test_generic_deploy_vpc_config_override(sagemaker_session):
 
 def test_generic_deploy_accelerator_type(sagemaker_session):
     e = Estimator(
-        IMAGE_NAME, ROLE, INSTANCE_COUNT, INSTANCE_TYPE, sagemaker_session=sagemaker_session
+        IMAGE_URI, ROLE, INSTANCE_COUNT, INSTANCE_TYPE, sagemaker_session=sagemaker_session
     )
     e.fit({"train": "s3://bucket/training-prefix"})
     e.deploy(INSTANCE_COUNT, INSTANCE_TYPE, ACCELERATOR_TYPE)
 
     args = e.sagemaker_session.endpoint_from_production_variants.call_args[1]
     print(args)
-    assert args["name"].startswith(IMAGE_NAME)
+    assert args["name"].startswith(IMAGE_URI)
     assert args["production_variants"][0]["AcceleratorType"] == ACCELERATOR_TYPE
     assert args["production_variants"][0]["InitialInstanceCount"] == INSTANCE_COUNT
     assert args["production_variants"][0]["InstanceType"] == INSTANCE_TYPE
@@ -2191,7 +2191,7 @@ def test_generic_deploy_accelerator_type(sagemaker_session):
 
 def test_deploy_with_model_name(sagemaker_session):
     estimator = Estimator(
-        IMAGE_NAME,
+        IMAGE_URI,
         ROLE,
         INSTANCE_COUNT,
         INSTANCE_TYPE,
@@ -2210,7 +2210,7 @@ def test_deploy_with_model_name(sagemaker_session):
 
 def test_deploy_with_no_model_name(sagemaker_session):
     estimator = Estimator(
-        IMAGE_NAME,
+        IMAGE_URI,
         ROLE,
         INSTANCE_COUNT,
         INSTANCE_TYPE,
@@ -2223,7 +2223,7 @@ def test_deploy_with_no_model_name(sagemaker_session):
 
     sagemaker_session.create_model.assert_called_once()
     args, kwargs = sagemaker_session.create_model.call_args
-    assert args[0].startswith(IMAGE_NAME)
+    assert args[0].startswith(IMAGE_URI)
 
 
 @patch("sagemaker.estimator.LocalSession")
@@ -2238,21 +2238,21 @@ def test_local_mode(session_class, local_session_class):
     local_session_class.return_value = local_session
     session_class.return_value = session
 
-    e = Estimator(IMAGE_NAME, ROLE, INSTANCE_COUNT, "local")
+    e = Estimator(IMAGE_URI, ROLE, INSTANCE_COUNT, "local")
     print(e.sagemaker_session.local_mode)
     assert e.sagemaker_session.local_mode is True
 
-    e2 = Estimator(IMAGE_NAME, ROLE, INSTANCE_COUNT, "local_gpu")
+    e2 = Estimator(IMAGE_URI, ROLE, INSTANCE_COUNT, "local_gpu")
     assert e2.sagemaker_session.local_mode is True
 
-    e3 = Estimator(IMAGE_NAME, ROLE, INSTANCE_COUNT, INSTANCE_TYPE)
+    e3 = Estimator(IMAGE_URI, ROLE, INSTANCE_COUNT, INSTANCE_TYPE)
     assert e3.sagemaker_session.local_mode is False
 
 
 @patch("sagemaker.estimator.LocalSession")
 def test_distributed_gpu_local_mode(LocalSession):
     with pytest.raises(RuntimeError):
-        Estimator(IMAGE_NAME, ROLE, 3, "local_gpu", output_path=OUTPUT_PATH)
+        Estimator(IMAGE_URI, ROLE, 3, "local_gpu", output_path=OUTPUT_PATH)
 
 
 @patch("sagemaker.estimator.LocalSession")
@@ -2261,7 +2261,7 @@ def test_local_mode_file_output_path(local_session_class):
     local_session.local_mode = True
     local_session_class.return_value = local_session
 
-    e = Estimator(IMAGE_NAME, ROLE, INSTANCE_COUNT, "local", output_path="file:///tmp/model/")
+    e = Estimator(IMAGE_URI, ROLE, INSTANCE_COUNT, "local", output_path="file:///tmp/model/")
     assert e.output_path == "file:///tmp/model/"
 
 
@@ -2272,18 +2272,17 @@ def test_file_output_path_not_supported_outside_local_mode(session_class):
     session_class.return_value = session
 
     with pytest.raises(RuntimeError):
-        Estimator(IMAGE_NAME, ROLE, INSTANCE_COUNT, INSTANCE_TYPE, output_path="file:///tmp/model")
+        Estimator(IMAGE_URI, ROLE, INSTANCE_COUNT, INSTANCE_TYPE, output_path="file:///tmp/model")
 
 
 def test_prepare_init_params_from_job_description_with_image_training_job():
-
     init_params = EstimatorBase._prepare_init_params_from_job_description(
         job_details=RETURNED_JOB_DESCRIPTION
     )
 
     assert init_params["role"] == "arn:aws:iam::366:role/SageMakerRole"
     assert init_params["train_instance_count"] == 1
-    assert init_params["image"] == "1.dkr.ecr.us-west-2.amazonaws.com/sagemaker-other-py2-cpu:1.0.4"
+    assert init_params["image_uri"] == "1.dkr.ecr.us-west-2.amazonaws.com/sagemaker-other:1.0.4"
 
 
 def test_prepare_init_params_from_job_description_with_algorithm_training_job():
@@ -2318,7 +2317,7 @@ def test_prepare_init_params_from_job_description_with_invalid_training_job():
 
 def test_prepare_for_training_with_base_name(sagemaker_session):
     estimator = Estimator(
-        image_name="some-image",
+        image_uri="some-image",
         role="some_image",
         train_instance_count=1,
         train_instance_type="ml.m4.xlarge",
@@ -2332,7 +2331,7 @@ def test_prepare_for_training_with_base_name(sagemaker_session):
 
 def test_prepare_for_training_with_name_based_on_image(sagemaker_session):
     estimator = Estimator(
-        image_name="some-image",
+        image_uri="some-image",
         role="some_image",
         train_instance_count=1,
         train_instance_type="ml.m4.xlarge",
@@ -2374,10 +2373,10 @@ def test_prepare_for_training_with_name_based_on_algorithm(sagemaker_session):
     ),
 )
 def test_encryption_flag_in_non_vpc_mode_invalid(sagemaker_session):
-    image_name = registry("us-west-2") + "/factorization-machines:1"
+    image_uri = registry("us-west-2") + "/factorization-machines:1"
     with pytest.raises(ClientError) as error:
         estimator = Estimator(
-            image_name=image_name,
+            image_uri=image_uri,
             role="SageMakerRole",
             train_instance_count=1,
             train_instance_type="ml.c4.xlarge",
@@ -2396,7 +2395,7 @@ def test_estimator_local_mode_error(sagemaker_session):
     # When using instance local with a session which is not LocalSession we should error out
     with pytest.raises(RuntimeError):
         Estimator(
-            image_name="some-image",
+            image_uri="some-image",
             role="some_image",
             train_instance_count=1,
             train_instance_type="local",
@@ -2408,7 +2407,7 @@ def test_estimator_local_mode_error(sagemaker_session):
 def test_estimator_local_mode_ok(sagemaker_local_session):
     # When using instance local with a session which is not LocalSession we should error out
     Estimator(
-        image_name="some-image",
+        image_uri="some-image",
         role="some_image",
         train_instance_count=1,
         train_instance_type="local",

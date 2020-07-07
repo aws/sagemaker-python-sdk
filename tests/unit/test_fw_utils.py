@@ -1117,47 +1117,47 @@ def list_tar_files(folder, tar_ball, tmpdir):
 
 
 def test_framework_name_from_image_mxnet():
-    image_name = "123.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet:1.1-gpu-py3"
-    assert ("mxnet", "py3", "1.1-gpu-py3", None) == fw_utils.framework_name_from_image(image_name)
+    image_uri = "123.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet:1.1-gpu-py3"
+    assert ("mxnet", "py3", "1.1-gpu-py3", None) == fw_utils.framework_name_from_image(image_uri)
 
 
 def test_framework_name_from_image_mxnet_in_gov():
-    image_name = "123.dkr.ecr.region-name.c2s.ic.gov/sagemaker-mxnet:1.1-gpu-py3"
-    assert ("mxnet", "py3", "1.1-gpu-py3", None) == fw_utils.framework_name_from_image(image_name)
+    image_uri = "123.dkr.ecr.region-name.c2s.ic.gov/sagemaker-mxnet:1.1-gpu-py3"
+    assert ("mxnet", "py3", "1.1-gpu-py3", None) == fw_utils.framework_name_from_image(image_uri)
 
 
 def test_framework_name_from_image_tf():
-    image_name = "123.dkr.ecr.us-west-2.amazonaws.com/sagemaker-tensorflow:1.6-cpu-py2"
+    image_uri = "123.dkr.ecr.us-west-2.amazonaws.com/sagemaker-tensorflow:1.6-cpu-py2"
     assert ("tensorflow", "py2", "1.6-cpu-py2", None) == fw_utils.framework_name_from_image(
-        image_name
+        image_uri
     )
 
 
 def test_framework_name_from_image_tf_scriptmode():
-    image_name = "123.dkr.ecr.us-west-2.amazonaws.com/sagemaker-tensorflow-scriptmode:1.12-cpu-py3"
+    image_uri = "123.dkr.ecr.us-west-2.amazonaws.com/sagemaker-tensorflow-scriptmode:1.12-cpu-py3"
     assert (
         "tensorflow",
         "py3",
         "1.12-cpu-py3",
         "scriptmode",
-    ) == fw_utils.framework_name_from_image(image_name)
+    ) == fw_utils.framework_name_from_image(image_uri)
 
-    image_name = "123.dkr.ecr.us-west-2.amazonaws.com/tensorflow-training:1.13-cpu-py3"
+    image_uri = "123.dkr.ecr.us-west-2.amazonaws.com/tensorflow-training:1.13-cpu-py3"
     assert ("tensorflow", "py3", "1.13-cpu-py3", "training") == fw_utils.framework_name_from_image(
-        image_name
+        image_uri
     )
 
 
 def test_framework_name_from_image_rl():
-    image_name = "123.dkr.ecr.us-west-2.amazonaws.com/sagemaker-rl-mxnet:toolkit1.1-gpu-py3"
+    image_uri = "123.dkr.ecr.us-west-2.amazonaws.com/sagemaker-rl-mxnet:toolkit1.1-gpu-py3"
     assert ("mxnet", "py3", "toolkit1.1-gpu-py3", None) == fw_utils.framework_name_from_image(
-        image_name
+        image_uri
     )
 
 
 def test_legacy_name_from_framework_image():
-    image_name = "123.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet-py3-gpu:2.5.6-gpu-py2"
-    framework, py_ver, tag, _ = fw_utils.framework_name_from_image(image_name)
+    image_uri = "123.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet-py3-gpu:2.5.6-gpu-py2"
+    framework, py_ver, tag, _ = fw_utils.framework_name_from_image(image_uri)
     assert framework == "mxnet"
     assert py_ver == "py3"
     assert tag == "2.5.6-gpu-py2"
@@ -1191,8 +1191,8 @@ def test_legacy_name_from_wrong_device():
 
 
 def test_legacy_name_from_image_any_tag():
-    image_name = "123.dkr.ecr.us-west-2.amazonaws.com/sagemaker-tensorflow-py2-cpu:any-tag"
-    framework, py_ver, tag, _ = fw_utils.framework_name_from_image(image_name)
+    image_uri = "123.dkr.ecr.us-west-2.amazonaws.com/sagemaker-tensorflow-py2-cpu:any-tag"
+    framework, py_ver, tag, _ = fw_utils.framework_name_from_image(image_uri)
     assert framework == "tensorflow"
     assert py_ver == "py2"
     assert tag == "any-tag"
@@ -1221,25 +1221,25 @@ def test_parse_s3_url_fail():
 
 
 def test_model_code_key_prefix_with_all_values_present():
-    key_prefix = fw_utils.model_code_key_prefix("prefix", "model_name", "image_name")
+    key_prefix = fw_utils.model_code_key_prefix("prefix", "model_name", "image_uri")
     assert key_prefix == "prefix/model_name"
 
 
 def test_model_code_key_prefix_with_no_prefix_and_all_other_values_present():
-    key_prefix = fw_utils.model_code_key_prefix(None, "model_name", "image_name")
+    key_prefix = fw_utils.model_code_key_prefix(None, "model_name", "image_uri")
     assert key_prefix == "model_name"
 
 
 @patch("time.strftime", return_value=TIMESTAMP)
 def test_model_code_key_prefix_with_only_image_present(time):
-    key_prefix = fw_utils.model_code_key_prefix(None, None, "image_name")
-    assert key_prefix == name_from_image("image_name")
+    key_prefix = fw_utils.model_code_key_prefix(None, None, "image_uri")
+    assert key_prefix == name_from_image("image_uri")
 
 
 @patch("time.strftime", return_value=TIMESTAMP)
 def test_model_code_key_prefix_and_image_present(time):
-    key_prefix = fw_utils.model_code_key_prefix("prefix", None, "image_name")
-    assert key_prefix == "prefix/" + name_from_image("image_name")
+    key_prefix = fw_utils.model_code_key_prefix("prefix", None, "image_uri")
+    assert key_prefix == "prefix/" + name_from_image("image_uri")
 
 
 def test_model_code_key_prefix_with_prefix_present_and_others_none_fail():
@@ -1266,32 +1266,32 @@ def test_region_supports_debugger_feature_returns_false_for_unsupported_regions(
 
 def test_warn_if_parameter_server_with_multi_gpu(caplog):
     train_instance_type = "ml.p2.8xlarge"
-    distributions = {"parameter_server": {"enabled": True}}
+    distribution = {"parameter_server": {"enabled": True}}
 
     fw_utils.warn_if_parameter_server_with_multi_gpu(
-        training_instance_type=train_instance_type, distributions=distributions
+        training_instance_type=train_instance_type, distribution=distribution
     )
     assert fw_utils.PARAMETER_SERVER_MULTI_GPU_WARNING in caplog.text
 
 
 def test_warn_if_parameter_server_with_local_multi_gpu(caplog):
     train_instance_type = "local_gpu"
-    distributions = {"parameter_server": {"enabled": True}}
+    distribution = {"parameter_server": {"enabled": True}}
 
     fw_utils.warn_if_parameter_server_with_multi_gpu(
-        training_instance_type=train_instance_type, distributions=distributions
+        training_instance_type=train_instance_type, distribution=distribution
     )
     assert fw_utils.PARAMETER_SERVER_MULTI_GPU_WARNING in caplog.text
 
 
 def test_validate_version_or_image_args_not_raises():
     good_args = [("1.0", "py3", None), (None, "py3", "my:uri"), ("1.0", None, "my:uri")]
-    for framework_version, py_version, image_name in good_args:
-        fw_utils.validate_version_or_image_args(framework_version, py_version, image_name)
+    for framework_version, py_version, image_uri in good_args:
+        fw_utils.validate_version_or_image_args(framework_version, py_version, image_uri)
 
 
 def test_validate_version_or_image_args_raises():
     bad_args = [(None, None, None), (None, "py3", None), ("1.0", None, None)]
-    for framework_version, py_version, image_name in bad_args:
+    for framework_version, py_version, image_uri in bad_args:
         with pytest.raises(ValueError):
-            fw_utils.validate_version_or_image_args(framework_version, py_version, image_name)
+            fw_utils.validate_version_or_image_args(framework_version, py_version, image_uri)

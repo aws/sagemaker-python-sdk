@@ -136,7 +136,7 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
         model_data,
         role,
         entry_point=None,
-        image=None,
+        image_uri=None,
         framework_version=None,
         container_log_level=None,
         predictor_cls=TensorFlowPredictor,
@@ -156,12 +156,12 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
                 file which should be executed as the entry point to model
                 hosting. If ``source_dir`` is specified, then ``entry_point``
                 must point to a file located at the root of ``source_dir``.
-            image (str): A Docker image URI (default: None). If not specified, a
+            image_uri (str): A Docker image URI (default: None). If not specified, a
                 default image for TensorFlow Serving will be used. If
-                ``framework_version`` is ``None``, then ``image`` is required.
+                ``framework_version`` is ``None``, then ``image_uri`` is required.
                 If also ``None``, then a ``ValueError`` will be raised.
             framework_version (str): Optional. TensorFlow Serving version you
-                want to use. Defaults to ``None``. Required unless ``image`` is
+                want to use. Defaults to ``None``. Required unless ``image_uri`` is
                 provided.
             container_log_level (int): Log level to use within the container
                 (default: logging.ERROR). Valid values are defined in the Python
@@ -178,17 +178,17 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
             :class:`~sagemaker.model.FrameworkModel` and
             :class:`~sagemaker.model.Model`.
         """
-        if framework_version is None and image is None:
+        if framework_version is None and image_uri is None:
             raise ValueError(
-                "Both framework_version and image were None. "
-                "Either specify framework_version or specify image_name."
+                "Both framework_version and image_uri were None. "
+                "Either specify framework_version or specify image_uri."
             )
         self.framework_version = framework_version
 
         super(TensorFlowModel, self).__init__(
             model_data=model_data,
             role=role,
-            image=image,
+            image_uri=image_uri,
             predictor_cls=predictor_cls,
             entry_point=entry_point,
             **kwargs
@@ -232,16 +232,18 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
             instance_type:
             accelerator_type:
         """
-        if self.image is None and instance_type is None:
+        if self.image_uri is None and instance_type is None:
             raise ValueError(
                 "Must supply either an instance type (for choosing CPU vs GPU) or an image URI."
             )
 
-        image = self._get_image_uri(instance_type, accelerator_type)
+        image_uri = self._get_image_uri(instance_type, accelerator_type)
         env = self._get_container_env()
 
         if self.entry_point:
-            key_prefix = sagemaker.fw_utils.model_code_key_prefix(self.key_prefix, self.name, image)
+            key_prefix = sagemaker.fw_utils.model_code_key_prefix(
+                self.key_prefix, self.name, image_uri
+            )
 
             bucket = self.bucket or self.sagemaker_session.default_bucket()
             model_data = "s3://{}/{}/model.tar.gz".format(bucket, key_prefix)
@@ -258,7 +260,7 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
         else:
             model_data = self.model_data
 
-        return sagemaker.container_def(image, model_data, env)
+        return sagemaker.container_def(image_uri, model_data, env)
 
     def _get_container_env(self):
         """Placeholder docstring"""
@@ -279,8 +281,8 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
             instance_type:
             accelerator_type:
         """
-        if self.image:
-            return self.image
+        if self.image_uri:
+            return self.image_uri
 
         region_name = self.sagemaker_session.boto_region_name
         return create_image_uri(

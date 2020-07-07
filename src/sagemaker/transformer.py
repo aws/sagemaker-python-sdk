@@ -219,14 +219,14 @@ class Transformer(object):
 
     def _retrieve_base_name(self):
         """Placeholder docstring"""
-        image_name = self._retrieve_image_name()
+        image_uri = self._retrieve_image_uri()
 
-        if image_name:
-            return base_name_from_image(image_name)
+        if image_uri:
+            return base_name_from_image(image_uri)
 
         return self.model_name
 
-    def _retrieve_image_name(self):
+    def _retrieve_image_uri(self):
         """Placeholder docstring"""
         try:
             model_desc = self.sagemaker_session.sagemaker_client.describe_model(

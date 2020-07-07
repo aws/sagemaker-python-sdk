@@ -54,7 +54,7 @@ def test_byo_estimator(sagemaker_session, region, cpu_instance_type, training_se
     Default predictor is updated with json serializer and deserializer.
 
     """
-    image_name = get_image_uri(region, "factorization-machines")
+    image_uri = get_image_uri(region, "factorization-machines")
     training_data_path = os.path.join(DATA_DIR, "dummy_tensor")
     job_name = unique_name_from_base("byo")
 
@@ -67,7 +67,7 @@ def test_byo_estimator(sagemaker_session, region, cpu_instance_type, training_se
         )
 
         estimator = Estimator(
-            image_name=image_name,
+            image_uri=image_uri,
             role="SageMakerRole",
             train_instance_count=1,
             train_instance_type=cpu_instance_type,
@@ -96,7 +96,7 @@ def test_byo_estimator(sagemaker_session, region, cpu_instance_type, training_se
 
 
 def test_async_byo_estimator(sagemaker_session, region, cpu_instance_type, training_set):
-    image_name = get_image_uri(region, "factorization-machines")
+    image_uri = get_image_uri(region, "factorization-machines")
     endpoint_name = unique_name_from_base("byo")
     training_data_path = os.path.join(DATA_DIR, "dummy_tensor")
     job_name = unique_name_from_base("byo")
@@ -110,7 +110,7 @@ def test_async_byo_estimator(sagemaker_session, region, cpu_instance_type, train
         )
 
         estimator = Estimator(
-            image_name=image_name,
+            image_uri=image_uri,
             role="SageMakerRole",
             train_instance_count=1,
             train_instance_type=cpu_instance_type,
@@ -140,4 +140,4 @@ def test_async_byo_estimator(sagemaker_session, region, cpu_instance_type, train
         for prediction in result["predictions"]:
             assert prediction["score"] is not None
 
-        assert estimator.train_image() == image_name
+        assert estimator.train_image() == image_uri

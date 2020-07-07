@@ -32,7 +32,7 @@ TIME = 1507167947
 BUCKET_NAME = "notmybucket"
 INSTANCE_COUNT = 1
 INSTANCE_TYPE = "ml.c4.4xlarge"
-IMAGE_NAME = "sagemaker-rl"
+IMAGE_URI = "sagemaker-rl"
 IMAGE_URI_FORMAT_STRING = "520713654638.dkr.ecr.{}.amazonaws.com/{}-{}:{}{}-{}-py3"
 PYTHON_VERSION = "py3"
 ROLE = "Dummy"
@@ -78,13 +78,13 @@ def fixture_sagemaker_session():
 
 def _get_full_cpu_image_uri(toolkit, toolkit_version, framework):
     return IMAGE_URI_FORMAT_STRING.format(
-        REGION, IMAGE_NAME, framework, toolkit, toolkit_version, "cpu"
+        REGION, IMAGE_URI, framework, toolkit, toolkit_version, "cpu"
     )
 
 
 def _get_full_gpu_image_uri(toolkit, toolkit_version, framework):
     return IMAGE_URI_FORMAT_STRING.format(
-        REGION, IMAGE_NAME, framework, toolkit, toolkit_version, "gpu"
+        REGION, IMAGE_URI, framework, toolkit, toolkit_version, "gpu"
     )
 
 
@@ -112,9 +112,9 @@ def _rl_estimator(
 
 
 def _create_train_job(toolkit, toolkit_version, framework):
-    job_name = "{}-{}-{}".format(IMAGE_NAME, framework, TIMESTAMP)
+    job_name = "{}-{}-{}".format(IMAGE_URI, framework, TIMESTAMP)
     return {
-        "image": _get_full_cpu_image_uri(toolkit, toolkit_version, framework),
+        "image_uri": _get_full_cpu_image_uri(toolkit, toolkit_version, framework),
         "input_mode": "File",
         "input_config": [
             {
@@ -282,7 +282,7 @@ def test_create_model_with_custom_image(name_from_base, sagemaker_session):
         sagemaker_session=sagemaker_session,
         train_instance_count=INSTANCE_COUNT,
         train_instance_type=INSTANCE_TYPE,
-        image_name=image,
+        image_uri=image,
         container_log_level=container_log_level,
         source_dir=source_dir,
     )
@@ -296,7 +296,7 @@ def test_create_model_with_custom_image(name_from_base, sagemaker_session):
     model = rl.create_model(entry_point=new_entry_point)
 
     assert model.sagemaker_session == sagemaker_session
-    assert model.image == image
+    assert model.image_uri == image
     assert model.entry_point == new_entry_point
     assert model.role == ROLE
     assert model.name == model_name
@@ -574,7 +574,7 @@ def test_attach_custom_image(sagemaker_session):
 
     estimator = RLEstimator.attach(training_job_name="neo", sagemaker_session=sagemaker_session)
     assert estimator.latest_training_job.job_name == "neo"
-    assert estimator.image_name == training_image
+    assert estimator.image_uri == training_image
     assert estimator.train_image() == training_image
 
 
@@ -622,7 +622,7 @@ def test_missing_required_parameters(sagemaker_session):
             train_instance_type=INSTANCE_TYPE,
         )
     assert (
-        "Please provide `toolkit`, `toolkit_version`, `framework`" + " or `image_name` parameter."
+        "Please provide `toolkit`, `toolkit_version`, `framework`" + " or `image_uri` parameter."
         in str(e.value)
     )
 
@@ -646,5 +646,5 @@ def test_custom_image_estimator_deploy(sagemaker_session):
     custom_image = "mycustomimage:latest"
     rl = _rl_estimator(sagemaker_session)
     rl.fit(inputs="s3://mybucket/train", job_name="new_name")
-    model = rl.create_model(image=custom_image)
-    assert model.image == custom_image
+    model = rl.create_model(image_uri=custom_image)
+    assert model.image_uri == custom_image

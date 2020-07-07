@@ -38,7 +38,7 @@ REGION = "us-west-2"
 IMAGE_URI_FORMAT_STRING = (
     "520713654638.dkr.ecr.{}.amazonaws.com/sagemaker-tensorflow-scriptmode:{}-cpu-{}"
 )
-DISTRIBUTION_ENABLED = {"parameter_server": {"enabled": True}}
+DISTRIBUTION_PS_ENABLED = {"parameter_server": {"enabled": True}}
 DISTRIBUTION_MPI_ENABLED = {
     "mpi": {"enabled": True, "custom_mpi_options": "options", "processes_per_host": 2}
 }
@@ -104,7 +104,7 @@ def _hyperparameters(horovod=False):
 
 def _create_train_job(tf_version, horovod=False, ps=False, py_version="py2"):
     conf = {
-        "image": _image_uri(tf_version, py_version),
+        "image_uri": _image_uri(tf_version, py_version),
         "input_mode": "File",
         "input_config": [
             {
@@ -262,7 +262,7 @@ def test_create_model_with_custom_image(sagemaker_session):
         sagemaker_session=sagemaker_session,
         train_instance_count=INSTANCE_COUNT,
         train_instance_type=INSTANCE_TYPE,
-        image_name=custom_image,
+        image_uri=custom_image,
         container_log_level=container_log_level,
         base_job_name="job",
         source_dir=source_dir,
@@ -272,7 +272,7 @@ def test_create_model_with_custom_image(sagemaker_session):
     tf.fit(inputs="s3://mybucket/train", job_name=job_name)
     model = tf.create_model()
 
-    assert model.image == custom_image
+    assert model.image_uri == custom_image
 
 
 @patch("sagemaker.tensorflow.estimator.TensorFlow.create_model")
@@ -451,7 +451,7 @@ def test_fit_ps(time, strftime, sagemaker_session):
         train_instance_type=INSTANCE_TYPE,
         train_instance_count=1,
         source_dir=DATA_DIR,
-        distributions=DISTRIBUTION_ENABLED,
+        distribution=DISTRIBUTION_PS_ENABLED,
     )
 
     inputs = "s3://mybucket/train"
@@ -481,7 +481,7 @@ def test_fit_mpi(time, strftime, sagemaker_session):
         train_instance_type=INSTANCE_TYPE,
         train_instance_count=1,
         source_dir=DATA_DIR,
-        distributions=DISTRIBUTION_MPI_ENABLED,
+        distribution=DISTRIBUTION_MPI_ENABLED,
     )
 
     inputs = "s3://mybucket/train"
@@ -518,5 +518,5 @@ def test_hyperparameters_no_model_dir(sagemaker_session, tf_version, tf_py_versi
 
 def test_train_image_custom_image(sagemaker_session):
     custom_image = "tensorflow:latest"
-    tf = _build_tf(sagemaker_session, image_name=custom_image)
+    tf = _build_tf(sagemaker_session, image_uri=custom_image)
     assert custom_image == tf.train_image()

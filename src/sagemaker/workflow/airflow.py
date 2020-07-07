@@ -522,7 +522,7 @@ def prepare_framework_container_def(model, instance_type, s3_operations):
     Returns:
         dict: The container information of this framework model.
     """
-    deploy_image = model.image
+    deploy_image = model.image_uri
     if not deploy_image:
         region_name = model.sagemaker_session.boto_session.region_name
         deploy_image = model.serving_image_uri(region_name, instance_type)
@@ -560,7 +560,7 @@ def prepare_framework_container_def(model, instance_type, s3_operations):
     return sagemaker.container_def(deploy_image, model.model_data, deploy_env)
 
 
-def model_config(model, instance_type=None, role=None, image=None):
+def model_config(model, instance_type=None, role=None, image_uri=None):
     """Export Airflow model config from a SageMaker model
 
     Args:
@@ -568,7 +568,7 @@ def model_config(model, instance_type=None, role=None, image=None):
         instance_type (str): The EC2 instance type to deploy this Model to. For
             example, 'ml.p2.xlarge'
         role (str): The ``ExecutionRoleArn`` IAM Role ARN for the model
-        image (str): An container image to use for deploying the model
+        image_uri (str): An Docker image URI to use for deploying the model
 
     Returns:
         dict: Model config that can be directly used by SageMakerModelOperator
@@ -576,7 +576,7 @@ def model_config(model, instance_type=None, role=None, image=None):
             SageMakerEndpointOperator and SageMakerTransformOperator in Airflow.
     """
     s3_operations = {}
-    model.image = image or model.image
+    model.image_uri = image_uri or model.image_uri
 
     if isinstance(model, sagemaker.model.FrameworkModel):
         container_def = prepare_framework_container_def(model, instance_type, s3_operations)
@@ -608,7 +608,7 @@ def model_config_from_estimator(
     task_type,
     instance_type=None,
     role=None,
-    image=None,
+    image_uri=None,
     name=None,
     model_server_workers=None,
     vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT,
@@ -630,7 +630,7 @@ def model_config_from_estimator(
         instance_type (str): The EC2 instance type to deploy this Model to. For
             example, 'ml.p2.xlarge'
         role (str): The ``ExecutionRoleArn`` IAM Role ARN for the model
-        image (str): An container image to use for deploying the model
+        image_uri (str): A Docker image URI to use for deploying the model
         name (str): Name of the model
         model_server_workers (int): The number of worker processes used by the
             inference server. If None, server will use one worker per vCPU. Only
@@ -647,7 +647,7 @@ def model_config_from_estimator(
     update_estimator_from_task(estimator, task_id, task_type)
     if isinstance(estimator, sagemaker.estimator.Estimator):
         model = estimator.create_model(
-            role=role, image=image, vpc_config_override=vpc_config_override
+            role=role, image_uri=image_uri, vpc_config_override=vpc_config_override
         )
     elif isinstance(estimator, sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase):
         model = estimator.create_model(vpc_config_override=vpc_config_override)
@@ -669,7 +669,7 @@ def model_config_from_estimator(
         )
     model.name = name
 
-    return model_config(model, instance_type, role, image)
+    return model_config(model, instance_type, role, image_uri)
 
 
 def transform_config(
@@ -809,7 +809,7 @@ def transform_config_from_estimator(
     role=None,
     volume_kms_key=None,
     model_server_workers=None,
-    image=None,
+    image_uri=None,
     vpc_config_override=None,
     input_filter=None,
     output_filter=None,
@@ -879,7 +879,7 @@ def transform_config_from_estimator(
         model_server_workers (int): Optional. The number of worker processes
             used by the inference server. If None, server will use one worker
             per vCPU.
-        image (str): An container image to use for deploying the model
+        image_uri (str): A Docker image URI to use for deploying the model
         vpc_config_override (dict[str, list[str]]): Override for VpcConfig set on
             the model. Default: use subnets and security groups from this Estimator.
 
@@ -921,7 +921,7 @@ def transform_config_from_estimator(
         task_type=task_type,
         instance_type=instance_type,
         role=role,
-        image=image,
+        image_uri=image_uri,
         name=model_name,
         model_server_workers=model_server_workers,
         vpc_config_override=vpc_config_override,

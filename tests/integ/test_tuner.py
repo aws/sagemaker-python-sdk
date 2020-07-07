@@ -843,7 +843,7 @@ def test_tuning_byo_estimator(sagemaker_session, cpu_instance_type):
     Later the trained model is deployed and prediction is called against the endpoint.
     Default predictor is updated with json serializer and deserializer.
     """
-    image_name = get_image_uri(sagemaker_session.boto_session.region_name, "factorization-machines")
+    image_uri = get_image_uri(sagemaker_session.boto_session.region_name, "factorization-machines")
     training_data_path = os.path.join(DATA_DIR, "dummy_tensor")
 
     with timeout(minutes=TUNING_DEFAULT_TIMEOUT_MINUTES):
@@ -854,7 +854,7 @@ def test_tuning_byo_estimator(sagemaker_session, cpu_instance_type):
         )
 
         estimator = Estimator(
-            image_name=image_name,
+            image_uri=image_uri,
             role="SageMakerRole",
             train_instance_count=1,
             train_instance_type=cpu_instance_type,

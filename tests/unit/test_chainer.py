@@ -36,8 +36,8 @@ BUCKET_NAME = "mybucket"
 INSTANCE_COUNT = 1
 INSTANCE_TYPE = "ml.c4.4xlarge"
 ACCELERATOR_TYPE = "ml.eia.medium"
-IMAGE_NAME = "sagemaker-chainer"
-JOB_NAME = "{}-{}".format(IMAGE_NAME, TIMESTAMP)
+IMAGE_URI = "sagemaker-chainer"
+JOB_NAME = "{}-{}".format(IMAGE_URI, TIMESTAMP)
 IMAGE_URI_FORMAT_STRING = "520713654638.dkr.ecr.{}.amazonaws.com/{}:{}-{}-{}"
 ROLE = "Dummy"
 REGION = "us-west-2"
@@ -75,11 +75,11 @@ def sagemaker_session():
 
 
 def _get_full_cpu_image_uri(version, py_version):
-    return IMAGE_URI_FORMAT_STRING.format(REGION, IMAGE_NAME, version, "cpu", py_version)
+    return IMAGE_URI_FORMAT_STRING.format(REGION, IMAGE_URI, version, "cpu", py_version)
 
 
 def _get_full_gpu_image_uri(version, py_version):
-    return IMAGE_URI_FORMAT_STRING.format(REGION, IMAGE_NAME, version, "gpu", py_version)
+    return IMAGE_URI_FORMAT_STRING.format(REGION, IMAGE_URI, version, "gpu", py_version)
 
 
 def _get_full_cpu_image_uri_with_ei(version, py_version):
@@ -117,7 +117,7 @@ def _chainer_estimator(
 
 def _create_train_job(version, py_version):
     return {
-        "image": _get_full_cpu_image_uri(version, py_version),
+        "image_uri": _get_full_cpu_image_uri(version, py_version),
         "input_mode": "File",
         "input_config": [
             {
@@ -320,7 +320,7 @@ def test_create_model_with_custom_image(sagemaker_session):
         sagemaker_session=sagemaker_session,
         train_instance_count=INSTANCE_COUNT,
         train_instance_type=INSTANCE_TYPE,
-        image_name=custom_image,
+        image_uri=custom_image,
         container_log_level=container_log_level,
         base_job_name="job",
         source_dir=source_dir,
@@ -329,7 +329,7 @@ def test_create_model_with_custom_image(sagemaker_session):
     chainer.fit(inputs="s3://mybucket/train", job_name="new_name")
     model = chainer.create_model()
 
-    assert model.image == custom_image
+    assert model.image_uri == custom_image
 
 
 @patch("sagemaker.utils.create_tar_file", MagicMock())
@@ -604,7 +604,7 @@ def test_attach_custom_image(sagemaker_session):
     )
 
     estimator = Chainer.attach(training_job_name="neo", sagemaker_session=sagemaker_session)
-    assert estimator.image_name == training_image
+    assert estimator.image_uri == training_image
     assert estimator.train_image() == training_image
 
 

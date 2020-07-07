@@ -44,17 +44,17 @@ class TensorFlow(Framework):
         py_version=None,
         framework_version=None,
         model_dir=None,
-        image_name=None,
-        distributions=None,
+        image_uri=None,
+        distribution=None,
         **kwargs
     ):
         """Initialize a ``TensorFlow`` estimator.
 
         Args:
             py_version (str): Python version you want to use for executing your model training
-                code. Defaults to ``None``. Required unless ``image_name`` is provided.
+                code. Defaults to ``None``. Required unless ``image_uri`` is provided.
             framework_version (str): TensorFlow version you want to use for executing your model
-                training code. Defaults to ``None``. Required unless ``image_name`` is provided.
+                training code. Defaults to ``None``. Required unless ``image_uri`` is provided.
                 List of supported versions:
                 https://github.com/aws/sagemaker-python-sdk#tensorflow-sagemaker-estimators.
             model_dir (str): S3 location where the checkpoint data and models can be exported to
@@ -70,7 +70,7 @@ class TensorFlow(Framework):
 
                 To disable having ``model_dir`` passed to your training script,
                 set ``model_dir=False``.
-            image_name (str): If specified, the estimator will use this image for training and
+            image_uri (str): If specified, the estimator will use this image for training and
                 hosting, instead of selecting the appropriate SageMaker official image based on
                 framework_version and py_version. It can be an ECR url or dockerhub image and tag.
 
@@ -79,9 +79,9 @@ class TensorFlow(Framework):
                     custom-image:latest.
 
                 If ``framework_version`` or ``py_version`` are ``None``, then
-                ``image_name`` is required. If also ``None``, then a ``ValueError``
+                ``image_uri`` is required. If also ``None``, then a ``ValueError``
                 will be raised.
-            distributions (dict): A dictionary with information on how to run distributed training
+            distribution (dict): A dictionary with information on how to run distributed training
                 (default: None). Currently we support distributed training with parameter servers
                 and MPI.
                 To enable parameter server use the following setup:
@@ -114,7 +114,7 @@ class TensorFlow(Framework):
             :class:`~sagemaker.estimator.Framework` and
             :class:`~sagemaker.estimator.EstimatorBase`.
         """
-        fw.validate_version_or_image_args(framework_version, py_version, image_name)
+        fw.validate_version_or_image_args(framework_version, py_version, image_uri)
         if py_version == "py2":
             logger.warning(
                 fw.python_deprecation_warning(self.__framework_name__, defaults.LATEST_PY2_VERSION)
@@ -122,11 +122,10 @@ class TensorFlow(Framework):
         self.framework_version = framework_version
         self.py_version = py_version
 
-        if distributions is not None:
-            logger.warning(fw.parameter_v2_rename_warning("distribution", distributions))
+        if distribution is not None:
             train_instance_type = kwargs.get("train_instance_type")
             fw.warn_if_parameter_server_with_multi_gpu(
-                training_instance_type=train_instance_type, distributions=distributions
+                training_instance_type=train_instance_type, distribution=distribution
             )
 
         if "enable_sagemaker_metrics" not in kwargs:
@@ -134,10 +133,10 @@ class TensorFlow(Framework):
             if framework_version and fw.is_version_equal_or_higher([1, 15], framework_version):
                 kwargs["enable_sagemaker_metrics"] = True
 
-        super(TensorFlow, self).__init__(image_name=image_name, **kwargs)
+        super(TensorFlow, self).__init__(image_uri=image_uri, **kwargs)
 
         self.model_dir = model_dir
-        self.distributions = distributions or {}
+        self.distribution = distribution or {}
 
         self._validate_args(py_version=py_version)
 
@@ -151,7 +150,7 @@ class TensorFlow(Framework):
             )
             raise AttributeError(msg)
 
-        if self.image_name is None and self._only_legacy_mode_supported():
+        if self.image_uri is None and self._only_legacy_mode_supported():
             legacy_image_uri = fw.create_image_uri(
                 self.sagemaker_session.boto_region_name,
                 "tensorflow",
@@ -162,7 +161,7 @@ class TensorFlow(Framework):
 
             msg = (
                 "TF {} supports only legacy mode. Please supply the image URI directly with "
-                "'image_name={}' and set 'model_dir=False'. If you are using any legacy parameters "
+                "'image_uri={}' and set 'model_dir=False'. If you are using any legacy parameters "
                 "(training_steps, evaluation_steps, checkpoint_path, requirements_file), "
                 "make sure to pass them directly as hyperparameters instead. For more, see "
                 "https://sagemaker.readthedocs.io/en/v2.0.0.rc0/frameworks/tensorflow/upgrade_from_legacy.html."
@@ -193,12 +192,13 @@ class TensorFlow(Framework):
             job_details, model_channel_name
         )
 
-        image_name = init_params.pop("image")
-        framework, py_version, tag, script_mode = fw.framework_name_from_image(image_name)
+        image_uri = init_params.pop("image_uri")
+        framework, py_version, tag, script_mode = fw.framework_name_from_image(image_uri)
+
         if not framework:
             # If we were unable to parse the framework name from the image, it is not one of our
             # officially supported images, so just add the image to the init params.
-            init_params["image_name"] = image_name
+            init_params["image_uri"] = image_uri
             return init_params
 
         model_dir = init_params["hyperparameters"].pop("model_dir", None)
@@ -219,7 +219,7 @@ class TensorFlow(Framework):
 
         # Legacy images are required to be passed in explicitly.
         if not script_mode:
-            init_params["image_name"] = image_name
+            init_params["image_uri"] = image_uri
 
         if framework != cls.__framework_name__:
             raise ValueError(
@@ -271,8 +271,8 @@ class TensorFlow(Framework):
         """
         kwargs["name"] = self._get_or_create_name(kwargs.get("name"))
 
-        if "image" not in kwargs:
-            kwargs["image"] = self.image_name
+        if "image_uri" not in kwargs:
+            kwargs["image_uri"] = self.image_uri
 
         if "enable_network_isolation" not in kwargs:
             kwargs["enable_network_isolation"] = self.enable_network_isolation()
@@ -295,13 +295,13 @@ class TensorFlow(Framework):
         hyperparameters = super(TensorFlow, self).hyperparameters()
         additional_hyperparameters = {}
 
-        if "parameter_server" in self.distributions:
-            ps_enabled = self.distributions["parameter_server"].get("enabled", False)
+        if "parameter_server" in self.distribution:
+            ps_enabled = self.distribution["parameter_server"].get("enabled", False)
             additional_hyperparameters[self.LAUNCH_PS_ENV_NAME] = ps_enabled
 
         mpi_enabled = False
-        if "mpi" in self.distributions:
-            mpi_dict = self.distributions["mpi"]
+        if "mpi" in self.distribution:
+            mpi_dict = self.distribution["mpi"]
             mpi_enabled = mpi_dict.get("enabled", False)
             additional_hyperparameters[self.LAUNCH_MPI_ENV_NAME] = mpi_enabled
 
@@ -338,7 +338,7 @@ class TensorFlow(Framework):
 
         Else, set default HookConfig
         """
-        ps_enabled = "parameter_server" in self.distributions and self.distributions[
+        ps_enabled = "parameter_server" in self.distribution and self.distribution[
             "parameter_server"
         ].get("enabled", False)
         if ps_enabled:
@@ -357,8 +357,8 @@ class TensorFlow(Framework):
 
     def train_image(self):
         """Placeholder docstring"""
-        if self.image_name:
-            return self.image_name
+        if self.image_uri:
+            return self.image_uri
 
         return fw.create_image_uri(
             self.sagemaker_session.boto_region_name,

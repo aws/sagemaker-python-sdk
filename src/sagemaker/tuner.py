@@ -858,8 +858,8 @@ class HyperparameterTuner(object):
             return getattr(importlib.import_module(json.loads(module)), json.loads(cls_name))
 
         # Then try to derive the estimator from the image name for 1P algorithms
-        image_name = training_details["AlgorithmSpecification"]["TrainingImage"]
-        algorithm = image_name[image_name.find("/") + 1 : image_name.find(":")]
+        image_uri = training_details["AlgorithmSpecification"]["TrainingImage"]
+        algorithm = image_uri[image_uri.find("/") + 1 : image_uri.find(":")]
         if algorithm in AMAZON_ESTIMATOR_CLS_NAMES:
             cls_name = AMAZON_ESTIMATOR_CLS_NAMES[algorithm]
             return getattr(importlib.import_module(AMAZON_ESTIMATOR_MODULE), cls_name)
@@ -1511,7 +1511,7 @@ class _TuningJob(_Job):
         if isinstance(estimator, sagemaker.algorithm.AlgorithmEstimator):
             training_config["algorithm_arn"] = estimator.algorithm_arn
         else:
-            training_config["image"] = estimator.train_image()
+            training_config["image_uri"] = estimator.train_image()
 
         training_config["enable_network_isolation"] = estimator.enable_network_isolation()
         training_config[

@@ -169,7 +169,7 @@ def test_mxnet_distributed_local_mode(
         train_instance_type="local",
         sagemaker_session=sagemaker_local_session,
         framework_version=mxnet_full_version,
-        distributions={"parameter_server": {"enabled": True}},
+        distribution={"parameter_server": {"enabled": True}},
     )
 
     train_input = mx.sagemaker_session.upload_data(

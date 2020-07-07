@@ -416,7 +416,7 @@ def test_model_image(sagemaker_session):
     lr.fit(data)
 
     model = lr.create_model()
-    assert model.image == registry(REGION, "linear-learner") + "/linear-learner:1"
+    assert model.image_uri == registry(REGION, "linear-learner") + "/linear-learner:1"
 
 
 def test_predictor_type(sagemaker_session):

@@ -37,7 +37,7 @@ def sagemaker_session():
 
 
 def _create_model(sagemaker_session=None):
-    return Model(MODEL_IMAGE, MODEL_DATA, sagemaker_session=sagemaker_session)
+    return Model(MODEL_IMAGE, MODEL_DATA, role="role", sagemaker_session=sagemaker_session)
 
 
 def test_compile_model_for_inferentia(sagemaker_session):
@@ -58,7 +58,7 @@ def test_compile_model_for_inferentia(sagemaker_session):
         "{}.dkr.ecr.{}.amazonaws.com/sagemaker-neo-tensorflow:1.15.0-inf-py3".format(
             NEO_REGION_ACCOUNT, REGION
         )
-        == model.image
+        == model.image_uri
     )
     assert model._is_compiled_model is True
 
@@ -212,14 +212,33 @@ def test_check_neo_region(sagemaker_session):
             assert (region_name in NEO_REGION_LIST) is model.check_neo_region(region_name)
 
 
-def test_deploy_valid_model_name(sagemaker_session):
-    model = Model(
-        image="long-base-name-that-is-over-the-63-character-limit-for-model-names",
-        model_data=MODEL_DATA,
-        role="role",
-        sagemaker_session=sagemaker_session,
-    )
+def test_deploy_honors_provided_model_name(sagemaker_session):
+    model = _create_model(sagemaker_session)
+    model._is_compiled_model = True
+
+    model_name = "foo"
+    model.name = model_name
+
+    model.deploy(1, "ml.c4.xlarge")
+    assert model_name == model.name
+
+
+def test_deploy_add_compiled_model_suffix_to_generated_resource_names(sagemaker_session):
+    model = _create_model(sagemaker_session)
     model._is_compiled_model = True
 
     model.deploy(1, "ml.c4.xlarge")
-    assert len(model.name) <= 63
+    assert model.name.startswith("mi-ml-c4")
+    assert model.endpoint_name.startswith("mi-ml-c4")
+
+
+@patch("sagemaker.model.Model._create_sagemaker_model", Mock())
+def test_deploy_add_compiled_model_suffix_to_endpoint_name_from_model_name(sagemaker_session):
+    model = _create_model(sagemaker_session)
+    model._is_compiled_model = True
+
+    model_name = "foo"
+    model.name = model_name
+
+    model.deploy(1, "ml.c4.xlarge")
+    assert model.endpoint_name.startswith("{}-ml-c4".format(model_name))

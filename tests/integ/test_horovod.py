@@ -82,7 +82,7 @@ def test_horovod_local_mode(
         output_path=output_path,
         framework_version=tf_training_latest_version,
         py_version=tf_training_latest_py_version,
-        distributions={"mpi": {"enabled": True, "processes_per_host": processes}},
+        distribution={"mpi": {"enabled": True, "processes_per_host": processes}},
     )
 
     with timeout.timeout(minutes=integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
@@ -128,7 +128,7 @@ def _create_and_fit_estimator(sagemaker_session, tf_version, py_version, instanc
         sagemaker_session=sagemaker_session,
         py_version=py_version,
         framework_version=tf_version,
-        distributions={"mpi": {"enabled": True}},
+        distribution={"mpi": {"enabled": True}},
     )
 
     with timeout.timeout(minutes=integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
