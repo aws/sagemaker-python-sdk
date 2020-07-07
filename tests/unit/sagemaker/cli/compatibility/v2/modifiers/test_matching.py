@@ -66,3 +66,8 @@ def test_matches_attr():
 def test_matches_namespace():
     assert matching.matches_namespace(ast_call("sagemaker.mxnet.MXNet()"), "sagemaker.mxnet")
     assert not matching.matches_namespace(ast_call("sagemaker.KMeans()"), "sagemaker.mxnet")
+
+
+def test_has_arg():
+    assert matching.has_arg(ast_call("MXNet(framework_version=mxnet_version)"), "framework_version")
+    assert not matching.has_arg(ast_call("MXNet()"), "framework_version")

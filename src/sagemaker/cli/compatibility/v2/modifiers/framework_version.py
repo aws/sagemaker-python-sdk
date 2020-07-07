@@ -15,7 +15,7 @@ from __future__ import absolute_import
 
 import ast
 
-from sagemaker.cli.compatibility.v2.modifiers import matching
+from sagemaker.cli.compatibility.v2.modifiers import matching, parsing
 from sagemaker.cli.compatibility.v2.modifiers.modifier import Modifier
 
 FRAMEWORK_ARG = "framework_version"
@@ -98,13 +98,13 @@ class FrameworkVersionEnforcer(Modifier):
         framework, is_model = _framework_from_node(node)
 
         # if framework_version is not supplied, get default and append keyword
-        framework_version = _arg_value(node, FRAMEWORK_ARG)
+        framework_version = parsing.arg_value(node, FRAMEWORK_ARG)
         if framework_version is None:
             framework_version = FRAMEWORK_DEFAULTS[framework]
             node.keywords.append(ast.keyword(arg=FRAMEWORK_ARG, value=ast.Str(s=framework_version)))
 
         # if py_version is not supplied, get a conditional default, and if not None, append keyword
-        py_version = _arg_value(node, PY_ARG)
+        py_version = parsing.arg_value(node, PY_ARG)
         if py_version is None:
             py_version = _py_version_defaults(framework, framework_version, is_model)
             if py_version:
@@ -175,12 +175,12 @@ def _version_args_needed(node, image_arg):
     Applies similar logic as ``validate_version_or_image_args``
     """
     # if image_arg is present, no need to supply version arguments
-    image_name = _arg_value(node, image_arg)
+    image_name = parsing.arg_value(node, image_arg)
     if image_name:
         return False
 
     # if framework_version is None, need args
-    framework_version = _arg_value(node, FRAMEWORK_ARG)
+    framework_version = parsing.arg_value(node, FRAMEWORK_ARG)
     if framework_version is None:
         return True
 
@@ -188,15 +188,7 @@ def _version_args_needed(node, image_arg):
     framework, is_model = _framework_from_node(node)
     expecting_py_version = _py_version_defaults(framework, framework_version, is_model)
     if expecting_py_version:
-        py_version = _arg_value(node, PY_ARG)
+        py_version = parsing.arg_value(node, PY_ARG)
         return py_version is None
 
     return False
-
-
-def _arg_value(node, arg):
-    """Gets the value associated with the arg keyword, if present"""
-    for kw in node.keywords:
-        if kw.arg == arg and kw.value:
-            return kw.value.s
-    return None
