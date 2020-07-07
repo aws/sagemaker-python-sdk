@@ -24,9 +24,10 @@ from botocore.exceptions import ClientError
 
 from sagemaker import utils
 from sagemaker.amazon.randomcutforest import RandomCutForest
+from sagemaker.deserializers import StringDeserializer
 from sagemaker.multidatamodel import MultiDataModel
 from sagemaker.mxnet import MXNet
-from sagemaker.predictor import Predictor, StringDeserializer, npy_serializer
+from sagemaker.predictor import Predictor, npy_serializer
 from sagemaker.utils import sagemaker_timestamp, unique_name_from_base, get_ecr_image_uri_prefix
 from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.retry import retries

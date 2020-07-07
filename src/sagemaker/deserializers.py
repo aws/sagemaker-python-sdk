@@ -15,6 +15,8 @@ from __future__ import absolute_import
 
 import abc
 
+from sagemaker.utils import parse_mime_type
+
 
 class BaseDeserializer(abc.ABC):
     """Abstract base class for creation of new deserializers.
@@ -39,3 +41,37 @@ class BaseDeserializer(abc.ABC):
     @abc.abstractmethod
     def ACCEPT(self):
         """The content type that is expected from the inference endpoint."""
+
+
+class StringDeserializer(object):
+    """Deserialize data from an inference endpoint into a decoded string."""
+
+    def __init__(self, encoding="UTF-8"):
+        """Initialize the default encoding.
+
+        Args:
+            encoding (str): The string encoding to use, if a charset is not
+                provided by the server (default: UTF-8).
+        """
+        self.encoding = encoding
+
+    def deserialize(self, data, content_type):
+        """Deserialize data from an inference endpoint into a decoded string.
+
+        Args:
+            data (object): A string or a byte stream.
+            content_type (str): The MIME type of the data.
+
+        Returns:
+            str: The data deserialized into a decoded string.
+        """
+        category, _, parameters = parse_mime_type(content_type)
+
+        if category == "text":
+            return data
+
+        try:
+            encoding = parameters.get("charset", self.encoding)
+            return data.read().decode(encoding)
+        finally:
+            data.close()

@@ -27,7 +27,6 @@ from sagemaker.predictor import (
     csv_serializer,
     csv_deserializer,
     BytesDeserializer,
-    StringDeserializer,
     StreamDeserializer,
     numpy_deserializer,
     npy_serializer,
@@ -188,12 +187,6 @@ def test_bytes_deserializer():
     result = BytesDeserializer()(io.BytesIO(b"[1, 2, 3]"), "application/json")
 
     assert result == b"[1, 2, 3]"
-
-
-def test_string_deserializer():
-    result = StringDeserializer()(io.BytesIO(b"[1, 2, 3]"), "application/json")
-
-    assert result == "[1, 2, 3]"
 
 
 def test_stream_deserializer():
