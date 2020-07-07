@@ -89,9 +89,7 @@ class _Job(object):
             estimator.volume_size,
             estimator.volume_kms_key,
         )
-        stop_condition = _Job._prepare_stop_condition(
-            estimator.max_run, estimator.max_wait
-        )
+        stop_condition = _Job._prepare_stop_condition(estimator.max_run, estimator.max_wait)
         vpc_config = estimator.get_vpc_config()
 
         model_channel = _Job._prepare_channel(

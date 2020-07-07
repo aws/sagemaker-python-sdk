@@ -81,11 +81,7 @@ def test_prepare_for_training(tuner):
 
 def test_prepare_for_tuning_with_amazon_estimator(tuner, sagemaker_session):
     tuner.estimator = PCA(
-        ROLE,
-        INSTANCE_COUNT,
-        INSTANCE_TYPE,
-        NUM_COMPONENTS,
-        sagemaker_session=sagemaker_session,
+        ROLE, INSTANCE_COUNT, INSTANCE_TYPE, NUM_COMPONENTS, sagemaker_session=sagemaker_session,
     )
 
     tuner._prepare_for_tuning()

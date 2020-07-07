@@ -430,14 +430,10 @@ def test_train_image_default(sagemaker_session, sklearn_version):
 
 
 def test_train_image_cpu_instances(sagemaker_session, sklearn_version):
-    sklearn = _sklearn_estimator(
-        sagemaker_session, sklearn_version, instance_type="ml.c2.2xlarge"
-    )
+    sklearn = _sklearn_estimator(sagemaker_session, sklearn_version, instance_type="ml.c2.2xlarge")
     assert sklearn.train_image() == _get_full_cpu_image_uri(sklearn_version)
 
-    sklearn = _sklearn_estimator(
-        sagemaker_session, sklearn_version, instance_type="ml.c4.2xlarge"
-    )
+    sklearn = _sklearn_estimator(sagemaker_session, sklearn_version, instance_type="ml.c4.2xlarge")
     assert sklearn.train_image() == _get_full_cpu_image_uri(sklearn_version)
 
     sklearn = _sklearn_estimator(sagemaker_session, sklearn_version, instance_type="ml.m16")

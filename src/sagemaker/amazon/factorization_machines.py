@@ -212,9 +212,7 @@ class FactorizationMachines(AmazonAlgorithmEstimatorBase):
             :class:`~sagemaker.estimator.amazon_estimator.AmazonAlgorithmEstimatorBase` and
             :class:`~sagemaker.estimator.EstimatorBase`.
         """
-        super(FactorizationMachines, self).__init__(
-            role, instance_count, instance_type, **kwargs
-        )
+        super(FactorizationMachines, self).__init__(role, instance_count, instance_type, **kwargs)
 
         self.num_factors = num_factors
         self.predictor_type = predictor_type

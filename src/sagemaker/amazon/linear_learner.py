@@ -325,9 +325,7 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
             :class:`~sagemaker.estimator.amazon_estimator.AmazonAlgorithmEstimatorBase` and
             :class:`~sagemaker.estimator.EstimatorBase`.
         """
-        super(LinearLearner, self).__init__(
-            role, instance_count, instance_type, **kwargs
-        )
+        super(LinearLearner, self).__init__(role, instance_count, instance_type, **kwargs)
         self.predictor_type = predictor_type
         self.binary_classifier_model_selection_criteria = binary_classifier_model_selection_criteria
         self.target_recall = target_recall

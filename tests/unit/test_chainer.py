@@ -115,7 +115,7 @@ def _chainer_estimator(
     )
 
 
-def _create_job(version, py_version):
+def _create_train_job(version, py_version):
     return {
         "image_uri": _get_full_cpu_image_uri(version, py_version),
         "input_mode": "File",

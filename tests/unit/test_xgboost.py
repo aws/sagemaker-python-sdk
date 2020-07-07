@@ -423,14 +423,10 @@ def test_train_image_default(sagemaker_session, xgboost_full_version):
 
 
 def test_train_image_cpu_instances(sagemaker_session, xgboost_version):
-    xgboost = _xgboost_estimator(
-        sagemaker_session, xgboost_version, instance_type="ml.c2.2xlarge"
-    )
+    xgboost = _xgboost_estimator(sagemaker_session, xgboost_version, instance_type="ml.c2.2xlarge")
     assert xgboost.train_image() == _get_full_cpu_image_uri(xgboost_version)
 
-    xgboost = _xgboost_estimator(
-        sagemaker_session, xgboost_version, instance_type="ml.c4.2xlarge"
-    )
+    xgboost = _xgboost_estimator(sagemaker_session, xgboost_version, instance_type="ml.c4.2xlarge")
     assert xgboost.train_image() == _get_full_cpu_image_uri(xgboost_version)
 
     xgboost = _xgboost_estimator(sagemaker_session, xgboost_version, instance_type="ml.m16")

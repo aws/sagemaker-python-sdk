@@ -66,11 +66,7 @@ def sagemaker_session():
 
 def test_init_required_positional(sagemaker_session):
     lr = LinearLearner(
-        ROLE,
-        INSTANCE_COUNT,
-        INSTANCE_TYPE,
-        PREDICTOR_TYPE,
-        sagemaker_session=sagemaker_session,
+        ROLE, INSTANCE_COUNT, INSTANCE_TYPE, PREDICTOR_TYPE, sagemaker_session=sagemaker_session,
     )
     assert lr.role == ROLE
     assert lr.instance_count == INSTANCE_COUNT
@@ -429,6 +425,6 @@ def test_predictor_type(sagemaker_session):
     )
     lr.fit(data)
     model = lr.create_model()
-    predictor = model.deploy(1, TRAIN_INSTANCE_TYPE)
+    predictor = model.deploy(1, INSTANCE_TYPE)
 
     assert isinstance(predictor, LinearLearnerPredictor)

@@ -112,9 +112,7 @@ class RandomCutForest(AmazonAlgorithmEstimatorBase):
             :class:`~sagemaker.estimator.EstimatorBase`.
         """
 
-        super(RandomCutForest, self).__init__(
-            role, instance_count, instance_type, **kwargs
-        )
+        super(RandomCutForest, self).__init__(role, instance_count, instance_type, **kwargs)
         self.num_samples_per_tree = num_samples_per_tree
         self.num_trees = num_trees
         self.eval_metrics = eval_metrics

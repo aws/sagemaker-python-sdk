@@ -64,9 +64,7 @@ def sagemaker_session():
 
 
 def test_init_required_positional(sagemaker_session):
-    kmeans = KMeans(
-        ROLE, INSTANCE_COUNT, INSTANCE_TYPE, K, sagemaker_session=sagemaker_session
-    )
+    kmeans = KMeans(ROLE, INSTANCE_COUNT, INSTANCE_TYPE, K, sagemaker_session=sagemaker_session)
     assert kmeans.role == ROLE
     assert kmeans.instance_count == INSTANCE_COUNT
     assert kmeans.instance_type == INSTANCE_TYPE
@@ -76,7 +74,7 @@ def test_init_required_positional(sagemaker_session):
 def test_init_required_named(sagemaker_session):
     kmeans = KMeans(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
-    assert kmeans.role == COMMON_ARGS["role"]
+    assert kmeans.role == COMMON_TRAIN_ARGS["role"]
     assert kmeans.instance_count == INSTANCE_COUNT
     assert kmeans.instance_type == COMMON_TRAIN_ARGS["instance_type"]
     assert kmeans.k == ALL_REQ_ARGS["k"]

@@ -567,7 +567,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if encrypt_inter_container_traffic:
             train_request["EnableInterContainerTrafficEncryption"] = encrypt_inter_container_traffic
 
-        if train_use_spot_instances:
+        if use_spot_instances:
             train_request["EnableManagedSpotTraining"] = use_spot_instances
 
         if checkpoint_s3_uri:

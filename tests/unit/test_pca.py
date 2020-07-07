@@ -65,11 +65,7 @@ def sagemaker_session():
 
 def test_init_required_positional(sagemaker_session):
     pca = PCA(
-        ROLE,
-        INSTANCE_COUNT,
-        INSTANCE_TYPE,
-        NUM_COMPONENTS,
-        sagemaker_session=sagemaker_session,
+        ROLE, INSTANCE_COUNT, INSTANCE_TYPE, NUM_COMPONENTS, sagemaker_session=sagemaker_session,
     )
     assert pca.role == ROLE
     assert pca.instance_count == INSTANCE_COUNT
