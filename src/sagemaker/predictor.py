@@ -417,7 +417,7 @@ class LegacySerializer(BaseSerializer):
     """Wrapper that makes legacy serializers forward compatibile."""
 
     def __init__(self, serializer):
-        """Placeholder docstring.
+        """Initialize a ``LegacySerializer``.
 
         Args:
             serializer (callable): A legacy serializer.
@@ -457,7 +457,7 @@ class LegacyDeserializer(BaseDeserializer):
     """Wrapper that makes legacy deserializers forward compatibile."""
 
     def __init__(self, deserializer):
-        """Placeholder docstring.
+        """Initialize a ``LegacyDeserializer``.
 
         Args:
             deserializer (callable): A legacy deserializer.
