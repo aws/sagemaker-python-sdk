@@ -623,32 +623,6 @@ class _CsvDeserializer(object):
 csv_deserializer = _CsvDeserializer()
 
 
-class BytesDeserializer(object):
-    """Return the response as an undecoded array of bytes.
-
-    Args:
-        accept (str): The Accept header to send to the server (optional).
-    """
-
-    def __init__(self, accept=None):
-        """
-        Args:
-            accept:
-        """
-        self.accept = accept
-
-    def __call__(self, stream, content_type):
-        """
-        Args:
-            stream:
-            content_type:
-        """
-        try:
-            return stream.read()
-        finally:
-            stream.close()
-
-
 class StringDeserializer(object):
     """Return the response as a decoded string.
 
