@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.68.0 (2020-07-07)
+
+### Features
+
+ * add spot instance support for AlgorithmEstimator
+
+### Documentation Changes
+
+ * add xgboost documentation for inference
+
 ## v1.67.1.post0 (2020-07-01)
 
 ### Documentation Changes
