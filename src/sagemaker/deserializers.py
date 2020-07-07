@@ -68,3 +68,24 @@ class StringDeserializer(BaseDeserializer):
             return data.read().decode(self.encoding)
         finally:
             data.close()
+
+
+class BytesDeserializer(BaseDeserializer):
+    """Deserialize a stream of bytes into a bytes object."""
+
+    ACCEPT = "application/octet-stream"
+
+    def deserialize(self, data, content_type):
+        """Read a stream of bytes returned from an inference endpoint.
+
+        Args:
+            data (object): A stream of bytes.
+            content_type (str): The MIME type of the data.
+
+        Returns:
+            bytes: The bytes object read from the stream.
+        """
+        try:
+            return data.read()
+        finally:
+            data.close()
