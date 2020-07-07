@@ -20,13 +20,13 @@ import numpy as np
 import pytest
 from mock import Mock, call, patch
 
+from sagemaker.deserializers import BytesDeserializer
 from sagemaker.predictor import Predictor
 from sagemaker.predictor import (
     json_serializer,
     json_deserializer,
     csv_serializer,
     csv_deserializer,
-    BytesDeserializer,
     StringDeserializer,
     StreamDeserializer,
     numpy_deserializer,
@@ -185,7 +185,7 @@ def test_json_deserializer_invalid_data():
 
 
 def test_bytes_deserializer():
-    result = BytesDeserializer()(io.BytesIO(b"[1, 2, 3]"), "application/json")
+    result = BytesDeserializer().deserialize(io.BytesIO(b"[1, 2, 3]"), "application/json")
 
     assert result == b"[1, 2, 3]"
 
