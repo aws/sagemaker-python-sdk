@@ -15,7 +15,7 @@ from __future__ import absolute_import
 
 import ast
 
-from sagemaker.cli.compatibility.v2.modifiers import matching
+from sagemaker.cli.compatibility.v2.modifiers import matching, renamed_params
 from sagemaker.cli.compatibility.v2.modifiers.modifier import Modifier
 
 FUNCTION_NAMES = ("model_config", "model_config_from_estimator")
@@ -61,3 +61,32 @@ class ModelConfigArgModifier(Modifier):
         """
         instance_type = node.args.pop(0)
         node.keywords.append(ast.keyword(arg="instance_type", value=instance_type))
+
+
+class ModelConfigImageURIRenamer(renamed_params.ParamRenamer):
+    """A class to rename the ``image`` attribute to ``image_uri`` in Airflow model config functions.
+
+    This looks for the following formats:
+
+    - ``model_config``
+    - ``airflow.model_config``
+    - ``workflow.airflow.model_config``
+    - ``sagemaker.workflow.airflow.model_config``
+
+    where ``model_config`` is either ``model_config`` or ``model_config_from_estimator``.
+    """
+
+    @property
+    def calls_to_modify(self):
+        """A dictionary mapping Airflow model config functions to their respective namespaces."""
+        return FUNCTIONS
+
+    @property
+    def old_param_name(self):
+        """The previous name for the image URI argument."""
+        return "image"
+
+    @property
+    def new_param_name(self):
+        """The new name for the image URI argument."""
+        return "image_uri"
