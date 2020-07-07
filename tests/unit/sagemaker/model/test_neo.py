@@ -58,7 +58,7 @@ def test_compile_model_for_inferentia(sagemaker_session):
         "{}.dkr.ecr.{}.amazonaws.com/sagemaker-neo-tensorflow:1.15.0-inf-py3".format(
             NEO_REGION_ACCOUNT, REGION
         )
-        == model.image
+        == model.image_uri
     )
     assert model._is_compiled_model is True
 

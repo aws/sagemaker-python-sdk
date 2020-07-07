@@ -308,7 +308,7 @@ def test_model_image(sagemaker_session):
     object2vec.fit(data, MINI_BATCH_SIZE)
 
     model = object2vec.create_model()
-    assert model.image == registry(REGION, "object2vec") + "/object2vec:1"
+    assert model.image_uri == registry(REGION, "object2vec") + "/object2vec:1"
 
 
 def test_predictor_type(sagemaker_session):

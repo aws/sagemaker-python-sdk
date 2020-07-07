@@ -215,7 +215,7 @@ def test_model_image(sagemaker_session):
     lda.fit(data, MINI_BATCH_SZIE)
 
     model = lda.create_model()
-    assert model.image == registry(REGION, "lda") + "/lda:1"
+    assert model.image_uri == registry(REGION, "lda") + "/lda:1"
 
 
 def test_predictor_type(sagemaker_session):

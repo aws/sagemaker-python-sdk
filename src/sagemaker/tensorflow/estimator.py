@@ -192,8 +192,9 @@ class TensorFlow(Framework):
             job_details, model_channel_name
         )
 
-        image_uri = init_params.pop("image")
+        image_uri = init_params.pop("image_uri")
         framework, py_version, tag, script_mode = fw.framework_name_from_image(image_uri)
+
         if not framework:
             # If we were unable to parse the framework name from the image, it is not one of our
             # officially supported images, so just add the image to the init params.
@@ -270,8 +271,8 @@ class TensorFlow(Framework):
         """
         kwargs["name"] = self._get_or_create_name(kwargs.get("name"))
 
-        if "image" not in kwargs:
-            kwargs["image"] = self.image_uri
+        if "image_uri" not in kwargs:
+            kwargs["image_uri"] = self.image_uri
 
         if "enable_network_isolation" not in kwargs:
             kwargs["enable_network_isolation"] = self.enable_network_isolation()

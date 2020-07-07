@@ -188,8 +188,8 @@ class SKLearn(Framework):
         role = role or self.role
         kwargs["name"] = self._get_or_create_name(kwargs.get("name"))
 
-        if "image" not in kwargs:
-            kwargs["image"] = self.image_uri
+        if "image_uri" not in kwargs:
+            kwargs["image_uri"] = self.image_uri
 
         if "enable_network_isolation" not in kwargs:
             kwargs["enable_network_isolation"] = self.enable_network_isolation()
@@ -228,7 +228,7 @@ class SKLearn(Framework):
         init_params = super(SKLearn, cls)._prepare_init_params_from_job_description(
             job_details, model_channel_name
         )
-        image_uri = init_params.pop("image")
+        image_uri = init_params.pop("image_uri")
         framework, py_version, tag, _ = framework_name_from_image(image_uri)
 
         if tag is None:

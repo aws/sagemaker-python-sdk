@@ -166,8 +166,8 @@ class XGBoost(Framework):
         role = role or self.role
         kwargs["name"] = self._get_or_create_name(kwargs.get("name"))
 
-        if "image" not in kwargs:
-            kwargs["image"] = self.image_uri
+        if "image_uri" not in kwargs:
+            kwargs["image_uri"] = self.image_uri
 
         return XGBoostModel(
             self.model_data,
@@ -261,7 +261,7 @@ class XGBoost(Framework):
         """
         init_params = super(XGBoost, cls)._prepare_init_params_from_job_description(job_details)
 
-        image_uri = init_params.pop("image")
+        image_uri = init_params.pop("image_uri")
         framework, py_version, tag, _ = framework_name_from_image(image_uri)
         init_params["py_version"] = py_version
 

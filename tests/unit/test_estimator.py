@@ -67,7 +67,7 @@ DESCRIBE_TRAINING_JOB_RESULT = {"ModelArtifacts": {"S3ModelArtifacts": MODEL_DAT
 RETURNED_JOB_DESCRIPTION = {
     "AlgorithmSpecification": {
         "TrainingInputMode": "File",
-        "TrainingImage": "1.dkr.ecr.us-west-2.amazonaws.com/sagemaker-other-py2-cpu:1.0.4",
+        "TrainingImage": "1.dkr.ecr.us-west-2.amazonaws.com/sagemaker-other:1.0.4",
     },
     "HyperParameters": {
         "sagemaker_submit_directory": '"s3://some/sourcedir.tar.gz"',
@@ -141,7 +141,7 @@ class DummyFramework(Framework):
         init_params = super(DummyFramework, cls)._prepare_init_params_from_job_description(
             job_details, model_channel_name
         )
-        init_params.pop("image", None)
+        init_params.pop("image_uri", None)
         return init_params
 
 
@@ -222,7 +222,7 @@ def test_framework_all_init_args(sagemaker_session):
         "input_mode": "inputmode",
         "tags": [{"foo": "bar"}],
         "hyperparameters": {},
-        "image": "fakeimage",
+        "image_uri": "fakeimage",
         "input_config": [
             {
                 "ChannelName": "training",
@@ -287,7 +287,7 @@ def test_framework_with_spot_and_checkpoints(sagemaker_session):
         "input_mode": "inputmode",
         "tags": [{"foo": "bar"}],
         "hyperparameters": {},
-        "image": "fakeimage",
+        "image_uri": "fakeimage",
         "input_config": [
             {
                 "ChannelName": "training",
@@ -790,7 +790,7 @@ def test_fit_verify_job_name(strftime, sagemaker_session):
     _, _, train_kwargs = sagemaker_session.train.mock_calls[0]
 
     assert train_kwargs["hyperparameters"]["sagemaker_enable_cloudwatch_metrics"]
-    assert train_kwargs["image"] == IMAGE_URI
+    assert train_kwargs["image_uri"] == IMAGE_URI
     assert train_kwargs["input_mode"] == "File"
     assert train_kwargs["tags"] == TAGS
     assert train_kwargs["job_name"] == JOB_NAME
@@ -1665,7 +1665,7 @@ def test_unsupported_type_in_dict():
 
 NO_INPUT_TRAIN_CALL = {
     "hyperparameters": {},
-    "image": IMAGE_URI,
+    "image_uri": IMAGE_URI,
     "input_config": None,
     "input_mode": "File",
     "output_config": {"S3OutputPath": OUTPUT_PATH},
@@ -2276,14 +2276,13 @@ def test_file_output_path_not_supported_outside_local_mode(session_class):
 
 
 def test_prepare_init_params_from_job_description_with_image_training_job():
-
     init_params = EstimatorBase._prepare_init_params_from_job_description(
         job_details=RETURNED_JOB_DESCRIPTION
     )
 
     assert init_params["role"] == "arn:aws:iam::366:role/SageMakerRole"
     assert init_params["train_instance_count"] == 1
-    assert init_params["image"] == "1.dkr.ecr.us-west-2.amazonaws.com/sagemaker-other-py2-cpu:1.0.4"
+    assert init_params["image_uri"] == "1.dkr.ecr.us-west-2.amazonaws.com/sagemaker-other:1.0.4"
 
 
 def test_prepare_init_params_from_job_description_with_algorithm_training_job():
