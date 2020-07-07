@@ -83,8 +83,8 @@ For more information, see `Upgrade from Legacy TensorFlow Support <frameworks/te
 Parameter Changes for ``sagemaker.model.Model``
 ===============================================
 
-The parameter order for :class:`sagemaker.model.Model` changed: instead of ``model_data`` being first, ``image`` now is first.
-As a result, ``model_data`` has now been made into an optional parameter.
+The parameter order for :class:`sagemaker.model.Model` changed: instead of ``model_data`` being first, ``image_uri`` (formerly ``image``) is first.
+As a result, ``model_data`` has been made into an optional parameter.
 
 If you are using the :class:`sagemaker.model.Model` class, your code should be changed as follows:
 
@@ -169,4 +169,4 @@ If you are using the ``sagemaker.tensorflow.serving.Model`` class, the tool does
 ``sagemaker.model.Model``
 -------------------------
 
-If you are using the :class:`sagemaker.model.Model` class, the tool does not take care of switching the order between ``model_data`` and ``image``.
+If you are using the :class:`sagemaker.model.Model` class, the tool does not take care of switching the order between ``model_data`` and ``image_uri`` (formerly ``image``).
