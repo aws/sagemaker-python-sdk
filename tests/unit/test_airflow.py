@@ -896,7 +896,7 @@ def test_merge_s3_operations():
 def test_byo_model_config(sagemaker_session):
     byo_model = model.Model(
         model_data="{{ model_data }}",
-        image="{{ image }}",
+        image_uri="{{ image_uri }}",
         role="{{ role }}",
         env={"{{ key }}": "{{ value }}"},
         name="model",
@@ -907,7 +907,7 @@ def test_byo_model_config(sagemaker_session):
     expected_config = {
         "ModelName": "model",
         "PrimaryContainer": {
-            "Image": "{{ image }}",
+            "Image": "{{ image_uri }}",
             "Environment": {"{{ key }}": "{{ value }}"},
             "ModelDataUrl": "{{ model_data }}",
         },
@@ -920,7 +920,7 @@ def test_byo_model_config(sagemaker_session):
 def test_byo_framework_model_config(sagemaker_session):
     byo_model = model.FrameworkModel(
         model_data="{{ model_data }}",
-        image="{{ image }}",
+        image_uri="{{ image_uri }}",
         role="{{ role }}",
         entry_point="{{ entry_point }}",
         source_dir="{{ source_dir }}",
@@ -933,7 +933,7 @@ def test_byo_framework_model_config(sagemaker_session):
     expected_config = {
         "ModelName": "model",
         "PrimaryContainer": {
-            "Image": "{{ image }}",
+            "Image": "{{ image_uri }}",
             "Environment": {
                 "{{ key }}": "{{ value }}",
                 "SAGEMAKER_PROGRAM": "{{ entry_point }}",
@@ -967,7 +967,7 @@ def test_framework_model_config(sagemaker_session):
         role="{{ role }}",
         entry_point="{{ entry_point }}",
         source_dir="{{ source_dir }}",
-        image=None,
+        image_uri=None,
         py_version="py3",
         framework_version="5.0.0",
         model_server_workers="{{ model_server_worker }}",
@@ -1346,7 +1346,7 @@ def test_deploy_framework_model_config(sagemaker_session):
         role="{{ role }}",
         entry_point="{{ entry_point }}",
         source_dir="{{ source_dir }}",
-        image=None,
+        image_uri=None,
         py_version="py3",
         framework_version="5.0.0",
         model_server_workers="{{ model_server_worker }}",

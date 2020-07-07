@@ -215,11 +215,11 @@ class LDAModel(Model):
         """
         sagemaker_session = sagemaker_session or Session()
         repo = "{}:{}".format(LDA.repo_name, LDA.repo_version)
-        image = "{}/{}".format(
+        image_uri = "{}/{}".format(
             registry(sagemaker_session.boto_session.region_name, LDA.repo_name), repo
         )
         super(LDAModel, self).__init__(
-            image,
+            image_uri,
             model_data,
             role,
             predictor_cls=LDAPredictor,

@@ -69,7 +69,7 @@ def test_inference_pipeline_batch_transform(sagemaker_session, cpu_instance_type
     )
     xgb_image = get_image_uri(sagemaker_session.boto_region_name, "xgboost")
     xgb_model = Model(
-        model_data=xgb_model_data, image=xgb_image, sagemaker_session=sagemaker_session
+        model_data=xgb_model_data, image_uri=xgb_image, sagemaker_session=sagemaker_session
     )
     model = PipelineModel(
         models=[sparkml_model, xgb_model],
@@ -119,7 +119,7 @@ def test_inference_pipeline_model_deploy(sagemaker_session, cpu_instance_type):
         )
         xgb_image = get_image_uri(sagemaker_session.boto_region_name, "xgboost")
         xgb_model = Model(
-            model_data=xgb_model_data, image=xgb_image, sagemaker_session=sagemaker_session
+            model_data=xgb_model_data, image_uri=xgb_image, sagemaker_session=sagemaker_session
         )
         model = PipelineModel(
             models=[sparkml_model, xgb_model],
@@ -173,7 +173,7 @@ def test_inference_pipeline_model_deploy_and_update_endpoint(
         )
         xgb_image = get_image_uri(sagemaker_session.boto_region_name, "xgboost")
         xgb_model = Model(
-            model_data=xgb_model_data, image=xgb_image, sagemaker_session=sagemaker_session
+            model_data=xgb_model_data, image_uri=xgb_image, sagemaker_session=sagemaker_session
         )
         model = PipelineModel(
             models=[sparkml_model, xgb_model],

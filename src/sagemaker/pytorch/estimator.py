@@ -167,8 +167,8 @@ class PyTorch(Framework):
             sagemaker.pytorch.model.PyTorchModel: A SageMaker ``PyTorchModel``
             object. See :func:`~sagemaker.pytorch.model.PyTorchModel` for full details.
         """
-        if "image" not in kwargs:
-            kwargs["image"] = self.image_uri
+        if "image_uri" not in kwargs:
+            kwargs["image_uri"] = self.image_uri
 
         kwargs["name"] = self._get_or_create_name(kwargs.get("name"))
 
@@ -206,7 +206,7 @@ class PyTorch(Framework):
         init_params = super(PyTorch, cls)._prepare_init_params_from_job_description(
             job_details, model_channel_name
         )
-        image_uri = init_params.pop("image")
+        image_uri = init_params.pop("image_uri")
         framework, py_version, tag, _ = framework_name_from_image(image_uri)
 
         if tag is None:

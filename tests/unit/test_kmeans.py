@@ -257,7 +257,7 @@ def test_model_image(sagemaker_session):
     kmeans.fit(data, MINI_BATCH_SIZE)
 
     model = kmeans.create_model()
-    assert model.image == registry(REGION, "kmeans") + "/kmeans:1"
+    assert model.image_uri == registry(REGION, "kmeans") + "/kmeans:1"
 
 
 def test_predictor_type(sagemaker_session):

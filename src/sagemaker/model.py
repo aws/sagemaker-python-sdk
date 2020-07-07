@@ -60,7 +60,7 @@ class Model(object):
 
     def __init__(
         self,
-        image,
+        image_uri,
         model_data=None,
         role=None,
         predictor_cls=None,
@@ -74,7 +74,7 @@ class Model(object):
         """Initialize an SageMaker ``Model``.
 
         Args:
-            image (str): A Docker image URI.
+            image_uri (str): A Docker image URI.
             model_data (str): The S3 location of a SageMaker model data
                 ``.tar.gz`` file (default: None).
             role (str): An AWS IAM role (either name or full ARN). The Amazon
@@ -89,7 +89,7 @@ class Model(object):
                 function to call to create a predictor (default: None). If not
                 None, ``deploy`` will return the result of invoking this
                 function on the created endpoint name.
-            env (dict[str, str]): Environment variables to run with ``image``
+            env (dict[str, str]): Environment variables to run with ``image_uri``
                 when hosted in SageMaker (default: None).
             name (str): The model name. If None, a default model name will be
                 selected on each ``deploy``.
@@ -108,10 +108,8 @@ class Model(object):
             model_kms_key (str): KMS key ARN used to encrypt the repacked
                 model archive file if the model is repacked
         """
-        LOGGER.warning(fw_utils.parameter_v2_rename_warning("image", "image_uri"))
-
         self.model_data = model_data
-        self.image = image
+        self.image_uri = image_uri
         self.role = role
         self.predictor_cls = predictor_cls
         self.env = env or {}
@@ -156,7 +154,7 @@ class Model(object):
         Returns:
             dict: A container definition object usable with the CreateModel API.
         """
-        return sagemaker.container_def(self.image, self.model_data, self.env)
+        return sagemaker.container_def(self.image_uri, self.model_data, self.env)
 
     def enable_network_isolation(self):
         """Whether to enable network isolation when creating this Model
@@ -200,10 +198,10 @@ class Model(object):
             tags=tags,
         )
 
-    def _ensure_base_name_if_needed(self, image):
-        """Create a base name from the image if there is no model name provided."""
+    def _ensure_base_name_if_needed(self, image_uri):
+        """Create a base name from the image URI if there is no model name provided."""
         if self.name is None:
-            self._base_name = self._base_name or utils.base_name_from_image(image)
+            self._base_name = self._base_name or utils.base_name_from_image(image_uri)
 
     def _set_model_name_if_needed(self):
         """Generate a new model name if ``self._base_name`` is present."""
@@ -288,7 +286,7 @@ class Model(object):
             )
         return NEO_IMAGE_ACCOUNT[region]
 
-    def _neo_image(self, region, target_instance_type, framework, framework_version):
+    def _neo_image_uri(self, region, target_instance_type, framework, framework_version):
         """
         Args:
             region:
@@ -305,7 +303,7 @@ class Model(object):
             account=self._neo_image_account(region),
         )
 
-    def _inferentia_image(self, region, target_instance_type, framework, framework_version):
+    def _inferentia_image_uri(self, region, target_instance_type, framework, framework_version):
         """
                 Args:
                     region:
@@ -395,7 +393,7 @@ class Model(object):
         job_status = self.sagemaker_session.wait_for_compilation_job(job_name)
         self.model_data = job_status["ModelArtifacts"]["S3ModelArtifacts"]
         if target_instance_family.startswith("ml_"):
-            self.image = self._neo_image(
+            self.image_uri = self._neo_image_uri(
                 self.sagemaker_session.boto_region_name,
                 target_instance_family,
                 framework,
@@ -403,7 +401,7 @@ class Model(object):
             )
             self._is_compiled_model = True
         elif target_instance_family.startswith(INFERENTIA_INSTANCE_PREFIX):
-            self.image = self._inferentia_image(
+            self.image_uri = self._inferentia_image_uri(
                 self.sagemaker_session.boto_region_name,
                 target_instance_family,
                 framework,
@@ -484,7 +482,7 @@ class Model(object):
 
         compiled_model_suffix = "-".join(instance_type.split(".")[:-1])
         if self._is_compiled_model:
-            self._ensure_base_name_if_needed(self.image)
+            self._ensure_base_name_if_needed(self.image_uri)
             if self._base_name is not None:
                 self._base_name = "-".join((self._base_name, compiled_model_suffix))
 
@@ -619,7 +617,7 @@ class FrameworkModel(Model):
     def __init__(
         self,
         model_data,
-        image,
+        image_uri,
         role,
         entry_point,
         source_dir=None,
@@ -639,7 +637,7 @@ class FrameworkModel(Model):
         Args:
             model_data (str): The S3 location of a SageMaker model data
                 ``.tar.gz`` file.
-            image (str): A Docker image URI.
+            image_uri (str): A Docker image URI.
             role (str): An IAM role name or ARN for SageMaker to access AWS
                 resources on your behalf.
             entry_point (str): Path (absolute or relative) to the Python source
@@ -680,7 +678,7 @@ class FrameworkModel(Model):
                 function to call to create a predictor (default: None). If not
                 None, ``deploy`` will return the result of invoking this
                 function on the created endpoint name.
-            env (dict[str, str]): Environment variables to run with ``image``
+            env (dict[str, str]): Environment variables to run with ``image_uri``
                 when hosted in SageMaker (default: None).
             name (str): The model name. If None, a default model name will be
                 selected on each ``deploy``.
@@ -781,7 +779,7 @@ class FrameworkModel(Model):
             :class:`~sagemaker.model.Model`.
         """
         super(FrameworkModel, self).__init__(
-            image,
+            image_uri,
             model_data,
             role,
             predictor_cls=predictor_cls,
@@ -827,11 +825,13 @@ class FrameworkModel(Model):
             dict[str, str]: A container definition object usable with the
             CreateModel API.
         """
-        deploy_key_prefix = fw_utils.model_code_key_prefix(self.key_prefix, self.name, self.image)
+        deploy_key_prefix = fw_utils.model_code_key_prefix(
+            self.key_prefix, self.name, self.image_uri
+        )
         self._upload_code(deploy_key_prefix)
         deploy_env = dict(self.env)
         deploy_env.update(self._framework_env_vars())
-        return sagemaker.container_def(self.image, self.model_data, deploy_env)
+        return sagemaker.container_def(self.image_uri, self.model_data, deploy_env)
 
     def _upload_code(self, key_prefix, repack=False):
         """
@@ -918,7 +918,9 @@ class ModelPackage(Model):
                 ``model_data`` is not required.
             **kwargs: Additional kwargs passed to the Model constructor.
         """
-        super(ModelPackage, self).__init__(role=role, model_data=model_data, image=None, **kwargs)
+        super(ModelPackage, self).__init__(
+            role=role, model_data=model_data, image_uri=None, **kwargs
+        )
 
         if model_package_arn and algorithm_arn:
             raise ValueError(

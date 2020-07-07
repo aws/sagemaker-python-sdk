@@ -667,92 +667,11 @@ https://github.com/awslabs/amazon-sagemaker-examples/tree/master/sagemaker-pytho
 
 These are also available in SageMaker Notebook Instance hosted Jupyter notebooks under the sample notebooks folder.
 
-******************
-PyTorch Estimators
-******************
+*************************
+SageMaker PyTorch Classes
+*************************
 
-The `PyTorch` constructor takes both required and optional arguments.
-
-Required arguments
-==================
-
-The following are required arguments to the ``PyTorch`` constructor. When you create a PyTorch object, you must include
-these in the constructor, either positionally or as keyword arguments.
-
--  ``entry_point`` Path (absolute or relative) to the Python file which
-   should be executed as the entry point to training.
--  ``role`` An AWS IAM role (either name or full ARN). The Amazon
-   SageMaker training jobs and APIs that create Amazon SageMaker
-   endpoints use this role to access training data and model artifacts.
-   After the endpoint is created, the inference code might use the IAM
-   role, if accessing AWS resource.
--  ``train_instance_count`` Number of Amazon EC2 instances to use for
-   training.
--  ``train_instance_type`` Type of EC2 instance to use for training, for
-   example, 'ml.m4.xlarge'.
-
-Optional arguments
-==================
-
-The following are optional arguments. When you create a ``PyTorch`` object, you can specify these as keyword arguments.
-
--  ``source_dir`` Path (absolute or relative) to a directory with any
-   other training source code dependencies including the entry point
-   file. Structure within this directory will be preserved when training
-   on SageMaker.
-- ``dependencies (list[str])`` A list of paths to directories (absolute or relative) with
-        any additional libraries that will be exported to the container (default: []).
-        The library folders will be copied to SageMaker in the same folder where the entrypoint is copied.
-        If the ```source_dir``` points to S3, code will be uploaded and the S3 location will be used
-        instead. Example:
-
-            The following call
-            >>> PyTorch(entry_point='train.py', dependencies=['my/libs/common', 'virtual-env'])
-            results in the following inside the container:
-
-            >>> $ ls
-
-            >>> opt/ml/code
-            >>>     ├── train.py
-            >>>     ├── common
-            >>>     └── virtual-env
-
--  ``hyperparameters`` Hyperparameters that will be used for training.
-   Will be made accessible as a dict[str, str] to the training code on
-   SageMaker. For convenience, accepts other types besides strings, but
-   ``str`` will be called on keys and values to convert them before
-   training.
--  ``py_version`` Python version you want to use for executing your
-   model training code.
--  ``framework_version`` PyTorch version you want to use for executing
-   your model training code. You can find the list of supported versions
-   in `SageMaker PyTorch Docker Containers <https://github.com/aws/sagemaker-python-sdk/tree/master/src/sagemaker/pytorch#sagemaker-pytorch-docker-containers>`_.
--  ``train_volume_size`` Size in GB of the EBS volume to use for storing
-   input data during training. Must be large enough to store training
-   data if input_mode='File' is used (which is the default).
--  ``train_max_run`` Timeout in seconds for training, after which Amazon
-   SageMaker terminates the job regardless of its current status.
--  ``input_mode`` The input mode that the algorithm supports. Valid
-   modes: 'File' - Amazon SageMaker copies the training dataset from the
-   S3 location to a directory in the Docker container. 'Pipe' - Amazon
-   SageMaker streams data directly from S3 to the container via a Unix
-   named pipe.
--  ``output_path`` S3 location where you want the training result (model
-   artifacts and optional output files) saved. If not specified, results
-   are stored to a default bucket. If the bucket with the specific name
-   does not exist, the estimator creates the bucket during the ``fit``
-   method execution.
--  ``output_kms_key`` Optional KMS key ID to optionally encrypt training
-   output with.
--  ``job_name`` Name to assign for the training job that the ``fit```
-   method launches. If not specified, the estimator generates a default
-   job name, based on the training image name and current timestamp
--  ``image_name`` An alternative docker image to use for training and
-   serving.  If specified, the estimator will use this image for training and
-   hosting, instead of selecting the appropriate SageMaker official image based on
-   framework_version and py_version. Refer to: `SageMaker PyTorch Docker Containers
-   <https://github.com/aws/sagemaker-python-sdk/tree/master/src/sagemaker/pytorch#sagemaker-pytorch-docker-containers>`_ for details on what the Official images support
-   and where to find the source code to build your custom image.
+For information about the different PyTorch-related classes in the SageMaker Python SDK, see https://sagemaker.readthedocs.io/en/stable/frameworks/pytorch/sagemaker.pytorch.html.
 
 ***********************************
 SageMaker PyTorch Docker Containers

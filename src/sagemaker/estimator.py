@@ -795,7 +795,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         if "AlgorithmName" in job_details["AlgorithmSpecification"]:
             init_params["algorithm_arn"] = job_details["AlgorithmSpecification"]["AlgorithmName"]
         elif "TrainingImage" in job_details["AlgorithmSpecification"]:
-            init_params["image"] = job_details["AlgorithmSpecification"]["TrainingImage"]
+            init_params["image_uri"] = job_details["AlgorithmSpecification"]["TrainingImage"]
         else:
             raise RuntimeError(
                 "Invalid AlgorithmSpecification. Either TrainingImage or "
@@ -1037,7 +1037,7 @@ class _TrainingJob(_Job):
         if isinstance(estimator, sagemaker.algorithm.AlgorithmEstimator):
             train_args["algorithm_arn"] = estimator.algorithm_arn
         else:
-            train_args["image"] = estimator.train_image()
+            train_args["image_uri"] = estimator.train_image()
 
         if estimator.debugger_rule_configs:
             train_args["debugger_rule_configs"] = estimator.debugger_rule_configs
@@ -1331,7 +1331,7 @@ class Estimator(EstimatorBase):
     def create_model(
         self,
         role=None,
-        image=None,
+        image_uri=None,
         predictor_cls=None,
         serializer=None,
         deserializer=None,
@@ -1350,7 +1350,7 @@ class Estimator(EstimatorBase):
             role (str): The ``ExecutionRoleArn`` IAM Role ARN for the ``Model``,
                 which is also used during transform jobs. If not specified, the
                 role from the Estimator will be used.
-            image (str): An container image to use for deploying the model.
+            image_uri (str): A Docker image URI to use for deploying the model.
                 Defaults to the image used for training.
             predictor_cls (Predictor): The predictor class to use when
                 deploying the model.
@@ -1393,7 +1393,7 @@ class Estimator(EstimatorBase):
             kwargs["enable_network_isolation"] = self.enable_network_isolation()
 
         return Model(
-            image or self.train_image(),
+            image_uri or self.train_image(),
             self.model_data,
             role,
             vpc_config=self.get_vpc_config(vpc_config_override),
@@ -1401,27 +1401,6 @@ class Estimator(EstimatorBase):
             predictor_cls=predictor_cls,
             **kwargs
         )
-
-    @classmethod
-    def _prepare_init_params_from_job_description(cls, job_details, model_channel_name=None):
-        """Convert the job description to init params that can be handled by the
-        class constructor
-
-        Args:
-            job_details: the returned job details from a describe_training_job
-                API call.
-            model_channel_name (str): Name of the channel where pre-trained
-                model data will be downloaded
-
-        Returns:
-            dictionary: The transformed init_params
-        """
-        init_params = super(Estimator, cls)._prepare_init_params_from_job_description(
-            job_details, model_channel_name
-        )
-
-        init_params["image_uri"] = init_params.pop("image")
-        return init_params
 
 
 class Framework(EstimatorBase):

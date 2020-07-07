@@ -98,7 +98,7 @@ def _sklearn_estimator(
 
 def _create_train_job(version):
     return {
-        "image": _get_full_cpu_image_uri(version),
+        "image_uri": _get_full_cpu_image_uri(version),
         "input_mode": "File",
         "input_config": [
             {
@@ -264,7 +264,7 @@ def test_create_model_with_optional_params(sagemaker_session, sklearn_version):
     dependencies = ["/directory/a", "/directory/b"]
     model_name = "model-name"
     model = sklearn.create_model(
-        image=custom_image,
+        image_uri=custom_image,
         role=new_role,
         model_server_workers=model_server_workers,
         vpc_config_override=vpc_config,
@@ -274,7 +274,7 @@ def test_create_model_with_optional_params(sagemaker_session, sklearn_version):
         name=model_name,
     )
 
-    assert model.image == custom_image
+    assert model.image_uri == custom_image
     assert model.role == new_role
     assert model.model_server_workers == model_server_workers
     assert model.vpc_config == vpc_config
@@ -303,7 +303,7 @@ def test_create_model_with_custom_image(sagemaker_session):
     sklearn.fit(inputs="s3://mybucket/train", job_name="new_name")
     model = sklearn.create_model()
 
-    assert model.image == custom_image
+    assert model.image_uri == custom_image
 
 
 @patch("time.strftime", return_value=TIMESTAMP)
@@ -598,5 +598,5 @@ def test_custom_image_estimator_deploy(sagemaker_session, sklearn_version):
     custom_image = "mycustomimage:latest"
     sklearn = _sklearn_estimator(sagemaker_session, sklearn_version)
     sklearn.fit(inputs="s3://mybucket/train", job_name="new_name")
-    model = sklearn.create_model(image=custom_image)
-    assert model.image == custom_image
+    model = sklearn.create_model(image_uri=custom_image)
+    assert model.image_uri == custom_image

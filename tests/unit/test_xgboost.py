@@ -106,7 +106,7 @@ def _xgboost_estimator(
 
 def _create_train_job(version, instance_count=1):
     return {
-        "image": _get_full_cpu_image_uri(version),
+        "image_uri": _get_full_cpu_image_uri(version),
         "input_mode": "File",
         "input_config": [
             {
@@ -253,7 +253,7 @@ def test_create_model_with_optional_params(sagemaker_session, xgboost_full_versi
     dependencies = ["/directory/a", "/directory/b"]
     model_name = "model-name"
     model = xgboost.create_model(
-        image=custom_image,
+        image_uri=custom_image,
         role=new_role,
         model_server_workers=model_server_workers,
         vpc_config_override=vpc_config,
@@ -263,7 +263,7 @@ def test_create_model_with_optional_params(sagemaker_session, xgboost_full_versi
         name=model_name,
     )
 
-    assert model.image == custom_image
+    assert model.image_uri == custom_image
     assert model.role == new_role
     assert model.model_server_workers == model_server_workers
     assert model.vpc_config == vpc_config
@@ -294,7 +294,7 @@ def test_create_model_with_custom_image(sagemaker_session, xgboost_full_version)
     xgboost.fit(inputs="s3://mybucket/train", job_name="new_name")
     model = xgboost.create_model()
 
-    assert model.image == custom_image
+    assert model.image_uri == custom_image
 
 
 @patch("time.strftime", return_value=TIMESTAMP)

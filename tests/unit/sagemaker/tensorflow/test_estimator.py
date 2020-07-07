@@ -104,7 +104,7 @@ def _hyperparameters(horovod=False):
 
 def _create_train_job(tf_version, horovod=False, ps=False, py_version="py2"):
     conf = {
-        "image": _image_uri(tf_version, py_version),
+        "image_uri": _image_uri(tf_version, py_version),
         "input_mode": "File",
         "input_config": [
             {
@@ -272,7 +272,7 @@ def test_create_model_with_custom_image(sagemaker_session):
     tf.fit(inputs="s3://mybucket/train", job_name=job_name)
     model = tf.create_model()
 
-    assert model.image == custom_image
+    assert model.image_uri == custom_image
 
 
 @patch("sagemaker.tensorflow.estimator.TensorFlow.create_model")

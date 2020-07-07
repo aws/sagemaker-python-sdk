@@ -221,7 +221,7 @@ class RLEstimator(Framework):
         base_args = dict(
             model_data=self.model_data,
             role=role or self.role,
-            image=kwargs.get("image", self.image_uri),
+            image_uri=kwargs.get("image_uri", self.image_uri),
             container_log_level=self.container_log_level,
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
@@ -303,7 +303,7 @@ class RLEstimator(Framework):
             job_details, model_channel_name
         )
 
-        image_uri = init_params.pop("image")
+        image_uri = init_params.pop("image_uri")
         framework, _, tag, _ = fw_utils.framework_name_from_image(image_uri)
 
         if not framework:

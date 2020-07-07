@@ -75,7 +75,7 @@ Training
 
 When creating an estimator, the Python SDK version 2.0 and later requires the following changes:
 
-#. Explicitly specify the ECR image URI via ``image_name``.
+#. Explicitly specify the ECR image URI via ``image_uri``.
    To determine the URI, you can use :func:`sagemaker.fw_utils.create_image_uri`.
 #. Specify ``model_dir=False``.
 #. Use hyperparameters for ``training_steps``, ``evaluation_steps``, ``checkpoint_path``, and ``requirements_file``.
@@ -106,7 +106,7 @@ the difference in code would be as follows:
         framework_version="1.10.0",
         py_version="py2",
         train_instance_type="ml.m4.xlarge",
-        image_name="520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-tensorflow:1.10.0-cpu-py2",
+        image_uri="520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-tensorflow:1.10.0-cpu-py2",
         hyperparameters={
             "training_steps": 100,
             "evaluation_steps": 10,
@@ -147,7 +147,7 @@ From a Trained Model
 If you are starting with a trained model, the Python SDK version 2.0 and later requires the following changes:
 
 #. Use the the :class:`sagemaker.model.FrameworkModel` class.
-#. Explicitly specify the ECR image URI via ``image``.
+#. Explicitly specify the ECR image URI via ``image_uri``.
    To determine the URI, you can use :func:`sagemaker.fw_utils.create_image_uri`.
 #. Use an environment variable for ``model_server_workers``.
 
@@ -171,7 +171,7 @@ the difference in code would be as follows:
 
     model = FrameworkModel(
         ...
-        image="520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-tensorflow:1.10.0-cpu-py2",
+        image_uri="520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-tensorflow:1.10.0-cpu-py2",
         env={"MODEL_SERVER_WORKERS": 4},
     )
 

@@ -159,7 +159,7 @@ def test_tfs_model_with_custom_image(sagemaker_session, tf_version):
         "s3://some/data.tar.gz",
         role=ROLE,
         framework_version=tf_version,
-        image="my-image",
+        image_uri="my-image",
         sagemaker_session=sagemaker_session,
     )
     cdef = model.prepare_container_def(INSTANCE_TYPE)
@@ -176,14 +176,14 @@ def test_tfs_model_with_entry_point(
         entry_point="train.py",
         role=ROLE,
         framework_version=tf_version,
-        image="my-image",
+        image_uri="my-image",
         sagemaker_session=sagemaker_session,
         model_kms_key="kms-key",
     )
 
     model.prepare_container_def(INSTANCE_TYPE)
 
-    model_code_key_prefix.assert_called_with(model.key_prefix, model.name, model.image)
+    model_code_key_prefix.assert_called_with(model.key_prefix, model.name, model.image_uri)
 
     repack_model.assert_called_with(
         "train.py",
@@ -205,13 +205,13 @@ def test_tfs_model_with_source(repack_model, model_code_key_prefix, sagemaker_se
         source_dir="src",
         role=ROLE,
         framework_version=tf_version,
-        image="my-image",
+        image_uri="my-image",
         sagemaker_session=sagemaker_session,
     )
 
     model.prepare_container_def(INSTANCE_TYPE)
 
-    model_code_key_prefix.assert_called_with(model.key_prefix, model.name, model.image)
+    model_code_key_prefix.assert_called_with(model.key_prefix, model.name, model.image_uri)
 
     repack_model.assert_called_with(
         "train.py",
@@ -235,13 +235,13 @@ def test_tfs_model_with_dependencies(
         dependencies=["src", "lib"],
         role=ROLE,
         framework_version=tf_version,
-        image="my-image",
+        image_uri="my-image",
         sagemaker_session=sagemaker_session,
     )
 
     model.prepare_container_def(INSTANCE_TYPE)
 
-    model_code_key_prefix.assert_called_with(model.key_prefix, model.name, model.image)
+    model_code_key_prefix.assert_called_with(model.key_prefix, model.name, model.image_uri)
 
     repack_model.assert_called_with(
         "train.py",
