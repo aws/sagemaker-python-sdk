@@ -1015,3 +1015,18 @@ def test_algorithm_attach_from_hyperparameter_tuning():
     assert estimator.train_volume_size == train_volume_size
     assert estimator.input_mode == input_mode
     assert estimator.sagemaker_session == session
+
+
+@patch("sagemaker.Session")
+def test_algorithm_supported_with_spot_instances(session):
+    session.sagemaker_client.describe_algorithm = Mock(return_value=DESCRIBE_ALGORITHM_RESPONSE)
+
+    assert AlgorithmEstimator(
+        algorithm_arn="arn:aws:sagemaker:us-east-2:1234:algorithm/scikit-decision-trees",
+        role="SageMakerRole",
+        train_instance_type="ml.m4.xlarge",
+        train_instance_count=1,
+        train_use_spot_instances=True,
+        train_max_wait=500,
+        sagemaker_session=session,
+    )
