@@ -18,7 +18,7 @@ from __future__ import absolute_import
 import ast
 from abc import abstractmethod
 
-from sagemaker.cli.compatibility.v2.modifiers import matching
+from sagemaker.cli.compatibility.v2.modifiers import matching, parsing
 from sagemaker.cli.compatibility.v2.modifiers.modifier import Modifier
 
 
@@ -54,11 +54,9 @@ class ParamRenamer(Modifier):
             bool: If the ``ast.Call`` matches the relevant function calls and
                 contains the parameter to be renamed.
         """
-        return matching.matches_any(node, self.calls_to_modify) and self._has_param_to_rename(node)
-
-    def _has_param_to_rename(self, node):
-        """Checks if the call has the argument that needs to be renamed."""
-        return _keyword_from_keywords(node, self.old_param_name) is not None
+        return matching.matches_any(node, self.calls_to_modify) and matching.has_arg(
+            node, self.old_param_name
+        )
 
     def modify_node(self, node):
         """Modifies the ``ast.Call`` node to rename the attribute.
@@ -66,26 +64,8 @@ class ParamRenamer(Modifier):
         Args:
             node (ast.Call): a node that represents the relevant function call.
         """
-        keyword = _keyword_from_keywords(node, self.old_param_name)
+        keyword = parsing.arg_from_keywords(node, self.old_param_name)
         keyword.arg = self.new_param_name
-
-
-def _keyword_from_keywords(node, param_name):
-    """Retrieves a keyword argument from the node's keywords.
-
-    Args:
-        node (ast.Call): a node that represents a function call. For more,
-            see https://docs.python.org/3/library/ast.html#abstract-grammar.
-        param_name (str): the name of the argument.
-
-    Returns:
-        ast.keyword: the keyword argument if it is present. Otherwise, this returns ``None``.
-    """
-    for kw in node.keywords:
-        if kw.arg == param_name:
-            return kw
-
-    return None
 
 
 class DistributionParameterRenamer(ParamRenamer):
