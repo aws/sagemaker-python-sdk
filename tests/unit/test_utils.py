@@ -779,11 +779,3 @@ def test_partition_by_region():
     assert sagemaker.utils._aws_partition("us-gov-east-1") == "aws-us-gov"
     assert sagemaker.utils._aws_partition("us-iso-east-1") == "aws-iso"
     assert sagemaker.utils._aws_partition("us-isob-east-1") == "aws-iso-b"
-
-
-def test_parse_mime_type():
-    mime_type = "application/octet-stream;charset=UTF-8"
-    category, subtype, parameters = sagemaker.utils.parse_mime_type(mime_type)
-    assert category == "application"
-    assert subtype == "octet-stream"
-    assert parameters == {"charset": "UTF-8"}

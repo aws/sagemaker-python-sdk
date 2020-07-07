@@ -17,17 +17,9 @@ import io
 from sagemaker.deserializers import StringDeserializer
 
 
-def test_string_deserializer_plain_text():
+def test_string_deserializer():
     deserializer = StringDeserializer()
 
-    result = deserializer.deserialize("Hello, world!", "text/plain")
+    result = deserializer.deserialize(io.BytesIO(b"[1, 2, 3]"), "application/json")
 
-    assert result == "Hello, world!"
-
-
-def test_string_deserializer_octet_stream():
-    deserializer = StringDeserializer()
-
-    result = deserializer.deserialize(io.BytesIO(b"Hello, world!"), "application/octet-stream")
-
-    assert result == "Hello, world!"
+    assert result == "[1, 2, 3]"

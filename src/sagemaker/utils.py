@@ -745,23 +745,3 @@ def _module_import_error(py_module, feature, extras):
         "to install all required dependencies."
     )
     return error_msg.format(py_module, feature, extras)
-
-
-def parse_mime_type(mime_type):
-    """Parse a MIME type and return the type, subtype, and parameters.
-
-    Args:
-        mime_type (str): A MIME type.
-
-    Returns:
-        tuple: A three-tuple containing the type, subtype, and parameters. The
-            type and subtype are strings, and the parameters are stored in a
-            dictionary.
-    """
-    category, remaining = mime_type.split("/")
-    subtype = remaining.split(";")[0]
-    parameters = {}
-    for parameter in remaining.split(";")[1:]:
-        attribute, value = parameter.split("=")
-        parameters[attribute] = value
-    return category, subtype, parameters
