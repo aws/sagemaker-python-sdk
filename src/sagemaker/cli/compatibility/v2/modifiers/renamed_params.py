@@ -218,6 +218,39 @@ class ModelImageURIRenamer(ParamRenamer):
         return "image_uri"
 
 
+class EstimatorCreateModelImageURIRenamer(MethodParamRenamer):
+    """A class to rename ``image`` to ``image_uri`` in estimator ``create_model()`` methods."""
+
+    @property
+    def calls_to_modify(self):
+        """A mapping of ``create_model`` to common variable names for estimators."""
+        return {
+            "create_model": (
+                "estimator",
+                "chainer",
+                "mxnet",
+                "mx",
+                "pytorch",
+                "rl",
+                "sklearn",
+                "tensorflow",
+                "tf",
+                "xgboost",
+                "xgb",
+            )
+        }
+
+    @property
+    def old_param_name(self):
+        """The previous name for the image URI argument."""
+        return "image"
+
+    @property
+    def new_param_name(self):
+        """The new name for the the image URI argument."""
+        return "image_uri"
+
+
 class SessionCreateModelImageURIRenamer(MethodParamRenamer):
     """A class to rename ``primary_container_image`` to ``image_uri``.
 
