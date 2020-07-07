@@ -93,7 +93,7 @@ def _rl_estimator(
     toolkit=RLToolkit.COACH,
     toolkit_version=RLEstimator.COACH_LATEST_VERSION_MXNET,
     framework=RLFramework.MXNET,
-    train_instance_type=None,
+    instance_type=None,
     base_job_name=None,
     **kwargs
 ):
@@ -104,8 +104,8 @@ def _rl_estimator(
         framework=framework,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=train_instance_type or INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=instance_type or INSTANCE_TYPE,
         base_job_name=base_job_name,
         **kwargs
     )
@@ -170,8 +170,8 @@ def test_create_tf_model(name_from_base, sagemaker_session, rl_coach_tf_version)
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         toolkit=RLToolkit.COACH,
         toolkit_version=rl_coach_tf_version,
         framework=RLFramework.TENSORFLOW,
@@ -207,8 +207,8 @@ def test_create_mxnet_model(name_from_base, sagemaker_session, rl_coach_mxnet_ve
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         toolkit=RLToolkit.COACH,
         toolkit_version=rl_coach_mxnet_version,
         framework=RLFramework.MXNET,
@@ -246,8 +246,8 @@ def test_create_model_with_optional_params(sagemaker_session, rl_coach_mxnet_ver
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         toolkit=RLToolkit.COACH,
         toolkit_version=rl_coach_mxnet_version,
         framework=RLFramework.MXNET,
@@ -280,8 +280,8 @@ def test_create_model_with_custom_image(name_from_base, sagemaker_session):
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         image_uri=image,
         container_log_level=container_log_level,
         source_dir=source_dir,
@@ -313,8 +313,8 @@ def test_rl(strftime, sagemaker_session, rl_coach_mxnet_version):
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         toolkit=RLToolkit.COACH,
         toolkit_version=rl_coach_mxnet_version,
         framework=RLFramework.MXNET,
@@ -366,7 +366,7 @@ def test_deploy_mxnet(sagemaker_session, rl_coach_mxnet_version):
         RLToolkit.COACH,
         rl_coach_mxnet_version,
         RLFramework.MXNET,
-        train_instance_type="ml.g2.2xlarge",
+        instance_type="ml.g2.2xlarge",
     )
     rl.fit()
     predictor = rl.deploy(1, CPU)
@@ -380,7 +380,7 @@ def test_deploy_tfs(sagemaker_session, rl_coach_tf_version):
         RLToolkit.COACH,
         rl_coach_tf_version,
         RLFramework.TENSORFLOW,
-        train_instance_type="ml.g2.2xlarge",
+        instance_type="ml.g2.2xlarge",
     )
     rl.fit()
     predictor = rl.deploy(1, GPU)
@@ -394,7 +394,7 @@ def test_deploy_ray(sagemaker_session, rl_ray_version):
         RLToolkit.RAY,
         rl_ray_version,
         RLFramework.TENSORFLOW,
-        train_instance_type="ml.g2.2xlarge",
+        instance_type="ml.g2.2xlarge",
     )
     rl.fit()
     with pytest.raises(NotImplementedError) as e:
@@ -406,21 +406,21 @@ def test_train_image_cpu_instances(sagemaker_session, rl_ray_version):
     toolkit = RLToolkit.RAY
     framework = RLFramework.TENSORFLOW
     rl = _rl_estimator(
-        sagemaker_session, toolkit, rl_ray_version, framework, train_instance_type="ml.c2.2xlarge"
+        sagemaker_session, toolkit, rl_ray_version, framework, instance_type="ml.c2.2xlarge"
     )
     assert rl.train_image() == _get_full_cpu_image_uri(
         toolkit.value, rl_ray_version, framework.value
     )
 
     rl = _rl_estimator(
-        sagemaker_session, toolkit, rl_ray_version, framework, train_instance_type="ml.c4.2xlarge"
+        sagemaker_session, toolkit, rl_ray_version, framework, instance_type="ml.c4.2xlarge"
     )
     assert rl.train_image() == _get_full_cpu_image_uri(
         toolkit.value, rl_ray_version, framework.value
     )
 
     rl = _rl_estimator(
-        sagemaker_session, toolkit, rl_ray_version, framework, train_instance_type="ml.m16"
+        sagemaker_session, toolkit, rl_ray_version, framework, instance_type="ml.m16"
     )
     assert rl.train_image() == _get_full_cpu_image_uri(
         toolkit.value, rl_ray_version, framework.value
@@ -435,7 +435,7 @@ def test_train_image_gpu_instances(sagemaker_session, rl_coach_mxnet_version):
         toolkit,
         rl_coach_mxnet_version,
         framework,
-        train_instance_type="ml.g2.2xlarge",
+        instance_type="ml.g2.2xlarge",
     )
     assert rl.train_image() == _get_full_gpu_image_uri(
         toolkit.value, rl_coach_mxnet_version, framework.value
@@ -446,7 +446,7 @@ def test_train_image_gpu_instances(sagemaker_session, rl_coach_mxnet_version):
         toolkit,
         rl_coach_mxnet_version,
         framework,
-        train_instance_type="ml.p2.2xlarge",
+        instance_type="ml.p2.2xlarge",
     )
     assert rl.train_image() == _get_full_gpu_image_uri(
         toolkit.value, rl_coach_mxnet_version, framework.value
@@ -494,8 +494,8 @@ def test_attach(sagemaker_session, rl_coach_mxnet_version):
     assert estimator.framework_version == framework_version
     assert estimator.toolkit_version == rl_coach_mxnet_version
     assert estimator.role == "arn:aws:iam::366:role/SageMakerRole"
-    assert estimator.train_instance_count == 1
-    assert estimator.train_max_run == 24 * 60 * 60
+    assert estimator.instance_count == 1
+    assert estimator.max_run == 24 * 60 * 60
     assert estimator.input_mode == "File"
     assert estimator.base_job_name == "neo"
     assert estimator.output_path == "s3://place/output/neo"
@@ -587,8 +587,8 @@ def test_wrong_framework_format(sagemaker_session):
             entry_point=SCRIPT_PATH,
             role=ROLE,
             sagemaker_session=sagemaker_session,
-            train_instance_count=INSTANCE_COUNT,
-            train_instance_type=INSTANCE_TYPE,
+            instance_count=INSTANCE_COUNT,
+            instance_type=INSTANCE_TYPE,
             framework_version=None,
         )
 
@@ -604,8 +604,8 @@ def test_wrong_toolkit_format(sagemaker_session):
             entry_point=SCRIPT_PATH,
             role=ROLE,
             sagemaker_session=sagemaker_session,
-            train_instance_count=INSTANCE_COUNT,
-            train_instance_type=INSTANCE_TYPE,
+            instance_count=INSTANCE_COUNT,
+            instance_type=INSTANCE_TYPE,
             framework_version=None,
         )
 
@@ -618,8 +618,8 @@ def test_missing_required_parameters(sagemaker_session):
             entry_point=SCRIPT_PATH,
             role=ROLE,
             sagemaker_session=sagemaker_session,
-            train_instance_count=INSTANCE_COUNT,
-            train_instance_type=INSTANCE_TYPE,
+            instance_count=INSTANCE_COUNT,
+            instance_type=INSTANCE_TYPE,
         )
     assert (
         "Please provide `toolkit`, `toolkit_version`, `framework`" + " or `image_uri` parameter."
@@ -636,8 +636,8 @@ def test_wrong_type_parameters(sagemaker_session):
             entry_point=SCRIPT_PATH,
             role=ROLE,
             sagemaker_session=sagemaker_session,
-            train_instance_count=INSTANCE_COUNT,
-            train_instance_type=INSTANCE_TYPE,
+            instance_count=INSTANCE_COUNT,
+            instance_type=INSTANCE_TYPE,
         )
     assert "combination is not supported." in str(e.value)
 

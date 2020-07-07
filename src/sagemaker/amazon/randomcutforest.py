@@ -45,8 +45,8 @@ class RandomCutForest(AmazonAlgorithmEstimatorBase):
     def __init__(
         self,
         role,
-        train_instance_count,
-        train_instance_type,
+        instance_count,
+        instance_type,
         num_samples_per_tree=None,
         num_trees=None,
         eval_metrics=None,
@@ -90,9 +90,9 @@ class RandomCutForest(AmazonAlgorithmEstimatorBase):
                 endpoints use this role to access training data and model
                 artifacts. After the endpoint is created, the inference code
                 might use the IAM role, if accessing AWS resource.
-            train_instance_count (int): Number of Amazon EC2 instances to use
+            instance_count (int): Number of Amazon EC2 instances to use
                 for training.
-            train_instance_type (str): Type of EC2 instance to use for training,
+            instance_type (str): Type of EC2 instance to use for training,
                 for example, 'ml.c4.xlarge'.
             num_samples_per_tree (int): Optional. The number of samples used to
                 build each tree in the forest. The total number of samples drawn
@@ -113,7 +113,7 @@ class RandomCutForest(AmazonAlgorithmEstimatorBase):
         """
 
         super(RandomCutForest, self).__init__(
-            role, train_instance_count, train_instance_type, **kwargs
+            role, instance_count, instance_type, **kwargs
         )
         self.num_samples_per_tree = num_samples_per_tree
         self.num_trees = num_trees

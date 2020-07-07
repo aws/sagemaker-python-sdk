@@ -42,8 +42,8 @@ def test_object2vec(sagemaker_session, cpu_instance_type):
 
         object2vec = Object2Vec(
             role="SageMakerRole",
-            train_instance_count=1,
-            train_instance_type=cpu_instance_type,
+            instance_count=1,
+            instance_type=cpu_instance_type,
             epochs=3,
             enc0_max_seq_len=20,
             enc0_vocab_size=45000,

@@ -19,14 +19,14 @@ from sagemaker.amazon.pca import PCA, PCAPredictor
 from sagemaker.amazon.amazon_estimator import registry, RecordSet
 
 ROLE = "myrole"
-TRAIN_INSTANCE_COUNT = 1
-TRAIN_INSTANCE_TYPE = "ml.c4.xlarge"
+INSTANCE_COUNT = 1
+INSTANCE_TYPE = "ml.c4.xlarge"
 NUM_COMPONENTS = 5
 
 COMMON_TRAIN_ARGS = {
     "role": ROLE,
-    "train_instance_count": TRAIN_INSTANCE_COUNT,
-    "train_instance_type": TRAIN_INSTANCE_TYPE,
+    "instance_count": INSTANCE_COUNT,
+    "instance_type": INSTANCE_TYPE,
 }
 ALL_REQ_ARGS = dict({"num_components": NUM_COMPONENTS}, **COMMON_TRAIN_ARGS)
 
@@ -66,14 +66,14 @@ def sagemaker_session():
 def test_init_required_positional(sagemaker_session):
     pca = PCA(
         ROLE,
-        TRAIN_INSTANCE_COUNT,
-        TRAIN_INSTANCE_TYPE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
         NUM_COMPONENTS,
         sagemaker_session=sagemaker_session,
     )
     assert pca.role == ROLE
-    assert pca.train_instance_count == TRAIN_INSTANCE_COUNT
-    assert pca.train_instance_type == TRAIN_INSTANCE_TYPE
+    assert pca.instance_count == INSTANCE_COUNT
+    assert pca.instance_type == INSTANCE_TYPE
     assert pca.num_components == NUM_COMPONENTS
 
 
@@ -81,8 +81,8 @@ def test_init_required_named(sagemaker_session):
     pca = PCA(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
     assert pca.role == COMMON_TRAIN_ARGS["role"]
-    assert pca.train_instance_count == TRAIN_INSTANCE_COUNT
-    assert pca.train_instance_type == COMMON_TRAIN_ARGS["train_instance_type"]
+    assert pca.instance_count == INSTANCE_COUNT
+    assert pca.instance_type == COMMON_TRAIN_ARGS["instance_type"]
     assert pca.num_components == ALL_REQ_ARGS["num_components"]
 
 
@@ -248,6 +248,6 @@ def test_predictor_type(sagemaker_session):
     )
     pca.fit(data, MINI_BATCH_SIZE)
     model = pca.create_model()
-    predictor = model.deploy(1, TRAIN_INSTANCE_TYPE)
+    predictor = model.deploy(1, INSTANCE_TYPE)
 
     assert isinstance(predictor, PCAPredictor)

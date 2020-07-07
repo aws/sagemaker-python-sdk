@@ -33,8 +33,8 @@ def test_pca(sagemaker_session, cpu_instance_type, training_set):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         pca = sagemaker.amazon.pca.PCA(
             role="SageMakerRole",
-            train_instance_count=1,
-            train_instance_type=cpu_instance_type,
+            instance_count=1,
+            instance_type=cpu_instance_type,
             num_components=48,
             sagemaker_session=sagemaker_session,
             enable_network_isolation=True,
@@ -69,8 +69,8 @@ def test_async_pca(sagemaker_session, cpu_instance_type, training_set):
     with timeout(minutes=5):
         pca = sagemaker.amazon.pca.PCA(
             role="SageMakerRole",
-            train_instance_count=1,
-            train_instance_type=cpu_instance_type,
+            instance_count=1,
+            instance_type=cpu_instance_type,
             num_components=48,
             sagemaker_session=sagemaker_session,
             base_job_name="test-pca",

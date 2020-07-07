@@ -117,16 +117,15 @@ class SKLearn(Framework):
 
         # SciKit-Learn does not support distributed training or training on GPU instance types.
         # Fail fast.
-        train_instance_type = kwargs.get("train_instance_type")
-        _validate_not_gpu_instance_type(train_instance_type)
+        instance_type = kwargs.get("instance_type")
+        _validate_not_gpu_instance_type(instance_type)
 
-        train_instance_count = kwargs.get("train_instance_count")
-        if train_instance_count:
-            if train_instance_count != 1:
+        instance_count = kwargs.get("instance_count")
+        if instance_count:
+            if instance_count != 1:
                 raise AttributeError(
-                    "Scikit-Learn does not support distributed training. "
-                    "Please remove the 'train_instance_count' argument or set "
-                    "'train_instance_count=1' when initializing SKLearn."
+                    "Scikit-Learn does not support distributed training. Please remove the "
+                    "'instance_count' argument or set 'instance_count=1' when initializing SKLearn."
                 )
 
         super(SKLearn, self).__init__(
@@ -134,7 +133,7 @@ class SKLearn(Framework):
             source_dir,
             hyperparameters,
             image_uri=image_uri,
-            **dict(kwargs, train_instance_count=1)
+            **dict(kwargs, instance_count=1)
         )
 
         if image_uri is None:

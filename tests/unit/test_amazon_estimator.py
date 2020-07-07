@@ -28,7 +28,7 @@ from sagemaker.amazon.amazon_estimator import (
 )
 from sagemaker.xgboost.defaults import XGBOOST_LATEST_VERSION, XGBOOST_SUPPORTED_VERSIONS
 
-COMMON_ARGS = {"role": "myrole", "train_instance_count": 1, "train_instance_type": "ml.c4.xlarge"}
+COMMON_ARGS = {"role": "myrole", "instance_count": 1, "instance_type": "ml.c4.xlarge"}
 
 REGION = "us-west-2"
 BUCKET_NAME = "Some-Bucket"
@@ -126,15 +126,15 @@ def test_init_all_pca_hyperparameters(sagemaker_session):
 def test_init_estimator_args(sagemaker_session):
     pca = PCA(
         num_components=1,
-        train_max_run=1234,
+        max_run=1234,
         sagemaker_session=sagemaker_session,
         data_location="s3://some-bucket/some-key/",
         **COMMON_ARGS
     )
-    assert pca.train_instance_type == COMMON_ARGS["train_instance_type"]
-    assert pca.train_instance_count == COMMON_ARGS["train_instance_count"]
+    assert pca.instance_type == COMMON_ARGS["instance_type"]
+    assert pca.instance_count == COMMON_ARGS["instance_count"]
     assert pca.role == COMMON_ARGS["role"]
-    assert pca.train_max_run == 1234
+    assert pca.max_run == 1234
     assert pca.data_location == "s3://some-bucket/some-key/"
 
 
@@ -217,7 +217,7 @@ def test_fit_ndarray(time, sagemaker_session):
     mock_s3.Object = Mock(return_value=mock_object)
     sagemaker_session.boto_session.resource = Mock(return_value=mock_s3)
     kwargs = dict(COMMON_ARGS)
-    kwargs["train_instance_count"] = 3
+    kwargs["instance_count"] = 3
     pca = PCA(
         num_components=55,
         sagemaker_session=sagemaker_session,
@@ -245,7 +245,7 @@ def test_fit_ndarray(time, sagemaker_session):
 
 def test_fit_pass_experiment_config(sagemaker_session):
     kwargs = dict(COMMON_ARGS)
-    kwargs["train_instance_count"] = 3
+    kwargs["instance_count"] = 3
     pca = PCA(
         num_components=55,
         sagemaker_session=sagemaker_session,

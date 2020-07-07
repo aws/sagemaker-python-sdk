@@ -146,7 +146,7 @@ def _build_tf(
     sagemaker_session,
     framework_version=None,
     py_version=None,
-    train_instance_type=None,
+    instance_type=None,
     base_job_name=None,
     **kwargs
 ):
@@ -156,8 +156,8 @@ def _build_tf(
         py_version=py_version,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=train_instance_type if train_instance_type else INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=instance_type if instance_type else INSTANCE_TYPE,
         base_job_name=base_job_name,
         **kwargs
     )
@@ -180,8 +180,8 @@ def test_create_model(name_from_base, sagemaker_session, tf_version, tf_py_versi
         py_version=tf_py_version,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         container_log_level=container_log_level,
         base_job_name=base_job_name,
         enable_network_isolation=True,
@@ -223,8 +223,8 @@ def test_create_model_with_optional_params(sagemaker_session, tf_version, tf_py_
         py_version=tf_py_version,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         container_log_level=container_log_level,
         base_job_name="job",
         source_dir=source_dir,
@@ -260,8 +260,8 @@ def test_create_model_with_custom_image(sagemaker_session):
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         image_uri=custom_image,
         container_log_level=container_log_level,
         base_job_name="job",
@@ -294,8 +294,8 @@ def test_transformer_creation_with_optional_args(
         py_version=tf_py_version,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
     )
     tf.latest_training_job = _TrainingJob(sagemaker_session, "some-job-name")
 
@@ -379,8 +379,8 @@ def test_transformer_creation_without_optional_args(
         py_version=tf_py_version,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         base_job_name=base_job_name,
     )
     tf.latest_training_job = _TrainingJob(sagemaker_session, "some-job-name")
@@ -420,8 +420,8 @@ def test_fit(time, strftime, sagemaker_session):
         py_version="py2",
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_type=INSTANCE_TYPE,
-        train_instance_count=1,
+        instance_type=INSTANCE_TYPE,
+        instance_count=1,
         source_dir=DATA_DIR,
     )
 
@@ -448,8 +448,8 @@ def test_fit_ps(time, strftime, sagemaker_session):
         py_version="py2",
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_type=INSTANCE_TYPE,
-        train_instance_count=1,
+        instance_type=INSTANCE_TYPE,
+        instance_count=1,
         source_dir=DATA_DIR,
         distribution=DISTRIBUTION_PS_ENABLED,
     )
@@ -478,8 +478,8 @@ def test_fit_mpi(time, strftime, sagemaker_session):
         py_version="py2",
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_type=INSTANCE_TYPE,
-        train_instance_count=1,
+        instance_type=INSTANCE_TYPE,
+        instance_count=1,
         source_dir=DATA_DIR,
         distribution=DISTRIBUTION_MPI_ENABLED,
     )

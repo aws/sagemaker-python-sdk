@@ -120,8 +120,8 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
     def __init__(
         self,
         role,
-        train_instance_count,
-        train_instance_type,
+        instance_count,
+        instance_type,
         predictor_type,
         binary_classifier_model_selection_criteria=None,
         target_recall=None,
@@ -214,9 +214,9 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
                 endpoints use this role to access training data and model
                 artifacts. After the endpoint is created, the inference code
                 might use the IAM role, if accessing AWS resource.
-            train_instance_count (int): Number of Amazon EC2 instances to use
+            instance_count (int): Number of Amazon EC2 instances to use
                 for training.
-            train_instance_type (str): Type of EC2 instance to use for training,
+            instance_type (str): Type of EC2 instance to use for training,
                 for example, 'ml.c4.xlarge'.
             predictor_type (str): The type of predictor to learn. Either
                 "binary_classifier" or "multiclass_classifier" or "regressor".
@@ -326,7 +326,7 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
             :class:`~sagemaker.estimator.EstimatorBase`.
         """
         super(LinearLearner, self).__init__(
-            role, train_instance_count, train_instance_type, **kwargs
+            role, instance_count, instance_type, **kwargs
         )
         self.predictor_type = predictor_type
         self.binary_classifier_model_selection_criteria = binary_classifier_model_selection_criteria
@@ -418,7 +418,7 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
 
         # mini_batch_size can't be greater than number of records or training job fails
         default_mini_batch_size = min(
-            self.DEFAULT_MINI_BATCH_SIZE, max(1, int(num_records / self.train_instance_count))
+            self.DEFAULT_MINI_BATCH_SIZE, max(1, int(num_records / self.instance_count))
         )
         mini_batch_size = mini_batch_size or default_mini_batch_size
         super(LinearLearner, self)._prepare_for_training(

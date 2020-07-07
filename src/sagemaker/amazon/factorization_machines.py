@@ -77,8 +77,8 @@ class FactorizationMachines(AmazonAlgorithmEstimatorBase):
     def __init__(
         self,
         role,
-        train_instance_count,
-        train_instance_type,
+        instance_count,
+        instance_type,
         num_factors,
         predictor_type,
         epochs=None,
@@ -150,9 +150,9 @@ class FactorizationMachines(AmazonAlgorithmEstimatorBase):
                 endpoints use this role to access training data and model
                 artifacts. After the endpoint is created, the inference code
                 might use the IAM role, if accessing AWS resource.
-            train_instance_count (int): Number of Amazon EC2 instances to use
+            instance_count (int): Number of Amazon EC2 instances to use
                 for training.
-            train_instance_type (str): Type of EC2 instance to use for training,
+            instance_type (str): Type of EC2 instance to use for training,
                 for example, 'ml.c4.xlarge'.
             num_factors (int): Dimensionality of factorization.
             predictor_type (str): Type of predictor 'binary_classifier' or
@@ -213,7 +213,7 @@ class FactorizationMachines(AmazonAlgorithmEstimatorBase):
             :class:`~sagemaker.estimator.EstimatorBase`.
         """
         super(FactorizationMachines, self).__init__(
-            role, train_instance_count, train_instance_type, **kwargs
+            role, instance_count, instance_type, **kwargs
         )
 
         self.num_factors = num_factors

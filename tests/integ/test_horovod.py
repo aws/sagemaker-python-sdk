@@ -76,8 +76,8 @@ def test_horovod_local_mode(
     estimator = TensorFlow(
         entry_point=os.path.join(horovod_dir, "hvd_basic.py"),
         role="SageMakerRole",
-        train_instance_count=2,
-        train_instance_type="local",
+        instance_count=2,
+        instance_type="local",
         sagemaker_session=sagemaker_local_session,
         output_path=output_path,
         framework_version=tf_training_latest_version,
@@ -123,8 +123,8 @@ def _create_and_fit_estimator(sagemaker_session, tf_version, py_version, instanc
     estimator = TensorFlow(
         entry_point=os.path.join(horovod_dir, "hvd_basic.py"),
         role="SageMakerRole",
-        train_instance_count=2,
-        train_instance_type=instance_type,
+        instance_count=2,
+        instance_type=instance_type,
         sagemaker_session=sagemaker_session,
         py_version=py_version,
         framework_version=tf_version,

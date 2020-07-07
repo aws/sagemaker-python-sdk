@@ -90,7 +90,7 @@ def _chainer_estimator(
     sagemaker_session,
     framework_version,
     py_version,
-    train_instance_type=None,
+    instance_type=None,
     base_job_name=None,
     use_mpi=None,
     num_processes=None,
@@ -104,8 +104,8 @@ def _chainer_estimator(
         py_version=py_version,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=train_instance_type if train_instance_type else INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=instance_type if instance_type else INSTANCE_TYPE,
         base_job_name=base_job_name,
         use_mpi=use_mpi,
         num_processes=num_processes,
@@ -115,7 +115,7 @@ def _chainer_estimator(
     )
 
 
-def _create_train_job(version, py_version):
+def _create_job(version, py_version):
     return {
         "image_uri": _get_full_cpu_image_uri(version, py_version),
         "input_mode": "File",
@@ -241,8 +241,8 @@ def test_create_model(name_from_base, sagemaker_session, chainer_version, chaine
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         framework_version=chainer_version,
         container_log_level=container_log_level,
         py_version=chainer_py_version,
@@ -277,8 +277,8 @@ def test_create_model_with_optional_params(sagemaker_session, chainer_version, c
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         container_log_level=container_log_level,
         framework_version=chainer_version,
         py_version=chainer_py_version,
@@ -318,8 +318,8 @@ def test_create_model_with_custom_image(sagemaker_session):
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         image_uri=custom_image,
         container_log_level=container_log_level,
         base_job_name="job",
@@ -339,8 +339,8 @@ def test_chainer(strftime, sagemaker_session, chainer_version, chainer_py_versio
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         framework_version=chainer_version,
         py_version=chainer_py_version,
     )
@@ -433,8 +433,8 @@ def test_train_image_default(sagemaker_session, chainer_version, chainer_py_vers
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         framework_version=chainer_version,
         py_version=chainer_py_version,
     )
@@ -447,7 +447,7 @@ def test_train_image_cpu_instances(sagemaker_session, chainer_version, chainer_p
         sagemaker_session,
         framework_version=chainer_version,
         py_version=chainer_py_version,
-        train_instance_type="ml.c2.2xlarge",
+        instance_type="ml.c2.2xlarge",
     )
     assert chainer.train_image() == _get_full_cpu_image_uri(chainer_version, chainer_py_version)
 
@@ -455,7 +455,7 @@ def test_train_image_cpu_instances(sagemaker_session, chainer_version, chainer_p
         sagemaker_session,
         framework_version=chainer_version,
         py_version=chainer_py_version,
-        train_instance_type="ml.c4.2xlarge",
+        instance_type="ml.c4.2xlarge",
     )
     assert chainer.train_image() == _get_full_cpu_image_uri(chainer_version, chainer_py_version)
 
@@ -463,7 +463,7 @@ def test_train_image_cpu_instances(sagemaker_session, chainer_version, chainer_p
         sagemaker_session,
         framework_version=chainer_version,
         py_version=chainer_py_version,
-        train_instance_type="ml.m16",
+        instance_type="ml.m16",
     )
     assert chainer.train_image() == _get_full_cpu_image_uri(chainer_version, chainer_py_version)
 
@@ -473,7 +473,7 @@ def test_train_image_gpu_instances(sagemaker_session, chainer_version, chainer_p
         sagemaker_session,
         framework_version=chainer_version,
         py_version=chainer_py_version,
-        train_instance_type="ml.g2.2xlarge",
+        instance_type="ml.g2.2xlarge",
     )
     assert chainer.train_image() == _get_full_gpu_image_uri(chainer_version, chainer_py_version)
 
@@ -481,7 +481,7 @@ def test_train_image_gpu_instances(sagemaker_session, chainer_version, chainer_p
         sagemaker_session,
         framework_version=chainer_version,
         py_version=chainer_py_version,
-        train_instance_type="ml.p2.2xlarge",
+        instance_type="ml.p2.2xlarge",
     )
     assert chainer.train_image() == _get_full_gpu_image_uri(chainer_version, chainer_py_version)
 
@@ -524,8 +524,8 @@ def test_attach(sagemaker_session, chainer_version, chainer_py_version):
     assert estimator.py_version == chainer_py_version
     assert estimator.framework_version == chainer_version
     assert estimator.role == "arn:aws:iam::366:role/SageMakerRole"
-    assert estimator.train_instance_count == 1
-    assert estimator.train_max_run == 24 * 60 * 60
+    assert estimator.instance_count == 1
+    assert estimator.max_run == 24 * 60 * 60
     assert estimator.input_mode == "File"
     assert estimator.base_job_name == "neo"
     assert estimator.output_path == "s3://place/output/neo"
@@ -614,8 +614,8 @@ def test_estimator_py2_warning(warning, sagemaker_session, chainer_version):
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         framework_version=chainer_version,
         py_version="py2",
     )
