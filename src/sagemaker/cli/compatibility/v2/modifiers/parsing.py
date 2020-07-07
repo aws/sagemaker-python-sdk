@@ -13,6 +13,8 @@
 """Functions for parsing AST nodes."""
 from __future__ import absolute_import
 
+import pasta
+
 
 def arg_from_keywords(node, arg):
     """Retrieves a keyword argument from the node's keywords.
@@ -41,10 +43,13 @@ def arg_value(node, arg):
         arg (str): the name of the argument.
 
     Returns:
-        obj: the keyword argument's value if it is present. Otherwise, this returns ``None``.
+        obj: the keyword argument's value.
+
+    Raises:
+        KeyError: if the node's keywords do not contain the argument.
     """
     keyword = arg_from_keywords(node, arg)
-    if keyword and keyword.value:
-        return getattr(keyword.value, keyword.value._fields[0], None)
+    if keyword is None:
+        raise KeyError("arg '{}' not found in call: {}".format(arg, pasta.dump(node)))
 
-    return None
+    return getattr(keyword.value, keyword.value._fields[0], None) if keyword.value else None

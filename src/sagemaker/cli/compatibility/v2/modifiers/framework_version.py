@@ -98,14 +98,14 @@ class FrameworkVersionEnforcer(Modifier):
         framework, is_model = _framework_from_node(node)
 
         # if framework_version is not supplied, get default and append keyword
-        framework_version = parsing.arg_value(node, FRAMEWORK_ARG)
-        if framework_version is None:
+        if matching.has_arg(node, FRAMEWORK_ARG):
+            framework_version = parsing.arg_value(node, FRAMEWORK_ARG)
+        else:
             framework_version = FRAMEWORK_DEFAULTS[framework]
             node.keywords.append(ast.keyword(arg=FRAMEWORK_ARG, value=ast.Str(s=framework_version)))
 
         # if py_version is not supplied, get a conditional default, and if not None, append keyword
-        py_version = parsing.arg_value(node, PY_ARG)
-        if py_version is None:
+        if not matching.has_arg(node, PY_ARG):
             py_version = _py_version_defaults(framework, framework_version, is_model)
             if py_version:
                 node.keywords.append(ast.keyword(arg=PY_ARG, value=ast.Str(s=py_version)))
@@ -175,13 +175,13 @@ def _version_args_needed(node, image_arg):
     Applies similar logic as ``validate_version_or_image_args``
     """
     # if image_arg is present, no need to supply version arguments
-    image_name = parsing.arg_value(node, image_arg)
-    if image_name:
+    if matching.has_arg(node, image_arg):
         return False
 
     # if framework_version is None, need args
-    framework_version = parsing.arg_value(node, FRAMEWORK_ARG)
-    if framework_version is None:
+    if matching.has_arg(node, FRAMEWORK_ARG):
+        framework_version = parsing.arg_value(node, FRAMEWORK_ARG)
+    else:
         return True
 
     # check if we expect py_version and we don't get it -- framework and model dependent

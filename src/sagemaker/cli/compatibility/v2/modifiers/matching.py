@@ -116,4 +116,7 @@ def has_arg(node, arg):
     Returns:
         bool: if the node has the given argument.
     """
-    return parsing.arg_value(node, arg) is not None
+    try:
+        return parsing.arg_value(node, arg) is not None
+    except KeyError:
+        return False

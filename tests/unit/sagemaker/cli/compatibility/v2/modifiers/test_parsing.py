@@ -12,6 +12,8 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import pytest
+
 from sagemaker.cli.compatibility.v2.modifiers import parsing
 from tests.unit.sagemaker.cli.compatibility.v2.modifiers.ast_converter import ast_call
 
@@ -45,7 +47,14 @@ def test_arg_value():
     call = ast_call("MXNet(enable_network_isolation=True)")
     assert parsing.arg_value(call, "enable_network_isolation") is True
 
+    call = ast_call("MXNet(source_dir=None)")
+    assert parsing.arg_value(call, "source_dir") is None
+
 
 def test_arg_value_absent_keyword():
-    call = ast_call("MXNet(entry_point='run')")
-    assert parsing.arg_value(call, "framework_version") is None
+    code = "MXNet(entry_point='run')"
+
+    with pytest.raises(KeyError) as e:
+        parsing.arg_value(ast_call(code), "framework_version")
+
+    assert "arg 'framework_version' not found in call: {}".format(code) in str(e.value)
