@@ -180,7 +180,7 @@ def test_json_deserializer_invalid_data():
     with pytest.raises(ValueError) as error:
         json_deserializer(io.BytesIO(b"[[1]"), "application/json")
     assert "column" in str(error)
-    
+
 
 def test_stream_deserializer():
     stream, content_type = StreamDeserializer()(io.BytesIO(b"[1, 2, 3]"), "application/json")

@@ -24,7 +24,7 @@ def test_string_deserializer():
 
     assert result == "[1, 2, 3]"
 
-    
+
 def test_bytes_deserializer():
     deserializer = BytesDeserializer()
 
