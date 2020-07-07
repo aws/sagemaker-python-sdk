@@ -8,8 +8,8 @@ The Amazon SageMaker NTM algorithm.
     :undoc-members:
     :show-inheritance:
     :inherited-members:
-    :exclude-members: image, num_topics, encoder_layers, epochs, encoder_layers_activation, optimizer, tolerance,
-                 num_patience_epochs, batch_norm, rescale_gradient, clip_gradient, weight_decay, learning_rate
+    :exclude-members: image_uri, num_topics, encoder_layers, epochs, encoder_layers_activation, optimizer, tolerance,
+                      num_patience_epochs, batch_norm, rescale_gradient, clip_gradient, weight_decay, learning_rate
 
 
 .. autoclass:: sagemaker.NTMModel
