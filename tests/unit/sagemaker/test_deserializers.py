@@ -14,7 +14,15 @@ from __future__ import absolute_import
 
 import io
 
-from sagemaker.deserializers import BytesDeserializer
+from sagemaker.deserializers import StringDeserializer, BytesDeserializer
+
+
+def test_string_deserializer():
+    deserializer = StringDeserializer()
+
+    result = deserializer.deserialize(io.BytesIO(b"[1, 2, 3]"), "application/json")
+
+    assert result == "[1, 2, 3]"
 
 
 def test_bytes_deserializer():
