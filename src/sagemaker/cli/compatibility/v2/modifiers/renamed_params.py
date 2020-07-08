@@ -215,6 +215,7 @@ class ModelImageURIRenamer(ParamRenamer):
     @property
     def new_param_name(self):
         """The new name for the image URI argument."""
+        return "image_uri"
 
 
 class SessionCreateModelImageURIRenamer(MethodParamRenamer):
