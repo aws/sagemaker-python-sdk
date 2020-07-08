@@ -152,8 +152,8 @@ directories ('train' and 'test').
 .. code:: python
 
     pytorch_estimator = PyTorch('pytorch-train.py',
-                                train_instance_type='ml.p3.2xlarge',
-                                train_instance_count=1,
+                                instance_type='ml.p3.2xlarge',
+                                instance_count=1,
                                 framework_version='1.5.0',
                                 py_version='py3',
                                 hyperparameters = {'epochs': 20, 'batch-size': 64, 'learning-rate': 0.1})
@@ -201,7 +201,7 @@ Distributed PyTorch Training
 ============================
 
 You can run a multi-machine, distributed PyTorch training using the PyTorch Estimator. By default, PyTorch objects will
-submit single-machine training jobs to SageMaker. If you set ``train_instance_count`` to be greater than one, multi-machine
+submit single-machine training jobs to SageMaker. If you set ``instance_count`` to be greater than one, multi-machine
 training jobs will be launched when ``fit`` is called. When you run multi-machine training, SageMaker will import your
 training script and run it on each host in the cluster.
 
@@ -246,8 +246,8 @@ operation.
 
     # Train my estimator
     pytorch_estimator = PyTorch(entry_point='train_and_deploy.py',
-                                train_instance_type='ml.p3.2xlarge',
-                                train_instance_count=1,
+                                instance_type='ml.p3.2xlarge',
+                                instance_count=1,
                                 framework_version='1.5.0',
                                 py_version='py3')
     pytorch_estimator.fit('s3://my_bucket/my_training_data/')

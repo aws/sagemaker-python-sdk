@@ -97,8 +97,8 @@ Here is an end to end example of how to use a SageMaker Estimator:
     # Configure an MXNet Estimator (no training happens yet)
     mxnet_estimator = MXNet('train.py',
                             role='SageMakerRole',
-                            train_instance_type='ml.p2.xlarge',
-                            train_instance_count=1,
+                            instance_type='ml.p2.xlarge',
+                            instance_count=1,
                             framework_version='1.2.1')
 
     # Starts a SageMaker training job and waits until completion.
@@ -134,8 +134,8 @@ For more `information <https://boto3.amazonaws.com/v1/documentation/api/latest/r
     # Configure an MXNet Estimator (no training happens yet)
     mxnet_estimator = MXNet('train.py',
                             role='SageMakerRole',
-                            train_instance_type='ml.p2.xlarge',
-                            train_instance_count=1,
+                            instance_type='ml.p2.xlarge',
+                            instance_count=1,
                             framework_version='1.2.1')
 
     # Starts a SageMaker training job and waits until completion.
@@ -174,8 +174,8 @@ Here is an example:
         algo = sagemaker.AlgorithmEstimator(
             algorithm_arn='arn:aws:sagemaker:us-west-2:1234567:algorithm/some-algorithm',
             role='SageMakerRole',
-            train_instance_count=1,
-            train_instance_type='ml.c4.xlarge')
+            instance_count=1,
+            instance_type='ml.c4.xlarge')
 
         train_input = algo.sagemaker_session.upload_data(path='/path/to/your/data')
 
@@ -233,8 +233,8 @@ Here are some examples of creating estimators with Git support:
                                     role='SageMakerRole',
                                     source_dir='pytorch',
                                     git_config=git_config,
-                                    train_instance_count=1,
-                                    train_instance_type='ml.c4.xlarge')
+                                    instance_count=1,
+                                    instance_type='ml.c4.xlarge')
 
 .. code:: python
 
@@ -248,8 +248,8 @@ Here are some examples of creating estimators with Git support:
         mx_estimator = MXNet(entry_point='mxnet/mnist.py',
                              role='SageMakerRole',
                              git_config=git_config,
-                             train_instance_count=1,
-                             train_instance_type='ml.c4.xlarge')
+                             instance_count=1,
+                             instance_type='ml.c4.xlarge')
 
 .. code:: python
 
@@ -267,8 +267,8 @@ Here are some examples of creating estimators with Git support:
                                     source_dir='pytorch',
                                     dependencies=['dep.py', 'foo/bar.py'],
                                     git_config=git_config,
-                                    train_instance_count=1,
-                                    train_instance_type='ml.c4.xlarge')
+                                    instance_count=1,
+                                    instance_type='ml.c4.xlarge')
 
 .. code:: python
 
@@ -282,8 +282,8 @@ Here are some examples of creating estimators with Git support:
                                     role='SageMakerRole',
                                     dependencies=['dep.py'],
                                     git_config=git_config,
-                                    train_instance_count=1,
-                                    train_instance_type='local')
+                                    instance_count=1,
+                                    instance_type='local')
 
 .. code:: python
 
@@ -295,8 +295,8 @@ Here are some examples of creating estimators with Git support:
         mx_estimator = MXNet(entry_point='mxnet/mnist.py',
                              role='SageMakerRole',
                              git_config=git_config,
-                             train_instance_count=1,
-                             train_instance_type='ml.c4.xlarge')
+                             instance_count=1,
+                             instance_type='ml.c4.xlarge')
 
 Git support can be used not only for training jobs, but also for hosting models. The usage is the same as the above,
 and ``git_config`` should be provided when creating model objects, e.g. ``TensorFlowModel``, ``MXNetModel``, ``PyTorchModel``.
@@ -322,8 +322,8 @@ Here are examples of how to use Amazon EFS as input for training:
         # the same VPC as your Amazon EC2 instance
         estimator = TensorFlow(entry_point='tensorflow_mnist/mnist.py',
                                role='SageMakerRole',
-                               train_instance_count=1,
-                               train_instance_type='ml.c4.xlarge',
+                               instance_count=1,
+                               instance_type='ml.c4.xlarge',
                                subnets=['subnet-1', 'subnet-2']
                                security_group_ids=['sg-1'])
 
@@ -341,8 +341,8 @@ Here are examples of how to use Amazon EFS as input for training:
         # Configure an estimator with subnets and security groups from your VPC. The EFS volume must be in
         # the same VPC as your Amazon EC2 instance
         kmeans = KMeans(role='SageMakerRole',
-                        train_instance_count=1,
-                        train_instance_type='ml.c4.xlarge',
+                        instance_count=1,
+                        instance_type='ml.c4.xlarge',
                         k=10,
                         subnets=['subnet-1', 'subnet-2'],
                         security_group_ids=['sg-1'])
@@ -366,8 +366,8 @@ Here are examples of how to use Amazon FSx for Lustre as input for training:
 
         estimator = TensorFlow(entry_point='tensorflow_mnist/mnist.py',
                                role='SageMakerRole',
-                               train_instance_count=1,
-                               train_instance_type='ml.c4.xlarge',
+                               instance_count=1,
+                               instance_type='ml.c4.xlarge',
                                subnets=['subnet-1', 'subnet-2']
                                security_group_ids=['sg-1'])
 
@@ -386,8 +386,8 @@ Here are examples of how to use Amazon FSx for Lustre as input for training:
         # Configure an estimator with subnets and security groups from your VPC. The VPC should be the same as that
         # you chose for your Amazon EC2 instance
         kmeans = KMeans(role='SageMakerRole',
-                        train_instance_count=1,
-                        train_instance_type='ml.c4.xlarge',
+                        instance_count=1,
+                        instance_type='ml.c4.xlarge',
                         k=10,
                         subnets=['subnet-1', 'subnet-2'],
                         security_group_ids=['sg-1'])
@@ -419,8 +419,8 @@ Here is an example of how to define metrics:
 
     # Configure an BYO Estimator with metric definitions (no training happens yet)
     byo_estimator = Estimator(image_uri=image_uri,
-                              role='SageMakerRole', train_instance_count=1,
-                              train_instance_type='ml.c4.xlarge',
+                              role='SageMakerRole', instance_count=1,
+                              instance_type='ml.c4.xlarge',
                               sagemaker_session=sagemaker_session,
                               metric_definitions=[{'Name': 'test:msd', 'Regex': '#quality_metric: host=\S+, test msd <loss>=(\S+)'},
                                                   {'Name': 'test:ssd', 'Regex': '#quality_metric: host=\S+, test ssd <loss>=(\S+)'}])
@@ -479,10 +479,10 @@ Here's an example of how to use incremental training:
     # Configure an estimator
     estimator = sagemaker.estimator.Estimator(training_image,
                                               role,
-                                              train_instance_count=1,
-                                              train_instance_type='ml.p2.xlarge',
-                                              train_volume_size=50,
-                                              train_max_run=360000,
+                                              instance_count=1,
+                                              instance_type='ml.p2.xlarge',
+                                              volume_size=50,
+                                              max_run=360000,
                                               input_mode='File',
                                               output_path=s3_output_location)
 
@@ -492,10 +492,10 @@ Here's an example of how to use incremental training:
     # Create a new estimator using the previous' model artifacts
     incr_estimator = sagemaker.estimator.Estimator(training_image,
                                                   role,
-                                                  train_instance_count=1,
-                                                  train_instance_type='ml.p2.xlarge',
-                                                  train_volume_size=50,
-                                                  train_max_run=360000,
+                                                  instance_count=1,
+                                                  instance_type='ml.p2.xlarge',
+                                                  volume_size=50,
+                                                  max_run=360000,
                                                   input_mode='File',
                                                   output_path=s3_output_location,
                                                   model_uri=estimator.model_data)
@@ -764,8 +764,8 @@ We can take the example in  `Using Estimators <#using-estimators>`__ , and use e
     # Configure an MXNet Estimator (no training happens yet)
     mxnet_estimator = MXNet('train.py',
                             role='SageMakerRole',
-                            train_instance_type='local',
-                            train_instance_count=1,
+                            instance_type='local',
+                            instance_count=1,
                             framework_version='1.2.1')
 
     # In Local Mode, fit will pull the MXNet container Docker image and run it locally
@@ -826,8 +826,8 @@ Here is an end-to-end example:
 
     mxnet_estimator = MXNet('train.py',
                             role='SageMakerRole',
-                            train_instance_type='local',
-                            train_instance_count=1,
+                            instance_type='local',
+                            instance_count=1,
                             framework_version='1.2.1')
 
     mxnet_estimator.fit('file:///tmp/my_training_data')
@@ -889,8 +889,8 @@ To train a model using your own VPC, set the optional parameters ``subnets`` and
 
     # Configure an MXNet Estimator with subnets and security groups from your VPC
     mxnet_vpc_estimator = MXNet('train.py',
-                                train_instance_type='ml.p2.xlarge',
-                                train_instance_count=1,
+                                instance_type='ml.p2.xlarge',
+                                instance_count=1,
                                 framework_version='1.2.1',
                                 subnets=['subnet-1', 'subnet-2'],
                                 security_group_ids=['sg-1'])
@@ -908,8 +908,8 @@ job runs in a VPC):
 
     # Configure an MXNet Estimator with subnets and security groups from your VPC
     mxnet_vpc_estimator = MXNet('train.py',
-                                train_instance_type='ml.p2.xlarge',
-                                train_instance_count=1,
+                                instance_type='ml.p2.xlarge',
+                                instance_count=1,
                                 framework_version='1.2.1',
                                 subnets=['subnet-1', 'subnet-2'],
                                 security_group_ids=['sg-1'],
@@ -964,7 +964,7 @@ To train a model in network isolation mode, set the optional parameter ``enable_
 
     # set the enable_network_isolation parameter to True
     sklearn_estimator = SKLearn('sklearn-train.py',
-                                train_instance_type='ml.m4.xlarge',
+                                instance_type='ml.m4.xlarge',
                                 framework_version='0.20.0',
                                 hyperparameters = {'epochs': 20, 'batch-size': 64, 'learning-rate': 0.1},
                                 enable_network_isolation=True)
