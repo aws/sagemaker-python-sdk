@@ -24,7 +24,7 @@ from sagemaker.amazon.amazon_estimator import RecordSet
 from sagemaker.estimator import Framework
 from sagemaker.mxnet import MXNet
 from sagemaker.parameter import ParameterRange
-from sagemaker.session import s3_input
+from sagemaker.session import TrainingInput
 from sagemaker.tuner import (
     _TuningJob,
     create_identical_dataset_and_algorithm_tuner,
@@ -249,7 +249,7 @@ def test_fit_pca_with_vpc_config(sagemaker_session, tuner):
     }
 
 
-def test_s3_input_mode(sagemaker_session, tuner):
+def test_training_input_mode(sagemaker_session, tuner):
     expected_input_mode = "Pipe"
 
     script_path = os.path.join(DATA_DIR, "mxnet_mnist", "failure_script.py")
@@ -273,7 +273,7 @@ def test_s3_input_mode(sagemaker_session, tuner):
     }
     tuner._hyperparameter_ranges = hyperparameter_ranges
 
-    tuner.fit(inputs=s3_input("s3://mybucket/train_manifest", input_mode=expected_input_mode))
+    tuner.fit(inputs=TrainingInput("s3://mybucket/train_manifest", input_mode=expected_input_mode))
 
     actual_input_mode = sagemaker_session.method_calls[1][2]["training_config"]["input_mode"]
     assert actual_input_mode == expected_input_mode

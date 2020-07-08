@@ -36,7 +36,7 @@ from sagemaker.parameter import (
     ParameterRange,
 )
 from sagemaker.session import Session
-from sagemaker.session import s3_input
+from sagemaker.session import TrainingInput
 from sagemaker.utils import base_from_name, base_name_from_image, name_from_base
 
 AMAZON_ESTIMATOR_MODULE = "sagemaker"
@@ -377,13 +377,13 @@ class HyperparameterTuner(object):
                 any of the following forms:
 
                 * (str) - The S3 location where training data is saved.
-                * (dict[str, str] or dict[str, sagemaker.session.s3_input]) -
+                * (dict[str, str] or dict[str, sagemaker.session.TrainingInput]) -
                     If using multiple channels for training data, you can specify
                     a dict mapping channel names to strings or
-                    :func:`~sagemaker.session.s3_input` objects.
-                * (sagemaker.session.s3_input) - Channel configuration for S3 data sources that can
-                    provide additional information about the training dataset.
-                    See :func:`sagemaker.session.s3_input` for full details.
+                    :func:`~sagemaker.session.TrainingInput` objects.
+                * (sagemaker.session.TrainingInput) - Channel configuration for S3 data sources
+                    that can provide additional information about the training dataset.
+                    See :func:`sagemaker.session.TrainingInput` for full details.
                 * (sagemaker.session.FileSystemInput) - channel configuration for
                     a file system data source that can provide additional information as well as
                     the path to the training dataset.
@@ -1500,10 +1500,10 @@ class _TuningJob(_Job):
         training_config["input_mode"] = estimator.input_mode
         training_config["metric_definitions"] = metric_definitions
 
-        if isinstance(inputs, s3_input):
+        if isinstance(inputs, TrainingInput):
             if "InputMode" in inputs.config:
                 logging.debug(
-                    "Selecting s3_input's input_mode (%s) for TrainingInputMode.",
+                    "Selecting TrainingInput's input_mode (%s) for TrainingInputMode.",
                     inputs.config["InputMode"],
                 )
                 training_config["input_mode"] = inputs.config["InputMode"]

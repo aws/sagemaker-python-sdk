@@ -27,7 +27,7 @@ from sagemaker.algorithm import AlgorithmEstimator
 from sagemaker.estimator import Estimator, EstimatorBase, Framework, _TrainingJob
 from sagemaker.model import FrameworkModel
 from sagemaker.predictor import Predictor
-from sagemaker.session import s3_input, ShuffleConfig
+from sagemaker.session import TrainingInput, ShuffleConfig
 from sagemaker.transformer import Transformer
 from botocore.exceptions import ClientError
 import sagemaker.local
@@ -507,7 +507,7 @@ def test_augmented_manifest(sagemaker_session):
         enable_cloudwatch_metrics=True,
     )
     fw.fit(
-        inputs=s3_input(
+        inputs=TrainingInput(
             "s3://mybucket/train_manifest",
             s3_data_type="AugmentedManifestFile",
             attribute_names=["foo", "bar"],
@@ -531,7 +531,7 @@ def test_s3_input_mode(sagemaker_session):
         train_instance_type=INSTANCE_TYPE,
         enable_cloudwatch_metrics=True,
     )
-    fw.fit(inputs=s3_input("s3://mybucket/train_manifest", input_mode=expected_input_mode))
+    fw.fit(inputs=TrainingInput("s3://mybucket/train_manifest", input_mode=expected_input_mode))
 
     actual_input_mode = sagemaker_session.method_calls[1][2]["input_mode"]
     assert actual_input_mode == expected_input_mode
@@ -546,7 +546,7 @@ def test_shuffle_config(sagemaker_session):
         train_instance_type=INSTANCE_TYPE,
         enable_cloudwatch_metrics=True,
     )
-    fw.fit(inputs=s3_input("s3://mybucket/train_manifest", shuffle_config=ShuffleConfig(100)))
+    fw.fit(inputs=TrainingInput("s3://mybucket/train_manifest", shuffle_config=ShuffleConfig(100)))
     _, _, train_kwargs = sagemaker_session.train.mock_calls[0]
     channel = train_kwargs["input_config"][0]
     assert channel["ShuffleConfig"]["Seed"] == 100
@@ -645,7 +645,7 @@ def test_enable_cloudwatch_metrics(sagemaker_session):
         train_instance_type=INSTANCE_TYPE,
         enable_cloudwatch_metrics=True,
     )
-    fw.fit(inputs=s3_input("s3://mybucket/train"))
+    fw.fit(inputs=TrainingInput("s3://mybucket/train"))
 
     _, _, train_kwargs = sagemaker_session.train.mock_calls[0]
     assert train_kwargs["hyperparameters"]["sagemaker_enable_cloudwatch_metrics"]
@@ -785,7 +785,7 @@ def test_fit_verify_job_name(strftime, sagemaker_session):
         tags=TAGS,
         encrypt_inter_container_traffic=True,
     )
-    fw.fit(inputs=s3_input("s3://mybucket/train"))
+    fw.fit(inputs=TrainingInput("s3://mybucket/train"))
 
     _, _, train_kwargs = sagemaker_session.train.mock_calls[0]
 
@@ -1567,7 +1567,7 @@ def test_container_log_level(sagemaker_session):
         train_instance_type=INSTANCE_TYPE,
         container_log_level=logging.DEBUG,
     )
-    fw.fit(inputs=s3_input("s3://mybucket/train"))
+    fw.fit(inputs=TrainingInput("s3://mybucket/train"))
 
     _, _, train_kwargs = sagemaker_session.train.mock_calls[0]
     assert train_kwargs["hyperparameters"]["sagemaker_container_log_level"] == "10"

@@ -21,7 +21,7 @@ from sagemaker.estimator import Estimator, Framework
 from sagemaker.inputs import FileSystemInput
 from sagemaker.job import _Job
 from sagemaker.model import FrameworkModel
-from sagemaker.session import s3_input
+from sagemaker.session import TrainingInput
 
 BUCKET_NAME = "s3://mybucket/train"
 S3_OUTPUT_PATH = "s3://bucket/prefix"
@@ -128,7 +128,7 @@ def framework(sagemaker_session):
 
 
 def test_load_config(estimator):
-    inputs = s3_input(BUCKET_NAME)
+    inputs = TrainingInput(BUCKET_NAME)
 
     config = _Job._load_config(inputs, estimator)
 
@@ -143,7 +143,7 @@ def test_load_config(estimator):
 
 
 def test_load_config_with_model_channel(estimator):
-    inputs = s3_input(BUCKET_NAME)
+    inputs = TrainingInput(BUCKET_NAME)
 
     estimator.model_uri = MODEL_URI
     estimator.model_channel_name = MODEL_CHANNEL_NAME
@@ -180,7 +180,7 @@ def test_load_config_with_model_channel_no_inputs(estimator):
 
 
 def test_load_config_with_code_channel(framework):
-    inputs = s3_input(BUCKET_NAME)
+    inputs = TrainingInput(BUCKET_NAME)
 
     framework.model_uri = MODEL_URI
     framework.model_channel_name = MODEL_CHANNEL_NAME
@@ -200,7 +200,7 @@ def test_load_config_with_code_channel(framework):
 
 
 def test_load_config_with_code_channel_no_code_uri(framework):
-    inputs = s3_input(BUCKET_NAME)
+    inputs = TrainingInput(BUCKET_NAME)
 
     framework.model_uri = MODEL_URI
     framework.model_channel_name = MODEL_CHANNEL_NAME
@@ -230,8 +230,8 @@ def test_format_inputs_to_input_config_string():
     assert channels[0]["DataSource"]["S3DataSource"]["S3Uri"] == inputs
 
 
-def test_format_inputs_to_input_config_s3_input():
-    inputs = s3_input(BUCKET_NAME)
+def test_format_inputs_to_input_config_training_input():
+    inputs = TrainingInput(BUCKET_NAME)
 
     channels = _Job._format_inputs_to_input_config(inputs)
 
@@ -431,9 +431,9 @@ def test_format_input_multiple_channels():
     assert {c["ChannelName"]: c for c in input_list} == {c["ChannelName"]: c for c in expected}
 
 
-def test_format_input_s3_input():
+def test_format_input_training_input():
     input_dict = _Job._format_inputs_to_input_config(
-        s3_input(
+        TrainingInput(
             "s3://foo/bar",
             distribution="ShardedByS3Key",
             compression="gzip",
@@ -460,7 +460,7 @@ def test_format_input_s3_input():
 
 def test_dict_of_mixed_input_types():
     input_list = _Job._format_inputs_to_input_config(
-        {"a": "s3://foo/bar", "b": s3_input("s3://whizz/bang")}
+        {"a": "s3://foo/bar", "b": TrainingInput("s3://whizz/bang")}
     )
 
     expected = [
@@ -539,7 +539,7 @@ def test_format_string_uri_input_local_file():
 
 
 def test_format_string_uri_input():
-    inputs = s3_input(BUCKET_NAME)
+    inputs = TrainingInput(BUCKET_NAME)
 
     s3_uri_input = _Job._format_string_uri_input(inputs)
 

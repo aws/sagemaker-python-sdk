@@ -53,7 +53,7 @@ from sagemaker.model import (
 )
 from sagemaker.predictor import Predictor
 from sagemaker.session import Session
-from sagemaker.session import s3_input
+from sagemaker.session import TrainingInput
 from sagemaker.transformer import Transformer
 from sagemaker.utils import base_from_name, base_name_from_image, name_from_base, get_config_value
 from sagemaker import vpc_utils
@@ -127,7 +127,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                 'Pipe' - Amazon SageMaker streams data directly from S3 to the
                 container via a Unix-named pipe. This argument can be overriden
                 on a per-channel basis using
-                ``sagemaker.session.s3_input.input_mode``.
+                ``sagemaker.session.TrainingInput.input_mode``.
             output_path (str): S3 location for saving the training result (model
                 artifacts and output files). If not specified, results are
                 stored to a default bucket. If the bucket with the specific name
@@ -472,17 +472,18 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         model using the Amazon SageMaker hosting services.
 
         Args:
-            inputs (str or dict or sagemaker.session.s3_input): Information
+            inputs (str or dict or sagemaker.session.TrainingInput): Information
                 about the training data. This can be one of three types:
 
                 * (str) the S3 location where training data is saved, or a file:// path in
                     local mode.
-                * (dict[str, str] or dict[str, sagemaker.session.s3_input]) If using multiple
+                * (dict[str, str] or dict[str, sagemaker.session.TrainingInput]) If using multiple
                     channels for training data, you can specify a dict mapping channel names to
-                    strings or :func:`~sagemaker.session.s3_input` objects.
-                * (sagemaker.session.s3_input) - channel configuration for S3 data sources that can
-                    provide additional information as well as the path to the training dataset.
-                    See :func:`sagemaker.session.s3_input` for full details.
+                    strings or :func:`~sagemaker.session.TrainingInput` objects.
+                * (sagemaker.session.TrainingInput) - channel configuration for S3 data sources
+                    that can provide additional information as well as the path to the training
+                    dataset.
+                    See :func:`sagemaker.session.TrainingInput` for full details.
                 * (sagemaker.session.FileSystemInput) - channel configuration for
                     a file system data source that can provide additional information as well as
                     the path to the training dataset.
@@ -1020,10 +1021,10 @@ class _TrainingJob(_Job):
         train_args["metric_definitions"] = estimator.metric_definitions
         train_args["experiment_config"] = experiment_config
 
-        if isinstance(inputs, s3_input):
+        if isinstance(inputs, TrainingInput):
             if "InputMode" in inputs.config:
                 logging.debug(
-                    "Selecting s3_input's input_mode (%s) for TrainingInputMode.",
+                    "Selecting TrainingInput's input_mode (%s) for TrainingInputMode.",
                     inputs.config["InputMode"],
                 )
                 train_args["input_mode"] = inputs.config["InputMode"]
@@ -1191,7 +1192,7 @@ class Estimator(EstimatorBase):
                   container via a Unix-named pipe.
 
                 This argument can be overriden on a per-channel basis using
-                ``sagemaker.session.s3_input.input_mode``.
+                ``sagemaker.session.TrainingInput.input_mode``.
             output_path (str): S3 location for saving the training result (model
                 artifacts and output files). If not specified, results are
                 stored to a default bucket. If the bucket with the specific name
@@ -2028,7 +2029,7 @@ def _s3_uri_prefix(channel_name, s3_data):
         channel_name:
         s3_data:
     """
-    if isinstance(s3_data, s3_input):
+    if isinstance(s3_data, TrainingInput):
         s3_uri = s3_data.config["DataSource"]["S3DataSource"]["S3Uri"]
     else:
         s3_uri = s3_data
@@ -2038,7 +2039,7 @@ def _s3_uri_prefix(channel_name, s3_data):
 
 
 # E.g. 's3://bucket/data' would return 'bucket/data'.
-# Also accepts other valid input types, e.g. dict and s3_input.
+# Also accepts other valid input types, e.g. dict and TrainingInput.
 def _s3_uri_without_prefix_from_input(input_data):
     # Unpack an input_config object from a dict if a dict was passed in.
     """
@@ -2052,8 +2053,10 @@ def _s3_uri_without_prefix_from_input(input_data):
         return response
     if isinstance(input_data, str):
         return _s3_uri_prefix("training", input_data)
-    if isinstance(input_data, s3_input):
+    if isinstance(input_data, TrainingInput):
         return _s3_uri_prefix("training", input_data)
     raise ValueError(
-        "Unrecognized type for S3 input data config - not str or s3_input: {}".format(input_data)
+        "Unrecognized type for S3 input data config - not str or TrainingInput: {}".format(
+            input_data
+        )
     )

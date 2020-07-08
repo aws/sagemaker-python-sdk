@@ -103,7 +103,7 @@ class CandidateEstimator(object):
         self.name = candidate_name or self.name
         running_jobs = {}
 
-        # convert inputs to s3_input format
+        # convert inputs to TrainingInput format
         if isinstance(inputs, string_types):
             if not inputs.startswith("s3://"):
                 inputs = self.sagemaker_session.upload_data(inputs, key_prefix="auto-ml-input-data")

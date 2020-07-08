@@ -29,8 +29,8 @@ import six
 import sagemaker.logs
 from sagemaker import vpc_utils
 
-# import s3_input for backward compatibility
-from sagemaker.inputs import s3_input  # noqa # pylint: disable=unused-import
+# import TrainingInput for backward compatibility
+from sagemaker.inputs import TrainingInput  # noqa # pylint: disable=unused-import
 from sagemaker.user_agent import prepend_user_agent
 from sagemaker.utils import (
     name_from_image,

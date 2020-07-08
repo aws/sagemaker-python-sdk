@@ -115,13 +115,13 @@ def training_base_config(estimator, inputs=None, job_name=None, mini_batch_size=
 
             * (str) - The S3 location where training data is saved.
 
-            * (dict[str, str] or dict[str, sagemaker.session.s3_input]) - If using multiple
+            * (dict[str, str] or dict[str, sagemaker.session.TrainingInput]) - If using multiple
                   channels for training data, you can specify a dict mapping channel names to
-                  strings or :func:`~sagemaker.session.s3_input` objects.
+                  strings or :func:`~sagemaker.session.TrainingInput` objects.
 
-            * (sagemaker.session.s3_input) - Channel configuration for S3 data sources that can
+            * (sagemaker.session.TrainingInput) - Channel configuration for S3 data sources that can
                   provide additional information about the training dataset. See
-                  :func:`sagemaker.session.s3_input` for full details.
+                  :func:`sagemaker.session.TrainingInput` for full details.
 
             * (sagemaker.amazon.amazon_estimator.RecordSet) - A collection of
                   Amazon :class:~`Record` objects serialized and stored in S3.
@@ -208,13 +208,13 @@ def training_config(estimator, inputs=None, job_name=None, mini_batch_size=None)
             method of the associated estimator, as this can take any of the following forms:
             * (str) - The S3 location where training data is saved.
 
-            * (dict[str, str] or dict[str, sagemaker.session.s3_input]) - If using multiple
+            * (dict[str, str] or dict[str, sagemaker.session.TrainingInput]) - If using multiple
                   channels for training data, you can specify a dict mapping channel names to
-                  strings or :func:`~sagemaker.session.s3_input` objects.
+                  strings or :func:`~sagemaker.session.TrainingInput` objects.
 
-            * (sagemaker.session.s3_input) - Channel configuration for S3 data sources that can
+            * (sagemaker.session.TrainingInput) - Channel configuration for S3 data sources that can
                   provide additional information about the training dataset. See
-                  :func:`sagemaker.session.s3_input` for full details.
+                  :func:`sagemaker.session.TrainingInput` for full details.
 
             * (sagemaker.amazon.amazon_estimator.RecordSet) - A collection of
                   Amazon :class:~`Record` objects serialized and stored in S3.
@@ -258,13 +258,13 @@ def tuning_config(tuner, inputs, job_name=None, include_cls_metadata=False, mini
 
             * (str) - The S3 location where training data is saved.
 
-            * (dict[str, str] or dict[str, sagemaker.session.s3_input]) - If using multiple
+            * (dict[str, str] or dict[str, sagemaker.session.TrainingInput]) - If using multiple
                   channels for training data, you can specify a dict mapping channel names to
-                  strings or :func:`~sagemaker.session.s3_input` objects.
+                  strings or :func:`~sagemaker.session.TrainingInput` objects.
 
-            * (sagemaker.session.s3_input) - Channel configuration for S3 data sources that can
+            * (sagemaker.session.TrainingInput) - Channel configuration for S3 data sources that can
                   provide additional information about the training dataset. See
-                  :func:`sagemaker.session.s3_input` for full details.
+                  :func:`sagemaker.session.TrainingInput` for full details.
 
             * (sagemaker.amazon.amazon_estimator.RecordSet) - A collection of
                   Amazon :class:~`Record` objects serialized and stored in S3.
