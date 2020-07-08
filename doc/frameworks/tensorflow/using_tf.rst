@@ -217,6 +217,7 @@ The following example uses the ``image_name='763104351884.dkr.ecr.us-east-1.amaz
                              train_instance_type='ml.p2.xlarge',
                              image_name='763104351884.dkr.ecr.us-east-1.amazonaws.com/tensorflow-training:1.15.2-cpu-py37-ubuntu18.04',
                             script_mode=True)
+                            
 For more information about the sagemaker.tensorflow.TensorFlow estimator, see `SageMaker TensorFlow Classes`_.
 
 Call the fit Method
