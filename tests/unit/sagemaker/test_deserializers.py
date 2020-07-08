@@ -29,7 +29,10 @@ def test_stream_deserializer():
     deserializer = StreamDeserializer()
 
     stream, content_type = deserializer.deserialize(io.BytesIO(b"[1, 2, 3]"), "application/json")
-    result = stream.read()
+    try:
+        result = stream.read()
+    finally:
+        stream.close()
 
     assert result == b"[1, 2, 3]"
     assert content_type == "application/json"
