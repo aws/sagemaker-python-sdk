@@ -19,6 +19,7 @@ from sagemaker.cli.compatibility.v2.modifiers import matching, parsing
 from sagemaker.cli.compatibility.v2.modifiers.modifier import Modifier
 
 FRAMEWORK_ARG = "framework_version"
+IMAGE_ARG = "image_uri"
 PY_ARG = "py_version"
 
 FRAMEWORK_DEFAULTS = {
@@ -70,11 +71,8 @@ class FrameworkVersionEnforcer(Modifier):
             bool: If the ``ast.Call`` is instantiating a framework class that
                 should specify ``framework_version``, but doesn't.
         """
-        if matching.matches_any(node, ESTIMATORS):
-            return _version_args_needed(node, "image_name")
-
-        if matching.matches_any(node, MODELS):
-            return _version_args_needed(node, "image")
+        if matching.matches_any(node, ESTIMATORS) or matching.matches_any(node, MODELS):
+            return _version_args_needed(node)
 
         return False
 
@@ -169,13 +167,13 @@ def _framework_from_node(node):
     return framework, is_model
 
 
-def _version_args_needed(node, image_arg):
+def _version_args_needed(node):
     """Determines if image_arg or version_arg was supplied
 
     Applies similar logic as ``validate_version_or_image_args``
     """
     # if image_arg is present, no need to supply version arguments
-    if matching.has_arg(node, image_arg):
+    if matching.has_arg(node, IMAGE_ARG):
         return False
 
     # if framework_version is None, need args

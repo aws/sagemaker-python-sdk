@@ -57,7 +57,7 @@ class Template:
     def _frameworks(self, versions=False, image=False):
         keywords = dict()
         if image:
-            keywords["image_name"] = "my:image"
+            keywords["image_uri"] = "my:image"
         if versions:
             keywords["framework_version"] = self.framework_version
             keywords["py_version"] = self.py_version
@@ -66,7 +66,7 @@ class Template:
     def _models(self, versions=False, image=False):
         keywords = dict()
         if image:
-            keywords["image"] = "my:image"
+            keywords["image_uri"] = "my:image"
         if versions:
             keywords["framework_version"] = self.framework_version
             if self.py_version_for_model:
