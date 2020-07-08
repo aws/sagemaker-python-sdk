@@ -71,7 +71,6 @@ def test_training_with_additional_hyperparameters(
 
 
 @pytest.mark.canary_quick
-@pytest.mark.regional_testing
 def test_attach_deploy(
     sagemaker_session, chainer_full_version, chainer_full_py_version, cpu_instance_type
 ):
