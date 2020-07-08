@@ -31,8 +31,8 @@ def _build_tf(sagemaker_session, **kwargs):
         sagemaker_session=sagemaker_session,
         entry_point="dummy.py",
         role="dummy-role",
-        train_instance_count=1,
-        train_instance_type="ml.c4.xlarge",
+        instance_count=1,
+        instance_type="ml.c4.xlarge",
         **kwargs
     )
 

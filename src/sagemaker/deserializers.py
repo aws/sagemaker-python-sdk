@@ -73,7 +73,7 @@ class StringDeserializer(BaseDeserializer):
 class BytesDeserializer(BaseDeserializer):
     """Deserialize a stream of bytes into a bytes object."""
 
-    ACCEPT = "application/octet-stream"
+    ACCEPT = "*/*"
 
     def deserialize(self, data, content_type):
         """Read a stream of bytes returned from an inference endpoint.

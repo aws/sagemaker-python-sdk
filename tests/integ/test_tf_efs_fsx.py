@@ -68,8 +68,8 @@ def test_mnist_efs(
     estimator = TensorFlow(
         entry_point=SCRIPT,
         role=role,
-        train_instance_count=1,
-        train_instance_type=cpu_instance_type,
+        instance_count=1,
+        instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
         framework_version=tf_training_latest_version,
         py_version=tf_training_latest_py_version,
@@ -113,8 +113,8 @@ def test_mnist_lustre(
     estimator = TensorFlow(
         entry_point=SCRIPT,
         role=role,
-        train_instance_count=1,
-        train_instance_type=cpu_instance_type,
+        instance_count=1,
+        instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
         framework_version=tf_training_latest_version,
         py_version=tf_training_latest_py_version,
@@ -154,8 +154,8 @@ def test_tuning_tf_efs(
     estimator = TensorFlow(
         entry_point=SCRIPT,
         role=role,
-        train_instance_count=1,
-        train_instance_type=cpu_instance_type,
+        instance_count=1,
+        instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
         framework_version=tf_training_latest_version,
         py_version=tf_training_latest_py_version,
@@ -207,8 +207,8 @@ def test_tuning_tf_lustre(
     estimator = TensorFlow(
         entry_point=SCRIPT,
         role=role,
-        train_instance_count=1,
-        train_instance_type=cpu_instance_type,
+        instance_count=1,
+        instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
         framework_version=tf_training_latest_version,
         py_version=tf_training_latest_py_version,

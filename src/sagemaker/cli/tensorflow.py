@@ -54,8 +54,8 @@ class TensorFlowTrainCommand(TrainCommand):
             entry_point=self.script,
             role=self.role_name,
             base_job_name=self.job_name,
-            train_instance_count=self.instance_count,
-            train_instance_type=self.instance_type,
+            instance_count=self.instance_count,
+            instance_type=self.instance_type,
             hyperparameters=self.hyperparameters,
         )
 

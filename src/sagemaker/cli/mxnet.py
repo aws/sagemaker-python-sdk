@@ -47,8 +47,8 @@ class MXNetTrainCommand(TrainCommand):
             py_version=self.python,
             role=self.role_name,
             base_job_name=self.job_name,
-            train_instance_count=self.instance_count,
-            train_instance_type=self.instance_type,
+            instance_count=self.instance_count,
+            instance_type=self.instance_type,
             hyperparameters=self.hyperparameters,
         )
 

@@ -330,8 +330,8 @@ def _mxnet_training_job(
             role=ROLE,
             framework_version=mxnet_version,
             py_version=py_version,
-            train_instance_count=1,
-            train_instance_type=cpu_instance_type,
+            instance_count=1,
+            instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
             hyperparameters={"learning-rate": learning_rate},
         )
@@ -430,8 +430,8 @@ def __rcf_training_job(
 
         rcf = RandomCutForest(
             role=ROLE,
-            train_instance_count=1,
-            train_instance_type=cpu_instance_type,
+            instance_count=1,
+            instance_type=cpu_instance_type,
             num_trees=num_trees,
             num_samples_per_tree=num_samples_per_tree,
             eval_metrics=["accuracy", "precision_recall_fscore"],

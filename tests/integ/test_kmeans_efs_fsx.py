@@ -25,7 +25,7 @@ from tests.integ.file_system_input_utils import set_up_efs_fsx, tear_down
 from tests.integ.s3_utils import assert_s3_files_exist
 from tests.integ.timeout import timeout
 
-TRAIN_INSTANCE_COUNT = 1
+INSTANCE_COUNT = 1
 OBJECTIVE_METRIC_NAME = "test:msd"
 EFS_DIR_PATH = "/one_p_mnist"
 FSX_DIR_PATH = "/fsx/one_p_mnist"
@@ -59,8 +59,8 @@ def test_kmeans_efs(efs_fsx_setup, sagemaker_session, cpu_instance_type):
 
         kmeans = KMeans(
             role=role,
-            train_instance_count=TRAIN_INSTANCE_COUNT,
-            train_instance_type=cpu_instance_type,
+            instance_count=INSTANCE_COUNT,
+            instance_type=cpu_instance_type,
             k=K,
             sagemaker_session=sagemaker_session,
             subnets=subnets,
@@ -93,8 +93,8 @@ def test_kmeans_fsx(efs_fsx_setup, sagemaker_session, cpu_instance_type):
         security_group_ids = efs_fsx_setup["security_group_ids"]
         kmeans = KMeans(
             role=role,
-            train_instance_count=TRAIN_INSTANCE_COUNT,
-            train_instance_type=cpu_instance_type,
+            instance_count=INSTANCE_COUNT,
+            instance_type=cpu_instance_type,
             k=K,
             sagemaker_session=sagemaker_session,
             subnets=subnets,
@@ -126,8 +126,8 @@ def test_tuning_kmeans_efs(efs_fsx_setup, sagemaker_session, cpu_instance_type):
     security_group_ids = efs_fsx_setup["security_group_ids"]
     kmeans = KMeans(
         role=role,
-        train_instance_count=TRAIN_INSTANCE_COUNT,
-        train_instance_type=cpu_instance_type,
+        instance_count=INSTANCE_COUNT,
+        instance_type=cpu_instance_type,
         k=K,
         sagemaker_session=sagemaker_session,
         subnets=subnets,
@@ -186,8 +186,8 @@ def test_tuning_kmeans_fsx(efs_fsx_setup, sagemaker_session, cpu_instance_type):
     security_group_ids = efs_fsx_setup["security_group_ids"]
     kmeans = KMeans(
         role=role,
-        train_instance_count=TRAIN_INSTANCE_COUNT,
-        train_instance_type=cpu_instance_type,
+        instance_count=INSTANCE_COUNT,
+        instance_type=cpu_instance_type,
         k=K,
         sagemaker_session=sagemaker_session,
         subnets=subnets,

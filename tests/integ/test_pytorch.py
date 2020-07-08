@@ -73,8 +73,8 @@ def test_local_fit_deploy(sagemaker_local_session, pytorch_full_version, pytorch
         role="SageMakerRole",
         framework_version=pytorch_full_version,
         py_version=pytorch_full_py_version,
-        train_instance_count=1,
-        train_instance_type="local",
+        instance_count=1,
+        instance_type="local",
         sagemaker_session=sagemaker_local_session,
     )
 
@@ -192,8 +192,8 @@ def _get_pytorch_estimator(
         role="SageMakerRole",
         framework_version=pytorch_version,
         py_version=py_version,
-        train_instance_count=1,
-        train_instance_type=instance_type,
+        instance_count=1,
+        instance_type=instance_type,
         sagemaker_session=sagemaker_session,
     )
 

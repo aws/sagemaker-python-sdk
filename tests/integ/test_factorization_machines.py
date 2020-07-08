@@ -33,8 +33,8 @@ def test_factorization_machines(sagemaker_session, cpu_instance_type, training_s
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         fm = FactorizationMachines(
             role="SageMakerRole",
-            train_instance_count=1,
-            train_instance_type=cpu_instance_type,
+            instance_count=1,
+            instance_type=cpu_instance_type,
             num_factors=10,
             predictor_type="regressor",
             epochs=2,
@@ -68,8 +68,8 @@ def test_async_factorization_machines(sagemaker_session, cpu_instance_type, trai
     with timeout(minutes=5):
         fm = FactorizationMachines(
             role="SageMakerRole",
-            train_instance_count=1,
-            train_instance_type=cpu_instance_type,
+            instance_count=1,
+            instance_type=cpu_instance_type,
             num_factors=10,
             predictor_type="regressor",
             epochs=2,

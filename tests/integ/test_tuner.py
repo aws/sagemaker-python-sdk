@@ -60,8 +60,8 @@ def kmeans_train_set(sagemaker_session):
 def kmeans_estimator(sagemaker_session, cpu_instance_type):
     kmeans = KMeans(
         role="SageMakerRole",
-        train_instance_count=1,
-        train_instance_type=cpu_instance_type,
+        instance_count=1,
+        instance_type=cpu_instance_type,
         k=10,
         sagemaker_session=sagemaker_session,
         output_path="s3://{}/".format(sagemaker_session.default_bucket()),
@@ -422,7 +422,7 @@ def test_tuning_lda(sagemaker_session, cpu_instance_type):
 
         lda = LDA(
             role="SageMakerRole",
-            train_instance_type=cpu_instance_type,
+            instance_type=cpu_instance_type,
             num_topics=10,
             sagemaker_session=sagemaker_session,
         )
@@ -487,8 +487,8 @@ def test_stop_tuning_job(sagemaker_session, cpu_instance_type):
 
     rcf = RandomCutForest(
         role="SageMakerRole",
-        train_instance_count=1,
-        train_instance_type=cpu_instance_type,
+        instance_count=1,
+        instance_type=cpu_instance_type,
         num_trees=50,
         num_samples_per_tree=20,
         sagemaker_session=sagemaker_session,
@@ -544,8 +544,8 @@ def test_tuning_mxnet(
             entry_point=script_path,
             role="SageMakerRole",
             py_version=mxnet_full_py_version,
-            train_instance_count=1,
-            train_instance_type=cpu_instance_type,
+            instance_count=1,
+            instance_type=cpu_instance_type,
             framework_version=mxnet_full_version,
             sagemaker_session=sagemaker_session,
         )
@@ -596,8 +596,8 @@ def test_tuning_tf(
     estimator = TensorFlow(
         entry_point=script_path,
         role="SageMakerRole",
-        train_instance_count=1,
-        train_instance_type=cpu_instance_type,
+        instance_count=1,
+        instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
         framework_version=tf_training_latest_version,
         py_version=tf_training_latest_py_version,
@@ -649,8 +649,8 @@ def test_tuning_tf_vpc_multi(
         role="SageMakerRole",
         framework_version=tf_training_latest_version,
         py_version=tf_training_latest_py_version,
-        train_instance_count=instance_count,
-        train_instance_type=instance_type,
+        instance_count=instance_count,
+        instance_type=instance_type,
         sagemaker_session=sagemaker_session,
         base_job_name="test-vpc-tf",
         subnets=subnet_ids,
@@ -698,8 +698,8 @@ def test_tuning_chainer(
             role="SageMakerRole",
             framework_version=chainer_full_version,
             py_version=chainer_full_py_version,
-            train_instance_count=1,
-            train_instance_type=cpu_instance_type,
+            instance_count=1,
+            instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
             hyperparameters={"epochs": 1},
         )
@@ -770,10 +770,10 @@ def test_attach_tuning_pytorch(
     estimator = PyTorch(
         entry_point=mnist_script,
         role="SageMakerRole",
-        train_instance_count=1,
+        instance_count=1,
         framework_version=pytorch_full_version,
         py_version=pytorch_full_py_version,
-        train_instance_type=cpu_instance_type,
+        instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
     )
 
@@ -856,8 +856,8 @@ def test_tuning_byo_estimator(sagemaker_session, cpu_instance_type):
         estimator = Estimator(
             image_uri=image_uri,
             role="SageMakerRole",
-            train_instance_count=1,
-            train_instance_type=cpu_instance_type,
+            instance_count=1,
+            instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
         )
 
