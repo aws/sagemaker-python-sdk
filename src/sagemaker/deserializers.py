@@ -81,7 +81,7 @@ class CSVDeserializer(BaseDeserializer):
         """Deserialize data from an inference endpoint into a list of lists.
 
         Args:
-            data (object): Data to be deserialized.
+            data (botocore.response.StreamingBody): Data to be deserialized.
             content_type (str): The MIME type of the data.
 
         Returns:
@@ -89,7 +89,7 @@ class CSVDeserializer(BaseDeserializer):
                 contents of a CSV file.
         """
         try:
-            string = data.read().decode(self.encoding)
-            return list(csv.reader(string.splitlines()))
+            decoded_string = data.read().decode(self.encoding)
+            return list(csv.reader(decoded_string.splitlines()))
         finally:
             data.close()
