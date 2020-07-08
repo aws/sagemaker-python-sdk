@@ -38,7 +38,7 @@ class LDA(AmazonAlgorithmEstimatorBase):
     def __init__(
         self,
         role,
-        train_instance_type,
+        instance_type,
         num_topics,
         alpha0=None,
         max_restarts=None,
@@ -92,7 +92,7 @@ class LDA(AmazonAlgorithmEstimatorBase):
                 endpoints use this role to access training data and model
                 artifacts. After the endpoint is created, the inference code
                 might use the IAM role, if accessing AWS resource.
-            train_instance_type (str): Type of EC2 instance to use for training,
+            instance_type (str): Type of EC2 instance to use for training,
                 for example, 'ml.c4.xlarge'.
             num_topics (int): The number of topics for LDA to find within the
                 data.
@@ -114,14 +114,14 @@ class LDA(AmazonAlgorithmEstimatorBase):
             :class:`~sagemaker.estimator.EstimatorBase`.
         """
         # this algorithm only supports single instance training
-        if kwargs.pop("train_instance_count", 1) != 1:
+        if kwargs.pop("instance_count", 1) != 1:
             print(
                 "LDA only supports single instance training. Defaulting to 1 {}.".format(
-                    train_instance_type
+                    instance_type
                 )
             )
 
-        super(LDA, self).__init__(role, 1, train_instance_type, **kwargs)
+        super(LDA, self).__init__(role, 1, instance_type, **kwargs)
         self.num_topics = num_topics
         self.alpha0 = alpha0
         self.max_restarts = max_restarts

@@ -1518,7 +1518,7 @@ class _TuningJob(_Job):
             "encrypt_inter_container_traffic"
         ] = estimator.encrypt_inter_container_traffic
 
-        training_config["train_use_spot_instances"] = estimator.train_use_spot_instances
+        training_config["use_spot_instances"] = estimator.use_spot_instances
         training_config["checkpoint_s3_uri"] = estimator.checkpoint_s3_uri
         training_config["checkpoint_local_path"] = estimator.checkpoint_local_path
 

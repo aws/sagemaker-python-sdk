@@ -36,8 +36,8 @@ def test_ipinsights(sagemaker_session, cpu_instance_type):
 
             ipinsights = IPInsights(
                 role="SageMakerRole",
-                train_instance_count=1,
-                train_instance_type=cpu_instance_type,
+                instance_count=1,
+                instance_type=cpu_instance_type,
                 num_entity_vectors=10,
                 vector_dim=100,
                 sagemaker_session=sagemaker_session,

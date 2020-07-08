@@ -33,8 +33,8 @@ def test_kmeans(sagemaker_session, cpu_instance_type, training_set):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         kmeans = KMeans(
             role="SageMakerRole",
-            train_instance_count=1,
-            train_instance_type=cpu_instance_type,
+            instance_count=1,
+            instance_type=cpu_instance_type,
             k=10,
             sagemaker_session=sagemaker_session,
         )
@@ -89,8 +89,8 @@ def test_async_kmeans(sagemaker_session, cpu_instance_type, training_set):
     with timeout(minutes=5):
         kmeans = KMeans(
             role="SageMakerRole",
-            train_instance_count=1,
-            train_instance_type=cpu_instance_type,
+            instance_count=1,
+            instance_type=cpu_instance_type,
             k=10,
             sagemaker_session=sagemaker_session,
         )

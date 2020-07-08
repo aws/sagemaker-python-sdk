@@ -82,8 +82,8 @@ def _test_coach(sagemaker_session, rl_framework, rl_coach_version, cpu_instance_
         entry_point=cartpole,
         source_dir=source_dir,
         role="SageMakerRole",
-        train_instance_count=1,
-        train_instance_type=cpu_instance_type,
+        instance_count=1,
+        instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
         dependencies=dependencies,
         hyperparameters={
@@ -108,8 +108,8 @@ def test_ray_tf(sagemaker_session, rl_ray_full_version, cpu_instance_type):
         toolkit_version=rl_ray_full_version,
         sagemaker_session=sagemaker_session,
         role="SageMakerRole",
-        train_instance_type=cpu_instance_type,
-        train_instance_count=1,
+        instance_type=cpu_instance_type,
+        instance_count=1,
     )
     job_name = unique_name_from_base("test-ray-tf")
 

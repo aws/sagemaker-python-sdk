@@ -95,7 +95,7 @@ def _pytorch_estimator(
     sagemaker_session,
     framework_version,
     py_version,
-    train_instance_type=None,
+    instance_type=None,
     base_job_name=None,
     **kwargs
 ):
@@ -105,8 +105,8 @@ def _pytorch_estimator(
         py_version=py_version,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=train_instance_type if train_instance_type else INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=instance_type if instance_type else INSTANCE_TYPE,
         base_job_name=base_job_name,
         **kwargs
     )
@@ -167,8 +167,8 @@ def test_create_model(name_from_base, sagemaker_session, pytorch_version, pytorc
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         framework_version=pytorch_version,
         py_version=pytorch_py_version,
         container_log_level=container_log_level,
@@ -205,8 +205,8 @@ def test_create_model_with_optional_params(sagemaker_session, pytorch_version, p
         py_version=pytorch_py_version,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         container_log_level=container_log_level,
         base_job_name="job",
         source_dir=source_dir,
@@ -247,8 +247,8 @@ def test_create_model_with_custom_image(name_from_base, sagemaker_session):
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         container_log_level=container_log_level,
         image_uri=image,
         base_job_name=base_job_name,
@@ -279,8 +279,8 @@ def test_pytorch(strftime, sagemaker_session, pytorch_version, pytorch_py_versio
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         framework_version=pytorch_version,
         py_version=pytorch_py_version,
     )
@@ -411,8 +411,8 @@ def test_train_image_default(sagemaker_session, pytorch_version, pytorch_py_vers
         py_version=pytorch_py_version,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
     )
 
     assert _get_full_cpu_image_uri(pytorch_version, pytorch_py_version) in pytorch.train_image()
@@ -420,29 +420,29 @@ def test_train_image_default(sagemaker_session, pytorch_version, pytorch_py_vers
 
 def test_train_image_cpu_instances(sagemaker_session, pytorch_version, pytorch_py_version):
     pytorch = _pytorch_estimator(
-        sagemaker_session, pytorch_version, pytorch_py_version, train_instance_type="ml.c2.2xlarge"
+        sagemaker_session, pytorch_version, pytorch_py_version, instance_type="ml.c2.2xlarge"
     )
     assert pytorch.train_image() == _get_full_cpu_image_uri(pytorch_version, pytorch_py_version)
 
     pytorch = _pytorch_estimator(
-        sagemaker_session, pytorch_version, pytorch_py_version, train_instance_type="ml.c4.2xlarge"
+        sagemaker_session, pytorch_version, pytorch_py_version, instance_type="ml.c4.2xlarge"
     )
     assert pytorch.train_image() == _get_full_cpu_image_uri(pytorch_version, pytorch_py_version)
 
     pytorch = _pytorch_estimator(
-        sagemaker_session, pytorch_version, pytorch_py_version, train_instance_type="ml.m16"
+        sagemaker_session, pytorch_version, pytorch_py_version, instance_type="ml.m16"
     )
     assert pytorch.train_image() == _get_full_cpu_image_uri(pytorch_version, pytorch_py_version)
 
 
 def test_train_image_gpu_instances(sagemaker_session, pytorch_version, pytorch_py_version):
     pytorch = _pytorch_estimator(
-        sagemaker_session, pytorch_version, pytorch_py_version, train_instance_type="ml.g2.2xlarge"
+        sagemaker_session, pytorch_version, pytorch_py_version, instance_type="ml.g2.2xlarge"
     )
     assert pytorch.train_image() == _get_full_gpu_image_uri(pytorch_version, pytorch_py_version)
 
     pytorch = _pytorch_estimator(
-        sagemaker_session, pytorch_version, pytorch_py_version, train_instance_type="ml.p2.2xlarge"
+        sagemaker_session, pytorch_version, pytorch_py_version, instance_type="ml.p2.2xlarge"
     )
     assert pytorch.train_image() == _get_full_gpu_image_uri(pytorch_version, pytorch_py_version)
 
@@ -485,8 +485,8 @@ def test_attach(sagemaker_session, pytorch_version, pytorch_py_version):
     assert estimator.py_version == pytorch_py_version
     assert estimator.framework_version == pytorch_version
     assert estimator.role == "arn:aws:iam::366:role/SageMakerRole"
-    assert estimator.train_instance_count == 1
-    assert estimator.train_max_run == 24 * 60 * 60
+    assert estimator.instance_count == 1
+    assert estimator.max_run == 24 * 60 * 60
     assert estimator.input_mode == "File"
     assert estimator.base_job_name == "neo"
     assert estimator.output_path == "s3://place/output/neo"
@@ -576,8 +576,8 @@ def test_estimator_py2_warning(warning, sagemaker_session, pytorch_version):
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         framework_version=pytorch_version,
         py_version="py2",
     )
