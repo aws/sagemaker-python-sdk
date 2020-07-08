@@ -69,11 +69,11 @@ class CSVDeserializer(BaseDeserializer):
 
     ACCEPT = "test/csv"
 
-    def __init__(self, encoding="UTF-8"):
+    def __init__(self, encoding="utf-8"):
         """Initialize the string encoding.
 
         Args:
-            encoding (str): The string encoding to use (default: "UTF-8").
+            encoding (str): The string encoding to use (default: "utf-8").
         """
         self.encoding = encoding
 
