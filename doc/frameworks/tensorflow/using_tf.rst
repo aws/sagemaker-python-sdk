@@ -197,12 +197,12 @@ The following args are not permitted when using Script Mode:
 Where the S3 url is a path to your training data within Amazon S3.
 The constructor keyword arguments define how SageMaker runs your training script.
 
-Create an Estimator using Docker containers
--------------------------------------------
+Specify a Docker image using an Estimator
+-----------------------------------------
 
-You can also create an Estimator using Docker containers by specifying the ECR URI for the Python and framework version directly. For a full list of available container URIs, see `Available Deep Learning Containers Images <https://github.com/aws/deep-learning-containers/blob/master/available_images.md>`__ For more information on using Docker containers, see `Use Your Own Algorithms or Models with Amazon SageMaker <https://docs.aws.amazon.com/sagemaker/latest/dg/your-algorithms.html>`__.
+You can also specify a Docker image when creating an Estimator by specifying the ECR URI for the Python and framework version directly. For a full list of available container URIs, see `Available Deep Learning Containers Images <https://github.com/aws/deep-learning-containers/blob/master/available_images.md>`__ For more information on using Docker containers, see `Use Your Own Algorithms or Models with Amazon SageMaker <https://docs.aws.amazon.com/sagemaker/latest/dg/your-algorithms.html>`__.
 
-When creating an Estimator using a container, you must use the ``image_name=''`` arg to replace both of the following args:
+When specifying the image, you must use the ``image_name=''`` arg to replace both of the following args:
 
 - ``py_version=''``
 - ``framework_version=''``
