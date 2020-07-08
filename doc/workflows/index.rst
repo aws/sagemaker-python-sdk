@@ -9,3 +9,4 @@ The SageMaker Python SDK supports managed training and inference for a variety o
 
     airflow/index
     kubernetes/index
+    step_functions/index

@@ -21,6 +21,7 @@ import sys
 import numpy as np
 
 from sagemaker.amazon.record_pb2 import Record
+from sagemaker.deserializers import BaseDeserializer
 from sagemaker.utils import DeferredError
 
 
@@ -48,26 +49,24 @@ class numpy_to_record_serializer(object):
         return buf
 
 
-class record_deserializer(object):
-    """Placeholder docstring"""
+class RecordDeserializer(BaseDeserializer):
+    """Deserialize RecordIO Protobuf data from an inference endpoint."""
 
-    def __init__(self, accept="application/x-recordio-protobuf"):
-        """
-        Args:
-            accept:
-        """
-        self.accept = accept
+    ACCEPT = "application/x-recordio-protobuf"
 
-    def __call__(self, stream, content_type):
-        """
+    def deserialize(self, data, content_type):
+        """Deserialize RecordIO Protobuf data from an inference endpoint.
+
         Args:
-            stream:
-            content_type:
+            data (object): The protobuf message to deserialize.
+            content_type (str): The MIME type of the data.
+        Returns:
+            list: A list of records.
         """
         try:
-            return read_records(stream)
+            return read_records(data)
         finally:
-            stream.close()
+            data.close()
 
 
 def _write_feature_tensor(resolved_type, record, vector):

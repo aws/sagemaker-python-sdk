@@ -49,9 +49,9 @@ PYTHON_2_DEPRECATION_WARNING = (
     "Please set the argument \"py_version='py3'\" to use the Python 3 {framework} image."
 )
 PARAMETER_SERVER_MULTI_GPU_WARNING = (
-    "If you have selected a multi-GPU training instance type, "
-    "and have also enabled parameter server for distributed training. "
-    "Distributed training with the default parameter server configuration will not "
+    "If you have selected a multi-GPU training instance type "
+    "and also enabled parameter server for distributed training, "
+    "distributed training with the default parameter server configuration will not "
     "fully leverage all GPU cores; the parameter server will be configured to run "
     "only one worker per host regardless of the number of GPUs."
 )

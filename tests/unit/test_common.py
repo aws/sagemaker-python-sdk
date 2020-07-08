@@ -18,7 +18,7 @@ import pytest
 import itertools
 from scipy.sparse import coo_matrix
 from sagemaker.amazon.common import (
-    record_deserializer,
+    RecordDeserializer,
     write_numpy_to_dense_tensor,
     read_recordio,
     numpy_to_record_serializer,
@@ -51,8 +51,8 @@ def test_deserializer():
     array_data = [[1.0, 2.0, 3.0], [10.0, 20.0, 30.0]]
     s = numpy_to_record_serializer()
     buf = s(np.array(array_data))
-    d = record_deserializer()
-    for record, expected in zip(d(buf, "who cares"), array_data):
+    d = RecordDeserializer()
+    for record, expected in zip(d.deserialize(buf, "who cares"), array_data):
         assert record.features["values"].float64_tensor.values == expected
 
 
