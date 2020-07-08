@@ -102,7 +102,6 @@ def test_training_with_network_isolation(
 
 
 @pytest.mark.canary_quick
-@pytest.mark.regional_testing
 @pytest.mark.skip(
     reason="This test has always failed, but the failure was masked by a bug. "
     "This test should be fixed. Details in https://github.com/aws/sagemaker-python-sdk/pull/968"

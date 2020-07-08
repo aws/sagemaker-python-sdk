@@ -50,7 +50,6 @@ def fixture_training_job(
 
 
 @pytest.mark.canary_quick
-@pytest.mark.regional_testing
 def test_fit_deploy(pytorch_training_job, sagemaker_session, cpu_instance_type):
     endpoint_name = "test-pytorch-sync-fit-attach-deploy{}".format(sagemaker_timestamp())
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
