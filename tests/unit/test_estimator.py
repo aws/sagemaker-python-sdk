@@ -195,12 +195,12 @@ def test_framework_all_init_args(sagemaker_session):
     f = DummyFramework(
         "my_script.py",
         role="DummyRole",
-        train_instance_count=3,
-        train_instance_type="ml.m4.xlarge",
+        instance_count=3,
+        instance_type="ml.m4.xlarge",
         sagemaker_session=sagemaker_session,
-        train_volume_size=123,
-        train_volume_kms_key="volumekms",
-        train_max_run=456,
+        volume_size=123,
+        volume_kms_key="volumekms",
+        max_run=456,
         input_mode="inputmode",
         output_path="outputpath",
         output_kms_key="outputkms",
@@ -260,12 +260,12 @@ def test_framework_with_spot_and_checkpoints(sagemaker_session):
     f = DummyFramework(
         "my_script.py",
         role="DummyRole",
-        train_instance_count=3,
-        train_instance_type="ml.m4.xlarge",
+        instance_count=3,
+        instance_type="ml.m4.xlarge",
         sagemaker_session=sagemaker_session,
-        train_volume_size=123,
-        train_volume_kms_key="volumekms",
-        train_max_run=456,
+        volume_size=123,
+        volume_kms_key="volumekms",
+        max_run=456,
         input_mode="inputmode",
         output_path="outputpath",
         output_kms_key="outputkms",
@@ -275,8 +275,8 @@ def test_framework_with_spot_and_checkpoints(sagemaker_session):
         security_group_ids=["789", "012"],
         metric_definitions=[{"Name": "validation-rmse", "Regex": "validation-rmse=(\\d+)"}],
         encrypt_inter_container_traffic=True,
-        train_use_spot_instances=True,
-        train_max_wait=500,
+        use_spot_instances=True,
+        max_wait=500,
         checkpoint_s3_uri="s3://mybucket/checkpoints/",
         checkpoint_local_path="/tmp/checkpoints",
     )
@@ -313,7 +313,7 @@ def test_framework_with_spot_and_checkpoints(sagemaker_session):
         },
         "metric_definitions": [{"Name": "validation-rmse", "Regex": "validation-rmse=(\\d+)"}],
         "encrypt_inter_container_traffic": True,
-        "train_use_spot_instances": True,
+        "use_spot_instances": True,
         "checkpoint_s3_uri": "s3://mybucket/checkpoints/",
         "checkpoint_local_path": "/tmp/checkpoints",
         "experiment_config": None,
@@ -326,8 +326,8 @@ def test_framework_init_s3_entry_point_invalid(sagemaker_session):
             "s3://remote-script-because-im-mistaken",
             role=ROLE,
             sagemaker_session=sagemaker_session,
-            train_instance_count=INSTANCE_COUNT,
-            train_instance_type=INSTANCE_TYPE,
+            instance_count=INSTANCE_COUNT,
+            instance_type=INSTANCE_TYPE,
         )
     assert "Must be a path to a local file" in str(error)
 
@@ -338,8 +338,8 @@ def test_sagemaker_s3_uri_invalid(sagemaker_session):
             entry_point=SCRIPT_PATH,
             role=ROLE,
             sagemaker_session=sagemaker_session,
-            train_instance_count=INSTANCE_COUNT,
-            train_instance_type=INSTANCE_TYPE,
+            instance_count=INSTANCE_COUNT,
+            instance_type=INSTANCE_TYPE,
         )
         t.fit("thisdoesntstartwiths3")
     assert "must be a valid S3 or FILE URI" in str(error)
@@ -351,8 +351,8 @@ def test_sagemaker_model_s3_uri_invalid(sagemaker_session):
             entry_point=SCRIPT_PATH,
             role=ROLE,
             sagemaker_session=sagemaker_session,
-            train_instance_count=INSTANCE_COUNT,
-            train_instance_type=INSTANCE_TYPE,
+            instance_count=INSTANCE_COUNT,
+            instance_type=INSTANCE_TYPE,
             model_uri="thisdoesntstartwiths3either.tar.gz",
         )
         t.fit("s3://mydata")
@@ -365,8 +365,8 @@ def test_sagemaker_model_file_uri_invalid(sagemaker_session):
             entry_point=SCRIPT_PATH,
             role=ROLE,
             sagemaker_session=sagemaker_session,
-            train_instance_count=INSTANCE_COUNT,
-            train_instance_type=INSTANCE_TYPE,
+            instance_count=INSTANCE_COUNT,
+            instance_type=INSTANCE_TYPE,
             model_uri="file://notins3.tar.gz",
         )
         t.fit("s3://mydata")
@@ -377,8 +377,8 @@ def test_sagemaker_model_default_channel_name(sagemaker_session):
     f = DummyFramework(
         entry_point="my_script.py",
         role="DummyRole",
-        train_instance_count=3,
-        train_instance_type="ml.m4.xlarge",
+        instance_count=3,
+        instance_type="ml.m4.xlarge",
         sagemaker_session=sagemaker_session,
         model_uri="s3://model-bucket/prefix/model.tar.gz",
     )
@@ -405,8 +405,8 @@ def test_sagemaker_model_custom_channel_name(sagemaker_session):
     f = DummyFramework(
         entry_point="my_script.py",
         role="DummyRole",
-        train_instance_count=3,
-        train_instance_type="ml.m4.xlarge",
+        instance_count=3,
+        instance_type="ml.m4.xlarge",
         sagemaker_session=sagemaker_session,
         model_uri="s3://model-bucket/prefix/model.tar.gz",
         model_channel_name="testModelChannel",
@@ -439,8 +439,8 @@ def test_custom_code_bucket(time, sagemaker_session):
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         code_location=code_location,
     )
     t.fit("s3://bucket/mydata")
@@ -464,8 +464,8 @@ def test_custom_code_bucket_without_prefix(time, sagemaker_session):
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         code_location=code_location,
     )
     t.fit("s3://bucket/mydata")
@@ -487,8 +487,8 @@ def test_invalid_custom_code_bucket(sagemaker_session):
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         code_location=code_location,
     )
 
@@ -502,8 +502,8 @@ def test_augmented_manifest(sagemaker_session):
         entry_point=SCRIPT_PATH,
         role="DummyRole",
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         enable_cloudwatch_metrics=True,
     )
     fw.fit(
@@ -527,8 +527,8 @@ def test_s3_input_mode(sagemaker_session):
         entry_point=SCRIPT_PATH,
         role="DummyRole",
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         enable_cloudwatch_metrics=True,
     )
     fw.fit(inputs=s3_input("s3://mybucket/train_manifest", input_mode=expected_input_mode))
@@ -542,8 +542,8 @@ def test_shuffle_config(sagemaker_session):
         entry_point=SCRIPT_PATH,
         role="DummyRole",
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         enable_cloudwatch_metrics=True,
     )
     fw.fit(inputs=s3_input("s3://mybucket/train_manifest", shuffle_config=ShuffleConfig(100)))
@@ -575,8 +575,8 @@ def test_local_code_location():
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sms,
-        train_instance_count=1,
-        train_instance_type="local",
+        instance_count=1,
+        instance_type="local",
         base_job_name=IMAGE_URI,
         hyperparameters={123: [456], "learning_rate": 0.1},
     )
@@ -594,8 +594,8 @@ def test_start_new_convert_hyperparameters_to_str(strftime, sagemaker_session):
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         base_job_name=IMAGE_URI,
         hyperparameters={123: [456], "learning_rate": 0.1},
     )
@@ -620,8 +620,8 @@ def test_start_new_wait_called(strftime, sagemaker_session):
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
     )
 
     t.fit("s3://{}".format(uri))
@@ -641,8 +641,8 @@ def test_enable_cloudwatch_metrics(sagemaker_session):
         entry_point=SCRIPT_PATH,
         role="DummyRole",
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         enable_cloudwatch_metrics=True,
     )
     fw.fit(inputs=s3_input("s3://mybucket/train"))
@@ -665,8 +665,8 @@ def test_attach_framework(sagemaker_session):
     assert framework_estimator._current_job_name == "neo"
     assert framework_estimator.latest_training_job.job_name == "neo"
     assert framework_estimator.role == "arn:aws:iam::366:role/SageMakerRole"
-    assert framework_estimator.train_instance_count == 1
-    assert framework_estimator.train_max_run == 24 * 60 * 60
+    assert framework_estimator.instance_count == 1
+    assert framework_estimator.max_run == 24 * 60 * 60
     assert framework_estimator.input_mode == "File"
     assert framework_estimator.base_job_name == "neo"
     assert framework_estimator.output_path == "s3://place/output/neo"
@@ -709,8 +709,8 @@ def test_attach_framework_with_tuning(sagemaker_session):
     )
     assert framework_estimator.latest_training_job.job_name == "neo"
     assert framework_estimator.role == "arn:aws:iam::366:role/SageMakerRole"
-    assert framework_estimator.train_instance_count == 1
-    assert framework_estimator.train_max_run == 24 * 60 * 60
+    assert framework_estimator.instance_count == 1
+    assert framework_estimator.max_run == 24 * 60 * 60
     assert framework_estimator.input_mode == "File"
     assert framework_estimator.base_job_name == "neo"
     assert framework_estimator.output_path == "s3://place/output/neo"
@@ -779,8 +779,8 @@ def test_fit_verify_job_name(strftime, sagemaker_session):
         entry_point=SCRIPT_PATH,
         role="DummyRole",
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         enable_cloudwatch_metrics=True,
         tags=TAGS,
         encrypt_inter_container_traffic=True,
@@ -803,8 +803,8 @@ def test_prepare_for_training_unique_job_name_generation(sagemaker_session):
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         enable_cloudwatch_metrics=True,
     )
     fw._prepare_for_training()
@@ -822,8 +822,8 @@ def test_prepare_for_training_force_name(sagemaker_session):
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         base_job_name="some",
         enable_cloudwatch_metrics=True,
     )
@@ -837,8 +837,8 @@ def test_prepare_for_training_force_name_generation(strftime, sagemaker_session)
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         base_job_name="some",
         enable_cloudwatch_metrics=True,
     )
@@ -861,8 +861,8 @@ def test_git_support_with_branch_and_commit_succeed(git_clone_repo, sagemaker_se
         git_config=git_config,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         enable_cloudwatch_metrics=True,
     )
     fw.fit()
@@ -883,8 +883,8 @@ def test_git_support_with_branch_succeed(git_clone_repo, sagemaker_session):
         git_config=git_config,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         enable_cloudwatch_metrics=True,
     )
     fw.fit()
@@ -906,8 +906,8 @@ def test_git_support_with_dependencies_succeed(git_clone_repo, sagemaker_session
         dependencies=["foo", "foo/bar"],
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         enable_cloudwatch_metrics=True,
     )
     fw.fit()
@@ -928,8 +928,8 @@ def test_git_support_without_branch_and_commit_succeed(git_clone_repo, sagemaker
         git_config=git_config,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         enable_cloudwatch_metrics=True,
     )
     fw.fit()
@@ -944,8 +944,8 @@ def test_git_support_repo_not_provided(sagemaker_session):
         source_dir="source_dir",
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         enable_cloudwatch_metrics=True,
     )
     with pytest.raises(ValueError) as error:
@@ -961,8 +961,8 @@ def test_git_support_bad_repo_url_format(sagemaker_session):
         source_dir="source_dir",
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         enable_cloudwatch_metrics=True,
     )
     with pytest.raises(ValueError) as error:
@@ -983,8 +983,8 @@ def test_git_support_git_clone_fail(sagemaker_session):
         git_config=git_config,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         enable_cloudwatch_metrics=True,
     )
     with pytest.raises(subprocess.CalledProcessError) as error:
@@ -1005,8 +1005,8 @@ def test_git_support_branch_not_exist(sagemaker_session):
         git_config=git_config,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         enable_cloudwatch_metrics=True,
     )
     with pytest.raises(subprocess.CalledProcessError) as error:
@@ -1027,8 +1027,8 @@ def test_git_support_commit_not_exist(sagemaker_session):
         git_config=git_config,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         enable_cloudwatch_metrics=True,
     )
     with pytest.raises(subprocess.CalledProcessError) as error:
@@ -1047,8 +1047,8 @@ def test_git_support_entry_point_not_exist(sagemaker_session):
         git_config=git_config,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         enable_cloudwatch_metrics=True,
     )
     with pytest.raises(ValueError) as error:
@@ -1068,8 +1068,8 @@ def test_git_support_source_dir_not_exist(sagemaker_session):
         source_dir="source_dir_that_does_not_exist",
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         enable_cloudwatch_metrics=True,
     )
     with pytest.raises(ValueError) as error:
@@ -1090,8 +1090,8 @@ def test_git_support_dependencies_not_exist(sagemaker_session):
         dependencies=["foo", "no-such-dir"],
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         enable_cloudwatch_metrics=True,
     )
     with pytest.raises(ValueError) as error:
@@ -1121,8 +1121,8 @@ def test_git_support_with_username_password_no_2fa(git_clone_repo, sagemaker_ses
         git_config=git_config,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         enable_cloudwatch_metrics=True,
     )
     fw.fit()
@@ -1152,8 +1152,8 @@ def test_git_support_with_token_2fa(git_clone_repo, sagemaker_session):
         git_config=git_config,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         enable_cloudwatch_metrics=True,
     )
     fw.fit()
@@ -1177,8 +1177,8 @@ def test_git_support_ssh_no_passphrase_needed(git_clone_repo, sagemaker_session)
         git_config=git_config,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         enable_cloudwatch_metrics=True,
     )
     fw.fit()
@@ -1200,8 +1200,8 @@ def test_git_support_ssh_passphrase_required(git_clone_repo, sagemaker_session):
         git_config=git_config,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         enable_cloudwatch_metrics=True,
     )
     with pytest.raises(subprocess.CalledProcessError) as error:
@@ -1232,8 +1232,8 @@ def test_git_support_codecommit_with_username_and_password_succeed(
         git_config=git_config,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         enable_cloudwatch_metrics=True,
     )
     fw.fit()
@@ -1257,8 +1257,8 @@ def test_git_support_codecommit_with_ssh_no_passphrase_needed(git_clone_repo, sa
         git_config=git_config,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         # enable_cloudwatch_metrics=True,
     )
     fw.fit()
@@ -1273,8 +1273,8 @@ def test_init_with_source_dir_s3(strftime, sagemaker_session):
         source_dir="s3://location",
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         enable_cloudwatch_metrics=False,
     )
     fw._prepare_for_training()
@@ -1296,8 +1296,8 @@ def test_framework_transformer_creation(name_from_base, sagemaker_session):
     fw = DummyFramework(
         entry_point=SCRIPT_PATH,
         role=ROLE,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         sagemaker_session=sagemaker_session,
         subnets=vpc_config["Subnets"],
         security_group_ids=vpc_config["SecurityGroupIds"],
@@ -1332,8 +1332,8 @@ def test_framework_transformer_creation_with_optional_params(name_from_image, sa
     fw = DummyFramework(
         entry_point=SCRIPT_PATH,
         role=ROLE,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         sagemaker_session=sagemaker_session,
         base_job_name=base_name,
         subnets=vpc_config["Subnets"],
@@ -1399,8 +1399,8 @@ def test_ensure_latest_training_job(sagemaker_session):
     fw = DummyFramework(
         entry_point=SCRIPT_PATH,
         role=ROLE,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         sagemaker_session=sagemaker_session,
     )
     fw.latest_training_job = Mock(name="training_job")
@@ -1412,8 +1412,8 @@ def test_ensure_latest_training_job_failure(sagemaker_session):
     fw = DummyFramework(
         entry_point=SCRIPT_PATH,
         role=ROLE,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         sagemaker_session=sagemaker_session,
     )
 
@@ -1428,8 +1428,8 @@ def test_estimator_transformer_creation(name_from_base, create_model, sagemaker_
     estimator = Estimator(
         image_uri=IMAGE_URI,
         role=ROLE,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         sagemaker_session=sagemaker_session,
     )
     estimator.latest_training_job = _TrainingJob(sagemaker_session, JOB_NAME)
@@ -1460,8 +1460,8 @@ def test_estimator_transformer_creation_with_optional_params(create_model, sagem
     estimator = Estimator(
         image_uri=IMAGE_URI,
         role=ROLE,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         sagemaker_session=sagemaker_session,
         base_job_name=base_name,
         output_kms_key=kms_key,
@@ -1563,8 +1563,8 @@ def test_container_log_level(sagemaker_session):
         entry_point=SCRIPT_PATH,
         role="DummyRole",
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         container_log_level=logging.DEBUG,
     )
     fw.fit(inputs=s3_input("s3://mybucket/train"))
@@ -1579,8 +1579,8 @@ def test_same_code_location_keeps_kms_key(utils, sagemaker_session):
         entry_point=SCRIPT_PATH,
         role="DummyRole",
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         output_kms_key="kms-key",
     )
 
@@ -1601,8 +1601,8 @@ def test_different_code_location_kms_key(utils, sagemaker_session):
         role="DummyRole",
         sagemaker_session=sagemaker_session,
         code_location="s3://another-location",
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         output_kms_key="kms-key",
     )
 
@@ -1622,8 +1622,8 @@ def test_default_code_location_uses_output_path(utils, sagemaker_session):
         role="DummyRole",
         sagemaker_session=sagemaker_session,
         output_path="s3://output_path",
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         output_kms_key="kms-key",
     )
 
@@ -2281,7 +2281,7 @@ def test_prepare_init_params_from_job_description_with_image_training_job():
     )
 
     assert init_params["role"] == "arn:aws:iam::366:role/SageMakerRole"
-    assert init_params["train_instance_count"] == 1
+    assert init_params["instance_count"] == 1
     assert init_params["image_uri"] == "1.dkr.ecr.us-west-2.amazonaws.com/sagemaker-other:1.0.4"
 
 
@@ -2298,7 +2298,7 @@ def test_prepare_init_params_from_job_description_with_algorithm_training_job():
     )
 
     assert init_params["role"] == "arn:aws:iam::366:role/SageMakerRole"
-    assert init_params["train_instance_count"] == 1
+    assert init_params["instance_count"] == 1
     assert (
         init_params["algorithm_arn"]
         == "arn:aws:sagemaker:us-east-2:1234:algorithm/scikit-decision-trees"
@@ -2319,8 +2319,8 @@ def test_prepare_for_training_with_base_name(sagemaker_session):
     estimator = Estimator(
         image_uri="some-image",
         role="some_image",
-        train_instance_count=1,
-        train_instance_type="ml.m4.xlarge",
+        instance_count=1,
+        instance_type="ml.m4.xlarge",
         sagemaker_session=sagemaker_session,
         base_job_name="base_job_name",
     )
@@ -2333,8 +2333,8 @@ def test_prepare_for_training_with_name_based_on_image(sagemaker_session):
     estimator = Estimator(
         image_uri="some-image",
         role="some_image",
-        train_instance_count=1,
-        train_instance_type="ml.m4.xlarge",
+        instance_count=1,
+        instance_type="ml.m4.xlarge",
         sagemaker_session=sagemaker_session,
     )
 
@@ -2348,8 +2348,8 @@ def test_prepare_for_training_with_name_based_on_algorithm(sagemaker_session):
     estimator = AlgorithmEstimator(
         algorithm_arn="arn:aws:sagemaker:us-west-2:1234:algorithm/scikit-decision-trees-1542410022",
         role="some_image",
-        train_instance_count=1,
-        train_instance_type="ml.m4.xlarge",
+        instance_count=1,
+        instance_type="ml.m4.xlarge",
         sagemaker_session=sagemaker_session,
     )
 
@@ -2378,8 +2378,8 @@ def test_encryption_flag_in_non_vpc_mode_invalid(sagemaker_session):
         estimator = Estimator(
             image_uri=image_uri,
             role="SageMakerRole",
-            train_instance_count=1,
-            train_instance_type="ml.c4.xlarge",
+            instance_count=1,
+            instance_type="ml.c4.xlarge",
             sagemaker_session=sagemaker_session,
             base_job_name="test-non-vpc-encryption",
             encrypt_inter_container_traffic=True,
@@ -2397,8 +2397,8 @@ def test_estimator_local_mode_error(sagemaker_session):
         Estimator(
             image_uri="some-image",
             role="some_image",
-            train_instance_count=1,
-            train_instance_type="local",
+            instance_count=1,
+            instance_type="local",
             sagemaker_session=sagemaker_session,
             base_job_name="base_job_name",
         )
@@ -2409,8 +2409,8 @@ def test_estimator_local_mode_ok(sagemaker_local_session):
     Estimator(
         image_uri="some-image",
         role="some_image",
-        train_instance_count=1,
-        train_instance_type="local",
+        instance_count=1,
+        instance_type="local",
         sagemaker_session=sagemaker_local_session,
         base_job_name="base_job_name",
     )

@@ -38,8 +38,8 @@ def test_source_dirs(tmpdir, sagemaker_local_session):
         dependencies=[lib],
         framework_version="0.4",  # hard-code to last known good pytorch for now (see TODO above)
         py_version="py3",
-        train_instance_count=1,
-        train_instance_type="local",
+        instance_count=1,
+        instance_type="local",
         sagemaker_session=sagemaker_local_session,
     )
     estimator.fit()

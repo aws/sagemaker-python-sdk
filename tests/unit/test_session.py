@@ -1111,7 +1111,7 @@ def test_tune_with_spot_and_checkpoints(sagemaker_session):
         stop_condition=SAMPLE_STOPPING_CONDITION,
         tags=None,
         warm_start_config=None,
-        train_use_spot_instances=True,
+        use_spot_instances=True,
         checkpoint_s3_uri="s3://mybucket/checkpoints/",
         checkpoint_local_path="/tmp/checkpoints",
     )
@@ -1203,7 +1203,7 @@ def test_train_pack_to_request_with_optional_params(sagemaker_session):
         tags=TAGS,
         metric_definitions=METRIC_DEFINITONS,
         encrypt_inter_container_traffic=True,
-        train_use_spot_instances=True,
+        use_spot_instances=True,
         checkpoint_s3_uri="s3://mybucket/checkpoints/",
         checkpoint_local_path="/tmp/checkpoints",
         enable_sagemaker_metrics=True,

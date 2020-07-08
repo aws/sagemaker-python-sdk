@@ -280,7 +280,7 @@ class RLEstimator(Framework):
         return fw_utils.create_image_uri(
             self.sagemaker_session.boto_region_name,
             self._image_framework(),
-            self.train_instance_type,
+            self.instance_type,
             self._image_version(),
             py_version=PYTHON_VERSION,
         )

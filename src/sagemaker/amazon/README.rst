@@ -34,7 +34,7 @@ Please find an example code snippet for illustration:
 .. code:: python
 
     from sagemaker import PCA
-    pca_estimator = PCA(role='SageMakerRole', train_instance_count=1, train_instance_type='ml.m4.xlarge', num_components=3)
+    pca_estimator = PCA(role='SageMakerRole', instance_count=1, instance_type='ml.m4.xlarge', num_components=3)
 
     import numpy as np
     records = pca_estimator.record_set(np.arange(10).reshape(2,5))

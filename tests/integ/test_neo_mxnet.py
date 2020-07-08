@@ -39,8 +39,8 @@ def mxnet_training_job(sagemaker_session, cpu_instance_type):
             role="SageMakerRole",
             framework_version=NEO_MXNET_VERSION,
             py_version=NEO_PYTHON_VERSION,
-            train_instance_count=1,
-            train_instance_type=cpu_instance_type,
+            instance_count=1,
+            instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
         )
 

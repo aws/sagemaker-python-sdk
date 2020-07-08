@@ -194,8 +194,8 @@ def test_create_model(name_from_base, sagemaker_session, mxnet_version, mxnet_py
         py_version=mxnet_py_version,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         container_log_level=container_log_level,
         base_job_name=base_job_name,
         source_dir=source_dir,
@@ -231,8 +231,8 @@ def test_create_model_with_optional_params(sagemaker_session, mxnet_version, mxn
         py_version=mxnet_py_version,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         container_log_level=container_log_level,
         base_job_name="job",
         source_dir=source_dir,
@@ -275,8 +275,8 @@ def test_create_model_with_custom_image(name_from_base, sagemaker_session):
         py_version="py3",
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         image_uri=custom_image,
         container_log_level=container_log_level,
         base_job_name=base_job_name,
@@ -321,8 +321,8 @@ def test_mxnet(
         py_version=mxnet_py_version,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
     )
     inputs = "s3://mybucket/train"
 
@@ -366,8 +366,8 @@ def test_mxnet_neo(
         py_version=mxnet_py_version,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
     )
 
     inputs = "s3://mybucket/train"
@@ -535,8 +535,8 @@ def test_attach(sagemaker_session, mxnet_version, mxnet_py_version):
     assert estimator.py_version == mxnet_py_version
     assert estimator.framework_version == mxnet_version
     assert estimator.role == "arn:aws:iam::366:role/SageMakerRole"
-    assert estimator.train_instance_count == 1
-    assert estimator.train_max_run == 24 * 60 * 60
+    assert estimator.instance_count == 1
+    assert estimator.max_run == 24 * 60 * 60
     assert estimator.input_mode == "File"
     assert estimator.base_job_name == "neo"
     assert estimator.output_path == "s3://place/output/neo"
@@ -585,8 +585,8 @@ def test_attach_old_container(sagemaker_session):
     assert estimator.py_version == "py2"
     assert estimator.framework_version == "0.12"
     assert estimator.role == "arn:aws:iam::366:role/SageMakerRole"
-    assert estimator.train_instance_count == 1
-    assert estimator.train_max_run == 24 * 60 * 60
+    assert estimator.instance_count == 1
+    assert estimator.max_run == 24 * 60 * 60
     assert estimator.input_mode == "File"
     assert estimator.base_job_name == "neo"
     assert estimator.output_path == "s3://place/output/neo"
@@ -676,8 +676,8 @@ def test_estimator_script_mode_dont_launch_parameter_server(sagemaker_session):
         py_version="py2",
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         distribution={"parameter_server": {"enabled": False}},
     )
     assert mx.hyperparameters().get(MXNet.LAUNCH_PS_ENV_NAME) == "false"
@@ -691,8 +691,8 @@ def test_estimator_wrong_version_launch_parameter_server(sagemaker_session):
             py_version="py2",
             role=ROLE,
             sagemaker_session=sagemaker_session,
-            train_instance_count=INSTANCE_COUNT,
-            train_instance_type=INSTANCE_TYPE,
+            instance_count=INSTANCE_COUNT,
+            instance_type=INSTANCE_TYPE,
             distribution=LAUNCH_PS_DISTRIBUTION_DICT,
         )
     assert "The distribution option is valid for only versions 1.3 and higher" in str(e)
@@ -706,8 +706,8 @@ def test_estimator_py2_warning(warning, sagemaker_session):
         py_version="py2",
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
     )
 
     assert estimator.py_version == "py2"
@@ -739,8 +739,8 @@ def test_create_model_with_custom_hosting_image(sagemaker_session):
         py_version="py3",
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         image_uri=custom_image,
         container_log_level=container_log_level,
         base_job_name="job",
@@ -760,8 +760,8 @@ def test_mx_enable_sm_metrics(sagemaker_session, mxnet_version, mxnet_py_version
         py_version=mxnet_py_version,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         enable_sagemaker_metrics=True,
     )
     assert mx.enable_sagemaker_metrics
@@ -774,8 +774,8 @@ def test_mx_disable_sm_metrics(sagemaker_session, mxnet_version, mxnet_py_versio
         py_version=mxnet_py_version,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         enable_sagemaker_metrics=False,
     )
     assert not mx.enable_sagemaker_metrics
@@ -788,8 +788,8 @@ def test_mx_enable_sm_metrics_for_version(sagemaker_session, mxnet_version, mxne
         py_version=mxnet_py_version,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
     )
     version = tuple(int(s) for s in mxnet_version.split("."))
     lowest_version = (1, 6, 0)[: len(version)]
@@ -807,8 +807,8 @@ def test_custom_image_estimator_deploy(sagemaker_session, mxnet_version, mxnet_p
         py_version=mxnet_py_version,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
     )
     mx.fit(inputs="s3://mybucket/train", job_name="new_name")
     model = mx.create_model(image_uri=custom_image)

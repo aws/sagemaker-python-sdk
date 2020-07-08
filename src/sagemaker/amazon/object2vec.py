@@ -133,8 +133,8 @@ class Object2Vec(AmazonAlgorithmEstimatorBase):
     def __init__(
         self,
         role,
-        train_instance_count,
-        train_instance_type,
+        instance_count,
+        instance_type,
         epochs,
         enc0_max_seq_len,
         enc0_vocab_size,
@@ -201,9 +201,9 @@ class Object2Vec(AmazonAlgorithmEstimatorBase):
                 endpoints use this role to access training data and model
                 artifacts. After the endpoint is created, the inference code
                 might use the IAM role, if accessing AWS resource.
-            train_instance_count (int): Number of Amazon EC2 instances to use
+            instance_count (int): Number of Amazon EC2 instances to use
                 for training.
-            train_instance_type (str): Type of EC2 instance to use for training,
+            instance_type (str): Type of EC2 instance to use for training,
                 for example, 'ml.c4.xlarge'.
             epochs (int): Total number of epochs for SGD training
             enc0_max_seq_len (int): Maximum sequence length
@@ -263,7 +263,7 @@ class Object2Vec(AmazonAlgorithmEstimatorBase):
             :class:`~sagemaker.estimator.EstimatorBase`.
         """
 
-        super(Object2Vec, self).__init__(role, train_instance_count, train_instance_type, **kwargs)
+        super(Object2Vec, self).__init__(role, instance_count, instance_type, **kwargs)
 
         self.enc_dim = enc_dim
         self.mini_batch_size = mini_batch_size

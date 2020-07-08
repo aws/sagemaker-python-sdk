@@ -116,7 +116,7 @@ class TensorFlowLegacyModeConstructorUpgrader(Modifier):
                 hp_key = self._hyperparameter_key_for_param(kw.arg)
                 additional_hps[hp_key] = kw.value
                 kw_to_remove.append(kw)
-            if kw.arg == "image_name":
+            if kw.arg == "image_uri":
                 add_image_uri = False
 
         self._remove_keywords(node, kw_to_remove)
@@ -124,7 +124,7 @@ class TensorFlowLegacyModeConstructorUpgrader(Modifier):
 
         if add_image_uri:
             image_uri = self._image_uri_from_args(node.keywords)
-            node.keywords.append(ast.keyword(arg="image_name", value=ast.Str(s=image_uri)))
+            node.keywords.append(ast.keyword(arg="image_uri", value=ast.Str(s=image_uri)))
 
         node.keywords.append(ast.keyword(arg="model_dir", value=ast.NameConstant(value=False)))
 

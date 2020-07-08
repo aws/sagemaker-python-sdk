@@ -51,8 +51,8 @@ class KMeans(AmazonAlgorithmEstimatorBase):
     def __init__(
         self,
         role,
-        train_instance_count,
-        train_instance_type,
+        instance_count,
+        instance_type,
         k,
         init_method=None,
         max_iterations=None,
@@ -103,9 +103,9 @@ class KMeans(AmazonAlgorithmEstimatorBase):
                 endpoints use this role to access training data and model
                 artifacts. After the endpoint is created, the inference code
                 might use the IAM role, if accessing AWS resource.
-            train_instance_count (int): Number of Amazon EC2 instances to use
+            instance_count (int): Number of Amazon EC2 instances to use
                 for training.
-            train_instance_type (str): Type of EC2 instance to use for training,
+            instance_type (str): Type of EC2 instance to use for training,
                 for example, 'ml.c4.xlarge'.
             k (int): The number of clusters to produce.
             init_method (str): How to initialize cluster locations. One of
@@ -142,7 +142,7 @@ class KMeans(AmazonAlgorithmEstimatorBase):
             :class:`~sagemaker.estimator.amazon_estimator.AmazonAlgorithmEstimatorBase` and
             :class:`~sagemaker.estimator.EstimatorBase`.
         """
-        super(KMeans, self).__init__(role, train_instance_count, train_instance_type, **kwargs)
+        super(KMeans, self).__init__(role, instance_count, instance_type, **kwargs)
         self.k = k
         self.init_method = init_method
         self.max_iterations = max_iterations

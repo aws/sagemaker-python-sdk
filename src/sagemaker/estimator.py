@@ -73,11 +73,11 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
     def __init__(
         self,
         role,
-        train_instance_count,
-        train_instance_type,
-        train_volume_size=30,
-        train_volume_kms_key=None,
-        train_max_run=24 * 60 * 60,
+        instance_count,
+        instance_type,
+        volume_size=30,
+        volume_kms_key=None,
+        max_run=24 * 60 * 60,
         input_mode="File",
         output_path=None,
         output_kms_key=None,
@@ -90,8 +90,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         model_channel_name="model",
         metric_definitions=None,
         encrypt_inter_container_traffic=False,
-        train_use_spot_instances=False,
-        train_max_wait=None,
+        use_spot_instances=False,
+        max_wait=None,
         checkpoint_s3_uri=None,
         checkpoint_local_path=None,
         rules=None,
@@ -108,17 +108,17 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                 endpoints use this role to access training data and model
                 artifacts. After the endpoint is created, the inference code
                 might use the IAM role, if it needs to access an AWS resource.
-            train_instance_count (int): Number of Amazon EC2 instances to use
+            instance_count (int): Number of Amazon EC2 instances to use
                 for training.
-            train_instance_type (str): Type of EC2 instance to use for training,
+            instance_type (str): Type of EC2 instance to use for training,
                 for example, 'ml.c4.xlarge'.
-            train_volume_size (int): Size in GB of the EBS volume to use for
+            volume_size (int): Size in GB of the EBS volume to use for
                 storing input data during training (default: 30). Must be large
                 enough to store training data if File Mode is used (which is the
                 default).
-            train_volume_kms_key (str): Optional. KMS key ID for encrypting EBS
+            volume_kms_key (str): Optional. KMS key ID for encrypting EBS
                 volume attached to the training instance (default: None).
-            train_max_run (int): Timeout in seconds for training (default: 24 *
+            max_run (int): Timeout in seconds for training (default: 24 *
                 60 * 60). After this amount of time Amazon SageMaker terminates
                 the job regardless of its current status.
             input_mode (str): The input mode that the algorithm supports
@@ -176,14 +176,14 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             encrypt_inter_container_traffic (bool): Specifies whether traffic
                 between training containers is encrypted for the training job
                 (default: ``False``).
-            train_use_spot_instances (bool): Specifies whether to use SageMaker
+            use_spot_instances (bool): Specifies whether to use SageMaker
                 Managed Spot instances for training. If enabled then the
-                `train_max_wait` arg should also be set.
+                ``max_wait`` arg should also be set.
 
                 More information:
                 https://docs.aws.amazon.com/sagemaker/latest/dg/model-managed-spot-training.html
                 (default: ``False``).
-            train_max_wait (int): Timeout in seconds waiting for spot training
+            max_wait (int): Timeout in seconds waiting for spot training
                 instances (default: None). After this amount of time Amazon
                 SageMaker will stop waiting for Spot instances to become
                 available (default: ``None``).
@@ -225,11 +225,11 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                 outbound network calls. Also known as Internet-free mode.
         """
         self.role = role
-        self.train_instance_count = train_instance_count
-        self.train_instance_type = train_instance_type
-        self.train_volume_size = train_volume_size
-        self.train_volume_kms_key = train_volume_kms_key
-        self.train_max_run = train_max_run
+        self.instance_count = instance_count
+        self.instance_type = instance_type
+        self.volume_size = volume_size
+        self.volume_kms_key = volume_kms_key
+        self.max_run = max_run
         self.input_mode = input_mode
         self.tags = tags
         self.metric_definitions = metric_definitions
@@ -238,8 +238,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         self.code_uri = None
         self.code_channel_name = "code"
 
-        if self.train_instance_type in ("local", "local_gpu"):
-            if self.train_instance_type == "local_gpu" and self.train_instance_count > 1:
+        if self.instance_type in ("local", "local_gpu"):
+            if self.instance_type == "local_gpu" and self.instance_count > 1:
                 raise RuntimeError("Distributed Training in Local GPU is not supported")
             self.sagemaker_session = sagemaker_session or LocalSession()
             if not isinstance(self.sagemaker_session, sagemaker.local.LocalSession):
@@ -271,8 +271,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         self.security_group_ids = security_group_ids
 
         self.encrypt_inter_container_traffic = encrypt_inter_container_traffic
-        self.train_use_spot_instances = train_use_spot_instances
-        self.train_max_wait = train_max_wait
+        self.use_spot_instances = use_spot_instances
+        self.max_wait = max_wait
         self.checkpoint_s3_uri = checkpoint_s3_uri
         self.checkpoint_local_path = checkpoint_local_path
 
@@ -778,10 +778,10 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         init_params = dict()
 
         init_params["role"] = job_details["RoleArn"]
-        init_params["train_instance_count"] = job_details["ResourceConfig"]["InstanceCount"]
-        init_params["train_instance_type"] = job_details["ResourceConfig"]["InstanceType"]
-        init_params["train_volume_size"] = job_details["ResourceConfig"]["VolumeSizeInGB"]
-        init_params["train_max_run"] = job_details["StoppingCondition"]["MaxRuntimeInSeconds"]
+        init_params["instance_count"] = job_details["ResourceConfig"]["InstanceCount"]
+        init_params["instance_type"] = job_details["ResourceConfig"]["InstanceType"]
+        init_params["volume_size"] = job_details["ResourceConfig"]["VolumeSizeInGB"]
+        init_params["max_run"] = job_details["StoppingCondition"]["MaxRuntimeInSeconds"]
         init_params["input_mode"] = job_details["AlgorithmSpecification"]["TrainingInputMode"]
         init_params["base_job_name"] = base_from_name(job_details["TrainingJobName"])
         init_params["output_path"] = job_details["OutputDataConfig"]["S3OutputPath"]
@@ -1068,10 +1068,10 @@ class _TrainingJob(_Job):
             estimator:
             train_args:
         """
-        if estimator.train_use_spot_instances:
+        if estimator.use_spot_instances:
             if local_mode:
                 raise ValueError("Spot training is not supported in local mode.")
-            train_args["train_use_spot_instances"] = True
+            train_args["use_spot_instances"] = True
 
         if estimator.checkpoint_s3_uri:
             if local_mode:
@@ -1132,11 +1132,11 @@ class Estimator(EstimatorBase):
         self,
         image_uri,
         role,
-        train_instance_count,
-        train_instance_type,
-        train_volume_size=30,
-        train_volume_kms_key=None,
-        train_max_run=24 * 60 * 60,
+        instance_count,
+        instance_type,
+        volume_size=30,
+        volume_kms_key=None,
+        max_run=24 * 60 * 60,
         input_mode="File",
         output_path=None,
         output_kms_key=None,
@@ -1150,8 +1150,8 @@ class Estimator(EstimatorBase):
         model_channel_name="model",
         metric_definitions=None,
         encrypt_inter_container_traffic=False,
-        train_use_spot_instances=False,
-        train_max_wait=None,
+        use_spot_instances=False,
+        max_wait=None,
         checkpoint_s3_uri=None,
         checkpoint_local_path=None,
         enable_network_isolation=False,
@@ -1169,17 +1169,17 @@ class Estimator(EstimatorBase):
                 endpoints use this role to access training data and model
                 artifacts. After the endpoint is created, the inference code
                 might use the IAM role, if it needs to access an AWS resource.
-            train_instance_count (int): Number of Amazon EC2 instances to use
+            instance_count (int): Number of Amazon EC2 instances to use
                 for training.
-            train_instance_type (str): Type of EC2 instance to use for training,
+            instance_type (str): Type of EC2 instance to use for training,
                 for example, 'ml.c4.xlarge'.
-            train_volume_size (int): Size in GB of the EBS volume to use for
+            volume_size (int): Size in GB of the EBS volume to use for
                 storing input data during training (default: 30). Must be large
                 enough to store training data if File Mode is used (which is the
                 default).
-            train_volume_kms_key (str): Optional. KMS key ID for encrypting EBS
+            volume_kms_key (str): Optional. KMS key ID for encrypting EBS
                 volume attached to the training instance (default: None).
-            train_max_run (int): Timeout in seconds for training (default: 24 *
+            max_run (int): Timeout in seconds for training (default: 24 *
                 60 * 60). After this amount of time Amazon SageMaker terminates
                 the job regardless of its current status.
             input_mode (str): The input mode that the algorithm supports
@@ -1240,14 +1240,14 @@ class Estimator(EstimatorBase):
             encrypt_inter_container_traffic (bool): Specifies whether traffic
                 between training containers is encrypted for the training job
                 (default: ``False``).
-            train_use_spot_instances (bool): Specifies whether to use SageMaker
+            use_spot_instances (bool): Specifies whether to use SageMaker
                 Managed Spot instances for training. If enabled then the
-                `train_max_wait` arg should also be set.
+                ``max_wait`` arg should also be set.
 
                 More information:
                 https://docs.aws.amazon.com/sagemaker/latest/dg/model-managed-spot-training.html
                 (default: ``False``).
-            train_max_wait (int): Timeout in seconds waiting for spot training
+            max_wait (int): Timeout in seconds waiting for spot training
                 instances (default: None). After this amount of time Amazon
                 SageMaker will stop waiting for Spot instances to become
                 available (default: ``None``).
@@ -1276,11 +1276,11 @@ class Estimator(EstimatorBase):
         self.hyperparam_dict = hyperparameters.copy() if hyperparameters else {}
         super(Estimator, self).__init__(
             role,
-            train_instance_count,
-            train_instance_type,
-            train_volume_size,
-            train_volume_kms_key,
-            train_max_run,
+            instance_count,
+            instance_type,
+            volume_size,
+            volume_kms_key,
+            max_run,
             input_mode,
             output_path,
             output_kms_key,
@@ -1293,8 +1293,8 @@ class Estimator(EstimatorBase):
             model_channel_name=model_channel_name,
             metric_definitions=metric_definitions,
             encrypt_inter_container_traffic=encrypt_inter_container_traffic,
-            train_use_spot_instances=train_use_spot_instances,
-            train_max_wait=train_max_wait,
+            use_spot_instances=use_spot_instances,
+            max_wait=max_wait,
             checkpoint_s3_uri=checkpoint_s3_uri,
             checkpoint_local_path=checkpoint_local_path,
             rules=rules,
@@ -1813,7 +1813,7 @@ class Framework(EstimatorBase):
         return create_image_uri(
             self.sagemaker_session.boto_region_name,
             self.__framework_name__,
-            self.train_instance_type,
+            self.instance_type,
             self.framework_version,  # pylint: disable=no-member
             py_version=self.py_version,  # pylint: disable=no-member
         )

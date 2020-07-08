@@ -69,8 +69,8 @@ def test_byo_estimator(sagemaker_session, region, cpu_instance_type, training_se
         estimator = Estimator(
             image_uri=image_uri,
             role="SageMakerRole",
-            train_instance_count=1,
-            train_instance_type=cpu_instance_type,
+            instance_count=1,
+            instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
         )
 
@@ -112,8 +112,8 @@ def test_async_byo_estimator(sagemaker_session, region, cpu_instance_type, train
         estimator = Estimator(
             image_uri=image_uri,
             role="SageMakerRole",
-            train_instance_count=1,
-            train_instance_type=cpu_instance_type,
+            instance_count=1,
+            instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
         )
 

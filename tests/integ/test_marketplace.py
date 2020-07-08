@@ -71,8 +71,8 @@ def test_marketplace_estimator(sagemaker_session, cpu_instance_type):
         algo = AlgorithmEstimator(
             algorithm_arn=algorithm_arn,
             role="SageMakerRole",
-            train_instance_count=1,
-            train_instance_type=cpu_instance_type,
+            instance_count=1,
+            instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
         )
 
@@ -113,8 +113,8 @@ def test_marketplace_attach(sagemaker_session, cpu_instance_type):
         mktplace = AlgorithmEstimator(
             algorithm_arn=algorithm_arn,
             role="SageMakerRole",
-            train_instance_count=1,
-            train_instance_type=cpu_instance_type,
+            instance_count=1,
+            instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
             base_job_name="test-marketplace",
         )
@@ -204,8 +204,8 @@ def test_marketplace_tuning_job(sagemaker_session, cpu_instance_type):
     mktplace = AlgorithmEstimator(
         algorithm_arn=algorithm_arn,
         role="SageMakerRole",
-        train_instance_count=1,
-        train_instance_type=cpu_instance_type,
+        instance_count=1,
+        instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
         base_job_name="test-marketplace",
     )
@@ -247,8 +247,8 @@ def test_marketplace_transform_job(sagemaker_session, cpu_instance_type):
     algo = AlgorithmEstimator(
         algorithm_arn=algorithm_arn,
         role="SageMakerRole",
-        train_instance_count=1,
-        train_instance_type=cpu_instance_type,
+        instance_count=1,
+        instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
         base_job_name="test-marketplace",
     )
