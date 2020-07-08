@@ -623,35 +623,6 @@ class _CsvDeserializer(object):
 csv_deserializer = _CsvDeserializer()
 
 
-class StringDeserializer(object):
-    """Return the response as a decoded string.
-
-    Args:
-        encoding (str): The string encoding to use (default=utf-8).
-        accept (str): The Accept header to send to the server (optional).
-    """
-
-    def __init__(self, encoding="utf-8", accept=None):
-        """
-        Args:
-            encoding:
-            accept:
-        """
-        self.encoding = encoding
-        self.accept = accept
-
-    def __call__(self, stream, content_type):
-        """
-        Args:
-            stream:
-            content_type:
-        """
-        try:
-            return stream.read().decode(self.encoding)
-        finally:
-            stream.close()
-
-
 class _JsonSerializer(object):
     """Placeholder docstring"""
 
