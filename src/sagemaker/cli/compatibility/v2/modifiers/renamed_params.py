@@ -69,7 +69,11 @@ class ParamRenamer(Modifier):
 
 
 class MethodParamRenamer(ParamRenamer):
-    """Abstract class to handle parameter renames for methods that belong to objects."""
+    """Abstract class to handle parameter renames for methods that belong to objects.
+
+    This differs from ``ParamRenamer`` in that a node for a standalone function call
+    (i.e. where ``node.func`` is an ``ast.Name`` rather than an ``ast.Attribute``) is not modified.
+    """
 
     def node_should_be_modified(self, node):
         """Checks if the node matches any of the relevant functions and
@@ -77,6 +81,14 @@ class MethodParamRenamer(ParamRenamer):
 
         This looks for a call of the form ``<object>.<method>``, and
         assumes the method cannot be called on its own.
+
+        Args:
+            node (ast.Call): a node that represents a function call. For more,
+                see https://docs.python.org/3/library/ast.html#abstract-grammar.
+
+        Returns:
+            bool: If the ``ast.Call`` matches the relevant function calls and
+                contains the parameter to be renamed.
         """
         if isinstance(node.func, ast.Name):
             return False
