@@ -84,14 +84,12 @@ class _Job(object):
         )
         output_config = _Job._prepare_output_config(estimator.output_path, estimator.output_kms_key)
         resource_config = _Job._prepare_resource_config(
-            estimator.train_instance_count,
-            estimator.train_instance_type,
-            estimator.train_volume_size,
-            estimator.train_volume_kms_key,
+            estimator.instance_count,
+            estimator.instance_type,
+            estimator.volume_size,
+            estimator.volume_kms_key,
         )
-        stop_condition = _Job._prepare_stop_condition(
-            estimator.train_max_run, estimator.train_max_wait
-        )
+        stop_condition = _Job._prepare_stop_condition(estimator.max_run, estimator.max_wait)
         vpc_config = estimator.get_vpc_config()
 
         model_channel = _Job._prepare_channel(
@@ -329,21 +327,21 @@ class _Job(object):
         return config
 
     @staticmethod
-    def _prepare_resource_config(instance_count, instance_type, volume_size, train_volume_kms_key):
+    def _prepare_resource_config(instance_count, instance_type, volume_size, volume_kms_key):
         """
         Args:
             instance_count:
             instance_type:
             volume_size:
-            train_volume_kms_key:
+            volume_kms_key:
         """
         resource_config = {
             "InstanceCount": instance_count,
             "InstanceType": instance_type,
             "VolumeSizeInGB": volume_size,
         }
-        if train_volume_kms_key is not None:
-            resource_config["VolumeKmsKeyId"] = train_volume_kms_key
+        if volume_kms_key is not None:
+            resource_config["VolumeKmsKeyId"] = volume_kms_key
 
         return resource_config
 

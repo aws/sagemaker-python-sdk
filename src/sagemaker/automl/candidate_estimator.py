@@ -221,7 +221,7 @@ class CandidateEstimator(object):
             "image_uri": desc["AlgorithmSpecification"]["TrainingImage"],
             "enable_network_isolation": desc["EnableNetworkIsolation"],
             "encrypt_inter_container_traffic": encrypt_inter_container_traffic,
-            "train_use_spot_instances": desc["EnableManagedSpotTraining"],
+            "use_spot_instances": desc["EnableManagedSpotTraining"],
             "hyperparameters": {},
             "stop_condition": {},
             "metric_definitions": None,

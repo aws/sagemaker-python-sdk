@@ -182,7 +182,7 @@ def training_base_config(estimator, inputs=None, job_name=None, mini_batch_size=
     if job_config["vpc_config"] is not None:
         train_config["VpcConfig"] = job_config["vpc_config"]
 
-    if estimator.train_use_spot_instances:
+    if estimator.use_spot_instances:
         train_config["EnableManagedSpotTraining"] = True
 
     if estimator.hyperparameters() is not None:

@@ -22,15 +22,15 @@ from sagemaker.amazon.factorization_machines import (
 from sagemaker.amazon.amazon_estimator import registry, RecordSet
 
 ROLE = "myrole"
-TRAIN_INSTANCE_COUNT = 1
-TRAIN_INSTANCE_TYPE = "ml.c4.xlarge"
+INSTANCE_COUNT = 1
+INSTANCE_TYPE = "ml.c4.xlarge"
 NUM_FACTORS = 3
 PREDICTOR_TYPE = "regressor"
 
 COMMON_TRAIN_ARGS = {
     "role": ROLE,
-    "train_instance_count": TRAIN_INSTANCE_COUNT,
-    "train_instance_type": TRAIN_INSTANCE_TYPE,
+    "instance_count": INSTANCE_COUNT,
+    "instance_type": INSTANCE_TYPE,
 }
 ALL_REQ_ARGS = dict(
     {"num_factors": NUM_FACTORS, "predictor_type": PREDICTOR_TYPE}, **COMMON_TRAIN_ARGS
@@ -73,8 +73,8 @@ def test_init_required_positional(sagemaker_session):
         "myrole", 1, "ml.c4.xlarge", 3, "regressor", sagemaker_session=sagemaker_session
     )
     assert fm.role == "myrole"
-    assert fm.train_instance_count == 1
-    assert fm.train_instance_type == "ml.c4.xlarge"
+    assert fm.instance_count == 1
+    assert fm.instance_type == "ml.c4.xlarge"
     assert fm.num_factors == 3
     assert fm.predictor_type == "regressor"
 
@@ -83,8 +83,8 @@ def test_init_required_named(sagemaker_session):
     fm = FactorizationMachines(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
     assert fm.role == COMMON_TRAIN_ARGS["role"]
-    assert fm.train_instance_count == COMMON_TRAIN_ARGS["train_instance_count"]
-    assert fm.train_instance_type == COMMON_TRAIN_ARGS["train_instance_type"]
+    assert fm.instance_count == COMMON_TRAIN_ARGS["instance_count"]
+    assert fm.instance_type == COMMON_TRAIN_ARGS["instance_type"]
     assert fm.num_factors == ALL_REQ_ARGS["num_factors"]
     assert fm.predictor_type == ALL_REQ_ARGS["predictor_type"]
 
@@ -328,6 +328,6 @@ def test_predictor_type(sagemaker_session):
     )
     fm.fit(data, MINI_BATCH_SIZE)
     model = fm.create_model()
-    predictor = model.deploy(1, TRAIN_INSTANCE_TYPE)
+    predictor = model.deploy(1, INSTANCE_TYPE)
 
     assert isinstance(predictor, FactorizationMachinesPredictor)

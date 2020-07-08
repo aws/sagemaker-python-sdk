@@ -54,8 +54,8 @@ def estimator(sagemaker_session):
     return Estimator(
         IMAGE_NAME,
         ROLE,
-        TRAIN_INSTANCE_COUNT,
-        TRAIN_INSTANCE_TYPE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
         output_path="s3://bucket/prefix",
         sagemaker_session=sagemaker_session,
     )
@@ -81,11 +81,7 @@ def test_prepare_for_training(tuner):
 
 def test_prepare_for_tuning_with_amazon_estimator(tuner, sagemaker_session):
     tuner.estimator = PCA(
-        ROLE,
-        TRAIN_INSTANCE_COUNT,
-        TRAIN_INSTANCE_TYPE,
-        NUM_COMPONENTS,
-        sagemaker_session=sagemaker_session,
+        ROLE, INSTANCE_COUNT, INSTANCE_TYPE, NUM_COMPONENTS, sagemaker_session=sagemaker_session,
     )
 
     tuner._prepare_for_tuning()
@@ -110,8 +106,8 @@ def test_prepare_for_tuning_with_job_name(tuner):
 def test_validate_parameter_ranges_number_validation_error(sagemaker_session):
     pca = PCA(
         ROLE,
-        TRAIN_INSTANCE_COUNT,
-        TRAIN_INSTANCE_TYPE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
         NUM_COMPONENTS,
         base_job_name="pca",
         sagemaker_session=sagemaker_session,
@@ -133,8 +129,8 @@ def test_validate_parameter_ranges_number_validation_error(sagemaker_session):
 def test_validate_parameter_ranges_string_value_validation_error(sagemaker_session):
     pca = PCA(
         ROLE,
-        TRAIN_INSTANCE_COUNT,
-        TRAIN_INSTANCE_TYPE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
         NUM_COMPONENTS,
         base_job_name="pca",
         sagemaker_session=sagemaker_session,
@@ -156,8 +152,8 @@ def test_validate_parameter_ranges_string_value_validation_error(sagemaker_sessi
 def test_fit_pca(sagemaker_session, tuner):
     pca = PCA(
         ROLE,
-        TRAIN_INSTANCE_COUNT,
-        TRAIN_INSTANCE_TYPE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
         NUM_COMPONENTS,
         base_job_name="pca",
         sagemaker_session=sagemaker_session,
@@ -203,8 +199,8 @@ def test_fit_pca(sagemaker_session, tuner):
 def test_fit_pca_with_early_stopping(sagemaker_session, tuner):
     pca = PCA(
         ROLE,
-        TRAIN_INSTANCE_COUNT,
-        TRAIN_INSTANCE_TYPE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
         NUM_COMPONENTS,
         base_job_name="pca",
         sagemaker_session=sagemaker_session,
@@ -228,8 +224,8 @@ def test_fit_pca_with_vpc_config(sagemaker_session, tuner):
 
     pca = PCA(
         ROLE,
-        TRAIN_INSTANCE_COUNT,
-        TRAIN_INSTANCE_TYPE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
         NUM_COMPONENTS,
         base_job_name="pca",
         sagemaker_session=sagemaker_session,
@@ -258,8 +254,8 @@ def test_s3_input_mode(sagemaker_session, tuner):
         framework_version=FRAMEWORK_VERSION,
         py_version=PY_VERSION,
         role=ROLE,
-        train_instance_count=TRAIN_INSTANCE_COUNT,
-        train_instance_type=TRAIN_INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         sagemaker_session=sagemaker_session,
     )
     tuner.estimator = mxnet
@@ -282,8 +278,8 @@ def test_s3_input_mode(sagemaker_session, tuner):
 def test_fit_pca_with_inter_container_traffic_encryption_flag(sagemaker_session, tuner):
     pca = PCA(
         ROLE,
-        TRAIN_INSTANCE_COUNT,
-        TRAIN_INSTANCE_TYPE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
         NUM_COMPONENTS,
         base_job_name="pca",
         sagemaker_session=sagemaker_session,
@@ -425,15 +421,15 @@ def _create_multi_estimator_tuner(sagemaker_session):
         framework_version=FRAMEWORK_VERSION,
         py_version=PY_VERSION,
         role=ROLE,
-        train_instance_count=TRAIN_INSTANCE_COUNT,
-        train_instance_type=TRAIN_INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         sagemaker_session=sagemaker_session,
     )
 
     pca = PCA(
         ROLE,
-        TRAIN_INSTANCE_COUNT,
-        TRAIN_INSTANCE_TYPE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
         NUM_COMPONENTS,
         base_job_name="pca",
         sagemaker_session=sagemaker_session,
@@ -509,8 +505,8 @@ def test_attach_tuning_job_with_estimator_from_hyperparameters(sagemaker_session
 
     assert isinstance(tuner.estimator, PCA)
     assert tuner.estimator.role == ROLE
-    assert tuner.estimator.train_instance_count == 1
-    assert tuner.estimator.train_max_run == 24 * 60 * 60
+    assert tuner.estimator.instance_count == 1
+    assert tuner.estimator.max_run == 24 * 60 * 60
     assert tuner.estimator.input_mode == "File"
     assert tuner.estimator.output_path == BUCKET_NAME
     assert tuner.estimator.output_kms_key == ""
@@ -684,8 +680,8 @@ def test_serialize_categorical_ranges_for_frameworks(sagemaker_session, tuner):
         framework_version=FRAMEWORK_VERSION,
         py_version=PY_VERSION,
         role=ROLE,
-        train_instance_count=TRAIN_INSTANCE_COUNT,
-        train_instance_type=TRAIN_INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         sagemaker_session=sagemaker_session,
     )
 
@@ -812,7 +808,7 @@ def test_deploy_default(tuner):
     tuner.sagemaker_session.log_for_jobs = Mock(name="log_for_jobs")
 
     tuner.latest_tuning_job = _TuningJob(tuner.sagemaker_session, JOB_NAME)
-    predictor = tuner.deploy(TRAIN_INSTANCE_COUNT, TRAIN_INSTANCE_TYPE)
+    predictor = tuner.deploy(INSTANCE_COUNT, INSTANCE_TYPE)
 
     tuner.sagemaker_session.create_model.assert_called_once()
     args = tuner.sagemaker_session.create_model.call_args[0]
@@ -851,7 +847,7 @@ def test_deploy_estimator_dict(tuner):
     tuner.sagemaker_session.log_for_jobs = Mock(name="log_for_jobs")
 
     tuner.latest_tuning_job = _TuningJob(tuner.sagemaker_session, JOB_NAME)
-    predictor = tuner.deploy(TRAIN_INSTANCE_COUNT, TRAIN_INSTANCE_TYPE)
+    predictor = tuner.deploy(INSTANCE_COUNT, INSTANCE_TYPE)
 
     tuner.sagemaker_session.create_model.assert_called_once()
     args = tuner.sagemaker_session.create_model.call_args[0]
@@ -883,8 +879,8 @@ def test_deploy_optional_params(_get_best_training_job, best_estimator, tuner):
     kwargs = {"some_arg": "some_value"}
 
     tuner.deploy(
-        TRAIN_INSTANCE_COUNT,
-        TRAIN_INSTANCE_TYPE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
         accelerator_type=accelerator,
         endpoint_name=endpoint_name,
         wait=False,
@@ -896,8 +892,8 @@ def test_deploy_optional_params(_get_best_training_job, best_estimator, tuner):
     best_estimator.assert_called_with(training_job)
 
     estimator.deploy.assert_called_with(
-        initial_instance_count=TRAIN_INSTANCE_COUNT,
-        instance_type=TRAIN_INSTANCE_TYPE,
+        initial_instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         accelerator_type=accelerator,
         endpoint_name=endpoint_name,
         wait=False,
@@ -924,8 +920,8 @@ def test_fit_no_inputs(tuner, sagemaker_session):
         framework_version=FRAMEWORK_VERSION,
         py_version=PY_VERSION,
         role=ROLE,
-        train_instance_count=TRAIN_INSTANCE_COUNT,
-        train_instance_type=TRAIN_INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         sagemaker_session=sagemaker_session,
     )
 

@@ -59,8 +59,8 @@ class NTM(AmazonAlgorithmEstimatorBase):
     def __init__(
         self,
         role,
-        train_instance_count,
-        train_instance_type,
+        instance_count,
+        instance_type,
         num_topics,
         encoder_layers=None,
         epochs=None,
@@ -113,8 +113,8 @@ class NTM(AmazonAlgorithmEstimatorBase):
                 endpoints use this role to access training data and model
                 artifacts. After the endpoint is created, the inference code
                 might use the IAM role, if accessing AWS resource.
-            train_instance_count:
-            train_instance_type (str): Type of EC2 instance to use for training,
+            instance_count:
+            instance_type (str): Type of EC2 instance to use for training,
                 for example, 'ml.c4.xlarge'.
             num_topics (int): Required. The number of topics for NTM to find
                 within the data.
@@ -147,7 +147,7 @@ class NTM(AmazonAlgorithmEstimatorBase):
             :class:`~sagemaker.estimator.EstimatorBase`.
         """
 
-        super(NTM, self).__init__(role, train_instance_count, train_instance_type, **kwargs)
+        super(NTM, self).__init__(role, instance_count, instance_type, **kwargs)
         self.num_topics = num_topics
         self.encoder_layers = encoder_layers
         self.epochs = epochs

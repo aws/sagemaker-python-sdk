@@ -90,7 +90,7 @@ def test_modify_node_set_model_dir_and_image_name(create_image_uri, boto_session
         node = ast_call(constructor)
         modifier.modify_node(node)
 
-        assert "TensorFlow(image_name='{}', model_dir=False)".format(IMAGE_URI) == pasta.dump(node)
+        assert "TensorFlow(image_uri='{}', model_dir=False)".format(IMAGE_URI) == pasta.dump(node)
         create_image_uri.assert_called_with(
             REGION_NAME, "tensorflow", "ml.m4.xlarge", "1.11.0", "py2"
         )
@@ -111,7 +111,7 @@ def test_modify_node_set_image_name_from_args(create_image_uri, boto_session):
 
     expected_string = (
         "TensorFlow(train_instance_type='ml.p2.xlarge', framework_version='1.4.0', "
-        "image_name='{}', model_dir=False)".format(IMAGE_URI)
+        "image_uri='{}', model_dir=False)".format(IMAGE_URI)
     )
     assert expected_string == pasta.dump(node)
 

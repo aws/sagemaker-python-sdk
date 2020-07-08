@@ -52,8 +52,8 @@ def test_training_with_additional_hyperparameters(
     chainer = Chainer(
         entry_point=script_path,
         role="SageMakerRole",
-        train_instance_count=1,
-        train_instance_type="local",
+        instance_count=1,
+        instance_type="local",
         framework_version=chainer_full_version,
         py_version=chainer_full_py_version,
         sagemaker_session=sagemaker_local_session,
@@ -84,8 +84,8 @@ def test_attach_deploy(
             role="SageMakerRole",
             framework_version=chainer_full_version,
             py_version=chainer_full_py_version,
-            train_instance_count=1,
-            train_instance_type=cpu_instance_type,
+            instance_count=1,
+            instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
             hyperparameters={"epochs": 1},
         )
@@ -152,8 +152,8 @@ def _run_mnist_training_job(
         role="SageMakerRole",
         framework_version=chainer_version,
         py_version=py_version,
-        train_instance_count=instance_count,
-        train_instance_type=instance_type,
+        instance_count=instance_count,
+        instance_type=instance_type,
         sagemaker_session=sagemaker_session,
         hyperparameters={"epochs": 1},
         # test output_path without trailing slash

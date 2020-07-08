@@ -25,8 +25,8 @@ def test_record_set(sagemaker_session, cpu_instance_type):
     """
     kmeans = KMeans(
         role="SageMakerRole",
-        train_instance_count=1,
-        train_instance_type=cpu_instance_type,
+        instance_count=1,
+        instance_type=cpu_instance_type,
         k=10,
         sagemaker_session=sagemaker_session,
     )
