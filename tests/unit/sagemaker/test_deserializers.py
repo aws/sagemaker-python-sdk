@@ -14,7 +14,7 @@ from __future__ import absolute_import
 
 import io
 
-from sagemaker.deserializers import BytesDeserializer
+from sagemaker.deserializers import BytesDeserializer, CSVDeserializer
 
 
 def test_bytes_deserializer():
@@ -23,3 +23,27 @@ def test_bytes_deserializer():
     result = deserializer.deserialize(io.BytesIO(b"[1, 2, 3]"), "application/json")
 
     assert result == b"[1, 2, 3]"
+
+
+def test_csv_deserializer_single_element():
+    deserializer = CSVDeserializer()
+
+    result = deserializer.deserialize(io.BytesIO(b"1"), "text/csv")
+
+    assert result == [["1"]]
+
+
+def test_csv_deserializer_array():
+    deserializer = CSVDeserializer()
+
+    result = deserializer.deserialize(io.BytesIO(b"1,2,3"), "text/csv")
+
+    assert result == [["1", "2", "3"]]
+
+
+def test_csv_deserializer_2dimensional():
+    deserializer = CSVDeserializer()
+
+    result = deserializer.deserialize(io.BytesIO(b"1,2,3\n3,4,5"), "text/csv")
+
+    assert result == [["1", "2", "3"], ["3", "4", "5"]]
