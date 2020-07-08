@@ -63,8 +63,8 @@ class KNN(AmazonAlgorithmEstimatorBase):
     def __init__(
         self,
         role,
-        train_instance_count,
-        train_instance_type,
+        instance_count,
+        instance_type,
         k,
         sample_size,
         predictor_type,
@@ -105,8 +105,8 @@ class KNN(AmazonAlgorithmEstimatorBase):
                 endpoints use this role to access training data and model
                 artifacts. After the endpoint is created, the inference code
                 might use the IAM role, if accessing AWS resource.
-            train_instance_count:
-            train_instance_type (str): Type of EC2 instance to use for training,
+            instance_count:
+            instance_type (str): Type of EC2 instance to use for training,
                 for example, 'ml.c4.xlarge'.
             k (int): Required. Number of nearest neighbors.
             sample_size (int): Required. Number of data points to be sampled
@@ -136,7 +136,7 @@ class KNN(AmazonAlgorithmEstimatorBase):
             :class:`~sagemaker.estimator.EstimatorBase`.
         """
 
-        super(KNN, self).__init__(role, train_instance_count, train_instance_type, **kwargs)
+        super(KNN, self).__init__(role, instance_count, instance_type, **kwargs)
         self.k = k
         self.sample_size = sample_size
         self.predictor_type = predictor_type

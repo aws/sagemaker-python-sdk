@@ -35,11 +35,11 @@ class AlgorithmEstimator(EstimatorBase):
         self,
         algorithm_arn,
         role,
-        train_instance_count,
-        train_instance_type,
-        train_volume_size=30,
-        train_volume_kms_key=None,
-        train_max_run=24 * 60 * 60,
+        instance_count,
+        instance_type,
+        volume_size=30,
+        volume_kms_key=None,
+        max_run=24 * 60 * 60,
         input_mode="File",
         output_path=None,
         output_kms_key=None,
@@ -65,15 +65,15 @@ class AlgorithmEstimator(EstimatorBase):
                 access training data and model artifacts. After the endpoint
                 is created, the inference code might use the IAM role, if it
                 needs to access an AWS resource.
-            train_instance_count (int): Number of Amazon EC2 instances to
-                use for training. train_instance_type (str): Type of EC2
+            instance_count (int): Number of Amazon EC2 instances to
+                use for training. instance_type (str): Type of EC2
                 instance to use for training, for example, 'ml.c4.xlarge'.
-            train_volume_size (int): Size in GB of the EBS volume to use for
+            volume_size (int): Size in GB of the EBS volume to use for
                 storing input data during training (default: 30). Must be large enough to store
                 training data if File Mode is used (which is the default).
-            train_volume_kms_key (str): Optional. KMS key ID for encrypting EBS volume attached
+            volume_kms_key (str): Optional. KMS key ID for encrypting EBS volume attached
                 to the training instance (default: None).
-            train_max_run (int): Timeout in seconds for training (default: 24 * 60 * 60).
+            max_run (int): Timeout in seconds for training (default: 24 * 60 * 60).
                 After this amount of time Amazon SageMaker terminates the
                 job regardless of its current status.
             input_mode (str): The input mode that the algorithm supports
@@ -131,11 +131,11 @@ class AlgorithmEstimator(EstimatorBase):
         self.algorithm_arn = algorithm_arn
         super(AlgorithmEstimator, self).__init__(
             role,
-            train_instance_count,
-            train_instance_type,
-            train_volume_size,
-            train_volume_kms_key,
-            train_max_run,
+            instance_count,
+            instance_type,
+            volume_size,
+            volume_kms_key,
+            max_run,
             input_mode,
             output_path,
             output_kms_key,
@@ -167,30 +167,30 @@ class AlgorithmEstimator(EstimatorBase):
 
         # Check that the input mode provided is compatible with the training input modes for the
         # algorithm.
-        train_input_modes = self._algorithm_training_input_modes(train_spec["TrainingChannels"])
-        if self.input_mode not in train_input_modes:
+        input_modes = self._algorithm_training_input_modes(train_spec["TrainingChannels"])
+        if self.input_mode not in input_modes:
             raise ValueError(
                 "Invalid input mode: %s. %s only supports: %s"
-                % (self.input_mode, algorithm_name, train_input_modes)
+                % (self.input_mode, algorithm_name, input_modes)
             )
 
         # Check that the training instance type is compatible with the algorithm.
         supported_instances = train_spec["SupportedTrainingInstanceTypes"]
-        if self.train_instance_type not in supported_instances:
+        if self.instance_type not in supported_instances:
             raise ValueError(
-                "Invalid train_instance_type: %s. %s supports the following instance types: %s"
-                % (self.train_instance_type, algorithm_name, supported_instances)
+                "Invalid instance_type: %s. %s supports the following instance types: %s"
+                % (self.instance_type, algorithm_name, supported_instances)
             )
 
         # Verify if distributed training is supported by the algorithm
         if (
-            self.train_instance_count > 1
+            self.instance_count > 1
             and "SupportsDistributedTraining" in train_spec
             and not train_spec["SupportsDistributedTraining"]
         ):
             raise ValueError(
                 "Distributed training is not supported by %s. "
-                "Please set train_instance_count=1" % algorithm_name
+                "Please set instance_count=1" % algorithm_name
             )
 
     def set_hyperparameters(self, **kwargs):

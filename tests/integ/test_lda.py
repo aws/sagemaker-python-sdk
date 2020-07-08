@@ -45,7 +45,7 @@ def test_lda(sagemaker_session, cpu_instance_type):
 
         lda = LDA(
             role="SageMakerRole",
-            train_instance_type=cpu_instance_type,
+            instance_type=cpu_instance_type,
             num_topics=10,
             sagemaker_session=sagemaker_session,
         )

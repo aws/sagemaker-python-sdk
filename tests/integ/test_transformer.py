@@ -45,8 +45,8 @@ def mxnet_estimator(
     mx = MXNet(
         entry_point=os.path.join(MXNET_MNIST_PATH, "mnist.py"),
         role="SageMakerRole",
-        train_instance_count=1,
-        train_instance_type=cpu_instance_type,
+        instance_count=1,
+        instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
         framework_version=mxnet_full_version,
         py_version=mxnet_full_py_version,
@@ -109,8 +109,8 @@ def test_transform_mxnet(
 def test_attach_transform_kmeans(sagemaker_session, cpu_instance_type):
     kmeans = KMeans(
         role="SageMakerRole",
-        train_instance_count=1,
-        train_instance_type=cpu_instance_type,
+        instance_count=1,
+        instance_type=cpu_instance_type,
         k=10,
         sagemaker_session=sagemaker_session,
         output_path="s3://{}/".format(sagemaker_session.default_bucket()),
@@ -230,8 +230,8 @@ def test_transform_byo_estimator(sagemaker_session, cpu_instance_type):
 
     kmeans = KMeans(
         role="SageMakerRole",
-        train_instance_count=1,
-        train_instance_type=cpu_instance_type,
+        instance_count=1,
+        instance_type=cpu_instance_type,
         k=10,
         sagemaker_session=sagemaker_session,
         output_path="s3://{}/".format(sagemaker_session.default_bucket()),
@@ -340,8 +340,8 @@ def test_transform_tf_kms_network_isolation(
     tf = TensorFlow(
         entry_point=os.path.join(data_path, "mnist.py"),
         role="SageMakerRole",
-        train_instance_count=1,
-        train_instance_type=cpu_instance_type,
+        instance_count=1,
+        instance_type=cpu_instance_type,
         framework_version=tf_full_version,
         py_version=tf_full_py_version,
         sagemaker_session=sagemaker_session,

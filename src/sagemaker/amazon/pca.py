@@ -50,8 +50,8 @@ class PCA(AmazonAlgorithmEstimatorBase):
     def __init__(
         self,
         role,
-        train_instance_count,
-        train_instance_type,
+        instance_count,
+        instance_type,
         num_components,
         algorithm_mode=None,
         subtract_mean=None,
@@ -97,9 +97,9 @@ class PCA(AmazonAlgorithmEstimatorBase):
                 endpoints use this role to access training data and model
                 artifacts. After the endpoint is created, the inference code
                 might use the IAM role, if accessing AWS resource.
-            train_instance_count (int): Number of Amazon EC2 instances to use
+            instance_count (int): Number of Amazon EC2 instances to use
                 for training.
-            train_instance_type (str): Type of EC2 instance to use for training,
+            instance_type (str): Type of EC2 instance to use for training,
                 for example, 'ml.c4.xlarge'.
             num_components (int): The number of principal components. Must be
                 greater than zero.
@@ -120,7 +120,7 @@ class PCA(AmazonAlgorithmEstimatorBase):
             :class:`~sagemaker.estimator.amazon_estimator.AmazonAlgorithmEstimatorBase` and
             :class:`~sagemaker.estimator.EstimatorBase`.
         """
-        super(PCA, self).__init__(role, train_instance_count, train_instance_type, **kwargs)
+        super(PCA, self).__init__(role, instance_count, instance_type, **kwargs)
         self.num_components = num_components
         self.algorithm_mode = algorithm_mode
         self.subtract_mean = subtract_mean
@@ -169,7 +169,7 @@ class PCA(AmazonAlgorithmEstimatorBase):
 
         # mini_batch_size is a required parameter
         default_mini_batch_size = min(
-            self.DEFAULT_MINI_BATCH_SIZE, max(1, int(num_records / self.train_instance_count))
+            self.DEFAULT_MINI_BATCH_SIZE, max(1, int(num_records / self.instance_count))
         )
         use_mini_batch_size = mini_batch_size or default_mini_batch_size
 

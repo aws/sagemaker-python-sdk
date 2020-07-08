@@ -77,8 +77,8 @@ def test_byo_airflow_config_uploads_data_source_to_s3_when_inputs_provided(
                 sagemaker_session.boto_session.region_name, "factorization-machines"
             ),
             role=ROLE,
-            train_instance_count=SINGLE_INSTANCE_COUNT,
-            train_instance_type=cpu_instance_type,
+            instance_count=SINGLE_INSTANCE_COUNT,
+            instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
         )
 
@@ -97,8 +97,8 @@ def test_kmeans_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         kmeans = KMeans(
             role=ROLE,
-            train_instance_count=SINGLE_INSTANCE_COUNT,
-            train_instance_type=cpu_instance_type,
+            instance_count=SINGLE_INSTANCE_COUNT,
+            instance_type=cpu_instance_type,
             k=10,
             sagemaker_session=sagemaker_session,
         )
@@ -129,8 +129,8 @@ def test_fm_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_inst
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         fm = FactorizationMachines(
             role=ROLE,
-            train_instance_count=SINGLE_INSTANCE_COUNT,
-            train_instance_type=cpu_instance_type,
+            instance_count=SINGLE_INSTANCE_COUNT,
+            instance_type=cpu_instance_type,
             num_factors=10,
             predictor_type="regressor",
             epochs=2,
@@ -164,8 +164,8 @@ def test_ipinsights_airflow_config_uploads_data_source_to_s3(sagemaker_session, 
 
         ipinsights = IPInsights(
             role=ROLE,
-            train_instance_count=SINGLE_INSTANCE_COUNT,
-            train_instance_type=cpu_instance_type,
+            instance_count=SINGLE_INSTANCE_COUNT,
+            instance_type=cpu_instance_type,
             num_entity_vectors=10,
             vector_dim=100,
             sagemaker_session=sagemaker_session,
@@ -189,8 +189,8 @@ def test_knn_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_ins
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         knn = KNN(
             role=ROLE,
-            train_instance_count=SINGLE_INSTANCE_COUNT,
-            train_instance_type=cpu_instance_type,
+            instance_count=SINGLE_INSTANCE_COUNT,
+            instance_type=cpu_instance_type,
             k=10,
             predictor_type="regressor",
             sample_size=500,
@@ -228,7 +228,7 @@ def test_lda_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_ins
 
         lda = LDA(
             role=ROLE,
-            train_instance_type=cpu_instance_type,
+            instance_type=cpu_instance_type,
             num_topics=10,
             sagemaker_session=sagemaker_session,
         )
@@ -326,8 +326,8 @@ def test_ntm_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_ins
 
         ntm = NTM(
             role=ROLE,
-            train_instance_count=SINGLE_INSTANCE_COUNT,
-            train_instance_type=cpu_instance_type,
+            instance_count=SINGLE_INSTANCE_COUNT,
+            instance_type=cpu_instance_type,
             num_topics=10,
             sagemaker_session=sagemaker_session,
         )
@@ -351,8 +351,8 @@ def test_pca_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_ins
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         pca = PCA(
             role=ROLE,
-            train_instance_count=SINGLE_INSTANCE_COUNT,
-            train_instance_type=cpu_instance_type,
+            instance_count=SINGLE_INSTANCE_COUNT,
+            instance_type=cpu_instance_type,
             num_components=48,
             sagemaker_session=sagemaker_session,
         )
@@ -382,8 +382,8 @@ def test_rcf_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_ins
 
         rcf = RandomCutForest(
             role=ROLE,
-            train_instance_count=SINGLE_INSTANCE_COUNT,
-            train_instance_type=cpu_instance_type,
+            instance_count=SINGLE_INSTANCE_COUNT,
+            instance_type=cpu_instance_type,
             num_trees=50,
             num_samples_per_tree=20,
             eval_metrics=["accuracy", "precision_recall_fscore"],
@@ -413,8 +413,8 @@ def test_chainer_airflow_config_uploads_data_source_to_s3(
         chainer = Chainer(
             entry_point=script_path,
             role=ROLE,
-            train_instance_count=SINGLE_INSTANCE_COUNT,
-            train_instance_type="local",
+            instance_count=SINGLE_INSTANCE_COUNT,
+            instance_type="local",
             framework_version=chainer_full_version,
             py_version=chainer_full_py_version,
             sagemaker_session=sagemaker_local_session,
@@ -453,8 +453,8 @@ def test_mxnet_airflow_config_uploads_data_source_to_s3(
             role=ROLE,
             framework_version=mxnet_full_version,
             py_version=mxnet_full_py_version,
-            train_instance_count=SINGLE_INSTANCE_COUNT,
-            train_instance_type=cpu_instance_type,
+            instance_count=SINGLE_INSTANCE_COUNT,
+            instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
         )
 
@@ -484,7 +484,7 @@ def test_sklearn_airflow_config_uploads_data_source_to_s3(
         sklearn = SKLearn(
             entry_point=script_path,
             role=ROLE,
-            train_instance_type=cpu_instance_type,
+            instance_type=cpu_instance_type,
             framework_version=sklearn_full_version,
             py_version=sklearn_full_py_version,
             sagemaker_session=sagemaker_session,
@@ -521,8 +521,8 @@ def test_tf_airflow_config_uploads_data_source_to_s3(
             ),
             entry_point=SCRIPT,
             role=ROLE,
-            train_instance_count=SINGLE_INSTANCE_COUNT,
-            train_instance_type=cpu_instance_type,
+            instance_count=SINGLE_INSTANCE_COUNT,
+            instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
             framework_version=tf_training_latest_version,
             py_version=tf_training_latest_py_version,
@@ -555,8 +555,8 @@ def test_xgboost_airflow_config_uploads_data_source_to_s3(
             py_version=xgboost_full_py_version,
             role=ROLE,
             sagemaker_session=sagemaker_session,
-            train_instance_type=cpu_instance_type,
-            train_instance_count=SINGLE_INSTANCE_COUNT,
+            instance_type=cpu_instance_type,
+            instance_count=SINGLE_INSTANCE_COUNT,
             base_job_name="XGBoost job",
         )
 
@@ -580,8 +580,8 @@ def test_pytorch_airflow_config_uploads_data_source_to_s3_when_inputs_not_provid
             role=ROLE,
             framework_version=pytorch_full_version,
             py_version=pytorch_full_py_version,
-            train_instance_count=2,
-            train_instance_type=cpu_instance_type,
+            instance_count=2,
+            instance_type=cpu_instance_type,
             hyperparameters={"epochs": 6, "backend": "gloo"},
             sagemaker_session=sagemaker_session,
         )
@@ -620,7 +620,7 @@ def _build_airflow_workflow(estimator, instance_type, inputs=None, mini_batch_si
         task_id="transform_config",
         task_type="training",
         instance_count=SINGLE_INSTANCE_COUNT,
-        instance_type=estimator.train_instance_type,
+        instance_type=estimator.instance_type,
         data=inputs,
         content_type="text/csv",
         input_filter="$",

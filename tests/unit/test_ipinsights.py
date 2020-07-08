@@ -20,8 +20,8 @@ from sagemaker.amazon.amazon_estimator import registry, RecordSet
 
 # Mocked training config
 ROLE = "myrole"
-TRAIN_INSTANCE_COUNT = 1
-TRAIN_INSTANCE_TYPE = "ml.c4.xlarge"
+INSTANCE_COUNT = 1
+INSTANCE_TYPE = "ml.c4.xlarge"
 
 # Required algorithm hyperparameters
 NUM_ENTITY_VECTORS = 10000
@@ -29,8 +29,8 @@ VECTOR_DIM = 128
 
 COMMON_TRAIN_ARGS = {
     "role": ROLE,
-    "train_instance_count": TRAIN_INSTANCE_COUNT,
-    "train_instance_type": TRAIN_INSTANCE_TYPE,
+    "instance_count": INSTANCE_COUNT,
+    "instance_type": INSTANCE_TYPE,
 }
 ALL_REQ_ARGS = dict(
     {"num_entity_vectors": NUM_ENTITY_VECTORS, "vector_dim": VECTOR_DIM}, **COMMON_TRAIN_ARGS
@@ -69,15 +69,15 @@ def sagemaker_session():
 def test_init_required_positional(sagemaker_session):
     ipinsights = IPInsights(
         ROLE,
-        TRAIN_INSTANCE_COUNT,
-        TRAIN_INSTANCE_TYPE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
         NUM_ENTITY_VECTORS,
         VECTOR_DIM,
         sagemaker_session=sagemaker_session,
     )
     assert ipinsights.role == ROLE
-    assert ipinsights.train_instance_count == TRAIN_INSTANCE_COUNT
-    assert ipinsights.train_instance_type == TRAIN_INSTANCE_TYPE
+    assert ipinsights.instance_count == INSTANCE_COUNT
+    assert ipinsights.instance_type == INSTANCE_TYPE
     assert ipinsights.num_entity_vectors == NUM_ENTITY_VECTORS
     assert ipinsights.vector_dim == VECTOR_DIM
 
@@ -86,8 +86,8 @@ def test_init_required_named(sagemaker_session):
     ipinsights = IPInsights(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
     assert ipinsights.role == COMMON_TRAIN_ARGS["role"]
-    assert ipinsights.train_instance_count == TRAIN_INSTANCE_COUNT
-    assert ipinsights.train_instance_type == COMMON_TRAIN_ARGS["train_instance_type"]
+    assert ipinsights.instance_count == INSTANCE_COUNT
+    assert ipinsights.instance_type == COMMON_TRAIN_ARGS["instance_type"]
     assert ipinsights.num_entity_vectors == NUM_ENTITY_VECTORS
     assert ipinsights.vector_dim == VECTOR_DIM
 
@@ -301,6 +301,6 @@ def test_predictor_type(sagemaker_session):
     )
     ipinsights.fit(data, MINI_BATCH_SIZE)
     model = ipinsights.create_model()
-    predictor = model.deploy(1, TRAIN_INSTANCE_TYPE)
+    predictor = model.deploy(1, INSTANCE_TYPE)
 
     assert isinstance(predictor, IPInsightsPredictor)
