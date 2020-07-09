@@ -25,7 +25,7 @@ def test_string_deserializer():
     result = deserializer.deserialize(io.BytesIO(b"[1, 2, 3]"), "application/json")
 
     assert result == "[1, 2, 3]"
-    
+
 
 def test_bytes_deserializer():
     deserializer = BytesDeserializer()
