@@ -31,8 +31,8 @@ You can then create an ``RLEstimator`` with keyword arguments to point to this s
                                toolkit_version='0.11.1',
                                framework=RLFramework.TENSORFLOW,
                                role='SageMakerRole',
-                               train_instance_type='ml.p3.2xlarge',
-                               train_instance_count=1)
+                               instance_type='ml.p3.2xlarge',
+                               instance_count=1)
 
 After that, you simply tell the estimator to start a training job:
 
@@ -81,9 +81,9 @@ these in the constructor, either positionally or as keyword arguments.
    endpoints use this role to access training data and model artifacts.
    After the endpoint is created, the inference code might use the IAM
    role, if accessing AWS resource.
--  ``train_instance_count`` Number of Amazon EC2 instances to use for
+-  ``instance_count`` Number of Amazon EC2 instances to use for
    training.
--  ``train_instance_type`` Type of EC2 instance to use for training, for
+-  ``instance_type`` Type of EC2 instance to use for training, for
    example, 'ml.m4.xlarge'.
 
 You must as well include either:
@@ -158,8 +158,8 @@ In case if ``image_uri`` was specified it would use provided image for the deplo
                                toolkit_version='0.11.0',
                                framework=RLFramework.MXNET,
                                role='SageMakerRole',
-                               train_instance_type='ml.c4.2xlarge',
-                               train_instance_count=1)
+                               instance_type='ml.c4.2xlarge',
+                               instance_count=1)
 
     rl_estimator.fit()
 
