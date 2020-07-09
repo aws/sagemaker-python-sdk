@@ -17,10 +17,10 @@ import codecs
 import csv
 import json
 import six
-from six import StringIO, BytesIO
+from six import StringIO
 import numpy as np
 
-from sagemaker.content_types import CONTENT_TYPE_JSON, CONTENT_TYPE_CSV, CONTENT_TYPE_NPY
+from sagemaker.content_types import CONTENT_TYPE_JSON, CONTENT_TYPE_CSV
 from sagemaker.deserializers import BaseDeserializer
 from sagemaker.model_monitor import DataCaptureConfig
 from sagemaker.serializers import BaseSerializer
