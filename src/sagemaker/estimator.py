@@ -127,7 +127,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                 'Pipe' - Amazon SageMaker streams data directly from S3 to the
                 container via a Unix-named pipe. This argument can be overriden
                 on a per-channel basis using
-                ``sagemaker.session.TrainingInput.input_mode``.
+                ``sagemaker.inputs.TrainingInput.input_mode``.
             output_path (str): S3 location for saving the training result (model
                 artifacts and output files). If not specified, results are
                 stored to a default bucket. If the bucket with the specific name
@@ -472,18 +472,18 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         model using the Amazon SageMaker hosting services.
 
         Args:
-            inputs (str or dict or sagemaker.session.TrainingInput): Information
+            inputs (str or dict or sagemaker.inputs.TrainingInput): Information
                 about the training data. This can be one of three types:
 
                 * (str) the S3 location where training data is saved, or a file:// path in
                     local mode.
-                * (dict[str, str] or dict[str, sagemaker.session.TrainingInput]) If using multiple
+                * (dict[str, str] or dict[str, sagemaker.inputs.TrainingInput]) If using multiple
                     channels for training data, you can specify a dict mapping channel names to
-                    strings or :func:`~sagemaker.session.TrainingInput` objects.
-                * (sagemaker.session.TrainingInput) - channel configuration for S3 data sources
+                    strings or :func:`~sagemaker.inputs.TrainingInput` objects.
+                * (sagemaker.inputs.TrainingInput) - channel configuration for S3 data sources
                     that can provide additional information as well as the path to the training
                     dataset.
-                    See :func:`sagemaker.session.TrainingInput` for full details.
+                    See :func:`sagemaker.inputs.TrainingInput` for full details.
                 * (sagemaker.session.FileSystemInput) - channel configuration for
                     a file system data source that can provide additional information as well as
                     the path to the training dataset.
@@ -1192,7 +1192,7 @@ class Estimator(EstimatorBase):
                   container via a Unix-named pipe.
 
                 This argument can be overriden on a per-channel basis using
-                ``sagemaker.session.TrainingInput.input_mode``.
+                ``sagemaker.inputs.TrainingInput.input_mode``.
             output_path (str): S3 location for saving the training result (model
                 artifacts and output files). If not specified, results are
                 stored to a default bucket. If the bucket with the specific name

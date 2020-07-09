@@ -377,13 +377,13 @@ class HyperparameterTuner(object):
                 any of the following forms:
 
                 * (str) - The S3 location where training data is saved.
-                * (dict[str, str] or dict[str, sagemaker.session.TrainingInput]) -
+                * (dict[str, str] or dict[str, sagemaker.inputs.TrainingInput]) -
                     If using multiple channels for training data, you can specify
                     a dict mapping channel names to strings or
-                    :func:`~sagemaker.session.TrainingInput` objects.
-                * (sagemaker.session.TrainingInput) - Channel configuration for S3 data sources
+                    :func:`~sagemaker.inputs.TrainingInput` objects.
+                * (sagemaker.inputs.TrainingInput) - Channel configuration for S3 data sources
                     that can provide additional information about the training dataset.
-                    See :func:`sagemaker.session.TrainingInput` for full details.
+                    See :func:`sagemaker.inputs.TrainingInput` for full details.
                 * (sagemaker.session.FileSystemInput) - channel configuration for
                     a file system data source that can provide additional information as well as
                     the path to the training dataset.
