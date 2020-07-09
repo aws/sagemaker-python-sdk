@@ -16,6 +16,11 @@ from __future__ import absolute_import
 import csv
 
 import abc
+import codecs
+import io
+import json
+
+import numpy as np
 
 
 class BaseDeserializer(abc.ABC):
@@ -144,3 +149,41 @@ class StreamDeserializer(BaseDeserializer):
             tuple: A two-tuple containing the stream and content-type.
         """
         return data, content_type
+
+
+class NumpyDeserializer(BaseDeserializer):
+    """Deserialize a stream of data in the .npy format."""
+
+    ACCEPT = "application/x-npy"
+
+    def __init__(self, dtype=None):
+        """Initialize the dtype.
+
+        Args:
+            dtype (str): The dtype of the data.
+        """
+        self.dtype = dtype
+
+    def deserialize(self, data, content_type):
+        """Deserialize data from an inference endpoint into a NumPy array.
+
+        Args:
+            data (botocore.response.StreamingBody): Data to be deserialized.
+            content_type (str): The MIME type of the data.
+
+        Returns:
+            numpy.ndarray: The data deserialized into a NumPy array.
+        """
+        try:
+            if content_type == "text/csv":
+                return np.genfromtxt(
+                    codecs.getreader("utf-8")(data), delimiter=",", dtype=self.dtype
+                )
+            if content_type == "application/json":
+                return np.array(json.load(codecs.getreader("utf-8")(data)), dtype=self.dtype)
+            if content_type == "application/x-npy":
+                return np.load(io.BytesIO(data.read()))
+        finally:
+            data.close()
+
+        raise ValueError("%s cannot read content type %s." % (__class__.__name__, content_type))

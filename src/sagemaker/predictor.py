@@ -672,50 +672,6 @@ class _JsonDeserializer(object):
 json_deserializer = _JsonDeserializer()
 
 
-class _NumpyDeserializer(object):
-    """Placeholder docstring"""
-
-    def __init__(self, accept=CONTENT_TYPE_NPY, dtype=None):
-        """
-        Args:
-            accept:
-            dtype:
-        """
-        self.accept = accept
-        self.dtype = dtype
-
-    def __call__(self, stream, content_type=CONTENT_TYPE_NPY):
-        """Decode from serialized data into a Numpy array.
-
-        Args:
-            stream (stream): The response stream to be deserialized.
-            content_type (str): The content type of the response. Can accept
-                CSV, JSON, or NPY data.
-
-        Returns:
-            object: Body of the response deserialized into a Numpy array.
-        """
-        try:
-            if content_type == CONTENT_TYPE_CSV:
-                return np.genfromtxt(
-                    codecs.getreader("utf-8")(stream), delimiter=",", dtype=self.dtype
-                )
-            if content_type == CONTENT_TYPE_JSON:
-                return np.array(json.load(codecs.getreader("utf-8")(stream)), dtype=self.dtype)
-            if content_type == CONTENT_TYPE_NPY:
-                return np.load(BytesIO(stream.read()))
-        finally:
-            stream.close()
-        raise ValueError(
-            "content_type must be one of the following: CSV, JSON, NPY. content_type: {}".format(
-                content_type
-            )
-        )
-
-
-numpy_deserializer = _NumpyDeserializer()
-
-
 class _NPYSerializer(object):
     """Placeholder docstring"""
 
