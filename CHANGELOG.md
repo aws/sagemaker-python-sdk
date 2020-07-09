@@ -4,6 +4,8 @@
 
 ### Breaking Changes
 
+ * Move StreamDeserializer to sagemaker.deserializers
+ * Move StringDeserializer to sagemaker.deserializers
  * rename record_deserializer to RecordDeserializer
  * remove "train_" where redundant in parameter/variable names
  * Add BytesDeserializer
@@ -29,6 +31,7 @@
 
 ### Bug Fixes and Other Changes
 
+ * handle "train_*" renames in v2 migration tool
  * handle image_uri rename for Session methods in v2 migration tool
  * Update BytesDeserializer accept header
  * handle image_uri rename for estimators and models in v2 migration tool
@@ -41,6 +44,8 @@
 
 ### Documentation Changes
 
+ * update documentation with v2.0.0.rc1 changes
+ * remove 'train_*' prefix from estimator parameters
  * update documentation for image_name/image --> image_uri
 
 ### Testing and Release Infrastructure
