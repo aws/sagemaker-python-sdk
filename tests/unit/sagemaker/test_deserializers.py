@@ -16,7 +16,12 @@ import io
 
 import pytest
 
-from sagemaker.deserializers import StringDeserializer, BytesDeserializer, CSVDeserializer, StreamDeserializer
+from sagemaker.deserializers import (
+    StringDeserializer,
+    BytesDeserializer,
+    CSVDeserializer,
+    StreamDeserializer,
+)
 
 
 def test_string_deserializer():
