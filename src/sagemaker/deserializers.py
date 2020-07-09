@@ -101,7 +101,7 @@ class BytesDeserializer(BaseDeserializer):
 class CSVDeserializer(BaseDeserializer):
     """Deserialize a stream of bytes into a list of lists."""
 
-    ACCEPT = "test/csv"
+    ACCEPT = "text/csv"
 
     def __init__(self, encoding="utf-8"):
         """Initialize the string encoding.
