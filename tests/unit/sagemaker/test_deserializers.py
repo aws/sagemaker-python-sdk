@@ -22,7 +22,6 @@ from sagemaker.deserializers import (
     BytesDeserializer,
     CSVDeserializer,
     StreamDeserializer,
-    StreamDeserializer,
     NumpyDeserializer,
 )
 
