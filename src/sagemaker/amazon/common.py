@@ -44,7 +44,9 @@ class RecordSerializer(BaseSerializer):
             data = data.reshape(1, data.shape[0])
 
         if len(data.shape) != 2:
-            raise ValueError("Expected a one or two dimensional array.")
+            raise ValueError(
+                "Expected a 1D or 2D array, but got a %dD array instead." % len(data.shape)
+            )
 
         buffer = io.BytesIO()
         write_numpy_to_dense_tensor(buffer, data)
