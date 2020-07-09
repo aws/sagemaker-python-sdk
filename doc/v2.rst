@@ -55,8 +55,8 @@ For example:
         framework_version="2.2.0",  # now required
         py_version="py37",  # now required
         role="my-role",
-        train_instance_type="ml.m5.xlarge",
-        train_instance_count=1,
+        instance_type="ml.m5.xlarge",
+        instance_count=1,
     )
 
     from sagemaker.mxnet import MXNetModel
