@@ -27,18 +27,18 @@ from sagemaker.utils import DeferredError
 
 
 class RecordSerializer(BaseSerializer):
-    """Serialize array-like data for an inference request."""
+    """Serialize a NumPy array for an inference request."""
 
     CONTENT_TYPE = "application/x-recordio-protobuf"
 
     def serialize(self, data):
-        """Serialize array-like data into a buffer containing RecordIO records.
+        """Serialize a NumPy array into a buffer containing RecordIO records.
 
         Args:
             data (numpy.ndarray): The data to serialize.
 
         Returns:
-            _io.BytesIO: A buffer containing the data serialized as records.
+            io.BytesIO: A buffer containing the data serialized as records.
         """
         if len(data.shape) == 1:
             data = data.reshape(1, data.shape[0])
