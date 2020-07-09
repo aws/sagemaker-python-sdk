@@ -85,7 +85,7 @@ def test_numpy_deserializer_from_json(numpy_deserializer):
     assert np.array_equal(array, np.array([[1, 2, 3], [4, 5, 6]]))
 
 
-# Sadly, ragged arrays work fine in JSON (giving us a 1D array of Python lists
+# Sadly, ragged arrays work fine in JSON (giving us a 1D array of Python lists)
 def test_numpy_deserializer_from_json_ragged(numpy_deserializer):
     stream = io.BytesIO(b"[[1,2,3],\n[4,5,6,7]]")
     array = numpy_deserializer.deserialize(stream, "application/json")
