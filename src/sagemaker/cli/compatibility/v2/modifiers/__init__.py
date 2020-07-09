@@ -21,4 +21,5 @@ from sagemaker.cli.compatibility.v2.modifiers import (  # noqa: F401 (imported b
     renamed_params,
     tf_legacy_mode,
     tfs,
+    training_params,
 )
