@@ -351,9 +351,9 @@ If your TFRecords are compressed, you can train on Gzipped TF Records by passing
 
 .. code:: python
 
-    from sagemaker.session import s3_input
+    from sagemaker.inputs import TrainingInput
 
-    train_s3_input = s3_input('s3://bucket/path/to/training/data', compression='Gzip')
+    train_s3_input = TrainingInput('s3://bucket/path/to/training/data', compression='Gzip')
     tf_estimator.fit(train_s3_input)
 
 
