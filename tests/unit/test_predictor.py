@@ -26,9 +26,7 @@ from sagemaker.predictor import (
     json_deserializer,
     csv_serializer,
     csv_deserializer,
-    numpy_deserializer,
     npy_serializer,
-    _NumpyDeserializer,
 )
 from tests.unit import DATA_DIR
 
@@ -257,62 +255,6 @@ def test_npy_serializer_python_invalid_empty():
     with pytest.raises(ValueError) as error:
         npy_serializer([])
     assert "empty array" in str(error)
-
-
-def test_numpy_deser_from_csv():
-    arr = numpy_deserializer(io.BytesIO(b"1,2,3\n4,5,6"), "text/csv")
-    assert np.array_equal(arr, np.array([[1, 2, 3], [4, 5, 6]]))
-
-
-def test_numpy_deser_from_csv_ragged():
-    with pytest.raises(ValueError) as error:
-        numpy_deserializer(io.BytesIO(b"1,2,3\n4,5,6,7"), "text/csv")
-    assert "errors were detected" in str(error)
-
-
-def test_numpy_deser_from_csv_alpha():
-    arr = _NumpyDeserializer(dtype="U5")(io.BytesIO(b"hello,2,3\n4,5,6"), "text/csv")
-    assert np.array_equal(arr, np.array([["hello", 2, 3], [4, 5, 6]]))
-
-
-def test_numpy_deser_from_json():
-    arr = numpy_deserializer(io.BytesIO(b"[[1,2,3],\n[4,5,6]]"), "application/json")
-    assert np.array_equal(arr, np.array([[1, 2, 3], [4, 5, 6]]))
-
-
-# Sadly, ragged arrays work fine in JSON (giving us a 1D array of Python lists
-def test_numpy_deser_from_json_ragged():
-    arr = numpy_deserializer(io.BytesIO(b"[[1,2,3],\n[4,5,6,7]]"), "application/json")
-    assert np.array_equal(arr, np.array([[1, 2, 3], [4, 5, 6, 7]]))
-
-
-def test_numpy_deser_from_json_alpha():
-    arr = _NumpyDeserializer(dtype="U5")(
-        io.BytesIO(b'[["hello",2,3],\n[4,5,6]]'), "application/json"
-    )
-    assert np.array_equal(arr, np.array([["hello", 2, 3], [4, 5, 6]]))
-
-
-def test_numpy_deser_from_npy():
-    array = np.ones((2, 3))
-    stream = io.BytesIO()
-    np.save(stream, array)
-    stream.seek(0)
-
-    result = numpy_deserializer(stream)
-
-    assert np.array_equal(array, result)
-
-
-def test_numpy_deser_from_npy_object_array():
-    array = np.array(["one", "two"])
-    stream = io.BytesIO()
-    np.save(stream, array)
-    stream.seek(0)
-
-    result = numpy_deserializer(stream)
-
-    assert np.array_equal(array, result)
 
 
 # testing 'predict' invocations
