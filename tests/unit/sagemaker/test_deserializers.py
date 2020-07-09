@@ -16,7 +16,7 @@ import io
 
 import pytest
 
-from sagemaker.deserializers import StringDeserializer, BytesDeserializer, CSVDeserializer
+from sagemaker.deserializers import StringDeserializer, BytesDeserializer, CSVDeserializer, StreamDeserializer
 
 
 def test_string_deserializer():
@@ -58,3 +58,16 @@ def test_csv_deserializer_2dimensional(csv_deserializer):
 def test_csv_deserializer_posix_compliant(csv_deserializer):
     result = csv_deserializer.deserialize(io.BytesIO(b"1,2,3\n3,4,5\n"), "text/csv")
     assert result == [["1", "2", "3"], ["3", "4", "5"]]
+
+
+def test_stream_deserializer():
+    deserializer = StreamDeserializer()
+
+    stream, content_type = deserializer.deserialize(io.BytesIO(b"[1, 2, 3]"), "application/json")
+    try:
+        result = stream.read()
+    finally:
+        stream.close()
+
+    assert result == b"[1, 2, 3]"
+    assert content_type == "application/json"

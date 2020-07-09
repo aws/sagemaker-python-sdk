@@ -22,17 +22,21 @@ estimator object to create a SageMaker Endpoint:
 
   from sagemaker.tensorflow import TensorFlow
 
-  estimator = TensorFlow(entry_point='tf-train.py', ..., train_instance_count=1,
-                         train_instance_type='ml.c4.xlarge', framework_version='1.11')
+  estimator = TensorFlow(
+      entry_point="tf-train.py",
+      ...,
+      instance_count=1,
+      instance_type="ml.c4.xlarge",
+      framework_version="2.2",
+      py_version="py37",
+  )
 
   estimator.fit(inputs)
 
-  predictor = estimator.deploy(initial_instance_count=1,
-                               instance_type='ml.c5.xlarge',
-                               endpoint_type='tensorflow-serving')
+  predictor = estimator.deploy(initial_instance_count=1, instance_type="ml.c5.xlarge")
 
 
-The code block above deploys a SageMaker Endpoint with one instance of the type 'ml.c5.xlarge'.
+The code block above deploys a SageMaker Endpoint with one instance of the type "ml.c5.xlarge".
 
 What happens when deploy is called
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

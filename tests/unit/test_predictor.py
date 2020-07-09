@@ -25,7 +25,6 @@ from sagemaker.predictor import (
     json_serializer,
     json_deserializer,
     csv_serializer,
-    StreamDeserializer,
     numpy_deserializer,
     npy_serializer,
     _NumpyDeserializer,
@@ -164,13 +163,6 @@ def test_json_deserializer_invalid_data():
     with pytest.raises(ValueError) as error:
         json_deserializer(io.BytesIO(b"[[1]"), "application/json")
     assert "column" in str(error)
-
-
-def test_stream_deserializer():
-    stream, content_type = StreamDeserializer()(io.BytesIO(b"[1, 2, 3]"), "application/json")
-    result = stream.read()
-    assert result == b"[1, 2, 3]"
-    assert content_type == "application/json"
 
 
 def test_npy_serializer_python_array():
