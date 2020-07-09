@@ -16,10 +16,11 @@ from __future__ import absolute_import
 import logging
 
 import sagemaker
+from sagemaker.deserializers import NumpyDeserializer
 from sagemaker.fw_registry import default_framework_uri
 from sagemaker.fw_utils import model_code_key_prefix, validate_version_or_image_args
 from sagemaker.model import FrameworkModel, MODEL_SERVER_WORKERS_PARAM_NAME
-from sagemaker.predictor import Predictor, numpy_deserializer
+from sagemaker.predictor import Predictor
 from sagemaker.serializers import NumpySerializer
 from sagemaker.sklearn import defaults
 
@@ -45,7 +46,7 @@ class SKLearnPredictor(Predictor):
                 using the default AWS configuration chain.
         """
         super(SKLearnPredictor, self).__init__(
-            endpoint_name, sagemaker_session, NumpySerializer(), numpy_deserializer
+            endpoint_name, sagemaker_session, NumpySerializer(), NumpyDeserializer()
         )
 
 
