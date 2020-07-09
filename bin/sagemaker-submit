@@ -56,4 +56,4 @@ if __name__ == '__main__':
                                            hyperparameters=hyperparameters,
                                            instance_count=args.instance_count,
                                            instance_type=args.instance_type)
-    estimator.fit(sagemaker.s3_input(args.data))
+    estimator.fit(sagemaker.TrainingInput(args.data))

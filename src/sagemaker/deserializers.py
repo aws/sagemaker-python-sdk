@@ -41,6 +41,35 @@ class BaseDeserializer(abc.ABC):
         """The content type that is expected from the inference endpoint."""
 
 
+class StringDeserializer(BaseDeserializer):
+    """Deserialize data from an inference endpoint into a decoded string."""
+
+    ACCEPT = "application/json"
+
+    def __init__(self, encoding="UTF-8"):
+        """Initialize the string encoding.
+
+        Args:
+            encoding (str): The string encoding to use (default: UTF-8).
+        """
+        self.encoding = encoding
+
+    def deserialize(self, data, content_type):
+        """Deserialize data from an inference endpoint into a decoded string.
+
+        Args:
+            data (object): Data to be deserialized.
+            content_type (str): The MIME type of the data.
+
+        Returns:
+            str: The data deserialized into a decoded string.
+        """
+        try:
+            return data.read().decode(self.encoding)
+        finally:
+            data.close()
+
+
 class BytesDeserializer(BaseDeserializer):
     """Deserialize a stream of bytes into a bytes object."""
 
@@ -60,3 +89,25 @@ class BytesDeserializer(BaseDeserializer):
             return data.read()
         finally:
             data.close()
+
+
+class StreamDeserializer(BaseDeserializer):
+    """Returns the data and content-type received from an inference endpoint.
+
+    It is the user's responsibility to close the data stream once they're done
+    reading it.
+    """
+
+    ACCEPT = "*/*"
+
+    def deserialize(self, data, content_type):
+        """Returns a stream of the response body and the MIME type of the data.
+
+        Args:
+            data (object): A stream of bytes.
+            content_type (str): The MIME type of the data.
+
+        Returns:
+            tuple: A two-tuple containing the stream and content-type.
+        """
+        return data, content_type

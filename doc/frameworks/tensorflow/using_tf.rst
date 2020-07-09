@@ -165,10 +165,15 @@ To use Python 3.7, please specify both of the args:
 
   from sagemaker.tensorflow import TensorFlow
 
-  tf_estimator = TensorFlow(entry_point='tf-train.py', role='SageMakerRole',
-                            train_instance_count=1, train_instance_type='ml.p2.xlarge',
-                            framework_version='1.12', py_version='py3')
-  tf_estimator.fit('s3://bucket/path/to/training/data')
+  tf_estimator = TensorFlow(
+      entry_point="tf-train.py",
+      role="SageMakerRole",
+      instance_count=1,
+      instance_type="ml.p2.xlarge",
+      framework_version="2.2",
+      py_version="py37",
+  )
+  tf_estimator.fit("s3://bucket/path/to/training/data")
 
 Where the S3 url is a path to your training data within Amazon S3.
 The constructor keyword arguments define how SageMaker runs your training script.
@@ -182,7 +187,7 @@ You start your training script by calling the ``fit`` method on a ``TensorFlow``
 
 Calling ``fit`` starts a SageMaker training job. The training job will execute the following.
 
-- Starts ``train_instance_count`` EC2 instances of the type ``train_instance_type``.
+- Starts ``instance_count`` EC2 instances of the type ``instance_type``.
 - On each instance, it will do the following steps:
 
   - starts a Docker container optimized for TensorFlow.
@@ -210,7 +215,7 @@ For more information about the options available for ``fit``, see the `API docum
 Distributed Training
 ====================
 
-To run your training job with multiple instances in a distributed fashion, set ``train_instance_count``
+To run your training job with multiple instances in a distributed fashion, set ``instance_count``
 to a number larger than 1. We support two different types of distributed training, parameter server and Horovod.
 The ``distribution`` parameter is used to configure which distributed training strategy to use.
 
@@ -226,11 +231,16 @@ To enable parameter server training:
 
   from sagemaker.tensorflow import TensorFlow
 
-  tf_estimator = TensorFlow(entry_point='tf-train.py', role='SageMakerRole',
-                            train_instance_count=2, train_instance_type='ml.p2.xlarge',
-                            framework_version='1.11', py_version='py3',
-                            distribution={'parameter_server': {'enabled': True}})
-  tf_estimator.fit('s3://bucket/path/to/training/data')
+  tf_estimator = TensorFlow(
+      entry_point="tf-train.py",
+      role="SageMakerRole",
+      instance_count=2,
+      instance_type="ml.p2.xlarge",
+      framework_version="2.2",
+      py_version="py37",
+      distribution={"parameter_server": {"enabled": True}},
+  )
+  tf_estimator.fit("s3://bucket/path/to/training/data")
 
 Training with Horovod
 ---------------------
@@ -257,17 +267,22 @@ In the below example we create an estimator to launch Horovod distributed traini
 
     from sagemaker.tensorflow import TensorFlow
 
-    tf_estimator = TensorFlow(entry_point='tf-train.py', role='SageMakerRole',
-                              train_instance_count=1, train_instance_type='ml.p3.8xlarge',
-                              framework_version='2.1.0', py_version='py3',
-                              distribution={
-                                  'mpi': {
-                                      'enabled': True,
-                                      'processes_per_host': 4,
-                                      'custom_mpi_options': '--NCCL_DEBUG INFO'
-                                  }
-                              })
-    tf_estimator.fit('s3://bucket/path/to/training/data')
+    tf_estimator = TensorFlow(
+        entry_point="tf-train.py",
+        role="SageMakerRole",
+        instance_count=1,
+        instance_type="ml.p3.8xlarge",
+        framework_version="2.1.0",
+        py_version="py3",
+        distribution={
+            "mpi": {
+                "enabled": True,
+                "processes_per_host": 4,
+                "custom_mpi_options": "--NCCL_DEBUG INFO"
+            },
+        },
+    )
+    tf_estimator.fit("s3://bucket/path/to/training/data")
 
 
 Training with Pipe Mode using PipeModeDataset
@@ -316,12 +331,19 @@ To run training job with Pipe input mode, pass in ``input_mode='Pipe'`` to your 
 
     from sagemaker.tensorflow import TensorFlow
 
-    tf_estimator = TensorFlow(entry_point='tf-train-with-pipemodedataset.py', role='SageMakerRole',
-                              training_steps=10000, evaluation_steps=100,
-                              train_instance_count=1, train_instance_type='ml.p2.xlarge',
-                              framework_version='1.10.0', py_version='py3', input_mode='Pipe')
+    tf_estimator = TensorFlow(
+        entry_point="tf-train-with-pipemodedataset.py",
+        role="SageMakerRole",
+        training_steps=10000,
+        evaluation_steps=100,
+        instance_count=1,
+        instance_type="ml.p2.xlarge",
+        framework_version="1.10.0",
+        py_version="py3",
+        input_mode="Pipe",
+    )
 
-    tf_estimator.fit('s3://bucket/path/to/training/data')
+    tf_estimator.fit("s3://bucket/path/to/training/data")
 
 
 If your TFRecords are compressed, you can train on Gzipped TF Records by passing in ``compression='Gzip'`` to the call to
@@ -329,9 +351,9 @@ If your TFRecords are compressed, you can train on Gzipped TF Records by passing
 
 .. code:: python
 
-    from sagemaker.session import s3_input
+    from sagemaker.inputs import TrainingInput
 
-    train_s3_input = s3_input('s3://bucket/path/to/training/data', compression='Gzip')
+    train_s3_input = TrainingInput('s3://bucket/path/to/training/data', compression='Gzip')
     tf_estimator.fit(train_s3_input)
 
 
@@ -382,15 +404,18 @@ estimator object to create a SageMaker Endpoint:
 
   from sagemaker.tensorflow import TensorFlow
 
-  estimator = TensorFlow(entry_point='tf-train.py', ..., train_instance_count=1,
-                         train_instance_type='ml.c4.xlarge', framework_version='1.11',
-                         py_version='py3')
+  estimator = TensorFlow(
+      entry_point="tf-train.py",
+      ...,
+      instance_count=1,
+      instance_type="ml.c4.xlarge",
+      framework_version="2.2",
+      py_version="py37",
+  )
 
   estimator.fit(inputs)
 
-  predictor = estimator.deploy(initial_instance_count=1,
-                               instance_type='ml.c5.xlarge',
-                               endpoint_type='tensorflow-serving')
+  predictor = estimator.deploy(initial_instance_count=1, instance_type="ml.c5.xlarge")
 
 
 The code block above deploys a SageMaker Endpoint with one instance of the type 'ml.c5.xlarge'.

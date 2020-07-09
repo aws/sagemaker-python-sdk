@@ -23,7 +23,7 @@ from botocore.exceptions import ClientError
 from mock import ANY, MagicMock, Mock, patch, call, mock_open
 
 import sagemaker
-from sagemaker import s3_input, Session, get_execution_role
+from sagemaker import TrainingInput, Session, get_execution_role
 from sagemaker.session import (
     _tuning_job_status,
     _transform_job_status,
@@ -508,9 +508,9 @@ def test_user_agent_injected_with_nbi_ioerror(boto_session):
     )
 
 
-def test_s3_input_all_defaults():
+def test_training_input_all_defaults():
     prefix = "pre"
-    actual = s3_input(s3_data=prefix)
+    actual = TrainingInput(s3_data=prefix)
     expected = {
         "DataSource": {
             "S3DataSource": {
@@ -523,7 +523,7 @@ def test_s3_input_all_defaults():
     assert actual.config == expected
 
 
-def test_s3_input_all_arguments():
+def test_training_input_all_arguments():
     prefix = "pre"
     distribution = "FullyReplicated"
     compression = "Gzip"
@@ -531,7 +531,7 @@ def test_s3_input_all_arguments():
     record_wrapping = "RecordIO"
     s3_data_type = "Manifestfile"
     input_mode = "Pipe"
-    result = s3_input(
+    result = TrainingInput(
         s3_data=prefix,
         distribution=distribution,
         compression=compression,

@@ -87,7 +87,7 @@ class AlgorithmEstimator(EstimatorBase):
                   the container via a Unix-named pipe.
 
                 This argument can be overriden on a per-channel basis using
-                ``sagemaker.session.s3_input.input_mode``.
+                ``sagemaker.inputs.TrainingInput.input_mode``.
 
             output_path (str): S3 location for saving the training result (model artifacts and
                 output files). If not specified, results are stored to a default bucket. If
