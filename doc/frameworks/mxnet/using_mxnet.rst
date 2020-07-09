@@ -181,8 +181,8 @@ The following code sample shows how you train a custom MXNet script "train.py".
 .. code:: python
 
     mxnet_estimator = MXNet('train.py',
-                            train_instance_type='ml.p2.xlarge',
-                            train_instance_count=1,
+                            instance_type='ml.p2.xlarge',
+                            instance_count=1,
                             framework_version='1.6.0',
                             py_version='py3',
                             hyperparameters={'batch-size': 100,
@@ -233,8 +233,8 @@ If you use the ``MXNet`` estimator to train the model, you can call ``deploy`` t
     mxnet_estimator = MXNet('train.py',
                             framework_version='1.6.0',
                             py_version='py3',
-                            train_instance_type='ml.p2.xlarge',
-                            train_instance_count=1)
+                            instance_type='ml.p2.xlarge',
+                            instance_count=1)
     mxnet_estimator.fit('s3://my_bucket/my_training_data/')
 
     # Deploy my estimator to an Amazon SageMaker Endpoint and get a Predictor

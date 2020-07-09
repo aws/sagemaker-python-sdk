@@ -14,7 +14,7 @@
 from __future__ import absolute_import
 
 from sagemaker.amazon.amazon_estimator import AmazonAlgorithmEstimatorBase, registry
-from sagemaker.amazon.common import numpy_to_record_serializer, record_deserializer
+from sagemaker.amazon.common import numpy_to_record_serializer, RecordDeserializer
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
 from sagemaker.amazon.validation import isin, gt, lt, ge, le
 from sagemaker.predictor import Predictor
@@ -454,7 +454,7 @@ class LinearLearnerPredictor(Predictor):
             endpoint_name,
             sagemaker_session,
             serializer=numpy_to_record_serializer(),
-            deserializer=record_deserializer(),
+            deserializer=RecordDeserializer(),
         )
 
 
