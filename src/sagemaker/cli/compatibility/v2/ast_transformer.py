@@ -30,6 +30,10 @@ FUNCTION_CALL_MODIFIERS = [
     modifiers.airflow.ModelConfigImageURIRenamer(),
     modifiers.renamed_params.DistributionParameterRenamer(),
     modifiers.renamed_params.S3SessionRenamer(),
+    modifiers.renamed_params.EstimatorCreateModelImageURIRenamer(),
+    modifiers.renamed_params.SessionCreateModelImageURIRenamer(),
+    modifiers.renamed_params.SessionCreateEndpointImageURIRenamer(),
+    modifiers.training_params.TrainPrefixRemover(),
 ]
 
 IMPORT_MODIFIERS = [modifiers.tfs.TensorFlowServingImportRenamer()]
