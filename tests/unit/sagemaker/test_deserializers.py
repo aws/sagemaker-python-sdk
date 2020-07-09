@@ -22,6 +22,7 @@ from sagemaker.deserializers import (
     BytesDeserializer,
     StreamDeserializer,
     NumpyDeserializer,
+    JSONDeserializer,
 )
 
 
@@ -119,3 +120,28 @@ def test_numpy_deserializer_from_npy_object_array(numpy_deserializer):
     result = numpy_deserializer.deserialize(stream, "application/x-npy")
 
     assert np.array_equal(array, result)
+
+
+@pytest.fixture
+def json_deserializer():
+    return JSONDeserializer()
+
+
+def test_json_deserializer_array(json_deserializer):
+    result = json_deserializer.deserialize(io.BytesIO(b"[1, 2, 3]"), "application/json")
+
+    assert result == [1, 2, 3]
+
+
+def test_json_deserializer_2dimensional(json_deserializer):
+    result = json_deserializer.deserialize(
+        io.BytesIO(b"[[1, 2, 3], [3, 4, 5]]"), "application/json"
+    )
+
+    assert result == [[1, 2, 3], [3, 4, 5]]
+
+
+def test_json_deserializer_invalid_data(json_deserializer):
+    with pytest.raises(ValueError) as error:
+        json_deserializer.deserialize(io.BytesIO(b"[[1]"), "application/json")
+    assert "column" in str(error)

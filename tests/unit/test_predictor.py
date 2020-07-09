@@ -23,7 +23,6 @@ from mock import Mock, call, patch
 from sagemaker.predictor import Predictor
 from sagemaker.predictor import (
     json_serializer,
-    json_deserializer,
     csv_serializer,
     csv_deserializer,
     npy_serializer,
@@ -159,24 +158,6 @@ def test_csv_deserializer_array():
 def test_csv_deserializer_2dimensional():
     result = csv_deserializer(io.BytesIO(b"1,2,3\n3,4,5"), "text/csv")
     assert result == [["1", "2", "3"], ["3", "4", "5"]]
-
-
-def test_json_deserializer_array():
-    result = json_deserializer(io.BytesIO(b"[1, 2, 3]"), "application/json")
-
-    assert result == [1, 2, 3]
-
-
-def test_json_deserializer_2dimensional():
-    result = json_deserializer(io.BytesIO(b"[[1, 2, 3], [3, 4, 5]]"), "application/json")
-
-    assert result == [[1, 2, 3], [3, 4, 5]]
-
-
-def test_json_deserializer_invalid_data():
-    with pytest.raises(ValueError) as error:
-        json_deserializer(io.BytesIO(b"[[1]"), "application/json")
-    assert "column" in str(error)
 
 
 def test_npy_serializer_python_array():

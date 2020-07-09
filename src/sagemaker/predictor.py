@@ -672,32 +672,6 @@ def _json_serialize_from_buffer(buff):
     return buff.read()
 
 
-class _JsonDeserializer(object):
-    """Placeholder docstring"""
-
-    def __init__(self):
-        """Placeholder docstring"""
-        self.accept = CONTENT_TYPE_JSON
-
-    def __call__(self, stream, content_type):
-        """Decode a JSON object into the corresponding Python object.
-
-        Args:
-            stream (stream): The response stream to be deserialized.
-            content_type (str): The content type of the response.
-
-        Returns:
-            object: Body of the response deserialized into a JSON object.
-        """
-        try:
-            return json.load(codecs.getreader("utf-8")(stream))
-        finally:
-            stream.close()
-
-
-json_deserializer = _JsonDeserializer()
-
-
 class _NPYSerializer(object):
     """Placeholder docstring"""
 
