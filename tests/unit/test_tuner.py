@@ -19,12 +19,11 @@ import re
 import pytest
 from mock import Mock, patch
 
-from sagemaker import Predictor, utils
+from sagemaker import Predictor, TrainingInput, utils
 from sagemaker.amazon.amazon_estimator import RecordSet
 from sagemaker.estimator import Framework
 from sagemaker.mxnet import MXNet
 from sagemaker.parameter import ParameterRange
-from sagemaker.session import TrainingInput
 from sagemaker.tuner import (
     _TuningJob,
     create_identical_dataset_and_algorithm_tuner,

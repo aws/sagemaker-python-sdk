@@ -29,6 +29,7 @@ from sagemaker.amazon.factorization_machines import (  # noqa: F401
     FactorizationMachinesModel,
 )
 from sagemaker.amazon.factorization_machines import FactorizationMachinesPredictor  # noqa: F401
+from sagemaker.inputs import TrainingInput  # noqa: F401
 from sagemaker.amazon.ntm import NTM, NTMModel, NTMPredictor  # noqa: F401
 from sagemaker.amazon.randomcutforest import (  # noqa: F401
     RandomCutForest,
@@ -54,7 +55,6 @@ from sagemaker.processing import Processor, ScriptProcessor  # noqa: F401
 from sagemaker.session import Session  # noqa: F401
 from sagemaker.session import container_def, pipeline_container_def  # noqa: F401
 from sagemaker.session import production_variant  # noqa: F401
-from sagemaker.session import TrainingInput  # noqa: F401
 from sagemaker.session import get_execution_role  # noqa: F401
 
 from sagemaker.automl.automl import AutoML, AutoMLJob, AutoMLInput  # noqa: F401

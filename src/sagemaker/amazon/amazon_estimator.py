@@ -23,9 +23,8 @@ from sagemaker.amazon import validation
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
 from sagemaker.amazon.common import write_numpy_to_dense_tensor
 from sagemaker.estimator import EstimatorBase, _TrainingJob
-from sagemaker.inputs import FileSystemInput
+from sagemaker.inputs import FileSystemInput, TrainingInput
 from sagemaker.model import NEO_IMAGE_ACCOUNT
-from sagemaker.session import TrainingInput
 from sagemaker.utils import sagemaker_timestamp, get_ecr_image_uri_prefix
 from sagemaker.xgboost.defaults import (
     XGBOOST_1P_VERSIONS,

@@ -28,6 +28,7 @@ from sagemaker.amazon.amazon_estimator import (
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
 from sagemaker.analytics import HyperparameterTuningJobAnalytics
 from sagemaker.estimator import Framework
+from sagemaker.inputs import TrainingInput
 from sagemaker.job import _Job
 from sagemaker.parameter import (
     CategoricalParameter,
@@ -36,7 +37,6 @@ from sagemaker.parameter import (
     ParameterRange,
 )
 from sagemaker.session import Session
-from sagemaker.session import TrainingInput
 from sagemaker.utils import base_from_name, base_name_from_image, name_from_base
 
 AMAZON_ESTIMATOR_MODULE = "sagemaker"

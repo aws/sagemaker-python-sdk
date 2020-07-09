@@ -40,6 +40,7 @@ from sagemaker.fw_utils import (
     validate_source_dir,
     _region_supports_debugger,
 )
+from sagemaker.inputs import TrainingInput
 from sagemaker.job import _Job
 from sagemaker.local import LocalSession
 from sagemaker.model import Model, NEO_ALLOWED_FRAMEWORKS
@@ -53,7 +54,6 @@ from sagemaker.model import (
 )
 from sagemaker.predictor import Predictor
 from sagemaker.session import Session
-from sagemaker.session import TrainingInput
 from sagemaker.transformer import Transformer
 from sagemaker.utils import base_from_name, base_name_from_image, name_from_base, get_config_value
 from sagemaker import vpc_utils

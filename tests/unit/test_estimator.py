@@ -21,13 +21,13 @@ from time import sleep
 import pytest
 from mock import ANY, MagicMock, Mock, patch
 
-from sagemaker import utils, vpc_utils
+from sagemaker import TrainingInput, utils, vpc_utils
 from sagemaker.amazon.amazon_estimator import registry
 from sagemaker.algorithm import AlgorithmEstimator
 from sagemaker.estimator import Estimator, EstimatorBase, Framework, _TrainingJob
 from sagemaker.model import FrameworkModel
 from sagemaker.predictor import Predictor
-from sagemaker.session import TrainingInput, ShuffleConfig
+from sagemaker.session import ShuffleConfig
 from sagemaker.transformer import Transformer
 from botocore.exceptions import ClientError
 import sagemaker.local

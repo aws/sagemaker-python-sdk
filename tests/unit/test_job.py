@@ -16,12 +16,12 @@ import pytest
 import os
 from mock import Mock
 
+from sagemaker import TrainingInput
 from sagemaker.amazon.amazon_estimator import RecordSet, FileSystemRecordSet
 from sagemaker.estimator import Estimator, Framework
 from sagemaker.inputs import FileSystemInput
 from sagemaker.job import _Job
 from sagemaker.model import FrameworkModel
-from sagemaker.session import TrainingInput
 
 BUCKET_NAME = "s3://mybucket/train"
 S3_OUTPUT_PATH = "s3://bucket/prefix"
