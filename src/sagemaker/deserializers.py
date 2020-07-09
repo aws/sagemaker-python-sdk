@@ -43,6 +43,35 @@ class BaseDeserializer(abc.ABC):
         """The content type that is expected from the inference endpoint."""
 
 
+class StringDeserializer(BaseDeserializer):
+    """Deserialize data from an inference endpoint into a decoded string."""
+
+    ACCEPT = "application/json"
+
+    def __init__(self, encoding="UTF-8"):
+        """Initialize the string encoding.
+
+        Args:
+            encoding (str): The string encoding to use (default: UTF-8).
+        """
+        self.encoding = encoding
+
+    def deserialize(self, data, content_type):
+        """Deserialize data from an inference endpoint into a decoded string.
+
+        Args:
+            data (object): Data to be deserialized.
+            content_type (str): The MIME type of the data.
+
+        Returns:
+            str: The data deserialized into a decoded string.
+        """
+        try:
+            return data.read().decode(self.encoding)
+        finally:
+            data.close()
+
+
 class BytesDeserializer(BaseDeserializer):
     """Deserialize a stream of bytes into a bytes object."""
 
