@@ -89,3 +89,25 @@ class BytesDeserializer(BaseDeserializer):
             return data.read()
         finally:
             data.close()
+
+
+class StreamDeserializer(BaseDeserializer):
+    """Returns the data and content-type received from an inference endpoint.
+
+    It is the user's responsibility to close the data stream once they're done
+    reading it.
+    """
+
+    ACCEPT = "*/*"
+
+    def deserialize(self, data, content_type):
+        """Returns a stream of the response body and the MIME type of the data.
+
+        Args:
+            data (object): A stream of bytes.
+            content_type (str): The MIME type of the data.
+
+        Returns:
+            tuple: A two-tuple containing the stream and content-type.
+        """
+        return data, content_type

@@ -14,7 +14,7 @@ from __future__ import absolute_import
 
 import io
 
-from sagemaker.deserializers import StringDeserializer, BytesDeserializer
+from sagemaker.deserializers import StringDeserializer, BytesDeserializer, StreamDeserializer
 
 
 def test_string_deserializer():
@@ -31,3 +31,16 @@ def test_bytes_deserializer():
     result = deserializer.deserialize(io.BytesIO(b"[1, 2, 3]"), "application/json")
 
     assert result == b"[1, 2, 3]"
+
+
+def test_stream_deserializer():
+    deserializer = StreamDeserializer()
+
+    stream, content_type = deserializer.deserialize(io.BytesIO(b"[1, 2, 3]"), "application/json")
+    try:
+        result = stream.read()
+    finally:
+        stream.close()
+
+    assert result == b"[1, 2, 3]"
+    assert content_type == "application/json"
