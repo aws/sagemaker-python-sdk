@@ -134,7 +134,7 @@ directories ('train' and 'test').
 .. code:: python
 
     sklearn_estimator = SKLearn('sklearn-train.py',
-                                train_instance_type='ml.m4.xlarge',
+                                instance_type='ml.m4.xlarge',
                                 framework_version='0.20.0',
                                 hyperparameters = {'epochs': 20, 'batch-size': 64, 'learning-rate': 0.1})
     sklearn_estimator.fit({'train': 's3://my-data-bucket/path/to/my/training/data',
@@ -198,7 +198,7 @@ operation.
 
     # Train my estimator
     sklearn_estimator = SKLearn(entry_point='train_and_deploy.py',
-                                train_instance_type='ml.m4.xlarge',
+                                instance_type='ml.m4.xlarge',
                                 framework_version='0.20.0')
     sklearn_estimator.fit('s3://my_bucket/my_training_data/')
 
