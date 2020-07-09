@@ -18,6 +18,8 @@ import ast
 from sagemaker.cli.compatibility.v2 import modifiers
 
 FUNCTION_CALL_MODIFIERS = [
+    modifiers.renamed_params.EstimatorImageURIRenamer(),
+    modifiers.renamed_params.ModelImageURIRenamer(),
     modifiers.framework_version.FrameworkVersionEnforcer(),
     modifiers.tf_legacy_mode.TensorFlowLegacyModeConstructorUpgrader(),
     modifiers.tf_legacy_mode.TensorBoardParameterRemover(),
@@ -25,6 +27,7 @@ FUNCTION_CALL_MODIFIERS = [
     modifiers.tfs.TensorFlowServingConstructorRenamer(),
     modifiers.predictors.PredictorConstructorRefactor(),
     modifiers.airflow.ModelConfigArgModifier(),
+    modifiers.airflow.ModelConfigImageURIRenamer(),
     modifiers.renamed_params.DistributionParameterRenamer(),
     modifiers.renamed_params.S3SessionRenamer(),
 ]

@@ -51,8 +51,8 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
     def __init__(
         self,
         role,
-        train_instance_count,
-        train_instance_type,
+        instance_count,
+        instance_type,
         data_location=None,
         enable_network_isolation=False,
         **kwargs
@@ -65,9 +65,9 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
                 endpoints use this role to access training data and model
                 artifacts. After the endpoint is created, the inference code
                 might use the IAM role, if it needs to access an AWS resource.
-            train_instance_count (int): Number of Amazon EC2 instances to use
+            instance_count (int): Number of Amazon EC2 instances to use
                 for training.
-            train_instance_type (str): Type of EC2 instance to use for training,
+            instance_type (str): Type of EC2 instance to use for training,
                 for example, 'ml.c4.xlarge'.
             data_location (str or None): The s3 prefix to upload RecordSet
                 objects to, expressed as an S3 url. For example
@@ -88,8 +88,8 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
         """
         super(AmazonAlgorithmEstimatorBase, self).__init__(
             role,
-            train_instance_count,
-            train_instance_type,
+            instance_count,
+            instance_type,
             enable_network_isolation=enable_network_isolation,
             **kwargs
         )
@@ -265,7 +265,7 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
         the list of objects created and also stored in S3.
 
         The number of S3 objects created is controlled by the
-        ``train_instance_count`` property on this Estimator. One S3 object is
+        ``instance_count`` property on this Estimator. One S3 object is
         created per training instance.
 
         Args:
@@ -290,7 +290,7 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
         key_prefix = key_prefix.lstrip("/")
         logger.debug("Uploading to bucket %s and key_prefix %s", bucket, key_prefix)
         manifest_s3_file = upload_numpy_to_s3_shards(
-            self.train_instance_count, s3, bucket, key_prefix, train, labels, encrypt
+            self.instance_count, s3, bucket, key_prefix, train, labels, encrypt
         )
         logger.debug("Created manifest file %s", manifest_s3_file)
         return RecordSet(

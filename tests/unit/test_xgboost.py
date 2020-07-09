@@ -85,8 +85,8 @@ def _get_full_cpu_image_uri(version):
 def _xgboost_estimator(
     sagemaker_session,
     framework_version,
-    train_instance_type=None,
-    train_instance_count=1,
+    instance_type=None,
+    instance_count=1,
     base_job_name=None,
     **kwargs
 ):
@@ -96,8 +96,8 @@ def _xgboost_estimator(
         framework_version=framework_version,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_type=train_instance_type if train_instance_type else INSTANCE_TYPE,
-        train_instance_count=train_instance_count,
+        instance_type=instance_type if instance_type else INSTANCE_TYPE,
+        instance_count=instance_count,
         base_job_name=base_job_name,
         py_version=PYTHON_VERSION,
         **kwargs
@@ -156,8 +156,8 @@ def test_train_image(sagemaker_session, xgboost_version):
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_type=INSTANCE_TYPE,
-        train_instance_count=1,
+        instance_type=INSTANCE_TYPE,
+        instance_count=1,
         framework_version=xgboost_version,
         container_log_level=container_log_level,
         py_version=PYTHON_VERSION,
@@ -197,8 +197,8 @@ def test_create_model_from_estimator(name_from_base, sagemaker_session, xgboost_
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_type=INSTANCE_TYPE,
-        train_instance_count=1,
+        instance_type=INSTANCE_TYPE,
+        instance_count=1,
         framework_version=xgboost_version,
         container_log_level=container_log_level,
         py_version=PYTHON_VERSION,
@@ -234,8 +234,8 @@ def test_create_model_with_optional_params(sagemaker_session, xgboost_full_versi
         role=ROLE,
         framework_version=xgboost_full_version,
         sagemaker_session=sagemaker_session,
-        train_instance_type=INSTANCE_TYPE,
-        train_instance_count=1,
+        instance_type=INSTANCE_TYPE,
+        instance_count=1,
         container_log_level=container_log_level,
         py_version=PYTHON_VERSION,
         base_job_name="job",
@@ -282,8 +282,8 @@ def test_create_model_with_custom_image(sagemaker_session, xgboost_full_version)
         role=ROLE,
         framework_version=xgboost_full_version,
         sagemaker_session=sagemaker_session,
-        train_instance_type=INSTANCE_TYPE,
-        train_instance_count=1,
+        instance_type=INSTANCE_TYPE,
+        instance_count=1,
         image_uri=custom_image,
         container_log_level=container_log_level,
         py_version=PYTHON_VERSION,
@@ -303,8 +303,8 @@ def test_xgboost(strftime, sagemaker_session, xgboost_version):
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_type=INSTANCE_TYPE,
-        train_instance_count=1,
+        instance_type=INSTANCE_TYPE,
+        instance_count=1,
         py_version=PYTHON_VERSION,
         framework_version=xgboost_version,
     )
@@ -353,8 +353,8 @@ def test_distributed_training(strftime, sagemaker_session, xgboost_version):
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_count=DIST_INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=DIST_INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         py_version=PYTHON_VERSION,
         framework_version=xgboost_version,
     )
@@ -414,8 +414,8 @@ def test_train_image_default(sagemaker_session, xgboost_full_version):
         role=ROLE,
         framework_version=xgboost_full_version,
         sagemaker_session=sagemaker_session,
-        train_instance_type=INSTANCE_TYPE,
-        train_instance_count=1,
+        instance_type=INSTANCE_TYPE,
+        instance_count=1,
         py_version=PYTHON_VERSION,
     )
 
@@ -423,17 +423,13 @@ def test_train_image_default(sagemaker_session, xgboost_full_version):
 
 
 def test_train_image_cpu_instances(sagemaker_session, xgboost_version):
-    xgboost = _xgboost_estimator(
-        sagemaker_session, xgboost_version, train_instance_type="ml.c2.2xlarge"
-    )
+    xgboost = _xgboost_estimator(sagemaker_session, xgboost_version, instance_type="ml.c2.2xlarge")
     assert xgboost.train_image() == _get_full_cpu_image_uri(xgboost_version)
 
-    xgboost = _xgboost_estimator(
-        sagemaker_session, xgboost_version, train_instance_type="ml.c4.2xlarge"
-    )
+    xgboost = _xgboost_estimator(sagemaker_session, xgboost_version, instance_type="ml.c4.2xlarge")
     assert xgboost.train_image() == _get_full_cpu_image_uri(xgboost_version)
 
-    xgboost = _xgboost_estimator(sagemaker_session, xgboost_version, train_instance_type="ml.m16")
+    xgboost = _xgboost_estimator(sagemaker_session, xgboost_version, instance_type="ml.m16")
     assert xgboost.train_image() == _get_full_cpu_image_uri(xgboost_version)
 
 
@@ -476,8 +472,8 @@ def test_attach(sagemaker_session, xgboost_version):
     assert estimator.py_version == PYTHON_VERSION
     assert estimator.framework_version == xgboost_version
     assert estimator.role == "arn:aws:iam::366:role/SageMakerRole"
-    assert estimator.train_instance_count == 1
-    assert estimator.train_max_run == 24 * 60 * 60
+    assert estimator.instance_count == 1
+    assert estimator.max_run == 24 * 60 * 60
     assert estimator.input_mode == "File"
     assert estimator.base_job_name == "neo"
     assert estimator.output_path == "s3://place/output/neo"
@@ -567,8 +563,8 @@ def test_py2_xgboost_attribute_error(sagemaker_session, xgboost_full_version):
             role=ROLE,
             framework_version=xgboost_full_version,
             sagemaker_session=sagemaker_session,
-            train_instance_type=INSTANCE_TYPE,
-            train_instance_count=1,
+            instance_type=INSTANCE_TYPE,
+            instance_count=1,
             py_version="py2",
         )
 

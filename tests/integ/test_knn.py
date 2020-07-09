@@ -33,8 +33,8 @@ def test_knn_regressor(sagemaker_session, cpu_instance_type, training_set):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         knn = KNN(
             role="SageMakerRole",
-            train_instance_count=1,
-            train_instance_type=cpu_instance_type,
+            instance_count=1,
+            instance_type=cpu_instance_type,
             k=10,
             predictor_type="regressor",
             sample_size=500,
@@ -63,8 +63,8 @@ def test_async_knn_classifier(sagemaker_session, cpu_instance_type, training_set
     with timeout(minutes=5):
         knn = KNN(
             role="SageMakerRole",
-            train_instance_count=1,
-            train_instance_type=cpu_instance_type,
+            instance_count=1,
+            instance_type=cpu_instance_type,
             k=10,
             predictor_type="classifier",
             sample_size=500,

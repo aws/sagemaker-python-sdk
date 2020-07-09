@@ -15,6 +15,8 @@ from __future__ import absolute_import
 
 import ast
 
+from sagemaker.cli.compatibility.v2.modifiers import parsing
+
 
 def matches_any(node, name_to_namespaces_dict):
     """Determines if the ``ast.Call`` node matches any of the provided names and namespaces.
@@ -101,3 +103,20 @@ def matches_namespace(node, namespace):
         name, value = names.pop(), value.value
 
     return isinstance(value, ast.Name) and value.id == name
+
+
+def has_arg(node, arg):
+    """Checks if the call has the given argument.
+
+    Args:
+        node (ast.Call): a node that represents a function call. For more,
+            see https://docs.python.org/3/library/ast.html#abstract-grammar.
+        arg (str): the name of the argument.
+
+    Returns:
+        bool: if the node has the given argument.
+    """
+    try:
+        return parsing.arg_value(node, arg) is not None
+    except KeyError:
+        return False

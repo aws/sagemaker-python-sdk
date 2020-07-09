@@ -117,9 +117,11 @@ def test_import_from_node_should_be_modified_random_import():
 def test_import_from_modify_node():
     modifier = predictors.PredictorImportFromRenamer()
 
-    node = ast_import("from sagemaker.predictor import BytesDeserializer, RealTimePredictor")
+    node = ast_import(
+        "from sagemaker.predictor import ClassThatHasntBeenRenamed, RealTimePredictor"
+    )
     modifier.modify_node(node)
-    expected_result = "from sagemaker.predictor import BytesDeserializer, Predictor"
+    expected_result = "from sagemaker.predictor import ClassThatHasntBeenRenamed, Predictor"
     assert expected_result == pasta.dump(node)
 
     node = ast_import("from sagemaker.predictor import RealTimePredictor as RTP")

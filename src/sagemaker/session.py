@@ -430,7 +430,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         image_uri=None,
         algorithm_arn=None,
         encrypt_inter_container_traffic=False,
-        train_use_spot_instances=False,
+        use_spot_instances=False,
         checkpoint_s3_uri=None,
         checkpoint_local_path=None,
         experiment_config=None,
@@ -488,7 +488,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             algorithm_arn (str): Algorithm Arn from Marketplace.
             encrypt_inter_container_traffic (bool): Specifies whether traffic between training
                 containers is encrypted for the training job (default: ``False``).
-            train_use_spot_instances (bool): whether to use spot instances for training.
+            use_spot_instances (bool): whether to use spot instances for training.
             checkpoint_s3_uri (str): The S3 URI in which to persist checkpoints
                 that the algorithm persists (if any) during training. (default:
                 ``None``).
@@ -565,8 +565,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if encrypt_inter_container_traffic:
             train_request["EnableInterContainerTrafficEncryption"] = encrypt_inter_container_traffic
 
-        if train_use_spot_instances:
-            train_request["EnableManagedSpotTraining"] = train_use_spot_instances
+        if use_spot_instances:
+            train_request["EnableManagedSpotTraining"] = use_spot_instances
 
         if checkpoint_s3_uri:
             checkpoint_config = {"S3Uri": checkpoint_s3_uri}
@@ -1538,7 +1538,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         early_stopping_type="Off",
         encrypt_inter_container_traffic=False,
         vpc_config=None,
-        train_use_spot_instances=False,
+        use_spot_instances=False,
         checkpoint_s3_uri=None,
         checkpoint_local_path=None,
     ):
@@ -1607,7 +1607,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 The key in vpc_config is 'Subnets'.
                 * security_group_ids (list[str]): List of security group ids.
                 The key in vpc_config is 'SecurityGroupIds'.
-            train_use_spot_instances (bool): whether to use spot instances for training.
+            use_spot_instances (bool): whether to use spot instances for training.
             checkpoint_s3_uri (str): The S3 URI in which to persist checkpoints
                 that the algorithm persists (if any) during training. (default:
                 ``None``).
@@ -1647,7 +1647,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 stop_condition=stop_condition,
                 enable_network_isolation=enable_network_isolation,
                 encrypt_inter_container_traffic=encrypt_inter_container_traffic,
-                train_use_spot_instances=train_use_spot_instances,
+                use_spot_instances=use_spot_instances,
                 checkpoint_s3_uri=checkpoint_s3_uri,
                 checkpoint_local_path=checkpoint_local_path,
             ),
@@ -1836,7 +1836,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         objective_type=None,
         objective_metric_name=None,
         parameter_ranges=None,
-        train_use_spot_instances=False,
+        use_spot_instances=False,
         checkpoint_s3_uri=None,
         checkpoint_local_path=None,
     ):
@@ -1936,7 +1936,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if encrypt_inter_container_traffic:
             training_job_definition["EnableInterContainerTrafficEncryption"] = True
 
-        if train_use_spot_instances:
+        if use_spot_instances:
             training_job_definition["EnableManagedSpotTraining"] = True
 
         if checkpoint_s3_uri:

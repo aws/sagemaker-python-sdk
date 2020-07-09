@@ -18,7 +18,7 @@ from __future__ import absolute_import
 import ast
 from abc import abstractmethod
 
-from sagemaker.cli.compatibility.v2.modifiers import matching
+from sagemaker.cli.compatibility.v2.modifiers import matching, parsing
 from sagemaker.cli.compatibility.v2.modifiers.modifier import Modifier
 
 
@@ -54,11 +54,9 @@ class ParamRenamer(Modifier):
             bool: If the ``ast.Call`` matches the relevant function calls and
                 contains the parameter to be renamed.
         """
-        return matching.matches_any(node, self.calls_to_modify) and self._has_param_to_rename(node)
-
-    def _has_param_to_rename(self, node):
-        """Checks if the call has the argument that needs to be renamed."""
-        return _keyword_from_keywords(node, self.old_param_name) is not None
+        return matching.matches_any(node, self.calls_to_modify) and matching.has_arg(
+            node, self.old_param_name
+        )
 
     def modify_node(self, node):
         """Modifies the ``ast.Call`` node to rename the attribute.
@@ -66,26 +64,8 @@ class ParamRenamer(Modifier):
         Args:
             node (ast.Call): a node that represents the relevant function call.
         """
-        keyword = _keyword_from_keywords(node, self.old_param_name)
+        keyword = parsing.arg_from_keywords(node, self.old_param_name)
         keyword.arg = self.new_param_name
-
-
-def _keyword_from_keywords(node, param_name):
-    """Retrieves a keyword argument from the node's keywords.
-
-    Args:
-        node (ast.Call): a node that represents a function call. For more,
-            see https://docs.python.org/3/library/ast.html#abstract-grammar.
-        param_name (str): the name of the argument.
-
-    Returns:
-        ast.keyword: the keyword argument if it is present. Otherwise, this returns ``None``.
-    """
-    for kw in node.keywords:
-        if kw.arg == param_name:
-            return kw
-
-    return None
 
 
 class DistributionParameterRenamer(ParamRenamer):
@@ -167,3 +147,65 @@ class S3SessionRenamer(ParamRenamer):
             return False
 
         return super(S3SessionRenamer, self).node_should_be_modified(node)
+
+
+class EstimatorImageURIRenamer(ParamRenamer):
+    """A class to rename the ``image_name`` attribute to ``image_uri`` in estimators."""
+
+    @property
+    def calls_to_modify(self):
+        """A dictionary mapping estimators with the ``image_name`` attribute to their
+        respective namespaces.
+        """
+        return {
+            "Chainer": ("sagemaker.chainer", "sagemaker.chainer.estimator"),
+            "Estimator": ("sagemaker.estimator",),
+            "Framework": ("sagemaker.estimator",),
+            "MXNet": ("sagemaker.mxnet", "sagemaker.mxnet.estimator"),
+            "PyTorch": ("sagemaker.pytorch", "sagemaker.pytorch.estimator"),
+            "RLEstimator": ("sagemaker.rl", "sagemaker.rl.estimator"),
+            "SKLearn": ("sagemaker.sklearn", "sagemaker.sklearn.estimator"),
+            "TensorFlow": ("sagemaker.tensorflow", "sagemaker.tensorflow.estimator"),
+            "XGBoost": ("sagemaker.xgboost", "sagemaker.xgboost.estimator"),
+        }
+
+    @property
+    def old_param_name(self):
+        """The previous name for the image URI argument."""
+        return "image_name"
+
+    @property
+    def new_param_name(self):
+        """The new name for the image URI argument."""
+        return "image_uri"
+
+
+class ModelImageURIRenamer(ParamRenamer):
+    """A class to rename the ``image`` attribute to ``image_uri`` in models."""
+
+    @property
+    def calls_to_modify(self):
+        """A dictionary mapping models with the ``image`` attribute to their
+        respective namespaces.
+        """
+        return {
+            "ChainerModel": ("sagemaker.chainer", "sagemaker.chainer.model"),
+            "Model": ("sagemaker.model",),
+            "MultiDataModel": ("sagemaker.multidatamodel",),
+            "FrameworkModel": ("sagemaker.model",),
+            "MXNetModel": ("sagemaker.mxnet", "sagemaker.mxnet.model"),
+            "PyTorchModel": ("sagemaker.pytorch", "sagemaker.pytorch.model"),
+            "SKLearnModel": ("sagemaker.sklearn", "sagemaker.sklearn.model"),
+            "TensorFlowModel": ("sagemaker.tensorflow", "sagemaker.tensorflow.model"),
+            "XGBoostModel": ("sagemaker.xgboost", "sagemaker.xgboost.model"),
+        }
+
+    @property
+    def old_param_name(self):
+        """The previous name for the image URI argument."""
+        return "image"
+
+    @property
+    def new_param_name(self):
+        """The new name for the image URI argument."""
+        return "image_uri"

@@ -63,8 +63,8 @@ def estimator(sagemaker_session):
         ROLE,
         INSTANCE_COUNT,
         INSTANCE_TYPE,
-        train_volume_size=VOLUME_SIZE,
-        train_max_run=MAX_RUNTIME,
+        volume_size=VOLUME_SIZE,
+        max_run=MAX_RUNTIME,
         output_path=S3_OUTPUT_PATH,
         sagemaker_session=sagemaker_session,
     )
@@ -122,8 +122,8 @@ def framework(sagemaker_session):
         role=ROLE,
         sagemaker_session=sagemaker_session,
         output_path=S3_OUTPUT_PATH,
-        train_instance_count=INSTANCE_COUNT,
-        train_instance_type=INSTANCE_TYPE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
     )
 
 

@@ -79,8 +79,8 @@ def test_attach(sagemaker_session, tf_version):
     assert estimator.py_version == "py2"
     assert estimator.framework_version == tf_version
     assert estimator.role == "arn:aws:iam::366:role/SageMakerRole"
-    assert estimator.train_instance_count == 1
-    assert estimator.train_max_run == 24 * 60 * 60
+    assert estimator.instance_count == 1
+    assert estimator.max_run == 24 * 60 * 60
     assert estimator.input_mode == "File"
     assert estimator.input_mode == "File"
     assert estimator.base_job_name == "neo"
@@ -126,8 +126,8 @@ def test_attach_new_repo_name(sagemaker_session, tf_version):
     assert estimator.py_version == "py2"
     assert estimator.framework_version == tf_version
     assert estimator.role == "arn:aws:iam::366:role/SageMakerRole"
-    assert estimator.train_instance_count == 1
-    assert estimator.train_max_run == 24 * 60 * 60
+    assert estimator.instance_count == 1
+    assert estimator.max_run == 24 * 60 * 60
     assert estimator.input_mode == "File"
     assert estimator.input_mode == "File"
     assert estimator.base_job_name == "neo"
@@ -172,8 +172,8 @@ def test_attach_old_container(sagemaker_session):
     assert estimator.py_version == "py2"
     assert estimator.framework_version == "1.4"
     assert estimator.role == "arn:aws:iam::366:role/SageMakerRole"
-    assert estimator.train_instance_count == 1
-    assert estimator.train_max_run == 24 * 60 * 60
+    assert estimator.instance_count == 1
+    assert estimator.max_run == 24 * 60 * 60
     assert estimator.input_mode == "File"
     assert estimator.input_mode == "File"
     assert estimator.base_job_name == "neo"
@@ -286,8 +286,8 @@ def test_tf_script_mode_attach(sagemaker_session, tf_version):
     assert estimator.py_version == "py3"
     assert estimator.framework_version == tf_version
     assert estimator.role == "arn:aws:iam::366:role/SageMakerRole"
-    assert estimator.train_instance_count == 1
-    assert estimator.train_max_run == 24 * 60 * 60
+    assert estimator.instance_count == 1
+    assert estimator.max_run == 24 * 60 * 60
     assert estimator.input_mode == "File"
     assert estimator.input_mode == "File"
     assert estimator.base_job_name == "neo"

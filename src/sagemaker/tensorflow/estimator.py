@@ -123,9 +123,9 @@ class TensorFlow(Framework):
         self.py_version = py_version
 
         if distribution is not None:
-            train_instance_type = kwargs.get("train_instance_type")
+            instance_type = kwargs.get("instance_type")
             fw.warn_if_parameter_server_with_multi_gpu(
-                training_instance_type=train_instance_type, distribution=distribution
+                training_instance_type=instance_type, distribution=distribution
             )
 
         if "enable_sagemaker_metrics" not in kwargs:
@@ -154,7 +154,7 @@ class TensorFlow(Framework):
             legacy_image_uri = fw.create_image_uri(
                 self.sagemaker_session.boto_region_name,
                 "tensorflow",
-                self.train_instance_type,
+                self.instance_type,
                 self.framework_version,
                 self.py_version,
             )
@@ -363,7 +363,7 @@ class TensorFlow(Framework):
         return fw.create_image_uri(
             self.sagemaker_session.boto_region_name,
             self._ECR_REPO_NAME,
-            self.train_instance_type,
+            self.instance_type,
             self.framework_version,
             self.py_version,
         )

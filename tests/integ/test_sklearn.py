@@ -49,7 +49,7 @@ def test_training_with_additional_hyperparameters(
         sklearn = SKLearn(
             entry_point=script_path,
             role="SageMakerRole",
-            train_instance_type=cpu_instance_type,
+            instance_type=cpu_instance_type,
             framework_version=sklearn_full_version,
             py_version=sklearn_full_py_version,
             sagemaker_session=sagemaker_session,
@@ -78,7 +78,7 @@ def test_training_with_network_isolation(
         sklearn = SKLearn(
             entry_point=script_path,
             role="SageMakerRole",
-            train_instance_type=cpu_instance_type,
+            instance_type=cpu_instance_type,
             framework_version=sklearn_full_version,
             py_version=sklearn_full_py_version,
             sagemaker_session=sagemaker_session,
@@ -186,8 +186,8 @@ def test_failed_training_job(
             role="SageMakerRole",
             framework_version=sklearn_full_version,
             py_version=sklearn_full_py_version,
-            train_instance_count=1,
-            train_instance_type=cpu_instance_type,
+            instance_count=1,
+            instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
         )
 
@@ -214,7 +214,7 @@ def _run_mnist_training_job(
             role="SageMakerRole",
             framework_version=sklearn_version,
             py_version=py_version,
-            train_instance_type=instance_type,
+            instance_type=instance_type,
             sagemaker_session=sagemaker_session,
             hyperparameters={"epochs": 1},
         )

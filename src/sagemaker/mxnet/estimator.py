@@ -131,9 +131,9 @@ class MXNet(Framework):
         )
 
         if distribution is not None:
-            train_instance_type = kwargs.get("train_instance_type")
+            instance_type = kwargs.get("instance_type")
             warn_if_parameter_server_with_multi_gpu(
-                training_instance_type=train_instance_type, distribution=distribution
+                training_instance_type=instance_type, distribution=distribution
             )
 
         self._configure_distribution(distribution)
