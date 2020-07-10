@@ -13,7 +13,14 @@
 """Implements methods for deserializing data returned from an inference endpoint."""
 from __future__ import absolute_import
 
+import csv
+
 import abc
+import codecs
+import io
+import json
+
+import numpy as np
 
 
 class BaseDeserializer(abc.ABC):
@@ -91,6 +98,37 @@ class BytesDeserializer(BaseDeserializer):
             data.close()
 
 
+class CSVDeserializer(BaseDeserializer):
+    """Deserialize a stream of bytes into a list of lists."""
+
+    ACCEPT = "text/csv"
+
+    def __init__(self, encoding="utf-8"):
+        """Initialize the string encoding.
+
+        Args:
+            encoding (str): The string encoding to use (default: "utf-8").
+        """
+        self.encoding = encoding
+
+    def deserialize(self, data, content_type):
+        """Deserialize data from an inference endpoint into a list of lists.
+
+        Args:
+            data (botocore.response.StreamingBody): Data to be deserialized.
+            content_type (str): The MIME type of the data.
+
+        Returns:
+            list: The data deserialized into a list of lists representing the
+                contents of a CSV file.
+        """
+        try:
+            decoded_string = data.read().decode(self.encoding)
+            return list(csv.reader(decoded_string.splitlines()))
+        finally:
+            data.close()
+
+
 class StreamDeserializer(BaseDeserializer):
     """Returns the data and content-type received from an inference endpoint.
 
@@ -111,3 +149,41 @@ class StreamDeserializer(BaseDeserializer):
             tuple: A two-tuple containing the stream and content-type.
         """
         return data, content_type
+
+
+class NumpyDeserializer(BaseDeserializer):
+    """Deserialize a stream of data in the .npy format."""
+
+    ACCEPT = "application/x-npy"
+
+    def __init__(self, dtype=None):
+        """Initialize the dtype.
+
+        Args:
+            dtype (str): The dtype of the data.
+        """
+        self.dtype = dtype
+
+    def deserialize(self, data, content_type):
+        """Deserialize data from an inference endpoint into a NumPy array.
+
+        Args:
+            data (botocore.response.StreamingBody): Data to be deserialized.
+            content_type (str): The MIME type of the data.
+
+        Returns:
+            numpy.ndarray: The data deserialized into a NumPy array.
+        """
+        try:
+            if content_type == "text/csv":
+                return np.genfromtxt(
+                    codecs.getreader("utf-8")(data), delimiter=",", dtype=self.dtype
+                )
+            if content_type == "application/json":
+                return np.array(json.load(codecs.getreader("utf-8")(data)), dtype=self.dtype)
+            if content_type == "application/x-npy":
+                return np.load(io.BytesIO(data.read()))
+        finally:
+            data.close()
+
+        raise ValueError("%s cannot read content type %s." % (__class__.__name__, content_type))
