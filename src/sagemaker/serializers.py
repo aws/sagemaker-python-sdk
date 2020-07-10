@@ -14,6 +14,9 @@
 from __future__ import absolute_import
 
 import abc
+import json
+
+import numpy as np
 
 
 class BaseSerializer(abc.ABC):
@@ -38,3 +41,34 @@ class BaseSerializer(abc.ABC):
     @abc.abstractmethod
     def CONTENT_TYPE(self):
         """The MIME type of the data sent to the inference endpoint."""
+
+
+class JSONSerializer(BaseSerializer):
+    """Serialize data to a JSON formatted string."""
+
+    CONTENT_TYPE = "application/json"
+
+    def serialize(self, data):
+        """Serialize data of various formats to a JSON formatted string.
+
+        Args:
+            data (object): Data to be serialized.
+
+        Returns:
+            str: The data serialized as a JSON string.
+        """
+        if isinstance(data, dict):
+            return json.dumps(
+                {
+                    key: value.tolist() if isinstance(value, np.ndarray) else value
+                    for key, value in data.items()
+                }
+            )
+
+        if hasattr(data, "read"):
+            return data.read()
+
+        if isinstance(data, np.ndarray):
+            return json.dumps(data.tolist())
+
+        return json.dumps(data)
