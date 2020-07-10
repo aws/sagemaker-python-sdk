@@ -23,9 +23,8 @@ from sagemaker.amazon import validation
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
 from sagemaker.amazon.common import write_numpy_to_dense_tensor
 from sagemaker.estimator import EstimatorBase, _TrainingJob
-from sagemaker.inputs import FileSystemInput
+from sagemaker.inputs import FileSystemInput, TrainingInput
 from sagemaker.model import NEO_IMAGE_ACCOUNT
-from sagemaker.session import s3_input
 from sagemaker.utils import sagemaker_timestamp, get_ecr_image_uri_prefix
 from sagemaker.xgboost.defaults import (
     XGBOOST_1P_VERSIONS,
@@ -341,8 +340,10 @@ class RecordSet(object):
         return {self.channel: self.records_s3_input()}
 
     def records_s3_input(self):
-        """Return a s3_input to represent the training data"""
-        return s3_input(self.s3_data, distribution="ShardedByS3Key", s3_data_type=self.s3_data_type)
+        """Return a TrainingInput to represent the training data"""
+        return TrainingInput(
+            self.s3_data, distribution="ShardedByS3Key", s3_data_type=self.s3_data_type
+        )
 
 
 class FileSystemRecordSet(object):

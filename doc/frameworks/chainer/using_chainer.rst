@@ -138,8 +138,8 @@ directories ('train' and 'test').
 .. code:: python
 
     chainer_estimator = Chainer('chainer-train.py',
-                                train_instance_type='ml.p3.2xlarge',
-                                train_instance_count=1,
+                                instance_type='ml.p3.2xlarge',
+                                instance_count=1,
                                 framework_version='5.0.0',
                                 py_version='py3',
                                 hyperparameters = {'epochs': 20, 'batch-size': 64, 'learning-rate': 0.1})
@@ -191,7 +191,7 @@ Chainer allows you to train a model on multiple nodes using ChainerMN_, which di
 In order to run distributed Chainer training on SageMaker, your training script should use a ``chainermn`` Communicator
 object to coordinate training between multiple hosts.
 
-SageMaker runs your script with ``mpirun`` if ``train_instance_count`` is greater than two.
+SageMaker runs your script with ``mpirun`` if ``instance_count`` is greater than two.
 The following are optional arguments modify how MPI runs your distributed training script.
 
 -  ``use_mpi`` Boolean that overrides whether to run your training script with MPI.
@@ -221,8 +221,8 @@ operation.
 
     # Train my estimator
     chainer_estimator = Chainer(entry_point='train_and_deploy.py',
-                                train_instance_type='ml.p3.2xlarge',
-                                train_instance_count=1,
+                                instance_type='ml.p3.2xlarge',
+                                instance_count=1,
                                 framework_version='5.0.0',
                                 py_version='py3')
     chainer_estimator.fit('s3://my_bucket/my_training_data/')
