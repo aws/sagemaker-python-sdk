@@ -86,3 +86,8 @@ def test_import_from_modify_node():
     modifier.modify_node(node)
     expected_result = "from sagemaker.inputs import TrainingInput as training_input"
     assert expected_result == pasta.dump(node)
+
+    node = ast_import("from sagemaker.session import s3_input as training_input")
+    modifier.modify_node(node)
+    expected_result = "from sagemaker.session import TrainingInput as training_input"
+    assert expected_result == pasta.dump(node)

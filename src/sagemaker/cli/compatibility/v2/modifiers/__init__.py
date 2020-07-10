@@ -22,4 +22,5 @@ from sagemaker.cli.compatibility.v2.modifiers import (  # noqa: F401 (imported b
     tf_legacy_mode,
     tfs,
     training_params,
+    training_input,
 )
