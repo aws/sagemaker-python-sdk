@@ -20,6 +20,7 @@ import pytest
 from sagemaker.deserializers import (
     StringDeserializer,
     BytesDeserializer,
+    CSVDeserializer,
     StreamDeserializer,
     NumpyDeserializer,
 )
@@ -39,6 +40,31 @@ def test_bytes_deserializer():
     result = deserializer.deserialize(io.BytesIO(b"[1, 2, 3]"), "application/json")
 
     assert result == b"[1, 2, 3]"
+
+
+@pytest.fixture
+def csv_deserializer():
+    return CSVDeserializer()
+
+
+def test_csv_deserializer_single_element(csv_deserializer):
+    result = csv_deserializer.deserialize(io.BytesIO(b"1"), "text/csv")
+    assert result == [["1"]]
+
+
+def test_csv_deserializer_array(csv_deserializer):
+    result = csv_deserializer.deserialize(io.BytesIO(b"1,2,3"), "text/csv")
+    assert result == [["1", "2", "3"]]
+
+
+def test_csv_deserializer_2dimensional(csv_deserializer):
+    result = csv_deserializer.deserialize(io.BytesIO(b"1,2,3\n3,4,5"), "text/csv")
+    assert result == [["1", "2", "3"], ["3", "4", "5"]]
+
+
+def test_csv_deserializer_posix_compliant(csv_deserializer):
+    result = csv_deserializer.deserialize(io.BytesIO(b"1,2,3\n3,4,5\n"), "text/csv")
+    assert result == [["1", "2", "3"], ["3", "4", "5"]]
 
 
 def test_stream_deserializer():

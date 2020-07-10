@@ -596,32 +596,6 @@ def _row_to_csv(obj):
     return ",".join(obj)
 
 
-class _CsvDeserializer(object):
-    """Placeholder docstring"""
-
-    def __init__(self, encoding="utf-8"):
-        """
-        Args:
-            encoding:
-        """
-        self.accept = CONTENT_TYPE_CSV
-        self.encoding = encoding
-
-    def __call__(self, stream, content_type):
-        """
-        Args:
-            stream:
-            content_type:
-        """
-        try:
-            return list(csv.reader(stream.read().decode(self.encoding).splitlines()))
-        finally:
-            stream.close()
-
-
-csv_deserializer = _CsvDeserializer()
-
-
 class _JsonDeserializer(object):
     """Placeholder docstring"""
 
