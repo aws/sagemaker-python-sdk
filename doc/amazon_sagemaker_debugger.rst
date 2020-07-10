@@ -54,8 +54,8 @@ The ``DebuggerHookConfig`` accepts one or more objects of type ``CollectionConfi
 
     estimator = TensorFlow(
         role=role,
-        train_instance_count=1,
-        train_instance_type=train_instance_type,
+        instance_count=1,
+        instance_type=instance_type,
         debugger_hook_config=debugger_hook_config
     )
 
@@ -215,8 +215,8 @@ Sample Usages
 
     estimator = TensorFlow(
             role=role,
-            train_instance_count=1,
-            train_instance_type=train_instance_type,
+            instance_count=1,
+            instance_type=instance_type,
             rules=[Rule.sagemaker(vanishing_gradient())]
     )
 
@@ -232,8 +232,8 @@ In the example above, Amazon SageMaker pulls the collection configuration best s
 
     estimator = TensorFlow(
             role=role,
-            train_instance_count=1,
-            train_instance_type=train_instance_type,
+            instance_count=1,
+            instance_type=instance_type,
             rules=[Rule.sagemaker(vanishing_gradient()), Rule.sagemaker(weight_update_ratio())]
     )
 
@@ -269,8 +269,8 @@ Here we modify the ``weight_update_ratio`` rule to store a custom collection rat
 
     estimator = TensorFlow(
             role=role,
-            train_instance_count=1,
-            train_instance_type=train_instance_type,
+            instance_count=1,
+            instance_type=instance_type,
             rules=[
                 Rule.sagemaker(vanishing_gradient()),
                 wur_with_customization
@@ -317,8 +317,8 @@ To evaluate the custom rule against the training:
 
     estimator = TensorFlow(
         role=role,
-        train_instance_count=1,
-        train_instance_type=train_instance_type,
+        instance_count=1,
+        instance_type=instance_type,
         rules=[
             custom_gradient_rule
         ]
@@ -344,8 +344,8 @@ To enable the debugging hook to emit TensorBoard data, you need to specify the n
 
     estimator = TensorFlow(
         role=role,
-        train_instance_count=1,
-        train_instance_type=train_instance_type,
+        instance_count=1,
+        instance_type=instance_type,
         tensorboard_output_config=tensorboard_output_config
     )
 
@@ -392,8 +392,8 @@ To disable the hook initialization, you can do so by specifying ``False`` for va
 
     estimator = TensorFlow(
         role=role,
-        train_instance_count=1,
-        train_instance_type=train_instance_type,
+        instance_count=1,
+        instance_type=instance_type,
         debugger_hook_config=False
     )
 

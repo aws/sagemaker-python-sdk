@@ -10,9 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Classes to modify Predictor code to be compatible
-with version 2.0 and later of the SageMaker Python SDK.
-"""
+"""Classes to handle renames for version 2.0 and later of the SageMaker Python SDK."""
 from __future__ import absolute_import
 
 import ast
@@ -68,6 +66,34 @@ class ParamRenamer(Modifier):
         keyword.arg = self.new_param_name
 
 
+class MethodParamRenamer(ParamRenamer):
+    """Abstract class to handle parameter renames for methods that belong to objects.
+
+    This differs from ``ParamRenamer`` in that a node for a standalone function call
+    (i.e. where ``node.func`` is an ``ast.Name`` rather than an ``ast.Attribute``) is not modified.
+    """
+
+    def node_should_be_modified(self, node):
+        """Checks if the node matches any of the relevant functions and
+        contains the parameter to be renamed.
+
+        This looks for a call of the form ``<object>.<method>``, and
+        assumes the method cannot be called on its own.
+
+        Args:
+            node (ast.Call): a node that represents a function call. For more,
+                see https://docs.python.org/3/library/ast.html#abstract-grammar.
+
+        Returns:
+            bool: If the ``ast.Call`` matches the relevant function calls and
+                contains the parameter to be renamed.
+        """
+        if isinstance(node.func, ast.Name):
+            return False
+
+        return super(MethodParamRenamer, self).node_should_be_modified(node)
+
+
 class DistributionParameterRenamer(ParamRenamer):
     """A class to rename the ``distributions`` attribute to ``distrbution`` in
     MXNet and TensorFlow estimators.
@@ -100,7 +126,7 @@ class DistributionParameterRenamer(ParamRenamer):
         return "distribution"
 
 
-class S3SessionRenamer(ParamRenamer):
+class S3SessionRenamer(MethodParamRenamer):
     """A class to rename the ``session`` attribute to ``sagemaker_session`` in
     ``S3Uploader`` and ``S3Downloader``.
 
@@ -138,15 +164,6 @@ class S3SessionRenamer(ParamRenamer):
     def new_param_name(self):
         """The new name for the SageMaker session argument."""
         return "sagemaker_session"
-
-    def node_should_be_modified(self, node):
-        """Checks if the node is one of the S3 utility functions and
-        contains the ``session`` parameter.
-        """
-        if isinstance(node.func, ast.Name):
-            return False
-
-        return super(S3SessionRenamer, self).node_should_be_modified(node)
 
 
 class EstimatorImageURIRenamer(ParamRenamer):
@@ -208,4 +225,94 @@ class ModelImageURIRenamer(ParamRenamer):
     @property
     def new_param_name(self):
         """The new name for the image URI argument."""
+        return "image_uri"
+
+
+class EstimatorCreateModelImageURIRenamer(MethodParamRenamer):
+    """A class to rename ``image`` to ``image_uri`` in estimator ``create_model()`` methods."""
+
+    @property
+    def calls_to_modify(self):
+        """A mapping of ``create_model`` to common variable names for estimators."""
+        return {
+            "create_model": (
+                "estimator",
+                "chainer",
+                "mxnet",
+                "mx",
+                "pytorch",
+                "rl",
+                "sklearn",
+                "tensorflow",
+                "tf",
+                "xgboost",
+                "xgb",
+            )
+        }
+
+    @property
+    def old_param_name(self):
+        """The previous name for the image URI argument."""
+        return "image"
+
+    @property
+    def new_param_name(self):
+        """The new name for the the image URI argument."""
+        return "image_uri"
+
+
+class SessionCreateModelImageURIRenamer(MethodParamRenamer):
+    """A class to rename ``primary_container_image`` to ``image_uri``.
+
+    This looks for the following calls:
+
+    - ``sagemaker_session.create_model_from_job()``
+    - ``sess.create_model_from_job()``
+    """
+
+    @property
+    def calls_to_modify(self):
+        """A mapping of ``create_model_from_job`` to common variable names for Session."""
+        return {
+            "create_model_from_job": ("sagemaker_session", "sess"),
+        }
+
+    @property
+    def old_param_name(self):
+        """The previous name for the image URI argument."""
+        return "primary_container_image"
+
+    @property
+    def new_param_name(self):
+        """The new name for the the image URI argument."""
+        return "image_uri"
+
+
+class SessionCreateEndpointImageURIRenamer(MethodParamRenamer):
+    """A class to rename ``deployment_image`` to ``image_uri``.
+
+    This looks for the following calls:
+
+    - ``sagemaker_session.endpoint_from_job()``
+    - ``sess.endpoint_from_job()``
+    - ``sagemaker_session.endpoint_from_model_data()``
+    - ``sess.endpoint_from_model_data()``
+    """
+
+    @property
+    def calls_to_modify(self):
+        """A mapping of the ``endpoint_from_*`` functions to common variable names for Session."""
+        return {
+            "endpoint_from_job": ("sagemaker_session", "sess"),
+            "endpoint_from_model_data": ("sagemaker_session", "sess"),
+        }
+
+    @property
+    def old_param_name(self):
+        """The previous name for the image URI argument."""
+        return "deployment_image"
+
+    @property
+    def new_param_name(self):
+        """The new name for the the image URI argument."""
         return "image_uri"

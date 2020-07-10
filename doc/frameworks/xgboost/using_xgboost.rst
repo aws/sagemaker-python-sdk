@@ -159,9 +159,9 @@ and a dictionary of the hyperparameters to pass to the training script.
         entry_point="abalone.py",
         hyperparameters=hyperparameters,
         role=role,
-        train_instance_count=1,
-        train_instance_type="ml.m5.2xlarge",
-        framework_version="0.90-1",
+        instance_count=1,
+        instance_type="ml.m5.2xlarge",
+        framework_version="1.0-1",
     )
 
 
@@ -179,24 +179,227 @@ After you create an estimator, call the ``fit`` method to run the training job.
 Deploy Open Source XGBoost Models
 =================================
 
-After the training job finishes, call the ``deploy`` method of the estimator to create a predictor that you can use to get inferences from your trained model.
+After you fit an XGBoost Estimator, you can host the newly created model in SageMaker.
+
+After you call ``fit``, you can call ``deploy`` on an ``XGBoost`` estimator to create a SageMaker endpoint.
+The endpoint runs a SageMaker-provided XGBoost model server and hosts the model produced by your training script,
+which was run when you called ``fit``. This was the model you saved to ``model_dir``.
+
+``deploy`` returns a ``Predictor`` object, which you can use to do inference on the Endpoint hosting your XGBoost model.
+Each ``Predictor`` provides a ``predict`` method which can do inference with numpy arrays, Python lists, or strings.
+After inference arrays or lists are serialized and sent to the XGBoost model server, ``predict`` returns the result of
+inference against your model.
 
 .. code::
 
-    predictor = xgb_script_mode_estimator.deploy(initial_instance_count=1, instance_type="ml.m5.xlarge")
-    test_data = xgboost.DMatrix('/path/to/data')
-    predictor.predict(test_data)
+    predictor = estimator.deploy(
+        initial_instance_count=1,
+        instance_type="ml.m5.xlarge"
+    )
+    predictor.serializer = str
+    predictor.content_type = "text/libsvm"
 
-Customize inference
--------------------
+    with open("abalone") as f:
+        payload = f.read()
 
-In your inference script, which can be either in the same file as your training script or in a separate file,
-you can customize the inference behavior by implementing the following functions:
-* ``input_fn`` - how input data is handled
-* ``predict_fn`` - how the model is invoked
-* ``output_fn`` - How the response data is handled
+    predictor.predict(payload)
 
-These functions are optional. If you want to use the default implementations, do not implement them in your training script.
+SageMaker XGBoost Model Server
+-----------------------------------
+
+You can configure two components of the SageMaker XGBoost model server: Model loading and model serving.
+Model loading is the process of deserializing your saved model back into an XGBoost model.
+Model serving is the process of translating endpoint requests to inference calls on the loaded model.
+
+You configure the XGBoost model server by defining functions in the Python source file you passed to the XGBoost constructor.
+
+Load a Model
+^^^^^^^^^^^^
+
+Before a model can be served, it must be loaded. The SageMaker XGBoost model server loads your model by invoking a
+``model_fn`` function that you must provide in your script. The ``model_fn`` should have the following signature:
+
+.. code:: python
+
+    def model_fn(model_dir)
+
+SageMaker will inject the directory where your model files and sub-directories, saved by ``save``, have been mounted.
+Your model function should return a ``xgboost.Booster`` object that can be used for model serving.
+
+The following code-snippet shows an example ``model_fn`` implementation.
+It loads and returns a pickled XGBoost model from a ``xgboost-model`` file in the SageMaker model directory ``model_dir``.
+
+.. code:: python
+
+    import pickle as pkl
+
+    def model_fn(model_dir):
+        with open(os.path.join(model_dir, "xgboost-model"), "rb") as f:
+            booster = pkl.load(f)
+        return booster
+
+Serve a Model
+^^^^^^^^^^^^^
+
+After the SageMaker model server has loaded your model by calling ``model_fn``, SageMaker will serve your model.
+The SageMaker Scikit-learn model server breaks request handling into three steps:
+
+-  input processing,
+-  prediction, and
+-  output processing.
+
+In a similar way to model loading, you can customize the inference behavior by defining functions in your inference
+script, which can be either in the same file as your training script or in a separate file,
+
+Each step involves invoking a python function, with information about the request and the return-value from the previous
+function in the chain.
+Inside the SageMaker XGBoost model server, the process looks like:
+
+.. code:: python
+
+    # Deserialize the Invoke request body into an object we can perform prediction on
+    input_object = input_fn(request_body, request_content_type)
+
+    # Perform prediction on the deserialized object, with the loaded model
+    prediction = predict_fn(input_object, model)
+
+    # Serialize the prediction result into the desired response content type
+    output = output_fn(prediction, response_content_type)
+
+The above code-sample shows the three function definitions:
+
+-  ``input_fn``: Takes request data and deserializes the data into an object for prediction.
+-  ``predict_fn``: Takes the deserialized request object and performs inference against the loaded model.
+-  ``output_fn``: Takes the result of prediction and serializes this according to the response content type.
+
+These functions are optional.
+The SageMaker XGBoost model server provides default implementations of these functions.
+You can provide your own implementations for these functions in your hosting script.
+If you omit any definition then the SageMaker XGBoost model server will use its default implementation for that
+function.
+
+In the following sections we describe the default implementations of ``input_fn``, ``predict_fn``, and ``output_fn``.
+We describe the input arguments and expected return types of each, so you can define your own implementations.
+
+Process Input
+"""""""""""""
+
+When a request is made against an endpoint running a SageMaker XGBoost model server, the model server receives two
+pieces of information:
+
+-  The request Content-Type, for example "application/x-npy" or "text/libsvm"
+-  The request data body, a byte array
+
+The SageMaker XGBoost model server will invoke an ``input_fn`` function in your inference script, passing in this
+information. If you define an ``input_fn`` function definition, it should return an object that can be passed
+to ``predict_fn`` and have the following signature:
+
+.. code:: python
+
+    def input_fn(request_body, request_content_type)
+
+where ``request_body`` is a byte buffer and ``request_content_type`` is a Python string.
+
+The SageMaker XGBoost model server provides a default implementation of ``input_fn``.
+This function deserializes CSV, LIBSVM, or protobuf recordIO into a ``xgboost.DMatrix``.
+
+Default csv deserialization requires ``request_body`` contain one or more lines of CSV numerical data.
+The data is first loaded into a two-dimensional array, where each line break defines the boundaries of the first
+dimension, and then it is converted to an `xgboost.Dmatrix`. It assumes that CSV input does not have the
+label column.
+
+Default LIBSVM deserialization requires ``request_body`` to follow the `LIBSVM <https://www.csie.ntu.edu.tw/~cjlin/libsvm/>`_ format.
+
+The example below shows a custom ``input_fn`` for preparing pickled NumPy arrays.
+
+.. code:: python
+
+    from io import BytesIO
+    import numpy as np
+    import xgboost as xgb
+
+    def input_fn(request_body, request_content_type):
+        """An input_fn that loads a numpy array"""
+        if request_content_type == "application/npy":
+            array = np.load(BytesIO(request_body))
+            return xgb.DMatrix(array)
+        else:
+            # Handle other content-types here or raise an Exception
+            # if the content type is not supported.
+            pass
+
+Get Predictions
+"""""""""""""""
+
+After the inference request has been deserialized by ``input_fn``, the SageMaker XGBoost model server invokes
+``predict_fn`` on the return value of ``input_fn``.
+
+As with ``input_fn``, you can define your own ``predict_fn`` or use the SageMaker XGBoost model server default.
+
+The ``predict_fn`` function has the following signature:
+
+.. code:: python
+
+    def predict_fn(input_object, model)
+
+Where ``input_object`` is the object returned from ``input_fn`` and ``model`` is the model loaded by ``model_fn``.
+
+The default implementation of ``predict_fn`` invokes the loaded model's ``predict`` function on ``input_object``,
+and returns the resulting value. The return-type should be a NumPy array to be compatible with the default
+``output_fn``.
+
+The example below shows an overriden ``predict_fn`` that returns a two-dimensional NumPy array where
+the first columns are predictions and the remaining columns are the feature contributions
+(`SHAP values <https://github.com/slundberg/shap>`_) for that prediction.
+When ``pred_contribs`` is ``True`` in ``xgboost.Booster.predict()``, the output will be a matrix of size
+(nsample, nfeats + 1) with each record indicating the feature contributions for that prediction.
+Note the final column is the bias term.
+
+.. code:: python
+
+    import numpy as np
+
+    def predict_fn(input_data, model):
+        prediction = model.predict(input_data)
+        feature_contribs = model.predict(input_data, pred_contribs=True)
+        output = np.hstack((prediction[:, np.newaxis], feature_contribs))
+        return output
+
+If you implement your own prediction function, you should take care to ensure that:
+
+-  The first argument is expected to be the return value from input_fn.
+-  The second argument is the loaded model.
+-  The return value should be of the correct type to be passed as the first argument to ``output_fn``.
+   If you use the default ``output_fn``, this should be a NumPy array.
+
+Process Output
+""""""""""""""
+
+After invoking ``predict_fn``, the model server invokes ``output_fn``, passing in the return value from
+``predict_fn`` and the requested response content-type.
+
+The ``output_fn`` has the following signature:
+
+.. code:: python
+
+    def output_fn(prediction, content_type)
+
+``prediction`` is the result of invoking ``predict_fn`` and ``content_type`` is the requested response content-type.
+The function should return a byte array of data serialized to ``content_type``.
+
+The default implementation expects ``prediction`` to be a NumPy array and can serialize the result to JSON, CSV, or NPY.
+It accepts response content types of "application/json", "text/csv", and "application/x-npy".
+
+Host Multiple Models with Multi-Model Endpoints
+-----------------------------------------------
+
+To create an endpoint that can host multiple models, use multi-model endpoints.
+Multi-model endpoints are supported in SageMaker XGBoost versions ``0.90-2``, ``1.0-1``, and later.
+For information about using multiple XGBoost models with multi-model endpoints, see
+`Host Multiple Models with Multi-Model Endpoints <https://docs.aws.amazon.com/sagemaker/latest/dg/multi-model-endpoints.html>`_
+in the AWS documentation.
+For a sample notebook that uses Amazon SageMaker to deploy multiple XGBoost models to an endpoint, see the
+`Multi-Model Endpoint XGBoost Sample Notebook <https://github.com/awslabs/amazon-sagemaker-examples/blob/master/advanced_functionality/multi_model_xgboost_home_value/xgboost_multi_model_endpoint_home_value.ipynb>`_.
 
 
 *************************

@@ -53,6 +53,8 @@ class AlgorithmEstimator(EstimatorBase):
         model_channel_name="model",
         metric_definitions=None,
         encrypt_inter_container_traffic=False,
+        use_spot_instances=False,
+        max_wait=None,
         **kwargs  # pylint: disable=W0613
     ):
         """Initialize an ``AlgorithmEstimator`` instance.
@@ -125,6 +127,17 @@ class AlgorithmEstimator(EstimatorBase):
                 expression used to extract the metric from the logs.
             encrypt_inter_container_traffic (bool): Specifies whether traffic between training
                 containers is encrypted for the training job (default: ``False``).
+            use_spot_instances (bool): Specifies whether to use SageMaker
+                Managed Spot instances for training. If enabled then the
+                `max_wait` arg should also be set.
+
+                More information:
+                https://docs.aws.amazon.com/sagemaker/latest/dg/model-managed-spot-training.html
+                (default: ``False``).
+            max_wait (int): Timeout in seconds waiting for spot training
+                instances (default: None). After this amount of time Amazon
+                SageMaker will stop waiting for Spot instances to become
+                available (default: ``None``).
             **kwargs: Additional kwargs. This is unused. It's only added for AlgorithmEstimator
                 to ignore the irrelevant arguments.
         """
@@ -148,6 +161,8 @@ class AlgorithmEstimator(EstimatorBase):
             model_channel_name=model_channel_name,
             metric_definitions=metric_definitions,
             encrypt_inter_container_traffic=encrypt_inter_container_traffic,
+            use_spot_instances=use_spot_instances,
+            max_wait=max_wait,
         )
 
         self.algorithm_spec = self.sagemaker_session.sagemaker_client.describe_algorithm(
