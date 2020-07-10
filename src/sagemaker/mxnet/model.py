@@ -26,7 +26,8 @@ from sagemaker.fw_utils import (
 )
 from sagemaker.model import FrameworkModel, MODEL_SERVER_WORKERS_PARAM_NAME
 from sagemaker.mxnet import defaults
-from sagemaker.predictor import Predictor, json_serializer, json_deserializer
+from sagemaker.predictor import Predictor, json_deserializer
+from sagemaker.serializers import JSONSerializer
 
 logger = logging.getLogger("sagemaker")
 
@@ -50,7 +51,7 @@ class MXNetPredictor(Predictor):
                 using the default AWS configuration chain.
         """
         super(MXNetPredictor, self).__init__(
-            endpoint_name, sagemaker_session, json_serializer, json_deserializer
+            endpoint_name, sagemaker_session, JSONSerializer(), json_deserializer
         )
 
 
