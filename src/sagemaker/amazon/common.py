@@ -22,31 +22,37 @@ import numpy as np
 
 from sagemaker.amazon.record_pb2 import Record
 from sagemaker.deserializers import BaseDeserializer
+from sagemaker.serializers import BaseSerializer
 from sagemaker.utils import DeferredError
 
 
-class numpy_to_record_serializer(object):
-    """Placeholder docstring"""
+class RecordSerializer(BaseSerializer):
+    """Serialize a NumPy array for an inference request."""
 
-    def __init__(self, content_type="application/x-recordio-protobuf"):
-        """
-        Args:
-            content_type:
-        """
-        self.content_type = content_type
+    CONTENT_TYPE = "application/x-recordio-protobuf"
 
-    def __call__(self, array):
-        """
+    def serialize(self, data):
+        """Serialize a NumPy array into a buffer containing RecordIO records.
+
         Args:
-            array:
+            data (numpy.ndarray): The data to serialize.
+
+        Returns:
+            io.BytesIO: A buffer containing the data serialized as records.
         """
-        if len(array.shape) == 1:
-            array = array.reshape(1, array.shape[0])
-        assert len(array.shape) == 2, "Expecting a 1 or 2 dimensional array"
-        buf = io.BytesIO()
-        write_numpy_to_dense_tensor(buf, array)
-        buf.seek(0)
-        return buf
+        if len(data.shape) == 1:
+            data = data.reshape(1, data.shape[0])
+
+        if len(data.shape) != 2:
+            raise ValueError(
+                "Expected a 1D or 2D array, but got a %dD array instead." % len(data.shape)
+            )
+
+        buffer = io.BytesIO()
+        write_numpy_to_dense_tensor(buffer, data)
+        buffer.seek(0)
+
+        return buffer
 
 
 class RecordDeserializer(BaseDeserializer):
