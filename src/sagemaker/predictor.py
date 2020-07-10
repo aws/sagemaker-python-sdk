@@ -14,13 +14,12 @@
 from __future__ import print_function, absolute_import
 
 import codecs
-import csv
 import json
 import six
 from six import BytesIO
 import numpy as np
 
-from sagemaker.content_types import CONTENT_TYPE_JSON, CONTENT_TYPE_CSV, CONTENT_TYPE_NPY
+from sagemaker.content_types import CONTENT_TYPE_JSON, CONTENT_TYPE_NPY
 from sagemaker.deserializers import BaseDeserializer
 from sagemaker.model_monitor import DataCaptureConfig
 from sagemaker.serializers import BaseSerializer
