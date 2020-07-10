@@ -86,7 +86,7 @@ def _registry_from_region(region, registry_dict):
     if region not in available_regions:
         raise ValueError(
             "Unsupported region: {}. "
-            "You may need to upgrade your SDK version (pip install -U sagemaker) newer regions. "
+            "You may need to upgrade your SDK version (pip install -U sagemaker) for newer regions. "
             "Supported region(s): {}.".format(region, ", ".join(available_regions))
         )
 
