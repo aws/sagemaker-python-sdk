@@ -120,7 +120,7 @@ def _validate_py_version(py_version, available_versions, framework, fw_version):
     if py_version not in available_versions:
         raise ValueError(
             "Unsupported Python version for {} {}: {}. "
-            "You may need to upgrade your SDK version (pip install -U sagemaker) newer versions. "
+            "You may need to upgrade your SDK version (pip install -U sagemaker) for newer versions. "
             "Supported Python version(s): {}.".format(
                 framework, fw_version, py_version, ", ".join(available_versions)
             )
