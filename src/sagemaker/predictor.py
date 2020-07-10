@@ -13,7 +13,6 @@
 """Placeholder docstring"""
 from __future__ import print_function, absolute_import
 
-import codecs
 import csv
 import json
 import six
