@@ -75,7 +75,7 @@ def _version_for_config(version, config, framework):
 
     raise ValueError(
         "Unsupported {} version: {}. "
-        "You may need to upgrade your SDK version (pip install -U sagemaker) newer versions. "
+        "You may need to upgrade your SDK version (pip install -U sagemaker) for newer versions. "
         "Supported version(s): {}.".format(framework, version, ", ".join(available_versions))
     )
 
@@ -85,8 +85,8 @@ def _registry_from_region(region, registry_dict):
     available_regions = registry_dict.keys()
     if region not in available_regions:
         raise ValueError(
-            "Unsupported region: {}. "
-            "You may need to upgrade your SDK version (pip install -U sagemaker) for newer regions. "
+            "Unsupported region: {}. You may need to upgrade "
+            "your SDK version (pip install -U sagemaker) for newer regions. "
             "Supported region(s): {}.".format(region, ", ".join(available_regions))
         )
 
@@ -119,8 +119,8 @@ def _validate_py_version(py_version, available_versions, framework, fw_version):
     """Checks if the Python version is one of the supported versions."""
     if py_version not in available_versions:
         raise ValueError(
-            "Unsupported Python version for {} {}: {}. "
-            "You may need to upgrade your SDK version (pip install -U sagemaker) for newer versions. "
+            "Unsupported Python version for {} {}: {}. You may need to upgrade "
+            "your SDK version (pip install -U sagemaker) for newer versions. "
             "Supported Python version(s): {}.".format(
                 framework, fw_version, py_version, ", ".join(available_versions)
             )
