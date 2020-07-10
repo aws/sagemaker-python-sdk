@@ -24,13 +24,13 @@ from sagemaker.predictor import Predictor
 from sagemaker.predictor import (
     json_serializer,
     json_deserializer,
-    csv_serializer,
     csv_deserializer,
     StreamDeserializer,
     numpy_deserializer,
     npy_serializer,
     _NumpyDeserializer,
 )
+from sagemaker.serializers import CSVSerializer
 from tests.unit import DATA_DIR
 
 # testing serialization functions
@@ -81,72 +81,6 @@ def test_json_serializer_csv_buffer():
         csv_file.seek(0)
         result = json_serializer(csv_file)
         assert result == validation_value
-
-
-def test_csv_serializer_str():
-    original = "1,2,3"
-    result = csv_serializer("1,2,3")
-
-    assert result == original
-
-
-def test_csv_serializer_python_array():
-    result = csv_serializer([1, 2, 3])
-
-    assert result == "1,2,3"
-
-
-def test_csv_serializer_numpy_valid():
-    result = csv_serializer(np.array([1, 2, 3]))
-
-    assert result == "1,2,3"
-
-
-def test_csv_serializer_numpy_valid_2dimensional():
-    result = csv_serializer(np.array([[1, 2, 3], [3, 4, 5]]))
-
-    assert result == "1,2,3\n3,4,5"
-
-
-def test_csv_serializer_list_of_str():
-    result = csv_serializer(["1,2,3", "4,5,6"])
-
-    assert result == "1,2,3\n4,5,6"
-
-
-def test_csv_serializer_list_of_list():
-    result = csv_serializer([[1, 2, 3], [3, 4, 5]])
-
-    assert result == "1,2,3\n3,4,5"
-
-
-def test_csv_serializer_list_of_empty():
-    with pytest.raises(ValueError) as invalid_input:
-        csv_serializer(np.array([[], []]))
-
-    assert "empty array" in str(invalid_input)
-
-
-def test_csv_serializer_numpy_invalid_empty():
-    with pytest.raises(ValueError) as invalid_input:
-        csv_serializer(np.array([]))
-
-    assert "empty array" in str(invalid_input)
-
-
-def test_csv_serializer_python_invalid_empty():
-    with pytest.raises(ValueError) as error:
-        csv_serializer([])
-    assert "empty array" in str(error)
-
-
-def test_csv_serializer_csv_reader():
-    csv_file_path = os.path.join(DATA_DIR, "with_integers.csv")
-    with open(csv_file_path) as csv_file:
-        validation_data = csv_file.read()
-        csv_file.seek(0)
-        result = csv_serializer(csv_file)
-        assert result == validation_data
 
 
 def test_csv_deserializer_single_element():
@@ -513,7 +447,7 @@ def ret_csv_sagemaker_session():
 def test_predict_call_with_headers_and_csv():
     sagemaker_session = ret_csv_sagemaker_session()
     predictor = Predictor(
-        ENDPOINT, sagemaker_session, accept=CSV_CONTENT_TYPE, serializer=csv_serializer
+        ENDPOINT, sagemaker_session, accept=CSV_CONTENT_TYPE, serializer=CSVSerializer()
     )
 
     data = [1, 2]

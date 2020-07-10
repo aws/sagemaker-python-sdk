@@ -685,7 +685,7 @@ your input data to CSV format:
 
   # create a Predictor with JSON serialization
 
-  predictor = Predictor('endpoint-name', serializer=sagemaker.predictor.csv_serializer)
+  predictor = Predictor('endpoint-name', serializer=sagemaker.serializers.CSVSerializer())
 
   # CSV-formatted string input
   input = '1.0,2.0,5.0\n1.0,2.0,5.0\n1.0,2.0,5.0'
@@ -701,7 +701,7 @@ your input data to CSV format:
     ]
   }
 
-You can also use python arrays or numpy arrays as input and let the `csv_serializer` object
+You can also use python arrays or numpy arrays as input and let the `CSVSerializer` object
 convert them to CSV, but the client-size CSV conversion is more sophisticated than the
 CSV parsing on the Endpoint, so if you encounter conversion problems, try using one of the
 JSON options instead.

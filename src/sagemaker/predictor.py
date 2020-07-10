@@ -17,7 +17,7 @@ import codecs
 import csv
 import json
 import six
-from six import StringIO, BytesIO
+from six import BytesIO
 import numpy as np
 
 from sagemaker.content_types import CONTENT_TYPE_JSON, CONTENT_TYPE_CSV, CONTENT_TYPE_NPY
@@ -493,108 +493,6 @@ class LegacyDeserializer(BaseDeserializer):
     def ACCEPT(self):
         """The content type that is expected from the inference endpoint."""
         return self.accept
-
-
-class _CsvSerializer(object):
-    """Placeholder docstring"""
-
-    def __init__(self):
-        """Placeholder docstring"""
-        self.content_type = CONTENT_TYPE_CSV
-
-    def __call__(self, data):
-        """Take data of various data formats and serialize them into CSV.
-
-        Args:
-            data (object): Data to be serialized.
-
-        Returns:
-            object: Sequence of bytes to be used for the request body.
-        """
-        # For inputs which represent multiple "rows", the result should be newline-separated CSV
-        # rows
-        if _is_mutable_sequence_like(data) and len(data) > 0 and _is_sequence_like(data[0]):
-            return "\n".join([_CsvSerializer._serialize_row(row) for row in data])
-        return _CsvSerializer._serialize_row(data)
-
-    @staticmethod
-    def _serialize_row(data):
-        # Don't attempt to re-serialize a string
-        """
-        Args:
-            data:
-        """
-        if isinstance(data, str):
-            return data
-        if isinstance(data, np.ndarray):
-            data = np.ndarray.flatten(data)
-        if hasattr(data, "__len__"):
-            if len(data) == 0:
-                raise ValueError("Cannot serialize empty array")
-            return _csv_serialize_python_array(data)
-
-        # files and buffers
-        if hasattr(data, "read"):
-            return _csv_serialize_from_buffer(data)
-
-        raise ValueError("Unable to handle input format: ", type(data))
-
-
-def _csv_serialize_python_array(data):
-    """
-    Args:
-        data:
-    """
-    return _csv_serialize_object(data)
-
-
-def _csv_serialize_from_buffer(buff):
-    """
-    Args:
-        buff:
-    """
-    return buff.read()
-
-
-def _csv_serialize_object(data):
-    """
-    Args:
-        data:
-    """
-    csv_buffer = StringIO()
-
-    csv_writer = csv.writer(csv_buffer, delimiter=",")
-    csv_writer.writerow(data)
-    return csv_buffer.getvalue().rstrip("\r\n")
-
-
-csv_serializer = _CsvSerializer()
-
-
-def _is_mutable_sequence_like(obj):
-    """
-    Args:
-        obj:
-    """
-    return _is_sequence_like(obj) and hasattr(obj, "__setitem__")
-
-
-def _is_sequence_like(obj):
-    """
-    Args:
-        obj:
-    """
-    return hasattr(obj, "__iter__") and hasattr(obj, "__getitem__")
-
-
-def _row_to_csv(obj):
-    """
-    Args:
-        obj:
-    """
-    if isinstance(obj, str):
-        return obj
-    return ",".join(obj)
 
 
 class _CsvDeserializer(object):
