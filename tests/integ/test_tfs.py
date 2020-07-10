@@ -205,7 +205,7 @@ def test_predict_jsons(tfs_predictor):
         tfs_predictor.endpoint_name,
         tfs_predictor.sagemaker_session,
         serializer=None,
-        deserializer=sagemaker.predictor.JSONDeserializer(),
+        deserializer=sagemaker.deserializers.JSONDeserializer(),
         content_type="application/jsons",
         accept="application/jsons",
     )
@@ -222,7 +222,7 @@ def test_predict_jsonlines(tfs_predictor):
         tfs_predictor.endpoint_name,
         tfs_predictor.sagemaker_session,
         serializer=None,
-        deserializer=sagemaker.predictor.JSONDeserializer(),
+        deserializer=sagemaker.deserializers.JSONDeserializer(),
         content_type="application/jsonlines",
         accept="application/jsonlines",
     )
