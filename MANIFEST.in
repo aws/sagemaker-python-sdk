@@ -1,4 +1,6 @@
-recursive-include src/sagemaker *
+recursive-include src/sagemaker *.py
+
+include src/sagemaker/image_uri_config/*.json
 
 include VERSION
 include LICENSE.txt
