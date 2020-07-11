@@ -15,6 +15,8 @@ with version 2.0 and later of the SageMaker Python SDK.
 """
 from __future__ import absolute_import
 
+import ast
+
 from sagemaker.cli.compatibility.v2.modifiers import matching
 from sagemaker.cli.compatibility.v2.modifiers.modifier import Modifier
 
@@ -53,6 +55,15 @@ class TrainingInputConstructorRefactor(Modifier):
             node.func.id = "TrainingInput"
         elif matching.matches_attr(node, S3_INPUT_NAME):
             node.func.attr = "TrainingInput"
+            _rename_namespace(node, "session")
+
+
+def _rename_namespace(node, name):
+    """Rename namespace ``session`` to ``inputs`` """
+    if isinstance(node.func.value, ast.Attribute) and node.func.value.attr == name:
+        node.func.value.attr = "inputs"
+    elif isinstance(node.func.value, ast.Name) and node.func.value.id == name:
+        node.func.value.id = "inputs"
 
 
 class TrainingInputImportFromRenamer(Modifier):
@@ -82,5 +93,5 @@ class TrainingInputImportFromRenamer(Modifier):
         for name in node.names:
             if name.name == S3_INPUT_NAME:
                 name.name = "TrainingInput"
-            elif name.name == "session":
-                name.name = "inputs"
+            if node.module == "sagemaker.session":
+                node.module = "sagemaker.inputs"

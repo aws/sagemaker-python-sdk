@@ -23,7 +23,10 @@ from tests.unit.sagemaker.cli.compatibility.v2.modifiers.ast_converter import as
 def constructors():
     return (
         "sagemaker.session.s3_input(s3_data='s3://a')",
+        "sagemaker.inputs.s3_input(s3_data='s3://a')",
         "sagemaker.s3_input(s3_data='s3://a')",
+        "session.s3_input(s3_data='s3://a')",
+        "inputs.s3_input(s3_data='s3://a')",
         "s3_input(s3_data='s3://a')",
     )
 
@@ -32,6 +35,7 @@ def constructors():
 def import_statements():
     return (
         "from sagemaker.session import s3_input",
+        "from sagemaker.inputs import s3_input",
         "from sagemaker import s3_input",
     )
 
@@ -60,6 +64,22 @@ def test_constructor_modify_node():
     modifier.modify_node(node)
     assert "sagemaker.TrainingInput(s3_data='s3://a')" == pasta.dump(node)
 
+    node = ast_call("session.s3_input(s3_data='s3://a')")
+    modifier.modify_node(node)
+    assert "inputs.TrainingInput(s3_data='s3://a')" == pasta.dump(node)
+
+    node = ast_call("inputs.s3_input(s3_data='s3://a')")
+    modifier.modify_node(node)
+    assert "inputs.TrainingInput(s3_data='s3://a')" == pasta.dump(node)
+
+    node = ast_call("sagemaker.inputs.s3_input(s3_data='s3://a')")
+    modifier.modify_node(node)
+    assert "sagemaker.inputs.TrainingInput(s3_data='s3://a')" == pasta.dump(node)
+
+    node = ast_call("sagemaker.session.s3_input(s3_data='s3://a')")
+    modifier.modify_node(node)
+    assert "sagemaker.inputs.TrainingInput(s3_data='s3://a')" == pasta.dump(node)
+
 
 def test_import_from_node_should_be_modified_training_input(import_statements):
     modifier = training_input.TrainingInputImportFromRenamer()
@@ -70,7 +90,7 @@ def test_import_from_node_should_be_modified_training_input(import_statements):
 
 def test_import_from_node_should_be_modified_random_import():
     modifier = training_input.TrainingInputImportFromRenamer()
-    node = ast_import("from sagemaker import Session")
+    node = ast_import("from sagemaker.session import Session")
     assert not modifier.node_should_be_modified(node)
 
 
@@ -89,5 +109,5 @@ def test_import_from_modify_node():
 
     node = ast_import("from sagemaker.session import s3_input as training_input")
     modifier.modify_node(node)
-    expected_result = "from sagemaker.session import TrainingInput as training_input"
+    expected_result = "from sagemaker.inputs import TrainingInput as training_input"
     assert expected_result == pasta.dump(node)
