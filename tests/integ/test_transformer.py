@@ -379,9 +379,9 @@ def test_transform_tf_kms_network_isolation(
         role="SageMakerRole",
         train_instance_count=1,
         train_instance_type=cpu_instance_type,
-        framework_version=py_version,
+        framework_version=tf_full_version,
         script_mode=True,
-        py_version=PYTHON_VERSION,
+        py_version=py_version,
         sagemaker_session=sagemaker_session,
     )
 
