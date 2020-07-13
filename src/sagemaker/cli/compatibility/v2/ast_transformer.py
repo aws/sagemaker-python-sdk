@@ -34,6 +34,7 @@ FUNCTION_CALL_MODIFIERS = [
     modifiers.renamed_params.SessionCreateModelImageURIRenamer(),
     modifiers.renamed_params.SessionCreateEndpointImageURIRenamer(),
     modifiers.training_params.TrainPrefixRemover(),
+    modifiers.training_input.TrainingInputConstructorRefactor(),
 ]
 
 IMPORT_MODIFIERS = [modifiers.tfs.TensorFlowServingImportRenamer()]
@@ -41,6 +42,7 @@ IMPORT_MODIFIERS = [modifiers.tfs.TensorFlowServingImportRenamer()]
 IMPORT_FROM_MODIFIERS = [
     modifiers.predictors.PredictorImportFromRenamer(),
     modifiers.tfs.TensorFlowServingImportFromRenamer(),
+    modifiers.training_input.TrainingInputImportFromRenamer(),
 ]
 
 
