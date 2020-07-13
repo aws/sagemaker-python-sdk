@@ -1,5 +1,6 @@
 {
     "processors": ["cpu", "gpu"],
+    "scope": ["inference", "training"],
     "version_aliases": {
         "4.0": "4.0.0",
         "4.1": "4.1.0",
