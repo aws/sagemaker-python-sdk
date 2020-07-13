@@ -25,7 +25,7 @@ from sagemaker import KMeans, s3
 from sagemaker.mxnet import MXNet
 from sagemaker.pytorch import PyTorchModel
 from sagemaker.tensorflow import TensorFlow
-from sagemaker.tensorflow.defaults import LATEST_SERVING_VERSION
+from sagemaker.tensorflow.defaults import LATEST_VERSION
 from sagemaker.transformer import Transformer
 from sagemaker.estimator import Estimator
 from sagemaker.utils import unique_name_from_base
@@ -40,6 +40,11 @@ from tests.integ.timeout import timeout, timeout_and_delete_model_with_transform
 from tests.integ.vpc_test_utils import get_or_create_vpc_resources
 
 MXNET_MNIST_PATH = os.path.join(DATA_DIR, "mxnet_mnist")
+
+
+@pytest.fixture(scope="module")
+def py_version(tf_full_version):
+    return "py37" if tf_full_version == LATEST_VERSION else PYTHON_VERSION
 
 
 @pytest.fixture(scope="module")
@@ -364,7 +369,9 @@ def test_transform_mxnet_logs(
         transformer.wait()
 
 
-def test_transform_tf_kms_network_isolation(sagemaker_session, cpu_instance_type, tmpdir):
+def test_transform_tf_kms_network_isolation(
+    sagemaker_session, cpu_instance_type, tmpdir, tf_full_version, py_version
+):
     data_path = os.path.join(DATA_DIR, "tensorflow_mnist")
 
     tf = TensorFlow(
@@ -372,9 +379,9 @@ def test_transform_tf_kms_network_isolation(sagemaker_session, cpu_instance_type
         role="SageMakerRole",
         train_instance_count=1,
         train_instance_type=cpu_instance_type,
-        framework_version=LATEST_SERVING_VERSION,
+        framework_version=tf_full_version,
         script_mode=True,
-        py_version=PYTHON_VERSION,
+        py_version=py_version,
         sagemaker_session=sagemaker_session,
     )
 
