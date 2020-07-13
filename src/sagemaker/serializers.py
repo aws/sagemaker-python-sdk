@@ -68,12 +68,12 @@ class NumpySerializer(BaseSerializer):
             io.BytesIO: A buffer containing data serialzied in the .npy format.
         """
         if isinstance(data, np.ndarray):
-            if not data.size > 0:
+            if data.size == 0:
                 raise ValueError("Cannot serialize empty array.")
             return self._serialize_array(data)
 
         if isinstance(data, list):
-            if not len(data) > 0:
+            if len(data) == 0:
                 raise ValueError("Cannot serialize empty array.")
             return self._serialize_array(np.array(data, self.dtype))
 
