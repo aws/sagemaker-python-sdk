@@ -26,7 +26,8 @@ from sagemaker.fw_utils import (
 )
 from sagemaker.model import FrameworkModel, MODEL_SERVER_WORKERS_PARAM_NAME
 from sagemaker.pytorch import defaults
-from sagemaker.predictor import Predictor, npy_serializer
+from sagemaker.predictor import Predictor
+from sagemaker.serializers import NumpySerializer
 
 logger = logging.getLogger("sagemaker")
 
@@ -50,7 +51,7 @@ class PyTorchPredictor(Predictor):
                 using the default AWS configuration chain.
         """
         super(PyTorchPredictor, self).__init__(
-            endpoint_name, sagemaker_session, npy_serializer, NumpyDeserializer()
+            endpoint_name, sagemaker_session, NumpySerializer(), NumpyDeserializer()
         )
 
 

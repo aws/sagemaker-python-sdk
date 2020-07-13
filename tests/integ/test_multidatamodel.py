@@ -27,7 +27,8 @@ from sagemaker.amazon.randomcutforest import RandomCutForest
 from sagemaker.deserializers import StringDeserializer
 from sagemaker.multidatamodel import MultiDataModel
 from sagemaker.mxnet import MXNet
-from sagemaker.predictor import Predictor, npy_serializer
+from sagemaker.predictor import Predictor
+from sagemaker.serializers import NumpySerializer
 from sagemaker.utils import sagemaker_timestamp, unique_name_from_base, get_ecr_image_uri_prefix
 from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.retry import retries
@@ -158,7 +159,7 @@ def test_multi_data_model_deploy_pretrained_models(
         predictor = Predictor(
             endpoint_name=endpoint_name,
             sagemaker_session=sagemaker_session,
-            serializer=npy_serializer,
+            serializer=NumpySerializer(),
             deserializer=string_deserializer,
         )
 
@@ -216,7 +217,7 @@ def test_multi_data_model_deploy_pretrained_models_local_mode(container_image, s
         predictor = Predictor(
             endpoint_name=endpoint_name,
             sagemaker_session=multi_data_model.sagemaker_session,
-            serializer=npy_serializer,
+            serializer=NumpySerializer(),
             deserializer=string_deserializer,
         )
 
@@ -289,13 +290,13 @@ def test_multi_data_model_deploy_trained_model_from_framework_estimator(
         assert PRETRAINED_MODEL_PATH_1 in endpoint_models
         assert PRETRAINED_MODEL_PATH_2 in endpoint_models
 
-        # Define a predictor to set `serializer` parameter with npy_serializer
+        # Define a predictor to set `serializer` parameter with `NumpySerializer`
         # instead of `JSONSerializer` in the default predictor returned by `MXNetPredictor`
         # Since we are using a placeholder container image the prediction results are not accurate.
         predictor = Predictor(
             endpoint_name=endpoint_name,
             sagemaker_session=sagemaker_session,
-            serializer=npy_serializer,
+            serializer=NumpySerializer(),
             deserializer=string_deserializer,
         )
 
@@ -390,13 +391,13 @@ def test_multi_data_model_deploy_train_model_from_amazon_first_party_estimator(
         assert PRETRAINED_MODEL_PATH_1 in endpoint_models
         assert PRETRAINED_MODEL_PATH_2 in endpoint_models
 
-        # Define a predictor to set `serializer` parameter with npy_serializer
+        # Define a predictor to set `serializer` parameter with `NumpySerializer`
         # instead of `JSONSerializer` in the default predictor returned by `MXNetPredictor`
         # Since we are using a placeholder container image the prediction results are not accurate.
         predictor = Predictor(
             endpoint_name=endpoint_name,
             sagemaker_session=sagemaker_session,
-            serializer=npy_serializer,
+            serializer=NumpySerializer(),
             deserializer=string_deserializer,
         )
 
@@ -486,7 +487,7 @@ def test_multi_data_model_deploy_pretrained_models_update_endpoint(
         predictor = Predictor(
             endpoint_name=endpoint_name,
             sagemaker_session=sagemaker_session,
-            serializer=npy_serializer,
+            serializer=NumpySerializer(),
             deserializer=string_deserializer,
         )
 

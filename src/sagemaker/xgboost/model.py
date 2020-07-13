@@ -20,7 +20,8 @@ from sagemaker.deserializers import CSVDeserializer
 from sagemaker.fw_utils import model_code_key_prefix
 from sagemaker.fw_registry import default_framework_uri
 from sagemaker.model import FrameworkModel, MODEL_SERVER_WORKERS_PARAM_NAME
-from sagemaker.predictor import Predictor, npy_serializer
+from sagemaker.predictor import Predictor
+from sagemaker.serializers import NumpySerializer
 from sagemaker.xgboost.defaults import XGBOOST_NAME
 
 logger = logging.getLogger("sagemaker")
@@ -43,7 +44,7 @@ class XGBoostPredictor(Predictor):
                 chain.
         """
         super(XGBoostPredictor, self).__init__(
-            endpoint_name, sagemaker_session, npy_serializer, CSVDeserializer()
+            endpoint_name, sagemaker_session, NumpySerializer(), CSVDeserializer()
         )
 
 

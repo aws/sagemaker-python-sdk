@@ -14,6 +14,7 @@
 from __future__ import absolute_import
 
 import abc
+import io
 import json
 
 import numpy as np
@@ -41,6 +42,59 @@ class BaseSerializer(abc.ABC):
     @abc.abstractmethod
     def CONTENT_TYPE(self):
         """The MIME type of the data sent to the inference endpoint."""
+
+
+class NumpySerializer(BaseSerializer):
+    """Serialize data to a buffer using the .npy format."""
+
+    CONTENT_TYPE = "application/x-npy"
+
+    def __init__(self, dtype=None):
+        """Initialize the dtype.
+
+        Args:
+            dtype (str): The dtype of the data.
+        """
+        self.dtype = dtype
+
+    def serialize(self, data):
+        """Serialize data to a buffer using the .npy format.
+
+        Args:
+            data (object): Data to be serialized. Can be a NumPy array, list,
+                file, or buffer.
+
+        Returns:
+            io.BytesIO: A buffer containing data serialzied in the .npy format.
+        """
+        if isinstance(data, np.ndarray):
+            if data.size == 0:
+                raise ValueError("Cannot serialize empty array.")
+            return self._serialize_array(data)
+
+        if isinstance(data, list):
+            if len(data) == 0:
+                raise ValueError("Cannot serialize empty array.")
+            return self._serialize_array(np.array(data, self.dtype))
+
+        # files and buffers. Assumed to hold npy-formatted data.
+        if hasattr(data, "read"):
+            return data.read()
+
+        return self._serialize_array(np.array(data))
+
+    def _serialize_array(self, array):
+        """Saves a NumPy array in a buffer.
+
+        Args:
+            array (numpy.ndarray): The array to serialize.
+
+        Returns:
+            io.BytesIO: A buffer containing the serialized array.
+        """
+        buffer = io.BytesIO()
+        np.save(buffer, array)
+        return buffer.getvalue()
 
 
 class JSONSerializer(BaseSerializer):

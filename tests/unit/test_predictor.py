@@ -24,7 +24,6 @@ from sagemaker.predictor import Predictor
 from sagemaker.predictor import (
     json_deserializer,
     csv_serializer,
-    npy_serializer,
 )
 from sagemaker.serializers import JSONSerializer
 from tests.unit import DATA_DIR
@@ -114,84 +113,6 @@ def test_json_deserializer_invalid_data():
     with pytest.raises(ValueError) as error:
         json_deserializer(io.BytesIO(b"[[1]"), "application/json")
     assert "column" in str(error)
-
-
-def test_npy_serializer_python_array():
-    array = [1, 2, 3]
-    result = npy_serializer(array)
-
-    assert np.array_equal(array, np.load(io.BytesIO(result)))
-
-
-def test_npy_serializer_python_array_with_dtype():
-    array = [1, 2, 3]
-    dtype = "float16"
-
-    result = npy_serializer(array, dtype)
-
-    deserialized = np.load(io.BytesIO(result))
-    assert np.array_equal(array, deserialized)
-    assert deserialized.dtype == dtype
-
-
-def test_npy_serializer_numpy_valid_2_dimensional():
-    array = np.array([[1, 2, 3], [3, 4, 5]])
-    result = npy_serializer(array)
-
-    assert np.array_equal(array, np.load(io.BytesIO(result)))
-
-
-def test_npy_serializer_numpy_valid_multidimensional():
-    array = np.ones((10, 10, 10, 10))
-    result = npy_serializer(array)
-
-    assert np.array_equal(array, np.load(io.BytesIO(result)))
-
-
-def test_npy_serializer_numpy_valid_list_of_strings():
-    array = np.array(["one", "two", "three"])
-    result = npy_serializer(array)
-
-    assert np.array_equal(array, np.load(io.BytesIO(result)))
-
-
-def test_npy_serializer_from_buffer_or_file():
-    array = np.ones((2, 3))
-    stream = io.BytesIO()
-    np.save(stream, array)
-    stream.seek(0)
-
-    result = npy_serializer(stream)
-
-    assert np.array_equal(array, np.load(io.BytesIO(result)))
-
-
-def test_npy_serializer_object():
-    object = {1, 2, 3}
-
-    result = npy_serializer(object)
-
-    assert np.array_equal(np.array(object), np.load(io.BytesIO(result), allow_pickle=True))
-
-
-def test_npy_serializer_list_of_empty():
-    with pytest.raises(ValueError) as invalid_input:
-        npy_serializer(np.array([[], []]))
-
-    assert "empty array" in str(invalid_input)
-
-
-def test_npy_serializer_numpy_invalid_empty():
-    with pytest.raises(ValueError) as invalid_input:
-        npy_serializer(np.array([]))
-
-    assert "empty array" in str(invalid_input)
-
-
-def test_npy_serializer_python_invalid_empty():
-    with pytest.raises(ValueError) as error:
-        npy_serializer([])
-    assert "empty array" in str(error)
 
 
 # testing 'predict' invocations
