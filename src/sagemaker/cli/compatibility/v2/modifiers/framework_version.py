@@ -15,6 +15,8 @@ from __future__ import absolute_import
 
 import ast
 
+from packaging.version import InvalidVersion, Version
+
 from sagemaker.cli.compatibility.v2.modifiers import matching, parsing
 from sagemaker.cli.compatibility.v2.modifiers.modifier import Modifier
 
@@ -135,10 +137,15 @@ def _tf_py_version_default(framework_version):
     """Gets the py_version default based on framework_version for TensorFlow."""
     if not framework_version:
         return "py2"
-    version = [int(s) for s in framework_version.split(".")]
-    if version < [1, 12]:
+
+    try:
+        version = Version(framework_version)
+    except InvalidVersion:
         return "py2"
-    if version < [2, 2]:
+
+    if version < Version("1.12"):
+        return "py2"
+    if version < Version("2.2"):
         return "py3"
     return "py37"
 
@@ -186,7 +193,6 @@ def _version_args_needed(node):
     framework, is_model = _framework_from_node(node)
     expecting_py_version = _py_version_defaults(framework, framework_version, is_model)
     if expecting_py_version:
-        py_version = parsing.arg_value(node, PY_ARG)
-        return py_version is None
+        return not matching.has_arg(node, PY_ARG)
 
     return False
