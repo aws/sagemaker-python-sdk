@@ -22,61 +22,13 @@ from mock import Mock, call, patch
 
 from sagemaker.predictor import Predictor
 from sagemaker.predictor import (
-    json_serializer,
     json_deserializer,
     csv_serializer,
-    csv_deserializer,
 )
+from sagemaker.serializers import JSONSerializer
 from tests.unit import DATA_DIR
 
 # testing serialization functions
-
-
-def test_json_serializer_numpy_valid():
-    result = json_serializer(np.array([1, 2, 3]))
-
-    assert result == "[1, 2, 3]"
-
-
-def test_json_serializer_numpy_valid_2dimensional():
-    result = json_serializer(np.array([[1, 2, 3], [3, 4, 5]]))
-
-    assert result == "[[1, 2, 3], [3, 4, 5]]"
-
-
-def test_json_serializer_empty():
-    assert json_serializer(np.array([])) == "[]"
-
-
-def test_json_serializer_python_array():
-    result = json_serializer([1, 2, 3])
-
-    assert result == "[1, 2, 3]"
-
-
-def test_json_serializer_python_dictionary():
-    d = {"gender": "m", "age": 22, "city": "Paris"}
-
-    result = json_serializer(d)
-
-    assert json.loads(result) == d
-
-
-def test_json_serializer_python_invalid_empty():
-    assert json_serializer([]) == "[]"
-
-
-def test_json_serializer_python_dictionary_invalid_empty():
-    assert json_serializer({}) == "{}"
-
-
-def test_json_serializer_csv_buffer():
-    csv_file_path = os.path.join(DATA_DIR, "with_integers.csv")
-    with open(csv_file_path) as csv_file:
-        validation_value = csv_file.read()
-        csv_file.seek(0)
-        result = json_serializer(csv_file)
-        assert result == validation_value
 
 
 def test_csv_serializer_str():
@@ -143,21 +95,6 @@ def test_csv_serializer_csv_reader():
         csv_file.seek(0)
         result = csv_serializer(csv_file)
         assert result == validation_data
-
-
-def test_csv_deserializer_single_element():
-    result = csv_deserializer(io.BytesIO(b"1"), "text/csv")
-    assert result == [["1"]]
-
-
-def test_csv_deserializer_array():
-    result = csv_deserializer(io.BytesIO(b"1,2,3"), "text/csv")
-    assert result == [["1", "2", "3"]]
-
-
-def test_csv_deserializer_2dimensional():
-    result = csv_deserializer(io.BytesIO(b"1,2,3\n3,4,5"), "text/csv")
-    assert result == [["1", "2", "3"], ["3", "4", "5"]]
 
 
 def test_json_deserializer_array():
@@ -325,7 +262,7 @@ def test_predict_call_with_headers_and_json():
         sagemaker_session,
         content_type="not/json",
         accept="also/not-json",
-        serializer=json_serializer,
+        serializer=JSONSerializer(),
     )
 
     data = [1, 2]

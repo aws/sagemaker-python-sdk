@@ -16,7 +16,6 @@ from __future__ import print_function, absolute_import
 import codecs
 import csv
 import json
-import six
 from six import StringIO
 import numpy as np
 
@@ -595,81 +594,6 @@ def _row_to_csv(obj):
     if isinstance(obj, str):
         return obj
     return ",".join(obj)
-
-
-class _CsvDeserializer(object):
-    """Placeholder docstring"""
-
-    def __init__(self, encoding="utf-8"):
-        """
-        Args:
-            encoding:
-        """
-        self.accept = CONTENT_TYPE_CSV
-        self.encoding = encoding
-
-    def __call__(self, stream, content_type):
-        """
-        Args:
-            stream:
-            content_type:
-        """
-        try:
-            return list(csv.reader(stream.read().decode(self.encoding).splitlines()))
-        finally:
-            stream.close()
-
-
-csv_deserializer = _CsvDeserializer()
-
-
-class _JsonSerializer(object):
-    """Placeholder docstring"""
-
-    def __init__(self):
-        """Placeholder docstring"""
-        self.content_type = CONTENT_TYPE_JSON
-
-    def __call__(self, data):
-        """Take data of various formats and serialize them into the expected
-        request body. This uses information about supported input formats for
-        the deployed model.
-
-        Args:
-            data (object): Data to be serialized.
-
-        Returns:
-            object: Serialized data used for the request.
-        """
-        if isinstance(data, dict):
-            # convert each value in dict from a numpy array to a list if necessary, so they can be
-            # json serialized
-            return json.dumps({k: _ndarray_to_list(v) for k, v in six.iteritems(data)})
-
-        # files and buffers
-        if hasattr(data, "read"):
-            return _json_serialize_from_buffer(data)
-
-        return json.dumps(_ndarray_to_list(data))
-
-
-json_serializer = _JsonSerializer()
-
-
-def _ndarray_to_list(data):
-    """
-    Args:
-        data:
-    """
-    return data.tolist() if isinstance(data, np.ndarray) else data
-
-
-def _json_serialize_from_buffer(buff):
-    """
-    Args:
-        buff:
-    """
-    return buff.read()
 
 
 class _JsonDeserializer(object):

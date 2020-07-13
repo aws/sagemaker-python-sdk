@@ -21,7 +21,7 @@ import tests.integ
 from botocore.config import Config
 from packaging.version import Version
 
-from sagemaker import Session, utils
+from sagemaker import Session, image_uris, utils
 from sagemaker.local import LocalSession
 from sagemaker.rl import RLEstimator
 
@@ -108,11 +108,6 @@ def custom_bucket_name(boto_session):
         "sts", region_name=region, endpoint_url=utils.sts_regional_endpoint(region)
     ).get_caller_identity()["Account"]
     return "{}-{}-{}".format(CUSTOM_BUCKET_NAME_PREFIX, region, account)
-
-
-@pytest.fixture(scope="module", params=["4.0", "4.0.0", "4.1", "4.1.0", "5.0", "5.0.0"])
-def chainer_version(request):
-    return request.param
 
 
 @pytest.fixture(scope="module", params=["py2", "py3"])
@@ -405,3 +400,12 @@ def pytest_generate_tests(metafunc):
         ):
             params.append("ml.p2.xlarge")
         metafunc.parametrize("instance_type", params, scope="session")
+
+    for fw in ("chainer",):
+        fixture_name = "{}_version".format(fw)
+        if fixture_name in metafunc.fixturenames:
+            config = image_uris.config_for_framework(fw)
+            versions = list(config["versions"].keys()) + list(
+                config.get("version_aliases", {}).keys()
+            )
+            metafunc.parametrize(fixture_name, versions, scope="session")

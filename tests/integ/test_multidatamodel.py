@@ -290,8 +290,8 @@ def test_multi_data_model_deploy_trained_model_from_framework_estimator(
         assert PRETRAINED_MODEL_PATH_1 in endpoint_models
         assert PRETRAINED_MODEL_PATH_2 in endpoint_models
 
-        # Define a predictor to set `serializer` parameter with NumpySerializer
-        # instead of `json_serializer` in the default predictor returned by `MXNetPredictor`
+        # Define a predictor to set `serializer` parameter with `NumpySerializer`
+        # instead of `JSONSerializer` in the default predictor returned by `MXNetPredictor`
         # Since we are using a placeholder container image the prediction results are not accurate.
         predictor = Predictor(
             endpoint_name=endpoint_name,
@@ -391,8 +391,8 @@ def test_multi_data_model_deploy_train_model_from_amazon_first_party_estimator(
         assert PRETRAINED_MODEL_PATH_1 in endpoint_models
         assert PRETRAINED_MODEL_PATH_2 in endpoint_models
 
-        # Define a predictor to set `serializer` parameter with NumpySerializer
-        # instead of `json_serializer` in the default predictor returned by `MXNetPredictor`
+        # Define a predictor to set `serializer` parameter with `NumpySerializer`
+        # instead of `JSONSerializer` in the default predictor returned by `MXNetPredictor`
         # Since we are using a placeholder container image the prediction results are not accurate.
         predictor = Predictor(
             endpoint_name=endpoint_name,
