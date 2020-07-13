@@ -79,9 +79,11 @@ class TensorFlowLegacyModeConstructorUpgrader(Modifier):
 
         for kw in node.keywords:
             if kw.arg == "script_mode":
-                script_mode = bool(kw.value.value)
+                script_mode = (
+                    bool(kw.value.value) if isinstance(kw.value, ast.NameConstant) else True
+                )
             if kw.arg == "py_version":
-                py_version = kw.value.s
+                py_version = kw.value.s if isinstance(kw.value, ast.Str) else "py3"
 
         return not (py_version.startswith("py3") or script_mode)
 
@@ -124,7 +126,8 @@ class TensorFlowLegacyModeConstructorUpgrader(Modifier):
 
         if add_image_uri:
             image_uri = self._image_uri_from_args(node.keywords)
-            node.keywords.append(ast.keyword(arg="image_uri", value=ast.Str(s=image_uri)))
+            if image_uri:
+                node.keywords.append(ast.keyword(arg="image_uri", value=ast.Str(s=image_uri)))
 
         node.keywords.append(ast.keyword(arg="model_dir", value=ast.NameConstant(value=False)))
 
@@ -155,19 +158,22 @@ class TensorFlowLegacyModeConstructorUpgrader(Modifier):
         return None
 
     def _image_uri_from_args(self, keywords):
-        """Returns a legacy TensorFlow image URI based on the estimator arguments."""
+        """Returns a legacy TensorFlow image URI based on the estimator arguments if possible."""
         tf_version = framework_version.FRAMEWORK_DEFAULTS["TensorFlow"]
         instance_type = "ml.m4.xlarge"  # CPU default (exact type doesn't matter)
 
         for kw in keywords:
             if kw.arg == "framework_version":
-                tf_version = kw.value.s
+                tf_version = kw.value.s if isinstance(kw.value, ast.Str) else None
             if kw.arg == "train_instance_type":
-                instance_type = kw.value.s
+                instance_type = kw.value.s if isinstance(kw.value, ast.Str) else None
 
-        return fw_utils.create_image_uri(
-            self.region, "tensorflow", instance_type, tf_version, "py2"
-        )
+        if tf_version and instance_type:
+            return fw_utils.create_image_uri(
+                self.region, "tensorflow", instance_type, tf_version, "py2"
+            )
+
+        return None
 
 
 class TensorBoardParameterRemover(Modifier):
