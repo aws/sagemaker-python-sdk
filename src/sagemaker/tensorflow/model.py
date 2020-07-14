@@ -17,8 +17,9 @@ import logging
 
 import sagemaker
 from sagemaker.content_types import CONTENT_TYPE_JSON
+from sagemaker.deserializers import JSONDeserializer
 from sagemaker.fw_utils import create_image_uri
-from sagemaker.predictor import json_deserializer, Predictor
+from sagemaker.predictor import Predictor
 from sagemaker.serializers import JSONSerializer
 
 
@@ -32,7 +33,7 @@ class TensorFlowPredictor(Predictor):
         endpoint_name,
         sagemaker_session=None,
         serializer=JSONSerializer(),
-        deserializer=json_deserializer,
+        deserializer=JSONDeserializer(),
         content_type=None,
         model_name=None,
         model_version=None,

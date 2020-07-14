@@ -12,7 +12,6 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-import io
 import json
 import os
 
@@ -21,10 +20,7 @@ import pytest
 from mock import Mock, call, patch
 
 from sagemaker.predictor import Predictor
-from sagemaker.predictor import (
-    json_deserializer,
-    csv_serializer,
-)
+from sagemaker.predictor import csv_serializer
 from sagemaker.serializers import JSONSerializer
 from tests.unit import DATA_DIR
 
@@ -95,24 +91,6 @@ def test_csv_serializer_csv_reader():
         csv_file.seek(0)
         result = csv_serializer(csv_file)
         assert result == validation_data
-
-
-def test_json_deserializer_array():
-    result = json_deserializer(io.BytesIO(b"[1, 2, 3]"), "application/json")
-
-    assert result == [1, 2, 3]
-
-
-def test_json_deserializer_2dimensional():
-    result = json_deserializer(io.BytesIO(b"[[1, 2, 3], [3, 4, 5]]"), "application/json")
-
-    assert result == [[1, 2, 3], [3, 4, 5]]
-
-
-def test_json_deserializer_invalid_data():
-    with pytest.raises(ValueError) as error:
-        json_deserializer(io.BytesIO(b"[[1]"), "application/json")
-    assert "column" in str(error)
 
 
 # testing 'predict' invocations

@@ -21,8 +21,8 @@ from sagemaker import utils
 from sagemaker.amazon.amazon_estimator import get_image_uri
 from sagemaker.analytics import HyperparameterTuningJobAnalytics
 from sagemaker.content_types import CONTENT_TYPE_JSON
+from sagemaker.deserializers import JSONDeserializer
 from sagemaker.estimator import Estimator
-from sagemaker.predictor import json_deserializer
 from sagemaker.tuner import ContinuousParameter, IntegerParameter, HyperparameterTuner
 from tests.integ import datasets, DATA_DIR, TUNING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
@@ -219,7 +219,7 @@ def _create_training_inputs(sagemaker_session):
 def _make_prediction(predictor, data):
     predictor.serializer = _prediction_data_serializer
     predictor.content_type = CONTENT_TYPE_JSON
-    predictor.deserializer = json_deserializer
+    predictor.deserializer = JSONDeserializer()
     return predictor.predict(data)
 
 
