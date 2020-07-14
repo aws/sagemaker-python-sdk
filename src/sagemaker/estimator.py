@@ -630,8 +630,14 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             sagemaker_session=sagemaker_session, job_name=training_job_name
         )
         estimator._current_job_name = estimator.latest_training_job.name
-        estimator.latest_training_job.wait()
+        estimator.latest_training_job.wait(logs="None")
         return estimator
+
+    def logs(self):
+        """Display the logs for Estimator's training job. If the output is a tty or a Jupyter
+        cell, it will be color-coded based on which instance the log entry is from.
+        """
+        self.sagemaker_session.logs_for_job(self.latest_training_job, wait=True)
 
     def deploy(
         self,

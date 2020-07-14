@@ -681,6 +681,27 @@ def test_attach_framework(sagemaker_session):
     assert framework_estimator.enable_network_isolation() is True
 
 
+def test_attach_no_logs(sagemaker_session):
+    returned_job_description = RETURNED_JOB_DESCRIPTION.copy()
+    mock_describe_training_job = Mock(
+        name="describe_training_job", return_value=returned_job_description
+    )
+    sagemaker_session.sagemaker_client.describe_training_job = mock_describe_training_job
+    Estimator.attach(training_job_name="job", sagemaker_session=sagemaker_session)
+    sagemaker_session.logs_for_job.assert_not_called()
+
+
+def test_logs(sagemaker_session):
+    returned_job_description = RETURNED_JOB_DESCRIPTION.copy()
+    mock_describe_training_job = Mock(
+        name="describe_training_job", return_value=returned_job_description
+    )
+    sagemaker_session.sagemaker_client.describe_training_job = mock_describe_training_job
+    estimator = Estimator.attach(training_job_name="job", sagemaker_session=sagemaker_session)
+    estimator.logs()
+    sagemaker_session.logs_for_job.assert_called_with(estimator.latest_training_job, wait=True)
+
+
 def test_attach_without_hyperparameters(sagemaker_session):
     returned_job_description = RETURNED_JOB_DESCRIPTION.copy()
     del returned_job_description["HyperParameters"]
