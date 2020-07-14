@@ -190,19 +190,19 @@ class NumpyDeserializer(BaseDeserializer):
 
 
 class JSONDeserializer(BaseDeserializer):
-    """Deserialize data from an inference endpoint into a Python dictionary."""
+    """Deserialize JSON data from an inference endpoint into a Python object."""
 
     ACCEPT = "application/json"
 
     def deserialize(self, data, content_type):
-        """Deserialize data from an inference endpoint into a Python dictionary.
+        """Deserialize JSON data from an inference endpoint into a Python object.
 
         Args:
             data (botocore.response.StreamingBody): Data to be deserialized.
             content_type (str): The MIME type of the data.
 
         Returns:
-            dict: The data deserialized into a Python dictionary.
+            object: The JSON-formatted data deserialized into a Python object.
         """
         try:
             return json.load(codecs.getreader("utf-8")(data))
