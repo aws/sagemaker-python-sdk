@@ -245,11 +245,10 @@ For example, if you want to use JSON serialization and deserialization:
 
 .. code:: python
 
-    from sagemaker.predictor import json_deserializer
+    from sagemaker.deserializers import JSONDeserializer
     from sagemaker.serializers import JSONSerializer
 
     predictor.serializer = JSONSerializer()
-    predictor.accept = "application/json"
-    predictor.deserializer = json_deserializer
+    predictor.deserializer = JSONDeserializer()
 
     predictor.predict(data)

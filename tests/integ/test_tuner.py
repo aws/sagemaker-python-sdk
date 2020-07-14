@@ -25,9 +25,9 @@ from sagemaker import KMeans, LDA, RandomCutForest
 from sagemaker.amazon.amazon_estimator import get_image_uri
 from sagemaker.amazon.common import read_records
 from sagemaker.chainer import Chainer
+from sagemaker.deserializers import JSONDeserializer
 from sagemaker.estimator import Estimator
 from sagemaker.mxnet.estimator import MXNet
-from sagemaker.predictor import json_deserializer
 from sagemaker.pytorch import PyTorch
 from sagemaker.tensorflow import TensorFlow
 from sagemaker.tuner import (
@@ -891,7 +891,7 @@ def test_tuning_byo_estimator(sagemaker_session, cpu_instance_type):
         predictor = tuner.deploy(1, cpu_instance_type, endpoint_name=best_training_job)
         predictor.serializer = _fm_serializer
         predictor.content_type = "application/json"
-        predictor.deserializer = json_deserializer
+        predictor.deserializer = JSONDeserializer()
 
         result = predictor.predict(datasets.one_p_mnist()[0][:10])
 

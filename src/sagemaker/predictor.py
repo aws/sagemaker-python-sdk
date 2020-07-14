@@ -13,13 +13,11 @@
 """Placeholder docstring"""
 from __future__ import print_function, absolute_import
 
-import codecs
 import csv
-import json
 from six import StringIO
 import numpy as np
 
-from sagemaker.content_types import CONTENT_TYPE_JSON, CONTENT_TYPE_CSV
+from sagemaker.content_types import CONTENT_TYPE_CSV
 from sagemaker.deserializers import BaseDeserializer
 from sagemaker.model_monitor import DataCaptureConfig
 from sagemaker.serializers import BaseSerializer
@@ -594,29 +592,3 @@ def _row_to_csv(obj):
     if isinstance(obj, str):
         return obj
     return ",".join(obj)
-
-
-class _JsonDeserializer(object):
-    """Placeholder docstring"""
-
-    def __init__(self):
-        """Placeholder docstring"""
-        self.accept = CONTENT_TYPE_JSON
-
-    def __call__(self, stream, content_type):
-        """Decode a JSON object into the corresponding Python object.
-
-        Args:
-            stream (stream): The response stream to be deserialized.
-            content_type (str): The content type of the response.
-
-        Returns:
-            object: Body of the response deserialized into a JSON object.
-        """
-        try:
-            return json.load(codecs.getreader("utf-8")(stream))
-        finally:
-            stream.close()
-
-
-json_deserializer = _JsonDeserializer()
