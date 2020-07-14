@@ -1563,6 +1563,18 @@ class _TuningJob(_Job):
         if parameter_ranges is not None:
             training_config["parameter_ranges"] = parameter_ranges
 
+        if estimator.debugger_rule_configs:
+            training_config["debugger_rule_configs"] = estimator.debugger_rule_configs
+
+        if estimator.debugger_hook_config:
+            estimator.debugger_hook_config.collection_configs = estimator.collection_configs
+            training_config["debugger_hook_config"] = estimator.debugger_hook_config._to_request_dict()
+
+        if estimator.tensorboard_output_config:
+            training_config[
+                "tensorboard_output_config"
+            ] = estimator.tensorboard_output_config._to_request_dict()
+
         return training_config
 
     def stop(self):

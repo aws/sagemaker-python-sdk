@@ -1543,6 +1543,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
         train_use_spot_instances=False,
         checkpoint_s3_uri=None,
         checkpoint_local_path=None,
+        debugger_rule_configs=None,
+        debugger_hook_config=None,
+        tensorboard_output_config=None,
     ):
         """Create an Amazon SageMaker hyperparameter tuning job
 
@@ -1652,6 +1655,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 train_use_spot_instances=train_use_spot_instances,
                 checkpoint_s3_uri=checkpoint_s3_uri,
                 checkpoint_local_path=checkpoint_local_path,
+                debugger_rule_configs=debugger_rule_configs,
+                debugger_hook_config=debugger_hook_config,
+                tensorboard_output_config=tensorboard_output_config,
             ),
         }
 
@@ -1841,6 +1847,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
         train_use_spot_instances=False,
         checkpoint_s3_uri=None,
         checkpoint_local_path=None,
+        debugger_rule_configs=None,
+        debugger_hook_config=None,
+        tensorboard_output_config=None,
     ):
         """
         Construct a dictionary of training job configuration from the arguments
@@ -1956,6 +1965,19 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if parameter_ranges is not None:
             training_job_definition["HyperParameterRanges"] = parameter_ranges
 
+        debugger_rule_configs=None,
+        debugger_hook_config=None,
+        tensorboard_output_config=None
+        if debugger_rule_configs:
+            training_job_definition["debugger_rule_configs"] = debugger_rule_configs
+
+        if debugger_hook_config:
+            training_job_definition["debugger_hook_config"] = debugger_hook_config
+
+        if tensorboard_output_config:
+            training_job_definition[
+                "tensorboard_output_config"
+            ] = tensorboard_output_config
         return training_job_definition
 
     def stop_tuning_job(self, name):
