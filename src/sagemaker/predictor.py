@@ -14,12 +14,10 @@
 from __future__ import print_function, absolute_import
 
 import csv
-import json
-import six
-from six import StringIO, BytesIO
+from six import StringIO
 import numpy as np
 
-from sagemaker.content_types import CONTENT_TYPE_JSON, CONTENT_TYPE_CSV, CONTENT_TYPE_NPY
+from sagemaker.content_types import CONTENT_TYPE_CSV
 from sagemaker.deserializers import BaseDeserializer
 from sagemaker.model_monitor import DataCaptureConfig
 from sagemaker.serializers import BaseSerializer
@@ -594,126 +592,3 @@ def _row_to_csv(obj):
     if isinstance(obj, str):
         return obj
     return ",".join(obj)
-
-
-class _CsvDeserializer(object):
-    """Placeholder docstring"""
-
-    def __init__(self, encoding="utf-8"):
-        """
-        Args:
-            encoding:
-        """
-        self.accept = CONTENT_TYPE_CSV
-        self.encoding = encoding
-
-    def __call__(self, stream, content_type):
-        """
-        Args:
-            stream:
-            content_type:
-        """
-        try:
-            return list(csv.reader(stream.read().decode(self.encoding).splitlines()))
-        finally:
-            stream.close()
-
-
-csv_deserializer = _CsvDeserializer()
-
-
-class _JsonSerializer(object):
-    """Placeholder docstring"""
-
-    def __init__(self):
-        """Placeholder docstring"""
-        self.content_type = CONTENT_TYPE_JSON
-
-    def __call__(self, data):
-        """Take data of various formats and serialize them into the expected
-        request body. This uses information about supported input formats for
-        the deployed model.
-
-        Args:
-            data (object): Data to be serialized.
-
-        Returns:
-            object: Serialized data used for the request.
-        """
-        if isinstance(data, dict):
-            # convert each value in dict from a numpy array to a list if necessary, so they can be
-            # json serialized
-            return json.dumps({k: _ndarray_to_list(v) for k, v in six.iteritems(data)})
-
-        # files and buffers
-        if hasattr(data, "read"):
-            return _json_serialize_from_buffer(data)
-
-        return json.dumps(_ndarray_to_list(data))
-
-
-json_serializer = _JsonSerializer()
-
-
-def _ndarray_to_list(data):
-    """
-    Args:
-        data:
-    """
-    return data.tolist() if isinstance(data, np.ndarray) else data
-
-
-def _json_serialize_from_buffer(buff):
-    """
-    Args:
-        buff:
-    """
-    return buff.read()
-
-
-class _NPYSerializer(object):
-    """Placeholder docstring"""
-
-    def __init__(self):
-        """Placeholder docstring"""
-        self.content_type = CONTENT_TYPE_NPY
-
-    def __call__(self, data, dtype=None):
-        """Serialize data into the request body in NPY format.
-
-        Args:
-            data (object): Data to be serialized. Can be a numpy array, list,
-                file, or buffer.
-            dtype:
-
-        Returns:
-            object: NPY serialized data used for the request.
-        """
-        if isinstance(data, np.ndarray):
-            if not data.size > 0:
-                raise ValueError("empty array can't be serialized")
-            return _npy_serialize(data)
-
-        if isinstance(data, list):
-            if not len(data) > 0:
-                raise ValueError("empty array can't be serialized")
-            return _npy_serialize(np.array(data, dtype))
-
-        # files and buffers. Assumed to hold npy-formatted data.
-        if hasattr(data, "read"):
-            return data.read()
-
-        return _npy_serialize(np.array(data))
-
-
-def _npy_serialize(data):
-    """
-    Args:
-        data:
-    """
-    buffer = BytesIO()
-    np.save(buffer, data)
-    return buffer.getvalue()
-
-
-npy_serializer = _NPYSerializer()

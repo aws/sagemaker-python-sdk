@@ -13,6 +13,8 @@
 """Implements methods for deserializing data returned from an inference endpoint."""
 from __future__ import absolute_import
 
+import csv
+
 import abc
 import codecs
 import io
@@ -92,6 +94,37 @@ class BytesDeserializer(BaseDeserializer):
         """
         try:
             return data.read()
+        finally:
+            data.close()
+
+
+class CSVDeserializer(BaseDeserializer):
+    """Deserialize a stream of bytes into a list of lists."""
+
+    ACCEPT = "text/csv"
+
+    def __init__(self, encoding="utf-8"):
+        """Initialize the string encoding.
+
+        Args:
+            encoding (str): The string encoding to use (default: "utf-8").
+        """
+        self.encoding = encoding
+
+    def deserialize(self, data, content_type):
+        """Deserialize data from an inference endpoint into a list of lists.
+
+        Args:
+            data (botocore.response.StreamingBody): Data to be deserialized.
+            content_type (str): The MIME type of the data.
+
+        Returns:
+            list: The data deserialized into a list of lists representing the
+                contents of a CSV file.
+        """
+        try:
+            decoded_string = data.read().decode(self.encoding)
+            return list(csv.reader(decoded_string.splitlines()))
         finally:
             data.close()
 
