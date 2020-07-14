@@ -22,7 +22,7 @@ import pytest
 import sagemaker
 import tests.integ
 from sagemaker import AlgorithmEstimator, ModelPackage
-from sagemaker.serializeres import CSVSerializer
+from sagemaker.serializers import CSVSerializer
 from sagemaker.tuner import IntegerParameter, HyperparameterTuner
 from sagemaker.utils import sagemaker_timestamp
 from sagemaker.utils import _aws_partition
