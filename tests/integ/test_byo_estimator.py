@@ -86,7 +86,7 @@ def test_byo_estimator(sagemaker_session, region, cpu_instance_type, training_se
         predictor = model.deploy(1, cpu_instance_type, endpoint_name=job_name)
         predictor.serializer = fm_serializer
         predictor.content_type = "application/json"
-        predictor.deserializer = sagemaker.predictor.json_deserializer
+        predictor.deserializer = sagemaker.deserializers.JSONDeserializer()
 
         result = predictor.predict(training_set[0][:10])
 
@@ -132,7 +132,7 @@ def test_async_byo_estimator(sagemaker_session, region, cpu_instance_type, train
         predictor = model.deploy(1, cpu_instance_type, endpoint_name=endpoint_name)
         predictor.serializer = fm_serializer
         predictor.content_type = "application/json"
-        predictor.deserializer = sagemaker.predictor.json_deserializer
+        predictor.deserializer = sagemaker.deserializers.JSONDeserializer()
 
         result = predictor.predict(training_set[0][:10])
 

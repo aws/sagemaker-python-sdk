@@ -12,171 +12,13 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-import io
 import json
-import os
 
-import numpy as np
 import pytest
 from mock import Mock, call, patch
 
 from sagemaker.predictor import Predictor
-from sagemaker.predictor import (
-    json_serializer,
-    json_deserializer,
-    npy_serializer,
-)
-from sagemaker.serializers import CSVSerializer
-from tests.unit import DATA_DIR
-
-# testing serialization functions
-
-
-def test_json_serializer_numpy_valid():
-    result = json_serializer(np.array([1, 2, 3]))
-
-    assert result == "[1, 2, 3]"
-
-
-def test_json_serializer_numpy_valid_2dimensional():
-    result = json_serializer(np.array([[1, 2, 3], [3, 4, 5]]))
-
-    assert result == "[[1, 2, 3], [3, 4, 5]]"
-
-
-def test_json_serializer_empty():
-    assert json_serializer(np.array([])) == "[]"
-
-
-def test_json_serializer_python_array():
-    result = json_serializer([1, 2, 3])
-
-    assert result == "[1, 2, 3]"
-
-
-def test_json_serializer_python_dictionary():
-    d = {"gender": "m", "age": 22, "city": "Paris"}
-
-    result = json_serializer(d)
-
-    assert json.loads(result) == d
-
-
-def test_json_serializer_python_invalid_empty():
-    assert json_serializer([]) == "[]"
-
-
-def test_json_serializer_python_dictionary_invalid_empty():
-    assert json_serializer({}) == "{}"
-
-
-def test_json_serializer_csv_buffer():
-    csv_file_path = os.path.join(DATA_DIR, "with_integers.csv")
-    with open(csv_file_path) as csv_file:
-        validation_value = csv_file.read()
-        csv_file.seek(0)
-        result = json_serializer(csv_file)
-        assert result == validation_value
-
-
-def test_json_deserializer_array():
-    result = json_deserializer(io.BytesIO(b"[1, 2, 3]"), "application/json")
-
-    assert result == [1, 2, 3]
-
-
-def test_json_deserializer_2dimensional():
-    result = json_deserializer(io.BytesIO(b"[[1, 2, 3], [3, 4, 5]]"), "application/json")
-
-    assert result == [[1, 2, 3], [3, 4, 5]]
-
-
-def test_json_deserializer_invalid_data():
-    with pytest.raises(ValueError) as error:
-        json_deserializer(io.BytesIO(b"[[1]"), "application/json")
-    assert "column" in str(error)
-
-
-def test_npy_serializer_python_array():
-    array = [1, 2, 3]
-    result = npy_serializer(array)
-
-    assert np.array_equal(array, np.load(io.BytesIO(result)))
-
-
-def test_npy_serializer_python_array_with_dtype():
-    array = [1, 2, 3]
-    dtype = "float16"
-
-    result = npy_serializer(array, dtype)
-
-    deserialized = np.load(io.BytesIO(result))
-    assert np.array_equal(array, deserialized)
-    assert deserialized.dtype == dtype
-
-
-def test_npy_serializer_numpy_valid_2_dimensional():
-    array = np.array([[1, 2, 3], [3, 4, 5]])
-    result = npy_serializer(array)
-
-    assert np.array_equal(array, np.load(io.BytesIO(result)))
-
-
-def test_npy_serializer_numpy_valid_multidimensional():
-    array = np.ones((10, 10, 10, 10))
-    result = npy_serializer(array)
-
-    assert np.array_equal(array, np.load(io.BytesIO(result)))
-
-
-def test_npy_serializer_numpy_valid_list_of_strings():
-    array = np.array(["one", "two", "three"])
-    result = npy_serializer(array)
-
-    assert np.array_equal(array, np.load(io.BytesIO(result)))
-
-
-def test_npy_serializer_from_buffer_or_file():
-    array = np.ones((2, 3))
-    stream = io.BytesIO()
-    np.save(stream, array)
-    stream.seek(0)
-
-    result = npy_serializer(stream)
-
-    assert np.array_equal(array, np.load(io.BytesIO(result)))
-
-
-def test_npy_serializer_object():
-    object = {1, 2, 3}
-
-    result = npy_serializer(object)
-
-    assert np.array_equal(np.array(object), np.load(io.BytesIO(result), allow_pickle=True))
-
-
-def test_npy_serializer_list_of_empty():
-    with pytest.raises(ValueError) as invalid_input:
-        npy_serializer(np.array([[], []]))
-
-    assert "empty array" in str(invalid_input)
-
-
-def test_npy_serializer_numpy_invalid_empty():
-    with pytest.raises(ValueError) as invalid_input:
-        npy_serializer(np.array([]))
-
-    assert "empty array" in str(invalid_input)
-
-
-def test_npy_serializer_python_invalid_empty():
-    with pytest.raises(ValueError) as error:
-        npy_serializer([])
-    assert "empty array" in str(error)
-
-
-# testing 'predict' invocations
-
+from sagemaker.serializers import JSONSerializer, CSVSerializer
 
 ENDPOINT = "mxnet_endpoint"
 BUCKET_NAME = "mxnet_endpoint"
@@ -322,7 +164,7 @@ def test_predict_call_with_headers_and_json():
         sagemaker_session,
         content_type="not/json",
         accept="also/not-json",
-        serializer=json_serializer,
+        serializer=JSONSerializer(),
     )
 
     data = [1, 2]

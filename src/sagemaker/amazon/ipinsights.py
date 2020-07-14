@@ -16,7 +16,8 @@ from __future__ import absolute_import
 from sagemaker.amazon.amazon_estimator import AmazonAlgorithmEstimatorBase, registry
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
 from sagemaker.amazon.validation import ge, le
-from sagemaker.predictor import Predictor, json_deserializer
+from sagemaker.deserializers import JSONDeserializer
+from sagemaker.predictor import Predictor
 from sagemaker.model import Model
 from sagemaker.serializers import CSVSerializer
 from sagemaker.session import Session
@@ -199,7 +200,7 @@ class IPInsightsPredictor(Predictor):
             endpoint_name,
             sagemaker_session,
             serializer=CSVSerializer(),
-            deserializer=json_deserializer,
+            deserializer=JSONDeserializer(),
         )
 
 

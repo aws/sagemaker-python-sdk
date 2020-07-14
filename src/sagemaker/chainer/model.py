@@ -25,7 +25,8 @@ from sagemaker.fw_utils import (
 from sagemaker.model import FrameworkModel, MODEL_SERVER_WORKERS_PARAM_NAME
 from sagemaker.chainer import defaults
 from sagemaker.deserializers import NumpyDeserializer
-from sagemaker.predictor import Predictor, npy_serializer
+from sagemaker.predictor import Predictor
+from sagemaker.serializers import NumpySerializer
 
 logger = logging.getLogger("sagemaker")
 
@@ -49,7 +50,7 @@ class ChainerPredictor(Predictor):
                 using the default AWS configuration chain.
         """
         super(ChainerPredictor, self).__init__(
-            endpoint_name, sagemaker_session, npy_serializer, NumpyDeserializer()
+            endpoint_name, sagemaker_session, NumpySerializer(), NumpyDeserializer()
         )
 
 

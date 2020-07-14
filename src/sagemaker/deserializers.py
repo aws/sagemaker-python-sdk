@@ -187,3 +187,24 @@ class NumpyDeserializer(BaseDeserializer):
             data.close()
 
         raise ValueError("%s cannot read content type %s." % (__class__.__name__, content_type))
+
+
+class JSONDeserializer(BaseDeserializer):
+    """Deserialize JSON data from an inference endpoint into a Python object."""
+
+    ACCEPT = "application/json"
+
+    def deserialize(self, data, content_type):
+        """Deserialize JSON data from an inference endpoint into a Python object.
+
+        Args:
+            data (botocore.response.StreamingBody): Data to be deserialized.
+            content_type (str): The MIME type of the data.
+
+        Returns:
+            object: The JSON-formatted data deserialized into a Python object.
+        """
+        try:
+            return json.load(codecs.getreader("utf-8")(data))
+        finally:
+            data.close()
