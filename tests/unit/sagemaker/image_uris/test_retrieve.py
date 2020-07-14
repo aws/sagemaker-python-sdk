@@ -129,7 +129,7 @@ def test_retrieve_aliased_version(config_for_framework):
 
 
 @patch("sagemaker.image_uris.config_for_framework")
-def test_retrieve_default_version_if_possible(config_for_framework):
+def test_retrieve_default_version_if_possible(config_for_framework, caplog):
     config = copy.deepcopy(BASE_CONFIG)
     del config["versions"]["1.1.0"]
     config_for_framework.return_value = config
@@ -142,6 +142,17 @@ def test_retrieve_default_version_if_possible(config_for_framework):
         image_scope="training",
     )
     assert "123412341234.dkr.ecr.us-west-2.amazonaws.com/dummy:1.0.0-cpu-py3" == uri
+
+    uri = image_uris.retrieve(
+        framework="useless-string",
+        version="invalid-version",
+        py_version="py3",
+        instance_type="ml.c4.xlarge",
+        region="us-west-2",
+        image_scope="training",
+    )
+    assert "123412341234.dkr.ecr.us-west-2.amazonaws.com/dummy:1.0.0-cpu-py3" == uri
+    assert "Ignoring framework/algorithm version: invalid-version." in caplog.text
 
 
 @patch("sagemaker.image_uris.config_for_framework", return_value=BASE_CONFIG)

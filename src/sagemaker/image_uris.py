@@ -101,9 +101,14 @@ def _validate_version_and_set_if_needed(version, config, framework):
     available_versions = list(config["versions"].keys())
 
     if len(available_versions) == 1:
-        logger.info(
-            "Defaulting to only available framework/algorithm version: %s", available_versions[0]
+        log_message = "Defaulting to the only supported framework/algorithm version: {}.".format(
+            available_versions[0]
         )
+        if version and version != available_versions[0]:
+            logger.warning("%s Ignoring framework/algorithm version: %s.", log_message, version)
+        elif not version:
+            logger.info(log_message)
+
         return available_versions[0]
 
     available_versions += list(config.get("version_aliases", {}).keys())
