@@ -91,7 +91,6 @@ def test_retrieve_eia(config_for_framework, caplog):
     )
     assert "123412341234.dkr.ecr.us-west-2.amazonaws.com/dummy-eia:1.0.0-cpu-py3" == uri
 
-    caplog.set_level(logging.INFO)
     uri = image_uris.retrieve(
         framework="useless-string",
         version="1.0.0",

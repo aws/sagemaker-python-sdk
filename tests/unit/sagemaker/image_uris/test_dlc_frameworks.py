@@ -48,9 +48,7 @@ SAGEMAKER_ALTERNATE_REGION_ACCOUNTS = {
 
 def _expected_uri(repo, fw_version, account, py_version=None, processor="cpu", region=REGION):
     domain = ALTERNATE_DOMAINS.get(region, DOMAIN)
-    tag = "{}-{}".format(fw_version, processor)
-    if py_version:
-        tag = "-".join((tag, py_version))
+    tag = "-".join([x for x in (fw_version, processor, py_version) if x])
 
     return IMAGE_URI_FORMAT.format(account, region, domain, repo, tag)
 

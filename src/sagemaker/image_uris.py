@@ -78,7 +78,7 @@ def _config_for_framework_and_scope(framework, image_scope, accelerator_type=Non
 
     if accelerator_type:
         if image_scope not in ("eia", "inference"):
-            logger.info(
+            logger.warning(
                 "Elastic inference is for inference only. Ignoring image scope: %s.", image_scope
             )
         image_scope = "eia"
@@ -156,8 +156,4 @@ def _validate_arg(arg_name, arg, available_options):
 
 def _format_tag(version, processor, py_version):
     """Creates a tag for the image URI."""
-    tag = "{}-{}".format(version, processor)
-    if py_version:
-        tag += "-{}".format(py_version)
-
-    return tag
+    return "-".join([x for x in (version, processor, py_version) if x])
