@@ -164,50 +164,20 @@ def xgboost_version(request):
     return request.param
 
 
-@pytest.fixture(
-    scope="module",
-    params=[
-        "1.4",
-        "1.4.1",
-        "1.5",
-        "1.5.0",
-        "1.6",
-        "1.6.0",
-        "1.7",
-        "1.7.0",
-        "1.8",
-        "1.8.0",
-        "1.9",
-        "1.9.0",
-        "1.10",
-        "1.10.0",
-        "1.11",
-        "1.11.0",
-        "1.12",
-        "1.12.0",
-        "1.13",
-        "1.14",
-        "1.14.0",
-        "1.15",
-        "1.15.0",
-        "1.15.2",
-        "2.0",
-        "2.0.0",
-        "2.0.1",
-        "2.1",
-        "2.1.0",
-    ],
-)
-def tf_version(request):
-    return request.param
+@pytest.fixture(scope="module")
+def tf_version(tensorflow_training_version):
+    # TODO: remove this fixture and update tests
+    if tensorflow_training_version in ("1.13.1", "2.2", "2.2.0"):
+        pytest.skip("version isn't compatible with both training and inference.")
+    return tensorflow_training_version
 
 
 @pytest.fixture(scope="module", params=["py2", "py3"])
-def tf_py_version(tf_version, request):
-    version = [int(val) for val in tf_version.split(".")]
-    if version < [1, 11]:
+def tf_py_version(tensorflow_training_version, request):
+    version = Version(tensorflow_training_version)
+    if version < Version("1.11"):
         return "py2"
-    if version < [2, 2]:
+    if version < Version("2.2"):
         return request.param
     return "py37"
 
@@ -401,11 +371,22 @@ def pytest_generate_tests(metafunc):
             params.append("ml.p2.xlarge")
         metafunc.parametrize("instance_type", params, scope="session")
 
-    for fw in ("chainer",):
-        fixture_name = "{}_version".format(fw)
-        if fixture_name in metafunc.fixturenames:
-            config = image_uris.config_for_framework(fw)
-            versions = list(config["versions"].keys()) + list(
-                config.get("version_aliases", {}).keys()
-            )
-            metafunc.parametrize(fixture_name, versions, scope="session")
+    _generate_all_framework_version_fixtures(metafunc)
+
+
+def _generate_all_framework_version_fixtures(metafunc):
+    for fw in ("chainer", "tensorflow"):
+        config = image_uris.config_for_framework(fw)
+        if "scope" in config:
+            _parametrize_framework_version_fixture(metafunc, "{}_version".format(fw), config)
+        else:
+            for image_scope in config.keys():
+                _parametrize_framework_version_fixture(
+                    metafunc, "{}_{}_version".format(fw, image_scope), config[image_scope]
+                )
+
+
+def _parametrize_framework_version_fixture(metafunc, fixture_name, config):
+    if fixture_name in metafunc.fixturenames:
+        versions = list(config["versions"].keys()) + list(config.get("version_aliases", {}).keys())
+        metafunc.parametrize(fixture_name, versions, scope="session")

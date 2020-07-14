@@ -13,6 +13,7 @@
 from __future__ import absolute_import
 
 import copy
+import logging
 
 import pytest
 from mock import patch
@@ -21,26 +22,86 @@ from sagemaker import image_uris
 
 BASE_CONFIG = {
     "processors": ["cpu", "gpu"],
+    "scope": ["training", "inference"],
     "versions": {
         "1.0.0": {
             "registries": {"us-west-2": "123412341234"},
             "repository": "dummy",
-            "py_versions": ["py3"],
+            "py_versions": ["py3", "py37"],
         },
     },
 }
 
 
 @patch("sagemaker.image_uris.config_for_framework", return_value=BASE_CONFIG)
-def test_retrieve_framework_all_args(config_for_framework):
+def test_retrieve_framework(config_for_framework):
     uri = image_uris.retrieve(
         framework="useless-string",
         version="1.0.0",
         py_version="py3",
         instance_type="ml.c4.xlarge",
         region="us-west-2",
+        image_scope="training",
     )
     assert "123412341234.dkr.ecr.us-west-2.amazonaws.com/dummy:1.0.0-cpu-py3" == uri
+
+
+@patch("sagemaker.image_uris.config_for_framework", return_value=BASE_CONFIG)
+def test_retrieve_unsupported_image_scope(config_for_framework):
+    with pytest.raises(ValueError) as e:
+        image_uris.retrieve(
+            framework="useless-string",
+            version="1.0.0",
+            py_version="py3",
+            instance_type="ml.c4.xlarge",
+            region="us-west-2",
+            image_scope="invalid-image-scope",
+        )
+    assert "Unsupported image scope: invalid-image-scope." in str(e.value)
+    assert "Supported image scope(s): training, inference." in str(e.value)
+
+
+@patch("sagemaker.image_uris.config_for_framework")
+def test_retrieve_eia(config_for_framework, caplog):
+    base_config = copy.deepcopy(BASE_CONFIG)
+    del base_config["scope"]
+
+    config = {
+        "training": base_config,
+        "eia": {
+            "processors": ["cpu"],
+            "versions": {
+                "1.0.0": {
+                    "registries": {"us-west-2": "123412341234"},
+                    "repository": "dummy-eia",
+                    "py_versions": ["py3", "py37"],
+                },
+            },
+        },
+    }
+    config_for_framework.return_value = config
+
+    uri = image_uris.retrieve(
+        framework="useless-string",
+        version="1.0.0",
+        py_version="py3",
+        instance_type="ml.c4.xlarge",
+        accelerator_type="ml.eia1.medium",
+        region="us-west-2",
+    )
+    assert "123412341234.dkr.ecr.us-west-2.amazonaws.com/dummy-eia:1.0.0-cpu-py3" == uri
+
+    uri = image_uris.retrieve(
+        framework="useless-string",
+        version="1.0.0",
+        py_version="py3",
+        instance_type="ml.c4.xlarge",
+        accelerator_type="ml.eia1.medium",
+        region="us-west-2",
+        image_scope="training",
+    )
+    assert "123412341234.dkr.ecr.us-west-2.amazonaws.com/dummy-eia:1.0.0-cpu-py3" == uri
+    assert "Ignoring image scope: training." in caplog.text
 
 
 @patch("sagemaker.image_uris.config_for_framework")
@@ -57,6 +118,7 @@ def test_retrieve_aliased_version(config_for_framework):
         py_version="py3",
         instance_type="ml.c4.xlarge",
         region="us-west-2",
+        image_scope="training",
     )
     assert "123412341234.dkr.ecr.us-west-2.amazonaws.com/dummy:{}-cpu-py3".format(version) == uri
 
@@ -70,10 +132,11 @@ def test_retrieve_unsupported_version(config_for_framework):
             py_version="py3",
             instance_type="ml.c4.xlarge",
             region="us-west-2",
+            image_scope="training",
         )
 
     assert "Unsupported some-framework version: 1." in str(e.value)
-    assert "Supported version(s): 1.0.0." in str(e.value)
+    assert "Supported some-framework version(s): 1.0.0." in str(e.value)
 
     with pytest.raises(ValueError) as e:
         image_uris.retrieve(
@@ -81,10 +144,11 @@ def test_retrieve_unsupported_version(config_for_framework):
             py_version="py3",
             instance_type="ml.c4.xlarge",
             region="us-west-2",
+            image_scope="training",
         )
 
     assert "Unsupported some-framework version: None." in str(e.value)
-    assert "Supported version(s): 1.0.0." in str(e.value)
+    assert "Supported some-framework version(s): 1.0.0." in str(e.value)
 
 
 @patch("sagemaker.image_uris.config_for_framework", return_value=BASE_CONFIG)
@@ -96,6 +160,7 @@ def test_retrieve_unsupported_region(config_for_framework):
             py_version="py3",
             instance_type="ml.c4.xlarge",
             region="us-east-2",
+            image_scope="training",
         )
 
     assert "Unsupported region: us-east-2." in str(e.value)
@@ -120,6 +185,7 @@ def test_retrieve_ecr_hostname(config_for_framework):
         py_version="py3",
         instance_type="ml.c4.xlarge",
         region="cn-north-1",
+        image_scope="training",
     )
     assert "000000010010.dkr.ecr.cn-north-1.amazonaws.com.cn/dummy:1.0.0-cpu-py3" == uri
 
@@ -129,6 +195,7 @@ def test_retrieve_ecr_hostname(config_for_framework):
         py_version="py3",
         instance_type="ml.c4.xlarge",
         region="cn-northwest-1",
+        image_scope="training",
     )
     assert "010000001000.dkr.ecr.cn-northwest-1.amazonaws.com.cn/dummy:1.0.0-cpu-py3" == uri
 
@@ -138,34 +205,116 @@ def test_retrieve_ecr_hostname(config_for_framework):
         py_version="py3",
         instance_type="ml.c4.xlarge",
         region="us-iso-east-1",
+        image_scope="training",
     )
     assert "000111111000.dkr.ecr.us-iso-east-1.c2s.ic.gov/dummy:1.0.0-cpu-py3" == uri
+
+
+@patch("sagemaker.image_uris.config_for_framework")
+def test_retrieve_no_python_version(config_for_framework, caplog):
+    config = copy.deepcopy(BASE_CONFIG)
+    config["versions"]["1.0.0"]["py_versions"] = []
+    config_for_framework.return_value = config
+
+    uri = image_uris.retrieve(
+        framework="useless-string",
+        version="1.0.0",
+        instance_type="ml.c4.xlarge",
+        region="us-west-2",
+        image_scope="training",
+    )
+    assert "123412341234.dkr.ecr.us-west-2.amazonaws.com/dummy:1.0.0-cpu" == uri
+
+    caplog.set_level(logging.INFO)
+    uri = image_uris.retrieve(
+        framework="useless-string",
+        version="1.0.0",
+        py_version="py3",
+        instance_type="ml.c4.xlarge",
+        region="us-west-2",
+        image_scope="training",
+    )
+    assert "123412341234.dkr.ecr.us-west-2.amazonaws.com/dummy:1.0.0-cpu" == uri
+    assert "Ignoring unnecessary Python version: py3." in caplog.text
+
+
+@patch("sagemaker.image_uris.config_for_framework")
+def test_retrieve_different_config_per_python_version(config_for_framework, caplog):
+    config = {
+        "processors": ["cpu", "gpu"],
+        "scope": ["training", "inference"],
+        "versions": {
+            "1.0.0": {
+                "py3": {"registries": {"us-west-2": "123412341234"}, "repository": "foo"},
+                "py37": {"registries": {"us-west-2": "012345678901"}, "repository": "bar"},
+            },
+        },
+    }
+    config_for_framework.return_value = config
+
+    uri = image_uris.retrieve(
+        framework="useless-string",
+        version="1.0.0",
+        py_version="py3",
+        instance_type="ml.c4.xlarge",
+        region="us-west-2",
+        image_scope="training",
+    )
+    assert "123412341234.dkr.ecr.us-west-2.amazonaws.com/foo:1.0.0-cpu-py3" == uri
+
+    uri = image_uris.retrieve(
+        framework="useless-string",
+        version="1.0.0",
+        py_version="py37",
+        instance_type="ml.c4.xlarge",
+        region="us-west-2",
+        image_scope="training",
+    )
+    assert "012345678901.dkr.ecr.us-west-2.amazonaws.com/bar:1.0.0-cpu-py37" == uri
+
+
+@patch("sagemaker.image_uris.config_for_framework")
+def test_retrieve_default_python_version_if_possible(config_for_framework):
+    config = copy.deepcopy(BASE_CONFIG)
+    config["versions"]["1.0.0"]["py_versions"] = ["py3"]
+    config_for_framework.return_value = config
+
+    uri = image_uris.retrieve(
+        framework="useless-string",
+        version="1.0.0",
+        instance_type="ml.c4.xlarge",
+        region="us-west-2",
+        image_scope="training",
+    )
+    assert "123412341234.dkr.ecr.us-west-2.amazonaws.com/dummy:1.0.0-cpu-py3" == uri
 
 
 @patch("sagemaker.image_uris.config_for_framework", return_value=BASE_CONFIG)
 def test_retrieve_unsupported_python_version(config_for_framework):
     with pytest.raises(ValueError) as e:
         image_uris.retrieve(
-            framework="some-framework",
+            framework="useless-string",
             version="1.0.0",
             py_version="py2",
             instance_type="ml.c4.xlarge",
             region="us-west-2",
+            image_scope="training",
         )
 
-    assert "Unsupported Python version for some-framework 1.0.0: py2." in str(e.value)
-    assert "Supported Python version(s): py3." in str(e.value)
+    assert "Unsupported Python version: py2." in str(e.value)
+    assert "Supported Python version(s): py3, py37." in str(e.value)
 
     with pytest.raises(ValueError) as e:
         image_uris.retrieve(
-            framework="some-framework",
+            framework="useless-string",
             version="1.0.0",
             instance_type="ml.c4.xlarge",
             region="us-west-2",
+            image_scope="training",
         )
 
-    assert "Unsupported Python version for some-framework 1.0.0: None." in str(e.value)
-    assert "Supported Python version(s): py3." in str(e.value)
+    assert "Unsupported Python version: None." in str(e.value)
+    assert "Supported Python version(s): py3, py37." in str(e.value)
 
 
 @patch("sagemaker.image_uris.config_for_framework", return_value=BASE_CONFIG)
@@ -177,6 +326,7 @@ def test_retrieve_processor_type(config_for_framework):
             py_version="py3",
             instance_type=cpu,
             region="us-west-2",
+            image_scope="training",
         )
         assert "123412341234.dkr.ecr.us-west-2.amazonaws.com/dummy:1.0.0-cpu-py3" == uri
 
@@ -187,6 +337,7 @@ def test_retrieve_processor_type(config_for_framework):
             py_version="py3",
             instance_type=gpu,
             region="us-west-2",
+            image_scope="training",
         )
         assert "123412341234.dkr.ecr.us-west-2.amazonaws.com/dummy:1.0.0-gpu-py3" == uri
 
@@ -200,6 +351,7 @@ def test_retrieve_unsupported_processor_type(config_for_framework):
             py_version="py3",
             instance_type="not-an-instance-type",
             region="us-west-2",
+            image_scope="training",
         )
 
     assert "Invalid SageMaker instance type: not-an-instance-type." in str(e.value)
@@ -215,7 +367,8 @@ def test_retrieve_unsupported_processor_type(config_for_framework):
             py_version="py3",
             instance_type="ml.p2.xlarge",
             region="us-west-2",
+            image_scope="training",
         )
 
-    assert "Unsupported processor type: gpu (for ml.p2.xlarge)." in str(e.value)
-    assert "Supported type(s): cpu." in str(e.value)
+    assert "Unsupported processor: gpu." in str(e.value)
+    assert "Supported processor(s): cpu." in str(e.value)
