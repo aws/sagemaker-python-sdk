@@ -29,6 +29,11 @@ BASE_CONFIG = {
             "repository": "dummy",
             "py_versions": ["py3", "py37"],
         },
+        "1.1.0": {
+            "registries": {"us-west-2": "123412341234"},
+            "repository": "dummy",
+            "py_versions": ["py3", "py37"],
+        },
     },
 }
 
@@ -123,6 +128,22 @@ def test_retrieve_aliased_version(config_for_framework):
     assert "123412341234.dkr.ecr.us-west-2.amazonaws.com/dummy:{}-cpu-py3".format(version) == uri
 
 
+@patch("sagemaker.image_uris.config_for_framework")
+def test_retrieve_default_version_if_possible(config_for_framework):
+    config = copy.deepcopy(BASE_CONFIG)
+    del config["versions"]["1.1.0"]
+    config_for_framework.return_value = config
+
+    uri = image_uris.retrieve(
+        framework="useless-string",
+        py_version="py3",
+        instance_type="ml.c4.xlarge",
+        region="us-west-2",
+        image_scope="training",
+    )
+    assert "123412341234.dkr.ecr.us-west-2.amazonaws.com/dummy:1.0.0-cpu-py3" == uri
+
+
 @patch("sagemaker.image_uris.config_for_framework", return_value=BASE_CONFIG)
 def test_retrieve_unsupported_version(config_for_framework):
     with pytest.raises(ValueError) as e:
@@ -136,7 +157,7 @@ def test_retrieve_unsupported_version(config_for_framework):
         )
 
     assert "Unsupported some-framework version: 1." in str(e.value)
-    assert "Supported some-framework version(s): 1.0.0." in str(e.value)
+    assert "Supported some-framework version(s): 1.0.0, 1.1.0." in str(e.value)
 
     with pytest.raises(ValueError) as e:
         image_uris.retrieve(
@@ -148,7 +169,7 @@ def test_retrieve_unsupported_version(config_for_framework):
         )
 
     assert "Unsupported some-framework version: None." in str(e.value)
-    assert "Supported some-framework version(s): 1.0.0." in str(e.value)
+    assert "Supported some-framework version(s): 1.0.0, 1.1.0." in str(e.value)
 
 
 @patch("sagemaker.image_uris.config_for_framework", return_value=BASE_CONFIG)
