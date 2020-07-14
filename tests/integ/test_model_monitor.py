@@ -88,7 +88,7 @@ FIVE_MIN_CRON_EXPRESSION = "cron(0/5 * ? * * *)"
 
 
 @pytest.fixture(scope="module")
-def predictor(sagemaker_session, tf_serving_latest_version):
+def predictor(sagemaker_session, tensorflow_inference_latest_version):
     endpoint_name = unique_name_from_base("sagemaker-tensorflow-serving")
     model_data = sagemaker_session.upload_data(
         path=os.path.join(tests.integ.DATA_DIR, "tensorflow-serving-test-model.tar.gz"),
@@ -100,7 +100,7 @@ def predictor(sagemaker_session, tf_serving_latest_version):
         model = TensorFlowModel(
             model_data=model_data,
             role=ROLE,
-            framework_version=tf_serving_latest_version,
+            framework_version=tensorflow_inference_latest_version,
             sagemaker_session=sagemaker_session,
         )
         predictor = model.deploy(

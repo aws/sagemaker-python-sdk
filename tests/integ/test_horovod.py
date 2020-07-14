@@ -31,15 +31,15 @@ horovod_dir = os.path.join(os.path.dirname(__file__), "..", "data", "horovod")
 @pytest.mark.canary_quick
 def test_hvd_cpu(
     sagemaker_session,
-    tf_training_latest_version,
-    tf_training_latest_py_version,
+    tensorflow_training_latest_version,
+    tensorflow_training_latest_py_version,
     cpu_instance_type,
     tmpdir,
 ):
     _create_and_fit_estimator(
         sagemaker_session,
-        tf_training_latest_version,
-        tf_training_latest_py_version,
+        tensorflow_training_latest_version,
+        tensorflow_training_latest_py_version,
         cpu_instance_type,
         tmpdir,
     )
@@ -50,12 +50,15 @@ def test_hvd_cpu(
     integ.test_region() in integ.TRAINING_NO_P2_REGIONS, reason="no ml.p2 instances in this region"
 )
 def test_hvd_gpu(
-    sagemaker_session, tf_training_latest_version, tf_training_latest_py_version, tmpdir
+    sagemaker_session,
+    tensorflow_training_latest_version,
+    tensorflow_training_latest_py_version,
+    tmpdir,
 ):
     _create_and_fit_estimator(
         sagemaker_session,
-        tf_training_latest_version,
-        tf_training_latest_py_version,
+        tensorflow_training_latest_version,
+        tensorflow_training_latest_py_version,
         "ml.p2.xlarge",
         tmpdir,
     )
@@ -65,8 +68,8 @@ def test_hvd_gpu(
 @pytest.mark.parametrize("instances, processes", [[1, 2], (2, 1), (2, 2)])
 def test_horovod_local_mode(
     sagemaker_local_session,
-    tf_training_latest_version,
-    tf_training_latest_py_version,
+    tensorflow_training_latest_version,
+    tensorflow_training_latest_py_version,
     instances,
     processes,
     tmpdir,
@@ -80,8 +83,8 @@ def test_horovod_local_mode(
         instance_type="local",
         sagemaker_session=sagemaker_local_session,
         output_path=output_path,
-        framework_version=tf_training_latest_version,
-        py_version=tf_training_latest_py_version,
+        framework_version=tensorflow_training_latest_version,
+        py_version=tensorflow_training_latest_py_version,
         distribution={"mpi": {"enabled": True, "processes_per_host": processes}},
     )
 

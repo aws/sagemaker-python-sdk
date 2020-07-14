@@ -164,8 +164,10 @@ def _build_tf(
 
 
 @patch("sagemaker.estimator.name_from_base")
-def test_create_model(name_from_base, sagemaker_session, tf_version, tf_py_version):
-    if version.Version(tf_version) < version.Version("1.11"):
+def test_create_model(
+    name_from_base, sagemaker_session, tensorflow_inference_version, tensorflow_inference_py_version
+):
+    if version.Version(tensorflow_inference_version) < version.Version("1.11"):
         pytest.skip(
             "Legacy TF version requires explicit image URI, and "
             "this logic is tested in test_create_model_with_custom_image."
@@ -176,8 +178,8 @@ def test_create_model(name_from_base, sagemaker_session, tf_version, tf_py_versi
     tf = TensorFlow(
         entry_point=SCRIPT_PATH,
         source_dir="s3://mybucket/source",
-        framework_version=tf_version,
-        py_version=tf_py_version,
+        framework_version=tensorflow_inference_version,
+        py_version=tensorflow_inference_py_version,
         role=ROLE,
         sagemaker_session=sagemaker_session,
         instance_count=INSTANCE_COUNT,
@@ -197,7 +199,7 @@ def test_create_model(name_from_base, sagemaker_session, tf_version, tf_py_versi
     name_from_base.assert_called_with("job")
 
     assert model.sagemaker_session == sagemaker_session
-    assert model.framework_version == tf_version
+    assert model.framework_version == tensorflow_inference_version
     assert model.entry_point is None
     assert model.role == ROLE
     assert model.name == model_name
@@ -207,8 +209,10 @@ def test_create_model(name_from_base, sagemaker_session, tf_version, tf_py_versi
     assert model.enable_network_isolation()
 
 
-def test_create_model_with_optional_params(sagemaker_session, tf_version, tf_py_version):
-    if version.Version(tf_version) < version.Version("1.11"):
+def test_create_model_with_optional_params(
+    sagemaker_session, tensorflow_inference_version, tensorflow_inference_py_version
+):
+    if version.Version(tensorflow_inference_version) < version.Version("1.11"):
         pytest.skip(
             "Legacy TF version requires explicit image URI, and "
             "this logic is tested in test_create_model_with_custom_image."
@@ -219,8 +223,8 @@ def test_create_model_with_optional_params(sagemaker_session, tf_version, tf_py_
     enable_cloudwatch_metrics = "true"
     tf = TensorFlow(
         entry_point=SCRIPT_PATH,
-        framework_version=tf_version,
-        py_version=tf_py_version,
+        framework_version=tensorflow_inference_version,
+        py_version=tensorflow_inference_py_version,
         role=ROLE,
         sagemaker_session=sagemaker_session,
         instance_count=INSTANCE_COUNT,
@@ -277,9 +281,9 @@ def test_create_model_with_custom_image(sagemaker_session):
 
 @patch("sagemaker.tensorflow.estimator.TensorFlow.create_model")
 def test_transformer_creation_with_optional_args(
-    create_model, sagemaker_session, tf_version, tf_py_version
+    create_model, sagemaker_session, tensorflow_inference_version, tensorflow_inference_py_version
 ):
-    if version.Version(tf_version) < version.Version("1.11"):
+    if version.Version(tensorflow_inference_version) < version.Version("1.11"):
         pytest.skip(
             "Legacy TF version requires explicit image URI, and "
             "this logic is tested in test_create_model_with_custom_image."
@@ -290,8 +294,8 @@ def test_transformer_creation_with_optional_args(
 
     tf = TensorFlow(
         entry_point=SCRIPT_PATH,
-        framework_version=tf_version,
-        py_version=tf_py_version,
+        framework_version=tensorflow_inference_version,
+        py_version=tensorflow_inference_py_version,
         role=ROLE,
         sagemaker_session=sagemaker_session,
         instance_count=INSTANCE_COUNT,
@@ -358,9 +362,13 @@ def test_transformer_creation_with_optional_args(
 @patch("sagemaker.tensorflow.estimator.TensorFlow.create_model")
 @patch("sagemaker.estimator.name_from_base")
 def test_transformer_creation_without_optional_args(
-    name_from_base, create_model, sagemaker_session, tf_version, tf_py_version
+    name_from_base,
+    create_model,
+    sagemaker_session,
+    tensorflow_inference_version,
+    tensorflow_inference_py_version,
 ):
-    if version.Version(tf_version) < version.Version("1.11"):
+    if version.Version(tensorflow_inference_version) < version.Version("1.11"):
         pytest.skip(
             "Legacy TF version requires explicit image URI, and "
             "this logic is tested in test_create_model_with_custom_image."
@@ -375,8 +383,8 @@ def test_transformer_creation_without_optional_args(
     base_job_name = "tensorflow"
     tf = TensorFlow(
         entry_point=SCRIPT_PATH,
-        framework_version=tf_version,
-        py_version=tf_py_version,
+        framework_version=tensorflow_inference_version,
+        py_version=tensorflow_inference_py_version,
         role=ROLE,
         sagemaker_session=sagemaker_session,
         instance_count=INSTANCE_COUNT,
@@ -502,15 +510,15 @@ def test_fit_mpi(time, strftime, sagemaker_session):
     assert actual_train_args == expected_train_args
 
 
-def test_hyperparameters_no_model_dir(sagemaker_session, tf_version, tf_py_version):
-    if version.Version(tf_version) < version.Version("1.11"):
-        pytest.skip(
-            "Legacy TF version requires explicit image URI, and "
-            "this logic is tested in test_create_model_with_custom_image."
-        )
-
+def test_hyperparameters_no_model_dir(
+    sagemaker_session, tensorflow_training_version, tensorflow_training_py_version
+):
     tf = _build_tf(
-        sagemaker_session, framework_version=tf_version, py_version=tf_py_version, model_dir=False
+        sagemaker_session,
+        framework_version=tensorflow_training_version,
+        py_version=tensorflow_training_py_version,
+        image_uri="tensorflow:latest",
+        model_dir=False,
     )
     hyperparameters = tf.hyperparameters()
     assert "model_dir" not in hyperparameters
