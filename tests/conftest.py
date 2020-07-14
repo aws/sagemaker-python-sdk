@@ -285,16 +285,6 @@ def tf_full_py_version(tf_full_version):
     return "py37"
 
 
-@pytest.fixture(scope="module")
-def xgboost_full_version():
-    return "1.0-1"
-
-
-@pytest.fixture(scope="module")
-def xgboost_full_py_version():
-    return "py3"
-
-
 @pytest.fixture(scope="session")
 def cpu_instance_type(sagemaker_session, request):
     region = sagemaker_session.boto_session.region_name

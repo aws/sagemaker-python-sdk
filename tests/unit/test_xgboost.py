@@ -149,31 +149,6 @@ def _create_train_job(version, instance_count=1):
     }
 
 
-def test_train_image(sagemaker_session, xgboost_framework_version):
-    container_log_level = '"logging.INFO"'
-    source_dir = "s3://mybucket/source"
-    xgboost = XGBoost(
-        entry_point=SCRIPT_PATH,
-        role=ROLE,
-        sagemaker_session=sagemaker_session,
-        instance_type=INSTANCE_TYPE,
-        instance_count=1,
-        framework_version=xgboost_framework_version,
-        container_log_level=container_log_level,
-        py_version=PYTHON_VERSION,
-        base_job_name="job",
-        source_dir=source_dir,
-    )
-
-    train_image = xgboost.train_image()
-    assert (
-        train_image
-        == "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost:{}-cpu-py3".format(
-            xgboost_framework_version
-        )
-    )
-
-
 def test_create_model(sagemaker_session, xgboost_framework_version):
     source_dir = "s3://mybucket/source"
 
@@ -410,7 +385,7 @@ def test_model(sagemaker_session, xgboost_framework_version):
     assert isinstance(predictor, XGBoostPredictor)
 
 
-def test_train_image_default(sagemaker_session, xgboost_framework_version):
+def test_train_image(sagemaker_session, xgboost_framework_version):
     xgboost = XGBoost(
         entry_point=SCRIPT_PATH,
         role=ROLE,
@@ -422,23 +397,6 @@ def test_train_image_default(sagemaker_session, xgboost_framework_version):
     )
 
     assert _get_full_cpu_image_uri(xgboost_framework_version) in xgboost.train_image()
-
-
-def test_train_image_cpu_instances(sagemaker_session, xgboost_framework_version):
-    xgboost = _xgboost_estimator(
-        sagemaker_session, xgboost_framework_version, instance_type="ml.c2.2xlarge"
-    )
-    assert xgboost.train_image() == _get_full_cpu_image_uri(xgboost_framework_version)
-
-    xgboost = _xgboost_estimator(
-        sagemaker_session, xgboost_framework_version, instance_type="ml.c4.2xlarge"
-    )
-    assert xgboost.train_image() == _get_full_cpu_image_uri(xgboost_framework_version)
-
-    xgboost = _xgboost_estimator(
-        sagemaker_session, xgboost_framework_version, instance_type="ml.m16"
-    )
-    assert xgboost.train_image() == _get_full_cpu_image_uri(xgboost_framework_version)
 
 
 def test_attach(sagemaker_session, xgboost_framework_version):
@@ -564,8 +522,8 @@ def test_attach_custom_image(sagemaker_session):
     assert "expected string" in str(error)
 
 
-def test_py2_xgboost_attribute_error(sagemaker_session, xgboost_framework_version):
-    with pytest.raises(AttributeError) as error1:
+def test_py2_xgboost_error(sagemaker_session, xgboost_framework_version):
+    with pytest.raises(ValueError) as error1:
         XGBoost(
             entry_point=SCRIPT_PATH,
             role=ROLE,
@@ -576,8 +534,8 @@ def test_py2_xgboost_attribute_error(sagemaker_session, xgboost_framework_versio
             py_version="py2",
         )
 
-    with pytest.raises(AttributeError) as error2:
-        XGBoostModel(
+    with pytest.raises(ValueError) as error2:
+        model = XGBoostModel(
             model_data=DATA_DIR,
             role=ROLE,
             sagemaker_session=sagemaker_session,
@@ -585,7 +543,8 @@ def test_py2_xgboost_attribute_error(sagemaker_session, xgboost_framework_versio
             framework_version=xgboost_framework_version,
             py_version="py2",
         )
+        model.serving_image_uri(REGION, INSTANCE_TYPE)
 
-    error_message = "XGBoost container does not support Python 2, please use Python 3"
+    error_message = "Unsupported Python version: py2."
     assert error_message in str(error1)
     assert error_message in str(error2)

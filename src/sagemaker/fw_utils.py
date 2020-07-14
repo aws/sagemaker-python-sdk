@@ -65,9 +65,6 @@ EMPTY_FRAMEWORK_VERSION_ERROR = (
     "framework_version is required for script mode estimator. "
     "Please add framework_version={} to your constructor to avoid this error."
 )
-UNSUPPORTED_FRAMEWORK_VERSION_ERROR = (
-    "{} framework does not support version {}. Please use one of the following: {}."
-)
 
 VALID_PY_VERSIONS = ["py2", "py3", "py37"]
 VALID_EIA_FRAMEWORKS = [
@@ -635,25 +632,6 @@ def warn_if_parameter_server_with_multi_gpu(training_instance_type, distribution
 
     if is_multi_gpu_instance and ps_enabled:
         logger.warning(PARAMETER_SERVER_MULTI_GPU_WARNING)
-
-
-def get_unsupported_framework_version_error(
-    framework_name, unsupported_version, supported_versions
-):
-    """Return error message for unsupported framework version.
-
-    This should also return the supported versions for customers.
-
-    :param framework_name:
-    :param unsupported_version:
-    :param supported_versions:
-    :return:
-    """
-    return UNSUPPORTED_FRAMEWORK_VERSION_ERROR.format(
-        framework_name,
-        unsupported_version,
-        ", ".join('"{}"'.format(version) for version in supported_versions),
-    )
 
 
 def python_deprecation_warning(framework, latest_supported_version):

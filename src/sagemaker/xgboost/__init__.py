@@ -11,6 +11,6 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Placeholder docstring"""
-from sagemaker.xgboost.defaults import XGBOOST_NAME, XGBOOST_LATEST_VERSION  # noqa: F401
+from sagemaker.xgboost.defaults import XGBOOST_NAME  # noqa: F401
 from sagemaker.xgboost.estimator import XGBoost  # noqa: F401
 from sagemaker.xgboost.model import XGBoostModel, XGBoostPredictor  # noqa: F401

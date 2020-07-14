@@ -24,9 +24,7 @@ from sagemaker.amazon.amazon_estimator import (
     registry,
     get_image_uri,
     FileSystemRecordSet,
-    _is_latest_xgboost_version,
 )
-from sagemaker.xgboost.defaults import XGBOOST_LATEST_VERSION, XGBOOST_SUPPORTED_VERSIONS
 
 COMMON_ARGS = {"role": "myrole", "instance_count": 1, "instance_type": "ml.c4.xlarge"}
 
@@ -449,73 +447,6 @@ def test_file_system_record_set_data_channel():
     assert actual == expected
 
 
-def test_get_xgboost_image_uri():
-    legacy_xgb_image_uri = get_image_uri(REGION, "xgboost")
-    assert legacy_xgb_image_uri == "433757028032.dkr.ecr.us-west-2.amazonaws.com/xgboost:1"
-    legacy_xgb_image_uri = get_image_uri(REGION, "xgboost", 1)
-    assert legacy_xgb_image_uri == "433757028032.dkr.ecr.us-west-2.amazonaws.com/xgboost:1"
-    legacy_xgb_image_uri = get_image_uri(REGION, "xgboost", "latest")
-    assert legacy_xgb_image_uri == "433757028032.dkr.ecr.us-west-2.amazonaws.com/xgboost:latest"
-
-    updated_xgb_image_uri = get_image_uri(REGION, "xgboost", "0.90-1")
-    assert (
-        updated_xgb_image_uri
-        == "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost:0.90-1-cpu-py3"
-    )
-
-    updated_xgb_image_uri_v2 = get_image_uri(REGION, "xgboost", "0.90-2")
-    assert (
-        updated_xgb_image_uri_v2
-        == "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost:0.90-2-cpu-py3"
-    )
-
-    assert (
-        get_image_uri(REGION, "xgboost", "0.90-2-cpu-py3")
-        == "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost:0.90-2-cpu-py3"
-    )
-    assert (
-        get_image_uri(REGION, "xgboost", "0.90")
-        == "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost:0.90-1-cpu-py3"
-    )
-    assert (
-        get_image_uri(REGION, "xgboost", "1.0-1")
-        == "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost:1.0-1-cpu-py3"
-    )
-    assert (
-        get_image_uri(REGION, "xgboost", "1.0-1-cpu-py3")
-        == "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost:1.0-1-cpu-py3"
-    )
-    assert (
-        get_image_uri(REGION, "xgboost", "1.0")
-        == "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost:1.0-1-cpu-py3"
-    )
-
-
-def test_get_xgboost_image_uri_warning_with_legacy(caplog):
-    get_image_uri(REGION, "xgboost", 1)
-    assert "There is a more up to date SageMaker XGBoost image." in caplog.text
-
-
-def test_get_xgboost_image_uri_warning_with_no_sagemaker_version(caplog):
-    get_image_uri(REGION, "xgboost", "0.90")
-    assert "There is a more up to date SageMaker XGBoost image." in caplog.text
-
-
-def test_get_xgboost_image_uri_no_warning_with_latest(caplog):
-    get_image_uri(REGION, "xgboost", XGBOOST_LATEST_VERSION.split("-")[0])
-    assert "There is a more up to date SageMaker XGBoost image." not in caplog.text
-
-
-def test_get_xgboost_image_uri_throws_error_for_unsupported_version():
-    with pytest.raises(ValueError) as error:
-        get_image_uri(REGION, "xgboost", "99.99-9")
-    assert "SageMaker XGBoost version 99.99-9 is not supported" in str(error)
-
-    with pytest.raises(ValueError) as error:
-        get_image_uri(REGION, "xgboost", "0.90-1-gpu-py3")
-    assert "SageMaker XGBoost version 0.90-1-gpu-py3 is not supported" in str(error)
-
-
 def test_regitry_throws_error_if_mapping_does_not_exist_for_lda():
     with pytest.raises(ValueError) as error:
         registry("cn-north-1", "lda")
@@ -526,14 +457,6 @@ def test_regitry_throws_error_if_mapping_does_not_exist_for_default_algorithm():
     with pytest.raises(ValueError) as error:
         registry("broken_region_name")
     assert "Algorithm (None) is unsupported for region (broken_region_name)." in str(error)
-
-
-def test_is_latest_xgboost_version():
-    for version in XGBOOST_SUPPORTED_VERSIONS:
-        if version != XGBOOST_LATEST_VERSION:
-            assert _is_latest_xgboost_version(version) is False
-        else:
-            assert _is_latest_xgboost_version(version) is True
 
 
 def test_get_image_uri_warn(caplog):
