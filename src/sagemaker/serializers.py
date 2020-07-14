@@ -46,100 +46,58 @@ class BaseSerializer(abc.ABC):
 
 
 class CSVSerializer(BaseSerializer):
-    """Placeholder docstring"""
+    """Searilize data of various formats to a CSV-formatted string."""
 
     CONTENT_TYPE = "text/csv"
 
     def serialize(self, data):
-        """Take data of various data formats and serialize them into CSV.
+        """Serialize data of various formats to a CSV-formatted string.
 
         Args:
-            data (object): Data to be serialized.
+            data (object): Data to be serialized. Can be a NumPy array, list,
+                file, or buffer.
 
         Returns:
-            object: Sequence of bytes to be used for the request body.
+            str: The data serialized as a CSV-formatted string.
         """
-        # For inputs which represent multiple "rows", the result should be newline-separated CSV
-        # rows
-        if _is_mutable_sequence_like(data) and len(data) > 0 and _is_sequence_like(data[0]):
-            return "\n".join([CSVSerializer._serialize_row(row) for row in data])
-        return CSVSerializer._serialize_row(data)
+        if hasattr(data, "read"):
+            return data.read()
 
-    @staticmethod
-    def _serialize_row(data):
-        # Don't attempt to re-serialize a string
-        """
+        def is_sequence_like(obj):
+            return hasattr(obj, "__iter__") and hasattr(obj, "__getitem__")
+
+        def is_mutable_sequence_like(obj):
+            return is_sequence_like and hasattr(obj, "__setitem__")
+
+        if is_mutable_sequence_like(data) and len(data) > 0 and is_sequence_like(data[0]):
+            return "\n".join([self._serialize_row(row) for row in data])
+
+        return self._serialize_row(data)
+
+    def _serialize_row(self, data):
+        """Serialize data as a CSV-formatted row.
+
         Args:
-            data:
+            data (object): Data to be serialized in a row.
+
+        Returns:
+            str: The data serialized as a CSV-formatted row.
         """
         if isinstance(data, str):
             return data
+
         if isinstance(data, np.ndarray):
             data = np.ndarray.flatten(data)
+
         if hasattr(data, "__len__"):
             if len(data) == 0:
                 raise ValueError("Cannot serialize empty array")
-            return _csv_serialize_python_array(data)
-
-        # files and buffers
-        if hasattr(data, "read"):
-            return _csv_serialize_from_buffer(data)
+            csv_buffer = io.StringIO()
+            csv_writer = csv.writer(csv_buffer, delimiter=",")
+            csv_writer.writerow(data)
+            return csv_buffer.getvalue().rstrip("\r\n")
 
         raise ValueError("Unable to handle input format: ", type(data))
-
-
-def _csv_serialize_python_array(data):
-    """
-    Args:
-        data:
-    """
-    return _csv_serialize_object(data)
-
-
-def _csv_serialize_from_buffer(buff):
-    """
-    Args:
-        buff:
-    """
-    return buff.read()
-
-
-def _csv_serialize_object(data):
-    """
-    Args:
-        data:
-    """
-    csv_buffer = io.StringIO()
-
-    csv_writer = csv.writer(csv_buffer, delimiter=",")
-    csv_writer.writerow(data)
-    return csv_buffer.getvalue().rstrip("\r\n")
-
-
-def _is_mutable_sequence_like(obj):
-    """
-    Args:
-        obj:
-    """
-    return _is_sequence_like(obj) and hasattr(obj, "__setitem__")
-
-
-def _is_sequence_like(obj):
-    """
-    Args:
-        obj:
-    """
-    return hasattr(obj, "__iter__") and hasattr(obj, "__getitem__")
-
-
-def _row_to_csv(obj):
-    """
-    Args:
-        obj:
-    """
-    if isinstance(obj, str):
-        return obj
-    return ",".join(obj)
 
 
 class NumpySerializer(BaseSerializer):
