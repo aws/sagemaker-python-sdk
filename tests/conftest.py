@@ -198,16 +198,6 @@ def rl_ray_version(request):
 
 
 @pytest.fixture(scope="module")
-def chainer_full_version():
-    return "5.0.0"
-
-
-@pytest.fixture(scope="module")
-def chainer_full_py_version():
-    return "py3"
-
-
-@pytest.fixture(scope="module")
 def mxnet_full_version():
     return "1.6.0"
 
@@ -378,15 +368,28 @@ def _generate_all_framework_version_fixtures(metafunc):
     for fw in ("chainer", "tensorflow"):
         config = image_uris.config_for_framework(fw)
         if "scope" in config:
-            _parametrize_framework_version_fixture(metafunc, "{}_version".format(fw), config)
+            _parametrize_framework_version_fixtures(metafunc, fw, config)
         else:
             for image_scope in config.keys():
-                _parametrize_framework_version_fixture(
-                    metafunc, "{}_{}_version".format(fw, image_scope), config[image_scope]
+                _parametrize_framework_version_fixtures(
+                    metafunc, "{}_{}".format(fw, image_scope), config[image_scope]
                 )
 
 
-def _parametrize_framework_version_fixture(metafunc, fixture_name, config):
+def _parametrize_framework_version_fixtures(metafunc, fixture_prefix, config):
+    fixture_name = "{}_version".format(fixture_prefix)
     if fixture_name in metafunc.fixturenames:
         versions = list(config["versions"].keys()) + list(config.get("version_aliases", {}).keys())
         metafunc.parametrize(fixture_name, versions, scope="session")
+
+    latest_version = sorted(config["versions"].keys(), key=lambda v: Version(v))[-1]
+
+    fixture_name = "{}_latest_version".format(fixture_prefix)
+    if fixture_name in metafunc.fixturenames:
+        metafunc.parametrize(fixture_name, (latest_version,), scope="session")
+
+    fixture_name = "{}_latest_py_version".format(fixture_prefix)
+    if fixture_name in metafunc.fixturenames:
+        config = config["versions"]
+        py_versions = config[latest_version].get("py_versions", config[latest_version].keys())
+        metafunc.parametrize(fixture_name, (sorted(py_versions)[-1],), scope="session")
