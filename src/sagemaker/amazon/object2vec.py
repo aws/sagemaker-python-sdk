@@ -13,7 +13,8 @@
 """Placeholder docstring"""
 from __future__ import absolute_import
 
-from sagemaker.amazon.amazon_estimator import AmazonAlgorithmEstimatorBase, registry
+from sagemaker import image_uris
+from sagemaker.amazon.amazon_estimator import AmazonAlgorithmEstimatorBase
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
 from sagemaker.amazon.validation import ge, le, isin
 from sagemaker.predictor import Predictor
@@ -350,9 +351,10 @@ class Object2VecModel(Model):
             **kwargs:
         """
         sagemaker_session = sagemaker_session or Session()
-        repo = "{}:{}".format(Object2Vec.repo_name, Object2Vec.repo_version)
-        image_uri = "{}/{}".format(
-            registry(sagemaker_session.boto_session.region_name, Object2Vec.repo_name), repo
+        image_uri = image_uris.retrieve(
+            Object2Vec.repo_name,
+            sagemaker_session.boto_region_name,
+            version=Object2Vec.repo_version,
         )
         super(Object2VecModel, self).__init__(
             image_uri,

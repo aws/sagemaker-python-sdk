@@ -18,7 +18,7 @@ import os
 import pytest
 
 import sagemaker
-from sagemaker.amazon.amazon_estimator import get_image_uri
+from sagemaker import image_uris
 from sagemaker.estimator import Estimator
 from sagemaker.utils import unique_name_from_base
 from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES, datasets
@@ -54,7 +54,7 @@ def test_byo_estimator(sagemaker_session, region, cpu_instance_type, training_se
     Default predictor is updated with json serializer and deserializer.
 
     """
-    image_uri = get_image_uri(region, "factorization-machines")
+    image_uri = image_uris.retrieve("factorization-machines", region)
     training_data_path = os.path.join(DATA_DIR, "dummy_tensor")
     job_name = unique_name_from_base("byo")
 
@@ -96,7 +96,7 @@ def test_byo_estimator(sagemaker_session, region, cpu_instance_type, training_se
 
 
 def test_async_byo_estimator(sagemaker_session, region, cpu_instance_type, training_set):
-    image_uri = get_image_uri(region, "factorization-machines")
+    image_uri = image_uris.retrieve("factorization-machines", region)
     endpoint_name = unique_name_from_base("byo")
     training_data_path = os.path.join(DATA_DIR, "dummy_tensor")
     job_name = unique_name_from_base("byo")

@@ -33,8 +33,8 @@ from sagemaker import (
     NTM,
     PCA,
     RandomCutForest,
+    image_uris,
 )
-from sagemaker.amazon.amazon_estimator import get_image_uri
 from sagemaker.amazon.common import read_records
 from sagemaker.chainer import Chainer
 from sagemaker.estimator import Estimator
@@ -73,8 +73,8 @@ def test_byo_airflow_config_uploads_data_source_to_s3_when_inputs_provided(
         )
 
         estimator = Estimator(
-            image_uri=get_image_uri(
-                sagemaker_session.boto_session.region_name, "factorization-machines"
+            image_uri=image_uris.retrieve(
+                "factorization-machines", sagemaker_session.boto_region_name
             ),
             role=ROLE,
             instance_count=SINGLE_INSTANCE_COUNT,
@@ -522,9 +522,6 @@ def test_tf_airflow_config_uploads_data_source_to_s3(
 ):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         tf = TensorFlow(
-            image_uri=get_image_uri(
-                sagemaker_session.boto_session.region_name, "factorization-machines"
-            ),
             entry_point=SCRIPT,
             role=ROLE,
             instance_count=SINGLE_INSTANCE_COUNT,

@@ -16,13 +16,11 @@ import numpy as np
 import pytest
 from mock import ANY, Mock, patch, call
 
-# Use PCA as a test implementation of AmazonAlgorithmEstimator
-from sagemaker.amazon.pca import PCA
+from sagemaker import image_uris
+from sagemaker.amazon.pca import PCA  # Use PCA as a test implementation of AmazonAlgorithmEstimator
 from sagemaker.amazon.amazon_estimator import (
     upload_numpy_to_s3_shards,
     _build_shards,
-    registry,
-    get_image_uri,
     FileSystemRecordSet,
 )
 
@@ -48,7 +46,7 @@ def sagemaker_session():
     returned_job_description = {
         "AlgorithmSpecification": {
             "TrainingInputMode": "File",
-            "TrainingImage": registry("us-west-2") + "/pca:1",
+            "TrainingImage": image_uris.retrieve("pca", "us-west-2"),
         },
         "ModelArtifacts": {"S3ModelArtifacts": "s3://some-bucket/model.tar.gz"},
         "HyperParameters": {
@@ -76,18 +74,6 @@ def sagemaker_session():
         name="describe_training_job", return_value=returned_job_description
     )
     return sms
-
-
-def test_gov_ecr_uri():
-    assert (
-        get_image_uri("us-gov-west-1", "kmeans", "latest")
-        == "226302683700.dkr.ecr.us-gov-west-1.amazonaws.com/kmeans:latest"
-    )
-
-    assert (
-        get_image_uri("us-iso-east-1", "kmeans", "latest")
-        == "490574956308.dkr.ecr.us-iso-east-1.c2s.ic.gov/kmeans:latest"
-    )
 
 
 def test_init(sagemaker_session):
@@ -445,24 +431,3 @@ def test_file_system_record_set_data_channel():
     actual = record_set.data_channel()
     expected = {"train": file_system_input}
     assert actual == expected
-
-
-def test_regitry_throws_error_if_mapping_does_not_exist_for_lda():
-    with pytest.raises(ValueError) as error:
-        registry("cn-north-1", "lda")
-    assert "Algorithm (lda) is unsupported for region (cn-north-1)." in str(error)
-
-
-def test_regitry_throws_error_if_mapping_does_not_exist_for_default_algorithm():
-    with pytest.raises(ValueError) as error:
-        registry("broken_region_name")
-    assert "Algorithm (None) is unsupported for region (broken_region_name)." in str(error)
-
-
-def test_get_image_uri_warn(caplog):
-    warning_message = (
-        "'get_image_uri' method will be deprecated in favor of 'ImageURIProvider' class "
-        "in SageMaker Python SDK v2."
-    )
-    get_image_uri("us-west-2", "kmeans", "latest")
-    assert warning_message in caplog.text
