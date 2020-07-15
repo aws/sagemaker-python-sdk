@@ -431,6 +431,8 @@ class ExperimentAnalytics(AnalyticsMetricsBase):
         metric_names=None,
         parameter_names=None,
         sagemaker_session=None,
+        input_artifact_names=None,
+        output_artifact_names=None,
     ):
         """Initialize a ``ExperimentAnalytics`` instance.
 
@@ -450,6 +452,11 @@ class ExperimentAnalytics(AnalyticsMetricsBase):
             sagemaker_session (sagemaker.session.Session): Session object which manages interactions
                 with Amazon SageMaker APIs and any other AWS services needed. If not specified,
                 one is created using the default AWS configuration chain.
+            input_artifact_names(dict optional):The input artifacts for the experiment. Examples of
+                input artifacts are datasets, algorithms, hyperparameters, source code, and instance
+                types.
+            output_artifact_names(dict optional): The output artifacts for the experiment. Examples
+                of output artifacts are metrics, snapshots, logs, and images.
         """
         sagemaker_session = sagemaker_session or Session()
         self._sage_client = sagemaker_session.sagemaker_client
@@ -463,6 +470,8 @@ class ExperimentAnalytics(AnalyticsMetricsBase):
         self._sort_order = sort_order
         self._metric_names = metric_names
         self._parameter_names = parameter_names
+        self._input_artifact_names = input_artifact_names
+        self._output_artifact_names = output_artifact_names
         self._trial_components = None
         super(ExperimentAnalytics, self).__init__()
         self.clear_cache()
@@ -516,6 +525,21 @@ class ExperimentAnalytics(AnalyticsMetricsBase):
                     out["{} - {}".format(metric_name, stat_type)] = stat_value
         return out
 
+    def _reshape_artifacts(self, artifacts, _artifact_names):
+        """Reshape trial component input/output artifacts to a pandas column
+        Args:
+            artifacts: trial component input/output artifacts
+        Returns:
+            dict: Key: artifacts name, Value: artifacts value
+        """
+        out = OrderedDict()
+        for name, value in sorted(artifacts.items()):
+            if _artifact_names and (name not in _artifact_names):
+                continue
+            out["{} - {}".format(name, "MediaType")] = value.get("MediaType")
+            out["{} - {}".format(name, "Value")] = value.get("Value")
+        return out
+
     def _reshape(self, trial_component):
         """Reshape trial component data to pandas columns
         Args:
@@ -533,6 +557,16 @@ class ExperimentAnalytics(AnalyticsMetricsBase):
 
         out.update(self._reshape_parameters(trial_component.get("Parameters", [])))
         out.update(self._reshape_metrics(trial_component.get("Metrics", [])))
+        out.update(
+            self._reshape_artifacts(
+                trial_component.get("InputArtifacts", []), self._input_artifact_names
+            )
+        )
+        out.update(
+            self._reshape_artifacts(
+                trial_component.get("OutputArtifacts", []), self._output_artifact_names
+            )
+        )
         return out
 
     def _fetch_dataframe(self):
