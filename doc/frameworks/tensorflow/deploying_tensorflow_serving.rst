@@ -256,7 +256,7 @@ your input data to CSV format:
     ]
   }
 
-You can also use python arrays or numpy arrays as input and let the `CSVSerializer` object
+You can also use python arrays or numpy arrays as input and let the ``CSVSerializer`` object
 convert them to CSV, but the client-size CSV conversion is more sophisticated than the
 CSV parsing on the Endpoint, so if you encounter conversion problems, try using one of the
 JSON options instead.
