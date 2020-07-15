@@ -63,11 +63,8 @@ class CSVSerializer(BaseSerializer):
         if hasattr(data, "read"):
             return data.read()
 
-        def is_sequence_like(obj):
-            return hasattr(obj, "__iter__") and hasattr(obj, "__getitem__")
-
-        is_mutable_sequence_like = is_sequence_like(data) and hasattr(data, "__setitem__")
-        has_multiple_rows = len(data) > 0 and is_sequence_like(data[0])
+        is_mutable_sequence_like = self._is_sequence_like(data) and hasattr(data, "__setitem__")
+        has_multiple_rows = len(data) > 0 and self._is_sequence_like(data[0])
 
         if is_mutable_sequence_like and has_multiple_rows:
             return "\n".join([self._serialize_row(row) for row in data])
@@ -98,6 +95,10 @@ class CSVSerializer(BaseSerializer):
             return csv_buffer.getvalue().rstrip("\r\n")
 
         raise ValueError("Unable to handle input format: ", type(data))
+
+    def _is_sequence_like(self, data):
+        """Returns true if obj is iterable and subscriptable."""
+        return hasattr(data, "__iter__") and hasattr(data, "__getitem__")
 
 
 class NumpySerializer(BaseSerializer):
