@@ -17,8 +17,9 @@ from sagemaker.amazon.amazon_estimator import AmazonAlgorithmEstimatorBase, regi
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
 from sagemaker.amazon.validation import ge, le
 from sagemaker.deserializers import JSONDeserializer
-from sagemaker.predictor import Predictor, csv_serializer
+from sagemaker.predictor import Predictor
 from sagemaker.model import Model
+from sagemaker.serializers import CSVSerializer
 from sagemaker.session import Session
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
@@ -198,7 +199,7 @@ class IPInsightsPredictor(Predictor):
         super(IPInsightsPredictor, self).__init__(
             endpoint_name,
             sagemaker_session,
-            serializer=csv_serializer,
+            serializer=CSVSerializer(),
             deserializer=JSONDeserializer(),
         )
 
