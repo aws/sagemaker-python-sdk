@@ -95,6 +95,45 @@ def test_compile_model_for_edge_device_tflite(sagemaker_session):
     assert model._is_compiled_model is False
 
 
+def test_compile_model_linux_arm64_nvidia(sagemaker_session):
+    sagemaker_session.wait_for_compilation_job = Mock(
+        return_value=DESCRIBE_COMPILATION_JOB_RESPONSE
+    )
+    model = _create_model(sagemaker_session)
+    model.compile(
+        target_instance_family=None,
+        input_shape={"data": [1, 3, 1024, 1024]},
+        output_path="s3://output",
+        role="role",
+        framework="tensorflow",
+        job_name="compile-model",
+        target_platform_os="LINUX",
+        target_platform_arch="ARM64",
+        target_platform_accelerator="NVIDIA",
+        compiler_options={"gpu-code": "sm_72", "trt-ver": "6.0.1", "cuda-ver": "10.1"},
+    )
+    assert model._is_compiled_model is False
+
+
+def test_compile_model_android_armv7(sagemaker_session):
+    sagemaker_session.wait_for_compilation_job = Mock(
+        return_value=DESCRIBE_COMPILATION_JOB_RESPONSE
+    )
+    model = _create_model(sagemaker_session)
+    model.compile(
+        target_instance_family=None,
+        input_shape={"data": [1, 3, 1024, 1024]},
+        output_path="s3://output",
+        role="role",
+        framework="tensorflow",
+        job_name="compile-model",
+        target_platform_os="ANDROID",
+        target_platform_arch="ARM_EABI",
+        compiler_options={"ANDROID_PLATFORM": 25, "mattr": ["+neon"]},
+    )
+    assert model._is_compiled_model is False
+
+
 def test_compile_model_for_cloud(sagemaker_session):
     sagemaker_session.wait_for_compilation_job = Mock(
         return_value=DESCRIBE_COMPILATION_JOB_RESPONSE
