@@ -588,7 +588,10 @@ def test_tuning_mxnet(
 
 @pytest.mark.canary_quick
 def test_tuning_tf(
-    sagemaker_session, cpu_instance_type, tf_training_latest_version, tf_training_latest_py_version
+    sagemaker_session,
+    cpu_instance_type,
+    tensorflow_training_latest_version,
+    tensorflow_training_latest_py_version,
 ):
     resource_path = os.path.join(DATA_DIR, "tensorflow_mnist")
     script_path = os.path.join(resource_path, "mnist.py")
@@ -599,8 +602,8 @@ def test_tuning_tf(
         instance_count=1,
         instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
-        framework_version=tf_training_latest_version,
-        py_version=tf_training_latest_py_version,
+        framework_version=tensorflow_training_latest_version,
+        py_version=tensorflow_training_latest_py_version,
     )
 
     hyperparameter_ranges = {"epochs": IntegerParameter(1, 2)}
@@ -631,7 +634,10 @@ def test_tuning_tf(
 
 
 def test_tuning_tf_vpc_multi(
-    sagemaker_session, cpu_instance_type, tf_training_latest_version, tf_training_latest_py_version
+    sagemaker_session,
+    cpu_instance_type,
+    tensorflow_training_latest_version,
+    tensorflow_training_latest_py_version,
 ):
     """Test Tensorflow multi-instance using the same VpcConfig for training and inference"""
     instance_type = cpu_instance_type
@@ -647,8 +653,8 @@ def test_tuning_tf_vpc_multi(
     estimator = TensorFlow(
         entry_point=script_path,
         role="SageMakerRole",
-        framework_version=tf_training_latest_version,
-        py_version=tf_training_latest_py_version,
+        framework_version=tensorflow_training_latest_version,
+        py_version=tensorflow_training_latest_py_version,
         instance_count=instance_count,
         instance_type=instance_type,
         sagemaker_session=sagemaker_session,

@@ -89,43 +89,53 @@ def test_disable_sm_metrics(sagemaker_session):
 
 
 def test_disable_sm_metrics_if_fw_ver_is_less_than_1_15(
-    sagemaker_session, tf_version, tf_py_version
+    sagemaker_session, tensorflow_training_version, tensorflow_training_py_version
 ):
-    if version.Version(tf_version) > version.Version("1.14"):
+    if version.Version(tensorflow_training_version) > version.Version("1.14"):
         pytest.skip("This test is for TF 1.14 and lower.")
 
     tf = _build_tf(
         sagemaker_session,
-        framework_version=tf_version,
-        py_version=tf_py_version,
+        framework_version=tensorflow_training_version,
+        py_version=tensorflow_training_py_version,
         image_uri="old-image",
     )
     assert tf.enable_sagemaker_metrics is None
 
 
-def test_enable_sm_metrics_if_fw_ver_is_at_least_1_15(sagemaker_session, tf_version, tf_py_version):
-    if version.Version(tf_version) < version.Version("1.15"):
+def test_enable_sm_metrics_if_fw_ver_is_at_least_1_15(
+    sagemaker_session, tensorflow_training_version, tensorflow_training_py_version
+):
+    if version.Version(tensorflow_training_version) < version.Version("1.15"):
         pytest.skip("This test is for TF 1.15 and higher.")
 
-    tf = _build_tf(sagemaker_session, framework_version=tf_version, py_version=tf_py_version)
+    tf = _build_tf(
+        sagemaker_session,
+        framework_version=tensorflow_training_version,
+        py_version=tensorflow_training_py_version,
+    )
     assert tf.enable_sagemaker_metrics
 
 
 def test_require_image_uri_if_fw_ver_is_less_than_1_11(
-    sagemaker_session, tf_version, tf_py_version
+    sagemaker_session, tensorflow_training_version, tensorflow_training_py_version
 ):
-    if version.Version(tf_version) > version.Version("1.10"):
+    if version.Version(tensorflow_training_version) > version.Version("1.10"):
         pytest.skip("This test is for TF 1.10 and lower.")
 
     with pytest.raises(ValueError) as e:
-        _build_tf(sagemaker_session, framework_version=tf_version, py_version=tf_py_version)
+        _build_tf(
+            sagemaker_session,
+            framework_version=tensorflow_training_version,
+            py_version=tensorflow_training_py_version,
+        )
 
     expected_msg = (
         "TF {version} supports only legacy mode. Please supply the image URI directly with "
         "'image_uri=520713654638.dkr.ecr.{region}.amazonaws.com/"
-        "sagemaker-tensorflow:{version}-cpu-py2' and set 'model_dir=False'. "
-        "If you are using any legacy parameters (training_steps, evaluation_steps, "
-        "checkpoint_path, requirements_file), make sure to pass them directly as hyperparameters instead."
-    ).format(version=tf_version, region=REGION)
+        "sagemaker-tensorflow:{version}-cpu-py2' and set 'model_dir=False'. If you are using any "
+        "legacy parameters (training_steps, evaluation_steps, checkpoint_path, requirements_file), "
+        "make sure to pass them directly as hyperparameters instead."
+    ).format(version=tensorflow_training_version, region=REGION)
 
     assert expected_msg in str(e)
