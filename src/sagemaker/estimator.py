@@ -589,14 +589,16 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         has a Complete status, it can be ``deploy()`` ed to create a SageMaker
         Endpoint and return a ``Predictor``.
 
-        If the training job is in progress, attach will block and display log
-        messages from the training job, until the training job completes.
+        If the training job is in progress, attach will block until the training job
+        completes, but logs of the training job will not display. To see the logs
+        content, please call ``logs()``
 
         Examples:
             >>> my_estimator.fit(wait=False)
             >>> training_job_name = my_estimator.latest_training_job.name
             Later on:
             >>> attached_estimator = Estimator.attach(training_job_name)
+            >>> attached_estimator.logs()
             >>> attached_estimator.deploy()
 
         Args:
@@ -634,8 +636,10 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         return estimator
 
     def logs(self):
-        """Display the logs for Estimator's training job. If the output is a tty or a Jupyter
-        cell, it will be color-coded based on which instance the log entry is from.
+        """Display the logs for Estimator's training job.
+
+        If the output is a tty or a Jupyter cell, it will be color-coded based
+        on which instance the log entry is from.
         """
         self.sagemaker_session.logs_for_job(self.latest_training_job, wait=True)
 
@@ -1837,14 +1841,16 @@ class Framework(EstimatorBase):
         has a Complete status, it can be ``deploy()`` ed to create a SageMaker
         Endpoint and return a ``Predictor``.
 
-        If the training job is in progress, attach will block and display log
-        messages from the training job, until the training job completes.
+        If the training job is in progress, attach will block until the training job
+        completes, but logs of the training job will not display. To see the logs
+        content, please call ``logs()``
 
         Examples:
             >>> my_estimator.fit(wait=False)
             >>> training_job_name = my_estimator.latest_training_job.name
             Later on:
             >>> attached_estimator = Estimator.attach(training_job_name)
+            >>> attached_estimator.logs()
             >>> attached_estimator.deploy()
 
         Args:
