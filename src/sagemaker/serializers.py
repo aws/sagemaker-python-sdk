@@ -67,7 +67,7 @@ class CSVSerializer(BaseSerializer):
             return hasattr(obj, "__iter__") and hasattr(obj, "__getitem__")
 
         def is_mutable_sequence_like(obj):
-            return is_sequence_like and hasattr(obj, "__setitem__")
+            return is_sequence_like(obj) and hasattr(obj, "__setitem__")
 
         if is_mutable_sequence_like(data) and len(data) > 0 and is_sequence_like(data[0]):
             return "\n".join([self._serialize_row(row) for row in data])
