@@ -39,7 +39,10 @@ TAGS = [{"Key": "some-key", "Value": "some-value"}]
 
 
 def test_mnist_with_checkpoint_config(
-    sagemaker_session, instance_type, tf_training_latest_version, tf_training_latest_py_version
+    sagemaker_session,
+    instance_type,
+    tensorflow_training_latest_version,
+    tensorflow_training_latest_py_version,
 ):
     checkpoint_s3_uri = "s3://{}/checkpoints/tf-{}".format(
         sagemaker_session.default_bucket(), sagemaker_timestamp()
@@ -51,8 +54,8 @@ def test_mnist_with_checkpoint_config(
         instance_count=1,
         instance_type=instance_type,
         sagemaker_session=sagemaker_session,
-        framework_version=tf_training_latest_version,
-        py_version=tf_training_latest_py_version,
+        framework_version=tensorflow_training_latest_version,
+        py_version=tensorflow_training_latest_py_version,
         metric_definitions=[{"Name": "train:global_steps", "Regex": r"global_step\/sec:\s(.*)"}],
         checkpoint_s3_uri=checkpoint_s3_uri,
         checkpoint_local_path=checkpoint_local_path,
@@ -124,7 +127,10 @@ def test_server_side_encryption(sagemaker_session, tf_full_version, tf_full_py_v
 
 @pytest.mark.canary_quick
 def test_mnist_distributed(
-    sagemaker_session, instance_type, tf_training_latest_version, tf_training_latest_py_version
+    sagemaker_session,
+    instance_type,
+    tensorflow_training_latest_version,
+    tensorflow_training_latest_py_version,
 ):
     estimator = TensorFlow(
         entry_point=SCRIPT,
@@ -132,8 +138,8 @@ def test_mnist_distributed(
         instance_count=2,
         instance_type=instance_type,
         sagemaker_session=sagemaker_session,
-        framework_version=tf_training_latest_version,
-        py_version=tf_training_latest_py_version,
+        framework_version=tensorflow_training_latest_version,
+        py_version=tensorflow_training_latest_py_version,
         distribution=PARAMETER_SERVER_DISTRIBUTION,
     )
     inputs = estimator.sagemaker_session.upload_data(
