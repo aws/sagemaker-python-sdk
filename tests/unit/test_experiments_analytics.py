@@ -40,6 +40,14 @@ def trial_component(trial_component_name):
                 "Count": 2.0,
             },
         ],
+        "InputArtifacts": {
+            "inputArtifacts1": {"MediaType": "text/plain", "Value": "s3:/foo/bar1"},
+            "inputArtifacts2": {"MediaType": "text/plain", "Value": "s3:/foo/bar2"},
+        },
+        "OutputArtifacts": {
+            "outputArtifacts1": {"MediaType": "text/csv", "Value": "s3:/sky/far1"},
+            "outputArtifacts2": {"MediaType": "text/csv", "Value": "s3:/sky/far2"},
+        },
     }
 
 
@@ -72,6 +80,14 @@ def test_trial_analytics_dataframe_all_metrics_hyperparams(mock_session):
                 ("metric2 - StdDev", [0.05, 0.05]),
                 ("metric2 - Last", [7.0, 7.0]),
                 ("metric2 - Count", [2.0, 2.0]),
+                ("inputArtifacts1 - MediaType", ["text/plain", "text/plain"]),
+                ("inputArtifacts1 - Value", ["s3:/foo/bar1", "s3:/foo/bar1"]),
+                ("inputArtifacts2 - MediaType", ["text/plain", "text/plain"]),
+                ("inputArtifacts2 - Value", ["s3:/foo/bar2", "s3:/foo/bar2"]),
+                ("outputArtifacts1 - MediaType", ["text/csv", "text/csv"]),
+                ("outputArtifacts1 - Value", ["s3:/sky/far1", "s3:/sky/far1"]),
+                ("outputArtifacts2 - MediaType", ["text/csv", "text/csv"]),
+                ("outputArtifacts2 - Value", ["s3:/sky/far2", "s3:/sky/far2"]),
             ]
         )
     )
@@ -117,6 +133,14 @@ def test_trial_analytics_dataframe_selected_hyperparams(mock_session):
                 ("metric2 - StdDev", [0.05, 0.05]),
                 ("metric2 - Last", [7.0, 7.0]),
                 ("metric2 - Count", [2.0, 2.0]),
+                ("inputArtifacts1 - MediaType", ["text/plain", "text/plain"]),
+                ("inputArtifacts1 - Value", ["s3:/foo/bar1", "s3:/foo/bar1"]),
+                ("inputArtifacts2 - MediaType", ["text/plain", "text/plain"]),
+                ("inputArtifacts2 - Value", ["s3:/foo/bar2", "s3:/foo/bar2"]),
+                ("outputArtifacts1 - MediaType", ["text/csv", "text/csv"]),
+                ("outputArtifacts1 - Value", ["s3:/sky/far1", "s3:/sky/far1"]),
+                ("outputArtifacts2 - MediaType", ["text/csv", "text/csv"]),
+                ("outputArtifacts2 - Value", ["s3:/sky/far2", "s3:/sky/far2"]),
             ]
         )
     )
@@ -157,6 +181,14 @@ def test_trial_analytics_dataframe_selected_metrics(mock_session):
                 ("metric1 - StdDev", [1.0, 1.0]),
                 ("metric1 - Last", [2.0, 2.0]),
                 ("metric1 - Count", [2.0, 2.0]),
+                ("inputArtifacts1 - MediaType", ["text/plain", "text/plain"]),
+                ("inputArtifacts1 - Value", ["s3:/foo/bar1", "s3:/foo/bar1"]),
+                ("inputArtifacts2 - MediaType", ["text/plain", "text/plain"]),
+                ("inputArtifacts2 - Value", ["s3:/foo/bar2", "s3:/foo/bar2"]),
+                ("outputArtifacts1 - MediaType", ["text/csv", "text/csv"]),
+                ("outputArtifacts1 - Value", ["s3:/sky/far1", "s3:/sky/far1"]),
+                ("outputArtifacts2 - MediaType", ["text/csv", "text/csv"]),
+                ("outputArtifacts2 - Value", ["s3:/sky/far2", "s3:/sky/far2"]),
             ]
         )
     )
@@ -203,6 +235,14 @@ def test_trial_analytics_dataframe_search_pagination(mock_session):
                 ("metric2 - StdDev", [0.05, 0.05]),
                 ("metric2 - Last", [7.0, 7.0]),
                 ("metric2 - Count", [2.0, 2.0]),
+                ("inputArtifacts1 - MediaType", ["text/plain", "text/plain"]),
+                ("inputArtifacts1 - Value", ["s3:/foo/bar1", "s3:/foo/bar1"]),
+                ("inputArtifacts2 - MediaType", ["text/plain", "text/plain"]),
+                ("inputArtifacts2 - Value", ["s3:/foo/bar2", "s3:/foo/bar2"]),
+                ("outputArtifacts1 - MediaType", ["text/csv", "text/csv"]),
+                ("outputArtifacts1 - Value", ["s3:/sky/far1", "s3:/sky/far1"]),
+                ("outputArtifacts2 - MediaType", ["text/csv", "text/csv"]),
+                ("outputArtifacts2 - Value", ["s3:/sky/far2", "s3:/sky/far2"]),
             ]
         )
     )
