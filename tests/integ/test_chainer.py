@@ -26,25 +26,25 @@ from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 @pytest.fixture(scope="module")
 def chainer_local_training_job(
-    sagemaker_local_session, chainer_full_version, chainer_full_py_version
+    sagemaker_local_session, chainer_latest_version, chainer_latest_py_version
 ):
     return _run_mnist_training_job(
-        sagemaker_local_session, "local", 1, chainer_full_version, chainer_full_py_version
+        sagemaker_local_session, "local", 1, chainer_latest_version, chainer_latest_py_version
     )
 
 
 @pytest.mark.local_mode
 def test_distributed_cpu_training(
-    sagemaker_local_session, chainer_full_version, chainer_full_py_version
+    sagemaker_local_session, chainer_latest_version, chainer_latest_py_version
 ):
     _run_mnist_training_job(
-        sagemaker_local_session, "local", 2, chainer_full_version, chainer_full_py_version
+        sagemaker_local_session, "local", 2, chainer_latest_version, chainer_latest_py_version
     )
 
 
 @pytest.mark.local_mode
 def test_training_with_additional_hyperparameters(
-    sagemaker_local_session, chainer_full_version, chainer_full_py_version
+    sagemaker_local_session, chainer_latest_version, chainer_latest_py_version
 ):
     script_path = os.path.join(DATA_DIR, "chainer_mnist", "mnist.py")
     data_path = os.path.join(DATA_DIR, "chainer_mnist")
@@ -54,8 +54,8 @@ def test_training_with_additional_hyperparameters(
         role="SageMakerRole",
         instance_count=1,
         instance_type="local",
-        framework_version=chainer_full_version,
-        py_version=chainer_full_py_version,
+        framework_version=chainer_latest_version,
+        py_version=chainer_latest_py_version,
         sagemaker_session=sagemaker_local_session,
         hyperparameters={"epochs": 1},
         use_mpi=True,
@@ -72,7 +72,7 @@ def test_training_with_additional_hyperparameters(
 
 @pytest.mark.canary_quick
 def test_attach_deploy(
-    sagemaker_session, chainer_full_version, chainer_full_py_version, cpu_instance_type
+    sagemaker_session, chainer_latest_version, chainer_latest_py_version, cpu_instance_type
 ):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         script_path = os.path.join(DATA_DIR, "chainer_mnist", "mnist.py")
@@ -81,8 +81,8 @@ def test_attach_deploy(
         chainer = Chainer(
             entry_point=script_path,
             role="SageMakerRole",
-            framework_version=chainer_full_version,
-            py_version=chainer_full_py_version,
+            framework_version=chainer_latest_version,
+            py_version=chainer_latest_py_version,
             instance_count=1,
             instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
@@ -114,8 +114,8 @@ def test_attach_deploy(
 def test_deploy_model(
     chainer_local_training_job,
     sagemaker_local_session,
-    chainer_full_version,
-    chainer_full_py_version,
+    chainer_latest_version,
+    chainer_latest_py_version,
 ):
     script_path = os.path.join(DATA_DIR, "chainer_mnist", "mnist.py")
 
@@ -124,8 +124,8 @@ def test_deploy_model(
         "SageMakerRole",
         entry_point=script_path,
         sagemaker_session=sagemaker_local_session,
-        framework_version=chainer_full_version,
-        py_version=chainer_full_py_version,
+        framework_version=chainer_latest_version,
+        py_version=chainer_latest_py_version,
     )
 
     predictor = model.deploy(1, "local")
