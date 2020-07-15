@@ -14,6 +14,7 @@
 from __future__ import absolute_import
 
 import abc
+import csv
 import io
 import json
 
@@ -42,6 +43,62 @@ class BaseSerializer(abc.ABC):
     @abc.abstractmethod
     def CONTENT_TYPE(self):
         """The MIME type of the data sent to the inference endpoint."""
+
+
+class CSVSerializer(BaseSerializer):
+    """Searilize data of various formats to a CSV-formatted string."""
+
+    CONTENT_TYPE = "text/csv"
+
+    def serialize(self, data):
+        """Serialize data of various formats to a CSV-formatted string.
+
+        Args:
+            data (object): Data to be serialized. Can be a NumPy array, list,
+                file, or buffer.
+
+        Returns:
+            str: The data serialized as a CSV-formatted string.
+        """
+        if hasattr(data, "read"):
+            return data.read()
+
+        is_mutable_sequence_like = self._is_sequence_like(data) and hasattr(data, "__setitem__")
+        has_multiple_rows = len(data) > 0 and self._is_sequence_like(data[0])
+
+        if is_mutable_sequence_like and has_multiple_rows:
+            return "\n".join([self._serialize_row(row) for row in data])
+
+        return self._serialize_row(data)
+
+    def _serialize_row(self, data):
+        """Serialize data as a CSV-formatted row.
+
+        Args:
+            data (object): Data to be serialized in a row.
+
+        Returns:
+            str: The data serialized as a CSV-formatted row.
+        """
+        if isinstance(data, str):
+            return data
+
+        if isinstance(data, np.ndarray):
+            data = np.ndarray.flatten(data)
+
+        if hasattr(data, "__len__"):
+            if len(data) == 0:
+                raise ValueError("Cannot serialize empty array")
+            csv_buffer = io.StringIO()
+            csv_writer = csv.writer(csv_buffer, delimiter=",")
+            csv_writer.writerow(data)
+            return csv_buffer.getvalue().rstrip("\r\n")
+
+        raise ValueError("Unable to handle input format: ", type(data))
+
+    def _is_sequence_like(self, data):
+        """Returns true if obj is iterable and subscriptable."""
+        return hasattr(data, "__iter__") and hasattr(data, "__getitem__")
 
 
 class NumpySerializer(BaseSerializer):

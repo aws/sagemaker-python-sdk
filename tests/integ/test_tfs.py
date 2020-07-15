@@ -24,6 +24,7 @@ import sagemaker.utils
 import tests.integ
 import tests.integ.timeout
 from sagemaker.tensorflow.model import TensorFlowModel, TensorFlowPredictor
+from sagemaker.serializers import CSVSerializer
 
 
 @pytest.fixture(scope="module")
@@ -238,9 +239,7 @@ def test_predict_csv(tfs_predictor):
     expected_result = {"predictions": [[3.5, 4.0, 5.5], [3.5, 4.0, 5.5]]}
 
     predictor = TensorFlowPredictor(
-        tfs_predictor.endpoint_name,
-        tfs_predictor.sagemaker_session,
-        serializer=sagemaker.predictor.csv_serializer,
+        tfs_predictor.endpoint_name, tfs_predictor.sagemaker_session, serializer=CSVSerializer(),
     )
 
     result = predictor.predict(input_data)

@@ -19,7 +19,7 @@ import logging
 import mock
 import pytest
 from mock import Mock, patch
-from sagemaker.predictor import csv_serializer
+from sagemaker.serializers import CSVSerializer
 from sagemaker.tensorflow import TensorFlow
 from sagemaker.tensorflow.model import TensorFlowModel, TensorFlowPredictor
 
@@ -335,7 +335,7 @@ def test_predictor_jsons(sagemaker_session):
 
 
 def test_predictor_csv(sagemaker_session):
-    predictor = TensorFlowPredictor("endpoint", sagemaker_session, serializer=csv_serializer)
+    predictor = TensorFlowPredictor("endpoint", sagemaker_session, serializer=CSVSerializer())
 
     mock_response(json.dumps(PREDICT_RESPONSE).encode("utf-8"), sagemaker_session)
     result = predictor.predict([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
@@ -410,14 +410,14 @@ def test_predictor_regress(sagemaker_session):
 
 
 def test_predictor_regress_bad_content_type(sagemaker_session):
-    predictor = TensorFlowPredictor("endpoint", sagemaker_session, csv_serializer)
+    predictor = TensorFlowPredictor("endpoint", sagemaker_session, CSVSerializer())
 
     with pytest.raises(ValueError):
         predictor.regress(REGRESS_INPUT)
 
 
 def test_predictor_classify_bad_content_type(sagemaker_session):
-    predictor = TensorFlowPredictor("endpoint", sagemaker_session, csv_serializer)
+    predictor = TensorFlowPredictor("endpoint", sagemaker_session, CSVSerializer())
 
     with pytest.raises(ValueError):
         predictor.classify(CLASSIFY_INPUT)
