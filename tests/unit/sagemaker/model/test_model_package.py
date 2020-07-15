@@ -55,14 +55,15 @@ DESCRIBE_MODEL_PACKAGE_RESPONSE = {
 
 @pytest.fixture
 def sagemaker_session():
-    return Mock()
-
-
-def test_model_package_enable_network_isolation_with_no_product_id(sagemaker_session):
-    sagemaker_session.sagemaker_client.describe_model_package = Mock(
+    session = Mock()
+    session.sagemaker_client.describe_model_package = Mock(
         return_value=DESCRIBE_MODEL_PACKAGE_RESPONSE
     )
 
+    return session
+
+
+def test_model_package_enable_network_isolation_with_no_product_id(sagemaker_session):
     model_package = ModelPackage(
         role="role", model_package_arn="my-model-package", sagemaker_session=sagemaker_session
     )
@@ -88,12 +89,63 @@ def test_model_package_enable_network_isolation_with_product_id(sagemaker_sessio
     assert model_package.enable_network_isolation() is True
 
 
-@patch("sagemaker.model.ModelPackage._create_sagemaker_model", Mock())
-def test_model_package_create_transformer(sagemaker_session):
-    sagemaker_session.sagemaker_client.describe_model_package = Mock(
-        return_value=DESCRIBE_MODEL_PACKAGE_RESPONSE
+@patch("sagemaker.utils.name_from_base")
+def test_create_sagemaker_model_uses_model_name(name_from_base, sagemaker_session):
+    model_name = "my-model"
+    model_package_name = "my-model-package"
+
+    model_package = ModelPackage(
+        role="role",
+        name=model_name,
+        model_package_arn=model_package_name,
+        sagemaker_session=sagemaker_session,
     )
 
+    model_package._create_sagemaker_model()
+
+    assert model_name == model_package.name
+    name_from_base.assert_not_called()
+
+    sagemaker_session.create_model.assert_called_with(
+        model_name,
+        "role",
+        {"ModelPackageName": model_package_name},
+        vpc_config=None,
+        enable_network_isolation=False,
+    )
+
+
+@patch("sagemaker.utils.name_from_base")
+def test_create_sagemaker_model_generates_model_name(name_from_base, sagemaker_session):
+    model_package_name = "my-model-package"
+
+    model_package = ModelPackage(
+        role="role", model_package_arn=model_package_name, sagemaker_session=sagemaker_session
+    )
+
+    model_package._create_sagemaker_model()
+
+    name_from_base.assert_called_with(model_package_name)
+    assert name_from_base.return_value == model_package.name
+
+
+@patch("sagemaker.utils.name_from_base")
+def test_create_sagemaker_model_generates_model_name_each_time(name_from_base, sagemaker_session):
+    model_package_name = "my-model-package"
+
+    model_package = ModelPackage(
+        role="role", model_package_arn=model_package_name, sagemaker_session=sagemaker_session
+    )
+
+    model_package._create_sagemaker_model()
+    model_package._create_sagemaker_model()
+
+    name_from_base.assert_called_with(model_package_name)
+    assert 2 == name_from_base.call_count
+
+
+@patch("sagemaker.model.ModelPackage._create_sagemaker_model", Mock())
+def test_model_package_create_transformer(sagemaker_session):
     model_package = ModelPackage(
         role="role", model_package_arn="my-model-package", sagemaker_session=sagemaker_session
     )

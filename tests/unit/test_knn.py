@@ -19,8 +19,8 @@ from sagemaker.amazon.knn import KNN, KNNPredictor
 from sagemaker.amazon.amazon_estimator import registry, RecordSet
 
 ROLE = "myrole"
-TRAIN_INSTANCE_COUNT = 1
-TRAIN_INSTANCE_TYPE = "ml.c4.xlarge"
+INSTANCE_COUNT = 1
+INSTANCE_TYPE = "ml.c4.xlarge"
 K = 5
 SAMPLE_SIZE = 1000
 PREDICTOR_TYPE_REGRESSOR = "regressor"
@@ -28,8 +28,8 @@ PREDICTOR_TYPE_CLASSIFIER = "classifier"
 
 COMMON_TRAIN_ARGS = {
     "role": ROLE,
-    "train_instance_count": TRAIN_INSTANCE_COUNT,
-    "train_instance_type": TRAIN_INSTANCE_TYPE,
+    "instance_count": INSTANCE_COUNT,
+    "instance_type": INSTANCE_TYPE,
 }
 ALL_REQ_ARGS = dict(
     {"k": K, "sample_size": SAMPLE_SIZE, "predictor_type": PREDICTOR_TYPE_REGRESSOR},
@@ -72,16 +72,16 @@ def sagemaker_session():
 def test_init_required_positional(sagemaker_session):
     knn = KNN(
         ROLE,
-        TRAIN_INSTANCE_COUNT,
-        TRAIN_INSTANCE_TYPE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
         K,
         SAMPLE_SIZE,
         PREDICTOR_TYPE_REGRESSOR,
         sagemaker_session=sagemaker_session,
     )
     assert knn.role == ROLE
-    assert knn.train_instance_count == TRAIN_INSTANCE_COUNT
-    assert knn.train_instance_type == TRAIN_INSTANCE_TYPE
+    assert knn.instance_count == INSTANCE_COUNT
+    assert knn.instance_type == INSTANCE_TYPE
     assert knn.k == K
 
 
@@ -89,8 +89,8 @@ def test_init_required_named(sagemaker_session):
     knn = KNN(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
     assert knn.role == COMMON_TRAIN_ARGS["role"]
-    assert knn.train_instance_count == TRAIN_INSTANCE_COUNT
-    assert knn.train_instance_type == COMMON_TRAIN_ARGS["train_instance_type"]
+    assert knn.instance_count == INSTANCE_COUNT
+    assert knn.instance_type == COMMON_TRAIN_ARGS["instance_type"]
     assert knn.k == ALL_REQ_ARGS["k"]
 
 
@@ -279,7 +279,7 @@ def test_model_image(sagemaker_session):
     knn.fit(data, MINI_BATCH_SIZE)
 
     model = knn.create_model()
-    assert model.image == registry(REGION, "knn") + "/knn:1"
+    assert model.image_uri == registry(REGION, "knn") + "/knn:1"
 
 
 def test_predictor_type(sagemaker_session):
@@ -292,6 +292,6 @@ def test_predictor_type(sagemaker_session):
     )
     knn.fit(data, MINI_BATCH_SIZE)
     model = knn.create_model()
-    predictor = model.deploy(1, TRAIN_INSTANCE_TYPE)
+    predictor = model.deploy(1, INSTANCE_TYPE)
 
     assert isinstance(predictor, KNNPredictor)

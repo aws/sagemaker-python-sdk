@@ -20,11 +20,12 @@ import pytest
 from sagemaker.mxnet.estimator import MXNet
 from sagemaker.mxnet.model import MXNetModel
 from sagemaker.utils import unique_name_from_base
-from tests.integ import DATA_DIR, PYTHON_VERSION, TRAINING_DEFAULT_TIMEOUT_MINUTES
+from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 NEO_MXNET_VERSION = "1.4.1"  # Neo doesn't support MXNet 1.6 yet.
 INF_MXNET_VERSION = "1.5.1"
+NEO_PYTHON_VERSION = "py3"
 
 
 @pytest.fixture(scope="module")
@@ -37,9 +38,9 @@ def mxnet_training_job(sagemaker_session, cpu_instance_type):
             entry_point=script_path,
             role="SageMakerRole",
             framework_version=NEO_MXNET_VERSION,
-            py_version=PYTHON_VERSION,
-            train_instance_count=1,
-            train_instance_type=cpu_instance_type,
+            py_version=NEO_PYTHON_VERSION,
+            instance_count=1,
+            instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
         )
 
@@ -55,7 +56,6 @@ def mxnet_training_job(sagemaker_session, cpu_instance_type):
 
 
 @pytest.mark.canary_quick
-@pytest.mark.regional_testing
 def test_attach_deploy(
     mxnet_training_job, sagemaker_session, cpu_instance_type, cpu_instance_family
 ):
@@ -94,7 +94,7 @@ def test_deploy_model(
             model_data,
             role,
             entry_point=script_path,
-            py_version=PYTHON_VERSION,
+            py_version=NEO_PYTHON_VERSION,
             framework_version=NEO_MXNET_VERSION,
             sagemaker_session=sagemaker_session,
         )
@@ -131,6 +131,7 @@ def test_inferentia_deploy_model(
             role,
             entry_point=script_path,
             framework_version=INF_MXNET_VERSION,
+            py_version=NEO_PYTHON_VERSION,
             sagemaker_session=sagemaker_session,
         )
 

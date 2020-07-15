@@ -871,7 +871,7 @@ class ModelMonitor(object):
                     S3Uploader.upload(
                         local_path=file_input.source,
                         desired_s3_uri=s3_uri,
-                        session=self.sagemaker_session,
+                        sagemaker_session=self.sagemaker_session,
                     )
                     file_input.source = s3_uri
                 normalized_inputs.append(file_input)
@@ -944,7 +944,7 @@ class ModelMonitor(object):
                 str(uuid.uuid4()),
             )
             S3Uploader.upload(
-                local_path=path, desired_s3_uri=s3_uri, session=self.sagemaker_session
+                local_path=path, desired_s3_uri=s3_uri, sagemaker_session=self.sagemaker_session
             )
             path = os.path.join(s3_uri, os.path.basename(path))
         return path
@@ -1771,7 +1771,7 @@ class DefaultModelMonitor(ModelMonitor):
                 name,
             )
             S3Uploader.upload(
-                local_path=source, desired_s3_uri=s3_uri, session=self.sagemaker_session
+                local_path=source, desired_s3_uri=s3_uri, sagemaker_session=self.sagemaker_session
             )
             source = s3_uri
 

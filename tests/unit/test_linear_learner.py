@@ -19,15 +19,15 @@ from sagemaker.amazon.linear_learner import LinearLearner, LinearLearnerPredicto
 from sagemaker.amazon.amazon_estimator import registry, RecordSet
 
 ROLE = "myrole"
-TRAIN_INSTANCE_COUNT = 1
-TRAIN_INSTANCE_TYPE = "ml.c4.xlarge"
+INSTANCE_COUNT = 1
+INSTANCE_TYPE = "ml.c4.xlarge"
 
 PREDICTOR_TYPE = "binary_classifier"
 
 COMMON_TRAIN_ARGS = {
     "role": ROLE,
-    "train_instance_count": TRAIN_INSTANCE_COUNT,
-    "train_instance_type": TRAIN_INSTANCE_TYPE,
+    "instance_count": INSTANCE_COUNT,
+    "instance_type": INSTANCE_TYPE,
 }
 ALL_REQ_ARGS = dict({"predictor_type": PREDICTOR_TYPE}, **COMMON_TRAIN_ARGS)
 
@@ -66,15 +66,11 @@ def sagemaker_session():
 
 def test_init_required_positional(sagemaker_session):
     lr = LinearLearner(
-        ROLE,
-        TRAIN_INSTANCE_COUNT,
-        TRAIN_INSTANCE_TYPE,
-        PREDICTOR_TYPE,
-        sagemaker_session=sagemaker_session,
+        ROLE, INSTANCE_COUNT, INSTANCE_TYPE, PREDICTOR_TYPE, sagemaker_session=sagemaker_session,
     )
     assert lr.role == ROLE
-    assert lr.train_instance_count == TRAIN_INSTANCE_COUNT
-    assert lr.train_instance_type == TRAIN_INSTANCE_TYPE
+    assert lr.instance_count == INSTANCE_COUNT
+    assert lr.instance_type == INSTANCE_TYPE
     assert lr.predictor_type == PREDICTOR_TYPE
 
 
@@ -82,8 +78,8 @@ def test_init_required_named(sagemaker_session):
     lr = LinearLearner(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
     assert lr.role == ALL_REQ_ARGS["role"]
-    assert lr.train_instance_count == ALL_REQ_ARGS["train_instance_count"]
-    assert lr.train_instance_type == ALL_REQ_ARGS["train_instance_type"]
+    assert lr.instance_count == ALL_REQ_ARGS["instance_count"]
+    assert lr.instance_type == ALL_REQ_ARGS["instance_type"]
     assert lr.predictor_type == ALL_REQ_ARGS["predictor_type"]
 
 
@@ -416,7 +412,7 @@ def test_model_image(sagemaker_session):
     lr.fit(data)
 
     model = lr.create_model()
-    assert model.image == registry(REGION, "linear-learner") + "/linear-learner:1"
+    assert model.image_uri == registry(REGION, "linear-learner") + "/linear-learner:1"
 
 
 def test_predictor_type(sagemaker_session):
@@ -429,6 +425,6 @@ def test_predictor_type(sagemaker_session):
     )
     lr.fit(data)
     model = lr.create_model()
-    predictor = model.deploy(1, TRAIN_INSTANCE_TYPE)
+    predictor = model.deploy(1, INSTANCE_TYPE)
 
     assert isinstance(predictor, LinearLearnerPredictor)

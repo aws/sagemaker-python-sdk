@@ -35,7 +35,7 @@ class MultiDataModel(Model):
         name,
         model_data_prefix,
         model=None,
-        image=None,
+        image_uri=None,
         role=None,
         sagemaker_session=None,
         **kwargs
@@ -50,9 +50,9 @@ class MultiDataModel(Model):
             model (sagemaker.Model): The Model object that would define the
                 SageMaker model attributes like vpc_config, predictors, etc.
                 If this is present, the attributes from this model are used when
-                deploying the ``MultiDataModel``.  Parameters 'image', 'role' and 'kwargs'
+                deploying the ``MultiDataModel``.  Parameters 'image_uri', 'role' and 'kwargs'
                 are not permitted when model parameter is set.
-            image (str): A Docker image URI. It can be null if the 'model' parameter
+            image_uri (str): A Docker image URI. It can be null if the 'model' parameter
                 is passed to during ``MultiDataModel`` initialization (default: None)
             role (str): An AWS IAM role (either name or full ARN). The Amazon
                 SageMaker training jobs and APIs that create Amazon SageMaker
@@ -82,9 +82,10 @@ class MultiDataModel(Model):
                 )
             )
 
-        if model and (image or role or kwargs):
+        if model and (image_uri or role or kwargs):
             raise ValueError(
-                "Parameters image, role or kwargs are not permitted when model parameter is passed."
+                "Parameters image_uri, role, and kwargs are not permitted when "
+                "model parameter is passed."
             )
 
         self.name = name
@@ -103,15 +104,15 @@ class MultiDataModel(Model):
         # Set the ``Model`` parameters if the model parameter is not specified
         if not self.model:
             super(MultiDataModel, self).__init__(
+                image_uri,
                 self.model_data_prefix,
-                image,
                 role,
                 name=self.name,
                 sagemaker_session=self.sagemaker_session,
                 **kwargs
             )
 
-    def prepare_container_def(self, instance_type, accelerator_type=None):
+    def prepare_container_def(self, instance_type=None, accelerator_type=None):
         """Return a container definition set with MultiModel mode,
         model data and other parameters from the model (if available).
 
@@ -121,18 +122,18 @@ class MultiDataModel(Model):
         Returns:
             dict[str, str]: A complete container definition object usable with the CreateModel API
         """
-        # Copy the trained model's image and environment variables if they exist. Models trained
+        # Copy the trained model's image URI and environment variables if they exist. Models trained
         # with FrameworkEstimator set framework specific environment variables which need to be
         # copied over
         if self.model:
             container_definition = self.model.prepare_container_def(instance_type, accelerator_type)
-            image = container_definition["Image"]
+            image_uri = container_definition["Image"]
             environment = container_definition["Environment"]
         else:
-            image = self.image
+            image_uri = self.image_uri
             environment = self.env
         return sagemaker.container_def(
-            image,
+            image_uri,
             env=environment,
             model_data_url=self.model_data_prefix,
             container_mode=self.container_mode,
@@ -144,7 +145,6 @@ class MultiDataModel(Model):
         instance_type,
         accelerator_type=None,
         endpoint_name=None,
-        update_endpoint=False,
         tags=None,
         kms_key=None,
         wait=True,
@@ -179,11 +179,6 @@ class MultiDataModel(Model):
                 https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html
             endpoint_name (str): The name of the endpoint to create (default:
                 None). If not specified, a unique endpoint name will be created.
-            update_endpoint (bool): Flag to update the model in an existing
-                Amazon SageMaker endpoint. If True, this will deploy a new
-                EndpointConfig to an already existing endpoint and delete
-                resources corresponding to the previous EndpointConfig. If
-                False, a new endpoint will be created. Default: False
             tags (List[dict[str, str]]): The list of tags to attach to this
                 specific endpoint.
             kms_key (str): The ARN of the KMS key that is used to encrypt the
@@ -241,29 +236,14 @@ class MultiDataModel(Model):
         if data_capture_config is not None:
             data_capture_config_dict = data_capture_config._to_request_dict()
 
-        if update_endpoint:
-            endpoint_config_name = self.sagemaker_session.create_endpoint_config(
-                name=self.name,
-                model_name=self.name,
-                initial_instance_count=initial_instance_count,
-                instance_type=instance_type,
-                accelerator_type=accelerator_type,
-                tags=tags,
-                kms_key=kms_key,
-                data_capture_config_dict=data_capture_config_dict,
-            )
-            self.sagemaker_session.update_endpoint(
-                self.endpoint_name, endpoint_config_name, wait=wait
-            )
-        else:
-            self.sagemaker_session.endpoint_from_production_variants(
-                name=self.endpoint_name,
-                production_variants=[production_variant],
-                tags=tags,
-                kms_key=kms_key,
-                wait=wait,
-                data_capture_config_dict=data_capture_config_dict,
-            )
+        self.sagemaker_session.endpoint_from_production_variants(
+            name=self.endpoint_name,
+            production_variants=[production_variant],
+            tags=tags,
+            kms_key=kms_key,
+            wait=wait,
+            data_capture_config_dict=data_capture_config_dict,
+        )
 
         if predictor:
             return predictor(self.endpoint_name, self.sagemaker_session)

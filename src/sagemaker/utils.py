@@ -20,7 +20,6 @@ import os
 import random
 import re
 import shutil
-import sys
 import tarfile
 import tempfile
 import time
@@ -43,7 +42,7 @@ logger = logging.getLogger(__name__)
 
 
 # Use the base name of the image as the job name if the user doesn't give us one
-def name_from_image(image):
+def name_from_image(image, max_length=63):
     """Create a training job name based on the image name and a timestamp.
 
     Args:
@@ -51,9 +50,10 @@ def name_from_image(image):
 
     Returns:
         str: Training job name using the algorithm from the image name and a
-        timestamp.
+            timestamp.
+        max_length (int): Maximum length for the resulting string (default: 63).
     """
-    return name_from_base(base_name_from_image(image))
+    return name_from_base(base_name_from_image(image), max_length=max_length)
 
 
 def name_from_base(base, max_length=63, short=False):
@@ -65,8 +65,8 @@ def name_from_base(base, max_length=63, short=False):
 
     Args:
         base (str): String used as prefix to generate the unique name.
-        max_length (int): Maximum length for the resulting string.
-        short (bool): Whether or not to use a truncated timestamp.
+        max_length (int): Maximum length for the resulting string (default: 63).
+        short (bool): Whether or not to use a truncated timestamp (default: False).
 
     Returns:
         str: Input parameter with appended timestamp.
@@ -102,6 +102,22 @@ def base_name_from_image(image):
     m = re.match("^(.+/)?([^:/]+)(:[^:]+)?$", image)
     algo_name = m.group(2) if m else image
     return algo_name
+
+
+def base_from_name(name):
+    """Extract the base name of the resource name (for use with future resource name generation).
+
+    This function looks for timestamps that match the ones produced by
+    :func:`~sagemaker.utils.name_from_base`.
+
+    Args:
+        name (str): The resource name.
+
+    Returns:
+        str: The base name, as extracted from the resource name.
+    """
+    m = re.match(r"^(.+)-(\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}-\d{3}|\d{6}-\d{4})", name)
+    return m.group(1) if m else name
 
 
 def sagemaker_timestamp():
@@ -160,25 +176,6 @@ def get_short_version(framework_version):
         str: The short version string
     """
     return ".".join(framework_version.split(".")[:2])
-
-
-def to_str(value):
-    """Convert the input to a string, unless it is a unicode string in Python 2.
-
-    Unicode strings are supported as native strings in Python 3, but
-    ``str()`` cannot be invoked on unicode strings in Python 2, so we need to
-    check for that case when converting user-specified values to strings.
-
-    Args:
-        value: The value to convert to a string.
-
-    Returns:
-        str or unicode: The string representation of the value or the unicode
-        string itself.
-    """
-    if sys.version_info.major < 3 and isinstance(value, six.string_types):
-        return value
-    return str(value)
 
 
 def extract_name_from_job_arn(arn):

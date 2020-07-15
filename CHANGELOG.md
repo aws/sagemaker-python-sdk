@@ -1,5 +1,229 @@
 # Changelog
 
+## v2.0.0.rc1 (2020-07-08)
+
+### Breaking Changes
+
+ * Move StreamDeserializer to sagemaker.deserializers
+ * Move StringDeserializer to sagemaker.deserializers
+ * rename record_deserializer to RecordDeserializer
+ * remove "train_" where redundant in parameter/variable names
+ * Add BytesDeserializer
+ * rename image to image_uri
+ * rename image_name to image_uri
+ * create new inference resources during model.deploy() and model.transformer()
+ * rename session parameter to sagemaker_session in S3 utility classes
+ * rename distributions to distribution in TF/MXNet estimators
+ * deprecate update_endpoint arg in deploy()
+ * create new inference resources during estimator.deploy() or estimator.transformer()
+ * deprecate delete_endpoint() for estimators and HyperparameterTuner
+ * refactor Predictor attribute endpoint to endpoint_name
+ * make instance_type optional for Airflow model configs
+ * refactor name of RealTimePredictor to Predictor
+ * remove check for Python 2 string in sagemaker.predictor._is_sequence_like()
+ * deprecate sagemaker.utils.to_str()
+ * drop Python 2 support
+
+### Features
+
+ * add BaseSerializer and BaseDeserializer
+ * add Predictor.update_endpoint()
+
+### Bug Fixes and Other Changes
+
+ * handle "train_*" renames in v2 migration tool
+ * handle image_uri rename for Session methods in v2 migration tool
+ * Update BytesDeserializer accept header
+ * handle image_uri rename for estimators and models in v2 migration tool
+ * handle image_uri rename in Airflow model config functions in v2 migration tool
+ * update migration tool for S3 utility functions
+ * set _current_job_name and base_tuning_job_name in HyperparameterTuner.attach()
+ * infer base name from job name in estimator.attach()
+ * ensure generated names are < 63 characters when deploying compiled models
+ * add TF migration documentation to error message
+
+### Documentation Changes
+
+ * update documentation with v2.0.0.rc1 changes
+ * remove 'train_*' prefix from estimator parameters
+ * update documentation for image_name/image --> image_uri
+
+### Testing and Release Infrastructure
+
+ * refactor matching logic in v2 migration tool
+ * add cli modifier for RealTimePredictor and derived classes
+ * change coverage settings to reduce intermittent errors
+ * clean up pickle.load logic in integ tests
+ * use fixture for Python version in framework integ tests
+ * remove assumption of Python 2 unit test runs
+
+## v1.68.0 (2020-07-07)
+
+### Features
+
+ * add spot instance support for AlgorithmEstimator
+
+### Documentation Changes
+
+ * add xgboost documentation for inference
+
+## v1.67.1.post0 (2020-07-01)
+
+### Documentation Changes
+
+ * add Step Functions SDK info
+
+## v1.67.1 (2020-06-30)
+
+### Bug Fixes and Other Changes
+
+ * add deprecation warnings for estimator.delete_endpoint() and tuner.delete_endpoint()
+
+## v1.67.0 (2020-06-29)
+
+### Features
+
+ * Apache Airflow integration for SageMaker Processing Jobs
+
+### Bug Fixes and Other Changes
+
+ * fix punctuation in warning message
+
+### Testing and Release Infrastructure
+
+ * address warnings about pytest custom marks, error message checking, and yaml loading
+ * mark long-running cron tests
+ * fix tox test dependencies and bump coverage threshold to 86%
+
+## v1.66.0 (2020-06-25)
+
+### Features
+
+ * add 3.8 as supported python version
+
+### Testing and Release Infrastructure
+
+ * upgrade airflow to latest stable version
+ * update feature request issue template
+
+## v1.65.1.post1 (2020-06-24)
+
+### Testing and Release Infrastructure
+
+ * add py38 to buildspecs
+
+## v1.65.1.post0 (2020-06-22)
+
+### Documentation Changes
+
+ * document that Local Mode + local code doesn't support dependencies arg
+
+### Testing and Release Infrastructure
+
+ * upgrade Sphinx to 3.1.1
+
+## v1.65.1 (2020-06-18)
+
+### Bug Fixes and Other Changes
+
+ * remove include_package_data=True from setup.py
+
+### Documentation Changes
+
+ * add some clarification to Processing docs
+
+### Testing and Release Infrastructure
+
+ * specify what kinds of clients in PR template
+
+## v1.65.0 (2020-06-17)
+
+### Features
+
+ * support for describing hyperparameter tuning job
+
+### Bug Fixes and Other Changes
+
+ * update distributed GPU utilization warning message
+ * set logs to False if wait is False in AutoML
+ * workflow passing spot training param to training job
+
+## v2.0.0.rc0 (2020-06-17)
+
+### Breaking Changes
+
+ * remove estimator parameters for TF legacy mode
+ * remove legacy `TensorFlowModel` and `TensorFlowPredictor` classes
+ * force image URI to be passed for legacy TF images
+ * rename `sagemaker.tensorflow.serving` to `sagemaker.tensorflow.model`
+ * require `framework_version` and `py_version` for framework estimator and model classes
+ * change `Model` parameter order to make `model_data` optional
+
+### Bug Fixes and Other Changes
+
+ * add v2 migration tool
+
+### Documentation Changes
+
+ * update TF documentation to reflect breaking changes and how to upgrade
+ * start v2 usage and migration documentation
+
+### Testing and Release Infrastructure
+
+ * remove scipy from dependencies
+ * remove TF from optional dependencies
+
+## v1.64.1 (2020-06-16)
+
+### Bug Fixes and Other Changes
+
+ * include py38 tox env and some dependency upgrades
+
+## v1.64.0 (2020-06-15)
+
+### Features
+
+ * add support for SKLearn 0.23
+
+## v1.63.0 (2020-06-12)
+
+### Features
+
+ * Allow selecting inference response content for automl generated models
+ * Support for multi variant endpoint invocation with target variant param
+
+### Documentation Changes
+
+ * improve docstring and remove unavailable links
+
+## v1.62.0 (2020-06-11)
+
+### Features
+
+ * Support for multi variant endpoint invocation with target variant param
+
+### Bug Fixes and Other Changes
+
+ * Revert "feature: Support for multi variant endpoint invocation with target variant param (#1571)"
+ * make instance_type optional for prepare_container_def
+ * docs: workflows navigation
+
+### Documentation Changes
+
+ * fix typo in MXNet documentation
+
+## v1.61.0 (2020-06-09)
+
+### Features
+
+ * Use boto3 DEFAULT_SESSION when no boto3 session specified.
+
+### Bug Fixes and Other Changes
+
+ * remove v2 Session warnings
+ * upgrade smdebug-rulesconfig to 0.1.4
+ * explicitly handle arguments in create_model for sklearn and xgboost
+
 ## v1.60.2 (2020-05-29)
 
 ### Bug Fixes and Other Changes

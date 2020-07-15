@@ -13,8 +13,6 @@
 """Placeholder docstring"""
 from __future__ import absolute_import
 
-import logging
-import sys
 import importlib_metadata
 
 from sagemaker import estimator, parameter, tuner  # noqa: F401
@@ -31,6 +29,7 @@ from sagemaker.amazon.factorization_machines import (  # noqa: F401
     FactorizationMachinesModel,
 )
 from sagemaker.amazon.factorization_machines import FactorizationMachinesPredictor  # noqa: F401
+from sagemaker.inputs import TrainingInput  # noqa: F401
 from sagemaker.amazon.ntm import NTM, NTMModel, NTMPredictor  # noqa: F401
 from sagemaker.amazon.randomcutforest import (  # noqa: F401
     RandomCutForest,
@@ -51,22 +50,14 @@ from sagemaker.local.local_session import LocalSession  # noqa: F401
 
 from sagemaker.model import Model, ModelPackage  # noqa: F401
 from sagemaker.pipeline import PipelineModel  # noqa: F401
-from sagemaker.predictor import RealTimePredictor  # noqa: F401
+from sagemaker.predictor import Predictor  # noqa: F401
 from sagemaker.processing import Processor, ScriptProcessor  # noqa: F401
 from sagemaker.session import Session  # noqa: F401
 from sagemaker.session import container_def, pipeline_container_def  # noqa: F401
 from sagemaker.session import production_variant  # noqa: F401
-from sagemaker.session import s3_input  # noqa: F401
 from sagemaker.session import get_execution_role  # noqa: F401
 
 from sagemaker.automl.automl import AutoML, AutoMLJob, AutoMLInput  # noqa: F401
 from sagemaker.automl.candidate_estimator import CandidateEstimator, CandidateStep  # noqa: F401
 
 __version__ = importlib_metadata.version("sagemaker")
-
-if sys.version[0] == "2":
-    logging.getLogger("sagemaker").warning(
-        "SageMaker Python SDK v2 will no longer support Python 2. "
-        "Please see https://github.com/aws/sagemaker-python-sdk/issues/1459 "
-        "for more information"
-    )

@@ -49,9 +49,9 @@ PYTHON_2_DEPRECATION_WARNING = (
     "Please set the argument \"py_version='py3'\" to use the Python 3 {framework} image."
 )
 PARAMETER_SERVER_MULTI_GPU_WARNING = (
-    "You have selected a multi-GPU training instance type. "
-    "You have also enabled parameter server for distributed training. "
-    "Distributed training with the default parameter server configuration will not "
+    "If you have selected a multi-GPU training instance type "
+    "and also enabled parameter server for distributed training, "
+    "distributed training with the default parameter server configuration will not "
     "fully leverage all GPU cores; the parameter server will be configured to run "
     "only one worker per host regardless of the number of GPUs."
 )
@@ -490,11 +490,11 @@ def _list_files_to_compress(script, directory):
     return [os.path.join(basedir, name) for name in os.listdir(basedir)]
 
 
-def framework_name_from_image(image_name):
+def framework_name_from_image(image_uri):
     # noinspection LongLine
     """Extract the framework and Python version from the image name.
     Args:
-        image_name (str): Image URI, which should be one of the following forms:
+        image_uri (str): Image URI, which should be one of the following forms:
             legacy:
             '<account>.dkr.ecr.<region>.amazonaws.com/sagemaker-<fw>-<py_ver>-<device>:<container_version>'
             legacy:
@@ -509,7 +509,7 @@ def framework_name_from_image(image_name):
             str: If the image is script mode
         """
     sagemaker_pattern = re.compile(ECR_URI_PATTERN)
-    sagemaker_match = sagemaker_pattern.match(image_name)
+    sagemaker_match = sagemaker_pattern.match(image_uri)
     if sagemaker_match is None:
         return None, None, None, None
     # extract framework, python version and image tag
@@ -587,11 +587,19 @@ def empty_framework_version_warning(default_version, latest_version):
     """
     msgs = [EMPTY_FRAMEWORK_VERSION_WARNING.format(default_version)]
     if default_version != latest_version:
-        msgs.append(LATER_FRAMEWORK_VERSION_WARNING.format(latest=latest_version))
+        msgs.append(later_framework_version_warning(latest_version))
     return " ".join(msgs)
 
 
-def warn_if_parameter_server_with_multi_gpu(training_instance_type, distributions):
+def later_framework_version_warning(latest_version):
+    """
+    Args:
+        latest_version:
+    """
+    return LATER_FRAMEWORK_VERSION_WARNING.format(latest=latest_version)
+
+
+def warn_if_parameter_server_with_multi_gpu(training_instance_type, distribution):
     """Warn the user that training will not fully leverage all the GPU
     cores if parameter server is enabled and a multi-GPU instance is selected.
     Distributed training with the default parameter server setup doesn't
@@ -599,7 +607,7 @@ def warn_if_parameter_server_with_multi_gpu(training_instance_type, distribution
 
     Args:
         training_instance_type (str): A string representing the type of training instance selected.
-        distributions (dict): A dictionary with information to enable distributed training.
+        distribution (dict): A dictionary with information to enable distributed training.
             (Defaults to None if distributed training is not enabled.) For example:
 
             .. code:: python
@@ -613,15 +621,15 @@ def warn_if_parameter_server_with_multi_gpu(training_instance_type, distribution
 
 
     """
-    if training_instance_type == "local" or distributions is None:
+    if training_instance_type == "local" or distribution is None:
         return
 
     is_multi_gpu_instance = (
-        training_instance_type.split(".")[1].startswith("p")
-        and training_instance_type not in SINGLE_GPU_INSTANCE_TYPES
-    )
+        training_instance_type == "local_gpu"
+        or training_instance_type.split(".")[1].startswith("p")
+    ) and training_instance_type not in SINGLE_GPU_INSTANCE_TYPES
 
-    ps_enabled = "parameter_server" in distributions and distributions["parameter_server"].get(
+    ps_enabled = "parameter_server" in distribution and distribution["parameter_server"].get(
         "enabled", False
     )
 
@@ -681,3 +689,24 @@ def _region_supports_debugger(region_name):
 
     """
     return region_name.lower() not in DEBUGGER_UNSUPPORTED_REGIONS
+
+
+def validate_version_or_image_args(framework_version, py_version, image_uri):
+    """Checks if version or image arguments are specified.
+
+    Validates framework and model arguments to enforce version or image specification.
+
+    Args:
+        framework_version (str): The version of the framework.
+        py_version (str): The version of Python.
+        image_uri (str): The URI of the image.
+
+    Raises:
+        ValueError: if `image_uri` is None and either `framework_version` or `py_version` is
+            None.
+    """
+    if (framework_version is None or py_version is None) and image_uri is None:
+        raise ValueError(
+            "framework_version or py_version was None, yet image_uri was also None. "
+            "Either specify both framework_version and py_version, or specify image_uri."
+        )

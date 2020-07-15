@@ -185,8 +185,8 @@ def test_algorithm_supported_input_mode_with_valid_input_types(session):
     AlgorithmEstimator(
         algorithm_arn="arn:aws:sagemaker:us-east-2:1234:algorithm/scikit-decision-trees",
         role="SageMakerRole",
-        train_instance_type="ml.m4.xlarge",
-        train_instance_count=1,
+        instance_type="ml.m4.xlarge",
+        instance_count=1,
         sagemaker_session=session,
     )
 
@@ -216,8 +216,8 @@ def test_algorithm_supported_input_mode_with_valid_input_types(session):
     AlgorithmEstimator(
         algorithm_arn="arn:aws:sagemaker:us-east-2:1234:algorithm/scikit-decision-trees",
         role="SageMakerRole",
-        train_instance_type="ml.m4.xlarge",
-        train_instance_count=1,
+        instance_type="ml.m4.xlarge",
+        instance_count=1,
         input_mode="Pipe",
         sagemaker_session=session,
     )
@@ -249,8 +249,8 @@ def test_algorithm_supported_input_mode_with_valid_input_types(session):
     AlgorithmEstimator(
         algorithm_arn="arn:aws:sagemaker:us-east-2:1234:algorithm/scikit-decision-trees",
         role="SageMakerRole",
-        train_instance_type="ml.m4.xlarge",
-        train_instance_count=1,
+        instance_type="ml.m4.xlarge",
+        instance_count=1,
         sagemaker_session=session,
     )
 
@@ -287,8 +287,8 @@ def test_algorithm_supported_input_mode_with_bad_input_types(session):
         AlgorithmEstimator(
             algorithm_arn="arn:aws:sagemaker:us-east-2:1234:algorithm/scikit-decision-trees",
             role="SageMakerRole",
-            train_instance_type="ml.m4.xlarge",
-            train_instance_count=1,
+            instance_type="ml.m4.xlarge",
+            instance_count=1,
             input_mode="Pipe",
             sagemaker_session=session,
         )
@@ -320,8 +320,8 @@ def test_algorithm_supported_input_mode_with_bad_input_types(session):
         AlgorithmEstimator(
             algorithm_arn="arn:aws:sagemaker:us-east-2:1234:algorithm/scikit-decision-trees",
             role="SageMakerRole",
-            train_instance_type="ml.m4.xlarge",
-            train_instance_count=1,
+            instance_type="ml.m4.xlarge",
+            instance_count=1,
             sagemaker_session=session,
         )
 
@@ -355,8 +355,8 @@ def test_algorithm_trainining_channels_with_expected_channels(session):
     estimator = AlgorithmEstimator(
         algorithm_arn="arn:aws:sagemaker:us-east-2:1234:algorithm/scikit-decision-trees",
         role="SageMakerRole",
-        train_instance_type="ml.m4.xlarge",
-        train_instance_count=1,
+        instance_type="ml.m4.xlarge",
+        instance_count=1,
         sagemaker_session=session,
     )
 
@@ -396,8 +396,8 @@ def test_algorithm_trainining_channels_with_invalid_channels(session):
     estimator = AlgorithmEstimator(
         algorithm_arn="arn:aws:sagemaker:us-east-2:1234:algorithm/scikit-decision-trees",
         role="SageMakerRole",
-        train_instance_type="ml.m4.xlarge",
-        train_instance_count=1,
+        instance_type="ml.m4.xlarge",
+        instance_count=1,
         sagemaker_session=session,
     )
 
@@ -413,27 +413,27 @@ def test_algorithm_trainining_channels_with_invalid_channels(session):
 @patch("sagemaker.Session")
 def test_algorithm_train_instance_types_valid_instance_types(session):
     describe_algo_response = copy.deepcopy(DESCRIBE_ALGORITHM_RESPONSE)
-    train_instance_types = ["ml.m4.xlarge", "ml.m5.2xlarge"]
+    instance_types = ["ml.m4.xlarge", "ml.m5.2xlarge"]
 
     describe_algo_response["TrainingSpecification"][
         "SupportedTrainingInstanceTypes"
-    ] = train_instance_types
+    ] = instance_types
 
     session.sagemaker_client.describe_algorithm = Mock(return_value=describe_algo_response)
 
     AlgorithmEstimator(
         algorithm_arn="arn:aws:sagemaker:us-east-2:1234:algorithm/scikit-decision-trees",
         role="SageMakerRole",
-        train_instance_type="ml.m4.xlarge",
-        train_instance_count=1,
+        instance_type="ml.m4.xlarge",
+        instance_count=1,
         sagemaker_session=session,
     )
 
     AlgorithmEstimator(
         algorithm_arn="arn:aws:sagemaker:us-east-2:1234:algorithm/scikit-decision-trees",
         role="SageMakerRole",
-        train_instance_type="ml.m5.2xlarge",
-        train_instance_count=1,
+        instance_type="ml.m5.2xlarge",
+        instance_count=1,
         sagemaker_session=session,
     )
 
@@ -441,11 +441,11 @@ def test_algorithm_train_instance_types_valid_instance_types(session):
 @patch("sagemaker.Session")
 def test_algorithm_train_instance_types_invalid_instance_types(session):
     describe_algo_response = copy.deepcopy(DESCRIBE_ALGORITHM_RESPONSE)
-    train_instance_types = ["ml.m4.xlarge", "ml.m5.2xlarge"]
+    instance_types = ["ml.m4.xlarge", "ml.m5.2xlarge"]
 
     describe_algo_response["TrainingSpecification"][
         "SupportedTrainingInstanceTypes"
-    ] = train_instance_types
+    ] = instance_types
 
     session.sagemaker_client.describe_algorithm = Mock(return_value=describe_algo_response)
 
@@ -454,8 +454,8 @@ def test_algorithm_train_instance_types_invalid_instance_types(session):
         AlgorithmEstimator(
             algorithm_arn="arn:aws:sagemaker:us-east-2:1234:algorithm/scikit-decision-trees",
             role="SageMakerRole",
-            train_instance_type="ml.m4.8xlarge",
-            train_instance_count=1,
+            instance_type="ml.m4.8xlarge",
+            instance_count=1,
             sagemaker_session=session,
         )
 
@@ -474,16 +474,16 @@ def test_algorithm_distributed_training_validation(session):
     AlgorithmEstimator(
         algorithm_arn="arn:aws:sagemaker:us-east-2:1234:algorithm/scikit-decision-trees",
         role="SageMakerRole",
-        train_instance_type="ml.m4.xlarge",
-        train_instance_count=1,
+        instance_type="ml.m4.xlarge",
+        instance_count=1,
         sagemaker_session=session,
     )
 
     AlgorithmEstimator(
         algorithm_arn="arn:aws:sagemaker:us-east-2:1234:algorithm/scikit-decision-trees",
         role="SageMakerRole",
-        train_instance_type="ml.m4.xlarge",
-        train_instance_count=2,
+        instance_type="ml.m4.xlarge",
+        instance_count=2,
         sagemaker_session=session,
     )
 
@@ -494,8 +494,8 @@ def test_algorithm_distributed_training_validation(session):
         AlgorithmEstimator(
             algorithm_arn="arn:aws:sagemaker:us-east-2:1234:algorithm/scikit-decision-trees",
             role="SageMakerRole",
-            train_instance_type="ml.m5.2xlarge",
-            train_instance_count=2,
+            instance_type="ml.m5.2xlarge",
+            instance_count=2,
             sagemaker_session=session,
         )
 
@@ -524,8 +524,8 @@ def test_algorithm_hyperparameter_integer_range_valid_range(session):
     estimator = AlgorithmEstimator(
         algorithm_arn="arn:aws:sagemaker:us-east-2:1234:algorithm/scikit-decision-trees",
         role="SageMakerRole",
-        train_instance_type="ml.m4.2xlarge",
-        train_instance_count=1,
+        instance_type="ml.m4.2xlarge",
+        instance_count=1,
         sagemaker_session=session,
     )
 
@@ -557,8 +557,8 @@ def test_algorithm_hyperparameter_integer_range_invalid_range(session):
     estimator = AlgorithmEstimator(
         algorithm_arn="arn:aws:sagemaker:us-east-2:1234:algorithm/scikit-decision-trees",
         role="SageMakerRole",
-        train_instance_type="ml.m4.2xlarge",
-        train_instance_count=1,
+        instance_type="ml.m4.2xlarge",
+        instance_count=1,
         sagemaker_session=session,
     )
 
@@ -593,8 +593,8 @@ def test_algorithm_hyperparameter_continuous_range_valid_range(session):
     estimator = AlgorithmEstimator(
         algorithm_arn="arn:aws:sagemaker:us-east-2:1234:algorithm/scikit-decision-trees",
         role="SageMakerRole",
-        train_instance_type="ml.m4.2xlarge",
-        train_instance_count=1,
+        instance_type="ml.m4.2xlarge",
+        instance_count=1,
         sagemaker_session=session,
     )
 
@@ -628,8 +628,8 @@ def test_algorithm_hyperparameter_continuous_range_invalid_range(session):
     estimator = AlgorithmEstimator(
         algorithm_arn="arn:aws:sagemaker:us-east-2:1234:algorithm/scikit-decision-trees",
         role="SageMakerRole",
-        train_instance_type="ml.m4.2xlarge",
-        train_instance_count=1,
+        instance_type="ml.m4.2xlarge",
+        instance_count=1,
         sagemaker_session=session,
     )
 
@@ -662,8 +662,8 @@ def test_algorithm_hyperparameter_categorical_range(session):
     estimator = AlgorithmEstimator(
         algorithm_arn="arn:aws:sagemaker:us-east-2:1234:algorithm/scikit-decision-trees",
         role="SageMakerRole",
-        train_instance_type="ml.m4.2xlarge",
-        train_instance_count=1,
+        instance_type="ml.m4.2xlarge",
+        instance_count=1,
         sagemaker_session=session,
     )
 
@@ -705,8 +705,8 @@ def test_algorithm_required_hyperparameters_not_provided(session):
     estimator = AlgorithmEstimator(
         algorithm_arn="arn:aws:sagemaker:us-east-2:1234:algorithm/scikit-decision-trees",
         role="SageMakerRole",
-        train_instance_type="ml.m4.2xlarge",
-        train_instance_count=1,
+        instance_type="ml.m4.2xlarge",
+        instance_count=1,
         sagemaker_session=session,
     )
 
@@ -756,8 +756,8 @@ def test_algorithm_required_hyperparameters_are_provided(session):
     estimator = AlgorithmEstimator(
         algorithm_arn="arn:aws:sagemaker:us-east-2:1234:algorithm/scikit-decision-trees",
         role="SageMakerRole",
-        train_instance_type="ml.m4.2xlarge",
-        train_instance_count=1,
+        instance_type="ml.m4.2xlarge",
+        instance_count=1,
         sagemaker_session=session,
     )
 
@@ -792,8 +792,8 @@ def test_algorithm_required_free_text_hyperparameter_not_provided(session):
     estimator = AlgorithmEstimator(
         algorithm_arn="arn:aws:sagemaker:us-east-2:1234:algorithm/scikit-decision-trees",
         role="SageMakerRole",
-        train_instance_type="ml.m4.2xlarge",
-        train_instance_count=1,
+        instance_type="ml.m4.2xlarge",
+        instance_count=1,
         sagemaker_session=session,
     )
 
@@ -815,8 +815,8 @@ def test_algorithm_create_transformer(create_model, session):
     estimator = AlgorithmEstimator(
         algorithm_arn="arn:aws:sagemaker:us-east-2:1234:algorithm/scikit-decision-trees",
         role="SageMakerRole",
-        train_instance_type="ml.m4.xlarge",
-        train_instance_count=1,
+        instance_type="ml.m4.xlarge",
+        instance_count=1,
         sagemaker_session=session,
     )
 
@@ -839,8 +839,8 @@ def test_algorithm_create_transformer_without_completed_training_job(session):
     estimator = AlgorithmEstimator(
         algorithm_arn="arn:aws:sagemaker:us-east-2:1234:algorithm/scikit-decision-trees",
         role="SageMakerRole",
-        train_instance_type="ml.m4.xlarge",
-        train_instance_count=1,
+        instance_type="ml.m4.xlarge",
+        instance_count=1,
         sagemaker_session=session,
     )
 
@@ -859,8 +859,8 @@ def test_algorithm_create_transformer_with_product_id(create_model, session):
     estimator = AlgorithmEstimator(
         algorithm_arn="arn:aws:sagemaker:us-east-2:1234:algorithm/scikit-decision-trees",
         role="SageMakerRole",
-        train_instance_type="ml.m4.xlarge",
-        train_instance_count=1,
+        instance_type="ml.m4.xlarge",
+        instance_count=1,
         sagemaker_session=session,
     )
 
@@ -880,8 +880,8 @@ def test_algorithm_enable_network_isolation_no_product_id(session):
     estimator = AlgorithmEstimator(
         algorithm_arn="arn:aws:sagemaker:us-east-2:1234:algorithm/scikit-decision-trees",
         role="SageMakerRole",
-        train_instance_type="ml.m4.xlarge",
-        train_instance_count=1,
+        instance_type="ml.m4.xlarge",
+        instance_count=1,
         sagemaker_session=session,
     )
 
@@ -898,8 +898,8 @@ def test_algorithm_enable_network_isolation_with_product_id(session):
     estimator = AlgorithmEstimator(
         algorithm_arn="arn:aws:sagemaker:us-east-2:1234:algorithm/scikit-decision-trees",
         role="SageMakerRole",
-        train_instance_type="ml.m4.xlarge",
-        train_instance_count=1,
+        instance_type="ml.m4.xlarge",
+        instance_count=1,
         sagemaker_session=session,
     )
 
@@ -916,8 +916,8 @@ def test_algorithm_encrypt_inter_container_traffic(session):
     estimator = AlgorithmEstimator(
         algorithm_arn="arn:aws:sagemaker:us-east-2:1234:algorithm/scikit-decision-trees",
         role="SageMakerRole",
-        train_instance_type="ml.m4.xlarge",
-        train_instance_count=1,
+        instance_type="ml.m4.xlarge",
+        instance_count=1,
         sagemaker_session=session,
         encrypt_inter_container_traffic=True,
     )
@@ -939,8 +939,8 @@ def test_algorithm_no_required_hyperparameters(session):
     assert AlgorithmEstimator(
         algorithm_arn="arn:aws:sagemaker:us-east-2:1234:algorithm/scikit-decision-trees",
         role="SageMakerRole",
-        train_instance_type="ml.m4.2xlarge",
-        train_instance_count=1,
+        instance_type="ml.m4.2xlarge",
+        instance_count=1,
         sagemaker_session=session,
     )
 
@@ -952,7 +952,7 @@ def test_algorithm_attach_from_hyperparameter_tuning():
     role_arn = "arn:aws:iam::123412341234:role/SageMakerRole"
     instance_count = 1
     instance_type = "ml.m4.xlarge"
-    train_volume_size = 30
+    volume_size = 30
     input_mode = "File"
 
     session.sagemaker_client.list_tags.return_value = {"Tags": []}
@@ -1001,7 +1001,7 @@ def test_algorithm_attach_from_hyperparameter_tuning():
         "ResourceConfig": {
             "InstanceType": instance_type,
             "InstanceCount": instance_count,
-            "VolumeSizeInGB": train_volume_size,
+            "VolumeSizeInGB": volume_size,
         },
         "StoppingCondition": {"MaxRuntimeInSeconds": 86400},
     }
@@ -1010,8 +1010,23 @@ def test_algorithm_attach_from_hyperparameter_tuning():
     assert estimator.hyperparameters() == {"max_leaf_nodes": 1, "free_text_hp1": "foo"}
     assert estimator.algorithm_arn == algo_arn
     assert estimator.role == role_arn
-    assert estimator.train_instance_count == instance_count
-    assert estimator.train_instance_type == instance_type
-    assert estimator.train_volume_size == train_volume_size
+    assert estimator.instance_count == instance_count
+    assert estimator.instance_type == instance_type
+    assert estimator.volume_size == volume_size
     assert estimator.input_mode == input_mode
     assert estimator.sagemaker_session == session
+
+
+@patch("sagemaker.Session")
+def test_algorithm_supported_with_spot_instances(session):
+    session.sagemaker_client.describe_algorithm = Mock(return_value=DESCRIBE_ALGORITHM_RESPONSE)
+
+    assert AlgorithmEstimator(
+        algorithm_arn="arn:aws:sagemaker:us-east-2:1234:algorithm/scikit-decision-trees",
+        role="SageMakerRole",
+        instance_type="ml.m4.xlarge",
+        instance_count=1,
+        use_spot_instances=True,
+        max_wait=500,
+        sagemaker_session=session,
+    )

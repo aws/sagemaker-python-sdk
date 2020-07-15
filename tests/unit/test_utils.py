@@ -69,6 +69,17 @@ def test_bad_import():
         pd.DataFrame()
 
 
+@patch("sagemaker.utils.name_from_base")
+@patch("sagemaker.utils.base_name_from_image")
+def test_name_from_image(base_name_from_image, name_from_base):
+    image = "image:latest"
+    max_length = 32
+
+    sagemaker.utils.name_from_image(image, max_length=max_length)
+    base_name_from_image.assert_called_with(image)
+    name_from_base.assert_called_with(base_name_from_image.return_value, max_length=max_length)
+
+
 @patch("sagemaker.utils.sagemaker_timestamp")
 def test_name_from_base(sagemaker_timestamp):
     sagemaker.utils.name_from_base(NAME, short=False)
@@ -92,16 +103,6 @@ def test_unique_name_from_base_truncated():
     )
 
 
-def test_to_str_with_native_string():
-    value = "some string"
-    assert sagemaker.utils.to_str(value) == value
-
-
-def test_to_str_with_unicode_string():
-    value = u"åñøthér strîng"
-    assert sagemaker.utils.to_str(value) == value
-
-
 def test_name_from_tuning_arn():
     arn = "arn:aws:sagemaker:us-west-2:968277160000:hyper-parameter-tuning-job/resnet-sgd-tuningjob-11-07-34-11"
     name = sagemaker.utils.extract_name_from_job_arn(arn)
@@ -112,6 +113,14 @@ def test_name_from_training_arn():
     arn = "arn:aws:sagemaker:us-west-2:968277160000:training-job/resnet-sgd-tuningjob-11-22-38-46-002-2927640b"
     name = sagemaker.utils.extract_name_from_job_arn(arn)
     assert name == "resnet-sgd-tuningjob-11-22-38-46-002-2927640b"
+
+
+def test_base_from_name():
+    name = "mxnet-training-2020-06-29-15-19-25-475"
+    assert "mxnet-training" == sagemaker.utils.base_from_name(name)
+
+    name = "sagemaker-pytorch-200629-1611"
+    assert "sagemaker-pytorch" == sagemaker.utils.base_from_name(name)
 
 
 MESSAGE = "message"

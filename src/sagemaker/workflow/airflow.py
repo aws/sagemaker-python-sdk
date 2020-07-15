@@ -19,6 +19,7 @@ import re
 import sagemaker
 from sagemaker import fw_utils, job, utils, session, vpc_utils
 from sagemaker.amazon import amazon_estimator
+from sagemaker.tensorflow import TensorFlow
 
 
 def prepare_framework(estimator, s3_operations):
@@ -114,13 +115,13 @@ def training_base_config(estimator, inputs=None, job_name=None, mini_batch_size=
 
             * (str) - The S3 location where training data is saved.
 
-            * (dict[str, str] or dict[str, sagemaker.session.s3_input]) - If using multiple
+            * (dict[str, str] or dict[str, sagemaker.inputs.TrainingInput]) - If using multiple
                   channels for training data, you can specify a dict mapping channel names to
-                  strings or :func:`~sagemaker.session.s3_input` objects.
+                  strings or :func:`~sagemaker.inputs.TrainingInput` objects.
 
-            * (sagemaker.session.s3_input) - Channel configuration for S3 data sources that can
+            * (sagemaker.inputs.TrainingInput) - Channel configuration for S3 data sources that can
                   provide additional information about the training dataset. See
-                  :func:`sagemaker.session.s3_input` for full details.
+                  :func:`sagemaker.inputs.TrainingInput` for full details.
 
             * (sagemaker.amazon.amazon_estimator.RecordSet) - A collection of
                   Amazon :class:~`Record` objects serialized and stored in S3.
@@ -181,6 +182,9 @@ def training_base_config(estimator, inputs=None, job_name=None, mini_batch_size=
     if job_config["vpc_config"] is not None:
         train_config["VpcConfig"] = job_config["vpc_config"]
 
+    if estimator.use_spot_instances:
+        train_config["EnableManagedSpotTraining"] = True
+
     if estimator.hyperparameters() is not None:
         hyperparameters = {str(k): str(v) for (k, v) in estimator.hyperparameters().items()}
 
@@ -204,13 +208,13 @@ def training_config(estimator, inputs=None, job_name=None, mini_batch_size=None)
             method of the associated estimator, as this can take any of the following forms:
             * (str) - The S3 location where training data is saved.
 
-            * (dict[str, str] or dict[str, sagemaker.session.s3_input]) - If using multiple
+            * (dict[str, str] or dict[str, sagemaker.inputs.TrainingInput]) - If using multiple
                   channels for training data, you can specify a dict mapping channel names to
-                  strings or :func:`~sagemaker.session.s3_input` objects.
+                  strings or :func:`~sagemaker.inputs.TrainingInput` objects.
 
-            * (sagemaker.session.s3_input) - Channel configuration for S3 data sources that can
+            * (sagemaker.inputs.TrainingInput) - Channel configuration for S3 data sources that can
                   provide additional information about the training dataset. See
-                  :func:`sagemaker.session.s3_input` for full details.
+                  :func:`sagemaker.inputs.TrainingInput` for full details.
 
             * (sagemaker.amazon.amazon_estimator.RecordSet) - A collection of
                   Amazon :class:~`Record` objects serialized and stored in S3.
@@ -254,13 +258,13 @@ def tuning_config(tuner, inputs, job_name=None, include_cls_metadata=False, mini
 
             * (str) - The S3 location where training data is saved.
 
-            * (dict[str, str] or dict[str, sagemaker.session.s3_input]) - If using multiple
+            * (dict[str, str] or dict[str, sagemaker.inputs.TrainingInput]) - If using multiple
                   channels for training data, you can specify a dict mapping channel names to
-                  strings or :func:`~sagemaker.session.s3_input` objects.
+                  strings or :func:`~sagemaker.inputs.TrainingInput` objects.
 
-            * (sagemaker.session.s3_input) - Channel configuration for S3 data sources that can
+            * (sagemaker.inputs.TrainingInput) - Channel configuration for S3 data sources that can
                   provide additional information about the training dataset. See
-                  :func:`sagemaker.session.s3_input` for full details.
+                  :func:`sagemaker.inputs.TrainingInput` for full details.
 
             * (sagemaker.amazon.amazon_estimator.RecordSet) - A collection of
                   Amazon :class:~`Record` objects serialized and stored in S3.
@@ -315,15 +319,17 @@ def tuning_config(tuner, inputs, job_name=None, include_cls_metadata=False, mini
     }
 
     if tuner.estimator:
-        tune_config[
-            "TrainingJobDefinition"
-        ], s3_operations = _extract_training_config_from_estimator(
+        (
+            tune_config["TrainingJobDefinition"],
+            s3_operations,
+        ) = _extract_training_config_from_estimator(
             tuner, inputs, include_cls_metadata, mini_batch_size
         )
     else:
-        tune_config[
-            "TrainingJobDefinitions"
-        ], s3_operations = _extract_training_config_list_from_estimator_dict(
+        (
+            tune_config["TrainingJobDefinitions"],
+            s3_operations,
+        ) = _extract_training_config_list_from_estimator_dict(
             tuner, inputs, include_cls_metadata, mini_batch_size
         )
 
@@ -516,7 +522,7 @@ def prepare_framework_container_def(model, instance_type, s3_operations):
     Returns:
         dict: The container information of this framework model.
     """
-    deploy_image = model.image
+    deploy_image = model.image_uri
     if not deploy_image:
         region_name = model.sagemaker_session.boto_session.region_name
         deploy_image = model.serving_image_uri(region_name, instance_type)
@@ -554,29 +560,28 @@ def prepare_framework_container_def(model, instance_type, s3_operations):
     return sagemaker.container_def(deploy_image, model.model_data, deploy_env)
 
 
-def model_config(instance_type, model, role=None, image=None):
+def model_config(model, instance_type=None, role=None, image_uri=None):
     """Export Airflow model config from a SageMaker model
 
     Args:
+        model (sagemaker.model.Model): The Model object from which to export the Airflow config
         instance_type (str): The EC2 instance type to deploy this Model to. For
             example, 'ml.p2.xlarge'
-        model (sagemaker.model.FrameworkModel): The SageMaker model to export
-            Airflow config from
         role (str): The ``ExecutionRoleArn`` IAM Role ARN for the model
-        image (str): An container image to use for deploying the model
+        image_uri (str): An Docker image URI to use for deploying the model
 
     Returns:
         dict: Model config that can be directly used by SageMakerModelOperator
-        in Airflow. It can also be part of the config used by
-        SageMakerEndpointOperator and SageMakerTransformOperator in Airflow.
+            in Airflow. It can also be part of the config used by
+            SageMakerEndpointOperator and SageMakerTransformOperator in Airflow.
     """
     s3_operations = {}
-    model.image = image or model.image
+    model.image_uri = image_uri or model.image_uri
 
     if isinstance(model, sagemaker.model.FrameworkModel):
         container_def = prepare_framework_container_def(model, instance_type, s3_operations)
     else:
-        container_def = model.prepare_container_def(instance_type)
+        container_def = model.prepare_container_def()
         base_name = utils.base_name_from_image(container_def["Image"])
         model.name = model.name or utils.name_from_base(base_name)
 
@@ -598,12 +603,12 @@ def model_config(instance_type, model, role=None, image=None):
 
 
 def model_config_from_estimator(
-    instance_type,
     estimator,
     task_id,
     task_type,
+    instance_type=None,
     role=None,
-    image=None,
+    image_uri=None,
     name=None,
     model_server_workers=None,
     vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT,
@@ -611,8 +616,6 @@ def model_config_from_estimator(
     """Export Airflow model config from a SageMaker estimator
 
     Args:
-        instance_type (str): The EC2 instance type to deploy this Model to. For
-            example, 'ml.p2.xlarge'
         estimator (sagemaker.model.EstimatorBase): The SageMaker estimator to
             export Airflow config from. It has to be an estimator associated
             with a training job.
@@ -624,8 +627,10 @@ def model_config_from_estimator(
         task_type (str): Whether the task is from SageMakerTrainingOperator or
             SageMakerTuningOperator. Values can be 'training', 'tuning' or None
             (which means training job is not from any task).
+        instance_type (str): The EC2 instance type to deploy this Model to. For
+            example, 'ml.p2.xlarge'
         role (str): The ``ExecutionRoleArn`` IAM Role ARN for the model
-        image (str): An container image to use for deploying the model
+        image_uri (str): A Docker image URI to use for deploying the model
         name (str): Name of the model
         model_server_workers (int): The number of worker processes used by the
             inference server. If None, server will use one worker per vCPU. Only
@@ -642,10 +647,14 @@ def model_config_from_estimator(
     update_estimator_from_task(estimator, task_id, task_type)
     if isinstance(estimator, sagemaker.estimator.Estimator):
         model = estimator.create_model(
-            role=role, image=image, vpc_config_override=vpc_config_override
+            role=role, image_uri=image_uri, vpc_config_override=vpc_config_override
         )
     elif isinstance(estimator, sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase):
         model = estimator.create_model(vpc_config_override=vpc_config_override)
+    elif isinstance(estimator, TensorFlow):
+        model = estimator.create_model(
+            role=role, vpc_config_override=vpc_config_override, entry_point=estimator.entry_point
+        )
     elif isinstance(estimator, sagemaker.estimator.Framework):
         model = estimator.create_model(
             model_server_workers=model_server_workers,
@@ -660,7 +669,7 @@ def model_config_from_estimator(
         )
     model.name = name
 
-    return model_config(instance_type, model, role, image)
+    return model_config(model, instance_type, role, image_uri)
 
 
 def transform_config(
@@ -800,7 +809,7 @@ def transform_config_from_estimator(
     role=None,
     volume_kms_key=None,
     model_server_workers=None,
-    image=None,
+    image_uri=None,
     vpc_config_override=None,
     input_filter=None,
     output_filter=None,
@@ -870,7 +879,7 @@ def transform_config_from_estimator(
         model_server_workers (int): Optional. The number of worker processes
             used by the inference server. If None, server will use one worker
             per vCPU.
-        image (str): An container image to use for deploying the model
+        image_uri (str): A Docker image URI to use for deploying the model
         vpc_config_override (dict[str, list[str]]): Override for VpcConfig set on
             the model. Default: use subnets and security groups from this Estimator.
 
@@ -907,12 +916,12 @@ def transform_config_from_estimator(
         SageMakerTransformOperator in Airflow.
     """
     model_base_config = model_config_from_estimator(
-        instance_type=instance_type,
         estimator=estimator,
         task_id=task_id,
         task_type=task_type,
+        instance_type=instance_type,
         role=role,
-        image=image,
+        image_uri=image_uri,
         name=model_name,
         model_server_workers=model_server_workers,
         vpc_config_override=vpc_config_override,
@@ -990,7 +999,7 @@ def deploy_config(model, initial_instance_count, instance_type, endpoint_name=No
         dict: Deploy config that can be directly used by
         SageMakerEndpointOperator in Airflow.
     """
-    model_base_config = model_config(instance_type, model)
+    model_base_config = model_config(model, instance_type)
 
     production_variant = sagemaker.production_variant(
         model.name, instance_type, initial_instance_count
@@ -1065,3 +1074,108 @@ def deploy_config_from_estimator(
     model.name = model_name
     config = deploy_config(model, initial_instance_count, instance_type, endpoint_name, tags)
     return config
+
+
+def processing_config(
+    processor,
+    inputs=None,
+    outputs=None,
+    job_name=None,
+    experiment_config=None,
+    container_arguments=None,
+    container_entrypoint=None,
+    kms_key_id=None,
+):
+    """Export Airflow processing config from a SageMaker processor
+
+    Args:
+        processor (sagemaker.processor.Processor): The SageMaker
+            processor to export Airflow config from.
+        inputs (list[:class:`~sagemaker.processing.ProcessingInput`]): Input files for
+                the processing job. These must be provided as
+                :class:`~sagemaker.processing.ProcessingInput` objects (default: None).
+        outputs (list[:class:`~sagemaker.processing.ProcessingOutput`]): Outputs for
+            the processing job. These can be specified as either path strings or
+            :class:`~sagemaker.processing.ProcessingOutput` objects (default: None).
+        job_name (str): Processing job name. If not specified, the processor generates
+            a default job name, based on the base job name and current timestamp.
+        experiment_config (dict[str, str]): Experiment management configuration.
+            Dictionary contains three optional keys:
+            'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+        container_arguments ([str]): The arguments for a container used to run a processing job.
+        container_entrypoint ([str]): The entrypoint for a container used to run a processing job.
+        kms_key_id (str): The AWS Key Management Service (AWS KMS) key that Amazon SageMaker
+            uses to encrypt the processing job output. KmsKeyId can be an ID of a KMS key,
+            ARN of a KMS key, alias of a KMS key, or alias of a KMS key.
+            The KmsKeyId is applied to all outputs.
+
+    Returns:
+        dict: Processing config that can be directly used by
+            SageMakerProcessingOperator in Airflow.
+    """
+    if job_name is not None:
+        processor._current_job_name = job_name
+    else:
+        base_name = processor.base_job_name
+        processor._current_job_name = (
+            utils.name_from_base(base_name)
+            if base_name is not None
+            else utils.base_name_from_image(processor.image_uri)
+        )
+
+    config = {
+        "ProcessingJobName": processor._current_job_name,
+        "ProcessingInputs": input_output_list_converter(inputs),
+    }
+
+    processing_output_config = sagemaker.processing.ProcessingJob.prepare_output_config(
+        kms_key_id, input_output_list_converter(outputs)
+    )
+
+    config["ProcessingOutputConfig"] = processing_output_config
+
+    if experiment_config is not None:
+        config["ExperimentConfig"] = experiment_config
+
+    app_specification = sagemaker.processing.ProcessingJob.prepare_app_specification(
+        container_arguments, container_entrypoint, processor.image_uri
+    )
+    config["AppSpecification"] = app_specification
+
+    config["RoleArn"] = processor.role
+
+    if processor.env is not None:
+        config["Environment"] = processor.env
+
+    if processor.network_config is not None:
+        config["NetworkConfig"] = processor.network_config
+
+    processing_resources = sagemaker.processing.ProcessingJob.prepare_processing_resources(
+        instance_count=processor.instance_count,
+        instance_type=processor.instance_type,
+        volume_kms_key_id=processor.volume_kms_key,
+        volume_size_in_gb=processor.volume_size_in_gb,
+    )
+    config["ProcessingResources"] = processing_resources
+
+    stopping_condition = sagemaker.processing.ProcessingJob.prepare_stopping_condition(
+        processor.max_runtime_in_seconds
+    )
+    config["StoppingCondition"] = stopping_condition
+
+    if processor.tags is not None:
+        config["Tags"] = processor.tags
+
+    return config
+
+
+def input_output_list_converter(object_list):
+    """Converts a list of ProcessingInput or ProcessingOutput objects to a list of dicts
+
+    Args:
+        object_list (list[ProcessingInput or ProcessingOutput]
+
+    Returns:
+        List of dicts
+    """
+    return [obj._to_request_dict() for obj in object_list]

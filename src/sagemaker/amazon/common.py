@@ -14,59 +14,65 @@
 from __future__ import absolute_import
 
 import io
+import logging
 import struct
 import sys
 
 import numpy as np
-from scipy.sparse import issparse
 
 from sagemaker.amazon.record_pb2 import Record
+from sagemaker.deserializers import BaseDeserializer
+from sagemaker.serializers import BaseSerializer
+from sagemaker.utils import DeferredError
 
 
-class numpy_to_record_serializer(object):
-    """Placeholder docstring"""
+class RecordSerializer(BaseSerializer):
+    """Serialize a NumPy array for an inference request."""
 
-    def __init__(self, content_type="application/x-recordio-protobuf"):
-        """
+    CONTENT_TYPE = "application/x-recordio-protobuf"
+
+    def serialize(self, data):
+        """Serialize a NumPy array into a buffer containing RecordIO records.
+
         Args:
-            content_type:
-        """
-        self.content_type = content_type
+            data (numpy.ndarray): The data to serialize.
 
-    def __call__(self, array):
+        Returns:
+            io.BytesIO: A buffer containing the data serialized as records.
         """
+        if len(data.shape) == 1:
+            data = data.reshape(1, data.shape[0])
+
+        if len(data.shape) != 2:
+            raise ValueError(
+                "Expected a 1D or 2D array, but got a %dD array instead." % len(data.shape)
+            )
+
+        buffer = io.BytesIO()
+        write_numpy_to_dense_tensor(buffer, data)
+        buffer.seek(0)
+
+        return buffer
+
+
+class RecordDeserializer(BaseDeserializer):
+    """Deserialize RecordIO Protobuf data from an inference endpoint."""
+
+    ACCEPT = "application/x-recordio-protobuf"
+
+    def deserialize(self, data, content_type):
+        """Deserialize RecordIO Protobuf data from an inference endpoint.
+
         Args:
-            array:
-        """
-        if len(array.shape) == 1:
-            array = array.reshape(1, array.shape[0])
-        assert len(array.shape) == 2, "Expecting a 1 or 2 dimensional array"
-        buf = io.BytesIO()
-        write_numpy_to_dense_tensor(buf, array)
-        buf.seek(0)
-        return buf
-
-
-class record_deserializer(object):
-    """Placeholder docstring"""
-
-    def __init__(self, accept="application/x-recordio-protobuf"):
-        """
-        Args:
-            accept:
-        """
-        self.accept = accept
-
-    def __call__(self, stream, content_type):
-        """
-        Args:
-            stream:
-            content_type:
+            data (object): The protobuf message to deserialize.
+            content_type (str): The MIME type of the data.
+        Returns:
+            list: A list of records.
         """
         try:
-            return read_records(stream)
+            return read_records(data)
         finally:
-            stream.close()
+            data.close()
 
 
 def _write_feature_tensor(resolved_type, record, vector):
@@ -171,8 +177,16 @@ def write_spmatrix_to_sparse_tensor(file, array, labels=None):
         array:
         labels:
     """
+    try:
+        import scipy
+    except ImportError as e:
+        logging.warning(
+            "scipy failed to import. Sparse matrix functions will be impaired or broken."
+        )
+        # Any subsequent attempt to use scipy will raise the ImportError
+        scipy = DeferredError(e)
 
-    if not issparse(array):
+    if not scipy.sparse.issparse(array):
         raise TypeError("Array must be sparse")
 
     # Validate shape of array and labels, resolve array and label types
@@ -261,11 +275,11 @@ def read_recordio(f):
     """
     while True:
         try:
-            read_kmagic, = struct.unpack("I", f.read(4))
+            (read_kmagic,) = struct.unpack("I", f.read(4))
         except struct.error:
             return
         assert read_kmagic == _kmagic
-        len_record, = struct.unpack("I", f.read(4))
+        (len_record,) = struct.unpack("I", f.read(4))
         pad = (((len_record + 3) >> 2) << 2) - len_record
         yield f.read(len_record)
         if pad:

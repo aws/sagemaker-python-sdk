@@ -29,8 +29,6 @@ import six
 import sagemaker.logs
 from sagemaker import vpc_utils
 
-# import s3_input for backward compatibility
-from sagemaker.inputs import s3_input  # noqa # pylint: disable=unused-import
 from sagemaker.user_agent import prepend_user_agent
 from sagemaker.utils import (
     name_from_image,
@@ -123,7 +121,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Creates or uses a boto_session, sagemaker_client and sagemaker_runtime_client.
         Sets the region_name.
         """
-        self.boto_session = boto_session or boto3.Session()
+        self.boto_session = boto_session or boto3.DEFAULT_SESSION or boto3.Session()
 
         self._region_name = self.boto_session.region_name
         if self._region_name is None:
@@ -181,12 +179,6 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 ``s3://{bucket name}/{key_prefix}``.
         """
         # Generate a tuple for each file that we want to upload of the form (local_path, s3_key).
-        LOGGER.warning(
-            "'upload_data' method will be deprecated in favor of 'S3Uploader' class "
-            "(https://sagemaker.readthedocs.io/en/stable/s3.html#sagemaker.s3.S3Uploader) "
-            "in SageMaker Python SDK v2."
-        )
-
         files = []
         key_suffix = None
         if os.path.isdir(path):
@@ -236,12 +228,6 @@ class Session(object):  # pylint: disable=too-many-public-methods
             str: The S3 URI of the uploaded file.
                 The URI format is: ``s3://{bucket name}/{key}``.
         """
-        LOGGER.warning(
-            "'upload_string_as_file_body' method will be deprecated in favor of 'S3Uploader' class "
-            "(https://sagemaker.readthedocs.io/en/stable/s3.html#sagemaker.s3.S3Uploader) "
-            "in SageMaker Python SDK v2."
-        )
-
         if self.s3_resource is None:
             s3 = self.boto_session.resource("s3", region_name=self.boto_region_name)
         else:
@@ -441,10 +427,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
         tags,
         metric_definitions,
         enable_network_isolation=False,
-        image=None,
+        image_uri=None,
         algorithm_arn=None,
         encrypt_inter_container_traffic=False,
-        train_use_spot_instances=False,
+        use_spot_instances=False,
         checkpoint_s3_uri=None,
         checkpoint_local_path=None,
         experiment_config=None,
@@ -498,11 +484,11 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 metric from the logs.
             enable_network_isolation (bool): Whether to request for the training job to run with
                 network isolation or not.
-            image (str): Docker image containing training code.
+            image_uri (str): Docker image containing training code.
             algorithm_arn (str): Algorithm Arn from Marketplace.
             encrypt_inter_container_traffic (bool): Specifies whether traffic between training
                 containers is encrypted for the training job (default: ``False``).
-            train_use_spot_instances (bool): whether to use spot instances for training.
+            use_spot_instances (bool): whether to use spot instances for training.
             checkpoint_s3_uri (str): The S3 URI in which to persist checkpoints
                 that the algorithm persists (if any) during training. (default:
                 ``None``).
@@ -535,17 +521,17 @@ class Session(object):  # pylint: disable=too-many-public-methods
             "RoleArn": role,
         }
 
-        if image and algorithm_arn:
+        if image_uri and algorithm_arn:
             raise ValueError(
-                "image and algorithm_arn are mutually exclusive."
-                "Both were provided: image: %s algorithm_arn: %s" % (image, algorithm_arn)
+                "image_uri and algorithm_arn are mutually exclusive."
+                "Both were provided: image_uri: %s algorithm_arn: %s" % (image_uri, algorithm_arn)
             )
 
-        if image is None and algorithm_arn is None:
-            raise ValueError("either image or algorithm_arn is required. None was provided.")
+        if image_uri is None and algorithm_arn is None:
+            raise ValueError("either image_uri or algorithm_arn is required. None was provided.")
 
-        if image is not None:
-            train_request["AlgorithmSpecification"]["TrainingImage"] = image
+        if image_uri is not None:
+            train_request["AlgorithmSpecification"]["TrainingImage"] = image_uri
 
         if algorithm_arn is not None:
             train_request["AlgorithmSpecification"]["AlgorithmName"] = algorithm_arn
@@ -579,8 +565,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if encrypt_inter_container_traffic:
             train_request["EnableInterContainerTrafficEncryption"] = encrypt_inter_container_traffic
 
-        if train_use_spot_instances:
-            train_request["EnableManagedSpotTraining"] = train_use_spot_instances
+        if use_spot_instances:
+            train_request["EnableManagedSpotTraining"] = use_spot_instances
 
         if checkpoint_s3_uri:
             checkpoint_config = {"S3Uri": checkpoint_s3_uri}
@@ -1547,12 +1533,12 @@ class Session(object):  # pylint: disable=too-many-public-methods
         tags,
         warm_start_config,
         enable_network_isolation=False,
-        image=None,
+        image_uri=None,
         algorithm_arn=None,
         early_stopping_type="Off",
         encrypt_inter_container_traffic=False,
         vpc_config=None,
-        train_use_spot_instances=False,
+        use_spot_instances=False,
         checkpoint_s3_uri=None,
         checkpoint_local_path=None,
     ):
@@ -1573,7 +1559,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 hyperparameters remain unchanged across all of the training jobs for the
                 hyperparameter tuning job. The hyperparameters are made accessible as a dictionary
                 for the training code on SageMaker.
-            image (str): Docker image containing training code.
+            image_uri (str): Docker image URI containing training code.
             algorithm_arn (str): Resource ARN for training algorithm created on or subscribed from
                 AWS Marketplace (default: None).
             input_mode (str): The input mode that the algorithm supports. Valid modes:
@@ -1621,7 +1607,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 The key in vpc_config is 'Subnets'.
                 * security_group_ids (list[str]): List of security group ids.
                 The key in vpc_config is 'SecurityGroupIds'.
-            train_use_spot_instances (bool): whether to use spot instances for training.
+            use_spot_instances (bool): whether to use spot instances for training.
             checkpoint_s3_uri (str): The S3 URI in which to persist checkpoints
                 that the algorithm persists (if any) during training. (default:
                 ``None``).
@@ -1651,7 +1637,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 static_hyperparameters=static_hyperparameters,
                 role=role,
                 input_mode=input_mode,
-                image=image,
+                image_uri=image_uri,
                 algorithm_arn=algorithm_arn,
                 metric_definitions=metric_definitions,
                 input_config=input_config,
@@ -1661,7 +1647,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 stop_condition=stop_condition,
                 enable_network_isolation=enable_network_isolation,
                 encrypt_inter_container_traffic=encrypt_inter_container_traffic,
-                train_use_spot_instances=train_use_spot_instances,
+                use_spot_instances=use_spot_instances,
                 checkpoint_s3_uri=checkpoint_s3_uri,
                 checkpoint_local_path=checkpoint_local_path,
             ),
@@ -1733,6 +1719,20 @@ class Session(object):  # pylint: disable=too-many-public-methods
         LOGGER.info("Creating hyperparameter tuning job with name: %s", job_name)
         LOGGER.debug("tune request: %s", json.dumps(tune_request, indent=4))
         self.sagemaker_client.create_hyper_parameter_tuning_job(**tune_request)
+
+    def describe_tuning_job(self, job_name):
+        """Calls the DescribeHyperParameterTuningJob API for the given job name
+        and returns the response.
+
+            Args:
+                job_name (str): The name of the hyperparameter tuning job to describe.
+
+            Returns:
+                dict: A dictionary response with the hyperparameter tuning job description.
+        """
+        return self.sagemaker_client.describe_hyper_parameter_tuning_job(
+            HyperParameterTuningJobName=job_name
+        )
 
     @classmethod
     def _map_tuning_config(
@@ -1827,7 +1827,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         stop_condition,
         input_config=None,
         metric_definitions=None,
-        image=None,
+        image_uri=None,
         algorithm_arn=None,
         vpc_config=None,
         enable_network_isolation=False,
@@ -1836,7 +1836,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         objective_type=None,
         objective_metric_name=None,
         parameter_ranges=None,
-        train_use_spot_instances=False,
+        use_spot_instances=False,
         checkpoint_s3_uri=None,
         checkpoint_local_path=None,
     ):
@@ -1877,7 +1877,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 the name of the metric, and 'Regex' for the regular expression used to extract the
                 metric from the logs. This should be defined only for jobs that don't use an
                 Amazon algorithm.
-            image (str): Docker image containing training code.
+            image_uri (str): Docker image URI containing training code.
             algorithm_arn (str): Resource ARN for training algorithm created or subscribed on
                 AWS Marketplace
             vpc_config (dict): Contains values for VpcConfig (default: None):
@@ -1920,7 +1920,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if algorithm_arn:
             algorithm_spec["AlgorithmName"] = algorithm_arn
         else:
-            algorithm_spec["TrainingImage"] = image
+            algorithm_spec["TrainingImage"] = image_uri
 
         training_job_definition["AlgorithmSpecification"] = algorithm_spec
 
@@ -1936,7 +1936,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if encrypt_inter_container_traffic:
             training_job_definition["EnableInterContainerTrafficEncryption"] = True
 
-        if train_use_spot_instances:
+        if use_spot_instances:
             training_job_definition["EnableManagedSpotTraining"] = True
 
         if checkpoint_s3_uri:
@@ -2154,7 +2154,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         training_job_name,
         name=None,
         role=None,
-        primary_container_image=None,
+        image_uri=None,
         model_data_url=None,
         env=None,
         vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT,
@@ -2169,8 +2169,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             role (str): The ``ExecutionRoleArn`` IAM Role ARN for the ``Model``, specified either
                 by an IAM role name or role ARN. If None, the ``RoleArn`` from the SageMaker
                 Training Job will be used.
-            primary_container_image (str): The Docker image reference (default: None). If None, it
-                defaults to the Training Image in ``training_job_name``.
+            image_uri (str): The Docker image URI (default: None). If None, it
+                defaults to the training image URI from ``training_job_name``.
             model_data_url (str): S3 location of the model data (default: None). If None, defaults
                 to the ``ModelS3Artifacts`` of ``training_job_name``.
             env (dict[string,string]): Model environment variables (default: {}).
@@ -2192,7 +2192,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         role = role or training_job["RoleArn"]
         env = env or {}
         primary_container = container_def(
-            primary_container_image or training_job["AlgorithmSpecification"]["TrainingImage"],
+            image_uri or training_job["AlgorithmSpecification"]["TrainingImage"],
             model_data_url=model_data_url or training_job["ModelArtifacts"]["S3ModelArtifacts"],
             env=env,
         )
@@ -2331,6 +2331,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         new_tags=None,
         new_kms_key=None,
         new_data_capture_config_dict=None,
+        new_production_variants=None,
     ):
         """Create an Amazon SageMaker endpoint configuration from an existing one. Updating any
         values that were passed in.
@@ -2344,7 +2345,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             new_config_name (str): Name of the Amazon SageMaker endpoint configuration to create.
             existing_config_name (str): Name of the existing Amazon SageMaker endpoint
                 configuration.
-            new_tags(List[dict[str, str]]): Optional. The list of tags to add to the endpoint
+            new_tags (list[dict[str, str]]): Optional. The list of tags to add to the endpoint
                 config. If not specified, the tags of the existing endpoint configuration are used.
                 If any of the existing tags are reserved AWS ones (i.e. begin with "aws"),
                 they are not carried over to the new endpoint configuration.
@@ -2355,6 +2356,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 capture for use with Amazon SageMaker Model Monitoring (default: None).
                 If not specified, the data capture configuration of the existing
                 endpoint configuration is used.
+            new_production_variants (list[dict]): The configuration for which model(s) to host and
+                the resources to deploy for hosting the model(s). If not specified,
+                the ``ProductionVariants`` of the existing endpoint configuration is used.
 
         Returns:
             str: Name of the endpoint point configuration created.
@@ -2368,8 +2372,11 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         request = {
             "EndpointConfigName": new_config_name,
-            "ProductionVariants": existing_endpoint_config_desc["ProductionVariants"],
         }
+
+        request["ProductionVariants"] = (
+            new_production_variants or existing_endpoint_config_desc["ProductionVariants"]
+        )
 
         request_tags = new_tags or self.list_tags(
             existing_endpoint_config_desc["EndpointConfigArn"]
@@ -2691,7 +2698,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         job_name,
         initial_instance_count,
         instance_type,
-        deployment_image=None,
+        image_uri=None,
         name=None,
         role=None,
         wait=True,
@@ -2716,7 +2723,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 autoscaling.
             instance_type (str): Type of EC2 instance to deploy to an endpoint for prediction,
                 for example, 'ml.c4.xlarge'.
-            deployment_image (str): The Docker image which defines the inference code to be used
+            image_uri (str): The Docker image which defines the inference code to be used
                 as the entry point for accepting prediction requests. If not specified, uses the
                 image used for the training job.
             name (str): Name of the ``Endpoint`` to create. If not specified, uses the training job
@@ -2746,14 +2753,14 @@ class Session(object):  # pylint: disable=too-many-public-methods
         """
         job_desc = self.sagemaker_client.describe_training_job(TrainingJobName=job_name)
         output_url = job_desc["ModelArtifacts"]["S3ModelArtifacts"]
-        deployment_image = deployment_image or job_desc["AlgorithmSpecification"]["TrainingImage"]
+        image_uri = image_uri or job_desc["AlgorithmSpecification"]["TrainingImage"]
         role = role or job_desc["RoleArn"]
         name = name or job_name
         vpc_config_override = _vpc_config_from_training_job(job_desc, vpc_config_override)
 
         return self.endpoint_from_model_data(
             model_s3_location=output_url,
-            deployment_image=deployment_image,
+            image_uri=image_uri,
             initial_instance_count=initial_instance_count,
             instance_type=instance_type,
             name=name,
@@ -2768,7 +2775,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
     def endpoint_from_model_data(
         self,
         model_s3_location,
-        deployment_image,
+        image_uri,
         initial_instance_count,
         instance_type,
         name=None,
@@ -2783,8 +2790,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         Args:
             model_s3_location (str): S3 URI of the model artifacts to use for the endpoint.
-            deployment_image (str): The Docker image which defines the runtime code to be used as
-                the entry point for accepting prediction requests.
+            image_uri (str): The Docker image URI which defines the runtime code to be
+                used as the entry point for accepting prediction requests.
             initial_instance_count (int): Minimum number of EC2 instances to launch. The actual
                 number of active instances for an endpoint at any given time varies due to
                 autoscaling.
@@ -2815,7 +2822,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         """
         model_environment_vars = model_environment_vars or {}
-        name = name or name_from_image(deployment_image)
+        name = name or name_from_image(image_uri)
         model_vpc_config = vpc_utils.sanitize(model_vpc_config)
 
         if _deployment_entity_exists(
@@ -2829,7 +2836,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             lambda: self.sagemaker_client.describe_model(ModelName=name)
         ):
             primary_container = container_def(
-                image=deployment_image, model_data_url=model_s3_location, env=model_environment_vars
+                image_uri=image_uri, model_data_url=model_s3_location, env=model_environment_vars,
             )
             self.create_model(
                 name=name, role=role, container_defs=primary_container, vpc_config=model_vpc_config
@@ -3240,11 +3247,11 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 print()
 
 
-def container_def(image, model_data_url=None, env=None, container_mode=None):
+def container_def(image_uri, model_data_url=None, env=None, container_mode=None):
     """Create a definition for executing a container as part of a SageMaker model.
 
     Args:
-        image (str): Docker image to run for this container.
+        image_uri (str): Docker image URI to run for this container.
         model_data_url (str): S3 URI of data required by this container,
             e.g. SageMaker training job model artifacts (default: None).
         env (dict[str, str]): Environment variables to set inside the container (default: None).
@@ -3258,7 +3265,7 @@ def container_def(image, model_data_url=None, env=None, container_mode=None):
     """
     if env is None:
         env = {}
-    c_def = {"Image": image, "Environment": env}
+    c_def = {"Image": image_uri, "Environment": env}
     if model_data_url:
         c_def["ModelDataUrl"] = model_data_url
     if container_mode:
@@ -3335,7 +3342,6 @@ def get_execution_role(sagemaker_session=None):
     Returns:
         (str): The role ARN
     """
-
     if not sagemaker_session:
         sagemaker_session = Session()
     arn = sagemaker_session.get_caller_identity_arn()
@@ -3369,21 +3375,21 @@ class ModelContainer(object):
 
     Attributes:
         model_data (str): S3 Model artifact location
-        image (str): Docker image URL in ECR
+        image_uri (str): Docker image URL in ECR
         env (dict[str,str]): Environment variable mapping
     """
 
-    def __init__(self, model_data, image, env=None):
+    def __init__(self, model_data, image_uri, env=None):
         """Create a definition of a model which can be part of an Inference Pipeline
 
         Args:
             model_data (str): The S3 location of a SageMaker model data ``.tar.gz`` file.
-            image (str): A Docker image URI.
-            env (dict[str, str]): Environment variables to run with ``image`` when hosted in
+            image_uri (str): A Docker image URI.
+            env (dict[str, str]): Environment variables to run with ``image_uri`` when hosted in
                 SageMaker (default: None).
         """
         self.model_data = model_data
-        self.image = image
+        self.image_uri = image_uri
         self.env = env
 
 

@@ -12,15 +12,17 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-import gzip
 import os
-import pickle
-import sys
+
+import airflow
 import pytest
-import tests.integ
-
 import numpy as np
+from airflow import DAG
+from airflow.contrib.operators.sagemaker_training_operator import SageMakerTrainingOperator
+from airflow.contrib.operators.sagemaker_transform_operator import SageMakerTransformOperator
+from six.moves.urllib.parse import urlparse
 
+import tests.integ
 from sagemaker import (
     KMeans,
     FactorizationMachines,
@@ -40,21 +42,12 @@ from sagemaker.mxnet import MXNet
 from sagemaker.pytorch.estimator import PyTorch
 from sagemaker.sklearn import SKLearn
 from sagemaker.tensorflow import TensorFlow
-from sagemaker.xgboost.defaults import XGBOOST_LATEST_VERSION
-from sagemaker.workflow import airflow as sm_airflow
 from sagemaker.utils import sagemaker_timestamp
-
-import airflow
-from airflow import DAG
-from airflow.contrib.operators.sagemaker_training_operator import SageMakerTrainingOperator
-from airflow.contrib.operators.sagemaker_transform_operator import SageMakerTransformOperator
-
+from sagemaker.workflow import airflow as sm_airflow
 from sagemaker.xgboost import XGBoost
-from tests.integ import DATA_DIR, PYTHON_VERSION
+from tests.integ import datasets, DATA_DIR
 from tests.integ.record_set import prepare_record_set_from_local_files
 from tests.integ.timeout import timeout
-
-from six.moves.urllib.parse import urlparse
 
 PYTORCH_MNIST_DIR = os.path.join(DATA_DIR, "pytorch_mnist")
 PYTORCH_MNIST_SCRIPT = os.path.join(PYTORCH_MNIST_DIR, "mnist.py")
@@ -80,12 +73,12 @@ def test_byo_airflow_config_uploads_data_source_to_s3_when_inputs_provided(
         )
 
         estimator = Estimator(
-            image_name=get_image_uri(
+            image_uri=get_image_uri(
                 sagemaker_session.boto_session.region_name, "factorization-machines"
             ),
             role=ROLE,
-            train_instance_count=SINGLE_INSTANCE_COUNT,
-            train_instance_type=cpu_instance_type,
+            instance_count=SINGLE_INSTANCE_COUNT,
+            instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
         )
 
@@ -102,17 +95,10 @@ def test_byo_airflow_config_uploads_data_source_to_s3_when_inputs_provided(
 @pytest.mark.canary_quick
 def test_kmeans_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_instance_type):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
-        data_path = os.path.join(DATA_DIR, "one_p_mnist", "mnist.pkl.gz")
-        pickle_args = {} if sys.version_info.major == 2 else {"encoding": "latin1"}
-
-        # Load the data into memory as numpy arrays
-        with gzip.open(data_path, "rb") as f:
-            train_set, _, _ = pickle.load(f, **pickle_args)
-
         kmeans = KMeans(
             role=ROLE,
-            train_instance_count=SINGLE_INSTANCE_COUNT,
-            train_instance_type=cpu_instance_type,
+            instance_count=SINGLE_INSTANCE_COUNT,
+            instance_type=cpu_instance_type,
             k=10,
             sagemaker_session=sagemaker_session,
         )
@@ -127,7 +113,7 @@ def test_kmeans_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_
         kmeans.center_factor = 1
         kmeans.eval_metrics = ["ssd", "msd"]
 
-        records = kmeans.record_set(train_set[0][:100])
+        records = kmeans.record_set(datasets.one_p_mnist()[0][:100])
 
         training_config = _build_airflow_workflow(
             estimator=kmeans, instance_type=cpu_instance_type, inputs=records
@@ -141,17 +127,10 @@ def test_kmeans_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_
 
 def test_fm_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_instance_type):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
-        data_path = os.path.join(DATA_DIR, "one_p_mnist", "mnist.pkl.gz")
-        pickle_args = {} if sys.version_info.major == 2 else {"encoding": "latin1"}
-
-        # Load the data into memory as numpy arrays
-        with gzip.open(data_path, "rb") as f:
-            train_set, _, _ = pickle.load(f, **pickle_args)
-
         fm = FactorizationMachines(
             role=ROLE,
-            train_instance_count=SINGLE_INSTANCE_COUNT,
-            train_instance_type=cpu_instance_type,
+            instance_count=SINGLE_INSTANCE_COUNT,
+            instance_type=cpu_instance_type,
             num_factors=10,
             predictor_type="regressor",
             epochs=2,
@@ -161,7 +140,8 @@ def test_fm_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_inst
             sagemaker_session=sagemaker_session,
         )
 
-        records = fm.record_set(train_set[0][:200], train_set[1][:200].astype("float32"))
+        training_set = datasets.one_p_mnist()
+        records = fm.record_set(training_set[0][:200], training_set[1][:200].astype("float32"))
 
         training_config = _build_airflow_workflow(
             estimator=fm, instance_type=cpu_instance_type, inputs=records
@@ -184,8 +164,8 @@ def test_ipinsights_airflow_config_uploads_data_source_to_s3(sagemaker_session, 
 
         ipinsights = IPInsights(
             role=ROLE,
-            train_instance_count=SINGLE_INSTANCE_COUNT,
-            train_instance_type=cpu_instance_type,
+            instance_count=SINGLE_INSTANCE_COUNT,
+            instance_type=cpu_instance_type,
             num_entity_vectors=10,
             vector_dim=100,
             sagemaker_session=sagemaker_session,
@@ -207,24 +187,18 @@ def test_ipinsights_airflow_config_uploads_data_source_to_s3(sagemaker_session, 
 
 def test_knn_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_instance_type):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
-        data_path = os.path.join(DATA_DIR, "one_p_mnist", "mnist.pkl.gz")
-        pickle_args = {} if sys.version_info.major == 2 else {"encoding": "latin1"}
-
-        # Load the data into memory as numpy arrays
-        with gzip.open(data_path, "rb") as f:
-            train_set, _, _ = pickle.load(f, **pickle_args)
-
         knn = KNN(
             role=ROLE,
-            train_instance_count=SINGLE_INSTANCE_COUNT,
-            train_instance_type=cpu_instance_type,
+            instance_count=SINGLE_INSTANCE_COUNT,
+            instance_type=cpu_instance_type,
             k=10,
             predictor_type="regressor",
             sample_size=500,
             sagemaker_session=sagemaker_session,
         )
 
-        records = knn.record_set(train_set[0][:200], train_set[1][:200].astype("float32"))
+        training_set = datasets.one_p_mnist()
+        records = knn.record_set(training_set[0][:200], training_set[1][:200].astype("float32"))
 
         training_config = _build_airflow_workflow(
             estimator=knn, instance_type=cpu_instance_type, inputs=records
@@ -254,7 +228,7 @@ def test_lda_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_ins
 
         lda = LDA(
             role=ROLE,
-            train_instance_type=cpu_instance_type,
+            instance_type=cpu_instance_type,
             num_topics=10,
             sagemaker_session=sagemaker_session,
         )
@@ -278,16 +252,10 @@ def test_linearlearner_airflow_config_uploads_data_source_to_s3(
     sagemaker_session, cpu_instance_type
 ):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
-        data_path = os.path.join(DATA_DIR, "one_p_mnist", "mnist.pkl.gz")
-        pickle_args = {} if sys.version_info.major == 2 else {"encoding": "latin1"}
-
-        # Load the data into memory as numpy arrays
-        with gzip.open(data_path, "rb") as f:
-            train_set, _, _ = pickle.load(f, **pickle_args)
-
-        train_set[1][:100] = 1
-        train_set[1][100:200] = 0
-        train_set = train_set[0], train_set[1].astype(np.dtype("float32"))
+        training_set = datasets.one_p_mnist()
+        training_set[1][:100] = 1
+        training_set[1][100:200] = 0
+        training_set = training_set[0], training_set[1].astype(np.dtype("float32"))
 
         ll = LinearLearner(
             ROLE,
@@ -332,7 +300,7 @@ def test_linearlearner_airflow_config_uploads_data_source_to_s3(
         ll.early_stopping_tolerance = 0.0001
         ll.early_stopping_patience = 3
 
-        records = ll.record_set(train_set[0][:200], train_set[1][:200])
+        records = ll.record_set(training_set[0][:200], training_set[1][:200])
 
         training_config = _build_airflow_workflow(
             estimator=ll, instance_type=cpu_instance_type, inputs=records
@@ -358,8 +326,8 @@ def test_ntm_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_ins
 
         ntm = NTM(
             role=ROLE,
-            train_instance_count=SINGLE_INSTANCE_COUNT,
-            train_instance_type=cpu_instance_type,
+            instance_count=SINGLE_INSTANCE_COUNT,
+            instance_type=cpu_instance_type,
             num_topics=10,
             sagemaker_session=sagemaker_session,
         )
@@ -381,17 +349,10 @@ def test_ntm_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_ins
 @pytest.mark.canary_quick
 def test_pca_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_instance_type):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
-        data_path = os.path.join(DATA_DIR, "one_p_mnist", "mnist.pkl.gz")
-        pickle_args = {} if sys.version_info.major == 2 else {"encoding": "latin1"}
-
-        # Load the data into memory as numpy arrays
-        with gzip.open(data_path, "rb") as f:
-            train_set, _, _ = pickle.load(f, **pickle_args)
-
         pca = PCA(
             role=ROLE,
-            train_instance_count=SINGLE_INSTANCE_COUNT,
-            train_instance_type=cpu_instance_type,
+            instance_count=SINGLE_INSTANCE_COUNT,
+            instance_type=cpu_instance_type,
             num_components=48,
             sagemaker_session=sagemaker_session,
         )
@@ -400,7 +361,7 @@ def test_pca_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_ins
         pca.subtract_mean = True
         pca.extra_components = 5
 
-        records = pca.record_set(train_set[0][:100])
+        records = pca.record_set(datasets.one_p_mnist()[0][:100])
 
         training_config = _build_airflow_workflow(
             estimator=pca, instance_type=cpu_instance_type, inputs=records
@@ -421,8 +382,8 @@ def test_rcf_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_ins
 
         rcf = RandomCutForest(
             role=ROLE,
-            train_instance_count=SINGLE_INSTANCE_COUNT,
-            train_instance_type=cpu_instance_type,
+            instance_count=SINGLE_INSTANCE_COUNT,
+            instance_type=cpu_instance_type,
             num_trees=50,
             num_samples_per_tree=20,
             eval_metrics=["accuracy", "precision_recall_fscore"],
@@ -443,7 +404,7 @@ def test_rcf_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_ins
 
 @pytest.mark.canary_quick
 def test_chainer_airflow_config_uploads_data_source_to_s3(
-    sagemaker_local_session, cpu_instance_type, chainer_full_version
+    sagemaker_local_session, cpu_instance_type, chainer_latest_version, chainer_latest_py_version
 ):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         script_path = os.path.join(DATA_DIR, "chainer_mnist", "mnist.py")
@@ -452,10 +413,10 @@ def test_chainer_airflow_config_uploads_data_source_to_s3(
         chainer = Chainer(
             entry_point=script_path,
             role=ROLE,
-            train_instance_count=SINGLE_INSTANCE_COUNT,
-            train_instance_type="local",
-            framework_version=chainer_full_version,
-            py_version=PYTHON_VERSION,
+            instance_count=SINGLE_INSTANCE_COUNT,
+            instance_type="local",
+            framework_version=chainer_latest_version,
+            py_version=chainer_latest_py_version,
             sagemaker_session=sagemaker_local_session,
             hyperparameters={"epochs": 1},
             use_mpi=True,
@@ -481,7 +442,7 @@ def test_chainer_airflow_config_uploads_data_source_to_s3(
 
 @pytest.mark.canary_quick
 def test_mxnet_airflow_config_uploads_data_source_to_s3(
-    sagemaker_session, cpu_instance_type, mxnet_full_version
+    sagemaker_session, cpu_instance_type, mxnet_full_version, mxnet_full_py_version
 ):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         script_path = os.path.join(DATA_DIR, "chainer_mnist", "mnist.py")
@@ -491,9 +452,9 @@ def test_mxnet_airflow_config_uploads_data_source_to_s3(
             entry_point=script_path,
             role=ROLE,
             framework_version=mxnet_full_version,
-            py_version=PYTHON_VERSION,
-            train_instance_count=SINGLE_INSTANCE_COUNT,
-            train_instance_type=cpu_instance_type,
+            py_version=mxnet_full_py_version,
+            instance_count=SINGLE_INSTANCE_COUNT,
+            instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
         )
 
@@ -514,7 +475,7 @@ def test_mxnet_airflow_config_uploads_data_source_to_s3(
 
 @pytest.mark.canary_quick
 def test_sklearn_airflow_config_uploads_data_source_to_s3(
-    sagemaker_session, cpu_instance_type, sklearn_full_version
+    sagemaker_session, cpu_instance_type, sklearn_full_version, sklearn_full_py_version
 ):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         script_path = os.path.join(DATA_DIR, "sklearn_mnist", "mnist.py")
@@ -523,9 +484,9 @@ def test_sklearn_airflow_config_uploads_data_source_to_s3(
         sklearn = SKLearn(
             entry_point=script_path,
             role=ROLE,
-            train_instance_type=cpu_instance_type,
+            instance_type=cpu_instance_type,
             framework_version=sklearn_full_version,
-            py_version=PYTHON_VERSION,
+            py_version=sklearn_full_py_version,
             sagemaker_session=sagemaker_session,
             hyperparameters={"epochs": 1},
         )
@@ -550,20 +511,21 @@ def test_sklearn_airflow_config_uploads_data_source_to_s3(
 
 
 @pytest.mark.canary_quick
-def test_tf_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_instance_type):
+def test_tf_airflow_config_uploads_data_source_to_s3(
+    sagemaker_session, cpu_instance_type, tf_training_latest_version, tf_training_latest_py_version
+):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         tf = TensorFlow(
-            image_name=get_image_uri(
+            image_uri=get_image_uri(
                 sagemaker_session.boto_session.region_name, "factorization-machines"
             ),
             entry_point=SCRIPT,
             role=ROLE,
-            train_instance_count=SINGLE_INSTANCE_COUNT,
-            train_instance_type=cpu_instance_type,
+            instance_count=SINGLE_INSTANCE_COUNT,
+            instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
-            script_mode=True,
-            framework_version=TensorFlow.LATEST_VERSION,
-            py_version=PYTHON_VERSION,
+            framework_version=tf_training_latest_version,
+            py_version=tf_training_latest_py_version,
             metric_definitions=[
                 {"Name": "train:global_steps", "Regex": r"global_step\/sec:\s(.*)"}
             ],
@@ -583,17 +545,19 @@ def test_tf_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_inst
 
 
 @pytest.mark.canary_quick
-def test_xgboost_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_instance_type):
+def test_xgboost_airflow_config_uploads_data_source_to_s3(
+    sagemaker_session, cpu_instance_type, xgboost_full_version, xgboost_full_py_version
+):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         xgboost = XGBoost(
             entry_point=os.path.join(DATA_DIR, "dummy_script.py"),
-            framework_version=XGBOOST_LATEST_VERSION,
+            framework_version=xgboost_full_version,
+            py_version=xgboost_full_py_version,
             role=ROLE,
             sagemaker_session=sagemaker_session,
-            train_instance_type=cpu_instance_type,
-            train_instance_count=SINGLE_INSTANCE_COUNT,
+            instance_type=cpu_instance_type,
+            instance_count=SINGLE_INSTANCE_COUNT,
             base_job_name="XGBoost job",
-            py_version=PYTHON_VERSION,
         )
 
         training_config = _build_airflow_workflow(
@@ -608,39 +572,16 @@ def test_xgboost_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu
 
 @pytest.mark.canary_quick
 def test_pytorch_airflow_config_uploads_data_source_to_s3_when_inputs_not_provided(
-    sagemaker_session, cpu_instance_type
+    sagemaker_session, cpu_instance_type, pytorch_full_version, pytorch_full_py_version
 ):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         estimator = PyTorch(
             entry_point=PYTORCH_MNIST_SCRIPT,
             role=ROLE,
-            framework_version="1.1.0",
-            train_instance_count=2,
-            train_instance_type=cpu_instance_type,
-            hyperparameters={"epochs": 6, "backend": "gloo"},
-            sagemaker_session=sagemaker_session,
-        )
-
-        training_config = _build_airflow_workflow(
-            estimator=estimator, instance_type=cpu_instance_type
-        )
-
-        _assert_that_s3_url_contains_data(
-            sagemaker_session,
-            training_config["HyperParameters"]["sagemaker_submit_directory"].strip('"'),
-        )
-
-
-def test_pytorch_12_airflow_config_uploads_data_source_to_s3_when_inputs_not_provided(
-    sagemaker_session, cpu_instance_type
-):
-    with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
-        estimator = PyTorch(
-            entry_point=PYTORCH_MNIST_SCRIPT,
-            role=ROLE,
-            framework_version="1.2.0",
-            train_instance_count=2,
-            train_instance_type=cpu_instance_type,
+            framework_version=pytorch_full_version,
+            py_version=pytorch_full_py_version,
+            instance_count=2,
+            instance_type=cpu_instance_type,
             hyperparameters={"epochs": 6, "backend": "gloo"},
             sagemaker_session=sagemaker_session,
         )
@@ -671,7 +612,7 @@ def _build_airflow_workflow(estimator, instance_type, inputs=None, mini_batch_si
     model = estimator.create_model()
     assert model is not None
 
-    model_config = sm_airflow.model_config(instance_type, model)
+    model_config = sm_airflow.model_config(model, instance_type)
     assert model_config is not None
 
     transform_config = sm_airflow.transform_config_from_estimator(
@@ -679,7 +620,7 @@ def _build_airflow_workflow(estimator, instance_type, inputs=None, mini_batch_si
         task_id="transform_config",
         task_type="training",
         instance_count=SINGLE_INSTANCE_COUNT,
-        instance_type=estimator.train_instance_type,
+        instance_type=estimator.instance_type,
         data=inputs,
         content_type="text/csv",
         input_filter="$",

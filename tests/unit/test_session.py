@@ -23,7 +23,7 @@ from botocore.exceptions import ClientError
 from mock import ANY, MagicMock, Mock, patch, call, mock_open
 
 import sagemaker
-from sagemaker import s3_input, Session, get_execution_role
+from sagemaker import TrainingInput, Session, get_execution_role
 from sagemaker.session import (
     _tuning_job_status,
     _transform_job_status,
@@ -50,6 +50,18 @@ def boto_session():
     )
     boto_mock.client.return_value = client_mock
     return boto_mock
+
+
+@patch("boto3.DEFAULT_SESSION")
+def test_default_session(boto3_default_session):
+    sess = Session()
+    assert sess.boto_session is boto3_default_session
+
+
+@patch("boto3.Session")
+def test_new_session_created(boto3_session):
+    sess = Session()
+    assert sess.boto_session is boto3_session.return_value
 
 
 def test_process(boto_session):
@@ -496,9 +508,9 @@ def test_user_agent_injected_with_nbi_ioerror(boto_session):
     )
 
 
-def test_s3_input_all_defaults():
+def test_training_input_all_defaults():
     prefix = "pre"
-    actual = s3_input(s3_data=prefix)
+    actual = TrainingInput(s3_data=prefix)
     expected = {
         "DataSource": {
             "S3DataSource": {
@@ -511,7 +523,7 @@ def test_s3_input_all_defaults():
     assert actual.config == expected
 
 
-def test_s3_input_all_arguments():
+def test_training_input_all_arguments():
     prefix = "pre"
     distribution = "FullyReplicated"
     compression = "Gzip"
@@ -519,7 +531,7 @@ def test_s3_input_all_arguments():
     record_wrapping = "RecordIO"
     s3_data_type = "Manifestfile"
     input_mode = "Pipe"
-    result = s3_input(
+    result = TrainingInput(
         s3_data=prefix,
         distribution=distribution,
         compression=compression,
@@ -673,7 +685,7 @@ def test_train_pack_to_request(sagemaker_session):
     stop_cond = {"MaxRuntimeInSeconds": MAX_TIME}
 
     sagemaker_session.train(
-        image=IMAGE,
+        image_uri=IMAGE,
         input_mode="File",
         input_config=in_config,
         role=EXPANDED_ROLE,
@@ -830,7 +842,7 @@ def test_tune_warm_start(sagemaker_session, warm_start_type, parents):
         max_parallel_jobs=5,
         parameter_ranges=SAMPLE_PARAM_RANGES,
         static_hyperparameters=STATIC_HPs,
-        image="dummy-image-1",
+        image_uri="dummy-image-1",
         input_mode="File",
         metric_definitions=SAMPLE_METRIC_DEF,
         role=EXPANDED_ROLE,
@@ -876,16 +888,16 @@ def test_create_tuning_job_with_both_training_config_and_list(sagemaker_session)
                 "max_parallel_jobs": 5,
                 "parameter_ranges": SAMPLE_PARAM_RANGES,
             },
-            training_config={"static_hyperparameters": STATIC_HPs, "image": "dummy-image-1"},
+            training_config={"static_hyperparameters": STATIC_HPs, "image_uri": "dummy-image-1"},
             training_config_list=[
                 {
                     "static_hyperparameters": STATIC_HPs,
-                    "image": "dummy-image-1",
+                    "image_uri": "dummy-image-1",
                     "estimator_name": "estimator_1",
                 },
                 {
                     "static_hyperparameters": STATIC_HPs_2,
-                    "image": "dummy-image-2",
+                    "image_uri": "dummy-image-2",
                     "estimator_name": "estimator_2",
                 },
             ],
@@ -918,7 +930,7 @@ def test_create_tuning_job(sagemaker_session):
         },
         training_config={
             "static_hyperparameters": STATIC_HPs,
-            "image": "dummy-image-1",
+            "image_uri": "dummy-image-1",
             "input_mode": "File",
             "metric_definitions": SAMPLE_METRIC_DEF,
             "role": EXPANDED_ROLE,
@@ -955,7 +967,7 @@ def test_create_tuning_job_multi_algo(sagemaker_session):
         training_config_list=[
             {
                 "static_hyperparameters": STATIC_HPs,
-                "image": "dummy-image-1",
+                "image_uri": "dummy-image-1",
                 "input_mode": "File",
                 "metric_definitions": SAMPLE_METRIC_DEF,
                 "role": EXPANDED_ROLE,
@@ -970,7 +982,7 @@ def test_create_tuning_job_multi_algo(sagemaker_session):
             },
             {
                 "static_hyperparameters": STATIC_HPs_2,
-                "image": "dummy-image-2",
+                "image_uri": "dummy-image-2",
                 "input_mode": "File",
                 "metric_definitions": SAMPLE_METRIC_DEF_2,
                 "role": EXPANDED_ROLE,
@@ -1011,7 +1023,7 @@ def test_tune(sagemaker_session):
         max_parallel_jobs=5,
         parameter_ranges=SAMPLE_PARAM_RANGES,
         static_hyperparameters=STATIC_HPs,
-        image="dummy-image-1",
+        image_uri="dummy-image-1",
         input_mode="File",
         metric_definitions=SAMPLE_METRIC_DEF,
         role=EXPANDED_ROLE,
@@ -1046,7 +1058,7 @@ def test_tune_with_encryption_flag(sagemaker_session):
         max_parallel_jobs=5,
         parameter_ranges=SAMPLE_PARAM_RANGES,
         static_hyperparameters=STATIC_HPs,
-        image="dummy-image-1",
+        image_uri="dummy-image-1",
         input_mode="File",
         metric_definitions=SAMPLE_METRIC_DEF,
         role=EXPANDED_ROLE,
@@ -1089,7 +1101,7 @@ def test_tune_with_spot_and_checkpoints(sagemaker_session):
         max_parallel_jobs=5,
         parameter_ranges=SAMPLE_PARAM_RANGES,
         static_hyperparameters=STATIC_HPs,
-        image="dummy-image-1",
+        image_uri="dummy-image-1",
         input_mode="File",
         metric_definitions=SAMPLE_METRIC_DEF,
         role=EXPANDED_ROLE,
@@ -1099,7 +1111,7 @@ def test_tune_with_spot_and_checkpoints(sagemaker_session):
         stop_condition=SAMPLE_STOPPING_CONDITION,
         tags=None,
         warm_start_config=None,
-        train_use_spot_instances=True,
+        use_spot_instances=True,
         checkpoint_s3_uri="s3://mybucket/checkpoints/",
         checkpoint_local_path="/tmp/checkpoints",
     )
@@ -1178,7 +1190,7 @@ def test_train_pack_to_request_with_optional_params(sagemaker_session):
     hyperparameters = {"foo": "bar"}
 
     sagemaker_session.train(
-        image=IMAGE,
+        image_uri=IMAGE,
         input_mode="File",
         input_config=in_config,
         role=EXPANDED_ROLE,
@@ -1191,7 +1203,7 @@ def test_train_pack_to_request_with_optional_params(sagemaker_session):
         tags=TAGS,
         metric_definitions=METRIC_DEFINITONS,
         encrypt_inter_container_traffic=True,
-        train_use_spot_instances=True,
+        use_spot_instances=True,
         checkpoint_s3_uri="s3://mybucket/checkpoints/",
         checkpoint_local_path="/tmp/checkpoints",
         enable_sagemaker_metrics=True,
@@ -1685,7 +1697,7 @@ def test_create_model_from_job_with_tags(sagemaker_session):
 def test_create_model_from_job_with_image(sagemaker_session):
     ims = sagemaker_session
     ims.sagemaker_client.describe_training_job.return_value = COMPLETED_DESCRIBE_JOB_RESULT
-    ims.create_model_from_job(JOB_NAME, primary_container_image="some-image")
+    ims.create_model_from_job(JOB_NAME, image_uri="some-image")
     [create_model_call] = ims.sagemaker_client.create_model.call_args_list
     assert dict(create_model_call[1]["PrimaryContainer"])["Image"] == "some-image"
 
@@ -1694,7 +1706,7 @@ def test_create_model_from_job_with_container_def(sagemaker_session):
     ims = sagemaker_session
     ims.sagemaker_client.describe_training_job.return_value = COMPLETED_DESCRIBE_JOB_RESULT
     ims.create_model_from_job(
-        JOB_NAME, primary_container_image="some-image", model_data_url="some-data", env={"a": "b"}
+        JOB_NAME, image_uri="some-image", model_data_url="some-data", env={"a": "b"},
     )
     [create_model_call] = ims.sagemaker_client.create_model.call_args_list
     c_def = create_model_call[1]["PrimaryContainer"]
@@ -2112,4 +2124,12 @@ def test_list_candidates_for_auto_ml_job_with_optional_args(sagemaker_session):
     sagemaker_session.sagemaker_client.list_candidates_for_auto_ml_job.assert_called_once()
     sagemaker_session.sagemaker_client.list_candidates_for_auto_ml_job.assert_called_with(
         **COMPLETE_EXPECTED_LIST_CANDIDATES_ARGS
+    )
+
+
+def test_describe_tuning_Job(sagemaker_session):
+    job_name = "hyper-parameter-tuning"
+    sagemaker_session.describe_tuning_job(job_name=job_name)
+    sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job.assert_called_with(
+        HyperParameterTuningJobName=job_name
     )

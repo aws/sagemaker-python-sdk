@@ -14,10 +14,10 @@
 from __future__ import absolute_import
 
 from sagemaker.amazon.amazon_estimator import AmazonAlgorithmEstimatorBase, registry
-from sagemaker.amazon.common import numpy_to_record_serializer, record_deserializer
+from sagemaker.amazon.common import RecordSerializer, RecordDeserializer
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
 from sagemaker.amazon.validation import gt, isin, ge, le
-from sagemaker.predictor import RealTimePredictor
+from sagemaker.predictor import Predictor
 from sagemaker.model import Model
 from sagemaker.session import Session
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
@@ -51,8 +51,8 @@ class KMeans(AmazonAlgorithmEstimatorBase):
     def __init__(
         self,
         role,
-        train_instance_count,
-        train_instance_type,
+        instance_count,
+        instance_type,
         k,
         init_method=None,
         max_iterations=None,
@@ -103,9 +103,9 @@ class KMeans(AmazonAlgorithmEstimatorBase):
                 endpoints use this role to access training data and model
                 artifacts. After the endpoint is created, the inference code
                 might use the IAM role, if accessing AWS resource.
-            train_instance_count (int): Number of Amazon EC2 instances to use
+            instance_count (int): Number of Amazon EC2 instances to use
                 for training.
-            train_instance_type (str): Type of EC2 instance to use for training,
+            instance_type (str): Type of EC2 instance to use for training,
                 for example, 'ml.c4.xlarge'.
             k (int): The number of clusters to produce.
             init_method (str): How to initialize cluster locations. One of
@@ -142,7 +142,7 @@ class KMeans(AmazonAlgorithmEstimatorBase):
             :class:`~sagemaker.estimator.amazon_estimator.AmazonAlgorithmEstimatorBase` and
             :class:`~sagemaker.estimator.EstimatorBase`.
         """
-        super(KMeans, self).__init__(role, train_instance_count, train_instance_type, **kwargs)
+        super(KMeans, self).__init__(role, instance_count, instance_type, **kwargs)
         self.k = k
         self.init_method = init_method
         self.max_iterations = max_iterations
@@ -194,12 +194,12 @@ class KMeans(AmazonAlgorithmEstimatorBase):
         return hp_dict
 
 
-class KMeansPredictor(RealTimePredictor):
+class KMeansPredictor(Predictor):
     """Assigns input vectors to their closest cluster in a KMeans model.
 
     The implementation of
-    :meth:`~sagemaker.predictor.RealTimePredictor.predict` in this
-    `RealTimePredictor` requires a numpy ``ndarray`` as input. The array should
+    :meth:`~sagemaker.predictor.Predictor.predict` in this
+    `Predictor` requires a numpy ``ndarray`` as input. The array should
     contain the same number of columns as the feature-dimension of the data used
     to fit the model this Predictor performs inference on.
 
@@ -209,17 +209,21 @@ class KMeansPredictor(RealTimePredictor):
     ``closest_cluster`` key of the ``Record.label`` field.
     """
 
-    def __init__(self, endpoint, sagemaker_session=None):
+    def __init__(self, endpoint_name, sagemaker_session=None):
         """
         Args:
-            endpoint:
-            sagemaker_session:
+            endpoint_name (str): Name of the Amazon SageMaker endpoint to which
+                requests are sent.
+            sagemaker_session (sagemaker.session.Session): A SageMaker Session
+                object, used for SageMaker interactions (default: None). If not
+                specified, one is created using the default AWS configuration
+                chain.
         """
         super(KMeansPredictor, self).__init__(
-            endpoint,
+            endpoint_name,
             sagemaker_session,
-            serializer=numpy_to_record_serializer(),
-            deserializer=record_deserializer(),
+            serializer=RecordSerializer(),
+            deserializer=RecordDeserializer(),
         )
 
 
@@ -239,10 +243,10 @@ class KMeansModel(Model):
         """
         sagemaker_session = sagemaker_session or Session()
         repo = "{}:{}".format(KMeans.repo_name, KMeans.repo_version)
-        image = "{}/{}".format(registry(sagemaker_session.boto_session.region_name), repo)
+        image_uri = "{}/{}".format(registry(sagemaker_session.boto_session.region_name), repo)
         super(KMeansModel, self).__init__(
+            image_uri,
             model_data,
-            image,
             role,
             predictor_cls=KMeansPredictor,
             sagemaker_session=sagemaker_session,
