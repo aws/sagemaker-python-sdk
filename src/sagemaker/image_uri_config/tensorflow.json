@@ -765,8 +765,7 @@
                     "us-west-1": "520713654638",
                     "us-west-2": "520713654638"
                 },
-                "repository": "sagemaker-tensorflow-serving",
-                "py_versions": []
+                "repository": "sagemaker-tensorflow-serving"
             },
             "1.12.0": {
                 "registries": {
@@ -793,8 +792,7 @@
                     "us-west-1": "520713654638",
                     "us-west-2": "520713654638"
                 },
-                "repository": "sagemaker-tensorflow-serving",
-                "py_versions": []
+                "repository": "sagemaker-tensorflow-serving"
             },
             "1.13.0": {
                 "registries": {
@@ -821,8 +819,7 @@
                     "us-west-1": "763104351884",
                     "us-west-2": "763104351884"
                 },
-                "repository": "tensorflow-inference",
-                "py_versions": []
+                "repository": "tensorflow-inference"
             },
             "1.14.0": {
                 "registries": {
@@ -849,8 +846,7 @@
                     "us-west-1": "763104351884",
                     "us-west-2": "763104351884"
                 },
-                "repository": "tensorflow-inference",
-                "py_versions": []
+                "repository": "tensorflow-inference"
             },
             "1.15.0": {
                 "registries": {
@@ -877,8 +873,7 @@
                     "us-west-1": "763104351884",
                     "us-west-2": "763104351884"
                 },
-                "repository": "tensorflow-inference",
-                "py_versions": []
+                "repository": "tensorflow-inference"
             },
             "1.15.2": {
                 "registries": {
@@ -905,8 +900,7 @@
                     "us-west-1": "763104351884",
                     "us-west-2": "763104351884"
                 },
-                "repository": "tensorflow-inference",
-                "py_versions": []
+                "repository": "tensorflow-inference"
             },
             "2.0.0": {
                 "registries": {
@@ -933,8 +927,7 @@
                     "us-west-1": "763104351884",
                     "us-west-2": "763104351884"
                 },
-                "repository": "tensorflow-inference",
-                "py_versions": []
+                "repository": "tensorflow-inference"
             },
             "2.0.1": {
                 "registries": {
@@ -961,8 +954,7 @@
                     "us-west-1": "763104351884",
                     "us-west-2": "763104351884"
                 },
-                "repository": "tensorflow-inference",
-                "py_versions": []
+                "repository": "tensorflow-inference"
             },
             "2.1.0": {
                 "registries": {
@@ -989,8 +981,7 @@
                     "us-west-1": "763104351884",
                     "us-west-2": "763104351884"
                 },
-                "repository": "tensorflow-inference",
-                "py_versions": []
+                "repository": "tensorflow-inference"
             }
         }
     },
@@ -1059,8 +1050,7 @@
                     "us-west-1": "520713654638",
                     "us-west-2": "520713654638"
                 },
-                "repository": "sagemaker-tensorflow-serving-eia",
-                "py_versions": []
+                "repository": "sagemaker-tensorflow-serving-eia"
             },
             "1.12.0": {
                 "registries": {
@@ -1087,8 +1077,7 @@
                     "us-west-1": "520713654638",
                     "us-west-2": "520713654638"
                 },
-                "repository": "sagemaker-tensorflow-serving-eia",
-                "py_versions": []
+                "repository": "sagemaker-tensorflow-serving-eia"
             },
             "1.13.0": {
                 "registries": {
@@ -1115,8 +1104,7 @@
                     "us-west-1": "520713654638",
                     "us-west-2": "520713654638"
                 },
-                "repository": "sagemaker-tensorflow-serving-eia",
-                "py_versions": []
+                "repository": "sagemaker-tensorflow-serving-eia"
             },
             "1.14.0": {
                 "registries": {
@@ -1143,8 +1131,7 @@
                     "us-west-1": "763104351884",
                     "us-west-2": "763104351884"
                 },
-                "repository": "tensorflow-inference-eia",
-                "py_versions": []
+                "repository": "tensorflow-inference-eia"
             },
             "1.15.0": {
                 "registries": {
@@ -1171,8 +1158,7 @@
                     "us-west-1": "763104351884",
                     "us-west-2": "763104351884"
                 },
-                "repository": "tensorflow-inference-eia",
-                "py_versions": []
+                "repository": "tensorflow-inference-eia"
             },
             "2.0.0": {
                 "registries": {
@@ -1199,8 +1185,7 @@
                     "us-west-1": "763104351884",
                     "us-west-2": "763104351884"
                 },
-                "repository": "tensorflow-inference-eia",
-                "py_versions": []
+                "repository": "tensorflow-inference-eia"
             }
         }
     }
