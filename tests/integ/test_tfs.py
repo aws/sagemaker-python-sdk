@@ -24,10 +24,11 @@ import sagemaker.utils
 import tests.integ
 import tests.integ.timeout
 from sagemaker.tensorflow.model import TensorFlowModel, TensorFlowPredictor
+from sagemaker.serializers import CSVSerializer
 
 
 @pytest.fixture(scope="module")
-def tfs_predictor(sagemaker_session, tf_serving_latest_version):
+def tfs_predictor(sagemaker_session, tensorflow_inference_latest_version):
     endpoint_name = sagemaker.utils.unique_name_from_base("sagemaker-tensorflow-serving")
     model_data = sagemaker_session.upload_data(
         path=os.path.join(tests.integ.DATA_DIR, "tensorflow-serving-test-model.tar.gz"),
@@ -37,7 +38,7 @@ def tfs_predictor(sagemaker_session, tf_serving_latest_version):
         model = TensorFlowModel(
             model_data=model_data,
             role="SageMakerRole",
-            framework_version=tf_serving_latest_version,
+            framework_version=tensorflow_inference_latest_version,
             sagemaker_session=sagemaker_session,
         )
         predictor = model.deploy(1, "ml.c5.xlarge", endpoint_name=endpoint_name)
@@ -54,7 +55,7 @@ def tar_dir(directory, tmpdir):
 
 @pytest.fixture
 def tfs_predictor_with_model_and_entry_point_same_tar(
-    sagemaker_local_session, tf_serving_latest_version, tmpdir
+    sagemaker_local_session, tensorflow_inference_latest_version, tmpdir
 ):
     endpoint_name = sagemaker.utils.unique_name_from_base("sagemaker-tensorflow-serving")
 
@@ -65,7 +66,7 @@ def tfs_predictor_with_model_and_entry_point_same_tar(
     model = TensorFlowModel(
         model_data="file://" + model_tar,
         role="SageMakerRole",
-        framework_version=tf_serving_latest_version,
+        framework_version=tensorflow_inference_latest_version,
         sagemaker_session=sagemaker_local_session,
     )
     predictor = model.deploy(1, "local", endpoint_name=endpoint_name)
@@ -78,7 +79,7 @@ def tfs_predictor_with_model_and_entry_point_same_tar(
 
 @pytest.fixture(scope="module")
 def tfs_predictor_with_model_and_entry_point_and_dependencies(
-    sagemaker_local_session, tf_serving_latest_version
+    sagemaker_local_session, tensorflow_inference_latest_version
 ):
     endpoint_name = sagemaker.utils.unique_name_from_base("sagemaker-tensorflow-serving")
 
@@ -98,7 +99,7 @@ def tfs_predictor_with_model_and_entry_point_and_dependencies(
         model_data=model_data,
         role="SageMakerRole",
         dependencies=dependencies,
-        framework_version=tf_serving_latest_version,
+        framework_version=tensorflow_inference_latest_version,
         sagemaker_session=sagemaker_local_session,
     )
 
@@ -111,7 +112,9 @@ def tfs_predictor_with_model_and_entry_point_and_dependencies(
 
 
 @pytest.fixture(scope="module")
-def tfs_predictor_with_accelerator(sagemaker_session, ei_tf_full_version, cpu_instance_type):
+def tfs_predictor_with_accelerator(
+    sagemaker_session, tensorflow_eia_latest_version, cpu_instance_type
+):
     endpoint_name = sagemaker.utils.unique_name_from_base("sagemaker-tensorflow-serving")
     model_data = sagemaker_session.upload_data(
         path=os.path.join(tests.integ.DATA_DIR, "tensorflow-serving-test-model.tar.gz"),
@@ -121,7 +124,7 @@ def tfs_predictor_with_accelerator(sagemaker_session, ei_tf_full_version, cpu_in
         model = TensorFlowModel(
             model_data=model_data,
             role="SageMakerRole",
-            framework_version=ei_tf_full_version,
+            framework_version=tensorflow_eia_latest_version,
             sagemaker_session=sagemaker_session,
         )
         predictor = model.deploy(
@@ -131,7 +134,7 @@ def tfs_predictor_with_accelerator(sagemaker_session, ei_tf_full_version, cpu_in
 
 
 @pytest.mark.canary_quick
-def test_predict(tfs_predictor):  # pylint: disable=W0613
+def test_predict(tfs_predictor):
     input_data = {"instances": [1.0, 2.0, 5.0]}
     expected_result = {"predictions": [3.5, 4.0, 5.5]}
 
@@ -236,9 +239,7 @@ def test_predict_csv(tfs_predictor):
     expected_result = {"predictions": [[3.5, 4.0, 5.5], [3.5, 4.0, 5.5]]}
 
     predictor = TensorFlowPredictor(
-        tfs_predictor.endpoint_name,
-        tfs_predictor.sagemaker_session,
-        serializer=sagemaker.predictor.csv_serializer,
+        tfs_predictor.endpoint_name, tfs_predictor.sagemaker_session, serializer=CSVSerializer(),
     )
 
     result = predictor.predict(input_data)

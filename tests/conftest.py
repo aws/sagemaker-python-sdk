@@ -164,17 +164,18 @@ def xgboost_version(request):
     return request.param
 
 
-@pytest.fixture(scope="module")
-def tf_version(tensorflow_training_version):
-    # TODO: remove this fixture and update tests
-    if tensorflow_training_version in ("1.13.1", "2.2", "2.2.0"):
-        pytest.skip("version isn't compatible with both training and inference.")
-    return tensorflow_training_version
+@pytest.fixture(scope="module", params=["py2", "py3"])
+def tensorflow_training_py_version(tensorflow_training_version, request):
+    return _tf_py_version(tensorflow_training_version, request)
 
 
 @pytest.fixture(scope="module", params=["py2", "py3"])
-def tf_py_version(tensorflow_training_version, request):
-    version = Version(tensorflow_training_version)
+def tensorflow_inference_py_version(tensorflow_inference_version, request):
+    return _tf_py_version(tensorflow_inference_version, request)
+
+
+def _tf_py_version(tf_version, request):
+    version = Version(tf_version)
     if version < Version("1.11"):
         return "py2"
     if version < Version("2.2"):
@@ -253,28 +254,18 @@ def sklearn_full_py_version():
 
 
 @pytest.fixture(scope="module")
-def tf_training_latest_version():
-    return "2.2.0"
-
-
-@pytest.fixture(scope="module")
-def tf_training_latest_py_version():
-    return "py37"
-
-
-@pytest.fixture(scope="module")
-def tf_serving_latest_version():
-    return "2.1.0"
-
-
-@pytest.fixture(scope="module")
-def tf_full_version(tf_training_latest_version, tf_serving_latest_version):
+def tf_full_version(tensorflow_training_latest_version, tensorflow_inference_latest_version):
     """Fixture for TF tests that test both training and inference.
 
     Fixture exists as such, since TF training and TFS have different latest versions.
     Otherwise, this would simply be a single latest version.
     """
-    return str(min(Version(tf_training_latest_version), Version(tf_serving_latest_version)))
+    return str(
+        min(
+            Version(tensorflow_training_latest_version),
+            Version(tensorflow_inference_latest_version),
+        )
+    )
 
 
 @pytest.fixture(scope="module")
@@ -290,11 +281,6 @@ def tf_full_py_version(tf_full_version):
     if version < Version("2.2"):
         return "py3"
     return "py37"
-
-
-@pytest.fixture(scope="module")
-def ei_tf_full_version():
-    return "2.0.0"
 
 
 @pytest.fixture(scope="module")

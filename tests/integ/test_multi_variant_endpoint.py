@@ -25,7 +25,8 @@ from sagemaker.utils import sagemaker_timestamp
 from sagemaker.content_types import CONTENT_TYPE_CSV
 from sagemaker.utils import unique_name_from_base
 from sagemaker.amazon.amazon_estimator import get_image_uri
-from sagemaker.predictor import csv_serializer, Predictor
+from sagemaker.predictor import Predictor
+from sagemaker.serializers import CSVSerializer
 
 
 import tests.integ
@@ -169,7 +170,7 @@ def test_predict_invocation_with_target_variant(sagemaker_session, multi_variant
     predictor = Predictor(
         endpoint_name=multi_variant_endpoint.endpoint_name,
         sagemaker_session=sagemaker_session,
-        serializer=csv_serializer,
+        serializer=CSVSerializer(),
         content_type=CONTENT_TYPE_CSV,
         accept=CONTENT_TYPE_CSV,
     )
@@ -297,7 +298,7 @@ def test_predict_invocation_with_target_variant_local_mode(
     predictor = Predictor(
         endpoint_name=multi_variant_endpoint.endpoint_name,
         sagemaker_session=sagemaker_session,
-        serializer=csv_serializer,
+        serializer=CSVSerializer(),
         content_type=CONTENT_TYPE_CSV,
         accept=CONTENT_TYPE_CSV,
     )
