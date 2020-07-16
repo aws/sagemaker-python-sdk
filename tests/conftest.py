@@ -120,14 +120,25 @@ def mxnet_py_version(request):
     return request.param
 
 
-@pytest.fixture(scope="module", params=["0.4", "0.4.0", "1.0", "1.0.0"])
-def pytorch_version(request):
-    return request.param
+@pytest.fixture(scope="module", params=["py2", "py3"])
+def pytorch_training_py_version(pytorch_training_version, request):
+    if Version(pytorch_training_version) < Version("1.5.0"):
+        return request.param
+    else:
+        return "py3"
 
 
 @pytest.fixture(scope="module", params=["py2", "py3"])
-def pytorch_py_version(request):
-    return request.param
+def pytorch_inference_py_version(pytorch_inference_version, request):
+    if Version(pytorch_inference_version) < Version("1.4.0"):
+        return request.param
+    else:
+        return "py3"
+
+
+@pytest.fixture(scope="module")
+def pytorch_eia_py_version():
+    return "py3"
 
 
 @pytest.fixture(scope="module", params=["0.20.0"])
@@ -174,21 +185,6 @@ def rl_coach_mxnet_version(request):
 @pytest.fixture(scope="module", params=["0.5", "0.5.3", "0.6", "0.6.5"])
 def rl_ray_version(request):
     return request.param
-
-
-@pytest.fixture(scope="module")
-def pytorch_full_version():
-    return "1.5.0"
-
-
-@pytest.fixture(scope="module")
-def pytorch_full_py_version():
-    return "py3"
-
-
-@pytest.fixture(scope="module")
-def pytorch_full_ei_version():
-    return "1.3.1"
 
 
 @pytest.fixture(scope="module")
@@ -314,7 +310,7 @@ def pytest_generate_tests(metafunc):
 
 
 def _generate_all_framework_version_fixtures(metafunc):
-    for fw in ("chainer", "mxnet", "tensorflow", "xgboost"):
+    for fw in ("chainer", "mxnet", "pytorch", "tensorflow", "xgboost"):
         config = image_uris.config_for_framework(fw)
         if "scope" in config:
             _parametrize_framework_version_fixtures(metafunc, fw, config)

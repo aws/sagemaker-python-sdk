@@ -127,6 +127,17 @@ def test_retrieve_aliased_version(config_for_framework):
     )
     assert "123412341234.dkr.ecr.us-west-2.amazonaws.com/dummy:{}-cpu-py3".format(version) == uri
 
+    del config["versions"]["1.1.0"]
+    uri = image_uris.retrieve(
+        framework="useless-string",
+        version=version,
+        py_version="py3",
+        instance_type="ml.c4.xlarge",
+        region="us-west-2",
+        image_scope="training",
+    )
+    assert "123412341234.dkr.ecr.us-west-2.amazonaws.com/dummy:{}-cpu-py3".format(version) == uri
+
 
 @patch("sagemaker.image_uris.config_for_framework")
 def test_retrieve_default_version_if_possible(config_for_framework, caplog):

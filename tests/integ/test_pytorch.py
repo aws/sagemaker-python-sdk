@@ -38,11 +38,17 @@ EIA_SCRIPT = os.path.join(EIA_DIR, "empty_inference_script.py")
 
 @pytest.fixture(scope="module", name="pytorch_training_job")
 def fixture_training_job(
-    sagemaker_session, pytorch_full_version, pytorch_full_py_version, cpu_instance_type
+    sagemaker_session,
+    pytorch_training_latest_version,
+    pytorch_training_latest_py_version,
+    cpu_instance_type,
 ):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         pytorch = _get_pytorch_estimator(
-            sagemaker_session, pytorch_full_version, pytorch_full_py_version, cpu_instance_type
+            sagemaker_session,
+            pytorch_training_latest_version,
+            pytorch_training_latest_py_version,
+            cpu_instance_type,
         )
 
         pytorch.fit({"training": _upload_training_data(pytorch)})
@@ -66,12 +72,14 @@ def test_fit_deploy(pytorch_training_job, sagemaker_session, cpu_instance_type):
 
 
 @pytest.mark.local_mode
-def test_local_fit_deploy(sagemaker_local_session, pytorch_full_version, pytorch_full_py_version):
+def test_local_fit_deploy(
+    sagemaker_local_session, pytorch_training_latest_version, pytorch_training_latest_py_version
+):
     pytorch = PyTorch(
         entry_point=MNIST_SCRIPT,
         role="SageMakerRole",
-        framework_version=pytorch_full_version,
-        py_version=pytorch_full_py_version,
+        framework_version=pytorch_training_latest_version,
+        py_version=pytorch_training_latest_py_version,
         instance_count=1,
         instance_type="local",
         sagemaker_session=sagemaker_local_session,
@@ -94,8 +102,8 @@ def test_deploy_model(
     pytorch_training_job,
     sagemaker_session,
     cpu_instance_type,
-    pytorch_full_version,
-    pytorch_full_py_version,
+    pytorch_inference_latest_version,
+    pytorch_inference_latest_py_version,
 ):
     endpoint_name = "test-pytorch-deploy-model-{}".format(sagemaker_timestamp())
 
@@ -108,8 +116,8 @@ def test_deploy_model(
             model_data,
             "SageMakerRole",
             entry_point=MNIST_SCRIPT,
-            framework_version=pytorch_full_version,
-            py_version=pytorch_full_py_version,
+            framework_version=pytorch_inference_latest_version,
+            py_version=pytorch_inference_latest_py_version,
             sagemaker_session=sagemaker_session,
         )
         predictor = model.deploy(1, cpu_instance_type, endpoint_name=endpoint_name)
@@ -122,7 +130,10 @@ def test_deploy_model(
 
 
 def test_deploy_packed_model_with_entry_point_name(
-    sagemaker_session, cpu_instance_type, pytorch_full_version, pytorch_full_py_version
+    sagemaker_session,
+    cpu_instance_type,
+    pytorch_inference_latest_version,
+    pytorch_inference_latest_py_version,
 ):
     endpoint_name = "test-pytorch-deploy-model-{}".format(sagemaker_timestamp())
 
@@ -132,8 +143,8 @@ def test_deploy_packed_model_with_entry_point_name(
             model_data,
             "SageMakerRole",
             entry_point="mnist.py",
-            framework_version=pytorch_full_version,
-            py_version=pytorch_full_py_version,
+            framework_version=pytorch_inference_latest_version,
+            py_version=pytorch_inference_latest_py_version,
             sagemaker_session=sagemaker_session,
         )
         predictor = model.deploy(1, cpu_instance_type, endpoint_name=endpoint_name)
@@ -149,7 +160,10 @@ def test_deploy_packed_model_with_entry_point_name(
     test_region() not in EI_SUPPORTED_REGIONS, reason="EI isn't supported in that specific region."
 )
 def test_deploy_model_with_accelerator(
-    sagemaker_session, cpu_instance_type, pytorch_full_ei_version, pytorch_full_py_version
+    sagemaker_session,
+    cpu_instance_type,
+    pytorch_eia_latest_ei_version,
+    pytorch_eia_latest_py_version,
 ):
     endpoint_name = "test-pytorch-deploy-eia-{}".format(sagemaker_timestamp())
     model_data = sagemaker_session.upload_data(path=EIA_MODEL)
@@ -157,8 +171,8 @@ def test_deploy_model_with_accelerator(
         model_data,
         "SageMakerRole",
         entry_point=EIA_SCRIPT,
-        framework_version=pytorch_full_ei_version,
-        py_version=pytorch_full_py_version,
+        framework_version=pytorch_eia_latest_ei_version,
+        py_version=pytorch_eia_latest_py_version,
         sagemaker_session=sagemaker_session,
     )
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
