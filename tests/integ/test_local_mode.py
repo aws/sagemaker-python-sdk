@@ -54,7 +54,7 @@ class LocalNoS3Session(LocalSession):
 
 
 @pytest.fixture(scope="module")
-def mxnet_model(sagemaker_local_session, mxnet_full_version, mxnet_full_py_version):
+def mxnet_model(sagemaker_local_session, mxnet_inference_latest_version, mxnet_latest_py_version):
     def _create_model(output_path):
         script_path = os.path.join(DATA_DIR, "mxnet_mnist", "mnist.py")
         data_path = os.path.join(DATA_DIR, "mxnet_mnist")
@@ -65,8 +65,8 @@ def mxnet_model(sagemaker_local_session, mxnet_full_version, mxnet_full_py_versi
             instance_count=1,
             instance_type="local",
             output_path=output_path,
-            framework_version=mxnet_full_version,
-            py_version=mxnet_full_py_version,
+            framework_version=mxnet_inference_latest_version,
+            py_version=mxnet_latest_py_version,
             sagemaker_session=sagemaker_local_session,
         )
 
@@ -86,7 +86,7 @@ def mxnet_model(sagemaker_local_session, mxnet_full_version, mxnet_full_py_versi
 
 @pytest.mark.local_mode
 def test_local_mode_serving_from_s3_model(
-    sagemaker_local_session, mxnet_model, mxnet_full_version, mxnet_full_py_version
+    sagemaker_local_session, mxnet_model, mxnet_inference_latest_version, mxnet_latest_py_version
 ):
     path = "s3://%s" % sagemaker_local_session.default_bucket()
     s3_model = mxnet_model(path)
@@ -121,18 +121,20 @@ def test_local_mode_serving_from_local_model(tmpdir, sagemaker_local_session, mx
 
 
 @pytest.mark.local_mode
-def test_mxnet_local_mode(sagemaker_local_session, mxnet_full_version, mxnet_full_py_version):
+def test_mxnet_local_mode(
+    sagemaker_local_session, mxnet_training_latest_version, mxnet_latest_py_version
+):
     script_path = os.path.join(DATA_DIR, "mxnet_mnist", "mnist.py")
     data_path = os.path.join(DATA_DIR, "mxnet_mnist")
 
     mx = MXNet(
         entry_point=script_path,
         role="SageMakerRole",
-        py_version=mxnet_full_py_version,
+        py_version=mxnet_latest_py_version,
         instance_count=1,
         instance_type="local",
         sagemaker_session=sagemaker_local_session,
-        framework_version=mxnet_full_version,
+        framework_version=mxnet_training_latest_version,
     )
 
     train_input = mx.sagemaker_session.upload_data(
@@ -156,7 +158,7 @@ def test_mxnet_local_mode(sagemaker_local_session, mxnet_full_version, mxnet_ful
 
 @pytest.mark.local_mode
 def test_mxnet_distributed_local_mode(
-    sagemaker_local_session, mxnet_full_version, mxnet_full_py_version
+    sagemaker_local_session, mxnet_training_latest_version, mxnet_latest_py_version
 ):
     script_path = os.path.join(DATA_DIR, "mxnet_mnist", "mnist.py")
     data_path = os.path.join(DATA_DIR, "mxnet_mnist")
@@ -164,11 +166,11 @@ def test_mxnet_distributed_local_mode(
     mx = MXNet(
         entry_point=script_path,
         role="SageMakerRole",
-        py_version=mxnet_full_py_version,
+        py_version=mxnet_latest_py_version,
         instance_count=2,
         instance_type="local",
         sagemaker_session=sagemaker_local_session,
-        framework_version=mxnet_full_version,
+        framework_version=mxnet_training_latest_version,
         distribution={"parameter_server": {"enabled": True}},
     )
 
@@ -183,7 +185,7 @@ def test_mxnet_distributed_local_mode(
 
 
 @pytest.mark.local_mode
-def test_mxnet_local_data_local_script(mxnet_full_version, mxnet_full_py_version):
+def test_mxnet_local_data_local_script(mxnet_training_latest_version, mxnet_latest_py_version):
     data_path = os.path.join(DATA_DIR, "mxnet_mnist")
     script_path = os.path.join(data_path, "mnist.py")
 
@@ -192,8 +194,8 @@ def test_mxnet_local_data_local_script(mxnet_full_version, mxnet_full_py_version
         role="SageMakerRole",
         instance_count=1,
         instance_type="local",
-        framework_version=mxnet_full_version,
-        py_version=mxnet_full_py_version,
+        framework_version=mxnet_training_latest_version,
+        py_version=mxnet_latest_py_version,
         sagemaker_session=LocalNoS3Session(),
     )
 
@@ -214,15 +216,15 @@ def test_mxnet_local_data_local_script(mxnet_full_version, mxnet_full_py_version
 
 @pytest.mark.local_mode
 def test_mxnet_training_failure(
-    sagemaker_local_session, mxnet_full_version, mxnet_full_py_version, tmpdir
+    sagemaker_local_session, mxnet_training_latest_version, mxnet_latest_py_version, tmpdir
 ):
     script_path = os.path.join(DATA_DIR, "mxnet_mnist", "failure_script.py")
 
     mx = MXNet(
         entry_point=script_path,
         role="SageMakerRole",
-        framework_version=mxnet_full_version,
-        py_version=mxnet_full_py_version,
+        framework_version=mxnet_training_latest_version,
+        py_version=mxnet_latest_py_version,
         instance_count=1,
         instance_type="local",
         sagemaker_session=sagemaker_local_session,
@@ -239,7 +241,11 @@ def test_mxnet_training_failure(
 
 @pytest.mark.local_mode
 def test_local_transform_mxnet(
-    sagemaker_local_session, tmpdir, mxnet_full_version, mxnet_full_py_version, cpu_instance_type
+    sagemaker_local_session,
+    tmpdir,
+    mxnet_inference_latest_version,
+    mxnet_latest_py_version,
+    cpu_instance_type,
 ):
     data_path = os.path.join(DATA_DIR, "mxnet_mnist")
     script_path = os.path.join(data_path, "mnist.py")
@@ -249,8 +255,8 @@ def test_local_transform_mxnet(
         role="SageMakerRole",
         instance_count=1,
         instance_type="local",
-        framework_version=mxnet_full_version,
-        py_version=mxnet_full_py_version,
+        framework_version=mxnet_inference_latest_version,
+        py_version=mxnet_latest_py_version,
         sagemaker_session=sagemaker_local_session,
     )
 

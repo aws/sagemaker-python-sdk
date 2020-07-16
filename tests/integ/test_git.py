@@ -81,7 +81,9 @@ def test_github(sagemaker_local_session, pytorch_full_version, pytorch_full_py_v
 
 @pytest.mark.local_mode
 @pytest.mark.skip("needs a secure authentication approach")
-def test_private_github(sagemaker_local_session, mxnet_full_version, mxnet_full_py_version):
+def test_private_github(
+    sagemaker_local_session, mxnet_training_latest_version, mxnet_latest_py_version
+):
     script_path = "mnist.py"
     data_path = os.path.join(DATA_DIR, "mxnet_mnist")
     git_config = {
@@ -99,8 +101,8 @@ def test_private_github(sagemaker_local_session, mxnet_full_version, mxnet_full_
         role="SageMakerRole",
         source_dir=source_dir,
         dependencies=dependencies,
-        framework_version=mxnet_full_version,
-        py_version=mxnet_full_py_version,
+        framework_version=mxnet_training_latest_version,
+        py_version=mxnet_latest_py_version,
         instance_count=1,
         instance_type="local",
         sagemaker_session=sagemaker_local_session,
@@ -223,7 +225,9 @@ def test_github_with_ssh_passphrase_not_configured(
 
 @pytest.mark.local_mode
 @pytest.mark.skip("needs a secure authentication approach")
-def test_codecommit(sagemaker_local_session, mxnet_full_version, mxnet_full_py_version):
+def test_codecommit(
+    sagemaker_local_session, mxnet_training_latest_version, mxnet_latest_py_version
+):
     script_path = "mnist.py"
     data_path = os.path.join(DATA_DIR, "mxnet_mnist")
     git_config = {
@@ -239,8 +243,8 @@ def test_codecommit(sagemaker_local_session, mxnet_full_version, mxnet_full_py_v
         role="SageMakerRole",
         source_dir=source_dir,
         dependencies=dependencies,
-        framework_version=mxnet_full_version,
-        py_version=mxnet_full_py_version,
+        framework_version=mxnet_training_latest_version,
+        py_version=mxnet_latest_py_version,
         instance_count=1,
         instance_type="local",
         sagemaker_session=sagemaker_local_session,
