@@ -534,7 +534,10 @@ def test_stop_tuning_job(sagemaker_session, cpu_instance_type):
 
 @pytest.mark.canary_quick
 def test_tuning_mxnet(
-    sagemaker_session, mxnet_full_version, mxnet_full_py_version, cpu_instance_type
+    sagemaker_session,
+    mxnet_training_latest_version,
+    mxnet_training_latest_py_version,
+    cpu_instance_type,
 ):
     with timeout(minutes=TUNING_DEFAULT_TIMEOUT_MINUTES):
         script_path = os.path.join(DATA_DIR, "mxnet_mnist", "mnist.py")
@@ -543,10 +546,10 @@ def test_tuning_mxnet(
         estimator = MXNet(
             entry_point=script_path,
             role="SageMakerRole",
-            py_version=mxnet_full_py_version,
+            py_version=mxnet_training_latest_py_version,
             instance_count=1,
             instance_type=cpu_instance_type,
-            framework_version=mxnet_full_version,
+            framework_version=mxnet_training_latest_version,
             sagemaker_session=sagemaker_session,
         )
 

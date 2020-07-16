@@ -242,7 +242,11 @@ def test_multi_data_model_deploy_pretrained_models_local_mode(container_image, s
 
 
 def test_multi_data_model_deploy_trained_model_from_framework_estimator(
-    container_image, sagemaker_session, cpu_instance_type, mxnet_full_version, mxnet_full_py_version
+    container_image,
+    sagemaker_session,
+    cpu_instance_type,
+    mxnet_inference_latest_version,
+    mxnet_inference_latest_py_version,
 ):
     timestamp = sagemaker_timestamp()
     endpoint_name = "test-multimodel-endpoint-{}".format(timestamp)
@@ -252,8 +256,8 @@ def test_multi_data_model_deploy_trained_model_from_framework_estimator(
         mxnet_model_1 = _mxnet_training_job(
             sagemaker_session,
             container_image,
-            mxnet_full_version,
-            mxnet_full_py_version,
+            mxnet_inference_latest_version,
+            mxnet_inference_latest_py_version,
             cpu_instance_type,
             0.1,
         )
@@ -276,8 +280,8 @@ def test_multi_data_model_deploy_trained_model_from_framework_estimator(
         mxnet_model_2 = _mxnet_training_job(
             sagemaker_session,
             container_image,
-            mxnet_full_version,
-            mxnet_full_py_version,
+            mxnet_inference_latest_version,
+            mxnet_inference_latest_py_version,
             cpu_instance_type,
             0.01,
         )

@@ -40,7 +40,10 @@ MXNET_MNIST_PATH = os.path.join(DATA_DIR, "mxnet_mnist")
 
 @pytest.fixture(scope="module")
 def mxnet_estimator(
-    sagemaker_session, mxnet_full_version, mxnet_full_py_version, cpu_instance_type
+    sagemaker_session,
+    mxnet_inference_latest_version,
+    mxnet_inference_latest_py_version,
+    cpu_instance_type,
 ):
     mx = MXNet(
         entry_point=os.path.join(MXNET_MNIST_PATH, "mnist.py"),
@@ -48,8 +51,8 @@ def mxnet_estimator(
         instance_count=1,
         instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
-        framework_version=mxnet_full_version,
-        py_version=mxnet_full_py_version,
+        framework_version=mxnet_inference_latest_version,
+        py_version=mxnet_inference_latest_py_version,
     )
 
     train_input = mx.sagemaker_session.upload_data(
