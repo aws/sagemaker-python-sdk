@@ -40,75 +40,69 @@ SAGEMAKER_ALTERNATE_REGION_ACCOUNTS = {
 }
 
 
-def test_chainer(chainer_version, chainer_py_version):
+def _test_image_uris(framework, fw_version, py_version, scope, expected_fn, expected_fn_args):
+    base_args = {
+        "framework": framework,
+        "version": fw_version,
+        "py_version": py_version,
+        "image_scope": scope,
+    }
+
     for instance_type, processor in INSTANCE_TYPES_AND_PROCESSORS:
-        for scope in ("training", "inference"):
-            uri = image_uris.retrieve(
-                framework="chainer",
-                region=REGION,
-                version=chainer_version,
-                py_version=chainer_py_version,
-                instance_type=instance_type,
-                image_scope=scope,
-            )
-            expected = expected_uris.framework_uri(
-                repo="sagemaker-chainer",
-                fw_version=chainer_version,
-                py_version=chainer_py_version,
-                account=SAGEMAKER_ACCOUNT,
-                processor=processor,
-            )
-            assert expected == uri
+        uri = image_uris.retrieve(region=REGION, instance_type=instance_type, **base_args)
 
-    for region, account in SAGEMAKER_ALTERNATE_REGION_ACCOUNTS.items():
-        uri = image_uris.retrieve(
-            framework="chainer",
-            region=region,
-            version=chainer_version,
-            py_version=chainer_py_version,
-            instance_type="ml.c4.xlarge",
-            image_scope="training",
-        )
-        expected = expected_uris.framework_uri(
-            repo="sagemaker-chainer",
-            fw_version=chainer_version,
-            py_version=chainer_py_version,
-            account=account,
-            region=region,
-        )
-        assert expected == uri
-
-
-def test_tensorflow_training(tensorflow_training_version, tensorflow_training_py_version):
-    for instance_type, processor in INSTANCE_TYPES_AND_PROCESSORS:
-        uri = image_uris.retrieve(
-            framework="tensorflow",
-            region=REGION,
-            version=tensorflow_training_version,
-            py_version=tensorflow_training_py_version,
-            instance_type=instance_type,
-            image_scope="training",
-        )
-
-        expected = _expected_tf_training_uri(
-            tensorflow_training_version, tensorflow_training_py_version, processor=processor
-        )
+        expected = expected_fn(processor=processor, **expected_fn_args)
         assert expected == uri
 
     for region in SAGEMAKER_ALTERNATE_REGION_ACCOUNTS.keys():
-        uri = image_uris.retrieve(
-            framework="tensorflow",
-            region=region,
-            version=tensorflow_training_version,
-            py_version=tensorflow_training_py_version,
-            instance_type="ml.c4.xlarge",
-            image_scope="training",
-        )
+        uri = image_uris.retrieve(region=region, instance_type="ml.c4.xlarge", **base_args)
 
-        expected = _expected_tf_training_uri(
-            tensorflow_training_version, tensorflow_training_py_version, region=region
-        )
+        expected = expected_fn(region=region, **expected_fn_args)
         assert expected == uri
+
+
+def test_chainer(chainer_version, chainer_py_version):
+    expected_fn_args = {
+        "chainer_version": chainer_version,
+        "py_version": chainer_py_version,
+    }
+
+    _test_image_uris(
+        "chainer",
+        chainer_version,
+        chainer_py_version,
+        "training",
+        _expected_chainer_uri,
+        expected_fn_args,
+    )
+
+
+def _expected_chainer_uri(chainer_version, py_version, processor="cpu", region=REGION):
+    account = SAGEMAKER_ACCOUNT if region == REGION else SAGEMAKER_ALTERNATE_REGION_ACCOUNTS[region]
+    return expected_uris.framework_uri(
+        repo="sagemaker-chainer",
+        fw_version=chainer_version,
+        py_version=py_version,
+        processor=processor,
+        region=region,
+        account=account,
+    )
+
+
+def test_tensorflow_training(tensorflow_training_version, tensorflow_training_py_version):
+    expected_fn_args = {
+        "tf_training_version": tensorflow_training_version,
+        "py_version": tensorflow_training_py_version,
+    }
+
+    _test_image_uris(
+        "tensorflow",
+        tensorflow_training_version,
+        tensorflow_training_py_version,
+        "training",
+        _expected_tf_training_uri,
+        expected_fn_args,
+    )
 
 
 def _expected_tf_training_uri(tf_training_version, py_version, processor="cpu", region=REGION):
@@ -122,17 +116,10 @@ def _expected_tf_training_uri(tf_training_version, py_version, processor="cpu", 
     else:
         repo = "sagemaker-tensorflow-scriptmode" if py_version == "py2" else "tensorflow-training"
 
-    if repo.startswith("sagemaker"):
-        account = (
-            SAGEMAKER_ACCOUNT if region == REGION else SAGEMAKER_ALTERNATE_REGION_ACCOUNTS[region]
-        )
-    else:
-        account = DLC_ACCOUNT if region == REGION else DLC_ALTERNATE_REGION_ACCOUNTS[region]
-
     return expected_uris.framework_uri(
         repo,
         tf_training_version,
-        account,
+        _sagemaker_or_dlc_account(repo, region),
         py_version=py_version,
         processor=processor,
         region=region,
@@ -140,57 +127,33 @@ def _expected_tf_training_uri(tf_training_version, py_version, processor="cpu", 
 
 
 def test_tensorflow_inference(tensorflow_inference_version):
-    for instance_type, processor in INSTANCE_TYPES_AND_PROCESSORS:
-        uri = image_uris.retrieve(
-            framework="tensorflow",
-            region=REGION,
-            version=tensorflow_inference_version,
-            py_version="py2",
-            instance_type=instance_type,
-            image_scope="inference",
-        )
-
-        expected = _expected_tf_inference_uri(tensorflow_inference_version, processor=processor)
-        assert expected == uri
-
-    for region in SAGEMAKER_ALTERNATE_REGION_ACCOUNTS.keys():
-        uri = image_uris.retrieve(
-            framework="tensorflow",
-            region=region,
-            version=tensorflow_inference_version,
-            py_version="py2",
-            instance_type="ml.c4.xlarge",
-            image_scope="inference",
-        )
-
-        expected = _expected_tf_inference_uri(tensorflow_inference_version, region=region)
-        assert expected == uri
+    _test_image_uris(
+        "tensorflow",
+        tensorflow_inference_version,
+        "py2",
+        "inference",
+        _expected_tf_inference_uri,
+        {"tf_inference_version": tensorflow_inference_version},
+    )
 
 
 def test_tensorflow_eia(tensorflow_eia_version):
-    uri = image_uris.retrieve(
-        framework="tensorflow",
-        region=REGION,
-        version=tensorflow_eia_version,
-        py_version="py2",
-        instance_type="ml.c4.xlarge",
-        accelerator_type="ml.eia1.medium",
-        image_scope="inference",
-    )
+    base_args = {
+        "framework": "tensorflow",
+        "version": tensorflow_eia_version,
+        "py_version": "py2",
+        "instance_type": "ml.c4.xlarge",
+        "accelerator_type": "ml.eia1.medium",
+        "image_scope": "inference",
+    }
+
+    uri = image_uris.retrieve(region=REGION, **base_args)
 
     expected = _expected_tf_inference_uri(tensorflow_eia_version, eia=True)
     assert expected == uri
 
     for region in SAGEMAKER_ALTERNATE_REGION_ACCOUNTS.keys():
-        uri = image_uris.retrieve(
-            framework="tensorflow",
-            region=region,
-            version=tensorflow_eia_version,
-            py_version="py2",
-            instance_type="ml.c4.xlarge",
-            accelerator_type="ml.eia1.medium",
-            image_scope="inference",
-        )
+        uri = image_uris.retrieve(region=region, **base_args)
 
         expected = _expected_tf_inference_uri(tensorflow_eia_version, region=region, eia=True)
         assert expected == uri
@@ -201,13 +164,7 @@ def _expected_tf_inference_uri(tf_inference_version, processor="cpu", region=REG
     repo = _expected_tf_inference_repo(version, eia)
     py_version = "py2" if version < Version("1.11") else None
 
-    if repo.startswith("sagemaker"):
-        account = (
-            SAGEMAKER_ACCOUNT if region == REGION else SAGEMAKER_ALTERNATE_REGION_ACCOUNTS[region]
-        )
-    else:
-        account = DLC_ACCOUNT if region == REGION else DLC_ALTERNATE_REGION_ACCOUNTS[region]
-
+    account = _sagemaker_or_dlc_account(repo, region)
     return expected_uris.framework_uri(
         repo, tf_inference_version, account, py_version, processor=processor, region=region,
     )
@@ -225,3 +182,113 @@ def _expected_tf_inference_repo(version, eia):
         repo = "-".join((repo, "eia"))
 
     return repo
+
+
+def test_mxnet_training(mxnet_training_version, mxnet_py_version):
+    expected_fn_args = {
+        "mxnet_version": mxnet_training_version,
+        "py_version": mxnet_py_version,
+    }
+
+    _test_image_uris(
+        "mxnet",
+        mxnet_training_version,
+        mxnet_py_version,
+        "training",
+        _expected_mxnet_training_uri,
+        expected_fn_args,
+    )
+
+
+def _expected_mxnet_training_uri(mxnet_version, py_version, processor="cpu", region=REGION):
+    version = Version(mxnet_version)
+    if version < Version("1.4") or mxnet_version == "1.4.0":
+        repo = "sagemaker-mxnet"
+    elif version >= Version("1.6.0"):
+        repo = "mxnet-training"
+    else:
+        repo = "sagemaker-mxnet" if py_version == "py2" else "mxnet-training"
+
+    return expected_uris.framework_uri(
+        repo,
+        mxnet_version,
+        _sagemaker_or_dlc_account(repo, region),
+        py_version=py_version,
+        processor=processor,
+        region=region,
+    )
+
+
+def test_mxnet_inference(mxnet_inference_version, mxnet_py_version):
+    expected_fn_args = {
+        "mxnet_version": mxnet_inference_version,
+        "py_version": mxnet_py_version,
+    }
+
+    _test_image_uris(
+        "mxnet",
+        mxnet_inference_version,
+        mxnet_py_version,
+        "inference",
+        _expected_mxnet_inference_uri,
+        expected_fn_args,
+    )
+
+
+def test_mxnet_eia(mxnet_eia_version, mxnet_py_version):
+    base_args = {
+        "framework": "mxnet",
+        "version": mxnet_eia_version,
+        "py_version": mxnet_py_version,
+        "image_scope": "inference",
+        "instance_type": "ml.c4.xlarge",
+        "accelerator_type": "ml.eia1.medium",
+    }
+
+    uri = image_uris.retrieve(region=REGION, **base_args)
+
+    expected = _expected_mxnet_inference_uri(mxnet_eia_version, mxnet_py_version, eia=True)
+    assert expected == uri
+
+    for region in SAGEMAKER_ALTERNATE_REGION_ACCOUNTS.keys():
+        uri = image_uris.retrieve(region=region, **base_args)
+
+        expected = _expected_mxnet_inference_uri(
+            mxnet_eia_version, mxnet_py_version, region=region, eia=True
+        )
+        assert expected == uri
+
+
+def _expected_mxnet_inference_uri(
+    mxnet_version, py_version, processor="cpu", region=REGION, eia=False
+):
+    version = Version(mxnet_version)
+    if version < Version("1.4"):
+        repo = "sagemaker-mxnet"
+    elif mxnet_version == "1.4.0":
+        repo = "sagemaker-mxnet-serving"
+    elif version >= Version("1.5"):
+        repo = "mxnet-inference"
+    else:
+        repo = "sagemaker-mxnet-serving" if py_version == "py2" and not eia else "mxnet-inference"
+
+    if eia:
+        repo = "-".join((repo, "eia"))
+
+    return expected_uris.framework_uri(
+        repo,
+        mxnet_version,
+        _sagemaker_or_dlc_account(repo, region),
+        py_version=py_version,
+        processor=processor,
+        region=region,
+    )
+
+
+def _sagemaker_or_dlc_account(repo, region):
+    if repo.startswith("sagemaker"):
+        return (
+            SAGEMAKER_ACCOUNT if region == REGION else SAGEMAKER_ALTERNATE_REGION_ACCOUNTS[region]
+        )
+    else:
+        return DLC_ACCOUNT if region == REGION else DLC_ALTERNATE_REGION_ACCOUNTS[region]
