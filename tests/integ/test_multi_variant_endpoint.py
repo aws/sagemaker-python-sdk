@@ -18,13 +18,13 @@ import math
 import pytest
 import scipy.stats as st
 
+from sagemaker import image_uris
 from sagemaker.s3 import S3Uploader
 from sagemaker.session import production_variant
 from sagemaker.sparkml import SparkMLModel
 from sagemaker.utils import sagemaker_timestamp
 from sagemaker.content_types import CONTENT_TYPE_CSV
 from sagemaker.utils import unique_name_from_base
-from sagemaker.amazon.amazon_estimator import get_image_uri
 from sagemaker.predictor import Predictor
 from sagemaker.serializers import CSVSerializer
 
@@ -97,8 +97,9 @@ def multi_variant_endpoint(sagemaker_session):
             sagemaker_session=sagemaker_session,
         )
 
-        image_uri = get_image_uri(sagemaker_session.boto_session.region_name, "xgboost", "0.90-1")
-
+        image_uri = image_uris.retrieve(
+            "xgboost", sagemaker_session.boto_region_name, version="0.90-1", image_scope="inference"
+        )
         multi_variant_endpoint_model = sagemaker_session.create_model(
             name=MODEL_NAME,
             role=ROLE,
