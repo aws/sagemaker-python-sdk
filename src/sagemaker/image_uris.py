@@ -68,8 +68,12 @@ def retrieve(
     registry = _registry_from_region(region, version_config["registries"])
     hostname = utils._botocore_resolver().construct_endpoint("ecr", region)["hostname"]
 
+    processor = _processor(
+        instance_type, config.get("processors") or version_config.get("processors")
+    )
+    tag = _format_tag(version, processor, py_version)
+
     repo = version_config["repository"]
-    tag = _format_tag(version, _processor(instance_type, config.get("processors")), py_version)
 
     return ECR_URI_TEMPLATE.format(registry=registry, hostname=hostname, repository=repo, tag=tag)
 
@@ -138,11 +142,17 @@ def _processor(instance_type, available_processors):
         logger.info("Ignoring unnecessary instance type: %s.", instance_type)
         return None
 
+    if not instance_type:
+        raise ValueError(
+            "Empty SageMaker instance type. For options, see: "
+            "https://aws.amazon.com/sagemaker/pricing/instance-types"
+        )
+
     if instance_type.startswith("local"):
         processor = "cpu" if instance_type == "local" else "gpu"
     elif not instance_type.startswith("ml."):
         raise ValueError(
-            "Invalid SageMaker instance type: {}. See: "
+            "Invalid SageMaker instance type: {}. For options, see: "
             "https://aws.amazon.com/sagemaker/pricing/instance-types".format(instance_type)
         )
     else:

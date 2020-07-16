@@ -159,9 +159,11 @@ def sklearn_version(request):
     return request.param
 
 
-@pytest.fixture(scope="module", params=["0.90-1"])
-def xgboost_version(request):
-    return request.param
+@pytest.fixture(scope="module")
+def xgboost_framework_version(xgboost_version):
+    if xgboost_version in ("1", "latest"):
+        pytest.skip("Skipping XGBoost algorithm version.")
+    return xgboost_version
 
 
 @pytest.fixture(scope="module", params=["py2", "py3"])
@@ -351,7 +353,7 @@ def pytest_generate_tests(metafunc):
 
 
 def _generate_all_framework_version_fixtures(metafunc):
-    for fw in ("chainer", "mxnet", "tensorflow"):
+    for fw in ("chainer", "mxnet", "tensorflow", "xgboost"):
         config = image_uris.config_for_framework(fw)
         if "scope" in config:
             _parametrize_framework_version_fixtures(metafunc, fw, config)

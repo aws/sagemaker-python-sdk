@@ -31,6 +31,6 @@ def framework_uri(repo, fw_version, account, py_version=None, processor="cpu", r
     return IMAGE_URI_FORMAT.format(account, region, domain, repo, tag)
 
 
-def algo_uri(algo, account, region):
+def algo_uri(algo, account, region, version=1):
     domain = ALTERNATE_DOMAINS.get(region, DOMAIN)
-    return IMAGE_URI_FORMAT.format(account, region, domain, algo, 1)
+    return IMAGE_URI_FORMAT.format(account, region, domain, algo, version)

@@ -12,10 +12,8 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-import boto3
-
 from sagemaker import image_uris
-from tests.unit.sagemaker.image_uris import expected_uris
+from tests.unit.sagemaker.image_uris import expected_uris, regions
 
 ALGO_REGIONS_AND_ACCOUNTS = (
     {
@@ -60,13 +58,6 @@ ALGO_REGIONS_AND_ACCOUNTS = (
 IMAGE_URI_FORMAT = "{}.dkr.ecr.{}.{}/{}:1"
 
 
-def _regions():
-    boto_session = boto3.Session()
-    for partition in boto_session.get_available_partitions():
-        for region in boto_session.get_available_regions("sagemaker", partition_name=partition):
-            yield region
-
-
 def _accounts_for_algo(algo):
     for algo_account_dict in ALGO_REGIONS_AND_ACCOUNTS:
         if algo in algo_account_dict["algorithms"]:
@@ -79,7 +70,7 @@ def test_factorization_machines():
     algo = "factorization-machines"
     accounts = _accounts_for_algo(algo)
 
-    for region in _regions():
+    for region in regions.regions():
         for scope in ("training", "inference"):
             uri = image_uris.retrieve(algo, region, image_scope=scope)
             assert expected_uris.algo_uri(algo, accounts[region], region) == uri
