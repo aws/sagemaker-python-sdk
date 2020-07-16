@@ -447,7 +447,7 @@ def tar_and_upload_dir(
             script name.
     """
     if directory and directory.lower().startswith("s3://"):
-        return UploadedCode(s3_prefix=directory, script_name=os.path.basename(script))
+        return UploadedCode(s3_prefix=directory, script_name=script)
 
     script_name = script if directory else os.path.basename(script)
     dependencies = dependencies or []

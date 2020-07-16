@@ -32,11 +32,16 @@ def mxnet_training_job(
     sagemaker_session, mxnet_full_version, mxnet_full_py_version, cpu_instance_type
 ):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
-        script_path = os.path.join(DATA_DIR, "mxnet_mnist", "mnist.py")
+        s3_prefix = "integ-test-data/mxnet_mnist"
         data_path = os.path.join(DATA_DIR, "mxnet_mnist")
 
+        s3_source = sagemaker_session.upload_data(
+            path=os.path.join(data_path, "sourcedir.tar.gz"), key_prefix="{}/src".format(s3_prefix)
+        )
+
         mx = MXNet(
-            entry_point=script_path,
+            entry_point="mxnet_mnist/mnist.py",
+            source_dir=s3_source,
             role="SageMakerRole",
             framework_version=mxnet_full_version,
             py_version=mxnet_full_py_version,
@@ -46,10 +51,10 @@ def mxnet_training_job(
         )
 
         train_input = mx.sagemaker_session.upload_data(
-            path=os.path.join(data_path, "train"), key_prefix="integ-test-data/mxnet_mnist/train"
+            path=os.path.join(data_path, "train"), key_prefix="{}/train".format(s3_prefix)
         )
         test_input = mx.sagemaker_session.upload_data(
-            path=os.path.join(data_path, "test"), key_prefix="integ-test-data/mxnet_mnist/test"
+            path=os.path.join(data_path, "test"), key_prefix="{}/test".format(s3_prefix)
         )
 
         mx.fit({"train": train_input, "test": test_input})
@@ -62,7 +67,13 @@ def test_attach_deploy(mxnet_training_job, sagemaker_session, cpu_instance_type)
 
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         estimator = MXNet.attach(mxnet_training_job, sagemaker_session=sagemaker_session)
-        predictor = estimator.deploy(1, cpu_instance_type, endpoint_name=endpoint_name)
+        predictor = estimator.deploy(
+            1,
+            cpu_instance_type,
+            entry_point="mnist.py",
+            source_dir=os.path.join(DATA_DIR, "mxnet_mnist"),
+            endpoint_name=endpoint_name,
+        )
         data = numpy.zeros(shape=(1, 1, 28, 28))
         result = predictor.predict(data)
         assert result is not None
