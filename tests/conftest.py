@@ -353,7 +353,7 @@ def pytest_generate_tests(metafunc):
 
 
 def _generate_all_framework_version_fixtures(metafunc):
-    for fw in ("chainer", "tensorflow", "xgboost"):
+    for fw in ("chainer", "mxnet", "tensorflow", "xgboost"):
         config = image_uris.config_for_framework(fw)
         if "scope" in config:
             _parametrize_framework_version_fixtures(metafunc, fw, config)
