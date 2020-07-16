@@ -79,19 +79,19 @@ def test_chainer(chainer_version, chainer_py_version):
         assert expected == uri
 
 
-def test_tensorflow_training(tensorflow_training_version, tf_py_version):
+def test_tensorflow_training(tensorflow_training_version, tensorflow_training_py_version):
     for instance_type, processor in INSTANCE_TYPES_AND_PROCESSORS:
         uri = image_uris.retrieve(
             framework="tensorflow",
             region=REGION,
             version=tensorflow_training_version,
-            py_version=tf_py_version,
+            py_version=tensorflow_training_py_version,
             instance_type=instance_type,
             image_scope="training",
         )
 
         expected = _expected_tf_training_uri(
-            tensorflow_training_version, tf_py_version, processor=processor
+            tensorflow_training_version, tensorflow_training_py_version, processor=processor
         )
         assert expected == uri
 
@@ -100,13 +100,13 @@ def test_tensorflow_training(tensorflow_training_version, tf_py_version):
             framework="tensorflow",
             region=region,
             version=tensorflow_training_version,
-            py_version=tf_py_version,
+            py_version=tensorflow_training_py_version,
             instance_type="ml.c4.xlarge",
             image_scope="training",
         )
 
         expected = _expected_tf_training_uri(
-            tensorflow_training_version, tf_py_version, region=region
+            tensorflow_training_version, tensorflow_training_py_version, region=region
         )
         assert expected == uri
 

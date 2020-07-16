@@ -618,33 +618,37 @@ def test_create_image_uri_mxnet(mxnet_version):
         )
 
 
-def test_create_image_uri_tensorflow(tf_version):
-    if tf_version in ORIGINAL_FW_VERSIONS["tensorflow"]:
+def test_create_image_uri_tensorflow(tensorflow_training_version):
+    if tensorflow_training_version in ORIGINAL_FW_VERSIONS["tensorflow"]:
         image_uri = fw_utils.create_image_uri(
-            "us-west-2", "tensorflow", "ml.p3.2xlarge", tf_version, "py2"
+            "us-west-2", "tensorflow", "ml.p3.2xlarge", tensorflow_training_version, "py2"
         )
         assert image_uri == "{}.dkr.ecr.us-west-2.amazonaws.com/{}:{}-gpu-py2".format(
-            get_account("tensorflow", tf_version),
-            get_repo_name("tensorflow", tf_version),
-            tf_version,
+            get_account("tensorflow", tensorflow_training_version),
+            get_repo_name("tensorflow", tensorflow_training_version),
+            tensorflow_training_version,
         )
     else:
         image_uri = fw_utils.create_image_uri(
-            "us-west-2", "tensorflow-scriptmode", "ml.p3.2xlarge", tf_version, "py3"
+            "us-west-2",
+            "tensorflow-scriptmode",
+            "ml.p3.2xlarge",
+            tensorflow_training_version,
+            "py3",
         )
         assert image_uri == "{}.dkr.ecr.us-west-2.amazonaws.com/{}:{}-gpu-py3".format(
-            get_account("tensorflow", tf_version),
-            get_repo_name("tensorflow", tf_version),
-            tf_version,
+            get_account("tensorflow", tensorflow_training_version),
+            get_repo_name("tensorflow", tensorflow_training_version),
+            tensorflow_training_version,
         )
 
         image_uri = fw_utils.create_image_uri(
-            "us-west-2", "tensorflow-serving", "ml.c4.2xlarge", tf_version
+            "us-west-2", "tensorflow-serving", "ml.c4.2xlarge", tensorflow_training_version
         )
         assert image_uri == "{}.dkr.ecr.us-west-2.amazonaws.com/{}:{}-cpu".format(
-            get_account("tensorflow", tf_version),
-            get_repo_name("tensorflow", tf_version, True),
-            tf_version,
+            get_account("tensorflow", tensorflow_training_version),
+            get_repo_name("tensorflow", tensorflow_training_version, True),
+            tensorflow_training_version,
         )
 
 
@@ -867,6 +871,18 @@ def test_tar_and_upload_dir_s3(sagemaker_session):
     )
 
     assert result == fw_utils.UploadedCode("s3://m", "mnist.py")
+
+
+def test_tar_and_upload_dir_s3_with_script_dir(sagemaker_session):
+    bucket = "mybucket"
+    s3_key_prefix = "something/source"
+    script = "some/dir/mnist.py"
+    directory = "s3://m"
+    result = fw_utils.tar_and_upload_dir(
+        sagemaker_session, bucket, s3_key_prefix, script, directory
+    )
+
+    assert result == fw_utils.UploadedCode("s3://m", "some/dir/mnist.py")
 
 
 @patch("sagemaker.utils")

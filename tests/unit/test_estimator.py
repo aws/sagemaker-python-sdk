@@ -1269,7 +1269,7 @@ def test_git_support_codecommit_with_ssh_no_passphrase_needed(git_clone_repo, sa
 @patch("time.strftime", return_value=TIMESTAMP)
 def test_init_with_source_dir_s3(strftime, sagemaker_session):
     fw = DummyFramework(
-        entry_point=SCRIPT_PATH,
+        entry_point=SCRIPT_NAME,
         source_dir="s3://location",
         role=ROLE,
         sagemaker_session=sagemaker_session,

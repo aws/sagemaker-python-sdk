@@ -232,7 +232,7 @@ class RLEstimator(Framework):
         if not entry_point and (source_dir or dependencies):
             raise AttributeError("Please provide an `entry_point`.")
 
-        entry_point = entry_point or self.entry_point
+        entry_point = entry_point or self._model_entry_point()
         source_dir = source_dir or self._model_source_dir()
         dependencies = dependencies or self.dependencies
 

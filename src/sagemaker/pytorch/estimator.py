@@ -175,7 +175,7 @@ class PyTorch(Framework):
         return PyTorchModel(
             self.model_data,
             role or self.role,
-            entry_point or self.entry_point,
+            entry_point or self._model_entry_point(),
             framework_version=self.framework_version,
             py_version=self.py_version,
             source_dir=(source_dir or self._model_source_dir()),

@@ -218,10 +218,10 @@ class MXNet(Framework):
 
         kwargs["name"] = self._get_or_create_name(kwargs.get("name"))
 
-        return MXNetModel(
+        model = MXNetModel(
             self.model_data,
             role or self.role,
-            entry_point or self.entry_point,
+            entry_point,
             framework_version=self.framework_version,
             py_version=self.py_version,
             source_dir=(source_dir or self._model_source_dir()),
@@ -234,6 +234,13 @@ class MXNet(Framework):
             dependencies=(dependencies or self.dependencies),
             **kwargs
         )
+
+        if entry_point is None:
+            model.entry_point = (
+                self.entry_point if model._is_mms_version() else self._model_entry_point()
+            )
+
+        return model
 
     @classmethod
     def _prepare_init_params_from_job_description(cls, job_details, model_channel_name=None):

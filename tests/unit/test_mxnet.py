@@ -27,7 +27,8 @@ from sagemaker.mxnet import MXNet
 from sagemaker.mxnet import MXNetPredictor, MXNetModel
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
-SCRIPT_PATH = os.path.join(DATA_DIR, "dummy_script.py")
+SCRIPT_NAME = "dummy_script.py"
+SCRIPT_PATH = os.path.join(DATA_DIR, SCRIPT_NAME)
 SERVING_SCRIPT_FILE = "another_dummy_script.py"
 MODEL_DATA = "s3://mybucket/model"
 ENV = {"DUMMY_ENV_VAR": "dummy_value"}
@@ -189,7 +190,8 @@ def test_create_model(name_from_base, sagemaker_session, mxnet_version, mxnet_py
     base_job_name = "job"
 
     mx = MXNet(
-        entry_point=SCRIPT_PATH,
+        entry_point=SCRIPT_NAME,
+        source_dir=source_dir,
         framework_version=mxnet_version,
         py_version=mxnet_py_version,
         role=ROLE,
@@ -198,7 +200,6 @@ def test_create_model(name_from_base, sagemaker_session, mxnet_version, mxnet_py
         instance_type=INSTANCE_TYPE,
         container_log_level=container_log_level,
         base_job_name=base_job_name,
-        source_dir=source_dir,
     )
 
     mx.fit(inputs="s3://mybucket/train", job_name="new_name")
@@ -210,7 +211,7 @@ def test_create_model(name_from_base, sagemaker_session, mxnet_version, mxnet_py
     assert model.sagemaker_session == sagemaker_session
     assert model.framework_version == mxnet_version
     assert model.py_version == mxnet_py_version
-    assert model.entry_point == SCRIPT_PATH
+    assert model.entry_point == SCRIPT_NAME
     assert model.role == ROLE
     assert model.name == model_name
     assert model.container_log_level == container_log_level
@@ -226,7 +227,8 @@ def test_create_model_with_optional_params(sagemaker_session, mxnet_version, mxn
     source_dir = "s3://mybucket/source"
     enable_cloudwatch_metrics = "true"
     mx = MXNet(
-        entry_point=SCRIPT_PATH,
+        entry_point=SCRIPT_NAME,
+        source_dir=source_dir,
         framework_version=mxnet_version,
         py_version=mxnet_py_version,
         role=ROLE,
@@ -235,7 +237,6 @@ def test_create_model_with_optional_params(sagemaker_session, mxnet_version, mxn
         instance_type=INSTANCE_TYPE,
         container_log_level=container_log_level,
         base_job_name="job",
-        source_dir=source_dir,
         enable_cloudwatch_metrics=enable_cloudwatch_metrics,
     )
 
@@ -270,7 +271,8 @@ def test_create_model_with_custom_image(name_from_base, sagemaker_session):
     base_job_name = "job"
 
     mx = MXNet(
-        entry_point=SCRIPT_PATH,
+        entry_point=SCRIPT_NAME,
+        source_dir=source_dir,
         framework_version="2.0",
         py_version="py3",
         role=ROLE,
@@ -280,7 +282,6 @@ def test_create_model_with_custom_image(name_from_base, sagemaker_session):
         image_uri=custom_image,
         container_log_level=container_log_level,
         base_job_name=base_job_name,
-        source_dir=source_dir,
     )
 
     mx.fit(inputs="s3://mybucket/train", job_name="new_name")
@@ -291,7 +292,7 @@ def test_create_model_with_custom_image(name_from_base, sagemaker_session):
 
     assert model.sagemaker_session == sagemaker_session
     assert model.image_uri == custom_image
-    assert model.entry_point == SCRIPT_PATH
+    assert model.entry_point == SCRIPT_NAME
     assert model.role == ROLE
     assert model.name == model_name
     assert model.container_log_level == container_log_level
@@ -730,7 +731,6 @@ def test_model_py2_warning(warning, sagemaker_session):
 
 def test_create_model_with_custom_hosting_image(sagemaker_session):
     container_log_level = '"logging.INFO"'
-    source_dir = "s3://mybucket/source"
     custom_image = "mxnet:2.0"
     custom_hosting_image = "mxnet_hosting:2.0"
     mx = MXNet(
@@ -744,7 +744,6 @@ def test_create_model_with_custom_hosting_image(sagemaker_session):
         image_uri=custom_image,
         container_log_level=container_log_level,
         base_job_name="job",
-        source_dir=source_dir,
     )
 
     mx.fit(inputs="s3://mybucket/train", job_name="new_name")
