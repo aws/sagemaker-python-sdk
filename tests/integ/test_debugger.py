@@ -57,7 +57,10 @@ CUSTOM_RULE_CONTAINERS_ACCOUNTS_MAP = {
 
 
 def test_mxnet_with_rules(
-    sagemaker_session, mxnet_training_latest_version, mxnet_latest_py_version, cpu_instance_type
+    sagemaker_session,
+    mxnet_training_latest_version,
+    mxnet_training_latest_py_version,
+    cpu_instance_type,
 ):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         rules = [
@@ -75,7 +78,7 @@ def test_mxnet_with_rules(
             entry_point=script_path,
             role="SageMakerRole",
             framework_version=mxnet_training_latest_version,
-            py_version=mxnet_latest_py_version,
+            py_version=mxnet_training_latest_py_version,
             instance_count=1,
             instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
@@ -118,7 +121,10 @@ def test_mxnet_with_rules(
 
 
 def test_mxnet_with_custom_rule(
-    sagemaker_session, mxnet_training_latest_version, mxnet_latest_py_version, cpu_instance_type
+    sagemaker_session,
+    mxnet_training_latest_version,
+    mxnet_training_latest_py_version,
+    cpu_instance_type,
 ):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         rules = [_get_custom_rule(sagemaker_session)]
@@ -130,7 +136,7 @@ def test_mxnet_with_custom_rule(
             entry_point=script_path,
             role="SageMakerRole",
             framework_version=mxnet_training_latest_version,
-            py_version=mxnet_latest_py_version,
+            py_version=mxnet_training_latest_py_version,
             instance_count=1,
             instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
@@ -167,7 +173,10 @@ def test_mxnet_with_custom_rule(
 
 
 def test_mxnet_with_debugger_hook_config(
-    sagemaker_session, mxnet_training_latest_version, mxnet_latest_py_version, cpu_instance_type
+    sagemaker_session,
+    mxnet_training_latest_version,
+    mxnet_training_latest_py_version,
+    cpu_instance_type,
 ):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         debugger_hook_config = DebuggerHookConfig(
@@ -183,7 +192,7 @@ def test_mxnet_with_debugger_hook_config(
             entry_point=script_path,
             role="SageMakerRole",
             framework_version=mxnet_training_latest_version,
-            py_version=mxnet_latest_py_version,
+            py_version=mxnet_training_latest_py_version,
             instance_count=1,
             instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
@@ -206,7 +215,10 @@ def test_mxnet_with_debugger_hook_config(
 
 
 def test_mxnet_with_rules_and_debugger_hook_config(
-    sagemaker_session, mxnet_training_latest_version, mxnet_latest_py_version, cpu_instance_type
+    sagemaker_session,
+    mxnet_training_latest_version,
+    mxnet_training_latest_py_version,
+    cpu_instance_type,
 ):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         rules = [
@@ -229,7 +241,7 @@ def test_mxnet_with_rules_and_debugger_hook_config(
             entry_point=script_path,
             role="SageMakerRole",
             framework_version=mxnet_training_latest_version,
-            py_version=mxnet_latest_py_version,
+            py_version=mxnet_training_latest_py_version,
             instance_count=1,
             instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
@@ -274,7 +286,10 @@ def test_mxnet_with_rules_and_debugger_hook_config(
 
 
 def test_mxnet_with_custom_rule_and_debugger_hook_config(
-    sagemaker_session, mxnet_training_latest_version, mxnet_latest_py_version, cpu_instance_type
+    sagemaker_session,
+    mxnet_training_latest_version,
+    mxnet_training_latest_py_version,
+    cpu_instance_type,
 ):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         rules = [_get_custom_rule(sagemaker_session)]
@@ -291,7 +306,7 @@ def test_mxnet_with_custom_rule_and_debugger_hook_config(
             entry_point=script_path,
             role="SageMakerRole",
             framework_version=mxnet_training_latest_version,
-            py_version=mxnet_latest_py_version,
+            py_version=mxnet_training_latest_py_version,
             instance_count=1,
             instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
@@ -330,7 +345,10 @@ def test_mxnet_with_custom_rule_and_debugger_hook_config(
 
 
 def test_mxnet_with_tensorboard_output_config(
-    sagemaker_session, mxnet_training_latest_version, mxnet_latest_py_version, cpu_instance_type
+    sagemaker_session,
+    mxnet_training_latest_version,
+    mxnet_training_latest_py_version,
+    cpu_instance_type,
 ):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         tensorboard_output_config = TensorBoardOutputConfig(
@@ -346,7 +364,7 @@ def test_mxnet_with_tensorboard_output_config(
             entry_point=script_path,
             role="SageMakerRole",
             framework_version=mxnet_training_latest_version,
-            py_version=mxnet_latest_py_version,
+            py_version=mxnet_training_latest_py_version,
             instance_count=1,
             instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
@@ -373,7 +391,10 @@ def test_mxnet_with_tensorboard_output_config(
 
 @pytest.mark.canary_quick
 def test_mxnet_with_all_rules_and_configs(
-    sagemaker_session, mxnet_training_latest_version, mxnet_latest_py_version, cpu_instance_type
+    sagemaker_session,
+    mxnet_training_latest_version,
+    mxnet_training_latest_py_version,
+    cpu_instance_type,
 ):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         rules = [
@@ -402,7 +423,7 @@ def test_mxnet_with_all_rules_and_configs(
             entry_point=script_path,
             role="SageMakerRole",
             framework_version=mxnet_training_latest_version,
-            py_version=mxnet_latest_py_version,
+            py_version=mxnet_training_latest_py_version,
             instance_count=1,
             instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
@@ -445,7 +466,10 @@ def test_mxnet_with_all_rules_and_configs(
 
 
 def test_mxnet_with_debugger_hook_config_disabled(
-    sagemaker_session, mxnet_training_latest_version, mxnet_latest_py_version, cpu_instance_type
+    sagemaker_session,
+    mxnet_training_latest_version,
+    mxnet_training_latest_py_version,
+    cpu_instance_type,
 ):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         script_path = os.path.join(DATA_DIR, "mxnet_mnist", "mnist_gluon.py")
@@ -455,7 +479,7 @@ def test_mxnet_with_debugger_hook_config_disabled(
             entry_point=script_path,
             role="SageMakerRole",
             framework_version=mxnet_training_latest_version,
-            py_version=mxnet_latest_py_version,
+            py_version=mxnet_training_latest_py_version,
             instance_count=1,
             instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,

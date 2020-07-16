@@ -29,7 +29,10 @@ from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 @pytest.fixture(scope="module")
 def mxnet_training_job(
-    sagemaker_session, mxnet_training_latest_version, mxnet_latest_py_version, cpu_instance_type
+    sagemaker_session,
+    mxnet_training_latest_version,
+    mxnet_training_latest_py_version,
+    cpu_instance_type,
 ):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         s3_prefix = "integ-test-data/mxnet_mnist"
@@ -44,7 +47,7 @@ def mxnet_training_job(
             source_dir=s3_source,
             role="SageMakerRole",
             framework_version=mxnet_training_latest_version,
-            py_version=mxnet_latest_py_version,
+            py_version=mxnet_training_latest_py_version,
             instance_count=1,
             instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
@@ -123,7 +126,7 @@ def test_deploy_model(
     mxnet_training_job,
     sagemaker_session,
     mxnet_inference_latest_version,
-    mxnet_latest_py_version,
+    mxnet_inference_latest_py_version,
     cpu_instance_type,
 ):
     endpoint_name = "test-mxnet-deploy-model-{}".format(sagemaker_timestamp())
@@ -138,7 +141,7 @@ def test_deploy_model(
             model_data,
             "SageMakerRole",
             entry_point=script_path,
-            py_version=mxnet_latest_py_version,
+            py_version=mxnet_inference_latest_py_version,
             sagemaker_session=sagemaker_session,
             framework_version=mxnet_inference_latest_version,
         )
@@ -158,7 +161,7 @@ def test_deploy_model_with_tags_and_kms(
     mxnet_training_job,
     sagemaker_session,
     mxnet_inference_latest_version,
-    mxnet_latest_py_version,
+    mxnet_inference_latest_py_version,
     cpu_instance_type,
 ):
     endpoint_name = "test-mxnet-deploy-model-{}".format(sagemaker_timestamp())
@@ -173,7 +176,7 @@ def test_deploy_model_with_tags_and_kms(
             model_data,
             "SageMakerRole",
             entry_point=script_path,
-            py_version=mxnet_latest_py_version,
+            py_version=mxnet_inference_latest_py_version,
             sagemaker_session=sagemaker_session,
             framework_version=mxnet_inference_latest_version,
         )
@@ -216,7 +219,7 @@ def test_deploy_model_and_update_endpoint(
     mxnet_training_job,
     sagemaker_session,
     mxnet_inference_latest_version,
-    mxnet_latest_py_version,
+    mxnet_inference_latest_py_version,
     cpu_instance_type,
     alternative_cpu_instance_type,
 ):
@@ -232,7 +235,7 @@ def test_deploy_model_and_update_endpoint(
             model_data,
             "SageMakerRole",
             entry_point=script_path,
-            py_version=mxnet_latest_py_version,
+            py_version=mxnet_inference_latest_py_version,
             sagemaker_session=sagemaker_session,
             framework_version=mxnet_inference_latest_version,
         )
@@ -266,7 +269,7 @@ def test_deploy_model_with_accelerator(
     mxnet_training_job,
     sagemaker_session,
     mxnet_eia_latest_version,
-    mxnet_latest_py_version,
+    mxnet_inference_latest_py_version,
     cpu_instance_type,
 ):
     endpoint_name = "test-mxnet-deploy-model-ei-{}".format(sagemaker_timestamp())
@@ -282,7 +285,7 @@ def test_deploy_model_with_accelerator(
             "SageMakerRole",
             entry_point=script_path,
             framework_version=mxnet_eia_latest_version,
-            py_version=mxnet_latest_py_version,
+            py_version=mxnet_inference_latest_py_version,
             sagemaker_session=sagemaker_session,
         )
         predictor = model.deploy(
@@ -295,7 +298,10 @@ def test_deploy_model_with_accelerator(
 
 
 def test_async_fit(
-    sagemaker_session, mxnet_training_latest_version, mxnet_latest_py_version, cpu_instance_type
+    sagemaker_session,
+    mxnet_training_latest_version,
+    mxnet_inference_latest_py_version,
+    cpu_instance_type,
 ):
     endpoint_name = "test-mxnet-attach-deploy-{}".format(sagemaker_timestamp())
 
@@ -306,7 +312,7 @@ def test_async_fit(
         mx = MXNet(
             entry_point=script_path,
             role="SageMakerRole",
-            py_version=mxnet_latest_py_version,
+            py_version=mxnet_inference_latest_py_version,
             instance_count=1,
             instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
