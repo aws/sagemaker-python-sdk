@@ -374,6 +374,34 @@ def test_retrieve_processor_type(config_for_framework):
         assert "123412341234.dkr.ecr.us-west-2.amazonaws.com/dummy:1.0.0-gpu-py3" == uri
 
 
+@patch("sagemaker.image_uris.config_for_framework")
+def test_retrieve_processor_type_from_version_specific_processor_config(config_for_framework):
+    config = copy.deepcopy(BASE_CONFIG)
+    del config["processors"]
+    config["versions"]["1.0.0"]["processors"] = ["cpu"]
+    config_for_framework.return_value = config
+
+    uri = image_uris.retrieve(
+        framework="useless-string",
+        version="1.0.0",
+        py_version="py3",
+        instance_type="ml.c4.xlarge",
+        region="us-west-2",
+        image_scope="training",
+    )
+    assert "123412341234.dkr.ecr.us-west-2.amazonaws.com/dummy:1.0.0-cpu-py3" == uri
+
+    uri = image_uris.retrieve(
+        framework="useless-string",
+        version="1.1.0",
+        py_version="py3",
+        instance_type="ml.c4.xlarge",
+        region="us-west-2",
+        image_scope="training",
+    )
+    assert "123412341234.dkr.ecr.us-west-2.amazonaws.com/dummy:1.1.0-py3" == uri
+
+
 @patch("sagemaker.image_uris.config_for_framework", return_value=BASE_CONFIG)
 def test_retrieve_unsupported_processor_type(config_for_framework):
     with pytest.raises(ValueError) as e:
@@ -387,6 +415,17 @@ def test_retrieve_unsupported_processor_type(config_for_framework):
         )
 
     assert "Invalid SageMaker instance type: not-an-instance-type." in str(e.value)
+
+    with pytest.raises(ValueError) as e:
+        image_uris.retrieve(
+            framework="useless-string",
+            version="1.0.0",
+            py_version="py3",
+            region="us-west-2",
+            image_scope="training",
+        )
+
+    assert "Empty SageMaker instance type." in str(e.value)
 
     config = copy.deepcopy(BASE_CONFIG)
     config["processors"] = ["cpu"]
