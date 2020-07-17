@@ -15,11 +15,12 @@ from __future__ import absolute_import
 import pytest
 from mock import Mock, patch
 
+from sagemaker import image_uris
 from sagemaker.amazon.factorization_machines import (
     FactorizationMachines,
     FactorizationMachinesPredictor,
 )
-from sagemaker.amazon.amazon_estimator import registry, RecordSet
+from sagemaker.amazon.amazon_estimator import RecordSet
 
 ROLE = "myrole"
 INSTANCE_COUNT = 1
@@ -146,7 +147,7 @@ def test_all_hyperparameters(sagemaker_session):
 
 def test_image(sagemaker_session):
     fm = FactorizationMachines(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-    assert fm.train_image() == registry(REGION) + "/factorization-machines:1"
+    assert image_uris.retrieve("factorization-machines", REGION) == fm.train_image()
 
 
 @pytest.mark.parametrize(
@@ -313,9 +314,7 @@ def test_model_image(sagemaker_session):
     fm.fit(data, MINI_BATCH_SIZE)
 
     model = fm.create_model()
-    assert (
-        model.image_uri == registry(REGION, "factorization-machines") + "/factorization-machines:1"
-    )
+    assert image_uris.retrieve("factorization-machines", REGION) == model.image_uri
 
 
 def test_predictor_type(sagemaker_session):

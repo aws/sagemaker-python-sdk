@@ -15,8 +15,9 @@ from __future__ import absolute_import
 import pytest
 from mock import Mock, patch
 
+from sagemaker import image_uris
 from sagemaker.amazon.lda import LDA, LDAPredictor
-from sagemaker.amazon.amazon_estimator import registry, RecordSet
+from sagemaker.amazon.amazon_estimator import RecordSet
 
 ROLE = "myrole"
 INSTANCE_COUNT = 1
@@ -95,7 +96,7 @@ def test_all_hyperparameters(sagemaker_session):
 
 def test_image(sagemaker_session):
     lda = LDA(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-    assert lda.train_image() == registry(REGION, "lda") + "/lda:1"
+    assert image_uris.retrieve("lda", REGION) == lda.train_image()
 
 
 @pytest.mark.parametrize("required_hyper_parameters, value", [("num_topics", "string")])
@@ -215,7 +216,7 @@ def test_model_image(sagemaker_session):
     lda.fit(data, MINI_BATCH_SZIE)
 
     model = lda.create_model()
-    assert model.image_uri == registry(REGION, "lda") + "/lda:1"
+    assert image_uris.retrieve("lda", REGION) == model.image_uri
 
 
 def test_predictor_type(sagemaker_session):

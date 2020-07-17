@@ -15,8 +15,9 @@ from __future__ import absolute_import
 import pytest
 from mock import Mock, patch
 
+from sagemaker import image_uris
 from sagemaker.amazon.linear_learner import LinearLearner, LinearLearnerPredictor
-from sagemaker.amazon.amazon_estimator import registry, RecordSet
+from sagemaker.amazon.amazon_estimator import RecordSet
 
 ROLE = "myrole"
 INSTANCE_COUNT = 1
@@ -178,7 +179,7 @@ def test_all_hyperparameters(sagemaker_session):
 
 def test_image(sagemaker_session):
     lr = LinearLearner(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-    assert lr.train_image() == registry(REGION, "linear-learner") + "/linear-learner:1"
+    assert image_uris.retrieve("linear-learner", REGION) == lr.train_image()
 
 
 @pytest.mark.parametrize("required_hyper_parameters, value", [("predictor_type", 0)])
@@ -412,7 +413,7 @@ def test_model_image(sagemaker_session):
     lr.fit(data)
 
     model = lr.create_model()
-    assert model.image_uri == registry(REGION, "linear-learner") + "/linear-learner:1"
+    assert image_uris.retrieve("linear-learner", REGION) == model.image_uri
 
 
 def test_predictor_type(sagemaker_session):

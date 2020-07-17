@@ -15,8 +15,9 @@ from __future__ import absolute_import
 import pytest
 from mock import Mock, patch
 
+from sagemaker import image_uris
 from sagemaker.amazon.kmeans import KMeans, KMeansPredictor
-from sagemaker.amazon.amazon_estimator import registry, RecordSet
+from sagemaker.amazon.amazon_estimator import RecordSet
 
 ROLE = "myrole"
 INSTANCE_COUNT = 1
@@ -111,7 +112,7 @@ def test_all_hyperparameters(sagemaker_session):
 
 def test_image(sagemaker_session):
     kmeans = KMeans(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-    assert kmeans.train_image() == registry(REGION, "kmeans") + "/kmeans:1"
+    assert image_uris.retrieve("kmeans", REGION) == kmeans.train_image()
 
 
 @pytest.mark.parametrize("required_hyper_parameters, value", [("k", "string")])
@@ -255,7 +256,7 @@ def test_model_image(sagemaker_session):
     kmeans.fit(data, MINI_BATCH_SIZE)
 
     model = kmeans.create_model()
-    assert model.image_uri == registry(REGION, "kmeans") + "/kmeans:1"
+    assert image_uris.retrieve("kmeans", REGION) == model.image_uri
 
 
 def test_predictor_type(sagemaker_session):

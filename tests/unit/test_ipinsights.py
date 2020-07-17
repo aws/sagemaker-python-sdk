@@ -15,8 +15,9 @@ from __future__ import absolute_import
 import pytest
 from mock import Mock, patch
 
+from sagemaker import image_uris
 from sagemaker.amazon.ipinsights import IPInsights, IPInsightsPredictor
-from sagemaker.amazon.amazon_estimator import registry, RecordSet
+from sagemaker.amazon.amazon_estimator import RecordSet
 
 # Mocked training config
 ROLE = "myrole"
@@ -119,7 +120,7 @@ def test_all_hyperparameters(sagemaker_session):
 
 def test_image(sagemaker_session):
     ipinsights = IPInsights(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-    assert ipinsights.train_image() == registry(REGION, "ipinsights") + "/ipinsights:1"
+    assert image_uris.retrieve("ipinsights", REGION) == ipinsights.train_image()
 
 
 @pytest.mark.parametrize(
@@ -288,7 +289,7 @@ def test_model_image(sagemaker_session):
     ipinsights.fit(data, MINI_BATCH_SIZE)
 
     model = ipinsights.create_model()
-    assert model.image_uri == registry(REGION, "ipinsights") + "/ipinsights:1"
+    assert image_uris.retrieve("ipinsights", REGION) == model.image_uri
 
 
 def test_predictor_type(sagemaker_session):

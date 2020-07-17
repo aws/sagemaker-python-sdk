@@ -622,15 +622,12 @@ def test_framework_tuning_config(ecr_prefix, sagemaker_session):
         ]
     ),
 )
-@patch(
-    "sagemaker.fw_utils.get_ecr_image_uri_prefix",
-    return_value="520713654638.dkr.ecr.us-west-2.amazonaws.com",
-)
-@patch(
-    "sagemaker.amazon.amazon_estimator.get_ecr_image_uri_prefix",
-    return_value="174872318107.dkr.ecr.us-west-2.amazonaws.com",
-)
-def test_multi_estimator_tuning_config(algo_ecr_prefix, fw_ecr_prefix, sagemaker_session):
+@patch("sagemaker.utils._botocore_resolver")
+def test_multi_estimator_tuning_config(botocore_resolver, sagemaker_session):
+    botocore_resolver.return_value.construct_endpoint.return_value = {
+        "hostname": "ecr.us-west-2.amazonaws.com"
+    }
+
     estimator_dict = {}
     hyperparameter_ranges_dict = {}
     objective_metric_name_dict = {}
