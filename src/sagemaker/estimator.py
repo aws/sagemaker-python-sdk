@@ -25,7 +25,7 @@ from six import with_metaclass
 from six import string_types
 from six.moves.urllib.parse import urlparse
 import sagemaker
-from sagemaker import git_utils
+from sagemaker import git_utils, image_uris
 from sagemaker.analytics import TrainingJobAnalytics
 from sagemaker.debugger import DebuggerHookConfig
 from sagemaker.debugger import TensorBoardOutputConfig  # noqa: F401 # pylint: disable=unused-import
@@ -33,7 +33,6 @@ from sagemaker.debugger import get_rule_container_image_uri
 from sagemaker.s3 import S3Uploader
 
 from sagemaker.fw_utils import (
-    create_image_uri,
     tar_and_upload_dir,
     parse_s3_url,
     UploadedCode,
@@ -1822,12 +1821,13 @@ class Framework(EstimatorBase):
         """
         if self.image_uri:
             return self.image_uri
-        return create_image_uri(
-            self.sagemaker_session.boto_region_name,
+        return image_uris.retrieve(
             self.__framework_name__,
-            self.instance_type,
-            self.framework_version,  # pylint: disable=no-member
+            self.sagemaker_session.boto_region_name,
+            instance_type=self.instance_type,
+            version=self.framework_version,  # pylint: disable=no-member
             py_version=self.py_version,  # pylint: disable=no-member
+            image_scope="training",
         )
 
     @classmethod

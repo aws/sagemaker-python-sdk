@@ -409,9 +409,7 @@ def test_model_image_accelerator(sagemaker_session):
             py_version="py2",
         )
         model.deploy(1, CPU, accelerator_type=ACCELERATOR_TYPE)
-    assert "pytorch-serving is not supported with Amazon Elastic Inference in Python 2." in str(
-        error
-    )
+    assert "Unsupported Python version: py2." in str(error)
 
 
 def test_model_prepare_container_def_no_instance_type_or_image():
