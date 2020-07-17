@@ -170,9 +170,8 @@ def test_algo_uris(algo):
     accounts = _accounts_for_algo(algo)
 
     for region in regions.regions():
-        for scope in ("training", "inference"):
-            uri = image_uris.retrieve(algo, region, image_scope=scope)
-            assert expected_uris.algo_uri(algo, accounts[region], region) == uri
+        uri = image_uris.retrieve(algo, region)
+        assert expected_uris.algo_uri(algo, accounts[region], region) == uri
 
 
 def test_lda():
@@ -180,11 +179,10 @@ def test_lda():
     accounts = _accounts_for_algo(algo)
 
     for region in regions.regions():
-        for scope in ("training", "inference"):
-            if region in accounts:
-                uri = image_uris.retrieve(algo, region, image_scope=scope)
-                assert expected_uris.algo_uri(algo, accounts[region], region) == uri
-            else:
-                with pytest.raises(ValueError) as e:
-                    image_uris.retrieve(algo, region, image_scope=scope)
-                assert "Unsupported region: {}.".format(region) in str(e.value)
+        if region in accounts:
+            uri = image_uris.retrieve(algo, region)
+            assert expected_uris.algo_uri(algo, accounts[region], region) == uri
+        else:
+            with pytest.raises(ValueError) as e:
+                image_uris.retrieve(algo, region)
+            assert "Unsupported region: {}.".format(region) in str(e.value)
