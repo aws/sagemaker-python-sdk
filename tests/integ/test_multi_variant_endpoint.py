@@ -99,7 +99,7 @@ def multi_variant_endpoint(sagemaker_session):
             "xgboost",
             sagemaker_session.boto_region_name,
             version="0.90-1",
-            instancee_type=DEFAULT_INSTANCE_TYPE,
+            instance_type=DEFAULT_INSTANCE_TYPE,
             image_scope="inference",
         )
         multi_variant_endpoint_model = sagemaker_session.create_model(
