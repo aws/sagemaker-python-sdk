@@ -103,8 +103,9 @@ def config_for_framework(framework):
 def _validate_version_and_set_if_needed(version, config, framework):
     """Checks if the framework/algorithm version is one of the supported versions."""
     available_versions = list(config["versions"].keys())
+    aliased_versions = list(config.get("version_aliases", {}).keys())
 
-    if len(available_versions) == 1:
+    if len(available_versions) == 1 and version not in aliased_versions:
         log_message = "Defaulting to the only supported framework/algorithm version: {}.".format(
             available_versions[0]
         )
@@ -115,8 +116,7 @@ def _validate_version_and_set_if_needed(version, config, framework):
 
         return available_versions[0]
 
-    available_versions += list(config.get("version_aliases", {}).keys())
-    _validate_arg("{} version".format(framework), version, available_versions)
+    _validate_arg("{} version".format(framework), version, available_versions + aliased_versions)
 
     return version
 

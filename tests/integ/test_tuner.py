@@ -771,7 +771,10 @@ def test_tuning_chainer(
     "This test should be fixed. Details in https://github.com/aws/sagemaker-python-sdk/pull/968"
 )
 def test_attach_tuning_pytorch(
-    sagemaker_session, cpu_instance_type, pytorch_full_version, pytorch_full_py_version
+    sagemaker_session,
+    cpu_instance_type,
+    pytorch_training_latest_version,
+    pytorch_training_latest_py_version,
 ):
     mnist_dir = os.path.join(DATA_DIR, "pytorch_mnist")
     mnist_script = os.path.join(mnist_dir, "mnist.py")
@@ -780,8 +783,8 @@ def test_attach_tuning_pytorch(
         entry_point=mnist_script,
         role="SageMakerRole",
         instance_count=1,
-        framework_version=pytorch_full_version,
-        py_version=pytorch_full_py_version,
+        framework_version=pytorch_training_latest_version,
+        py_version=pytorch_training_latest_py_version,
         instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
     )
