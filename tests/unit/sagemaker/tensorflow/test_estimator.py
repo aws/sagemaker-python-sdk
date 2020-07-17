@@ -187,10 +187,10 @@ def test_create_model(
         container_log_level=container_log_level,
         base_job_name=base_job_name,
         enable_network_isolation=True,
+        output_path="s3://mybucket/output",
     )
 
-    job_name = "doing something"
-    tf.fit(inputs="s3://mybucket/train", job_name=job_name)
+    tf._current_job_name = "doing something"
 
     model_name = "doing something else"
     name_from_base.return_value = model_name
@@ -233,10 +233,10 @@ def test_create_model_with_optional_params(
         base_job_name="job",
         source_dir=source_dir,
         enable_cloudwatch_metrics=enable_cloudwatch_metrics,
+        output_path="s3://mybucket/output",
     )
 
-    job_name = "doing something"
-    tf.fit(inputs="s3://mybucket/train", job_name=job_name)
+    tf._current_job_name = "doing something"
 
     new_role = "role"
     vpc_config = {"Subnets": ["foo"], "SecurityGroupIds": ["bar"]}

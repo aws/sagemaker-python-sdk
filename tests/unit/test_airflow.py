@@ -174,10 +174,10 @@ def test_byo_training_config_all_args(sagemaker_session):
     ),
 )
 @patch(
-    "sagemaker.fw_utils.get_ecr_image_uri_prefix",
-    return_value="763104351884.dkr.ecr.us-west-2.amazonaws.com",
+    "sagemaker.image_uris.retrieve",
+    return_value="763104351884.dkr.ecr.us-west-2.amazonaws.com/tensorflow-training:1.15.2-cpu-py3",
 )
-def test_framework_training_config_required_args(ecr_prefix, sagemaker_session):
+def test_framework_training_config_required_args(retrieve_image_uri, sagemaker_session):
     tf = tensorflow.TensorFlow(
         entry_point="/some/script.py",
         framework_version="1.15.2",
@@ -249,10 +249,10 @@ def test_framework_training_config_required_args(ecr_prefix, sagemaker_session):
     MagicMock(return_value=["{{ output_path }}", "{{ output_path }}"]),
 )
 @patch(
-    "sagemaker.fw_utils.get_ecr_image_uri_prefix",
-    return_value="763104351884.dkr.ecr.us-west-2.amazonaws.com",
+    "sagemaker.image_uris.retrieve",
+    return_value="763104351884.dkr.ecr.us-west-2.amazonaws.com/tensorflow-training:1.15.2-cpu-py3",
 )
-def test_framework_training_config_all_args(ecr_prefix, sagemaker_session):
+def test_framework_training_config_all_args(retrieve_image_uri, sagemaker_session):
     tf = tensorflow.TensorFlow(
         entry_point="{{ entry_point }}",
         source_dir="{{ source_dir }}",
@@ -480,10 +480,10 @@ def test_amazon_alg_training_config_all_args(sagemaker_session):
     ),
 )
 @patch(
-    "sagemaker.fw_utils.get_ecr_image_uri_prefix",
-    return_value="520713654638.dkr.ecr.us-west-2.amazonaws.com",
+    "sagemaker.image_uris.retrieve",
+    return_value="520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet:1.3.0-cpu-py3",
 )
-def test_framework_tuning_config(ecr_prefix, sagemaker_session):
+def test_framework_tuning_config(retrieve_image_uri, sagemaker_session):
     mxnet_estimator = mxnet.MXNet(
         entry_point="{{ entry_point }}",
         source_dir="{{ source_dir }}",
@@ -622,15 +622,12 @@ def test_framework_tuning_config(ecr_prefix, sagemaker_session):
         ]
     ),
 )
-@patch(
-    "sagemaker.fw_utils.get_ecr_image_uri_prefix",
-    return_value="520713654638.dkr.ecr.us-west-2.amazonaws.com",
-)
-@patch(
-    "sagemaker.amazon.amazon_estimator.get_ecr_image_uri_prefix",
-    return_value="174872318107.dkr.ecr.us-west-2.amazonaws.com",
-)
-def test_multi_estimator_tuning_config(algo_ecr_prefix, fw_ecr_prefix, sagemaker_session):
+@patch("sagemaker.utils._botocore_resolver")
+def test_multi_estimator_tuning_config(botocore_resolver, sagemaker_session):
+    botocore_resolver.return_value.construct_endpoint.return_value = {
+        "hostname": "ecr.us-west-2.amazonaws.com"
+    }
+
     estimator_dict = {}
     hyperparameter_ranges_dict = {}
     objective_metric_name_dict = {}
@@ -1039,10 +1036,10 @@ def test_amazon_alg_model_config(sagemaker_session):
     ),
 )
 @patch(
-    "sagemaker.fw_utils.get_ecr_image_uri_prefix",
-    return_value="763104351884.dkr.ecr.us-west-2.amazonaws.com",
+    "sagemaker.image_uris.retrieve",
+    return_value="763104351884.dkr.ecr.us-west-2.amazonaws.com/mxnet-inference:1.6.0-cpu-py3",
 )
-def test_model_config_from_framework_estimator(ecr_prefix, sagemaker_session):
+def test_model_config_from_framework_estimator(retrieve_image_uri, sagemaker_session):
     mxnet_estimator = mxnet.MXNet(
         entry_point="{{ entry_point }}",
         source_dir="{{ source_dir }}",
@@ -1205,10 +1202,10 @@ def test_transform_config(sagemaker_session):
     ),
 )
 @patch(
-    "sagemaker.fw_utils.get_ecr_image_uri_prefix",
-    return_value="763104351884.dkr.ecr.us-west-2.amazonaws.com",
+    "sagemaker.image_uris.retrieve",
+    return_value="763104351884.dkr.ecr.us-west-2.amazonaws.com/mxnet-inference:1.6.0-gpu-py3",
 )
-def test_transform_config_from_framework_estimator(ecr_prefix, sagemaker_session):
+def test_transform_config_from_framework_estimator(retrieve_image_uri, sagemaker_session):
     mxnet_estimator = mxnet.MXNet(
         entry_point="{{ entry_point }}",
         source_dir="{{ source_dir }}",
@@ -1458,10 +1455,10 @@ def test_deploy_amazon_alg_model_config(sagemaker_session):
     ),
 )
 @patch(
-    "sagemaker.fw_utils.get_ecr_image_uri_prefix",
-    return_value="763104351884.dkr.ecr.us-west-2.amazonaws.com",
+    "sagemaker.image_uris.retrieve",
+    return_value="763104351884.dkr.ecr.us-west-2.amazonaws.com/mxnet-inference:1.6.0-cpu-py3",
 )
-def test_deploy_config_from_framework_estimator(ecr_prefix, sagemaker_session):
+def test_deploy_config_from_framework_estimator(retrieve_image_uri, sagemaker_session):
     mxnet_estimator = mxnet.MXNet(
         entry_point="{{ entry_point }}",
         source_dir="{{ source_dir }}",

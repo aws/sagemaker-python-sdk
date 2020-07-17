@@ -17,9 +17,9 @@ import logging
 import packaging.version
 
 import sagemaker
+from sagemaker import image_uris
 from sagemaker.deserializers import NumpyDeserializer
 from sagemaker.fw_utils import (
-    create_image_uri,
     model_code_key_prefix,
     python_deprecation_warning,
     validate_version_or_image_args,
@@ -182,17 +182,14 @@ class PyTorchModel(FrameworkModel):
             str: The appropriate image URI based on the given parameters.
 
         """
-        framework_name = self.__framework_name__
-        if self._is_mms_version():
-            framework_name = "{}-serving".format(framework_name)
-
-        return create_image_uri(
+        return image_uris.retrieve(
+            self.__framework_name__,
             region_name,
-            framework_name,
-            instance_type,
-            self.framework_version,
-            self.py_version,
+            version=self.framework_version,
+            py_version=self.py_version,
+            instance_type=instance_type,
             accelerator_type=accelerator_type,
+            image_scope="inference",
         )
 
     def _is_mms_version(self):

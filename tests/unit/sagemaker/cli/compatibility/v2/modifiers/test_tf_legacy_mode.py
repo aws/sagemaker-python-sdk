@@ -81,8 +81,8 @@ def test_node_should_be_modified_random_function_call():
 
 
 @patch("boto3.Session")
-@patch("sagemaker.fw_utils.create_image_uri", return_value=IMAGE_URI)
-def test_modify_node_set_model_dir_and_image_name(create_image_uri, boto_session):
+@patch("sagemaker.image_uris.retrieve", return_value=IMAGE_URI)
+def test_modify_node_set_model_dir_and_image_name(retrieve_image_uri, boto_session):
     boto_session.return_value.region_name = REGION_NAME
 
     tf_constructors = (
@@ -97,14 +97,19 @@ def test_modify_node_set_model_dir_and_image_name(create_image_uri, boto_session
         modifier.modify_node(node)
 
         assert "TensorFlow(image_uri='{}', model_dir=False)".format(IMAGE_URI) == pasta.dump(node)
-        create_image_uri.assert_called_with(
-            REGION_NAME, "tensorflow", "ml.m4.xlarge", "1.11.0", "py2"
+        retrieve_image_uri.assert_called_with(
+            "tensorflow",
+            REGION_NAME,
+            instance_type="ml.m4.xlarge",
+            version="1.11.0",
+            py_version="py2",
+            image_scope="training",
         )
 
 
 @patch("boto3.Session")
-@patch("sagemaker.fw_utils.create_image_uri", return_value=IMAGE_URI)
-def test_modify_node_set_image_name_from_args(create_image_uri, boto_session):
+@patch("sagemaker.image_uris.retrieve", return_value=IMAGE_URI)
+def test_modify_node_set_image_name_from_args(retrieve_image_uri, boto_session):
     boto_session.return_value.region_name = REGION_NAME
 
     tf_constructor = "TensorFlow(train_instance_type='ml.p2.xlarge', framework_version='1.4.0')"
@@ -113,7 +118,14 @@ def test_modify_node_set_image_name_from_args(create_image_uri, boto_session):
     modifier = tf_legacy_mode.TensorFlowLegacyModeConstructorUpgrader()
     modifier.modify_node(node)
 
-    create_image_uri.assert_called_with(REGION_NAME, "tensorflow", "ml.p2.xlarge", "1.4.0", "py2")
+    retrieve_image_uri.assert_called_with(
+        "tensorflow",
+        REGION_NAME,
+        instance_type="ml.p2.xlarge",
+        version="1.4.0",
+        py_version="py2",
+        image_scope="training",
+    )
 
     expected_string = (
         "TensorFlow(train_instance_type='ml.p2.xlarge', framework_version='1.4.0', "
@@ -123,8 +135,8 @@ def test_modify_node_set_image_name_from_args(create_image_uri, boto_session):
 
 
 @patch("boto3.Session", MagicMock())
-@patch("sagemaker.fw_utils.create_image_uri", return_value=IMAGE_URI)
-def test_modify_node_set_hyperparameters(create_image_uri):
+@patch("sagemaker.image_uris.retrieve", return_value=IMAGE_URI)
+def test_modify_node_set_hyperparameters(retrieve_image_uri):
     tf_constructor = """TensorFlow(
         checkpoint_path='s3://foo/bar',
         training_steps=100,
@@ -147,8 +159,8 @@ def test_modify_node_set_hyperparameters(create_image_uri):
 
 
 @patch("boto3.Session", MagicMock())
-@patch("sagemaker.fw_utils.create_image_uri", return_value=IMAGE_URI)
-def test_modify_node_preserve_other_hyperparameters(create_image_uri):
+@patch("sagemaker.image_uris.retrieve", return_value=IMAGE_URI)
+def test_modify_node_preserve_other_hyperparameters(retrieve_image_uri):
     tf_constructor = """sagemaker.tensorflow.TensorFlow(
         training_steps=100,
         evaluation_steps=10,
@@ -173,8 +185,8 @@ def test_modify_node_preserve_other_hyperparameters(create_image_uri):
 
 
 @patch("boto3.Session", MagicMock())
-@patch("sagemaker.fw_utils.create_image_uri", return_value=IMAGE_URI)
-def test_modify_node_prefer_param_over_hyperparameter(create_image_uri):
+@patch("sagemaker.image_uris.retrieve", return_value=IMAGE_URI)
+def test_modify_node_prefer_param_over_hyperparameter(retrieve_image_uri):
     tf_constructor = """sagemaker.tensorflow.TensorFlow(
         training_steps=100,
         requirements_file='source/requirements.txt',
