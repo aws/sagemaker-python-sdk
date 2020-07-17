@@ -23,7 +23,7 @@ from botocore.exceptions import ClientError
 from mock import ANY, MagicMock, Mock, patch
 
 import sagemaker.local
-from sagemaker import image_uris, TrainingInput, utils, vpc_utils
+from sagemaker import TrainingInput, utils, vpc_utils
 from sagemaker.algorithm import AlgorithmEstimator
 from sagemaker.estimator import Estimator, EstimatorBase, Framework, _TrainingJob
 from sagemaker.model import FrameworkModel
