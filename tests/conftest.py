@@ -141,11 +141,6 @@ def pytorch_eia_py_version():
     return "py3"
 
 
-@pytest.fixture(scope="module", params=["0.20.0"])
-def sklearn_version(request):
-    return request.param
-
-
 @pytest.fixture(scope="module")
 def xgboost_framework_version(xgboost_version):
     if xgboost_version in ("1", "latest"):
@@ -200,16 +195,6 @@ def rl_coach_tf_full_version():
 @pytest.fixture(scope="module")
 def rl_ray_full_version():
     return RLEstimator.RAY_LATEST_VERSION
-
-
-@pytest.fixture(scope="module")
-def sklearn_full_version():
-    return "0.20.0"
-
-
-@pytest.fixture(scope="module")
-def sklearn_full_py_version():
-    return "py3"
 
 
 @pytest.fixture(scope="module")
@@ -300,8 +285,9 @@ def pytest_generate_tests(metafunc):
 
 
 def _generate_all_framework_version_fixtures(metafunc):
-    for fw in ("chainer", "mxnet", "pytorch", "tensorflow", "xgboost"):
+    for fw in ("chainer", "mxnet", "pytorch", "scikit-learn", "tensorflow", "xgboost"):
         config = image_uris.config_for_framework(fw)
+        fw = fw.replace("-", "_")  # for fixture names
         if "scope" in config:
             _parametrize_framework_version_fixtures(metafunc, fw, config)
         else:

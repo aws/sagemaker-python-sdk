@@ -15,8 +15,8 @@ from __future__ import absolute_import
 
 import logging
 
+from sagemaker import image_uris
 from sagemaker.estimator import Framework
-from sagemaker.fw_registry import default_framework_uri
 from sagemaker.fw_utils import (
     framework_name_from_image,
     framework_version_from_tag,
@@ -137,9 +137,12 @@ class SKLearn(Framework):
         )
 
         if image_uri is None:
-            image_tag = "{}-{}-{}".format(framework_version, "cpu", py_version)
-            self.image_uri = default_framework_uri(
-                SKLearn.__framework_name__, self.sagemaker_session.boto_region_name, image_tag
+            self.image_uri = image_uris.retrieve(
+                SKLearn.__framework_name__,
+                self.sagemaker_session.boto_region_name,
+                version=self.framework_version,
+                py_version=self.py_version,
+                instance_type=instance_type,
             )
 
     def create_model(
