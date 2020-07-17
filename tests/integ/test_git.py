@@ -50,7 +50,9 @@ LOCK_PATH = os.path.join(tempfile.gettempdir(), "sagemaker_test_git_lock")
 
 
 @pytest.mark.local_mode
-def test_github(sagemaker_local_session, pytorch_full_version, pytorch_full_py_version):
+def test_github(
+    sagemaker_local_session, pytorch_training_latest_version, pytorch_training_latest_py_version
+):
     script_path = "mnist.py"
     git_config = {"repo": GIT_REPO, "branch": BRANCH, "commit": COMMIT}
 
@@ -58,8 +60,8 @@ def test_github(sagemaker_local_session, pytorch_full_version, pytorch_full_py_v
         entry_point=script_path,
         role="SageMakerRole",
         source_dir="pytorch",
-        framework_version=pytorch_full_version,
-        py_version=pytorch_full_py_version,
+        framework_version=pytorch_training_latest_version,
+        py_version=pytorch_training_latest_py_version,
         instance_count=1,
         instance_type="local",
         sagemaker_session=sagemaker_local_session,

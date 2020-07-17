@@ -285,6 +285,96 @@ def _expected_mxnet_inference_uri(
     )
 
 
+def test_pytorch_training(pytorch_training_version, pytorch_training_py_version):
+    _test_image_uris(
+        "pytorch",
+        pytorch_training_version,
+        pytorch_training_py_version,
+        "training",
+        _expected_pytorch_training_uri,
+        {"pytorch_version": pytorch_training_version, "py_version": pytorch_training_py_version},
+    )
+
+
+def _expected_pytorch_training_uri(pytorch_version, py_version, processor="cpu", region=REGION):
+    version = Version(pytorch_version)
+    if version < Version("1.2"):
+        repo = "sagemaker-pytorch"
+    else:
+        repo = "pytorch-training"
+
+    return expected_uris.framework_uri(
+        repo,
+        pytorch_version,
+        _sagemaker_or_dlc_account(repo, region),
+        py_version=py_version,
+        processor=processor,
+        region=region,
+    )
+
+
+def test_pytorch_inference(pytorch_inference_version, pytorch_inference_py_version):
+    _test_image_uris(
+        "pytorch",
+        pytorch_inference_version,
+        pytorch_inference_py_version,
+        "inference",
+        _expected_pytorch_inference_uri,
+        {"pytorch_version": pytorch_inference_version, "py_version": pytorch_inference_py_version},
+    )
+
+
+def _expected_pytorch_inference_uri(pytorch_version, py_version, processor="cpu", region=REGION):
+    version = Version(pytorch_version)
+    if version < Version("1.2"):
+        repo = "sagemaker-pytorch"
+    else:
+        repo = "pytorch-inference"
+
+    return expected_uris.framework_uri(
+        repo,
+        pytorch_version,
+        _sagemaker_or_dlc_account(repo, region),
+        py_version=py_version,
+        processor=processor,
+        region=region,
+    )
+
+
+def test_pytorch_eia(pytorch_eia_version, pytorch_eia_py_version):
+    base_args = {
+        "framework": "pytorch",
+        "version": pytorch_eia_version,
+        "py_version": pytorch_eia_py_version,
+        "image_scope": "inference",
+        "instance_type": "ml.c4.xlarge",
+        "accelerator_type": "ml.eia1.medium",
+    }
+
+    uri = image_uris.retrieve(region=REGION, **base_args)
+
+    expected = expected_uris.framework_uri(
+        "pytorch-inference-eia",
+        pytorch_eia_version,
+        DLC_ACCOUNT,
+        py_version=pytorch_eia_py_version,
+        region=REGION,
+    )
+    assert expected == uri
+
+    for region, account in DLC_ALTERNATE_REGION_ACCOUNTS.items():
+        uri = image_uris.retrieve(region=region, **base_args)
+
+        expected = expected_uris.framework_uri(
+            "pytorch-inference-eia",
+            pytorch_eia_version,
+            account,
+            py_version=pytorch_eia_py_version,
+            region=region,
+        )
+        assert expected == uri
+
+
 def _sagemaker_or_dlc_account(repo, region):
     if repo.startswith("sagemaker"):
         return (
