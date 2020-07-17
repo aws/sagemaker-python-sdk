@@ -442,7 +442,10 @@ def test_chainer_airflow_config_uploads_data_source_to_s3(
 
 @pytest.mark.canary_quick
 def test_mxnet_airflow_config_uploads_data_source_to_s3(
-    sagemaker_session, cpu_instance_type, mxnet_full_version, mxnet_full_py_version
+    sagemaker_session,
+    cpu_instance_type,
+    mxnet_training_latest_version,
+    mxnet_training_latest_py_version,
 ):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         script_path = os.path.join(DATA_DIR, "chainer_mnist", "mnist.py")
@@ -451,8 +454,8 @@ def test_mxnet_airflow_config_uploads_data_source_to_s3(
         mx = MXNet(
             entry_point=script_path,
             role=ROLE,
-            framework_version=mxnet_full_version,
-            py_version=mxnet_full_py_version,
+            framework_version=mxnet_training_latest_version,
+            py_version=mxnet_training_latest_py_version,
             instance_count=SINGLE_INSTANCE_COUNT,
             instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
@@ -549,13 +552,13 @@ def test_tf_airflow_config_uploads_data_source_to_s3(
 
 @pytest.mark.canary_quick
 def test_xgboost_airflow_config_uploads_data_source_to_s3(
-    sagemaker_session, cpu_instance_type, xgboost_full_version, xgboost_full_py_version
+    sagemaker_session, cpu_instance_type, xgboost_latest_version, xgboost_latest_py_version
 ):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         xgboost = XGBoost(
             entry_point=os.path.join(DATA_DIR, "dummy_script.py"),
-            framework_version=xgboost_full_version,
-            py_version=xgboost_full_py_version,
+            framework_version=xgboost_latest_version,
+            py_version=xgboost_latest_py_version,
             role=ROLE,
             sagemaker_session=sagemaker_session,
             instance_type=cpu_instance_type,
@@ -575,14 +578,17 @@ def test_xgboost_airflow_config_uploads_data_source_to_s3(
 
 @pytest.mark.canary_quick
 def test_pytorch_airflow_config_uploads_data_source_to_s3_when_inputs_not_provided(
-    sagemaker_session, cpu_instance_type, pytorch_full_version, pytorch_full_py_version
+    sagemaker_session,
+    cpu_instance_type,
+    pytorch_training_latest_version,
+    pytorch_training_latest_py_version,
 ):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         estimator = PyTorch(
             entry_point=PYTORCH_MNIST_SCRIPT,
             role=ROLE,
-            framework_version=pytorch_full_version,
-            py_version=pytorch_full_py_version,
+            framework_version=pytorch_training_latest_version,
+            py_version=pytorch_training_latest_py_version,
             instance_count=2,
             instance_type=cpu_instance_type,
             hyperparameters={"epochs": 6, "backend": "gloo"},

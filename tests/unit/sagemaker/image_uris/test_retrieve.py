@@ -65,6 +65,48 @@ def test_retrieve_unsupported_image_scope(config_for_framework):
     assert "Unsupported image scope: invalid-image-scope." in str(e.value)
     assert "Supported image scope(s): training, inference." in str(e.value)
 
+    config = copy.deepcopy(BASE_CONFIG)
+    config["scope"].append("eia")
+    config_for_framework.return_value = config
+
+    with pytest.raises(ValueError) as e:
+        image_uris.retrieve(
+            framework="useless-string",
+            version="1.0.0",
+            py_version="py3",
+            instance_type="ml.c4.xlarge",
+            region="us-west-2",
+        )
+    assert "Unsupported image scope: None." in str(e.value)
+    assert "Supported image scope(s): training, inference, eia." in str(e.value)
+
+
+@patch("sagemaker.image_uris.config_for_framework", return_value=BASE_CONFIG)
+def test_retrieve_default_image_scope(config_for_framework, caplog):
+    uri = image_uris.retrieve(
+        framework="useless-string",
+        version="1.0.0",
+        py_version="py3",
+        instance_type="ml.c4.xlarge",
+        region="us-west-2",
+    )
+    assert "123412341234.dkr.ecr.us-west-2.amazonaws.com/dummy:1.0.0-cpu-py3" == uri
+
+    config = copy.deepcopy(BASE_CONFIG)
+    config["scope"] = ["eia"]
+    config_for_framework.return_value = config
+
+    uri = image_uris.retrieve(
+        framework="useless-string",
+        version="1.0.0",
+        py_version="py3",
+        instance_type="ml.c4.xlarge",
+        region="us-west-2",
+        image_scope="ignorable-scope",
+    )
+    assert "123412341234.dkr.ecr.us-west-2.amazonaws.com/dummy:1.0.0-cpu-py3" == uri
+    assert "Ignoring image scope: ignorable-scope." in caplog.text
+
 
 @patch("sagemaker.image_uris.config_for_framework")
 def test_retrieve_eia(config_for_framework, caplog):
@@ -117,6 +159,17 @@ def test_retrieve_aliased_version(config_for_framework):
     config["version_aliases"] = {version: "1.0.0"}
     config_for_framework.return_value = config
 
+    uri = image_uris.retrieve(
+        framework="useless-string",
+        version=version,
+        py_version="py3",
+        instance_type="ml.c4.xlarge",
+        region="us-west-2",
+        image_scope="training",
+    )
+    assert "123412341234.dkr.ecr.us-west-2.amazonaws.com/dummy:{}-cpu-py3".format(version) == uri
+
+    del config["versions"]["1.1.0"]
     uri = image_uris.retrieve(
         framework="useless-string",
         version=version,
@@ -374,6 +427,34 @@ def test_retrieve_processor_type(config_for_framework):
         assert "123412341234.dkr.ecr.us-west-2.amazonaws.com/dummy:1.0.0-gpu-py3" == uri
 
 
+@patch("sagemaker.image_uris.config_for_framework")
+def test_retrieve_processor_type_from_version_specific_processor_config(config_for_framework):
+    config = copy.deepcopy(BASE_CONFIG)
+    del config["processors"]
+    config["versions"]["1.0.0"]["processors"] = ["cpu"]
+    config_for_framework.return_value = config
+
+    uri = image_uris.retrieve(
+        framework="useless-string",
+        version="1.0.0",
+        py_version="py3",
+        instance_type="ml.c4.xlarge",
+        region="us-west-2",
+        image_scope="training",
+    )
+    assert "123412341234.dkr.ecr.us-west-2.amazonaws.com/dummy:1.0.0-cpu-py3" == uri
+
+    uri = image_uris.retrieve(
+        framework="useless-string",
+        version="1.1.0",
+        py_version="py3",
+        instance_type="ml.c4.xlarge",
+        region="us-west-2",
+        image_scope="training",
+    )
+    assert "123412341234.dkr.ecr.us-west-2.amazonaws.com/dummy:1.1.0-py3" == uri
+
+
 @patch("sagemaker.image_uris.config_for_framework", return_value=BASE_CONFIG)
 def test_retrieve_unsupported_processor_type(config_for_framework):
     with pytest.raises(ValueError) as e:
@@ -387,6 +468,17 @@ def test_retrieve_unsupported_processor_type(config_for_framework):
         )
 
     assert "Invalid SageMaker instance type: not-an-instance-type." in str(e.value)
+
+    with pytest.raises(ValueError) as e:
+        image_uris.retrieve(
+            framework="useless-string",
+            version="1.0.0",
+            py_version="py3",
+            region="us-west-2",
+            image_scope="training",
+        )
+
+    assert "Empty SageMaker instance type." in str(e.value)
 
     config = copy.deepcopy(BASE_CONFIG)
     config["processors"] = ["cpu"]

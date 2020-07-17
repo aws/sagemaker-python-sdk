@@ -12,11 +12,28 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-import boto3
+import pytest
 
 from sagemaker import image_uris
-from tests.unit.sagemaker.image_uris import expected_uris
+from tests.unit.sagemaker.image_uris import expected_uris, regions
 
+ALGO_NAMES = (
+    "blazingtext",
+    "factorization-machines",
+    "forecasting-deepar",
+    "image-classification",
+    "ipinsights",
+    "kmeans",
+    "knn",
+    "linear-learner",
+    "ntm",
+    "object-detection",
+    "object2vec",
+    "pca",
+    "randomcutforest",
+    "semantic-segmentation",
+    "seq2seq",
+)
 ALGO_REGIONS_AND_ACCOUNTS = (
     {
         "algorithms": (
@@ -55,16 +72,89 @@ ALGO_REGIONS_AND_ACCOUNTS = (
             "us-west-2": "174872318107",
         },
     },
+    {
+        "algorithms": ("lda",),
+        "accounts": {
+            "ap-northeast-1": "258307448986",
+            "ap-northeast-2": "293181348795",
+            "ap-south-1": "991648021394",
+            "ap-southeast-1": "475088953585",
+            "ap-southeast-2": "297031611018",
+            "ca-central-1": "469771592824",
+            "eu-central-1": "353608530281",
+            "eu-west-1": "999678624901",
+            "eu-west-2": "644912444149",
+            "us-east-1": "766337827248",
+            "us-east-2": "999911452149",
+            "us-gov-west-1": "226302683700",
+            "us-iso-east-1": "490574956308",
+            "us-west-1": "632365934929",
+            "us-west-2": "266724342769",
+        },
+    },
+    {
+        "algorithms": ("forecasting-deepar",),
+        "accounts": {
+            "ap-east-1": "286214385809",
+            "ap-northeast-1": "633353088612",
+            "ap-northeast-2": "204372634319",
+            "ap-south-1": "991648021394",
+            "ap-southeast-1": "475088953585",
+            "ap-southeast-2": "514117268639",
+            "ca-central-1": "469771592824",
+            "cn-north-1": "390948362332",
+            "cn-northwest-1": "387376663083",
+            "eu-central-1": "495149712605",
+            "eu-north-1": "669576153137",
+            "eu-west-1": "224300973850",
+            "eu-west-2": "644912444149",
+            "eu-west-3": "749696950732",
+            "me-south-1": "249704162688",
+            "sa-east-1": "855470959533",
+            "us-east-1": "522234722520",
+            "us-east-2": "566113047672",
+            "us-gov-west-1": "226302683700",
+            "us-iso-east-1": "490574956308",
+            "us-west-1": "632365934929",
+            "us-west-2": "156387875391",
+        },
+    },
+    {
+        "algorithms": (
+            "seq2seq",
+            "image-classification",
+            "blazingtext",
+            "object-detection",
+            "semantic-segmentation",
+        ),
+        "accounts": {
+            "ap-east-1": "286214385809",
+            "ap-northeast-1": "501404015308",
+            "ap-northeast-2": "306986355934",
+            "ap-south-1": "991648021394",
+            "ap-southeast-1": "475088953585",
+            "ap-southeast-2": "544295431143",
+            "ca-central-1": "469771592824",
+            "cn-north-1": "390948362332",
+            "cn-northwest-1": "387376663083",
+            "eu-central-1": "813361260812",
+            "eu-north-1": "669576153137",
+            "eu-west-1": "685385470294",
+            "eu-west-2": "644912444149",
+            "eu-west-3": "749696950732",
+            "me-south-1": "249704162688",
+            "sa-east-1": "855470959533",
+            "us-east-1": "811284229777",
+            "us-east-2": "825641698319",
+            "us-gov-west-1": "226302683700",
+            "us-iso-east-1": "490574956308",
+            "us-west-1": "632365934929",
+            "us-west-2": "433757028032",
+        },
+    },
 )
 
 IMAGE_URI_FORMAT = "{}.dkr.ecr.{}.{}/{}:1"
-
-
-def _regions():
-    boto_session = boto3.Session()
-    for partition in boto_session.get_available_partitions():
-        for region in boto_session.get_available_regions("sagemaker", partition_name=partition):
-            yield region
 
 
 def _accounts_for_algo(algo):
@@ -75,11 +165,24 @@ def _accounts_for_algo(algo):
     return {}
 
 
-def test_factorization_machines():
-    algo = "factorization-machines"
+@pytest.mark.parametrize("algo", ALGO_NAMES)
+def test_algo_uris(algo):
     accounts = _accounts_for_algo(algo)
 
-    for region in _regions():
-        for scope in ("training", "inference"):
-            uri = image_uris.retrieve(algo, region, image_scope=scope)
+    for region in regions.regions():
+        uri = image_uris.retrieve(algo, region)
+        assert expected_uris.algo_uri(algo, accounts[region], region) == uri
+
+
+def test_lda():
+    algo = "lda"
+    accounts = _accounts_for_algo(algo)
+
+    for region in regions.regions():
+        if region in accounts:
+            uri = image_uris.retrieve(algo, region)
             assert expected_uris.algo_uri(algo, accounts[region], region) == uri
+        else:
+            with pytest.raises(ValueError) as e:
+                image_uris.retrieve(algo, region)
+            assert "Unsupported region: {}.".format(region) in str(e.value)

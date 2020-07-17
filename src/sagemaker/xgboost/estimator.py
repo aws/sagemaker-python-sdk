@@ -15,12 +15,11 @@ from __future__ import absolute_import
 
 import logging
 
+from sagemaker import image_uris
 from sagemaker.estimator import Framework, _TrainingJob
-from sagemaker.fw_registry import default_framework_uri
 from sagemaker.fw_utils import (
     framework_name_from_image,
     framework_version_from_tag,
-    get_unsupported_framework_version_error,
     UploadedCode,
 )
 from sagemaker.session import Session
@@ -29,12 +28,6 @@ from sagemaker.xgboost import defaults
 from sagemaker.xgboost.model import XGBoostModel
 
 logger = logging.getLogger("sagemaker")
-
-
-def get_xgboost_image_uri(region, framework_version, py_version="py3"):
-    """Get XGBoost framework image URI"""
-    image_tag = "{}-{}-{}".format(framework_version, "cpu", py_version)
-    return default_framework_uri(XGBoost.__framework_name__, region, image_tag)
 
 
 class XGBoost(Framework):
@@ -105,22 +98,17 @@ class XGBoost(Framework):
             entry_point, source_dir, hyperparameters, image_uri=image_uri, **kwargs
         )
 
-        if py_version == "py2":
-            raise AttributeError("XGBoost container does not support Python 2, please use Python 3")
         self.py_version = py_version
-
-        if framework_version in defaults.XGBOOST_SUPPORTED_VERSIONS:
-            self.framework_version = framework_version
-        else:
-            raise ValueError(
-                get_unsupported_framework_version_error(
-                    self.__framework_name__, framework_version, defaults.XGBOOST_SUPPORTED_VERSIONS
-                )
-            )
+        self.framework_version = framework_version
 
         if image_uri is None:
-            self.image_uri = get_xgboost_image_uri(
-                self.sagemaker_session.boto_region_name, framework_version
+            self.image_uri = image_uris.retrieve(
+                self.__framework_name__,
+                self.sagemaker_session.boto_region_name,
+                version=framework_version,
+                py_version=self.py_version,
+                instance_type=kwargs.get("instance_type"),
+                image_scope="training",
             )
 
     def create_model(
@@ -172,7 +160,7 @@ class XGBoost(Framework):
         return XGBoostModel(
             self.model_data,
             role,
-            entry_point or self.entry_point,
+            entry_point or self._model_entry_point(),
             framework_version=self.framework_version,
             source_dir=(source_dir or self._model_source_dir()),
             enable_cloudwatch_metrics=self.enable_cloudwatch_metrics,

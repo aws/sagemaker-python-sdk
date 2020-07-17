@@ -27,7 +27,8 @@ from sagemaker.mxnet import MXNet
 from sagemaker.mxnet import MXNetPredictor, MXNetModel
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
-SCRIPT_PATH = os.path.join(DATA_DIR, "dummy_script.py")
+SCRIPT_NAME = "dummy_script.py"
+SCRIPT_PATH = os.path.join(DATA_DIR, SCRIPT_NAME)
 SERVING_SCRIPT_FILE = "another_dummy_script.py"
 MODEL_DATA = "s3://mybucket/model"
 ENV = {"DUMMY_ENV_VAR": "dummy_value"}
@@ -90,14 +91,14 @@ def _is_mms_version(mxnet_version):
 
 
 @pytest.fixture()
-def skip_if_mms_version(mxnet_version):
-    if _is_mms_version(mxnet_version):
+def skip_if_mms_version(mxnet_inference_version):
+    if _is_mms_version(mxnet_inference_version):
         pytest.skip("Skipping because this version uses MMS")
 
 
 @pytest.fixture()
-def skip_if_not_mms_version(mxnet_version):
-    if not _is_mms_version(mxnet_version):
+def skip_if_not_mms_version(mxnet_inference_version):
+    if not _is_mms_version(mxnet_inference_version):
         pytest.skip("Skipping because this version does not use MMS")
 
 
@@ -183,14 +184,15 @@ def _neo_inference_image(mxnet_version):
 
 @patch("sagemaker.estimator.name_from_base")
 @patch("sagemaker.utils.create_tar_file", MagicMock())
-def test_create_model(name_from_base, sagemaker_session, mxnet_version, mxnet_py_version):
+def test_create_model(name_from_base, sagemaker_session, mxnet_inference_version, mxnet_py_version):
     container_log_level = '"logging.INFO"'
     source_dir = "s3://mybucket/source"
     base_job_name = "job"
 
     mx = MXNet(
-        entry_point=SCRIPT_PATH,
-        framework_version=mxnet_version,
+        entry_point=SCRIPT_NAME,
+        source_dir=source_dir,
+        framework_version=mxnet_inference_version,
         py_version=mxnet_py_version,
         role=ROLE,
         sagemaker_session=sagemaker_session,
@@ -198,7 +200,6 @@ def test_create_model(name_from_base, sagemaker_session, mxnet_version, mxnet_py
         instance_type=INSTANCE_TYPE,
         container_log_level=container_log_level,
         base_job_name=base_job_name,
-        source_dir=source_dir,
     )
 
     mx.fit(inputs="s3://mybucket/train", job_name="new_name")
@@ -208,9 +209,9 @@ def test_create_model(name_from_base, sagemaker_session, mxnet_version, mxnet_py
     model = mx.create_model()
 
     assert model.sagemaker_session == sagemaker_session
-    assert model.framework_version == mxnet_version
+    assert model.framework_version == mxnet_inference_version
     assert model.py_version == mxnet_py_version
-    assert model.entry_point == SCRIPT_PATH
+    assert model.entry_point == SCRIPT_NAME
     assert model.role == ROLE
     assert model.name == model_name
     assert model.container_log_level == container_log_level
@@ -221,13 +222,16 @@ def test_create_model(name_from_base, sagemaker_session, mxnet_version, mxnet_py
     name_from_base.assert_called_with(base_job_name)
 
 
-def test_create_model_with_optional_params(sagemaker_session, mxnet_version, mxnet_py_version):
+def test_create_model_with_optional_params(
+    sagemaker_session, mxnet_inference_version, mxnet_py_version
+):
     container_log_level = '"logging.INFO"'
     source_dir = "s3://mybucket/source"
     enable_cloudwatch_metrics = "true"
     mx = MXNet(
-        entry_point=SCRIPT_PATH,
-        framework_version=mxnet_version,
+        entry_point=SCRIPT_NAME,
+        source_dir=source_dir,
+        framework_version=mxnet_inference_version,
         py_version=mxnet_py_version,
         role=ROLE,
         sagemaker_session=sagemaker_session,
@@ -235,7 +239,6 @@ def test_create_model_with_optional_params(sagemaker_session, mxnet_version, mxn
         instance_type=INSTANCE_TYPE,
         container_log_level=container_log_level,
         base_job_name="job",
-        source_dir=source_dir,
         enable_cloudwatch_metrics=enable_cloudwatch_metrics,
     )
 
@@ -270,7 +273,8 @@ def test_create_model_with_custom_image(name_from_base, sagemaker_session):
     base_job_name = "job"
 
     mx = MXNet(
-        entry_point=SCRIPT_PATH,
+        entry_point=SCRIPT_NAME,
+        source_dir=source_dir,
         framework_version="2.0",
         py_version="py3",
         role=ROLE,
@@ -280,7 +284,6 @@ def test_create_model_with_custom_image(name_from_base, sagemaker_session):
         image_uri=custom_image,
         container_log_level=container_log_level,
         base_job_name=base_job_name,
-        source_dir=source_dir,
     )
 
     mx.fit(inputs="s3://mybucket/train", job_name="new_name")
@@ -291,7 +294,7 @@ def test_create_model_with_custom_image(name_from_base, sagemaker_session):
 
     assert model.sagemaker_session == sagemaker_session
     assert model.image_uri == custom_image
-    assert model.entry_point == SCRIPT_PATH
+    assert model.entry_point == SCRIPT_NAME
     assert model.role == ROLE
     assert model.name == model_name
     assert model.container_log_level == container_log_level
@@ -312,17 +315,18 @@ def test_mxnet(
     repack_model,
     create_tar_file,
     sagemaker_session,
-    mxnet_version,
+    mxnet_training_version,
     mxnet_py_version,
 ):
     mx = MXNet(
         entry_point=SCRIPT_PATH,
-        framework_version=mxnet_version,
+        framework_version=mxnet_training_version,
         py_version=mxnet_py_version,
         role=ROLE,
         sagemaker_session=sagemaker_session,
         instance_count=INSTANCE_COUNT,
         instance_type=INSTANCE_TYPE,
+        enable_sagemaker_metrics=False,
     )
     inputs = "s3://mybucket/train"
 
@@ -338,6 +342,7 @@ def test_mxnet(
     expected_train_args = _get_train_args(job_name)
     expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
     expected_train_args["experiment_config"] = EXPERIMENT_CONFIG
+    expected_train_args["enable_sagemaker_metrics"] = False
 
     assert actual_train_args == expected_train_args
 
@@ -352,17 +357,19 @@ def test_mxnet(
     assert "cpu" in model.prepare_container_def(CPU)["Image"]
     predictor = mx.deploy(1, GPU)
     assert isinstance(predictor, MXNetPredictor)
-    assert _is_mms_version(mxnet_version) ^ (create_tar_file.called and not repack_model.called)
+    assert _is_mms_version(mxnet_training_version) ^ (
+        create_tar_file.called and not repack_model.called
+    )
 
 
 @patch("sagemaker.utils.create_tar_file", MagicMock())
 @patch("time.strftime", return_value=TIMESTAMP)
 def test_mxnet_neo(
-    strftime, sagemaker_session, mxnet_version, mxnet_py_version, skip_if_mms_version
+    strftime, sagemaker_session, mxnet_inference_version, mxnet_py_version, skip_if_mms_version
 ):
     mx = MXNet(
         entry_point=SCRIPT_PATH,
-        framework_version=mxnet_version,
+        framework_version=mxnet_inference_version,
         py_version=mxnet_py_version,
         role=ROLE,
         sagemaker_session=sagemaker_session,
@@ -394,7 +401,7 @@ def test_mxnet_neo(
     actual_compile_model_args = sagemaker_session.method_calls[3][2]
     assert expected_compile_model_args == actual_compile_model_args
 
-    assert compiled_model.image_uri == _neo_inference_image(mxnet_version)
+    assert compiled_model.image_uri == _neo_inference_image(mxnet_inference_version)
 
     predictor = mx.deploy(1, CPU, use_compiled_model=True)
     assert isinstance(predictor, MXNetPredictor)
@@ -408,12 +415,12 @@ def test_mxnet_neo(
 
 
 @patch("sagemaker.utils.create_tar_file", MagicMock())
-def test_model(sagemaker_session, mxnet_version, mxnet_py_version, skip_if_mms_version):
+def test_model(sagemaker_session, mxnet_inference_version, mxnet_py_version, skip_if_mms_version):
     model = MXNetModel(
         MODEL_DATA,
         role=ROLE,
         entry_point=SCRIPT_PATH,
-        framework_version=mxnet_version,
+        framework_version=mxnet_inference_version,
         py_version=mxnet_py_version,
         sagemaker_session=sagemaker_session,
     )
@@ -423,14 +430,18 @@ def test_model(sagemaker_session, mxnet_version, mxnet_py_version, skip_if_mms_v
 
 @patch("sagemaker.utils.repack_model")
 def test_model_mms_version(
-    repack_model, sagemaker_session, mxnet_version, mxnet_py_version, skip_if_not_mms_version
+    repack_model,
+    sagemaker_session,
+    mxnet_inference_version,
+    mxnet_py_version,
+    skip_if_not_mms_version,
 ):
     model_kms_key = "kms-key"
     model = MXNetModel(
         MODEL_DATA,
         role=ROLE,
         entry_point=SCRIPT_PATH,
-        framework_version=mxnet_version,
+        framework_version=mxnet_inference_version,
         py_version=mxnet_py_version,
         sagemaker_session=sagemaker_session,
         name="test-mxnet-model",
@@ -465,28 +476,30 @@ def test_model_image_accelerator(
     repack_model,
     tar_and_upload,
     sagemaker_session,
-    mxnet_version,
+    mxnet_eia_version,
     mxnet_py_version,
 ):
     model = MXNetModel(
         MODEL_DATA,
         role=ROLE,
         entry_point=SCRIPT_PATH,
-        framework_version=mxnet_version,
+        framework_version=mxnet_eia_version,
         py_version=mxnet_py_version,
         sagemaker_session=sagemaker_session,
     )
     container_def = model.prepare_container_def(INSTANCE_TYPE, accelerator_type=ACCELERATOR_TYPE)
     assert container_def["Image"] == IMAGE
-    assert _is_mms_version(mxnet_version) ^ (tar_and_upload.called and not repack_model.called)
+    assert _is_mms_version(mxnet_eia_version) ^ (tar_and_upload.called and not repack_model.called)
 
 
-def test_model_prepare_container_def_no_instance_type_or_image(mxnet_version, mxnet_py_version):
+def test_model_prepare_container_def_no_instance_type_or_image(
+    mxnet_inference_version, mxnet_py_version
+):
     model = MXNetModel(
         MODEL_DATA,
         role=ROLE,
         entry_point=SCRIPT_PATH,
-        framework_version=mxnet_version,
+        framework_version=mxnet_inference_version,
         py_version=mxnet_py_version,
     )
 
@@ -497,9 +510,9 @@ def test_model_prepare_container_def_no_instance_type_or_image(mxnet_version, mx
     assert expected_msg in str(e)
 
 
-def test_attach(sagemaker_session, mxnet_version, mxnet_py_version):
+def test_attach(sagemaker_session, mxnet_training_version, mxnet_py_version):
     training_image = "1.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet-{0}-cpu:{1}-cpu-{0}".format(
-        mxnet_py_version, mxnet_version
+        mxnet_py_version, mxnet_training_version
     )
     returned_job_description = {
         "AlgorithmSpecification": {"TrainingInputMode": "File", "TrainingImage": training_image},
@@ -533,7 +546,7 @@ def test_attach(sagemaker_session, mxnet_version, mxnet_py_version):
     estimator = MXNet.attach(training_job_name="neo", sagemaker_session=sagemaker_session)
     assert estimator.latest_training_job.job_name == "neo"
     assert estimator.py_version == mxnet_py_version
-    assert estimator.framework_version == mxnet_version
+    assert estimator.framework_version == mxnet_training_version
     assert estimator.role == "arn:aws:iam::366:role/SageMakerRole"
     assert estimator.instance_count == 1
     assert estimator.max_run == 24 * 60 * 60
@@ -730,7 +743,6 @@ def test_model_py2_warning(warning, sagemaker_session):
 
 def test_create_model_with_custom_hosting_image(sagemaker_session):
     container_log_level = '"logging.INFO"'
-    source_dir = "s3://mybucket/source"
     custom_image = "mxnet:2.0"
     custom_hosting_image = "mxnet_hosting:2.0"
     mx = MXNet(
@@ -744,7 +756,6 @@ def test_create_model_with_custom_hosting_image(sagemaker_session):
         image_uri=custom_image,
         container_log_level=container_log_level,
         base_job_name="job",
-        source_dir=source_dir,
     )
 
     mx.fit(inputs="s3://mybucket/train", job_name="new_name")
@@ -753,10 +764,10 @@ def test_create_model_with_custom_hosting_image(sagemaker_session):
     assert model.image_uri == custom_hosting_image
 
 
-def test_mx_enable_sm_metrics(sagemaker_session, mxnet_version, mxnet_py_version):
+def test_mx_enable_sm_metrics(sagemaker_session, mxnet_training_version, mxnet_py_version):
     mx = MXNet(
         entry_point=SCRIPT_PATH,
-        framework_version=mxnet_version,
+        framework_version=mxnet_training_version,
         py_version=mxnet_py_version,
         role=ROLE,
         sagemaker_session=sagemaker_session,
@@ -767,10 +778,10 @@ def test_mx_enable_sm_metrics(sagemaker_session, mxnet_version, mxnet_py_version
     assert mx.enable_sagemaker_metrics
 
 
-def test_mx_disable_sm_metrics(sagemaker_session, mxnet_version, mxnet_py_version):
+def test_mx_disable_sm_metrics(sagemaker_session, mxnet_training_version, mxnet_py_version):
     mx = MXNet(
         entry_point=SCRIPT_PATH,
-        framework_version=mxnet_version,
+        framework_version=mxnet_training_version,
         py_version=mxnet_py_version,
         role=ROLE,
         sagemaker_session=sagemaker_session,
@@ -781,17 +792,19 @@ def test_mx_disable_sm_metrics(sagemaker_session, mxnet_version, mxnet_py_versio
     assert not mx.enable_sagemaker_metrics
 
 
-def test_mx_enable_sm_metrics_for_version(sagemaker_session, mxnet_version, mxnet_py_version):
+def test_mx_enable_sm_metrics_for_version(
+    sagemaker_session, mxnet_training_version, mxnet_py_version
+):
     mx = MXNet(
         entry_point=SCRIPT_PATH,
-        framework_version=mxnet_version,
+        framework_version=mxnet_training_version,
         py_version=mxnet_py_version,
         role=ROLE,
         sagemaker_session=sagemaker_session,
         instance_count=INSTANCE_COUNT,
         instance_type=INSTANCE_TYPE,
     )
-    version = tuple(int(s) for s in mxnet_version.split("."))
+    version = tuple(int(s) for s in mxnet_training_version.split("."))
     lowest_version = (1, 6, 0)[: len(version)]
     if version >= lowest_version:
         assert mx.enable_sagemaker_metrics
@@ -799,11 +812,11 @@ def test_mx_enable_sm_metrics_for_version(sagemaker_session, mxnet_version, mxne
         assert mx.enable_sagemaker_metrics is None
 
 
-def test_custom_image_estimator_deploy(sagemaker_session, mxnet_version, mxnet_py_version):
+def test_custom_image_estimator_deploy(sagemaker_session, mxnet_training_version, mxnet_py_version):
     custom_image = "mycustomimage:latest"
     mx = MXNet(
         entry_point=SCRIPT_PATH,
-        framework_version=mxnet_version,
+        framework_version=mxnet_training_version,
         py_version=mxnet_py_version,
         role=ROLE,
         sagemaker_session=sagemaker_session,

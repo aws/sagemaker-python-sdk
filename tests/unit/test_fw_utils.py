@@ -873,6 +873,18 @@ def test_tar_and_upload_dir_s3(sagemaker_session):
     assert result == fw_utils.UploadedCode("s3://m", "mnist.py")
 
 
+def test_tar_and_upload_dir_s3_with_script_dir(sagemaker_session):
+    bucket = "mybucket"
+    s3_key_prefix = "something/source"
+    script = "some/dir/mnist.py"
+    directory = "s3://m"
+    result = fw_utils.tar_and_upload_dir(
+        sagemaker_session, bucket, s3_key_prefix, script, directory
+    )
+
+    assert result == fw_utils.UploadedCode("s3://m", "some/dir/mnist.py")
+
+
 @patch("sagemaker.utils")
 def test_tar_and_upload_dir_s3_with_kms(utils, sagemaker_session):
     bucket = "mybucket"

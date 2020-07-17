@@ -13,27 +13,25 @@
 from __future__ import absolute_import
 
 import json
-import os
 import math
+import os
+
 import pytest
 import scipy.stats as st
 
+from sagemaker import image_uris
 from sagemaker.s3 import S3Uploader
 from sagemaker.session import production_variant
 from sagemaker.sparkml import SparkMLModel
-from sagemaker.utils import sagemaker_timestamp
 from sagemaker.content_types import CONTENT_TYPE_CSV
 from sagemaker.utils import unique_name_from_base
-from sagemaker.amazon.amazon_estimator import get_image_uri
 from sagemaker.predictor import Predictor
 from sagemaker.serializers import CSVSerializer
-
-
 import tests.integ
 
 
 ROLE = "SageMakerRole"
-MODEL_NAME = "test-xgboost-model-{}".format(sagemaker_timestamp())
+MODEL_NAME = unique_name_from_base("test-xgboost-model")
 DEFAULT_REGION = "us-west-2"
 DEFAULT_INSTANCE_TYPE = "ml.m5.xlarge"
 DEFAULT_INSTANCE_COUNT = 1
@@ -97,8 +95,13 @@ def multi_variant_endpoint(sagemaker_session):
             sagemaker_session=sagemaker_session,
         )
 
-        image_uri = get_image_uri(sagemaker_session.boto_session.region_name, "xgboost", "0.90-1")
-
+        image_uri = image_uris.retrieve(
+            "xgboost",
+            sagemaker_session.boto_region_name,
+            version="0.90-1",
+            instance_type=DEFAULT_INSTANCE_TYPE,
+            image_scope="inference",
+        )
         multi_variant_endpoint_model = sagemaker_session.create_model(
             name=MODEL_NAME,
             role=ROLE,

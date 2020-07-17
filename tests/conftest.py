@@ -17,13 +17,13 @@ import os
 
 import boto3
 import pytest
-import tests.integ
 from botocore.config import Config
 from packaging.version import Version
 
 from sagemaker import Session, image_uris, utils
 from sagemaker.local import LocalSession
 from sagemaker.rl import RLEstimator
+import tests.integ
 
 DEFAULT_REGION = "us-west-2"
 CUSTOM_BUCKET_NAME_PREFIX = "sagemaker-custom-bucket"
@@ -115,43 +115,30 @@ def chainer_py_version(request):
     return request.param
 
 
-# TODO: current version fixtures are legacy fixtures that aren't useful
-# and no longer verify whether images are valid
-@pytest.fixture(
-    scope="module",
-    params=[
-        "0.12",
-        "0.12.1",
-        "1.0",
-        "1.0.0",
-        "1.1",
-        "1.1.0",
-        "1.2",
-        "1.2.1",
-        "1.3",
-        "1.3.0",
-        "1.4",
-        "1.4.0",
-        "1.4.1",
-    ],
-)
-def mxnet_version(request):
-    return request.param
-
-
 @pytest.fixture(scope="module", params=["py2", "py3"])
 def mxnet_py_version(request):
     return request.param
 
 
-@pytest.fixture(scope="module", params=["0.4", "0.4.0", "1.0", "1.0.0"])
-def pytorch_version(request):
-    return request.param
+@pytest.fixture(scope="module", params=["py2", "py3"])
+def pytorch_training_py_version(pytorch_training_version, request):
+    if Version(pytorch_training_version) < Version("1.5.0"):
+        return request.param
+    else:
+        return "py3"
 
 
 @pytest.fixture(scope="module", params=["py2", "py3"])
-def pytorch_py_version(request):
-    return request.param
+def pytorch_inference_py_version(pytorch_inference_version, request):
+    if Version(pytorch_inference_version) < Version("1.4.0"):
+        return request.param
+    else:
+        return "py3"
+
+
+@pytest.fixture(scope="module")
+def pytorch_eia_py_version():
+    return "py3"
 
 
 @pytest.fixture(scope="module", params=["0.20.0"])
@@ -159,9 +146,11 @@ def sklearn_version(request):
     return request.param
 
 
-@pytest.fixture(scope="module", params=["0.90-1"])
-def xgboost_version(request):
-    return request.param
+@pytest.fixture(scope="module")
+def xgboost_framework_version(xgboost_version):
+    if xgboost_version in ("1", "latest"):
+        pytest.skip("Skipping XGBoost algorithm version.")
+    return xgboost_version
 
 
 @pytest.fixture(scope="module", params=["py2", "py3"])
@@ -196,36 +185,6 @@ def rl_coach_mxnet_version(request):
 @pytest.fixture(scope="module", params=["0.5", "0.5.3", "0.6", "0.6.5"])
 def rl_ray_version(request):
     return request.param
-
-
-@pytest.fixture(scope="module")
-def mxnet_full_version():
-    return "1.6.0"
-
-
-@pytest.fixture(scope="module")
-def mxnet_full_py_version():
-    return "py3"
-
-
-@pytest.fixture(scope="module")
-def ei_mxnet_full_version():
-    return "1.5.1"
-
-
-@pytest.fixture(scope="module")
-def pytorch_full_version():
-    return "1.5.0"
-
-
-@pytest.fixture(scope="module")
-def pytorch_full_py_version():
-    return "py3"
-
-
-@pytest.fixture(scope="module")
-def pytorch_full_ei_version():
-    return "1.3.1"
 
 
 @pytest.fixture(scope="module")
@@ -281,16 +240,6 @@ def tf_full_py_version(tf_full_version):
     if version < Version("2.2"):
         return "py3"
     return "py37"
-
-
-@pytest.fixture(scope="module")
-def xgboost_full_version():
-    return "1.0-1"
-
-
-@pytest.fixture(scope="module")
-def xgboost_full_py_version():
-    return "py3"
 
 
 @pytest.fixture(scope="session")
@@ -351,7 +300,7 @@ def pytest_generate_tests(metafunc):
 
 
 def _generate_all_framework_version_fixtures(metafunc):
-    for fw in ("chainer", "tensorflow"):
+    for fw in ("chainer", "mxnet", "pytorch", "tensorflow", "xgboost"):
         config = image_uris.config_for_framework(fw)
         if "scope" in config:
             _parametrize_framework_version_fixtures(metafunc, fw, config)

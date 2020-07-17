@@ -40,7 +40,10 @@ MXNET_MNIST_PATH = os.path.join(DATA_DIR, "mxnet_mnist")
 
 @pytest.fixture(scope="module")
 def mxnet_estimator(
-    sagemaker_session, mxnet_full_version, mxnet_full_py_version, cpu_instance_type
+    sagemaker_session,
+    mxnet_inference_latest_version,
+    mxnet_inference_latest_py_version,
+    cpu_instance_type,
 ):
     mx = MXNet(
         entry_point=os.path.join(MXNET_MNIST_PATH, "mnist.py"),
@@ -48,8 +51,8 @@ def mxnet_estimator(
         instance_count=1,
         instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
-        framework_version=mxnet_full_version,
-        py_version=mxnet_full_py_version,
+        framework_version=mxnet_inference_latest_version,
+        py_version=mxnet_inference_latest_py_version,
     )
 
     train_input = mx.sagemaker_session.upload_data(
@@ -151,8 +154,8 @@ def test_attach_transform_kmeans(sagemaker_session, cpu_instance_type):
 
 def test_transform_pytorch_vpc_custom_model_bucket(
     sagemaker_session,
-    pytorch_full_version,
-    pytorch_full_py_version,
+    pytorch_inference_latest_version,
+    pytorch_inference_latest_py_version,
     cpu_instance_type,
     custom_bucket_name,
 ):
@@ -171,8 +174,8 @@ def test_transform_pytorch_vpc_custom_model_bucket(
         model_data=model_data,
         entry_point=os.path.join(data_dir, "mnist.py"),
         role="SageMakerRole",
-        framework_version=pytorch_full_version,
-        py_version=pytorch_full_py_version,
+        framework_version=pytorch_inference_latest_version,
+        py_version=pytorch_inference_latest_py_version,
         sagemaker_session=sagemaker_session,
         vpc_config={"Subnets": subnet_ids, "SecurityGroupIds": [security_group_id]},
         code_location="s3://{}".format(custom_bucket_name),
