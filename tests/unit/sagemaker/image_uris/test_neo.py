@@ -49,12 +49,11 @@ ACCOUNTS = {
 @pytest.mark.parametrize("algo", ALGO_NAMES)
 def test_algo_uris(algo):
     for region in regions.regions():
-        for scope in ("training", "inference"):
-            if region in NEO_REGION_LIST:
-                uri = image_uris.retrieve(algo, region, image_scope=scope)
-                expected = expected_uris.algo_uri(algo, ACCOUNTS[region], region, version="latest")
-                assert expected == uri
-            else:
-                with pytest.raises(ValueError) as e:
-                    image_uris.retrieve(algo, region, image_scope=scope)
-                assert "Unsupported region: {}.".format(region) in str(e.value)
+        if region in NEO_REGION_LIST:
+            uri = image_uris.retrieve(algo, region)
+            expected = expected_uris.algo_uri(algo, ACCOUNTS[region], region, version="latest")
+            assert expected == uri
+        else:
+            with pytest.raises(ValueError) as e:
+                image_uris.retrieve(algo, region)
+            assert "Unsupported region: {}.".format(region) in str(e.value)

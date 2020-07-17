@@ -89,7 +89,24 @@ def _config_for_framework_and_scope(framework, image_scope, accelerator_type=Non
             )
         image_scope = "eia"
 
-    _validate_arg("image scope", image_scope, config.get("scope", config.keys()))
+    available_scopes = config.get("scope", config.keys())
+    if len(available_scopes) == 1:
+        if image_scope and image_scope != available_scopes[0]:
+            logger.warning(
+                "Defaulting to only supported image scope: %s. Ignoring image scope: %s.",
+                available_scopes[0],
+                image_scope,
+            )
+        image_scope = available_scopes[0]
+
+    if not image_scope and "scope" in config and set(available_scopes) == {"training", "inference"}:
+        logger.info(
+            "Same images used for training and inference. Defaulting to image scope: %s.",
+            available_scopes[0],
+        )
+        image_scope = available_scopes[0]
+
+    _validate_arg(image_scope, available_scopes, "image scope")
     return config if "scope" in config else config[image_scope]
 
 
@@ -116,8 +133,7 @@ def _validate_version_and_set_if_needed(version, config, framework):
 
         return available_versions[0]
 
-    _validate_arg("{} version".format(framework), version, available_versions + aliased_versions)
-
+    _validate_arg(version, available_versions + aliased_versions, "{} version".format(framework))
     return version
 
 
@@ -132,7 +148,7 @@ def _version_for_config(version, config):
 
 def _registry_from_region(region, registry_dict):
     """Returns the ECR registry (AWS account number) for the given region."""
-    _validate_arg("region", region, registry_dict.keys())
+    _validate_arg(region, registry_dict.keys(), "region")
     return registry_dict[region]
 
 
@@ -159,7 +175,7 @@ def _processor(instance_type, available_processors):
         family = instance_type.split(".")[1]
         processor = "gpu" if family[0] in ("g", "p") else "cpu"
 
-    _validate_arg("processor", processor, available_processors)
+    _validate_arg(processor, available_processors, "processor")
     return processor
 
 
@@ -179,11 +195,11 @@ def _validate_py_version_and_set_if_needed(py_version, version_config):
         logger.info("Defaulting to only available Python version: %s", available_versions[0])
         return available_versions[0]
 
-    _validate_arg("Python version", py_version, available_versions)
+    _validate_arg(py_version, available_versions, "Python version")
     return py_version
 
 
-def _validate_arg(arg_name, arg, available_options):
+def _validate_arg(arg, available_options, arg_name):
     """Checks if the arg is in the available options, and raises a ``ValueError`` if not."""
     if arg not in available_options:
         raise ValueError(

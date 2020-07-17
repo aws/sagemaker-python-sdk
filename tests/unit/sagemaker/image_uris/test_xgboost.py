@@ -71,35 +71,30 @@ FRAMEWORK_REGISTRIES = {
 
 def test_xgboost_framework(xgboost_framework_version):
     for region in regions.regions():
-        for scope in ("training", "inference"):
-            uri = image_uris.retrieve(
-                framework="xgboost",
-                region=region,
-                version=xgboost_framework_version,
-                py_version="py3",
-                instance_type="ml.c4.xlarge",
-                image_scope=scope,
-            )
+        uri = image_uris.retrieve(
+            framework="xgboost",
+            region=region,
+            version=xgboost_framework_version,
+            py_version="py3",
+            instance_type="ml.c4.xlarge",
+        )
 
-            expected = expected_uris.framework_uri(
-                "sagemaker-xgboost",
-                xgboost_framework_version,
-                FRAMEWORK_REGISTRIES[region],
-                py_version="py3",
-                region=region,
-            )
-            assert expected == uri
+        expected = expected_uris.framework_uri(
+            "sagemaker-xgboost",
+            xgboost_framework_version,
+            FRAMEWORK_REGISTRIES[region],
+            py_version="py3",
+            region=region,
+        )
+        assert expected == uri
 
 
 @pytest.mark.parametrize("xgboost_algo_version", ("1", "latest"))
 def test_xgboost_algo(xgboost_algo_version):
     for region in regions.regions():
-        for scope in ("training", "inference"):
-            uri = image_uris.retrieve(
-                framework="xgboost", region=region, version=xgboost_algo_version, image_scope=scope,
-            )
+        uri = image_uris.retrieve(framework="xgboost", region=region, version=xgboost_algo_version)
 
-            expected = expected_uris.algo_uri(
-                "xgboost", ALGO_REGISTRIES[region], region, version=xgboost_algo_version
-            )
-            assert expected == uri
+        expected = expected_uris.algo_uri(
+            "xgboost", ALGO_REGISTRIES[region], region, version=xgboost_algo_version
+        )
+        assert expected == uri
