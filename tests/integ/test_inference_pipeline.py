@@ -22,7 +22,7 @@ from tests.integ.timeout import (
     timeout_and_delete_model_with_transformer,
 )
 
-from sagemaker.amazon.amazon_estimator import get_image_uri
+from sagemaker import image_uris
 from sagemaker.content_types import CONTENT_TYPE_CSV
 from sagemaker.model import Model
 from sagemaker.pipeline import PipelineModel
@@ -66,7 +66,9 @@ def test_inference_pipeline_batch_transform(sagemaker_session, cpu_instance_type
         env={"SAGEMAKER_SPARKML_SCHEMA": SCHEMA},
         sagemaker_session=sagemaker_session,
     )
-    xgb_image = get_image_uri(sagemaker_session.boto_region_name, "xgboost")
+    xgb_image = image_uris.retrieve(
+        "xgboost", sagemaker_session.boto_region_name, version="1", image_scope="inference"
+    )
     xgb_model = Model(
         model_data=xgb_model_data, image_uri=xgb_image, sagemaker_session=sagemaker_session
     )
@@ -115,7 +117,9 @@ def test_inference_pipeline_model_deploy(sagemaker_session, cpu_instance_type):
             env={"SAGEMAKER_SPARKML_SCHEMA": SCHEMA},
             sagemaker_session=sagemaker_session,
         )
-        xgb_image = get_image_uri(sagemaker_session.boto_region_name, "xgboost")
+        xgb_image = image_uris.retrieve(
+            "xgboost", sagemaker_session.boto_region_name, version="1", image_scope="inference"
+        )
         xgb_model = Model(
             model_data=xgb_model_data, image_uri=xgb_image, sagemaker_session=sagemaker_session
         )
@@ -169,7 +173,9 @@ def test_inference_pipeline_model_deploy_and_update_endpoint(
             env={"SAGEMAKER_SPARKML_SCHEMA": SCHEMA},
             sagemaker_session=sagemaker_session,
         )
-        xgb_image = get_image_uri(sagemaker_session.boto_region_name, "xgboost")
+        xgb_image = image_uris.retrieve(
+            "xgboost", sagemaker_session.boto_region_name, version="1", image_scope="inference"
+        )
         xgb_model = Model(
             model_data=xgb_model_data, image_uri=xgb_image, sagemaker_session=sagemaker_session
         )
