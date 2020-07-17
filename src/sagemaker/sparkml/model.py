@@ -13,13 +13,11 @@
 """Placeholder docstring"""
 from __future__ import absolute_import
 
-from sagemaker import Model, Predictor, Session
+from sagemaker import Model, Predictor, Session, image_uris
 from sagemaker.content_types import CONTENT_TYPE_CSV
-from sagemaker.fw_registry import registry
 from sagemaker.serializers import CSVSerializer
 
 framework_name = "sparkml-serving"
-repo_name = "sagemaker-sparkml-serving"
 
 
 class SparkMLPredictor(Predictor):
@@ -94,9 +92,7 @@ class SparkMLModel(Model):
         # For local mode, sagemaker_session should be passed as None but we need a session to get
         # boto_region_name
         region_name = (sagemaker_session or Session()).boto_region_name
-        image_uri = "{}/{}:{}".format(
-            registry(region_name, framework_name), repo_name, spark_version
-        )
+        image_uri = image_uris.retrieve(framework_name, region_name, version=spark_version)
         super(SparkMLModel, self).__init__(
             image_uri,
             model_data,
