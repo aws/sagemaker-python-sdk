@@ -17,13 +17,13 @@ import os
 
 import boto3
 import pytest
-import tests.integ
 from botocore.config import Config
 from packaging.version import Version
 
 from sagemaker import Session, image_uris, utils
 from sagemaker.local import LocalSession
 from sagemaker.rl import RLEstimator
+import tests.integ
 
 DEFAULT_REGION = "us-west-2"
 CUSTOM_BUCKET_NAME_PREFIX = "sagemaker-custom-bucket"
@@ -115,30 +115,6 @@ def chainer_py_version(request):
     return request.param
 
 
-# TODO: current version fixtures are legacy fixtures that aren't useful
-# and no longer verify whether images are valid
-@pytest.fixture(
-    scope="module",
-    params=[
-        "0.12",
-        "0.12.1",
-        "1.0",
-        "1.0.0",
-        "1.1",
-        "1.1.0",
-        "1.2",
-        "1.2.1",
-        "1.3",
-        "1.3.0",
-        "1.4",
-        "1.4.0",
-        "1.4.1",
-    ],
-)
-def mxnet_version(request):
-    return request.param
-
-
 @pytest.fixture(scope="module", params=["py2", "py3"])
 def mxnet_py_version(request):
     return request.param
@@ -198,21 +174,6 @@ def rl_coach_mxnet_version(request):
 @pytest.fixture(scope="module", params=["0.5", "0.5.3", "0.6", "0.6.5"])
 def rl_ray_version(request):
     return request.param
-
-
-@pytest.fixture(scope="module")
-def mxnet_full_version():
-    return "1.6.0"
-
-
-@pytest.fixture(scope="module")
-def mxnet_full_py_version():
-    return "py3"
-
-
-@pytest.fixture(scope="module")
-def ei_mxnet_full_version():
-    return "1.5.1"
 
 
 @pytest.fixture(scope="module")
