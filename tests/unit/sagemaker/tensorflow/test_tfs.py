@@ -19,9 +19,9 @@ import logging
 import mock
 import pytest
 from mock import Mock, patch
+
 from sagemaker.serializers import CSVSerializer
-from sagemaker.tensorflow import TensorFlow
-from sagemaker.tensorflow.model import TensorFlowModel, TensorFlowPredictor
+from sagemaker.tensorflow import TensorFlow, TensorFlowModel, TensorFlowPredictor
 
 JSON_CONTENT_TYPE = "application/json"
 CSV_CONTENT_TYPE = "text/csv"
@@ -70,8 +70,8 @@ def sagemaker_session():
     return session
 
 
-@patch("sagemaker.tensorflow.model.create_image_uri", return_value=IMAGE)
-def test_tfs_model(create_image_uri, sagemaker_session, tensorflow_inference_version):
+@patch("sagemaker.image_uris.retrieve", return_value=IMAGE)
+def test_tfs_model(retrieve_image_uri, sagemaker_session, tensorflow_inference_version):
     model = TensorFlowModel(
         "s3://some/data.tar.gz",
         role=ROLE,
@@ -79,12 +79,13 @@ def test_tfs_model(create_image_uri, sagemaker_session, tensorflow_inference_ver
         sagemaker_session=sagemaker_session,
     )
     cdef = model.prepare_container_def(INSTANCE_TYPE)
-    create_image_uri.assert_called_with(
+    retrieve_image_uri.assert_called_with(
+        "tensorflow",
         REGION,
-        "tensorflow-serving",
-        INSTANCE_TYPE,
-        tensorflow_inference_version,
+        version=tensorflow_inference_version,
+        instance_type=INSTANCE_TYPE,
         accelerator_type=None,
+        image_scope="inference",
     )
     assert IMAGE == cdef["Image"]
     assert {} == cdef["Environment"]
@@ -93,8 +94,8 @@ def test_tfs_model(create_image_uri, sagemaker_session, tensorflow_inference_ver
     assert isinstance(predictor, TensorFlowPredictor)
 
 
-@patch("sagemaker.tensorflow.model.create_image_uri", return_value=IMAGE)
-def test_tfs_model_accelerator(create_image_uri, sagemaker_session, tensorflow_eia_version):
+@patch("sagemaker.image_uris.retrieve", return_value=IMAGE)
+def test_tfs_model_accelerator(retrieve_image_uri, sagemaker_session, tensorflow_eia_version):
     model = TensorFlowModel(
         "s3://some/data.tar.gz",
         role=ROLE,
@@ -102,12 +103,13 @@ def test_tfs_model_accelerator(create_image_uri, sagemaker_session, tensorflow_e
         sagemaker_session=sagemaker_session,
     )
     cdef = model.prepare_container_def(INSTANCE_TYPE, accelerator_type=ACCELERATOR_TYPE)
-    create_image_uri.assert_called_with(
+    retrieve_image_uri.assert_called_with(
+        "tensorflow",
         REGION,
-        "tensorflow-serving",
-        INSTANCE_TYPE,
-        tensorflow_eia_version,
+        version=tensorflow_eia_version,
+        instance_type=INSTANCE_TYPE,
         accelerator_type=ACCELERATOR_TYPE,
+        image_scope="inference",
     )
     assert IMAGE == cdef["Image"]
 
@@ -119,7 +121,7 @@ def test_tfs_model_image_accelerator_not_supported(sagemaker_session):
     model = TensorFlowModel(
         "s3://some/data.tar.gz",
         role=ROLE,
-        framework_version="1.13.1",
+        framework_version="1.13.0",
         sagemaker_session=sagemaker_session,
     )
 

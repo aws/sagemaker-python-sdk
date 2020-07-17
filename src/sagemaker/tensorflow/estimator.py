@@ -18,7 +18,7 @@ import os
 
 from packaging import version
 
-from sagemaker import utils
+from sagemaker import image_uris, utils
 from sagemaker.debugger import DebuggerHookConfig
 from sagemaker.estimator import Framework
 import sagemaker.fw_utils as fw
@@ -34,7 +34,6 @@ class TensorFlow(Framework):
     """Handle end-to-end training and deployment of user-provided TensorFlow code."""
 
     __framework_name__ = "tensorflow"
-    _ECR_REPO_NAME = "tensorflow-scriptmode"
 
     _HIGHEST_LEGACY_MODE_ONLY_VERSION = version.Version("1.10.0")
     _HIGHEST_PYTHON_2_VERSION = version.Version("2.1.0")
@@ -151,12 +150,13 @@ class TensorFlow(Framework):
             raise AttributeError(msg)
 
         if self.image_uri is None and self._only_legacy_mode_supported():
-            legacy_image_uri = fw.create_image_uri(
-                self.sagemaker_session.boto_region_name,
+            legacy_image_uri = image_uris.retrieve(
                 "tensorflow",
-                self.instance_type,
-                self.framework_version,
-                self.py_version,
+                self.sagemaker_session.boto_region_name,
+                instance_type=self.instance_type,
+                version=self.framework_version,
+                py_version=self.py_version,
+                image_scope="training",
             )
 
             msg = (
@@ -354,19 +354,6 @@ class TensorFlow(Framework):
         ):
             # Set defaults for debugging.
             self.debugger_hook_config = DebuggerHookConfig(s3_output_path=self.output_path)
-
-    def train_image(self):
-        """Placeholder docstring"""
-        if self.image_uri:
-            return self.image_uri
-
-        return fw.create_image_uri(
-            self.sagemaker_session.boto_region_name,
-            self._ECR_REPO_NAME,
-            self.instance_type,
-            self.framework_version,
-            self.py_version,
-        )
 
     def transformer(
         self,

@@ -22,7 +22,7 @@ import six
 
 from sagemaker.cli.compatibility.v2.modifiers import framework_version, matching
 from sagemaker.cli.compatibility.v2.modifiers.modifier import Modifier
-from sagemaker import fw_utils
+from sagemaker import image_uris
 
 TF_NAMESPACES = ("sagemaker.tensorflow", "sagemaker.tensorflow.estimator")
 LEGACY_MODE_PARAMETERS = (
@@ -169,9 +169,14 @@ class TensorFlowLegacyModeConstructorUpgrader(Modifier):
                 instance_type = kw.value.s if isinstance(kw.value, ast.Str) else None
 
         if tf_version and instance_type:
-            return fw_utils.create_image_uri(
-                self.region, "tensorflow", instance_type, tf_version, "py2"
-            )
+            return image_uris.retrieve(
+                "tensorflow",
+                self.region,
+                version=tf_version,
+                py_version="py2",
+                instance_type=instance_type,
+                image_scope="training",
+            ).replace("-scriptmode", "")
 
         return None
 

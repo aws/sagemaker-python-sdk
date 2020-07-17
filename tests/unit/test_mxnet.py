@@ -306,11 +306,9 @@ def test_create_model_with_custom_image(name_from_base, sagemaker_session):
 @patch("sagemaker.utils.create_tar_file")
 @patch("sagemaker.utils.repack_model")
 @patch("time.strftime", return_value=TIMESTAMP)
-@patch("sagemaker.mxnet.model.create_image_uri", return_value=IMAGE)
-@patch("sagemaker.estimator.create_image_uri", return_value=IMAGE)
+@patch("sagemaker.image_uris.retrieve", return_value=IMAGE)
 def test_mxnet(
-    train_image_uri,
-    model_image_uri,
+    retrieve_image_uri,
     strftime,
     repack_model,
     create_tar_file,
@@ -470,9 +468,9 @@ def test_model_mms_version(
 
 @patch("sagemaker.fw_utils.tar_and_upload_dir")
 @patch("sagemaker.utils.repack_model")
-@patch("sagemaker.mxnet.model.create_image_uri", return_value=IMAGE)
+@patch("sagemaker.image_uris.retrieve", return_value=IMAGE)
 def test_model_image_accelerator(
-    create_image_uri,
+    retrieve_image_uri,
     repack_model,
     tar_and_upload,
     sagemaker_session,

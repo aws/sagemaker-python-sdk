@@ -16,8 +16,8 @@ from __future__ import absolute_import
 import logging
 
 import sagemaker
+from sagemaker import image_uris
 from sagemaker.fw_utils import (
-    create_image_uri,
     model_code_key_prefix,
     python_deprecation_warning,
     validate_version_or_image_args,
@@ -175,11 +175,12 @@ class ChainerModel(FrameworkModel):
             str: The appropriate image URI based on the given parameters.
 
         """
-        return create_image_uri(
-            region_name,
+        return image_uris.retrieve(
             self.__framework_name__,
-            instance_type,
-            self.framework_version,
-            self.py_version,
+            region_name,
+            version=self.framework_version,
+            py_version=self.py_version,
+            instance_type=instance_type,
             accelerator_type=accelerator_type,
+            image_scope="inference",
         )
