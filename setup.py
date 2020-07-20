@@ -34,7 +34,7 @@ def read_version():
 
 # Declare minimal set for installation
 required_packages = [
-    "boto3>=1.13.24",
+    "boto3>=1.14.12",
     "numpy>=1.9.0",
     "protobuf>=3.1",
     "scipy>=0.19.0",
@@ -71,7 +71,7 @@ extras["test"] = (
         "awslogs",
         "black==19.10b0 ; python_version >= '3.6'",
         "stopit==1.1.2",
-        "apache-airflow==1.10.5",
+        "apache-airflow==1.10.9",
         "fabric>=2.0",
         "requests>=2.20.0, <3",
     ],
@@ -102,6 +102,7 @@ setup(
         "Programming Language :: Python :: 2.7",
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
     ],
     install_requires=required_packages,
     extras_require=extras,

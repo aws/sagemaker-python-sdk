@@ -1,5 +1,70 @@
 # Changelog
 
+## v1.69.0 (2020-07-09)
+
+### Features
+
+ * Add ModelClientConfig Fields for Batch Transform
+
+### Documentation Changes
+
+ * add KFP Processing component
+
+## v1.68.0 (2020-07-07)
+
+### Features
+
+ * add spot instance support for AlgorithmEstimator
+
+### Documentation Changes
+
+ * add xgboost documentation for inference
+
+## v1.67.1.post0 (2020-07-01)
+
+### Documentation Changes
+
+ * add Step Functions SDK info
+
+## v1.67.1 (2020-06-30)
+
+### Bug Fixes and Other Changes
+
+ * add deprecation warnings for estimator.delete_endpoint() and tuner.delete_endpoint()
+
+## v1.67.0 (2020-06-29)
+
+### Features
+
+ * Apache Airflow integration for SageMaker Processing Jobs
+
+### Bug Fixes and Other Changes
+
+ * fix punctuation in warning message
+
+### Testing and Release Infrastructure
+
+ * address warnings about pytest custom marks, error message checking, and yaml loading
+ * mark long-running cron tests
+ * fix tox test dependencies and bump coverage threshold to 86%
+
+## v1.66.0 (2020-06-25)
+
+### Features
+
+ * add 3.8 as supported python version
+
+### Testing and Release Infrastructure
+
+ * upgrade airflow to latest stable version
+ * update feature request issue template
+
+## v1.65.1.post1 (2020-06-24)
+
+### Testing and Release Infrastructure
+
+ * add py38 to buildspecs
+
 ## v1.65.1.post0 (2020-06-22)
 
 ### Documentation Changes

@@ -55,7 +55,6 @@ def mxnet_training_job(sagemaker_session, cpu_instance_type):
 
 
 @pytest.mark.canary_quick
-@pytest.mark.regional_testing
 def test_attach_deploy(
     mxnet_training_job, sagemaker_session, cpu_instance_type, cpu_instance_family
 ):
