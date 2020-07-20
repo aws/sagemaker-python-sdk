@@ -46,7 +46,7 @@ ACCOUNTS = {
 def test_valid_uris(sklearn_version):
     for region in regions.regions():
         uri = image_uris.retrieve(
-            "scikit-learn",
+            "sklearn",
             region=region,
             version=sklearn_version,
             py_version="py3",
@@ -66,7 +66,7 @@ def test_valid_uris(sklearn_version):
 def test_py2_error(sklearn_version):
     with pytest.raises(ValueError) as e:
         image_uris.retrieve(
-            "scikit-learn",
+            "sklearn",
             region="us-west-2",
             version=sklearn_version,
             py_version="py2",
@@ -79,10 +79,7 @@ def test_py2_error(sklearn_version):
 def test_gpu_error(sklearn_version):
     with pytest.raises(ValueError) as e:
         image_uris.retrieve(
-            "scikit-learn",
-            region="us-west-2",
-            version=sklearn_version,
-            instance_type="ml.p2.xlarge",
+            "sklearn", region="us-west-2", version=sklearn_version, instance_type="ml.p2.xlarge",
         )
 
     assert "Unsupported processor: gpu." in str(e.value)

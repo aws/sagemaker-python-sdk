@@ -62,7 +62,7 @@ def image_uri(
     sklearn_latest_version, sklearn_latest_py_version, cpu_instance_type, sagemaker_session,
 ):
     return image_uris.retrieve(
-        "scikit-learn",
+        "sklearn",
         sagemaker_session.boto_region_name,
         version=sklearn_latest_version,
         py_version=sklearn_latest_py_version,
