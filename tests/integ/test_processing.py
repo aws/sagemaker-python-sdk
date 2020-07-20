@@ -16,9 +16,9 @@ import os
 
 import pytest
 from botocore.config import Config
-from sagemaker import Session
-from sagemaker.fw_registry import default_framework_uri
 
+from sagemaker import image_uris, Session
+from sagemaker.network import NetworkConfig
 from sagemaker.processing import (
     ProcessingInput,
     ProcessingOutput,
@@ -27,7 +27,6 @@ from sagemaker.processing import (
     ProcessingJob,
 )
 from sagemaker.sklearn.processing import SKLearnProcessor
-from sagemaker.network import NetworkConfig
 from tests.integ import DATA_DIR
 from tests.integ.kms_utils import get_or_create_kms_key
 
@@ -59,10 +58,18 @@ def sagemaker_session_with_custom_bucket(
 
 
 @pytest.fixture(scope="module")
-def image_uri(sagemaker_session):
-    image_tag = "{}-{}-{}".format("0.20.0", "cpu", "py3")
-    return default_framework_uri(
-        "scikit-learn", sagemaker_session.boto_session.region_name, image_tag
+def image_uri(
+    scikit_learn_latest_version,
+    scikit_learn_latest_py_version,
+    cpu_instance_type,
+    sagemaker_session,
+):
+    return image_uris.retrieve(
+        "scikit-learn",
+        sagemaker_session.boto_region_name,
+        version=scikit_learn_latest_version,
+        py_version=scikit_learn_latest_py_version,
+        instance_type=cpu_instance_type,
     )
 
 

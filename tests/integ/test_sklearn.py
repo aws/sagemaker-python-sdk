@@ -74,7 +74,6 @@ def test_training_with_additional_hyperparameters(
         job_name = unique_name_from_base("test-sklearn-hp")
 
         sklearn.fit({"train": train_input, "test": test_input}, job_name=job_name)
-        return sklearn.latest_training_job.name
 
 
 def test_training_with_network_isolation(
@@ -110,7 +109,6 @@ def test_training_with_network_isolation(
         assert sagemaker_session.sagemaker_client.describe_training_job(TrainingJobName=job_name)[
             "EnableNetworkIsolation"
         ]
-        return sklearn.latest_training_job.name
 
 
 @pytest.mark.canary_quick
