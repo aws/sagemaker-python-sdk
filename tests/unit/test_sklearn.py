@@ -141,7 +141,7 @@ def _create_train_job(version):
     }
 
 
-def test_train_image(sagemaker_session, scikit_learn_version):
+def test_train_image(sagemaker_session, sklearn_version):
     container_log_level = '"logging.INFO"'
     source_dir = "s3://mybucket/source"
     sklearn = SKLearn(
@@ -149,17 +149,17 @@ def test_train_image(sagemaker_session, scikit_learn_version):
         role=ROLE,
         sagemaker_session=sagemaker_session,
         instance_type=INSTANCE_TYPE,
-        framework_version=scikit_learn_version,
+        framework_version=sklearn_version,
         container_log_level=container_log_level,
         py_version=PYTHON_VERSION,
         base_job_name="job",
         source_dir=source_dir,
     )
 
-    assert _get_full_cpu_image_uri(scikit_learn_version) == sklearn.train_image()
+    assert _get_full_cpu_image_uri(sklearn_version) == sklearn.train_image()
 
 
-def test_create_model(sagemaker_session, scikit_learn_version):
+def test_create_model(sagemaker_session, sklearn_version):
     source_dir = "s3://mybucket/source"
 
     sklearn_model = SKLearnModel(
@@ -167,15 +167,15 @@ def test_create_model(sagemaker_session, scikit_learn_version):
         role=ROLE,
         sagemaker_session=sagemaker_session,
         entry_point=SCRIPT_PATH,
-        framework_version=scikit_learn_version,
+        framework_version=sklearn_version,
     )
-    image_uri = _get_full_cpu_image_uri(scikit_learn_version)
+    image_uri = _get_full_cpu_image_uri(sklearn_version)
     model_values = sklearn_model.prepare_container_def(CPU)
     assert model_values["Image"] == image_uri
 
 
 @patch("sagemaker.model.FrameworkModel._upload_code")
-def test_create_model_with_network_isolation(upload, sagemaker_session, scikit_learn_version):
+def test_create_model_with_network_isolation(upload, sagemaker_session, sklearn_version):
     source_dir = "s3://mybucket/source"
     repacked_model_data = "s3://mybucket/prefix/model.tar.gz"
 
@@ -185,7 +185,7 @@ def test_create_model_with_network_isolation(upload, sagemaker_session, scikit_l
         sagemaker_session=sagemaker_session,
         entry_point=SCRIPT_PATH,
         enable_network_isolation=True,
-        framework_version=scikit_learn_version,
+        framework_version=sklearn_version,
     )
     sklearn_model.uploaded_code = UploadedCode(s3_prefix=repacked_model_data, script_name="script")
     sklearn_model.repacked_model_data = repacked_model_data
@@ -195,7 +195,7 @@ def test_create_model_with_network_isolation(upload, sagemaker_session, scikit_l
 
 
 @patch("sagemaker.estimator.name_from_base")
-def test_create_model_from_estimator(name_from_base, sagemaker_session, scikit_learn_version):
+def test_create_model_from_estimator(name_from_base, sagemaker_session, sklearn_version):
     container_log_level = '"logging.INFO"'
     source_dir = "s3://mybucket/source"
     base_job_name = "job"
@@ -205,7 +205,7 @@ def test_create_model_from_estimator(name_from_base, sagemaker_session, scikit_l
         role=ROLE,
         sagemaker_session=sagemaker_session,
         instance_type=INSTANCE_TYPE,
-        framework_version=scikit_learn_version,
+        framework_version=sklearn_version,
         container_log_level=container_log_level,
         py_version=PYTHON_VERSION,
         base_job_name=base_job_name,
@@ -220,7 +220,7 @@ def test_create_model_from_estimator(name_from_base, sagemaker_session, scikit_l
     model = sklearn.create_model()
 
     assert model.sagemaker_session == sagemaker_session
-    assert model.framework_version == scikit_learn_version
+    assert model.framework_version == sklearn_version
     assert model.py_version == sklearn.py_version
     assert model.entry_point == SCRIPT_PATH
     assert model.role == ROLE
@@ -233,7 +233,7 @@ def test_create_model_from_estimator(name_from_base, sagemaker_session, scikit_l
     name_from_base.assert_called_with(base_job_name)
 
 
-def test_create_model_with_optional_params(sagemaker_session, scikit_learn_version):
+def test_create_model_with_optional_params(sagemaker_session, sklearn_version):
     container_log_level = '"logging.INFO"'
     source_dir = "s3://mybucket/source"
     enable_cloudwatch_metrics = "true"
@@ -243,7 +243,7 @@ def test_create_model_with_optional_params(sagemaker_session, scikit_learn_versi
         sagemaker_session=sagemaker_session,
         instance_type=INSTANCE_TYPE,
         container_log_level=container_log_level,
-        framework_version=scikit_learn_version,
+        framework_version=sklearn_version,
         py_version=PYTHON_VERSION,
         base_job_name="job",
         source_dir=source_dir,
@@ -303,14 +303,14 @@ def test_create_model_with_custom_image(sagemaker_session):
 
 
 @patch("time.strftime", return_value=TIMESTAMP)
-def test_sklearn(strftime, sagemaker_session, scikit_learn_version):
+def test_sklearn(strftime, sagemaker_session, sklearn_version):
     sklearn = SKLearn(
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
         instance_type=INSTANCE_TYPE,
         py_version=PYTHON_VERSION,
-        framework_version=scikit_learn_version,
+        framework_version=sklearn_version,
     )
 
     inputs = "s3://mybucket/train"
@@ -322,7 +322,7 @@ def test_sklearn(strftime, sagemaker_session, scikit_learn_version):
     boto_call_names = [c[0] for c in sagemaker_session.boto_session.method_calls]
     assert boto_call_names == ["resource"]
 
-    expected_train_args = _create_train_job(scikit_learn_version)
+    expected_train_args = _create_train_job(sklearn_version)
     expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
     expected_train_args["experiment_config"] = EXPERIMENT_CONFIG
 
@@ -344,7 +344,7 @@ def test_sklearn(strftime, sagemaker_session, scikit_learn_version):
             "SAGEMAKER_REGION": "us-west-2",
             "SAGEMAKER_CONTAINER_LOG_LEVEL": "20",
         },
-        "Image": expected_image_base.format(scikit_learn_version, PYTHON_VERSION),
+        "Image": expected_image_base.format(sklearn_version, PYTHON_VERSION),
         "ModelDataUrl": "s3://m/m.tar.gz",
     } == model.prepare_container_def(CPU)
 
@@ -353,7 +353,7 @@ def test_sklearn(strftime, sagemaker_session, scikit_learn_version):
     assert isinstance(predictor, SKLearnPredictor)
 
 
-def test_transform_multiple_values_for_entry_point_issue(sagemaker_session, scikit_learn_version):
+def test_transform_multiple_values_for_entry_point_issue(sagemaker_session, sklearn_version):
     # https://github.com/aws/sagemaker-python-sdk/issues/974
     sklearn = SKLearn(
         entry_point=SCRIPT_PATH,
@@ -361,7 +361,7 @@ def test_transform_multiple_values_for_entry_point_issue(sagemaker_session, scik
         sagemaker_session=sagemaker_session,
         instance_type=INSTANCE_TYPE,
         py_version=PYTHON_VERSION,
-        framework_version=scikit_learn_version,
+        framework_version=sklearn_version,
     )
 
     inputs = "s3://mybucket/train"
@@ -373,7 +373,7 @@ def test_transform_multiple_values_for_entry_point_issue(sagemaker_session, scik
     assert transformer is not None
 
 
-def test_fail_distributed_training(sagemaker_session, scikit_learn_version):
+def test_fail_distributed_training(sagemaker_session, sklearn_version):
     with pytest.raises(AttributeError) as error:
         SKLearn(
             entry_point=SCRIPT_PATH,
@@ -382,12 +382,12 @@ def test_fail_distributed_training(sagemaker_session, scikit_learn_version):
             instance_count=DIST_INSTANCE_COUNT,
             instance_type=INSTANCE_TYPE,
             py_version=PYTHON_VERSION,
-            framework_version=scikit_learn_version,
+            framework_version=sklearn_version,
         )
     assert "Scikit-Learn does not support distributed training." in str(error)
 
 
-def test_fail_gpu_training(sagemaker_session, scikit_learn_version):
+def test_fail_gpu_training(sagemaker_session, sklearn_version):
     with pytest.raises(ValueError) as error:
         SKLearn(
             entry_point=SCRIPT_PATH,
@@ -395,26 +395,26 @@ def test_fail_gpu_training(sagemaker_session, scikit_learn_version):
             sagemaker_session=sagemaker_session,
             instance_type=GPU_INSTANCE_TYPE,
             py_version=PYTHON_VERSION,
-            framework_version=scikit_learn_version,
+            framework_version=sklearn_version,
         )
     assert "GPU training in not supported for Scikit-Learn." in str(error)
 
 
-def test_model(sagemaker_session, scikit_learn_version):
+def test_model(sagemaker_session, sklearn_version):
     model = SKLearnModel(
         "s3://some/data.tar.gz",
         role=ROLE,
         entry_point=SCRIPT_PATH,
-        framework_version=scikit_learn_version,
+        framework_version=sklearn_version,
         sagemaker_session=sagemaker_session,
     )
     predictor = model.deploy(1, CPU)
     assert isinstance(predictor, SKLearnPredictor)
 
 
-def test_attach(sagemaker_session, scikit_learn_version):
+def test_attach(sagemaker_session, sklearn_version):
     training_image = "1.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:{}-cpu-{}".format(
-        scikit_learn_version, PYTHON_VERSION
+        sklearn_version, PYTHON_VERSION
     )
     returned_job_description = {
         "AlgorithmSpecification": {"TrainingInputMode": "File", "TrainingImage": training_image},
@@ -449,7 +449,7 @@ def test_attach(sagemaker_session, scikit_learn_version):
     assert estimator._current_job_name == "neo"
     assert estimator.latest_training_job.job_name == "neo"
     assert estimator.py_version == PYTHON_VERSION
-    assert estimator.framework_version == scikit_learn_version
+    assert estimator.framework_version == sklearn_version
     assert estimator.role == "arn:aws:iam::366:role/SageMakerRole"
     assert estimator.instance_count == 1
     assert estimator.max_run == 24 * 60 * 60
@@ -535,7 +535,7 @@ def test_attach_custom_image(sagemaker_session):
     assert estimator.train_image() == training_image
 
 
-def test_estimator_py2_raises(sagemaker_session, scikit_learn_version):
+def test_estimator_py2_raises(sagemaker_session, sklearn_version):
     with pytest.raises(AttributeError):
         SKLearn(
             entry_point=SCRIPT_PATH,
@@ -543,12 +543,12 @@ def test_estimator_py2_raises(sagemaker_session, scikit_learn_version):
             sagemaker_session=sagemaker_session,
             instance_count=INSTANCE_COUNT,
             instance_type=INSTANCE_TYPE,
-            framework_version=scikit_learn_version,
+            framework_version=sklearn_version,
             py_version="py2",
         )
 
 
-def test_model_py2_raises(sagemaker_session, scikit_learn_version):
+def test_model_py2_raises(sagemaker_session, sklearn_version):
     source_dir = "s3://mybucket/source"
 
     with pytest.raises(AttributeError):
@@ -557,14 +557,6 @@ def test_model_py2_raises(sagemaker_session, scikit_learn_version):
             role=ROLE,
             entry_point=SCRIPT_PATH,
             sagemaker_session=sagemaker_session,
-            framework_version=scikit_learn_version,
+            framework_version=sklearn_version,
             py_version="py2",
         )
-
-
-def test_custom_image_estimator_deploy(sagemaker_session, scikit_learn_version):
-    custom_image = "mycustomimage:latest"
-    sklearn = _sklearn_estimator(sagemaker_session, scikit_learn_version)
-    sklearn.fit(inputs="s3://mybucket/train", job_name="new_name")
-    model = sklearn.create_model(image_uri=custom_image)
-    assert model.image_uri == custom_image

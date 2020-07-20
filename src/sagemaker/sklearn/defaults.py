@@ -13,4 +13,4 @@
 """Placeholder docstring"""
 from __future__ import absolute_import
 
-SKLEARN_NAME = "scikit-learn"
+SKLEARN_NAME = "sklearn"

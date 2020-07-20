@@ -246,7 +246,7 @@ class SKLearn(Framework):
             init_params["image_uri"] = image_uri
             return init_params
 
-        if framework and framework != cls.__framework_name__:
+        if framework and framework != "scikit-learn":
             raise ValueError(
                 "Training job: {} didn't use image for requested framework".format(
                     job_details["TrainingJobName"]

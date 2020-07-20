@@ -478,10 +478,7 @@ def test_mxnet_airflow_config_uploads_data_source_to_s3(
 
 @pytest.mark.canary_quick
 def test_sklearn_airflow_config_uploads_data_source_to_s3(
-    sagemaker_session,
-    cpu_instance_type,
-    scikit_learn_latest_version,
-    scikit_learn_latest_py_version,
+    sagemaker_session, cpu_instance_type, sklearn_latest_version, sklearn_latest_py_version,
 ):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         script_path = os.path.join(DATA_DIR, "sklearn_mnist", "mnist.py")
@@ -491,8 +488,8 @@ def test_sklearn_airflow_config_uploads_data_source_to_s3(
             entry_point=script_path,
             role=ROLE,
             instance_type=cpu_instance_type,
-            framework_version=scikit_learn_latest_version,
-            py_version=scikit_learn_latest_py_version,
+            framework_version=sklearn_latest_version,
+            py_version=sklearn_latest_py_version,
             sagemaker_session=sagemaker_session,
             hyperparameters={"epochs": 1},
         )

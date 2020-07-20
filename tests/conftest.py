@@ -285,9 +285,8 @@ def pytest_generate_tests(metafunc):
 
 
 def _generate_all_framework_version_fixtures(metafunc):
-    for fw in ("chainer", "mxnet", "pytorch", "scikit-learn", "tensorflow", "xgboost"):
+    for fw in ("chainer", "mxnet", "pytorch", "sklearn", "tensorflow", "xgboost"):
         config = image_uris.config_for_framework(fw)
-        fw = fw.replace("-", "_")  # for fixture names
         if "scope" in config:
             _parametrize_framework_version_fixtures(metafunc, fw, config)
         else:

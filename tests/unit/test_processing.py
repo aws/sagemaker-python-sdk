@@ -99,14 +99,14 @@ def sagemaker_session():
 @patch("os.path.exists", return_value=True)
 @patch("os.path.isfile", return_value=True)
 def test_sklearn_processor_with_required_parameters(
-    exists_mock, isfile_mock, botocore_resolver, sagemaker_session, scikit_learn_version
+    exists_mock, isfile_mock, botocore_resolver, sagemaker_session, sklearn_version
 ):
     botocore_resolver.return_value.construct_endpoint.return_value = {"hostname": ECR_HOSTNAME}
 
     processor = SKLearnProcessor(
         role=ROLE,
         instance_type="ml.m4.xlarge",
-        framework_version=scikit_learn_version,
+        framework_version=sklearn_version,
         instance_count=1,
         sagemaker_session=sagemaker_session,
     )
@@ -117,7 +117,7 @@ def test_sklearn_processor_with_required_parameters(
 
     sklearn_image_uri = (
         "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:{}-cpu-py3"
-    ).format(scikit_learn_version)
+    ).format(sklearn_version)
     expected_args["app_specification"]["ImageUri"] = sklearn_image_uri
 
     sagemaker_session.process.assert_called_with(**expected_args)
@@ -127,13 +127,13 @@ def test_sklearn_processor_with_required_parameters(
 @patch("os.path.exists", return_value=True)
 @patch("os.path.isfile", return_value=True)
 def test_sklearn_with_all_parameters(
-    exists_mock, isfile_mock, botocore_resolver, scikit_learn_version, sagemaker_session
+    exists_mock, isfile_mock, botocore_resolver, sklearn_version, sagemaker_session
 ):
     botocore_resolver.return_value.construct_endpoint.return_value = {"hostname": ECR_HOSTNAME}
 
     processor = SKLearnProcessor(
         role=ROLE,
-        framework_version=scikit_learn_version,
+        framework_version=sklearn_version,
         instance_type="ml.m4.xlarge",
         instance_count=1,
         volume_size_in_gb=100,
@@ -183,7 +183,7 @@ def test_sklearn_with_all_parameters(
     expected_args = _get_expected_args_all_parameters(processor._current_job_name)
     sklearn_image_uri = (
         "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:{}-cpu-py3"
-    ).format(scikit_learn_version)
+    ).format(sklearn_version)
     expected_args["app_specification"]["ImageUri"] = sklearn_image_uri
 
     sagemaker_session.process.assert_called_with(**expected_args)

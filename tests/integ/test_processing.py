@@ -59,16 +59,13 @@ def sagemaker_session_with_custom_bucket(
 
 @pytest.fixture(scope="module")
 def image_uri(
-    scikit_learn_latest_version,
-    scikit_learn_latest_py_version,
-    cpu_instance_type,
-    sagemaker_session,
+    sklearn_latest_version, sklearn_latest_py_version, cpu_instance_type, sagemaker_session,
 ):
     return image_uris.retrieve(
         "scikit-learn",
         sagemaker_session.boto_region_name,
-        version=scikit_learn_latest_version,
-        py_version=scikit_learn_latest_py_version,
+        version=sklearn_latest_version,
+        py_version=sklearn_latest_py_version,
         instance_type=cpu_instance_type,
     )
 
@@ -97,12 +94,12 @@ def output_kms_key(sagemaker_session):
     )
 
 
-def test_sklearn(sagemaker_session, scikit_learn_latest_version, cpu_instance_type):
+def test_sklearn(sagemaker_session, sklearn_latest_version, cpu_instance_type):
     script_path = os.path.join(DATA_DIR, "dummy_script.py")
     input_file_path = os.path.join(DATA_DIR, "dummy_input.txt")
 
     sklearn_processor = SKLearnProcessor(
-        framework_version=scikit_learn_latest_version,
+        framework_version=sklearn_latest_version,
         role=ROLE,
         instance_type=cpu_instance_type,
         instance_count=1,
@@ -136,12 +133,12 @@ def test_sklearn(sagemaker_session, scikit_learn_latest_version, cpu_instance_ty
 
 @pytest.mark.canary_quick
 def test_sklearn_with_customizations(
-    sagemaker_session, image_uri, scikit_learn_latest_version, cpu_instance_type, output_kms_key
+    sagemaker_session, image_uri, sklearn_latest_version, cpu_instance_type, output_kms_key
 ):
     input_file_path = os.path.join(DATA_DIR, "dummy_input.txt")
 
     sklearn_processor = SKLearnProcessor(
-        framework_version=scikit_learn_latest_version,
+        framework_version=sklearn_latest_version,
         role=ROLE,
         command=["python3"],
         instance_type=cpu_instance_type,
@@ -218,14 +215,14 @@ def test_sklearn_with_custom_default_bucket(
     sagemaker_session_with_custom_bucket,
     custom_bucket_name,
     image_uri,
-    scikit_learn_latest_version,
+    sklearn_latest_version,
     cpu_instance_type,
     output_kms_key,
 ):
     input_file_path = os.path.join(DATA_DIR, "dummy_input.txt")
 
     sklearn_processor = SKLearnProcessor(
-        framework_version=scikit_learn_latest_version,
+        framework_version=sklearn_latest_version,
         role=ROLE,
         command=["python3"],
         instance_type=cpu_instance_type,
@@ -301,10 +298,10 @@ def test_sklearn_with_custom_default_bucket(
 
 
 def test_sklearn_with_no_inputs_or_outputs(
-    sagemaker_session, image_uri, scikit_learn_latest_version, cpu_instance_type
+    sagemaker_session, image_uri, sklearn_latest_version, cpu_instance_type
 ):
     sklearn_processor = SKLearnProcessor(
-        framework_version=scikit_learn_latest_version,
+        framework_version=sklearn_latest_version,
         role=ROLE,
         command=["python3"],
         instance_type=cpu_instance_type,
@@ -653,14 +650,12 @@ def test_processor_with_custom_bucket(
     assert job_description["StoppingCondition"] == {"MaxRuntimeInSeconds": 3600}
 
 
-def test_sklearn_with_network_config(
-    sagemaker_session, scikit_learn_latest_version, cpu_instance_type
-):
+def test_sklearn_with_network_config(sagemaker_session, sklearn_latest_version, cpu_instance_type):
     script_path = os.path.join(DATA_DIR, "dummy_script.py")
     input_file_path = os.path.join(DATA_DIR, "dummy_input.txt")
 
     sklearn_processor = SKLearnProcessor(
-        framework_version=scikit_learn_latest_version,
+        framework_version=sklearn_latest_version,
         role=ROLE,
         instance_type=cpu_instance_type,
         instance_count=1,

@@ -43,19 +43,19 @@ ACCOUNTS = {
 }
 
 
-def test_valid_uris(scikit_learn_version):
+def test_valid_uris(sklearn_version):
     for region in regions.regions():
         uri = image_uris.retrieve(
             "scikit-learn",
             region=region,
-            version=scikit_learn_version,
+            version=sklearn_version,
             py_version="py3",
             instance_type="ml.c4.xlarge",
         )
 
         expected = expected_uris.framework_uri(
             "sagemaker-scikit-learn",
-            scikit_learn_version,
+            sklearn_version,
             ACCOUNTS[region],
             py_version="py3",
             region=region,
@@ -63,12 +63,12 @@ def test_valid_uris(scikit_learn_version):
         assert expected == uri
 
 
-def test_py2_error(scikit_learn_version):
+def test_py2_error(sklearn_version):
     with pytest.raises(ValueError) as e:
         image_uris.retrieve(
             "scikit-learn",
             region="us-west-2",
-            version=scikit_learn_version,
+            version=sklearn_version,
             py_version="py2",
             instance_type="ml.c4.xlarge",
         )
@@ -76,12 +76,12 @@ def test_py2_error(scikit_learn_version):
     assert "Unsupported Python version: py2." in str(e.value)
 
 
-def test_gpu_error(scikit_learn_version):
+def test_gpu_error(sklearn_version):
     with pytest.raises(ValueError) as e:
         image_uris.retrieve(
             "scikit-learn",
             region="us-west-2",
-            version=scikit_learn_version,
+            version=sklearn_version,
             instance_type="ml.p2.xlarge",
         )
 
