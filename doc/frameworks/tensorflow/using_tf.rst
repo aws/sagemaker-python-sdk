@@ -200,14 +200,15 @@ The constructor keyword arguments define how SageMaker runs your training script
 Specify a Docker image using an Estimator
 -----------------------------------------
 
-You can also specify a Docker image when creating an Estimator by specifying the ECR URI for the Python and framework version directly. For a full list of available container URIs, see `Available Deep Learning Containers Images <https://github.com/aws/deep-learning-containers/blob/master/available_images.md>`__ For more information on using Docker containers, see `Use Your Own Algorithms or Models with Amazon SageMaker <https://docs.aws.amazon.com/sagemaker/latest/dg/your-algorithms.html>`__.
+There are use cases, such as extending an existing pre-built Amazon SageMaker images, that require specifing a Docker image when creating an Estimator by directly specifying the ECR URI instead of the Python and framework version. For a full list of available container URIs, see `Available Deep Learning Containers Images <https://github.com/aws/deep-learning-containers/blob/master/available_images.md>`__ For more information on using Docker containers, see `Use Your Own Algorithms or Models with Amazon SageMaker <https://docs.aws.amazon.com/sagemaker/latest/dg/your-algorithms.html>`__.
 
-When specifying the image, you must use the ``image_name=''`` arg to replace both of the following args:
+When specifying the image, you must use the ``image_name=''`` arg to replace the following arg:
 
 - ``py_version=''``
-- ``framework_version=''``
 
-The following example uses the ``image_name='763104351884.dkr.ecr.us-east-1.amazonaws.com/tensorflow-training:1.15.2-cpu-py37-ubuntu18.04'`` arg to specify the container image, Python version, and framework version:
+You should still specify the ``framework_version=''`` arg because the SageMaker Python SDK accomodates for differences in the images based on the version.
+
+The following example uses the ``image_name=''`` arg to specify the container image, Python version, and framework version.
 
 .. code:: python
 
@@ -215,7 +216,7 @@ The following example uses the ``image_name='763104351884.dkr.ecr.us-east-1.amaz
                              role='SageMakerRole',
                              train_instance_count=1,
                              train_instance_type='ml.p2.xlarge',
-                             image_name='763104351884.dkr.ecr.us-east-1.amazonaws.com/tensorflow-training:1.15.2-cpu-py37-ubuntu18.04',
+                             image_name='763104351884.dkr.ecr.<region>.amazonaws.com/<framework>-<job type>:<framework version>-<cpu/gpu>-<python version>-ubuntu18.04',
                             script_mode=True)
 
 For more information about the sagemaker.tensorflow.TensorFlow estimator, see `SageMaker TensorFlow Classes`_.
