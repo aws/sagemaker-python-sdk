@@ -18,7 +18,6 @@ import os
 
 import pytest
 from mock import MagicMock, Mock, patch
-from packaging.version import Version
 
 from sagemaker.mxnet import MXNetModel, MXNetPredictor
 from sagemaker.rl import RLEstimator, RLFramework, RLToolkit, TOOLKIT_FRAMEWORK_VERSION_MAP
