@@ -109,7 +109,8 @@ def is_mxnet_1_4_py2(framework, framework_version, py_version):
 
 
 @pytest.fixture(
-    scope="module", params=["1.11", "1.11.0", "1.12", "1.12.0", "1.14", "1.14.0", "1.15", "1.15.0"]
+    scope="module",
+    params=["1.11", "1.11.0", "1.12", "1.12.0", "1.14", "1.14.0", "1.15", "1.15.0", "2.0", "2.2.0"],
 )
 def tf_version(request):
     return request.param

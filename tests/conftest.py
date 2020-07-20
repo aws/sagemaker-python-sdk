@@ -28,7 +28,7 @@ from sagemaker.pytorch import PyTorch
 from sagemaker.rl import RLEstimator
 from sagemaker.sklearn.defaults import SKLEARN_VERSION
 from sagemaker.tensorflow import TensorFlow
-from sagemaker.tensorflow.defaults import LATEST_VERSION, LATEST_SERVING_VERSION
+from sagemaker.tensorflow.defaults import LATEST_VERSION
 
 DEFAULT_REGION = "us-west-2"
 CUSTOM_BUCKET_NAME_PREFIX = "sagemaker-custom-bucket"
@@ -336,10 +336,3 @@ def pytest_generate_tests(metafunc):
 @pytest.fixture(scope="module")
 def xgboost_full_version(request):
     return request.config.getoption("--xgboost-full-version")
-
-
-@pytest.fixture(scope="module")
-def tf_serving_version(tf_full_version):
-    if tf_full_version == LATEST_VERSION:
-        return LATEST_SERVING_VERSION
-    return tf_full_version

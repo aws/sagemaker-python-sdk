@@ -576,6 +576,7 @@ EXPERIMENT_CONFIG = {
     "TrialName": "dummyT",
     "TrialComponentDisplayName": "dummyTC",
 }
+MODEL_CLIENT_CONFIG = {"InvocationsMaxRetries": 2, "InvocationsTimeoutInSeconds": 60}
 
 DEFAULT_EXPECTED_TRAIN_JOB_ARGS = {
     "OutputDataConfig": {"S3OutputPath": S3_OUTPUT},
@@ -1258,6 +1259,7 @@ def test_transform_pack_to_request(sagemaker_session):
         output_config=out_config,
         resource_config=resource_config,
         experiment_config=None,
+        model_client_config=None,
         tags=None,
         data_processing=data_processing,
     )
@@ -1283,6 +1285,7 @@ def test_transform_pack_to_request_with_optional_params(sagemaker_session):
         output_config={},
         resource_config={},
         experiment_config=EXPERIMENT_CONFIG,
+        model_client_config=MODEL_CLIENT_CONFIG,
         tags=TAGS,
         data_processing=None,
     )
@@ -1294,6 +1297,7 @@ def test_transform_pack_to_request_with_optional_params(sagemaker_session):
     assert actual_args["Environment"] == env
     assert actual_args["Tags"] == TAGS
     assert actual_args["ExperimentConfig"] == EXPERIMENT_CONFIG
+    assert actual_args["ModelClientConfig"] == MODEL_CLIENT_CONFIG
 
 
 @patch("sys.stdout", new_callable=io.BytesIO if six.PY2 else io.StringIO)

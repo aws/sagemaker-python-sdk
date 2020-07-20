@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.69.0 (2020-07-09)
+
+### Features
+
+ * Add ModelClientConfig Fields for Batch Transform
+
+### Documentation Changes
+
+ * add KFP Processing component
+
 ## v1.68.0 (2020-07-07)
 
 ### Features

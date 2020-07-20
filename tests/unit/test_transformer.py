@@ -167,6 +167,7 @@ def test_transform_with_all_params(start_new_job, transformer):
         "TrialName": "t",
         "TrialComponentDisplayName": "tc",
     }
+    model_client_config = {"InvocationsTimeoutInSeconds": 60, "InvocationsMaxRetries": 2}
 
     transformer.transform(
         DATA,
@@ -179,6 +180,7 @@ def test_transform_with_all_params(start_new_job, transformer):
         output_filter=output_filter,
         join_source=join_source,
         experiment_config=experiment_config,
+        model_client_config=model_client_config,
     )
 
     assert transformer._current_job_name == JOB_NAME
@@ -194,6 +196,7 @@ def test_transform_with_all_params(start_new_job, transformer):
         output_filter,
         join_source,
         experiment_config,
+        model_client_config,
     )
 
 
@@ -428,6 +431,8 @@ def test_start_new(prepare_data_processing, load_config, sagemaker_session):
     split_type = "Line"
     io_filter = "$"
     join_source = "Input"
+    model_client_config = {"InvocationsTimeoutInSeconds": 60, "InvocationsMaxRetries": 2}
+
     job = _TransformJob.start_new(
         transformer=transformer,
         data=DATA,
@@ -439,6 +444,7 @@ def test_start_new(prepare_data_processing, load_config, sagemaker_session):
         output_filter=io_filter,
         join_source=join_source,
         experiment_config={"ExperimentName": "exp"},
+        model_client_config=model_client_config,
     )
 
     assert job.sagemaker_session == sagemaker_session
@@ -460,6 +466,7 @@ def test_start_new(prepare_data_processing, load_config, sagemaker_session):
         output_config=output_config,
         resource_config=resource_config,
         experiment_config={"ExperimentName": "exp"},
+        model_client_config=model_client_config,
         tags=tags,
         data_processing=prepare_data_processing.return_value,
     )

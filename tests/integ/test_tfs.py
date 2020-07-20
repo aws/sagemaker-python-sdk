@@ -27,7 +27,7 @@ from sagemaker.tensorflow.serving import Model, Predictor
 
 
 @pytest.fixture(scope="module")
-def tfs_predictor(sagemaker_session, tf_serving_version):
+def tfs_predictor(sagemaker_session, tf_full_version):
     endpoint_name = sagemaker.utils.unique_name_from_base("sagemaker-tensorflow-serving")
     model_data = sagemaker_session.upload_data(
         path=os.path.join(tests.integ.DATA_DIR, "tensorflow-serving-test-model.tar.gz"),
@@ -37,7 +37,7 @@ def tfs_predictor(sagemaker_session, tf_serving_version):
         model = Model(
             model_data=model_data,
             role="SageMakerRole",
-            framework_version=tf_serving_version,
+            framework_version=tf_full_version,
             sagemaker_session=sagemaker_session,
         )
         predictor = model.deploy(1, "ml.c5.xlarge", endpoint_name=endpoint_name)
@@ -54,7 +54,7 @@ def tar_dir(directory, tmpdir):
 
 @pytest.fixture
 def tfs_predictor_with_model_and_entry_point_same_tar(
-    sagemaker_local_session, tf_serving_version, tmpdir
+    sagemaker_local_session, tf_full_version, tmpdir
 ):
     endpoint_name = sagemaker.utils.unique_name_from_base("sagemaker-tensorflow-serving")
 
@@ -65,7 +65,7 @@ def tfs_predictor_with_model_and_entry_point_same_tar(
     model = Model(
         model_data="file://" + model_tar,
         role="SageMakerRole",
-        framework_version=tf_serving_version,
+        framework_version=tf_full_version,
         sagemaker_session=sagemaker_local_session,
     )
     predictor = model.deploy(1, "local", endpoint_name=endpoint_name)
@@ -78,7 +78,7 @@ def tfs_predictor_with_model_and_entry_point_same_tar(
 
 @pytest.fixture(scope="module")
 def tfs_predictor_with_model_and_entry_point_and_dependencies(
-    sagemaker_local_session, tf_serving_version
+    sagemaker_local_session, tf_full_version
 ):
     endpoint_name = sagemaker.utils.unique_name_from_base("sagemaker-tensorflow-serving")
 
@@ -98,7 +98,7 @@ def tfs_predictor_with_model_and_entry_point_and_dependencies(
         model_data=model_data,
         role="SageMakerRole",
         dependencies=dependencies,
-        framework_version=tf_serving_version,
+        framework_version=tf_full_version,
         sagemaker_session=sagemaker_local_session,
     )
 
