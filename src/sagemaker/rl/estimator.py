@@ -17,7 +17,7 @@ import enum
 import logging
 import re
 
-from sagemaker import fw_utils
+from sagemaker import image_uris, fw_utils
 from sagemaker.estimator import Framework
 from sagemaker.model import FrameworkModel, SAGEMAKER_OUTPUT_LOCATION
 from sagemaker.mxnet.model import MXNetModel
@@ -42,6 +42,8 @@ TOOLKIT_FRAMEWORK_VERSION_MAP = {
         "0.5": {"tensorflow": "1.11"},
         "0.6.5": {"tensorflow": "1.12"},
         "0.6": {"tensorflow": "1.12"},
+        "0.8.2": {"tensorflow": "2.1"},
+        "0.8.5": {"tensorflow": "2.1", "pytorch": "1.5"},
     },
 }
 
@@ -58,6 +60,7 @@ class RLFramework(enum.Enum):
 
     TENSORFLOW = "tensorflow"
     MXNET = "mxnet"
+    PYTORCH = "pytorch"
 
 
 class RLEstimator(Framework):
@@ -277,12 +280,11 @@ class RLEstimator(Framework):
         """
         if self.image_uri:
             return self.image_uri
-        return fw_utils.create_image_uri(
-            self.sagemaker_session.boto_region_name,
+        return image_uris.retrieve(
             self._image_framework(),
-            self.instance_type,
-            self._image_version(),
-            py_version=PYTHON_VERSION,
+            self.sagemaker_session.boto_region_name,
+            version=self.toolkit_version,
+            instance_type=self.instance_type,
         )
 
     @classmethod
@@ -451,13 +453,9 @@ class RLEstimator(Framework):
                 )
             )
 
-    def _image_version(self):
-        """Placeholder docstring"""
-        return "{}{}".format(self.toolkit, self.toolkit_version)
-
     def _image_framework(self):
-        """Placeholder docstring"""
-        return "rl-{}".format(self.framework)
+        """Toolkit name and framework name for retrieving Docker image URI config."""
+        return "-".join((self.toolkit, self.framework))
 
     @classmethod
     def default_metric_definitions(cls, toolkit):
