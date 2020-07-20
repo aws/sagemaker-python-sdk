@@ -12,12 +12,10 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-import boto3
 import pytest
 from mock import Mock, patch
 
 from sagemaker.model import Model
-from tests.unit import NEO_REGION_LIST
 
 MODEL_DATA = "s3://bucket/model.tar.gz"
 MODEL_IMAGE = "mi"
@@ -198,18 +196,6 @@ def test_compile_validates_model_data():
         )
 
     assert "You must provide an S3 path to the compressed model artifacts." in str(e)
-
-
-def test_check_neo_region(sagemaker_session):
-    sagemaker_session.wait_for_compilation_job = Mock(
-        return_value=DESCRIBE_COMPILATION_JOB_RESPONSE
-    )
-    model = _create_model(sagemaker_session)
-
-    boto_session = boto3.Session()
-    for partition in boto_session.get_available_partitions():
-        for region_name in boto_session.get_available_regions("ec2", partition_name=partition):
-            assert (region_name in NEO_REGION_LIST) is model.check_neo_region(region_name)
 
 
 def test_deploy_honors_provided_model_name(sagemaker_session):
