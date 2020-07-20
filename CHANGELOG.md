@@ -1,5 +1,20 @@
 # Changelog
 
+## v1.70.0 (2020-07-20)
+
+### Features
+
+ * Add model monitor support for us-gov-west-1
+ * support TFS 2.2
+
+### Bug Fixes and Other Changes
+
+ * reshape Artifacts into data frame in ExperimentsAnalytics
+
+### Documentation Changes
+
+ * fix MXNet version info for requirements.txt support
+
 ## v1.69.0 (2020-07-09)
 
 ### Features
