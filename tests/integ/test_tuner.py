@@ -21,8 +21,7 @@ import pytest
 from botocore.exceptions import ClientError
 
 import tests.integ
-from sagemaker import KMeans, LDA, RandomCutForest
-from sagemaker.amazon.amazon_estimator import get_image_uri
+from sagemaker import KMeans, LDA, RandomCutForest, image_uris
 from sagemaker.amazon.common import read_records
 from sagemaker.chainer import Chainer
 from sagemaker.deserializers import JSONDeserializer
@@ -855,7 +854,7 @@ def test_tuning_byo_estimator(sagemaker_session, cpu_instance_type):
     Later the trained model is deployed and prediction is called against the endpoint.
     Default predictor is updated with json serializer and deserializer.
     """
-    image_uri = get_image_uri(sagemaker_session.boto_session.region_name, "factorization-machines")
+    image_uri = image_uris.retrieve("factorization-machines", sagemaker_session.boto_region_name)
     training_data_path = os.path.join(DATA_DIR, "dummy_tensor")
 
     with timeout(minutes=TUNING_DEFAULT_TIMEOUT_MINUTES):

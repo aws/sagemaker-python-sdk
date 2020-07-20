@@ -13,7 +13,8 @@
 """Placeholder docstring"""
 from __future__ import absolute_import
 
-from sagemaker.amazon.amazon_estimator import AmazonAlgorithmEstimatorBase, registry
+from sagemaker import image_uris
+from sagemaker.amazon.amazon_estimator import AmazonAlgorithmEstimatorBase
 from sagemaker.amazon.common import RecordSerializer, RecordDeserializer
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
 from sagemaker.amazon.validation import gt, isin, ge, le
@@ -242,8 +243,9 @@ class KMeansModel(Model):
             **kwargs:
         """
         sagemaker_session = sagemaker_session or Session()
-        repo = "{}:{}".format(KMeans.repo_name, KMeans.repo_version)
-        image_uri = "{}/{}".format(registry(sagemaker_session.boto_session.region_name), repo)
+        image_uri = image_uris.retrieve(
+            KMeans.repo_name, sagemaker_session.boto_region_name, version=KMeans.repo_version,
+        )
         super(KMeansModel, self).__init__(
             image_uri,
             model_data,

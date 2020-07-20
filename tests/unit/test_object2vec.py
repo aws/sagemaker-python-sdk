@@ -15,9 +15,10 @@ from __future__ import absolute_import
 import pytest
 from mock import Mock, patch
 
+from sagemaker import image_uris
 from sagemaker.amazon.object2vec import Object2Vec
 from sagemaker.predictor import Predictor
-from sagemaker.amazon.amazon_estimator import registry, RecordSet
+from sagemaker.amazon.amazon_estimator import RecordSet
 
 ROLE = "myrole"
 INSTANCE_COUNT = 1
@@ -143,7 +144,7 @@ def test_all_hyperparameters(sagemaker_session):
 
 def test_image(sagemaker_session):
     object2vec = Object2Vec(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-    assert object2vec.train_image() == registry(REGION, "object2vec") + "/object2vec:1"
+    assert image_uris.retrieve("object2vec", REGION) == object2vec.train_image()
 
 
 @pytest.mark.parametrize("required_hyper_parameters, value", [("epochs", "string")])
@@ -308,7 +309,7 @@ def test_model_image(sagemaker_session):
     object2vec.fit(data, MINI_BATCH_SIZE)
 
     model = object2vec.create_model()
-    assert model.image_uri == registry(REGION, "object2vec") + "/object2vec:1"
+    assert image_uris.retrieve("object2vec", REGION) == model.image_uri
 
 
 def test_predictor_type(sagemaker_session):

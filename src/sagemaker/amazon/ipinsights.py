@@ -13,7 +13,8 @@
 """Placeholder docstring"""
 from __future__ import absolute_import
 
-from sagemaker.amazon.amazon_estimator import AmazonAlgorithmEstimatorBase, registry
+from sagemaker import image_uris
+from sagemaker.amazon.amazon_estimator import AmazonAlgorithmEstimatorBase
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
 from sagemaker.amazon.validation import ge, le
 from sagemaker.deserializers import JSONDeserializer
@@ -219,11 +220,11 @@ class IPInsightsModel(Model):
             **kwargs:
         """
         sagemaker_session = sagemaker_session or Session()
-        repo = "{}:{}".format(IPInsights.repo_name, IPInsights.repo_version)
-        image_uri = "{}/{}".format(
-            registry(sagemaker_session.boto_session.region_name, IPInsights.repo_name), repo
+        image_uri = image_uris.retrieve(
+            IPInsights.repo_name,
+            sagemaker_session.boto_region_name,
+            version=IPInsights.repo_version,
         )
-
         super(IPInsightsModel, self).__init__(
             image_uri,
             model_data,

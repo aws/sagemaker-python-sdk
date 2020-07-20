@@ -993,12 +993,17 @@ the ML Pipeline.
 
 .. code:: python
 
-   xgb_image = get_image_uri(sess.boto_region_name, 'xgboost', repo_version="latest")
-   xgb_model = Model(model_data='s3://path/to/model.tar.gz', image_uri=xgb_image)
-   sparkml_model = SparkMLModel(model_data='s3://path/to/model.tar.gz', env={'SAGEMAKER_SPARKML_SCHEMA': schema})
+   from sagemaker import image_uris, session
+   from sagemaker.model import Model
+   from sagemaker.pipeline import PipelineModel
+   from sagemaker.sparkml import SparkMLModel
 
-   model_name = 'inference-pipeline-model'
-   endpoint_name = 'inference-pipeline-endpoint'
+   xgb_image = image_uris.retrieve("xgboost", session.Session().boto_region_name, repo_version="latest")
+   xgb_model = Model(model_data="s3://path/to/model.tar.gz", image_uri=xgb_image)
+   sparkml_model = SparkMLModel(model_data="s3://path/to/model.tar.gz", env={"SAGEMAKER_SPARKML_SCHEMA": schema})
+
+   model_name = "inference-pipeline-model"
+   endpoint_name = "inference-pipeline-endpoint"
    sm_model = PipelineModel(name=model_name, role=sagemaker_role, models=[sparkml_model, xgb_model])
 
 This defines a ``PipelineModel`` consisting of SparkML model and an XGBoost model stacked sequentially.

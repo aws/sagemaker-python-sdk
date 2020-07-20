@@ -13,7 +13,8 @@
 """Placeholder docstring"""
 from __future__ import absolute_import
 
-from sagemaker.amazon.amazon_estimator import AmazonAlgorithmEstimatorBase, registry
+from sagemaker import image_uris
+from sagemaker.amazon.amazon_estimator import AmazonAlgorithmEstimatorBase
 from sagemaker.amazon.common import RecordSerializer, RecordDeserializer
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
 from sagemaker.amazon.validation import ge, le
@@ -203,9 +204,10 @@ class RandomCutForestModel(Model):
             **kwargs:
         """
         sagemaker_session = sagemaker_session or Session()
-        repo = "{}:{}".format(RandomCutForest.repo_name, RandomCutForest.repo_version)
-        image_uri = "{}/{}".format(
-            registry(sagemaker_session.boto_session.region_name, RandomCutForest.repo_name), repo
+        image_uri = image_uris.retrieve(
+            RandomCutForest.repo_name,
+            sagemaker_session.boto_region_name,
+            version=RandomCutForest.repo_version,
         )
         super(RandomCutForestModel, self).__init__(
             image_uri,

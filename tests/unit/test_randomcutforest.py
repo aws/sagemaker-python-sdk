@@ -15,8 +15,9 @@ from __future__ import absolute_import
 import pytest
 from mock import Mock, patch
 
+from sagemaker import image_uris
 from sagemaker.amazon.randomcutforest import RandomCutForest, RandomCutForestPredictor
-from sagemaker.amazon.amazon_estimator import registry, RecordSet
+from sagemaker.amazon.amazon_estimator import RecordSet
 
 ROLE = "myrole"
 INSTANCE_COUNT = 1
@@ -106,9 +107,7 @@ def test_all_hyperparameters(sagemaker_session):
 
 def test_image(sagemaker_session):
     randomcutforest = RandomCutForest(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-    assert (
-        randomcutforest.train_image() == registry(REGION, "randomcutforest") + "/randomcutforest:1"
-    )
+    assert image_uris.retrieve("randomcutforest", REGION) == randomcutforest.train_image()
 
 
 @pytest.mark.parametrize("iterable_hyper_parameters, value", [("eval_metrics", 0)])
@@ -232,7 +231,7 @@ def test_model_image(sagemaker_session):
     randomcutforest.fit(data, MINI_BATCH_SIZE)
 
     model = randomcutforest.create_model()
-    assert model.image_uri == registry(REGION, "randomcutforest") + "/randomcutforest:1"
+    assert image_uris.retrieve("randomcutforest", REGION) == model.image_uri
 
 
 def test_predictor_type(sagemaker_session):

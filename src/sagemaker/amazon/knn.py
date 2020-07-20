@@ -13,7 +13,8 @@
 """Placeholder docstring"""
 from __future__ import absolute_import
 
-from sagemaker.amazon.amazon_estimator import AmazonAlgorithmEstimatorBase, registry
+from sagemaker import image_uris
+from sagemaker.amazon.amazon_estimator import AmazonAlgorithmEstimatorBase
 from sagemaker.amazon.common import RecordSerializer, RecordDeserializer
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
 from sagemaker.amazon.validation import ge, isin
@@ -230,12 +231,11 @@ class KNNModel(Model):
             **kwargs:
         """
         sagemaker_session = sagemaker_session or Session()
-        repo = "{}:{}".format(KNN.repo_name, KNN.repo_version)
-        image = "{}/{}".format(
-            registry(sagemaker_session.boto_session.region_name, KNN.repo_name), repo
+        image_uri = image_uris.retrieve(
+            KNN.repo_name, sagemaker_session.boto_region_name, version=KNN.repo_version,
         )
         super(KNNModel, self).__init__(
-            image,
+            image_uri,
             model_data,
             role,
             predictor_cls=KNNPredictor,

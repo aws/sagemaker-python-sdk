@@ -19,18 +19,17 @@ import subprocess
 from time import sleep
 
 import pytest
+from botocore.exceptions import ClientError
 from mock import ANY, MagicMock, Mock, patch
 
+import sagemaker.local
 from sagemaker import TrainingInput, utils, vpc_utils
-from sagemaker.amazon.amazon_estimator import registry
 from sagemaker.algorithm import AlgorithmEstimator
 from sagemaker.estimator import Estimator, EstimatorBase, Framework, _TrainingJob
 from sagemaker.model import FrameworkModel
 from sagemaker.predictor import Predictor
 from sagemaker.session import ShuffleConfig
 from sagemaker.transformer import Transformer
-from botocore.exceptions import ClientError
-import sagemaker.local
 
 MODEL_DATA = "s3://bucket/model.tar.gz"
 MODEL_IMAGE = "mi"
@@ -2362,10 +2361,9 @@ def test_prepare_for_training_with_name_based_on_algorithm(sagemaker_session):
     ),
 )
 def test_encryption_flag_in_non_vpc_mode_invalid(sagemaker_session):
-    image_uri = registry("us-west-2") + "/factorization-machines:1"
     with pytest.raises(ClientError) as error:
         estimator = Estimator(
-            image_uri=image_uri,
+            image_uri="some-image",
             role="SageMakerRole",
             instance_count=1,
             instance_type="ml.c4.xlarge",

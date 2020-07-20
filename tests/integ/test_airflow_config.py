@@ -33,8 +33,8 @@ from sagemaker import (
     NTM,
     PCA,
     RandomCutForest,
+    image_uris,
 )
-from sagemaker.amazon.amazon_estimator import get_image_uri
 from sagemaker.amazon.common import read_records
 from sagemaker.chainer import Chainer
 from sagemaker.estimator import Estimator
@@ -73,8 +73,8 @@ def test_byo_airflow_config_uploads_data_source_to_s3_when_inputs_provided(
         )
 
         estimator = Estimator(
-            image_uri=get_image_uri(
-                sagemaker_session.boto_session.region_name, "factorization-machines"
+            image_uri=image_uris.retrieve(
+                "factorization-machines", sagemaker_session.boto_region_name
             ),
             role=ROLE,
             instance_count=SINGLE_INSTANCE_COUNT,
@@ -515,23 +515,17 @@ def test_sklearn_airflow_config_uploads_data_source_to_s3(
 
 @pytest.mark.canary_quick
 def test_tf_airflow_config_uploads_data_source_to_s3(
-    sagemaker_session,
-    cpu_instance_type,
-    tensorflow_training_latest_version,
-    tensorflow_training_latest_py_version,
+    sagemaker_session, cpu_instance_type, tf_full_version, tf_full_py_version,
 ):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         tf = TensorFlow(
-            image_uri=get_image_uri(
-                sagemaker_session.boto_session.region_name, "factorization-machines"
-            ),
             entry_point=SCRIPT,
             role=ROLE,
             instance_count=SINGLE_INSTANCE_COUNT,
             instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
-            framework_version=tensorflow_training_latest_version,
-            py_version=tensorflow_training_latest_py_version,
+            framework_version=tf_full_version,
+            py_version=tf_full_py_version,
             metric_definitions=[
                 {"Name": "train:global_steps", "Regex": r"global_step\/sec:\s(.*)"}
             ],

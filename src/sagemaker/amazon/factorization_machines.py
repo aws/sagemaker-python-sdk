@@ -13,7 +13,8 @@
 """Placeholder docstring"""
 from __future__ import absolute_import
 
-from sagemaker.amazon.amazon_estimator import AmazonAlgorithmEstimatorBase, registry
+from sagemaker import image_uris
+from sagemaker.amazon.amazon_estimator import AmazonAlgorithmEstimatorBase
 from sagemaker.amazon.common import RecordSerializer, RecordDeserializer
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
 from sagemaker.amazon.validation import gt, isin, ge
@@ -309,8 +310,11 @@ class FactorizationMachinesModel(Model):
             **kwargs:
         """
         sagemaker_session = sagemaker_session or Session()
-        repo = "{}:{}".format(FactorizationMachines.repo_name, FactorizationMachines.repo_version)
-        image_uri = "{}/{}".format(registry(sagemaker_session.boto_session.region_name), repo)
+        image_uri = image_uris.retrieve(
+            FactorizationMachines.repo_name,
+            sagemaker_session.boto_region_name,
+            version=FactorizationMachines.repo_version,
+        )
         super(FactorizationMachinesModel, self).__init__(
             image_uri,
             model_data,

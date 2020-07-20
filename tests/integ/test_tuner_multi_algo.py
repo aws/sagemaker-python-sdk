@@ -17,8 +17,7 @@ import os
 
 import pytest
 
-from sagemaker import utils
-from sagemaker.amazon.amazon_estimator import get_image_uri
+from sagemaker import image_uris, utils
 from sagemaker.analytics import HyperparameterTuningJobAnalytics
 from sagemaker.content_types import CONTENT_TYPE_JSON
 from sagemaker.deserializers import JSONDeserializer
@@ -63,9 +62,7 @@ def data_set():
 
 @pytest.fixture(scope="function")
 def estimator_fm(sagemaker_session, cpu_instance_type):
-    fm_image = get_image_uri(
-        sagemaker_session.boto_session.region_name, "factorization-machines", repo_version="1"
-    )
+    fm_image = image_uris.retrieve("factorization-machines", sagemaker_session.boto_region_name)
 
     estimator = Estimator(
         image_uri=fm_image,
@@ -84,7 +81,7 @@ def estimator_fm(sagemaker_session, cpu_instance_type):
 
 @pytest.fixture(scope="function")
 def estimator_knn(sagemaker_session, cpu_instance_type):
-    knn_image = get_image_uri(sagemaker_session.boto_session.region_name, "knn", repo_version="1")
+    knn_image = image_uris.retrieve("knn", sagemaker_session.boto_region_name)
 
     estimator = Estimator(
         image_uri=knn_image,
