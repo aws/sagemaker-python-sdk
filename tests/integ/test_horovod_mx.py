@@ -68,7 +68,7 @@ def read_json(file, tmp):
 
 
 @pytest.mark.parametrize("instances, processes", [[2, 4]])
-def test_horovod(sagemaker_session, gpu_instance_type, tmpdir):
+def test_horovod(sagemaker_session, gpu_instance_type, instances, processes, tmpdir):
     job_name = sagemaker.utils.unique_name_from_base("mx-horovod")
     estimator = MXNet(
         entry_point=os.path.join(horovod_dir, "hvd_mnist_mxnet.py"),
