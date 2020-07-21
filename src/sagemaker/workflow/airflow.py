@@ -1144,7 +1144,7 @@ def processing_config(
         config["Environment"] = processor.env
 
     if processor.network_config is not None:
-        config["NetworkConfig"] = processor.network_config
+        config["NetworkConfig"] = processor.network_config._to_request_dict()
 
     processing_resources = sagemaker.processing.ProcessingJob.prepare_processing_resources(
         instance_count=processor.instance_count,
