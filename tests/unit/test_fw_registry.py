@@ -15,10 +15,9 @@ from __future__ import absolute_import
 import pytest
 
 from sagemaker.fw_registry import registry, default_framework_uri
-from sagemaker.sklearn import SKLearn
 
 
-scikit_learn_framework_name = SKLearn.__framework_name__
+scikit_learn_framework_name = "scikit-learn"
 
 
 def test_registry_sparkml_serving():

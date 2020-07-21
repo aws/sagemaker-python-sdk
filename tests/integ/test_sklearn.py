@@ -31,16 +31,16 @@ from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
     "This test should be fixed. Details in https://github.com/aws/sagemaker-python-sdk/pull/968"
 )
 def sklearn_training_job(
-    sagemaker_session, sklearn_full_version, sklearn_full_py_version, cpu_instance_type
+    sagemaker_session, sklearn_latest_version, sklearn_latest_py_version, cpu_instance_type,
 ):
     return _run_mnist_training_job(
-        sagemaker_session, cpu_instance_type, sklearn_full_version, sklearn_full_py_version
+        sagemaker_session, cpu_instance_type, sklearn_latest_version, sklearn_latest_py_version,
     )
     sagemaker_session.boto_region_name
 
 
 def test_training_with_additional_hyperparameters(
-    sagemaker_session, sklearn_full_version, sklearn_full_py_version, cpu_instance_type
+    sagemaker_session, sklearn_latest_version, sklearn_latest_py_version, cpu_instance_type,
 ):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         script_path = os.path.join(DATA_DIR, "sklearn_mnist", "mnist.py")
@@ -50,8 +50,8 @@ def test_training_with_additional_hyperparameters(
             entry_point=script_path,
             role="SageMakerRole",
             instance_type=cpu_instance_type,
-            framework_version=sklearn_full_version,
-            py_version=sklearn_full_py_version,
+            framework_version=sklearn_latest_version,
+            py_version=sklearn_latest_py_version,
             sagemaker_session=sagemaker_session,
             hyperparameters={"epochs": 1},
         )
@@ -65,11 +65,10 @@ def test_training_with_additional_hyperparameters(
         job_name = unique_name_from_base("test-sklearn-hp")
 
         sklearn.fit({"train": train_input, "test": test_input}, job_name=job_name)
-        return sklearn.latest_training_job.name
 
 
 def test_training_with_network_isolation(
-    sagemaker_session, sklearn_full_version, sklearn_full_py_version, cpu_instance_type
+    sagemaker_session, sklearn_latest_version, sklearn_latest_py_version, cpu_instance_type,
 ):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         script_path = os.path.join(DATA_DIR, "sklearn_mnist", "mnist.py")
@@ -79,8 +78,8 @@ def test_training_with_network_isolation(
             entry_point=script_path,
             role="SageMakerRole",
             instance_type=cpu_instance_type,
-            framework_version=sklearn_full_version,
-            py_version=sklearn_full_py_version,
+            framework_version=sklearn_latest_version,
+            py_version=sklearn_latest_py_version,
             sagemaker_session=sagemaker_session,
             hyperparameters={"epochs": 1},
             enable_network_isolation=True,
@@ -98,7 +97,6 @@ def test_training_with_network_isolation(
         assert sagemaker_session.sagemaker_client.describe_training_job(TrainingJobName=job_name)[
             "EnableNetworkIsolation"
         ]
-        return sklearn.latest_training_job.name
 
 
 @pytest.mark.canary_quick
@@ -123,8 +121,8 @@ def test_deploy_model(
     sklearn_training_job,
     sagemaker_session,
     cpu_instance_type,
-    sklearn_full_version,
-    sklearn_full_py_version,
+    sklearn_latest_version,
+    sklearn_latest_py_version,
 ):
     endpoint_name = "test-sklearn-deploy-model-{}".format(sagemaker_timestamp())
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
@@ -137,7 +135,7 @@ def test_deploy_model(
             model_data,
             "SageMakerRole",
             entry_point=script_path,
-            framework_version=sklearn_full_version,
+            framework_version=sklearn_latest_version,
             sagemaker_session=sagemaker_session,
         )
         predictor = model.deploy(1, cpu_instance_type, endpoint_name=endpoint_name)
@@ -149,7 +147,7 @@ def test_deploy_model(
     "This test should be fixed. Details in https://github.com/aws/sagemaker-python-sdk/pull/968"
 )
 def test_async_fit(
-    sagemaker_session, cpu_instance_type, sklearn_full_version, sklearn_full_py_version
+    sagemaker_session, cpu_instance_type, sklearn_latest_version, sklearn_latest_py_version,
 ):
     endpoint_name = "test-sklearn-attach-deploy-{}".format(sagemaker_timestamp())
 
@@ -157,7 +155,7 @@ def test_async_fit(
         training_job_name = _run_mnist_training_job(
             sagemaker_session,
             cpu_instance_type,
-            sklearn_full_version=sklearn_full_version,
+            sklearn_version=sklearn_latest_version,
             wait=False,
         )
 
@@ -174,7 +172,7 @@ def test_async_fit(
 
 
 def test_failed_training_job(
-    sagemaker_session, sklearn_full_version, sklearn_full_py_version, cpu_instance_type
+    sagemaker_session, sklearn_latest_version, sklearn_latest_py_version, cpu_instance_type,
 ):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         script_path = os.path.join(DATA_DIR, "sklearn_mnist", "failure_script.py")
@@ -183,8 +181,8 @@ def test_failed_training_job(
         sklearn = SKLearn(
             entry_point=script_path,
             role="SageMakerRole",
-            framework_version=sklearn_full_version,
-            py_version=sklearn_full_py_version,
+            framework_version=sklearn_latest_version,
+            py_version=sklearn_latest_py_version,
             instance_count=1,
             instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,

@@ -138,7 +138,7 @@ def test_private_github(
 @pytest.mark.local_mode
 @pytest.mark.skip("needs a secure authentication approach")
 def test_private_github_with_2fa(
-    sagemaker_local_session, sklearn_full_version, sklearn_full_py_version
+    sagemaker_local_session, sklearn_latest_version, sklearn_latest_py_version
 ):
     script_path = "mnist.py"
     data_path = os.path.join(DATA_DIR, "sklearn_mnist")
@@ -155,11 +155,11 @@ def test_private_github_with_2fa(
         entry_point=script_path,
         role="SageMakerRole",
         source_dir=source_dir,
-        py_version=sklearn_full_py_version,
+        py_version=sklearn_latest_py_version,
         instance_count=1,
         instance_type="local",
         sagemaker_session=sagemaker_local_session,
-        framework_version=sklearn_full_version,
+        framework_version=sklearn_latest_version,
         hyperparameters={"epochs": 1},
         git_config=git_config,
     )
@@ -178,7 +178,7 @@ def test_private_github_with_2fa(
                 model_data,
                 "SageMakerRole",
                 entry_point=script_path,
-                framework_version=sklearn_full_version,
+                framework_version=sklearn_latest_version,
                 source_dir=source_dir,
                 sagemaker_session=sagemaker_local_session,
                 git_config=git_config,
@@ -194,7 +194,7 @@ def test_private_github_with_2fa(
 
 @pytest.mark.local_mode
 def test_github_with_ssh_passphrase_not_configured(
-    sagemaker_local_session, sklearn_full_version, sklearn_full_py_version
+    sagemaker_local_session, sklearn_latest_version, sklearn_latest_py_version
 ):
     script_path = "mnist.py"
     data_path = os.path.join(DATA_DIR, "sklearn_mnist")
@@ -212,8 +212,8 @@ def test_github_with_ssh_passphrase_not_configured(
         instance_count=1,
         instance_type="local",
         sagemaker_session=sagemaker_local_session,
-        framework_version=sklearn_full_version,
-        py_version=sklearn_full_py_version,
+        framework_version=sklearn_latest_version,
+        py_version=sklearn_latest_py_version,
         hyperparameters={"epochs": 1},
         git_config=git_config,
     )
