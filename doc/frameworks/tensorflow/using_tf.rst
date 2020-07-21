@@ -217,7 +217,7 @@ The following example uses the ``image_name=''`` arg to specify the container im
                              train_instance_count=1,
                              train_instance_type='ml.p2.xlarge',
                              image_name='763104351884.dkr.ecr.<region>.amazonaws.com/<framework>-<job type>:<framework version>-<cpu/gpu>-<python version>-ubuntu18.04',
-                            script_mode=True)
+                             script_mode=True)
 
 For more information about the sagemaker.tensorflow.TensorFlow estimator, see `SageMaker TensorFlow Classes`_.
 
