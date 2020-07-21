@@ -156,11 +156,7 @@ def test_train_image(sagemaker_session, sklearn_version):
         source_dir=source_dir,
     )
 
-    train_image = sklearn.train_image()
-    assert (
-        train_image
-        == "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:0.20.0-cpu-py3"
-    )
+    assert _get_full_cpu_image_uri(sklearn_version) == sklearn.train_image()
 
 
 def test_create_model(sagemaker_session, sklearn_version):
@@ -391,7 +387,7 @@ def test_fail_distributed_training(sagemaker_session, sklearn_version):
     assert "Scikit-Learn does not support distributed training." in str(error)
 
 
-def test_fail_GPU_training(sagemaker_session, sklearn_version):
+def test_fail_gpu_training(sagemaker_session, sklearn_version):
     with pytest.raises(ValueError) as error:
         SKLearn(
             entry_point=SCRIPT_PATH,
@@ -414,30 +410,6 @@ def test_model(sagemaker_session, sklearn_version):
     )
     predictor = model.deploy(1, CPU)
     assert isinstance(predictor, SKLearnPredictor)
-
-
-def test_train_image_default(sagemaker_session, sklearn_version):
-    sklearn = SKLearn(
-        entry_point=SCRIPT_PATH,
-        framework_version=sklearn_version,
-        py_version=PYTHON_VERSION,
-        role=ROLE,
-        sagemaker_session=sagemaker_session,
-        instance_type=INSTANCE_TYPE,
-    )
-
-    assert _get_full_cpu_image_uri(sklearn_version) in sklearn.train_image()
-
-
-def test_train_image_cpu_instances(sagemaker_session, sklearn_version):
-    sklearn = _sklearn_estimator(sagemaker_session, sklearn_version, instance_type="ml.c2.2xlarge")
-    assert sklearn.train_image() == _get_full_cpu_image_uri(sklearn_version)
-
-    sklearn = _sklearn_estimator(sagemaker_session, sklearn_version, instance_type="ml.c4.2xlarge")
-    assert sklearn.train_image() == _get_full_cpu_image_uri(sklearn_version)
-
-    sklearn = _sklearn_estimator(sagemaker_session, sklearn_version, instance_type="ml.m16")
-    assert sklearn.train_image() == _get_full_cpu_image_uri(sklearn_version)
 
 
 def test_attach(sagemaker_session, sklearn_version):
@@ -588,11 +560,3 @@ def test_model_py2_raises(sagemaker_session, sklearn_version):
             framework_version=sklearn_version,
             py_version="py2",
         )
-
-
-def test_custom_image_estimator_deploy(sagemaker_session, sklearn_version):
-    custom_image = "mycustomimage:latest"
-    sklearn = _sklearn_estimator(sagemaker_session, sklearn_version)
-    sklearn.fit(inputs="s3://mybucket/train", job_name="new_name")
-    model = sklearn.create_model(image_uri=custom_image)
-    assert model.image_uri == custom_image
