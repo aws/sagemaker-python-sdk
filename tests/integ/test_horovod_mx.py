@@ -36,7 +36,6 @@ def test_horovod_local_mode(sagemaker_local_session, instances, processes, tmpdi
     estimator = MXNet(
         entry_point=os.path.join(horovod_dir, "hvd_mnist_mxnet.py"),
         role="SageMakerRole",
-        image_name="preprod-mxnet:1.6.0-gpu-py3",
         train_instance_count=instances,
         train_instance_type="local_gpu",
         sagemaker_session=sagemaker_local_session,
@@ -74,12 +73,10 @@ def test_horovod(sagemaker_session, gpu_instance_type, tmpdir):
     estimator = MXNet(
         entry_point=os.path.join(horovod_dir, "hvd_mnist_mxnet.py"),
         role="SageMakerRole",
-        image_name="preprod-mxnet:1.6.0-gpu-py3",
         train_instance_count=instances,
         train_instance_type=gpu_instance_type,
         sagemaker_session=sagemaker_session,
         py_version=integ.PYTHON_VERSION,
-        #output_path=output_path,
         framework_version="1.6.0",
         distributions={"mpi": {"enabled": True, "processes_per_host": processes}},
     )
