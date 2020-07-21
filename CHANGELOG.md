@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.70.1 (2020-07-21)
+
+### Bug Fixes and Other Changes
+
+ * Nullable fields in processing_config
+
 ## v1.70.0 (2020-07-20)
 
 ### Features
