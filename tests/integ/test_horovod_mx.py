@@ -35,7 +35,7 @@ def test_hvd_cpu(sagemaker_session, cpu_instance_type, tmpdir):
 
 @pytest.mark.canary_quick
 @pytest.mark.skipif(
-    integ.test_region() in integ.TRAINING_NO_P2_REGIONS, reason="no ml.p2 instances in this region",
+    integ.test_region() in integ.TRAINING_NO_P2_REGIONS, reason="no ml.p2 instances in this region"
 )
 def test_hvd_gpu(sagemaker_session, gpu_instance_type, tmpdir):
     _create_and_fit_estimator(sagemaker_session, gpu_instance_type, tmpdir)
