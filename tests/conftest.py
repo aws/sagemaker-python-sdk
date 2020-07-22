@@ -177,8 +177,18 @@ def rl_coach_mxnet_version(request):
     return request.param
 
 
-@pytest.fixture(scope="module", params=["0.5", "0.5.3", "0.6", "0.6.5"])
-def rl_ray_version(request):
+@pytest.fixture(scope="module", params=["0.5", "0.5.3", "0.6", "0.6.5", "0.8.2", "0.8.5"])
+def rl_ray_tf_version(request):
+    return request.param
+
+
+@pytest.fixture(scope="module", params=["0.8.5"])
+def rl_ray_pytorch_version(request):
+    return request.param
+
+
+@pytest.fixture(scope="module", params=["8.7.0"])
+def rl_vw_version(request):
     return request.param
 
 
