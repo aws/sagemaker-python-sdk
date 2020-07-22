@@ -91,10 +91,7 @@ class ASTTransformer(ast.NodeTransformer):
         """
         for name_checker in NAME_MODIFIERS:
             node = name_checker.check_and_modify_node(node)
-            if node is None:
-                return None
-            node = ast.fix_missing_locations(node)
-        return node
+        return ast.fix_missing_locations(node) if node else None
 
     def visit_Import(self, node):
         """Visits an ``ast.Import`` node and returns a modified node or None.
