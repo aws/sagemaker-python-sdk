@@ -99,7 +99,9 @@ def test_int_label():
     with tempfile.TemporaryFile() as f:
         write_numpy_to_dense_tensor(f, array, label_data)
         f.seek(0)
-        for record_data, expected, label in zip(read_recordio(f), array_data, label_data):
+        for record_data, expected, label in zip(
+            read_recordio(f), array_data, label_data
+        ):
             record = Record()
             record.ParseFromString(record_data)
             assert record.features["values"].int32_tensor.values == expected
@@ -113,7 +115,9 @@ def test_float32_label():
     with tempfile.TemporaryFile() as f:
         write_numpy_to_dense_tensor(f, array, label_data)
         f.seek(0)
-        for record_data, expected, label in zip(read_recordio(f), array_data, label_data):
+        for record_data, expected, label in zip(
+            read_recordio(f), array_data, label_data
+        ):
             record = Record()
             record.ParseFromString(record_data)
             assert record.features["values"].int32_tensor.values == expected
@@ -127,7 +131,9 @@ def test_float_label():
     with tempfile.TemporaryFile() as f:
         write_numpy_to_dense_tensor(f, array, label_data)
         f.seek(0)
-        for record_data, expected, label in zip(read_recordio(f), array_data, label_data):
+        for record_data, expected, label in zip(
+            read_recordio(f), array_data, label_data
+        ):
             record = Record()
             record.ParseFromString(record_data)
             assert record.features["values"].int32_tensor.values == expected
@@ -166,7 +172,9 @@ def test_dense_float_write_spmatrix_to_sparse_tensor():
             record.ParseFromString(record_data)
             assert record.features["values"].float64_tensor.values == expected_data
             assert record.features["values"].float64_tensor.keys == expected_keys
-            assert record.features["values"].float64_tensor.shape == [len(expected_data)]
+            assert record.features["values"].float64_tensor.shape == [
+                len(expected_data)
+            ]
 
 
 def test_dense_float32_write_spmatrix_to_sparse_tensor():
@@ -183,7 +191,9 @@ def test_dense_float32_write_spmatrix_to_sparse_tensor():
             record.ParseFromString(record_data)
             assert record.features["values"].float32_tensor.values == expected_data
             assert record.features["values"].float32_tensor.keys == expected_keys
-            assert record.features["values"].float32_tensor.shape == [len(expected_data)]
+            assert record.features["values"].float32_tensor.shape == [
+                len(expected_data)
+            ]
 
 
 def test_dense_int_write_spmatrix_to_sparse_tensor():
@@ -238,7 +248,9 @@ def test_dense_float32_spmatrix_to_sparse_label():
             assert record.features["values"].float32_tensor.values == expected_data
             assert record.features["values"].float32_tensor.keys == expected_keys
             assert record.label["values"].int32_tensor.values == [label]
-            assert record.features["values"].float32_tensor.shape == [len(expected_data)]
+            assert record.features["values"].float32_tensor.shape == [
+                len(expected_data)
+            ]
 
 
 def test_dense_float64_spmatrix_to_sparse_label():
@@ -257,7 +269,9 @@ def test_dense_float64_spmatrix_to_sparse_label():
             assert record.features["values"].float64_tensor.values == expected_data
             assert record.features["values"].float64_tensor.keys == expected_keys
             assert record.label["values"].int32_tensor.values == [label]
-            assert record.features["values"].float64_tensor.shape == [len(expected_data)]
+            assert record.features["values"].float64_tensor.shape == [
+                len(expected_data)
+            ]
 
 
 def test_invalid_sparse_label():
@@ -271,7 +285,12 @@ def test_invalid_sparse_label():
 
 def test_sparse_float_write_spmatrix_to_sparse_tensor():
     n = 4
-    array_data = [[1.0, 2.0], [10.0, 30.0], [100.0, 200.0, 300.0, 400.0], [1000.0, 2000.0, 3000.0]]
+    array_data = [
+        [1.0, 2.0],
+        [10.0, 30.0],
+        [100.0, 200.0, 300.0, 400.0],
+        [1000.0, 2000.0, 3000.0],
+    ]
     keys_data = [[0, 1], [1, 2], [0, 1, 2, 3], [0, 2, 3]]
 
     flatten_data = list(itertools.chain.from_iterable(array_data))
@@ -295,7 +314,12 @@ def test_sparse_float_write_spmatrix_to_sparse_tensor():
 
 def test_sparse_float32_write_spmatrix_to_sparse_tensor():
     n = 4
-    array_data = [[1.0, 2.0], [10.0, 30.0], [100.0, 200.0, 300.0, 400.0], [1000.0, 2000.0, 3000.0]]
+    array_data = [
+        [1.0, 2.0],
+        [10.0, 30.0],
+        [100.0, 200.0, 300.0, 400.0],
+        [1000.0, 2000.0, 3000.0],
+    ]
     keys_data = [[0, 1], [1, 2], [0, 1, 2, 3], [0, 2, 3]]
 
     flatten_data = list(itertools.chain.from_iterable(array_data))
@@ -319,7 +343,12 @@ def test_sparse_float32_write_spmatrix_to_sparse_tensor():
 
 def test_sparse_int_write_spmatrix_to_sparse_tensor():
     n = 4
-    array_data = [[1.0, 2.0], [10.0, 30.0], [100.0, 200.0, 300.0, 400.0], [1000.0, 2000.0, 3000.0]]
+    array_data = [
+        [1.0, 2.0],
+        [10.0, 30.0],
+        [100.0, 200.0, 300.0, 400.0],
+        [1000.0, 2000.0, 3000.0],
+    ]
     keys_data = [[0, 1], [1, 2], [0, 1, 2, 3], [0, 2, 3]]
 
     flatten_data = list(itertools.chain.from_iterable(array_data))

@@ -22,7 +22,9 @@ import sagemaker.local.data
 
 
 @patch("sagemaker.local.data.LocalFileDataSource")
-def test_get_data_source_instance_with_file(LocalFileDataSource, sagemaker_local_session):
+def test_get_data_source_instance_with_file(
+    LocalFileDataSource, sagemaker_local_session
+):
     # file
     data_source = sagemaker.local.data.get_data_source_instance(
         "file:///my/file", sagemaker_local_session
@@ -53,7 +55,12 @@ def test_get_data_source_instance_with_s3(S3DataSource, sagemaker_local_session)
 @patch("os.listdir")
 def test_file_data_source_get_file_list_with_folder(listdir):
     data_source = sagemaker.local.data.LocalFileDataSource("/some/path/")
-    listdir.return_value = ["/some/path/a", "/some/path/b", "/some/path/c/", "/some/path/c/a"]
+    listdir.return_value = [
+        "/some/path/a",
+        "/some/path/b",
+        "/some/path/c/",
+        "/some/path/c/a",
+    ]
     expected = ["/some/path/a", "/some/path/b", "/some/path/c/a"]
     result = data_source.get_file_list()
     assert result == expected
@@ -123,10 +130,14 @@ def test_none_splitter(tmpdir):
     test_bin_file_path = tmpdir.join("none_test.bin")
 
     with test_bin_file_path.open("wb") as f:
-        f.write(b"\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x00\x00\x01\x00\x01\x00\x00C")
+        f.write(
+            b"\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x00\x00\x01\x00\x01\x00\x00C"
+        )
 
     data = [x for x in splitter.split(str(test_bin_file_path))]
-    assert data == [b"\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x00\x00\x01\x00\x01\x00\x00C"]
+    assert data == [
+        b"\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x00\x00\x01\x00\x01\x00\x00C"
+    ]
 
 
 def test_line_splitter(tmpdir):

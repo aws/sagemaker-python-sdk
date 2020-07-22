@@ -107,13 +107,17 @@ def predictor(sagemaker_session, tf_full_version):
             INSTANCE_COUNT,
             INSTANCE_TYPE,
             endpoint_name=endpoint_name,
-            data_capture_config=DataCaptureConfig(True, sagemaker_session=sagemaker_session),
+            data_capture_config=DataCaptureConfig(
+                True, sagemaker_session=sagemaker_session
+            ),
         )
         yield predictor
 
 
 @pytest.fixture(scope="module")
-def default_monitoring_schedule_name(sagemaker_session, output_kms_key, volume_kms_key, predictor):
+def default_monitoring_schedule_name(
+    sagemaker_session, output_kms_key, volume_kms_key, predictor
+):
     my_default_monitor = DefaultModelMonitor(
         role=ROLE,
         instance_count=INSTANCE_COUNT,
@@ -136,12 +140,16 @@ def default_monitoring_schedule_name(sagemaker_session, output_kms_key, volume_k
     )
 
     statistics = Statistics.from_file_path(
-        statistics_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/statistics.json"),
+        statistics_file_path=os.path.join(
+            tests.integ.DATA_DIR, "monitor/statistics.json"
+        ),
         sagemaker_session=sagemaker_session,
     )
 
     constraints = Constraints.from_file_path(
-        constraints_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/constraints.json"),
+        constraints_file_path=os.path.join(
+            tests.integ.DATA_DIR, "monitor/constraints.json"
+        ),
         sagemaker_session=sagemaker_session,
     )
 
@@ -156,15 +164,21 @@ def default_monitoring_schedule_name(sagemaker_session, output_kms_key, volume_k
 
     _wait_for_schedule_changes_to_apply(monitor=my_default_monitor)
 
-    _upload_captured_data_to_endpoint(predictor=predictor, sagemaker_session=sagemaker_session)
+    _upload_captured_data_to_endpoint(
+        predictor=predictor, sagemaker_session=sagemaker_session
+    )
 
-    _predict_while_waiting_for_first_monitoring_job_to_complete(predictor, my_default_monitor)
+    _predict_while_waiting_for_first_monitoring_job_to_complete(
+        predictor, my_default_monitor
+    )
 
     return my_default_monitor.monitoring_schedule_name
 
 
 @pytest.fixture(scope="module")
-def byoc_monitoring_schedule_name(sagemaker_session, output_kms_key, volume_kms_key, predictor):
+def byoc_monitoring_schedule_name(
+    sagemaker_session, output_kms_key, volume_kms_key, predictor
+):
     byoc_env = ENVIRONMENT.copy()
     byoc_env["dataset_format"] = json.dumps(DatasetFormat.csv(header=False))
     byoc_env["dataset_source"] = "/opt/ml/processing/input/baseline_dataset_input"
@@ -196,18 +210,24 @@ def byoc_monitoring_schedule_name(sagemaker_session, output_kms_key, volume_kms_
     )
 
     statistics = Statistics.from_file_path(
-        statistics_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/statistics.json"),
+        statistics_file_path=os.path.join(
+            tests.integ.DATA_DIR, "monitor/statistics.json"
+        ),
         sagemaker_session=sagemaker_session,
     )
 
     constraints = Constraints.from_file_path(
-        constraints_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/constraints.json"),
+        constraints_file_path=os.path.join(
+            tests.integ.DATA_DIR, "monitor/constraints.json"
+        ),
         sagemaker_session=sagemaker_session,
     )
 
     my_byoc_monitor.create_monitoring_schedule(
         endpoint_input=predictor.endpoint,
-        output=MonitoringOutput(source="/opt/ml/processing/output", destination=output_s3_uri),
+        output=MonitoringOutput(
+            source="/opt/ml/processing/output", destination=output_s3_uri
+        ),
         statistics=statistics,
         constraints=constraints,
         schedule_cron_expression=FIVE_MIN_CRON_EXPRESSION,
@@ -215,9 +235,13 @@ def byoc_monitoring_schedule_name(sagemaker_session, output_kms_key, volume_kms_
 
     _wait_for_schedule_changes_to_apply(monitor=my_byoc_monitor)
 
-    _upload_captured_data_to_endpoint(predictor=predictor, sagemaker_session=sagemaker_session)
+    _upload_captured_data_to_endpoint(
+        predictor=predictor, sagemaker_session=sagemaker_session
+    )
 
-    _predict_while_waiting_for_first_monitoring_job_to_complete(predictor, my_byoc_monitor)
+    _predict_while_waiting_for_first_monitoring_job_to_complete(
+        predictor, my_byoc_monitor
+    )
 
     return my_byoc_monitor.monitoring_schedule_name
 
@@ -312,33 +336,51 @@ def test_default_monitor_suggest_baseline_and_create_monitoring_schedule_with_cu
     baselining_job_description = my_default_monitor.latest_baselining_job.describe()
 
     assert (
-        baselining_job_description["ProcessingResources"]["ClusterConfig"]["InstanceType"]
+        baselining_job_description["ProcessingResources"]["ClusterConfig"][
+            "InstanceType"
+        ]
         == INSTANCE_TYPE
     )
     assert (
-        baselining_job_description["ProcessingResources"]["ClusterConfig"]["InstanceCount"]
+        baselining_job_description["ProcessingResources"]["ClusterConfig"][
+            "InstanceCount"
+        ]
         == INSTANCE_COUNT
     )
     assert (
-        baselining_job_description["ProcessingResources"]["ClusterConfig"]["VolumeSizeInGB"]
+        baselining_job_description["ProcessingResources"]["ClusterConfig"][
+            "VolumeSizeInGB"
+        ]
         == VOLUME_SIZE_IN_GB
     )
     assert (
-        baselining_job_description["ProcessingResources"]["ClusterConfig"]["VolumeKmsKeyId"]
+        baselining_job_description["ProcessingResources"]["ClusterConfig"][
+            "VolumeKmsKeyId"
+        ]
         == volume_kms_key
     )
-    assert DEFAULT_IMAGE_SUFFIX in baselining_job_description["AppSpecification"]["ImageUri"]
+    assert (
+        DEFAULT_IMAGE_SUFFIX
+        in baselining_job_description["AppSpecification"]["ImageUri"]
+    )
     assert ROLE in baselining_job_description["RoleArn"]
     assert (
-        baselining_job_description["ProcessingInputs"][0]["InputName"] == "baseline_dataset_input"
+        baselining_job_description["ProcessingInputs"][0]["InputName"]
+        == "baseline_dataset_input"
     )
     assert (
         baselining_job_description["ProcessingOutputConfig"]["Outputs"][0]["OutputName"]
         == "monitoring_output"
     )
-    assert baselining_job_description["ProcessingOutputConfig"]["KmsKeyId"] == output_kms_key
+    assert (
+        baselining_job_description["ProcessingOutputConfig"]["KmsKeyId"]
+        == output_kms_key
+    )
     assert baselining_job_description["Environment"][ENV_KEY_1] == ENV_VALUE_1
-    assert baselining_job_description["Environment"]["output_path"] == "/opt/ml/processing/output"
+    assert (
+        baselining_job_description["Environment"]["output_path"]
+        == "/opt/ml/processing/output"
+    )
     assert (
         baselining_job_description["Environment"]["dataset_source"]
         == "/opt/ml/processing/input/baseline_dataset_input"
@@ -356,11 +398,15 @@ def test_default_monitor_suggest_baseline_and_create_monitoring_schedule_with_cu
     assert statistics.body_dict["dataset"]["item_count"] == 418
 
     constraints = my_default_monitor.suggested_constraints()
-    assert constraints.body_dict["monitoring_config"]["evaluate_constraints"] == "Enabled"
+    assert (
+        constraints.body_dict["monitoring_config"]["evaluate_constraints"] == "Enabled"
+    )
 
     constraints.set_monitoring(enable_monitoring=False)
 
-    assert constraints.body_dict["monitoring_config"]["evaluate_constraints"] == "Disabled"
+    assert (
+        constraints.body_dict["monitoring_config"]["evaluate_constraints"] == "Disabled"
+    )
 
     constraints.save()
 
@@ -375,7 +421,9 @@ def test_default_monitor_suggest_baseline_and_create_monitoring_schedule_with_cu
 
     schedule_description = my_default_monitor.describe_schedule()
     assert (
-        schedule_description["MonitoringScheduleConfig"]["ScheduleConfig"]["ScheduleExpression"]
+        schedule_description["MonitoringScheduleConfig"]["ScheduleConfig"][
+            "ScheduleExpression"
+        ]
         == CronExpressionGenerator.daily()
     )
     assert (
@@ -416,7 +464,9 @@ def test_default_monitor_suggest_baseline_and_create_monitoring_schedule_with_cu
     )
     assert (
         ROLE
-        in schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["RoleArn"]
+        in schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+            "RoleArn"
+        ]
     )
     assert (
         len(
@@ -451,15 +501,15 @@ def test_default_monitor_suggest_baseline_and_create_monitoring_schedule_with_cu
         == MAX_RUNTIME_IN_SECONDS
     )
     assert (
-        schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["Environment"][
-            ENV_KEY_1
-        ]
+        schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+            "Environment"
+        ][ENV_KEY_1]
         == ENV_VALUE_1
     )
     assert (
-        schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["Environment"][
-            "publish_cloudwatch_metrics"
-        ]
+        schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+            "Environment"
+        ]["publish_cloudwatch_metrics"]
         == "Enabled"
     )
     assert (
@@ -482,7 +532,9 @@ def test_default_monitor_suggest_baseline_and_create_monitoring_schedule_without
 ):
     baseline_dataset = os.path.join(DATA_DIR, "monitor/baseline_dataset.csv")
 
-    my_default_monitor = DefaultModelMonitor(role=ROLE, sagemaker_session=sagemaker_session)
+    my_default_monitor = DefaultModelMonitor(
+        role=ROLE, sagemaker_session=sagemaker_session
+    )
 
     my_default_monitor.suggest_baseline(
         baseline_dataset=baseline_dataset,
@@ -493,25 +545,37 @@ def test_default_monitor_suggest_baseline_and_create_monitoring_schedule_without
     baselining_job_description = my_default_monitor.latest_baselining_job.describe()
 
     assert (
-        baselining_job_description["ProcessingResources"]["ClusterConfig"]["InstanceType"]
+        baselining_job_description["ProcessingResources"]["ClusterConfig"][
+            "InstanceType"
+        ]
         == DEFAULT_INSTANCE_TYPE
     )
     assert (
-        baselining_job_description["ProcessingResources"]["ClusterConfig"]["InstanceCount"]
+        baselining_job_description["ProcessingResources"]["ClusterConfig"][
+            "InstanceCount"
+        ]
         == DEFAULT_INSTANCE_COUNT
     )
     assert (
-        baselining_job_description["ProcessingResources"]["ClusterConfig"]["VolumeSizeInGB"]
+        baselining_job_description["ProcessingResources"]["ClusterConfig"][
+            "VolumeSizeInGB"
+        ]
         == DEFAULT_VOLUME_SIZE_IN_GB
     )
     assert (
-        baselining_job_description["ProcessingResources"]["ClusterConfig"].get("VolumeKmsKeyId")
+        baselining_job_description["ProcessingResources"]["ClusterConfig"].get(
+            "VolumeKmsKeyId"
+        )
         is None
     )
-    assert DEFAULT_IMAGE_SUFFIX in baselining_job_description["AppSpecification"]["ImageUri"]
+    assert (
+        DEFAULT_IMAGE_SUFFIX
+        in baselining_job_description["AppSpecification"]["ImageUri"]
+    )
     assert ROLE in baselining_job_description["RoleArn"]
     assert (
-        baselining_job_description["ProcessingInputs"][0]["InputName"] == "baseline_dataset_input"
+        baselining_job_description["ProcessingInputs"][0]["InputName"]
+        == "baseline_dataset_input"
     )
     assert len(baselining_job_description["ProcessingInputs"]) == 1
     assert (
@@ -520,9 +584,18 @@ def test_default_monitor_suggest_baseline_and_create_monitoring_schedule_without
     )
     assert baselining_job_description["ProcessingOutputConfig"].get("KmsKeyId") is None
     assert baselining_job_description["Environment"].get(ENV_KEY_1) is None
-    assert baselining_job_description["Environment"]["output_path"] == "/opt/ml/processing/output"
-    assert baselining_job_description["Environment"].get("record_preprocessor_script") is None
-    assert baselining_job_description["Environment"].get("post_analytics_processor_script") is None
+    assert (
+        baselining_job_description["Environment"]["output_path"]
+        == "/opt/ml/processing/output"
+    )
+    assert (
+        baselining_job_description["Environment"].get("record_preprocessor_script")
+        is None
+    )
+    assert (
+        baselining_job_description["Environment"].get("post_analytics_processor_script")
+        is None
+    )
     assert (
         baselining_job_description["Environment"]["dataset_source"]
         == "/opt/ml/processing/input/baseline_dataset_input"
@@ -537,16 +610,21 @@ def test_default_monitor_suggest_baseline_and_create_monitoring_schedule_without
     assert statistics.body_dict["dataset"]["item_count"] == 418
 
     constraints = my_default_monitor.suggested_constraints()
-    assert constraints.body_dict["monitoring_config"]["evaluate_constraints"] == "Enabled"
+    assert (
+        constraints.body_dict["monitoring_config"]["evaluate_constraints"] == "Enabled"
+    )
 
     constraints.set_monitoring(enable_monitoring=False)
 
-    assert constraints.body_dict["monitoring_config"]["evaluate_constraints"] == "Disabled"
+    assert (
+        constraints.body_dict["monitoring_config"]["evaluate_constraints"] == "Disabled"
+    )
 
     constraints.save()
 
     my_default_monitor.create_monitoring_schedule(
-        endpoint_input=predictor.endpoint, schedule_cron_expression=CronExpressionGenerator.daily()
+        endpoint_input=predictor.endpoint,
+        schedule_cron_expression=CronExpressionGenerator.daily(),
     )
     schedule_description = my_default_monitor.describe_schedule()
     assert (
@@ -599,7 +677,9 @@ def test_default_monitor_suggest_baseline_and_create_monitoring_schedule_without
     )
     assert (
         ROLE
-        in schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["RoleArn"]
+        in schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+            "RoleArn"
+        ]
     )
     assert (
         len(
@@ -634,9 +714,9 @@ def test_default_monitor_suggest_baseline_and_create_monitoring_schedule_without
         is None
     )
     assert (
-        schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["Environment"][
-            "publish_cloudwatch_metrics"
-        ]
+        schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+            "Environment"
+        ]["publish_cloudwatch_metrics"]
         == "Enabled"
     )
     assert (
@@ -680,12 +760,16 @@ def test_default_monitor_create_stop_and_start_monitoring_schedule_with_customiz
     )
 
     statistics = Statistics.from_file_path(
-        statistics_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/statistics.json"),
+        statistics_file_path=os.path.join(
+            tests.integ.DATA_DIR, "monitor/statistics.json"
+        ),
         sagemaker_session=sagemaker_session,
     )
 
     constraints = Constraints.from_file_path(
-        constraints_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/constraints.json"),
+        constraints_file_path=os.path.join(
+            tests.integ.DATA_DIR, "monitor/constraints.json"
+        ),
         sagemaker_session=sagemaker_session,
     )
 
@@ -701,7 +785,9 @@ def test_default_monitor_create_stop_and_start_monitoring_schedule_with_customiz
     schedule_description = my_default_monitor.describe_schedule()
 
     assert (
-        schedule_description["MonitoringScheduleConfig"]["ScheduleConfig"]["ScheduleExpression"]
+        schedule_description["MonitoringScheduleConfig"]["ScheduleConfig"][
+            "ScheduleExpression"
+        ]
         == CronExpressionGenerator.daily()
     )
     assert (
@@ -742,7 +828,9 @@ def test_default_monitor_create_stop_and_start_monitoring_schedule_with_customiz
     )
     assert (
         ROLE
-        in schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["RoleArn"]
+        in schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+            "RoleArn"
+        ]
     )
     assert (
         len(
@@ -777,15 +865,15 @@ def test_default_monitor_create_stop_and_start_monitoring_schedule_with_customiz
         == MAX_RUNTIME_IN_SECONDS
     )
     assert (
-        schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["Environment"][
-            ENV_KEY_1
-        ]
+        schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+            "Environment"
+        ][ENV_KEY_1]
         == ENV_VALUE_1
     )
     assert (
-        schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["Environment"][
-            "publish_cloudwatch_metrics"
-        ]
+        schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+            "Environment"
+        ]["publish_cloudwatch_metrics"]
         == "Enabled"
     )
     assert (
@@ -850,12 +938,16 @@ def test_default_monitor_create_and_update_schedule_config_with_customizations(
     )
 
     statistics = Statistics.from_file_path(
-        statistics_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/statistics.json"),
+        statistics_file_path=os.path.join(
+            tests.integ.DATA_DIR, "monitor/statistics.json"
+        ),
         sagemaker_session=sagemaker_session,
     )
 
     constraints = Constraints.from_file_path(
-        constraints_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/constraints.json"),
+        constraints_file_path=os.path.join(
+            tests.integ.DATA_DIR, "monitor/constraints.json"
+        ),
         sagemaker_session=sagemaker_session,
     )
 
@@ -871,7 +963,9 @@ def test_default_monitor_create_and_update_schedule_config_with_customizations(
     schedule_description = my_default_monitor.describe_schedule()
 
     assert (
-        schedule_description["MonitoringScheduleConfig"]["ScheduleConfig"]["ScheduleExpression"]
+        schedule_description["MonitoringScheduleConfig"]["ScheduleConfig"][
+            "ScheduleExpression"
+        ]
         == CronExpressionGenerator.daily()
     )
     assert (
@@ -912,7 +1006,9 @@ def test_default_monitor_create_and_update_schedule_config_with_customizations(
     )
     assert (
         ROLE
-        in schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["RoleArn"]
+        in schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+            "RoleArn"
+        ]
     )
     assert (
         len(
@@ -947,15 +1043,15 @@ def test_default_monitor_create_and_update_schedule_config_with_customizations(
         == MAX_RUNTIME_IN_SECONDS
     )
     assert (
-        schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["Environment"][
-            ENV_KEY_1
-        ]
+        schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+            "Environment"
+        ][ENV_KEY_1]
         == ENV_VALUE_1
     )
     assert (
-        schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["Environment"][
-            "publish_cloudwatch_metrics"
-        ]
+        schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+            "Environment"
+        ]["publish_cloudwatch_metrics"]
         == "Enabled"
     )
     assert (
@@ -966,12 +1062,16 @@ def test_default_monitor_create_and_update_schedule_config_with_customizations(
     )
 
     statistics = Statistics.from_file_path(
-        statistics_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/statistics.json"),
+        statistics_file_path=os.path.join(
+            tests.integ.DATA_DIR, "monitor/statistics.json"
+        ),
         sagemaker_session=sagemaker_session,
     )
 
     constraints = Constraints.from_file_path(
-        constraints_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/constraints.json"),
+        constraints_file_path=os.path.join(
+            tests.integ.DATA_DIR, "monitor/constraints.json"
+        ),
         sagemaker_session=sagemaker_session,
     )
 
@@ -999,7 +1099,9 @@ def test_default_monitor_create_and_update_schedule_config_with_customizations(
     schedule_description = my_default_monitor.describe_schedule()
 
     assert (
-        schedule_description["MonitoringScheduleConfig"]["ScheduleConfig"]["ScheduleExpression"]
+        schedule_description["MonitoringScheduleConfig"]["ScheduleConfig"][
+            "ScheduleExpression"
+        ]
         == CronExpressionGenerator.hourly()
     )
     assert (
@@ -1040,7 +1142,9 @@ def test_default_monitor_create_and_update_schedule_config_with_customizations(
     )
     assert (
         UPDATED_ROLE
-        in schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["RoleArn"]
+        in schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+            "RoleArn"
+        ]
     )
     assert (
         len(
@@ -1075,15 +1179,15 @@ def test_default_monitor_create_and_update_schedule_config_with_customizations(
         == UPDATED_MAX_RUNTIME_IN_SECONDS
     )
     assert (
-        schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["Environment"][
-            UPDATED_ENV_KEY_1
-        ]
+        schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+            "Environment"
+        ][UPDATED_ENV_KEY_1]
         == UPDATED_ENV_VALUE_1
     )
     assert (
-        schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["Environment"][
-            "publish_cloudwatch_metrics"
-        ]
+        schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+            "Environment"
+        ]["publish_cloudwatch_metrics"]
         == "Disabled"
     )
     assert (
@@ -1109,10 +1213,13 @@ def test_default_monitor_create_and_update_schedule_config_with_customizations(
 def test_default_monitor_create_and_update_schedule_config_without_customizations(
     sagemaker_session, predictor
 ):
-    my_default_monitor = DefaultModelMonitor(role=ROLE, sagemaker_session=sagemaker_session)
+    my_default_monitor = DefaultModelMonitor(
+        role=ROLE, sagemaker_session=sagemaker_session
+    )
 
     my_default_monitor.create_monitoring_schedule(
-        endpoint_input=predictor.endpoint, schedule_cron_expression=CronExpressionGenerator.daily()
+        endpoint_input=predictor.endpoint,
+        schedule_cron_expression=CronExpressionGenerator.daily(),
     )
 
     schedule_description = my_default_monitor.describe_schedule()
@@ -1167,7 +1274,9 @@ def test_default_monitor_create_and_update_schedule_config_without_customization
     )
     assert (
         ROLE
-        in schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["RoleArn"]
+        in schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+            "RoleArn"
+        ]
     )
     assert (
         len(
@@ -1202,9 +1311,9 @@ def test_default_monitor_create_and_update_schedule_config_without_customization
         is None
     )
     assert (
-        schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["Environment"][
-            "publish_cloudwatch_metrics"
-        ]
+        schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+            "Environment"
+        ]["publish_cloudwatch_metrics"]
         == "Enabled"
     )
     assert (
@@ -1272,7 +1381,9 @@ def test_default_monitor_create_and_update_schedule_config_without_customization
     )
     assert (
         ROLE
-        in schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["RoleArn"]
+        in schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+            "RoleArn"
+        ]
     )
     assert (
         len(
@@ -1307,9 +1418,9 @@ def test_default_monitor_create_and_update_schedule_config_without_customization
         is None
     )
     assert (
-        schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["Environment"][
-            "publish_cloudwatch_metrics"
-        ]
+        schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+            "Environment"
+        ]["publish_cloudwatch_metrics"]
         == "Enabled"
     )
     assert (
@@ -1338,7 +1449,8 @@ def test_default_monitor_attach_followed_by_baseline_and_update_monitoring_sched
     updated_output_kms_key,
 ):
     my_attached_monitor = DefaultModelMonitor.attach(
-        monitor_schedule_name=default_monitoring_schedule_name, sagemaker_session=sagemaker_session
+        monitor_schedule_name=default_monitoring_schedule_name,
+        sagemaker_session=sagemaker_session,
     )
 
     output_s3_uri = os.path.join(
@@ -1349,12 +1461,16 @@ def test_default_monitor_attach_followed_by_baseline_and_update_monitoring_sched
     )
 
     statistics = Statistics.from_file_path(
-        statistics_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/statistics.json"),
+        statistics_file_path=os.path.join(
+            tests.integ.DATA_DIR, "monitor/statistics.json"
+        ),
         sagemaker_session=sagemaker_session,
     )
 
     constraints = Constraints.from_file_path(
-        constraints_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/constraints.json"),
+        constraints_file_path=os.path.join(
+            tests.integ.DATA_DIR, "monitor/constraints.json"
+        ),
         sagemaker_session=sagemaker_session,
     )
 
@@ -1382,7 +1498,9 @@ def test_default_monitor_attach_followed_by_baseline_and_update_monitoring_sched
     schedule_description = my_attached_monitor.describe_schedule()
 
     assert (
-        schedule_description["MonitoringScheduleConfig"]["ScheduleConfig"]["ScheduleExpression"]
+        schedule_description["MonitoringScheduleConfig"]["ScheduleConfig"][
+            "ScheduleExpression"
+        ]
         == CronExpressionGenerator.hourly()
     )
     assert (
@@ -1423,7 +1541,9 @@ def test_default_monitor_attach_followed_by_baseline_and_update_monitoring_sched
     )
     assert (
         UPDATED_ROLE
-        in schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["RoleArn"]
+        in schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+            "RoleArn"
+        ]
     )
     assert (
         len(
@@ -1458,15 +1578,15 @@ def test_default_monitor_attach_followed_by_baseline_and_update_monitoring_sched
         == UPDATED_MAX_RUNTIME_IN_SECONDS
     )
     assert (
-        schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["Environment"][
-            UPDATED_ENV_KEY_1
-        ]
+        schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+            "Environment"
+        ][UPDATED_ENV_KEY_1]
         == UPDATED_ENV_VALUE_1
     )
     assert (
-        schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["Environment"][
-            "publish_cloudwatch_metrics"
-        ]
+        schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+            "Environment"
+        ]["publish_cloudwatch_metrics"]
         == "Disabled"
     )
     assert (
@@ -1492,7 +1612,8 @@ def test_default_monitor_monitoring_execution_interactions(
     sagemaker_session, default_monitoring_schedule_name
 ):
     my_attached_monitor = DefaultModelMonitor.attach(
-        monitor_schedule_name=default_monitoring_schedule_name, sagemaker_session=sagemaker_session
+        monitor_schedule_name=default_monitoring_schedule_name,
+        sagemaker_session=sagemaker_session,
     )
     description = my_attached_monitor.describe_schedule()
     assert description["MonitoringScheduleName"] == default_monitoring_schedule_name
@@ -1513,7 +1634,9 @@ def test_default_monitor_monitoring_execution_interactions(
     statistics = my_attached_monitor.latest_monitoring_statistics()
     assert statistics.body_dict["dataset"]["item_count"] == 418
 
-    with open(os.path.join(tests.integ.DATA_DIR, "monitor/constraint_violations.json"), "r") as f:
+    with open(
+        os.path.join(tests.integ.DATA_DIR, "monitor/constraint_violations.json"), "r"
+    ) as f:
         file_body = f.read()
 
     file_name = "constraint_violations.json"
@@ -1523,8 +1646,13 @@ def test_default_monitor_monitoring_execution_interactions(
         body=file_body, desired_s3_uri=desired_s3_uri, session=sagemaker_session
     )
 
-    constraint_violations = my_attached_monitor.latest_monitoring_constraint_violations()
-    assert constraint_violations.body_dict["violations"][0]["feature_name"] == "store_and_fwd_flag"
+    constraint_violations = (
+        my_attached_monitor.latest_monitoring_constraint_violations()
+    )
+    assert (
+        constraint_violations.body_dict["violations"][0]["feature_name"]
+        == "store_and_fwd_flag"
+    )
 
 
 @pytest.mark.skipif(
@@ -1573,7 +1701,9 @@ def test_byoc_monitor_suggest_baseline_and_create_monitoring_schedule_with_custo
                 destination="/opt/ml/processing/input/baseline_dataset_input",
             )
         ],
-        output=ProcessingOutput(source="/opt/ml/processing/output", destination=output_s3_uri),
+        output=ProcessingOutput(
+            source="/opt/ml/processing/output", destination=output_s3_uri
+        ),
         wait=True,
         logs=False,
     )
@@ -1581,31 +1711,48 @@ def test_byoc_monitor_suggest_baseline_and_create_monitoring_schedule_with_custo
     baselining_job_description = my_byoc_monitor.latest_baselining_job.describe()
 
     assert (
-        baselining_job_description["ProcessingResources"]["ClusterConfig"]["InstanceType"]
+        baselining_job_description["ProcessingResources"]["ClusterConfig"][
+            "InstanceType"
+        ]
         == INSTANCE_TYPE
     )
     assert (
-        baselining_job_description["ProcessingResources"]["ClusterConfig"]["InstanceCount"]
+        baselining_job_description["ProcessingResources"]["ClusterConfig"][
+            "InstanceCount"
+        ]
         == INSTANCE_COUNT
     )
     assert (
-        baselining_job_description["ProcessingResources"]["ClusterConfig"]["VolumeSizeInGB"]
+        baselining_job_description["ProcessingResources"]["ClusterConfig"][
+            "VolumeSizeInGB"
+        ]
         == VOLUME_SIZE_IN_GB
     )
     assert (
-        baselining_job_description["ProcessingResources"]["ClusterConfig"]["VolumeKmsKeyId"]
+        baselining_job_description["ProcessingResources"]["ClusterConfig"][
+            "VolumeKmsKeyId"
+        ]
         == volume_kms_key
     )
-    assert DEFAULT_IMAGE_SUFFIX in baselining_job_description["AppSpecification"]["ImageUri"]
+    assert (
+        DEFAULT_IMAGE_SUFFIX
+        in baselining_job_description["AppSpecification"]["ImageUri"]
+    )
     assert ROLE in baselining_job_description["RoleArn"]
     assert baselining_job_description["ProcessingInputs"][0]["InputName"] == "input-1"
     assert (
         baselining_job_description["ProcessingOutputConfig"]["Outputs"][0]["OutputName"]
         == "output-1"
     )
-    assert baselining_job_description["ProcessingOutputConfig"]["KmsKeyId"] == output_kms_key
+    assert (
+        baselining_job_description["ProcessingOutputConfig"]["KmsKeyId"]
+        == output_kms_key
+    )
     assert baselining_job_description["Environment"][ENV_KEY_1] == ENV_VALUE_1
-    assert baselining_job_description["Environment"]["output_path"] == "/opt/ml/processing/output"
+    assert (
+        baselining_job_description["Environment"]["output_path"]
+        == "/opt/ml/processing/output"
+    )
     assert (
         baselining_job_description["Environment"]["dataset_source"]
         == "/opt/ml/processing/input/baseline_dataset_input"
@@ -1623,17 +1770,23 @@ def test_byoc_monitor_suggest_baseline_and_create_monitoring_schedule_with_custo
     assert statistics.body_dict["dataset"]["item_count"] == 418
 
     constraints = my_byoc_monitor.suggested_constraints()
-    assert constraints.body_dict["monitoring_config"]["evaluate_constraints"] == "Enabled"
+    assert (
+        constraints.body_dict["monitoring_config"]["evaluate_constraints"] == "Enabled"
+    )
 
     constraints.set_monitoring(enable_monitoring=False)
 
-    assert constraints.body_dict["monitoring_config"]["evaluate_constraints"] == "Disabled"
+    assert (
+        constraints.body_dict["monitoring_config"]["evaluate_constraints"] == "Disabled"
+    )
 
     constraints.save()
 
     my_byoc_monitor.create_monitoring_schedule(
         endpoint_input=predictor.endpoint,
-        output=MonitoringOutput(source="/opt/ml/processing/output", destination=output_s3_uri),
+        output=MonitoringOutput(
+            source="/opt/ml/processing/output", destination=output_s3_uri
+        ),
         statistics=my_byoc_monitor.baseline_statistics(),
         constraints=my_byoc_monitor.suggested_constraints(),
         schedule_cron_expression=CronExpressionGenerator.daily(),
@@ -1641,7 +1794,9 @@ def test_byoc_monitor_suggest_baseline_and_create_monitoring_schedule_with_custo
 
     schedule_description = my_byoc_monitor.describe_schedule()
     assert (
-        schedule_description["MonitoringScheduleConfig"]["ScheduleConfig"]["ScheduleExpression"]
+        schedule_description["MonitoringScheduleConfig"]["ScheduleConfig"][
+            "ScheduleExpression"
+        ]
         == CronExpressionGenerator.daily()
     )
     assert (
@@ -1682,7 +1837,9 @@ def test_byoc_monitor_suggest_baseline_and_create_monitoring_schedule_with_custo
     )
     assert (
         ROLE
-        in schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["RoleArn"]
+        in schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+            "RoleArn"
+        ]
     )
     assert (
         len(
@@ -1717,15 +1874,15 @@ def test_byoc_monitor_suggest_baseline_and_create_monitoring_schedule_with_custo
         == MAX_RUNTIME_IN_SECONDS
     )
     assert (
-        schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["Environment"][
-            ENV_KEY_1
-        ]
+        schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+            "Environment"
+        ][ENV_KEY_1]
         == ENV_VALUE_1
     )
     assert (
-        schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["Environment"][
-            "publish_cloudwatch_metrics"
-        ]
+        schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+            "Environment"
+        ]["publish_cloudwatch_metrics"]
         == "Disabled"
     )
     assert (
@@ -1783,29 +1940,42 @@ def test_byoc_monitor_suggest_baseline_and_create_monitoring_schedule_without_cu
                 destination="/opt/ml/processing/input/baseline_dataset_input",
             )
         ],
-        output=ProcessingOutput(source="/opt/ml/processing/output", destination=output_s3_uri),
+        output=ProcessingOutput(
+            source="/opt/ml/processing/output", destination=output_s3_uri
+        ),
         logs=False,
     )
 
     baselining_job_description = my_byoc_monitor.latest_baselining_job.describe()
 
     assert (
-        baselining_job_description["ProcessingResources"]["ClusterConfig"]["InstanceCount"]
+        baselining_job_description["ProcessingResources"]["ClusterConfig"][
+            "InstanceCount"
+        ]
         == DEFAULT_INSTANCE_COUNT
     )
     assert (
-        baselining_job_description["ProcessingResources"]["ClusterConfig"]["InstanceType"]
+        baselining_job_description["ProcessingResources"]["ClusterConfig"][
+            "InstanceType"
+        ]
         == DEFAULT_INSTANCE_TYPE
     )
     assert (
-        baselining_job_description["ProcessingResources"]["ClusterConfig"]["VolumeSizeInGB"]
+        baselining_job_description["ProcessingResources"]["ClusterConfig"][
+            "VolumeSizeInGB"
+        ]
         == DEFAULT_VOLUME_SIZE_IN_GB
     )
     assert (
-        baselining_job_description["ProcessingResources"]["ClusterConfig"].get("VolumeKmsKeyId")
+        baselining_job_description["ProcessingResources"]["ClusterConfig"].get(
+            "VolumeKmsKeyId"
+        )
         is None
     )
-    assert DEFAULT_IMAGE_SUFFIX in baselining_job_description["AppSpecification"]["ImageUri"]
+    assert (
+        DEFAULT_IMAGE_SUFFIX
+        in baselining_job_description["AppSpecification"]["ImageUri"]
+    )
     assert ROLE in baselining_job_description["RoleArn"]
     assert baselining_job_description["ProcessingInputs"][0]["InputName"] == "input-1"
     assert (
@@ -1814,7 +1984,10 @@ def test_byoc_monitor_suggest_baseline_and_create_monitoring_schedule_without_cu
     )
     assert baselining_job_description["ProcessingOutputConfig"].get("KmsKeyId") is None
     assert baselining_job_description["Environment"][ENV_KEY_1] == ENV_VALUE_1
-    assert baselining_job_description["Environment"]["output_path"] == "/opt/ml/processing/output"
+    assert (
+        baselining_job_description["Environment"]["output_path"]
+        == "/opt/ml/processing/output"
+    )
     assert (
         baselining_job_description["Environment"]["dataset_source"]
         == "/opt/ml/processing/input/baseline_dataset_input"
@@ -1829,17 +2002,23 @@ def test_byoc_monitor_suggest_baseline_and_create_monitoring_schedule_without_cu
     assert statistics.body_dict["dataset"]["item_count"] == 418
 
     constraints = my_byoc_monitor.suggested_constraints()
-    assert constraints.body_dict["monitoring_config"]["evaluate_constraints"] == "Enabled"
+    assert (
+        constraints.body_dict["monitoring_config"]["evaluate_constraints"] == "Enabled"
+    )
 
     constraints.set_monitoring(enable_monitoring=False)
 
-    assert constraints.body_dict["monitoring_config"]["evaluate_constraints"] == "Disabled"
+    assert (
+        constraints.body_dict["monitoring_config"]["evaluate_constraints"] == "Disabled"
+    )
 
     constraints.save()
 
     my_byoc_monitor.create_monitoring_schedule(
         endpoint_input=predictor.endpoint,
-        output=MonitoringOutput(source="/opt/ml/processing/output", destination=output_s3_uri),
+        output=MonitoringOutput(
+            source="/opt/ml/processing/output", destination=output_s3_uri
+        ),
         schedule_cron_expression=CronExpressionGenerator.daily(),
     )
 
@@ -1882,7 +2061,9 @@ def test_byoc_monitor_suggest_baseline_and_create_monitoring_schedule_without_cu
     )
     assert (
         ROLE
-        in schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["RoleArn"]
+        in schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+            "RoleArn"
+        ]
     )
     assert (
         len(
@@ -1911,15 +2092,15 @@ def test_byoc_monitor_suggest_baseline_and_create_monitoring_schedule_without_cu
         == DEFAULT_EXECUTION_MAX_RUNTIME_IN_SECONDS
     )
     assert (
-        schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["Environment"][
-            ENV_KEY_1
-        ]
+        schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+            "Environment"
+        ][ENV_KEY_1]
         == ENV_VALUE_1
     )
     assert (
-        schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["Environment"][
-            "publish_cloudwatch_metrics"
-        ]
+        schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+            "Environment"
+        ]["publish_cloudwatch_metrics"]
         == "Disabled"
     )
     assert (
@@ -1982,18 +2163,24 @@ def test_byoc_monitor_create_and_update_schedule_config_with_customizations(
     )
 
     statistics = Statistics.from_file_path(
-        statistics_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/statistics.json"),
+        statistics_file_path=os.path.join(
+            tests.integ.DATA_DIR, "monitor/statistics.json"
+        ),
         sagemaker_session=sagemaker_session,
     )
 
     constraints = Constraints.from_file_path(
-        constraints_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/constraints.json"),
+        constraints_file_path=os.path.join(
+            tests.integ.DATA_DIR, "monitor/constraints.json"
+        ),
         sagemaker_session=sagemaker_session,
     )
 
     my_byoc_monitor.create_monitoring_schedule(
         endpoint_input=predictor.endpoint,
-        output=MonitoringOutput(source="/opt/ml/processing/output", destination=output_s3_uri),
+        output=MonitoringOutput(
+            source="/opt/ml/processing/output", destination=output_s3_uri
+        ),
         statistics=statistics,
         constraints=constraints,
         schedule_cron_expression=CronExpressionGenerator.daily(),
@@ -2001,7 +2188,9 @@ def test_byoc_monitor_create_and_update_schedule_config_with_customizations(
 
     schedule_description = my_byoc_monitor.describe_schedule()
     assert (
-        schedule_description["MonitoringScheduleConfig"]["ScheduleConfig"]["ScheduleExpression"]
+        schedule_description["MonitoringScheduleConfig"]["ScheduleConfig"][
+            "ScheduleExpression"
+        ]
         == CronExpressionGenerator.daily()
     )
     assert (
@@ -2042,7 +2231,9 @@ def test_byoc_monitor_create_and_update_schedule_config_with_customizations(
     )
     assert (
         ROLE
-        in schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["RoleArn"]
+        in schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+            "RoleArn"
+        ]
     )
     assert (
         len(
@@ -2077,15 +2268,15 @@ def test_byoc_monitor_create_and_update_schedule_config_with_customizations(
         == MAX_RUNTIME_IN_SECONDS
     )
     assert (
-        schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["Environment"][
-            ENV_KEY_1
-        ]
+        schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+            "Environment"
+        ][ENV_KEY_1]
         == ENV_VALUE_1
     )
     assert (
-        schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["Environment"][
-            "publish_cloudwatch_metrics"
-        ]
+        schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+            "Environment"
+        ]["publish_cloudwatch_metrics"]
         == "Disabled"
     )
     assert (
@@ -2101,7 +2292,9 @@ def test_byoc_monitor_create_and_update_schedule_config_with_customizations(
 
     my_byoc_monitor.update_monitoring_schedule(
         endpoint_input=predictor.endpoint,
-        output=MonitoringOutput(source="/opt/ml/processing/output", destination=output_s3_uri),
+        output=MonitoringOutput(
+            source="/opt/ml/processing/output", destination=output_s3_uri
+        ),
         statistics=statistics,
         constraints=constraints,
         schedule_cron_expression=CronExpressionGenerator.hourly(),
@@ -2121,7 +2314,9 @@ def test_byoc_monitor_create_and_update_schedule_config_with_customizations(
     schedule_description = my_byoc_monitor.describe_schedule()
 
     assert (
-        schedule_description["MonitoringScheduleConfig"]["ScheduleConfig"]["ScheduleExpression"]
+        schedule_description["MonitoringScheduleConfig"]["ScheduleConfig"][
+            "ScheduleExpression"
+        ]
         == CronExpressionGenerator.hourly()
     )
     assert (
@@ -2162,7 +2357,9 @@ def test_byoc_monitor_create_and_update_schedule_config_with_customizations(
     )
     assert (
         UPDATED_ROLE
-        in schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["RoleArn"]
+        in schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+            "RoleArn"
+        ]
     )
     assert (
         len(
@@ -2197,15 +2394,15 @@ def test_byoc_monitor_create_and_update_schedule_config_with_customizations(
         == UPDATED_MAX_RUNTIME_IN_SECONDS
     )
     assert (
-        schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["Environment"][
-            UPDATED_ENV_KEY_1
-        ]
+        schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+            "Environment"
+        ][UPDATED_ENV_KEY_1]
         == UPDATED_ENV_VALUE_1
     )
     assert (
-        schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["Environment"][
-            "publish_cloudwatch_metrics"
-        ]
+        schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+            "Environment"
+        ]["publish_cloudwatch_metrics"]
         == "Disabled"
     )
     assert (
@@ -2247,7 +2444,8 @@ def test_byoc_monitor_attach_followed_by_baseline_and_update_monitoring_schedule
     byoc_env["publish_cloudwatch_metrics"] = "Disabled"
 
     my_attached_monitor = ModelMonitor.attach(
-        monitor_schedule_name=byoc_monitoring_schedule_name, sagemaker_session=sagemaker_session
+        monitor_schedule_name=byoc_monitoring_schedule_name,
+        sagemaker_session=sagemaker_session,
     )
 
     output_s3_uri = os.path.join(
@@ -2264,7 +2462,9 @@ def test_byoc_monitor_attach_followed_by_baseline_and_update_monitoring_schedule
                 destination="/opt/ml/processing/input/baseline_dataset_input",
             )
         ],
-        output=ProcessingOutput(source="/opt/ml/processing/output", destination=output_s3_uri),
+        output=ProcessingOutput(
+            source="/opt/ml/processing/output", destination=output_s3_uri
+        ),
         wait=True,
         logs=False,
     )
@@ -2272,31 +2472,48 @@ def test_byoc_monitor_attach_followed_by_baseline_and_update_monitoring_schedule
     baselining_job_description = my_attached_monitor.latest_baselining_job.describe()
 
     assert (
-        baselining_job_description["ProcessingResources"]["ClusterConfig"]["InstanceType"]
+        baselining_job_description["ProcessingResources"]["ClusterConfig"][
+            "InstanceType"
+        ]
         == INSTANCE_TYPE
     )
     assert (
-        baselining_job_description["ProcessingResources"]["ClusterConfig"]["InstanceCount"]
+        baselining_job_description["ProcessingResources"]["ClusterConfig"][
+            "InstanceCount"
+        ]
         == INSTANCE_COUNT
     )
     assert (
-        baselining_job_description["ProcessingResources"]["ClusterConfig"]["VolumeSizeInGB"]
+        baselining_job_description["ProcessingResources"]["ClusterConfig"][
+            "VolumeSizeInGB"
+        ]
         == VOLUME_SIZE_IN_GB
     )
     assert (
-        baselining_job_description["ProcessingResources"]["ClusterConfig"]["VolumeKmsKeyId"]
+        baselining_job_description["ProcessingResources"]["ClusterConfig"][
+            "VolumeKmsKeyId"
+        ]
         == volume_kms_key
     )
-    assert DEFAULT_IMAGE_SUFFIX in baselining_job_description["AppSpecification"]["ImageUri"]
+    assert (
+        DEFAULT_IMAGE_SUFFIX
+        in baselining_job_description["AppSpecification"]["ImageUri"]
+    )
     assert ROLE in baselining_job_description["RoleArn"]
     assert baselining_job_description["ProcessingInputs"][0]["InputName"] == "input-1"
     assert (
         baselining_job_description["ProcessingOutputConfig"]["Outputs"][0]["OutputName"]
         == "output-1"
     )
-    assert baselining_job_description["ProcessingOutputConfig"]["KmsKeyId"] == output_kms_key
+    assert (
+        baselining_job_description["ProcessingOutputConfig"]["KmsKeyId"]
+        == output_kms_key
+    )
     assert baselining_job_description["Environment"][ENV_KEY_1] == ENV_VALUE_1
-    assert baselining_job_description["Environment"]["output_path"] == "/opt/ml/processing/output"
+    assert (
+        baselining_job_description["Environment"]["output_path"]
+        == "/opt/ml/processing/output"
+    )
     assert (
         baselining_job_description["Environment"]["dataset_source"]
         == "/opt/ml/processing/input/baseline_dataset_input"
@@ -2314,11 +2531,15 @@ def test_byoc_monitor_attach_followed_by_baseline_and_update_monitoring_schedule
     assert statistics.body_dict["dataset"]["item_count"] == 418
 
     constraints = my_attached_monitor.suggested_constraints()
-    assert constraints.body_dict["monitoring_config"]["evaluate_constraints"] == "Enabled"
+    assert (
+        constraints.body_dict["monitoring_config"]["evaluate_constraints"] == "Enabled"
+    )
 
     constraints.set_monitoring(enable_monitoring=False)
 
-    assert constraints.body_dict["monitoring_config"]["evaluate_constraints"] == "Disabled"
+    assert (
+        constraints.body_dict["monitoring_config"]["evaluate_constraints"] == "Disabled"
+    )
 
     constraints.save()
 
@@ -2326,7 +2547,9 @@ def test_byoc_monitor_attach_followed_by_baseline_and_update_monitoring_schedule
 
     my_attached_monitor.update_monitoring_schedule(
         endpoint_input=predictor.endpoint,
-        output=MonitoringOutput(source="/opt/ml/processing/output", destination=output_s3_uri),
+        output=MonitoringOutput(
+            source="/opt/ml/processing/output", destination=output_s3_uri
+        ),
         statistics=statistics,
         constraints=constraints,
         schedule_cron_expression=CronExpressionGenerator.hourly(),
@@ -2346,7 +2569,9 @@ def test_byoc_monitor_attach_followed_by_baseline_and_update_monitoring_schedule
     schedule_description = my_attached_monitor.describe_schedule()
 
     assert (
-        schedule_description["MonitoringScheduleConfig"]["ScheduleConfig"]["ScheduleExpression"]
+        schedule_description["MonitoringScheduleConfig"]["ScheduleConfig"][
+            "ScheduleExpression"
+        ]
         == CronExpressionGenerator.hourly()
     )
     assert (
@@ -2387,7 +2612,9 @@ def test_byoc_monitor_attach_followed_by_baseline_and_update_monitoring_schedule
     )
     assert (
         UPDATED_ROLE
-        in schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["RoleArn"]
+        in schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+            "RoleArn"
+        ]
     )
     assert (
         len(
@@ -2422,15 +2649,15 @@ def test_byoc_monitor_attach_followed_by_baseline_and_update_monitoring_schedule
         == UPDATED_MAX_RUNTIME_IN_SECONDS
     )
     assert (
-        schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["Environment"][
-            UPDATED_ENV_KEY_1
-        ]
+        schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+            "Environment"
+        ][UPDATED_ENV_KEY_1]
         == UPDATED_ENV_VALUE_1
     )
     assert (
-        schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["Environment"][
-            "publish_cloudwatch_metrics"
-        ]
+        schedule_description["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+            "Environment"
+        ]["publish_cloudwatch_metrics"]
         == "Disabled"
     )
     assert (
@@ -2456,7 +2683,8 @@ def test_byoc_monitor_monitoring_execution_interactions(
     sagemaker_session, byoc_monitoring_schedule_name
 ):
     my_attached_monitor = ModelMonitor.attach(
-        monitor_schedule_name=byoc_monitoring_schedule_name, sagemaker_session=sagemaker_session
+        monitor_schedule_name=byoc_monitoring_schedule_name,
+        sagemaker_session=sagemaker_session,
     )
     description = my_attached_monitor.describe_schedule()
     assert description["MonitoringScheduleName"] == byoc_monitoring_schedule_name
@@ -2477,7 +2705,9 @@ def test_byoc_monitor_monitoring_execution_interactions(
     statistics = my_attached_monitor.latest_monitoring_statistics()
     assert statistics.body_dict["dataset"]["item_count"] == 418
 
-    with open(os.path.join(tests.integ.DATA_DIR, "monitor/constraint_violations.json"), "r") as f:
+    with open(
+        os.path.join(tests.integ.DATA_DIR, "monitor/constraint_violations.json"), "r"
+    ) as f:
         file_body = f.read()
 
     file_name = "constraint_violations.json"
@@ -2487,8 +2717,13 @@ def test_byoc_monitor_monitoring_execution_interactions(
         body=file_body, desired_s3_uri=desired_s3_uri, session=sagemaker_session
     )
 
-    constraint_violations = my_attached_monitor.latest_monitoring_constraint_violations()
-    assert constraint_violations.body_dict["violations"][0]["feature_name"] == "store_and_fwd_flag"
+    constraint_violations = (
+        my_attached_monitor.latest_monitoring_constraint_violations()
+    )
+    assert (
+        constraint_violations.body_dict["violations"][0]["feature_name"]
+        == "store_and_fwd_flag"
+    )
 
 
 def _wait_for_schedule_changes_to_apply(monitor):
@@ -2533,7 +2768,12 @@ def _predict_while_waiting_for_first_monitoring_job_to_complete(predictor, monit
             if schedule_desc["MonitoringScheduleStatus"] not in ["Pending", "Stopped"]:
                 monitor.stop_monitoring_schedule()
         # End this loop once the execution has reached a terminal state.
-        if last_execution_status in ["Completed", "CompletedWithViolations", "Failed", "Stopped"]:
+        if last_execution_status in [
+            "Completed",
+            "CompletedWithViolations",
+            "Failed",
+            "Stopped",
+        ]:
             break
 
 

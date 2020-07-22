@@ -49,12 +49,24 @@ class NTM(AmazonAlgorithmEstimatorBase):
         str,
     )
     tolerance = hp("tolerance", (ge(1e-6), le(0.1)), "A float in [1e-6, 0.1]", float)
-    num_patience_epochs = hp("num_patience_epochs", (ge(1), le(10)), "An integer in [1, 10]", int)
-    batch_norm = hp(name="batch_norm", validation_message="Value must be a boolean", data_type=bool)
-    rescale_gradient = hp("rescale_gradient", (ge(1e-3), le(1.0)), "A float in [1e-3, 1.0]", float)
-    clip_gradient = hp("clip_gradient", ge(1e-3), "A float greater equal to 1e-3", float)
-    weight_decay = hp("weight_decay", (ge(0.0), le(1.0)), "A float in [0.0, 1.0]", float)
-    learning_rate = hp("learning_rate", (ge(1e-6), le(1.0)), "A float in [1e-6, 1.0]", float)
+    num_patience_epochs = hp(
+        "num_patience_epochs", (ge(1), le(10)), "An integer in [1, 10]", int
+    )
+    batch_norm = hp(
+        name="batch_norm", validation_message="Value must be a boolean", data_type=bool
+    )
+    rescale_gradient = hp(
+        "rescale_gradient", (ge(1e-3), le(1.0)), "A float in [1e-3, 1.0]", float
+    )
+    clip_gradient = hp(
+        "clip_gradient", ge(1e-3), "A float greater equal to 1e-3", float
+    )
+    weight_decay = hp(
+        "weight_decay", (ge(0.0), le(1.0)), "A float in [0.0, 1.0]", float
+    )
+    learning_rate = hp(
+        "learning_rate", (ge(1e-6), le(1.0)), "A float in [1e-6, 1.0]", float
+    )
 
     def __init__(
         self,
@@ -147,7 +159,9 @@ class NTM(AmazonAlgorithmEstimatorBase):
             :class:`~sagemaker.estimator.EstimatorBase`.
         """
 
-        super(NTM, self).__init__(role, train_instance_count, train_instance_type, **kwargs)
+        super(NTM, self).__init__(
+            role, train_instance_count, train_instance_type, **kwargs
+        )
         self.num_topics = num_topics
         self.encoder_layers = encoder_layers
         self.epochs = epochs
@@ -189,7 +203,9 @@ class NTM(AmazonAlgorithmEstimatorBase):
             mini_batch_size:
             job_name:
         """
-        if mini_batch_size is not None and (mini_batch_size < 1 or mini_batch_size > 10000):
+        if mini_batch_size is not None and (
+            mini_batch_size < 1 or mini_batch_size > 10000
+        ):
             raise ValueError("mini_batch_size must be in [1, 10000]")
         super(NTM, self)._prepare_for_training(
             records, mini_batch_size=mini_batch_size, job_name=job_name

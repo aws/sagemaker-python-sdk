@@ -166,7 +166,9 @@ class Model(object):
         """
         return self._enable_network_isolation
 
-    def _create_sagemaker_model(self, instance_type=None, accelerator_type=None, tags=None):
+    def _create_sagemaker_model(
+        self, instance_type=None, accelerator_type=None, tags=None
+    ):
         """Create a SageMaker Model Entity
 
         Args:
@@ -183,7 +185,9 @@ class Model(object):
                 https://boto3.amazonaws.com/v1/documentation
                 /api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags
         """
-        container_def = self.prepare_container_def(instance_type, accelerator_type=accelerator_type)
+        container_def = self.prepare_container_def(
+            instance_type, accelerator_type=accelerator_type
+        )
         self.name = self.name or utils.name_from_image(container_def["Image"])
         enable_network_isolation = self.enable_network_isolation()
 
@@ -292,7 +296,9 @@ class Model(object):
             account=self._neo_image_account(region),
         )
 
-    def _inferentia_image(self, region, target_instance_type, framework, framework_version):
+    def _inferentia_image(
+        self, region, target_instance_type, framework, framework_version
+    ):
         """
                 Args:
                     region:
@@ -353,11 +359,15 @@ class Model(object):
         framework = self._framework() or framework
         if framework is None:
             raise ValueError(
-                "You must specify framework, allowed values {}".format(NEO_ALLOWED_FRAMEWORKS)
+                "You must specify framework, allowed values {}".format(
+                    NEO_ALLOWED_FRAMEWORKS
+                )
             )
         if framework not in NEO_ALLOWED_FRAMEWORKS:
             raise ValueError(
-                "You must provide valid framework, allowed values {}".format(NEO_ALLOWED_FRAMEWORKS)
+                "You must provide valid framework, allowed values {}".format(
+                    NEO_ALLOWED_FRAMEWORKS
+                )
             )
         if job_name is None:
             raise ValueError("You must provide a compilation job name")
@@ -480,13 +490,18 @@ class Model(object):
 
         self._create_sagemaker_model(instance_type, accelerator_type, tags)
         production_variant = sagemaker.production_variant(
-            self.name, instance_type, initial_instance_count, accelerator_type=accelerator_type
+            self.name,
+            instance_type,
+            initial_instance_count,
+            accelerator_type=accelerator_type,
         )
         if endpoint_name:
             self.endpoint_name = endpoint_name
         else:
             self.endpoint_name = self.name
-            if self._is_compiled_model and not self.endpoint_name.endswith(compiled_model_suffix):
+            if self._is_compiled_model and not self.endpoint_name.endswith(
+                compiled_model_suffix
+            ):
                 self.endpoint_name += compiled_model_suffix
 
         data_capture_config_dict = None
@@ -831,7 +846,9 @@ class FrameworkModel(Model):
             dict[str, str]: A container definition object usable with the
             CreateModel API.
         """
-        deploy_key_prefix = fw_utils.model_code_key_prefix(self.key_prefix, self.name, self.image)
+        deploy_key_prefix = fw_utils.model_code_key_prefix(
+            self.key_prefix, self.name, self.image
+        )
         self._upload_code(deploy_key_prefix)
         deploy_env = dict(self.env)
         deploy_env.update(self._framework_env_vars())
@@ -843,7 +860,9 @@ class FrameworkModel(Model):
             key_prefix:
             repack:
         """
-        local_code = utils.get_config_value("local.local_code", self.sagemaker_session.config)
+        local_code = utils.get_config_value(
+            "local.local_code", self.sagemaker_session.config
+        )
         if self.sagemaker_session.local_mode and local_code:
             self.uploaded_code = None
         elif not repack:
@@ -859,7 +878,9 @@ class FrameworkModel(Model):
 
         if repack:
             bucket = self.bucket or self.sagemaker_session.default_bucket()
-            repacked_model_data = "s3://" + "/".join([bucket, key_prefix, "model.tar.gz"])
+            repacked_model_data = "s3://" + "/".join(
+                [bucket, key_prefix, "model.tar.gz"]
+            )
 
             utils.repack_model(
                 inference_script=self.entry_point,
@@ -873,7 +894,8 @@ class FrameworkModel(Model):
 
             self.repacked_model_data = repacked_model_data
             self.uploaded_code = UploadedCode(
-                s3_prefix=self.repacked_model_data, script_name=os.path.basename(self.entry_point)
+                s3_prefix=self.repacked_model_data,
+                script_name=os.path.basename(self.entry_point),
             )
 
     def _framework_env_vars(self):
@@ -894,7 +916,9 @@ class FrameworkModel(Model):
         return {
             SCRIPT_PARAM_NAME.upper(): script_name,
             DIR_PARAM_NAME.upper(): dir_name,
-            CLOUDWATCH_METRICS_PARAM_NAME.upper(): str(self.enable_cloudwatch_metrics).lower(),
+            CLOUDWATCH_METRICS_PARAM_NAME.upper(): str(
+                self.enable_cloudwatch_metrics
+            ).lower(),
             CONTAINER_LOG_LEVEL_PARAM_NAME.upper(): str(self.container_log_level),
             SAGEMAKER_REGION_PARAM_NAME.upper(): self.sagemaker_session.boto_region_name,
         }
@@ -903,7 +927,14 @@ class FrameworkModel(Model):
 class ModelPackage(Model):
     """A SageMaker ``Model`` that can be deployed to an ``Endpoint``."""
 
-    def __init__(self, role, model_data=None, algorithm_arn=None, model_package_arn=None, **kwargs):
+    def __init__(
+        self,
+        role,
+        model_data=None,
+        algorithm_arn=None,
+        model_package_arn=None,
+        **kwargs
+    ):
         """Initialize a SageMaker ModelPackage.
 
         Args:
@@ -922,7 +953,9 @@ class ModelPackage(Model):
                 ``model_data`` is not required.
             **kwargs: Additional kwargs passed to the Model constructor.
         """
-        super(ModelPackage, self).__init__(role=role, model_data=model_data, image=None, **kwargs)
+        super(ModelPackage, self).__init__(
+            role=role, model_data=model_data, image=None, **kwargs
+        )
 
         if model_package_arn and algorithm_arn:
             raise ValueError(
@@ -933,7 +966,8 @@ class ModelPackage(Model):
 
         if model_package_arn is None and algorithm_arn is None:
             raise ValueError(
-                "either model_package_arn or algorithm_arn is required." " None was provided."
+                "either model_package_arn or algorithm_arn is required."
+                " None was provided."
             )
 
         self.algorithm_arn = algorithm_arn
@@ -948,7 +982,9 @@ class ModelPackage(Model):
     def _create_sagemaker_model_package(self):
         """Placeholder docstring"""
         if self.algorithm_arn is None:
-            raise ValueError("No algorithm_arn was provided to create a SageMaker Model Pacakge")
+            raise ValueError(
+                "No algorithm_arn was provided to create a SageMaker Model Pacakge"
+            )
 
         name = self.name or utils.name_from_base(self.algorithm_arn.split("/")[-1])
         description = "Model Package created from training with %s" % self.algorithm_arn
@@ -984,7 +1020,9 @@ class ModelPackage(Model):
                 return True
         return False
 
-    def _create_sagemaker_model(self, *args, **kwargs):  # pylint: disable=unused-argument
+    def _create_sagemaker_model(
+        self, *args, **kwargs
+    ):  # pylint: disable=unused-argument
         """Create a SageMaker Model Entity
 
         Args:

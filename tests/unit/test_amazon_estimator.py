@@ -26,9 +26,16 @@ from sagemaker.amazon.amazon_estimator import (
     FileSystemRecordSet,
     _is_latest_xgboost_version,
 )
-from sagemaker.xgboost.defaults import XGBOOST_LATEST_VERSION, XGBOOST_SUPPORTED_VERSIONS
+from sagemaker.xgboost.defaults import (
+    XGBOOST_LATEST_VERSION,
+    XGBOOST_SUPPORTED_VERSIONS,
+)
 
-COMMON_ARGS = {"role": "myrole", "train_instance_count": 1, "train_instance_type": "ml.c4.xlarge"}
+COMMON_ARGS = {
+    "role": "myrole",
+    "train_instance_count": 1,
+    "train_instance_type": "ml.c4.xlarge",
+}
 
 REGION = "us-west-2"
 BUCKET_NAME = "Some-Bucket"
@@ -199,7 +206,8 @@ def test_prepare_for_training_encrypt(sagemaker_session):
     train = [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 8.0], [44.0, 55.0, 66.0]]
     labels = [99, 85, 87, 2]
     with patch(
-        "sagemaker.amazon.amazon_estimator.upload_numpy_to_s3_shards", return_value="manfiest_file"
+        "sagemaker.amazon.amazon_estimator.upload_numpy_to_s3_shards",
+        return_value="manfiest_file",
     ) as mock_upload:
         pca.record_set(np.array(train), np.array(labels))
         pca.record_set(np.array(train), np.array(labels), encrypt=True)
@@ -290,14 +298,18 @@ def test_upload_numpy_to_s3_shards():
     def make_all_put_calls(**kwargs):
         return [call(Body=ANY, **kwargs) for i in range(num_objects)]
 
-    upload_numpy_to_s3_shards(num_shards, mock_s3, BUCKET_NAME, "key-prefix", array, labels)
+    upload_numpy_to_s3_shards(
+        num_shards, mock_s3, BUCKET_NAME, "key-prefix", array, labels
+    )
     mock_s3.Object.assert_has_calls([call(BUCKET_NAME, "key-prefix/matrix_0.pbr")])
     mock_s3.Object.assert_has_calls([call(BUCKET_NAME, "key-prefix/matrix_1.pbr")])
     mock_s3.Object.assert_has_calls([call(BUCKET_NAME, "key-prefix/matrix_2.pbr")])
     mock_put.assert_has_calls(make_all_put_calls())
 
     mock_put.reset()
-    upload_numpy_to_s3_shards(3, mock_s3, BUCKET_NAME, "key-prefix", array, labels, encrypt=True)
+    upload_numpy_to_s3_shards(
+        3, mock_s3, BUCKET_NAME, "key-prefix", array, labels, encrypt=True
+    )
     mock_put.assert_has_calls(make_all_put_calls(ServerSideEncryption="AES256"))
 
 
@@ -451,11 +463,18 @@ def test_file_system_record_set_data_channel():
 
 def test_get_xgboost_image_uri():
     legacy_xgb_image_uri = get_image_uri(REGION, "xgboost")
-    assert legacy_xgb_image_uri == "433757028032.dkr.ecr.us-west-2.amazonaws.com/xgboost:1"
+    assert (
+        legacy_xgb_image_uri == "433757028032.dkr.ecr.us-west-2.amazonaws.com/xgboost:1"
+    )
     legacy_xgb_image_uri = get_image_uri(REGION, "xgboost", 1)
-    assert legacy_xgb_image_uri == "433757028032.dkr.ecr.us-west-2.amazonaws.com/xgboost:1"
+    assert (
+        legacy_xgb_image_uri == "433757028032.dkr.ecr.us-west-2.amazonaws.com/xgboost:1"
+    )
     legacy_xgb_image_uri = get_image_uri(REGION, "xgboost", "latest")
-    assert legacy_xgb_image_uri == "433757028032.dkr.ecr.us-west-2.amazonaws.com/xgboost:latest"
+    assert (
+        legacy_xgb_image_uri
+        == "433757028032.dkr.ecr.us-west-2.amazonaws.com/xgboost:latest"
+    )
 
     updated_xgb_image_uri = get_image_uri(REGION, "xgboost", "0.90-1")
     assert (
@@ -525,7 +544,9 @@ def test_regitry_throws_error_if_mapping_does_not_exist_for_lda():
 def test_regitry_throws_error_if_mapping_does_not_exist_for_default_algorithm():
     with pytest.raises(ValueError) as error:
         registry("broken_region_name")
-    assert "Algorithm (None) is unsupported for region (broken_region_name)." in str(error)
+    assert "Algorithm (None) is unsupported for region (broken_region_name)." in str(
+        error
+    )
 
 
 def test_is_latest_xgboost_version():

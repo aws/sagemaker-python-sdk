@@ -41,7 +41,9 @@ class MLP(chainer.Chain):
         return self.l3(h2)
 
 
-def _preprocess_mnist(raw, withlabel, ndim, scale, image_dtype, label_dtype, rgb_format):
+def _preprocess_mnist(
+    raw, withlabel, ndim, scale, image_dtype, label_dtype, rgb_format
+):
     images = raw["x"][-100:]
     if ndim == 2:
         images = images.reshape(-1, 28, 28)
@@ -110,10 +112,14 @@ if __name__ == "__main__":
 
     # Load the MNIST dataset
     train_iter = chainer.iterators.SerialIterator(train, args.batch_size)
-    test_iter = chainer.iterators.SerialIterator(test, args.batch_size, repeat=False, shuffle=False)
+    test_iter = chainer.iterators.SerialIterator(
+        test, args.batch_size, repeat=False, shuffle=False
+    )
 
     # Set up a trainer
-    device = 0 if chainer.cuda.available else -1  # -1 indicates CPU, 0 indicates first GPU device.
+    device = (
+        0 if chainer.cuda.available else -1
+    )  # -1 indicates CPU, 0 indicates first GPU device.
     if chainer.cuda.available:
 
         def device_name(device_intra_rank):
@@ -157,7 +163,9 @@ if __name__ == "__main__":
         )
         trainer.extend(
             extensions.PlotReport(
-                ["main/accuracy", "validation/main/accuracy"], "epoch", file_name="accuracy.png"
+                ["main/accuracy", "validation/main/accuracy"],
+                "epoch",
+                file_name="accuracy.png",
             )
         )
 

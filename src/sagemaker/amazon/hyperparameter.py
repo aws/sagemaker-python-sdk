@@ -21,7 +21,9 @@ class Hyperparameter(object):
     python descriptor object.
     """
 
-    def __init__(self, name, validate=lambda _: True, validation_message="", data_type=str):
+    def __init__(
+        self, name, validate=lambda _: True, validation_message="", data_type=str
+    ):
         """Args: name (str): The name of this hyperparameter validate
         (callable[object]->[bool]): A validation function or list of validation
         functions.
@@ -52,14 +54,20 @@ class Hyperparameter(object):
         Args:
             value:
         """
-        if value is None:  # We allow assignment from None, but Nones are not sent to training.
+        if (
+            value is None
+        ):  # We allow assignment from None, but Nones are not sent to training.
             return
 
         for valid in self.validation:
             if not valid(value):
-                error_message = "Invalid hyperparameter value {} for {}".format(value, self.name)
+                error_message = "Invalid hyperparameter value {} for {}".format(
+                    value, self.name
+                )
                 if self.validation_message:
-                    error_message = error_message + ". Expecting: " + self.validation_message
+                    error_message = (
+                        error_message + ". Expecting: " + self.validation_message
+                    )
                 raise ValueError(error_message)
 
     def __get__(self, obj, objtype):

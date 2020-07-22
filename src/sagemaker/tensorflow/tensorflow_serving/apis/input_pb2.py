@@ -15,7 +15,9 @@ from google.protobuf import descriptor_pb2
 _sym_db = _symbol_database.Default()
 
 
-from tensorflow.core.example import example_pb2 as tensorflow_dot_core_dot_example_dot_example__pb2
+from tensorflow.core.example import (
+    example_pb2 as tensorflow_dot_core_dot_example_dot_example__pb2,
+)
 
 
 DESCRIPTOR = _descriptor.FileDescriptor(
@@ -147,7 +149,9 @@ _INPUT = _descriptor.Descriptor(
             containing_type=None,
             is_extension=False,
             extension_scope=None,
-            options=_descriptor._ParseOptions(descriptor_pb2.FieldOptions(), _b("(\001")),
+            options=_descriptor._ParseOptions(
+                descriptor_pb2.FieldOptions(), _b("(\001")
+            ),
             file=DESCRIPTOR,
         ),
         _descriptor.FieldDescriptor(
@@ -165,7 +169,9 @@ _INPUT = _descriptor.Descriptor(
             containing_type=None,
             is_extension=False,
             extension_scope=None,
-            options=_descriptor._ParseOptions(descriptor_pb2.FieldOptions(), _b("(\001")),
+            options=_descriptor._ParseOptions(
+                descriptor_pb2.FieldOptions(), _b("(\001")
+            ),
             file=DESCRIPTOR,
         ),
     ],
@@ -199,11 +205,17 @@ _EXAMPLELISTWITHCONTEXT.fields_by_name[
     "context"
 ].message_type = tensorflow_dot_core_dot_example_dot_example__pb2._EXAMPLE
 _INPUT.fields_by_name["example_list"].message_type = _EXAMPLELIST
-_INPUT.fields_by_name["example_list_with_context"].message_type = _EXAMPLELISTWITHCONTEXT
+_INPUT.fields_by_name[
+    "example_list_with_context"
+].message_type = _EXAMPLELISTWITHCONTEXT
 _INPUT.oneofs_by_name["kind"].fields.append(_INPUT.fields_by_name["example_list"])
 _INPUT.fields_by_name["example_list"].containing_oneof = _INPUT.oneofs_by_name["kind"]
-_INPUT.oneofs_by_name["kind"].fields.append(_INPUT.fields_by_name["example_list_with_context"])
-_INPUT.fields_by_name["example_list_with_context"].containing_oneof = _INPUT.oneofs_by_name["kind"]
+_INPUT.oneofs_by_name["kind"].fields.append(
+    _INPUT.fields_by_name["example_list_with_context"]
+)
+_INPUT.fields_by_name[
+    "example_list_with_context"
+].containing_oneof = _INPUT.oneofs_by_name["kind"]
 DESCRIPTOR.message_types_by_name["ExampleList"] = _EXAMPLELIST
 DESCRIPTOR.message_types_by_name["ExampleListWithContext"] = _EXAMPLELISTWITHCONTEXT
 DESCRIPTOR.message_types_by_name["Input"] = _INPUT
@@ -244,7 +256,9 @@ _sym_db.RegisterMessage(Input)
 
 
 DESCRIPTOR.has_options = True
-DESCRIPTOR._options = _descriptor._ParseOptions(descriptor_pb2.FileOptions(), _b("\370\001\001"))
+DESCRIPTOR._options = _descriptor._ParseOptions(
+    descriptor_pb2.FileOptions(), _b("\370\001\001")
+)
 _INPUT.fields_by_name["example_list"].has_options = True
 _INPUT.fields_by_name["example_list"]._options = _descriptor._ParseOptions(
     descriptor_pb2.FieldOptions(), _b("(\001")

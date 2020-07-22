@@ -122,5 +122,7 @@ _sym_db.RegisterMessage(ModelSpec)
 
 
 DESCRIPTOR.has_options = True
-DESCRIPTOR._options = _descriptor._ParseOptions(descriptor_pb2.FileOptions(), _b("\370\001\001"))
+DESCRIPTOR._options = _descriptor._ParseOptions(
+    descriptor_pb2.FileOptions(), _b("\370\001\001")
+)
 # @@protoc_insertion_point(module_scope)

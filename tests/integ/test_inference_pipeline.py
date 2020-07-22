@@ -35,7 +35,9 @@ SPARKML_DATA_PATH = os.path.join(DATA_DIR, "sparkml_model")
 XGBOOST_DATA_PATH = os.path.join(DATA_DIR, "xgboost_model")
 SPARKML_XGBOOST_DATA_DIR = "sparkml_xgboost_pipeline"
 VALID_DATA_PATH = os.path.join(DATA_DIR, SPARKML_XGBOOST_DATA_DIR, "valid_input.csv")
-INVALID_DATA_PATH = os.path.join(DATA_DIR, SPARKML_XGBOOST_DATA_DIR, "invalid_input.csv")
+INVALID_DATA_PATH = os.path.join(
+    DATA_DIR, SPARKML_XGBOOST_DATA_DIR, "invalid_input.csv"
+)
 SCHEMA = json.dumps(
     {
         "input": [
@@ -117,7 +119,9 @@ def test_inference_pipeline_model_deploy(sagemaker_session, cpu_instance_type):
         )
         xgb_image = get_image_uri(sagemaker_session.boto_region_name, "xgboost")
         xgb_model = Model(
-            model_data=xgb_model_data, image=xgb_image, sagemaker_session=sagemaker_session
+            model_data=xgb_model_data,
+            image=xgb_image,
+            sagemaker_session=sagemaker_session,
         )
         model = PipelineModel(
             models=[sparkml_model, xgb_model],
@@ -171,7 +175,9 @@ def test_inference_pipeline_model_deploy_with_update_endpoint(
         )
         xgb_image = get_image_uri(sagemaker_session.boto_region_name, "xgboost")
         xgb_model = Model(
-            model_data=xgb_model_data, image=xgb_image, sagemaker_session=sagemaker_session
+            model_data=xgb_model_data,
+            image=xgb_image,
+            sagemaker_session=sagemaker_session,
         )
         model = PipelineModel(
             models=[sparkml_model, xgb_model],
@@ -184,11 +190,15 @@ def test_inference_pipeline_model_deploy_with_update_endpoint(
         )
         old_config_name = old_endpoint["EndpointConfigName"]
 
-        model.deploy(1, cpu_instance_type, update_endpoint=True, endpoint_name=endpoint_name)
+        model.deploy(
+            1, cpu_instance_type, update_endpoint=True, endpoint_name=endpoint_name
+        )
 
         # Wait for endpoint to finish updating
         # Endpoint update takes ~7min. 40 retries * 30s sleeps = 20min timeout
-        for _ in retries(40, "Waiting for 'InService' endpoint status", seconds_to_sleep=30):
+        for _ in retries(
+            40, "Waiting for 'InService' endpoint status", seconds_to_sleep=30
+        ):
             new_endpoint = sagemaker_session.sagemaker_client.describe_endpoint(
                 EndpointName=endpoint_name
             )

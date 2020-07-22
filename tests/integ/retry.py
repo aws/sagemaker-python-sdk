@@ -17,7 +17,11 @@ import time
 DEFAULT_SLEEP_TIME_SECONDS = 10
 
 
-def retries(max_retry_count, exception_message_prefix, seconds_to_sleep=DEFAULT_SLEEP_TIME_SECONDS):
+def retries(
+    max_retry_count,
+    exception_message_prefix,
+    seconds_to_sleep=DEFAULT_SLEEP_TIME_SECONDS,
+):
     for i in range(max_retry_count):
         yield i
         time.sleep(seconds_to_sleep)

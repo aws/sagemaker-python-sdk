@@ -63,7 +63,9 @@ class SparkMLModel(Model):
     model .
     """
 
-    def __init__(self, model_data, role=None, spark_version=2.2, sagemaker_session=None, **kwargs):
+    def __init__(
+        self, model_data, role=None, spark_version=2.2, sagemaker_session=None, **kwargs
+    ):
         """Initialize a SparkMLModel.
 
         Args:
@@ -94,7 +96,9 @@ class SparkMLModel(Model):
         # For local mode, sagemaker_session should be passed as None but we need a session to get
         # boto_region_name
         region_name = (sagemaker_session or Session()).boto_region_name
-        image = "{}/{}:{}".format(registry(region_name, framework_name), repo_name, spark_version)
+        image = "{}/{}:{}".format(
+            registry(region_name, framework_name), repo_name, spark_version
+        )
         super(SparkMLModel, self).__init__(
             model_data,
             image,

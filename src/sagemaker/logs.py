@@ -42,7 +42,9 @@ class ColorWrap(object):
             force (bool): If True, render colorizes output no matter where the
                 output is (default: False).
         """
-        self.colorize = force or sys.stdout.isatty() or os.environ.get("JPY_PARENT_PID", None)
+        self.colorize = (
+            force or sys.stdout.isatty() or os.environ.get("JPY_PARENT_PID", None)
+        )
 
     def __call__(self, index, s):
         """Print the output, colorized or not, depending on the environment.
@@ -62,7 +64,11 @@ class ColorWrap(object):
             index:
             s:
         """
-        print("\x1b[{}m{}\x1b[0m".format(self._stream_colors[index % len(self._stream_colors)], s))
+        print(
+            "\x1b[{}m{}\x1b[0m".format(
+                self._stream_colors[index % len(self._stream_colors)], s
+            )
+        )
 
 
 def argmin(arr, f):
@@ -113,7 +119,8 @@ def multi_stream_iter(client, log_group, streams, positions=None):
     """
     positions = positions or {s: Position(timestamp=0, skip=0) for s in streams}
     event_iters = [
-        log_stream(client, log_group, s, positions[s].timestamp, positions[s].skip) for s in streams
+        log_stream(client, log_group, s, positions[s].timestamp, positions[s].skip)
+        for s in streams
     ]
     events = []
     for s in event_iters:

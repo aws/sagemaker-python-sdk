@@ -57,7 +57,11 @@ PY37_SUPPORTED_FRAMEWORK_VERSION = [TensorFlow._LATEST_1X_VERSION, LATEST_VERSIO
 
 @pytest.fixture(scope="module")
 def py_version(tf_full_version):
-    return "py37" if tf_full_version in PY37_SUPPORTED_FRAMEWORK_VERSION else PYTHON_VERSION
+    return (
+        "py37"
+        if tf_full_version in PY37_SUPPORTED_FRAMEWORK_VERSION
+        else PYTHON_VERSION
+    )
 
 
 @pytest.fixture(scope="module")
@@ -121,10 +125,18 @@ def _tune_and_deploy(
         job_name=job_name,
         early_stopping_type=early_stopping_type,
     )
-    _deploy(kmeans_train_set, sagemaker_session, tuner, early_stopping_type, cpu_instance_type)
+    _deploy(
+        kmeans_train_set,
+        sagemaker_session,
+        tuner,
+        early_stopping_type,
+        cpu_instance_type,
+    )
 
 
-def _deploy(kmeans_train_set, sagemaker_session, tuner, early_stopping_type, cpu_instance_type):
+def _deploy(
+    kmeans_train_set, sagemaker_session, tuner, early_stopping_type, cpu_instance_type
+):
     best_training_job = tuner.best_training_job()
     assert tuner.early_stopping_type == early_stopping_type
     with timeout_and_delete_endpoint_by_name(best_training_job, sagemaker_session):
@@ -165,10 +177,15 @@ def _tune(
             )
 
         records = kmeans_estimator.record_set(kmeans_train_set[0][:100])
-        test_record_set = kmeans_estimator.record_set(kmeans_train_set[0][:100], channel="test")
+        test_record_set = kmeans_estimator.record_set(
+            kmeans_train_set[0][:100], channel="test"
+        )
 
         tuner.fit([records, test_record_set], job_name=job_name)
-        print("Started hyperparameter tuning job with name:" + tuner.latest_tuning_job.name)
+        print(
+            "Started hyperparameter tuning job with name:"
+            + tuner.latest_tuning_job.name
+        )
 
         if wait_till_terminal:
             tuner.wait()
@@ -178,7 +195,11 @@ def _tune(
 
 @pytest.mark.canary_quick
 def test_tuning_kmeans(
-    sagemaker_session, kmeans_train_set, kmeans_estimator, hyperparameter_ranges, cpu_instance_type
+    sagemaker_session,
+    kmeans_train_set,
+    kmeans_estimator,
+    hyperparameter_ranges,
+    cpu_instance_type,
 ):
     job_name = unique_name_from_base("test-tune-kmeans")
     _tune_and_deploy(
@@ -224,7 +245,10 @@ def test_tuning_kmeans_identical_dataset_algorithm_tuner_raw(
     )
 
     assert child_warm_start_config_response.type == child_tuner.warm_start_config.type
-    assert child_warm_start_config_response.parents == child_tuner.warm_start_config.parents
+    assert (
+        child_warm_start_config_response.parents
+        == child_tuner.warm_start_config.parents
+    )
 
 
 def test_tuning_kmeans_identical_dataset_algorithm_tuner(
@@ -260,7 +284,10 @@ def test_tuning_kmeans_identical_dataset_algorithm_tuner(
     )
 
     assert child_warm_start_config_response.type == child_tuner.warm_start_config.type
-    assert child_warm_start_config_response.parents == child_tuner.warm_start_config.parents
+    assert (
+        child_warm_start_config_response.parents
+        == child_tuner.warm_start_config.parents
+    )
 
 
 def test_create_tuning_kmeans_identical_dataset_algorithm_tuner(
@@ -301,7 +328,10 @@ def test_create_tuning_kmeans_identical_dataset_algorithm_tuner(
     )
 
     assert child_warm_start_config_response.type == child_tuner.warm_start_config.type
-    assert child_warm_start_config_response.parents == child_tuner.warm_start_config.parents
+    assert (
+        child_warm_start_config_response.parents
+        == child_tuner.warm_start_config.parents
+    )
 
 
 def test_transfer_learning_tuner(
@@ -339,7 +369,10 @@ def test_transfer_learning_tuner(
     )
 
     assert child_warm_start_config_response.type == child_tuner.warm_start_config.type
-    assert child_warm_start_config_response.parents == child_tuner.warm_start_config.parents
+    assert (
+        child_warm_start_config_response.parents
+        == child_tuner.warm_start_config.parents
+    )
 
 
 def test_create_transfer_learning_tuner(
@@ -376,7 +409,12 @@ def test_create_transfer_learning_tuner(
         additional_parents={parent_tuner_2.latest_tuning_job.name},
     )
 
-    _tune(kmeans_estimator, kmeans_train_set, job_name=child_tuning_job_name, tuner=child_tuner)
+    _tune(
+        kmeans_estimator,
+        kmeans_train_set,
+        job_name=child_tuning_job_name,
+        tuner=child_tuner,
+    )
 
     child_warm_start_config_response = WarmStartConfig.from_job_desc(
         sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job(
@@ -385,7 +423,10 @@ def test_create_transfer_learning_tuner(
     )
 
     assert child_warm_start_config_response.type == child_tuner.warm_start_config.type
-    assert child_warm_start_config_response.parents == child_tuner.warm_start_config.parents
+    assert (
+        child_warm_start_config_response.parents
+        == child_tuner.warm_start_config.parents
+    )
 
 
 def test_tuning_kmeans_identical_dataset_algorithm_tuner_from_non_terminal_parent(
@@ -441,10 +482,18 @@ def test_tuning_lda(sagemaker_session, cpu_instance_type):
         )
 
         record_set = prepare_record_set_from_local_files(
-            data_path, lda.data_location, len(all_records), feature_num, sagemaker_session
+            data_path,
+            lda.data_location,
+            len(all_records),
+            feature_num,
+            sagemaker_session,
         )
         test_record_set = prepare_record_set_from_local_files(
-            data_path, lda.data_location, len(all_records), feature_num, sagemaker_session
+            data_path,
+            lda.data_location,
+            len(all_records),
+            feature_num,
+            sagemaker_session,
         )
         test_record_set.channel = "test"
 
@@ -466,7 +515,9 @@ def test_tuning_lda(sagemaker_session, cpu_instance_type):
         )
 
         tuning_job_name = unique_name_from_base("test-lda", max_length=32)
-        tuner.fit([record_set, test_record_set], mini_batch_size=1, job_name=tuning_job_name)
+        tuner.fit(
+            [record_set, test_record_set], mini_batch_size=1, job_name=tuning_job_name
+        )
 
         latest_tuning_job_name = tuner.latest_tuning_job.name
 
@@ -576,10 +627,12 @@ def test_tuning_mxnet(sagemaker_session, mxnet_full_version, cpu_instance_type):
         )
 
         train_input = estimator.sagemaker_session.upload_data(
-            path=os.path.join(data_path, "train"), key_prefix="integ-test-data/mxnet_mnist/train"
+            path=os.path.join(data_path, "train"),
+            key_prefix="integ-test-data/mxnet_mnist/train",
         )
         test_input = estimator.sagemaker_session.upload_data(
-            path=os.path.join(data_path, "test"), key_prefix="integ-test-data/mxnet_mnist/test"
+            path=os.path.join(data_path, "test"),
+            key_prefix="integ-test-data/mxnet_mnist/test",
         )
 
         tuning_job_name = unique_name_from_base("tune-mxnet", max_length=32)
@@ -598,7 +651,9 @@ def test_tuning_mxnet(sagemaker_session, mxnet_full_version, cpu_instance_type):
 
 
 @pytest.mark.canary_quick
-def test_tuning_tf_script_mode(sagemaker_session, cpu_instance_type, tf_full_version, py_version):
+def test_tuning_tf_script_mode(
+    sagemaker_session, cpu_instance_type, tf_full_version, py_version
+):
     resource_path = os.path.join(DATA_DIR, "tensorflow_mnist")
     script_path = os.path.join(resource_path, "mnist.py")
 
@@ -615,7 +670,9 @@ def test_tuning_tf_script_mode(sagemaker_session, cpu_instance_type, tf_full_ver
 
     hyperparameter_ranges = {"epochs": IntegerParameter(1, 2)}
     objective_metric_name = "accuracy"
-    metric_definitions = [{"Name": objective_metric_name, "Regex": "accuracy = ([0-9\\.]+)"}]
+    metric_definitions = [
+        {"Name": objective_metric_name, "Regex": "accuracy = ([0-9\\.]+)"}
+    ]
 
     tuner = HyperparameterTuner(
         estimator,
@@ -641,7 +698,9 @@ def test_tuning_tf_script_mode(sagemaker_session, cpu_instance_type, tf_full_ver
 
 
 @pytest.mark.canary_quick
-@pytest.mark.skipif(PYTHON_VERSION != "py2", reason="TensorFlow image supports only python 2.")
+@pytest.mark.skipif(
+    PYTHON_VERSION != "py2", reason="TensorFlow image supports only python 2."
+)
 def test_tuning_tf(sagemaker_session, cpu_instance_type):
     with timeout(minutes=TUNING_DEFAULT_TIMEOUT_MINUTES):
         script_path = os.path.join(DATA_DIR, "iris", "iris-dnn-classifier.py")
@@ -657,7 +716,9 @@ def test_tuning_tf(sagemaker_session, cpu_instance_type):
             sagemaker_session=sagemaker_session,
         )
 
-        inputs = sagemaker_session.upload_data(path=DATA_PATH, key_prefix="integ-test-data/tf_iris")
+        inputs = sagemaker_session.upload_data(
+            path=DATA_PATH, key_prefix="integ-test-data/tf_iris"
+        )
         hyperparameter_ranges = {"learning_rate": ContinuousParameter(0.05, 0.2)}
 
         objective_metric_name = "loss"
@@ -694,7 +755,9 @@ def test_tuning_tf(sagemaker_session, cpu_instance_type):
         assert dict_result == list_result
 
 
-@pytest.mark.skipif(PYTHON_VERSION != "py2", reason="TensorFlow image supports only python 2.")
+@pytest.mark.skipif(
+    PYTHON_VERSION != "py2", reason="TensorFlow image supports only python 2."
+)
 def test_tuning_tf_vpc_multi(sagemaker_session, cpu_instance_type):
     """Test Tensorflow multi-instance using the same VpcConfig for training and inference"""
     instance_type = cpu_instance_type
@@ -703,7 +766,9 @@ def test_tuning_tf_vpc_multi(sagemaker_session, cpu_instance_type):
     script_path = os.path.join(DATA_DIR, "iris", "iris-dnn-classifier.py")
 
     ec2_client = sagemaker_session.boto_session.client("ec2")
-    subnet_ids, security_group_id = vpc_test_utils.get_or_create_vpc_resources(ec2_client)
+    subnet_ids, security_group_id = vpc_test_utils.get_or_create_vpc_resources(
+        ec2_client
+    )
     vpc_test_utils.setup_security_group_for_encryption(ec2_client, security_group_id)
 
     estimator = TensorFlow(
@@ -721,7 +786,9 @@ def test_tuning_tf_vpc_multi(sagemaker_session, cpu_instance_type):
         encrypt_inter_container_traffic=True,
     )
 
-    inputs = sagemaker_session.upload_data(path=DATA_PATH, key_prefix="integ-test-data/tf_iris")
+    inputs = sagemaker_session.upload_data(
+        path=DATA_PATH, key_prefix="integ-test-data/tf_iris"
+    )
     hyperparameter_ranges = {"learning_rate": ContinuousParameter(0.05, 0.2)}
 
     objective_metric_name = "loss"
@@ -764,10 +831,12 @@ def test_tuning_chainer(sagemaker_session, cpu_instance_type):
         )
 
         train_input = estimator.sagemaker_session.upload_data(
-            path=os.path.join(data_path, "train"), key_prefix="integ-test-data/chainer_mnist/train"
+            path=os.path.join(data_path, "train"),
+            key_prefix="integ-test-data/chainer_mnist/train",
         )
         test_input = estimator.sagemaker_session.upload_data(
-            path=os.path.join(data_path, "test"), key_prefix="integ-test-data/chainer_mnist/test"
+            path=os.path.join(data_path, "test"),
+            key_prefix="integ-test-data/chainer_mnist/test",
         )
 
         hyperparameter_ranges = {"alpha": ContinuousParameter(0.001, 0.005)}
@@ -885,7 +954,9 @@ def test_attach_tuning_pytorch(sagemaker_session, cpu_instance_type):
         output = predictor.predict(data)
 
         assert output.shape == (batch_size, 10)
-        _assert_model_name_match(sagemaker_session.sagemaker_client, endpoint_name, model_name)
+        _assert_model_name_match(
+            sagemaker_session.sagemaker_client, endpoint_name, model_name
+        )
 
 
 @pytest.mark.canary_quick
@@ -899,7 +970,9 @@ def test_tuning_byo_estimator(sagemaker_session, cpu_instance_type):
     Later the trained model is deployed and prediction is called against the endpoint.
     Default predictor is updated with json serializer and deserializer.
     """
-    image_name = get_image_uri(sagemaker_session.boto_session.region_name, "factorization-machines")
+    image_name = get_image_uri(
+        sagemaker_session.boto_session.region_name, "factorization-machines"
+    )
     training_data_path = os.path.join(DATA_DIR, "dummy_tensor")
 
     with timeout(minutes=TUNING_DEFAULT_TIMEOUT_MINUTES):
@@ -924,7 +997,10 @@ def test_tuning_byo_estimator(sagemaker_session, cpu_instance_type):
         )
 
         estimator.set_hyperparameters(
-            num_factors=10, feature_dim=784, mini_batch_size=100, predictor_type="binary_classifier"
+            num_factors=10,
+            feature_dim=784,
+            mini_batch_size=100,
+            predictor_type="binary_classifier",
         )
 
         hyperparameter_ranges = {"mini_batch_size": IntegerParameter(100, 200)}
@@ -943,7 +1019,10 @@ def test_tuning_byo_estimator(sagemaker_session, cpu_instance_type):
             job_name=unique_name_from_base("byo", 32),
         )
 
-        print("Started hyperparameter tuning job with name:" + tuner.latest_tuning_job.name)
+        print(
+            "Started hyperparameter tuning job with name:"
+            + tuner.latest_tuning_job.name
+        )
 
         time.sleep(15)
         tuner.wait()
@@ -974,4 +1053,6 @@ def _assert_model_name_match(sagemaker_client, endpoint_config_name, model_name)
     endpoint_config_description = sagemaker_client.describe_endpoint_config(
         EndpointConfigName=endpoint_config_name
     )
-    assert model_name == endpoint_config_description["ProductionVariants"][0]["ModelName"]
+    assert (
+        model_name == endpoint_config_description["ProductionVariants"][0]["ModelName"]
+    )

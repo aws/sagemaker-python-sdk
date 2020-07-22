@@ -44,10 +44,12 @@ def mxnet_training_job(sagemaker_session, cpu_instance_type):
         )
 
         train_input = mx.sagemaker_session.upload_data(
-            path=os.path.join(data_path, "train"), key_prefix="integ-test-data/mxnet_mnist/train"
+            path=os.path.join(data_path, "train"),
+            key_prefix="integ-test-data/mxnet_mnist/train",
         )
         test_input = mx.sagemaker_session.upload_data(
-            path=os.path.join(data_path, "test"), key_prefix="integ-test-data/mxnet_mnist/test"
+            path=os.path.join(data_path, "test"),
+            key_prefix="integ-test-data/mxnet_mnist/test",
         )
 
         mx.fit({"train": train_input, "test": test_input})
@@ -61,7 +63,9 @@ def test_attach_deploy(
     endpoint_name = unique_name_from_base("test-neo-attach-deploy")
 
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
-        estimator = MXNet.attach(mxnet_training_job, sagemaker_session=sagemaker_session)
+        estimator = MXNet.attach(
+            mxnet_training_job, sagemaker_session=sagemaker_session
+        )
 
         estimator.compile_model(
             target_instance_family=cpu_instance_family,

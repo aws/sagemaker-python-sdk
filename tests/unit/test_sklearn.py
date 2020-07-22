@@ -43,7 +43,9 @@ CPU = "ml.c4.xlarge"
 
 ENDPOINT_DESC = {"EndpointConfigName": "test-endpoint"}
 
-ENDPOINT_CONFIG_DESC = {"ProductionVariants": [{"ModelName": "model-1"}, {"ModelName": "model-2"}]}
+ENDPOINT_CONFIG_DESC = {
+    "ProductionVariants": [{"ModelName": "model-1"}, {"ModelName": "model-2"}]
+}
 
 LIST_TAGS_RESULT = {"Tags": [{"Key": "TagtestKey", "Value": "TagtestValue"}]}
 
@@ -70,7 +72,9 @@ def sagemaker_session():
     describe = {"ModelArtifacts": {"S3ModelArtifacts": "s3://m/m.tar.gz"}}
     session.sagemaker_client.describe_training_job = Mock(return_value=describe)
     session.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)
-    session.sagemaker_client.describe_endpoint_config = Mock(return_value=ENDPOINT_CONFIG_DESC)
+    session.sagemaker_client.describe_endpoint_config = Mock(
+        return_value=ENDPOINT_CONFIG_DESC
+    )
     session.sagemaker_client.list_tags = Mock(return_value=LIST_TAGS_RESULT)
     session.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
     session.expand_role = Mock(name="expand_role", return_value=ROLE)
@@ -78,7 +82,9 @@ def sagemaker_session():
 
 
 def _get_full_cpu_image_uri(version):
-    return IMAGE_URI_FORMAT_STRING.format(REGION, IMAGE_NAME, version, "cpu", PYTHON_VERSION)
+    return IMAGE_URI_FORMAT_STRING.format(
+        REGION, IMAGE_NAME, version, "cpu", PYTHON_VERSION
+    )
 
 
 def _sklearn_estimator(
@@ -93,7 +99,9 @@ def _sklearn_estimator(
         framework_version=framework_version,
         role=ROLE,
         sagemaker_session=sagemaker_session,
-        train_instance_type=train_instance_type if train_instance_type else INSTANCE_TYPE,
+        train_instance_type=train_instance_type
+        if train_instance_type
+        else INSTANCE_TYPE,
         base_job_name=base_job_name,
         py_version=PYTHON_VERSION,
         **kwargs
@@ -193,10 +201,15 @@ def test_create_model_with_network_isolation(upload, sagemaker_session):
         entry_point=SCRIPT_PATH,
         enable_network_isolation=True,
     )
-    sklearn_model.uploaded_code = UploadedCode(s3_prefix=repacked_model_data, script_name="script")
+    sklearn_model.uploaded_code = UploadedCode(
+        s3_prefix=repacked_model_data, script_name="script"
+    )
     sklearn_model.repacked_model_data = repacked_model_data
     model_values = sklearn_model.prepare_container_def(CPU)
-    assert model_values["Environment"]["SAGEMAKER_SUBMIT_DIRECTORY"] == "/opt/ml/model/code"
+    assert (
+        model_values["Environment"]["SAGEMAKER_SUBMIT_DIRECTORY"]
+        == "/opt/ml/model/code"
+    )
     assert model_values["ModelDataUrl"] == repacked_model_data
 
 
@@ -321,7 +334,9 @@ def test_sklearn(strftime, sagemaker_session, sklearn_version):
     assert boto_call_names == ["resource"]
 
     expected_train_args = _create_train_job(sklearn_version)
-    expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
+    expected_train_args["input_config"][0]["DataSource"]["S3DataSource"][
+        "S3Uri"
+    ] = inputs
     expected_train_args["experiment_config"] = EXPERIMENT_CONFIG
 
     actual_train_args = sagemaker_session.method_calls[0][2]
@@ -351,7 +366,9 @@ def test_sklearn(strftime, sagemaker_session, sklearn_version):
     assert isinstance(predictor, SKLearnPredictor)
 
 
-def test_transform_multiple_values_for_entry_point_issue(sagemaker_session, sklearn_version):
+def test_transform_multiple_values_for_entry_point_issue(
+    sagemaker_session, sklearn_version
+):
     # https://github.com/aws/sagemaker-python-sdk/issues/974
     sklearn = SKLearn(
         entry_point=SCRIPT_PATH,
@@ -432,7 +449,9 @@ def test_train_image_cpu_instances(sagemaker_session, sklearn_version):
     )
     assert sklearn.train_image() == _get_full_cpu_image_uri(sklearn_version)
 
-    sklearn = _sklearn_estimator(sagemaker_session, sklearn_version, train_instance_type="ml.m16")
+    sklearn = _sklearn_estimator(
+        sagemaker_session, sklearn_version, train_instance_type="ml.m16"
+    )
     assert sklearn.train_image() == _get_full_cpu_image_uri(sklearn_version)
 
 
@@ -441,7 +460,10 @@ def test_attach(sagemaker_session, sklearn_version):
         sklearn_version, PYTHON_VERSION
     )
     returned_job_description = {
-        "AlgorithmSpecification": {"TrainingInputMode": "File", "TrainingImage": training_image},
+        "AlgorithmSpecification": {
+            "TrainingInputMode": "File",
+            "TrainingImage": training_image,
+        },
         "HyperParameters": {
             "sagemaker_submit_directory": '"s3://some/sourcedir.tar.gz"',
             "sagemaker_program": '"iris-dnn-classifier.py"',
@@ -469,7 +491,9 @@ def test_attach(sagemaker_session, sklearn_version):
         name="describe_training_job", return_value=returned_job_description
     )
 
-    estimator = SKLearn.attach(training_job_name="neo", sagemaker_session=sagemaker_session)
+    estimator = SKLearn.attach(
+        training_job_name="neo", sagemaker_session=sagemaker_session
+    )
     assert estimator._current_job_name == "neo"
     assert estimator.latest_training_job.job_name == "neo"
     assert estimator.py_version == PYTHON_VERSION
@@ -526,7 +550,10 @@ def test_attach_wrong_framework(sagemaker_session):
 def test_attach_custom_image(sagemaker_session):
     training_image = "1.dkr.ecr.us-west-2.amazonaws.com/my_custom_sklearn_image:latest"
     returned_job_description = {
-        "AlgorithmSpecification": {"TrainingInputMode": "File", "TrainingImage": training_image},
+        "AlgorithmSpecification": {
+            "TrainingInputMode": "File",
+            "TrainingImage": training_image,
+        },
         "HyperParameters": {
             "sagemaker_submit_directory": '"s3://some/sourcedir.tar.gz"',
             "sagemaker_program": '"iris-dnn-classifier.py"',
@@ -554,7 +581,9 @@ def test_attach_custom_image(sagemaker_session):
         name="describe_training_job", return_value=returned_job_description
     )
 
-    estimator = SKLearn.attach(training_job_name="neo", sagemaker_session=sagemaker_session)
+    estimator = SKLearn.attach(
+        training_job_name="neo", sagemaker_session=sagemaker_session
+    )
     assert estimator.image_name == training_image
     assert estimator.train_image() == training_image
 
@@ -571,7 +600,9 @@ def test_estimator_py2_warning(warning, sagemaker_session):
     )
 
     assert estimator.py_version == "py2"
-    warning.assert_called_with(estimator.__framework_name__, defaults.LATEST_PY2_VERSION)
+    warning.assert_called_with(
+        estimator.__framework_name__, defaults.LATEST_PY2_VERSION
+    )
 
 
 @patch("sagemaker.sklearn.estimator.later_framework_version_warning")
@@ -600,7 +631,9 @@ def test_estimator_throws_error_for_unsupported_version(error, sagemaker_session
             framework_version="foo",
         )
         assert estimator.framework_version not in defaults.SKLEARN_SUPPORTED_VERSIONS
-        error.assert_called_with(defaults.SKLEARN_NAME, "foo", defaults.SKLEARN_SUPPORT_VERSIONS)
+        error.assert_called_with(
+            defaults.SKLEARN_NAME, "foo", defaults.SKLEARN_SUPPORT_VERSIONS
+        )
 
 
 @patch("sagemaker.sklearn.model.python_deprecation_warning")

@@ -50,7 +50,9 @@ class ModelHandler(object):
         self.error = None  # reset earlier errors
 
         try:
-            target_model = context.get_request_header(0, "X-Amzn-SageMaker-Target-Model")
+            target_model = context.get_request_header(
+                0, "X-Amzn-SageMaker-Target-Model"
+            )
             return ["Invoked model: {}".format(target_model)]
         except Exception as e:
             logging.error(e, exc_info=True)

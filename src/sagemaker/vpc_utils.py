@@ -99,7 +99,9 @@ def sanitize(vpc_config):
     if subnets is None:
         raise ValueError("vpc_config is missing key: {}".format(SUBNETS_KEY))
     if not isinstance(subnets, list):
-        raise ValueError("vpc_config value for {} is not a list: {}".format(SUBNETS_KEY, subnets))
+        raise ValueError(
+            "vpc_config value for {} is not a list: {}".format(SUBNETS_KEY, subnets)
+        )
     if not subnets:
         raise ValueError("vpc_config value for {} is empty".format(SUBNETS_KEY))
 
@@ -113,6 +115,8 @@ def sanitize(vpc_config):
             )
         )
     if not security_group_ids:
-        raise ValueError("vpc_config value for {} is empty".format(SECURITY_GROUP_IDS_KEY))
+        raise ValueError(
+            "vpc_config value for {} is empty".format(SECURITY_GROUP_IDS_KEY)
+        )
 
     return to_dict(subnets, security_group_ids)

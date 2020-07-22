@@ -28,7 +28,10 @@ def test_cron_expression_generator_daily_returns_expected_value_when_called_with
 
 
 def test_cron_expression_generator_daily_every_x_hours_returns_expected_value_when_called_without_customizations():
-    assert CronExpressionGenerator.daily_every_x_hours(hour_interval=6) == "cron(0 0/6 ? * * *)"
+    assert (
+        CronExpressionGenerator.daily_every_x_hours(hour_interval=6)
+        == "cron(0 0/6 ? * * *)"
+    )
 
 
 def test_cron_expression_generator_daily_every_x_hours_returns_expected_value_when_called_with_customizations():

@@ -95,13 +95,19 @@ def test_sagemaker_container_hosts_should_have_lowercase_names():
         for host in hosts:
             assert host.lower() == host
 
-    sagemaker_container = _SageMakerContainer("local", 2, "my-image", sagemaker_session=Mock())
+    sagemaker_container = _SageMakerContainer(
+        "local", 2, "my-image", sagemaker_session=Mock()
+    )
     assert_all_lowercase(sagemaker_container.hosts)
 
-    sagemaker_container = _SageMakerContainer("local", 10, "my-image", sagemaker_session=Mock())
+    sagemaker_container = _SageMakerContainer(
+        "local", 10, "my-image", sagemaker_session=Mock()
+    )
     assert_all_lowercase(sagemaker_container.hosts)
 
-    sagemaker_container = _SageMakerContainer("local", 1, "my-image", sagemaker_session=Mock())
+    sagemaker_container = _SageMakerContainer(
+        "local", 1, "my-image", sagemaker_session=Mock()
+    )
     assert_all_lowercase(sagemaker_container.hosts)
 
 
@@ -111,7 +117,9 @@ def test_write_config_file(LocalSession, tmpdir):
     sagemaker_container.container_root = str(tmpdir.mkdir("container-root"))
     host = "algo-1"
 
-    sagemaker.local.image._create_config_file_directories(sagemaker_container.container_root, host)
+    sagemaker.local.image._create_config_file_directories(
+        sagemaker_container.container_root, host
+    )
 
     container_root = sagemaker_container.container_root
     config_file_root = os.path.join(container_root, host, "input", "config")
@@ -151,7 +159,9 @@ def test_write_config_files_input_content_type(LocalSession, tmpdir):
     sagemaker_container.container_root = str(tmpdir.mkdir("container-root"))
     host = "algo-1"
 
-    sagemaker.local.image._create_config_file_directories(sagemaker_container.container_root, host)
+    sagemaker.local.image._create_config_file_directories(
+        sagemaker_container.container_root, host
+    )
 
     container_root = sagemaker_container.container_root
     config_file_root = os.path.join(container_root, host, "input", "config")
@@ -307,7 +317,9 @@ def test_stream_output():
         )
         sagemaker.local.image._stream_output(p)
 
-    p = subprocess.Popen(["echo", "hello"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    p = subprocess.Popen(
+        ["echo", "hello"], stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    )
     exit_code = sagemaker.local.image._stream_output(p)
     assert exit_code == 0
 
@@ -332,7 +344,12 @@ def test_check_output():
 @patch("sagemaker.local.data.get_data_source_instance")
 @patch("subprocess.Popen")
 def test_train(
-    popen, get_data_source_instance, retrieve_artifacts, cleanup, tmpdir, sagemaker_session
+    popen,
+    get_data_source_instance,
+    retrieve_artifacts,
+    cleanup,
+    tmpdir,
+    sagemaker_session,
 ):
     data_source = Mock()
     data_source.get_root_dir.return_value = "foo"
@@ -340,7 +357,8 @@ def test_train(
 
     directories = [str(tmpdir.mkdir("container-root")), str(tmpdir.mkdir("data"))]
     with patch(
-        "sagemaker.local.image._SageMakerContainer._create_tmp_folder", side_effect=directories
+        "sagemaker.local.image._SageMakerContainer._create_tmp_folder",
+        side_effect=directories,
     ):
 
         instance_count = 2
@@ -383,8 +401,12 @@ def test_train(
                 )
 
         # assert that expected by sagemaker container output directories exist
-        assert os.path.exists(os.path.join(sagemaker_container.container_root, "output"))
-        assert os.path.exists(os.path.join(sagemaker_container.container_root, "output/data"))
+        assert os.path.exists(
+            os.path.join(sagemaker_container.container_root, "output")
+        )
+        assert os.path.exists(
+            os.path.join(sagemaker_container.container_root, "output/data")
+        )
 
     retrieve_artifacts.assert_called_once()
     cleanup.assert_called_once()
@@ -403,7 +425,8 @@ def test_train_with_hyperparameters_without_job_name(
 
     directories = [str(tmpdir.mkdir("container-root")), str(tmpdir.mkdir("data"))]
     with patch(
-        "sagemaker.local.image._SageMakerContainer._create_tmp_folder", side_effect=directories
+        "sagemaker.local.image._SageMakerContainer._create_tmp_folder",
+        side_effect=directories,
     ):
         instance_count = 2
         image = "my-image"
@@ -428,13 +451,20 @@ def test_train_with_hyperparameters_without_job_name(
 
 
 @patch("sagemaker.local.local_session.LocalSession", Mock())
-@patch("sagemaker.local.image._stream_output", side_effect=RuntimeError("this is expected"))
+@patch(
+    "sagemaker.local.image._stream_output", side_effect=RuntimeError("this is expected")
+)
 @patch("sagemaker.local.image._SageMakerContainer._cleanup")
 @patch("sagemaker.local.image._SageMakerContainer.retrieve_artifacts")
 @patch("sagemaker.local.data.get_data_source_instance")
 @patch("subprocess.Popen", Mock())
 def test_train_error(
-    get_data_source_instance, retrieve_artifacts, cleanup, _stream_output, tmpdir, sagemaker_session
+    get_data_source_instance,
+    retrieve_artifacts,
+    cleanup,
+    _stream_output,
+    tmpdir,
+    sagemaker_session,
 ):
     data_source = Mock()
     data_source.get_root_dir.return_value = "foo"
@@ -442,7 +472,8 @@ def test_train_error(
 
     directories = [str(tmpdir.mkdir("container-root")), str(tmpdir.mkdir("data"))]
     with patch(
-        "sagemaker.local.image._SageMakerContainer._create_tmp_folder", side_effect=directories
+        "sagemaker.local.image._SageMakerContainer._create_tmp_folder",
+        side_effect=directories,
     ):
         instance_count = 2
         image = "my-image"
@@ -452,7 +483,10 @@ def test_train_error(
 
         with pytest.raises(RuntimeError) as e:
             sagemaker_container.train(
-                INPUT_DATA_CONFIG, OUTPUT_DATA_CONFIG, HYPERPARAMETERS, TRAINING_JOB_NAME
+                INPUT_DATA_CONFIG,
+                OUTPUT_DATA_CONFIG,
+                HYPERPARAMETERS,
+                TRAINING_JOB_NAME,
             )
 
         assert "this is expected" in str(e)
@@ -473,7 +507,8 @@ def test_train_local_code(get_data_source_instance, tmpdir, sagemaker_session):
 
     directories = [str(tmpdir.mkdir("container-root")), str(tmpdir.mkdir("data"))]
     with patch(
-        "sagemaker.local.image._SageMakerContainer._create_tmp_folder", side_effect=directories
+        "sagemaker.local.image._SageMakerContainer._create_tmp_folder",
+        side_effect=directories,
     ):
         instance_count = 2
         image = "my-image"
@@ -482,7 +517,10 @@ def test_train_local_code(get_data_source_instance, tmpdir, sagemaker_session):
         )
 
         sagemaker_container.train(
-            INPUT_DATA_CONFIG, OUTPUT_DATA_CONFIG, LOCAL_CODE_HYPERPARAMETERS, TRAINING_JOB_NAME
+            INPUT_DATA_CONFIG,
+            OUTPUT_DATA_CONFIG,
+            LOCAL_CODE_HYPERPARAMETERS,
+            TRAINING_JOB_NAME,
         )
 
         docker_compose_file = os.path.join(
@@ -504,9 +542,13 @@ def test_train_local_code(get_data_source_instance, tmpdir, sagemaker_session):
             config_file_root = os.path.join(
                 sagemaker_container.container_root, h, "input", "config"
             )
-            hyperparameters_file = os.path.join(config_file_root, "hyperparameters.json")
+            hyperparameters_file = os.path.join(
+                config_file_root, "hyperparameters.json"
+            )
             hyperparameters_data = json.load(open(hyperparameters_file))
-            assert hyperparameters_data["sagemaker_submit_directory"] == json.dumps("/opt/ml/code")
+            assert hyperparameters_data["sagemaker_submit_directory"] == json.dumps(
+                "/opt/ml/code"
+            )
 
 
 @patch("sagemaker.local.local_session.LocalSession", Mock())
@@ -514,14 +556,17 @@ def test_train_local_code(get_data_source_instance, tmpdir, sagemaker_session):
 @patch("sagemaker.local.image._SageMakerContainer._cleanup", Mock())
 @patch("sagemaker.local.data.get_data_source_instance")
 @patch("subprocess.Popen", Mock())
-def test_train_local_intermediate_output(get_data_source_instance, tmpdir, sagemaker_session):
+def test_train_local_intermediate_output(
+    get_data_source_instance, tmpdir, sagemaker_session
+):
     data_source = Mock()
     data_source.get_root_dir.return_value = "foo"
     get_data_source_instance.return_value = data_source
 
     directories = [str(tmpdir.mkdir("container-root")), str(tmpdir.mkdir("data"))]
     with patch(
-        "sagemaker.local.image._SageMakerContainer._create_tmp_folder", side_effect=directories
+        "sagemaker.local.image._SageMakerContainer._create_tmp_folder",
+        side_effect=directories,
     ):
         instance_count = 2
         image = "my-image"
@@ -549,7 +594,10 @@ def test_train_local_intermediate_output(get_data_source_instance, tmpdir, sagem
                 assert config["services"][h]["image"] == image
                 assert config["services"][h]["command"] == "train"
                 volumes = config["services"][h]["volumes"]
-                assert "%s:/opt/ml/output/intermediate" % intermediate_folder_path in volumes
+                assert (
+                    "%s:/opt/ml/output/intermediate" % intermediate_folder_path
+                    in volumes
+                )
 
 
 def test_container_has_gpu_support(tmpdir, sagemaker_session):
@@ -559,7 +607,9 @@ def test_container_has_gpu_support(tmpdir, sagemaker_session):
         "local_gpu", instance_count, image, sagemaker_session=sagemaker_session
     )
 
-    docker_host = sagemaker_container._create_docker_host("host-1", {}, set(), "train", [])
+    docker_host = sagemaker_container._create_docker_host(
+        "host-1", {}, set(), "train", []
+    )
     assert "runtime" in docker_host
     assert docker_host["runtime"] == "nvidia"
 
@@ -571,12 +621,17 @@ def test_container_does_not_enable_nvidia_docker_for_cpu_containers(sagemaker_se
         "local", instance_count, image, sagemaker_session=sagemaker_session
     )
 
-    docker_host = sagemaker_container._create_docker_host("host-1", {}, set(), "train", [])
+    docker_host = sagemaker_container._create_docker_host(
+        "host-1", {}, set(), "train", []
+    )
     assert "runtime" not in docker_host
 
 
 @patch("sagemaker.local.image._HostingContainer.run", Mock())
-@patch("sagemaker.local.image._SageMakerContainer._prepare_serving_volumes", Mock(return_value=[]))
+@patch(
+    "sagemaker.local.image._SageMakerContainer._prepare_serving_volumes",
+    Mock(return_value=[]),
+)
 @patch("shutil.copy", Mock())
 @patch("shutil.copytree", Mock())
 def test_serve(tmpdir, sagemaker_session):
@@ -588,7 +643,11 @@ def test_serve(tmpdir, sagemaker_session):
         sagemaker_container = _SageMakerContainer(
             "local", 1, image, sagemaker_session=sagemaker_session
         )
-        environment = {"env1": 1, "env2": "b", "SAGEMAKER_SUBMIT_DIRECTORY": "s3://some/path"}
+        environment = {
+            "env1": 1,
+            "env2": "b",
+            "SAGEMAKER_SUBMIT_DIRECTORY": "s3://some/path",
+        }
 
         sagemaker_container.serve("/some/model/path", environment)
         docker_compose_file = os.path.join(
@@ -604,7 +663,10 @@ def test_serve(tmpdir, sagemaker_session):
 
 
 @patch("sagemaker.local.image._HostingContainer.run", Mock())
-@patch("sagemaker.local.image._SageMakerContainer._prepare_serving_volumes", Mock(return_value=[]))
+@patch(
+    "sagemaker.local.image._SageMakerContainer._prepare_serving_volumes",
+    Mock(return_value=[]),
+)
 @patch("shutil.copy", Mock())
 @patch("shutil.copytree", Mock())
 def test_serve_local_code(tmpdir, sagemaker_session):
@@ -616,7 +678,11 @@ def test_serve_local_code(tmpdir, sagemaker_session):
         sagemaker_container = _SageMakerContainer(
             "local", 1, image, sagemaker_session=sagemaker_session
         )
-        environment = {"env1": 1, "env2": "b", "SAGEMAKER_SUBMIT_DIRECTORY": "file:///tmp/code"}
+        environment = {
+            "env1": 1,
+            "env2": "b",
+            "SAGEMAKER_SUBMIT_DIRECTORY": "file:///tmp/code",
+        }
 
         sagemaker_container.serve("/some/model/path", environment)
         docker_compose_file = os.path.join(
@@ -639,7 +705,10 @@ def test_serve_local_code(tmpdir, sagemaker_session):
 
 
 @patch("sagemaker.local.image._HostingContainer.run", Mock())
-@patch("sagemaker.local.image._SageMakerContainer._prepare_serving_volumes", Mock(return_value=[]))
+@patch(
+    "sagemaker.local.image._SageMakerContainer._prepare_serving_volumes",
+    Mock(return_value=[]),
+)
 @patch("shutil.copy", Mock())
 @patch("shutil.copytree", Mock())
 def test_serve_local_code_no_env(tmpdir, sagemaker_session):
@@ -682,7 +751,9 @@ def test_prepare_serving_volumes_with_s3_model(
     get_data_source_instance.return_value = s3_data_source
     is_tarfile.return_value = True
 
-    volumes = sagemaker_container._prepare_serving_volumes("s3://bucket/my_model.tar.gz")
+    volumes = sagemaker_container._prepare_serving_volumes(
+        "s3://bucket/my_model.tar.gz"
+    )
     is_tarfile.assert_called_with("/tmp/downloaded/data/my_model.tar.gz")
 
     assert len(volumes) == 1
@@ -693,7 +764,9 @@ def test_prepare_serving_volumes_with_s3_model(
 @patch("sagemaker.local.data.get_data_source_instance")
 @patch("tarfile.is_tarfile", Mock(return_value=False))
 @patch("os.makedirs", Mock())
-def test_prepare_serving_volumes_with_local_model(get_data_source_instance, sagemaker_session):
+def test_prepare_serving_volumes_with_local_model(
+    get_data_source_instance, sagemaker_session
+):
     sagemaker_container = _SageMakerContainer(
         "local", 1, "some-image", sagemaker_session=sagemaker_session
     )
@@ -762,7 +835,8 @@ def test_ecr_login_needed(check_output):
     result = sagemaker.local.image._ecr_login_if_needed(session_mock, image)
 
     expected_command = (
-        "docker login -u AWS -p %s https://520713654638.dkr.ecr.us-east-1.amazonaws.com" % token
+        "docker login -u AWS -p %s https://520713654638.dkr.ecr.us-east-1.amazonaws.com"
+        % token
     )
 
     check_output.assert_called_with(expected_command, shell=True)
@@ -785,7 +859,9 @@ def test_pull_image(check_output):
 
 
 def test__aws_credentials_with_long_lived_credentials():
-    credentials = Credentials(access_key=_random_string(), secret_key=_random_string(), token=None)
+    credentials = Credentials(
+        access_key=_random_string(), secret_key=_random_string(), token=None
+    )
     session = Mock()
     session.get_credentials.return_value = credentials
 

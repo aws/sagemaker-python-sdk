@@ -52,7 +52,9 @@ def get_data_source_instance(data_source, sagemaker_session):
     if parsed_uri.scheme == "s3":
         return S3DataSource(parsed_uri.netloc, parsed_uri.path, sagemaker_session)
     raise ValueError(
-        "data_source must be either file or s3. parsed_uri.scheme: {}".format(parsed_uri.scheme)
+        "data_source must be either file or s3. parsed_uri.scheme: {}".format(
+            parsed_uri.scheme
+        )
     )
 
 
@@ -90,7 +92,9 @@ def get_batch_strategy_instance(strategy, splitter):
         return SingleRecordStrategy(splitter)
     if strategy == "MultiRecord":
         return MultiRecordStrategy(splitter)
-    raise ValueError('Invalid Batch Strategy: %s - Valid Strategies: "SingleRecord", "MultiRecord"')
+    raise ValueError(
+        'Invalid Batch Strategy: %s - Valid Strategies: "SingleRecord", "MultiRecord"'
+    )
 
 
 class DataSource(with_metaclass(ABCMeta, object)):
@@ -126,7 +130,9 @@ class LocalFileDataSource(DataSource):
 
         self.root_path = os.path.abspath(root_path)
         if not os.path.exists(self.root_path):
-            raise RuntimeError("Invalid data source: %s does not exist." % self.root_path)
+            raise RuntimeError(
+                "Invalid data source: %s does not exist." % self.root_path
+            )
 
     def get_file_list(self):
         """Retrieve the list of absolute paths to all the files in this data
@@ -414,4 +420,6 @@ def _validate_payload_size(payload, size):
 
     if _payload_size_within_limit(payload, size):
         return True
-    raise RuntimeError("Record is larger than %sMB. Please increase your max_payload" % size)
+    raise RuntimeError(
+        "Record is larger than %sMB. Please increase your max_payload" % size
+    )

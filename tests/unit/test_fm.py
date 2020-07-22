@@ -39,11 +39,15 @@ ALL_REQ_ARGS = dict(
 REGION = "us-west-2"
 BUCKET_NAME = "Some-Bucket"
 
-DESCRIBE_TRAINING_JOB_RESULT = {"ModelArtifacts": {"S3ModelArtifacts": "s3://bucket/model.tar.gz"}}
+DESCRIBE_TRAINING_JOB_RESULT = {
+    "ModelArtifacts": {"S3ModelArtifacts": "s3://bucket/model.tar.gz"}
+}
 
 ENDPOINT_DESC = {"EndpointConfigName": "test-endpoint"}
 
-ENDPOINT_CONFIG_DESC = {"ProductionVariants": [{"ModelName": "model-1"}, {"ModelName": "model-2"}]}
+ENDPOINT_CONFIG_DESC = {
+    "ProductionVariants": [{"ModelName": "model-1"}, {"ModelName": "model-2"}]
+}
 
 
 @pytest.fixture()
@@ -64,7 +68,9 @@ def sagemaker_session():
         name="describe_training_job", return_value=DESCRIBE_TRAINING_JOB_RESULT
     )
     sms.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)
-    sms.sagemaker_client.describe_endpoint_config = Mock(return_value=ENDPOINT_CONFIG_DESC)
+    sms.sagemaker_client.describe_endpoint_config = Mock(
+        return_value=ENDPOINT_CONFIG_DESC
+    )
     return sms
 
 
@@ -150,9 +156,12 @@ def test_image(sagemaker_session):
 
 
 @pytest.mark.parametrize(
-    "required_hyper_parameters, value", [("num_factors", "string"), ("predictor_type", 0)]
+    "required_hyper_parameters, value",
+    [("num_factors", "string"), ("predictor_type", 0)],
 )
-def test_required_hyper_parameters_type(sagemaker_session, required_hyper_parameters, value):
+def test_required_hyper_parameters_type(
+    sagemaker_session, required_hyper_parameters, value
+):
     with pytest.raises(ValueError):
         test_params = ALL_REQ_ARGS.copy()
         test_params[required_hyper_parameters] = value
@@ -160,9 +169,12 @@ def test_required_hyper_parameters_type(sagemaker_session, required_hyper_parame
 
 
 @pytest.mark.parametrize(
-    "required_hyper_parameters, value", [("num_factors", 0), ("predictor_type", "string")]
+    "required_hyper_parameters, value",
+    [("num_factors", 0), ("predictor_type", "string")],
 )
-def test_required_hyper_parameters_value(sagemaker_session, required_hyper_parameters, value):
+def test_required_hyper_parameters_value(
+    sagemaker_session, required_hyper_parameters, value
+):
     with pytest.raises(ValueError):
         test_params = ALL_REQ_ARGS.copy()
         test_params[required_hyper_parameters] = value
@@ -196,7 +208,9 @@ def test_required_hyper_parameters_value(sagemaker_session, required_hyper_param
         ("factors_init_value", "string"),
     ],
 )
-def test_optional_hyper_parameters_type(sagemaker_session, optional_hyper_parameters, value):
+def test_optional_hyper_parameters_type(
+    sagemaker_session, optional_hyper_parameters, value
+):
     with pytest.raises(ValueError):
         test_params = ALL_REQ_ARGS.copy()
         test_params.update({optional_hyper_parameters: value})
@@ -224,7 +238,9 @@ def test_optional_hyper_parameters_type(sagemaker_session, optional_hyper_parame
         ("factors_init_sigma", -1),
     ],
 )
-def test_optional_hyper_parameters_value(sagemaker_session, optional_hyper_parameters, value):
+def test_optional_hyper_parameters_value(
+    sagemaker_session, optional_hyper_parameters, value
+):
     with pytest.raises(ValueError):
         test_params = ALL_REQ_ARGS.copy()
         test_params.update({optional_hyper_parameters: value})
@@ -313,7 +329,10 @@ def test_model_image(sagemaker_session):
     fm.fit(data, MINI_BATCH_SIZE)
 
     model = fm.create_model()
-    assert model.image == registry(REGION, "factorization-machines") + "/factorization-machines:1"
+    assert (
+        model.image
+        == registry(REGION, "factorization-machines") + "/factorization-machines:1"
+    )
 
 
 def test_predictor_type(sagemaker_session):

@@ -26,7 +26,9 @@ from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 @pytest.fixture(scope="module")
 def chainer_local_training_job(sagemaker_local_session, chainer_full_version):
-    return _run_mnist_training_job(sagemaker_local_session, "local", 1, chainer_full_version)
+    return _run_mnist_training_job(
+        sagemaker_local_session, "local", 1, chainer_full_version
+    )
 
 
 @pytest.mark.local_mode
@@ -35,7 +37,9 @@ def test_distributed_cpu_training(sagemaker_local_session, chainer_full_version)
 
 
 @pytest.mark.local_mode
-def test_training_with_additional_hyperparameters(sagemaker_local_session, chainer_full_version):
+def test_training_with_additional_hyperparameters(
+    sagemaker_local_session, chainer_full_version
+):
     script_path = os.path.join(DATA_DIR, "chainer_mnist", "mnist.py")
     data_path = os.path.join(DATA_DIR, "chainer_mnist")
 
@@ -78,15 +82,19 @@ def test_attach_deploy(sagemaker_session, chainer_full_version, cpu_instance_typ
         )
 
         train_input = sagemaker_session.upload_data(
-            path=os.path.join(data_path, "train"), key_prefix="integ-test-data/chainer_mnist/train"
+            path=os.path.join(data_path, "train"),
+            key_prefix="integ-test-data/chainer_mnist/train",
         )
 
         test_input = sagemaker_session.upload_data(
-            path=os.path.join(data_path, "test"), key_prefix="integ-test-data/chainer_mnist/test"
+            path=os.path.join(data_path, "test"),
+            key_prefix="integ-test-data/chainer_mnist/test",
         )
 
         job_name = unique_name_from_base("test-chainer-training")
-        chainer.fit({"train": train_input, "test": test_input}, wait=False, job_name=job_name)
+        chainer.fit(
+            {"train": train_input, "test": test_input}, wait=False, job_name=job_name
+        )
 
     endpoint_name = unique_name_from_base("test-chainer-attach-deploy")
 
@@ -144,7 +152,9 @@ def _run_mnist_training_job(
     test_input = "file://" + os.path.join(data_path, "test")
 
     job_name = unique_name_from_base("test-chainer-training")
-    chainer.fit({"train": train_input, "test": test_input}, wait=wait, job_name=job_name)
+    chainer.fit(
+        {"train": train_input, "test": test_input}, wait=wait, job_name=job_name
+    )
     return chainer
 
 

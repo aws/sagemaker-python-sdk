@@ -43,23 +43,34 @@ def parse_arguments(args):
         "--role-name", help="SageMaker execution role name", type=str, required=True
     )
     common_parser.add_argument(
-        "--data", help="path to training data or model files", type=str, default="./data"
+        "--data",
+        help="path to training data or model files",
+        type=str,
+        default="./data",
     )
-    common_parser.add_argument("--script", help="path to script", type=str, default="./script.py")
-    common_parser.add_argument("--job-name", help="job or endpoint name", type=str, default=None)
+    common_parser.add_argument(
+        "--script", help="path to script", type=str, default="./script.py"
+    )
+    common_parser.add_argument(
+        "--job-name", help="job or endpoint name", type=str, default=None
+    )
     common_parser.add_argument(
         "--bucket-name",
         help="S3 bucket for training/model data and script files",
         type=str,
         default=None,
     )
-    common_parser.add_argument("--python", help="python version", type=str, default="py2")
+    common_parser.add_argument(
+        "--python", help="python version", type=str, default="py2"
+    )
 
     instance_group = common_parser.add_argument_group("instance settings")
     instance_group.add_argument(
         "--instance-type", type=str, help="instance type", default="ml.m4.xlarge"
     )
-    instance_group.add_argument("--instance-count", type=int, help="instance count", default=1)
+    instance_group.add_argument(
+        "--instance-count", type=int, help="instance count", default=1
+    )
 
     # common training args
     common_train_parser = argparse.ArgumentParser(add_help=False)
@@ -82,19 +93,27 @@ def parse_arguments(args):
     mxnet_parser = subparsers.add_parser("mxnet", help="use MXNet", parents=[])
     mxnet_subparsers = mxnet_parser.add_subparsers()
     mxnet_train_parser = mxnet_subparsers.add_parser(
-        "train", help="start a training job", parents=[common_parser, common_train_parser]
+        "train",
+        help="start a training job",
+        parents=[common_parser, common_train_parser],
     )
     mxnet_train_parser.set_defaults(func=sagemaker.cli.mxnet.train)
 
     mxnet_host_parser = mxnet_subparsers.add_parser(
-        "host", help="start a hosting endpoint", parents=[common_parser, common_host_parser]
+        "host",
+        help="start a hosting endpoint",
+        parents=[common_parser, common_host_parser],
     )
     mxnet_host_parser.set_defaults(func=sagemaker.cli.mxnet.host)
 
-    tensorflow_parser = subparsers.add_parser("tensorflow", help="use TensorFlow", parents=[])
+    tensorflow_parser = subparsers.add_parser(
+        "tensorflow", help="use TensorFlow", parents=[]
+    )
     tensorflow_subparsers = tensorflow_parser.add_subparsers()
     tensorflow_train_parser = tensorflow_subparsers.add_parser(
-        "train", help="start a training job", parents=[common_parser, common_train_parser]
+        "train",
+        help="start a training job",
+        parents=[common_parser, common_train_parser],
     )
     tensorflow_train_parser.add_argument(
         "--training-steps",
@@ -111,13 +130,18 @@ def parse_arguments(args):
     tensorflow_train_parser.set_defaults(func=sagemaker.cli.tensorflow.train)
 
     tensorflow_host_parser = tensorflow_subparsers.add_parser(
-        "host", help="start a hosting endpoint", parents=[common_parser, common_host_parser]
+        "host",
+        help="start a hosting endpoint",
+        parents=[common_parser, common_host_parser],
     )
     tensorflow_host_parser.set_defaults(func=sagemaker.cli.tensorflow.host)
 
     log_group = parser.add_argument_group("optional log settings")
     log_group.add_argument(
-        "--log-level", help="log level for this command", type=str, default=DEFAULT_LOG_LEVEL
+        "--log-level",
+        help="log level for this command",
+        type=str,
+        default=DEFAULT_LOG_LEVEL,
     )
     log_group.add_argument(
         "--botocore-log-level",

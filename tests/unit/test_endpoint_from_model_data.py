@@ -25,7 +25,11 @@ INSTANCE_TYPE = "ml.c4.xlarge"
 ACCELERATOR_TYPE = "ml.eia.medium"
 S3_MODEL_ARTIFACTS = "s3://mybucket/mymodel"
 DEPLOY_IMAGE = "mydeployimage"
-CONTAINER_DEF = {"Environment": {}, "Image": DEPLOY_IMAGE, "ModelDataUrl": S3_MODEL_ARTIFACTS}
+CONTAINER_DEF = {
+    "Environment": {},
+    "Image": DEPLOY_IMAGE,
+    "ModelDataUrl": S3_MODEL_ARTIFACTS,
+}
 VPC_CONFIG = {"Subnets": ["foo"], "SecurityGroupIds": ["bar"]}
 DEPLOY_ROLE = "mydeployrole"
 ENV_VARS = {"PYTHONUNBUFFERED": "TRUE", "some": "nonsense"}
@@ -36,7 +40,9 @@ REGION = "us-west-2"
 @pytest.fixture()
 def sagemaker_session():
     boto_mock = Mock(name="boto_session", region_name=REGION)
-    ims = sagemaker.Session(sagemaker_client=Mock(name="sagemaker_client"), boto_session=boto_mock)
+    ims = sagemaker.Session(
+        sagemaker_client=Mock(name="sagemaker_client"), boto_session=boto_mock
+    )
     ims.sagemaker_client.describe_model = Mock(
         name="describe_model", side_effect=_raise_does_not_exist_client_error
     )
@@ -73,7 +79,10 @@ def test_all_defaults_no_existing_entities(name_from_image_mock, sagemaker_sessi
         EndpointConfigName=NAME_FROM_IMAGE
     )
     sagemaker_session.create_model.assert_called_once_with(
-        name=NAME_FROM_IMAGE, role=DEPLOY_ROLE, container_defs=CONTAINER_DEF, vpc_config=None
+        name=NAME_FROM_IMAGE,
+        role=DEPLOY_ROLE,
+        container_defs=CONTAINER_DEF,
+        vpc_config=None,
     )
     sagemaker_session.create_endpoint_config.assert_called_once_with(
         name=NAME_FROM_IMAGE,
@@ -163,13 +172,18 @@ def test_entity_exists():
 
 
 def test_entity_doesnt_exist():
-    assert not sagemaker.session._deployment_entity_exists(_raise_does_not_exist_client_error)
+    assert not sagemaker.session._deployment_entity_exists(
+        _raise_does_not_exist_client_error
+    )
 
 
 def test_describe_failure():
     def _raise_unexpected_client_error():
         response = {
-            "Error": {"Code": "ValidationException", "Message": "Name does not satisfy expression."}
+            "Error": {
+                "Code": "ValidationException",
+                "Message": "Name does not satisfy expression.",
+            }
         }
         raise ClientError(error_response=response, operation_name="foo")
 
@@ -178,5 +192,7 @@ def test_describe_failure():
 
 
 def _raise_does_not_exist_client_error(**kwargs):
-    response = {"Error": {"Code": "ValidationException", "Message": "Could not find entity."}}
+    response = {
+        "Error": {"Code": "ValidationException", "Message": "Could not find entity."}
+    }
     raise ClientError(error_response=response, operation_name="foo")

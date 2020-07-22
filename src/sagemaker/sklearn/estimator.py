@@ -122,7 +122,9 @@ class SKLearn(Framework):
 
         if py_version == "py2":
             logger.warning(
-                python_deprecation_warning(self.__framework_name__, defaults.LATEST_PY2_VERSION)
+                python_deprecation_warning(
+                    self.__framework_name__, defaults.LATEST_PY2_VERSION
+                )
             )
 
         self.py_version = py_version
@@ -132,17 +134,23 @@ class SKLearn(Framework):
         else:
             raise ValueError(
                 get_unsupported_framework_version_error(
-                    self.__framework_name__, framework_version, defaults.SKLEARN_SUPPORTED_VERSIONS
+                    self.__framework_name__,
+                    framework_version,
+                    defaults.SKLEARN_SUPPORTED_VERSIONS,
                 )
             )
 
         if framework_version != defaults.SKLEARN_LATEST_VERSION:
-            logger.warning(later_framework_version_warning(defaults.SKLEARN_LATEST_VERSION))
+            logger.warning(
+                later_framework_version_warning(defaults.SKLEARN_LATEST_VERSION)
+            )
 
         if image_name is None:
             image_tag = "{}-{}-{}".format(framework_version, "cpu", py_version)
             self.image_name = default_framework_uri(
-                SKLearn.__framework_name__, self.sagemaker_session.boto_region_name, image_tag
+                SKLearn.__framework_name__,
+                self.sagemaker_session.boto_region_name,
+                image_tag,
             )
 
     def create_model(
@@ -216,7 +224,9 @@ class SKLearn(Framework):
         )
 
     @classmethod
-    def _prepare_init_params_from_job_description(cls, job_details, model_channel_name=None):
+    def _prepare_init_params_from_job_description(
+        cls, job_details, model_channel_name=None
+    ):
         """Convert the job description to init params that can be handled by the
         class constructor
 
@@ -228,7 +238,9 @@ class SKLearn(Framework):
         Returns:
             dictionary: The transformed init_params
         """
-        init_params = super(SKLearn, cls)._prepare_init_params_from_job_description(job_details)
+        init_params = super(SKLearn, cls)._prepare_init_params_from_job_description(
+            job_details
+        )
 
         image_name = init_params.pop("image")
         framework, py_version, _, _ = framework_name_from_image(image_name)

@@ -16,12 +16,22 @@ from __future__ import absolute_import
 
 import pytest
 
-from sagemaker.vpc_utils import SUBNETS_KEY, SECURITY_GROUP_IDS_KEY, to_dict, from_dict, sanitize
+from sagemaker.vpc_utils import (
+    SUBNETS_KEY,
+    SECURITY_GROUP_IDS_KEY,
+    to_dict,
+    from_dict,
+    sanitize,
+)
 
 subnets = ["subnet"]
 security_groups = ["sg"]
 good_vpc_config = {SUBNETS_KEY: subnets, SECURITY_GROUP_IDS_KEY: security_groups}
-foo_vpc_config = {SUBNETS_KEY: subnets, SECURITY_GROUP_IDS_KEY: security_groups, "foo": 1}
+foo_vpc_config = {
+    SUBNETS_KEY: subnets,
+    SECURITY_GROUP_IDS_KEY: security_groups,
+    "foo": 1,
+}
 
 
 def test_to_dict():

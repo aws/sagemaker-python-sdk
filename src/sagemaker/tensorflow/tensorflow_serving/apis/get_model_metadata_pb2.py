@@ -19,7 +19,9 @@ from google.protobuf import any_pb2 as google_dot_protobuf_dot_any__pb2
 from tensorflow.core.protobuf import (
     meta_graph_pb2 as tensorflow_dot_core_dot_protobuf_dot_meta__graph__pb2,
 )
-from tensorflow_serving.apis import model_pb2 as tensorflow__serving_dot_apis_dot_model__pb2
+from tensorflow_serving.apis import (
+    model_pb2 as tensorflow__serving_dot_apis_dot_model__pb2,
+)
 
 
 DESCRIPTOR = _descriptor.FileDescriptor(
@@ -305,7 +307,9 @@ _SIGNATUREDEFMAP_SIGNATUREDEFENTRY.fields_by_name[
     "value"
 ].message_type = tensorflow_dot_core_dot_protobuf_dot_meta__graph__pb2._SIGNATUREDEF
 _SIGNATUREDEFMAP_SIGNATUREDEFENTRY.containing_type = _SIGNATUREDEFMAP
-_SIGNATUREDEFMAP.fields_by_name["signature_def"].message_type = _SIGNATUREDEFMAP_SIGNATUREDEFENTRY
+_SIGNATUREDEFMAP.fields_by_name[
+    "signature_def"
+].message_type = _SIGNATUREDEFMAP_SIGNATUREDEFENTRY
 _GETMODELMETADATAREQUEST.fields_by_name[
     "model_spec"
 ].message_type = tensorflow__serving_dot_apis_dot_model__pb2._MODELSPEC
@@ -379,7 +383,9 @@ _sym_db.RegisterMessage(GetModelMetadataResponse.MetadataEntry)
 
 
 DESCRIPTOR.has_options = True
-DESCRIPTOR._options = _descriptor._ParseOptions(descriptor_pb2.FileOptions(), _b("\370\001\001"))
+DESCRIPTOR._options = _descriptor._ParseOptions(
+    descriptor_pb2.FileOptions(), _b("\370\001\001")
+)
 _SIGNATUREDEFMAP_SIGNATUREDEFENTRY.has_options = True
 _SIGNATUREDEFMAP_SIGNATUREDEFENTRY._options = _descriptor._ParseOptions(
     descriptor_pb2.MessageOptions(), _b("8\001")

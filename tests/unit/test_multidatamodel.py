@@ -35,7 +35,9 @@ REGION = "us-west-2"
 ROLE = "DummyRole"
 MODEL_NAME = "dummy-model"
 VALID_MULTI_MODEL_DATA_PREFIX = "s3://mybucket/path/"
-INVALID_S3_URL = "https://my-training-bucket.s3.myregion.amazonaws.com/output/model.tar.gz"
+INVALID_S3_URL = (
+    "https://my-training-bucket.s3.myregion.amazonaws.com/output/model.tar.gz"
+)
 VALID_S3_URL = "s3://my-training-bucket/output/model.tar.gz"
 S3_URL_SOURCE_BUCKET = "my-training-bucket"
 S3_URL_SOURCE_PREFIX = "output/model.tar.gz"
@@ -68,7 +70,9 @@ def sagemaker_session():
         s3_client=None,
     )
     session.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)
-    session.sagemaker_client.describe_endpoint_config = Mock(return_value=ENDPOINT_CONFIG_DESC)
+    session.sagemaker_client.describe_endpoint_config = Mock(
+        return_value=ENDPOINT_CONFIG_DESC
+    )
     session.list_s3_files(
         bucket=S3_URL_SOURCE_BUCKET, key_prefix=S3_URL_SOURCE_PREFIX
     ).return_value = Mock()
@@ -79,7 +83,9 @@ def sagemaker_session():
 
     s3_mock = Mock()
     boto_mock.client("s3").return_value = s3_mock
-    boto_mock.client("s3").get_paginator("list_objects_v2").paginate.return_value = Mock()
+    boto_mock.client("s3").get_paginator(
+        "list_objects_v2"
+    ).paginate.return_value = Mock()
     s3_mock.reset_mock()
 
     return session
@@ -112,7 +118,10 @@ def test_multi_data_model_create_with_invalid_model_data_prefix():
     invalid_model_data_prefix = "https://mybucket/path/"
     with pytest.raises(ValueError) as ex:
         MultiDataModel(
-            name=MODEL_NAME, model_data_prefix=invalid_model_data_prefix, image=IMAGE, role=ROLE
+            name=MODEL_NAME,
+            model_data_prefix=invalid_model_data_prefix,
+            image=IMAGE,
+            role=ROLE,
         )
     err_msg = 'ValueError: Expecting S3 model prefix beginning with "s3://". Received: "{}"'.format(
         invalid_model_data_prefix
@@ -156,7 +165,9 @@ def test_multi_data_model_create(sagemaker_session):
 @patch("sagemaker.multidatamodel.Session", MagicMock())
 def test_multi_data_model_create_with_model_arg_only(mxnet_model):
     model = MultiDataModel(
-        name=MODEL_NAME, model_data_prefix=VALID_MULTI_MODEL_DATA_PREFIX, model=mxnet_model
+        name=MODEL_NAME,
+        model_data_prefix=VALID_MULTI_MODEL_DATA_PREFIX,
+        model=mxnet_model,
     )
 
     assert model.model_data_prefix == VALID_MULTI_MODEL_DATA_PREFIX
@@ -304,16 +315,22 @@ def test_deploy_model_update(sagemaker_session):
 
 
 def test_add_model_local_file_path(multi_data_model):
-    valid_local_model_artifact_path = os.path.join(DATA_DIR, "sparkml_model", "mleap_model.tar.gz")
+    valid_local_model_artifact_path = os.path.join(
+        DATA_DIR, "sparkml_model", "mleap_model.tar.gz"
+    )
     uploaded_s3_path = multi_data_model.add_model(valid_local_model_artifact_path)
 
-    assert uploaded_s3_path == os.path.join(VALID_MULTI_MODEL_DATA_PREFIX, "mleap_model.tar.gz")
+    assert uploaded_s3_path == os.path.join(
+        VALID_MULTI_MODEL_DATA_PREFIX, "mleap_model.tar.gz"
+    )
 
 
 def test_add_model_s3_path(multi_data_model):
     uploaded_s3_path = multi_data_model.add_model(VALID_S3_URL)
 
-    assert uploaded_s3_path == os.path.join(VALID_MULTI_MODEL_DATA_PREFIX, "output/model.tar.gz")
+    assert uploaded_s3_path == os.path.join(
+        VALID_MULTI_MODEL_DATA_PREFIX, "output/model.tar.gz"
+    )
     multi_data_model.s3_client.copy.assert_called()
     calls = [
         call(
@@ -326,7 +343,9 @@ def test_add_model_s3_path(multi_data_model):
 
 
 def test_add_model_with_dst_path(multi_data_model):
-    uploaded_s3_path = multi_data_model.add_model(VALID_S3_URL, "customer-a/model.tar.gz")
+    uploaded_s3_path = multi_data_model.add_model(
+        VALID_S3_URL, "customer-a/model.tar.gz"
+    )
 
     assert uploaded_s3_path == os.path.join(
         VALID_MULTI_MODEL_DATA_PREFIX, "customer-a/model.tar.gz"

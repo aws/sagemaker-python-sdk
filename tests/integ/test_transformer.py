@@ -59,10 +59,12 @@ def mxnet_estimator(sagemaker_session, mxnet_full_version, cpu_instance_type):
     )
 
     train_input = mx.sagemaker_session.upload_data(
-        path=os.path.join(MXNET_MNIST_PATH, "train"), key_prefix="integ-test-data/mxnet_mnist/train"
+        path=os.path.join(MXNET_MNIST_PATH, "train"),
+        key_prefix="integ-test-data/mxnet_mnist/train",
     )
     test_input = mx.sagemaker_session.upload_data(
-        path=os.path.join(MXNET_MNIST_PATH, "test"), key_prefix="integ-test-data/mxnet_mnist/test"
+        path=os.path.join(MXNET_MNIST_PATH, "test"),
+        key_prefix="integ-test-data/mxnet_mnist/test",
     )
 
     job_name = unique_name_from_base("test-mxnet-transform")
@@ -152,7 +154,9 @@ def test_attach_transform_kmeans(sagemaker_session, cpu_instance_type):
         path=transform_input_path, key_prefix=transform_input_key_prefix
     )
 
-    transformer = _create_transformer_and_transform_job(kmeans, transform_input, cpu_instance_type)
+    transformer = _create_transformer_and_transform_job(
+        kmeans, transform_input, cpu_instance_type
+    )
 
     attached_transformer = Transformer.attach(
         transformer.latest_transform_job.name, sagemaker_session=sagemaker_session
@@ -210,7 +214,9 @@ def test_transform_pytorch_vpc_custom_model_bucket(
         assert set(subnet_ids) == set(model_desc["VpcConfig"]["Subnets"])
         assert [security_group_id] == model_desc["VpcConfig"]["SecurityGroupIds"]
 
-        model_bucket, _ = s3.parse_s3_url(model_desc["PrimaryContainer"]["ModelDataUrl"])
+        model_bucket, _ = s3.parse_s3_url(
+            model_desc["PrimaryContainer"]["ModelDataUrl"]
+        )
         assert custom_bucket_name == model_bucket
 
 
@@ -238,10 +244,15 @@ def test_transform_mxnet_tags(
 def test_transform_model_client_config(
     mxnet_estimator, mxnet_transform_input, sagemaker_session, cpu_instance_type
 ):
-    model_client_config = {"InvocationsTimeoutInSeconds": 60, "InvocationsMaxRetries": 2}
+    model_client_config = {
+        "InvocationsTimeoutInSeconds": 60,
+        "InvocationsMaxRetries": 2,
+    }
     transformer = mxnet_estimator.transformer(1, cpu_instance_type)
     transformer.transform(
-        mxnet_transform_input, content_type="text/csv", model_client_config=model_client_config
+        mxnet_transform_input,
+        content_type="text/csv",
+        model_client_config=model_client_config,
     )
 
     with timeout_and_delete_model_with_transformer(
@@ -290,7 +301,9 @@ def test_transform_byo_estimator(sagemaker_session, cpu_instance_type):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         kmeans.fit(records, job_name=job_name)
 
-    estimator = Estimator.attach(training_job_name=job_name, sagemaker_session=sagemaker_session)
+    estimator = Estimator.attach(
+        training_job_name=job_name, sagemaker_session=sagemaker_session
+    )
     estimator._enable_network_isolation = True
 
     transform_input_path = os.path.join(data_path, "transform_input.csv")
@@ -323,7 +336,9 @@ def test_single_transformer_multiple_jobs(
     transformer = mxnet_estimator.transformer(1, cpu_instance_type)
 
     job_name = unique_name_from_base("test-mxnet-transform")
-    transformer.transform(mxnet_transform_input, content_type="text/csv", job_name=job_name)
+    transformer.transform(
+        mxnet_transform_input, content_type="text/csv", job_name=job_name
+    )
     with timeout_and_delete_model_with_transformer(
         transformer, sagemaker_session, minutes=TRANSFORM_DEFAULT_TIMEOUT_MINUTES
     ):
@@ -331,7 +346,9 @@ def test_single_transformer_multiple_jobs(
             sagemaker_session.default_bucket(), job_name
         )
         job_name = unique_name_from_base("test-mxnet-transform")
-        transformer.transform(mxnet_transform_input, content_type="text/csv", job_name=job_name)
+        transformer.transform(
+            mxnet_transform_input, content_type="text/csv", job_name=job_name
+        )
         assert transformer.output_path == "s3://{}/{}".format(
             sagemaker_session.default_bucket(), job_name
         )
@@ -360,7 +377,11 @@ def test_transform_mxnet_logs(
 ):
     with timeout(minutes=45):
         transformer = _create_transformer_and_transform_job(
-            mxnet_estimator, mxnet_transform_input, cpu_instance_type, wait=True, logs=True
+            mxnet_estimator,
+            mxnet_transform_input,
+            cpu_instance_type,
+            wait=True,
+            logs=True,
         )
 
     with timeout_and_delete_model_with_transformer(
@@ -394,10 +415,14 @@ def test_transform_tf_kms_network_isolation(
     tf.fit(inputs=training_input, job_name=job_name)
 
     transform_input = sagemaker_session.upload_data(
-        path=os.path.join(data_path, "transform"), key_prefix="{}/transform".format(s3_prefix)
+        path=os.path.join(data_path, "transform"),
+        key_prefix="{}/transform".format(s3_prefix),
     )
 
-    with bucket_with_encryption(sagemaker_session, "SageMakerRole") as (bucket_with_kms, kms_key):
+    with bucket_with_encryption(sagemaker_session, "SageMakerRole") as (
+        bucket_with_kms,
+        kms_key,
+    ):
         output_path = "{}/{}/output".format(bucket_with_kms, job_name)
 
         transformer = tf.transformer(

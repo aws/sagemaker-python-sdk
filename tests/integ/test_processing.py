@@ -106,7 +106,11 @@ def test_sklearn(sagemaker_session, sklearn_full_version, cpu_instance_type):
 
     sklearn_processor.run(
         code=script_path,
-        inputs=[ProcessingInput(source=input_file_path, destination="/opt/ml/processing/inputs/")],
+        inputs=[
+            ProcessingInput(
+                source=input_file_path, destination="/opt/ml/processing/inputs/"
+            )
+        ],
         wait=False,
         logs=False,
     )
@@ -116,9 +120,12 @@ def test_sklearn(sagemaker_session, sklearn_full_version, cpu_instance_type):
     assert len(job_description["ProcessingInputs"]) == 2
     assert job_description["ProcessingResources"]["ClusterConfig"]["InstanceCount"] == 1
     assert (
-        job_description["ProcessingResources"]["ClusterConfig"]["InstanceType"] == cpu_instance_type
+        job_description["ProcessingResources"]["ClusterConfig"]["InstanceType"]
+        == cpu_instance_type
     )
-    assert job_description["ProcessingResources"]["ClusterConfig"]["VolumeSizeInGB"] == 30
+    assert (
+        job_description["ProcessingResources"]["ClusterConfig"]["VolumeSizeInGB"] == 30
+    )
     assert job_description["StoppingCondition"] == {"MaxRuntimeInSeconds": 86400}
     assert job_description["AppSpecification"]["ContainerEntrypoint"] == [
         "python3",
@@ -129,7 +136,11 @@ def test_sklearn(sagemaker_session, sklearn_full_version, cpu_instance_type):
 
 @pytest.mark.canary_quick
 def test_sklearn_with_customizations(
-    sagemaker_session, image_uri, sklearn_full_version, cpu_instance_type, output_kms_key
+    sagemaker_session,
+    image_uri,
+    sklearn_full_version,
+    cpu_instance_type,
+    output_kms_key,
 ):
     input_file_path = os.path.join(DATA_DIR, "dummy_input.txt")
 
@@ -180,18 +191,26 @@ def test_sklearn_with_customizations(
 
     assert job_description["ProcessingInputs"][1]["InputName"] == "code"
 
-    assert job_description["ProcessingJobName"].startswith("test-sklearn-with-customizations")
+    assert job_description["ProcessingJobName"].startswith(
+        "test-sklearn-with-customizations"
+    )
 
     assert job_description["ProcessingJobStatus"] == "Completed"
 
     assert job_description["ProcessingOutputConfig"]["KmsKeyId"] == output_kms_key
-    assert job_description["ProcessingOutputConfig"]["Outputs"][0]["OutputName"] == "dummy_output"
+    assert (
+        job_description["ProcessingOutputConfig"]["Outputs"][0]["OutputName"]
+        == "dummy_output"
+    )
 
     assert job_description["ProcessingResources"]["ClusterConfig"]["InstanceCount"] == 1
     assert (
-        job_description["ProcessingResources"]["ClusterConfig"]["InstanceType"] == cpu_instance_type
+        job_description["ProcessingResources"]["ClusterConfig"]["InstanceType"]
+        == cpu_instance_type
     )
-    assert job_description["ProcessingResources"]["ClusterConfig"]["VolumeSizeInGB"] == 100
+    assert (
+        job_description["ProcessingResources"]["ClusterConfig"]["VolumeSizeInGB"] == 100
+    )
 
     assert job_description["AppSpecification"]["ContainerArguments"] == ["-v"]
     assert job_description["AppSpecification"]["ContainerEntrypoint"] == [
@@ -200,7 +219,9 @@ def test_sklearn_with_customizations(
     ]
     assert job_description["AppSpecification"]["ImageUri"] == image_uri
 
-    assert job_description["Environment"] == {"DUMMY_ENVIRONMENT_VARIABLE": "dummy-value"}
+    assert job_description["Environment"] == {
+        "DUMMY_ENVIRONMENT_VARIABLE": "dummy-value"
+    }
 
     assert ROLE in job_description["RoleArn"]
 
@@ -261,23 +282,35 @@ def test_sklearn_with_custom_default_bucket(
     job_description = sklearn_processor.latest_job.describe()
 
     assert job_description["ProcessingInputs"][0]["InputName"] == "dummy_input"
-    assert custom_bucket_name in job_description["ProcessingInputs"][0]["S3Input"]["S3Uri"]
+    assert (
+        custom_bucket_name in job_description["ProcessingInputs"][0]["S3Input"]["S3Uri"]
+    )
 
     assert job_description["ProcessingInputs"][1]["InputName"] == "code"
-    assert custom_bucket_name in job_description["ProcessingInputs"][1]["S3Input"]["S3Uri"]
+    assert (
+        custom_bucket_name in job_description["ProcessingInputs"][1]["S3Input"]["S3Uri"]
+    )
 
-    assert job_description["ProcessingJobName"].startswith("test-sklearn-with-customizations")
+    assert job_description["ProcessingJobName"].startswith(
+        "test-sklearn-with-customizations"
+    )
 
     assert job_description["ProcessingJobStatus"] == "Completed"
 
     assert job_description["ProcessingOutputConfig"]["KmsKeyId"] == output_kms_key
-    assert job_description["ProcessingOutputConfig"]["Outputs"][0]["OutputName"] == "dummy_output"
+    assert (
+        job_description["ProcessingOutputConfig"]["Outputs"][0]["OutputName"]
+        == "dummy_output"
+    )
 
     assert job_description["ProcessingResources"]["ClusterConfig"]["InstanceCount"] == 1
     assert (
-        job_description["ProcessingResources"]["ClusterConfig"]["InstanceType"] == cpu_instance_type
+        job_description["ProcessingResources"]["ClusterConfig"]["InstanceType"]
+        == cpu_instance_type
     )
-    assert job_description["ProcessingResources"]["ClusterConfig"]["VolumeSizeInGB"] == 100
+    assert (
+        job_description["ProcessingResources"]["ClusterConfig"]["VolumeSizeInGB"] == 100
+    )
 
     assert job_description["AppSpecification"]["ContainerArguments"] == ["-v"]
     assert job_description["AppSpecification"]["ContainerEntrypoint"] == [
@@ -286,7 +319,9 @@ def test_sklearn_with_custom_default_bucket(
     ]
     assert job_description["AppSpecification"]["ImageUri"] == image_uri
 
-    assert job_description["Environment"] == {"DUMMY_ENVIRONMENT_VARIABLE": "dummy-value"}
+    assert job_description["Environment"] == {
+        "DUMMY_ENVIRONMENT_VARIABLE": "dummy-value"
+    }
 
     assert ROLE in job_description["RoleArn"]
 
@@ -312,22 +347,30 @@ def test_sklearn_with_no_inputs_or_outputs(
     )
 
     sklearn_processor.run(
-        code=os.path.join(DATA_DIR, "dummy_script.py"), arguments=["-v"], wait=True, logs=True
+        code=os.path.join(DATA_DIR, "dummy_script.py"),
+        arguments=["-v"],
+        wait=True,
+        logs=True,
     )
 
     job_description = sklearn_processor.latest_job.describe()
 
     assert job_description["ProcessingInputs"][0]["InputName"] == "code"
 
-    assert job_description["ProcessingJobName"].startswith("test-sklearn-with-no-inputs")
+    assert job_description["ProcessingJobName"].startswith(
+        "test-sklearn-with-no-inputs"
+    )
 
     assert job_description["ProcessingJobStatus"] == "Completed"
 
     assert job_description["ProcessingResources"]["ClusterConfig"]["InstanceCount"] == 1
     assert (
-        job_description["ProcessingResources"]["ClusterConfig"]["InstanceType"] == cpu_instance_type
+        job_description["ProcessingResources"]["ClusterConfig"]["InstanceType"]
+        == cpu_instance_type
     )
-    assert job_description["ProcessingResources"]["ClusterConfig"]["VolumeSizeInGB"] == 100
+    assert (
+        job_description["ProcessingResources"]["ClusterConfig"]["VolumeSizeInGB"] == 100
+    )
 
     assert job_description["AppSpecification"]["ContainerArguments"] == ["-v"]
     assert job_description["AppSpecification"]["ContainerEntrypoint"] == [
@@ -336,7 +379,9 @@ def test_sklearn_with_no_inputs_or_outputs(
     ]
     assert job_description["AppSpecification"]["ImageUri"] == image_uri
 
-    assert job_description["Environment"] == {"DUMMY_ENVIRONMENT_VARIABLE": "dummy-value"}
+    assert job_description["Environment"] == {
+        "DUMMY_ENVIRONMENT_VARIABLE": "dummy-value"
+    }
 
     assert ROLE in job_description["RoleArn"]
 
@@ -344,7 +389,9 @@ def test_sklearn_with_no_inputs_or_outputs(
 
 
 @pytest.mark.canary_quick
-def test_script_processor(sagemaker_session, image_uri, cpu_instance_type, output_kms_key):
+def test_script_processor(
+    sagemaker_session, image_uri, cpu_instance_type, output_kms_key
+):
     input_file_path = os.path.join(DATA_DIR, "dummy_input.txt")
 
     script_processor = ScriptProcessor(
@@ -399,13 +446,19 @@ def test_script_processor(sagemaker_session, image_uri, cpu_instance_type, outpu
     assert job_description["ProcessingJobStatus"] == "Completed"
 
     assert job_description["ProcessingOutputConfig"]["KmsKeyId"] == output_kms_key
-    assert job_description["ProcessingOutputConfig"]["Outputs"][0]["OutputName"] == "dummy_output"
+    assert (
+        job_description["ProcessingOutputConfig"]["Outputs"][0]["OutputName"]
+        == "dummy_output"
+    )
 
     assert job_description["ProcessingResources"]["ClusterConfig"]["InstanceCount"] == 1
     assert (
-        job_description["ProcessingResources"]["ClusterConfig"]["InstanceType"] == cpu_instance_type
+        job_description["ProcessingResources"]["ClusterConfig"]["InstanceType"]
+        == cpu_instance_type
     )
-    assert job_description["ProcessingResources"]["ClusterConfig"]["VolumeSizeInGB"] == 100
+    assert (
+        job_description["ProcessingResources"]["ClusterConfig"]["VolumeSizeInGB"] == 100
+    )
 
     assert job_description["AppSpecification"]["ContainerArguments"] == ["-v"]
     assert job_description["AppSpecification"]["ContainerEntrypoint"] == [
@@ -414,7 +467,9 @@ def test_script_processor(sagemaker_session, image_uri, cpu_instance_type, outpu
     ]
     assert job_description["AppSpecification"]["ImageUri"] == image_uri
 
-    assert job_description["Environment"] == {"DUMMY_ENVIRONMENT_VARIABLE": "dummy-value"}
+    assert job_description["Environment"] == {
+        "DUMMY_ENVIRONMENT_VARIABLE": "dummy-value"
+    }
 
     assert ROLE in job_description["RoleArn"]
 
@@ -440,22 +495,30 @@ def test_script_processor_with_no_inputs_or_outputs(
     )
 
     script_processor.run(
-        code=os.path.join(DATA_DIR, "dummy_script.py"), arguments=["-v"], wait=True, logs=True
+        code=os.path.join(DATA_DIR, "dummy_script.py"),
+        arguments=["-v"],
+        wait=True,
+        logs=True,
     )
 
     job_description = script_processor.latest_job.describe()
 
     assert job_description["ProcessingInputs"][0]["InputName"] == "code"
 
-    assert job_description["ProcessingJobName"].startswith("test-script-processor-with-no-inputs")
+    assert job_description["ProcessingJobName"].startswith(
+        "test-script-processor-with-no-inputs"
+    )
 
     assert job_description["ProcessingJobStatus"] == "Completed"
 
     assert job_description["ProcessingResources"]["ClusterConfig"]["InstanceCount"] == 1
     assert (
-        job_description["ProcessingResources"]["ClusterConfig"]["InstanceType"] == cpu_instance_type
+        job_description["ProcessingResources"]["ClusterConfig"]["InstanceType"]
+        == cpu_instance_type
     )
-    assert job_description["ProcessingResources"]["ClusterConfig"]["VolumeSizeInGB"] == 100
+    assert (
+        job_description["ProcessingResources"]["ClusterConfig"]["VolumeSizeInGB"] == 100
+    )
 
     assert job_description["AppSpecification"]["ContainerArguments"] == ["-v"]
     assert job_description["AppSpecification"]["ContainerEntrypoint"] == [
@@ -464,7 +527,9 @@ def test_script_processor_with_no_inputs_or_outputs(
     ]
     assert job_description["AppSpecification"]["ImageUri"] == image_uri
 
-    assert job_description["Environment"] == {"DUMMY_ENVIRONMENT_VARIABLE": "dummy-value"}
+    assert job_description["Environment"] == {
+        "DUMMY_ENVIRONMENT_VARIABLE": "dummy-value"
+    }
 
     assert ROLE in job_description["RoleArn"]
 
@@ -478,15 +543,20 @@ def test_script_processor_with_no_inputs_or_outputs(
 
     assert job_description["ProcessingInputs"][0]["InputName"] == "code"
 
-    assert job_description["ProcessingJobName"].startswith("test-script-processor-with-no-inputs")
+    assert job_description["ProcessingJobName"].startswith(
+        "test-script-processor-with-no-inputs"
+    )
 
     assert job_description["ProcessingJobStatus"] == "Completed"
 
     assert job_description["ProcessingResources"]["ClusterConfig"]["InstanceCount"] == 1
     assert (
-        job_description["ProcessingResources"]["ClusterConfig"]["InstanceType"] == cpu_instance_type
+        job_description["ProcessingResources"]["ClusterConfig"]["InstanceType"]
+        == cpu_instance_type
     )
-    assert job_description["ProcessingResources"]["ClusterConfig"]["VolumeSizeInGB"] == 100
+    assert (
+        job_description["ProcessingResources"]["ClusterConfig"]["VolumeSizeInGB"] == 100
+    )
 
     assert job_description["AppSpecification"]["ContainerArguments"] == ["-v"]
     assert job_description["AppSpecification"]["ContainerEntrypoint"] == [
@@ -495,7 +565,9 @@ def test_script_processor_with_no_inputs_or_outputs(
     ]
     assert job_description["AppSpecification"]["ImageUri"] == image_uri
 
-    assert job_description["Environment"] == {"DUMMY_ENVIRONMENT_VARIABLE": "dummy-value"}
+    assert job_description["Environment"] == {
+        "DUMMY_ENVIRONMENT_VARIABLE": "dummy-value"
+    }
 
     assert ROLE in job_description["RoleArn"]
 
@@ -525,7 +597,9 @@ def test_processor(sagemaker_session, image_uri, cpu_instance_type, output_kms_k
     processor.run(
         inputs=[
             ProcessingInput(
-                source=script_path, destination="/opt/ml/processing/input/code/", input_name="code"
+                source=script_path,
+                destination="/opt/ml/processing/input/code/",
+                input_name="code",
             )
         ],
         outputs=[
@@ -549,13 +623,19 @@ def test_processor(sagemaker_session, image_uri, cpu_instance_type, output_kms_k
     assert job_description["ProcessingJobStatus"] == "Completed"
 
     assert job_description["ProcessingOutputConfig"]["KmsKeyId"] == output_kms_key
-    assert job_description["ProcessingOutputConfig"]["Outputs"][0]["OutputName"] == "dummy_output"
+    assert (
+        job_description["ProcessingOutputConfig"]["Outputs"][0]["OutputName"]
+        == "dummy_output"
+    )
 
     assert job_description["ProcessingResources"]["ClusterConfig"]["InstanceCount"] == 1
     assert (
-        job_description["ProcessingResources"]["ClusterConfig"]["InstanceType"] == cpu_instance_type
+        job_description["ProcessingResources"]["ClusterConfig"]["InstanceType"]
+        == cpu_instance_type
     )
-    assert job_description["ProcessingResources"]["ClusterConfig"]["VolumeSizeInGB"] == 100
+    assert (
+        job_description["ProcessingResources"]["ClusterConfig"]["VolumeSizeInGB"] == 100
+    )
 
     assert job_description["AppSpecification"]["ContainerArguments"] == ["-v"]
     assert job_description["AppSpecification"]["ContainerEntrypoint"] == [
@@ -564,7 +644,9 @@ def test_processor(sagemaker_session, image_uri, cpu_instance_type, output_kms_k
     ]
     assert job_description["AppSpecification"]["ImageUri"] == image_uri
 
-    assert job_description["Environment"] == {"DUMMY_ENVIRONMENT_VARIABLE": "dummy-value"}
+    assert job_description["Environment"] == {
+        "DUMMY_ENVIRONMENT_VARIABLE": "dummy-value"
+    }
 
     assert ROLE in job_description["RoleArn"]
 
@@ -599,7 +681,9 @@ def test_processor_with_custom_bucket(
     processor.run(
         inputs=[
             ProcessingInput(
-                source=script_path, destination="/opt/ml/processing/input/code/", input_name="code"
+                source=script_path,
+                destination="/opt/ml/processing/input/code/",
+                input_name="code",
             )
         ],
         outputs=[
@@ -617,20 +701,28 @@ def test_processor_with_custom_bucket(
     job_description = processor.latest_job.describe()
 
     assert job_description["ProcessingInputs"][0]["InputName"] == "code"
-    assert custom_bucket_name in job_description["ProcessingInputs"][0]["S3Input"]["S3Uri"]
+    assert (
+        custom_bucket_name in job_description["ProcessingInputs"][0]["S3Input"]["S3Uri"]
+    )
 
     assert job_description["ProcessingJobName"].startswith("test-processor")
 
     assert job_description["ProcessingJobStatus"] == "Completed"
 
     assert job_description["ProcessingOutputConfig"]["KmsKeyId"] == output_kms_key
-    assert job_description["ProcessingOutputConfig"]["Outputs"][0]["OutputName"] == "dummy_output"
+    assert (
+        job_description["ProcessingOutputConfig"]["Outputs"][0]["OutputName"]
+        == "dummy_output"
+    )
 
     assert job_description["ProcessingResources"]["ClusterConfig"]["InstanceCount"] == 1
     assert (
-        job_description["ProcessingResources"]["ClusterConfig"]["InstanceType"] == cpu_instance_type
+        job_description["ProcessingResources"]["ClusterConfig"]["InstanceType"]
+        == cpu_instance_type
     )
-    assert job_description["ProcessingResources"]["ClusterConfig"]["VolumeSizeInGB"] == 100
+    assert (
+        job_description["ProcessingResources"]["ClusterConfig"]["VolumeSizeInGB"] == 100
+    )
 
     assert job_description["AppSpecification"]["ContainerArguments"] == ["-v"]
     assert job_description["AppSpecification"]["ContainerEntrypoint"] == [
@@ -639,14 +731,18 @@ def test_processor_with_custom_bucket(
     ]
     assert job_description["AppSpecification"]["ImageUri"] == image_uri
 
-    assert job_description["Environment"] == {"DUMMY_ENVIRONMENT_VARIABLE": "dummy-value"}
+    assert job_description["Environment"] == {
+        "DUMMY_ENVIRONMENT_VARIABLE": "dummy-value"
+    }
 
     assert ROLE in job_description["RoleArn"]
 
     assert job_description["StoppingCondition"] == {"MaxRuntimeInSeconds": 3600}
 
 
-def test_sklearn_with_network_config(sagemaker_session, sklearn_full_version, cpu_instance_type):
+def test_sklearn_with_network_config(
+    sagemaker_session, sklearn_full_version, cpu_instance_type
+):
     script_path = os.path.join(DATA_DIR, "dummy_script.py")
     input_file_path = os.path.join(DATA_DIR, "dummy_input.txt")
 
@@ -665,7 +761,11 @@ def test_sklearn_with_network_config(sagemaker_session, sklearn_full_version, cp
 
     sklearn_processor.run(
         code=script_path,
-        inputs=[ProcessingInput(source=input_file_path, destination="/opt/ml/processing/inputs/")],
+        inputs=[
+            ProcessingInput(
+                source=input_file_path, destination="/opt/ml/processing/inputs/"
+            )
+        ],
         wait=False,
         logs=False,
     )

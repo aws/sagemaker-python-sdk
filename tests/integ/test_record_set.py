@@ -42,5 +42,7 @@ def test_record_set(sagemaker_session, cpu_instance_type):
     record_set = kmeans.record_set(train_set[0][:100], encrypt=True)
     parsed_url = urlparse(record_set.s3_data)
     s3_client = sagemaker_session.boto_session.client("s3")
-    head = s3_client.head_object(Bucket=parsed_url.netloc, Key=parsed_url.path.lstrip("/"))
+    head = s3_client.head_object(
+        Bucket=parsed_url.netloc, Key=parsed_url.path.lstrip("/")
+    )
     assert head["ServerSideEncryption"] == "AES256"

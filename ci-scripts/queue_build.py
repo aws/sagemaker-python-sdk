@@ -24,9 +24,9 @@ bucket_name = "sagemaker-us-west-2-%s" % account
 
 def queue_build():
     build_id = os.environ.get("CODEBUILD_BUILD_ID", "CODEBUILD-BUILD-ID")
-    source_version = os.environ.get("CODEBUILD_SOURCE_VERSION", "CODEBUILD-SOURCE-VERSION").replace(
-        "/", "-"
-    )
+    source_version = os.environ.get(
+        "CODEBUILD_SOURCE_VERSION", "CODEBUILD-SOURCE-VERSION"
+    ).replace("/", "-")
     ticket_number = int(1000 * time.time())
     filename = "%s_%s_%s" % (ticket_number, build_id, source_version)
 
@@ -54,7 +54,8 @@ def _wait_for_other_builds(files, ticket_number):
     for order, file in enumerate(sorted_files):
         file_ticket_number, build_id, source_version = _build_info_from_file(file)
         print(
-            "%s -> %s %s, ticket number: %s" % (order, build_id, source_version, file_ticket_number)
+            "%s -> %s %s, ticket number: %s"
+            % (order, build_id, source_version, file_ticket_number)
         )
 
     for file in sorted_files:
@@ -71,7 +72,8 @@ def _wait_for_other_builds(files, ticket_number):
 
                 if build_status == "IN_PROGRESS":
                     print(
-                        "waiting on build %s %s %s" % (build_id, source_version, file_ticket_number)
+                        "waiting on build %s %s %s"
+                        % (build_id, source_version, file_ticket_number)
                     )
                     time.sleep(30)
                 else:

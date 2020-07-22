@@ -60,7 +60,9 @@ class DummyFrameworkModel(FrameworkModel):
         )
 
     def create_predictor(self, endpoint_name):
-        return RealTimePredictor(endpoint_name, sagemaker_session=self.sagemaker_session)
+        return RealTimePredictor(
+            endpoint_name, sagemaker_session=self.sagemaker_session
+        )
 
 
 class DummyFrameworkModelForGit(FrameworkModel):
@@ -75,7 +77,9 @@ class DummyFrameworkModelForGit(FrameworkModel):
         )
 
     def create_predictor(self, endpoint_name):
-        return RealTimePredictor(endpoint_name, sagemaker_session=self.sagemaker_session)
+        return RealTimePredictor(
+            endpoint_name, sagemaker_session=self.sagemaker_session
+        )
 
 
 @pytest.fixture()
@@ -194,7 +198,9 @@ def test_git_support_repo_not_provided(sagemaker_session):
     git_config = {"branch": BRANCH, "commit": COMMIT}
     with pytest.raises(ValueError) as error:
         model = DummyFrameworkModelForGit(
-            sagemaker_session=sagemaker_session, entry_point=entry_point, git_config=git_config
+            sagemaker_session=sagemaker_session,
+            entry_point=entry_point,
+            git_config=git_config,
         )
         model.prepare_container_def(instance_type=INSTANCE_TYPE)
     assert "Please provide a repo for git_config." in str(error)
@@ -203,7 +209,8 @@ def test_git_support_repo_not_provided(sagemaker_session):
 @patch(
     "sagemaker.git_utils.git_clone_repo",
     side_effect=subprocess.CalledProcessError(
-        returncode=1, cmd="git clone https://github.com/aws/no-such-repo.git /tmp/repo_dir"
+        returncode=1,
+        cmd="git clone https://github.com/aws/no-such-repo.git /tmp/repo_dir",
     ),
 )
 def test_git_support_git_clone_fail(sagemaker_session):
@@ -211,7 +218,9 @@ def test_git_support_git_clone_fail(sagemaker_session):
     git_config = {"repo": "https://github.com/aws/no-such-repo.git", "branch": BRANCH}
     with pytest.raises(subprocess.CalledProcessError) as error:
         model = DummyFrameworkModelForGit(
-            sagemaker_session=sagemaker_session, entry_point=entry_point, git_config=git_config
+            sagemaker_session=sagemaker_session,
+            entry_point=entry_point,
+            git_config=git_config,
         )
         model.prepare_container_def(instance_type=INSTANCE_TYPE)
     assert "returned non-zero exit status" in str(error)
@@ -225,10 +234,16 @@ def test_git_support_git_clone_fail(sagemaker_session):
 )
 def test_git_support_branch_not_exist(git_clone_repo, sagemaker_session):
     entry_point = "source_dir/entry_point"
-    git_config = {"repo": GIT_REPO, "branch": "branch-that-does-not-exist", "commit": COMMIT}
+    git_config = {
+        "repo": GIT_REPO,
+        "branch": "branch-that-does-not-exist",
+        "commit": COMMIT,
+    }
     with pytest.raises(subprocess.CalledProcessError) as error:
         model = DummyFrameworkModelForGit(
-            sagemaker_session=sagemaker_session, entry_point=entry_point, git_config=git_config
+            sagemaker_session=sagemaker_session,
+            entry_point=entry_point,
+            git_config=git_config,
         )
         model.prepare_container_def(instance_type=INSTANCE_TYPE)
     assert "returned non-zero exit status" in str(error)
@@ -242,10 +257,16 @@ def test_git_support_branch_not_exist(git_clone_repo, sagemaker_session):
 )
 def test_git_support_commit_not_exist(git_clone_repo, sagemaker_session):
     entry_point = "source_dir/entry_point"
-    git_config = {"repo": GIT_REPO, "branch": BRANCH, "commit": "commit-sha-that-does-not-exist"}
+    git_config = {
+        "repo": GIT_REPO,
+        "branch": BRANCH,
+        "commit": "commit-sha-that-does-not-exist",
+    }
     with pytest.raises(subprocess.CalledProcessError) as error:
         model = DummyFrameworkModelForGit(
-            sagemaker_session=sagemaker_session, entry_point=entry_point, git_config=git_config
+            sagemaker_session=sagemaker_session,
+            entry_point=entry_point,
+            git_config=git_config,
         )
         model.prepare_container_def(instance_type=INSTANCE_TYPE)
     assert "returned non-zero exit status" in str(error)
@@ -260,7 +281,9 @@ def test_git_support_entry_point_not_exist(sagemaker_session):
     git_config = {"repo": GIT_REPO, "branch": BRANCH, "commit": COMMIT}
     with pytest.raises(ValueError) as error:
         model = DummyFrameworkModelForGit(
-            sagemaker_session=sagemaker_session, entry_point=entry_point, git_config=git_config
+            sagemaker_session=sagemaker_session,
+            entry_point=entry_point,
+            git_config=git_config,
         )
         model.prepare_container_def(instance_type=INSTANCE_TYPE)
     assert "Entry point does not exist in the repo." in str(error)
@@ -325,7 +348,9 @@ def test_git_support_with_username_password_no_2fa(
         "password": "passw0rd!",
     }
     model = DummyFrameworkModelForGit(
-        sagemaker_session=sagemaker_session, entry_point=entry_point, git_config=git_config
+        sagemaker_session=sagemaker_session,
+        entry_point=entry_point,
+        git_config=git_config,
     )
     model.prepare_container_def(instance_type=INSTANCE_TYPE)
     git_clone_repo.assert_called_with(git_config, entry_point, None, [])
@@ -341,7 +366,9 @@ def test_git_support_with_username_password_no_2fa(
     },
 )
 @patch("sagemaker.model.fw_utils.tar_and_upload_dir")
-def test_git_support_with_token_2fa(tar_and_upload_dir, git_clone_repo, sagemaker_session):
+def test_git_support_with_token_2fa(
+    tar_and_upload_dir, git_clone_repo, sagemaker_session
+):
     entry_point = "entry_point"
     git_config = {
         "repo": PRIVATE_GIT_REPO,
@@ -351,7 +378,9 @@ def test_git_support_with_token_2fa(tar_and_upload_dir, git_clone_repo, sagemake
         "2FA_enabled": True,
     }
     model = DummyFrameworkModelForGit(
-        sagemaker_session=sagemaker_session, entry_point=entry_point, git_config=git_config
+        sagemaker_session=sagemaker_session,
+        entry_point=entry_point,
+        git_config=git_config,
     )
     model.prepare_container_def(instance_type=INSTANCE_TYPE)
     git_clone_repo.assert_called_with(git_config, entry_point, None, [])
@@ -371,9 +400,15 @@ def test_git_support_ssh_no_passphrase_needed(
     tar_and_upload_dir, git_clone_repo, sagemaker_session
 ):
     entry_point = "entry_point"
-    git_config = {"repo": PRIVATE_GIT_REPO_SSH, "branch": PRIVATE_BRANCH, "commit": PRIVATE_COMMIT}
+    git_config = {
+        "repo": PRIVATE_GIT_REPO_SSH,
+        "branch": PRIVATE_BRANCH,
+        "commit": PRIVATE_COMMIT,
+    }
     model = DummyFrameworkModelForGit(
-        sagemaker_session=sagemaker_session, entry_point=entry_point, git_config=git_config
+        sagemaker_session=sagemaker_session,
+        entry_point=entry_point,
+        git_config=git_config,
     )
     model.prepare_container_def(instance_type=INSTANCE_TYPE)
     git_clone_repo.assert_called_with(git_config, entry_point, None, [])
@@ -387,12 +422,20 @@ def test_git_support_ssh_no_passphrase_needed(
     ),
 )
 @patch("sagemaker.model.fw_utils.tar_and_upload_dir")
-def test_git_support_ssh_passphrase_required(tar_and_upload_dir, git_clone_repo, sagemaker_session):
+def test_git_support_ssh_passphrase_required(
+    tar_and_upload_dir, git_clone_repo, sagemaker_session
+):
     entry_point = "entry_point"
-    git_config = {"repo": PRIVATE_GIT_REPO_SSH, "branch": PRIVATE_BRANCH, "commit": PRIVATE_COMMIT}
+    git_config = {
+        "repo": PRIVATE_GIT_REPO_SSH,
+        "branch": PRIVATE_BRANCH,
+        "commit": PRIVATE_COMMIT,
+    }
     with pytest.raises(subprocess.CalledProcessError) as error:
         model = DummyFrameworkModelForGit(
-            sagemaker_session=sagemaker_session, entry_point=entry_point, git_config=git_config
+            sagemaker_session=sagemaker_session,
+            entry_point=entry_point,
+            git_config=git_config,
         )
         model.prepare_container_def(instance_type=INSTANCE_TYPE)
     assert "returned non-zero exit status" in str(error)
@@ -418,7 +461,9 @@ def test_git_support_codecommit_with_username_and_password_succeed(
         "password": "passw0rd!",
     }
     model = DummyFrameworkModelForGit(
-        sagemaker_session=sagemaker_session, entry_point=entry_point, git_config=git_config
+        sagemaker_session=sagemaker_session,
+        entry_point=entry_point,
+        git_config=git_config,
     )
     model.prepare_container_def(instance_type=INSTANCE_TYPE)
     git_clone_repo.assert_called_with(git_config, entry_point, None, [])
@@ -440,7 +485,9 @@ def test_git_support_codecommit_ssh_no_passphrase_needed(
     entry_point = "entry_point"
     git_config = {"repo": CODECOMMIT_REPO_SSH, "branch": CODECOMMIT_BRANCH}
     model = DummyFrameworkModelForGit(
-        sagemaker_session=sagemaker_session, entry_point=entry_point, git_config=git_config
+        sagemaker_session=sagemaker_session,
+        entry_point=entry_point,
+        git_config=git_config,
     )
     model.prepare_container_def(instance_type=INSTANCE_TYPE)
     git_clone_repo.assert_called_with(git_config, entry_point, None, [])
@@ -461,7 +508,9 @@ def test_git_support_codecommit_ssh_passphrase_required(
     git_config = {"repo": CODECOMMIT_REPO_SSH, "branch": CODECOMMIT_BRANCH}
     with pytest.raises(subprocess.CalledProcessError) as error:
         model = DummyFrameworkModelForGit(
-            sagemaker_session=sagemaker_session, entry_point=entry_point, git_config=git_config
+            sagemaker_session=sagemaker_session,
+            entry_point=entry_point,
+            git_config=git_config,
         )
         model.prepare_container_def(instance_type=INSTANCE_TYPE)
     assert "returned non-zero exit status" in str(error)

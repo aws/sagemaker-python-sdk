@@ -66,8 +66,12 @@ def test_s3_uploader_and_downloader_reads_files_when_given_file_name_uris(
     assert file_1_name in s3_uris[0]
     assert file_2_name in s3_uris[1]
 
-    assert file_1_body == S3Downloader.read_file(s3_uri=s3_uris[0], session=sagemaker_session)
-    assert file_2_body == S3Downloader.read_file(s3_uri=s3_uris[1], session=sagemaker_session)
+    assert file_1_body == S3Downloader.read_file(
+        s3_uri=s3_uris[0], session=sagemaker_session
+    )
+    assert file_2_body == S3Downloader.read_file(
+        s3_uri=s3_uris[1], session=sagemaker_session
+    )
 
 
 def test_s3_uploader_and_downloader_downloads_files_when_given_file_name_uris(
@@ -105,8 +109,12 @@ def test_s3_uploader_and_downloader_downloads_files_when_given_file_name_uris(
     assert file_1_name in s3_uris[0]
     assert file_2_name in s3_uris[1]
 
-    S3Downloader.download(s3_uri=s3_uris[0], local_path=TMP_BASE_PATH, session=sagemaker_session)
-    S3Downloader.download(s3_uri=s3_uris[1], local_path=TMP_BASE_PATH, session=sagemaker_session)
+    S3Downloader.download(
+        s3_uri=s3_uris[0], local_path=TMP_BASE_PATH, session=sagemaker_session
+    )
+    S3Downloader.download(
+        s3_uri=s3_uris[1], local_path=TMP_BASE_PATH, session=sagemaker_session
+    )
 
     with open(os.path.join(TMP_BASE_PATH, file_1_name), "r") as f:
         assert file_1_body == f.read()
@@ -150,10 +158,16 @@ def test_s3_uploader_and_downloader_downloads_files_when_given_directory_uris_wi
     assert file_1_name in s3_uris[0]
     assert file_2_name in s3_uris[1]
 
-    assert file_1_body == S3Downloader.read_file(s3_uri=s3_uris[0], session=sagemaker_session)
-    assert file_2_body == S3Downloader.read_file(s3_uri=s3_uris[1], session=sagemaker_session)
+    assert file_1_body == S3Downloader.read_file(
+        s3_uri=s3_uris[0], session=sagemaker_session
+    )
+    assert file_2_body == S3Downloader.read_file(
+        s3_uri=s3_uris[1], session=sagemaker_session
+    )
 
-    S3Downloader.download(s3_uri=base_s3_uri, local_path=TMP_BASE_PATH, session=sagemaker_session)
+    S3Downloader.download(
+        s3_uri=base_s3_uri, local_path=TMP_BASE_PATH, session=sagemaker_session
+    )
 
     with open(os.path.join(TMP_BASE_PATH, file_1_name), "r") as f:
         assert file_1_body == f.read()
@@ -202,8 +216,12 @@ def test_s3_uploader_and_downloader_downloads_files_when_given_directory_uris_wi
     assert file_1_name in s3_uris[0]
     assert file_2_name in s3_uris[1]
 
-    assert file_1_body == S3Downloader.read_file(s3_uri=s3_uris[0], session=sagemaker_session)
-    assert file_2_body == S3Downloader.read_file(s3_uri=s3_uris[1], session=sagemaker_session)
+    assert file_1_body == S3Downloader.read_file(
+        s3_uri=s3_uris[0], session=sagemaker_session
+    )
+    assert file_2_body == S3Downloader.read_file(
+        s3_uri=s3_uris[1], session=sagemaker_session
+    )
 
     s3_directory_with_directory_underneath = os.path.join(
         "s3://", sagemaker_session.default_bucket(), "integ-test-test-s3-list", my_uuid
@@ -215,8 +233,12 @@ def test_s3_uploader_and_downloader_downloads_files_when_given_directory_uris_wi
         session=sagemaker_session,
     )
 
-    with open(os.path.join(TMP_BASE_PATH, my_inner_directory_uuid, file_1_name), "r") as f:
+    with open(
+        os.path.join(TMP_BASE_PATH, my_inner_directory_uuid, file_1_name), "r"
+    ) as f:
         assert file_1_body == f.read()
 
-    with open(os.path.join(TMP_BASE_PATH, my_inner_directory_uuid, file_2_name), "r") as f:
+    with open(
+        os.path.join(TMP_BASE_PATH, my_inner_directory_uuid, file_2_name), "r"
+    ) as f:
         assert file_2_body == f.read()

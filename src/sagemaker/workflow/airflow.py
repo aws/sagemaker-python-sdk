@@ -33,7 +33,9 @@ def prepare_framework(estimator, s3_operations):
     """
     if estimator.code_location is not None:
         bucket, key = fw_utils.parse_s3_url(estimator.code_location)
-        key = os.path.join(key, estimator._current_job_name, "source", "sourcedir.tar.gz")
+        key = os.path.join(
+            key, estimator._current_job_name, "source", "sourcedir.tar.gz"
+        )
     elif estimator.uploaded_code is not None:
         bucket, key = fw_utils.parse_s3_url(estimator.uploaded_code.s3_prefix)
     else:
@@ -44,10 +46,14 @@ def prepare_framework(estimator, s3_operations):
 
     if estimator.source_dir and estimator.source_dir.lower().startswith("s3://"):
         code_dir = estimator.source_dir
-        estimator.uploaded_code = fw_utils.UploadedCode(s3_prefix=code_dir, script_name=script)
+        estimator.uploaded_code = fw_utils.UploadedCode(
+            s3_prefix=code_dir, script_name=script
+        )
     else:
         code_dir = "s3://{}/{}".format(bucket, key)
-        estimator.uploaded_code = fw_utils.UploadedCode(s3_prefix=code_dir, script_name=script)
+        estimator.uploaded_code = fw_utils.UploadedCode(
+            s3_prefix=code_dir, script_name=script
+        )
         s3_operations["S3Upload"] = [
             {
                 "Path": estimator.source_dir or estimator.entry_point,
@@ -64,7 +70,9 @@ def prepare_framework(estimator, s3_operations):
     estimator._hyperparameters[
         sagemaker.model.CONTAINER_LOG_LEVEL_PARAM_NAME
     ] = estimator.container_log_level
-    estimator._hyperparameters[sagemaker.model.JOB_NAME_PARAM_NAME] = estimator._current_job_name
+    estimator._hyperparameters[
+        sagemaker.model.JOB_NAME_PARAM_NAME
+    ] = estimator._current_job_name
     estimator._hyperparameters[
         sagemaker.model.SAGEMAKER_REGION_PARAM_NAME
     ] = estimator.sagemaker_session.boto_region_name
@@ -90,17 +98,24 @@ def prepare_amazon_algorithm_estimator(estimator, inputs, mini_batch_size=None):
     """
     if isinstance(inputs, list):
         for record in inputs:
-            if isinstance(record, amazon_estimator.RecordSet) and record.channel == "train":
+            if (
+                isinstance(record, amazon_estimator.RecordSet)
+                and record.channel == "train"
+            ):
                 estimator.feature_dim = record.feature_dim
                 break
     elif isinstance(inputs, amazon_estimator.RecordSet):
         estimator.feature_dim = inputs.feature_dim
     else:
-        raise TypeError("Training data must be represented in RecordSet or list of RecordSets")
+        raise TypeError(
+            "Training data must be represented in RecordSet or list of RecordSets"
+        )
     estimator.mini_batch_size = mini_batch_size
 
 
-def training_base_config(estimator, inputs=None, job_name=None, mini_batch_size=None):  # noqa: C901
+def training_base_config(
+    estimator, inputs=None, job_name=None, mini_batch_size=None
+):  # noqa: C901
     """Export Airflow base training config from an estimator
 
     Args:
@@ -138,7 +153,9 @@ def training_base_config(estimator, inputs=None, job_name=None, mini_batch_size=
         dict: Training config that can be directly used by
         SageMakerTrainingOperator in Airflow.
     """
-    if isinstance(estimator, sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase):
+    if isinstance(
+        estimator, sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase
+    ):
         estimator.prepare_workflow_for_training(
             records=inputs, mini_batch_size=mini_batch_size, job_name=job_name
         )
@@ -151,7 +168,9 @@ def training_base_config(estimator, inputs=None, job_name=None, mini_batch_size=
     if job_name is not None:
         estimator._current_job_name = job_name
     else:
-        base_name = estimator.base_job_name or utils.base_name_from_image(estimator.train_image())
+        base_name = estimator.base_job_name or utils.base_name_from_image(
+            estimator.train_image()
+        )
         estimator._current_job_name = utils.name_from_base(base_name)
 
     if estimator.output_path is None:
@@ -162,7 +181,9 @@ def training_base_config(estimator, inputs=None, job_name=None, mini_batch_size=
 
     elif isinstance(estimator, amazon_estimator.AmazonAlgorithmEstimatorBase):
         prepare_amazon_algorithm_estimator(estimator, inputs, mini_batch_size)
-    job_config = job._Job._load_config(inputs, estimator, expand_role=False, validate_uri=False)
+    job_config = job._Job._load_config(
+        inputs, estimator, expand_role=False, validate_uri=False
+    )
 
     train_config = {
         "AlgorithmSpecification": {
@@ -185,7 +206,9 @@ def training_base_config(estimator, inputs=None, job_name=None, mini_batch_size=
         train_config["EnableManagedSpotTraining"] = True
 
     if estimator.hyperparameters() is not None:
-        hyperparameters = {str(k): str(v) for (k, v) in estimator.hyperparameters().items()}
+        hyperparameters = {
+            str(k): str(v) for (k, v) in estimator.hyperparameters().items()
+        }
 
     if hyperparameters and len(hyperparameters) > 0:
         train_config["HyperParameters"] = hyperparameters
@@ -240,12 +263,16 @@ def training_config(estimator, inputs=None, job_name=None, mini_batch_size=None)
         train_config["Tags"] = estimator.tags
 
     if estimator.metric_definitions is not None:
-        train_config["AlgorithmSpecification"]["MetricDefinitions"] = estimator.metric_definitions
+        train_config["AlgorithmSpecification"][
+            "MetricDefinitions"
+        ] = estimator.metric_definitions
 
     return train_config
 
 
-def tuning_config(tuner, inputs, job_name=None, include_cls_metadata=False, mini_batch_size=None):
+def tuning_config(
+    tuner, inputs, job_name=None, include_cls_metadata=False, mini_batch_size=None
+):
     """Export Airflow tuning config from a HyperparameterTuner
 
     Args:
@@ -368,16 +395,22 @@ def _extract_tuning_job_config(tuner):
     return tuning_job_config
 
 
-def _extract_training_config_from_estimator(tuner, inputs, include_cls_metadata, mini_batch_size):
+def _extract_training_config_from_estimator(
+    tuner, inputs, include_cls_metadata, mini_batch_size
+):
     """Extract training job config from a HyperparameterTuner that uses the ``estimator`` field"""
     train_config = training_base_config(tuner.estimator, inputs, mini_batch_size)
     train_config.pop("HyperParameters", None)
 
-    tuner._prepare_static_hyperparameters_for_tuning(include_cls_metadata=include_cls_metadata)
+    tuner._prepare_static_hyperparameters_for_tuning(
+        include_cls_metadata=include_cls_metadata
+    )
     train_config["StaticHyperParameters"] = tuner.static_hyperparameters
 
     if tuner.metric_definitions:
-        train_config["AlgorithmSpecification"]["MetricDefinitions"] = tuner.metric_definitions
+        train_config["AlgorithmSpecification"][
+            "MetricDefinitions"
+        ] = tuner.metric_definitions
 
     s3_operations = train_config.pop("S3Operations", None)
     return train_config, s3_operations
@@ -391,9 +424,13 @@ def _extract_training_config_list_from_estimator_dict(
     ``estimator_dict`` field
     """
     estimator_names = sorted(tuner.estimator_dict.keys())
-    tuner._validate_dict_argument(name="inputs", value=inputs, allowed_keys=estimator_names)
     tuner._validate_dict_argument(
-        name="include_cls_metadata", value=include_cls_metadata, allowed_keys=estimator_names
+        name="inputs", value=inputs, allowed_keys=estimator_names
+    )
+    tuner._validate_dict_argument(
+        name="include_cls_metadata",
+        value=include_cls_metadata,
+        allowed_keys=estimator_names,
     )
     tuner._validate_dict_argument(
         name="mini_batch_size", value=mini_batch_size, allowed_keys=estimator_names
@@ -404,10 +441,14 @@ def _extract_training_config_list_from_estimator_dict(
         train_config_dict[estimator_name] = training_base_config(
             estimator=estimator,
             inputs=inputs.get(estimator_name) if inputs else None,
-            mini_batch_size=mini_batch_size.get(estimator_name) if mini_batch_size else None,
+            mini_batch_size=mini_batch_size.get(estimator_name)
+            if mini_batch_size
+            else None,
         )
 
-    tuner._prepare_static_hyperparameters_for_tuning(include_cls_metadata=include_cls_metadata)
+    tuner._prepare_static_hyperparameters_for_tuning(
+        include_cls_metadata=include_cls_metadata
+    )
 
     train_config_list = []
     s3_operations_list = []
@@ -415,7 +456,9 @@ def _extract_training_config_list_from_estimator_dict(
     for estimator_name in sorted(train_config_dict.keys()):
         train_config = train_config_dict[estimator_name]
         train_config.pop("HyperParameters", None)
-        train_config["StaticHyperParameters"] = tuner.static_hyperparameters_dict[estimator_name]
+        train_config["StaticHyperParameters"] = tuner.static_hyperparameters_dict[
+            estimator_name
+        ]
 
         train_config["AlgorithmSpecification"][
             "MetricDefinitions"
@@ -426,7 +469,9 @@ def _extract_training_config_list_from_estimator_dict(
             "Type": tuner.objective_type,
             "MetricName": tuner.objective_metric_name_dict[estimator_name],
         }
-        train_config["HyperParameterRanges"] = tuner.hyperparameter_ranges_dict()[estimator_name]
+        train_config["HyperParameterRanges"] = tuner.hyperparameter_ranges_dict()[
+            estimator_name
+        ]
 
         s3_operations_list.append(train_config.pop("S3Operations", {}))
 
@@ -488,7 +533,9 @@ def update_estimator_from_task(estimator, task_id, task_type):
     if task_type is None:
         return
     if task_type.lower() == "training":
-        training_job = "{{ ti.xcom_pull(task_ids='%s')['Training']['TrainingJobName'] }}" % task_id
+        training_job = (
+            "{{ ti.xcom_pull(task_ids='%s')['Training']['TrainingJobName'] }}" % task_id
+        )
         job_name = training_job
     elif task_type.lower() == "tuning":
         training_job = (
@@ -498,7 +545,8 @@ def update_estimator_from_task(estimator, task_id, task_type):
         # need to strip the double quotes in json to get the string
         job_name = (
             "{{ ti.xcom_pull(task_ids='%s')['Tuning']['TrainingJobDefinition']"
-            "['StaticHyperParameters']['sagemaker_job_name'].strip('%s') }}" % (task_id, '"')
+            "['StaticHyperParameters']['sagemaker_job_name'].strip('%s') }}"
+            % (task_id, '"')
         )
     else:
         raise ValueError("task_type must be either 'training', 'tuning' or None.")
@@ -536,12 +584,21 @@ def prepare_framework_container_def(model, instance_type, s3_operations):
 
         if model.source_dir and model.source_dir.lower().startswith("s3://"):
             code_dir = model.source_dir
-            model.uploaded_code = fw_utils.UploadedCode(s3_prefix=code_dir, script_name=script)
+            model.uploaded_code = fw_utils.UploadedCode(
+                s3_prefix=code_dir, script_name=script
+            )
         else:
             code_dir = "s3://{}/{}".format(bucket, key)
-            model.uploaded_code = fw_utils.UploadedCode(s3_prefix=code_dir, script_name=script)
+            model.uploaded_code = fw_utils.UploadedCode(
+                s3_prefix=code_dir, script_name=script
+            )
             s3_operations["S3Upload"] = [
-                {"Path": model.source_dir or script, "Bucket": bucket, "Key": key, "Tar": True}
+                {
+                    "Path": model.source_dir or script,
+                    "Bucket": bucket,
+                    "Key": key,
+                    "Tar": True,
+                }
             ]
 
     deploy_env = dict(model.env)
@@ -579,7 +636,9 @@ def model_config(instance_type, model, role=None, image=None):
     model.image = image or model.image
 
     if isinstance(model, sagemaker.model.FrameworkModel):
-        container_def = prepare_framework_container_def(model, instance_type, s3_operations)
+        container_def = prepare_framework_container_def(
+            model, instance_type, s3_operations
+        )
     else:
         container_def = model.prepare_container_def(instance_type)
         base_name = utils.base_name_from_image(container_def["Image"])
@@ -649,7 +708,9 @@ def model_config_from_estimator(
         model = estimator.create_model(
             role=role, image=image, vpc_config_override=vpc_config_override
         )
-    elif isinstance(estimator, sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase):
+    elif isinstance(
+        estimator, sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase
+    ):
         model = estimator.create_model(vpc_config_override=vpc_config_override)
     elif isinstance(estimator, sagemaker.estimator.Framework):
         model = estimator.create_model(
@@ -736,12 +797,15 @@ def transform_config(
     else:
         base_name = transformer.base_transform_job_name
         transformer._current_job_name = (
-            utils.name_from_base(base_name) if base_name is not None else transformer.model_name
+            utils.name_from_base(base_name)
+            if base_name is not None
+            else transformer.model_name
         )
 
     if transformer.output_path is None:
         transformer.output_path = "s3://{}/{}".format(
-            transformer.sagemaker_session.default_bucket(), transformer._current_job_name
+            transformer.sagemaker_session.default_bucket(),
+            transformer._current_job_name,
         )
 
     job_config = sagemaker.transformer._TransformJob._load_config(
@@ -976,7 +1040,9 @@ def transform_config_from_estimator(
     return config
 
 
-def deploy_config(model, initial_instance_count, instance_type, endpoint_name=None, tags=None):
+def deploy_config(
+    model, initial_instance_count, instance_type, endpoint_name=None, tags=None
+):
     """Export Airflow deploy config from a SageMaker model
 
     Args:
@@ -1001,7 +1067,10 @@ def deploy_config(model, initial_instance_count, instance_type, endpoint_name=No
         model.name, instance_type, initial_instance_count
     )
     name = model.name
-    config_options = {"EndpointConfigName": name, "ProductionVariants": [production_variant]}
+    config_options = {
+        "EndpointConfigName": name,
+        "ProductionVariants": [production_variant],
+    }
     if tags is not None:
         config_options["Tags"] = tags
 
@@ -1068,7 +1137,9 @@ def deploy_config_from_estimator(
     update_estimator_from_task(estimator, task_id, task_type)
     model = estimator.create_model(**kwargs)
     model.name = model_name
-    config = deploy_config(model, initial_instance_count, instance_type, endpoint_name, tags)
+    config = deploy_config(
+        model, initial_instance_count, instance_type, endpoint_name, tags
+    )
     return config
 
 

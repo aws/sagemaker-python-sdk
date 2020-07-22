@@ -25,7 +25,9 @@ from sagemaker.model_monitor.model_monitoring import MonitoringExecution  # noqa
 from sagemaker.model_monitor.model_monitoring import EndpointInput  # noqa: F401
 from sagemaker.model_monitor.model_monitoring import MonitoringOutput  # noqa: F401
 
-from sagemaker.model_monitor.cron_expression_generator import CronExpressionGenerator  # noqa: F401
+from sagemaker.model_monitor.cron_expression_generator import (
+    CronExpressionGenerator,
+)  # noqa: F401
 from sagemaker.model_monitor.monitoring_files import Statistics  # noqa: F401
 from sagemaker.model_monitor.monitoring_files import Constraints  # noqa: F401
 from sagemaker.model_monitor.monitoring_files import ConstraintViolations  # noqa: F401

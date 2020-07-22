@@ -113,7 +113,9 @@ def git_clone_repo(git_config, entry_point, source_dir=None, dependencies=None):
             if os.path.exists(os.path.join(dest_dir, path)):
                 updated_paths["dependencies"].append(os.path.join(dest_dir, path))
             else:
-                raise ValueError("Dependency {} does not exist in the repo.".format(path))
+                raise ValueError(
+                    "Dependency {} does not exist in the repo.".format(path)
+                )
     return updated_paths
 
 
@@ -144,9 +146,9 @@ def _generate_and_run_clone_command(git_config, dest_dir):
     Raises:
         CalledProcessError: If failed to clone git repo.
     """
-    if git_config["repo"].startswith("https://git-codecommit") or git_config["repo"].startswith(
-        "ssh://git-codecommit"
-    ):
+    if git_config["repo"].startswith("https://git-codecommit") or git_config[
+        "repo"
+    ].startswith("ssh://git-codecommit"):
         _clone_command_for_codecommit(git_config, dest_dir)
     else:
         _clone_command_for_github_like(git_config, dest_dir)
@@ -184,7 +186,9 @@ def _clone_command_for_ssh(git_config, dest_dir):
         dest_dir:
     """
     if "username" in git_config or "password" in git_config or "token" in git_config:
-        warnings.warn("SSH cloning, authentication information in git config will be ignored.")
+        warnings.warn(
+            "SSH cloning, authentication information in git config will be ignored."
+        )
     _run_clone_command(git_config["repo"], dest_dir)
 
 
@@ -197,11 +201,17 @@ def _clone_command_for_github_like_https_2fa_disabled(git_config, dest_dir):
     updated_url = git_config["repo"]
     if "token" in git_config:
         if "username" in git_config or "password" in git_config:
-            warnings.warn("Using token for authentication, " "other credentials will be ignored.")
-        updated_url = _insert_token_to_repo_url(url=git_config["repo"], token=git_config["token"])
+            warnings.warn(
+                "Using token for authentication, " "other credentials will be ignored."
+            )
+        updated_url = _insert_token_to_repo_url(
+            url=git_config["repo"], token=git_config["token"]
+        )
     elif "username" in git_config and "password" in git_config:
         updated_url = _insert_username_and_password_to_repo_url(
-            url=git_config["repo"], username=git_config["username"], password=git_config["password"]
+            url=git_config["repo"],
+            username=git_config["username"],
+            password=git_config["password"],
         )
     elif "username" in git_config or "password" in git_config:
         warnings.warn("Credentials provided in git config will be ignored.")
@@ -217,8 +227,12 @@ def _clone_command_for_github_like_https_2fa_enabled(git_config, dest_dir):
     updated_url = git_config["repo"]
     if "token" in git_config:
         if "username" in git_config or "password" in git_config:
-            warnings.warn("Using token for authentication, " "other credentials will be ignored.")
-        updated_url = _insert_token_to_repo_url(url=git_config["repo"], token=git_config["token"])
+            warnings.warn(
+                "Using token for authentication, " "other credentials will be ignored."
+            )
+        updated_url = _insert_token_to_repo_url(
+            url=git_config["repo"], token=git_config["token"]
+        )
     _run_clone_command(updated_url, dest_dir)
 
 
@@ -242,7 +256,9 @@ def _clone_command_for_codecommit(git_config, dest_dir):
     if "2FA_enabled" in git_config:
         warnings.warn("CodeCommit does not support 2FA, '2FA_enabled' will be ignored.")
     if "token" in git_config:
-        warnings.warn("There are no tokens in CodeCommit, the token provided will be ignored.")
+        warnings.warn(
+            "There are no tokens in CodeCommit, the token provided will be ignored."
+        )
     if is_ssh:
         _clone_command_for_ssh(git_config, dest_dir)
     else:
@@ -258,7 +274,9 @@ def _clone_command_for_codecommit_https(git_config, dest_dir):
     updated_url = git_config["repo"]
     if "username" in git_config and "password" in git_config:
         updated_url = _insert_username_and_password_to_repo_url(
-            url=git_config["repo"], username=git_config["username"], password=git_config["password"]
+            url=git_config["repo"],
+            username=git_config["username"],
+            password=git_config["password"],
         )
     elif "username" in git_config or "password" in git_config:
         warnings.warn("Credentials provided in git config will be ignored.")
@@ -341,6 +359,10 @@ def _checkout_branch_and_commit(git_config, dest_dir):
             failed to checkout the required commit
     """
     if "branch" in git_config:
-        subprocess.check_call(args=["git", "checkout", git_config["branch"]], cwd=str(dest_dir))
+        subprocess.check_call(
+            args=["git", "checkout", git_config["branch"]], cwd=str(dest_dir)
+        )
     if "commit" in git_config:
-        subprocess.check_call(args=["git", "checkout", git_config["commit"]], cwd=str(dest_dir))
+        subprocess.check_call(
+            args=["git", "checkout", git_config["commit"]], cwd=str(dest_dir)
+        )

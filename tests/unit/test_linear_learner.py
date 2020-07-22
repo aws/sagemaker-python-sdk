@@ -34,11 +34,15 @@ ALL_REQ_ARGS = dict({"predictor_type": PREDICTOR_TYPE}, **COMMON_TRAIN_ARGS)
 REGION = "us-west-2"
 BUCKET_NAME = "Some-Bucket"
 
-DESCRIBE_TRAINING_JOB_RESULT = {"ModelArtifacts": {"S3ModelArtifacts": "s3://bucket/model.tar.gz"}}
+DESCRIBE_TRAINING_JOB_RESULT = {
+    "ModelArtifacts": {"S3ModelArtifacts": "s3://bucket/model.tar.gz"}
+}
 
 ENDPOINT_DESC = {"EndpointConfigName": "test-endpoint"}
 
-ENDPOINT_CONFIG_DESC = {"ProductionVariants": [{"ModelName": "model-1"}, {"ModelName": "model-2"}]}
+ENDPOINT_CONFIG_DESC = {
+    "ProductionVariants": [{"ModelName": "model-1"}, {"ModelName": "model-2"}]
+}
 
 
 @pytest.fixture()
@@ -59,7 +63,9 @@ def sagemaker_session():
         name="describe_training_job", return_value=DESCRIBE_TRAINING_JOB_RESULT
     )
     sms.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)
-    sms.sagemaker_client.describe_endpoint_config = Mock(return_value=ENDPOINT_CONFIG_DESC)
+    sms.sagemaker_client.describe_endpoint_config = Mock(
+        return_value=ENDPOINT_CONFIG_DESC
+    )
 
     return sms
 
@@ -186,15 +192,21 @@ def test_image(sagemaker_session):
 
 
 @pytest.mark.parametrize("required_hyper_parameters, value", [("predictor_type", 0)])
-def test_required_hyper_parameters_type(sagemaker_session, required_hyper_parameters, value):
+def test_required_hyper_parameters_type(
+    sagemaker_session, required_hyper_parameters, value
+):
     with pytest.raises(ValueError):
         test_params = ALL_REQ_ARGS.copy()
         test_params[required_hyper_parameters] = value
         LinearLearner(sagemaker_session=sagemaker_session, **test_params)
 
 
-@pytest.mark.parametrize("required_hyper_parameters, value", [("predictor_type", "string")])
-def test_required_hyper_parameters_value(sagemaker_session, required_hyper_parameters, value):
+@pytest.mark.parametrize(
+    "required_hyper_parameters, value", [("predictor_type", "string")]
+)
+def test_required_hyper_parameters_value(
+    sagemaker_session, required_hyper_parameters, value
+):
     with pytest.raises(ValueError):
         test_params = ALL_REQ_ARGS.copy()
         test_params[required_hyper_parameters] = value
@@ -220,7 +232,9 @@ def test_num_classes_can_be_string_for_multiclass_classifier(sagemaker_session):
 
 
 @pytest.mark.parametrize("iterable_hyper_parameters, value", [("eval_metrics", 0)])
-def test_iterable_hyper_parameters_type(sagemaker_session, iterable_hyper_parameters, value):
+def test_iterable_hyper_parameters_type(
+    sagemaker_session, iterable_hyper_parameters, value
+):
     with pytest.raises(TypeError):
         test_params = ALL_REQ_ARGS.copy()
         test_params.update({iterable_hyper_parameters: value})
@@ -265,7 +279,9 @@ def test_iterable_hyper_parameters_type(sagemaker_session, iterable_hyper_parame
         ("f_beta", "string"),
     ],
 )
-def test_optional_hyper_parameters_type(sagemaker_session, optional_hyper_parameters, value):
+def test_optional_hyper_parameters_type(
+    sagemaker_session, optional_hyper_parameters, value
+):
     with pytest.raises(ValueError):
         test_params = ALL_REQ_ARGS.copy()
         test_params.update({optional_hyper_parameters: value})
@@ -313,7 +329,9 @@ def test_optional_hyper_parameters_type(sagemaker_session, optional_hyper_parame
         ("f_beta", -1.0),
     ],
 )
-def test_optional_hyper_parameters_value(sagemaker_session, optional_hyper_parameters, value):
+def test_optional_hyper_parameters_value(
+    sagemaker_session, optional_hyper_parameters, value
+):
     with pytest.raises(ValueError):
         test_params = ALL_REQ_ARGS.copy()
         test_params.update({optional_hyper_parameters: value})
@@ -326,7 +344,9 @@ DEFAULT_MINI_BATCH_SIZE = 1000
 
 
 def test_prepare_for_training_calculate_batch_size_1(sagemaker_session):
-    lr = LinearLearner(base_job_name="lr", sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
+    lr = LinearLearner(
+        base_job_name="lr", sagemaker_session=sagemaker_session, **ALL_REQ_ARGS
+    )
 
     data = RecordSet(
         "s3://{}/{}".format(BUCKET_NAME, PREFIX),
@@ -341,7 +361,9 @@ def test_prepare_for_training_calculate_batch_size_1(sagemaker_session):
 
 
 def test_prepare_for_training_calculate_batch_size_2(sagemaker_session):
-    lr = LinearLearner(base_job_name="lr", sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
+    lr = LinearLearner(
+        base_job_name="lr", sagemaker_session=sagemaker_session, **ALL_REQ_ARGS
+    )
 
     data = RecordSet(
         "s3://{}/{}".format(BUCKET_NAME, PREFIX),
@@ -356,7 +378,9 @@ def test_prepare_for_training_calculate_batch_size_2(sagemaker_session):
 
 
 def test_prepare_for_training_multiple_channel(sagemaker_session):
-    lr = LinearLearner(base_job_name="lr", sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
+    lr = LinearLearner(
+        base_job_name="lr", sagemaker_session=sagemaker_session, **ALL_REQ_ARGS
+    )
 
     data = RecordSet(
         "s3://{}/{}".format(BUCKET_NAME, PREFIX),
@@ -371,7 +395,9 @@ def test_prepare_for_training_multiple_channel(sagemaker_session):
 
 
 def test_prepare_for_training_multiple_channel_no_train(sagemaker_session):
-    lr = LinearLearner(base_job_name="lr", sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
+    lr = LinearLearner(
+        base_job_name="lr", sagemaker_session=sagemaker_session, **ALL_REQ_ARGS
+    )
 
     data = RecordSet(
         "s3://{}/{}".format(BUCKET_NAME, PREFIX),
@@ -388,7 +414,9 @@ def test_prepare_for_training_multiple_channel_no_train(sagemaker_session):
 
 @patch("sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase.fit")
 def test_call_fit_pass_batch_size(base_fit, sagemaker_session):
-    lr = LinearLearner(base_job_name="lr", sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
+    lr = LinearLearner(
+        base_job_name="lr", sagemaker_session=sagemaker_session, **ALL_REQ_ARGS
+    )
 
     data = RecordSet(
         "s3://{}/{}".format(BUCKET_NAME, PREFIX),

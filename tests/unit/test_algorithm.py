@@ -36,7 +36,10 @@ DESCRIBE_ALGORITHM_RESPONSE = {
                 "Description": "Grow a tree with max_leaf_nodes in best-first fashion.",
                 "Type": "Integer",
                 "Range": {
-                    "IntegerParameterRangeSpecification": {"MinValue": "1", "MaxValue": "100000"}
+                    "IntegerParameterRangeSpecification": {
+                        "MinValue": "1",
+                        "MaxValue": "100000",
+                    }
                 },
                 "IsTunable": True,
                 "IsRequired": False,
@@ -50,7 +53,11 @@ DESCRIBE_ALGORITHM_RESPONSE = {
                 "IsRequired": True,
             },
         ],
-        "SupportedTrainingInstanceTypes": ["ml.m4.xlarge", "ml.m4.2xlarge", "ml.m4.4xlarge"],
+        "SupportedTrainingInstanceTypes": [
+            "ml.m4.xlarge",
+            "ml.m4.2xlarge",
+            "ml.m4.4xlarge",
+        ],
         "SupportsDistributedTraining": False,
         "MetricDefinitions": [
             {"Name": "validation:accuracy", "Regex": "validation-accuracy: (\\S+)"}
@@ -129,7 +136,10 @@ DESCRIBE_ALGORITHM_RESPONSE = {
                         "AssembleWith": "Line",
                         "KmsKeyId": "",
                     },
-                    "TransformResources": {"InstanceType": "ml.c4.xlarge", "InstanceCount": 1},
+                    "TransformResources": {
+                        "InstanceType": "ml.c4.xlarge",
+                        "InstanceCount": 1,
+                    },
                 },
             }
         ],
@@ -138,7 +148,9 @@ DESCRIBE_ALGORITHM_RESPONSE = {
     },
     "AlgorithmStatus": "Completed",
     "AlgorithmStatusDetails": {
-        "ValidationStatuses": [{"ProfileName": "ValidationProfile1", "Status": "Completed"}]
+        "ValidationStatuses": [
+            {"ProfileName": "ValidationProfile1", "Status": "Completed"}
+        ]
     },
     "ResponseMetadata": {
         "RequestId": "e04bc28b-61b6-4486-9106-0edf07f5649c",
@@ -407,7 +419,9 @@ def test_algorithm_trainining_channels_with_invalid_channels(session):
 
     # Passing an unknown channel should fail???
     with pytest.raises(ValueError):
-        estimator.fit({"training": "s3://some/data", "training2": "s3://some/other/data"})
+        estimator.fit(
+            {"training": "s3://some/data", "training2": "s3://some/other/data"}
+        )
 
 
 @patch("sagemaker.Session")
@@ -419,7 +433,9 @@ def test_algorithm_train_instance_types_valid_instance_types(session):
         "SupportedTrainingInstanceTypes"
     ] = train_instance_types
 
-    session.sagemaker_client.describe_algorithm = Mock(return_value=describe_algo_response)
+    session.sagemaker_client.describe_algorithm = Mock(
+        return_value=describe_algo_response
+    )
 
     AlgorithmEstimator(
         algorithm_arn="arn:aws:sagemaker:us-east-2:1234:algorithm/scikit-decision-trees",
@@ -447,7 +463,9 @@ def test_algorithm_train_instance_types_invalid_instance_types(session):
         "SupportedTrainingInstanceTypes"
     ] = train_instance_types
 
-    session.sagemaker_client.describe_algorithm = Mock(return_value=describe_algo_response)
+    session.sagemaker_client.describe_algorithm = Mock(
+        return_value=describe_algo_response
+    )
 
     # invalid instance type, should fail
     with pytest.raises(ValueError):
@@ -487,7 +505,9 @@ def test_algorithm_distributed_training_validation(session):
         sagemaker_session=session,
     )
 
-    session.sagemaker_client.describe_algorithm = Mock(return_value=single_instance_algo)
+    session.sagemaker_client.describe_algorithm = Mock(
+        return_value=single_instance_algo
+    )
 
     # distributed training on a single instance algorithm should fail.
     with pytest.raises(ValueError):
@@ -508,7 +528,10 @@ def test_algorithm_hyperparameter_integer_range_valid_range(session):
             "Type": "Integer",
             "Name": "max_leaf_nodes",
             "Range": {
-                "IntegerParameterRangeSpecification": {"MinValue": "1", "MaxValue": "100000"}
+                "IntegerParameterRangeSpecification": {
+                    "MinValue": "1",
+                    "MaxValue": "100000",
+                }
             },
             "IsTunable": True,
             "IsRequired": False,
@@ -541,7 +564,10 @@ def test_algorithm_hyperparameter_integer_range_invalid_range(session):
             "Type": "Integer",
             "Name": "max_leaf_nodes",
             "Range": {
-                "IntegerParameterRangeSpecification": {"MinValue": "1", "MaxValue": "100000"}
+                "IntegerParameterRangeSpecification": {
+                    "MinValue": "1",
+                    "MaxValue": "100000",
+                }
             },
             "IsTunable": True,
             "IsRequired": False,
@@ -577,7 +603,10 @@ def test_algorithm_hyperparameter_continuous_range_valid_range(session):
             "Type": "Continuous",
             "Name": "max_leaf_nodes",
             "Range": {
-                "ContinuousParameterRangeSpecification": {"MinValue": "0.0", "MaxValue": "1.0"}
+                "ContinuousParameterRangeSpecification": {
+                    "MinValue": "0.0",
+                    "MaxValue": "1.0",
+                }
             },
             "IsTunable": True,
             "IsRequired": False,
@@ -612,7 +641,10 @@ def test_algorithm_hyperparameter_continuous_range_invalid_range(session):
             "Type": "Continuous",
             "Name": "max_leaf_nodes",
             "Range": {
-                "ContinuousParameterRangeSpecification": {"MinValue": "0.0", "MaxValue": "1.0"}
+                "ContinuousParameterRangeSpecification": {
+                    "MinValue": "0.0",
+                    "MaxValue": "1.0",
+                }
             },
             "IsTunable": True,
             "IsRequired": False,
@@ -647,7 +679,9 @@ def test_algorithm_hyperparameter_categorical_range(session):
             "Description": "A continuous hyperparameter",
             "Type": "Categorical",
             "Name": "hp1",
-            "Range": {"CategoricalParameterRangeSpecification": {"Values": ["TF", "MXNet"]}},
+            "Range": {
+                "CategoricalParameterRangeSpecification": {"Values": ["TF", "MXNet"]}
+            },
             "IsTunable": True,
             "IsRequired": False,
             "DefaultValue": "100",
@@ -684,7 +718,9 @@ def test_algorithm_required_hyperparameters_not_provided(session):
             "Description": "A continuous hyperparameter",
             "Type": "Categorical",
             "Name": "hp1",
-            "Range": {"CategoricalParameterRangeSpecification": {"Values": ["TF", "MXNet"]}},
+            "Range": {
+                "CategoricalParameterRangeSpecification": {"Values": ["TF", "MXNet"]}
+            },
             "IsTunable": True,
             "IsRequired": True,
         },
@@ -728,7 +764,9 @@ def test_algorithm_required_hyperparameters_are_provided(session):
             "Description": "A categorical hyperparameter",
             "Type": "Categorical",
             "Name": "hp1",
-            "Range": {"CategoricalParameterRangeSpecification": {"Values": ["TF", "MXNet"]}},
+            "Range": {
+                "CategoricalParameterRangeSpecification": {"Values": ["TF", "MXNet"]}
+            },
             "IsTunable": True,
             "IsRequired": True,
         },
@@ -810,7 +848,9 @@ def test_algorithm_required_free_text_hyperparameter_not_provided(session):
 @patch("sagemaker.Session")
 @patch("sagemaker.algorithm.AlgorithmEstimator.create_model")
 def test_algorithm_create_transformer(create_model, session):
-    session.sagemaker_client.describe_algorithm = Mock(return_value=DESCRIBE_ALGORITHM_RESPONSE)
+    session.sagemaker_client.describe_algorithm = Mock(
+        return_value=DESCRIBE_ALGORITHM_RESPONSE
+    )
 
     estimator = AlgorithmEstimator(
         algorithm_arn="arn:aws:sagemaker:us-east-2:1234:algorithm/scikit-decision-trees",
@@ -834,7 +874,9 @@ def test_algorithm_create_transformer(create_model, session):
 
 @patch("sagemaker.Session")
 def test_algorithm_create_transformer_without_completed_training_job(session):
-    session.sagemaker_client.describe_algorithm = Mock(return_value=DESCRIBE_ALGORITHM_RESPONSE)
+    session.sagemaker_client.describe_algorithm = Mock(
+        return_value=DESCRIBE_ALGORITHM_RESPONSE
+    )
 
     estimator = AlgorithmEstimator(
         algorithm_arn="arn:aws:sagemaker:us-east-2:1234:algorithm/scikit-decision-trees",
@@ -846,7 +888,9 @@ def test_algorithm_create_transformer_without_completed_training_job(session):
 
     with pytest.raises(RuntimeError) as error:
         estimator.transformer(instance_count=1, instance_type="ml.m4.xlarge")
-        assert "No finished training job found associated with this estimator" in str(error)
+        assert "No finished training job found associated with this estimator" in str(
+            error
+        )
 
 
 @patch("sagemaker.algorithm.AlgorithmEstimator.create_model")
@@ -875,7 +919,9 @@ def test_algorithm_create_transformer_with_product_id(create_model, session):
 
 @patch("sagemaker.Session")
 def test_algorithm_enable_network_isolation_no_product_id(session):
-    session.sagemaker_client.describe_algorithm = Mock(return_value=DESCRIBE_ALGORITHM_RESPONSE)
+    session.sagemaker_client.describe_algorithm = Mock(
+        return_value=DESCRIBE_ALGORITHM_RESPONSE
+    )
 
     estimator = AlgorithmEstimator(
         algorithm_arn="arn:aws:sagemaker:us-east-2:1234:algorithm/scikit-decision-trees",
@@ -948,7 +994,9 @@ def test_algorithm_no_required_hyperparameters(session):
 def test_algorithm_attach_from_hyperparameter_tuning():
     session = Mock()
     job_name = "training-job-that-is-part-of-a-tuning-job"
-    algo_arn = "arn:aws:sagemaker:us-east-2:000000000000:algorithm/scikit-decision-trees"
+    algo_arn = (
+        "arn:aws:sagemaker:us-east-2:000000000000:algorithm/scikit-decision-trees"
+    )
     role_arn = "arn:aws:iam::123412341234:role/SageMakerRole"
     instance_count = 1
     instance_type = "ml.m4.xlarge"
@@ -956,10 +1004,13 @@ def test_algorithm_attach_from_hyperparameter_tuning():
     input_mode = "File"
 
     session.sagemaker_client.list_tags.return_value = {"Tags": []}
-    session.sagemaker_client.describe_algorithm.return_value = DESCRIBE_ALGORITHM_RESPONSE
+    session.sagemaker_client.describe_algorithm.return_value = (
+        DESCRIBE_ALGORITHM_RESPONSE
+    )
     session.sagemaker_client.describe_training_job.return_value = {
         "TrainingJobName": job_name,
-        "TrainingJobArn": "arn:aws:sagemaker:us-east-2:123412341234:training-job/%s" % job_name,
+        "TrainingJobArn": "arn:aws:sagemaker:us-east-2:123412341234:training-job/%s"
+        % job_name,
         "TuningJobArn": "arn:aws:sagemaker:us-east-2:123412341234:hyper-parameter-tuning-job/%s"
         % job_name,
         "ModelArtifacts": {
@@ -974,7 +1025,10 @@ def test_algorithm_attach_from_hyperparameter_tuning():
             "max_leaf_nodes": 1,
             "free_text_hp1": "foo",
         },
-        "AlgorithmSpecification": {"AlgorithmName": algo_arn, "TrainingInputMode": input_mode},
+        "AlgorithmSpecification": {
+            "AlgorithmName": algo_arn,
+            "TrainingInputMode": input_mode,
+        },
         "MetricDefinitions": [
             {"Name": "validation:accuracy", "Regex": "validation-accuracy: (\\S+)"}
         ],
@@ -1019,7 +1073,9 @@ def test_algorithm_attach_from_hyperparameter_tuning():
 
 @patch("sagemaker.Session")
 def test_algorithm_supported_with_spot_instances(session):
-    session.sagemaker_client.describe_algorithm = Mock(return_value=DESCRIBE_ALGORITHM_RESPONSE)
+    session.sagemaker_client.describe_algorithm = Mock(
+        return_value=DESCRIBE_ALGORITHM_RESPONSE
+    )
 
     assert AlgorithmEstimator(
         algorithm_arn="arn:aws:sagemaker:us-east-2:1234:algorithm/scikit-decision-trees",

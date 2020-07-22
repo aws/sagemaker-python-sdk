@@ -91,7 +91,9 @@ class _SageMakerContainer(object):
         self.image = image
         # Since we are using a single docker network, Generate a random suffix to attach to the
         # container names. This way multiple jobs can run in parallel.
-        suffix = "".join(random.choice(string.ascii_lowercase + string.digits) for _ in range(5))
+        suffix = "".join(
+            random.choice(string.ascii_lowercase + string.digits) for _ in range(5)
+        )
         self.hosts = [
             "{}-{}-{}".format(CONTAINER_PREFIX, i, suffix)
             for i in range(1, self.instance_count + 1)
@@ -134,7 +136,9 @@ class _SageMakerContainer(object):
         for host in self.hosts:
             _create_config_file_directories(self.container_root, host)
             self.write_config_files(host, hyperparameters, input_data_config)
-            shutil.copytree(data_dir, os.path.join(self.container_root, host, "input", "data"))
+            shutil.copytree(
+                data_dir, os.path.join(self.container_root, host, "input", "data")
+            )
 
         training_env_vars = {
             REGION_ENV_NAME: self.sagemaker_session.boto_region_name,
@@ -165,7 +169,9 @@ class _SageMakerContainer(object):
             msg = "Failed to run: %s, %s" % (compose_command, str(e))
             raise RuntimeError(msg)
         finally:
-            artifacts = self.retrieve_artifacts(compose_data, output_data_config, job_name)
+            artifacts = self.retrieve_artifacts(
+                compose_data, output_data_config, job_name
+            )
 
             # free up the training data directory as it may contain
             # lots of data downloaded from S3. This doesn't delete any local
@@ -273,9 +279,12 @@ class _SageMakerContainer(object):
                     sagemaker.local.utils.recursive_copy(host_dir, output_artifacts)
 
         # Tar Artifacts -> model.tar.gz and output.tar.gz
-        model_files = [os.path.join(model_artifacts, name) for name in os.listdir(model_artifacts)]
+        model_files = [
+            os.path.join(model_artifacts, name) for name in os.listdir(model_artifacts)
+        ]
         output_files = [
-            os.path.join(output_artifacts, name) for name in os.listdir(output_artifacts)
+            os.path.join(output_artifacts, name)
+            for name in os.listdir(output_artifacts)
         ]
         sagemaker.utils.create_tar_file(
             model_files, os.path.join(compressed_artifacts, "model.tar.gz")
@@ -325,9 +334,15 @@ class _SageMakerContainer(object):
             if "ContentType" in c:
                 json_input_data_config[channel_name]["ContentType"] = c["ContentType"]
 
-        _write_json_file(os.path.join(config_path, "hyperparameters.json"), hyperparameters)
-        _write_json_file(os.path.join(config_path, "resourceconfig.json"), resource_config)
-        _write_json_file(os.path.join(config_path, "inputdataconfig.json"), json_input_data_config)
+        _write_json_file(
+            os.path.join(config_path, "hyperparameters.json"), hyperparameters
+        )
+        _write_json_file(
+            os.path.join(config_path, "resourceconfig.json"), resource_config
+        )
+        _write_json_file(
+            os.path.join(config_path, "inputdataconfig.json"), json_input_data_config
+        )
 
     def _prepare_training_volumes(
         self, data_dir, input_data_config, output_data_config, hyperparameters
@@ -353,13 +368,17 @@ class _SageMakerContainer(object):
             channel_dir = os.path.join(data_dir, channel_name)
             os.mkdir(channel_dir)
 
-            data_source = sagemaker.local.data.get_data_source_instance(uri, self.sagemaker_session)
+            data_source = sagemaker.local.data.get_data_source_instance(
+                uri, self.sagemaker_session
+            )
             volumes.append(_Volume(data_source.get_root_dir(), channel=channel_name))
 
         # If there is a training script directory and it is a local directory,
         # mount it to the container.
         if sagemaker.estimator.DIR_PARAM_NAME in hyperparameters:
-            training_dir = json.loads(hyperparameters[sagemaker.estimator.DIR_PARAM_NAME])
+            training_dir = json.loads(
+                hyperparameters[sagemaker.estimator.DIR_PARAM_NAME]
+            )
             parsed_uri = urlparse(training_dir)
             if parsed_uri.scheme == "file":
                 volumes.append(_Volume(parsed_uri.path, "/opt/ml/code"))
@@ -419,7 +438,9 @@ class _SageMakerContainer(object):
 
         return volumes
 
-    def _generate_compose_file(self, command, additional_volumes=None, additional_env_vars=None):
+    def _generate_compose_file(
+        self, command, additional_volumes=None, additional_env_vars=None
+    ):
         """Writes a config file describing a training/hosting environment.
 
         This method generates a docker compose configuration file, it has an
@@ -447,7 +468,9 @@ class _SageMakerContainer(object):
         if aws_creds is not None:
             environment.extend(aws_creds)
 
-        additional_env_var_list = ["{}={}".format(k, v) for k, v in additional_env_vars.items()]
+        additional_env_var_list = [
+            "{}={}".format(k, v) for k, v in additional_env_vars.items()
+        ]
         environment.extend(additional_env_var_list)
 
         if os.environ.get(DOCKER_COMPOSE_HTTP_TIMEOUT_ENV) is None:
@@ -457,7 +480,9 @@ class _SageMakerContainer(object):
             optml_dirs = {"output", "output/data", "input"}
 
         services = {
-            h: self._create_docker_host(h, environment, optml_dirs, command, additional_volumes)
+            h: self._create_docker_host(
+                h, environment, optml_dirs, command, additional_volumes
+            )
             for h in self.hosts
         }
 
@@ -473,7 +498,9 @@ class _SageMakerContainer(object):
         try:
             import yaml
         except ImportError as e:
-            logging.error(sagemaker.utils._module_import_error("yaml", "Local mode", "local"))
+            logging.error(
+                sagemaker.utils._module_import_error("yaml", "Local mode", "local")
+            )
             raise e
 
         yaml_content = yaml.dump(content, default_flow_style=False)
@@ -496,7 +523,9 @@ class _SageMakerContainer(object):
             os.path.join(self.container_root, DOCKER_COMPOSE_FILENAME),
             "up",
             "--build",
-            "--abort-on-container-exit" if not detached else "--detach",  # mutually exclusive
+            "--abort-on-container-exit"
+            if not detached
+            else "--detach",  # mutually exclusive
         ]
 
         logger.info("docker command: %s", " ".join(command))
@@ -646,7 +675,9 @@ class _Volume(object):
         if container_dir and channel:
             raise ValueError("container_dir and channel cannot be declared together.")
 
-        self.container_dir = container_dir if container_dir else "/opt/ml/input/data/" + channel
+        self.container_dir = (
+            container_dir if container_dir else "/opt/ml/input/data/" + channel
+        )
         self.host_dir = host_dir
         if platform.system() == "Darwin" and host_dir.startswith("/var"):
             self.host_dir = os.path.join("/private", host_dir)

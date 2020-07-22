@@ -97,9 +97,13 @@ class LocalSagemakerClient(object):
             self.sagemaker_session,
         )
         training_job = _LocalTrainingJob(container)
-        hyperparameters = kwargs["HyperParameters"] if "HyperParameters" in kwargs else {}
+        hyperparameters = (
+            kwargs["HyperParameters"] if "HyperParameters" in kwargs else {}
+        )
         logger.info("Starting training job")
-        training_job.start(InputDataConfig, OutputDataConfig, hyperparameters, TrainingJobName)
+        training_job.start(
+            InputDataConfig, OutputDataConfig, hyperparameters, TrainingJobName
+        )
 
         LocalSagemakerClient._training_jobs[TrainingJobName] = training_job
 
@@ -145,9 +149,13 @@ class LocalSagemakerClient(object):
         Returns:
 
         """
-        transform_job = _LocalTransformJob(TransformJobName, ModelName, self.sagemaker_session)
+        transform_job = _LocalTransformJob(
+            TransformJobName, ModelName, self.sagemaker_session
+        )
         LocalSagemakerClient._transform_jobs[TransformJobName] = transform_job
-        transform_job.start(TransformInput, TransformOutput, TransformResources, **kwargs)
+        transform_job.start(
+            TransformInput, TransformOutput, TransformResources, **kwargs
+        )
 
     def describe_transform_job(self, TransformJobName):
         """
@@ -182,7 +190,9 @@ class LocalSagemakerClient(object):
 
         Returns:
         """
-        LocalSagemakerClient._models[ModelName] = _LocalModel(ModelName, PrimaryContainer)
+        LocalSagemakerClient._models[ModelName] = _LocalModel(
+            ModelName, PrimaryContainer
+        )
 
     def describe_model(self, ModelName):
         """
@@ -195,7 +205,10 @@ class LocalSagemakerClient(object):
         """
         if ModelName not in LocalSagemakerClient._models:
             error_response = {
-                "Error": {"Code": "ValidationException", "Message": "Could not find local model"}
+                "Error": {
+                    "Code": "ValidationException",
+                    "Message": "Could not find local model",
+                }
             }
             raise ClientError(error_response, "describe_model")
         return LocalSagemakerClient._models[ModelName].describe()
@@ -230,9 +243,9 @@ class LocalSagemakerClient(object):
         Returns:
 
         """
-        LocalSagemakerClient._endpoint_configs[EndpointConfigName] = _LocalEndpointConfig(
-            EndpointConfigName, ProductionVariants, Tags
-        )
+        LocalSagemakerClient._endpoint_configs[
+            EndpointConfigName
+        ] = _LocalEndpointConfig(EndpointConfigName, ProductionVariants, Tags)
 
     def describe_endpoint(self, EndpointName):
         """
@@ -245,7 +258,10 @@ class LocalSagemakerClient(object):
         """
         if EndpointName not in LocalSagemakerClient._endpoints:
             error_response = {
-                "Error": {"Code": "ValidationException", "Message": "Could not find local endpoint"}
+                "Error": {
+                    "Code": "ValidationException",
+                    "Message": "Could not find local endpoint",
+                }
             }
             raise ClientError(error_response, "describe_endpoint")
         return LocalSagemakerClient._endpoints[EndpointName].describe()
@@ -261,11 +277,15 @@ class LocalSagemakerClient(object):
         Returns:
 
         """
-        endpoint = _LocalEndpoint(EndpointName, EndpointConfigName, Tags, self.sagemaker_session)
+        endpoint = _LocalEndpoint(
+            EndpointName, EndpointConfigName, Tags, self.sagemaker_session
+        )
         LocalSagemakerClient._endpoints[EndpointName] = endpoint
         endpoint.serve()
 
-    def update_endpoint(self, EndpointName, EndpointConfigName):  # pylint: disable=unused-argument
+    def update_endpoint(
+        self, EndpointName, EndpointConfigName
+    ):  # pylint: disable=unused-argument
         """
 
         Args:
@@ -275,7 +295,9 @@ class LocalSagemakerClient(object):
         Returns:
 
         """
-        raise NotImplementedError("Update endpoint name is not supported in local session.")
+        raise NotImplementedError(
+            "Update endpoint name is not supported in local session."
+        )
 
     def delete_endpoint(self, EndpointName):
         """
@@ -374,7 +396,9 @@ class LocalSagemakerRuntimeClient(object):
         if TargetVariant is not None:
             headers["X-Amzn-SageMaker-Target-Variant"] = TargetVariant
 
-        r = self.http.request("POST", url, body=Body, preload_content=False, headers=headers)
+        r = self.http.request(
+            "POST", url, body=Body, preload_content=False, headers=headers
+        )
 
         return {"Body": r, "ContentType": Accept}
 
@@ -415,10 +439,16 @@ class LocalSession(Session):
         self.local_mode = True
 
         if self.s3_endpoint_url is not None:
-            self.s3_resource = boto_session.resource("s3", endpoint_url=self.s3_endpoint_url)
-            self.s3_client = boto_session.client("s3", endpoint_url=self.s3_endpoint_url)
+            self.s3_resource = boto_session.resource(
+                "s3", endpoint_url=self.s3_endpoint_url
+            )
+            self.s3_client = boto_session.client(
+                "s3", endpoint_url=self.s3_endpoint_url
+            )
 
-        sagemaker_config_file = os.path.join(os.path.expanduser("~"), ".sagemaker", "config.yaml")
+        sagemaker_config_file = os.path.join(
+            os.path.expanduser("~"), ".sagemaker", "config.yaml"
+        )
         if os.path.exists(sagemaker_config_file):
             try:
                 import yaml

@@ -30,12 +30,17 @@ class KMeans(AmazonAlgorithmEstimatorBase):
     repo_version = 1
 
     k = hp("k", gt(1), "An integer greater-than 1", int)
-    init_method = hp("init_method", isin("random", "kmeans++"), 'One of "random", "kmeans++"', str)
+    init_method = hp(
+        "init_method", isin("random", "kmeans++"), 'One of "random", "kmeans++"', str
+    )
     max_iterations = hp("local_lloyd_max_iter", gt(0), "An integer greater-than 0", int)
     tol = hp("local_lloyd_tol", (ge(0), le(1)), "An float in [0, 1]", float)
     num_trials = hp("local_lloyd_num_trials", gt(0), "An integer greater-than 0", int)
     local_init_method = hp(
-        "local_lloyd_init_method", isin("random", "kmeans++"), 'One of "random", "kmeans++"', str
+        "local_lloyd_init_method",
+        isin("random", "kmeans++"),
+        'One of "random", "kmeans++"',
+        str,
     )
     half_life_time_size = hp(
         "half_life_time_size", ge(0), "An integer greater-than-or-equal-to 0", int
@@ -142,7 +147,9 @@ class KMeans(AmazonAlgorithmEstimatorBase):
             :class:`~sagemaker.estimator.amazon_estimator.AmazonAlgorithmEstimatorBase` and
             :class:`~sagemaker.estimator.EstimatorBase`.
         """
-        super(KMeans, self).__init__(role, train_instance_count, train_instance_type, **kwargs)
+        super(KMeans, self).__init__(
+            role, train_instance_count, train_instance_type, **kwargs
+        )
         self.k = k
         self.init_method = init_method
         self.max_iterations = max_iterations
@@ -189,7 +196,9 @@ class KMeans(AmazonAlgorithmEstimatorBase):
         """Return the SageMaker hyperparameters for training this KMeans
         Estimator
         """
-        hp_dict = dict(force_dense="True")  # KMeans requires this hp to fit on Record objects
+        hp_dict = dict(
+            force_dense="True"
+        )  # KMeans requires this hp to fit on Record objects
         hp_dict.update(super(KMeans, self).hyperparameters())
         return hp_dict
 
@@ -239,7 +248,9 @@ class KMeansModel(Model):
         """
         sagemaker_session = sagemaker_session or Session()
         repo = "{}:{}".format(KMeans.repo_name, KMeans.repo_version)
-        image = "{}/{}".format(registry(sagemaker_session.boto_session.region_name), repo)
+        image = "{}/{}".format(
+            registry(sagemaker_session.boto_session.region_name), repo
+        )
         super(KMeansModel, self).__init__(
             model_data,
             image,

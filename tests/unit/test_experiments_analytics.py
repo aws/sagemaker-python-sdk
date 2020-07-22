@@ -58,7 +58,9 @@ def test_trial_analytics_dataframe_all_metrics_hyperparams(mock_session):
             {"TrialComponent": trial_component("trial-2")},
         ]
     }
-    analytics = ExperimentAnalytics(experiment_name="experiment1", sagemaker_session=mock_session)
+    analytics = ExperimentAnalytics(
+        experiment_name="experiment1", sagemaker_session=mock_session
+    )
 
     expected_dataframe = pd.DataFrame.from_dict(
         OrderedDict(
@@ -95,7 +97,11 @@ def test_trial_analytics_dataframe_all_metrics_hyperparams(mock_session):
     pd.testing.assert_frame_equal(expected_dataframe, analytics.dataframe())
     expected_search_exp = {
         "Filters": [
-            {"Name": "Parents.ExperimentName", "Operator": "Equals", "Value": "experiment1"}
+            {
+                "Name": "Parents.ExperimentName",
+                "Operator": "Equals",
+                "Value": "experiment1",
+            }
         ]
     }
     mock_session.sagemaker_client.search.assert_called_with(
@@ -111,7 +117,9 @@ def test_trial_analytics_dataframe_selected_hyperparams(mock_session):
         ]
     }
     analytics = ExperimentAnalytics(
-        experiment_name="experiment1", parameter_names=["hp2"], sagemaker_session=mock_session
+        experiment_name="experiment1",
+        parameter_names=["hp2"],
+        sagemaker_session=mock_session,
     )
 
     expected_dataframe = pd.DataFrame.from_dict(
@@ -148,7 +156,11 @@ def test_trial_analytics_dataframe_selected_hyperparams(mock_session):
     pd.testing.assert_frame_equal(expected_dataframe, analytics.dataframe())
     expected_search_exp = {
         "Filters": [
-            {"Name": "Parents.ExperimentName", "Operator": "Equals", "Value": "experiment1"}
+            {
+                "Name": "Parents.ExperimentName",
+                "Operator": "Equals",
+                "Value": "experiment1",
+            }
         ]
     }
     mock_session.sagemaker_client.search.assert_called_with(
@@ -164,7 +176,9 @@ def test_trial_analytics_dataframe_selected_metrics(mock_session):
         ]
     }
     analytics = ExperimentAnalytics(
-        experiment_name="experiment1", metric_names=["metric1"], sagemaker_session=mock_session
+        experiment_name="experiment1",
+        metric_names=["metric1"],
+        sagemaker_session=mock_session,
     )
 
     expected_dataframe = pd.DataFrame.from_dict(
@@ -196,7 +210,11 @@ def test_trial_analytics_dataframe_selected_metrics(mock_session):
     pd.testing.assert_frame_equal(expected_dataframe, analytics.dataframe())
     expected_search_exp = {
         "Filters": [
-            {"Name": "Parents.ExperimentName", "Operator": "Equals", "Value": "experiment1"}
+            {
+                "Name": "Parents.ExperimentName",
+                "Operator": "Equals",
+                "Value": "experiment1",
+            }
         ]
     }
     mock_session.sagemaker_client.search.assert_called_with(
@@ -213,7 +231,9 @@ def test_trial_analytics_dataframe_search_pagination(mock_session):
     result_page_2 = {"Results": [{"TrialComponent": trial_component("trial-2")}]}
 
     mock_session.sagemaker_client.search.side_effect = [result_page_1, result_page_2]
-    analytics = ExperimentAnalytics(experiment_name="experiment1", sagemaker_session=mock_session)
+    analytics = ExperimentAnalytics(
+        experiment_name="experiment1", sagemaker_session=mock_session
+    )
 
     expected_dataframe = pd.DataFrame.from_dict(
         OrderedDict(
@@ -250,12 +270,19 @@ def test_trial_analytics_dataframe_search_pagination(mock_session):
     pd.testing.assert_frame_equal(expected_dataframe, analytics.dataframe())
     expected_search_exp = {
         "Filters": [
-            {"Name": "Parents.ExperimentName", "Operator": "Equals", "Value": "experiment1"}
+            {
+                "Name": "Parents.ExperimentName",
+                "Operator": "Equals",
+                "Value": "experiment1",
+            }
         ]
     }
     mock_session.sagemaker_client.search.assert_has_calls(
         [
-            mock.call(Resource="ExperimentTrialComponent", SearchExpression=expected_search_exp),
+            mock.call(
+                Resource="ExperimentTrialComponent",
+                SearchExpression=expected_search_exp,
+            ),
             mock.call(
                 Resource="ExperimentTrialComponent",
                 SearchExpression=expected_search_exp,
@@ -268,8 +295,14 @@ def test_trial_analytics_dataframe_search_pagination(mock_session):
 def test_trial_analytics_dataframe_filter_trials_search_exp_only(mock_session):
     mock_session.sagemaker_client.search.return_value = {"Results": []}
 
-    search_exp = {"Filters": [{"Name": "Tags.someTag", "Operator": "Equals", "Value": "someValue"}]}
-    analytics = ExperimentAnalytics(search_expression=search_exp, sagemaker_session=mock_session)
+    search_exp = {
+        "Filters": [
+            {"Name": "Tags.someTag", "Operator": "Equals", "Value": "someValue"}
+        ]
+    }
+    analytics = ExperimentAnalytics(
+        search_expression=search_exp, sagemaker_session=mock_session
+    )
 
     analytics.dataframe()
 
@@ -278,10 +311,16 @@ def test_trial_analytics_dataframe_filter_trials_search_exp_only(mock_session):
     )
 
 
-def test_trial_analytics_dataframe_filter_trials_search_exp_with_experiment(mock_session):
+def test_trial_analytics_dataframe_filter_trials_search_exp_with_experiment(
+    mock_session,
+):
     mock_session.sagemaker_client.search.return_value = {"Results": []}
 
-    search_exp = {"Filters": [{"Name": "Tags.someTag", "Operator": "Equals", "Value": "someValue"}]}
+    search_exp = {
+        "Filters": [
+            {"Name": "Tags.someTag", "Operator": "Equals", "Value": "someValue"}
+        ]
+    }
     analytics = ExperimentAnalytics(
         experiment_name="someExperiment",
         search_expression=search_exp,
@@ -293,7 +332,11 @@ def test_trial_analytics_dataframe_filter_trials_search_exp_with_experiment(mock
     expected_search_exp = {
         "Filters": [
             {"Name": "Tags.someTag", "Operator": "Equals", "Value": "someValue"},
-            {"Name": "Parents.ExperimentName", "Operator": "Equals", "Value": "someExperiment"},
+            {
+                "Name": "Parents.ExperimentName",
+                "Operator": "Equals",
+                "Value": "someExperiment",
+            },
         ]
     }
 
@@ -310,7 +353,11 @@ def test_trial_analytics_dataframe_throws_error_if_no_filter_specified(mock_sess
 def test_trial_analytics_dataframe_filter_trials_search_exp_with_sort(mock_session):
     mock_session.sagemaker_client.search.return_value = {"Results": []}
 
-    search_exp = {"Filters": [{"Name": "Tags.someTag", "Operator": "Equals", "Value": "someValue"}]}
+    search_exp = {
+        "Filters": [
+            {"Name": "Tags.someTag", "Operator": "Equals", "Value": "someValue"}
+        ]
+    }
     analytics = ExperimentAnalytics(
         experiment_name="someExperiment",
         search_expression=search_exp,
@@ -324,7 +371,11 @@ def test_trial_analytics_dataframe_filter_trials_search_exp_with_sort(mock_sessi
     expected_search_exp = {
         "Filters": [
             {"Name": "Tags.someTag", "Operator": "Equals", "Value": "someValue"},
-            {"Name": "Parents.ExperimentName", "Operator": "Equals", "Value": "someExperiment"},
+            {
+                "Name": "Parents.ExperimentName",
+                "Operator": "Equals",
+                "Value": "someExperiment",
+            },
         ]
     }
 

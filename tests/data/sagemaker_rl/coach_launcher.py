@@ -66,7 +66,9 @@ class SageMakerCoachPresetLauncher(CoachLauncher):
         args, _ = parser.parse_known_args(args=empty_arg_list)
 
         # Now fill in the args that we care about.
-        sagemaker_job_name = os.environ.get("sagemaker_job_name", "sagemaker-experiment")
+        sagemaker_job_name = os.environ.get(
+            "sagemaker_job_name", "sagemaker-experiment"
+        )
         args.experiment_name = logger.get_experiment_name(sagemaker_job_name)
 
         # Override experiment_path used for outputs
@@ -89,7 +91,9 @@ class SageMakerCoachPresetLauncher(CoachLauncher):
 
         self.hyperparameters = CoachConfigurationList()
         if len(unknown) % 2 == 1:
-            raise ValueError("Odd number of command-line arguments specified. Key without value.")
+            raise ValueError(
+                "Odd number of command-line arguments specified. Key without value."
+            )
 
         for i in range(0, len(unknown), 2):
             name = unknown[i]
@@ -189,7 +193,10 @@ class SageMakerCoachPresetLauncher(CoachLauncher):
     def preset_from_name(self, preset_name):
         preset_path = self.path_of_main_launcher()
         print("Loading preset %s from %s" % (preset_name, preset_path))
-        preset_path = os.path.join(self.path_of_main_launcher(), preset_name) + ".py:graph_manager"
+        preset_path = (
+            os.path.join(self.path_of_main_launcher(), preset_name)
+            + ".py:graph_manager"
+        )
         graph_manager = short_dynamic_import(preset_path, ignore_module_case=True)
         return graph_manager
 
@@ -201,7 +208,9 @@ class SageMakerCoachPresetLauncher(CoachLauncher):
         # Set framework
         # Note: Some graph managers (e.g. HAC preset) create multiple agents and the attribute is called agents_params
         if hasattr(graph_manager, "agent_params"):
-            for network_parameters in graph_manager.agent_params.network_wrappers.values():
+            for (
+                network_parameters
+            ) in graph_manager.agent_params.network_wrappers.values():
                 network_parameters.framework = args.framework
         elif hasattr(graph_manager, "agents_params"):
             for ap in graph_manager.agents_params:
@@ -217,10 +226,12 @@ class SageMakerCoachPresetLauncher(CoachLauncher):
 
         # Re-Initialize from the checkpoint so that you will have the latest models up.
         tf.train.init_from_checkpoint(
-            ckpt_dir, {"main_level/agent/online/network_0/": "main_level/agent/online/network_0"}
+            ckpt_dir,
+            {"main_level/agent/online/network_0/": "main_level/agent/online/network_0"},
         )
         tf.train.init_from_checkpoint(
-            ckpt_dir, {"main_level/agent/online/network_1/": "main_level/agent/online/network_1"}
+            ckpt_dir,
+            {"main_level/agent/online/network_1/": "main_level/agent/online/network_1"},
         )
 
         # Create a new session with a new tf graph.
@@ -294,7 +305,9 @@ class SageMakerCoachLauncher(SageMakerCoachPresetLauncher):
 
     def __init__(self):
         super().__init__()
-        screen.warning("DEPRECATION WARNING: Please switch to SageMakerCoachPresetLauncher")
+        screen.warning(
+            "DEPRECATION WARNING: Please switch to SageMakerCoachPresetLauncher"
+        )
         # TODO: Remove this whole class when nobody's using it any more.
 
     def define_environment(self):

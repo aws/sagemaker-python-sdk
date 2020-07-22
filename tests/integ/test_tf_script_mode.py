@@ -32,7 +32,9 @@ ROLE = "SageMakerRole"
 
 RESOURCE_PATH = os.path.join(os.path.dirname(__file__), "..", "data")
 MNIST_RESOURCE_PATH = os.path.join(RESOURCE_PATH, "tensorflow_mnist")
-TFS_RESOURCE_PATH = os.path.join(RESOURCE_PATH, "tfs", "tfs-test-entrypoint-with-handler")
+TFS_RESOURCE_PATH = os.path.join(
+    RESOURCE_PATH, "tfs", "tfs-test-entrypoint-with-handler"
+)
 
 SCRIPT = os.path.join(MNIST_RESOURCE_PATH, "mnist.py")
 PARAMETER_SERVER_DISTRIBUTION = {"parameter_server": {"enabled": True}}
@@ -61,7 +63,9 @@ def test_mnist_with_checkpoint_config(
         script_mode=True,
         framework_version=tf_full_version,
         py_version=py_version,
-        metric_definitions=[{"Name": "train:global_steps", "Regex": r"global_step\/sec:\s(.*)"}],
+        metric_definitions=[
+            {"Name": "train:global_steps", "Regex": r"global_step\/sec:\s(.*)"}
+        ],
         checkpoint_s3_uri=checkpoint_s3_uri,
         checkpoint_local_path=checkpoint_local_path,
     )
@@ -70,7 +74,9 @@ def test_mnist_with_checkpoint_config(
     )
 
     training_job_name = unique_name_from_base("test-tf-sm-mnist")
-    with tests.integ.timeout.timeout(minutes=tests.integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
+    with tests.integ.timeout.timeout(
+        minutes=tests.integ.TRAINING_DEFAULT_TIMEOUT_MINUTES
+    ):
         estimator.fit(inputs=inputs, job_name=training_job_name)
     assert_s3_files_exist(
         sagemaker_session,
@@ -86,12 +92,17 @@ def test_mnist_with_checkpoint_config(
     }
     actual_training_checkpoint_config = sagemaker_session.sagemaker_client.describe_training_job(
         TrainingJobName=training_job_name
-    )["CheckpointConfig"]
+    )[
+        "CheckpointConfig"
+    ]
     assert actual_training_checkpoint_config == expected_training_checkpoint_config
 
 
 def test_server_side_encryption(sagemaker_session, tf_full_version, py_version):
-    with kms_utils.bucket_with_encryption(sagemaker_session, ROLE) as (bucket_with_kms, kms_key):
+    with kms_utils.bucket_with_encryption(sagemaker_session, ROLE) as (
+        bucket_with_kms,
+        kms_key,
+    ):
         output_path = os.path.join(
             bucket_with_kms, "test-server-side-encryption", time.strftime("%y%m%d-%H%M")
         )
@@ -113,16 +124,22 @@ def test_server_side_encryption(sagemaker_session, tf_full_version, py_version):
         )
 
         inputs = estimator.sagemaker_session.upload_data(
-            path=os.path.join(MNIST_RESOURCE_PATH, "data"), key_prefix="scriptmode/mnist"
+            path=os.path.join(MNIST_RESOURCE_PATH, "data"),
+            key_prefix="scriptmode/mnist",
         )
 
-        with tests.integ.timeout.timeout(minutes=tests.integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
+        with tests.integ.timeout.timeout(
+            minutes=tests.integ.TRAINING_DEFAULT_TIMEOUT_MINUTES
+        ):
             estimator.fit(
-                inputs=inputs, job_name=unique_name_from_base("test-server-side-encryption")
+                inputs=inputs,
+                job_name=unique_name_from_base("test-server-side-encryption"),
             )
 
         endpoint_name = unique_name_from_base("test-server-side-encryption")
-        with timeout.timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
+        with timeout.timeout_and_delete_endpoint_by_name(
+            endpoint_name, sagemaker_session
+        ):
             estimator.deploy(
                 initial_instance_count=1,
                 instance_type="ml.c5.xlarge",
@@ -132,7 +149,9 @@ def test_server_side_encryption(sagemaker_session, tf_full_version, py_version):
 
 
 @pytest.mark.canary_quick
-def test_mnist_distributed(sagemaker_session, instance_type, tf_full_version, py_version):
+def test_mnist_distributed(
+    sagemaker_session, instance_type, tf_full_version, py_version
+):
     estimator = TensorFlow(
         entry_point=SCRIPT,
         role=ROLE,
@@ -145,11 +164,16 @@ def test_mnist_distributed(sagemaker_session, instance_type, tf_full_version, py
         distributions=PARAMETER_SERVER_DISTRIBUTION,
     )
     inputs = estimator.sagemaker_session.upload_data(
-        path=os.path.join(MNIST_RESOURCE_PATH, "data"), key_prefix="scriptmode/distributed_mnist"
+        path=os.path.join(MNIST_RESOURCE_PATH, "data"),
+        key_prefix="scriptmode/distributed_mnist",
     )
 
-    with tests.integ.timeout.timeout(minutes=tests.integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
-        estimator.fit(inputs=inputs, job_name=unique_name_from_base("test-tf-sm-distributed"))
+    with tests.integ.timeout.timeout(
+        minutes=tests.integ.TRAINING_DEFAULT_TIMEOUT_MINUTES
+    ):
+        estimator.fit(
+            inputs=inputs, job_name=unique_name_from_base("test-tf-sm-distributed")
+        )
     assert_s3_files_exist(
         sagemaker_session,
         estimator.model_dir,
@@ -173,14 +197,18 @@ def test_mnist_async(sagemaker_session, cpu_instance_type, tf_full_version, py_v
     inputs = estimator.sagemaker_session.upload_data(
         path=os.path.join(MNIST_RESOURCE_PATH, "data"), key_prefix="scriptmode/mnist"
     )
-    estimator.fit(inputs=inputs, wait=False, job_name=unique_name_from_base("test-tf-sm-async"))
+    estimator.fit(
+        inputs=inputs, wait=False, job_name=unique_name_from_base("test-tf-sm-async")
+    )
     training_job_name = estimator.latest_training_job.name
     time.sleep(20)
     endpoint_name = training_job_name
     _assert_training_job_tags_match(
         sagemaker_session.sagemaker_client, estimator.latest_training_job.name, TAGS
     )
-    with tests.integ.timeout.timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
+    with tests.integ.timeout.timeout_and_delete_endpoint_by_name(
+        endpoint_name, sagemaker_session
+    ):
         estimator = TensorFlow.attach(
             training_job_name=training_job_name, sagemaker_session=sagemaker_session
         )
@@ -194,12 +222,18 @@ def test_mnist_async(sagemaker_session, cpu_instance_type, tf_full_version, py_v
 
         result = predictor.predict(np.zeros(784))
         print("predict result: {}".format(result))
-        _assert_endpoint_tags_match(sagemaker_session.sagemaker_client, predictor.endpoint, TAGS)
+        _assert_endpoint_tags_match(
+            sagemaker_session.sagemaker_client, predictor.endpoint, TAGS
+        )
         _assert_model_tags_match(sagemaker_session.sagemaker_client, model_name, TAGS)
-        _assert_model_name_match(sagemaker_session.sagemaker_client, endpoint_name, model_name)
+        _assert_model_name_match(
+            sagemaker_session.sagemaker_client, endpoint_name, model_name
+        )
 
 
-def test_deploy_with_input_handlers(sagemaker_session, instance_type, tf_full_version, py_version):
+def test_deploy_with_input_handlers(
+    sagemaker_session, instance_type, tf_full_version, py_version
+):
     estimator = TensorFlow(
         entry_point="training.py",
         source_dir=TFS_RESOURCE_PATH,
@@ -248,7 +282,9 @@ def _assert_model_tags_match(sagemaker_client, model_name, tags):
 
 
 def _assert_endpoint_tags_match(sagemaker_client, endpoint_name, tags):
-    endpoint_description = sagemaker_client.describe_endpoint(EndpointName=endpoint_name)
+    endpoint_description = sagemaker_client.describe_endpoint(
+        EndpointName=endpoint_name
+    )
 
     _assert_tags_match(sagemaker_client, endpoint_description["EndpointArn"], tags)
 
@@ -257,11 +293,15 @@ def _assert_training_job_tags_match(sagemaker_client, training_job_name, tags):
     training_job_description = sagemaker_client.describe_training_job(
         TrainingJobName=training_job_name
     )
-    _assert_tags_match(sagemaker_client, training_job_description["TrainingJobArn"], tags)
+    _assert_tags_match(
+        sagemaker_client, training_job_description["TrainingJobArn"], tags
+    )
 
 
 def _assert_model_name_match(sagemaker_client, endpoint_config_name, model_name):
     endpoint_config_description = sagemaker_client.describe_endpoint_config(
         EndpointConfigName=endpoint_config_name
     )
-    assert model_name == endpoint_config_description["ProductionVariants"][0]["ModelName"]
+    assert (
+        model_name == endpoint_config_description["ProductionVariants"][0]["ModelName"]
+    )

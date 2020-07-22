@@ -39,7 +39,9 @@ REGION = "us-west-2"
 BUCKET_NAME = "bucket-name"
 ENDPOINT_NAME = "endpoint_name"
 
-EXCEPTION_MESSAGE = "This Exception is expected and should not be swallowed by the timeout."
+EXCEPTION_MESSAGE = (
+    "This Exception is expected and should not be swallowed by the timeout."
+)
 SHORT_TIMEOUT_TO_FORCE_TIMEOUT_TO_OCCUR = 0.001
 LONG_DURATION_TO_EXCEED_TIMEOUT = 0.002
 LONG_TIMEOUT_THAT_WILL_NEVER_BE_EXCEEDED = 10
@@ -67,7 +69,9 @@ def transformer():
 
 def test_timeout_fails_correctly_when_method_throws_exception():
     with pytest.raises(ValueError) as exception:
-        with timeout(hours=0, minutes=0, seconds=LONG_TIMEOUT_THAT_WILL_NEVER_BE_EXCEEDED):
+        with timeout(
+            hours=0, minutes=0, seconds=LONG_TIMEOUT_THAT_WILL_NEVER_BE_EXCEEDED
+        ):
             raise ValueError(EXCEPTION_MESSAGE)
         assert EXCEPTION_MESSAGE in str(exception.value)
 
@@ -182,7 +186,11 @@ def test_timeout_and_delete_endpoint_by_name_retries_resource_deletion_on_failur
     autospec=True,
 )
 def test_timeout_and_delete_model_with_transformer_fails_when_method_throws_exception(
-    _show_logs, _cleanup_logs, _delete_schedules_associated_with_endpoint, session, transformer
+    _show_logs,
+    _cleanup_logs,
+    _delete_schedules_associated_with_endpoint,
+    session,
+    transformer,
 ):
     with pytest.raises(ValueError) as exception:
         with timeout_and_delete_model_with_transformer(
@@ -205,7 +213,11 @@ def test_timeout_and_delete_model_with_transformer_fails_when_method_throws_exce
     autospec=True,
 )
 def test_timeout_and_delete_model_with_transformer_throws_timeout_exception_when_method_times_out(
-    _show_logs, _cleanup_logs, _delete_schedules_associated_with_endpoint, session, transformer
+    _show_logs,
+    _cleanup_logs,
+    _delete_schedules_associated_with_endpoint,
+    session,
+    transformer,
 ):
     with pytest.raises(stopit.utils.TimeoutException):
         with timeout_and_delete_model_with_transformer(
@@ -227,7 +239,11 @@ def test_timeout_and_delete_model_with_transformer_throws_timeout_exception_when
     autospec=True,
 )
 def test_timeout_and_delete_model_with_transformer_does_not_throw_when_method_ends_gracefully(
-    _show_logs, _cleanup_logs, _delete_schedules_associated_with_endpoint, session, transformer
+    _show_logs,
+    _cleanup_logs,
+    _delete_schedules_associated_with_endpoint,
+    session,
+    transformer,
 ):
     with timeout_and_delete_model_with_transformer(
         sagemaker_session=session,
@@ -249,7 +265,11 @@ def test_timeout_and_delete_model_with_transformer_does_not_throw_when_method_en
     autospec=True,
 )
 def test_timeout_and_delete_model_with_transformer_retries_resource_deletion_on_failure(
-    _show_logs, _cleanup_logs, _delete_schedules_associated_with_endpoint, session, transformer
+    _show_logs,
+    _cleanup_logs,
+    _delete_schedules_associated_with_endpoint,
+    session,
+    transformer,
 ):
     transformer.delete_model = Mock(
         side_effect=ClientError(

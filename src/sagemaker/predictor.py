@@ -20,7 +20,11 @@ import six
 from six import StringIO, BytesIO
 import numpy as np
 
-from sagemaker.content_types import CONTENT_TYPE_JSON, CONTENT_TYPE_CSV, CONTENT_TYPE_NPY
+from sagemaker.content_types import (
+    CONTENT_TYPE_JSON,
+    CONTENT_TYPE_CSV,
+    CONTENT_TYPE_NPY,
+)
 from sagemaker.model_monitor import DataCaptureConfig
 from sagemaker.session import Session
 from sagemaker.utils import name_from_base
@@ -109,8 +113,12 @@ class RealTimePredictor(object):
                 as is.
         """
 
-        request_args = self._create_request_args(data, initial_args, target_model, target_variant)
-        response = self.sagemaker_session.sagemaker_runtime_client.invoke_endpoint(**request_args)
+        request_args = self._create_request_args(
+            data, initial_args, target_model, target_variant
+        )
+        response = self.sagemaker_session.sagemaker_runtime_client.invoke_endpoint(
+            **request_args
+        )
         return self._handle_response(response)
 
     def _handle_response(self, response):
@@ -126,7 +134,9 @@ class RealTimePredictor(object):
         response_body.close()
         return data
 
-    def _create_request_args(self, data, initial_args=None, target_model=None, target_variant=None):
+    def _create_request_args(
+        self, data, initial_args=None, target_model=None, target_variant=None
+    ):
         """
         Args:
             data:
@@ -269,9 +279,13 @@ class RealTimePredictor(object):
             image_uri = schedule["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
                 "MonitoringAppSpecification"
             ]["ImageUri"]
-            index_after_placeholders = _DEFAULT_MONITOR_IMAGE_URI_WITH_PLACEHOLDERS.rfind("{}")
+            index_after_placeholders = _DEFAULT_MONITOR_IMAGE_URI_WITH_PLACEHOLDERS.rfind(
+                "{}"
+            )
             if image_uri.endswith(
-                _DEFAULT_MONITOR_IMAGE_URI_WITH_PLACEHOLDERS[index_after_placeholders + len("{}") :]
+                _DEFAULT_MONITOR_IMAGE_URI_WITH_PLACEHOLDERS[
+                    index_after_placeholders + len("{}") :
+                ]
             ):
                 monitors.append(
                     DefaultModelMonitor.attach(
@@ -324,7 +338,11 @@ class _CsvSerializer(object):
         """
         # For inputs which represent multiple "rows", the result should be newline-separated CSV
         # rows
-        if _is_mutable_sequence_like(data) and len(data) > 0 and _is_sequence_like(data[0]):
+        if (
+            _is_mutable_sequence_like(data)
+            and len(data) > 0
+            and _is_sequence_like(data[0])
+        ):
             return "\n".join([_CsvSerializer._serialize_row(row) for row in data])
         return _CsvSerializer._serialize_row(data)
 
@@ -621,7 +639,9 @@ class _NumpyDeserializer(object):
                     codecs.getreader("utf-8")(stream), delimiter=",", dtype=self.dtype
                 )
             if content_type == CONTENT_TYPE_JSON:
-                return np.array(json.load(codecs.getreader("utf-8")(stream)), dtype=self.dtype)
+                return np.array(
+                    json.load(codecs.getreader("utf-8")(stream)), dtype=self.dtype
+                )
             if content_type == CONTENT_TYPE_NPY:
                 return np.load(BytesIO(stream.read()))
         finally:

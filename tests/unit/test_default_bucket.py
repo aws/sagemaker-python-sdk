@@ -58,7 +58,9 @@ def test_default_already_cached(sagemaker_session):
 
 def test_default_bucket_exists(sagemaker_session):
     error = ClientError(
-        error_response={"Error": {"Code": "BucketAlreadyOwnedByYou", "Message": "message"}},
+        error_response={
+            "Error": {"Code": "BucketAlreadyOwnedByYou", "Message": "message"}
+        },
         operation_name="foo",
     )
     sagemaker_session.boto_session.resource().create_bucket.side_effect = error
@@ -70,7 +72,9 @@ def test_default_bucket_exists(sagemaker_session):
 def test_concurrent_bucket_modification(sagemaker_session):
     message = "A conflicting conditional operation is currently in progress against this resource. Please try again"
     error = ClientError(
-        error_response={"Error": {"Code": "BucketAlreadyOwnedByYou", "Message": message}},
+        error_response={
+            "Error": {"Code": "BucketAlreadyOwnedByYou", "Message": message}
+        },
         operation_name="foo",
     )
     sagemaker_session.boto_session.resource().create_bucket.side_effect = error

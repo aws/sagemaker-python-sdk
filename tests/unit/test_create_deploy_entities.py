@@ -23,7 +23,11 @@ ENDPOINT_NAME = "myendpointname"
 ROLE = "myimrole"
 EXPANDED_ROLE = "arn:aws:iam::111111111111:role/ExpandedRole"
 IMAGE = "myimage"
-FULL_CONTAINER_DEF = {"Environment": {}, "Image": IMAGE, "ModelDataUrl": "s3://mybucket/mymodel"}
+FULL_CONTAINER_DEF = {
+    "Environment": {},
+    "Image": IMAGE,
+    "ModelDataUrl": "s3://mybucket/mymodel",
+}
 VPC_CONFIG = {"Subnets": ["subnet-foo"], "SecurityGroups": ["sg-foo"]}
 INITIAL_INSTANCE_COUNT = 1
 INSTANCE_TYPE = "ml.c4.xlarge"
@@ -41,7 +45,10 @@ def sagemaker_session():
 
 def test_create_model(sagemaker_session):
     returned_name = sagemaker_session.create_model(
-        name=MODEL_NAME, role=ROLE, container_defs=FULL_CONTAINER_DEF, vpc_config=VPC_CONFIG
+        name=MODEL_NAME,
+        role=ROLE,
+        container_defs=FULL_CONTAINER_DEF,
+        vpc_config=VPC_CONFIG,
     )
 
     assert returned_name == MODEL_NAME
@@ -56,8 +63,15 @@ def test_create_model(sagemaker_session):
 def test_create_model_expand_primary_container(sagemaker_session):
     sagemaker_session.create_model(name=MODEL_NAME, role=ROLE, container_defs=IMAGE)
 
-    _1, _2, create_model_kwargs = sagemaker_session.sagemaker_client.create_model.mock_calls[0]
-    assert create_model_kwargs["PrimaryContainer"] == {"Environment": {}, "Image": IMAGE}
+    (
+        _1,
+        _2,
+        create_model_kwargs,
+    ) = sagemaker_session.sagemaker_client.create_model.mock_calls[0]
+    assert create_model_kwargs["PrimaryContainer"] == {
+        "Environment": {},
+        "Image": IMAGE,
+    }
 
 
 def test_create_endpoint_config(sagemaker_session):
@@ -79,7 +93,9 @@ def test_create_endpoint_config(sagemaker_session):
         }
     ]
     sagemaker_session.sagemaker_client.create_endpoint_config.assert_called_once_with(
-        EndpointConfigName=ENDPOINT_CONFIG_NAME, ProductionVariants=expected_pvs, Tags=[]
+        EndpointConfigName=ENDPOINT_CONFIG_NAME,
+        ProductionVariants=expected_pvs,
+        Tags=[],
     )
 
 
@@ -104,7 +120,9 @@ def test_create_endpoint_config_with_accelerator(sagemaker_session):
         }
     ]
     sagemaker_session.sagemaker_client.create_endpoint_config.assert_called_once_with(
-        EndpointConfigName=ENDPOINT_CONFIG_NAME, ProductionVariants=expected_pvs, Tags=[]
+        EndpointConfigName=ENDPOINT_CONFIG_NAME,
+        ProductionVariants=expected_pvs,
+        Tags=[],
     )
 
 

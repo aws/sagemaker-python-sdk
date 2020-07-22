@@ -23,7 +23,13 @@ from sagemaker.fw_utils import create_image_uri
 from sagemaker.estimator import _TrainingJob
 from sagemaker.model import MODEL_SERVER_WORKERS_PARAM_NAME
 from sagemaker.session import s3_input
-from sagemaker.tensorflow import defaults, serving, TensorFlow, TensorFlowModel, TensorFlowPredictor
+from sagemaker.tensorflow import (
+    defaults,
+    serving,
+    TensorFlow,
+    TensorFlowModel,
+    TensorFlowPredictor,
+)
 import sagemaker.tensorflow.estimator as tfe
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
@@ -54,7 +60,9 @@ DISTRIBUTION_MPI_ENABLED = {
 
 ENDPOINT_DESC = {"EndpointConfigName": "test-endpoint"}
 
-ENDPOINT_CONFIG_DESC = {"ProductionVariants": [{"ModelName": "model-1"}, {"ModelName": "model-2"}]}
+ENDPOINT_CONFIG_DESC = {
+    "ProductionVariants": [{"ModelName": "model-1"}, {"ModelName": "model-2"}]
+}
 
 LIST_TAGS_RESULT = {"Tags": [{"Key": "TagtestKey", "Value": "TagtestValue"}]}
 
@@ -82,7 +90,9 @@ def sagemaker_session():
     describe = {"ModelArtifacts": {"S3ModelArtifacts": "s3://m/m.tar.gz"}}
     session.sagemaker_client.describe_training_job = Mock(return_value=describe)
     session.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)
-    session.sagemaker_client.describe_endpoint_config = Mock(return_value=ENDPOINT_CONFIG_DESC)
+    session.sagemaker_client.describe_endpoint_config = Mock(
+        return_value=ENDPOINT_CONFIG_DESC
+    )
     session.sagemaker_client.list_tags = Mock(return_value=LIST_TAGS_RESULT)
     return session
 
@@ -115,9 +125,13 @@ def _hyperparameters(script_mode=False, horovod=False):
         if horovod:
             hps["model_dir"] = json.dumps("/opt/ml/model")
         else:
-            hps["model_dir"] = json.dumps("s3://{}/{}/model".format(BUCKET_NAME, job_name))
+            hps["model_dir"] = json.dumps(
+                "s3://{}/{}/model".format(BUCKET_NAME, job_name)
+            )
     else:
-        hps["checkpoint_path"] = json.dumps("s3://{}/{}/checkpoints".format(BUCKET_NAME, job_name))
+        hps["checkpoint_path"] = json.dumps(
+            "s3://{}/{}/checkpoints".format(BUCKET_NAME, job_name)
+        )
         hps["training_steps"] = "1000"
         hps["evaluation_steps"] = "10"
         hps["sagemaker_requirements"] = '"{}"'.format(REQUIREMENTS_FILE)
@@ -133,7 +147,9 @@ def _create_train_job(
     py_version="py2",
 ):
     conf = {
-        "image": _get_full_cpu_image_uri(tf_version, repo=repo_name, py_version=py_version),
+        "image": _get_full_cpu_image_uri(
+            tf_version, repo=repo_name, py_version=py_version
+        ),
         "input_mode": "File",
         "input_config": [
             {
@@ -189,7 +205,9 @@ def _build_tf(
         role=ROLE,
         sagemaker_session=sagemaker_session,
         train_instance_count=INSTANCE_COUNT,
-        train_instance_type=train_instance_type if train_instance_type else INSTANCE_TYPE,
+        train_instance_type=train_instance_type
+        if train_instance_type
+        else INSTANCE_TYPE,
         checkpoint_path=checkpoint_path,
         base_job_name=base_job_name,
         **kwargs
@@ -225,7 +243,9 @@ def test_tf_deploy_model_server_workers(sagemaker_session):
     tf = _build_tf(sagemaker_session)
     tf.fit(inputs=s3_input("s3://mybucket/train"))
 
-    tf.deploy(initial_instance_count=1, instance_type="ml.c2.2xlarge", model_server_workers=2)
+    tf.deploy(
+        initial_instance_count=1, instance_type="ml.c2.2xlarge", model_server_workers=2
+    )
 
     assert (
         "2"
@@ -251,7 +271,9 @@ def test_tf_deploy_model_server_workers_unset(sagemaker_session):
 def test_tf_invalid_requirements_path(sagemaker_session):
     requirements_file = "/foo/bar/requirements.txt"
     with pytest.raises(ValueError) as e:
-        _build_tf(sagemaker_session, requirements_file=requirements_file, source_dir=DATA_DIR)
+        _build_tf(
+            sagemaker_session, requirements_file=requirements_file, source_dir=DATA_DIR
+        )
     assert "Requirements file {} is not a path relative to source_dir.".format(
         requirements_file
     ) in str(e.value)
@@ -260,8 +282,12 @@ def test_tf_invalid_requirements_path(sagemaker_session):
 def test_tf_nonexistent_requirements_path(sagemaker_session):
     requirements_file = "nonexistent_requirements.txt"
     with pytest.raises(ValueError) as e:
-        _build_tf(sagemaker_session, requirements_file=requirements_file, source_dir=DATA_DIR)
-    assert "Requirements file {} does not exist.".format(requirements_file) in str(e.value)
+        _build_tf(
+            sagemaker_session, requirements_file=requirements_file, source_dir=DATA_DIR
+        )
+    assert "Requirements file {} does not exist.".format(requirements_file) in str(
+        e.value
+    )
 
 
 def test_create_model(sagemaker_session, tf_version):
@@ -505,7 +531,9 @@ def test_tf(sagemaker_session, tf_version):
     assert call_names == ["train", "logs_for_job"]
 
     expected_train_args = _create_train_job(tf_version)
-    expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
+    expected_train_args["input_config"][0]["DataSource"]["S3DataSource"][
+        "S3Uri"
+    ] = inputs
     expected_train_args["experiment_config"] = EXPERIMENT_CONFIG
 
     actual_train_args = sagemaker_session.method_calls[0][2]
@@ -522,7 +550,9 @@ def test_tf(sagemaker_session, tf_version):
             "SAGEMAKER_REGION": "us-west-2",
             "SAGEMAKER_CONTAINER_LOG_LEVEL": "20",
         },
-        "Image": create_image_uri("us-west-2", "tensorflow", INSTANCE_TYPE, tf_version, "py2"),
+        "Image": create_image_uri(
+            "us-west-2", "tensorflow", INSTANCE_TYPE, tf_version, "py2"
+        ),
         "ModelDataUrl": "s3://m/m.tar.gz",
     }
     assert environment == model.prepare_container_def(INSTANCE_TYPE)
@@ -560,7 +590,10 @@ def test_run_tensorboard_locally_without_tensorboard_binary(
 @patch("sagemaker.utils.create_tar_file", MagicMock())
 def test_model(sagemaker_session, tf_version):
     model = TensorFlowModel(
-        MODEL_DATA, role=ROLE, entry_point=SCRIPT_PATH, sagemaker_session=sagemaker_session
+        MODEL_DATA,
+        role=ROLE,
+        entry_point=SCRIPT_PATH,
+        sagemaker_session=sagemaker_session,
     )
     predictor = model.deploy(1, INSTANCE_TYPE)
     assert isinstance(predictor, TensorFlowPredictor)
@@ -569,10 +602,17 @@ def test_model(sagemaker_session, tf_version):
 @patch("sagemaker.fw_utils.tar_and_upload_dir", MagicMock())
 def test_model_image_accelerator(sagemaker_session):
     model = TensorFlowModel(
-        MODEL_DATA, role=ROLE, entry_point=SCRIPT_PATH, sagemaker_session=sagemaker_session
+        MODEL_DATA,
+        role=ROLE,
+        entry_point=SCRIPT_PATH,
+        sagemaker_session=sagemaker_session,
     )
-    container_def = model.prepare_container_def(INSTANCE_TYPE, accelerator_type=ACCELERATOR_TYPE)
-    assert container_def["Image"] == _get_full_cpu_image_uri_with_ei(defaults.TF_VERSION)
+    container_def = model.prepare_container_def(
+        INSTANCE_TYPE, accelerator_type=ACCELERATOR_TYPE
+    )
+    assert container_def["Image"] == _get_full_cpu_image_uri_with_ei(
+        defaults.TF_VERSION
+    )
 
 
 def test_model_prepare_container_def_no_instance_type_or_image():
@@ -581,7 +621,9 @@ def test_model_prepare_container_def_no_instance_type_or_image():
     with pytest.raises(ValueError) as e:
         model.prepare_container_def()
 
-    expected_msg = "Must supply either an instance type (for choosing CPU vs GPU) or an image URI."
+    expected_msg = (
+        "Must supply either an instance type (for choosing CPU vs GPU) or an image URI."
+    )
     assert expected_msg in str(e)
 
 
@@ -636,7 +678,15 @@ def test_run_tensorboard_locally(
     tf.fit(inputs="s3://mybucket/train", run_tensorboard_locally=True)
 
     popen.assert_called_with(
-        ["tensorboard", "--logdir", "/my/temp/folder", "--host", "localhost", "--port", "6006"],
+        [
+            "tensorboard",
+            "--logdir",
+            "/my/temp/folder",
+            "--host",
+            "localhost",
+            "--port",
+            "6006",
+        ],
         stderr=-1,
         stdout=-1,
     )
@@ -654,7 +704,17 @@ def test_run_tensorboard_locally(
 @patch("time.time", return_value=TIME)
 @patch("time.sleep")
 def test_run_tensorboard_locally_port_in_use(
-    sleep, time, strftime, popen, call, access, socket, rmtree, mkdtemp, sync, sagemaker_session
+    sleep,
+    time,
+    strftime,
+    popen,
+    call,
+    access,
+    socket,
+    rmtree,
+    mkdtemp,
+    sync,
+    sagemaker_session,
 ):
     tf = TensorFlow(
         entry_point=SCRIPT_PATH,
@@ -669,13 +729,29 @@ def test_run_tensorboard_locally_port_in_use(
     tf.fit(inputs="s3://mybucket/train", run_tensorboard_locally=True)
 
     popen.assert_any_call(
-        ["tensorboard", "--logdir", "/my/temp/folder", "--host", "localhost", "--port", "6006"],
+        [
+            "tensorboard",
+            "--logdir",
+            "/my/temp/folder",
+            "--host",
+            "localhost",
+            "--port",
+            "6006",
+        ],
         stderr=-1,
         stdout=-1,
     )
 
     popen.assert_any_call(
-        ["tensorboard", "--logdir", "/my/temp/folder", "--host", "localhost", "--port", "6007"],
+        [
+            "tensorboard",
+            "--logdir",
+            "/my/temp/folder",
+            "--host",
+            "localhost",
+            "--port",
+            "6007",
+        ],
         stderr=-1,
         stdout=-1,
     )
@@ -701,10 +777,15 @@ def test_tf_checkpoint_not_set(sagemaker_session):
 @patch("sagemaker.utils.create_tar_file", MagicMock())
 def test_tf_training_and_evaluation_steps_not_set(sagemaker_session):
     job_name = "sagemaker-tensorflow-py2-gpu-2017-10-24-14-12-09"
-    output_path = "s3://{}/output/{}/".format(sagemaker_session.default_bucket(), job_name)
+    output_path = "s3://{}/output/{}/".format(
+        sagemaker_session.default_bucket(), job_name
+    )
 
     tf = _build_tf(
-        sagemaker_session, training_steps=None, evaluation_steps=None, output_path=output_path
+        sagemaker_session,
+        training_steps=None,
+        evaluation_steps=None,
+        output_path=output_path,
     )
     tf.fit(inputs=s3_input("s3://mybucket/train"))
     assert tf.hyperparameters()["training_steps"] == "null"
@@ -714,10 +795,15 @@ def test_tf_training_and_evaluation_steps_not_set(sagemaker_session):
 @patch("sagemaker.utils.create_tar_file", MagicMock())
 def test_tf_training_and_evaluation_steps(sagemaker_session):
     job_name = "sagemaker-tensorflow-py2-gpu-2017-10-24-14-12-09"
-    output_path = "s3://{}/output/{}/".format(sagemaker_session.default_bucket(), job_name)
+    output_path = "s3://{}/output/{}/".format(
+        sagemaker_session.default_bucket(), job_name
+    )
 
     tf = _build_tf(
-        sagemaker_session, training_steps=123, evaluation_steps=456, output_path=output_path
+        sagemaker_session,
+        training_steps=123,
+        evaluation_steps=456,
+        output_path=output_path,
     )
     tf.fit(inputs=s3_input("s3://mybucket/train"))
     assert tf.hyperparameters()["training_steps"] == "123"
@@ -727,7 +813,9 @@ def test_tf_training_and_evaluation_steps(sagemaker_session):
 @patch("sagemaker.utils.create_tar_file", MagicMock())
 def test_tf_checkpoint_set(sagemaker_session):
     tf = _build_tf(sagemaker_session, checkpoint_path="s3://my_checkpoint_bucket")
-    assert tf.hyperparameters()["checkpoint_path"] == json.dumps("s3://my_checkpoint_bucket")
+    assert tf.hyperparameters()["checkpoint_path"] == json.dumps(
+        "s3://my_checkpoint_bucket"
+    )
 
 
 @patch("sagemaker.utils.create_tar_file", MagicMock())
@@ -749,7 +837,10 @@ def test_attach(sagemaker_session, tf_version):
         tf_version
     )
     rjd = {
-        "AlgorithmSpecification": {"TrainingInputMode": "File", "TrainingImage": training_image},
+        "AlgorithmSpecification": {
+            "TrainingInputMode": "File",
+            "TrainingImage": training_image,
+        },
         "HyperParameters": {
             "sagemaker_submit_directory": '"s3://some/sourcedir.tar.gz"',
             "checkpoint_path": '"s3://other/1508872349"',
@@ -777,7 +868,9 @@ def test_attach(sagemaker_session, tf_version):
         name="describe_training_job", return_value=rjd
     )
 
-    estimator = TensorFlow.attach(training_job_name="neo", sagemaker_session=sagemaker_session)
+    estimator = TensorFlow.attach(
+        training_job_name="neo", sagemaker_session=sagemaker_session
+    )
     assert estimator.latest_training_job.job_name == "neo"
     assert estimator.py_version == "py2"
     assert estimator.framework_version == tf_version
@@ -803,7 +896,10 @@ def test_attach_new_repo_name(sagemaker_session, tf_version):
         tf_version
     )
     rjd = {
-        "AlgorithmSpecification": {"TrainingInputMode": "File", "TrainingImage": training_image},
+        "AlgorithmSpecification": {
+            "TrainingInputMode": "File",
+            "TrainingImage": training_image,
+        },
         "HyperParameters": {
             "sagemaker_submit_directory": '"s3://some/sourcedir.tar.gz"',
             "checkpoint_path": '"s3://other/1508872349"',
@@ -831,7 +927,9 @@ def test_attach_new_repo_name(sagemaker_session, tf_version):
         name="describe_training_job", return_value=rjd
     )
 
-    estimator = TensorFlow.attach(training_job_name="neo", sagemaker_session=sagemaker_session)
+    estimator = TensorFlow.attach(
+        training_job_name="neo", sagemaker_session=sagemaker_session
+    )
     assert estimator.latest_training_job.job_name == "neo"
     assert estimator.py_version == "py2"
     assert estimator.framework_version == tf_version
@@ -854,9 +952,14 @@ def test_attach_new_repo_name(sagemaker_session, tf_version):
 
 @patch("sagemaker.utils.create_tar_file", MagicMock())
 def test_attach_old_container(sagemaker_session):
-    training_image = "1.dkr.ecr.us-west-2.amazonaws.com/sagemaker-tensorflow-py2-cpu:1.0"
+    training_image = (
+        "1.dkr.ecr.us-west-2.amazonaws.com/sagemaker-tensorflow-py2-cpu:1.0"
+    )
     rjd = {
-        "AlgorithmSpecification": {"TrainingInputMode": "File", "TrainingImage": training_image},
+        "AlgorithmSpecification": {
+            "TrainingInputMode": "File",
+            "TrainingImage": training_image,
+        },
         "HyperParameters": {
             "sagemaker_submit_directory": '"s3://some/sourcedir.tar.gz"',
             "checkpoint_path": '"s3://other/1508872349"',
@@ -884,7 +987,9 @@ def test_attach_old_container(sagemaker_session):
         name="describe_training_job", return_value=rjd
     )
 
-    estimator = TensorFlow.attach(training_job_name="neo", sagemaker_session=sagemaker_session)
+    estimator = TensorFlow.attach(
+        training_job_name="neo", sagemaker_session=sagemaker_session
+    )
     assert estimator.latest_training_job.job_name == "neo"
     assert estimator.py_version == "py2"
     assert estimator.framework_version == "1.4"
@@ -940,9 +1045,14 @@ def test_attach_wrong_framework(sagemaker_session):
 
 
 def test_attach_custom_image(sagemaker_session):
-    training_image = "1.dkr.ecr.us-west-2.amazonaws.com/tensorflow_with_custom_binary:1.0"
+    training_image = (
+        "1.dkr.ecr.us-west-2.amazonaws.com/tensorflow_with_custom_binary:1.0"
+    )
     rjd = {
-        "AlgorithmSpecification": {"TrainingInputMode": "File", "TrainingImage": training_image},
+        "AlgorithmSpecification": {
+            "TrainingInputMode": "File",
+            "TrainingImage": training_image,
+        },
         "HyperParameters": {
             "sagemaker_submit_directory": '"s3://some/sourcedir.tar.gz"',
             "checkpoint_path": '"s3://other/1508872349"',
@@ -970,7 +1080,9 @@ def test_attach_custom_image(sagemaker_session):
         name="describe_training_job", return_value=rjd
     )
 
-    estimator = TensorFlow.attach(training_job_name="neo", sagemaker_session=sagemaker_session)
+    estimator = TensorFlow.attach(
+        training_job_name="neo", sagemaker_session=sagemaker_session
+    )
     assert estimator.image_name == training_image
     assert estimator.train_image() == training_image
 
@@ -987,7 +1099,9 @@ def test_estimator_py2_deprecation_warning(warning, sagemaker_session):
     )
 
     assert estimator.py_version == "py2"
-    warning.assert_called_with(estimator.__framework_name__, defaults.LATEST_PY2_VERSION)
+    warning.assert_called_with(
+        estimator.__framework_name__, defaults.LATEST_PY2_VERSION
+    )
 
     model = TensorFlowModel(
         MODEL_DATA,
@@ -1035,21 +1149,29 @@ def _deprecated_args_msg(args):
 def test_script_mode_deprecated_args(sagemaker_session):
     with pytest.raises(AttributeError) as e:
         _build_tf(
-            sagemaker_session=sagemaker_session, py_version="py3", checkpoint_path="some_path"
+            sagemaker_session=sagemaker_session,
+            py_version="py3",
+            checkpoint_path="some_path",
         )
     assert _deprecated_args_msg("checkpoint_path") in str(e.value)
 
     with pytest.raises(AttributeError) as e:
-        _build_tf(sagemaker_session=sagemaker_session, py_version="py3", training_steps=1)
+        _build_tf(
+            sagemaker_session=sagemaker_session, py_version="py3", training_steps=1
+        )
     assert _deprecated_args_msg("training_steps") in str(e.value)
 
     with pytest.raises(AttributeError) as e:
-        _build_tf(sagemaker_session=sagemaker_session, script_mode=True, evaluation_steps=1)
+        _build_tf(
+            sagemaker_session=sagemaker_session, script_mode=True, evaluation_steps=1
+        )
     assert _deprecated_args_msg("evaluation_steps") in str(e.value)
 
     with pytest.raises(AttributeError) as e:
         _build_tf(
-            sagemaker_session=sagemaker_session, script_mode=True, requirements_file="some_file"
+            sagemaker_session=sagemaker_session,
+            script_mode=True,
+            requirements_file="some_file",
         )
     assert _deprecated_args_msg("requirements_file") in str(e.value)
 
@@ -1088,7 +1210,9 @@ def test_py2_version_deprecated(sagemaker_session):
 
 def test_py2_version_is_not_deprecated(sagemaker_session):
     estimator = _build_tf(
-        sagemaker_session=sagemaker_session, framework_version="1.15.0", py_version="py2"
+        sagemaker_session=sagemaker_session,
+        framework_version="1.15.0",
+        py_version="py2",
     )
     assert estimator.py_version == "py2"
     estimator = _build_tf(
@@ -1138,7 +1262,9 @@ def test_script_mode_enabled(sagemaker_session):
 
 def test_script_mode_create_model(sagemaker_session):
     tf = _build_tf(
-        sagemaker_session=sagemaker_session, py_version="py3", enable_network_isolation=True
+        sagemaker_session=sagemaker_session,
+        py_version="py3",
+        enable_network_isolation=True,
     )
     tf._prepare_for_training()  # set output_path and job name as if training happened
 
@@ -1205,7 +1331,9 @@ def test_tf_script_mode(time, strftime, sagemaker_session):
     expected_train_args = _create_train_job(
         "1.11", script_mode=True, repo_name=SM_IMAGE_REPO_NAME, py_version="py3"
     )
-    expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
+    expected_train_args["input_config"][0]["DataSource"]["S3DataSource"][
+        "S3Uri"
+    ] = inputs
 
     actual_train_args = sagemaker_session.method_calls[0][2]
     assert actual_train_args == expected_train_args
@@ -1234,10 +1362,18 @@ def test_tf_script_mode_ps(time, strftime, sagemaker_session):
     assert call_names == ["train", "logs_for_job"]
 
     expected_train_args = _create_train_job(
-        "1.11", script_mode=True, ps=True, repo_name=SM_IMAGE_REPO_NAME, py_version="py3"
+        "1.11",
+        script_mode=True,
+        ps=True,
+        repo_name=SM_IMAGE_REPO_NAME,
+        py_version="py3",
     )
-    expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
-    expected_train_args["hyperparameters"][TensorFlow.LAUNCH_PS_ENV_NAME] = json.dumps(True)
+    expected_train_args["input_config"][0]["DataSource"]["S3DataSource"][
+        "S3Uri"
+    ] = inputs
+    expected_train_args["hyperparameters"][TensorFlow.LAUNCH_PS_ENV_NAME] = json.dumps(
+        True
+    )
 
     actual_train_args = sagemaker_session.method_calls[0][2]
     assert actual_train_args == expected_train_args
@@ -1266,14 +1402,24 @@ def test_tf_script_mode_mpi(time, strftime, sagemaker_session):
     assert call_names == ["train", "logs_for_job"]
 
     expected_train_args = _create_train_job(
-        "1.11", script_mode=True, horovod=True, repo_name=SM_IMAGE_REPO_NAME, py_version="py3"
+        "1.11",
+        script_mode=True,
+        horovod=True,
+        repo_name=SM_IMAGE_REPO_NAME,
+        py_version="py3",
     )
-    expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
-    expected_train_args["hyperparameters"][TensorFlow.LAUNCH_MPI_ENV_NAME] = json.dumps(True)
-    expected_train_args["hyperparameters"][TensorFlow.MPI_NUM_PROCESSES_PER_HOST] = json.dumps(2)
-    expected_train_args["hyperparameters"][TensorFlow.MPI_CUSTOM_MPI_OPTIONS] = json.dumps(
-        "options"
+    expected_train_args["input_config"][0]["DataSource"]["S3DataSource"][
+        "S3Uri"
+    ] = inputs
+    expected_train_args["hyperparameters"][TensorFlow.LAUNCH_MPI_ENV_NAME] = json.dumps(
+        True
     )
+    expected_train_args["hyperparameters"][
+        TensorFlow.MPI_NUM_PROCESSES_PER_HOST
+    ] = json.dumps(2)
+    expected_train_args["hyperparameters"][
+        TensorFlow.MPI_CUSTOM_MPI_OPTIONS
+    ] = json.dumps("options")
 
     actual_train_args = sagemaker_session.method_calls[0][2]
     assert actual_train_args == expected_train_args
@@ -1285,7 +1431,10 @@ def test_tf_script_mode_attach(sagemaker_session, tf_version):
         tf_version
     )
     rjd = {
-        "AlgorithmSpecification": {"TrainingInputMode": "File", "TrainingImage": training_image},
+        "AlgorithmSpecification": {
+            "TrainingInputMode": "File",
+            "TrainingImage": training_image,
+        },
         "HyperParameters": {
             "sagemaker_submit_directory": '"s3://some/sourcedir.tar.gz"',
             "sagemaker_program": '"iris-dnn-classifier.py"',
@@ -1310,7 +1459,9 @@ def test_tf_script_mode_attach(sagemaker_session, tf_version):
         name="describe_training_job", return_value=rjd
     )
 
-    estimator = TensorFlow.attach(training_job_name="neo", sagemaker_session=sagemaker_session)
+    estimator = TensorFlow.attach(
+        training_job_name="neo", sagemaker_session=sagemaker_session
+    )
     assert estimator.latest_training_job.job_name == "neo"
     assert estimator.py_version == "py3"
     assert estimator.framework_version == tf_version

@@ -57,7 +57,9 @@ def test_pca(sagemaker_session, cpu_instance_type):
             enable_network_isolation=True,
         )
         predictor = pca_model.deploy(
-            initial_instance_count=1, instance_type=cpu_instance_type, endpoint_name=job_name
+            initial_instance_count=1,
+            instance_type=cpu_instance_type,
+            endpoint_name=job_name,
         )
 
         result = predictor.predict(train_set[0][:5])
@@ -101,10 +103,14 @@ def test_async_pca(sagemaker_session, cpu_instance_type):
         )
 
         model = sagemaker.amazon.pca.PCAModel(
-            estimator.model_data, role="SageMakerRole", sagemaker_session=sagemaker_session
+            estimator.model_data,
+            role="SageMakerRole",
+            sagemaker_session=sagemaker_session,
         )
         predictor = model.deploy(
-            initial_instance_count=1, instance_type=cpu_instance_type, endpoint_name=job_name
+            initial_instance_count=1,
+            instance_type=cpu_instance_type,
+            endpoint_name=job_name,
         )
 
         result = predictor.predict(train_set[0][:5])

@@ -51,12 +51,18 @@ def test_lda(sagemaker_session, cpu_instance_type):
         )
 
         record_set = prepare_record_set_from_local_files(
-            data_path, lda.data_location, len(all_records), feature_num, sagemaker_session
+            data_path,
+            lda.data_location,
+            len(all_records),
+            feature_num,
+            sagemaker_session,
         )
         lda.fit(records=record_set, mini_batch_size=100, job_name=job_name)
 
     with timeout_and_delete_endpoint_by_name(job_name, sagemaker_session):
-        model = LDAModel(lda.model_data, role="SageMakerRole", sagemaker_session=sagemaker_session)
+        model = LDAModel(
+            lda.model_data, role="SageMakerRole", sagemaker_session=sagemaker_session
+        )
         predictor = model.deploy(1, cpu_instance_type, endpoint_name=job_name)
 
         predict_input = np.random.rand(1, feature_num)

@@ -173,7 +173,9 @@ def test_json_deserializer_array():
 
 
 def test_json_deserializer_2dimensional():
-    result = json_deserializer(io.BytesIO(b"[[1, 2, 3], [3, 4, 5]]"), "application/json")
+    result = json_deserializer(
+        io.BytesIO(b"[[1, 2, 3], [3, 4, 5]]"), "application/json"
+    )
 
     assert result == [[1, 2, 3], [3, 4, 5]]
 
@@ -197,7 +199,9 @@ def test_string_deserializer():
 
 
 def test_stream_deserializer():
-    stream, content_type = StreamDeserializer()(io.BytesIO(b"[1, 2, 3]"), "application/json")
+    stream, content_type = StreamDeserializer()(
+        io.BytesIO(b"[1, 2, 3]"), "application/json"
+    )
     result = stream.read()
     assert result == b"[1, 2, 3]"
     assert content_type == "application/json"
@@ -258,7 +262,9 @@ def test_npy_serializer_object():
 
     result = npy_serializer(object)
 
-    assert np.array_equal(np.array(object), np.load(io.BytesIO(result), allow_pickle=True))
+    assert np.array_equal(
+        np.array(object), np.load(io.BytesIO(result), allow_pickle=True)
+    )
 
 
 def test_npy_serializer_list_of_empty():
@@ -350,7 +356,9 @@ PRODUCTION_VARIANT_1 = "PRODUCTION_VARIANT_1"
 
 ENDPOINT_DESC = {"EndpointConfigName": ENDPOINT}
 
-ENDPOINT_CONFIG_DESC = {"ProductionVariants": [{"ModelName": "model-1"}, {"ModelName": "model-2"}]}
+ENDPOINT_CONFIG_DESC = {
+    "ProductionVariants": [{"ModelName": "model-1"}, {"ModelName": "model-2"}]
+}
 
 
 def empty_sagemaker_session():
@@ -358,7 +366,9 @@ def empty_sagemaker_session():
     ims.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
     ims.sagemaker_runtime_client = Mock(name="sagemaker_runtime")
     ims.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)
-    ims.sagemaker_client.describe_endpoint_config = Mock(return_value=ENDPOINT_CONFIG_DESC)
+    ims.sagemaker_client.describe_endpoint_config = Mock(
+        return_value=ENDPOINT_CONFIG_DESC
+    )
 
     response_body = Mock("body")
     response_body.read = Mock("read", return_value=RETURN_VALUE)
@@ -379,7 +389,10 @@ def test_predict_call_pass_through():
     assert sagemaker_session.sagemaker_runtime_client.invoke_endpoint.called
 
     expected_request_args = {"Body": data, "EndpointName": ENDPOINT}
-    call_args, kwargs = sagemaker_session.sagemaker_runtime_client.invoke_endpoint.call_args
+    (
+        call_args,
+        kwargs,
+    ) = sagemaker_session.sagemaker_runtime_client.invoke_endpoint.call_args
     assert kwargs == expected_request_args
 
     assert result == RETURN_VALUE
@@ -388,7 +401,10 @@ def test_predict_call_pass_through():
 def test_predict_call_with_headers():
     sagemaker_session = empty_sagemaker_session()
     predictor = RealTimePredictor(
-        ENDPOINT, sagemaker_session, content_type=DEFAULT_CONTENT_TYPE, accept=DEFAULT_CONTENT_TYPE
+        ENDPOINT,
+        sagemaker_session,
+        content_type=DEFAULT_CONTENT_TYPE,
+        accept=DEFAULT_CONTENT_TYPE,
     )
 
     data = "untouched"
@@ -402,7 +418,10 @@ def test_predict_call_with_headers():
         "ContentType": DEFAULT_CONTENT_TYPE,
         "EndpointName": ENDPOINT,
     }
-    call_args, kwargs = sagemaker_session.sagemaker_runtime_client.invoke_endpoint.call_args
+    (
+        call_args,
+        kwargs,
+    ) = sagemaker_session.sagemaker_runtime_client.invoke_endpoint.call_args
     assert kwargs == expected_request_args
 
     assert result == RETURN_VALUE
@@ -411,7 +430,10 @@ def test_predict_call_with_headers():
 def test_predict_call_with_target_variant():
     sagemaker_session = empty_sagemaker_session()
     predictor = RealTimePredictor(
-        ENDPOINT, sagemaker_session, content_type=DEFAULT_CONTENT_TYPE, accept=DEFAULT_CONTENT_TYPE
+        ENDPOINT,
+        sagemaker_session,
+        content_type=DEFAULT_CONTENT_TYPE,
+        accept=DEFAULT_CONTENT_TYPE,
     )
 
     data = "untouched"
@@ -427,7 +449,10 @@ def test_predict_call_with_target_variant():
         "TargetVariant": PRODUCTION_VARIANT_1,
     }
 
-    call_args, kwargs = sagemaker_session.sagemaker_runtime_client.invoke_endpoint.call_args
+    (
+        call_args,
+        kwargs,
+    ) = sagemaker_session.sagemaker_runtime_client.invoke_endpoint.call_args
     assert kwargs == expected_request_args
 
     assert result == RETURN_VALUE
@@ -436,7 +461,10 @@ def test_predict_call_with_target_variant():
 def test_multi_model_predict_call_with_headers():
     sagemaker_session = empty_sagemaker_session()
     predictor = RealTimePredictor(
-        ENDPOINT, sagemaker_session, content_type=DEFAULT_CONTENT_TYPE, accept=DEFAULT_CONTENT_TYPE
+        ENDPOINT,
+        sagemaker_session,
+        content_type=DEFAULT_CONTENT_TYPE,
+        accept=DEFAULT_CONTENT_TYPE,
     )
 
     data = "untouched"
@@ -451,7 +479,10 @@ def test_multi_model_predict_call_with_headers():
         "EndpointName": ENDPOINT,
         "TargetModel": "model.tar.gz",
     }
-    call_args, kwargs = sagemaker_session.sagemaker_runtime_client.invoke_endpoint.call_args
+    (
+        call_args,
+        kwargs,
+    ) = sagemaker_session.sagemaker_runtime_client.invoke_endpoint.call_args
     assert kwargs == expected_request_args
 
     assert result == RETURN_VALUE
@@ -462,10 +493,14 @@ def json_sagemaker_session():
     ims.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
     ims.sagemaker_runtime_client = Mock(name="sagemaker_runtime")
     ims.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)
-    ims.sagemaker_client.describe_endpoint_config = Mock(return_value=ENDPOINT_CONFIG_DESC)
+    ims.sagemaker_client.describe_endpoint_config = Mock(
+        return_value=ENDPOINT_CONFIG_DESC
+    )
 
     ims.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)
-    ims.sagemaker_client.describe_endpoint_config = Mock(return_value=ENDPOINT_CONFIG_DESC)
+    ims.sagemaker_client.describe_endpoint_config = Mock(
+        return_value=ENDPOINT_CONFIG_DESC
+    )
 
     response_body = Mock("body")
     response_body.read = Mock("read", return_value=json.dumps([RETURN_VALUE]))
@@ -498,7 +533,10 @@ def test_predict_call_with_headers_and_json():
         "ContentType": "not/json",
         "EndpointName": ENDPOINT,
     }
-    call_args, kwargs = sagemaker_session.sagemaker_runtime_client.invoke_endpoint.call_args
+    (
+        call_args,
+        kwargs,
+    ) = sagemaker_session.sagemaker_runtime_client.invoke_endpoint.call_args
     assert kwargs == expected_request_args
 
     assert result == json.dumps([RETURN_VALUE])
@@ -509,10 +547,14 @@ def ret_csv_sagemaker_session():
     ims.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
     ims.sagemaker_runtime_client = Mock(name="sagemaker_runtime")
     ims.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)
-    ims.sagemaker_client.describe_endpoint_config = Mock(return_value=ENDPOINT_CONFIG_DESC)
+    ims.sagemaker_client.describe_endpoint_config = Mock(
+        return_value=ENDPOINT_CONFIG_DESC
+    )
 
     ims.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)
-    ims.sagemaker_client.describe_endpoint_config = Mock(return_value=ENDPOINT_CONFIG_DESC)
+    ims.sagemaker_client.describe_endpoint_config = Mock(
+        return_value=ENDPOINT_CONFIG_DESC
+    )
 
     response_body = Mock("body")
     response_body.read = Mock("read", return_value=CSV_RETURN_VALUE)
@@ -541,7 +583,10 @@ def test_predict_call_with_headers_and_csv():
         "ContentType": CSV_CONTENT_TYPE,
         "EndpointName": ENDPOINT,
     }
-    call_args, kwargs = sagemaker_session.sagemaker_runtime_client.invoke_endpoint.call_args
+    (
+        call_args,
+        kwargs,
+    ) = sagemaker_session.sagemaker_runtime_client.invoke_endpoint.call_args
     assert kwargs == expected_request_args
 
     assert result == CSV_RETURN_VALUE

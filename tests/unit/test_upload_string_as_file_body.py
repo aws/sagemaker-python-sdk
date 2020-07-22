@@ -53,7 +53,9 @@ def test_upload_string_file(sagemaker_session):
         if name == "resource().Object().put"
     ]
 
-    assert result_s3_uri == "s3://{}/{}".format(BUCKET_NAME, DESTINATION_DATA_TESTS_FILE)
+    assert result_s3_uri == "s3://{}/{}".format(
+        BUCKET_NAME, DESTINATION_DATA_TESTS_FILE
+    )
     assert len(uploaded_files_with_args) == 1
     kwargs = uploaded_files_with_args[0]
     assert kwargs["Body"] == BODY
@@ -73,7 +75,9 @@ def test_upload_aes_encrypted_string_file(sagemaker_session):
         if name == "resource().Object().put"
     ]
 
-    assert result_s3_uri == "s3://{}/{}".format(BUCKET_NAME, DESTINATION_DATA_TESTS_FILE)
+    assert result_s3_uri == "s3://{}/{}".format(
+        BUCKET_NAME, DESTINATION_DATA_TESTS_FILE
+    )
     assert len(uploaded_files_with_args) == 1
     kwargs = uploaded_files_with_args[0]
     assert kwargs["Body"] == BODY

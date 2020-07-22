@@ -99,7 +99,9 @@ class XGBoostModel(FrameworkModel):
         )
 
         if py_version == "py2":
-            raise AttributeError("XGBoost container does not support Python 2, please use Python 3")
+            raise AttributeError(
+                "XGBoost container does not support Python 2, please use Python 3"
+            )
 
         self.py_version = py_version
         self.framework_version = framework_version
@@ -125,16 +127,22 @@ class XGBoostModel(FrameworkModel):
                 self.sagemaker_session.boto_region_name, instance_type
             )
 
-        deploy_key_prefix = model_code_key_prefix(self.key_prefix, self.name, deploy_image)
+        deploy_key_prefix = model_code_key_prefix(
+            self.key_prefix, self.name, deploy_image
+        )
         self._upload_code(deploy_key_prefix)
         deploy_env = dict(self.env)
         deploy_env.update(self._framework_env_vars())
 
         if self.model_server_workers:
-            deploy_env[MODEL_SERVER_WORKERS_PARAM_NAME.upper()] = str(self.model_server_workers)
+            deploy_env[MODEL_SERVER_WORKERS_PARAM_NAME.upper()] = str(
+                self.model_server_workers
+            )
         return sagemaker.container_def(deploy_image, self.model_data, deploy_env)
 
-    def serving_image_uri(self, region_name, instance_type):  # pylint: disable=unused-argument
+    def serving_image_uri(
+        self, region_name, instance_type
+    ):  # pylint: disable=unused-argument
         """Create a URI for the serving image.
 
         Args:

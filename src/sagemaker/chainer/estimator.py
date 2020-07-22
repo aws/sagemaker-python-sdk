@@ -127,7 +127,9 @@ class Chainer(Framework):
         """
         if framework_version is None:
             logger.warning(
-                empty_framework_version_warning(defaults.CHAINER_VERSION, self.LATEST_VERSION)
+                empty_framework_version_warning(
+                    defaults.CHAINER_VERSION, self.LATEST_VERSION
+                )
             )
         self.framework_version = framework_version or defaults.CHAINER_VERSION
 
@@ -137,7 +139,9 @@ class Chainer(Framework):
 
         if py_version == "py2":
             logger.warning(
-                python_deprecation_warning(self.__framework_name__, defaults.LATEST_PY2_VERSION)
+                python_deprecation_warning(
+                    self.__framework_name__, defaults.LATEST_PY2_VERSION
+                )
             )
 
         self.py_version = py_version
@@ -160,8 +164,12 @@ class Chainer(Framework):
         }
 
         # remove unset keys.
-        additional_hyperparameters = {k: v for k, v in additional_hyperparameters.items() if v}
-        hyperparameters.update(Framework._json_encode_hyperparameters(additional_hyperparameters))
+        additional_hyperparameters = {
+            k: v for k, v in additional_hyperparameters.items() if v
+        }
+        hyperparameters.update(
+            Framework._json_encode_hyperparameters(additional_hyperparameters)
+        )
         return hyperparameters
 
     def create_model(
@@ -231,7 +239,9 @@ class Chainer(Framework):
         )
 
     @classmethod
-    def _prepare_init_params_from_job_description(cls, job_details, model_channel_name=None):
+    def _prepare_init_params_from_job_description(
+        cls, job_details, model_channel_name=None
+    ):
         """Convert the job description to init params that can be handled by the
         class constructor
 

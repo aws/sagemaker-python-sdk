@@ -64,7 +64,9 @@ def test_model_package_enable_network_isolation_with_no_product_id(sagemaker_ses
     )
 
     model_package = ModelPackage(
-        role="role", model_package_arn="my-model-package", sagemaker_session=sagemaker_session
+        role="role",
+        model_package_arn="my-model-package",
+        sagemaker_session=sagemaker_session,
     )
     assert model_package.enable_network_isolation() is False
 
@@ -83,7 +85,9 @@ def test_model_package_enable_network_isolation_with_product_id(sagemaker_sessio
     )
 
     model_package = ModelPackage(
-        role="role", model_package_arn="my-model-package", sagemaker_session=sagemaker_session
+        role="role",
+        model_package_arn="my-model-package",
+        sagemaker_session=sagemaker_session,
     )
     assert model_package.enable_network_isolation() is True
 
@@ -95,7 +99,9 @@ def test_model_package_create_transformer(sagemaker_session):
     )
 
     model_package = ModelPackage(
-        role="role", model_package_arn="my-model-package", sagemaker_session=sagemaker_session
+        role="role",
+        model_package_arn="my-model-package",
+        sagemaker_session=sagemaker_session,
     )
     model_package.name = "auto-generated-model"
     transformer = model_package.transformer(
@@ -122,7 +128,9 @@ def test_model_package_create_transformer_with_product_id(sagemaker_session):
     )
 
     model_package = ModelPackage(
-        role="role", model_package_arn="my-model-package", sagemaker_session=sagemaker_session
+        role="role",
+        model_package_arn="my-model-package",
+        sagemaker_session=sagemaker_session,
     )
     model_package.name = "auto-generated-model"
     transformer = model_package.transformer(

@@ -189,7 +189,11 @@ def test_async_linear_learner(sagemaker_session, cpu_instance_type):
         ll.huber_delta = 0.1
         ll.early_stopping_tolerance = 0.0001
         ll.early_stopping_patience = 3
-        ll.fit(ll.record_set(train_set[0][:200], train_set[1][:200]), wait=False, job_name=job_name)
+        ll.fit(
+            ll.record_set(train_set[0][:200], train_set[1][:200]),
+            wait=False,
+            job_name=job_name,
+        )
 
         print("Waiting to re-attach to the training job: %s" % job_name)
         time.sleep(20)
@@ -199,7 +203,9 @@ def test_async_linear_learner(sagemaker_session, cpu_instance_type):
             training_job_name=job_name, sagemaker_session=sagemaker_session
         )
         model = LinearLearnerModel(
-            estimator.model_data, role="SageMakerRole", sagemaker_session=sagemaker_session
+            estimator.model_data,
+            role="SageMakerRole",
+            sagemaker_session=sagemaker_session,
         )
         predictor = model.deploy(1, cpu_instance_type, endpoint_name=job_name)
 

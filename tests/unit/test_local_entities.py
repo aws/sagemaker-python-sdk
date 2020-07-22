@@ -99,7 +99,9 @@ def test_local_transform_job_defaults_with_max_payload(local_transform_job):
 @patch("sagemaker.local.entities._wait_for_serving_container", Mock())
 @patch("sagemaker.local.entities._perform_request")
 @patch("sagemaker.local.entities._LocalTransformJob._perform_batch_inference")
-def test_start_local_transform_job(_perform_batch_inference, _perform_request, local_transform_job):
+def test_start_local_transform_job(
+    _perform_batch_inference, _perform_request, local_transform_job
+):
     input_data = {}
     output_data = {}
     transform_resources = {"InstanceType": "local"}
@@ -108,7 +110,9 @@ def test_start_local_transform_job(_perform_batch_inference, _perform_request, l
     _perform_request.return_value = (response, 200)
     response.read.return_value = '{"BatchStrategy": "SingleRecord"}'
     local_transform_job.primary_container["ModelDataUrl"] = "file:///some/model"
-    local_transform_job.start(input_data, output_data, transform_resources, Environment={})
+    local_transform_job.start(
+        input_data, output_data, transform_resources, Environment={}
+    )
 
     _perform_batch_inference.assert_called()
     response = local_transform_job.describe()
@@ -155,7 +159,9 @@ def test_local_transform_job_perform_batch_inference(
 
     local_transform_job.container = Mock()
 
-    local_transform_job._perform_batch_inference(input_data, output_data, **transform_kwargs)
+    local_transform_job._perform_batch_inference(
+        input_data, output_data, **transform_kwargs
+    )
 
     dir, output, job_name, session = move_to_destination.call_args[0]
     assert output == "s3://bucket/output"

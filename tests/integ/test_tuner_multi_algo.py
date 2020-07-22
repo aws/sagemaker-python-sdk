@@ -72,7 +72,9 @@ def data_set():
 @pytest.fixture(scope="function")
 def estimator_fm(sagemaker_session, cpu_instance_type):
     fm_image = get_image_uri(
-        sagemaker_session.boto_session.region_name, "factorization-machines", repo_version="1"
+        sagemaker_session.boto_session.region_name,
+        "factorization-machines",
+        repo_version="1",
     )
 
     estimator = Estimator(
@@ -92,7 +94,9 @@ def estimator_fm(sagemaker_session, cpu_instance_type):
 
 @pytest.fixture(scope="function")
 def estimator_knn(sagemaker_session, cpu_instance_type):
-    knn_image = get_image_uri(sagemaker_session.boto_session.region_name, "knn", repo_version="1")
+    knn_image = get_image_uri(
+        sagemaker_session.boto_session.region_name, "knn", repo_version="1"
+    )
 
     estimator = Estimator(
         image_name=knn_image,
@@ -103,7 +107,11 @@ def estimator_knn(sagemaker_session, cpu_instance_type):
     )
 
     estimator.set_hyperparameters(
-        k=10, sample_size=500, feature_dim=784, mini_batch_size=100, predictor_type="regressor"
+        k=10,
+        sample_size=500,
+        feature_dim=784,
+        mini_batch_size=100,
+        predictor_type="regressor",
     )
     return estimator
 
@@ -154,7 +162,8 @@ def _fit_tuner(sagemaker_session, tuner):
 
 def _retrieve_analytics(sagemaker_session, tuning_job_name):
     tuner_analytics = HyperparameterTuningJobAnalytics(
-        hyperparameter_tuning_job_name=tuning_job_name, sagemaker_session=sagemaker_session
+        hyperparameter_tuning_job_name=tuning_job_name,
+        sagemaker_session=sagemaker_session,
     )
     _verify_analytics_dataframe(tuner_analytics)
     _verify_analytics_tuning_ranges(tuner_analytics)
@@ -170,18 +179,24 @@ def _verify_analytics_tuning_ranges(tuner_analytics):
     assert len(analytics_tuning_ranges) == 2
 
     expected_tuning_ranges_fm = {
-        key: value.as_tuning_range(key) for key, value in HYPER_PARAMETER_RANGES_FM.items()
+        key: value.as_tuning_range(key)
+        for key, value in HYPER_PARAMETER_RANGES_FM.items()
     }
     assert expected_tuning_ranges_fm == analytics_tuning_ranges[ESTIMATOR_FM]
 
     expected_tuning_ranges_knn = {
-        key: value.as_tuning_range(key) for key, value in HYPER_PARAMETER_RANGES_KNN.items()
+        key: value.as_tuning_range(key)
+        for key, value in HYPER_PARAMETER_RANGES_KNN.items()
     }
     assert expected_tuning_ranges_knn == analytics_tuning_ranges[ESTIMATOR_KNN]
 
 
 def _attach_tuner(sagemaker_session, tuning_job_name):
-    print("Attaching hyperparameter tuning job {} to a new tuner instance".format(tuning_job_name))
+    print(
+        "Attaching hyperparameter tuning job {} to a new tuner instance".format(
+            tuning_job_name
+        )
+    )
     return HyperparameterTuner.attach(
         tuning_job_name,
         sagemaker_session=sagemaker_session,

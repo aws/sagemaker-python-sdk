@@ -80,7 +80,9 @@ class Statistics(ModelMonitoringFile):
     """Represents the statistics JSON file used in Amazon SageMaker Model Monitoring.
     """
 
-    def __init__(self, body_dict, statistics_file_s3_uri, kms_key=None, sagemaker_session=None):
+    def __init__(
+        self, body_dict, statistics_file_s3_uri, kms_key=None, sagemaker_session=None
+    ):
         """Initializes the Statistics object used in Amazon SageMaker Model Monitoring.
 
         Args:
@@ -119,7 +121,9 @@ class Statistics(ModelMonitoringFile):
         """
         try:
             body_dict = json.loads(
-                S3Downloader.read_file(s3_uri=statistics_file_s3_uri, session=sagemaker_session)
+                S3Downloader.read_file(
+                    s3_uri=statistics_file_s3_uri, session=sagemaker_session
+                )
             )
         except ClientError as error:
             print(
@@ -131,12 +135,18 @@ class Statistics(ModelMonitoringFile):
             raise error
 
         return cls(
-            body_dict=body_dict, statistics_file_s3_uri=statistics_file_s3_uri, kms_key=kms_key
+            body_dict=body_dict,
+            statistics_file_s3_uri=statistics_file_s3_uri,
+            kms_key=kms_key,
         )
 
     @classmethod
     def from_string(
-        cls, statistics_file_string, kms_key=None, file_name=None, sagemaker_session=None
+        cls,
+        statistics_file_string,
+        kms_key=None,
+        file_name=None,
+        sagemaker_session=None,
     ):
         """Generates a Statistics object from an s3 uri.
 
@@ -157,7 +167,11 @@ class Statistics(ModelMonitoringFile):
         sagemaker_session = sagemaker_session or Session()
         file_name = file_name or "statistics.json"
         desired_s3_uri = os.path.join(
-            "s3://", sagemaker_session.default_bucket(), "monitoring", str(uuid.uuid4()), file_name
+            "s3://",
+            sagemaker_session.default_bucket(),
+            "monitoring",
+            str(uuid.uuid4()),
+            file_name,
         )
         s3_uri = S3Uploader.upload_string_as_file_body(
             body=statistics_file_string,
@@ -167,7 +181,9 @@ class Statistics(ModelMonitoringFile):
         )
 
         return Statistics.from_s3_uri(
-            statistics_file_s3_uri=s3_uri, kms_key=kms_key, sagemaker_session=sagemaker_session
+            statistics_file_s3_uri=s3_uri,
+            kms_key=kms_key,
+            sagemaker_session=sagemaker_session,
         )
 
     @classmethod
@@ -204,7 +220,9 @@ class Constraints(ModelMonitoringFile):
     """Represents the constraints JSON file used in Amazon SageMaker Model Monitoring.
     """
 
-    def __init__(self, body_dict, constraints_file_s3_uri, kms_key=None, sagemaker_session=None):
+    def __init__(
+        self, body_dict, constraints_file_s3_uri, kms_key=None, sagemaker_session=None
+    ):
         """Initializes the Constraints object used in Amazon SageMaker Model Monitoring.
 
         Args:
@@ -243,7 +261,9 @@ class Constraints(ModelMonitoringFile):
         """
         try:
             body_dict = json.loads(
-                S3Downloader.read_file(s3_uri=constraints_file_s3_uri, session=sagemaker_session)
+                S3Downloader.read_file(
+                    s3_uri=constraints_file_s3_uri, session=sagemaker_session
+                )
             )
         except ClientError as error:
             print(
@@ -263,7 +283,11 @@ class Constraints(ModelMonitoringFile):
 
     @classmethod
     def from_string(
-        cls, constraints_file_string, kms_key=None, file_name=None, sagemaker_session=None
+        cls,
+        constraints_file_string,
+        kms_key=None,
+        file_name=None,
+        sagemaker_session=None,
     ):
         """Generates a Constraints object from an s3 uri.
 
@@ -284,7 +308,11 @@ class Constraints(ModelMonitoringFile):
         sagemaker_session = sagemaker_session or Session()
         file_name = file_name or "constraints.json"
         desired_s3_uri = os.path.join(
-            "s3://", sagemaker_session.default_bucket(), "monitoring", str(uuid.uuid4()), file_name
+            "s3://",
+            sagemaker_session.default_bucket(),
+            "monitoring",
+            str(uuid.uuid4()),
+            file_name,
         )
         s3_uri = S3Uploader.upload_string_as_file_body(
             body=constraints_file_string,
@@ -294,11 +322,15 @@ class Constraints(ModelMonitoringFile):
         )
 
         return Constraints.from_s3_uri(
-            constraints_file_s3_uri=s3_uri, kms_key=kms_key, sagemaker_session=sagemaker_session
+            constraints_file_s3_uri=s3_uri,
+            kms_key=kms_key,
+            sagemaker_session=sagemaker_session,
         )
 
     @classmethod
-    def from_file_path(cls, constraints_file_path, kms_key=None, sagemaker_session=None):
+    def from_file_path(
+        cls, constraints_file_path, kms_key=None, sagemaker_session=None
+    ):
         """Initializes a Constraints object from a file path.
 
         Args:
@@ -347,7 +379,9 @@ class Constraints(ModelMonitoringFile):
                     string_constraints = feature["string_constraints"]
                     if string_constraints.get("monitoring_config_overrides") is None:
                         string_constraints["monitoring_config_overrides"] = {}
-                    string_constraints["monitoring_config_overrides"]["evaluate_constraints"] = flag
+                    string_constraints["monitoring_config_overrides"][
+                        "evaluate_constraints"
+                    ] = flag
 
 
 class ConstraintViolations(ModelMonitoringFile):
@@ -355,7 +389,11 @@ class ConstraintViolations(ModelMonitoringFile):
     """
 
     def __init__(
-        self, body_dict, constraint_violations_file_s3_uri, kms_key=None, sagemaker_session=None
+        self,
+        body_dict,
+        constraint_violations_file_s3_uri,
+        kms_key=None,
+        sagemaker_session=None,
     ):
         """Initializes the ConstraintViolations object used in Amazon SageMaker Model Monitoring.
 
@@ -377,7 +415,9 @@ class ConstraintViolations(ModelMonitoringFile):
         )
 
     @classmethod
-    def from_s3_uri(cls, constraint_violations_file_s3_uri, kms_key=None, sagemaker_session=None):
+    def from_s3_uri(
+        cls, constraint_violations_file_s3_uri, kms_key=None, sagemaker_session=None
+    ):
         """Generates a ConstraintViolations object from an s3 uri.
 
         Args:
@@ -418,7 +458,11 @@ class ConstraintViolations(ModelMonitoringFile):
 
     @classmethod
     def from_string(
-        cls, constraint_violations_file_string, kms_key=None, file_name=None, sagemaker_session=None
+        cls,
+        constraint_violations_file_string,
+        kms_key=None,
+        file_name=None,
+        sagemaker_session=None,
     ):
         """Generates a ConstraintViolations object from an s3 uri.
 
@@ -439,7 +483,11 @@ class ConstraintViolations(ModelMonitoringFile):
         sagemaker_session = sagemaker_session or Session()
         file_name = file_name or "constraint_violations.json"
         desired_s3_uri = os.path.join(
-            "s3://", sagemaker_session.default_bucket(), "monitoring", str(uuid.uuid4()), file_name
+            "s3://",
+            sagemaker_session.default_bucket(),
+            "monitoring",
+            str(uuid.uuid4()),
+            file_name,
         )
         s3_uri = S3Uploader.upload_string_as_file_body(
             body=constraint_violations_file_string,
@@ -455,7 +503,9 @@ class ConstraintViolations(ModelMonitoringFile):
         )
 
     @classmethod
-    def from_file_path(cls, constraint_violations_file_path, kms_key=None, sagemaker_session=None):
+    def from_file_path(
+        cls, constraint_violations_file_path, kms_key=None, sagemaker_session=None
+    ):
         """Initializes a ConstraintViolations object from a file path.
 
         Args:

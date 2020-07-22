@@ -27,7 +27,9 @@ def load_data(path):
         labels = np.fromstring(flbl.read(), dtype=np.int8)
     with gzip.open(find_file(path, "images.gz")) as fimg:
         _, _, rows, cols = struct.unpack(">IIII", fimg.read(16))
-        images = np.fromstring(fimg.read(), dtype=np.uint8).reshape(len(labels), rows, cols)
+        images = np.fromstring(fimg.read(), dtype=np.uint8).reshape(
+            len(labels), rows, cols
+        )
         images = images.reshape(images.shape[0], 1, 28, 28).astype(np.float32) / 255
     return labels, images
 
@@ -127,8 +129,12 @@ if __name__ == "__main__":
     parser.add_argument("--train", type=str, default=os.environ["SM_CHANNEL_TRAIN"])
     parser.add_argument("--test", type=str, default=os.environ["SM_CHANNEL_TEST"])
 
-    parser.add_argument("--current-host", type=str, default=os.environ["SM_CURRENT_HOST"])
-    parser.add_argument("--hosts", type=list, default=json.loads(os.environ["SM_HOSTS"]))
+    parser.add_argument(
+        "--current-host", type=str, default=os.environ["SM_CURRENT_HOST"]
+    )
+    parser.add_argument(
+        "--hosts", type=list, default=json.loads(os.environ["SM_HOSTS"])
+    )
 
     args = parser.parse_args()
 

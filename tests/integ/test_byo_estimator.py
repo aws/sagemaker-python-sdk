@@ -79,7 +79,10 @@ def test_byo_estimator(sagemaker_session, region, cpu_instance_type):
         )
 
         estimator.set_hyperparameters(
-            num_factors=10, feature_dim=784, mini_batch_size=100, predictor_type="binary_classifier"
+            num_factors=10,
+            feature_dim=784,
+            mini_batch_size=100,
+            predictor_type="binary_classifier",
         )
 
         # training labels must be 'float32'
@@ -128,7 +131,10 @@ def test_async_byo_estimator(sagemaker_session, region, cpu_instance_type):
         )
 
         estimator.set_hyperparameters(
-            num_factors=10, feature_dim=784, mini_batch_size=100, predictor_type="binary_classifier"
+            num_factors=10,
+            feature_dim=784,
+            mini_batch_size=100,
+            predictor_type="binary_classifier",
         )
 
         # training labels must be 'float32'

@@ -20,9 +20,7 @@ from sagemaker.session import Session
 
 logger = logging.getLogger("sagemaker")
 
-SESSION_V2_RENAME_MESSAGE = (
-    "Parameter 'session' will be renamed to 'sagemaker_session' in SageMaker Python SDK v2."
-)
+SESSION_V2_RENAME_MESSAGE = "Parameter 'session' will be renamed to 'sagemaker_session' in SageMaker Python SDK v2."
 
 
 def _session_v2_rename_warning(session):
@@ -45,7 +43,9 @@ def parse_s3_url(url):
     """
     parsed_url = urlparse(url)
     if parsed_url.scheme != "s3":
-        raise ValueError("Expecting 's3' scheme, got: {} in {}.".format(parsed_url.scheme, url))
+        raise ValueError(
+            "Expecting 's3' scheme, got: {} in {}.".format(parsed_url.scheme, url)
+        )
     return parsed_url.netloc, parsed_url.path.lstrip("/")
 
 
@@ -85,7 +85,9 @@ class S3Uploader(object):
         )
 
     @staticmethod
-    def upload_string_as_file_body(body, desired_s3_uri=None, kms_key=None, session=None):
+    def upload_string_as_file_body(
+        body, desired_s3_uri=None, kms_key=None, session=None
+    ):
         """Static method that uploads a given file or directory to S3.
 
         Args:
@@ -183,5 +185,7 @@ class S3Downloader(object):
         sagemaker_session = session or Session()
         bucket, key_prefix = parse_s3_url(url=s3_uri)
 
-        file_keys = sagemaker_session.list_s3_files(bucket=bucket, key_prefix=key_prefix)
+        file_keys = sagemaker_session.list_s3_files(
+            bucket=bucket, key_prefix=key_prefix
+        )
         return ["s3://{}/{}".format(bucket, file_key) for file_key in file_keys]

@@ -297,7 +297,8 @@ class Transformer(object):
         init_params = cls._prepare_init_params_from_job_description(job_details)
         transformer = cls(sagemaker_session=sagemaker_session, **init_params)
         transformer.latest_transform_job = _TransformJob(
-            sagemaker_session=sagemaker_session, job_name=init_params["base_transform_job_name"]
+            sagemaker_session=sagemaker_session,
+            job_name=init_params["base_transform_job_name"],
         )
 
         return transformer
@@ -317,15 +318,23 @@ class Transformer(object):
         init_params = dict()
 
         init_params["model_name"] = job_details["ModelName"]
-        init_params["instance_count"] = job_details["TransformResources"]["InstanceCount"]
+        init_params["instance_count"] = job_details["TransformResources"][
+            "InstanceCount"
+        ]
         init_params["instance_type"] = job_details["TransformResources"]["InstanceType"]
-        init_params["volume_kms_key"] = job_details["TransformResources"].get("VolumeKmsKeyId")
+        init_params["volume_kms_key"] = job_details["TransformResources"].get(
+            "VolumeKmsKeyId"
+        )
         init_params["strategy"] = job_details.get("BatchStrategy")
-        init_params["assemble_with"] = job_details["TransformOutput"].get("AssembleWith")
+        init_params["assemble_with"] = job_details["TransformOutput"].get(
+            "AssembleWith"
+        )
         init_params["output_path"] = job_details["TransformOutput"]["S3OutputPath"]
         init_params["output_kms_key"] = job_details["TransformOutput"].get("KmsKeyId")
         init_params["accept"] = job_details["TransformOutput"].get("Accept")
-        init_params["max_concurrent_transforms"] = job_details.get("MaxConcurrentTransforms")
+        init_params["max_concurrent_transforms"] = job_details.get(
+            "MaxConcurrentTransforms"
+        )
         init_params["max_payload"] = job_details.get("MaxPayloadInMB")
         init_params["base_transform_job_name"] = job_details["TransformJobName"]
 
@@ -400,7 +409,9 @@ class _TransformJob(_Job):
         self.sagemaker_session.stop_transform_job(name=self.job_name)
 
     @staticmethod
-    def _load_config(data, data_type, content_type, compression_type, split_type, transformer):
+    def _load_config(
+        data, data_type, content_type, compression_type, split_type, transformer
+    ):
         """
         Args:
             data:
@@ -422,7 +433,9 @@ class _TransformJob(_Job):
         )
 
         resource_config = _TransformJob._prepare_resource_config(
-            transformer.instance_count, transformer.instance_type, transformer.volume_kms_key
+            transformer.instance_count,
+            transformer.instance_type,
+            transformer.volume_kms_key,
         )
 
         return {
@@ -432,7 +445,9 @@ class _TransformJob(_Job):
         }
 
     @staticmethod
-    def _format_inputs_to_input_config(data, data_type, content_type, compression_type, split_type):
+    def _format_inputs_to_input_config(
+        data, data_type, content_type, compression_type, split_type
+    ):
         """
         Args:
             data:
@@ -441,7 +456,9 @@ class _TransformJob(_Job):
             compression_type:
             split_type:
         """
-        config = {"DataSource": {"S3DataSource": {"S3DataType": data_type, "S3Uri": data}}}
+        config = {
+            "DataSource": {"S3DataSource": {"S3DataType": data_type, "S3Uri": data}}
+        }
 
         if content_type is not None:
             config["ContentType"] = content_type
@@ -463,7 +480,9 @@ class _TransformJob(_Job):
             assemble_with:
             accept:
         """
-        config = super(_TransformJob, _TransformJob)._prepare_output_config(s3_path, kms_key_id)
+        config = super(_TransformJob, _TransformJob)._prepare_output_config(
+            s3_path, kms_key_id
+        )
 
         if assemble_with is not None:
             config["AssembleWith"] = assemble_with

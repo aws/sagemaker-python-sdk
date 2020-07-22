@@ -47,7 +47,10 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
     target_recall = hp("target_recall", (gt(0), lt(1)), "A float in (0,1)", float)
     target_precision = hp("target_precision", (gt(0), lt(1)), "A float in (0,1)", float)
     positive_example_weight_mult = hp(
-        "positive_example_weight_mult", (), "A float greater than 0 or 'auto' or 'balanced'", str
+        "positive_example_weight_mult",
+        (),
+        "A float greater than 0 or 'auto' or 'balanced'",
+        str,
     )
     epochs = hp("epochs", gt(0), "An integer greater-than 0", int)
     predictor_type = hp(
@@ -58,8 +61,12 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
     )
     use_bias = hp("use_bias", (), "Either True or False", bool)
     num_models = hp("num_models", gt(0), "An integer greater-than 0", int)
-    num_calibration_samples = hp("num_calibration_samples", gt(0), "An integer greater-than 0", int)
-    init_method = hp("init_method", isin("uniform", "normal"), 'One of "uniform" or "normal"', str)
+    num_calibration_samples = hp(
+        "num_calibration_samples", gt(0), "An integer greater-than 0", int
+    )
+    init_method = hp(
+        "init_method", isin("uniform", "normal"), 'One of "uniform" or "normal"', str
+    )
     init_scale = hp("init_scale", gt(0), "A float greater-than 0", float)
     init_sigma = hp("init_sigma", gt(0), "A float greater-than 0", float)
     init_bias = hp("init_bias", (), "A number", float)
@@ -94,26 +101,42 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
     beta_1 = hp("beta_1", (ge(0), lt(1)), "A float in [0,1)", float)
     beta_2 = hp("beta_2", (ge(0), lt(1)), "A float in [0,1)", float)
     bias_lr_mult = hp("bias_lr_mult", gt(0), "A float greater-than 0", float)
-    bias_wd_mult = hp("bias_wd_mult", ge(0), "A float greater-than or equal to 0", float)
+    bias_wd_mult = hp(
+        "bias_wd_mult", ge(0), "A float greater-than or equal to 0", float
+    )
     use_lr_scheduler = hp("use_lr_scheduler", (), "A boolean", bool)
     lr_scheduler_step = hp("lr_scheduler_step", gt(0), "An integer greater-than 0", int)
-    lr_scheduler_factor = hp("lr_scheduler_factor", (gt(0), lt(1)), "A float in (0,1)", float)
-    lr_scheduler_minimum_lr = hp("lr_scheduler_minimum_lr", gt(0), "A float greater-than 0", float)
+    lr_scheduler_factor = hp(
+        "lr_scheduler_factor", (gt(0), lt(1)), "A float in (0,1)", float
+    )
+    lr_scheduler_minimum_lr = hp(
+        "lr_scheduler_minimum_lr", gt(0), "A float greater-than 0", float
+    )
     normalize_data = hp("normalize_data", (), "A boolean", bool)
     normalize_label = hp("normalize_label", (), "A boolean", bool)
     unbias_data = hp("unbias_data", (), "A boolean", bool)
     unbias_label = hp("unbias_label", (), "A boolean", bool)
-    num_point_for_scaler = hp("num_point_for_scaler", gt(0), "An integer greater-than 0", int)
+    num_point_for_scaler = hp(
+        "num_point_for_scaler", gt(0), "An integer greater-than 0", int
+    )
     margin = hp("margin", ge(0), "A float greater-than or equal to 0", float)
     quantile = hp("quantile", (gt(0), lt(1)), "A float in (0,1)", float)
-    loss_insensitivity = hp("loss_insensitivity", gt(0), "A float greater-than 0", float)
+    loss_insensitivity = hp(
+        "loss_insensitivity", gt(0), "A float greater-than 0", float
+    )
     huber_delta = hp("huber_delta", ge(0), "A float greater-than or equal to 0", float)
-    early_stopping_patience = hp("early_stopping_patience", gt(0), "An integer greater-than 0", int)
+    early_stopping_patience = hp(
+        "early_stopping_patience", gt(0), "An integer greater-than 0", int
+    )
     early_stopping_tolerance = hp(
         "early_stopping_tolerance", gt(0), "A float greater-than 0", float
     )
-    num_classes = hp("num_classes", (gt(0), le(1000000)), "An integer in [1,1000000]", int)
-    accuracy_top_k = hp("accuracy_top_k", (gt(0), le(1000000)), "An integer in [1,1000000]", int)
+    num_classes = hp(
+        "num_classes", (gt(0), le(1000000)), "An integer in [1,1000000]", int
+    )
+    accuracy_top_k = hp(
+        "accuracy_top_k", (gt(0), le(1000000)), "An integer in [1,1000000]", int
+    )
     f_beta = hp("f_beta", gt(0), "A float greater-than 0", float)
     balance_multiclass_weights = hp("balance_multiclass_weights", (), "A boolean", bool)
 
@@ -329,7 +352,9 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
             role, train_instance_count, train_instance_type, **kwargs
         )
         self.predictor_type = predictor_type
-        self.binary_classifier_model_selection_criteria = binary_classifier_model_selection_criteria
+        self.binary_classifier_model_selection_criteria = (
+            binary_classifier_model_selection_criteria
+        )
         self.target_recall = target_recall
         self.target_precision = target_precision
         self.positive_example_weight_mult = positive_example_weight_mult
@@ -418,7 +443,8 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
 
         # mini_batch_size can't be greater than number of records or training job fails
         default_mini_batch_size = min(
-            self.DEFAULT_MINI_BATCH_SIZE, max(1, int(num_records / self.train_instance_count))
+            self.DEFAULT_MINI_BATCH_SIZE,
+            max(1, int(num_records / self.train_instance_count)),
         )
         mini_batch_size = mini_batch_size or default_mini_batch_size
         super(LinearLearner, self)._prepare_for_training(
@@ -472,7 +498,9 @@ class LinearLearnerModel(Model):
         """
         sagemaker_session = sagemaker_session or Session()
         repo = "{}:{}".format(LinearLearner.repo_name, LinearLearner.repo_version)
-        image = "{}/{}".format(registry(sagemaker_session.boto_session.region_name), repo)
+        image = "{}/{}".format(
+            registry(sagemaker_session.boto_session.region_name), repo
+        )
         super(LinearLearnerModel, self).__init__(
             model_data,
             image,

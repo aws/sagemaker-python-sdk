@@ -32,9 +32,7 @@ def test_s3_input_all_defaults(caplog):
     }
     assert actual.config == expected
 
-    warning_message = (
-        "'s3_input' class will be renamed to 'TrainingInput' in SageMaker Python SDK v2."
-    )
+    warning_message = "'s3_input' class will be renamed to 'TrainingInput' in SageMaker Python SDK v2."
     assert warning_message in caplog.text
 
 
@@ -155,7 +153,10 @@ def test_file_system_input_type_invalid():
             file_system_type=file_system_type,
             directory_path=directory_path,
         )
-    assert str(excinfo.value) == "Unrecognized file system type: ABC. Valid values: FSxLustre, EFS."
+    assert (
+        str(excinfo.value)
+        == "Unrecognized file system type: ABC. Valid values: FSxLustre, EFS."
+    )
 
 
 def test_file_system_input_mode_invalid():
@@ -170,4 +171,7 @@ def test_file_system_input_mode_invalid():
             directory_path=directory_path,
             file_system_access_mode=file_system_access_mode,
         )
-    assert str(excinfo.value) == "Unrecognized file system access mode: p. Valid values: ro, rw."
+    assert (
+        str(excinfo.value)
+        == "Unrecognized file system access mode: p. Valid values: ro, rw."
+    )

@@ -48,7 +48,9 @@ def test_enabling_data_capture_on_endpoint_shows_correct_data_capture_status(
         path=os.path.join(tests.integ.DATA_DIR, "tensorflow-serving-test-model.tar.gz"),
         key_prefix="tensorflow-serving/models",
     )
-    with tests.integ.timeout.timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
+    with tests.integ.timeout.timeout_and_delete_endpoint_by_name(
+        endpoint_name, sagemaker_session
+    ):
         model = Model(
             model_data=model_data,
             role=ROLE,
@@ -105,7 +107,9 @@ def test_disabling_data_capture_on_endpoint_shows_correct_data_capture_status(
         path=os.path.join(tests.integ.DATA_DIR, "tensorflow-serving-test-model.tar.gz"),
         key_prefix="tensorflow-serving/models",
     )
-    with tests.integ.timeout.timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
+    with tests.integ.timeout.timeout_and_delete_endpoint_by_name(
+        endpoint_name, sagemaker_session
+    ):
         model = Model(
             model_data=model_data,
             role=ROLE,
@@ -147,7 +151,9 @@ def test_disabling_data_capture_on_endpoint_shows_correct_data_capture_status(
             {"CaptureMode": "Input"}
         ]
         assert (
-            endpoint_config_desc["DataCaptureConfig"]["CaptureContentTypeHeader"]["CsvContentTypes"]
+            endpoint_config_desc["DataCaptureConfig"]["CaptureContentTypeHeader"][
+                "CsvContentTypes"
+            ]
             == CUSTOM_CSV_CONTENT_TYPES
         )
         assert (
@@ -186,12 +192,16 @@ def test_disabling_data_capture_on_endpoint_shows_correct_data_capture_status(
 def test_updating_data_capture_on_endpoint_shows_correct_data_capture_status(
     sagemaker_session, tf_full_version
 ):
-    endpoint_name = sagemaker.utils.unique_name_from_base("sagemaker-tensorflow-serving")
+    endpoint_name = sagemaker.utils.unique_name_from_base(
+        "sagemaker-tensorflow-serving"
+    )
     model_data = sagemaker_session.upload_data(
         path=os.path.join(tests.integ.DATA_DIR, "tensorflow-serving-test-model.tar.gz"),
         key_prefix="tensorflow-serving/models",
     )
-    with tests.integ.timeout.timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
+    with tests.integ.timeout.timeout_and_delete_endpoint_by_name(
+        endpoint_name, sagemaker_session
+    ):
         model = Model(
             model_data=model_data,
             role=ROLE,
@@ -259,7 +269,9 @@ def test_updating_data_capture_on_endpoint_shows_correct_data_capture_status(
             {"CaptureMode": "Input"}
         ]
         assert (
-            endpoint_config_desc["DataCaptureConfig"]["CaptureContentTypeHeader"]["CsvContentTypes"]
+            endpoint_config_desc["DataCaptureConfig"]["CaptureContentTypeHeader"][
+                "CsvContentTypes"
+            ]
             == CUSTOM_CSV_CONTENT_TYPES
         )
         assert (

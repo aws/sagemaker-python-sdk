@@ -5,7 +5,12 @@ from rl_coach.base_parameters import (
     PresetValidationParameters,
     DistributedCoachSynchronizationType,
 )
-from rl_coach.core_types import TrainingSteps, EnvironmentEpisodes, EnvironmentSteps, RunPhase
+from rl_coach.core_types import (
+    TrainingSteps,
+    EnvironmentEpisodes,
+    EnvironmentSteps,
+    RunPhase,
+)
 from rl_coach.environments.gym_environment import GymVectorEnvironment, mujoco_v2
 from rl_coach.exploration_policies.additive_noise import AdditiveNoiseParameters
 from rl_coach.exploration_policies.e_greedy import EGreedyParameters
@@ -41,7 +46,9 @@ agent_params.network_wrappers["main"].learning_rate = 0.0003
 agent_params.network_wrappers["main"].input_embedders_parameters[
     "observation"
 ].activation_function = "tanh"
-agent_params.network_wrappers["main"].input_embedders_parameters["observation"].scheme = [Dense(64)]
+agent_params.network_wrappers["main"].input_embedders_parameters[
+    "observation"
+].scheme = [Dense(64)]
 agent_params.network_wrappers["main"].middleware_parameters.scheme = [Dense(64)]
 agent_params.network_wrappers["main"].middleware_parameters.activation_function = "tanh"
 agent_params.network_wrappers["main"].batch_size = 64
@@ -55,7 +62,9 @@ agent_params.algorithm.gae_lambda = 0.95
 agent_params.algorithm.discount = 0.99
 agent_params.algorithm.optimization_epochs = 10
 agent_params.algorithm.estimate_state_value_using_gae = True
-agent_params.algorithm.num_steps_between_copying_online_weights_to_target = EnvironmentSteps(2048)
+agent_params.algorithm.num_steps_between_copying_online_weights_to_target = EnvironmentSteps(
+    2048
+)
 
 # Distributed Coach synchronization type.
 agent_params.algorithm.distributed_coach_synchronization_type = (

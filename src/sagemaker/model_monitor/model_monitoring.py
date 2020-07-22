@@ -27,9 +27,18 @@ from six.moves.urllib.parse import urlparse
 from botocore.exceptions import ClientError
 
 from sagemaker.exceptions import UnexpectedStatusException
-from sagemaker.model_monitor.monitoring_files import Constraints, ConstraintViolations, Statistics
+from sagemaker.model_monitor.monitoring_files import (
+    Constraints,
+    ConstraintViolations,
+    Statistics,
+)
 from sagemaker.network import NetworkConfig
-from sagemaker.processing import Processor, ProcessingInput, ProcessingJob, ProcessingOutput
+from sagemaker.processing import (
+    Processor,
+    ProcessingInput,
+    ProcessingJob,
+    ProcessingOutput,
+)
 from sagemaker.s3 import S3Uploader
 from sagemaker.session import Session
 from sagemaker.utils import name_from_base, retries, get_ecr_image_uri_prefix
@@ -170,7 +179,13 @@ class ModelMonitor(object):
         self.monitoring_schedule_name = None
 
     def run_baseline(
-        self, baseline_inputs, output, arguments=None, wait=True, logs=True, job_name=None
+        self,
+        baseline_inputs,
+        output,
+        arguments=None,
+        wait=True,
+        logs=True,
+        job_name=None,
     ):
         """Run a processing job meant to baseline your dataset.
 
@@ -187,7 +202,9 @@ class ModelMonitor(object):
                 a default job name, based on the image name and current timestamp.
 
         """
-        self.latest_baselining_job_name = self._generate_baselining_job_name(job_name=job_name)
+        self.latest_baselining_job_name = self._generate_baselining_job_name(
+            job_name=job_name
+        )
         self.arguments = arguments
         normalized_baseline_inputs = self._normalize_baseline_inputs(
             baseline_inputs=baseline_inputs
@@ -274,12 +291,16 @@ class ModelMonitor(object):
             schedule_name=monitor_schedule_name
         )
 
-        normalized_endpoint_input = self._normalize_endpoint_input(endpoint_input=endpoint_input)
+        normalized_endpoint_input = self._normalize_endpoint_input(
+            endpoint_input=endpoint_input
+        )
 
         normalized_monitoring_output = self._normalize_monitoring_output(output=output)
 
         statistics_object, constraints_object = self._get_baseline_files(
-            statistics=statistics, constraints=constraints, sagemaker_session=self.sagemaker_session
+            statistics=statistics,
+            constraints=constraints,
+            sagemaker_session=self.sagemaker_session,
         )
 
         statistics_s3_uri = None
@@ -299,7 +320,9 @@ class ModelMonitor(object):
 
         self.monitoring_schedule_name = (
             monitor_schedule_name
-            or self._generate_monitoring_schedule_name(schedule_name=monitor_schedule_name)
+            or self._generate_monitoring_schedule_name(
+                schedule_name=monitor_schedule_name
+            )
         )
 
         network_config_dict = None
@@ -393,18 +416,24 @@ class ModelMonitor(object):
         monitoring_inputs = None
         if endpoint_input is not None:
             monitoring_inputs = [
-                self._normalize_endpoint_input(endpoint_input=endpoint_input)._to_request_dict()
+                self._normalize_endpoint_input(
+                    endpoint_input=endpoint_input
+                )._to_request_dict()
             ]
 
         monitoring_output_config = None
         if output is not None:
-            normalized_monitoring_output = self._normalize_monitoring_output(output=output)
+            normalized_monitoring_output = self._normalize_monitoring_output(
+                output=output
+            )
             monitoring_output_config = {
                 "MonitoringOutputs": [normalized_monitoring_output._to_request_dict()]
             }
 
         statistics_object, constraints_object = self._get_baseline_files(
-            statistics=statistics, constraints=constraints, sagemaker_session=self.sagemaker_session
+            statistics=statistics,
+            constraints=constraints,
+            sagemaker_session=self.sagemaker_session,
         )
 
         statistics_s3_uri = None
@@ -631,12 +660,15 @@ class ModelMonitor(object):
 
         processing_job_arns = [
             execution_dict["ProcessingJobArn"]
-            for execution_dict in monitoring_executions_dict["MonitoringExecutionSummaries"]
+            for execution_dict in monitoring_executions_dict[
+                "MonitoringExecutionSummaries"
+            ]
             if execution_dict.get("ProcessingJobArn") is not None
         ]
         monitoring_executions = [
             MonitoringExecution.from_processing_arn(
-                sagemaker_session=self.sagemaker_session, processing_job_arn=processing_job_arn
+                sagemaker_session=self.sagemaker_session,
+                processing_job_arn=processing_job_arn,
             )
             for processing_job_arn in processing_job_arns
         ]
@@ -663,28 +695,30 @@ class ModelMonitor(object):
             monitoring_schedule_name=monitor_schedule_name
         )
 
-        role = schedule_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["RoleArn"]
-        image_uri = schedule_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-            "MonitoringAppSpecification"
-        ]["ImageUri"]
-        instance_count = schedule_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-            "MonitoringResources"
-        ]["ClusterConfig"]["InstanceCount"]
-        instance_type = schedule_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-            "MonitoringResources"
-        ]["ClusterConfig"]["InstanceType"]
-        entrypoint = schedule_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-            "MonitoringAppSpecification"
-        ].get("ContainerEntrypoint")
-        volume_size_in_gb = schedule_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-            "MonitoringResources"
-        ]["ClusterConfig"]["VolumeSizeInGB"]
-        volume_kms_key = schedule_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-            "MonitoringResources"
-        ]["ClusterConfig"].get("VolumeKmsKeyId")
-        output_kms_key = schedule_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-            "MonitoringOutputConfig"
-        ].get("KmsKeyId")
+        role = schedule_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+            "RoleArn"
+        ]
+        image_uri = schedule_desc["MonitoringScheduleConfig"][
+            "MonitoringJobDefinition"
+        ]["MonitoringAppSpecification"]["ImageUri"]
+        instance_count = schedule_desc["MonitoringScheduleConfig"][
+            "MonitoringJobDefinition"
+        ]["MonitoringResources"]["ClusterConfig"]["InstanceCount"]
+        instance_type = schedule_desc["MonitoringScheduleConfig"][
+            "MonitoringJobDefinition"
+        ]["MonitoringResources"]["ClusterConfig"]["InstanceType"]
+        entrypoint = schedule_desc["MonitoringScheduleConfig"][
+            "MonitoringJobDefinition"
+        ]["MonitoringAppSpecification"].get("ContainerEntrypoint")
+        volume_size_in_gb = schedule_desc["MonitoringScheduleConfig"][
+            "MonitoringJobDefinition"
+        ]["MonitoringResources"]["ClusterConfig"]["VolumeSizeInGB"]
+        volume_kms_key = schedule_desc["MonitoringScheduleConfig"][
+            "MonitoringJobDefinition"
+        ]["MonitoringResources"]["ClusterConfig"].get("VolumeKmsKeyId")
+        output_kms_key = schedule_desc["MonitoringScheduleConfig"][
+            "MonitoringJobDefinition"
+        ]["MonitoringOutputConfig"].get("KmsKeyId")
 
         max_runtime_in_seconds = None
         if schedule_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"].get(
@@ -694,15 +728,17 @@ class ModelMonitor(object):
                 "MonitoringJobDefinition"
             ]["StoppingCondition"].get("MaxRuntimeInSeconds")
 
-        env = schedule_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["Environment"]
+        env = schedule_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+            "Environment"
+        ]
 
         network_config_dict = schedule_desc["MonitoringScheduleConfig"][
             "MonitoringJobDefinition"
         ].get("NetworkConfig")
 
-        vpc_config = schedule_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-            "NetworkConfig"
-        ].get("VpcConfig")
+        vpc_config = schedule_desc["MonitoringScheduleConfig"][
+            "MonitoringJobDefinition"
+        ]["NetworkConfig"].get("VpcConfig")
 
         security_group_ids = None
         if vpc_config is not None:
@@ -719,7 +755,9 @@ class ModelMonitor(object):
                 subnets=subnets,
             )
 
-        tags = sagemaker_session.list_tags(resource_arn=schedule_desc["MonitoringScheduleArn"])
+        tags = sagemaker_session.list_tags(
+            resource_arn=schedule_desc["MonitoringScheduleArn"]
+        )
 
         attached_monitor = cls(
             role=role,
@@ -831,7 +869,9 @@ class ModelMonitor(object):
             endpoint_input = EndpointInput(
                 endpoint_name=endpoint_input,
                 destination=os.path.join(
-                    _CONTAINER_BASE_PATH, _CONTAINER_INPUT_PATH, _CONTAINER_ENDPOINT_INPUT_PATH
+                    _CONTAINER_BASE_PATH,
+                    _CONTAINER_INPUT_PATH,
+                    _CONTAINER_ENDPOINT_INPUT_PATH,
                 ),
             )
 
@@ -855,7 +895,9 @@ class ModelMonitor(object):
             # Iterate through the provided list of inputs.
             for count, file_input in enumerate(baseline_inputs, 1):
                 if not isinstance(file_input, ProcessingInput):
-                    raise TypeError("Your inputs must be provided as ProcessingInput objects.")
+                    raise TypeError(
+                        "Your inputs must be provided as ProcessingInput objects."
+                    )
                 # Generate a name for the ProcessingInput if it doesn't have one.
                 if file_input.input_name is None:
                     file_input.input_name = "input-{}".format(count)
@@ -1042,7 +1084,9 @@ class DefaultModelMonitor(ModelMonitor):
         session = sagemaker_session or Session()
         super(DefaultModelMonitor, self).__init__(
             role=role,
-            image_uri=DefaultModelMonitor._get_default_image_uri(session.boto_session.region_name),
+            image_uri=DefaultModelMonitor._get_default_image_uri(
+                session.boto_session.region_name
+            ),
             instance_count=instance_count,
             instance_type=instance_type,
             volume_size_in_gb=volume_size_in_gb,
@@ -1091,12 +1135,16 @@ class DefaultModelMonitor(ModelMonitor):
                 baselining job.
 
         """
-        self.latest_baselining_job_name = self._generate_baselining_job_name(job_name=job_name)
+        self.latest_baselining_job_name = self._generate_baselining_job_name(
+            job_name=job_name
+        )
 
         normalized_baseline_dataset_input = self._upload_and_convert_to_processing_input(
             source=baseline_dataset,
             destination=os.path.join(
-                _CONTAINER_BASE_PATH, _CONTAINER_INPUT_PATH, _BASELINE_DATASET_INPUT_NAME
+                _CONTAINER_BASE_PATH,
+                _CONTAINER_INPUT_PATH,
+                _BASELINE_DATASET_INPUT_NAME,
             ),
             name=_BASELINE_DATASET_INPUT_NAME,
         )
@@ -1107,7 +1155,9 @@ class DefaultModelMonitor(ModelMonitor):
         normalized_record_preprocessor_script_input = self._upload_and_convert_to_processing_input(
             source=record_preprocessor_script,
             destination=os.path.join(
-                _CONTAINER_BASE_PATH, _CONTAINER_INPUT_PATH, _RECORD_PREPROCESSOR_SCRIPT_INPUT_NAME
+                _CONTAINER_BASE_PATH,
+                _CONTAINER_INPUT_PATH,
+                _RECORD_PREPROCESSOR_SCRIPT_INPUT_NAME,
             ),
             name=_RECORD_PREPROCESSOR_SCRIPT_INPUT_NAME,
         )
@@ -1136,7 +1186,9 @@ class DefaultModelMonitor(ModelMonitor):
                 os.path.basename(post_analytics_processor_script),
             )
 
-        normalized_baseline_output = self._normalize_baseline_output(output_s3_uri=output_s3_uri)
+        normalized_baseline_output = self._normalize_baseline_output(
+            output_s3_uri=output_s3_uri
+        )
 
         normalized_env = self._generate_env_map(
             env=self.env,
@@ -1252,9 +1304,15 @@ class DefaultModelMonitor(ModelMonitor):
         )
 
         print()
-        print("Creating Monitoring Schedule with name: {}".format(self.monitoring_schedule_name))
+        print(
+            "Creating Monitoring Schedule with name: {}".format(
+                self.monitoring_schedule_name
+            )
+        )
 
-        normalized_endpoint_input = self._normalize_endpoint_input(endpoint_input=endpoint_input)
+        normalized_endpoint_input = self._normalize_endpoint_input(
+            endpoint_input=endpoint_input
+        )
 
         record_preprocessor_script_s3_uri = None
         if record_preprocessor_script is not None:
@@ -1273,7 +1331,9 @@ class DefaultModelMonitor(ModelMonitor):
         )
 
         statistics_object, constraints_object = self._get_baseline_files(
-            statistics=statistics, constraints=constraints, sagemaker_session=self.sagemaker_session
+            statistics=statistics,
+            constraints=constraints,
+            sagemaker_session=self.sagemaker_session,
         )
 
         constraints_s3_uri = None
@@ -1298,7 +1358,9 @@ class DefaultModelMonitor(ModelMonitor):
         network_config_dict = None
         if self.network_config is not None:
             network_config_dict = self.network_config._to_request_dict()
-            super(DefaultModelMonitor, self)._validate_network_config(network_config_dict)
+            super(DefaultModelMonitor, self)._validate_network_config(
+                network_config_dict
+            )
 
         self.sagemaker_session.create_monitoring_schedule(
             monitoring_schedule_name=self.monitoring_schedule_name,
@@ -1387,7 +1449,9 @@ class DefaultModelMonitor(ModelMonitor):
         """
         monitoring_inputs = None
         if endpoint_input is not None:
-            monitoring_inputs = [self._normalize_endpoint_input(endpoint_input)._to_request_dict()]
+            monitoring_inputs = [
+                self._normalize_endpoint_input(endpoint_input)._to_request_dict()
+            ]
 
         record_preprocessor_script_s3_uri = None
         if record_preprocessor_script is not None:
@@ -1416,11 +1480,15 @@ class DefaultModelMonitor(ModelMonitor):
             self.env = env
 
         normalized_env = self._generate_env_map(
-            env=env, output_path=output_path, enable_cloudwatch_metrics=enable_cloudwatch_metrics
+            env=env,
+            output_path=output_path,
+            enable_cloudwatch_metrics=enable_cloudwatch_metrics,
         )
 
         statistics_object, constraints_object = self._get_baseline_files(
-            statistics=statistics, constraints=constraints, sagemaker_session=self.sagemaker_session
+            statistics=statistics,
+            constraints=constraints,
+            sagemaker_session=self.sagemaker_session,
         )
 
         statistics_s3_uri = None
@@ -1456,7 +1524,9 @@ class DefaultModelMonitor(ModelMonitor):
         network_config_dict = None
         if self.network_config is not None:
             network_config_dict = self.network_config._to_request_dict()
-            super(DefaultModelMonitor, self)._validate_network_config(network_config_dict)
+            super(DefaultModelMonitor, self)._validate_network_config(
+                network_config_dict
+            )
 
         if role is not None:
             self.role = role
@@ -1509,22 +1579,24 @@ class DefaultModelMonitor(ModelMonitor):
             monitoring_schedule_name=monitor_schedule_name
         )
 
-        role = schedule_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["RoleArn"]
-        instance_count = schedule_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-            "MonitoringResources"
-        ]["ClusterConfig"]["InstanceCount"]
-        instance_type = schedule_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-            "MonitoringResources"
-        ]["ClusterConfig"]["InstanceType"]
-        volume_size_in_gb = schedule_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-            "MonitoringResources"
-        ]["ClusterConfig"]["VolumeSizeInGB"]
-        volume_kms_key = schedule_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-            "MonitoringResources"
-        ]["ClusterConfig"].get("VolumeKmsKeyId")
-        output_kms_key = schedule_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-            "MonitoringOutputConfig"
-        ].get("KmsKeyId")
+        role = schedule_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+            "RoleArn"
+        ]
+        instance_count = schedule_desc["MonitoringScheduleConfig"][
+            "MonitoringJobDefinition"
+        ]["MonitoringResources"]["ClusterConfig"]["InstanceCount"]
+        instance_type = schedule_desc["MonitoringScheduleConfig"][
+            "MonitoringJobDefinition"
+        ]["MonitoringResources"]["ClusterConfig"]["InstanceType"]
+        volume_size_in_gb = schedule_desc["MonitoringScheduleConfig"][
+            "MonitoringJobDefinition"
+        ]["MonitoringResources"]["ClusterConfig"]["VolumeSizeInGB"]
+        volume_kms_key = schedule_desc["MonitoringScheduleConfig"][
+            "MonitoringJobDefinition"
+        ]["MonitoringResources"]["ClusterConfig"].get("VolumeKmsKeyId")
+        output_kms_key = schedule_desc["MonitoringScheduleConfig"][
+            "MonitoringJobDefinition"
+        ]["MonitoringOutputConfig"].get("KmsKeyId")
 
         max_runtime_in_seconds = None
         if schedule_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"].get(
@@ -1534,7 +1606,9 @@ class DefaultModelMonitor(ModelMonitor):
                 "MonitoringJobDefinition"
             ]["StoppingCondition"].get("MaxRuntimeInSeconds")
 
-        env = schedule_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["Environment"]
+        env = schedule_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+            "Environment"
+        ]
 
         network_config_dict = schedule_desc["MonitoringScheduleConfig"][
             "MonitoringJobDefinition"
@@ -1547,9 +1621,9 @@ class DefaultModelMonitor(ModelMonitor):
             )
             is not None
         ):
-            vpc_config = schedule_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-                "NetworkConfig"
-            ].get("VpcConfig")
+            vpc_config = schedule_desc["MonitoringScheduleConfig"][
+                "MonitoringJobDefinition"
+            ]["NetworkConfig"].get("VpcConfig")
 
         security_group_ids = None
         if vpc_config is not None:
@@ -1567,7 +1641,9 @@ class DefaultModelMonitor(ModelMonitor):
                 subnets=subnets,
             )
 
-        tags = sagemaker_session.list_tags(resource_arn=schedule_desc["MonitoringScheduleArn"])
+        tags = sagemaker_session.list_tags(
+            resource_arn=schedule_desc["MonitoringScheduleArn"]
+        )
 
         attached_monitor = cls(
             role=role,
@@ -1685,7 +1761,8 @@ class DefaultModelMonitor(ModelMonitor):
             _RESULTS_S3_PATH,
         )
         output = MonitoringOutput(
-            source=os.path.join(_CONTAINER_BASE_PATH, _CONTAINER_OUTPUT_PATH), destination=s3_uri
+            source=os.path.join(_CONTAINER_BASE_PATH, _CONTAINER_OUTPUT_PATH),
+            destination=s3_uri,
         )
 
         return output
@@ -1733,10 +1810,14 @@ class DefaultModelMonitor(ModelMonitor):
             env[_DATASET_FORMAT_ENV_NAME] = json.dumps(dataset_format)
 
         if record_preprocessor_script_container_path is not None:
-            env[_RECORD_PREPROCESSOR_SCRIPT_ENV_NAME] = record_preprocessor_script_container_path
+            env[
+                _RECORD_PREPROCESSOR_SCRIPT_ENV_NAME
+            ] = record_preprocessor_script_container_path
 
         if post_processor_script_container_path is not None:
-            env[_POST_ANALYTICS_PROCESSOR_SCRIPT_ENV_NAME] = post_processor_script_container_path
+            env[
+                _POST_ANALYTICS_PROCESSOR_SCRIPT_ENV_NAME
+            ] = post_processor_script_container_path
 
         if dataset_source_container_path is not None:
             env[_DATASET_SOURCE_PATH_ENV_NAME] = dataset_source_container_path
@@ -1789,14 +1870,18 @@ class DefaultModelMonitor(ModelMonitor):
             str: The Default Model Monitoring image uri based on the region.
         """
         return _DEFAULT_MONITOR_IMAGE_URI_WITH_PLACEHOLDERS.format(
-            get_ecr_image_uri_prefix(_DEFAULT_MONITOR_IMAGE_REGION_ACCOUNT_MAPPING[region], region)
+            get_ecr_image_uri_prefix(
+                _DEFAULT_MONITOR_IMAGE_REGION_ACCOUNT_MAPPING[region], region
+            )
         )
 
 
 class BaseliningJob(ProcessingJob):
     """Provides functionality to retrieve baseline-specific files output from baselining job."""
 
-    def __init__(self, sagemaker_session, job_name, inputs, outputs, output_kms_key=None):
+    def __init__(
+        self, sagemaker_session, job_name, inputs, outputs, output_kms_key=None
+    ):
         """Initializes a Baselining job that tracks a baselining job kicked off by the suggest
         workflow.
 
@@ -1843,7 +1928,9 @@ class BaseliningJob(ProcessingJob):
             processing_job.output_kms_key,
         )
 
-    def baseline_statistics(self, file_name=STATISTICS_JSON_DEFAULT_FILE_NAME, kms_key=None):
+    def baseline_statistics(
+        self, file_name=STATISTICS_JSON_DEFAULT_FILE_NAME, kms_key=None
+    ):
         """Returns a sagemaker.model_monitor.Statistics object representing the statistics
         JSON file generated by this baselining job.
 
@@ -1862,15 +1949,17 @@ class BaseliningJob(ProcessingJob):
         try:
             baselining_job_output_s3_path = self.outputs[0].destination
             return Statistics.from_s3_uri(
-                statistics_file_s3_uri=os.path.join(baselining_job_output_s3_path, file_name),
+                statistics_file_s3_uri=os.path.join(
+                    baselining_job_output_s3_path, file_name
+                ),
                 kms_key=kms_key,
                 sagemaker_session=self.sagemaker_session,
             )
         except ClientError as client_error:
             if client_error.response["Error"]["Code"] == "NoSuchKey":
-                status = self.sagemaker_session.describe_processing_job(job_name=self.job_name)[
-                    "ProcessingJobStatus"
-                ]
+                status = self.sagemaker_session.describe_processing_job(
+                    job_name=self.job_name
+                )["ProcessingJobStatus"]
                 if status != "Completed":
                     raise UnexpectedStatusException(
                         message="The underlying job is not in 'Completed' state. You may only "
@@ -1881,7 +1970,9 @@ class BaseliningJob(ProcessingJob):
             else:
                 raise client_error
 
-    def suggested_constraints(self, file_name=CONSTRAINTS_JSON_DEFAULT_FILE_NAME, kms_key=None):
+    def suggested_constraints(
+        self, file_name=CONSTRAINTS_JSON_DEFAULT_FILE_NAME, kms_key=None
+    ):
         """Returns a sagemaker.model_monitor.Constraints object representing the constraints
         JSON file generated by this baselining job.
 
@@ -1900,15 +1991,17 @@ class BaseliningJob(ProcessingJob):
         try:
             baselining_job_output_s3_path = self.outputs[0].destination
             return Constraints.from_s3_uri(
-                constraints_file_s3_uri=os.path.join(baselining_job_output_s3_path, file_name),
+                constraints_file_s3_uri=os.path.join(
+                    baselining_job_output_s3_path, file_name
+                ),
                 kms_key=kms_key,
                 sagemaker_session=self.sagemaker_session,
             )
         except ClientError as client_error:
             if client_error.response["Error"]["Code"] == "NoSuchKey":
-                status = self.sagemaker_session.describe_processing_job(job_name=self.job_name)[
-                    "ProcessingJobStatus"
-                ]
+                status = self.sagemaker_session.describe_processing_job(
+                    job_name=self.job_name
+                )["ProcessingJobStatus"]
                 if status != "Completed":
                     raise UnexpectedStatusException(
                         message="The underlying job is not in 'Completed' state. You may only "
@@ -1925,7 +2018,9 @@ class MonitoringExecution(ProcessingJob):
     executions
     """
 
-    def __init__(self, sagemaker_session, job_name, inputs, output, output_kms_key=None):
+    def __init__(
+        self, sagemaker_session, job_name, inputs, output, output_kms_key=None
+    ):
         """Initializes a MonitoringExecution job that tracks a monitoring execution kicked off by
         an Amazon SageMaker Model Monitoring Schedule.
 
@@ -1970,7 +2065,9 @@ class MonitoringExecution(ProcessingJob):
         processing_job_name = processing_job_arn.split(":")[5][
             len("processing-job/") :
         ]  # This is necessary while the API only vends an arn.
-        job_desc = sagemaker_session.describe_processing_job(job_name=processing_job_name)
+        job_desc = sagemaker_session.describe_processing_job(
+            job_name=processing_job_name
+        )
 
         return cls(
             sagemaker_session=sagemaker_session,
@@ -1985,14 +2082,22 @@ class MonitoringExecution(ProcessingJob):
                     s3_data_distribution_type=processing_input["S3Input"].get(
                         "S3DataDistributionType"
                     ),
-                    s3_compression_type=processing_input["S3Input"].get("S3CompressionType"),
+                    s3_compression_type=processing_input["S3Input"].get(
+                        "S3CompressionType"
+                    ),
                 )
                 for processing_input in job_desc["ProcessingInputs"]
             ],
             output=ProcessingOutput(
-                source=job_desc["ProcessingOutputConfig"]["Outputs"][0]["S3Output"]["LocalPath"],
-                destination=job_desc["ProcessingOutputConfig"]["Outputs"][0]["S3Output"]["S3Uri"],
-                output_name=job_desc["ProcessingOutputConfig"]["Outputs"][0]["OutputName"],
+                source=job_desc["ProcessingOutputConfig"]["Outputs"][0]["S3Output"][
+                    "LocalPath"
+                ],
+                destination=job_desc["ProcessingOutputConfig"]["Outputs"][0][
+                    "S3Output"
+                ]["S3Uri"],
+                output_name=job_desc["ProcessingOutputConfig"]["Outputs"][0][
+                    "OutputName"
+                ],
             ),
             output_kms_key=job_desc["ProcessingOutputConfig"].get("KmsKeyId"),
         )
@@ -2016,15 +2121,17 @@ class MonitoringExecution(ProcessingJob):
         try:
             baselining_job_output_s3_path = self.outputs[0].destination
             return Statistics.from_s3_uri(
-                statistics_file_s3_uri=os.path.join(baselining_job_output_s3_path, file_name),
+                statistics_file_s3_uri=os.path.join(
+                    baselining_job_output_s3_path, file_name
+                ),
                 kms_key=kms_key,
                 sagemaker_session=self.sagemaker_session,
             )
         except ClientError as client_error:
             if client_error.response["Error"]["Code"] == "NoSuchKey":
-                status = self.sagemaker_session.describe_processing_job(job_name=self.job_name)[
-                    "ProcessingJobStatus"
-                ]
+                status = self.sagemaker_session.describe_processing_job(
+                    job_name=self.job_name
+                )["ProcessingJobStatus"]
                 if status != "Completed":
                     raise UnexpectedStatusException(
                         message="The underlying job is not in 'Completed' state. You may only "
@@ -2064,9 +2171,9 @@ class MonitoringExecution(ProcessingJob):
             )
         except ClientError as client_error:
             if client_error.response["Error"]["Code"] == "NoSuchKey":
-                status = self.sagemaker_session.describe_processing_job(job_name=self.job_name)[
-                    "ProcessingJobStatus"
-                ]
+                status = self.sagemaker_session.describe_processing_job(
+                    job_name=self.job_name
+                )["ProcessingJobStatus"]
                 if status != "Completed":
                     raise UnexpectedStatusException(
                         message="The underlying job is not in 'Completed' state. You may only "

@@ -32,14 +32,20 @@ ENDPOINT_CONFIG_NAME = "test-endpoint-config"
 PRODUCTION_VARIANTS = [{"InstanceType": "ml.c4.99xlarge", "InitialInstanceCount": 10}]
 
 MODEL_NAME = "test-model"
-PRIMARY_CONTAINER = {"ModelDataUrl": "/some/model/path", "Environment": {"env1": 1, "env2": "b"}}
+PRIMARY_CONTAINER = {
+    "ModelDataUrl": "/some/model/path",
+    "Environment": {"env1": 1, "env2": "b"},
+}
 
 ENDPOINT_URL = "http://127.0.0.1:9000"
 BUCKET_NAME = "mybucket"
 LS_FILES = {"Contents": [{"Key": "/data/test.csv"}]}
 
 
-@patch("sagemaker.local.image._SageMakerContainer.train", return_value="/some/path/to/model")
+@patch(
+    "sagemaker.local.image._SageMakerContainer.train",
+    return_value="/some/path/to/model",
+)
 @patch("sagemaker.local.local_session.LocalSession")
 def test_create_training_job(train, LocalSession):
     local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
@@ -91,7 +97,8 @@ def test_create_training_job(train, LocalSession):
 
     assert response["TrainingJobStatus"] == expected["TrainingJobStatus"]
     assert (
-        response["ResourceConfig"]["InstanceCount"] == expected["ResourceConfig"]["InstanceCount"]
+        response["ResourceConfig"]["InstanceCount"]
+        == expected["ResourceConfig"]["InstanceCount"]
     )
     assert (
         response["ModelArtifacts"]["S3ModelArtifacts"]
@@ -106,7 +113,10 @@ def test_describe_invalid_training_job(*args):
         local_sagemaker_client.describe_training_job("i-havent-created-this-job")
 
 
-@patch("sagemaker.local.image._SageMakerContainer.train", return_value="/some/path/to/model")
+@patch(
+    "sagemaker.local.image._SageMakerContainer.train",
+    return_value="/some/path/to/model",
+)
 @patch("sagemaker.local.local_session.LocalSession")
 def test_create_training_job_invalid_data_source(train, LocalSession):
     local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
@@ -145,7 +155,10 @@ def test_create_training_job_invalid_data_source(train, LocalSession):
         )
 
 
-@patch("sagemaker.local.image._SageMakerContainer.train", return_value="/some/path/to/model")
+@patch(
+    "sagemaker.local.image._SageMakerContainer.train",
+    return_value="/some/path/to/model",
+)
 @patch("sagemaker.local.local_session.LocalSession")
 def test_create_training_job_not_fully_replicated(train, LocalSession):
     local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
@@ -222,7 +235,9 @@ def test_describe_model(LocalSession):
 def test_create_transform_job(LocalSession, _LocalTransformJob):
     local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
 
-    local_sagemaker_client.create_transform_job("transform-job", "some-model", None, None, None)
+    local_sagemaker_client.create_transform_job(
+        "transform-job", "some-model", None, None, None
+    )
     _LocalTransformJob().start.assert_called_with(None, None, None)
 
     local_sagemaker_client.describe_transform_job("transform-job")
@@ -246,8 +261,12 @@ def test_describe_endpoint_config(LocalSession):
     with pytest.raises(ClientError):
         local_sagemaker_client.describe_endpoint_config("some-endpoint-config")
 
-    production_variants = [{"InstanceType": "ml.c4.99xlarge", "InitialInstanceCount": 10}]
-    local_sagemaker_client.create_endpoint_config("test-endpoint-config", production_variants)
+    production_variants = [
+        {"InstanceType": "ml.c4.99xlarge", "InitialInstanceCount": 10}
+    ]
+    local_sagemaker_client.create_endpoint_config(
+        "test-endpoint-config", production_variants
+    )
 
     response = local_sagemaker_client.describe_endpoint_config("test-endpoint-config")
     assert response["EndpointConfigName"] == "test-endpoint-config"
@@ -257,10 +276,13 @@ def test_describe_endpoint_config(LocalSession):
 @patch("sagemaker.local.local_session.LocalSession")
 def test_create_endpoint_config(LocalSession):
     local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
-    local_sagemaker_client.create_endpoint_config(ENDPOINT_CONFIG_NAME, PRODUCTION_VARIANTS)
+    local_sagemaker_client.create_endpoint_config(
+        ENDPOINT_CONFIG_NAME, PRODUCTION_VARIANTS
+    )
 
     assert (
-        ENDPOINT_CONFIG_NAME in sagemaker.local.local_session.LocalSagemakerClient._endpoint_configs
+        ENDPOINT_CONFIG_NAME
+        in sagemaker.local.local_session.LocalSagemakerClient._endpoint_configs
     )
 
 
@@ -268,9 +290,12 @@ def test_create_endpoint_config(LocalSession):
 def test_delete_endpoint_config(LocalSession):
     local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
 
-    local_sagemaker_client.create_endpoint_config(ENDPOINT_CONFIG_NAME, PRODUCTION_VARIANTS)
+    local_sagemaker_client.create_endpoint_config(
+        ENDPOINT_CONFIG_NAME, PRODUCTION_VARIANTS
+    )
     assert (
-        ENDPOINT_CONFIG_NAME in sagemaker.local.local_session.LocalSagemakerClient._endpoint_configs
+        ENDPOINT_CONFIG_NAME
+        in sagemaker.local.local_session.LocalSagemakerClient._endpoint_configs
     )
 
     local_sagemaker_client.delete_endpoint_config(ENDPOINT_CONFIG_NAME)
@@ -363,7 +388,9 @@ def test_create_endpoint(describe_model, describe_endpoint_config, request, *arg
 
     local_sagemaker_client.create_endpoint("my-endpoint", "some-endpoint-config")
 
-    assert "my-endpoint" in sagemaker.local.local_session.LocalSagemakerClient._endpoints
+    assert (
+        "my-endpoint" in sagemaker.local.local_session.LocalSagemakerClient._endpoints
+    )
 
 
 @patch("sagemaker.local.local_session.LocalSession")
@@ -409,7 +436,9 @@ def test_serve_endpoint_with_correct_accelerator(request, *args):
     endpoint.serve()
 
     assert (
-        endpoint.primary_container["Environment"]["SAGEMAKER_INFERENCE_ACCELERATOR_PRESENT"]
+        endpoint.primary_container["Environment"][
+            "SAGEMAKER_INFERENCE_ACCELERATOR_PRESENT"
+        ]
         == "true"
     )
 
@@ -448,7 +477,9 @@ def test_serve_endpoint_with_incorrect_accelerator(request, *args):
 
     with pytest.raises(KeyError):
         assert (
-            endpoint.primary_container["Environment"]["SAGEMAKER_INFERENCE_ACCELERATOR_PRESENT"]
+            endpoint.primary_container["Environment"][
+                "SAGEMAKER_INFERENCE_ACCELERATOR_PRESENT"
+            ]
             == "true"
         )
 
@@ -458,7 +489,10 @@ def test_file_input_all_defaults():
     actual = sagemaker.local.local_session.file_input(fileUri=prefix)
     expected = {
         "DataSource": {
-            "FileDataSource": {"FileDataDistributionType": "FullyReplicated", "FileUri": prefix}
+            "FileDataSource": {
+                "FileDataDistributionType": "FullyReplicated",
+                "FileUri": prefix,
+            }
         }
     }
     assert actual.config == expected
@@ -466,10 +500,15 @@ def test_file_input_all_defaults():
 
 def test_file_input_content_type():
     prefix = "pre"
-    actual = sagemaker.local.local_session.file_input(fileUri=prefix, content_type="text/csv")
+    actual = sagemaker.local.local_session.file_input(
+        fileUri=prefix, content_type="text/csv"
+    )
     expected = {
         "DataSource": {
-            "FileDataSource": {"FileDataDistributionType": "FullyReplicated", "FileUri": prefix}
+            "FileDataSource": {
+                "FileDataDistributionType": "FullyReplicated",
+                "FileUri": prefix,
+            }
         },
         "ContentType": "text/csv",
     }
@@ -478,7 +517,9 @@ def test_file_input_content_type():
 
 def test_local_session_is_set_to_local_mode():
     boto_session = Mock(region_name="us-west-2")
-    local_session = sagemaker.local.local_session.LocalSession(boto_session=boto_session)
+    local_session = sagemaker.local.local_session.LocalSession(
+        boto_session=boto_session
+    )
     assert local_session.local_mode
 
 
@@ -512,13 +553,17 @@ def test_local_session_with_custom_s3_endpoint_url(sagemaker_session_custom_endp
     assert sagemaker_session_custom_endpoint.s3_resource is not None
 
 
-def test_local_session_download_with_custom_s3_endpoint_url(sagemaker_session_custom_endpoint):
+def test_local_session_download_with_custom_s3_endpoint_url(
+    sagemaker_session_custom_endpoint,
+):
 
     DOWNLOAD_DATA_TESTS_FILES_DIR = os.path.join(DATA_DIR, "download_data_tests")
     sagemaker_session_custom_endpoint.s3_client.list_objects_v2 = Mock(
         name="list_objects_v2", return_value=LS_FILES
     )
-    sagemaker_session_custom_endpoint.s3_client.download_file = Mock(name="download_file")
+    sagemaker_session_custom_endpoint.s3_client.download_file = Mock(
+        name="download_file"
+    )
 
     sagemaker_session_custom_endpoint.download_data(
         DOWNLOAD_DATA_TESTS_FILES_DIR, BUCKET_NAME, key_prefix="/data/test.csv"

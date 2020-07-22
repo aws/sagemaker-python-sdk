@@ -42,7 +42,9 @@ def train(channel_input_dirs, hyperparameters, **kwargs):
     net.initialize(mx.init.Xavier(magnitude=2.24), ctx=ctx)
     # Trainer is for updating parameters with gradient.
     trainer = gluon.Trainer(
-        net.collect_params(), "sgd", {"learning_rate": learning_rate, "momentum": momentum}
+        net.collect_params(),
+        "sgd",
+        {"learning_rate": learning_rate, "momentum": momentum},
     )
     metric = mx.metric.Accuracy()
     loss = gluon.loss.SoftmaxCrossEntropyLoss()

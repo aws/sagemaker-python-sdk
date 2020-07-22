@@ -83,7 +83,9 @@ def test_marketplace_estimator(sagemaker_session, cpu_instance_type):
         algo.fit({"training": train_input})
 
     endpoint_name = "test-marketplace-estimator{}".format(sagemaker_timestamp())
-    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=20):
+    with timeout_and_delete_endpoint_by_name(
+        endpoint_name, sagemaker_session, minutes=20
+    ):
         predictor = algo.deploy(1, cpu_instance_type, endpoint_name=endpoint_name)
         shape = pandas.read_csv(os.path.join(data_path, "iris.csv"), header=None)
 
@@ -130,7 +132,9 @@ def test_marketplace_attach(sagemaker_session, cpu_instance_type):
         time.sleep(20)
         endpoint_name = "test-marketplace-estimator{}".format(sagemaker_timestamp())
 
-    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=20):
+    with timeout_and_delete_endpoint_by_name(
+        endpoint_name, sagemaker_session, minutes=20
+    ):
         print("Re-attaching now to: %s" % training_job_name)
         estimator = AlgorithmEstimator.attach(
             training_job_name=training_job_name, sagemaker_session=sagemaker_session
@@ -177,7 +181,9 @@ def test_marketplace_model(sagemaker_session, cpu_instance_type):
     )
 
     endpoint_name = "test-marketplace-model-endpoint{}".format(sagemaker_timestamp())
-    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session, minutes=20):
+    with timeout_and_delete_endpoint_by_name(
+        endpoint_name, sagemaker_session, minutes=20
+    ):
         predictor = model.deploy(1, cpu_instance_type, endpoint_name=endpoint_name)
         data_path = os.path.join(DATA_DIR, "marketplace", "training")
         shape = pandas.read_csv(os.path.join(data_path, "iris.csv"), header=None)
@@ -262,7 +268,9 @@ def test_marketplace_transform_job(sagemaker_session, cpu_instance_type):
     shape = pandas.read_csv(data_path + "/iris.csv", header=None).drop([0], axis=1)
 
     transform_workdir = DATA_DIR + "/marketplace/transform"
-    shape.to_csv(transform_workdir + "/batchtransform_test.csv", index=False, header=False)
+    shape.to_csv(
+        transform_workdir + "/batchtransform_test.csv", index=False, header=False
+    )
     transform_input = algo.sagemaker_session.upload_data(
         transform_workdir, key_prefix="integ-test-data/marketplace/transform"
     )
@@ -278,12 +286,16 @@ def test_marketplace_transform_job(sagemaker_session, cpu_instance_type):
     tests.integ.test_region() in tests.integ.NO_MARKET_PLACE_REGIONS,
     reason="Marketplace is not available in {}".format(tests.integ.test_region()),
 )
-def test_marketplace_transform_job_from_model_package(sagemaker_session, cpu_instance_type):
+def test_marketplace_transform_job_from_model_package(
+    sagemaker_session, cpu_instance_type
+):
     data_path = os.path.join(DATA_DIR, "marketplace", "training")
     shape = pandas.read_csv(data_path + "/iris.csv", header=None).drop([0], axis=1)
 
     TRANSFORM_WORKDIR = DATA_DIR + "/marketplace/transform"
-    shape.to_csv(TRANSFORM_WORKDIR + "/batchtransform_test.csv", index=False, header=False)
+    shape.to_csv(
+        TRANSFORM_WORKDIR + "/batchtransform_test.csv", index=False, header=False
+    )
     transform_input = sagemaker_session.upload_data(
         TRANSFORM_WORKDIR, key_prefix="integ-test-data/marketplace/transform"
     )

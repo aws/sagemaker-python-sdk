@@ -65,7 +65,8 @@ def test_mxnet_with_rules(sagemaker_session, mxnet_full_version, cpu_instance_ty
         rules = [
             Rule.sagemaker(rule_configs.vanishing_gradient()),
             Rule.sagemaker(
-                base_config=rule_configs.all_zero(), rule_parameters={"tensor_regex": ".*"}
+                base_config=rule_configs.all_zero(),
+                rule_parameters={"tensor_regex": ".*"},
             ),
             Rule.sagemaker(rule_configs.loss_not_decreasing()),
         ]
@@ -85,10 +86,12 @@ def test_mxnet_with_rules(sagemaker_session, mxnet_full_version, cpu_instance_ty
         )
 
         train_input = mx.sagemaker_session.upload_data(
-            path=os.path.join(data_path, "train"), key_prefix="integ-test-data/mxnet_mnist/train"
+            path=os.path.join(data_path, "train"),
+            key_prefix="integ-test-data/mxnet_mnist/train",
         )
         test_input = mx.sagemaker_session.upload_data(
-            path=os.path.join(data_path, "test"), key_prefix="integ-test-data/mxnet_mnist/test"
+            path=os.path.join(data_path, "test"),
+            key_prefix="integ-test-data/mxnet_mnist/test",
         )
 
         mx.fit({"train": train_input, "test": test_input})
@@ -97,14 +100,18 @@ def test_mxnet_with_rules(sagemaker_session, mxnet_full_version, cpu_instance_ty
 
         for index, rule in enumerate(rules):
             assert (
-                job_description["DebugRuleConfigurations"][index]["RuleConfigurationName"]
+                job_description["DebugRuleConfigurations"][index][
+                    "RuleConfigurationName"
+                ]
                 == rule.name
             )
             assert (
                 job_description["DebugRuleConfigurations"][index]["RuleEvaluatorImage"]
                 == rule.image_uri
             )
-            assert job_description["DebugRuleConfigurations"][index]["VolumeSizeInGB"] == 0
+            assert (
+                job_description["DebugRuleConfigurations"][index]["VolumeSizeInGB"] == 0
+            )
             assert (
                 job_description["DebugRuleConfigurations"][index]["RuleParameters"][
                     "rule_to_invoke"
@@ -119,7 +126,9 @@ def test_mxnet_with_rules(sagemaker_session, mxnet_full_version, cpu_instance_ty
         _wait_and_assert_that_no_rule_jobs_errored(training_job=mx.latest_training_job)
 
 
-def test_mxnet_with_custom_rule(sagemaker_session, mxnet_full_version, cpu_instance_type):
+def test_mxnet_with_custom_rule(
+    sagemaker_session, mxnet_full_version, cpu_instance_type
+):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         rules = [_get_custom_rule(sagemaker_session)]
 
@@ -138,10 +147,12 @@ def test_mxnet_with_custom_rule(sagemaker_session, mxnet_full_version, cpu_insta
         )
 
         train_input = mx.sagemaker_session.upload_data(
-            path=os.path.join(data_path, "train"), key_prefix="integ-test-data/mxnet_mnist/train"
+            path=os.path.join(data_path, "train"),
+            key_prefix="integ-test-data/mxnet_mnist/train",
         )
         test_input = mx.sagemaker_session.upload_data(
-            path=os.path.join(data_path, "test"), key_prefix="integ-test-data/mxnet_mnist/test"
+            path=os.path.join(data_path, "test"),
+            key_prefix="integ-test-data/mxnet_mnist/test",
         )
 
         mx.fit({"train": train_input, "test": test_input})
@@ -150,14 +161,19 @@ def test_mxnet_with_custom_rule(sagemaker_session, mxnet_full_version, cpu_insta
 
         for index, rule in enumerate(rules):
             assert (
-                job_description["DebugRuleConfigurations"][index]["RuleConfigurationName"]
+                job_description["DebugRuleConfigurations"][index][
+                    "RuleConfigurationName"
+                ]
                 == rule.name
             )
             assert (
                 job_description["DebugRuleConfigurations"][index]["RuleEvaluatorImage"]
                 == rule.image_uri
             )
-            assert job_description["DebugRuleConfigurations"][index]["VolumeSizeInGB"] == 30
+            assert (
+                job_description["DebugRuleConfigurations"][index]["VolumeSizeInGB"]
+                == 30
+            )
         assert (
             job_description["DebugRuleEvaluationStatuses"]
             == mx.latest_training_job.rule_job_summary()
@@ -166,11 +182,16 @@ def test_mxnet_with_custom_rule(sagemaker_session, mxnet_full_version, cpu_insta
         _wait_and_assert_that_no_rule_jobs_errored(training_job=mx.latest_training_job)
 
 
-def test_mxnet_with_debugger_hook_config(sagemaker_session, mxnet_full_version, cpu_instance_type):
+def test_mxnet_with_debugger_hook_config(
+    sagemaker_session, mxnet_full_version, cpu_instance_type
+):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         debugger_hook_config = DebuggerHookConfig(
             s3_output_path=os.path.join(
-                "s3://", sagemaker_session.default_bucket(), str(uuid.uuid4()), "tensors"
+                "s3://",
+                sagemaker_session.default_bucket(),
+                str(uuid.uuid4()),
+                "tensors",
             )
         )
 
@@ -189,16 +210,21 @@ def test_mxnet_with_debugger_hook_config(sagemaker_session, mxnet_full_version, 
         )
 
         train_input = mx.sagemaker_session.upload_data(
-            path=os.path.join(data_path, "train"), key_prefix="integ-test-data/mxnet_mnist/train"
+            path=os.path.join(data_path, "train"),
+            key_prefix="integ-test-data/mxnet_mnist/train",
         )
         test_input = mx.sagemaker_session.upload_data(
-            path=os.path.join(data_path, "test"), key_prefix="integ-test-data/mxnet_mnist/test"
+            path=os.path.join(data_path, "test"),
+            key_prefix="integ-test-data/mxnet_mnist/test",
         )
 
         mx.fit({"train": train_input, "test": test_input})
 
         job_description = mx.latest_training_job.describe()
-        assert job_description["DebugHookConfig"] == debugger_hook_config._to_request_dict()
+        assert (
+            job_description["DebugHookConfig"]
+            == debugger_hook_config._to_request_dict()
+        )
 
         _wait_and_assert_that_no_rule_jobs_errored(training_job=mx.latest_training_job)
 
@@ -210,13 +236,17 @@ def test_mxnet_with_rules_and_debugger_hook_config(
         rules = [
             Rule.sagemaker(rule_configs.vanishing_gradient()),
             Rule.sagemaker(
-                base_config=rule_configs.all_zero(), rule_parameters={"tensor_regex": ".*"}
+                base_config=rule_configs.all_zero(),
+                rule_parameters={"tensor_regex": ".*"},
             ),
             Rule.sagemaker(rule_configs.loss_not_decreasing()),
         ]
         debugger_hook_config = DebuggerHookConfig(
             s3_output_path=os.path.join(
-                "s3://", sagemaker_session.default_bucket(), str(uuid.uuid4()), "tensors"
+                "s3://",
+                sagemaker_session.default_bucket(),
+                str(uuid.uuid4()),
+                "tensors",
             )
         )
 
@@ -236,10 +266,12 @@ def test_mxnet_with_rules_and_debugger_hook_config(
         )
 
         train_input = mx.sagemaker_session.upload_data(
-            path=os.path.join(data_path, "train"), key_prefix="integ-test-data/mxnet_mnist/train"
+            path=os.path.join(data_path, "train"),
+            key_prefix="integ-test-data/mxnet_mnist/train",
         )
         test_input = mx.sagemaker_session.upload_data(
-            path=os.path.join(data_path, "test"), key_prefix="integ-test-data/mxnet_mnist/test"
+            path=os.path.join(data_path, "test"),
+            key_prefix="integ-test-data/mxnet_mnist/test",
         )
 
         mx.fit({"train": train_input, "test": test_input})
@@ -248,21 +280,28 @@ def test_mxnet_with_rules_and_debugger_hook_config(
 
         for index, rule in enumerate(rules):
             assert (
-                job_description["DebugRuleConfigurations"][index]["RuleConfigurationName"]
+                job_description["DebugRuleConfigurations"][index][
+                    "RuleConfigurationName"
+                ]
                 == rule.name
             )
             assert (
                 job_description["DebugRuleConfigurations"][index]["RuleEvaluatorImage"]
                 == rule.image_uri
             )
-            assert job_description["DebugRuleConfigurations"][index]["VolumeSizeInGB"] == 0
+            assert (
+                job_description["DebugRuleConfigurations"][index]["VolumeSizeInGB"] == 0
+            )
             assert (
                 job_description["DebugRuleConfigurations"][index]["RuleParameters"][
                     "rule_to_invoke"
                 ]
                 == rule.rule_parameters["rule_to_invoke"]
             )
-        assert job_description["DebugHookConfig"] == debugger_hook_config._to_request_dict()
+        assert (
+            job_description["DebugHookConfig"]
+            == debugger_hook_config._to_request_dict()
+        )
         assert (
             job_description["DebugRuleEvaluationStatuses"]
             == mx.latest_training_job.rule_job_summary()
@@ -278,7 +317,10 @@ def test_mxnet_with_custom_rule_and_debugger_hook_config(
         rules = [_get_custom_rule(sagemaker_session)]
         debugger_hook_config = DebuggerHookConfig(
             s3_output_path=os.path.join(
-                "s3://", sagemaker_session.default_bucket(), str(uuid.uuid4()), "tensors"
+                "s3://",
+                sagemaker_session.default_bucket(),
+                str(uuid.uuid4()),
+                "tensors",
             )
         )
 
@@ -298,10 +340,12 @@ def test_mxnet_with_custom_rule_and_debugger_hook_config(
         )
 
         train_input = mx.sagemaker_session.upload_data(
-            path=os.path.join(data_path, "train"), key_prefix="integ-test-data/mxnet_mnist/train"
+            path=os.path.join(data_path, "train"),
+            key_prefix="integ-test-data/mxnet_mnist/train",
         )
         test_input = mx.sagemaker_session.upload_data(
-            path=os.path.join(data_path, "test"), key_prefix="integ-test-data/mxnet_mnist/test"
+            path=os.path.join(data_path, "test"),
+            key_prefix="integ-test-data/mxnet_mnist/test",
         )
 
         mx.fit({"train": train_input, "test": test_input})
@@ -310,15 +354,23 @@ def test_mxnet_with_custom_rule_and_debugger_hook_config(
 
         for index, rule in enumerate(rules):
             assert (
-                job_description["DebugRuleConfigurations"][index]["RuleConfigurationName"]
+                job_description["DebugRuleConfigurations"][index][
+                    "RuleConfigurationName"
+                ]
                 == rule.name
             )
             assert (
                 job_description["DebugRuleConfigurations"][index]["RuleEvaluatorImage"]
                 == rule.image_uri
             )
-            assert job_description["DebugRuleConfigurations"][index]["VolumeSizeInGB"] == 30
-        assert job_description["DebugHookConfig"] == debugger_hook_config._to_request_dict()
+            assert (
+                job_description["DebugRuleConfigurations"][index]["VolumeSizeInGB"]
+                == 30
+            )
+        assert (
+            job_description["DebugHookConfig"]
+            == debugger_hook_config._to_request_dict()
+        )
         assert (
             job_description["DebugRuleEvaluationStatuses"]
             == mx.latest_training_job.rule_job_summary()
@@ -333,7 +385,10 @@ def test_mxnet_with_tensorboard_output_config(
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         tensorboard_output_config = TensorBoardOutputConfig(
             s3_output_path=os.path.join(
-                "s3://", sagemaker_session.default_bucket(), str(uuid.uuid4()), "tensorboard"
+                "s3://",
+                sagemaker_session.default_bucket(),
+                str(uuid.uuid4()),
+                "tensorboard",
             )
         )
 
@@ -352,10 +407,12 @@ def test_mxnet_with_tensorboard_output_config(
         )
 
         train_input = mx.sagemaker_session.upload_data(
-            path=os.path.join(data_path, "train"), key_prefix="integ-test-data/mxnet_mnist/train"
+            path=os.path.join(data_path, "train"),
+            key_prefix="integ-test-data/mxnet_mnist/train",
         )
         test_input = mx.sagemaker_session.upload_data(
-            path=os.path.join(data_path, "test"), key_prefix="integ-test-data/mxnet_mnist/test"
+            path=os.path.join(data_path, "test"),
+            key_prefix="integ-test-data/mxnet_mnist/test",
         )
 
         mx.fit({"train": train_input, "test": test_input})
@@ -370,24 +427,33 @@ def test_mxnet_with_tensorboard_output_config(
 
 
 @pytest.mark.canary_quick
-def test_mxnet_with_all_rules_and_configs(sagemaker_session, mxnet_full_version, cpu_instance_type):
+def test_mxnet_with_all_rules_and_configs(
+    sagemaker_session, mxnet_full_version, cpu_instance_type
+):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         rules = [
             Rule.sagemaker(rule_configs.vanishing_gradient()),
             Rule.sagemaker(
-                base_config=rule_configs.all_zero(), rule_parameters={"tensor_regex": ".*"}
+                base_config=rule_configs.all_zero(),
+                rule_parameters={"tensor_regex": ".*"},
             ),
             Rule.sagemaker(rule_configs.loss_not_decreasing()),
             _get_custom_rule(sagemaker_session),
         ]
         debugger_hook_config = DebuggerHookConfig(
             s3_output_path=os.path.join(
-                "s3://", sagemaker_session.default_bucket(), str(uuid.uuid4()), "tensors"
+                "s3://",
+                sagemaker_session.default_bucket(),
+                str(uuid.uuid4()),
+                "tensors",
             )
         )
         tensorboard_output_config = TensorBoardOutputConfig(
             s3_output_path=os.path.join(
-                "s3://", sagemaker_session.default_bucket(), str(uuid.uuid4()), "tensorboard"
+                "s3://",
+                sagemaker_session.default_bucket(),
+                str(uuid.uuid4()),
+                "tensorboard",
             )
         )
 
@@ -408,10 +474,12 @@ def test_mxnet_with_all_rules_and_configs(sagemaker_session, mxnet_full_version,
         )
 
         train_input = mx.sagemaker_session.upload_data(
-            path=os.path.join(data_path, "train"), key_prefix="integ-test-data/mxnet_mnist/train"
+            path=os.path.join(data_path, "train"),
+            key_prefix="integ-test-data/mxnet_mnist/train",
         )
         test_input = mx.sagemaker_session.upload_data(
-            path=os.path.join(data_path, "test"), key_prefix="integ-test-data/mxnet_mnist/test"
+            path=os.path.join(data_path, "test"),
+            key_prefix="integ-test-data/mxnet_mnist/test",
         )
 
         mx.fit({"train": train_input, "test": test_input})
@@ -420,14 +488,19 @@ def test_mxnet_with_all_rules_and_configs(sagemaker_session, mxnet_full_version,
 
         for index, rule in enumerate(rules):
             assert (
-                job_description["DebugRuleConfigurations"][index]["RuleConfigurationName"]
+                job_description["DebugRuleConfigurations"][index][
+                    "RuleConfigurationName"
+                ]
                 == rule.name
             )
             assert (
                 job_description["DebugRuleConfigurations"][index]["RuleEvaluatorImage"]
                 == rule.image_uri
             )
-        assert job_description["DebugHookConfig"] == debugger_hook_config._to_request_dict()
+        assert (
+            job_description["DebugHookConfig"]
+            == debugger_hook_config._to_request_dict()
+        )
         assert (
             job_description["TensorBoardOutputConfig"]
             == tensorboard_output_config._to_request_dict()
@@ -459,10 +532,12 @@ def test_mxnet_with_debugger_hook_config_disabled(
         )
 
         train_input = mx.sagemaker_session.upload_data(
-            path=os.path.join(data_path, "train"), key_prefix="integ-test-data/mxnet_mnist/train"
+            path=os.path.join(data_path, "train"),
+            key_prefix="integ-test-data/mxnet_mnist/train",
         )
         test_input = mx.sagemaker_session.upload_data(
-            path=os.path.join(data_path, "test"), key_prefix="integ-test-data/mxnet_mnist/test"
+            path=os.path.join(data_path, "test"),
+            key_prefix="integ-test-data/mxnet_mnist/test",
         )
 
         mx.fit({"train": train_input, "test": test_input})
@@ -482,7 +557,8 @@ def _get_custom_rule(session):
         instance_type="ml.m5.xlarge",
         volume_size_in_gb=30,
         image_uri=CUSTOM_RULE_REPO_WITH_PLACEHOLDERS.format(
-            CUSTOM_RULE_CONTAINERS_ACCOUNTS_MAP[session.boto_region_name], session.boto_region_name
+            CUSTOM_RULE_CONTAINERS_ACCOUNTS_MAP[session.boto_region_name],
+            session.boto_region_name,
         ),
     )
 
@@ -497,7 +573,9 @@ def _wait_and_assert_that_no_rule_jobs_errored(training_job):
         seconds_to_sleep=10,
     ):
         job_description = training_job.describe()
-        debug_rule_evaluation_statuses = job_description.get("DebugRuleEvaluationStatuses")
+        debug_rule_evaluation_statuses = job_description.get(
+            "DebugRuleEvaluationStatuses"
+        )
         if not debug_rule_evaluation_statuses:
             break
         incomplete_rule_job_found = False

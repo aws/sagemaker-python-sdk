@@ -18,7 +18,8 @@ import json
 from sagemaker import utils
 
 PRINCIPAL_TEMPLATE = (
-    '["{account_id}", "{role_arn}", ' '"arn:{partition}:iam::{account_id}:role/{sagemaker_role}"] '
+    '["{account_id}", "{role_arn}", '
+    '"arn:{partition}:iam::{account_id}:role/{sagemaker_role}"] '
 )
 
 KEY_ALIAS = "SageMakerTestKMSKey"
@@ -60,7 +61,12 @@ def _get_kms_key_id(kms_client, alias):
 
 
 def _create_kms_key(
-    kms_client, account_id, region, role_arn=None, sagemaker_role="SageMakerRole", alias=KEY_ALIAS
+    kms_client,
+    account_id,
+    region,
+    role_arn=None,
+    sagemaker_role="SageMakerRole",
+    alias=KEY_ALIAS,
 ):
     if role_arn:
         principal = PRINCIPAL_TEMPLATE.format(
@@ -86,7 +92,12 @@ def _create_kms_key(
 
 
 def _add_role_to_policy(
-    kms_client, account_id, role_arn, region, alias=KEY_ALIAS, sagemaker_role="SageMakerRole"
+    kms_client,
+    account_id,
+    role_arn,
+    region,
+    alias=KEY_ALIAS,
+    sagemaker_role="SageMakerRole",
 ):
     key_id = _get_kms_key_id(kms_client, alias)
     policy = kms_client.get_key_policy(KeyId=key_id, PolicyName=POLICY_NAME)
@@ -121,10 +132,14 @@ def get_or_create_kms_key(
     account_id = sts_client.get_caller_identity()["Account"]
 
     if kms_key_arn is None:
-        return _create_kms_key(kms_client, account_id, region, role_arn, sagemaker_role, alias)
+        return _create_kms_key(
+            kms_client, account_id, region, role_arn, sagemaker_role, alias
+        )
 
     if role_arn:
-        _add_role_to_policy(kms_client, account_id, role_arn, region, alias, sagemaker_role)
+        _add_role_to_policy(
+            kms_client, account_id, role_arn, region, alias, sagemaker_role
+        )
 
     return kms_key_arn
 
@@ -173,12 +188,16 @@ def bucket_with_encryption(sagemaker_session, sagemaker_role):
     role_arn = sts_client.get_caller_identity()["Arn"]
 
     kms_client = boto_session.client("kms", region_name=region)
-    kms_key_arn = _create_kms_key(kms_client, account, region, role_arn, sagemaker_role, None)
+    kms_key_arn = _create_kms_key(
+        kms_client, account, region, role_arn, sagemaker_role, None
+    )
 
     region = boto_session.region_name
     bucket_name = "sagemaker-{}-{}-with-kms".format(region, account)
 
-    sagemaker_session._create_s3_bucket_if_it_does_not_exist(bucket_name=bucket_name, region=region)
+    sagemaker_session._create_s3_bucket_if_it_does_not_exist(
+        bucket_name=bucket_name, region=region
+    )
 
     s3_client = boto_session.client("s3", region_name=region)
     s3_client.put_bucket_encryption(

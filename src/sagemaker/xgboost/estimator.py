@@ -106,7 +106,9 @@ class XGBoost(Framework):
         )
 
         if py_version == "py2":
-            raise AttributeError("XGBoost container does not support Python 2, please use Python 3")
+            raise AttributeError(
+                "XGBoost container does not support Python 2, please use Python 3"
+            )
         self.py_version = py_version
 
         if framework_version in defaults.XGBOOST_SUPPORTED_VERSIONS:
@@ -114,7 +116,9 @@ class XGBoost(Framework):
         else:
             raise ValueError(
                 get_unsupported_framework_version_error(
-                    self.__framework_name__, framework_version, defaults.XGBOOST_SUPPORTED_VERSIONS
+                    self.__framework_name__,
+                    framework_version,
+                    defaults.XGBOOST_SUPPORTED_VERSIONS,
                 )
             )
 
@@ -189,7 +193,9 @@ class XGBoost(Framework):
         )
 
     @classmethod
-    def attach(cls, training_job_name, sagemaker_session=None, model_channel_name="model"):
+    def attach(
+        cls, training_job_name, sagemaker_session=None, model_channel_name="model"
+    ):
         """Attach to an existing training job.
 
         Create an Estimator bound to an existing training job, each subclass
@@ -230,7 +236,9 @@ class XGBoost(Framework):
         job_details = sagemaker_session.sagemaker_client.describe_training_job(
             TrainingJobName=training_job_name
         )
-        init_params = cls._prepare_init_params_from_job_description(job_details, model_channel_name)
+        init_params = cls._prepare_init_params_from_job_description(
+            job_details, model_channel_name
+        )
         tags = sagemaker_session.sagemaker_client.list_tags(
             ResourceArn=job_details["TrainingJobArn"]
         )["Tags"]
@@ -251,7 +259,9 @@ class XGBoost(Framework):
         return estimator
 
     @classmethod
-    def _prepare_init_params_from_job_description(cls, job_details, model_channel_name=None):
+    def _prepare_init_params_from_job_description(
+        cls, job_details, model_channel_name=None
+    ):
         """Convert the job description to init params that can be handled by the class constructor
 
         Args:
@@ -261,7 +271,9 @@ class XGBoost(Framework):
              dictionary: The transformed init_params
 
         """
-        init_params = super(XGBoost, cls)._prepare_init_params_from_job_description(job_details)
+        init_params = super(XGBoost, cls)._prepare_init_params_from_job_description(
+            job_details
+        )
 
         image_name = init_params.pop("image")
         framework, py_version, tag, _ = framework_name_from_image(image_name)

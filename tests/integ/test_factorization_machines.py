@@ -106,7 +106,9 @@ def test_async_factorization_machines(sagemaker_session, cpu_instance_type):
             training_job_name=job_name, sagemaker_session=sagemaker_session
         )
         model = FactorizationMachinesModel(
-            estimator.model_data, role="SageMakerRole", sagemaker_session=sagemaker_session
+            estimator.model_data,
+            role="SageMakerRole",
+            sagemaker_session=sagemaker_session,
         )
         predictor = model.deploy(1, cpu_instance_type, endpoint_name=job_name)
         result = predictor.predict(train_set[0][:10])

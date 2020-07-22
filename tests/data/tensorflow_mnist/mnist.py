@@ -34,7 +34,11 @@ def cnn_model_fn(features, labels, mode):
     # Input Tensor Shape: [batch_size, 28, 28, 1]
     # Output Tensor Shape: [batch_size, 28, 28, 32]
     conv1 = tf.compat.v1.layers.conv2d(
-        inputs=input_layer, filters=32, kernel_size=[5, 5], padding="same", activation=tf.nn.relu
+        inputs=input_layer,
+        filters=32,
+        kernel_size=[5, 5],
+        padding="same",
+        activation=tf.nn.relu,
     )
 
     # Pooling Layer #1
@@ -49,7 +53,11 @@ def cnn_model_fn(features, labels, mode):
     # Input Tensor Shape: [batch_size, 14, 14, 32]
     # Output Tensor Shape: [batch_size, 14, 14, 64]
     conv2 = tf.compat.v1.layers.conv2d(
-        inputs=pool1, filters=64, kernel_size=[5, 5], padding="same", activation=tf.nn.relu
+        inputs=pool1,
+        filters=64,
+        kernel_size=[5, 5],
+        padding="same",
+        activation=tf.nn.relu,
     )
 
     # Pooling Layer #2
@@ -67,7 +75,9 @@ def cnn_model_fn(features, labels, mode):
     # Densely connected layer with 1024 neurons
     # Input Tensor Shape: [batch_size, 7 * 7 * 64]
     # Output Tensor Shape: [batch_size, 1024]
-    dense = tf.compat.v1.layers.dense(inputs=pool2_flat, units=1024, activation=tf.nn.relu)
+    dense = tf.compat.v1.layers.dense(
+        inputs=pool2_flat, units=1024, activation=tf.nn.relu
+    )
 
     # Add dropout operation; 0.6 probability that element will be kept
     dropout = tf.compat.v1.layers.dropout(
@@ -90,19 +100,27 @@ def cnn_model_fn(features, labels, mode):
         return tf.estimator.EstimatorSpec(mode=mode, predictions=predictions)
 
     # Calculate Loss (for both TRAIN and EVAL modes)
-    loss = tf.compat.v1.losses.sparse_softmax_cross_entropy(labels=labels, logits=logits)
+    loss = tf.compat.v1.losses.sparse_softmax_cross_entropy(
+        labels=labels, logits=logits
+    )
 
     # Configure the Training Op (for TRAIN mode)
     if mode == tf.estimator.ModeKeys.TRAIN:
         optimizer = tf.compat.v1.train.GradientDescentOptimizer(learning_rate=0.001)
-        train_op = optimizer.minimize(loss=loss, global_step=tf.compat.v1.train.get_global_step())
+        train_op = optimizer.minimize(
+            loss=loss, global_step=tf.compat.v1.train.get_global_step()
+        )
         return tf.estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op)
 
     # Add evaluation metrics (for EVAL mode)
     eval_metric_ops = {
-        "accuracy": tf.compat.v1.metrics.accuracy(labels=labels, predictions=predictions["classes"])
+        "accuracy": tf.compat.v1.metrics.accuracy(
+            labels=labels, predictions=predictions["classes"]
+        )
     }
-    return tf.estimator.EstimatorSpec(mode=mode, loss=loss, eval_metric_ops=eval_metric_ops)
+    return tf.estimator.EstimatorSpec(
+        mode=mode, loss=loss, eval_metric_ops=eval_metric_ops
+    )
 
 
 def _load_training_data(base_dir):
@@ -124,11 +142,19 @@ def _parse_args():
     # hyperparameters sent by the client are passed as command-line arguments to the script.
     parser.add_argument("--epochs", type=int, default=1)
     # Data, model, and output directories
-    parser.add_argument("--output-data-dir", type=str, default=os.environ.get("SM_OUTPUT_DATA_DIR"))
+    parser.add_argument(
+        "--output-data-dir", type=str, default=os.environ.get("SM_OUTPUT_DATA_DIR")
+    )
     parser.add_argument("--model_dir", type=str)
-    parser.add_argument("--train", type=str, default=os.environ.get("SM_CHANNEL_TRAINING"))
-    parser.add_argument("--hosts", type=list, default=json.loads(os.environ.get("SM_HOSTS")))
-    parser.add_argument("--current-host", type=str, default=os.environ.get("SM_CURRENT_HOST"))
+    parser.add_argument(
+        "--train", type=str, default=os.environ.get("SM_CHANNEL_TRAINING")
+    )
+    parser.add_argument(
+        "--hosts", type=list, default=json.loads(os.environ.get("SM_HOSTS"))
+    )
+    parser.add_argument(
+        "--current-host", type=str, default=os.environ.get("SM_CURRENT_HOST")
+    )
 
     return parser.parse_known_args()
 
@@ -150,16 +176,24 @@ if __name__ == "__main__":
     eval_data, eval_labels = _load_testing_data(args.train)
 
     # Create the Estimator
-    mnist_classifier = tf.estimator.Estimator(model_fn=cnn_model_fn, model_dir=args.model_dir)
+    mnist_classifier = tf.estimator.Estimator(
+        model_fn=cnn_model_fn, model_dir=args.model_dir
+    )
 
     # Set up logging for predictions
     # Log the values in the "Softmax" tensor with label "probabilities"
     tensors_to_log = {"probabilities": "softmax_tensor"}
-    logging_hook = tf.estimator.LoggingTensorHook(tensors=tensors_to_log, every_n_iter=50)
+    logging_hook = tf.estimator.LoggingTensorHook(
+        tensors=tensors_to_log, every_n_iter=50
+    )
 
     # Train the model
     train_input_fn = tf.compat.v1.estimator.inputs.numpy_input_fn(
-        x={"x": train_data}, y=train_labels, batch_size=50, num_epochs=None, shuffle=True
+        x={"x": train_data},
+        y=train_labels,
+        batch_size=50,
+        num_epochs=None,
+        shuffle=True,
     )
 
     # Evaluate the model and print results

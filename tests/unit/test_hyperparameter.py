@@ -20,7 +20,9 @@ class Test(object):
 
     blank = Hyperparameter(name="some-name", data_type=int)
     elizabeth = Hyperparameter(name="elizabeth")
-    validated = Hyperparameter(name="validated", validate=lambda value: value > 55, data_type=int)
+    validated = Hyperparameter(
+        name="validated", validate=lambda value: value > 55, data_type=int
+    )
 
 
 def test_blank_access():

@@ -25,7 +25,13 @@ class PipelineModel(object):
     """
 
     def __init__(
-        self, models, role, predictor_cls=None, name=None, vpc_config=None, sagemaker_session=None
+        self,
+        models,
+        role,
+        predictor_cls=None,
+        name=None,
+        vpc_config=None,
+        sagemaker_session=None,
     ):
         """Initialize an SageMaker ``Model`` which can be used to build an
         Inference Pipeline comprising of multiple model containers.
@@ -265,6 +271,8 @@ class PipelineModel(object):
         """
 
         if self.name is None:
-            raise ValueError("The SageMaker model must be created before attempting to delete.")
+            raise ValueError(
+                "The SageMaker model must be created before attempting to delete."
+            )
 
         self.sagemaker_session.delete_model(self.name)

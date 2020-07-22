@@ -31,7 +31,9 @@ from tests.integ.timeout import timeout
 RESOURCE_PATH = os.path.join(os.path.dirname(__file__), "..", "data")
 MNIST_RESOURCE_PATH = os.path.join(RESOURCE_PATH, "tensorflow_mnist")
 SCRIPT = os.path.join(MNIST_RESOURCE_PATH, "mnist.py")
-TFS_RESOURCE_PATH = os.path.join(RESOURCE_PATH, "tfs", "tfs-test-entrypoint-with-handler")
+TFS_RESOURCE_PATH = os.path.join(
+    RESOURCE_PATH, "tfs", "tfs-test-entrypoint-with-handler"
+)
 EFS_DIR_PATH = "/tensorflow"
 FSX_DIR_PATH = "/fsx/tensorflow"
 MAX_JOBS = 2
@@ -81,7 +83,9 @@ def test_mnist_efs(efs_fsx_setup, sagemaker_session, cpu_instance_type):
         content_type=content_type,
     )
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
-        estimator.fit(inputs=file_system_input, job_name=unique_name_from_base("test-mnist-efs"))
+        estimator.fit(
+            inputs=file_system_input, job_name=unique_name_from_base("test-mnist-efs")
+        )
 
     assert_s3_files_exist(
         sagemaker_session,
@@ -114,11 +118,16 @@ def test_mnist_lustre(efs_fsx_setup, sagemaker_session, cpu_instance_type):
 
     file_system_fsx_id = efs_fsx_setup["file_system_fsx_id"]
     file_system_input = FileSystemInput(
-        file_system_id=file_system_fsx_id, file_system_type="FSxLustre", directory_path=FSX_DIR_PATH
+        file_system_id=file_system_fsx_id,
+        file_system_type="FSxLustre",
+        directory_path=FSX_DIR_PATH,
     )
 
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
-        estimator.fit(inputs=file_system_input, job_name=unique_name_from_base("test-mnist-lustre"))
+        estimator.fit(
+            inputs=file_system_input,
+            job_name=unique_name_from_base("test-mnist-lustre"),
+        )
     assert_s3_files_exist(
         sagemaker_session,
         estimator.model_dir,
@@ -150,7 +159,9 @@ def test_tuning_tf_script_mode_efs(efs_fsx_setup, sagemaker_session, cpu_instanc
 
     hyperparameter_ranges = {"epochs": IntegerParameter(1, 2)}
     objective_metric_name = "accuracy"
-    metric_definitions = [{"Name": objective_metric_name, "Regex": "accuracy = ([0-9\\.]+)"}]
+    metric_definitions = [
+        {"Name": objective_metric_name, "Regex": "accuracy = ([0-9\\.]+)"}
+    ]
     tuner = HyperparameterTuner(
         estimator,
         objective_metric_name,
@@ -162,11 +173,15 @@ def test_tuning_tf_script_mode_efs(efs_fsx_setup, sagemaker_session, cpu_instanc
 
     file_system_efs_id = efs_fsx_setup["file_system_efs_id"]
     file_system_input = FileSystemInput(
-        file_system_id=file_system_efs_id, file_system_type="EFS", directory_path=EFS_DIR_PATH
+        file_system_id=file_system_efs_id,
+        file_system_type="EFS",
+        directory_path=EFS_DIR_PATH,
     )
 
     with timeout(minutes=TUNING_DEFAULT_TIMEOUT_MINUTES):
-        tuning_job_name = unique_name_from_base("test-tuning-tf-script-mode-efs", max_length=32)
+        tuning_job_name = unique_name_from_base(
+            "test-tuning-tf-script-mode-efs", max_length=32
+        )
         tuner.fit(file_system_input, job_name=tuning_job_name)
         time.sleep(15)
         tuner.wait()
@@ -178,7 +193,9 @@ def test_tuning_tf_script_mode_efs(efs_fsx_setup, sagemaker_session, cpu_instanc
     tests.integ.test_region() not in tests.integ.EFS_TEST_ENABLED_REGION,
     reason="EFS integration tests need to be fixed before running in all regions.",
 )
-def test_tuning_tf_script_mode_lustre(efs_fsx_setup, sagemaker_session, cpu_instance_type):
+def test_tuning_tf_script_mode_lustre(
+    efs_fsx_setup, sagemaker_session, cpu_instance_type
+):
     role = efs_fsx_setup["role_name"]
     subnets = [efs_fsx_setup["subnet_id"]]
     security_group_ids = efs_fsx_setup["security_group_ids"]
@@ -198,7 +215,9 @@ def test_tuning_tf_script_mode_lustre(efs_fsx_setup, sagemaker_session, cpu_inst
 
     hyperparameter_ranges = {"epochs": IntegerParameter(1, 2)}
     objective_metric_name = "accuracy"
-    metric_definitions = [{"Name": objective_metric_name, "Regex": "accuracy = ([0-9\\.]+)"}]
+    metric_definitions = [
+        {"Name": objective_metric_name, "Regex": "accuracy = ([0-9\\.]+)"}
+    ]
     tuner = HyperparameterTuner(
         estimator,
         objective_metric_name,
@@ -210,11 +229,15 @@ def test_tuning_tf_script_mode_lustre(efs_fsx_setup, sagemaker_session, cpu_inst
 
     file_system_fsx_id = efs_fsx_setup["file_system_fsx_id"]
     file_system_input = FileSystemInput(
-        file_system_id=file_system_fsx_id, file_system_type="FSxLustre", directory_path=FSX_DIR_PATH
+        file_system_id=file_system_fsx_id,
+        file_system_type="FSxLustre",
+        directory_path=FSX_DIR_PATH,
     )
 
     with timeout(minutes=TUNING_DEFAULT_TIMEOUT_MINUTES):
-        tuning_job_name = unique_name_from_base("test-tuning-tf-script-mode-lustre", max_length=32)
+        tuning_job_name = unique_name_from_base(
+            "test-tuning-tf-script-mode-lustre", max_length=32
+        )
         tuner.fit(file_system_input, job_name=tuning_job_name)
         time.sleep(15)
         tuner.wait()

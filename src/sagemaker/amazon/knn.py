@@ -32,7 +32,10 @@ class KNN(AmazonAlgorithmEstimatorBase):
     k = hp("k", (ge(1)), "An integer greater than 0", int)
     sample_size = hp("sample_size", (ge(1)), "An integer greater than 0", int)
     predictor_type = hp(
-        "predictor_type", isin("classifier", "regressor"), 'One of "classifier" or "regressor"', str
+        "predictor_type",
+        isin("classifier", "regressor"),
+        'One of "classifier" or "regressor"',
+        str,
     )
     dimension_reduction_target = hp(
         "dimension_reduction_target",
@@ -136,7 +139,9 @@ class KNN(AmazonAlgorithmEstimatorBase):
             :class:`~sagemaker.estimator.EstimatorBase`.
         """
 
-        super(KNN, self).__init__(role, train_instance_count, train_instance_type, **kwargs)
+        super(KNN, self).__init__(
+            role, train_instance_count, train_instance_type, **kwargs
+        )
         self.k = k
         self.sample_size = sample_size
         self.predictor_type = predictor_type

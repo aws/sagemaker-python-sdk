@@ -112,7 +112,9 @@ class MXNet(Framework):
         """
         if framework_version is None:
             logger.warning(
-                empty_framework_version_warning(defaults.MXNET_VERSION, self.LATEST_VERSION)
+                empty_framework_version_warning(
+                    defaults.MXNET_VERSION, self.LATEST_VERSION
+                )
             )
         self.framework_version = framework_version or defaults.MXNET_VERSION
 
@@ -127,7 +129,9 @@ class MXNet(Framework):
 
         if py_version == "py2":
             logger.warning(
-                python_deprecation_warning(self.__framework_name__, defaults.LATEST_PY2_VERSION)
+                python_deprecation_warning(
+                    self.__framework_name__, defaults.LATEST_PY2_VERSION
+                )
             )
 
         if distributions is not None:
@@ -236,7 +240,9 @@ class MXNet(Framework):
         )
 
     @classmethod
-    def _prepare_init_params_from_job_description(cls, job_details, model_channel_name=None):
+    def _prepare_init_params_from_job_description(
+        cls, job_details, model_channel_name=None
+    ):
         """Convert the job description to init params that can be handled by the
         class constructor
 

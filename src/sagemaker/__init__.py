@@ -30,7 +30,9 @@ from sagemaker.amazon.factorization_machines import (  # noqa: F401
     FactorizationMachines,
     FactorizationMachinesModel,
 )
-from sagemaker.amazon.factorization_machines import FactorizationMachinesPredictor  # noqa: F401
+from sagemaker.amazon.factorization_machines import (
+    FactorizationMachinesPredictor,
+)  # noqa: F401
 from sagemaker.amazon.ntm import NTM, NTMModel, NTMPredictor  # noqa: F401
 from sagemaker.amazon.randomcutforest import (  # noqa: F401
     RandomCutForest,
@@ -46,7 +48,10 @@ from sagemaker.amazon.ipinsights import (  # noqa: F401
 )
 
 from sagemaker.algorithm import AlgorithmEstimator  # noqa: F401
-from sagemaker.analytics import TrainingJobAnalytics, HyperparameterTuningJobAnalytics  # noqa: F401
+from sagemaker.analytics import (
+    TrainingJobAnalytics,
+    HyperparameterTuningJobAnalytics,
+)  # noqa: F401
 from sagemaker.local.local_session import LocalSession  # noqa: F401
 
 from sagemaker.model import Model, ModelPackage  # noqa: F401
@@ -60,7 +65,10 @@ from sagemaker.session import s3_input  # noqa: F401
 from sagemaker.session import get_execution_role  # noqa: F401
 
 from sagemaker.automl.automl import AutoML, AutoMLJob, AutoMLInput  # noqa: F401
-from sagemaker.automl.candidate_estimator import CandidateEstimator, CandidateStep  # noqa: F401
+from sagemaker.automl.candidate_estimator import (
+    CandidateEstimator,
+    CandidateStep,
+)  # noqa: F401
 
 __version__ = importlib_metadata.version("sagemaker")
 

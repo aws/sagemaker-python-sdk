@@ -149,7 +149,9 @@ class RandomCutForest(AmazonAlgorithmEstimatorBase):
             mini_batch_size = self.MINI_BATCH_SIZE
         elif mini_batch_size != self.MINI_BATCH_SIZE:
             raise ValueError(
-                "Random Cut Forest uses a fixed mini_batch_size of {}".format(self.MINI_BATCH_SIZE)
+                "Random Cut Forest uses a fixed mini_batch_size of {}".format(
+                    self.MINI_BATCH_SIZE
+                )
             )
 
         super(RandomCutForest, self)._prepare_for_training(
@@ -203,7 +205,10 @@ class RandomCutForestModel(Model):
         sagemaker_session = sagemaker_session or Session()
         repo = "{}:{}".format(RandomCutForest.repo_name, RandomCutForest.repo_version)
         image = "{}/{}".format(
-            registry(sagemaker_session.boto_session.region_name, RandomCutForest.repo_name), repo
+            registry(
+                sagemaker_session.boto_session.region_name, RandomCutForest.repo_name
+            ),
+            repo,
         )
         super(RandomCutForestModel, self).__init__(
             model_data,

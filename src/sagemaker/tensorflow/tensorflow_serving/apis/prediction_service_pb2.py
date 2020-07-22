@@ -37,8 +37,12 @@ from tensorflow_serving.apis import (
 from tensorflow_serving.apis import (
     get_model_metadata_pb2 as tensorflow__serving_dot_apis_dot_get__model__metadata__pb2,
 )
-from tensorflow_serving.apis import inference_pb2 as tensorflow__serving_dot_apis_dot_inference__pb2
-from tensorflow_serving.apis import predict_pb2 as tensorflow__serving_dot_apis_dot_predict__pb2
+from tensorflow_serving.apis import (
+    inference_pb2 as tensorflow__serving_dot_apis_dot_inference__pb2,
+)
+from tensorflow_serving.apis import (
+    predict_pb2 as tensorflow__serving_dot_apis_dot_predict__pb2,
+)
 from tensorflow_serving.apis import (
     regression_pb2 as tensorflow__serving_dot_apis_dot_regression__pb2,
 )
@@ -63,7 +67,9 @@ _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 
 DESCRIPTOR.has_options = True
-DESCRIPTOR._options = _descriptor._ParseOptions(descriptor_pb2.FileOptions(), _b("\370\001\001"))
+DESCRIPTOR._options = _descriptor._ParseOptions(
+    descriptor_pb2.FileOptions(), _b("\370\001\001")
+)
 try:
     # THESE ELEMENTS WILL BE DEPRECATED.
     # Please use the generated *_pb2_grpc.py files instead.
@@ -234,21 +240,42 @@ try:
     model_servers.
     """
 
-        def Classify(self, request, timeout, metadata=None, with_call=False, protocol_options=None):
+        def Classify(
+            self,
+            request,
+            timeout,
+            metadata=None,
+            with_call=False,
+            protocol_options=None,
+        ):
             """Classify.
       """
             raise NotImplementedError()
 
         Classify.future = None
 
-        def Regress(self, request, timeout, metadata=None, with_call=False, protocol_options=None):
+        def Regress(
+            self,
+            request,
+            timeout,
+            metadata=None,
+            with_call=False,
+            protocol_options=None,
+        ):
             """Regress.
       """
             raise NotImplementedError()
 
         Regress.future = None
 
-        def Predict(self, request, timeout, metadata=None, with_call=False, protocol_options=None):
+        def Predict(
+            self,
+            request,
+            timeout,
+            metadata=None,
+            with_call=False,
+            protocol_options=None,
+        ):
             """Predict -- provides access to loaded TensorFlow model.
       """
             raise NotImplementedError()
@@ -256,7 +283,12 @@ try:
         Predict.future = None
 
         def MultiInference(
-            self, request, timeout, metadata=None, with_call=False, protocol_options=None
+            self,
+            request,
+            timeout,
+            metadata=None,
+            with_call=False,
+            protocol_options=None,
         ):
             """MultiInference API for multi-headed models.
       """
@@ -265,7 +297,12 @@ try:
         MultiInference.future = None
 
         def GetModelMetadata(
-            self, request, timeout, metadata=None, with_call=False, protocol_options=None
+            self,
+            request,
+            timeout,
+            metadata=None,
+            with_call=False,
+            protocol_options=None,
         ):
             """GetModelMetadata - provides access to metadata for loaded models.
       """
@@ -326,9 +363,10 @@ try:
             ): tensorflow__serving_dot_apis_dot_regression__pb2.RegressionResponse.SerializeToString,
         }
         method_implementations = {
-            ("tensorflow.serving.PredictionService", "Classify"): face_utilities.unary_unary_inline(
-                servicer.Classify
-            ),
+            (
+                "tensorflow.serving.PredictionService",
+                "Classify",
+            ): face_utilities.unary_unary_inline(servicer.Classify),
             (
                 "tensorflow.serving.PredictionService",
                 "GetModelMetadata",
@@ -337,12 +375,14 @@ try:
                 "tensorflow.serving.PredictionService",
                 "MultiInference",
             ): face_utilities.unary_unary_inline(servicer.MultiInference),
-            ("tensorflow.serving.PredictionService", "Predict"): face_utilities.unary_unary_inline(
-                servicer.Predict
-            ),
-            ("tensorflow.serving.PredictionService", "Regress"): face_utilities.unary_unary_inline(
-                servicer.Regress
-            ),
+            (
+                "tensorflow.serving.PredictionService",
+                "Predict",
+            ): face_utilities.unary_unary_inline(servicer.Predict),
+            (
+                "tensorflow.serving.PredictionService",
+                "Regress",
+            ): face_utilities.unary_unary_inline(servicer.Regress),
         }
         server_options = beta_implementations.server_options(
             request_deserializers=request_deserializers,
@@ -352,7 +392,9 @@ try:
             default_timeout=default_timeout,
             maximum_timeout=maximum_timeout,
         )
-        return beta_implementations.server(method_implementations, options=server_options)
+        return beta_implementations.server(
+            method_implementations, options=server_options
+        )
 
     def beta_create_PredictionService_stub(
         channel, host=None, metadata_transformer=None, pool=None, pool_size=None
@@ -422,7 +464,10 @@ try:
             thread_pool_size=pool_size,
         )
         return beta_implementations.dynamic_stub(
-            channel, "tensorflow.serving.PredictionService", cardinalities, options=stub_options
+            channel,
+            "tensorflow.serving.PredictionService",
+            cardinalities,
+            options=stub_options,
         )
 
 

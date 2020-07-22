@@ -146,7 +146,8 @@ class WarmStartConfig(object):
             parents.append(parent[HYPERPARAMETER_TUNING_JOB_NAME])
 
         return cls(
-            warm_start_type=WarmStartTypes(warm_start_config[WARM_START_TYPE]), parents=parents
+            warm_start_type=WarmStartTypes(warm_start_config[WARM_START_TYPE]),
+            parents=parents,
         )
 
     def to_input_req(self):
@@ -272,7 +273,9 @@ class HyperparameterTuner(object):
             self.objective_metric_name_dict = {estimator_name: objective_metric_name}
             self._hyperparameter_ranges_dict = {estimator_name: hyperparameter_ranges}
             self.metric_definitions_dict = (
-                {estimator_name: metric_definitions} if metric_definitions is not None else {}
+                {estimator_name: metric_definitions}
+                if metric_definitions is not None
+                else {}
             )
             self.static_hyperparameters = None
         else:
@@ -303,7 +306,9 @@ class HyperparameterTuner(object):
     def _prepare_for_tuning(self, job_name=None, include_cls_metadata=False):
         """Prepare the tuner instance for tuning (fit)"""
         self._prepare_job_name_for_tuning(job_name=job_name)
-        self._prepare_static_hyperparameters_for_tuning(include_cls_metadata=include_cls_metadata)
+        self._prepare_static_hyperparameters_for_tuning(
+            include_cls_metadata=include_cls_metadata
+        )
 
     def _prepare_job_name_for_tuning(self, job_name=None):
         """Set current job name before starting tuning"""
@@ -313,7 +318,8 @@ class HyperparameterTuner(object):
             base_name = self.base_tuning_job_name
             if base_name is None:
                 estimator = (
-                    self.estimator or self.estimator_dict[sorted(self.estimator_dict.keys())[0]]
+                    self.estimator
+                    or self.estimator_dict[sorted(self.estimator_dict.keys())[0]]
                 )
                 base_name = base_name_from_image(estimator.train_image())
             self._current_job_name = name_from_base(
@@ -431,32 +437,52 @@ class HyperparameterTuner(object):
         if self.estimator is not None:
             self._fit_with_estimator(inputs, job_name, include_cls_metadata, **kwargs)
         else:
-            self._fit_with_estimator_dict(inputs, job_name, include_cls_metadata, estimator_kwargs)
+            self._fit_with_estimator_dict(
+                inputs, job_name, include_cls_metadata, estimator_kwargs
+            )
 
     def _fit_with_estimator(self, inputs, job_name, include_cls_metadata, **kwargs):
         """Start tuning for tuner instances that have the ``estimator`` field set"""
         self._prepare_estimator_for_tuning(self.estimator, inputs, job_name, **kwargs)
-        self._prepare_for_tuning(job_name=job_name, include_cls_metadata=include_cls_metadata)
+        self._prepare_for_tuning(
+            job_name=job_name, include_cls_metadata=include_cls_metadata
+        )
         self.latest_tuning_job = _TuningJob.start_new(self, inputs)
 
-    def _fit_with_estimator_dict(self, inputs, job_name, include_cls_metadata, estimator_kwargs):
+    def _fit_with_estimator_dict(
+        self, inputs, job_name, include_cls_metadata, estimator_kwargs
+    ):
         """Start tuning for tuner instances that have the ``estimator_dict`` field set"""
         estimator_names = sorted(self.estimator_dict.keys())
-        self._validate_dict_argument(name="inputs", value=inputs, allowed_keys=estimator_names)
         self._validate_dict_argument(
-            name="include_cls_metadata", value=include_cls_metadata, allowed_keys=estimator_names
+            name="inputs", value=inputs, allowed_keys=estimator_names
         )
         self._validate_dict_argument(
-            name="estimator_kwargs", value=estimator_kwargs, allowed_keys=estimator_names
+            name="include_cls_metadata",
+            value=include_cls_metadata,
+            allowed_keys=estimator_names,
+        )
+        self._validate_dict_argument(
+            name="estimator_kwargs",
+            value=estimator_kwargs,
+            allowed_keys=estimator_names,
         )
 
         for (estimator_name, estimator) in self.estimator_dict.items():
             ins = inputs.get(estimator_name, None) if inputs is not None else None
-            args = estimator_kwargs.get(estimator_name, {}) if estimator_kwargs is not None else {}
+            args = (
+                estimator_kwargs.get(estimator_name, {})
+                if estimator_kwargs is not None
+                else {}
+            )
             self._prepare_estimator_for_tuning(estimator, ins, job_name, **args)
 
-        inc_cls_metadata = include_cls_metadata if include_cls_metadata is not None else {}
-        self._prepare_for_tuning(job_name=job_name, include_cls_metadata=inc_cls_metadata)
+        inc_cls_metadata = (
+            include_cls_metadata if include_cls_metadata is not None else {}
+        )
+        self._prepare_for_tuning(
+            job_name=job_name, include_cls_metadata=inc_cls_metadata
+        )
 
         self.latest_tuning_job = _TuningJob.start_new(self, inputs)
 
@@ -469,7 +495,13 @@ class HyperparameterTuner(object):
             estimator._prepare_for_training(job_name)
 
     @classmethod
-    def attach(cls, tuning_job_name, sagemaker_session=None, job_details=None, estimator_cls=None):
+    def attach(
+        cls,
+        tuning_job_name,
+        sagemaker_session=None,
+        job_details=None,
+        estimator_cls=None,
+    ):
         """Attach to an existing hyperparameter tuning job.
 
         Create a HyperparameterTuner bound to an existing hyperparameter
@@ -606,7 +638,9 @@ class HyperparameterTuner(object):
         estimator = cls._prepare_estimator(
             estimator_cls=estimator_cls,
             training_details=job_details["TrainingJobDefinition"],
-            parameter_ranges=job_details["HyperParameterTuningJobConfig"]["ParameterRanges"],
+            parameter_ranges=job_details["HyperParameterTuningJobConfig"][
+                "ParameterRanges"
+            ],
             sagemaker_session=sagemaker_session,
         )
         init_params = cls._prepare_init_params_from_job_description(job_details)
@@ -643,15 +677,17 @@ class HyperparameterTuner(object):
             estimator_name = training_details["DefinitionName"]
 
             estimator_dict[estimator_name] = cls._prepare_estimator(
-                estimator_cls=estimator_cls.get(estimator_name) if estimator_cls else None,
+                estimator_cls=estimator_cls.get(estimator_name)
+                if estimator_cls
+                else None,
                 training_details=training_details,
                 parameter_ranges=training_details["HyperParameterRanges"],
                 sagemaker_session=sagemaker_session,
             )
 
-            objective_metric_name_dict[estimator_name] = training_details["TuningObjective"][
-                "MetricName"
-            ]
+            objective_metric_name_dict[estimator_name] = training_details[
+                "TuningObjective"
+            ]["MetricName"]
             hyperparameter_ranges_dict[
                 estimator_name
             ] = cls._prepare_parameter_ranges_from_job_description(  # noqa: E501 # pylint: disable=line-too-long
@@ -883,7 +919,9 @@ class HyperparameterTuner(object):
         ):
             module = hyperparameters.get(cls.SAGEMAKER_ESTIMATOR_MODULE)
             cls_name = hyperparameters.get(cls.SAGEMAKER_ESTIMATOR_CLASS_NAME)
-            return getattr(importlib.import_module(json.loads(module)), json.loads(cls_name))
+            return getattr(
+                importlib.import_module(json.loads(module)), json.loads(cls_name)
+            )
 
         # Then try to derive the estimator from the image name for 1P algorithms
         image_name = training_details["AlgorithmSpecification"]["TrainingImage"]
@@ -894,7 +932,8 @@ class HyperparameterTuner(object):
 
         # Default to the BYO estimator
         return getattr(
-            importlib.import_module(cls.DEFAULT_ESTIMATOR_MODULE), cls.DEFAULT_ESTIMATOR_CLS_NAME
+            importlib.import_module(cls.DEFAULT_ESTIMATOR_MODULE),
+            cls.DEFAULT_ESTIMATOR_CLS_NAME,
         )
 
     @classmethod
@@ -930,7 +969,9 @@ class HyperparameterTuner(object):
         estimator_init_params = estimator_cls._prepare_init_params_from_job_description(
             training_details
         )
-        return estimator_cls(sagemaker_session=sagemaker_session, **estimator_init_params)
+        return estimator_cls(
+            sagemaker_session=sagemaker_session, **estimator_init_params
+        )
 
     @classmethod
     def _prepare_init_params_from_job_description(cls, job_details):
@@ -943,7 +984,9 @@ class HyperparameterTuner(object):
         params = {
             "strategy": tuning_config["Strategy"],
             "max_jobs": tuning_config["ResourceLimits"]["MaxNumberOfTrainingJobs"],
-            "max_parallel_jobs": tuning_config["ResourceLimits"]["MaxParallelTrainingJobs"],
+            "max_parallel_jobs": tuning_config["ResourceLimits"][
+                "MaxParallelTrainingJobs"
+            ],
             "warm_start_config": WarmStartConfig.from_job_desc(
                 job_details.get("WarmStartConfig", None)
             ),
@@ -951,13 +994,17 @@ class HyperparameterTuner(object):
         }
 
         if "HyperParameterTuningJobObjective" in tuning_config:
-            params["objective_metric_name"] = tuning_config["HyperParameterTuningJobObjective"][
-                "MetricName"
-            ]
-            params["objective_type"] = tuning_config["HyperParameterTuningJobObjective"]["Type"]
+            params["objective_metric_name"] = tuning_config[
+                "HyperParameterTuningJobObjective"
+            ]["MetricName"]
+            params["objective_type"] = tuning_config[
+                "HyperParameterTuningJobObjective"
+            ]["Type"]
 
         if "ParameterRanges" in tuning_config:
-            params["hyperparameter_ranges"] = cls._prepare_parameter_ranges_from_job_description(
+            params[
+                "hyperparameter_ranges"
+            ] = cls._prepare_parameter_ranges_from_job_description(
                 tuning_config["ParameterRanges"]
             )
 
@@ -967,9 +1014,9 @@ class HyperparameterTuner(object):
             ]["MetricDefinitions"]
 
         if "TrainingJobDefinitions" in job_details:
-            params["objective_type"] = job_details["TrainingJobDefinitions"][0]["TuningObjective"][
-                "Type"
-            ]
+            params["objective_type"] = job_details["TrainingJobDefinitions"][0][
+                "TuningObjective"
+            ]["Type"]
 
         return params
 
@@ -1077,7 +1124,9 @@ class HyperparameterTuner(object):
         tuning job of this tuner. Analytics olbject gives you access to tuning
         results summarized into a pandas dataframe.
         """
-        return HyperparameterTuningJobAnalytics(self.latest_tuning_job.name, self.sagemaker_session)
+        return HyperparameterTuningJobAnalytics(
+            self.latest_tuning_job.name, self.sagemaker_session
+        )
 
     def _validate_parameter_ranges(self, estimator, hyperparameter_ranges):
         """Validate hyperparameter ranges for an estimator"""
@@ -1102,7 +1151,10 @@ class HyperparameterTuner(object):
             value_hp:
             parameter_range:
         """
-        for (parameter_range_key, parameter_range_value) in parameter_range.__dict__.items():
+        for (
+            parameter_range_key,
+            parameter_range_value,
+        ) in parameter_range.__dict__.items():
             if parameter_range_key == "scaling_type":
                 continue
 
@@ -1177,7 +1229,9 @@ class HyperparameterTuner(object):
             warm_start_type=WarmStartTypes.IDENTICAL_DATA_AND_ALGORITHM,
         )
 
-    def _create_warm_start_tuner(self, additional_parents, warm_start_type, estimator=None):
+    def _create_warm_start_tuner(
+        self, additional_parents, warm_start_type, estimator=None
+    ):
         """Creates a new ``HyperparameterTuner`` with ``WarmStartConfig``, where
         type will be equal to ``warm_start_type`` and``parents`` would be equal
         to union of ``additional_parents`` and self.
@@ -1232,7 +1286,9 @@ class HyperparameterTuner(object):
             objective_type=self.objective_type,
             max_jobs=self.max_jobs,
             max_parallel_jobs=self.max_parallel_jobs,
-            warm_start_config=WarmStartConfig(warm_start_type=warm_start_type, parents=all_parents),
+            warm_start_config=WarmStartConfig(
+                warm_start_type=warm_start_type, parents=all_parents
+            ),
             early_stopping_type=self.early_stopping_type,
         )
 
@@ -1400,14 +1456,18 @@ class HyperparameterTuner(object):
             raise ValueError("Estimator names cannot be None")
 
     @classmethod
-    def _validate_dict_argument(cls, name, value, allowed_keys, require_same_keys=False):
+    def _validate_dict_argument(
+        cls, name, value, allowed_keys, require_same_keys=False
+    ):
         """Check if an argument is an dictionary with correct key set"""
         if value is None:
             return
 
         if not isinstance(value, dict):
             raise ValueError(
-                "Argument '{}' must be a dictionary using {} as keys".format(name, allowed_keys)
+                "Argument '{}' must be a dictionary using {} as keys".format(
+                    name, allowed_keys
+                )
             )
 
         value_keys = sorted(value.keys())
@@ -1415,12 +1475,16 @@ class HyperparameterTuner(object):
         if require_same_keys:
             if value_keys != allowed_keys:
                 raise ValueError(
-                    "The keys of argument '{}' must be the same as {}".format(name, allowed_keys)
+                    "The keys of argument '{}' must be the same as {}".format(
+                        name, allowed_keys
+                    )
                 )
         else:
             if not set(value_keys).issubset(set(allowed_keys)):
                 raise ValueError(
-                    "The keys of argument '{}' must be a subset of {}".format(name, allowed_keys)
+                    "The keys of argument '{}' must be a subset of {}".format(
+                        name, allowed_keys
+                    )
                 )
 
     def _add_estimator(
@@ -1489,7 +1553,10 @@ class _TuningJob(_Job):
 
         if tuner.estimator is not None:
             tuner_args["training_config"] = cls._prepare_training_config(
-                inputs, tuner.estimator, tuner.static_hyperparameters, tuner.metric_definitions
+                inputs,
+                tuner.estimator,
+                tuner.static_hyperparameters,
+                tuner.metric_definitions,
             )
 
         if tuner.estimator_dict is not None:
@@ -1540,7 +1607,9 @@ class _TuningJob(_Job):
         else:
             training_config["image"] = estimator.train_image()
 
-        training_config["enable_network_isolation"] = estimator.enable_network_isolation()
+        training_config[
+            "enable_network_isolation"
+        ] = estimator.enable_network_isolation()
         training_config[
             "encrypt_inter_container_traffic"
         ] = estimator.encrypt_inter_container_traffic
@@ -1601,7 +1670,9 @@ def create_identical_dataset_and_algorithm_tuner(
     parent_tuner = HyperparameterTuner.attach(
         tuning_job_name=parent, sagemaker_session=sagemaker_session
     )
-    return parent_tuner.identical_dataset_and_algorithm_tuner(additional_parents=additional_parents)
+    return parent_tuner.identical_dataset_and_algorithm_tuner(
+        additional_parents=additional_parents
+    )
 
 
 def create_transfer_learning_tuner(

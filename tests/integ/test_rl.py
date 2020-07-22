@@ -27,7 +27,10 @@ from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 @pytest.mark.skipif(PYTHON_VERSION != "py3", reason="RL images supports only Python 3.")
 def test_coach_mxnet(sagemaker_session, rl_coach_mxnet_full_version, cpu_instance_type):
     estimator = _test_coach(
-        sagemaker_session, RLFramework.MXNET, rl_coach_mxnet_full_version, cpu_instance_type
+        sagemaker_session,
+        RLFramework.MXNET,
+        rl_coach_mxnet_full_version,
+        cpu_instance_type,
     )
     job_name = unique_name_from_base("test-coach-mxnet")
 
@@ -42,7 +45,10 @@ def test_coach_mxnet(sagemaker_session, rl_coach_mxnet_full_version, cpu_instanc
 
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         predictor = estimator.deploy(
-            1, cpu_instance_type, entry_point="mxnet_deploy.py", endpoint_name=endpoint_name
+            1,
+            cpu_instance_type,
+            entry_point="mxnet_deploy.py",
+            endpoint_name=endpoint_name,
         )
 
         observation = numpy.asarray([0, 0, 0, 0])
@@ -55,7 +61,10 @@ def test_coach_mxnet(sagemaker_session, rl_coach_mxnet_full_version, cpu_instanc
 @pytest.mark.skipif(PYTHON_VERSION != "py3", reason="RL images supports only Python 3.")
 def test_coach_tf(sagemaker_session, rl_coach_tf_full_version, cpu_instance_type):
     estimator = _test_coach(
-        sagemaker_session, RLFramework.TENSORFLOW, rl_coach_tf_full_version, cpu_instance_type
+        sagemaker_session,
+        RLFramework.TENSORFLOW,
+        rl_coach_tf_full_version,
+        cpu_instance_type,
     )
     job_name = unique_name_from_base("test-coach-tf")
 
@@ -121,4 +130,6 @@ def test_ray_tf(sagemaker_session, rl_ray_full_version, cpu_instance_type):
 
     with pytest.raises(NotImplementedError) as e:
         estimator.deploy(1, cpu_instance_type)
-    assert "Automatic deployment of Ray models is not currently available" in str(e.value)
+    assert "Automatic deployment of Ray models is not currently available" in str(
+        e.value
+    )

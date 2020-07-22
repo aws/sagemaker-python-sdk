@@ -32,11 +32,15 @@ from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
     "This test should be fixed. Details in https://github.com/aws/sagemaker-python-sdk/pull/968"
 )
 def sklearn_training_job(sagemaker_session, sklearn_full_version, cpu_instance_type):
-    return _run_mnist_training_job(sagemaker_session, cpu_instance_type, sklearn_full_version)
+    return _run_mnist_training_job(
+        sagemaker_session, cpu_instance_type, sklearn_full_version
+    )
     sagemaker_session.boto_region_name
 
 
-@pytest.mark.skipif(PYTHON_VERSION != "py3", reason="Scikit-learn image supports only python 3.")
+@pytest.mark.skipif(
+    PYTHON_VERSION != "py3", reason="Scikit-learn image supports only python 3."
+)
 def test_training_with_additional_hyperparameters(
     sagemaker_session, sklearn_full_version, cpu_instance_type
 ):
@@ -55,10 +59,12 @@ def test_training_with_additional_hyperparameters(
         )
 
         train_input = sklearn.sagemaker_session.upload_data(
-            path=os.path.join(data_path, "train"), key_prefix="integ-test-data/sklearn_mnist/train"
+            path=os.path.join(data_path, "train"),
+            key_prefix="integ-test-data/sklearn_mnist/train",
         )
         test_input = sklearn.sagemaker_session.upload_data(
-            path=os.path.join(data_path, "test"), key_prefix="integ-test-data/sklearn_mnist/test"
+            path=os.path.join(data_path, "test"),
+            key_prefix="integ-test-data/sklearn_mnist/test",
         )
         job_name = unique_name_from_base("test-sklearn-hp")
 
@@ -66,7 +72,9 @@ def test_training_with_additional_hyperparameters(
         return sklearn.latest_training_job.name
 
 
-@pytest.mark.skipif(PYTHON_VERSION != "py3", reason="Scikit-learn image supports only python 3.")
+@pytest.mark.skipif(
+    PYTHON_VERSION != "py3", reason="Scikit-learn image supports only python 3."
+)
 def test_training_with_network_isolation(
     sagemaker_session, sklearn_full_version, cpu_instance_type
 ):
@@ -86,22 +94,26 @@ def test_training_with_network_isolation(
         )
 
         train_input = sklearn.sagemaker_session.upload_data(
-            path=os.path.join(data_path, "train"), key_prefix="integ-test-data/sklearn_mnist/train"
+            path=os.path.join(data_path, "train"),
+            key_prefix="integ-test-data/sklearn_mnist/train",
         )
         test_input = sklearn.sagemaker_session.upload_data(
-            path=os.path.join(data_path, "test"), key_prefix="integ-test-data/sklearn_mnist/test"
+            path=os.path.join(data_path, "test"),
+            key_prefix="integ-test-data/sklearn_mnist/test",
         )
         job_name = unique_name_from_base("test-sklearn-hp")
 
         sklearn.fit({"train": train_input, "test": test_input}, job_name=job_name)
-        assert sagemaker_session.sagemaker_client.describe_training_job(TrainingJobName=job_name)[
-            "EnableNetworkIsolation"
-        ]
+        assert sagemaker_session.sagemaker_client.describe_training_job(
+            TrainingJobName=job_name
+        )["EnableNetworkIsolation"]
         return sklearn.latest_training_job.name
 
 
 @pytest.mark.canary_quick
-@pytest.mark.skipif(PYTHON_VERSION != "py3", reason="Scikit-learn image supports only python 3.")
+@pytest.mark.skipif(
+    PYTHON_VERSION != "py3", reason="Scikit-learn image supports only python 3."
+)
 @pytest.mark.skip(
     reason="This test has always failed, but the failure was masked by a bug. "
     "This test should be fixed. Details in https://github.com/aws/sagemaker-python-sdk/pull/968"
@@ -110,12 +122,16 @@ def test_attach_deploy(sklearn_training_job, sagemaker_session, cpu_instance_typ
     endpoint_name = "test-sklearn-attach-deploy-{}".format(sagemaker_timestamp())
 
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
-        estimator = SKLearn.attach(sklearn_training_job, sagemaker_session=sagemaker_session)
+        estimator = SKLearn.attach(
+            sklearn_training_job, sagemaker_session=sagemaker_session
+        )
         predictor = estimator.deploy(1, cpu_instance_type, endpoint_name=endpoint_name)
         _predict_and_assert(predictor)
 
 
-@pytest.mark.skipif(PYTHON_VERSION != "py3", reason="Scikit-learn image supports only python 3.")
+@pytest.mark.skipif(
+    PYTHON_VERSION != "py3", reason="Scikit-learn image supports only python 3."
+)
 @pytest.mark.skip(
     reason="This test has always failed, but the failure was masked by a bug. "
     "This test should be fixed. Details in https://github.com/aws/sagemaker-python-sdk/pull/968"
@@ -138,7 +154,9 @@ def test_deploy_model(sklearn_training_job, sagemaker_session, cpu_instance_type
         _predict_and_assert(predictor)
 
 
-@pytest.mark.skipif(PYTHON_VERSION != "py3", reason="Scikit-learn image supports only python 3.")
+@pytest.mark.skipif(
+    PYTHON_VERSION != "py3", reason="Scikit-learn image supports only python 3."
+)
 @pytest.mark.skip(
     reason="This test has always failed, but the failure was masked by a bug. "
     "This test should be fixed. Details in https://github.com/aws/sagemaker-python-sdk/pull/968"
@@ -148,7 +166,10 @@ def test_async_fit(sagemaker_session, cpu_instance_type):
 
     with timeout(minutes=5):
         training_job_name = _run_mnist_training_job(
-            sagemaker_session, cpu_instance_type, sklearn_full_version=SKLEARN_VERSION, wait=False
+            sagemaker_session,
+            cpu_instance_type,
+            sklearn_full_version=SKLEARN_VERSION,
+            wait=False,
         )
 
         print("Waiting to re-attach to the training job: %s" % training_job_name)
@@ -163,8 +184,12 @@ def test_async_fit(sagemaker_session, cpu_instance_type):
         _predict_and_assert(predictor)
 
 
-@pytest.mark.skipif(PYTHON_VERSION != "py3", reason="Scikit-learn image supports only python 3.")
-def test_failed_training_job(sagemaker_session, sklearn_full_version, cpu_instance_type):
+@pytest.mark.skipif(
+    PYTHON_VERSION != "py3", reason="Scikit-learn image supports only python 3."
+)
+def test_failed_training_job(
+    sagemaker_session, sklearn_full_version, cpu_instance_type
+):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         script_path = os.path.join(DATA_DIR, "sklearn_mnist", "failure_script.py")
         data_path = os.path.join(DATA_DIR, "sklearn_mnist")
@@ -180,7 +205,8 @@ def test_failed_training_job(sagemaker_session, sklearn_full_version, cpu_instan
         )
 
         train_input = sklearn.sagemaker_session.upload_data(
-            path=os.path.join(data_path, "train"), key_prefix="integ-test-data/sklearn_mnist/train"
+            path=os.path.join(data_path, "train"),
+            key_prefix="integ-test-data/sklearn_mnist/train",
         )
         job_name = unique_name_from_base("test-sklearn-failed")
 
@@ -188,7 +214,9 @@ def test_failed_training_job(sagemaker_session, sklearn_full_version, cpu_instan
             sklearn.fit(train_input, job_name=job_name)
 
 
-def _run_mnist_training_job(sagemaker_session, instance_type, sklearn_full_version, wait=True):
+def _run_mnist_training_job(
+    sagemaker_session, instance_type, sklearn_full_version, wait=True
+):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
 
         script_path = os.path.join(DATA_DIR, "sklearn_mnist", "mnist.py")
@@ -206,14 +234,18 @@ def _run_mnist_training_job(sagemaker_session, instance_type, sklearn_full_versi
         )
 
         train_input = sklearn.sagemaker_session.upload_data(
-            path=os.path.join(data_path, "train"), key_prefix="integ-test-data/sklearn_mnist/train"
+            path=os.path.join(data_path, "train"),
+            key_prefix="integ-test-data/sklearn_mnist/train",
         )
         test_input = sklearn.sagemaker_session.upload_data(
-            path=os.path.join(data_path, "test"), key_prefix="integ-test-data/sklearn_mnist/test"
+            path=os.path.join(data_path, "test"),
+            key_prefix="integ-test-data/sklearn_mnist/test",
         )
         job_name = unique_name_from_base("test-sklearn-mnist")
 
-        sklearn.fit({"train": train_input, "test": test_input}, wait=wait, job_name=job_name)
+        sklearn.fit(
+            {"train": train_input, "test": test_input}, wait=wait, job_name=job_name
+        )
         return sklearn.latest_training_job.name
 
 

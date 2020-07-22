@@ -131,7 +131,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 "Must setup local AWS configuration with a region supported by SageMaker."
             )
 
-        self.sagemaker_client = sagemaker_client or self.boto_session.client("sagemaker")
+        self.sagemaker_client = sagemaker_client or self.boto_session.client(
+            "sagemaker"
+        )
         prepend_user_agent(self.sagemaker_client)
 
         if sagemaker_runtime_client is not None:
@@ -188,7 +190,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 for name in filenames:
                     local_path = os.path.join(dirpath, name)
                     s3_relative_prefix = (
-                        "" if path == dirpath else os.path.relpath(dirpath, start=path) + "/"
+                        ""
+                        if path == dirpath
+                        else os.path.relpath(dirpath, start=path) + "/"
                     )
                     s3_key = "{}/{}{}".format(key_prefix, s3_relative_prefix, name)
                     files.append((local_path, s3_key))
@@ -238,7 +242,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
         s3_object = s3.Object(bucket_name=bucket, key=key)
 
         if kms_key is not None:
-            s3_object.put(Body=body, SSEKMSKeyId=kms_key, ServerSideEncryption="aws:kms")
+            s3_object.put(
+                Body=body, SSEKMSKeyId=kms_key, ServerSideEncryption="aws:kms"
+            )
         else:
             s3_object.put(Body=body)
 
@@ -359,7 +365,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             ).get_caller_identity()["Account"]
             default_bucket = "sagemaker-{}-{}".format(region, account)
 
-        self._create_s3_bucket_if_it_does_not_exist(bucket_name=default_bucket, region=region)
+        self._create_s3_bucket_if_it_does_not_exist(
+            bucket_name=default_bucket, region=region
+        )
 
         self._default_bucket = default_bucket
 
@@ -395,7 +403,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
                     s3.create_bucket(Bucket=bucket_name)
                 else:
                     s3.create_bucket(
-                        Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": region}
+                        Bucket=bucket_name,
+                        CreateBucketConfiguration={"LocationConstraint": region},
                     )
 
                 LOGGER.info("Created S3 bucket: %s", bucket_name)
@@ -526,11 +535,14 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if image and algorithm_arn:
             raise ValueError(
                 "image and algorithm_arn are mutually exclusive."
-                "Both were provided: image: %s algorithm_arn: %s" % (image, algorithm_arn)
+                "Both were provided: image: %s algorithm_arn: %s"
+                % (image, algorithm_arn)
             )
 
         if image is None and algorithm_arn is None:
-            raise ValueError("either image or algorithm_arn is required. None was provided.")
+            raise ValueError(
+                "either image or algorithm_arn is required. None was provided."
+            )
 
         if image is not None:
             train_request["AlgorithmSpecification"]["TrainingImage"] = image
@@ -542,7 +554,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             train_request["InputDataConfig"] = input_config
 
         if metric_definitions is not None:
-            train_request["AlgorithmSpecification"]["MetricDefinitions"] = metric_definitions
+            train_request["AlgorithmSpecification"][
+                "MetricDefinitions"
+            ] = metric_definitions
 
         if enable_sagemaker_metrics is not None:
             train_request["AlgorithmSpecification"][
@@ -565,7 +579,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             train_request["EnableNetworkIsolation"] = enable_network_isolation
 
         if encrypt_inter_container_traffic:
-            train_request["EnableInterContainerTrafficEncryption"] = encrypt_inter_container_traffic
+            train_request[
+                "EnableInterContainerTrafficEncryption"
+            ] = encrypt_inter_container_traffic
 
         if train_use_spot_instances:
             train_request["EnableManagedSpotTraining"] = train_use_spot_instances
@@ -747,76 +763,81 @@ class Session(object):  # pylint: disable=too-many-public-methods
         }
 
         if schedule_expression is not None:
-            monitoring_schedule_request["MonitoringScheduleConfig"]["ScheduleConfig"] = {
-                "ScheduleExpression": schedule_expression
-            }
+            monitoring_schedule_request["MonitoringScheduleConfig"][
+                "ScheduleConfig"
+            ] = {"ScheduleExpression": schedule_expression}
 
         if monitoring_output_config is not None:
-            monitoring_schedule_request["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-                "MonitoringOutputConfig"
-            ] = monitoring_output_config
+            monitoring_schedule_request["MonitoringScheduleConfig"][
+                "MonitoringJobDefinition"
+            ]["MonitoringOutputConfig"] = monitoring_output_config
 
         if statistics_s3_uri is not None or constraints_s3_uri is not None:
-            monitoring_schedule_request["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-                "BaselineConfig"
-            ] = {}
+            monitoring_schedule_request["MonitoringScheduleConfig"][
+                "MonitoringJobDefinition"
+            ]["BaselineConfig"] = {}
 
         if statistics_s3_uri is not None:
-            monitoring_schedule_request["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-                "BaselineConfig"
-            ]["StatisticsResource"] = {"S3Uri": statistics_s3_uri}
+            monitoring_schedule_request["MonitoringScheduleConfig"][
+                "MonitoringJobDefinition"
+            ]["BaselineConfig"]["StatisticsResource"] = {"S3Uri": statistics_s3_uri}
 
         if constraints_s3_uri is not None:
-            monitoring_schedule_request["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-                "BaselineConfig"
-            ]["ConstraintsResource"] = {"S3Uri": constraints_s3_uri}
+            monitoring_schedule_request["MonitoringScheduleConfig"][
+                "MonitoringJobDefinition"
+            ]["BaselineConfig"]["ConstraintsResource"] = {"S3Uri": constraints_s3_uri}
 
         if record_preprocessor_source_uri is not None:
-            monitoring_schedule_request["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-                "MonitoringAppSpecification"
-            ]["RecordPreprocessorSourceUri"] = record_preprocessor_source_uri
+            monitoring_schedule_request["MonitoringScheduleConfig"][
+                "MonitoringJobDefinition"
+            ]["MonitoringAppSpecification"][
+                "RecordPreprocessorSourceUri"
+            ] = record_preprocessor_source_uri
 
         if post_analytics_processor_source_uri is not None:
-            monitoring_schedule_request["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-                "MonitoringAppSpecification"
-            ]["PostAnalyticsProcessorSourceUri"] = post_analytics_processor_source_uri
+            monitoring_schedule_request["MonitoringScheduleConfig"][
+                "MonitoringJobDefinition"
+            ]["MonitoringAppSpecification"][
+                "PostAnalyticsProcessorSourceUri"
+            ] = post_analytics_processor_source_uri
 
         if entrypoint is not None:
-            monitoring_schedule_request["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-                "MonitoringAppSpecification"
-            ]["ContainerEntrypoint"] = entrypoint
+            monitoring_schedule_request["MonitoringScheduleConfig"][
+                "MonitoringJobDefinition"
+            ]["MonitoringAppSpecification"]["ContainerEntrypoint"] = entrypoint
 
         if arguments is not None:
-            monitoring_schedule_request["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-                "MonitoringAppSpecification"
-            ]["ContainerArguments"] = arguments
+            monitoring_schedule_request["MonitoringScheduleConfig"][
+                "MonitoringJobDefinition"
+            ]["MonitoringAppSpecification"]["ContainerArguments"] = arguments
 
         if volume_kms_key is not None:
-            monitoring_schedule_request["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-                "MonitoringResources"
-            ]["ClusterConfig"]["VolumeKmsKeyId"] = volume_kms_key
+            monitoring_schedule_request["MonitoringScheduleConfig"][
+                "MonitoringJobDefinition"
+            ]["MonitoringResources"]["ClusterConfig"]["VolumeKmsKeyId"] = volume_kms_key
 
         if max_runtime_in_seconds is not None:
-            monitoring_schedule_request["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-                "StoppingCondition"
-            ] = {"MaxRuntimeInSeconds": max_runtime_in_seconds}
+            monitoring_schedule_request["MonitoringScheduleConfig"][
+                "MonitoringJobDefinition"
+            ]["StoppingCondition"] = {"MaxRuntimeInSeconds": max_runtime_in_seconds}
 
         if environment is not None:
-            monitoring_schedule_request["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-                "Environment"
-            ] = environment
+            monitoring_schedule_request["MonitoringScheduleConfig"][
+                "MonitoringJobDefinition"
+            ]["Environment"] = environment
 
         if network_config is not None:
-            monitoring_schedule_request["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-                "NetworkConfig"
-            ] = network_config
+            monitoring_schedule_request["MonitoringScheduleConfig"][
+                "MonitoringJobDefinition"
+            ]["NetworkConfig"] = network_config
 
         if tags is not None:
             monitoring_schedule_request["Tags"] = tags
 
         LOGGER.info("Creating monitoring schedule name %s.", monitoring_schedule_name)
         LOGGER.debug(
-            "monitoring_schedule_request= %s", json.dumps(monitoring_schedule_request, indent=4)
+            "monitoring_schedule_request= %s",
+            json.dumps(monitoring_schedule_request, indent=4),
         )
         self.sagemaker_client.create_monitoring_schedule(**monitoring_schedule_request)
 
@@ -888,13 +909,16 @@ class Session(object):  # pylint: disable=too-many-public-methods
         existing_schedule_config = None
         if (
             existing_desc.get("MonitoringScheduleConfig") is not None
-            and existing_desc["MonitoringScheduleConfig"].get("ScheduleConfig") is not None
-            and existing_desc["MonitoringScheduleConfig"]["ScheduleConfig"]["ScheduleExpression"]
+            and existing_desc["MonitoringScheduleConfig"].get("ScheduleConfig")
             is not None
-        ):
-            existing_schedule_config = existing_desc["MonitoringScheduleConfig"]["ScheduleConfig"][
+            and existing_desc["MonitoringScheduleConfig"]["ScheduleConfig"][
                 "ScheduleExpression"
             ]
+            is not None
+        ):
+            existing_schedule_config = existing_desc["MonitoringScheduleConfig"][
+                "ScheduleConfig"
+            ]["ScheduleExpression"]
 
         request_schedule_expression = schedule_expression or existing_schedule_config
         request_monitoring_inputs = (
@@ -929,7 +953,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
         )
         request_role_arn = (
             role_arn
-            or existing_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["RoleArn"]
+            or existing_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+                "RoleArn"
+            ]
         )
 
         monitoring_schedule_request = {
@@ -951,17 +977,22 @@ class Session(object):  # pylint: disable=too-many-public-methods
         }
 
         if existing_schedule_config is not None:
-            monitoring_schedule_request["MonitoringScheduleConfig"]["ScheduleConfig"] = {
-                "ScheduleExpression": request_schedule_expression
-            }
+            monitoring_schedule_request["MonitoringScheduleConfig"][
+                "ScheduleConfig"
+            ] = {"ScheduleExpression": request_schedule_expression}
 
         existing_monitoring_output_config = existing_desc["MonitoringScheduleConfig"][
             "MonitoringJobDefinition"
         ].get("MonitoringOutputConfig")
-        if monitoring_output_config is not None or existing_monitoring_output_config is not None:
-            monitoring_schedule_request["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-                "MonitoringOutputConfig"
-            ] = (monitoring_output_config or existing_monitoring_output_config)
+        if (
+            monitoring_output_config is not None
+            or existing_monitoring_output_config is not None
+        ):
+            monitoring_schedule_request["MonitoringScheduleConfig"][
+                "MonitoringJobDefinition"
+            ]["MonitoringOutputConfig"] = (
+                monitoring_output_config or existing_monitoring_output_config
+            )
 
         existing_statistics_s3_uri = None
         existing_constraints_s3_uri = None
@@ -997,70 +1028,86 @@ class Session(object):  # pylint: disable=too-many-public-methods
             or existing_statistics_s3_uri is not None
             or existing_constraints_s3_uri is not None
         ):
-            monitoring_schedule_request["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-                "BaselineConfig"
-            ] = {}
+            monitoring_schedule_request["MonitoringScheduleConfig"][
+                "MonitoringJobDefinition"
+            ]["BaselineConfig"] = {}
 
         if statistics_s3_uri is not None or existing_statistics_s3_uri is not None:
-            monitoring_schedule_request["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-                "BaselineConfig"
-            ]["StatisticsResource"] = {"S3Uri": statistics_s3_uri or existing_statistics_s3_uri}
+            monitoring_schedule_request["MonitoringScheduleConfig"][
+                "MonitoringJobDefinition"
+            ]["BaselineConfig"]["StatisticsResource"] = {
+                "S3Uri": statistics_s3_uri or existing_statistics_s3_uri
+            }
 
         if constraints_s3_uri is not None or existing_constraints_s3_uri is not None:
-            monitoring_schedule_request["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-                "BaselineConfig"
-            ]["ConstraintsResource"] = {"S3Uri": constraints_s3_uri or existing_constraints_s3_uri}
+            monitoring_schedule_request["MonitoringScheduleConfig"][
+                "MonitoringJobDefinition"
+            ]["BaselineConfig"]["ConstraintsResource"] = {
+                "S3Uri": constraints_s3_uri or existing_constraints_s3_uri
+            }
 
-        existing_record_preprocessor_source_uri = existing_desc["MonitoringScheduleConfig"][
-            "MonitoringJobDefinition"
-        ]["MonitoringAppSpecification"].get("RecordPreprocessorSourceUri")
+        existing_record_preprocessor_source_uri = existing_desc[
+            "MonitoringScheduleConfig"
+        ]["MonitoringJobDefinition"]["MonitoringAppSpecification"].get(
+            "RecordPreprocessorSourceUri"
+        )
         if (
             record_preprocessor_source_uri is not None
             or existing_record_preprocessor_source_uri is not None
         ):
-            monitoring_schedule_request["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-                "MonitoringAppSpecification"
-            ]["RecordPreprocessorSourceUri"] = (
-                record_preprocessor_source_uri or existing_record_preprocessor_source_uri
+            monitoring_schedule_request["MonitoringScheduleConfig"][
+                "MonitoringJobDefinition"
+            ]["MonitoringAppSpecification"]["RecordPreprocessorSourceUri"] = (
+                record_preprocessor_source_uri
+                or existing_record_preprocessor_source_uri
             )
 
-        existing_post_analytics_processor_source_uri = existing_desc["MonitoringScheduleConfig"][
-            "MonitoringJobDefinition"
-        ]["MonitoringAppSpecification"].get("PostAnalyticsProcessorSourceUri")
+        existing_post_analytics_processor_source_uri = existing_desc[
+            "MonitoringScheduleConfig"
+        ]["MonitoringJobDefinition"]["MonitoringAppSpecification"].get(
+            "PostAnalyticsProcessorSourceUri"
+        )
         if (
             post_analytics_processor_source_uri is not None
             or existing_post_analytics_processor_source_uri is not None
         ):
-            monitoring_schedule_request["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-                "MonitoringAppSpecification"
-            ]["PostAnalyticsProcessorSourceUri"] = (
-                post_analytics_processor_source_uri or existing_post_analytics_processor_source_uri
+            monitoring_schedule_request["MonitoringScheduleConfig"][
+                "MonitoringJobDefinition"
+            ]["MonitoringAppSpecification"]["PostAnalyticsProcessorSourceUri"] = (
+                post_analytics_processor_source_uri
+                or existing_post_analytics_processor_source_uri
             )
 
-        existing_entrypoint = existing_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-            "MonitoringAppSpecification"
-        ].get("ContainerEntrypoint")
+        existing_entrypoint = existing_desc["MonitoringScheduleConfig"][
+            "MonitoringJobDefinition"
+        ]["MonitoringAppSpecification"].get("ContainerEntrypoint")
         if entrypoint is not None or existing_entrypoint is not None:
-            monitoring_schedule_request["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-                "MonitoringAppSpecification"
-            ]["ContainerEntrypoint"] = (entrypoint or existing_entrypoint)
+            monitoring_schedule_request["MonitoringScheduleConfig"][
+                "MonitoringJobDefinition"
+            ]["MonitoringAppSpecification"]["ContainerEntrypoint"] = (
+                entrypoint or existing_entrypoint
+            )
 
-        existing_arguments = existing_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-            "MonitoringAppSpecification"
-        ].get("ContainerArguments")
+        existing_arguments = existing_desc["MonitoringScheduleConfig"][
+            "MonitoringJobDefinition"
+        ]["MonitoringAppSpecification"].get("ContainerArguments")
         if arguments is not None or existing_arguments is not None:
-            monitoring_schedule_request["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-                "MonitoringAppSpecification"
-            ]["ContainerArguments"] = (arguments or existing_arguments)
+            monitoring_schedule_request["MonitoringScheduleConfig"][
+                "MonitoringJobDefinition"
+            ]["MonitoringAppSpecification"]["ContainerArguments"] = (
+                arguments or existing_arguments
+            )
 
         existing_volume_kms_key = existing_desc["MonitoringScheduleConfig"][
             "MonitoringJobDefinition"
         ]["MonitoringResources"]["ClusterConfig"].get("VolumeKmsKeyId")
 
         if volume_kms_key is not None or existing_volume_kms_key is not None:
-            monitoring_schedule_request["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-                "MonitoringResources"
-            ]["ClusterConfig"]["VolumeKmsKeyId"] = (volume_kms_key or existing_volume_kms_key)
+            monitoring_schedule_request["MonitoringScheduleConfig"][
+                "MonitoringJobDefinition"
+            ]["MonitoringResources"]["ClusterConfig"]["VolumeKmsKeyId"] = (
+                volume_kms_key or existing_volume_kms_key
+            )
 
         existing_max_runtime_in_seconds = None
         if existing_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"].get(
@@ -1070,30 +1117,39 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 "MonitoringJobDefinition"
             ]["StoppingCondition"].get("MaxRuntimeInSeconds")
 
-        if max_runtime_in_seconds is not None or existing_max_runtime_in_seconds is not None:
-            monitoring_schedule_request["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-                "StoppingCondition"
-            ] = {"MaxRuntimeInSeconds": max_runtime_in_seconds or existing_max_runtime_in_seconds}
+        if (
+            max_runtime_in_seconds is not None
+            or existing_max_runtime_in_seconds is not None
+        ):
+            monitoring_schedule_request["MonitoringScheduleConfig"][
+                "MonitoringJobDefinition"
+            ]["StoppingCondition"] = {
+                "MaxRuntimeInSeconds": max_runtime_in_seconds
+                or existing_max_runtime_in_seconds
+            }
 
         existing_environment = existing_desc["MonitoringScheduleConfig"][
             "MonitoringJobDefinition"
         ].get("Environment")
         if environment is not None or existing_environment is not None:
-            monitoring_schedule_request["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-                "Environment"
-            ] = (environment or existing_environment)
+            monitoring_schedule_request["MonitoringScheduleConfig"][
+                "MonitoringJobDefinition"
+            ]["Environment"] = (environment or existing_environment)
 
         existing_network_config = existing_desc["MonitoringScheduleConfig"][
             "MonitoringJobDefinition"
         ].get("NetworkConfig")
         if network_config is not None or existing_network_config is not None:
-            monitoring_schedule_request["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-                "NetworkConfig"
-            ] = (network_config or existing_network_config)
+            monitoring_schedule_request["MonitoringScheduleConfig"][
+                "MonitoringJobDefinition"
+            ]["NetworkConfig"] = (network_config or existing_network_config)
 
-        LOGGER.info("Updating monitoring schedule with name: %s .", monitoring_schedule_name)
+        LOGGER.info(
+            "Updating monitoring schedule with name: %s .", monitoring_schedule_name
+        )
         LOGGER.debug(
-            "monitoring_schedule_request= %s", json.dumps(monitoring_schedule_request, indent=4)
+            "monitoring_schedule_request= %s",
+            json.dumps(monitoring_schedule_request, indent=4),
         )
         self.sagemaker_client.update_monitoring_schedule(**monitoring_schedule_request)
 
@@ -1106,7 +1162,11 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         """
         print()
-        print("Starting Monitoring Schedule with name: {}".format(monitoring_schedule_name))
+        print(
+            "Starting Monitoring Schedule with name: {}".format(
+                monitoring_schedule_name
+            )
+        )
         self.sagemaker_client.start_monitoring_schedule(
             MonitoringScheduleName=monitoring_schedule_name
         )
@@ -1120,7 +1180,11 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         """
         print()
-        print("Stopping Monitoring Schedule with name: {}".format(monitoring_schedule_name))
+        print(
+            "Stopping Monitoring Schedule with name: {}".format(
+                monitoring_schedule_name
+            )
+        )
         self.sagemaker_client.stop_monitoring_schedule(
             MonitoringScheduleName=monitoring_schedule_name
         )
@@ -1134,7 +1198,11 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         """
         print()
-        print("Deleting Monitoring Schedule with name: {}".format(monitoring_schedule_name))
+        print(
+            "Deleting Monitoring Schedule with name: {}".format(
+                monitoring_schedule_name
+            )
+        )
         self.sagemaker_client.delete_monitoring_schedule(
             MonitoringScheduleName=monitoring_schedule_name
         )
@@ -1184,7 +1252,11 @@ class Session(object):  # pylint: disable=too-many-public-methods
         return response
 
     def list_monitoring_schedules(
-        self, endpoint_name=None, sort_by="CreationTime", sort_order="Descending", max_results=100
+        self,
+        endpoint_name=None,
+        sort_by="CreationTime",
+        sort_order="Descending",
+        max_results=100,
     ):
         """Lists the monitoring executions associated with the given monitoring_schedule_name.
 
@@ -1224,7 +1296,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Returns:
             bool: Whether the processing job was successful.
         """
-        job_desc = self.sagemaker_client.describe_processing_job(ProcessingJobName=job_name)
+        job_desc = self.sagemaker_client.describe_processing_job(
+            ProcessingJobName=job_name
+        )
         return job_desc["ProcessingJobStatus"] == "Completed"
 
     def describe_processing_job(self, job_name):
@@ -1381,7 +1455,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if max_results:
             list_candidates_args["MaxResults"] = max_results
 
-        return self.sagemaker_client.list_candidates_for_auto_ml_job(**list_candidates_args)
+        return self.sagemaker_client.list_candidates_for_auto_ml_job(
+            **list_candidates_args
+        )
 
     def wait_for_auto_ml_job(self, job, poll=5):
         """Wait for an Amazon SageMaker AutoML job to complete.
@@ -1394,7 +1470,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Raises:
             exceptions.UnexpectedStatusException: If the auto ml job fails.
         """
-        desc = _wait_until(lambda: _auto_ml_job_status(self.sagemaker_client, job), poll)
+        desc = _wait_until(
+            lambda: _auto_ml_job_status(self.sagemaker_client, job), poll
+        )
         self._check_job_status(job, desc, "AutoMLJobStatus")
         return desc
 
@@ -1418,9 +1496,15 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         description = self.sagemaker_client.describe_auto_ml_job(AutoMLJobName=job_name)
 
-        instance_count, stream_names, positions, client, log_group, dot, color_wrap = _logs_init(
-            self, description, job="AutoML"
-        )
+        (
+            instance_count,
+            stream_names,
+            positions,
+            client,
+            log_group,
+            dot,
+            color_wrap,
+        ) = _logs_init(self, description, job="AutoML")
 
         state = _get_initial_job_state(description, "AutoMLJobStatus", wait)
 
@@ -1464,7 +1548,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             if state == LogState.JOB_COMPLETE:
                 state = LogState.COMPLETE
             elif time.time() - last_describe_job_call >= 30:
-                description = self.sagemaker_client.describe_auto_ml_job(AutoMLJobName=job_name)
+                description = self.sagemaker_client.describe_auto_ml_job(
+                    AutoMLJobName=job_name
+                )
                 last_describe_job_call = time.time()
 
                 status = description["AutoMLJobStatus"]
@@ -1479,7 +1565,13 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 print()
 
     def compile_model(
-        self, input_model_config, output_model_config, role, job_name, stop_condition, tags
+        self,
+        input_model_config,
+        output_model_config,
+        role,
+        job_name,
+        stop_condition,
+        tags,
     ):
         """Create an Amazon SageMaker Neo compilation job.
 
@@ -1693,7 +1785,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
         """
 
         if training_config is None and training_config_list is None:
-            raise ValueError("Either training_config or training_config_list should be provided.")
+            raise ValueError(
+                "Either training_config or training_config_list should be provided."
+            )
         if training_config is not None and training_config_list is not None:
             raise ValueError(
                 "Only one of training_config and training_config_list should be provided."
@@ -1705,11 +1799,14 @@ class Session(object):  # pylint: disable=too-many-public-methods
         }
 
         if training_config is not None:
-            tune_request["TrainingJobDefinition"] = self._map_training_config(**training_config)
+            tune_request["TrainingJobDefinition"] = self._map_training_config(
+                **training_config
+            )
 
         if training_config_list is not None:
             tune_request["TrainingJobDefinitions"] = [
-                self._map_training_config(**training_cfg) for training_cfg in training_config_list
+                self._map_training_config(**training_cfg)
+                for training_cfg in training_config_list
             ]
 
         if warm_start_config is not None:
@@ -1780,7 +1877,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             "TrainingJobEarlyStoppingType": early_stopping_type,
         }
 
-        tuning_objective = cls._map_tuning_objective(objective_type, objective_metric_name)
+        tuning_objective = cls._map_tuning_objective(
+            objective_type, objective_metric_name
+        )
         if tuning_objective is not None:
             tuning_config["HyperParameterTuningJobObjective"] = tuning_objective
 
@@ -1949,7 +2048,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if estimator_name is not None:
             training_job_definition["DefinitionName"] = estimator_name
 
-        tuning_objective = cls._map_tuning_objective(objective_type, objective_metric_name)
+        tuning_objective = cls._map_tuning_objective(
+            objective_type, objective_metric_name
+        )
         if tuning_objective is not None:
             training_job_definition["TuningObjective"] = tuning_objective
 
@@ -1969,7 +2070,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
         """
         try:
             LOGGER.info("Stopping tuning job: %s", name)
-            self.sagemaker_client.stop_hyper_parameter_tuning_job(HyperParameterTuningJobName=name)
+            self.sagemaker_client.stop_hyper_parameter_tuning_job(
+                HyperParameterTuningJobName=name
+            )
         except ClientError as e:
             error_code = e.response["Error"]["Code"]
             # allow to pass if the job already stopped
@@ -2112,7 +2215,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             str: Name of the Amazon SageMaker ``Model`` created.
         """
         if container_defs and primary_container:
-            raise ValueError("Both container_defs and primary_container can not be passed as input")
+            raise ValueError(
+                "Both container_defs and primary_container can not be passed as input"
+            )
 
         if primary_container:
             msg = (
@@ -2140,7 +2245,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             create_model_request["EnableNetworkIsolation"] = True
 
         LOGGER.info("Creating model with name: %s", name)
-        LOGGER.debug("CreateModel request: %s", json.dumps(create_model_request, indent=4))
+        LOGGER.debug(
+            "CreateModel request: %s", json.dumps(create_model_request, indent=4)
+        )
 
         try:
             self.sagemaker_client.create_model(**create_model_request)
@@ -2201,14 +2308,20 @@ class Session(object):  # pylint: disable=too-many-public-methods
         role = role or training_job["RoleArn"]
         env = env or {}
         primary_container = container_def(
-            primary_container_image or training_job["AlgorithmSpecification"]["TrainingImage"],
-            model_data_url=model_data_url or training_job["ModelArtifacts"]["S3ModelArtifacts"],
+            primary_container_image
+            or training_job["AlgorithmSpecification"]["TrainingImage"],
+            model_data_url=model_data_url
+            or training_job["ModelArtifacts"]["S3ModelArtifacts"],
             env=env,
         )
         vpc_config = _vpc_config_from_training_job(training_job, vpc_config_override)
-        return self.create_model(name, role, primary_container, vpc_config=vpc_config, tags=tags)
+        return self.create_model(
+            name, role, primary_container, vpc_config=vpc_config, tags=tags
+        )
 
-    def create_model_package_from_algorithm(self, name, description, algorithm_arn, model_data):
+    def create_model_package_from_algorithm(
+        self, name, description, algorithm_arn, model_data
+    ):
         """Create a SageMaker Model Package from the results of training with an Algorithm Package
 
         Args:
@@ -2221,7 +2334,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             "ModelPackageName": name,
             "ModelPackageDescription": description,
             "SourceAlgorithmSpecification": {
-                "SourceAlgorithms": [{"AlgorithmName": algorithm_arn, "ModelDataUrl": model_data}]
+                "SourceAlgorithms": [
+                    {"AlgorithmName": algorithm_arn, "ModelDataUrl": model_data}
+                ]
             },
         }
         try:
@@ -2231,7 +2346,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
             error_code = e.response["Error"]["Code"]
             message = e.response["Error"]["Message"]
 
-            if error_code == "ValidationException" and "ModelPackage already exists" in message:
+            if (
+                error_code == "ValidationException"
+                and "ModelPackage already exists" in message
+            ):
                 LOGGER.warning("Using already existing model package: %s", name)
             else:
                 raise
@@ -2247,7 +2365,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
             dict: Return value from the ``DescribeEndpoint`` API.
         """
         desc = _wait_until(
-            lambda: _create_model_package_status(self.sagemaker_client, model_package_name), poll
+            lambda: _create_model_package_status(
+                self.sagemaker_client, model_package_name
+            ),
+            poll,
         )
         status = desc["ModelPackageStatus"]
 
@@ -2386,11 +2507,17 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if request_tags:
             request["Tags"] = request_tags
 
-        if new_kms_key is not None or existing_endpoint_config_desc.get("KmsKeyId") is not None:
-            request["KmsKeyId"] = new_kms_key or existing_endpoint_config_desc.get("KmsKeyId")
+        if (
+            new_kms_key is not None
+            or existing_endpoint_config_desc.get("KmsKeyId") is not None
+        ):
+            request["KmsKeyId"] = new_kms_key or existing_endpoint_config_desc.get(
+                "KmsKeyId"
+            )
 
         request_data_capture_config_dict = (
-            new_data_capture_config_dict or existing_endpoint_config_desc.get("DataCaptureConfig")
+            new_data_capture_config_dict
+            or existing_endpoint_config_desc.get("DataCaptureConfig")
         )
 
         if request_data_capture_config_dict is not None:
@@ -2476,8 +2603,12 @@ class Session(object):  # pylint: disable=too-many-public-methods
             endpoint_config_name (str): Name of the Amazon SageMaker endpoint configuration to
                 delete.
         """
-        LOGGER.info("Deleting endpoint configuration with name: %s", endpoint_config_name)
-        self.sagemaker_client.delete_endpoint_config(EndpointConfigName=endpoint_config_name)
+        LOGGER.info(
+            "Deleting endpoint configuration with name: %s", endpoint_config_name
+        )
+        self.sagemaker_client.delete_endpoint_config(
+            EndpointConfigName=endpoint_config_name
+        )
 
     def delete_model(self, model_name):
         """Delete an Amazon SageMaker Model.
@@ -2509,7 +2640,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             next_token = list_tags_response.get("nextToken")
             while next_token is not None:
                 list_tags_response = self.sagemaker_client.list_tags(
-                    ResourceArn=resource_arn, MaxResults=max_results, NextToken=next_token
+                    ResourceArn=resource_arn,
+                    MaxResults=max_results,
+                    NextToken=next_token,
                 )
                 tags_list = tags_list + list_tags_response["Tags"]
                 next_token = list_tags_response.get("nextToken")
@@ -2538,7 +2671,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         """
         desc = _wait_until_training_done(
-            lambda last_desc: _train_done(self.sagemaker_client, job, last_desc), None, poll
+            lambda last_desc: _train_done(self.sagemaker_client, job, last_desc),
+            None,
+            poll,
         )
         self._check_job_status(job, desc, "TrainingJobStatus")
         return desc
@@ -2556,7 +2691,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Raises:
             exceptions.UnexpectedStatusException: If the compilation job fails.
         """
-        desc = _wait_until(lambda: _processing_job_status(self.sagemaker_client, job), poll)
+        desc = _wait_until(
+            lambda: _processing_job_status(self.sagemaker_client, job), poll
+        )
         self._check_job_status(job, desc, "ProcessingJobStatus")
         return desc
 
@@ -2573,7 +2710,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Raises:
             exceptions.UnexpectedStatusException: If the compilation job fails.
         """
-        desc = _wait_until(lambda: _compilation_job_status(self.sagemaker_client, job), poll)
+        desc = _wait_until(
+            lambda: _compilation_job_status(self.sagemaker_client, job), poll
+        )
         self._check_job_status(job, desc, "CompilationJobStatus")
         return desc
 
@@ -2619,7 +2758,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Raises:
             exceptions.UnexpectedStatusException: If the transform job fails.
         """
-        desc = _wait_until(lambda: _transform_job_status(self.sagemaker_client, job), poll)
+        desc = _wait_until(
+            lambda: _transform_job_status(self.sagemaker_client, job), poll
+        )
         self._check_job_status(job, desc, "TransformJobStatus")
         return desc
 
@@ -2639,9 +2780,13 @@ class Session(object):  # pylint: disable=too-many-public-methods
             error_code = e.response["Error"]["Code"]
             # allow to pass if the job already stopped
             if error_code == "ValidationException":
-                LOGGER.info("Transform job: %s is already stopped or not running.", name)
+                LOGGER.info(
+                    "Transform job: %s is already stopped or not running.", name
+                )
             else:
-                LOGGER.error("Error occurred while attempting to stop transform job: %s.", name)
+                LOGGER.error(
+                    "Error occurred while attempting to stop transform job: %s.", name
+                )
                 raise
 
     def _check_job_status(self, job, desc, status_key_name):
@@ -2755,10 +2900,14 @@ class Session(object):  # pylint: disable=too-many-public-methods
         """
         job_desc = self.sagemaker_client.describe_training_job(TrainingJobName=job_name)
         output_url = job_desc["ModelArtifacts"]["S3ModelArtifacts"]
-        deployment_image = deployment_image or job_desc["AlgorithmSpecification"]["TrainingImage"]
+        deployment_image = (
+            deployment_image or job_desc["AlgorithmSpecification"]["TrainingImage"]
+        )
         role = role or job_desc["RoleArn"]
         name = name or job_name
-        vpc_config_override = _vpc_config_from_training_job(job_desc, vpc_config_override)
+        vpc_config_override = _vpc_config_from_training_job(
+            job_desc, vpc_config_override
+        )
 
         return self.endpoint_from_model_data(
             model_s3_location=output_url,
@@ -2831,17 +2980,24 @@ class Session(object):  # pylint: disable=too-many-public-methods
             lambda: self.sagemaker_client.describe_endpoint(EndpointName=name)
         ):
             raise ValueError(
-                'Endpoint with name "{}" already exists; please pick a different name.'.format(name)
+                'Endpoint with name "{}" already exists; please pick a different name.'.format(
+                    name
+                )
             )
 
         if not _deployment_entity_exists(
             lambda: self.sagemaker_client.describe_model(ModelName=name)
         ):
             primary_container = container_def(
-                image=deployment_image, model_data_url=model_s3_location, env=model_environment_vars
+                image=deployment_image,
+                model_data_url=model_s3_location,
+                env=model_environment_vars,
             )
             self.create_model(
-                name=name, role=role, container_defs=primary_container, vpc_config=model_vpc_config
+                name=name,
+                role=role,
+                container_defs=primary_container,
+                vpc_config=model_vpc_config,
             )
 
         data_capture_config_dict = None
@@ -2849,7 +3005,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             data_capture_config_dict = data_capture_config._to_request_dict()
 
         if not _deployment_entity_exists(
-            lambda: self.sagemaker_client.describe_endpoint_config(EndpointConfigName=name)
+            lambda: self.sagemaker_client.describe_endpoint_config(
+                EndpointConfigName=name
+            )
         ):
             self.create_endpoint_config(
                 name=name,
@@ -2891,9 +3049,14 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         """
         if not _deployment_entity_exists(
-            lambda: self.sagemaker_client.describe_endpoint_config(EndpointConfigName=name)
+            lambda: self.sagemaker_client.describe_endpoint_config(
+                EndpointConfigName=name
+            )
         ):
-            config_options = {"EndpointConfigName": name, "ProductionVariants": production_variants}
+            config_options = {
+                "EndpointConfigName": name,
+                "ProductionVariants": production_variants,
+            }
             if tags:
                 config_options["Tags"] = tags
             if kms_key:
@@ -2902,7 +3065,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 config_options["DataCaptureConfig"] = data_capture_config_dict
 
             self.sagemaker_client.create_endpoint_config(**config_options)
-        return self.create_endpoint(endpoint_name=name, config_name=name, tags=tags, wait=wait)
+        return self.create_endpoint(
+            endpoint_name=name, config_name=name, tags=tags, wait=wait
+        )
 
     def expand_role(self, role):
         """Expand an IAM role name into an ARN.
@@ -2955,12 +3120,18 @@ class Session(object):  # pylint: disable=too-many-public-methods
             )
             return role
 
-        role = re.sub(r"^(.+)sts::(\d+):assumed-role/(.+?)/.*$", r"\1iam::\2:role/\3", assumed_role)
+        role = re.sub(
+            r"^(.+)sts::(\d+):assumed-role/(.+?)/.*$",
+            r"\1iam::\2:role/\3",
+            assumed_role,
+        )
 
         # Call IAM to get the role's path
         role_name = role[role.rfind("/") + 1 :]
         try:
-            role = self.boto_session.client("iam").get_role(RoleName=role_name)["Role"]["Arn"]
+            role = self.boto_session.client("iam").get_role(RoleName=role_name)["Role"][
+                "Arn"
+            ]
         except ClientError:
             LOGGER.warning(
                 "Couldn't call 'get_role' to get Role ARN from role name %s to get Role path.",
@@ -2987,12 +3158,20 @@ class Session(object):  # pylint: disable=too-many-public-methods
             exceptions.UnexpectedStatusException: If waiting and the training job fails.
         """
 
-        description = self.sagemaker_client.describe_training_job(TrainingJobName=job_name)
+        description = self.sagemaker_client.describe_training_job(
+            TrainingJobName=job_name
+        )
         print(secondary_training_status_message(description, None), end="")
 
-        instance_count, stream_names, positions, client, log_group, dot, color_wrap = _logs_init(
-            self, description, job="Training"
-        )
+        (
+            instance_count,
+            stream_names,
+            positions,
+            client,
+            log_group,
+            dot,
+            color_wrap,
+        ) = _logs_init(self, description, job="Training")
 
         state = _get_initial_job_state(description, "TrainingJobStatus", wait)
 
@@ -3039,12 +3218,19 @@ class Session(object):  # pylint: disable=too-many-public-methods
             if state == LogState.JOB_COMPLETE:
                 state = LogState.COMPLETE
             elif time.time() - last_describe_job_call >= 30:
-                description = self.sagemaker_client.describe_training_job(TrainingJobName=job_name)
+                description = self.sagemaker_client.describe_training_job(
+                    TrainingJobName=job_name
+                )
                 last_describe_job_call = time.time()
 
                 if secondary_training_status_changed(description, last_description):
                     print()
-                    print(secondary_training_status_message(description, last_description), end="")
+                    print(
+                        secondary_training_status_message(
+                            description, last_description
+                        ),
+                        end="",
+                    )
                     last_description = description
 
                 status = description["TrainingJobStatus"]
@@ -3057,7 +3243,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 debug_rule_statuses = description.get("DebugRuleEvaluationStatuses", {})
                 if (
                     debug_rule_statuses
-                    and _debug_rule_statuses_changed(debug_rule_statuses, last_debug_rule_statuses)
+                    and _debug_rule_statuses_changed(
+                        debug_rule_statuses, last_debug_rule_statuses
+                    )
                     and (log_type in {"All", "Rules"})
                 ):
                     print()
@@ -3065,7 +3253,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
                     print("*")
                     for status in debug_rule_statuses:
                         rule_log = "* {:>18}: {:<18}".format(
-                            status["RuleConfigurationName"], status["RuleEvaluationStatus"]
+                            status["RuleConfigurationName"],
+                            status["RuleEvaluationStatus"],
                         )
                         print(rule_log)
                     print("*")
@@ -3104,11 +3293,19 @@ class Session(object):  # pylint: disable=too-many-public-methods
             ValueError: If the processing job fails.
         """
 
-        description = self.sagemaker_client.describe_processing_job(ProcessingJobName=job_name)
-
-        instance_count, stream_names, positions, client, log_group, dot, color_wrap = _logs_init(
-            self, description, job="Processing"
+        description = self.sagemaker_client.describe_processing_job(
+            ProcessingJobName=job_name
         )
+
+        (
+            instance_count,
+            stream_names,
+            positions,
+            client,
+            log_group,
+            dot,
+            color_wrap,
+        ) = _logs_init(self, description, job="Processing")
 
         state = _get_initial_job_state(description, "ProcessingJobStatus", wait)
 
@@ -3184,11 +3381,19 @@ class Session(object):  # pylint: disable=too-many-public-methods
             ValueError: If the transform job fails.
         """
 
-        description = self.sagemaker_client.describe_transform_job(TransformJobName=job_name)
-
-        instance_count, stream_names, positions, client, log_group, dot, color_wrap = _logs_init(
-            self, description, job="Transform"
+        description = self.sagemaker_client.describe_transform_job(
+            TransformJobName=job_name
         )
+
+        (
+            instance_count,
+            stream_names,
+            positions,
+            client,
+            log_group,
+            dot,
+            color_wrap,
+        ) = _logs_init(self, description, job="Transform")
 
         state = _get_initial_job_state(description, "TransformJobStatus", wait)
 
@@ -3288,7 +3493,9 @@ def pipeline_container_def(models, instance_type=None):
         list[dict[str, str]]: list of container definition objects usable with with the
             CreateModel API for inference pipelines if passed via `Containers` field.
     """
-    c_defs = []  # should contain list of container definitions in the same order customer passed
+    c_defs = (
+        []
+    )  # should contain list of container definitions in the same order customer passed
     for model in models:
         c_defs.append(model.prepare_container_def(instance_type))
     return c_defs
@@ -3681,12 +3888,16 @@ def _logs_init(sagemaker_session, description, job):
     elif job == "Transform":
         instance_count = description["TransformResources"]["InstanceCount"]
     elif job == "Processing":
-        instance_count = description["ProcessingResources"]["ClusterConfig"]["InstanceCount"]
+        instance_count = description["ProcessingResources"]["ClusterConfig"][
+            "InstanceCount"
+        ]
     elif job == "AutoML":
         instance_count = 0
 
     stream_names = []  # The list of log streams
-    positions = {}  # The current position in each stream, map of stream name -> position
+    positions = (
+        {}
+    )  # The current position in each stream, map of stream name -> position
 
     # Increase retries allowed (from default of 4), as we don't want waiting for a training job
     # to be interrupted by a transient exception.
@@ -3702,7 +3913,14 @@ def _logs_init(sagemaker_session, description, job):
 
 
 def _flush_log_streams(
-    stream_names, instance_count, client, log_group, job_name, positions, dot, color_wrap
+    stream_names,
+    instance_count,
+    client,
+    log_group,
+    job_name,
+    positions,
+    dot,
+    color_wrap,
 ):
     """Placeholder docstring"""
     if len(stream_names) < instance_count:
@@ -3751,7 +3969,9 @@ def _flush_log_streams(
             color_wrap(idx, event["message"])
             ts, count = positions[stream_names[idx]]
             if event["timestamp"] == ts:
-                positions[stream_names[idx]] = sagemaker.logs.Position(timestamp=ts, skip=count + 1)
+                positions[stream_names[idx]] = sagemaker.logs.Position(
+                    timestamp=ts, skip=count + 1
+                )
             else:
                 positions[stream_names[idx]] = sagemaker.logs.Position(
                     timestamp=event["timestamp"], skip=1

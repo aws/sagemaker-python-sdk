@@ -109,7 +109,9 @@ class SKLearnModel(FrameworkModel):
 
         if py_version == "py2":
             logger.warning(
-                python_deprecation_warning(self.__framework_name__, defaults.LATEST_PY2_VERSION)
+                python_deprecation_warning(
+                    self.__framework_name__, defaults.LATEST_PY2_VERSION
+                )
             )
 
         self.py_version = py_version
@@ -141,19 +143,29 @@ class SKLearnModel(FrameworkModel):
                 self.sagemaker_session.boto_region_name, instance_type
             )
 
-        deploy_key_prefix = model_code_key_prefix(self.key_prefix, self.name, deploy_image)
-        self._upload_code(key_prefix=deploy_key_prefix, repack=self.enable_network_isolation())
+        deploy_key_prefix = model_code_key_prefix(
+            self.key_prefix, self.name, deploy_image
+        )
+        self._upload_code(
+            key_prefix=deploy_key_prefix, repack=self.enable_network_isolation()
+        )
         deploy_env = dict(self.env)
         deploy_env.update(self._framework_env_vars())
 
         if self.model_server_workers:
-            deploy_env[MODEL_SERVER_WORKERS_PARAM_NAME.upper()] = str(self.model_server_workers)
+            deploy_env[MODEL_SERVER_WORKERS_PARAM_NAME.upper()] = str(
+                self.model_server_workers
+            )
         model_data_uri = (
-            self.repacked_model_data if self.enable_network_isolation() else self.model_data
+            self.repacked_model_data
+            if self.enable_network_isolation()
+            else self.model_data
         )
         return sagemaker.container_def(deploy_image, model_data_uri, deploy_env)
 
-    def serving_image_uri(self, region_name, instance_type):  # pylint: disable=unused-argument
+    def serving_image_uri(
+        self, region_name, instance_type
+    ):  # pylint: disable=unused-argument
         """Create a URI for the serving image.
 
         Args:

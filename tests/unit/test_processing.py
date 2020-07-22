@@ -113,9 +113,7 @@ def test_sklearn_processor_with_required_parameters(
 
     expected_args = _get_expected_args(processor._current_job_name)
 
-    sklearn_image_uri = (
-        "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:0.20.0-cpu-py3"
-    )
+    sklearn_image_uri = "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:0.20.0-cpu-py3"
     expected_args["app_specification"]["ImageUri"] = sklearn_image_uri
 
     sagemaker_session.process.assert_called_with(**expected_args)
@@ -124,7 +122,9 @@ def test_sklearn_processor_with_required_parameters(
 @patch("sagemaker.fw_registry.get_ecr_image_uri_prefix", return_value=ECR_PREFIX)
 @patch("os.path.exists", return_value=True)
 @patch("os.path.isfile", return_value=True)
-def test_sklearn_with_all_parameters(exists_mock, isfile_mock, ecr_prefix, sagemaker_session):
+def test_sklearn_with_all_parameters(
+    exists_mock, isfile_mock, ecr_prefix, sagemaker_session
+):
     processor = SKLearnProcessor(
         role=ROLE,
         framework_version="0.20.0",
@@ -175,9 +175,7 @@ def test_sklearn_with_all_parameters(exists_mock, isfile_mock, ecr_prefix, sagem
     )
 
     expected_args = _get_expected_args_all_parameters(processor._current_job_name)
-    sklearn_image_uri = (
-        "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:0.20.0-cpu-py3"
-    )
+    sklearn_image_uri = "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:0.20.0-cpu-py3"
     expected_args["app_specification"]["ImageUri"] = sklearn_image_uri
 
     sagemaker_session.process.assert_called_with(**expected_args)
@@ -199,7 +197,9 @@ def test_sklearn_processor_errors_with_invalid_framework_version(
 
 
 @patch("os.path.exists", return_value=False)
-def test_script_processor_errors_with_nonexistent_local_code(exists_mock, sagemaker_session):
+def test_script_processor_errors_with_nonexistent_local_code(
+    exists_mock, sagemaker_session
+):
     processor = _get_script_processor(sagemaker_session)
     with pytest.raises(ValueError):
         processor.run(code="/local/path/to/processing_code.py")
@@ -207,7 +207,9 @@ def test_script_processor_errors_with_nonexistent_local_code(exists_mock, sagema
 
 @patch("os.path.exists", return_value=True)
 @patch("os.path.isfile", return_value=False)
-def test_script_processor_errors_with_code_directory(exists_mock, isfile_mock, sagemaker_session):
+def test_script_processor_errors_with_code_directory(
+    exists_mock, isfile_mock, sagemaker_session
+):
     processor = _get_script_processor(sagemaker_session)
     with pytest.raises(ValueError):
         processor.run(code="/local/path/to/code")
@@ -273,7 +275,9 @@ def test_script_processor_works_with_file_code_url_scheme(
 
 @patch("os.path.exists", return_value=True)
 @patch("os.path.isfile", return_value=True)
-def test_script_processor_works_with_s3_code_url(exists_mock, isfile_mock, sagemaker_session):
+def test_script_processor_works_with_s3_code_url(
+    exists_mock, isfile_mock, sagemaker_session
+):
     processor = _get_script_processor(sagemaker_session)
     processor.run(code="s3://bucket/path/to/processing_code.py")
 
@@ -290,7 +294,9 @@ def test_script_processor_with_one_input(exists_mock, isfile_mock, sagemaker_ses
     processor.run(
         code="/local/path/to/processing_code.py",
         inputs=[
-            ProcessingInput(source="/local/path/to/my/dataset/census.csv", destination="/data/")
+            ProcessingInput(
+                source="/local/path/to/my/dataset/census.csv", destination="/data/"
+            )
         ],
     )
 
@@ -302,7 +308,9 @@ def test_script_processor_with_one_input(exists_mock, isfile_mock, sagemaker_ses
 
 @patch("os.path.exists", return_value=True)
 @patch("os.path.isfile", return_value=True)
-def test_script_processor_with_required_parameters(exists_mock, isfile_mock, sagemaker_session):
+def test_script_processor_with_required_parameters(
+    exists_mock, isfile_mock, sagemaker_session
+):
     processor = _get_script_processor(sagemaker_session)
 
     processor.run(code="/local/path/to/processing_code.py")
@@ -313,7 +321,9 @@ def test_script_processor_with_required_parameters(exists_mock, isfile_mock, sag
 
 @patch("os.path.exists", return_value=True)
 @patch("os.path.isfile", return_value=True)
-def test_script_processor_with_all_parameters(exists_mock, isfile_mock, sagemaker_session):
+def test_script_processor_with_all_parameters(
+    exists_mock, isfile_mock, sagemaker_session
+):
     processor = ScriptProcessor(
         role=ROLE,
         image_uri=CUSTOM_IMAGE_URI,
@@ -495,10 +505,12 @@ def test_processing_job_from_processing_arn(sagemaker_session):
     )
     assert isinstance(processing_job, ProcessingJob)
     assert [
-        processing_input._to_request_dict() for processing_input in processing_job.inputs
+        processing_input._to_request_dict()
+        for processing_input in processing_job.inputs
     ] == PROCESSING_JOB_DESCRIPTION["ProcessingInputs"]
     assert [
-        processing_output._to_request_dict() for processing_output in processing_job.outputs
+        processing_output._to_request_dict()
+        for processing_output in processing_job.outputs
     ] == PROCESSING_JOB_DESCRIPTION["ProcessingOutputConfig"]["Outputs"]
     assert (
         processing_job.output_kms_key
@@ -544,7 +556,10 @@ def _get_expected_args(job_name, code_s3_uri="mocked_s3_uri_from_upload_data"):
         "stopping_condition": None,
         "app_specification": {
             "ImageUri": CUSTOM_IMAGE_URI,
-            "ContainerEntrypoint": ["python3", "/opt/ml/processing/input/code/processing_code.py"],
+            "ContainerEntrypoint": [
+                "python3",
+                "/opt/ml/processing/input/code/processing_code.py",
+            ],
         },
         "environment": None,
         "network_config": None,
@@ -621,7 +636,10 @@ def _get_expected_args_all_parameters(job_name):
         "app_specification": {
             "ImageUri": "012345678901.dkr.ecr.us-west-2.amazonaws.com/my-custom-image-uri",
             "ContainerArguments": ["--drop-columns", "'SelfEmployed'"],
-            "ContainerEntrypoint": ["python3", "/opt/ml/processing/input/code/processing_code.py"],
+            "ContainerEntrypoint": [
+                "python3",
+                "/opt/ml/processing/input/code/processing_code.py",
+            ],
         },
         "environment": {"my_env_variable": "my_env_variable_value"},
         "network_config": {

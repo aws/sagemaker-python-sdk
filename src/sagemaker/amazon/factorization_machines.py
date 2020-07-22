@@ -307,8 +307,12 @@ class FactorizationMachinesModel(Model):
             **kwargs:
         """
         sagemaker_session = sagemaker_session or Session()
-        repo = "{}:{}".format(FactorizationMachines.repo_name, FactorizationMachines.repo_version)
-        image = "{}/{}".format(registry(sagemaker_session.boto_session.region_name), repo)
+        repo = "{}:{}".format(
+            FactorizationMachines.repo_name, FactorizationMachines.repo_version
+        )
+        image = "{}/{}".format(
+            registry(sagemaker_session.boto_session.region_name), repo
+        )
         super(FactorizationMachinesModel, self).__init__(
             model_data,
             image,

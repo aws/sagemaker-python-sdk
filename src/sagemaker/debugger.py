@@ -61,7 +61,9 @@ def get_rule_container_image_uri(region):
     Returns:
         str: Formatted image uri for the given region and the rule container type
     """
-    registry_id = SAGEMAKER_RULE_CONTAINERS_ACCOUNTS_MAP.get(region).get(RULES_ECR_REPO_NAME)
+    registry_id = SAGEMAKER_RULE_CONTAINERS_ACCOUNTS_MAP.get(region).get(
+        RULES_ECR_REPO_NAME
+    )
     image_uri_prefix = get_ecr_image_uri_prefix(registry_id, region)
     return "{}/{}:latest".format(image_uri_prefix, RULES_ECR_REPO_NAME)
 
@@ -151,7 +153,10 @@ class Rule(object):
         """
         merged_rule_params = {}
 
-        if rule_parameters is not None and rule_parameters.get("rule_to_invoke") is not None:
+        if (
+            rule_parameters is not None
+            and rule_parameters.get("rule_to_invoke") is not None
+        ):
             raise RuntimeError(
                 """You cannot provide a 'rule_to_invoke' for SageMaker rules.
                 Please either remove the rule_to_invoke or use a custom rule.
@@ -162,7 +167,9 @@ class Rule(object):
             for index, s3_input_path in enumerate(other_trials_s3_input_paths):
                 merged_rule_params["other_trial_{}".format(str(index))] = s3_input_path
 
-        default_rule_params = base_config["DebugRuleConfiguration"].get("RuleParameters", {})
+        default_rule_params = base_config["DebugRuleConfiguration"].get(
+            "RuleParameters", {}
+        )
         merged_rule_params.update(default_rule_params)
         merged_rule_params.update(rule_parameters or {})
 
@@ -180,7 +187,8 @@ class Rule(object):
             )
 
         return cls(
-            name=name or base_config["DebugRuleConfiguration"].get("RuleConfigurationName"),
+            name=name
+            or base_config["DebugRuleConfiguration"].get("RuleConfigurationName"),
             image_uri="DEFAULT_RULE_EVALUATOR_IMAGE",
             instance_type=None,
             container_local_output_path=container_local_output_path,
@@ -370,7 +378,9 @@ class TensorBoardOutputConfig(object):
         tensorboard_output_config_request = {"S3OutputPath": self.s3_output_path}
 
         if self.container_local_output_path is not None:
-            tensorboard_output_config_request["LocalPath"] = self.container_local_output_path
+            tensorboard_output_config_request[
+                "LocalPath"
+            ] = self.container_local_output_path
 
         return tensorboard_output_config_request
 

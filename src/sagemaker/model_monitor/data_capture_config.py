@@ -87,7 +87,11 @@ class DataCaptureConfig(object):
             "DestinationS3Uri": self.destination_s3_uri,
             "CaptureOptions": [
                 #  Convert to API values or pass value directly through if unable to convert.
-                {"CaptureMode": self.API_MAPPING.get(capture_option.upper(), capture_option)}
+                {
+                    "CaptureMode": self.API_MAPPING.get(
+                        capture_option.upper(), capture_option
+                    )
+                }
                 for capture_option in self.capture_options
             ],
         }
@@ -99,9 +103,13 @@ class DataCaptureConfig(object):
             request_dict["CaptureContentTypeHeader"] = {}
 
         if self.csv_content_types is not None:
-            request_dict["CaptureContentTypeHeader"]["CsvContentTypes"] = self.csv_content_types
+            request_dict["CaptureContentTypeHeader"][
+                "CsvContentTypes"
+            ] = self.csv_content_types
 
         if self.json_content_types is not None:
-            request_dict["CaptureContentTypeHeader"]["JsonContentTypes"] = self.json_content_types
+            request_dict["CaptureContentTypeHeader"][
+                "JsonContentTypes"
+            ] = self.json_content_types
 
         return request_dict

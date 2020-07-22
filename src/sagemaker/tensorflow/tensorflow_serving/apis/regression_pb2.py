@@ -15,8 +15,12 @@ from google.protobuf import descriptor_pb2
 _sym_db = _symbol_database.Default()
 
 
-from tensorflow_serving.apis import input_pb2 as tensorflow__serving_dot_apis_dot_input__pb2
-from tensorflow_serving.apis import model_pb2 as tensorflow__serving_dot_apis_dot_model__pb2
+from tensorflow_serving.apis import (
+    input_pb2 as tensorflow__serving_dot_apis_dot_input__pb2,
+)
+from tensorflow_serving.apis import (
+    model_pb2 as tensorflow__serving_dot_apis_dot_model__pb2,
+)
 
 
 DESCRIPTOR = _descriptor.FileDescriptor(
@@ -287,5 +291,7 @@ _sym_db.RegisterMessage(RegressionResponse)
 
 
 DESCRIPTOR.has_options = True
-DESCRIPTOR._options = _descriptor._ParseOptions(descriptor_pb2.FileOptions(), _b("\370\001\001"))
+DESCRIPTOR._options = _descriptor._ParseOptions(
+    descriptor_pb2.FileOptions(), _b("\370\001\001")
+)
 # @@protoc_insertion_point(module_scope)

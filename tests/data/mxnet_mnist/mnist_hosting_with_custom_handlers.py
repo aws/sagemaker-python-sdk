@@ -37,7 +37,9 @@ def model_fn(path_to_model_files):
 # --- Option 1 - provide just 1 entry point for end2end prediction ---
 # if this function is specified, no other overwriting described in Option 2 will have effect
 # returns serialized data and content type it has used
-def transform_fn(model, request_data, input_content_type, requested_output_content_type):
+def transform_fn(
+    model, request_data, input_content_type, requested_output_content_type
+):
     # for demonstration purposes we will be calling handlers from Option2
     return (
         output_fn(
@@ -93,7 +95,10 @@ def handle_s3_file_path(path):
         data = obj.get()["Body"]
     except ClientError as ce:
         raise ValueError(
-            "Can't download from S3 path: " + path + " : " + ce.response["Error"]["Message"]
+            "Can't download from S3 path: "
+            + path
+            + " : "
+            + ce.response["Error"]["Message"]
         )
 
     import StringIO

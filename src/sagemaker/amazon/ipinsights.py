@@ -30,7 +30,10 @@ class IPInsights(AmazonAlgorithmEstimatorBase):
     MINI_BATCH_SIZE = 10000
 
     num_entity_vectors = hp(
-        "num_entity_vectors", (ge(1), le(250000000)), "An integer in [1, 250000000]", int
+        "num_entity_vectors",
+        (ge(1), le(250000000)),
+        "An integer in [1, 250000000]",
+        int,
     )
     vector_dim = hp("vector_dim", (ge(4), le(4096)), "An integer in [4, 4096]", int)
 
@@ -38,7 +41,9 @@ class IPInsights(AmazonAlgorithmEstimatorBase):
         "batch_metrics_publish_interval", (ge(1)), "An integer greater than 0", int
     )
     epochs = hp("epochs", (ge(1)), "An integer greater than 0", int)
-    learning_rate = hp("learning_rate", (ge(1e-6), le(10.0)), "A float in [1e-6, 10.0]", float)
+    learning_rate = hp(
+        "learning_rate", (ge(1e-6), le(10.0)), "A float in [1e-6, 10.0]", float
+    )
     num_ip_encoder_layers = hp(
         "num_ip_encoder_layers", (ge(0), le(100)), "An integer in [0, 100]", int
     )
@@ -46,9 +51,14 @@ class IPInsights(AmazonAlgorithmEstimatorBase):
         "random_negative_sampling_rate", (ge(0), le(500)), "An integer in [0, 500]", int
     )
     shuffled_negative_sampling_rate = hp(
-        "shuffled_negative_sampling_rate", (ge(0), le(500)), "An integer in [0, 500]", int
+        "shuffled_negative_sampling_rate",
+        (ge(0), le(500)),
+        "An integer in [0, 500]",
+        int,
     )
-    weight_decay = hp("weight_decay", (ge(0.0), le(10.0)), "A float in [0.0, 10.0]", float)
+    weight_decay = hp(
+        "weight_decay", (ge(0.0), le(10.0)), "A float in [0.0, 10.0]", float
+    )
 
     def __init__(
         self,
@@ -126,7 +136,9 @@ class IPInsights(AmazonAlgorithmEstimatorBase):
             :class:`~sagemaker.estimator.amazon_estimator.AmazonAlgorithmEstimatorBase` and
             :class:`~sagemaker.estimator.EstimatorBase`.
         """
-        super(IPInsights, self).__init__(role, train_instance_count, train_instance_type, **kwargs)
+        super(IPInsights, self).__init__(
+            role, train_instance_count, train_instance_type, **kwargs
+        )
         self.num_entity_vectors = num_entity_vectors
         self.vector_dim = vector_dim
         self.batch_metrics_publish_interval = batch_metrics_publish_interval
@@ -166,7 +178,9 @@ class IPInsights(AmazonAlgorithmEstimatorBase):
             mini_batch_size:
             job_name:
         """
-        if mini_batch_size is not None and (mini_batch_size < 1 or mini_batch_size > 500000):
+        if mini_batch_size is not None and (
+            mini_batch_size < 1 or mini_batch_size > 500000
+        ):
             raise ValueError("mini_batch_size must be in [1, 500000]")
         super(IPInsights, self)._prepare_for_training(
             records, mini_batch_size=mini_batch_size, job_name=job_name
@@ -191,7 +205,10 @@ class IPInsightsPredictor(RealTimePredictor):
             sagemaker_session:
         """
         super(IPInsightsPredictor, self).__init__(
-            endpoint, sagemaker_session, serializer=csv_serializer, deserializer=json_deserializer
+            endpoint,
+            sagemaker_session,
+            serializer=csv_serializer,
+            deserializer=json_deserializer,
         )
 
 
@@ -212,7 +229,8 @@ class IPInsightsModel(Model):
         sagemaker_session = sagemaker_session or Session()
         repo = "{}:{}".format(IPInsights.repo_name, IPInsights.repo_version)
         image = "{}/{}".format(
-            registry(sagemaker_session.boto_session.region_name, IPInsights.repo_name), repo
+            registry(sagemaker_session.boto_session.region_name, IPInsights.repo_name),
+            repo,
         )
 
         super(IPInsightsModel, self).__init__(

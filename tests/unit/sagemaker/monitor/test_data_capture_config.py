@@ -19,7 +19,9 @@ from sagemaker.model_monitor import DataCaptureConfig
 DEFAULT_ENABLE_CAPTURE = True
 DEFAULT_SAMPLING_PERCENTAGE = 20
 DEFAULT_BUCKET_NAME = "default-bucket"
-DEFAULT_DESTINATION_S3_URI = "s3://{}/model-monitor/data-capture".format(DEFAULT_BUCKET_NAME)
+DEFAULT_DESTINATION_S3_URI = "s3://{}/model-monitor/data-capture".format(
+    DEFAULT_BUCKET_NAME
+)
 DEFAULT_KMS_KEY_ID = None
 DEFAULT_CAPTURE_MODES = ["REQUEST", "RESPONSE"]
 DEFAULT_CSV_CONTENT_TYPES = ["text/csv"]

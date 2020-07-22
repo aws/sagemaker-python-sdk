@@ -74,7 +74,10 @@ def estimator(sagemaker_session):
 def sagemaker_session():
     boto_mock = Mock(name="boto_session")
     mock_session = Mock(
-        name="sagemaker_session", boto_session=boto_mock, s3_client=None, s3_resource=None
+        name="sagemaker_session",
+        boto_session=boto_mock,
+        s3_client=None,
+        s3_resource=None,
     )
     mock_session.expand_role = Mock(name="expand_role", return_value=ROLE)
 
@@ -88,13 +91,17 @@ class DummyFramework(Framework):
         return IMAGE_NAME
 
     def create_model(self, role=None, model_server_workers=None):
-        return DummyFrameworkModel(self.sagemaker_session, vpc_config=self.get_vpc_config())
+        return DummyFrameworkModel(
+            self.sagemaker_session, vpc_config=self.get_vpc_config()
+        )
 
     @classmethod
-    def _prepare_init_params_from_job_description(cls, job_details, model_channel_name=None):
-        init_params = super(DummyFramework, cls)._prepare_init_params_from_job_description(
-            job_details, model_channel_name
-        )
+    def _prepare_init_params_from_job_description(
+        cls, job_details, model_channel_name=None
+    ):
+        init_params = super(
+            DummyFramework, cls
+        )._prepare_init_params_from_job_description(job_details, model_channel_name)
         init_params.pop("image", None)
         return init_params
 
@@ -132,7 +139,9 @@ def test_load_config(estimator):
 
     config = _Job._load_config(inputs, estimator)
 
-    assert config["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] == BUCKET_NAME
+    assert (
+        config["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] == BUCKET_NAME
+    )
     assert config["role"] == ROLE
     assert config["output_config"]["S3OutputPath"] == S3_OUTPUT_PATH
     assert "KmsKeyId" not in config["output_config"]
@@ -150,7 +159,9 @@ def test_load_config_with_model_channel(estimator):
 
     config = _Job._load_config(inputs, estimator)
 
-    assert config["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] == BUCKET_NAME
+    assert (
+        config["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] == BUCKET_NAME
+    )
     assert config["input_config"][1]["DataSource"]["S3DataSource"]["S3Uri"] == MODEL_URI
     assert config["input_config"][1]["ChannelName"] == MODEL_CHANNEL_NAME
     assert config["role"] == ROLE
@@ -189,7 +200,9 @@ def test_load_config_with_code_channel(framework):
     config = _Job._load_config(inputs, framework)
 
     assert len(config["input_config"]) == 3
-    assert config["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] == BUCKET_NAME
+    assert (
+        config["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] == BUCKET_NAME
+    )
     assert config["input_config"][2]["DataSource"]["S3DataSource"]["S3Uri"] == CODE_URI
     assert config["input_config"][2]["ChannelName"] == framework.code_channel_name
     assert config["role"] == ROLE
@@ -208,7 +221,9 @@ def test_load_config_with_code_channel_no_code_uri(framework):
     config = _Job._load_config(inputs, framework)
 
     assert len(config["input_config"]) == 2
-    assert config["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] == BUCKET_NAME
+    assert (
+        config["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] == BUCKET_NAME
+    )
     assert config["role"] == ROLE
     assert config["output_config"]["S3OutputPath"] == S3_OUTPUT_PATH
     assert "KmsKeyId" not in config["output_config"]
@@ -255,7 +270,9 @@ def test_format_inputs_to_input_config_record_set():
     channels = _Job._format_inputs_to_input_config(inputs)
 
     assert channels[0]["DataSource"]["S3DataSource"]["S3Uri"] == inputs.s3_data
-    assert channels[0]["DataSource"]["S3DataSource"]["S3DataType"] == inputs.s3_data_type
+    assert (
+        channels[0]["DataSource"]["S3DataSource"]["S3DataType"] == inputs.s3_data_type
+    )
 
 
 def test_format_inputs_to_input_config_file_system_record_set():
@@ -272,10 +289,22 @@ def test_format_inputs_to_input_config_file_system_record_set():
         feature_dim=feature_dim,
     )
     channels = _Job._format_inputs_to_input_config(records)
-    assert channels[0]["DataSource"]["FileSystemDataSource"]["DirectoryPath"] == directory_path
-    assert channels[0]["DataSource"]["FileSystemDataSource"]["FileSystemId"] == file_system_id
-    assert channels[0]["DataSource"]["FileSystemDataSource"]["FileSystemType"] == file_system_type
-    assert channels[0]["DataSource"]["FileSystemDataSource"]["FileSystemAccessMode"] == "ro"
+    assert (
+        channels[0]["DataSource"]["FileSystemDataSource"]["DirectoryPath"]
+        == directory_path
+    )
+    assert (
+        channels[0]["DataSource"]["FileSystemDataSource"]["FileSystemId"]
+        == file_system_id
+    )
+    assert (
+        channels[0]["DataSource"]["FileSystemDataSource"]["FileSystemType"]
+        == file_system_type
+    )
+    assert (
+        channels[0]["DataSource"]["FileSystemDataSource"]["FileSystemAccessMode"]
+        == "ro"
+    )
 
 
 def test_format_inputs_to_input_config_list():
@@ -285,7 +314,9 @@ def test_format_inputs_to_input_config_list():
     channels = _Job._format_inputs_to_input_config(inputs)
 
     assert channels[0]["DataSource"]["S3DataSource"]["S3Uri"] == records.s3_data
-    assert channels[0]["DataSource"]["S3DataSource"]["S3DataType"] == records.s3_data_type
+    assert (
+        channels[0]["DataSource"]["S3DataSource"]["S3DataType"] == records.s3_data_type
+    )
 
 
 def test_format_record_set_list_input():
@@ -323,7 +354,10 @@ def test_prepare_channel(channel_uri, channel_name, content_type, input_mode):
     )
 
     assert channel["DataSource"]["S3DataSource"]["S3Uri"] == channel_uri
-    assert channel["DataSource"]["S3DataSource"]["S3DataDistributionType"] == "FullyReplicated"
+    assert (
+        channel["DataSource"]["S3DataSource"]["S3DataDistributionType"]
+        == "FullyReplicated"
+    )
     assert channel["DataSource"]["S3DataSource"]["S3DataType"] == "S3Prefix"
     assert channel["ChannelName"] == channel_name
     assert "CompressionType" not in channel
@@ -359,7 +393,9 @@ def test_prepare_channel_with_missing_name():
     with pytest.raises(ValueError) as ex:
         _Job._prepare_channel([], channel_uri=MODEL_URI, channel_name=None)
 
-    assert "Expected a channel name if a channel URI {} is specified".format(MODEL_URI) in str(ex)
+    assert "Expected a channel name if a channel URI {} is specified".format(
+        MODEL_URI
+    ) in str(ex)
 
 
 def test_prepare_channel_with_missing_uri():
@@ -403,7 +439,9 @@ def test_format_input_single_unamed_channel():
 
 
 def test_format_input_multiple_channels():
-    input_list = _Job._format_inputs_to_input_config({"a": "s3://blah/blah", "b": "s3://foo/bar"})
+    input_list = _Job._format_inputs_to_input_config(
+        {"a": "s3://blah/blah", "b": "s3://foo/bar"}
+    )
     expected = [
         {
             "ChannelName": "a",
@@ -428,7 +466,9 @@ def test_format_input_multiple_channels():
     ]
 
     # convert back into map for comparison so list order (which is arbitrary) is ignored
-    assert {c["ChannelName"]: c for c in input_list} == {c["ChannelName"]: c for c in expected}
+    assert {c["ChannelName"]: c for c in input_list} == {
+        c["ChannelName"]: c for c in expected
+    }
 
 
 def test_format_input_s3_input():
@@ -487,7 +527,9 @@ def test_dict_of_mixed_input_types():
     ]
 
     # convert back into map for comparison so list order (which is arbitrary) is ignored
-    assert {c["ChannelName"]: c for c in input_list} == {c["ChannelName"]: c for c in expected}
+    assert {c["ChannelName"]: c for c in input_list} == {
+        c["ChannelName"]: c for c in expected
+    }
 
 
 def test_format_inputs_to_input_config_exception():
@@ -535,7 +577,10 @@ def test_format_string_uri_input_string_exception():
 def test_format_string_uri_input_local_file():
     file_uri_input = _Job._format_string_uri_input(LOCAL_FILE_NAME)
 
-    assert file_uri_input.config["DataSource"]["FileDataSource"]["FileUri"] == LOCAL_FILE_NAME
+    assert (
+        file_uri_input.config["DataSource"]["FileDataSource"]["FileUri"]
+        == LOCAL_FILE_NAME
+    )
 
 
 def test_format_string_uri_input():
@@ -567,7 +612,10 @@ def test_format_model_uri_input_string():
 def test_format_model_uri_input_local_file():
     model_uri_input = _Job._format_model_uri_input(LOCAL_MODEL_NAME)
 
-    assert model_uri_input.config["DataSource"]["FileDataSource"]["FileUri"] == LOCAL_MODEL_NAME
+    assert (
+        model_uri_input.config["DataSource"]["FileDataSource"]["FileUri"]
+        == LOCAL_MODEL_NAME
+    )
 
 
 def test_format_model_uri_input_exception():

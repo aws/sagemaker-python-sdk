@@ -82,7 +82,9 @@ def test_name_from_base_short(sagemaker_short_timestamp):
 
 
 def test_unique_name_from_base():
-    assert re.match(r"base-\d{10}-[a-f0-9]{4}", sagemaker.utils.unique_name_from_base("base"))
+    assert re.match(
+        r"base-\d{10}-[a-f0-9]{4}", sagemaker.utils.unique_name_from_base("base")
+    )
 
 
 def test_unique_name_from_base_truncated():
@@ -120,7 +122,9 @@ TRAINING_JOB_DESCRIPTION_1 = {
     "SecondaryStatusTransitions": [{"StatusMessage": MESSAGE, "Status": STATUS}]
 }
 TRAINING_JOB_DESCRIPTION_2 = {
-    "SecondaryStatusTransitions": [{"StatusMessage": "different message", "Status": STATUS}]
+    "SecondaryStatusTransitions": [
+        {"StatusMessage": "different message", "Status": STATUS}
+    ]
 }
 
 TRAINING_JOB_DESCRIPTION_EMPTY = {"SecondaryStatusTransitions": []}
@@ -141,17 +145,23 @@ def test_secondary_training_status_changed_false():
 
 
 def test_secondary_training_status_changed_prev_missing():
-    changed = sagemaker.utils.secondary_training_status_changed(TRAINING_JOB_DESCRIPTION_1, {})
+    changed = sagemaker.utils.secondary_training_status_changed(
+        TRAINING_JOB_DESCRIPTION_1, {}
+    )
     assert changed is True
 
 
 def test_secondary_training_status_changed_prev_none():
-    changed = sagemaker.utils.secondary_training_status_changed(TRAINING_JOB_DESCRIPTION_1, None)
+    changed = sagemaker.utils.secondary_training_status_changed(
+        TRAINING_JOB_DESCRIPTION_1, None
+    )
     assert changed is True
 
 
 def test_secondary_training_status_changed_current_missing():
-    changed = sagemaker.utils.secondary_training_status_changed({}, TRAINING_JOB_DESCRIPTION_1)
+    changed = sagemaker.utils.secondary_training_status_changed(
+        {}, TRAINING_JOB_DESCRIPTION_1
+    )
     assert changed is False
 
 
@@ -166,7 +176,9 @@ def test_secondary_training_status_message_status_changed():
     now = datetime.now()
     TRAINING_JOB_DESCRIPTION_1["LastModifiedTime"] = now
     expected = "{} {} - {}".format(
-        datetime.utcfromtimestamp(time.mktime(now.timetuple())).strftime("%Y-%m-%d %H:%M:%S"),
+        datetime.utcfromtimestamp(time.mktime(now.timetuple())).strftime(
+            "%Y-%m-%d %H:%M:%S"
+        ),
         STATUS,
         MESSAGE,
     )
@@ -182,7 +194,9 @@ def test_secondary_training_status_message_status_not_changed():
     now = datetime.now()
     TRAINING_JOB_DESCRIPTION_1["LastModifiedTime"] = now
     expected = "{} {} - {}".format(
-        datetime.utcfromtimestamp(time.mktime(now.timetuple())).strftime("%Y-%m-%d %H:%M:%S"),
+        datetime.utcfromtimestamp(time.mktime(now.timetuple())).strftime(
+            "%Y-%m-%d %H:%M:%S"
+        ),
         STATUS,
         MESSAGE,
     )
@@ -198,12 +212,16 @@ def test_secondary_training_status_message_prev_missing():
     now = datetime.now()
     TRAINING_JOB_DESCRIPTION_1["LastModifiedTime"] = now
     expected = "{} {} - {}".format(
-        datetime.utcfromtimestamp(time.mktime(now.timetuple())).strftime("%Y-%m-%d %H:%M:%S"),
+        datetime.utcfromtimestamp(time.mktime(now.timetuple())).strftime(
+            "%Y-%m-%d %H:%M:%S"
+        ),
         STATUS,
         MESSAGE,
     )
     assert (
-        sagemaker.utils.secondary_training_status_message(TRAINING_JOB_DESCRIPTION_1, {})
+        sagemaker.utils.secondary_training_status_message(
+            TRAINING_JOB_DESCRIPTION_1, {}
+        )
         == expected
     )
 
@@ -380,7 +398,9 @@ def test_download_folder_points_to_single_file(makedirs):
     boto_mock.resource("s3").Object.return_value = obj_mock
 
     # all the S3 mocks are set, the test itself begins now.
-    sagemaker.utils.download_folder(BUCKET_NAME, "/prefix/train/train_data.csv", "/tmp", session)
+    sagemaker.utils.download_folder(
+        BUCKET_NAME, "/prefix/train/train_data.csv", "/tmp", session
+    )
 
     obj_mock.download_file.assert_called()
     calls = [call(os.path.join("/tmp", "train_data.csv"))]
@@ -400,7 +420,9 @@ def test_download_file():
         BUCKET_NAME, "/prefix/path/file.tar.gz", "/tmp/file.tar.gz", session
     )
 
-    bucket_mock.download_file.assert_called_with("prefix/path/file.tar.gz", "/tmp/file.tar.gz")
+    bucket_mock.download_file.assert_called_with(
+        "prefix/path/file.tar.gz", "/tmp/file.tar.gz"
+    )
 
 
 @patch("tarfile.open")
@@ -521,7 +543,10 @@ def test_repack_model_with_entry_point_without_path_without_source_dir(tmp, fake
     finally:
         os.chdir(cwd)
 
-    assert list_tar_files(fake_s3.fake_upload_path, tmp) == {"/code/inference.py", "/model"}
+    assert list_tar_files(fake_s3.fake_upload_path, tmp) == {
+        "/code/inference.py",
+        "/model",
+    }
 
 
 def test_repack_model_from_s3_to_s3(tmp, fake_s3):
@@ -573,12 +598,21 @@ def test_repack_model_from_file_to_file(tmp):
         sagemaker_session,
     )
 
-    assert list_tar_files(destination_path, tmp) == {"/code/lib/a", "/code/inference.py", "/model"}
+    assert list_tar_files(destination_path, tmp) == {
+        "/code/lib/a",
+        "/code/inference.py",
+        "/model",
+    }
 
 
 def test_repack_model_with_inference_code_should_replace_the_code(tmp, fake_s3):
     create_file_tree(
-        tmp, ["model-dir/model", "source-dir/new-inference.py", "model-dir/code/old-inference.py"]
+        tmp,
+        [
+            "model-dir/model",
+            "source-dir/new-inference.py",
+            "model-dir/code/old-inference.py",
+        ],
     )
 
     fake_s3.tar_and_upload("model-dir", "s3://fake/location")
@@ -592,7 +626,10 @@ def test_repack_model_with_inference_code_should_replace_the_code(tmp, fake_s3):
         fake_s3.sagemaker_session,
     )
 
-    assert list_tar_files(fake_s3.fake_upload_path, tmp) == {"/code/new-inference.py", "/model"}
+    assert list_tar_files(fake_s3.fake_upload_path, tmp) == {
+        "/code/new-inference.py",
+        "/model",
+    }
 
 
 def test_repack_model_from_file_to_folder(tmp):
@@ -750,7 +787,9 @@ def test_get_ecr_image_uri_prefix():
     ecr_prefix = sagemaker.utils.get_ecr_image_uri_prefix("123456789012", "us-west-2")
     assert ecr_prefix == "123456789012.dkr.ecr.us-west-2.amazonaws.com"
 
-    ecr_prefix = sagemaker.utils.get_ecr_image_uri_prefix("123456789012", "us-iso-east-1")
+    ecr_prefix = sagemaker.utils.get_ecr_image_uri_prefix(
+        "123456789012", "us-iso-east-1"
+    )
     assert ecr_prefix == "123456789012.dkr.ecr.us-iso-east-1.c2s.ic.gov"
 
 

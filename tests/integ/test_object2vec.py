@@ -57,14 +57,20 @@ def test_object2vec(sagemaker_session, cpu_instance_type):
         )
 
         record_set = prepare_record_set_from_local_files(
-            data_path, object2vec.data_location, num_records, FEATURE_NUM, sagemaker_session
+            data_path,
+            object2vec.data_location,
+            num_records,
+            FEATURE_NUM,
+            sagemaker_session,
         )
 
         object2vec.fit(records=record_set, job_name=job_name)
 
     with timeout_and_delete_endpoint_by_name(job_name, sagemaker_session):
         model = Object2VecModel(
-            object2vec.model_data, role="SageMakerRole", sagemaker_session=sagemaker_session
+            object2vec.model_data,
+            role="SageMakerRole",
+            sagemaker_session=sagemaker_session,
         )
         predictor = model.deploy(1, cpu_instance_type, endpoint_name=job_name)
         assert isinstance(predictor, RealTimePredictor)

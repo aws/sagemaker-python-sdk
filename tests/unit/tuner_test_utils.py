@@ -17,7 +17,11 @@ import os
 from mock import Mock
 from sagemaker.amazon.pca import PCA
 from sagemaker.estimator import Estimator
-from sagemaker.parameter import CategoricalParameter, ContinuousParameter, IntegerParameter
+from sagemaker.parameter import (
+    CategoricalParameter,
+    ContinuousParameter,
+    IntegerParameter,
+)
 from sagemaker.tuner import WarmStartConfig, WarmStartTypes
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
@@ -87,7 +91,8 @@ ESTIMATOR_TWO = PCA(
 )
 
 WARM_START_CONFIG = WarmStartConfig(
-    warm_start_type=WarmStartTypes.IDENTICAL_DATA_AND_ALGORITHM, parents={"p1", "p2", "p3"}
+    warm_start_type=WarmStartTypes.IDENTICAL_DATA_AND_ALGORITHM,
+    parents={"p1", "p2", "p3"},
 )
 
 TUNING_JOB_DETAILS = {
@@ -169,7 +174,10 @@ MULTI_ALGO_TUNING_JOB_DETAILS = {
     "TrainingJobDefinitions": [
         {
             "DefinitionName": ESTIMATOR_NAME,
-            "TuningObjective": {"MetricName": OBJECTIVE_METRIC_NAME, "Type": "Minimize"},
+            "TuningObjective": {
+                "MetricName": OBJECTIVE_METRIC_NAME,
+                "Type": "Minimize",
+            },
             "HyperParameterRanges": {
                 "CategoricalParameterRanges": [],
                 "ContinuousParameterRanges": [],
@@ -195,7 +203,10 @@ MULTI_ALGO_TUNING_JOB_DETAILS = {
                 "InstanceType": "ml.c4.xlarge",
                 "InstanceCount": 1,
             },
-            "AlgorithmSpecification": {"TrainingImage": IMAGE_NAME, "TrainingInputMode": "File"},
+            "AlgorithmSpecification": {
+                "TrainingImage": IMAGE_NAME,
+                "TrainingInputMode": "File",
+            },
             "InputDataConfig": [
                 {
                     "ChannelName": "train",
@@ -213,12 +224,22 @@ MULTI_ALGO_TUNING_JOB_DETAILS = {
         },
         {
             "DefinitionName": ESTIMATOR_NAME_TWO,
-            "TuningObjective": {"MetricName": OBJECTIVE_METRIC_NAME_TWO, "Type": "Minimize"},
+            "TuningObjective": {
+                "MetricName": OBJECTIVE_METRIC_NAME_TWO,
+                "Type": "Minimize",
+            },
             "HyperParameterRanges": {
-                "CategoricalParameterRanges": [{"Name": "kernel", "Values": ["rbf", "sigmoid"]}],
+                "CategoricalParameterRanges": [
+                    {"Name": "kernel", "Values": ["rbf", "sigmoid"]}
+                ],
                 "ContinuousParameterRanges": [],
                 "IntegerParameterRanges": [
-                    {"MaxValue": "10", "Name": "tree_count", "MinValue": "1", "ScalingType": "Auto"}
+                    {
+                        "MaxValue": "10",
+                        "Name": "tree_count",
+                        "MinValue": "1",
+                        "ScalingType": "Auto",
+                    }
                 ],
             },
             "RoleArn": ROLE,
@@ -281,7 +302,11 @@ TRAINING_JOB_DESCRIPTION = {
         "_tuning_objective_metric": "Validation-accuracy",
     },
     "RoleArn": ROLE,
-    "ResourceConfig": {"VolumeSizeInGB": 30, "InstanceCount": 1, "InstanceType": "ml.c4.xlarge"},
+    "ResourceConfig": {
+        "VolumeSizeInGB": 30,
+        "InstanceCount": 1,
+        "InstanceType": "ml.c4.xlarge",
+    },
     "StoppingCondition": {"MaxRuntimeInSeconds": 24 * 60 * 60},
     "TrainingJobName": TRAINING_JOB_NAME,
     "TrainingJobStatus": "Completed",
@@ -293,4 +318,6 @@ TRAINING_JOB_DESCRIPTION = {
 
 ENDPOINT_DESC = {"EndpointConfigName": "test-endpoint"}
 
-ENDPOINT_CONFIG_DESC = {"ProductionVariants": [{"ModelName": "model-1"}, {"ModelName": "model-2"}]}
+ENDPOINT_CONFIG_DESC = {
+    "ProductionVariants": [{"ModelName": "model-1"}, {"ModelName": "model-2"}]
+}

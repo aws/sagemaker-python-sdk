@@ -27,7 +27,9 @@ from sagemaker.utils import DeferredError
 try:
     import pandas as pd
 except ImportError as e:
-    logging.warning("pandas failed to import. Analytics features will be impaired or broken.")
+    logging.warning(
+        "pandas failed to import. Analytics features will be impaired or broken."
+    )
     # Any subsequent attempt to use pandas will raise the ImportError
     pd = DeferredError(e)
 
@@ -142,9 +144,13 @@ class HyperparameterTuningJobAnalytics(AnalyticsMetricsBase):
             out["TrainingStartTime"] = start_time
             out["TrainingEndTime"] = end_time
             if start_time and end_time:
-                out["TrainingElapsedTimeSeconds"] = (end_time - start_time).total_seconds()
+                out["TrainingElapsedTimeSeconds"] = (
+                    end_time - start_time
+                ).total_seconds()
             if "TrainingJobDefinitionName" in training_summary:
-                out["TrainingJobDefinitionName"] = training_summary["TrainingJobDefinitionName"]
+                out["TrainingJobDefinitionName"] = training_summary[
+                    "TrainingJobDefinitionName"
+                ]
             return out
 
         # Run that helper over all the summaries.
@@ -251,14 +257,18 @@ class HyperparameterTuningJobAnalytics(AnalyticsMetricsBase):
         output = []
         next_args = {}
         for count in range(100):
-            logging.debug("Calling list_training_jobs_for_hyper_parameter_tuning_job %d", count)
+            logging.debug(
+                "Calling list_training_jobs_for_hyper_parameter_tuning_job %d", count
+            )
             raw_result = self._sage_client.list_training_jobs_for_hyper_parameter_tuning_job(
                 HyperParameterTuningJobName=self.name, MaxResults=100, **next_args
             )
             new_output = raw_result["TrainingJobSummaries"]
             output.extend(new_output)
             logging.debug(
-                "Got %d more TrainingJobs. Total so far: %d", len(new_output), len(output)
+                "Got %d more TrainingJobs. Total so far: %d",
+                len(new_output),
+                len(output),
             )
             if ("NextToken" in raw_result) and (len(new_output) > 0):
                 next_args["NextToken"] = raw_result["NextToken"]
@@ -337,7 +347,9 @@ class TrainingJobAnalytics(AnalyticsMetricsBase):
         end_time, covering the interval of the training job
         """
         description = self._sage_client.describe_training_job(TrainingJobName=self.name)
-        start_time = self._start_time or description[u"TrainingStartTime"]  # datetime object
+        start_time = (
+            self._start_time or description[u"TrainingStartTime"]
+        )  # datetime object
         # Incrementing end time by 1 min since CloudWatch drops seconds before finding the logs.
         # This results in logs being searched in the time range in which the correct log line was
         # not present.
@@ -410,7 +422,9 @@ class TrainingJobAnalytics(AnalyticsMetricsBase):
             TrainingJobName=self._training_job_name
         )
 
-        metric_definitions = training_description["AlgorithmSpecification"]["MetricDefinitions"]
+        metric_definitions = training_description["AlgorithmSpecification"][
+            "MetricDefinitions"
+        ]
         metric_names = [md["Name"] for md in metric_definitions]
 
         return metric_names
@@ -462,7 +476,9 @@ class ExperimentAnalytics(AnalyticsMetricsBase):
         self._sage_client = sagemaker_session.sagemaker_client
 
         if not experiment_name and not search_expression:
-            raise ValueError("Either experiment_name or search_expression must be supplied.")
+            raise ValueError(
+                "Either experiment_name or search_expression must be supplied."
+            )
 
         self._experiment_name = experiment_name
         self._search_expression = search_expression
@@ -573,7 +589,9 @@ class ExperimentAnalytics(AnalyticsMetricsBase):
         """Return a pandas dataframe with all the trial_components,
             along with their parameters and metrics.
         """
-        df = pd.DataFrame([self._reshape(component) for component in self._get_trial_components()])
+        df = pd.DataFrame(
+            [self._reshape(component) for component in self._get_trial_components()]
+        )
         return df
 
     def _get_trial_components(self, force_refresh=False):
@@ -634,7 +652,9 @@ class ExperimentAnalytics(AnalyticsMetricsBase):
 
         while len(trial_components) < self.MAX_TRIAL_COMPONENTS:
             search_response = self._sage_client.search(**search_args)
-            components = [result["TrialComponent"] for result in search_response["Results"]]
+            components = [
+                result["TrialComponent"] for result in search_response["Results"]
+            ]
             trial_components.extend(components)
             if "NextToken" in search_response and len(components) > 0:
                 search_args["NextToken"] = search_response["NextToken"]

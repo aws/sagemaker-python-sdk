@@ -49,7 +49,9 @@ _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 
 DESCRIPTOR.has_options = True
-DESCRIPTOR._options = _descriptor._ParseOptions(descriptor_pb2.FileOptions(), _b("\370\001\001"))
+DESCRIPTOR._options = _descriptor._ParseOptions(
+    descriptor_pb2.FileOptions(), _b("\370\001\001")
+)
 try:
     # THESE ELEMENTS WILL BE DEPRECATED.
     # Please use the generated *_pb2_grpc.py files instead.
@@ -135,7 +137,12 @@ try:
     """
 
         def GetModelStatus(
-            self, request, timeout, metadata=None, with_call=False, protocol_options=None
+            self,
+            request,
+            timeout,
+            metadata=None,
+            with_call=False,
+            protocol_options=None,
         ):
             """Gets status of model. If the ModelSpec in the request does not specify
       version, information about all versions of the model will be returned. If
@@ -180,7 +187,9 @@ try:
             default_timeout=default_timeout,
             maximum_timeout=maximum_timeout,
         )
-        return beta_implementations.server(method_implementations, options=server_options)
+        return beta_implementations.server(
+            method_implementations, options=server_options
+        )
 
     def beta_create_ModelService_stub(
         channel, host=None, metadata_transformer=None, pool=None, pool_size=None
@@ -212,7 +221,10 @@ try:
             thread_pool_size=pool_size,
         )
         return beta_implementations.dynamic_stub(
-            channel, "tensorflow.serving.ModelService", cardinalities, options=stub_options
+            channel,
+            "tensorflow.serving.ModelService",
+            cardinalities,
+            options=stub_options,
         )
 
 

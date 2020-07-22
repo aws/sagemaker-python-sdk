@@ -50,7 +50,9 @@ def _get_train_data_loader(training_dir, is_distributed, batch_size, **kwargs):
         download=False,  # True sets a dependency on an external site for our canaries.
     )
     train_sampler = (
-        torch.utils.data.distributed.DistributedSampler(dataset) if is_distributed else None
+        torch.utils.data.distributed.DistributedSampler(dataset)
+        if is_distributed
+        else None
     )
     train_loader = torch.utils.data.DataLoader(
         dataset,
@@ -90,7 +92,11 @@ def _average_gradients(model):
 def train(args):
     world_size = len(args.hosts)
     is_distributed = world_size > 1
-    logger.debug("Number of hosts {}. Distributed training - {}".format(world_size, is_distributed))
+    logger.debug(
+        "Number of hosts {}. Distributed training - {}".format(
+            world_size, is_distributed
+        )
+    )
     use_cuda = args.num_gpus > 0
     logger.debug("Number of gpus available - {}".format(args.num_gpus))
     kwargs = {"num_workers": 1, "pin_memory": True} if use_cuda else {}
@@ -193,8 +199,12 @@ def test(model, test_loader, device):
         for data, target in test_loader:
             data, target = data.to(device), target.to(device)
             output = model(data)
-            test_loss += F.nll_loss(output, target, size_average=False).item()  # sum up batch loss
-            pred = output.max(1, keepdim=True)[1]  # get the index of the max log-probability
+            test_loss += F.nll_loss(
+                output, target, size_average=False
+            ).item()  # sum up batch loss
+            pred = output.max(1, keepdim=True)[
+                1
+            ]  # get the index of the max log-probability
             correct += pred.eq(target.view_as(pred)).sum().item()
 
     test_loss /= len(test_loader.dataset)
@@ -229,10 +239,16 @@ if __name__ == "__main__":
     parser.add_argument("--batch-size", type=int, default=64, metavar="N")
 
     # Container environment
-    parser.add_argument("--hosts", type=list, default=json.loads(os.environ["SM_HOSTS"]))
-    parser.add_argument("--current-host", type=str, default=os.environ["SM_CURRENT_HOST"])
+    parser.add_argument(
+        "--hosts", type=list, default=json.loads(os.environ["SM_HOSTS"])
+    )
+    parser.add_argument(
+        "--current-host", type=str, default=os.environ["SM_CURRENT_HOST"]
+    )
     parser.add_argument("--model-dir", type=str, default=os.environ["SM_MODEL_DIR"])
-    parser.add_argument("--data-dir", type=str, default=os.environ["SM_CHANNEL_TRAINING"])
+    parser.add_argument(
+        "--data-dir", type=str, default=os.environ["SM_CHANNEL_TRAINING"]
+    )
     parser.add_argument("--num-gpus", type=int, default=os.environ["SM_NUM_GPUS"])
     parser.add_argument("--num-cpus", type=int, default=os.environ["SM_NUM_CPUS"])
 

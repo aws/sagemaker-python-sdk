@@ -125,7 +125,9 @@ class MultiDataModel(Model):
         # with FrameworkEstimator set framework specific environment variables which need to be
         # copied over
         if self.model:
-            container_definition = self.model.prepare_container_def(instance_type, accelerator_type)
+            container_definition = self.model.prepare_container_def(
+                instance_type, accelerator_type
+            )
             image = container_definition["Image"]
             environment = container_definition["Environment"]
         else:
@@ -216,10 +218,14 @@ class MultiDataModel(Model):
         if role is None:
             raise ValueError("Role can not be null for deploying a model")
 
-        if instance_type == "local" and not isinstance(self.sagemaker_session, local.LocalSession):
+        if instance_type == "local" and not isinstance(
+            self.sagemaker_session, local.LocalSession
+        ):
             self.sagemaker_session = local.LocalSession()
 
-        container_def = self.prepare_container_def(instance_type, accelerator_type=accelerator_type)
+        container_def = self.prepare_container_def(
+            instance_type, accelerator_type=accelerator_type
+        )
         self.sagemaker_session.create_model(
             self.name,
             role,
@@ -230,7 +236,10 @@ class MultiDataModel(Model):
         )
 
         production_variant = sagemaker.production_variant(
-            self.name, instance_type, initial_instance_count, accelerator_type=accelerator_type
+            self.name,
+            instance_type,
+            initial_instance_count,
+            accelerator_type=accelerator_type,
         )
         if endpoint_name:
             self.endpoint_name = endpoint_name
@@ -297,8 +306,12 @@ class MultiDataModel(Model):
             destination_bucket, destination_model_data_path = s3.parse_s3_url(dst_url)
 
             # Copy the model artifact
-            self.s3_client.copy(copy_source, destination_bucket, destination_model_data_path)
-            return os.path.join("s3://", destination_bucket, destination_model_data_path)
+            self.s3_client.copy(
+                copy_source, destination_bucket, destination_model_data_path
+            )
+            return os.path.join(
+                "s3://", destination_bucket, destination_model_data_path
+            )
 
         # If the model source is a local path, upload the local model artifact to the destination
         #  s3 path
@@ -307,8 +320,12 @@ class MultiDataModel(Model):
             if model_data_path:
                 dst_s3_uri = os.path.join(dst_prefix, model_data_path)
             else:
-                dst_s3_uri = os.path.join(dst_prefix, os.path.basename(model_data_source))
-            self.s3_client.upload_file(model_data_source, destination_bucket, dst_s3_uri)
+                dst_s3_uri = os.path.join(
+                    dst_prefix, os.path.basename(model_data_source)
+                )
+            self.s3_client.upload_file(
+                model_data_source, destination_bucket, dst_s3_uri
+            )
             # return upload_path
             return os.path.join("s3://", destination_bucket, dst_s3_uri)
 
@@ -325,7 +342,9 @@ class MultiDataModel(Model):
         Yields: Paths to model archives relative to model_data_prefix path.
         """
         bucket, url_prefix = s3.parse_s3_url(self.model_data_prefix)
-        file_keys = self.sagemaker_session.list_s3_files(bucket=bucket, key_prefix=url_prefix)
+        file_keys = self.sagemaker_session.list_s3_files(
+            bucket=bucket, key_prefix=url_prefix
+        )
         for file_key in file_keys:
             # Return the model paths relative to the model_data_prefix
             # Ex: "a/b/c.tar.gz" -> "b/c.tar.gz" where url_prefix = "a/"

@@ -182,7 +182,9 @@ class AlgorithmEstimator(EstimatorBase):
 
         # Check that the input mode provided is compatible with the training input modes for the
         # algorithm.
-        train_input_modes = self._algorithm_training_input_modes(train_spec["TrainingChannels"])
+        train_input_modes = self._algorithm_training_input_modes(
+            train_spec["TrainingChannels"]
+        )
         if self.input_mode not in train_input_modes:
             raise ValueError(
                 "Invalid input mode: %s. %s only supports: %s"
@@ -233,7 +235,9 @@ class AlgorithmEstimator(EstimatorBase):
         The fit() method, that does the model training, calls this method to
         find the image to use for model training.
         """
-        raise RuntimeError("train_image is never meant to be called on Algorithm Estimators")
+        raise RuntimeError(
+            "train_image is never meant to be called on Algorithm Estimators"
+        )
 
     def enable_network_isolation(self):
         """Return True if this Estimator will need network isolation to run.
@@ -384,7 +388,9 @@ class AlgorithmEstimator(EstimatorBase):
 
             tags = tags or self.tags
         else:
-            raise RuntimeError("No finished training job found associated with this estimator")
+            raise RuntimeError(
+                "No finished training job found associated with this estimator"
+            )
 
         return Transformer(
             model_name,
@@ -446,13 +452,20 @@ class AlgorithmEstimator(EstimatorBase):
         for c in channels:
             if c not in training_channels:
                 raise ValueError(
-                    "Unknown input channel: %s is not supported by: %s" % (c, algorithm_name)
+                    "Unknown input channel: %s is not supported by: %s"
+                    % (c, algorithm_name)
                 )
 
         # check for required channels that were not provided
         for name, channel in training_channels.items():
-            if name not in channels and "IsRequired" in channel and channel["IsRequired"]:
-                raise ValueError("Required input channel: %s Was not provided." % (name))
+            if (
+                name not in channels
+                and "IsRequired" in channel
+                and channel["IsRequired"]
+            ):
+                raise ValueError(
+                    "Required input channel: %s Was not provided." % (name)
+                )
 
     def _validate_and_cast_hyperparameter(self, name, v):
         """
@@ -464,7 +477,8 @@ class AlgorithmEstimator(EstimatorBase):
 
         if name not in self.hyperparameter_definitions:
             raise ValueError(
-                "Invalid hyperparameter: %s is not supported by %s" % (name, algorithm_name)
+                "Invalid hyperparameter: %s is not supported by %s"
+                % (name, algorithm_name)
             )
 
         definition = self.hyperparameter_definitions[name]
@@ -475,7 +489,9 @@ class AlgorithmEstimator(EstimatorBase):
 
         if "range" in definition and not definition["range"].is_valid(value):
             valid_range = definition["range"].as_tuning_range(name)
-            raise ValueError("Invalid value: %s Supported range: %s" % (value, valid_range))
+            raise ValueError(
+                "Invalid value: %s Supported range: %s" % (value, valid_range)
+            )
         return value
 
     def _validate_and_set_default_hyperparameters(self):
@@ -570,7 +586,9 @@ class AlgorithmEstimator(EstimatorBase):
         return current_input_modes
 
     @classmethod
-    def _prepare_init_params_from_job_description(cls, job_details, model_channel_name=None):
+    def _prepare_init_params_from_job_description(
+        cls, job_details, model_channel_name=None
+    ):
         """Convert the job description to init params that can be handled by the
         class constructor
 
@@ -583,9 +601,9 @@ class AlgorithmEstimator(EstimatorBase):
         Returns:
             dict: The transformed init_params
         """
-        init_params = super(AlgorithmEstimator, cls)._prepare_init_params_from_job_description(
-            job_details, model_channel_name
-        )
+        init_params = super(
+            AlgorithmEstimator, cls
+        )._prepare_init_params_from_job_description(job_details, model_channel_name)
 
         # This hyperparameter is added by Amazon SageMaker Automatic Model Tuning.
         # It cannot be set through instantiating an estimator.

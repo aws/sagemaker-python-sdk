@@ -56,14 +56,18 @@ class CandidateEstimator(object):
                 )
 
                 inputs = training_job["InputDataConfig"]
-                candidate_step = CandidateStep(step_name, inputs, step_type, training_job)
+                candidate_step = CandidateStep(
+                    step_name, inputs, step_type, training_job
+                )
                 candidate_steps.append(candidate_step)
             elif step_type == "TransformJob":
                 transform_job = self.sagemaker_session.sagemaker_client.describe_transform_job(
                     TransformJobName=step_name
                 )
                 inputs = transform_job["TransformInput"]
-                candidate_step = CandidateStep(step_name, inputs, step_type, transform_job)
+                candidate_step = CandidateStep(
+                    step_name, inputs, step_type, transform_job
+                )
                 candidate_steps.append(candidate_step)
         return candidate_steps
 
@@ -106,7 +110,9 @@ class CandidateEstimator(object):
         # convert inputs to s3_input format
         if isinstance(inputs, string_types):
             if not inputs.startswith("s3://"):
-                inputs = self.sagemaker_session.upload_data(inputs, key_prefix="auto-ml-input-data")
+                inputs = self.sagemaker_session.upload_data(
+                    inputs, key_prefix="auto-ml-input-data"
+                )
 
         for step in self.steps:
             step_type = step["type"]
@@ -144,7 +150,9 @@ class CandidateEstimator(object):
 
             elif step_type == "TransformJob":
                 # prepare inputs
-                if not isinstance(inputs, string_types) or not inputs.startswith("s3://"):
+                if not isinstance(inputs, string_types) or not inputs.startswith(
+                    "s3://"
+                ):
                     msg = "Cannot format input {}. Expecting a string starts with file:// or s3://"
                     raise ValueError(msg.format(inputs))
 
@@ -154,7 +162,9 @@ class CandidateEstimator(object):
                 base_name = "sagemaker-automl-transform-rerun"
                 step_name = name_from_base(base_name)
                 step["name"] = step_name
-                transform_args = self._get_transform_args(desc, inputs, step_name, volume_kms_key)
+                transform_args = self._get_transform_args(
+                    desc, inputs, step_name, volume_kms_key
+                )
                 self.sagemaker_session.transform(**transform_args)
                 running_jobs[step_name] = True
 
@@ -167,11 +177,15 @@ class CandidateEstimator(object):
                     if step_type == "TrainingJob":
                         status = self.sagemaker_session.sagemaker_client.describe_training_job(
                             TrainingJobName=step_name
-                        )["TrainingJobStatus"]
+                        )[
+                            "TrainingJobStatus"
+                        ]
                     elif step_type == "TransformJob":
                         status = self.sagemaker_session.sagemaker_client.describe_transform_job(
                             TransformJobName=step_name
-                        )["TransformJobStatus"]
+                        )[
+                            "TransformJobStatus"
+                        ]
                     if status in ("Completed", "Failed", "Stopped"):
                         running_jobs[step_name] = False
                 if self._check_all_job_finished(running_jobs):
@@ -193,7 +207,13 @@ class CandidateEstimator(object):
         return True
 
     def _get_train_args(
-        self, desc, inputs, name, volume_kms_key, encrypt_inter_container_traffic, vpc_config
+        self,
+        desc,
+        inputs,
+        name,
+        volume_kms_key,
+        encrypt_inter_container_traffic,
+        vpc_config,
     ):
         """Format training args to pass in sagemaker_session.train.
 
@@ -280,7 +300,9 @@ class CandidateEstimator(object):
         if "BatchStrategy" in desc:
             transform_args["strategy"] = desc["BatchStrategy"]
         if "MaxConcurrentTransforms" in desc:
-            transform_args["max_concurrent_transforms"] = desc["MaxConcurrentTransforms"]
+            transform_args["max_concurrent_transforms"] = desc[
+                "MaxConcurrentTransforms"
+            ]
         if "MaxPayloadInMB" in desc:
             transform_args["max_payload"] = desc["MaxPayloadInMB"]
         if "Environment" in desc:

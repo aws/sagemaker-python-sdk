@@ -49,7 +49,9 @@ CPU = "ml.c4.xlarge"
 
 ENDPOINT_DESC = {"EndpointConfigName": "test-endpoint"}
 
-ENDPOINT_CONFIG_DESC = {"ProductionVariants": [{"ModelName": "model-1"}, {"ModelName": "model-2"}]}
+ENDPOINT_CONFIG_DESC = {
+    "ProductionVariants": [{"ModelName": "model-1"}, {"ModelName": "model-2"}]
+}
 
 LIST_TAGS_RESULT = {"Tags": [{"Key": "TagtestKey", "Value": "TagtestValue"}]}
 
@@ -70,7 +72,9 @@ def sagemaker_session():
     describe = {"ModelArtifacts": {"S3ModelArtifacts": "s3://m/m.tar.gz"}}
     session.sagemaker_client.describe_training_job = Mock(return_value=describe)
     session.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)
-    session.sagemaker_client.describe_endpoint_config = Mock(return_value=ENDPOINT_CONFIG_DESC)
+    session.sagemaker_client.describe_endpoint_config = Mock(
+        return_value=ENDPOINT_CONFIG_DESC
+    )
     session.sagemaker_client.list_tags = Mock(return_value=LIST_TAGS_RESULT)
     session.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
     session.expand_role = Mock(name="expand_role", return_value=ROLE)
@@ -78,11 +82,15 @@ def sagemaker_session():
 
 
 def _get_full_cpu_image_uri(version, py_version=PYTHON_VERSION):
-    return IMAGE_URI_FORMAT_STRING.format(REGION, IMAGE_NAME, version, "cpu", py_version)
+    return IMAGE_URI_FORMAT_STRING.format(
+        REGION, IMAGE_NAME, version, "cpu", py_version
+    )
 
 
 def _get_full_gpu_image_uri(version, py_version=PYTHON_VERSION):
-    return IMAGE_URI_FORMAT_STRING.format(REGION, IMAGE_NAME, version, "gpu", py_version)
+    return IMAGE_URI_FORMAT_STRING.format(
+        REGION, IMAGE_NAME, version, "gpu", py_version
+    )
 
 
 def _get_full_cpu_image_uri_with_ei(version, py_version=PYTHON_VERSION):
@@ -106,7 +114,9 @@ def _chainer_estimator(
         role=ROLE,
         sagemaker_session=sagemaker_session,
         train_instance_count=INSTANCE_COUNT,
-        train_instance_type=train_instance_type if train_instance_type else INSTANCE_TYPE,
+        train_instance_type=train_instance_type
+        if train_instance_type
+        else INSTANCE_TYPE,
         base_job_name=base_job_name,
         use_mpi=use_mpi,
         num_processes=num_processes,
@@ -224,7 +234,10 @@ def test_attach_with_additional_hyperparameters(sagemaker_session, chainer_versi
         chainer_version, PYTHON_VERSION
     )
     returned_job_description = {
-        "AlgorithmSpecification": {"TrainingInputMode": "File", "TrainingImage": training_image},
+        "AlgorithmSpecification": {
+            "TrainingInputMode": "File",
+            "TrainingImage": training_image,
+        },
         "HyperParameters": {
             "sagemaker_submit_directory": '"s3://some/sourcedir.tar.gz"',
             "sagemaker_program": '"iris-dnn-classifier.py"',
@@ -255,7 +268,9 @@ def test_attach_with_additional_hyperparameters(sagemaker_session, chainer_versi
         name="describe_training_job", return_value=returned_job_description
     )
 
-    estimator = Chainer.attach(training_job_name="neo", sagemaker_session=sagemaker_session)
+    estimator = Chainer.attach(
+        training_job_name="neo", sagemaker_session=sagemaker_session
+    )
     assert bool(estimator.hyperparameters()["sagemaker_use_mpi"])
     assert int(estimator.hyperparameters()["sagemaker_num_processes"]) == 4
     assert int(estimator.hyperparameters()["sagemaker_process_slots_per_host"]) == 10
@@ -386,14 +401,18 @@ def test_chainer(strftime, sagemaker_session, chainer_version):
     assert boto_call_names == ["resource"]
 
     expected_train_args = _create_train_job(chainer_version)
-    expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
+    expected_train_args["input_config"][0]["DataSource"]["S3DataSource"][
+        "S3Uri"
+    ] = inputs
 
     actual_train_args = sagemaker_session.method_calls[0][2]
     assert actual_train_args == expected_train_args
 
     model = chainer.create_model()
 
-    expected_image_base = "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-chainer:{}-gpu-{}"
+    expected_image_base = (
+        "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-chainer:{}-gpu-{}"
+    )
     assert {
         "Environment": {
             "SAGEMAKER_SUBMIT_DIRECTORY": "s3://mybucket/sagemaker-chainer-{}/source/sourcedir.tar.gz".format(
@@ -428,7 +447,10 @@ def test_model(sagemaker_session):
 @patch("sagemaker.fw_utils.tar_and_upload_dir", MagicMock())
 def test_model_prepare_container_def_accelerator_error(sagemaker_session):
     model = ChainerModel(
-        MODEL_DATA, role=ROLE, entry_point=SCRIPT_PATH, sagemaker_session=sagemaker_session
+        MODEL_DATA,
+        role=ROLE,
+        entry_point=SCRIPT_PATH,
+        sagemaker_session=sagemaker_session,
     )
     with pytest.raises(ValueError):
         model.prepare_container_def(INSTANCE_TYPE, accelerator_type=ACCELERATOR_TYPE)
@@ -440,7 +462,9 @@ def test_model_prepare_container_def_no_instance_type_or_image():
     with pytest.raises(ValueError) as e:
         model.prepare_container_def()
 
-    expected_msg = "Must supply either an instance type (for choosing CPU vs GPU) or an image URI."
+    expected_msg = (
+        "Must supply either an instance type (for choosing CPU vs GPU) or an image URI."
+    )
     assert expected_msg in str(e)
 
 
@@ -468,7 +492,9 @@ def test_train_image_cpu_instances(sagemaker_session, chainer_version):
     )
     assert chainer.train_image() == _get_full_cpu_image_uri(chainer_version)
 
-    chainer = _chainer_estimator(sagemaker_session, chainer_version, train_instance_type="ml.m16")
+    chainer = _chainer_estimator(
+        sagemaker_session, chainer_version, train_instance_type="ml.m16"
+    )
     assert chainer.train_image() == _get_full_cpu_image_uri(chainer_version)
 
 
@@ -489,7 +515,10 @@ def test_attach(sagemaker_session, chainer_version):
         chainer_version, PYTHON_VERSION
     )
     returned_job_description = {
-        "AlgorithmSpecification": {"TrainingInputMode": "File", "TrainingImage": training_image},
+        "AlgorithmSpecification": {
+            "TrainingInputMode": "File",
+            "TrainingImage": training_image,
+        },
         "HyperParameters": {
             "sagemaker_submit_directory": '"s3://some/sourcedir.tar.gz"',
             "sagemaker_program": '"iris-dnn-classifier.py"',
@@ -517,7 +546,9 @@ def test_attach(sagemaker_session, chainer_version):
         name="describe_training_job", return_value=returned_job_description
     )
 
-    estimator = Chainer.attach(training_job_name="neo", sagemaker_session=sagemaker_session)
+    estimator = Chainer.attach(
+        training_job_name="neo", sagemaker_session=sagemaker_session
+    )
     assert estimator.latest_training_job.job_name == "neo"
     assert estimator.py_version == PYTHON_VERSION
     assert estimator.framework_version == chainer_version
@@ -573,7 +604,10 @@ def test_attach_wrong_framework(sagemaker_session):
 def test_attach_custom_image(sagemaker_session):
     training_image = "1.dkr.ecr.us-west-2.amazonaws.com/my_custom_chainer_image:latest"
     returned_job_description = {
-        "AlgorithmSpecification": {"TrainingInputMode": "File", "TrainingImage": training_image},
+        "AlgorithmSpecification": {
+            "TrainingInputMode": "File",
+            "TrainingImage": training_image,
+        },
         "HyperParameters": {
             "sagemaker_submit_directory": '"s3://some/sourcedir.tar.gz"',
             "sagemaker_program": '"iris-dnn-classifier.py"',
@@ -601,7 +635,9 @@ def test_attach_custom_image(sagemaker_session):
         name="describe_training_job", return_value=returned_job_description
     )
 
-    estimator = Chainer.attach(training_job_name="neo", sagemaker_session=sagemaker_session)
+    estimator = Chainer.attach(
+        training_job_name="neo", sagemaker_session=sagemaker_session
+    )
     assert estimator.image_name == training_image
     assert estimator.train_image() == training_image
 
@@ -618,7 +654,9 @@ def test_estimator_py2_warning(warning, sagemaker_session):
     )
 
     assert estimator.py_version == "py2"
-    warning.assert_called_with(estimator.__framework_name__, defaults.LATEST_PY2_VERSION)
+    warning.assert_called_with(
+        estimator.__framework_name__, defaults.LATEST_PY2_VERSION
+    )
 
 
 @patch("sagemaker.chainer.model.python_deprecation_warning")

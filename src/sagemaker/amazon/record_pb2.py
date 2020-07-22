@@ -48,7 +48,9 @@ _FLOAT32TENSOR = _descriptor.Descriptor(
             containing_type=None,
             is_extension=False,
             extension_scope=None,
-            options=_descriptor._ParseOptions(descriptor_pb2.FieldOptions(), _b("\020\001")),
+            options=_descriptor._ParseOptions(
+                descriptor_pb2.FieldOptions(), _b("\020\001")
+            ),
             file=DESCRIPTOR,
         ),
         _descriptor.FieldDescriptor(
@@ -66,7 +68,9 @@ _FLOAT32TENSOR = _descriptor.Descriptor(
             containing_type=None,
             is_extension=False,
             extension_scope=None,
-            options=_descriptor._ParseOptions(descriptor_pb2.FieldOptions(), _b("\020\001")),
+            options=_descriptor._ParseOptions(
+                descriptor_pb2.FieldOptions(), _b("\020\001")
+            ),
             file=DESCRIPTOR,
         ),
         _descriptor.FieldDescriptor(
@@ -84,7 +88,9 @@ _FLOAT32TENSOR = _descriptor.Descriptor(
             containing_type=None,
             is_extension=False,
             extension_scope=None,
-            options=_descriptor._ParseOptions(descriptor_pb2.FieldOptions(), _b("\020\001")),
+            options=_descriptor._ParseOptions(
+                descriptor_pb2.FieldOptions(), _b("\020\001")
+            ),
             file=DESCRIPTOR,
         ),
     ],
@@ -123,7 +129,9 @@ _FLOAT64TENSOR = _descriptor.Descriptor(
             containing_type=None,
             is_extension=False,
             extension_scope=None,
-            options=_descriptor._ParseOptions(descriptor_pb2.FieldOptions(), _b("\020\001")),
+            options=_descriptor._ParseOptions(
+                descriptor_pb2.FieldOptions(), _b("\020\001")
+            ),
             file=DESCRIPTOR,
         ),
         _descriptor.FieldDescriptor(
@@ -141,7 +149,9 @@ _FLOAT64TENSOR = _descriptor.Descriptor(
             containing_type=None,
             is_extension=False,
             extension_scope=None,
-            options=_descriptor._ParseOptions(descriptor_pb2.FieldOptions(), _b("\020\001")),
+            options=_descriptor._ParseOptions(
+                descriptor_pb2.FieldOptions(), _b("\020\001")
+            ),
             file=DESCRIPTOR,
         ),
         _descriptor.FieldDescriptor(
@@ -159,7 +169,9 @@ _FLOAT64TENSOR = _descriptor.Descriptor(
             containing_type=None,
             is_extension=False,
             extension_scope=None,
-            options=_descriptor._ParseOptions(descriptor_pb2.FieldOptions(), _b("\020\001")),
+            options=_descriptor._ParseOptions(
+                descriptor_pb2.FieldOptions(), _b("\020\001")
+            ),
             file=DESCRIPTOR,
         ),
     ],
@@ -198,7 +210,9 @@ _INT32TENSOR = _descriptor.Descriptor(
             containing_type=None,
             is_extension=False,
             extension_scope=None,
-            options=_descriptor._ParseOptions(descriptor_pb2.FieldOptions(), _b("\020\001")),
+            options=_descriptor._ParseOptions(
+                descriptor_pb2.FieldOptions(), _b("\020\001")
+            ),
             file=DESCRIPTOR,
         ),
         _descriptor.FieldDescriptor(
@@ -216,7 +230,9 @@ _INT32TENSOR = _descriptor.Descriptor(
             containing_type=None,
             is_extension=False,
             extension_scope=None,
-            options=_descriptor._ParseOptions(descriptor_pb2.FieldOptions(), _b("\020\001")),
+            options=_descriptor._ParseOptions(
+                descriptor_pb2.FieldOptions(), _b("\020\001")
+            ),
             file=DESCRIPTOR,
         ),
         _descriptor.FieldDescriptor(
@@ -234,7 +250,9 @@ _INT32TENSOR = _descriptor.Descriptor(
             containing_type=None,
             is_extension=False,
             extension_scope=None,
-            options=_descriptor._ParseOptions(descriptor_pb2.FieldOptions(), _b("\020\001")),
+            options=_descriptor._ParseOptions(
+                descriptor_pb2.FieldOptions(), _b("\020\001")
+            ),
             file=DESCRIPTOR,
         ),
     ],
@@ -636,9 +654,13 @@ _VALUE.fields_by_name["float64_tensor"].message_type = _FLOAT64TENSOR
 _VALUE.fields_by_name["int32_tensor"].message_type = _INT32TENSOR
 _VALUE.fields_by_name["bytes"].message_type = _BYTES
 _VALUE.oneofs_by_name["value"].fields.append(_VALUE.fields_by_name["float32_tensor"])
-_VALUE.fields_by_name["float32_tensor"].containing_oneof = _VALUE.oneofs_by_name["value"]
+_VALUE.fields_by_name["float32_tensor"].containing_oneof = _VALUE.oneofs_by_name[
+    "value"
+]
 _VALUE.oneofs_by_name["value"].fields.append(_VALUE.fields_by_name["float64_tensor"])
-_VALUE.fields_by_name["float64_tensor"].containing_oneof = _VALUE.oneofs_by_name["value"]
+_VALUE.fields_by_name["float64_tensor"].containing_oneof = _VALUE.oneofs_by_name[
+    "value"
+]
 _VALUE.oneofs_by_name["value"].fields.append(_VALUE.fields_by_name["int32_tensor"])
 _VALUE.fields_by_name["int32_tensor"].containing_oneof = _VALUE.oneofs_by_name["value"]
 _VALUE.oneofs_by_name["value"].fields.append(_VALUE.fields_by_name["bytes"])
@@ -746,7 +768,8 @@ _sym_db.RegisterMessage(Record.LabelEntry)
 
 DESCRIPTOR.has_options = True
 DESCRIPTOR._options = _descriptor._ParseOptions(
-    descriptor_pb2.FileOptions(), _b("\n com.amazonaws.aialgorithms.protoB\014RecordProtos")
+    descriptor_pb2.FileOptions(),
+    _b("\n com.amazonaws.aialgorithms.protoB\014RecordProtos"),
 )
 _FLOAT32TENSOR.fields_by_name["values"].has_options = True
 _FLOAT32TENSOR.fields_by_name["values"]._options = _descriptor._ParseOptions(

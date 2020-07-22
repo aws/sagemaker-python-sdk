@@ -37,6 +37,8 @@ def create_auto_ml_job_if_not_exist(sagemaker_session):
             sagemaker_session=sagemaker_session,
             max_candidates=3,
         )
-        inputs = sagemaker_session.upload_data(path=TRAINING_DATA, key_prefix=PREFIX + "/input")
+        inputs = sagemaker_session.upload_data(
+            path=TRAINING_DATA, key_prefix=PREFIX + "/input"
+        )
         with timeout(minutes=AUTO_ML_DEFAULT_TIMEMOUT_MINUTES):
             auto_ml.fit(inputs, job_name=auto_ml_job_name, wait=True)

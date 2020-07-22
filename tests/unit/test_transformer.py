@@ -167,7 +167,10 @@ def test_transform_with_all_params(start_new_job, transformer):
         "TrialName": "t",
         "TrialComponentDisplayName": "tc",
     }
-    model_client_config = {"InvocationsTimeoutInSeconds": 60, "InvocationsMaxRetries": 2}
+    model_client_config = {
+        "InvocationsTimeoutInSeconds": 60,
+        "InvocationsMaxRetries": 2,
+    }
 
     transformer.transform(
         DATA,
@@ -202,7 +205,9 @@ def test_transform_with_all_params(start_new_job, transformer):
 
 @patch("sagemaker.transformer.name_from_base")
 @patch("sagemaker.transformer._TransformJob.start_new")
-def test_transform_with_base_job_name_provided(start_new_job, name_from_base, transformer):
+def test_transform_with_base_job_name_provided(
+    start_new_job, name_from_base, transformer
+):
     base_name = "base-job-name"
     full_name = "{}-{}".format(base_name, TIMESTAMP)
 
@@ -218,7 +223,9 @@ def test_transform_with_base_job_name_provided(start_new_job, name_from_base, tr
 @patch("sagemaker.transformer.Transformer._retrieve_base_name", return_value=IMAGE_NAME)
 @patch("sagemaker.transformer.name_from_base")
 @patch("sagemaker.transformer._TransformJob.start_new")
-def test_transform_with_base_name(start_new_job, name_from_base, retrieve_base_name, transformer):
+def test_transform_with_base_name(
+    start_new_job, name_from_base, retrieve_base_name, transformer
+):
     full_name = "{}-{}".format(IMAGE_NAME, TIMESTAMP)
     name_from_base.return_value = full_name
 
@@ -229,7 +236,9 @@ def test_transform_with_base_name(start_new_job, name_from_base, retrieve_base_n
     assert transformer._current_job_name == full_name
 
 
-@patch("sagemaker.transformer.Transformer._retrieve_image_name", return_value=IMAGE_NAME)
+@patch(
+    "sagemaker.transformer.Transformer._retrieve_image_name", return_value=IMAGE_NAME
+)
 @patch("sagemaker.transformer.name_from_base")
 @patch("sagemaker.transformer._TransformJob.start_new")
 def test_transform_with_job_name_based_on_image(
@@ -245,13 +254,17 @@ def test_transform_with_job_name_based_on_image(
     assert transformer._current_job_name == full_name
 
 
-@pytest.mark.parametrize("model_desc", [MODEL_DESC_PRIMARY_CONTAINER, MODEL_DESC_CONTAINERS_ONLY])
+@pytest.mark.parametrize(
+    "model_desc", [MODEL_DESC_PRIMARY_CONTAINER, MODEL_DESC_CONTAINERS_ONLY]
+)
 @patch("sagemaker.transformer.name_from_base")
 @patch("sagemaker.transformer._TransformJob.start_new")
 def test_transform_with_job_name_based_on_containers(
     start_new_job, name_from_base, model_desc, transformer
 ):
-    transformer.sagemaker_session.sagemaker_client.describe_model.return_value = model_desc
+    transformer.sagemaker_session.sagemaker_client.describe_model.return_value = (
+        model_desc
+    )
 
     full_name = "{}-{}".format(IMAGE_NAME, TIMESTAMP)
     name_from_base.return_value = full_name
@@ -273,7 +286,9 @@ def test_transform_with_job_name_based_on_containers(
 def test_transform_with_job_name_based_on_model_name(
     start_new_job, name_from_base, model_desc, transformer
 ):
-    transformer.sagemaker_session.sagemaker_client.describe_model.return_value = model_desc
+    transformer.sagemaker_session.sagemaker_client.describe_model.return_value = (
+        model_desc
+    )
 
     full_name = "{}-{}".format(MODEL_NAME, TIMESTAMP)
     name_from_base.return_value = full_name
@@ -288,7 +303,9 @@ def test_transform_with_job_name_based_on_model_name(
 
 
 @patch("sagemaker.transformer._TransformJob.start_new")
-def test_transform_with_generated_output_path(start_new_job, transformer, sagemaker_session):
+def test_transform_with_generated_output_path(
+    start_new_job, transformer, sagemaker_session
+):
     transformer.output_path = None
     sagemaker_session.default_bucket.return_value = S3_BUCKET
 
@@ -323,7 +340,9 @@ def test_wait(ensure_last_transform_job, transformer):
 
 
 def test_ensure_last_transform_job_exists(transformer, sagemaker_session):
-    transformer.latest_transform_job = _TransformJob(sagemaker_session, "some-transform-job")
+    transformer.latest_transform_job = _TransformJob(
+        sagemaker_session, "some-transform-job"
+    )
     transformer._ensure_last_transform_job()
 
 
@@ -340,7 +359,9 @@ def test_ensure_last_transform_job_none(transformer):
     return_value=INIT_PARAMS,
 )
 def test_attach(prepare_init_params, transformer, sagemaker_session):
-    sagemaker_session.sagemaker_client.describe_transform_job = Mock(name="describe_transform_job")
+    sagemaker_session.sagemaker_client.describe_transform_job = Mock(
+        name="describe_transform_job"
+    )
     attached = Transformer.attach(JOB_NAME, sagemaker_session)
 
     assert prepare_init_params.called_once
@@ -353,7 +374,10 @@ def test_attach(prepare_init_params, transformer, sagemaker_session):
 def test_prepare_init_params_from_job_description_missing_keys(transformer):
     job_details = {
         "ModelName": MODEL_NAME,
-        "TransformResources": {"InstanceCount": INSTANCE_COUNT, "InstanceType": INSTANCE_TYPE},
+        "TransformResources": {
+            "InstanceCount": INSTANCE_COUNT,
+            "InstanceType": INSTANCE_TYPE,
+        },
         "TransformOutput": {"S3OutputPath": None},
         "TransformJobName": JOB_NAME,
     }
@@ -431,7 +455,10 @@ def test_start_new(prepare_data_processing, load_config, sagemaker_session):
     split_type = "Line"
     io_filter = "$"
     join_source = "Input"
-    model_client_config = {"InvocationsTimeoutInSeconds": 60, "InvocationsMaxRetries": 2}
+    model_client_config = {
+        "InvocationsTimeoutInSeconds": 60,
+        "InvocationsMaxRetries": 2,
+    }
 
     job = _TransformJob.start_new(
         transformer=transformer,
@@ -485,12 +512,16 @@ def test_load_config(transformer):
         },
     }
 
-    actual_config = _TransformJob._load_config(DATA, S3_DATA_TYPE, None, None, None, transformer)
+    actual_config = _TransformJob._load_config(
+        DATA, S3_DATA_TYPE, None, None, None, transformer
+    )
     assert actual_config == expected_config
 
 
 def test_format_inputs_to_input_config():
-    expected_config = {"DataSource": {"S3DataSource": {"S3DataType": S3_DATA_TYPE, "S3Uri": DATA}}}
+    expected_config = {
+        "DataSource": {"S3DataSource": {"S3DataType": S3_DATA_TYPE, "S3Uri": DATA}}
+    }
 
     actual_config = _TransformJob._format_inputs_to_input_config(
         DATA, S3_DATA_TYPE, None, None, None
@@ -541,7 +572,9 @@ def test_prepare_output_config_with_optional_params():
 
 
 def test_prepare_resource_config():
-    config = _TransformJob._prepare_resource_config(INSTANCE_COUNT, INSTANCE_TYPE, KMS_KEY_ID)
+    config = _TransformJob._prepare_resource_config(
+        INSTANCE_COUNT, INSTANCE_TYPE, KMS_KEY_ID
+    )
     assert config == {
         "InstanceCount": INSTANCE_COUNT,
         "InstanceType": INSTANCE_TYPE,
@@ -560,7 +593,11 @@ def test_data_processing_config():
     assert actual_config == {"JoinSource": "Input"}
 
     actual_config = _TransformJob._prepare_data_processing("$[0]", "$[1]", "Input")
-    assert actual_config == {"InputFilter": "$[0]", "OutputFilter": "$[1]", "JoinSource": "Input"}
+    assert actual_config == {
+        "InputFilter": "$[0]",
+        "OutputFilter": "$[1]",
+        "JoinSource": "Input",
+    }
 
     actual_config = _TransformJob._prepare_data_processing(None, None, None)
     assert actual_config is None

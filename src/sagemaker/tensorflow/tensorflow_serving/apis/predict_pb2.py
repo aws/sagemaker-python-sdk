@@ -18,7 +18,9 @@ _sym_db = _symbol_database.Default()
 from tensorflow.core.framework import (
     tensor_pb2 as tensorflow_dot_core_dot_framework_dot_tensor__pb2,
 )
-from tensorflow_serving.apis import model_pb2 as tensorflow__serving_dot_apis_dot_model__pb2
+from tensorflow_serving.apis import (
+    model_pb2 as tensorflow__serving_dot_apis_dot_model__pb2,
+)
 
 
 DESCRIPTOR = _descriptor.FileDescriptor(
@@ -342,7 +344,9 @@ _sym_db.RegisterMessage(PredictResponse.OutputsEntry)
 
 
 DESCRIPTOR.has_options = True
-DESCRIPTOR._options = _descriptor._ParseOptions(descriptor_pb2.FileOptions(), _b("\370\001\001"))
+DESCRIPTOR._options = _descriptor._ParseOptions(
+    descriptor_pb2.FileOptions(), _b("\370\001\001")
+)
 _PREDICTREQUEST_INPUTSENTRY.has_options = True
 _PREDICTREQUEST_INPUTSENTRY._options = _descriptor._ParseOptions(
     descriptor_pb2.MessageOptions(), _b("8\001")

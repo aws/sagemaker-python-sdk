@@ -41,7 +41,9 @@ EIA_SCRIPT = os.path.join(EIA_DIR, "empty_inference_script.py")
 @pytest.fixture(scope="module", name="pytorch_training_job")
 def fixture_training_job(sagemaker_session, pytorch_full_version, cpu_instance_type):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
-        pytorch = _get_pytorch_estimator(sagemaker_session, pytorch_full_version, cpu_instance_type)
+        pytorch = _get_pytorch_estimator(
+            sagemaker_session, pytorch_full_version, cpu_instance_type
+        )
 
         pytorch.fit({"training": _upload_training_data(pytorch)})
         return pytorch.latest_training_job.name
@@ -50,13 +52,19 @@ def fixture_training_job(sagemaker_session, pytorch_full_version, cpu_instance_t
 @pytest.mark.canary_quick
 @pytest.mark.skipif(
     PYTHON_VERSION == "py2",
-    reason="Python 2 is supported by PyTorch {} and lower versions.".format(LATEST_PY2_VERSION),
+    reason="Python 2 is supported by PyTorch {} and lower versions.".format(
+        LATEST_PY2_VERSION
+    ),
 )
 def test_sync_fit_deploy(pytorch_training_job, sagemaker_session, cpu_instance_type):
     # TODO: add tests against local mode when it's ready to be used
-    endpoint_name = "test-pytorch-sync-fit-attach-deploy{}".format(sagemaker_timestamp())
+    endpoint_name = "test-pytorch-sync-fit-attach-deploy{}".format(
+        sagemaker_timestamp()
+    )
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
-        estimator = PyTorch.attach(pytorch_training_job, sagemaker_session=sagemaker_session)
+        estimator = PyTorch.attach(
+            pytorch_training_job, sagemaker_session=sagemaker_session
+        )
         predictor = estimator.deploy(1, cpu_instance_type, endpoint_name=endpoint_name)
         data = numpy.zeros(shape=(1, 1, 28, 28), dtype=numpy.float32)
         predictor.predict(data)
@@ -71,7 +79,9 @@ def test_sync_fit_deploy(pytorch_training_job, sagemaker_session, cpu_instance_t
 @pytest.mark.local_mode
 @pytest.mark.skipif(
     PYTHON_VERSION == "py2",
-    reason="Python 2 is supported by PyTorch {} and lower versions.".format(LATEST_PY2_VERSION),
+    reason="Python 2 is supported by PyTorch {} and lower versions.".format(
+        LATEST_PY2_VERSION
+    ),
 )
 def test_fit_deploy(sagemaker_local_session, pytorch_full_version):
     pytorch = PyTorch(
@@ -99,7 +109,9 @@ def test_fit_deploy(sagemaker_local_session, pytorch_full_version):
 
 @pytest.mark.skipif(
     PYTHON_VERSION == "py2",
-    reason="Python 2 is supported by PyTorch {} and lower versions.".format(LATEST_PY2_VERSION),
+    reason="Python 2 is supported by PyTorch {} and lower versions.".format(
+        LATEST_PY2_VERSION
+    ),
 )
 def test_deploy_model(pytorch_training_job, sagemaker_session, cpu_instance_type):
     endpoint_name = "test-pytorch-deploy-model-{}".format(sagemaker_timestamp())
@@ -126,9 +138,13 @@ def test_deploy_model(pytorch_training_job, sagemaker_session, cpu_instance_type
 
 @pytest.mark.skipif(
     PYTHON_VERSION == "py2",
-    reason="Python 2 is supported by PyTorch {} and lower versions.".format(LATEST_PY2_VERSION),
+    reason="Python 2 is supported by PyTorch {} and lower versions.".format(
+        LATEST_PY2_VERSION
+    ),
 )
-def test_deploy_packed_model_with_entry_point_name(sagemaker_session, cpu_instance_type):
+def test_deploy_packed_model_with_entry_point_name(
+    sagemaker_session, cpu_instance_type
+):
     endpoint_name = "test-pytorch-deploy-model-{}".format(sagemaker_timestamp())
 
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
@@ -149,9 +165,12 @@ def test_deploy_packed_model_with_entry_point_name(sagemaker_session, cpu_instan
         assert output.shape == (batch_size, 10)
 
 
-@pytest.mark.skipif(PYTHON_VERSION == "py2", reason="PyTorch EIA does not support Python 2.")
 @pytest.mark.skipif(
-    test_region() not in EI_SUPPORTED_REGIONS, reason="EI isn't supported in that specific region."
+    PYTHON_VERSION == "py2", reason="PyTorch EIA does not support Python 2."
+)
+@pytest.mark.skipif(
+    test_region() not in EI_SUPPORTED_REGIONS,
+    reason="EI isn't supported in that specific region.",
 )
 def test_deploy_model_with_accelerator(sagemaker_session, cpu_instance_type):
     endpoint_name = "test-pytorch-deploy-eia-{}".format(sagemaker_timestamp())

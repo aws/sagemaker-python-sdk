@@ -152,5 +152,9 @@ def test_check_neo_region(sagemaker_session):
 
     boto_session = boto3.Session()
     for partition in boto_session.get_available_partitions():
-        for region_name in boto_session.get_available_regions("ec2", partition_name=partition):
-            assert (region_name in NEO_REGION_LIST) is model.check_neo_region(region_name)
+        for region_name in boto_session.get_available_regions(
+            "ec2", partition_name=partition
+        ):
+            assert (region_name in NEO_REGION_LIST) is model.check_neo_region(
+                region_name
+            )

@@ -44,13 +44,19 @@ def test_ipinsights(sagemaker_session, cpu_instance_type):
             )
 
         record_set = prepare_record_set_from_local_files(
-            data_path, ipinsights.data_location, num_records, FEATURE_DIM, sagemaker_session
+            data_path,
+            ipinsights.data_location,
+            num_records,
+            FEATURE_DIM,
+            sagemaker_session,
         )
         ipinsights.fit(records=record_set, job_name=job_name)
 
     with timeout_and_delete_endpoint_by_name(job_name, sagemaker_session):
         model = IPInsightsModel(
-            ipinsights.model_data, role="SageMakerRole", sagemaker_session=sagemaker_session
+            ipinsights.model_data,
+            role="SageMakerRole",
+            sagemaker_session=sagemaker_session,
         )
         predictor = model.deploy(1, cpu_instance_type, endpoint_name=job_name)
         assert isinstance(predictor, RealTimePredictor)

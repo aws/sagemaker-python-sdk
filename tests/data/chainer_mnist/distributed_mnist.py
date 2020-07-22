@@ -45,7 +45,9 @@ class MLP(chainer.Chain):
         return self.l3(h2)
 
 
-def _preprocess_mnist(raw, withlabel, ndim, scale, image_dtype, label_dtype, rgb_format):
+def _preprocess_mnist(
+    raw, withlabel, ndim, scale, image_dtype, label_dtype, rgb_format
+):
     images = raw["x"][-100:]
     if ndim == 2:
         images = images.reshape(-1, 28, 28)
@@ -129,7 +131,9 @@ if __name__ == "__main__":
     )
 
     updater = training.StandardUpdater(train_iter, optimizer, device=device)
-    trainer = training.Trainer(updater, (args.epochs, "epoch"), out=args.output_data_dir)
+    trainer = training.Trainer(
+        updater, (args.epochs, "epoch"), out=args.output_data_dir
+    )
 
     # Create a multi node evaluator from a standard Chainer evaluator.
     evaluator = extensions.Evaluator(test_iter, model, device=device)
@@ -147,7 +151,9 @@ if __name__ == "__main__":
             )
             trainer.extend(
                 extensions.PlotReport(
-                    ["main/accuracy", "validation/main/accuracy"], "epoch", file_name="accuracy.png"
+                    ["main/accuracy", "validation/main/accuracy"],
+                    "epoch",
+                    file_name="accuracy.png",
                 )
             )
         trainer.extend(extensions.snapshot(), trigger=(args.frequency, "epoch"))

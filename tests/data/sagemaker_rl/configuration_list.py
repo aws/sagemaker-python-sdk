@@ -52,7 +52,9 @@ class ConfigurationList(object):
             else:
                 sub_obj = obj.__dict__[top_key]
             # Recurse
-            return self._set_rl_property_value(sub_obj, sub_keys, val, "%s.%s" % (path, top_key))
+            return self._set_rl_property_value(
+                sub_obj, sub_keys, val, "%s.%s" % (path, top_key)
+            )
         else:
             key, val = self._parse_type(key, val)
             if key.startswith("__"):

@@ -88,7 +88,12 @@ def timeout_and_delete_endpoint_by_name(
 
 @contextmanager
 def timeout_and_delete_model_with_transformer(
-    transformer, sagemaker_session, seconds=0, minutes=0, hours=0, sleep_between_cleanup_attempts=10
+    transformer,
+    sagemaker_session,
+    seconds=0,
+    minutes=0,
+    hours=0,
+    sleep_between_cleanup_attempts=10,
 ):
     limit = seconds + 60 * minutes + 3600 * hours
 
@@ -104,11 +109,15 @@ def timeout_and_delete_model_with_transformer(
                 attempts -= 1
                 try:
                     transformer.delete_model()
-                    LOGGER.info("deleted SageMaker model {}".format(transformer.model_name))
+                    LOGGER.info(
+                        "deleted SageMaker model {}".format(transformer.model_name)
+                    )
 
                     _show_logs(transformer.model_name, "Models", sagemaker_session)
                     if no_errors:
-                        _cleanup_logs(transformer.model_name, "Models", sagemaker_session)
+                        _cleanup_logs(
+                            transformer.model_name, "Models", sagemaker_session
+                        )
                     break
                 except ClientError as ce:
                     if ce.response["Error"]["Code"] == "ValidationException":
@@ -129,7 +138,9 @@ def _delete_schedules_associated_with_endpoint(sagemaker_session, endpoint_name)
         endpoint_name (str): The name of the endpoint to delete schedules from.
 
     """
-    predictor = RealTimePredictor(endpoint=endpoint_name, sagemaker_session=sagemaker_session)
+    predictor = RealTimePredictor(
+        endpoint=endpoint_name, sagemaker_session=sagemaker_session
+    )
     monitors = predictor.list_monitors()
     for monitor in monitors:
         try:
@@ -142,7 +153,9 @@ def _delete_schedules_associated_with_endpoint(sagemaker_session, endpoint_name)
             # Wait for all executions to completely stop.
             # Schedules can't be deleted with running executions.
             for execution in executions:
-                for _ in retries(60, "Waiting for executions to stop", seconds_to_sleep=5):
+                for _ in retries(
+                    60, "Waiting for executions to stop", seconds_to_sleep=5
+                ):
                     status = execution.describe()["ProcessingJobStatus"]
                     if status == "Stopped":
                         break
@@ -150,7 +163,8 @@ def _delete_schedules_associated_with_endpoint(sagemaker_session, endpoint_name)
             monitor.delete_monitoring_schedule()
         except Exception as e:
             LOGGER.warning(
-                "Failed to delete monitor {}".format(monitor.monitoring_schedule_name), e
+                "Failed to delete monitor {}".format(monitor.monitoring_schedule_name),
+                e,
             )
 
 

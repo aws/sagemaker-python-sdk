@@ -59,7 +59,9 @@ class AutoML(object):
         self.vpc_config = vpc_config
         self.problem_type = problem_type
         self.max_candidate = max_candidates
-        self.max_runtime_per_training_job_in_seconds = max_runtime_per_training_job_in_seconds
+        self.max_runtime_per_training_job_in_seconds = (
+            max_runtime_per_training_job_in_seconds
+        )
         self.total_job_runtime_in_seconds = total_job_runtime_in_seconds
         self.target_attribute_name = target_attribute_name
         self.job_objective = job_objective
@@ -71,7 +73,9 @@ class AutoML(object):
         self._best_candidate = None
         self.sagemaker_session = sagemaker_session or Session()
 
-        self._check_problem_type_and_job_objective(self.problem_type, self.job_objective)
+        self._check_problem_type_and_job_objective(
+            self.problem_type, self.job_objective
+        )
 
     def fit(self, inputs=None, wait=True, logs=True, job_name=None):
         """Create an AutoML Job with the input dataset.
@@ -89,16 +93,22 @@ class AutoML(object):
         """
         if not wait and logs:
             logs = False
-            logger.warning("Setting logs to False. logs is only meaningful when wait is True.")
+            logger.warning(
+                "Setting logs to False. logs is only meaningful when wait is True."
+            )
 
         # upload data for users if provided local path
         # validations are done in _Job._format_inputs_to_input_config
         if isinstance(inputs, string_types):
             if not inputs.startswith("s3://"):
-                inputs = self.sagemaker_session.upload_data(inputs, key_prefix="auto-ml-input-data")
+                inputs = self.sagemaker_session.upload_data(
+                    inputs, key_prefix="auto-ml-input-data"
+                )
         self._prepare_for_auto_ml_job(job_name=job_name)
 
-        self.latest_auto_ml_job = AutoMLJob.start_new(self, inputs)  # pylint: disable=W0201
+        self.latest_auto_ml_job = AutoMLJob.start_new(
+            self, inputs
+        )  # pylint: disable=W0201
         if wait:
             self.latest_auto_ml_job.wait(logs=logs)
 
@@ -127,11 +137,15 @@ class AutoML(object):
 
         amlj = AutoML(
             role=auto_ml_job_desc["RoleArn"],
-            target_attribute_name=auto_ml_job_desc["InputDataConfig"][0]["TargetAttributeName"],
+            target_attribute_name=auto_ml_job_desc["InputDataConfig"][0][
+                "TargetAttributeName"
+            ],
             output_kms_key=auto_ml_job_desc["OutputDataConfig"].get("KmsKeyId"),
             output_path=auto_ml_job_desc["OutputDataConfig"]["S3OutputPath"],
             base_job_name=auto_ml_job_name,
-            compression_type=auto_ml_job_desc["InputDataConfig"][0].get("CompressionType"),
+            compression_type=auto_ml_job_desc["InputDataConfig"][0].get(
+                "CompressionType"
+            ),
             sagemaker_session=sagemaker_session,
             volume_kms_key=auto_ml_job_desc.get("AutoMLJobConfig", {})
             .get("SecurityConfig", {})
@@ -146,13 +160,17 @@ class AutoML(object):
             max_candidates=auto_ml_job_desc.get("AutoMLJobConfig", {})
             .get("CompletionCriteria", {})
             .get("MaxCandidates"),
-            max_runtime_per_training_job_in_seconds=auto_ml_job_desc.get("AutoMLJobConfig", {})
+            max_runtime_per_training_job_in_seconds=auto_ml_job_desc.get(
+                "AutoMLJobConfig", {}
+            )
             .get("CompletionCriteria", {})
             .get("MaxRuntimePerTrainingJobInSeconds"),
             total_job_runtime_in_seconds=auto_ml_job_desc.get("AutoMLJobConfig", {})
             .get("CompletionCriteria", {})
             .get("MaxAutoMLJobRuntimeInSeconds"),
-            job_objective=auto_ml_job_desc.get("AutoMLJobObjective", {}).get("MetricName"),
+            job_objective=auto_ml_job_desc.get("AutoMLJobObjective", {}).get(
+                "MetricName"
+            ),
             generate_candidate_definitions_only=auto_ml_job_desc.get(
                 "GenerateCandidateDefinitionsOnly", False
             ),
@@ -193,9 +211,13 @@ class AutoML(object):
         if job_name is None:
             job_name = self.current_job_name
         if self._auto_ml_job_desc is None:
-            self._auto_ml_job_desc = self.sagemaker_session.describe_auto_ml_job(job_name)
+            self._auto_ml_job_desc = self.sagemaker_session.describe_auto_ml_job(
+                job_name
+            )
         elif self._auto_ml_job_desc["AutoMLJobName"] != job_name:
-            self._auto_ml_job_desc = self.sagemaker_session.describe_auto_ml_job(job_name)
+            self._auto_ml_job_desc = self.sagemaker_session.describe_auto_ml_job(
+                job_name
+            )
 
         self._best_candidate = self._auto_ml_job_desc["BestCandidate"]
         return self._best_candidate
@@ -248,7 +270,9 @@ class AutoML(object):
         if max_results:
             list_candidates_args["max_results"] = max_results
 
-        return self.sagemaker_session.list_candidates(**list_candidates_args)["Candidates"]
+        return self.sagemaker_session.list_candidates(**list_candidates_args)[
+            "Candidates"
+        ]
 
     def create_model(
         self,
@@ -295,13 +319,19 @@ class AutoML(object):
 
         if candidate is None:
             candidate_dict = self.best_candidate()
-            candidate = CandidateEstimator(candidate_dict, sagemaker_session=sagemaker_session)
+            candidate = CandidateEstimator(
+                candidate_dict, sagemaker_session=sagemaker_session
+            )
         elif isinstance(candidate, dict):
-            candidate = CandidateEstimator(candidate, sagemaker_session=sagemaker_session)
+            candidate = CandidateEstimator(
+                candidate, sagemaker_session=sagemaker_session
+            )
 
         inference_containers = candidate.containers
 
-        self.validate_and_update_inference_response(inference_containers, inference_response_keys)
+        self.validate_and_update_inference_response(
+            inference_containers, inference_response_keys
+        )
 
         # construct Model objects
         models = []
@@ -454,7 +484,9 @@ class AutoML(object):
             self.current_job_name = name_from_base(base_name, max_length=32)
 
         if self.output_path is None:
-            self.output_path = "s3://{}/".format(self.sagemaker_session.default_bucket())
+            self.output_path = "s3://{}/".format(
+                self.sagemaker_session.default_bucket()
+            )
 
     @classmethod
     def _get_supported_inference_keys(cls, container, default=None):
@@ -475,7 +507,9 @@ class AutoML(object):
         try:
             return [
                 x.strip()
-                for x in container["Environment"]["SAGEMAKER_INFERENCE_SUPPORTED"].split(",")
+                for x in container["Environment"][
+                    "SAGEMAKER_INFERENCE_SUPPORTED"
+                ].split(",")
             ]
         except KeyError:
             if default is None:
@@ -499,7 +533,9 @@ class AutoML(object):
         if not inference_response_keys:
             return
         try:
-            supported_inference_keys = cls._get_supported_inference_keys(container=containers[-1])
+            supported_inference_keys = cls._get_supported_inference_keys(
+                container=containers[-1]
+            )
         except KeyError:
             raise ValueError(
                 "The inference model does not support selection of inference content beyond "
@@ -521,7 +557,9 @@ class AutoML(object):
             )
 
     @classmethod
-    def validate_and_update_inference_response(cls, inference_containers, inference_response_keys):
+    def validate_and_update_inference_response(
+        cls, inference_containers, inference_response_keys
+    ):
         """Validates the requested inference keys and updates inference containers to emit the
         requested content in the inference response.
 
@@ -551,7 +589,9 @@ class AutoML(object):
             for key in inference_response_keys:
                 if key in supported_inference_keys_container:
                     current_container_output = (
-                        current_container_output + "," + key if current_container_output else key
+                        current_container_output + "," + key
+                        if current_container_output
+                        else key
                     )
 
             if previous_container_output:
@@ -591,7 +631,9 @@ class AutoMLInput(object):
             self.inputs = [self.inputs]
         for entry in self.inputs:
             input_entry = {
-                "DataSource": {"S3DataSource": {"S3DataType": "S3Prefix", "S3Uri": entry}},
+                "DataSource": {
+                    "S3DataSource": {"S3DataType": "S3Prefix", "S3Uri": entry}
+                },
                 "TargetAttributeName": self.target_attribute_name,
             }
             if self.compression is not None:
@@ -606,7 +648,9 @@ class AutoMLJob(_Job):
     def __init__(self, sagemaker_session, job_name, inputs):
         self.inputs = inputs
         self.job_name = job_name
-        super(AutoMLJob, self).__init__(sagemaker_session=sagemaker_session, job_name=job_name)
+        super(AutoMLJob, self).__init__(
+            sagemaker_session=sagemaker_session, job_name=job_name
+        )
 
     @classmethod
     def start_new(cls, auto_ml, inputs):
@@ -656,11 +700,20 @@ class AutoMLJob(_Job):
             input_config = inputs.to_request_dict()
         else:
             input_config = cls._format_inputs_to_input_config(
-                inputs, validate_uri, auto_ml.compression_type, auto_ml.target_attribute_name
+                inputs,
+                validate_uri,
+                auto_ml.compression_type,
+                auto_ml.target_attribute_name,
             )
-        output_config = _Job._prepare_output_config(auto_ml.output_path, auto_ml.output_kms_key)
+        output_config = _Job._prepare_output_config(
+            auto_ml.output_path, auto_ml.output_kms_key
+        )
 
-        role = auto_ml.sagemaker_session.expand_role(auto_ml.role) if expand_role else auto_ml.role
+        role = (
+            auto_ml.sagemaker_session.expand_role(auto_ml.role)
+            if expand_role
+            else auto_ml.role
+        )
 
         stop_condition = cls._prepare_auto_ml_stop_condition(
             auto_ml.max_candidate,
@@ -676,7 +729,9 @@ class AutoMLJob(_Job):
         }
 
         if auto_ml.volume_kms_key:
-            auto_ml_job_config["SecurityConfig"]["VolumeKmsKeyId"] = auto_ml.volume_kms_key
+            auto_ml_job_config["SecurityConfig"][
+                "VolumeKmsKeyId"
+            ] = auto_ml.volume_kms_key
         if auto_ml.vpc_config:
             auto_ml_job_config["SecurityConfig"]["VpcConfig"] = auto_ml.vpc_config
 
@@ -740,7 +795,10 @@ class AutoMLJob(_Job):
 
     @classmethod
     def _prepare_auto_ml_stop_condition(
-        cls, max_candidates, max_runtime_per_training_job_in_seconds, total_job_runtime_in_seconds
+        cls,
+        max_candidates,
+        max_runtime_per_training_job_in_seconds,
+        total_job_runtime_in_seconds,
     ):
         """Defines the CompletionCriteria of an AutoMLJob.
 
@@ -761,7 +819,9 @@ class AutoMLJob(_Job):
                 "MaxRuntimePerTrainingJobInSeconds"
             ] = max_runtime_per_training_job_in_seconds
         if total_job_runtime_in_seconds is not None:
-            stopping_condition["MaxAutoMLJobRuntimeInSeconds"] = total_job_runtime_in_seconds
+            stopping_condition[
+                "MaxAutoMLJobRuntimeInSeconds"
+            ] = total_job_runtime_in_seconds
 
         return stopping_condition
 

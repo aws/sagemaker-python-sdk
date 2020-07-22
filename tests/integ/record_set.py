@@ -35,5 +35,9 @@ def prepare_record_set_from_local_files(
     key_prefix = urlparse(destination).path
     key_prefix = key_prefix + "{}-{}".format("testfiles", sagemaker_timestamp())
     key_prefix = key_prefix.lstrip("/")
-    uploaded_location = sagemaker_session.upload_data(path=dir_path, key_prefix=key_prefix)
-    return RecordSet(uploaded_location, num_records, feature_dim, s3_data_type="S3Prefix")
+    uploaded_location = sagemaker_session.upload_data(
+        path=dir_path, key_prefix=key_prefix
+    )
+    return RecordSet(
+        uploaded_location, num_records, feature_dim, s3_data_type="S3Prefix"
+    )

@@ -45,7 +45,9 @@ REGRESS_RESPONSE = {"results": [3.5, 4.0]}
 
 ENDPOINT_DESC = {"EndpointConfigName": "test-endpoint"}
 
-ENDPOINT_CONFIG_DESC = {"ProductionVariants": [{"ModelName": "model-1"}, {"ModelName": "model-2"}]}
+ENDPOINT_CONFIG_DESC = {
+    "ProductionVariants": [{"ModelName": "model-1"}, {"ModelName": "model-2"}]
+}
 
 
 @pytest.fixture()
@@ -65,7 +67,9 @@ def sagemaker_session():
     describe = {"ModelArtifacts": {"S3ModelArtifacts": "s3://m/m.tar.gz"}}
     session.sagemaker_client.describe_training_job = Mock(return_value=describe)
     session.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)
-    session.sagemaker_client.describe_endpoint_config = Mock(return_value=ENDPOINT_CONFIG_DESC)
+    session.sagemaker_client.describe_endpoint_config = Mock(
+        return_value=ENDPOINT_CONFIG_DESC
+    )
     return session
 
 
@@ -77,7 +81,9 @@ def test_tfs_model(sagemaker_session, tf_version):
         sagemaker_session=sagemaker_session,
     )
     cdef = model.prepare_container_def(INSTANCE_TYPE)
-    assert cdef["Image"].endswith("sagemaker-tensorflow-serving:{}-cpu".format(tf_version))
+    assert cdef["Image"].endswith(
+        "sagemaker-tensorflow-serving:{}-cpu".format(tf_version)
+    )
     assert cdef["Environment"] == {}
 
     predictor = model.deploy(INSTANCE_COUNT, INSTANCE_TYPE)
@@ -92,7 +98,9 @@ def test_tfs_model_image_accelerator(sagemaker_session, tf_version):
         sagemaker_session=sagemaker_session,
     )
     cdef = model.prepare_container_def(INSTANCE_TYPE, accelerator_type=ACCELERATOR_TYPE)
-    assert cdef["Image"].endswith("sagemaker-tensorflow-serving-eia:{}-cpu".format(tf_version))
+    assert cdef["Image"].endswith(
+        "sagemaker-tensorflow-serving-eia:{}-cpu".format(tf_version)
+    )
 
     predictor = model.deploy(INSTANCE_COUNT, INSTANCE_TYPE)
     assert isinstance(predictor, Predictor)
@@ -109,7 +117,9 @@ def test_tfs_model_image_accelerator_not_supported(sagemaker_session):
     # assert error is not raised
 
     model.deploy(
-        instance_type="ml.c4.xlarge", initial_instance_count=1, accelerator_type="ml.eia1.medium"
+        instance_type="ml.c4.xlarge",
+        initial_instance_count=1,
+        accelerator_type="ml.eia1.medium",
     )
 
     model = Model(
@@ -189,7 +199,9 @@ def test_tfs_model_with_entry_point(
 
 @mock.patch("sagemaker.fw_utils.model_code_key_prefix", return_value="key-prefix")
 @mock.patch("sagemaker.utils.repack_model")
-def test_tfs_model_with_source(repack_model, model_code_key_prefix, sagemaker_session, tf_version):
+def test_tfs_model_with_source(
+    repack_model, model_code_key_prefix, sagemaker_session, tf_version
+):
     model = Model(
         "s3://some/data.tar.gz",
         entry_point="train.py",
@@ -251,7 +263,9 @@ def test_model_prepare_container_def_no_instance_type_or_image():
     with pytest.raises(ValueError) as e:
         model.prepare_container_def()
 
-    expected_msg = "Must supply either an instance type (for choosing CPU vs GPU) or an image URI."
+    expected_msg = (
+        "Must supply either an instance type (for choosing CPU vs GPU) or an image URI."
+    )
     assert expected_msg in str(e)
 
 
@@ -276,7 +290,10 @@ def test_estimator_deploy(sagemaker_session):
     job_name = "doing something"
     tf.fit(inputs="s3://mybucket/train", job_name=job_name)
     predictor = tf.deploy(
-        INSTANCE_COUNT, INSTANCE_TYPE, endpoint_name="endpoint", endpoint_type="tensorflow-serving"
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        endpoint_name="endpoint",
+        endpoint_type="tensorflow-serving",
     )
     assert isinstance(predictor, Predictor)
 
@@ -335,7 +352,9 @@ def test_predictor_csv(sagemaker_session):
 
 
 def test_predictor_model_attributes(sagemaker_session):
-    predictor = Predictor("endpoint", sagemaker_session, model_name="model", model_version="123")
+    predictor = Predictor(
+        "endpoint", sagemaker_session, model_name="model", model_version="123"
+    )
 
     mock_response(json.dumps(PREDICT_RESPONSE).encode("utf-8"), sagemaker_session)
     result = predictor.predict(PREDICT_INPUT)
@@ -371,7 +390,9 @@ def test_predictor_classify(sagemaker_session):
 
 
 def test_predictor_regress(sagemaker_session):
-    predictor = Predictor("endpoint", sagemaker_session, model_name="model", model_version="123")
+    predictor = Predictor(
+        "endpoint", sagemaker_session, model_name="model", model_version="123"
+    )
 
     mock_response(json.dumps(REGRESS_RESPONSE).encode("utf-8"), sagemaker_session)
     result = predictor.regress(REGRESS_INPUT)
@@ -403,7 +424,9 @@ def test_predictor_classify_bad_content_type(sagemaker_session):
 
 
 def assert_invoked(sagemaker_session, **kwargs):
-    sagemaker_session.sagemaker_runtime_client.invoke_endpoint.assert_called_once_with(**kwargs)
+    sagemaker_session.sagemaker_runtime_client.invoke_endpoint.assert_called_once_with(
+        **kwargs
+    )
 
 
 def assert_invoked_with_body_dict(sagemaker_session, **kwargs):

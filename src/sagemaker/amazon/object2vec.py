@@ -47,22 +47,32 @@ class Object2Vec(AmazonAlgorithmEstimatorBase):
     MINI_BATCH_SIZE = 32
 
     enc_dim = hp("enc_dim", (ge(4), le(10000)), "An integer in [4, 10000]", int)
-    mini_batch_size = hp("mini_batch_size", (ge(1), le(10000)), "An integer in [1, 10000]", int)
+    mini_batch_size = hp(
+        "mini_batch_size", (ge(1), le(10000)), "An integer in [1, 10000]", int
+    )
     epochs = hp("epochs", (ge(1), le(100)), "An integer in [1, 100]", int)
     early_stopping_patience = hp(
         "early_stopping_patience", (ge(1), le(5)), "An integer in [1, 5]", int
     )
     early_stopping_tolerance = hp(
-        "early_stopping_tolerance", (ge(1e-06), le(0.1)), "A float in [1e-06, 0.1]", float
+        "early_stopping_tolerance",
+        (ge(1e-06), le(0.1)),
+        "A float in [1e-06, 0.1]",
+        float,
     )
     dropout = hp("dropout", (ge(0.0), le(1.0)), "A float in [0.0, 1.0]", float)
-    weight_decay = hp("weight_decay", (ge(0.0), le(10000.0)), "A float in [0.0, 10000.0]", float)
+    weight_decay = hp(
+        "weight_decay", (ge(0.0), le(10000.0)), "A float in [0.0, 10000.0]", float
+    )
     bucket_width = hp("bucket_width", (ge(0), le(100)), "An integer in [0, 100]", int)
     num_classes = hp("num_classes", (ge(2), le(30)), "An integer in [2, 30]", int)
     mlp_layers = hp("mlp_layers", (ge(1), le(10)), "An integer in [1, 10]", int)
     mlp_dim = hp("mlp_dim", (ge(2), le(10000)), "An integer in [2, 10000]", int)
     mlp_activation = hp(
-        "mlp_activation", isin("tanh", "relu", "linear"), 'One of "tanh", "relu", "linear"', str
+        "mlp_activation",
+        isin("tanh", "relu", "linear"),
+        'One of "tanh", "relu", "linear"',
+        str,
     )
     output_layer = hp(
         "output_layer",
@@ -76,7 +86,9 @@ class Object2Vec(AmazonAlgorithmEstimatorBase):
         'One of "adagrad", "adam", "rmsprop", "sgd", "adadelta"',
         str,
     )
-    learning_rate = hp("learning_rate", (ge(1e-06), le(1.0)), "A float in [1e-06, 1.0]", float)
+    learning_rate = hp(
+        "learning_rate", (ge(1e-06), le(1.0)), "A float in [1e-06, 1.0]", float
+    )
 
     negative_sampling_rate = hp(
         "negative_sampling_rate", (ge(0), le(100)), "An integer in [0, 100]", int
@@ -109,18 +121,30 @@ class Object2Vec(AmazonAlgorithmEstimatorBase):
         'One of "hcnn", "bilstm", "pooled_embedding", "enc0"',
         str,
     )
-    enc0_cnn_filter_width = hp("enc0_cnn_filter_width", (ge(1), le(9)), "An integer in [1, 9]", int)
-    enc1_cnn_filter_width = hp("enc1_cnn_filter_width", (ge(1), le(9)), "An integer in [1, 9]", int)
-    enc0_max_seq_len = hp("enc0_max_seq_len", (ge(1), le(5000)), "An integer in [1, 5000]", int)
-    enc1_max_seq_len = hp("enc1_max_seq_len", (ge(1), le(5000)), "An integer in [1, 5000]", int)
+    enc0_cnn_filter_width = hp(
+        "enc0_cnn_filter_width", (ge(1), le(9)), "An integer in [1, 9]", int
+    )
+    enc1_cnn_filter_width = hp(
+        "enc1_cnn_filter_width", (ge(1), le(9)), "An integer in [1, 9]", int
+    )
+    enc0_max_seq_len = hp(
+        "enc0_max_seq_len", (ge(1), le(5000)), "An integer in [1, 5000]", int
+    )
+    enc1_max_seq_len = hp(
+        "enc1_max_seq_len", (ge(1), le(5000)), "An integer in [1, 5000]", int
+    )
     enc0_token_embedding_dim = hp(
         "enc0_token_embedding_dim", (ge(2), le(1000)), "An integer in [2, 1000]", int
     )
     enc1_token_embedding_dim = hp(
         "enc1_token_embedding_dim", (ge(2), le(1000)), "An integer in [2, 1000]", int
     )
-    enc0_vocab_size = hp("enc0_vocab_size", (ge(2), le(3000000)), "An integer in [2, 3000000]", int)
-    enc1_vocab_size = hp("enc1_vocab_size", (ge(2), le(3000000)), "An integer in [2, 3000000]", int)
+    enc0_vocab_size = hp(
+        "enc0_vocab_size", (ge(2), le(3000000)), "An integer in [2, 3000000]", int
+    )
+    enc1_vocab_size = hp(
+        "enc1_vocab_size", (ge(2), le(3000000)), "An integer in [2, 3000000]", int
+    )
     enc0_layers = hp("enc0_layers", (ge(1), le(4)), "An integer in [1, 4]", int)
     enc1_layers = hp("enc1_layers", (ge(1), le(4)), "An integer in [1, 4]", int)
     enc0_freeze_pretrained_embedding = hp(
@@ -263,7 +287,9 @@ class Object2Vec(AmazonAlgorithmEstimatorBase):
             :class:`~sagemaker.estimator.EstimatorBase`.
         """
 
-        super(Object2Vec, self).__init__(role, train_instance_count, train_instance_type, **kwargs)
+        super(Object2Vec, self).__init__(
+            role, train_instance_count, train_instance_type, **kwargs
+        )
 
         self.enc_dim = enc_dim
         self.mini_batch_size = mini_batch_size
@@ -352,7 +378,8 @@ class Object2VecModel(Model):
         sagemaker_session = sagemaker_session or Session()
         repo = "{}:{}".format(Object2Vec.repo_name, Object2Vec.repo_version)
         image = "{}/{}".format(
-            registry(sagemaker_session.boto_session.region_name, Object2Vec.repo_name), repo
+            registry(sagemaker_session.boto_session.region_name, Object2Vec.repo_name),
+            repo,
         )
         super(Object2VecModel, self).__init__(
             model_data,

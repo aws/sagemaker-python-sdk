@@ -115,12 +115,16 @@ class PyTorchModel(FrameworkModel):
 
         if py_version == "py2":
             logger.warning(
-                python_deprecation_warning(self.__framework_name__, defaults.LATEST_PY2_VERSION)
+                python_deprecation_warning(
+                    self.__framework_name__, defaults.LATEST_PY2_VERSION
+                )
             )
 
         if framework_version is None:
             logger.warning(
-                empty_framework_version_warning(defaults.PYTORCH_VERSION, defaults.LATEST_VERSION)
+                empty_framework_version_warning(
+                    defaults.PYTORCH_VERSION, defaults.LATEST_VERSION
+                )
             )
 
         self.py_version = py_version
@@ -154,13 +158,17 @@ class PyTorchModel(FrameworkModel):
                 region_name, instance_type, accelerator_type=accelerator_type
             )
 
-        deploy_key_prefix = model_code_key_prefix(self.key_prefix, self.name, deploy_image)
+        deploy_key_prefix = model_code_key_prefix(
+            self.key_prefix, self.name, deploy_image
+        )
         self._upload_code(deploy_key_prefix, repack=self._is_mms_version())
         deploy_env = dict(self.env)
         deploy_env.update(self._framework_env_vars())
 
         if self.model_server_workers:
-            deploy_env[MODEL_SERVER_WORKERS_PARAM_NAME.upper()] = str(self.model_server_workers)
+            deploy_env[MODEL_SERVER_WORKERS_PARAM_NAME.upper()] = str(
+                self.model_server_workers
+            )
         return sagemaker.container_def(
             deploy_image, self.repacked_model_data or self.model_data, deploy_env
         )

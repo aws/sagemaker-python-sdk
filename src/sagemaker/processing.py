@@ -25,7 +25,9 @@ from sagemaker.job import _Job
 from sagemaker.utils import base_name_from_image, name_from_base
 from sagemaker.session import Session
 from sagemaker.s3 import S3Uploader
-from sagemaker.network import NetworkConfig  # noqa: F401 # pylint: disable=unused-import
+from sagemaker.network import (
+    NetworkConfig,
+)  # noqa: F401 # pylint: disable=unused-import
 
 
 class Processor(object):
@@ -206,7 +208,9 @@ class Processor(object):
             # Iterate through the provided list of inputs.
             for count, file_input in enumerate(inputs, 1):
                 if not isinstance(file_input, ProcessingInput):
-                    raise TypeError("Your inputs must be provided as ProcessingInput objects.")
+                    raise TypeError(
+                        "Your inputs must be provided as ProcessingInput objects."
+                    )
                 # Generate a name for the ProcessingInput if it doesn't have one.
                 if file_input.input_name is None:
                     file_input.input_name = "input-{}".format(count)
@@ -251,7 +255,9 @@ class Processor(object):
             # Iterate through the provided list of outputs.
             for count, output in enumerate(outputs, 1):
                 if not isinstance(output, ProcessingOutput):
-                    raise TypeError("Your outputs must be provided as ProcessingOutput objects.")
+                    raise TypeError(
+                        "Your outputs must be provided as ProcessingOutput objects."
+                    )
                 # Generate a name for the ProcessingOutput if it doesn't have one.
                 if output.output_name is None:
                     output.output_name = "output-{}".format(count)
@@ -388,7 +394,9 @@ class ScriptProcessor(Processor):
         user_code_s3_uri = self._handle_user_code_url(code)
         user_script_name = self._get_user_code_name(code)
 
-        inputs_with_code = self._convert_code_and_add_to_inputs(inputs, user_code_s3_uri)
+        inputs_with_code = self._convert_code_and_add_to_inputs(
+            inputs, user_code_s3_uri
+        )
 
         self._set_entrypoint(self.command, user_script_name)
 
@@ -480,7 +488,9 @@ class ScriptProcessor(Processor):
             self._CODE_CONTAINER_INPUT_NAME,
         )
         return S3Uploader.upload(
-            local_path=code, desired_s3_uri=desired_s3_uri, session=self.sagemaker_session
+            local_path=code,
+            desired_s3_uri=desired_s3_uri,
+            session=self.sagemaker_session,
         )
 
     def _convert_code_and_add_to_inputs(self, inputs, s3_uri):
@@ -512,7 +522,9 @@ class ScriptProcessor(Processor):
             user_script_name (str): A filename with an extension.
         """
         user_script_location = "{}{}/{}".format(
-            self._CODE_CONTAINER_BASE_PATH, self._CODE_CONTAINER_INPUT_NAME, user_script_name
+            self._CODE_CONTAINER_BASE_PATH,
+            self._CODE_CONTAINER_INPUT_NAME,
+            user_script_name,
         )
         self.entrypoint = command + [user_script_location]
 
@@ -520,7 +532,9 @@ class ScriptProcessor(Processor):
 class ProcessingJob(_Job):
     """Provides functionality to start, describe, and stop processing jobs."""
 
-    def __init__(self, sagemaker_session, job_name, inputs, outputs, output_kms_key=None):
+    def __init__(
+        self, sagemaker_session, job_name, inputs, outputs, output_kms_key=None
+    ):
         """Initializes a Processing job.
 
         Args:
@@ -538,7 +552,9 @@ class ProcessingJob(_Job):
         self.inputs = inputs
         self.outputs = outputs
         self.output_kms_key = output_kms_key
-        super(ProcessingJob, self).__init__(sagemaker_session=sagemaker_session, job_name=job_name)
+        super(ProcessingJob, self).__init__(
+            sagemaker_session=sagemaker_session, job_name=job_name
+        )
 
     @classmethod
     def start_new(cls, processor, inputs, outputs, experiment_config):
@@ -596,18 +612,26 @@ class ProcessingJob(_Job):
 
         process_request_args["app_specification"] = {"ImageUri": processor.image_uri}
         if processor.arguments is not None:
-            process_request_args["app_specification"]["ContainerArguments"] = processor.arguments
+            process_request_args["app_specification"][
+                "ContainerArguments"
+            ] = processor.arguments
         if processor.entrypoint is not None:
-            process_request_args["app_specification"]["ContainerEntrypoint"] = processor.entrypoint
+            process_request_args["app_specification"][
+                "ContainerEntrypoint"
+            ] = processor.entrypoint
 
         process_request_args["environment"] = processor.env
 
         if processor.network_config is not None:
-            process_request_args["network_config"] = processor.network_config._to_request_dict()
+            process_request_args[
+                "network_config"
+            ] = processor.network_config._to_request_dict()
         else:
             process_request_args["network_config"] = None
 
-        process_request_args["role_arn"] = processor.sagemaker_session.expand_role(processor.role)
+        process_request_args["role_arn"] = processor.sagemaker_session.expand_role(
+            processor.role
+        )
 
         process_request_args["tags"] = processor.tags
 
@@ -643,7 +667,9 @@ class ProcessingJob(_Job):
             :class:`~sagemaker.processing.ProcessingJob`: The instance of ``ProcessingJob`` created
                 from the job name.
         """
-        job_desc = sagemaker_session.describe_processing_job(job_name=processing_job_name)
+        job_desc = sagemaker_session.describe_processing_job(
+            job_name=processing_job_name
+        )
 
         inputs = None
         if job_desc.get("ProcessingInputs"):
@@ -657,15 +683,17 @@ class ProcessingJob(_Job):
                     s3_data_distribution_type=processing_input["S3Input"].get(
                         "S3DataDistributionType"
                     ),
-                    s3_compression_type=processing_input["S3Input"].get("S3CompressionType"),
+                    s3_compression_type=processing_input["S3Input"].get(
+                        "S3CompressionType"
+                    ),
                 )
                 for processing_input in job_desc["ProcessingInputs"]
             ]
 
         outputs = None
-        if job_desc.get("ProcessingOutputConfig") and job_desc["ProcessingOutputConfig"].get(
-            "Outputs"
-        ):
+        if job_desc.get("ProcessingOutputConfig") and job_desc[
+            "ProcessingOutputConfig"
+        ].get("Outputs"):
             outputs = [
                 ProcessingOutput(
                     source=processing_output["S3Output"]["LocalPath"],
@@ -895,7 +923,9 @@ class ProcessingOutput(object):
     """Accepts parameters that specify an Amazon S3 output for a processing job and provides
     a method to turn those parameters into a dictionary."""
 
-    def __init__(self, source, destination=None, output_name=None, s3_upload_mode="EndOfJob"):
+    def __init__(
+        self, source, destination=None, output_name=None, s3_upload_mode="EndOfJob"
+    ):
         """Initializes a ``ProcessingOutput`` instance. ``ProcessingOutput`` accepts parameters that
         specify an Amazon S3 output for a processing job and provides a method to turn
         those parameters into a dictionary.

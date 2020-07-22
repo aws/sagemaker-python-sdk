@@ -96,10 +96,14 @@ def _ami_id_for_region(sagemaker_session):
         {"Name": "state", "Values": ["available"]},
     ]
     response = ec2_client.describe_images(Filters=filters)
-    image_details = sorted(response["Images"], key=itemgetter("CreationDate"), reverse=True)
+    image_details = sorted(
+        response["Images"], key=itemgetter("CreationDate"), reverse=True
+    )
 
     if len(image_details) == 0:
-        raise Exception("AMI was not found based on current search criteria: {}".format(filters))
+        raise Exception(
+            "AMI was not found based on current search criteria: {}".format(filters)
+        )
 
     return image_details[0]["ImageId"]
 
@@ -115,7 +119,9 @@ def _connect_ec2_instance(ec2_instance):
     return connected_instance
 
 
-def _upload_data_and_mount_fs(connected_instance, file_system_efs_id, file_system_fsx_id, region):
+def _upload_data_and_mount_fs(
+    connected_instance, file_system_efs_id, file_system_fsx_id, region
+):
     connected_instance.put(FS_MOUNT_SCRIPT, ".")
     connected_instance.run("mkdir temp_tf; mkdir temp_one_p", in_stream=False)
     for dir_name, subdir_list, file_list in os.walk(MNIST_LOCAL_DATA):
@@ -125,7 +131,11 @@ def _upload_data_and_mount_fs(connected_instance, file_system_efs_id, file_syste
     connected_instance.put(ONE_P_LOCAL_DATA, "temp_one_p/")
     connected_instance.run(
         "sudo sh fs_mount_setup.sh {} {} {} {} {}".format(
-            file_system_efs_id, file_system_fsx_id, region, EFS_MOUNT_DIRECTORY, FSX_MOUNT_DIRECTORY
+            file_system_efs_id,
+            file_system_fsx_id,
+            region,
+            EFS_MOUNT_DIRECTORY,
+            FSX_MOUNT_DIRECTORY,
         ),
         in_stream=False,
     )
@@ -152,7 +162,9 @@ def _create_efs_mount(sagemaker_session, file_system_id):
     )
     efs_client = sagemaker_session.boto_session.client("efs")
     mount_response = efs_client.create_mount_target(
-        FileSystemId=file_system_id, SubnetId=subnet_ids[0], SecurityGroups=security_group_ids
+        FileSystemId=file_system_id,
+        SubnetId=subnet_ids[0],
+        SecurityGroups=security_group_ids,
     )
     mount_target_id = mount_response["MountTargetId"]
     fs_resources["mount_efs_target_id"] = mount_target_id
@@ -223,16 +235,23 @@ def _create_ec2_instance(
     fs_resources["ec2_instance_id"] = ec2_instances[0].id
     ec2_client = sagemaker_session.boto_session.client("ec2")
     for _ in retries(30, "Checking EC2 creation status"):
-        statuses = ec2_client.describe_instance_status(InstanceIds=[ec2_instances[0].id])
+        statuses = ec2_client.describe_instance_status(
+            InstanceIds=[ec2_instances[0].id]
+        )
         status = statuses["InstanceStatuses"][0]
-        if status["InstanceStatus"]["Status"] == "ok" and status["SystemStatus"]["Status"] == "ok":
+        if (
+            status["InstanceStatus"]["Status"] == "ok"
+            and status["SystemStatus"]["Status"] == "ok"
+        ):
             break
     return ec2_instances[0]
 
 
 def _check_key_pair_and_cleanup_old_artifacts(sagemaker_session):
     ec2_client = sagemaker_session.boto_session.client("ec2")
-    response = ec2_client.describe_key_pairs(Filters=[{"Name": "key-name", "Values": [KEY_NAME]}])
+    response = ec2_client.describe_key_pairs(
+        Filters=[{"Name": "key-name", "Values": [KEY_NAME]}]
+    )
     if len(response["KeyPairs"]) > 0 and not path.exists(KEY_PATH):
         ec2_client.delete_key_pair(KeyName=KEY_NAME)
     if len(response["KeyPairs"]) == 0 and path.exists(KEY_PATH):
@@ -266,7 +285,9 @@ def _check_or_create_iam_profile_and_attach_role(sagemaker_session):
         return
     iam_client = sagemaker_session.boto_session.client("iam")
     iam_client.create_instance_profile(InstanceProfileName=ROLE_NAME)
-    iam_client.add_role_to_instance_profile(InstanceProfileName=ROLE_NAME, RoleName=ROLE_NAME)
+    iam_client.add_role_to_instance_profile(
+        InstanceProfileName=ROLE_NAME, RoleName=ROLE_NAME
+    )
 
     for _ in retries(30, "Checking EC2 instance profile creating status"):
         profile_info = iam_client.get_instance_profile(InstanceProfileName=ROLE_NAME)
@@ -292,11 +313,15 @@ def tear_down(sagemaker_session, fs_resources={}):
     try:
         if "file_system_fsx_id" in fs_resources:
             fsx_client = sagemaker_session.boto_session.client("fsx")
-            fsx_client.delete_file_system(FileSystemId=fs_resources["file_system_fsx_id"])
+            fsx_client.delete_file_system(
+                FileSystemId=fs_resources["file_system_fsx_id"]
+            )
 
         efs_client = sagemaker_session.boto_session.client("efs")
         if "mount_efs_target_id" in fs_resources:
-            efs_client.delete_mount_target(MountTargetId=fs_resources["mount_efs_target_id"])
+            efs_client.delete_mount_target(
+                MountTargetId=fs_resources["mount_efs_target_id"]
+            )
 
         if "file_system_efs_id" in fs_resources:
             for _ in retries(30, "Checking mount target deleting status"):
@@ -310,7 +335,9 @@ def tear_down(sagemaker_session, fs_resources={}):
                 else:
                     break
 
-            efs_client.delete_file_system(FileSystemId=fs_resources["file_system_efs_id"])
+            efs_client.delete_file_system(
+                FileSystemId=fs_resources["file_system_efs_id"]
+            )
 
         if "ec2_instance_id" in fs_resources:
             ec2_resource = sagemaker_session.boto_session.resource("ec2")

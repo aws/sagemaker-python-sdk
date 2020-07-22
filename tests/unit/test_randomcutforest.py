@@ -35,11 +35,15 @@ ALL_REQ_ARGS = dict(**COMMON_TRAIN_ARGS)
 REGION = "us-west-2"
 BUCKET_NAME = "Some-Bucket"
 
-DESCRIBE_TRAINING_JOB_RESULT = {"ModelArtifacts": {"S3ModelArtifacts": "s3://bucket/model.tar.gz"}}
+DESCRIBE_TRAINING_JOB_RESULT = {
+    "ModelArtifacts": {"S3ModelArtifacts": "s3://bucket/model.tar.gz"}
+}
 
 ENDPOINT_DESC = {"EndpointConfigName": "test-endpoint"}
 
-ENDPOINT_CONFIG_DESC = {"ProductionVariants": [{"ModelName": "model-1"}, {"ModelName": "model-2"}]}
+ENDPOINT_CONFIG_DESC = {
+    "ProductionVariants": [{"ModelName": "model-1"}, {"ModelName": "model-2"}]
+}
 
 
 @pytest.fixture()
@@ -58,7 +62,9 @@ def sagemaker_session():
         name="describe_training_job", return_value=DESCRIBE_TRAINING_JOB_RESULT
     )
     sms.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)
-    sms.sagemaker_client.describe_endpoint_config = Mock(return_value=ENDPOINT_CONFIG_DESC)
+    sms.sagemaker_client.describe_endpoint_config = Mock(
+        return_value=ENDPOINT_CONFIG_DESC
+    )
 
     return sms
 
@@ -82,11 +88,15 @@ def test_init_required_positional(sagemaker_session):
 
 
 def test_init_required_named(sagemaker_session):
-    randomcutforest = RandomCutForest(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
+    randomcutforest = RandomCutForest(
+        sagemaker_session=sagemaker_session, **ALL_REQ_ARGS
+    )
 
     assert randomcutforest.role == COMMON_TRAIN_ARGS["role"]
     assert randomcutforest.train_instance_count == TRAIN_INSTANCE_COUNT
-    assert randomcutforest.train_instance_type == COMMON_TRAIN_ARGS["train_instance_type"]
+    assert (
+        randomcutforest.train_instance_type == COMMON_TRAIN_ARGS["train_instance_type"]
+    )
 
 
 def test_all_hyperparameters(sagemaker_session):
@@ -105,14 +115,19 @@ def test_all_hyperparameters(sagemaker_session):
 
 
 def test_image(sagemaker_session):
-    randomcutforest = RandomCutForest(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
+    randomcutforest = RandomCutForest(
+        sagemaker_session=sagemaker_session, **ALL_REQ_ARGS
+    )
     assert (
-        randomcutforest.train_image() == registry(REGION, "randomcutforest") + "/randomcutforest:1"
+        randomcutforest.train_image()
+        == registry(REGION, "randomcutforest") + "/randomcutforest:1"
     )
 
 
 @pytest.mark.parametrize("iterable_hyper_parameters, value", [("eval_metrics", 0)])
-def test_iterable_hyper_parameters_type(sagemaker_session, iterable_hyper_parameters, value):
+def test_iterable_hyper_parameters_type(
+    sagemaker_session, iterable_hyper_parameters, value
+):
     with pytest.raises(TypeError):
         test_params = ALL_REQ_ARGS.copy()
         test_params.update({iterable_hyper_parameters: value})
@@ -123,7 +138,9 @@ def test_iterable_hyper_parameters_type(sagemaker_session, iterable_hyper_parame
     "optional_hyper_parameters, value",
     [("num_trees", "string"), ("num_samples_per_tree", "string")],
 )
-def test_optional_hyper_parameters_type(sagemaker_session, optional_hyper_parameters, value):
+def test_optional_hyper_parameters_type(
+    sagemaker_session, optional_hyper_parameters, value
+):
     with pytest.raises(ValueError):
         test_params = ALL_REQ_ARGS.copy()
         test_params.update({optional_hyper_parameters: value})
@@ -139,7 +156,9 @@ def test_optional_hyper_parameters_type(sagemaker_session, optional_hyper_parame
         ("num_samples_per_tree", 2049),
     ],
 )
-def test_optional_hyper_parameters_value(sagemaker_session, optional_hyper_parameters, value):
+def test_optional_hyper_parameters_value(
+    sagemaker_session, optional_hyper_parameters, value
+):
     with pytest.raises(ValueError):
         test_params = ALL_REQ_ARGS.copy()
         test_params.update({optional_hyper_parameters: value})
@@ -155,7 +174,9 @@ MINI_BATCH_SIZE = 1000
 @patch("sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase.fit")
 def test_call_fit(base_fit, sagemaker_session):
     randomcutforest = RandomCutForest(
-        base_job_name="randomcutforest", sagemaker_session=sagemaker_session, **ALL_REQ_ARGS
+        base_job_name="randomcutforest",
+        sagemaker_session=sagemaker_session,
+        **ALL_REQ_ARGS
     )
 
     data = RecordSet(
@@ -175,7 +196,9 @@ def test_call_fit(base_fit, sagemaker_session):
 
 def test_prepare_for_training_no_mini_batch_size(sagemaker_session):
     randomcutforest = RandomCutForest(
-        base_job_name="randomcutforest", sagemaker_session=sagemaker_session, **ALL_REQ_ARGS
+        base_job_name="randomcutforest",
+        sagemaker_session=sagemaker_session,
+        **ALL_REQ_ARGS
     )
 
     data = RecordSet(
@@ -191,7 +214,9 @@ def test_prepare_for_training_no_mini_batch_size(sagemaker_session):
 
 def test_prepare_for_training_wrong_type_mini_batch_size(sagemaker_session):
     randomcutforest = RandomCutForest(
-        base_job_name="randomcutforest", sagemaker_session=sagemaker_session, **ALL_REQ_ARGS
+        base_job_name="randomcutforest",
+        sagemaker_session=sagemaker_session,
+        **ALL_REQ_ARGS
     )
 
     data = RecordSet(
@@ -207,7 +232,9 @@ def test_prepare_for_training_wrong_type_mini_batch_size(sagemaker_session):
 
 def test_prepare_for_training_feature_dim_greater_than_max_allowed(sagemaker_session):
     randomcutforest = RandomCutForest(
-        base_job_name="randomcutforest", sagemaker_session=sagemaker_session, **ALL_REQ_ARGS
+        base_job_name="randomcutforest",
+        sagemaker_session=sagemaker_session,
+        **ALL_REQ_ARGS
     )
 
     data = RecordSet(
@@ -222,7 +249,9 @@ def test_prepare_for_training_feature_dim_greater_than_max_allowed(sagemaker_ses
 
 
 def test_model_image(sagemaker_session):
-    randomcutforest = RandomCutForest(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
+    randomcutforest = RandomCutForest(
+        sagemaker_session=sagemaker_session, **ALL_REQ_ARGS
+    )
     data = RecordSet(
         "s3://{}/{}".format(BUCKET_NAME, PREFIX),
         num_records=1,
@@ -236,7 +265,9 @@ def test_model_image(sagemaker_session):
 
 
 def test_predictor_type(sagemaker_session):
-    randomcutforest = RandomCutForest(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
+    randomcutforest = RandomCutForest(
+        sagemaker_session=sagemaker_session, **ALL_REQ_ARGS
+    )
     data = RecordSet(
         "s3://{}/{}".format(BUCKET_NAME, PREFIX),
         num_records=1,

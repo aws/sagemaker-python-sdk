@@ -61,7 +61,9 @@ def test_auto_ml_fit(sagemaker_session):
     )
 
     job_name = unique_name_from_base("auto-ml", max_length=32)
-    inputs = sagemaker_session.upload_data(path=TRAINING_DATA, key_prefix=PREFIX + "/input")
+    inputs = sagemaker_session.upload_data(
+        path=TRAINING_DATA, key_prefix=PREFIX + "/input"
+    )
     with timeout(minutes=AUTO_ML_DEFAULT_TIMEMOUT_MINUTES):
         auto_ml.fit(inputs, job_name=job_name)
 
@@ -96,7 +98,9 @@ def test_auto_ml_input_object_fit(sagemaker_session):
         max_candidates=1,
     )
     job_name = unique_name_from_base("auto-ml", max_length=32)
-    s3_input = sagemaker_session.upload_data(path=TRAINING_DATA, key_prefix=PREFIX + "/input")
+    s3_input = sagemaker_session.upload_data(
+        path=TRAINING_DATA, key_prefix=PREFIX + "/input"
+    )
     inputs = AutoMLInput(inputs=s3_input, target_attribute_name=TARGET_ATTRIBUTE_NAME)
     with timeout(minutes=AUTO_ML_DEFAULT_TIMEMOUT_MINUTES):
         auto_ml.fit(inputs, job_name=job_name)
@@ -107,7 +111,9 @@ def test_auto_ml_input_object_fit(sagemaker_session):
     reason="AutoML is not supported in the region yet.",
 )
 def test_auto_ml_fit_optional_args(sagemaker_session):
-    output_path = "s3://{}/{}".format(sagemaker_session.default_bucket(), "specified_ouput_path")
+    output_path = "s3://{}/{}".format(
+        sagemaker_session.default_bucket(), "specified_ouput_path"
+    )
     problem_type = "MulticlassClassification"
     job_objective = {"MetricName": "Accuracy"}
     auto_ml = AutoML(
@@ -123,7 +129,9 @@ def test_auto_ml_fit_optional_args(sagemaker_session):
     with timeout(minutes=AUTO_ML_DEFAULT_TIMEMOUT_MINUTES):
         auto_ml.fit(inputs, job_name=unique_name_from_base(BASE_JOB_NAME))
 
-    auto_ml_desc = auto_ml.describe_auto_ml_job(job_name=auto_ml.latest_auto_ml_job.job_name)
+    auto_ml_desc = auto_ml.describe_auto_ml_job(
+        job_name=auto_ml.latest_auto_ml_job.job_name
+    )
     assert auto_ml_desc["AutoMLJobStatus"] == "Completed"
     assert auto_ml_desc["AutoMLJobName"] == auto_ml.latest_auto_ml_job.job_name
     assert auto_ml_desc["AutoMLJobObjective"] == job_objective
@@ -137,12 +145,18 @@ def test_auto_ml_fit_optional_args(sagemaker_session):
 )
 def test_auto_ml_invalid_target_attribute(sagemaker_session):
     auto_ml = AutoML(
-        role=ROLE, target_attribute_name="y", sagemaker_session=sagemaker_session, max_candidates=1
+        role=ROLE,
+        target_attribute_name="y",
+        sagemaker_session=sagemaker_session,
+        max_candidates=1,
     )
     job_name = unique_name_from_base("auto-ml", max_length=32)
-    inputs = sagemaker_session.upload_data(path=TRAINING_DATA, key_prefix=PREFIX + "/input")
+    inputs = sagemaker_session.upload_data(
+        path=TRAINING_DATA, key_prefix=PREFIX + "/input"
+    )
     with pytest.raises(
-        UnexpectedStatusException, match="Could not complete the data builder processing job."
+        UnexpectedStatusException,
+        match="Could not complete the data builder processing job.",
     ):
         auto_ml.fit(inputs, job_name=job_name)
 
@@ -171,7 +185,9 @@ def test_auto_ml_describe_auto_ml_job(sagemaker_session):
 
     auto_ml_utils.create_auto_ml_job_if_not_exist(sagemaker_session)
     auto_ml = AutoML(
-        role=ROLE, target_attribute_name=TARGET_ATTRIBUTE_NAME, sagemaker_session=sagemaker_session
+        role=ROLE,
+        target_attribute_name=TARGET_ATTRIBUTE_NAME,
+        sagemaker_session=sagemaker_session,
     )
 
     desc = auto_ml.describe_auto_ml_job(job_name=AUTO_ML_JOB_NAME)
@@ -227,7 +243,9 @@ def test_list_candidates(sagemaker_session):
     auto_ml_utils.create_auto_ml_job_if_not_exist(sagemaker_session)
 
     auto_ml = AutoML(
-        role=ROLE, target_attribute_name=TARGET_ATTRIBUTE_NAME, sagemaker_session=sagemaker_session
+        role=ROLE,
+        target_attribute_name=TARGET_ATTRIBUTE_NAME,
+        sagemaker_session=sagemaker_session,
     )
 
     candidates = auto_ml.list_candidates(job_name=AUTO_ML_JOB_NAME)
@@ -242,7 +260,9 @@ def test_best_candidate(sagemaker_session):
     auto_ml_utils.create_auto_ml_job_if_not_exist(sagemaker_session)
 
     auto_ml = AutoML(
-        role=ROLE, target_attribute_name=TARGET_ATTRIBUTE_NAME, sagemaker_session=sagemaker_session
+        role=ROLE,
+        target_attribute_name=TARGET_ATTRIBUTE_NAME,
+        sagemaker_session=sagemaker_session,
     )
     best_candidate = auto_ml.best_candidate(job_name=AUTO_ML_JOB_NAME)
     assert len(best_candidate["InferenceContainers"]) == 3
@@ -259,7 +279,9 @@ def test_deploy_best_candidate(sagemaker_session, cpu_instance_type):
     auto_ml_utils.create_auto_ml_job_if_not_exist(sagemaker_session)
 
     auto_ml = AutoML(
-        role=ROLE, target_attribute_name=TARGET_ATTRIBUTE_NAME, sagemaker_session=sagemaker_session
+        role=ROLE,
+        target_attribute_name=TARGET_ATTRIBUTE_NAME,
+        sagemaker_session=sagemaker_session,
     )
     best_candidate = auto_ml.best_candidate(job_name=AUTO_ML_JOB_NAME)
     endpoint_name = unique_name_from_base("sagemaker-auto-ml-best-candidate-test")
@@ -286,7 +308,9 @@ def test_deploy_best_candidate(sagemaker_session, cpu_instance_type):
 def test_create_model_best_candidate(sagemaker_session, cpu_instance_type):
     auto_ml_utils.create_auto_ml_job_if_not_exist(sagemaker_session)
 
-    auto_ml = AutoML.attach(auto_ml_job_name=AUTO_ML_JOB_NAME, sagemaker_session=sagemaker_session)
+    auto_ml = AutoML.attach(
+        auto_ml_job_name=AUTO_ML_JOB_NAME, sagemaker_session=sagemaker_session
+    )
     best_candidate = auto_ml.best_candidate()
 
     with timeout(minutes=5):
@@ -306,20 +330,28 @@ def test_create_model_best_candidate(sagemaker_session, cpu_instance_type):
         instance_count=1,
         instance_type=cpu_instance_type,
         assemble_with="Line",
-        output_path="s3://{}/{}".format(sagemaker_session.default_bucket(), "transform_test"),
+        output_path="s3://{}/{}".format(
+            sagemaker_session.default_bucket(), "transform_test"
+        ),
         accept="text/csv",
-    ).transform(data=inputs, content_type="text/csv", split_type="Line", join_source="Input")
+    ).transform(
+        data=inputs, content_type="text/csv", split_type="Line", join_source="Input"
+    )
 
 
 @pytest.mark.skipif(
     tests.integ.test_region() in tests.integ.NO_AUTO_ML_REGIONS,
     reason="AutoML is not supported in the region yet.",
 )
-def test_candidate_estimator_default_rerun_and_deploy(sagemaker_session, cpu_instance_type):
+def test_candidate_estimator_default_rerun_and_deploy(
+    sagemaker_session, cpu_instance_type
+):
     auto_ml_utils.create_auto_ml_job_if_not_exist(sagemaker_session)
 
     auto_ml = AutoML(
-        role=ROLE, target_attribute_name=TARGET_ATTRIBUTE_NAME, sagemaker_session=sagemaker_session
+        role=ROLE,
+        target_attribute_name=TARGET_ATTRIBUTE_NAME,
+        sagemaker_session=sagemaker_session,
     )
 
     candidates = auto_ml.list_candidates(job_name=AUTO_ML_JOB_NAME)
@@ -348,11 +380,15 @@ def test_candidate_estimator_default_rerun_and_deploy(sagemaker_session, cpu_ins
     tests.integ.test_region() in tests.integ.NO_AUTO_ML_REGIONS,
     reason="AutoML is not supported in the region yet.",
 )
-def test_candidate_estimator_rerun_with_optional_args(sagemaker_session, cpu_instance_type):
+def test_candidate_estimator_rerun_with_optional_args(
+    sagemaker_session, cpu_instance_type
+):
     auto_ml_utils.create_auto_ml_job_if_not_exist(sagemaker_session)
 
     auto_ml = AutoML(
-        role=ROLE, target_attribute_name=TARGET_ATTRIBUTE_NAME, sagemaker_session=sagemaker_session
+        role=ROLE,
+        target_attribute_name=TARGET_ATTRIBUTE_NAME,
+        sagemaker_session=sagemaker_session,
     )
 
     candidates = auto_ml.list_candidates(job_name=AUTO_ML_JOB_NAME)
@@ -385,7 +421,9 @@ def test_candidate_estimator_get_steps(sagemaker_session):
     auto_ml_utils.create_auto_ml_job_if_not_exist(sagemaker_session)
 
     auto_ml = AutoML(
-        role=ROLE, target_attribute_name=TARGET_ATTRIBUTE_NAME, sagemaker_session=sagemaker_session
+        role=ROLE,
+        target_attribute_name=TARGET_ATTRIBUTE_NAME,
+        sagemaker_session=sagemaker_session,
     )
     candidates = auto_ml.list_candidates(job_name=AUTO_ML_JOB_NAME)
     candidate = candidates[1]

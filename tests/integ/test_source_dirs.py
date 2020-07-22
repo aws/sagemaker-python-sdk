@@ -45,7 +45,9 @@ def test_source_dirs(tmpdir, sagemaker_local_session):
     # endpoint tests all use the same port, so we use this lock to prevent concurrent execution
     with lock.lock():
         try:
-            predictor = estimator.deploy(initial_instance_count=1, instance_type="local")
+            predictor = estimator.deploy(
+                initial_instance_count=1, instance_type="local"
+            )
             predict_response = predictor.predict([7])
             assert predict_response == [49]
         finally:

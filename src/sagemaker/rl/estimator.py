@@ -142,7 +142,9 @@ class RLEstimator(Framework):
         self._validate_images_args(toolkit, toolkit_version, framework, image_name)
 
         if not image_name:
-            self._validate_toolkit_support(toolkit.value, toolkit_version, framework.value)
+            self._validate_toolkit_support(
+                toolkit.value, toolkit_version, framework.value
+            )
             self.toolkit = toolkit.value
             self.toolkit_version = toolkit_version
             self.framework = framework.value
@@ -259,10 +261,14 @@ class RLEstimator(Framework):
             return tfsModel(framework_version=self.framework_version, **base_args)
         if self.framework == RLFramework.MXNET.value:
             return MXNetModel(
-                framework_version=self.framework_version, py_version=PYTHON_VERSION, **extended_args
+                framework_version=self.framework_version,
+                py_version=PYTHON_VERSION,
+                **extended_args
             )
         raise ValueError(
-            "An unknown RLFramework enum was passed in. framework: {}".format(self.framework)
+            "An unknown RLFramework enum was passed in. framework: {}".format(
+                self.framework
+            )
         )
 
     def train_image(self):
@@ -286,7 +292,9 @@ class RLEstimator(Framework):
         )
 
     @classmethod
-    def _prepare_init_params_from_job_description(cls, job_details, model_channel_name=None):
+    def _prepare_init_params_from_job_description(
+        cls, job_details, model_channel_name=None
+    ):
         """Convert the job description to init params that can be handled by the
         class constructor
 
@@ -340,7 +348,9 @@ class RLEstimator(Framework):
             SAGEMAKER_ESTIMATOR: SAGEMAKER_ESTIMATOR_VALUE,
         }
 
-        hyperparameters.update(Framework._json_encode_hyperparameters(additional_hyperparameters))
+        hyperparameters.update(
+            Framework._json_encode_hyperparameters(additional_hyperparameters)
+        )
         return hyperparameters
 
     @classmethod
@@ -378,7 +388,9 @@ class RLEstimator(Framework):
         """
         if toolkit and toolkit not in list(RLToolkit):
             raise ValueError(
-                "Invalid type: {}, valid RL toolkits types are: {}".format(toolkit, list(RLToolkit))
+                "Invalid type: {}, valid RL toolkits types are: {}".format(
+                    toolkit, list(RLToolkit)
+                )
             )
 
     @classmethod
@@ -483,7 +495,15 @@ class RLEstimator(Framework):
             float_regex = "[-+]?[0-9]*[.]?[0-9]+([eE][-+]?[0-9]+)?"  # noqa: W605, E501
 
             return [
-                {"Name": "episode_reward_mean", "Regex": "episode_reward_mean: (%s)" % float_regex},
-                {"Name": "episode_reward_max", "Regex": "episode_reward_max: (%s)" % float_regex},
+                {
+                    "Name": "episode_reward_mean",
+                    "Regex": "episode_reward_mean: (%s)" % float_regex,
+                },
+                {
+                    "Name": "episode_reward_max",
+                    "Regex": "episode_reward_max: (%s)" % float_regex,
+                },
             ]
-        raise ValueError("An unknown RLToolkit enum was passed in. toolkit: {}".format(toolkit))
+        raise ValueError(
+            "An unknown RLToolkit enum was passed in. toolkit: {}".format(toolkit)
+        )

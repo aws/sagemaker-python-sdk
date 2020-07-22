@@ -18,8 +18,12 @@ _sym_db = _symbol_database.Default()
 from tensorflow_serving.apis import (
     classification_pb2 as tensorflow__serving_dot_apis_dot_classification__pb2,
 )
-from tensorflow_serving.apis import input_pb2 as tensorflow__serving_dot_apis_dot_input__pb2
-from tensorflow_serving.apis import model_pb2 as tensorflow__serving_dot_apis_dot_model__pb2
+from tensorflow_serving.apis import (
+    input_pb2 as tensorflow__serving_dot_apis_dot_input__pb2,
+)
+from tensorflow_serving.apis import (
+    model_pb2 as tensorflow__serving_dot_apis_dot_model__pb2,
+)
 from tensorflow_serving.apis import (
     regression_pb2 as tensorflow__serving_dot_apis_dot_regression__pb2,
 )
@@ -284,7 +288,9 @@ _INFERENCERESULT.fields_by_name[
 ].message_type = tensorflow__serving_dot_apis_dot_model__pb2._MODELSPEC
 _INFERENCERESULT.fields_by_name[
     "classification_result"
-].message_type = tensorflow__serving_dot_apis_dot_classification__pb2._CLASSIFICATIONRESULT
+].message_type = (
+    tensorflow__serving_dot_apis_dot_classification__pb2._CLASSIFICATIONRESULT
+)
 _INFERENCERESULT.fields_by_name[
     "regression_result"
 ].message_type = tensorflow__serving_dot_apis_dot_regression__pb2._REGRESSIONRESULT
@@ -357,5 +363,7 @@ _sym_db.RegisterMessage(MultiInferenceResponse)
 
 
 DESCRIPTOR.has_options = True
-DESCRIPTOR._options = _descriptor._ParseOptions(descriptor_pb2.FileOptions(), _b("\370\001\001"))
+DESCRIPTOR._options = _descriptor._ParseOptions(
+    descriptor_pb2.FileOptions(), _b("\370\001\001")
+)
 # @@protoc_insertion_point(module_scope)

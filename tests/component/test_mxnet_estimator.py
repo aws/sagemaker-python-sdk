@@ -69,7 +69,9 @@ def test_deploy(sagemaker_session, tf_version):
     print("job succeeded: {}".format(estimator.latest_training_job.name))
 
     estimator.deploy(initial_instance_count=1, instance_type=INSTANCE_TYPE_CPU)
-    image = IMAGE_URI_FORMAT_STRING.format(REGION, CPU_IMAGE_NAME, tf_version, "cpu", "py2")
+    image = IMAGE_URI_FORMAT_STRING.format(
+        REGION, CPU_IMAGE_NAME, tf_version, "cpu", "py2"
+    )
     sagemaker_session.create_model.assert_called_with(
         estimator._current_job_name,
         ROLE,

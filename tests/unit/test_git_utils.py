@@ -38,7 +38,11 @@ CODECOMMIT_BRANCH = "master"
 @patch("os.path.isdir", return_value=True)
 @patch("os.path.exists", return_value=True)
 def test_git_clone_repo_succeed(exists, isdir, isfile, mkdtemp, check_call):
-    git_config = {"repo": PUBLIC_GIT_REPO, "branch": PUBLIC_BRANCH, "commit": PUBLIC_COMMIT}
+    git_config = {
+        "repo": PUBLIC_GIT_REPO,
+        "branch": PUBLIC_BRANCH,
+        "commit": PUBLIC_COMMIT,
+    }
     entry_point = "entry_point"
     source_dir = "source_dir"
     dependencies = ["foo", "bar"]
@@ -89,7 +93,11 @@ def test_git_clone_repo_git_argument_wrong_format():
 )
 @patch("tempfile.mkdtemp", return_value=REPO_DIR)
 def test_git_clone_repo_clone_fail(mkdtemp, check_call):
-    git_config = {"repo": PUBLIC_GIT_REPO, "branch": PUBLIC_BRANCH, "commit": PUBLIC_COMMIT}
+    git_config = {
+        "repo": PUBLIC_GIT_REPO,
+        "branch": PUBLIC_BRANCH,
+        "commit": PUBLIC_COMMIT,
+    }
     entry_point = "entry_point"
     source_dir = "source_dir"
     dependencies = ["foo", "bar"]
@@ -100,11 +108,18 @@ def test_git_clone_repo_clone_fail(mkdtemp, check_call):
 
 @patch(
     "subprocess.check_call",
-    side_effect=[True, subprocess.CalledProcessError(returncode=1, cmd="git checkout banana")],
+    side_effect=[
+        True,
+        subprocess.CalledProcessError(returncode=1, cmd="git checkout banana"),
+    ],
 )
 @patch("tempfile.mkdtemp", return_value=REPO_DIR)
 def test_git_clone_repo_branch_not_exist(mkdtemp, check_call):
-    git_config = {"repo": PUBLIC_GIT_REPO, "branch": PUBLIC_BRANCH, "commit": PUBLIC_COMMIT}
+    git_config = {
+        "repo": PUBLIC_GIT_REPO,
+        "branch": PUBLIC_BRANCH,
+        "commit": PUBLIC_COMMIT,
+    }
     entry_point = "entry_point"
     source_dir = "source_dir"
     dependencies = ["foo", "bar"]
@@ -118,12 +133,18 @@ def test_git_clone_repo_branch_not_exist(mkdtemp, check_call):
     side_effect=[
         True,
         True,
-        subprocess.CalledProcessError(returncode=1, cmd="git checkout {}".format(PUBLIC_COMMIT)),
+        subprocess.CalledProcessError(
+            returncode=1, cmd="git checkout {}".format(PUBLIC_COMMIT)
+        ),
     ],
 )
 @patch("tempfile.mkdtemp", return_value=REPO_DIR)
 def test_git_clone_repo_commit_not_exist(mkdtemp, check_call):
-    git_config = {"repo": PUBLIC_GIT_REPO, "branch": PUBLIC_BRANCH, "commit": PUBLIC_COMMIT}
+    git_config = {
+        "repo": PUBLIC_GIT_REPO,
+        "branch": PUBLIC_BRANCH,
+        "commit": PUBLIC_COMMIT,
+    }
     entry_point = "entry_point"
     source_dir = "source_dir"
     dependencies = ["foo", "bar"]
@@ -137,8 +158,14 @@ def test_git_clone_repo_commit_not_exist(mkdtemp, check_call):
 @patch("os.path.isfile", return_value=False)
 @patch("os.path.isdir", return_value=True)
 @patch("os.path.exists", return_value=True)
-def test_git_clone_repo_entry_point_not_exist(exists, isdir, isfile, mkdtemp, heck_call):
-    git_config = {"repo": PUBLIC_GIT_REPO, "branch": PUBLIC_BRANCH, "commit": PUBLIC_COMMIT}
+def test_git_clone_repo_entry_point_not_exist(
+    exists, isdir, isfile, mkdtemp, heck_call
+):
+    git_config = {
+        "repo": PUBLIC_GIT_REPO,
+        "branch": PUBLIC_BRANCH,
+        "commit": PUBLIC_COMMIT,
+    }
     entry_point = "entry_point_that_does_not_exist"
     source_dir = "source_dir"
     dependencies = ["foo", "bar"]
@@ -152,8 +179,14 @@ def test_git_clone_repo_entry_point_not_exist(exists, isdir, isfile, mkdtemp, he
 @patch("os.path.isfile", return_value=True)
 @patch("os.path.isdir", return_value=False)
 @patch("os.path.exists", return_value=True)
-def test_git_clone_repo_source_dir_not_exist(exists, isdir, isfile, mkdtemp, check_call):
-    git_config = {"repo": PUBLIC_GIT_REPO, "branch": PUBLIC_BRANCH, "commit": PUBLIC_COMMIT}
+def test_git_clone_repo_source_dir_not_exist(
+    exists, isdir, isfile, mkdtemp, check_call
+):
+    git_config = {
+        "repo": PUBLIC_GIT_REPO,
+        "branch": PUBLIC_BRANCH,
+        "commit": PUBLIC_COMMIT,
+    }
     entry_point = "entry_point"
     source_dir = "source_dir_that_does_not_exist"
     dependencies = ["foo", "bar"]
@@ -167,8 +200,14 @@ def test_git_clone_repo_source_dir_not_exist(exists, isdir, isfile, mkdtemp, che
 @patch("os.path.isfile", return_value=True)
 @patch("os.path.isdir", return_value=True)
 @patch("os.path.exists", side_effect=[True, False])
-def test_git_clone_repo_dependencies_not_exist(exists, isdir, isfile, mkdtemp, check_call):
-    git_config = {"repo": PUBLIC_GIT_REPO, "branch": PUBLIC_BRANCH, "commit": PUBLIC_COMMIT}
+def test_git_clone_repo_dependencies_not_exist(
+    exists, isdir, isfile, mkdtemp, check_call
+):
+    git_config = {
+        "repo": PUBLIC_GIT_REPO,
+        "branch": PUBLIC_BRANCH,
+        "commit": PUBLIC_COMMIT,
+    }
     entry_point = "entry_point"
     source_dir = "source_dir"
     dependencies = ["foo", "dep_that_does_not_exist"]
@@ -224,7 +263,12 @@ def test_git_clone_repo_with_token_no_2fa(isfile, mkdtemp, check_call):
     env["GIT_TERMINAL_PROMPT"] = "0"
     ret = git_utils.git_clone_repo(git_config=git_config, entry_point=entry_point)
     check_call.assert_any_call(
-        ["git", "clone", "https://my-token@github.com/testAccount/private-repo.git", REPO_DIR],
+        [
+            "git",
+            "clone",
+            "https://my-token@github.com/testAccount/private-repo.git",
+            REPO_DIR,
+        ],
         env=env,
     )
     check_call.assert_any_call(args=["git", "checkout", PRIVATE_BRANCH], cwd=REPO_DIR)
@@ -251,7 +295,12 @@ def test_git_clone_repo_with_token_2fa(isfile, mkdtemp, check_call):
     env["GIT_TERMINAL_PROMPT"] = "0"
     ret = git_utils.git_clone_repo(git_config=git_config, entry_point=entry_point)
     check_call.assert_any_call(
-        ["git", "clone", "https://my-token@github.com/testAccount/private-repo.git", REPO_DIR],
+        [
+            "git",
+            "clone",
+            "https://my-token@github.com/testAccount/private-repo.git",
+            REPO_DIR,
+        ],
         env=env,
     )
     check_call.assert_any_call(args=["git", "checkout", PRIVATE_BRANCH], cwd=REPO_DIR)
@@ -265,7 +314,11 @@ def test_git_clone_repo_with_token_2fa(isfile, mkdtemp, check_call):
 @patch("tempfile.mkdtemp", return_value=REPO_DIR)
 @patch("os.path.isfile", return_value=True)
 def test_git_clone_repo_ssh(isfile, mkdtemp, check_call):
-    git_config = {"repo": PRIVATE_GIT_REPO_SSH, "branch": PRIVATE_BRANCH, "commit": PRIVATE_COMMIT}
+    git_config = {
+        "repo": PRIVATE_GIT_REPO_SSH,
+        "branch": PRIVATE_BRANCH,
+        "commit": PRIVATE_COMMIT,
+    }
     entry_point = "entry_point"
     ret = git_utils.git_clone_repo(git_config, entry_point)
     assert ret["entry_point"] == "/tmp/repo_dir/entry_point"
@@ -276,7 +329,9 @@ def test_git_clone_repo_ssh(isfile, mkdtemp, check_call):
 @patch("subprocess.check_call")
 @patch("tempfile.mkdtemp", return_value=REPO_DIR)
 @patch("os.path.isfile", return_value=True)
-def test_git_clone_repo_with_token_no_2fa_unnecessary_creds_provided(isfile, mkdtemp, check_call):
+def test_git_clone_repo_with_token_no_2fa_unnecessary_creds_provided(
+    isfile, mkdtemp, check_call
+):
     git_config = {
         "repo": PRIVATE_GIT_REPO,
         "branch": PRIVATE_BRANCH,
@@ -295,7 +350,12 @@ def test_git_clone_repo_with_token_no_2fa_unnecessary_creds_provided(isfile, mkd
         in warn[0].message.args[0]
     )
     check_call.assert_any_call(
-        ["git", "clone", "https://my-token@github.com/testAccount/private-repo.git", REPO_DIR],
+        [
+            "git",
+            "clone",
+            "https://my-token@github.com/testAccount/private-repo.git",
+            REPO_DIR,
+        ],
         env=env,
     )
     check_call.assert_any_call(args=["git", "checkout", PRIVATE_BRANCH], cwd=REPO_DIR)
@@ -308,7 +368,9 @@ def test_git_clone_repo_with_token_no_2fa_unnecessary_creds_provided(isfile, mkd
 @patch("subprocess.check_call")
 @patch("tempfile.mkdtemp", return_value=REPO_DIR)
 @patch("os.path.isfile", return_value=True)
-def test_git_clone_repo_with_token_2fa_unnecessary_creds_provided(isfile, mkdtemp, check_call):
+def test_git_clone_repo_with_token_2fa_unnecessary_creds_provided(
+    isfile, mkdtemp, check_call
+):
     git_config = {
         "repo": PRIVATE_GIT_REPO,
         "branch": PRIVATE_BRANCH,
@@ -327,7 +389,12 @@ def test_git_clone_repo_with_token_2fa_unnecessary_creds_provided(isfile, mkdtem
         in warn[0].message.args[0]
     )
     check_call.assert_any_call(
-        ["git", "clone", "https://my-token@github.com/testAccount/private-repo.git", REPO_DIR],
+        [
+            "git",
+            "clone",
+            "https://my-token@github.com/testAccount/private-repo.git",
+            REPO_DIR,
+        ],
         env=env,
     )
     check_call.assert_any_call(args=["git", "checkout", PRIVATE_BRANCH], cwd=REPO_DIR)
@@ -410,7 +477,9 @@ def test_git_clone_repo_with_and_token_2fa_wrong_creds(mkdtemp, check_call):
 @patch("subprocess.check_call")
 @patch("tempfile.mkdtemp", return_value=REPO_DIR)
 @patch("os.path.isfile", return_value=True)
-def test_git_clone_repo_codecommit_https_with_username_and_password(isfile, mkdtemp, check_call):
+def test_git_clone_repo_codecommit_https_with_username_and_password(
+    isfile, mkdtemp, check_call
+):
     git_config = {
         "repo": CODECOMMIT_REPO,
         "branch": CODECOMMIT_BRANCH,
@@ -430,7 +499,9 @@ def test_git_clone_repo_codecommit_https_with_username_and_password(isfile, mkdt
         ],
         env=env,
     )
-    check_call.assert_any_call(args=["git", "checkout", CODECOMMIT_BRANCH], cwd=REPO_DIR)
+    check_call.assert_any_call(
+        args=["git", "checkout", CODECOMMIT_BRANCH], cwd=REPO_DIR
+    )
     assert ret["entry_point"] == "/tmp/repo_dir/entry_point"
     assert ret["source_dir"] is None
     assert ret["dependencies"] is None

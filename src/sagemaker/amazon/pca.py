@@ -31,7 +31,9 @@ class PCA(AmazonAlgorithmEstimatorBase):
 
     DEFAULT_MINI_BATCH_SIZE = 500
 
-    num_components = hp("num_components", gt(0), "Value must be an integer greater than zero", int)
+    num_components = hp(
+        "num_components", gt(0), "Value must be an integer greater than zero", int
+    )
     algorithm_mode = hp(
         "algorithm_mode",
         isin("regular", "randomized"),
@@ -39,7 +41,9 @@ class PCA(AmazonAlgorithmEstimatorBase):
         str,
     )
     subtract_mean = hp(
-        name="subtract_mean", validation_message="Value must be a boolean", data_type=bool
+        name="subtract_mean",
+        validation_message="Value must be a boolean",
+        data_type=bool,
     )
     extra_components = hp(
         name="extra_components",
@@ -120,7 +124,9 @@ class PCA(AmazonAlgorithmEstimatorBase):
             :class:`~sagemaker.estimator.amazon_estimator.AmazonAlgorithmEstimatorBase` and
             :class:`~sagemaker.estimator.EstimatorBase`.
         """
-        super(PCA, self).__init__(role, train_instance_count, train_instance_type, **kwargs)
+        super(PCA, self).__init__(
+            role, train_instance_count, train_instance_type, **kwargs
+        )
         self.num_components = num_components
         self.algorithm_mode = algorithm_mode
         self.subtract_mean = subtract_mean
@@ -169,7 +175,8 @@ class PCA(AmazonAlgorithmEstimatorBase):
 
         # mini_batch_size is a required parameter
         default_mini_batch_size = min(
-            self.DEFAULT_MINI_BATCH_SIZE, max(1, int(num_records / self.train_instance_count))
+            self.DEFAULT_MINI_BATCH_SIZE,
+            max(1, int(num_records / self.train_instance_count)),
         )
         use_mini_batch_size = mini_batch_size or default_mini_batch_size
 
@@ -223,7 +230,9 @@ class PCAModel(Model):
         """
         sagemaker_session = sagemaker_session or Session()
         repo = "{}:{}".format(PCA.repo_name, PCA.repo_version)
-        image = "{}/{}".format(registry(sagemaker_session.boto_session.region_name), repo)
+        image = "{}/{}".format(
+            registry(sagemaker_session.boto_session.region_name), repo
+        )
         super(PCAModel, self).__init__(
             model_data,
             image,

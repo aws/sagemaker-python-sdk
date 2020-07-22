@@ -33,11 +33,15 @@ ALL_REQ_ARGS = dict({"k": K}, **COMMON_TRAIN_ARGS)
 REGION = "us-west-2"
 BUCKET_NAME = "Some-Bucket"
 
-DESCRIBE_TRAINING_JOB_RESULT = {"ModelArtifacts": {"S3ModelArtifacts": "s3://bucket/model.tar.gz"}}
+DESCRIBE_TRAINING_JOB_RESULT = {
+    "ModelArtifacts": {"S3ModelArtifacts": "s3://bucket/model.tar.gz"}
+}
 
 ENDPOINT_DESC = {"EndpointConfigName": "test-endpoint"}
 
-ENDPOINT_CONFIG_DESC = {"ProductionVariants": [{"ModelName": "model-1"}, {"ModelName": "model-2"}]}
+ENDPOINT_CONFIG_DESC = {
+    "ProductionVariants": [{"ModelName": "model-1"}, {"ModelName": "model-2"}]
+}
 
 
 @pytest.fixture()
@@ -58,14 +62,20 @@ def sagemaker_session():
         name="describe_training_job", return_value=DESCRIBE_TRAINING_JOB_RESULT
     )
     sms.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)
-    sms.sagemaker_client.describe_endpoint_config = Mock(return_value=ENDPOINT_CONFIG_DESC)
+    sms.sagemaker_client.describe_endpoint_config = Mock(
+        return_value=ENDPOINT_CONFIG_DESC
+    )
 
     return sms
 
 
 def test_init_required_positional(sagemaker_session):
     kmeans = KMeans(
-        ROLE, TRAIN_INSTANCE_COUNT, TRAIN_INSTANCE_TYPE, K, sagemaker_session=sagemaker_session
+        ROLE,
+        TRAIN_INSTANCE_COUNT,
+        TRAIN_INSTANCE_TYPE,
+        K,
+        sagemaker_session=sagemaker_session,
     )
     assert kmeans.role == ROLE
     assert kmeans.train_instance_count == TRAIN_INSTANCE_COUNT
@@ -117,7 +127,9 @@ def test_image(sagemaker_session):
 
 
 @pytest.mark.parametrize("required_hyper_parameters, value", [("k", "string")])
-def test_required_hyper_parameters_type(sagemaker_session, required_hyper_parameters, value):
+def test_required_hyper_parameters_type(
+    sagemaker_session, required_hyper_parameters, value
+):
     with pytest.raises(ValueError):
         test_params = ALL_REQ_ARGS.copy()
         test_params[required_hyper_parameters] = value
@@ -125,7 +137,9 @@ def test_required_hyper_parameters_type(sagemaker_session, required_hyper_parame
 
 
 @pytest.mark.parametrize("required_hyper_parameters, value", [("k", 0)])
-def test_required_hyper_parameters_value(sagemaker_session, required_hyper_parameters, value):
+def test_required_hyper_parameters_value(
+    sagemaker_session, required_hyper_parameters, value
+):
     with pytest.raises(ValueError):
         test_params = ALL_REQ_ARGS.copy()
         test_params[required_hyper_parameters] = value
@@ -133,7 +147,9 @@ def test_required_hyper_parameters_value(sagemaker_session, required_hyper_param
 
 
 @pytest.mark.parametrize("iterable_hyper_parameters, value", [("eval_metrics", 0)])
-def test_iterable_hyper_parameters_type(sagemaker_session, iterable_hyper_parameters, value):
+def test_iterable_hyper_parameters_type(
+    sagemaker_session, iterable_hyper_parameters, value
+):
     with pytest.raises(TypeError):
         test_params = ALL_REQ_ARGS.copy()
         test_params.update({iterable_hyper_parameters: value})
@@ -153,7 +169,9 @@ def test_iterable_hyper_parameters_type(sagemaker_session, iterable_hyper_parame
         ("center_factor", "string"),
     ],
 )
-def test_optional_hyper_parameters_type(sagemaker_session, optional_hyper_parameters, value):
+def test_optional_hyper_parameters_type(
+    sagemaker_session, optional_hyper_parameters, value
+):
     with pytest.raises(ValueError):
         test_params = ALL_REQ_ARGS.copy()
         test_params.update({optional_hyper_parameters: value})
@@ -174,7 +192,9 @@ def test_optional_hyper_parameters_type(sagemaker_session, optional_hyper_parame
         ("center_factor", 0),
     ],
 )
-def test_optional_hyper_parameters_value(sagemaker_session, optional_hyper_parameters, value):
+def test_optional_hyper_parameters_value(
+    sagemaker_session, optional_hyper_parameters, value
+):
     with pytest.raises(ValueError):
         test_params = ALL_REQ_ARGS.copy()
         test_params.update({optional_hyper_parameters: value})
@@ -188,7 +208,9 @@ MINI_BATCH_SIZE = 200
 
 @patch("sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase.fit")
 def test_call_fit(base_fit, sagemaker_session):
-    kmeans = KMeans(base_job_name="kmeans", sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
+    kmeans = KMeans(
+        base_job_name="kmeans", sagemaker_session=sagemaker_session, **ALL_REQ_ARGS
+    )
 
     data = RecordSet(
         "s3://{}/{}".format(BUCKET_NAME, PREFIX),
@@ -206,7 +228,9 @@ def test_call_fit(base_fit, sagemaker_session):
 
 
 def test_prepare_for_training_no_mini_batch_size(sagemaker_session):
-    kmeans = KMeans(base_job_name="kmeans", sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
+    kmeans = KMeans(
+        base_job_name="kmeans", sagemaker_session=sagemaker_session, **ALL_REQ_ARGS
+    )
 
     data = RecordSet(
         "s3://{}/{}".format(BUCKET_NAME, PREFIX),
@@ -220,7 +244,9 @@ def test_prepare_for_training_no_mini_batch_size(sagemaker_session):
 
 
 def test_prepare_for_training_wrong_type_mini_batch_size(sagemaker_session):
-    kmeans = KMeans(base_job_name="kmeans", sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
+    kmeans = KMeans(
+        base_job_name="kmeans", sagemaker_session=sagemaker_session, **ALL_REQ_ARGS
+    )
 
     data = RecordSet(
         "s3://{}/{}".format(BUCKET_NAME, PREFIX),
@@ -234,7 +260,9 @@ def test_prepare_for_training_wrong_type_mini_batch_size(sagemaker_session):
 
 
 def test_prepare_for_training_wrong_value_mini_batch_size(sagemaker_session):
-    kmeans = KMeans(base_job_name="kmeans", sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
+    kmeans = KMeans(
+        base_job_name="kmeans", sagemaker_session=sagemaker_session, **ALL_REQ_ARGS
+    )
 
     data = RecordSet(
         "s3://{}/{}".format(BUCKET_NAME, PREFIX),

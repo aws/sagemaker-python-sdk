@@ -50,7 +50,9 @@ class HostCommand(object):
         prefix = "{}/model".format(self.endpoint_name)
 
         archive = self.create_model_archive(self.data)
-        model_uri = self.session.upload_data(path=archive, bucket=self.bucket, key_prefix=prefix)
+        model_uri = self.session.upload_data(
+            path=archive, bucket=self.bucket, key_prefix=prefix
+        )
         shutil.rmtree(os.path.dirname(archive))
 
         return model_uri
@@ -126,7 +128,9 @@ class TrainCommand(object):
     def upload_training_data(self):
         """Placeholder docstring"""
         prefix = "{}/data".format(self.job_name)
-        data_url = self.session.upload_data(path=self.data, bucket=self.bucket, key_prefix=prefix)
+        data_url = self.session.upload_data(
+            path=self.data, bucket=self.bucket, key_prefix=prefix
+        )
         return data_url
 
     def create_estimator(self):

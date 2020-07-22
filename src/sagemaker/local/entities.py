@@ -28,7 +28,9 @@ from sagemaker.utils import DeferredError, get_config_value
 try:
     import urllib3
 except ImportError as e:
-    logging.warning("urllib3 failed to import. Local mode features will be impaired or broken.")
+    logging.warning(
+        "urllib3 failed to import. Local mode features will be impaired or broken."
+    )
     # Any subsequent attempt to use urllib3 will raise the ImportError
     urllib3 = DeferredError(e)
 
@@ -68,7 +70,9 @@ class _LocalTrainingJob(object):
         """
         for channel in input_data_config:
             if channel["DataSource"] and "S3DataSource" in channel["DataSource"]:
-                data_distribution = channel["DataSource"]["S3DataSource"]["S3DataDistributionType"]
+                data_distribution = channel["DataSource"]["S3DataSource"][
+                    "S3DataDistributionType"
+                ]
                 data_uri = channel["DataSource"]["S3DataSource"]["S3Uri"]
             elif channel["DataSource"] and "FileDataSource" in channel["DataSource"]:
                 data_distribution = channel["DataSource"]["FileDataSource"][
@@ -133,7 +137,9 @@ class _LocalTransformJob(object):
 
         # TODO - support SageMaker Models not just local models. This is not
         # ideal but it may be a good thing to do.
-        self.primary_container = local_client.describe_model(model_name)["PrimaryContainer"]
+        self.primary_container = local_client.describe_model(model_name)[
+            "PrimaryContainer"
+        ]
         self.container = None
         self.start_time = None
         self.end_time = None
@@ -172,7 +178,9 @@ class _LocalTransformJob(object):
         )
         self.container.serve(self.primary_container["ModelDataUrl"], environment)
 
-        serving_port = get_config_value("local.serving_port", self.local_session.config) or 8080
+        serving_port = (
+            get_config_value("local.serving_port", self.local_session.config) or 8080
+        )
         _wait_for_serving_container(serving_port)
 
         # Get capabilities from Container if needed
@@ -257,11 +265,16 @@ class _LocalTransformJob(object):
             elif kwargs["BatchStrategy"] == "MultiRecord":
                 strategy_env_value = "MULTI_RECORD"
             else:
-                raise ValueError("Invalid BatchStrategy, must be 'SingleRecord' or 'MultiRecord'")
+                raise ValueError(
+                    "Invalid BatchStrategy, must be 'SingleRecord' or 'MultiRecord'"
+                )
             environment["SAGEMAKER_BATCH_STRATEGY"] = strategy_env_value
 
         # we only do 1 max concurrent transform in Local Mode
-        if "MaxConcurrentTransforms" in kwargs and int(kwargs["MaxConcurrentTransforms"]) > 1:
+        if (
+            "MaxConcurrentTransforms" in kwargs
+            and int(kwargs["MaxConcurrentTransforms"]) > 1
+        ):
             logger.warning(
                 "Local Mode only supports 1 ConcurrentTransform. Setting MaxConcurrentTransforms "
                 "to 1"
@@ -312,12 +325,16 @@ class _LocalTransformJob(object):
             batch_strategy:
         """
         input_path = input_data["DataSource"]["S3DataSource"]["S3Uri"]
-        data_source = sagemaker.local.data.get_data_source_instance(input_path, self.local_session)
+        data_source = sagemaker.local.data.get_data_source_instance(
+            input_path, self.local_session
+        )
 
         split_type = input_data["SplitType"] if "SplitType" in input_data else None
         splitter = sagemaker.local.data.get_splitter_instance(split_type)
 
-        batch_provider = sagemaker.local.data.get_batch_strategy_instance(batch_strategy, splitter)
+        batch_provider = sagemaker.local.data.get_batch_strategy_instance(
+            batch_strategy, splitter
+        )
         return data_source, batch_provider
 
     def _perform_batch_inference(self, input_data, output_data, **kwargs):
@@ -333,7 +350,9 @@ class _LocalTransformJob(object):
         """
         batch_strategy = kwargs["BatchStrategy"]
         max_payload = int(kwargs["MaxPayloadInMB"])
-        data_source, batch_provider = self._prepare_data_transformation(input_data, batch_strategy)
+        data_source, batch_provider = self._prepare_data_transformation(
+            input_data, batch_strategy
+        )
 
         # Output settings
         accept = output_data["Accept"] if "Accept" in output_data else None
@@ -346,7 +365,9 @@ class _LocalTransformJob(object):
             relative_path = os.path.dirname(os.path.relpath(file, dataset_dir))
             filename = os.path.basename(file)
             copy_directory_structure(working_dir, relative_path)
-            destination_path = os.path.join(working_dir, relative_path, filename + ".out")
+            destination_path = os.path.join(
+                working_dir, relative_path, filename + ".out"
+            )
 
             with open(destination_path, "wb") as f:
                 for item in batch_provider.pad(file, max_payload):
@@ -359,10 +380,15 @@ class _LocalTransformJob(object):
                     data = response_body.read()
                     response_body.close()
                     f.write(data)
-                    if "AssembleWith" in output_data and output_data["AssembleWith"] == "Line":
+                    if (
+                        "AssembleWith" in output_data
+                        and output_data["AssembleWith"] == "Line"
+                    ):
                         f.write(b"\n")
 
-        move_to_destination(working_dir, output_data["S3OutputPath"], self.name, self.local_session)
+        move_to_destination(
+            working_dir, output_data["S3OutputPath"], self.name, self.local_session
+        )
         self.container.stop_serving()
 
 
@@ -425,7 +451,9 @@ class _LocalEndpoint(object):
     _IN_SERVICE = "InService"
     _FAILED = "Failed"
 
-    def __init__(self, endpoint_name, endpoint_config_name, tags=None, local_session=None):
+    def __init__(
+        self, endpoint_name, endpoint_config_name, tags=None, local_session=None
+    ):
         # runtime import since there is a cyclic dependency between entities and local_session
         """
         Args:
@@ -440,12 +468,16 @@ class _LocalEndpoint(object):
         local_client = self.local_session.sagemaker_client
 
         self.name = endpoint_name
-        self.endpoint_config = local_client.describe_endpoint_config(endpoint_config_name)
+        self.endpoint_config = local_client.describe_endpoint_config(
+            endpoint_config_name
+        )
         self.production_variant = self.endpoint_config["ProductionVariants"][0]
         self.tags = tags
 
         model_name = self.production_variant["ModelName"]
-        self.primary_container = local_client.describe_model(model_name)["PrimaryContainer"]
+        self.primary_container = local_client.describe_model(model_name)[
+            "PrimaryContainer"
+        ]
 
         self.container = None
         self.create_time = None
@@ -468,10 +500,13 @@ class _LocalEndpoint(object):
             instance_type, instance_count, image, self.local_session
         )
         self.container.serve(
-            self.primary_container["ModelDataUrl"], self.primary_container["Environment"]
+            self.primary_container["ModelDataUrl"],
+            self.primary_container["Environment"],
         )
 
-        serving_port = get_config_value("local.serving_port", self.local_session.config) or 8080
+        serving_port = (
+            get_config_value("local.serving_port", self.local_session.config) or 8080
+        )
         _wait_for_serving_container(serving_port)
         # the container is running and it passed the healthcheck status is now InService
         self.state = _LocalEndpoint._IN_SERVICE

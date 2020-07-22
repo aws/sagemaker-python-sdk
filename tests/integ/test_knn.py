@@ -52,7 +52,9 @@ def test_knn_regressor(sagemaker_session, cpu_instance_type):
         )
 
     with timeout_and_delete_endpoint_by_name(job_name, sagemaker_session):
-        model = KNNModel(knn.model_data, role="SageMakerRole", sagemaker_session=sagemaker_session)
+        model = KNNModel(
+            knn.model_data, role="SageMakerRole", sagemaker_session=sagemaker_session
+        )
         predictor = model.deploy(1, cpu_instance_type, endpoint_name=job_name)
         result = predictor.predict(train_set[0][:10])
 
@@ -96,9 +98,13 @@ def test_async_knn_classifier(sagemaker_session, cpu_instance_type):
         print("attaching now...")
 
     with timeout_and_delete_endpoint_by_name(job_name, sagemaker_session):
-        estimator = KNN.attach(training_job_name=job_name, sagemaker_session=sagemaker_session)
+        estimator = KNN.attach(
+            training_job_name=job_name, sagemaker_session=sagemaker_session
+        )
         model = KNNModel(
-            estimator.model_data, role="SageMakerRole", sagemaker_session=sagemaker_session
+            estimator.model_data,
+            role="SageMakerRole",
+            sagemaker_session=sagemaker_session,
         )
         predictor = model.deploy(1, cpu_instance_type, endpoint_name=job_name)
         result = predictor.predict(train_set[0][:10])

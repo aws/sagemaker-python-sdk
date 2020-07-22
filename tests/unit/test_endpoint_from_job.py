@@ -31,7 +31,11 @@ TRAINING_JOB_RESPONSE = {
     "RoleArn": TRAIN_ROLE,
     "VpcConfig": VPC_CONFIG,
 }
-FULL_CONTAINER_DEF = {"Environment": {}, "Image": IMAGE, "ModelDataUrl": S3_MODEL_ARTIFACTS}
+FULL_CONTAINER_DEF = {
+    "Environment": {},
+    "Image": IMAGE,
+    "ModelDataUrl": S3_MODEL_ARTIFACTS,
+}
 DEPLOY_IMAGE = "mydeployimage"
 DEPLOY_ROLE = "mydeployrole"
 NEW_ENTITY_NAME = "mynewendpoint"
@@ -43,7 +47,9 @@ REGION = "us-west-2"
 @pytest.fixture()
 def sagemaker_session():
     boto_mock = Mock(name="boto_session", region_name=REGION)
-    ims = sagemaker.Session(sagemaker_client=Mock(name="sagemaker_client"), boto_session=boto_mock)
+    ims = sagemaker.Session(
+        sagemaker_client=Mock(name="sagemaker_client"), boto_session=boto_mock
+    )
     ims.sagemaker_client.describe_training_job = Mock(
         name="describe_training_job", return_value=TRAINING_JOB_RESPONSE
     )

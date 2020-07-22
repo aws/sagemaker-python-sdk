@@ -62,7 +62,9 @@ PROTO_CONTENT_TYPE = "application/octet-stream"
 
 ENDPOINT_DESC = {"EndpointConfigName": ENDPOINT}
 
-ENDPOINT_CONFIG_DESC = {"ProductionVariants": [{"ModelName": "model-1"}, {"ModelName": "model-2"}]}
+ENDPOINT_CONFIG_DESC = {
+    "ProductionVariants": [{"ModelName": "model-1"}, {"ModelName": "model-2"}]
+}
 
 
 @pytest.fixture()
@@ -71,13 +73,17 @@ def sagemaker_session():
     ims = Mock(name="sagemaker_session", boto_session=boto_mock)
     ims.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
     ims.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)
-    ims.sagemaker_client.describe_endpoint_config = Mock(return_value=ENDPOINT_CONFIG_DESC)
+    ims.sagemaker_client.describe_endpoint_config = Mock(
+        return_value=ENDPOINT_CONFIG_DESC
+    )
     return ims
 
 
 def test_endpoint_initialization(sagemaker_session):
     endpoint_name = "endpoint"
-    predictor = RealTimePredictor(endpoint=endpoint_name, sagemaker_session=sagemaker_session)
+    predictor = RealTimePredictor(
+        endpoint=endpoint_name, sagemaker_session=sagemaker_session
+    )
     assert predictor.endpoint == endpoint_name
 
 
@@ -91,7 +97,9 @@ def test_classification_request_json(sagemaker_session):
     )
 
     mock_response(
-        json.dumps(CLASSIFICATION_RESPONSE).encode("utf-8"), sagemaker_session, JSON_CONTENT_TYPE
+        json.dumps(CLASSIFICATION_RESPONSE).encode("utf-8"),
+        sagemaker_session,
+        JSON_CONTENT_TYPE,
     )
 
     result = predictor.predict(data)
@@ -250,7 +258,9 @@ def test_classification_request_pb(sagemaker_session):
     request.model_spec.name = "generic_model"
     request.model_spec.signature_name = DEFAULT_SERVING_SIGNATURE_DEF_KEY
     example = request.input.example_list.examples.add()
-    example.features.feature[PREDICT_INPUTS].float_list.value.extend([6.4, 3.2, 4.5, 1.5])
+    example.features.feature[PREDICT_INPUTS].float_list.value.extend(
+        [6.4, 3.2, 4.5, 1.5]
+    )
 
     predictor = RealTimePredictor(
         sagemaker_session=sagemaker_session,
@@ -274,7 +284,9 @@ def test_classification_request_pb(sagemaker_session):
     class_2.label = "2"
     class_2.score = 0.0172787327319
 
-    mock_response(expected_response.SerializeToString(), sagemaker_session, PROTO_CONTENT_TYPE)
+    mock_response(
+        expected_response.SerializeToString(), sagemaker_session, PROTO_CONTENT_TYPE
+    )
 
     result = predictor.predict(request)
 
@@ -344,7 +356,9 @@ def test_predict_request_json(sagemaker_session):
     )
 
     mock_response(
-        json.dumps(CLASSIFICATION_RESPONSE).encode("utf-8"), sagemaker_session, JSON_CONTENT_TYPE
+        json.dumps(CLASSIFICATION_RESPONSE).encode("utf-8"),
+        sagemaker_session,
+        JSON_CONTENT_TYPE,
     )
 
     result = predictor.predict(tensor_proto)
@@ -372,7 +386,9 @@ def test_predict_tensor_request_csv(sagemaker_session):
     )
 
     mock_response(
-        json.dumps(CLASSIFICATION_RESPONSE).encode("utf-8"), sagemaker_session, JSON_CONTENT_TYPE
+        json.dumps(CLASSIFICATION_RESPONSE).encode("utf-8"),
+        sagemaker_session,
+        JSON_CONTENT_TYPE,
     )
 
     result = predictor.predict(tensor_proto)

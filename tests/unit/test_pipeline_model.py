@@ -30,8 +30,12 @@ INSTANCE_TYPE = "ml.m4.xlarge"
 ROLE = "some-role"
 ENV_1 = {"SAGEMAKER_DEFAULT_INVOCATIONS_ACCEPT": "application/json"}
 ENV_2 = {"SAGEMAKER_DEFAULT_INVOCATIONS_ACCEPT": "text/csv"}
-MODEL_CONTAINER_1 = ModelContainer(image=MODEL_IMAGE_1, model_data=MODEL_DATA_1, env=ENV_1)
-MODEL_CONTAINER_2 = ModelContainer(image=MODEL_IMAGE_2, model_data=MODEL_DATA_2, env=ENV_2)
+MODEL_CONTAINER_1 = ModelContainer(
+    image=MODEL_IMAGE_1, model_data=MODEL_DATA_1, env=ENV_1
+)
+MODEL_CONTAINER_2 = ModelContainer(
+    image=MODEL_IMAGE_2, model_data=MODEL_DATA_2, env=ENV_2
+)
 ENDPOINT = "some-ep"
 
 
@@ -84,7 +88,9 @@ def test_prepare_container_def(tfo, time, sagemaker_session):
         env={"SAGEMAKER_DEFAULT_INVOCATIONS_ACCEPT": "text/csv"},
     )
     model = PipelineModel(
-        models=[framework_model, sparkml_model], role=ROLE, sagemaker_session=sagemaker_session
+        models=[framework_model, sparkml_model],
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
     )
     assert model.pipeline_container_def(INSTANCE_TYPE) == [
         {
@@ -115,7 +121,9 @@ def test_deploy(tfo, time, sagemaker_session):
         model_data=MODEL_DATA_2, role=ROLE, sagemaker_session=sagemaker_session
     )
     model = PipelineModel(
-        models=[framework_model, sparkml_model], role=ROLE, sagemaker_session=sagemaker_session
+        models=[framework_model, sparkml_model],
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
     )
     model.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=1)
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
@@ -143,7 +151,9 @@ def test_deploy_endpoint_name(tfo, time, sagemaker_session):
         model_data=MODEL_DATA_2, role=ROLE, sagemaker_session=sagemaker_session
     )
     model = PipelineModel(
-        models=[framework_model, sparkml_model], role=ROLE, sagemaker_session=sagemaker_session
+        models=[framework_model, sparkml_model],
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
     )
     model.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=1)
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
@@ -172,7 +182,9 @@ def test_deploy_update_endpoint(tfo, time, sagemaker_session):
         model_data=MODEL_DATA_2, role=ROLE, sagemaker_session=sagemaker_session
     )
     model = PipelineModel(
-        models=[framework_model, sparkml_model], role=ROLE, sagemaker_session=sagemaker_session
+        models=[framework_model, sparkml_model],
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
     )
     model.deploy(
         instance_type=INSTANCE_TYPE,
@@ -195,7 +207,9 @@ def test_deploy_update_endpoint(tfo, time, sagemaker_session):
         initial_instance_count=INSTANCE_COUNT,
         instance_type=INSTANCE_TYPE,
     )
-    sagemaker_session.update_endpoint.assert_called_with(endpoint_name, config_name, wait=True)
+    sagemaker_session.update_endpoint.assert_called_with(
+        endpoint_name, config_name, wait=True
+    )
     sagemaker_session.create_endpoint.assert_not_called()
 
 
@@ -262,7 +276,9 @@ def test_deploy_tags(tfo, time, sagemaker_session):
         model_data=MODEL_DATA_2, role=ROLE, sagemaker_session=sagemaker_session
     )
     model = PipelineModel(
-        models=[framework_model, sparkml_model], role=ROLE, sagemaker_session=sagemaker_session
+        models=[framework_model, sparkml_model],
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
     )
     tags = [{"ModelName": "TestModel"}]
     model.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=1, tags=tags)
@@ -286,7 +302,9 @@ def test_deploy_tags(tfo, time, sagemaker_session):
 def test_delete_model_without_deploy(sagemaker_session):
     pipeline_model = PipelineModel([], role=ROLE, sagemaker_session=sagemaker_session)
 
-    expected_error_message = "The SageMaker model must be created before attempting to delete."
+    expected_error_message = (
+        "The SageMaker model must be created before attempting to delete."
+    )
     with pytest.raises(ValueError, match=expected_error_message):
         pipeline_model.delete_model()
 

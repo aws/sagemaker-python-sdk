@@ -20,9 +20,9 @@ def assert_s3_files_exist(sagemaker_session, s3_url, files):
     parsed_url = urlparse(s3_url)
     region = sagemaker_session.boto_region_name
     s3 = boto3.client("s3", region_name=region)
-    contents = s3.list_objects_v2(Bucket=parsed_url.netloc, Prefix=parsed_url.path.lstrip("/"))[
-        "Contents"
-    ]
+    contents = s3.list_objects_v2(
+        Bucket=parsed_url.netloc, Prefix=parsed_url.path.lstrip("/")
+    )["Contents"]
     for f in files:
         found = [x["Key"] for x in contents if x["Key"].endswith(f)]
         if not found:

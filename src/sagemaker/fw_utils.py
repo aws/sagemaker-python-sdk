@@ -92,7 +92,10 @@ ASIMOV_VALID_ACCOUNTS_BY_REGION = {
     "cn-northwest-1": "727897471807",
 }
 OPT_IN_ACCOUNTS_BY_REGION = {"ap-east-1": "057415533634", "me-south-1": "724002660598"}
-ASIMOV_OPT_IN_ACCOUNTS_BY_REGION = {"ap-east-1": "871362719292", "me-south-1": "217643126080"}
+ASIMOV_OPT_IN_ACCOUNTS_BY_REGION = {
+    "ap-east-1": "871362719292",
+    "me-south-1": "217643126080",
+}
 DEFAULT_ACCOUNT = "520713654638"
 ASIMOV_PROD_ACCOUNT = "763104351884"
 ASIMOV_DEFAULT_ACCOUNT = ASIMOV_PROD_ACCOUNT
@@ -271,7 +274,9 @@ def create_image_uri(
         raise ValueError("invalid py_version argument: {}".format(py_version))
 
     if py_version == "py37" and framework not in PY37_SUPPORTED_FRAMEWORKS:
-        raise ValueError("{} does not support Python 3.7 at this time.".format(framework))
+        raise ValueError(
+            "{} does not support Python 3.7 at this time.".format(framework)
+        )
 
     if _accelerator_type_valid_for_framework(
         framework=framework,
@@ -297,7 +302,9 @@ def create_image_uri(
     elif not instance_type.startswith("ml."):
         raise ValueError(
             "{} is not a valid SageMaker instance type. See: "
-            "https://aws.amazon.com/sagemaker/pricing/instance-types/".format(instance_type)
+            "https://aws.amazon.com/sagemaker/pricing/instance-types/".format(
+                instance_type
+            )
         )
     else:
         family = instance_type.split(".")[1]
@@ -365,7 +372,9 @@ def _accelerator_type_valid_for_framework(
 
     if py_version == "py2" and framework in PY2_RESTRICTED_EIA_FRAMEWORKS:
         raise ValueError(
-            "{} is not supported with Amazon Elastic Inference in Python 2.".format(framework)
+            "{} is not supported with Amazon Elastic Inference in Python 2.".format(
+                framework
+            )
         )
 
     if framework not in VALID_EIA_FRAMEWORKS:
@@ -383,7 +392,9 @@ def _accelerator_type_valid_for_framework(
     ):
         raise ValueError(
             "{} is not a valid SageMaker Elastic Inference accelerator type. "
-            "See: https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html".format(accelerator_type)
+            "See: https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html".format(
+                accelerator_type
+            )
         )
 
     return True
@@ -401,7 +412,9 @@ def validate_source_dir(script, directory):
     if directory:
         if not os.path.isfile(os.path.join(directory, script)):
             raise ValueError(
-                'No file named "{}" was found in directory "{}".'.format(script, directory)
+                'No file named "{}" was found in directory "{}".'.format(
+                    script, directory
+                )
             )
 
     return True
@@ -517,7 +530,9 @@ def framework_name_from_image(image_name):
     name_pattern = re.compile(
         r"^(?:sagemaker(?:-rl)?-)?(tensorflow|mxnet|chainer|pytorch|scikit-learn|xgboost)(?:-)?(scriptmode|training)?:(.*)-(.*?)-(py2|py3)$"  # noqa: E501 # pylint: disable=line-too-long
     )
-    legacy_name_pattern = re.compile(r"^sagemaker-(tensorflow|mxnet)-(py2|py3)-(cpu|gpu):(.*)$")
+    legacy_name_pattern = re.compile(
+        r"^sagemaker-(tensorflow|mxnet)-(py2|py3)-(cpu|gpu):(.*)$"
+    )
 
     name_match = name_pattern.match(sagemaker_match.group(9))
     legacy_match = legacy_name_pattern.match(sagemaker_match.group(9))
@@ -532,7 +547,12 @@ def framework_name_from_image(image_name):
         )
         return fw, py, "{}-{}-{}".format(ver, device, py), scriptmode
     if legacy_match is not None:
-        return (legacy_match.group(1), legacy_match.group(2), legacy_match.group(4), None)
+        return (
+            legacy_match.group(1),
+            legacy_match.group(2),
+            legacy_match.group(4),
+            None,
+        )
     return None, None, None, None
 
 
@@ -576,7 +596,9 @@ def model_code_key_prefix(code_location_key_prefix, model_name, image):
         str: the key prefix to be used in uploading code
     """
     training_job_name = sagemaker.utils.name_from_image(image)
-    return "/".join(filter(None, [code_location_key_prefix, model_name or training_job_name]))
+    return "/".join(
+        filter(None, [code_location_key_prefix, model_name or training_job_name])
+    )
 
 
 def empty_framework_version_warning(default_version, latest_version):
@@ -629,9 +651,9 @@ def warn_if_parameter_server_with_multi_gpu(training_instance_type, distribution
         or training_instance_type.split(".")[1].startswith("p")
     ) and training_instance_type not in SINGLE_GPU_INSTANCE_TYPES
 
-    ps_enabled = "parameter_server" in distributions and distributions["parameter_server"].get(
-        "enabled", False
-    )
+    ps_enabled = "parameter_server" in distributions and distributions[
+        "parameter_server"
+    ].get("enabled", False)
 
     if is_multi_gpu_instance and ps_enabled:
         logger.warning(PARAMETER_SERVER_MULTI_GPU_WARNING)

@@ -42,9 +42,7 @@ PRIVATE_GIT_REPO_2FA_SSH = "git@github.com:git-support-test-2fa/test-git.git"
 PRIVATE_BRANCH_2FA = "master"
 PRIVATE_COMMIT_2FA = "52381dee030eb332a7e42d9992878d7261eb21d4"
 
-CODECOMMIT_REPO = (
-    "https://git-codecommit.us-west-2.amazonaws.com/v1/repos/sagemaker-python-sdk-git-testing-repo/"
-)
+CODECOMMIT_REPO = "https://git-codecommit.us-west-2.amazonaws.com/v1/repos/sagemaker-python-sdk-git-testing-repo/"
 CODECOMMIT_BRANCH = "master"
 
 # endpoint tests all use the same port, so we use this lock to prevent concurrent execution
@@ -68,7 +66,9 @@ def test_github(sagemaker_local_session):
         git_config=git_config,
     )
 
-    pytorch.fit({"training": "file://" + os.path.join(data_path, "training", MNIST_FOLDER_NAME)})
+    pytorch.fit(
+        {"training": "file://" + os.path.join(data_path, "training", MNIST_FOLDER_NAME)}
+    )
 
     with lock.lock(LOCK_PATH):
         try:
@@ -167,7 +167,9 @@ def test_private_github_with_2fa(sagemaker_local_session, sklearn_full_version):
     with lock.lock(LOCK_PATH):
         try:
             client = sagemaker_local_session.sagemaker_client
-            desc = client.describe_training_job(TrainingJobName=sklearn.latest_training_job.name)
+            desc = client.describe_training_job(
+                TrainingJobName=sklearn.latest_training_job.name
+            )
             model_data = desc["ModelArtifacts"]["S3ModelArtifacts"]
             model = SKLearnModel(
                 model_data,
@@ -187,7 +189,9 @@ def test_private_github_with_2fa(sagemaker_local_session, sklearn_full_version):
 
 
 @pytest.mark.local_mode
-def test_github_with_ssh_passphrase_not_configured(sagemaker_local_session, sklearn_full_version):
+def test_github_with_ssh_passphrase_not_configured(
+    sagemaker_local_session, sklearn_full_version
+):
     script_path = "mnist.py"
     data_path = os.path.join(DATA_DIR, "sklearn_mnist")
     git_config = {

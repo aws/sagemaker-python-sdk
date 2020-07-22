@@ -33,16 +33,21 @@ COMMON_TRAIN_ARGS = {
     "train_instance_type": TRAIN_INSTANCE_TYPE,
 }
 ALL_REQ_ARGS = dict(
-    {"num_entity_vectors": NUM_ENTITY_VECTORS, "vector_dim": VECTOR_DIM}, **COMMON_TRAIN_ARGS
+    {"num_entity_vectors": NUM_ENTITY_VECTORS, "vector_dim": VECTOR_DIM},
+    **COMMON_TRAIN_ARGS
 )
 REGION = "us-west-2"
 BUCKET_NAME = "Some-Bucket"
 
-DESCRIBE_TRAINING_JOB_RESULT = {"ModelArtifacts": {"S3ModelArtifacts": "s3://bucket/model.tar.gz"}}
+DESCRIBE_TRAINING_JOB_RESULT = {
+    "ModelArtifacts": {"S3ModelArtifacts": "s3://bucket/model.tar.gz"}
+}
 
 ENDPOINT_DESC = {"EndpointConfigName": "test-endpoint"}
 
-ENDPOINT_CONFIG_DESC = {"ProductionVariants": [{"ModelName": "model-1"}, {"ModelName": "model-2"}]}
+ENDPOINT_CONFIG_DESC = {
+    "ProductionVariants": [{"ModelName": "model-1"}, {"ModelName": "model-2"}]
+}
 
 
 @pytest.fixture()
@@ -61,7 +66,9 @@ def sagemaker_session():
         name="describe_training_job", return_value=DESCRIBE_TRAINING_JOB_RESULT
     )
     sms.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)
-    sms.sagemaker_client.describe_endpoint_config = Mock(return_value=ENDPOINT_CONFIG_DESC)
+    sms.sagemaker_client.describe_endpoint_config = Mock(
+        return_value=ENDPOINT_CONFIG_DESC
+    )
 
     return sms
 
@@ -123,9 +130,12 @@ def test_image(sagemaker_session):
 
 
 @pytest.mark.parametrize(
-    "required_hyper_parameters, value", [("num_entity_vectors", "string"), ("vector_dim", "string")]
+    "required_hyper_parameters, value",
+    [("num_entity_vectors", "string"), ("vector_dim", "string")],
 )
-def test_required_hyper_parameters_type(sagemaker_session, required_hyper_parameters, value):
+def test_required_hyper_parameters_type(
+    sagemaker_session, required_hyper_parameters, value
+):
     with pytest.raises(ValueError):
         test_params = ALL_REQ_ARGS.copy()
         test_params[required_hyper_parameters] = value
@@ -141,7 +151,9 @@ def test_required_hyper_parameters_type(sagemaker_session, required_hyper_parame
         ("vector_dim", 4097),
     ],
 )
-def test_required_hyper_parameters_value(sagemaker_session, required_hyper_parameters, value):
+def test_required_hyper_parameters_value(
+    sagemaker_session, required_hyper_parameters, value
+):
     with pytest.raises(ValueError):
         test_params = ALL_REQ_ARGS.copy()
         test_params[required_hyper_parameters] = value
@@ -160,7 +172,9 @@ def test_required_hyper_parameters_value(sagemaker_session, required_hyper_param
         ("weight_decay", "string"),
     ],
 )
-def test_optional_hyper_parameters_type(sagemaker_session, optional_hyper_parameters, value):
+def test_optional_hyper_parameters_type(
+    sagemaker_session, optional_hyper_parameters, value
+):
     with pytest.raises(ValueError):
         test_params = ALL_REQ_ARGS.copy()
         test_params.update({optional_hyper_parameters: value})
@@ -184,7 +198,9 @@ def test_optional_hyper_parameters_type(sagemaker_session, optional_hyper_parame
         ("weight_decay", 11),
     ],
 )
-def test_optional_hyper_parameters_value(sagemaker_session, optional_hyper_parameters, value):
+def test_optional_hyper_parameters_value(
+    sagemaker_session, optional_hyper_parameters, value
+):
     with pytest.raises(ValueError):
         test_params = ALL_REQ_ARGS.copy()
         test_params.update({optional_hyper_parameters: value})

@@ -45,10 +45,12 @@ def mxnet_training_job(sagemaker_session, mxnet_full_version, cpu_instance_type)
         )
 
         train_input = mx.sagemaker_session.upload_data(
-            path=os.path.join(data_path, "train"), key_prefix="integ-test-data/mxnet_mnist/train"
+            path=os.path.join(data_path, "train"),
+            key_prefix="integ-test-data/mxnet_mnist/train",
         )
         test_input = mx.sagemaker_session.upload_data(
-            path=os.path.join(data_path, "test"), key_prefix="integ-test-data/mxnet_mnist/test"
+            path=os.path.join(data_path, "test"),
+            key_prefix="integ-test-data/mxnet_mnist/test",
         )
 
         mx.fit({"train": train_input, "test": test_input})
@@ -60,14 +62,18 @@ def test_attach_deploy(mxnet_training_job, sagemaker_session, cpu_instance_type)
     endpoint_name = "test-mxnet-attach-deploy-{}".format(sagemaker_timestamp())
 
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
-        estimator = MXNet.attach(mxnet_training_job, sagemaker_session=sagemaker_session)
+        estimator = MXNet.attach(
+            mxnet_training_job, sagemaker_session=sagemaker_session
+        )
         predictor = estimator.deploy(1, cpu_instance_type, endpoint_name=endpoint_name)
         data = numpy.zeros(shape=(1, 1, 28, 28))
         result = predictor.predict(data)
         assert result is not None
 
 
-def test_deploy_model(mxnet_training_job, sagemaker_session, mxnet_full_version, cpu_instance_type):
+def test_deploy_model(
+    mxnet_training_job, sagemaker_session, mxnet_full_version, cpu_instance_type
+):
     endpoint_name = "test-mxnet-deploy-model-{}".format(sagemaker_timestamp())
 
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
@@ -120,15 +126,23 @@ def test_deploy_model_with_tags_and_kms(
         kms_key_arn = get_or_create_kms_key(sagemaker_session)
 
         model.deploy(
-            1, cpu_instance_type, endpoint_name=endpoint_name, tags=tags, kms_key=kms_key_arn
+            1,
+            cpu_instance_type,
+            endpoint_name=endpoint_name,
+            tags=tags,
+            kms_key=kms_key_arn,
         )
 
-        returned_model = sagemaker_session.sagemaker_client.describe_model(ModelName=model.name)
+        returned_model = sagemaker_session.sagemaker_client.describe_model(
+            ModelName=model.name
+        )
         returned_model_tags = sagemaker_session.sagemaker_client.list_tags(
             ResourceArn=returned_model["ModelArn"]
         )["Tags"]
 
-        endpoint = sagemaker_session.sagemaker_client.describe_endpoint(EndpointName=endpoint_name)
+        endpoint = sagemaker_session.sagemaker_client.describe_endpoint(
+            EndpointName=endpoint_name
+        )
         endpoint_tags = sagemaker_session.sagemaker_client.list_tags(
             ResourceArn=endpoint["EndpointArn"]
         )["Tags"]
@@ -179,11 +193,15 @@ def test_deploy_model_with_update_endpoint(
         )
         old_config_name = old_endpoint["EndpointConfigName"]
 
-        model.deploy(1, cpu_instance_type, update_endpoint=True, endpoint_name=endpoint_name)
+        model.deploy(
+            1, cpu_instance_type, update_endpoint=True, endpoint_name=endpoint_name
+        )
 
         # Wait for endpoint to finish updating
         # Endpoint update takes ~7min. 40 retries * 30s sleeps = 20min timeout
-        for _ in retries(40, "Waiting for 'InService' endpoint status", seconds_to_sleep=30):
+        for _ in retries(
+            40, "Waiting for 'InService' endpoint status", seconds_to_sleep=30
+        ):
             new_endpoint = sagemaker_session.sagemaker_client.describe_endpoint(
                 EndpointName=endpoint_name
             )
@@ -232,7 +250,10 @@ def test_deploy_model_with_update_non_existing_endpoint(
 
         with pytest.raises(ValueError, message=expected_error_message):
             model.deploy(
-                1, cpu_instance_type, update_endpoint=True, endpoint_name="non-existing-endpoint"
+                1,
+                cpu_instance_type,
+                update_endpoint=True,
+                endpoint_name="non-existing-endpoint",
             )
 
 
@@ -261,7 +282,10 @@ def test_deploy_model_with_accelerator(
             sagemaker_session=sagemaker_session,
         )
         predictor = model.deploy(
-            1, cpu_instance_type, endpoint_name=endpoint_name, accelerator_type="ml.eia1.medium"
+            1,
+            cpu_instance_type,
+            endpoint_name=endpoint_name,
+            accelerator_type="ml.eia1.medium",
         )
 
         data = numpy.zeros(shape=(1, 1, 28, 28))
@@ -288,10 +312,12 @@ def test_async_fit(sagemaker_session, mxnet_full_version, cpu_instance_type):
         )
 
         train_input = mx.sagemaker_session.upload_data(
-            path=os.path.join(data_path, "train"), key_prefix="integ-test-data/mxnet_mnist/train"
+            path=os.path.join(data_path, "train"),
+            key_prefix="integ-test-data/mxnet_mnist/train",
         )
         test_input = mx.sagemaker_session.upload_data(
-            path=os.path.join(data_path, "test"), key_prefix="integ-test-data/mxnet_mnist/test"
+            path=os.path.join(data_path, "test"),
+            key_prefix="integ-test-data/mxnet_mnist/test",
         )
 
         mx.fit({"train": train_input, "test": test_input}, wait=False)

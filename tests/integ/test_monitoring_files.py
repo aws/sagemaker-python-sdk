@@ -33,7 +33,9 @@ def test_statistics_object_creation_from_file_path_with_customizations(
     sagemaker_session, monitoring_files_kms_key
 ):
     statistics = Statistics.from_file_path(
-        statistics_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/statistics.json"),
+        statistics_file_path=os.path.join(
+            tests.integ.DATA_DIR, "monitor/statistics.json"
+        ),
         kms_key=monitoring_files_kms_key,
         sagemaker_session=sagemaker_session,
     )
@@ -44,9 +46,13 @@ def test_statistics_object_creation_from_file_path_with_customizations(
     assert statistics.body_dict["dataset"]["item_count"] == 418
 
 
-def test_statistics_object_creation_from_file_path_without_customizations(sagemaker_session):
+def test_statistics_object_creation_from_file_path_without_customizations(
+    sagemaker_session,
+):
     statistics = Statistics.from_file_path(
-        statistics_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/statistics.json"),
+        statistics_file_path=os.path.join(
+            tests.integ.DATA_DIR, "monitor/statistics.json"
+        ),
         sagemaker_session=sagemaker_session,
     )
 
@@ -75,7 +81,9 @@ def test_statistics_object_creation_from_string_with_customizations(
     assert statistics.body_dict["dataset"]["item_count"] == 418
 
 
-def test_statistics_object_creation_from_string_without_customizations(sagemaker_session):
+def test_statistics_object_creation_from_string_without_customizations(
+    sagemaker_session,
+):
     with open(os.path.join(tests.integ.DATA_DIR, "monitor/statistics.json"), "r") as f:
         file_body = f.read()
 
@@ -123,7 +131,9 @@ def test_statistics_object_creation_from_s3_uri_with_customizations(
     assert statistics.body_dict["dataset"]["item_count"] == 418
 
 
-def test_statistics_object_creation_from_s3_uri_without_customizations(sagemaker_session):
+def test_statistics_object_creation_from_s3_uri_without_customizations(
+    sagemaker_session,
+):
     with open(os.path.join(tests.integ.DATA_DIR, "monitor/statistics.json"), "r") as f:
         file_body = f.read()
 
@@ -154,7 +164,9 @@ def test_constraints_object_creation_from_file_path_with_customizations(
     sagemaker_session, monitoring_files_kms_key
 ):
     constraints = Constraints.from_file_path(
-        constraints_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/constraints.json"),
+        constraints_file_path=os.path.join(
+            tests.integ.DATA_DIR, "monitor/constraints.json"
+        ),
         kms_key=monitoring_files_kms_key,
         sagemaker_session=sagemaker_session,
     )
@@ -162,27 +174,31 @@ def test_constraints_object_creation_from_file_path_with_customizations(
     assert constraints.file_s3_uri.startswith("s3://")
     assert constraints.file_s3_uri.endswith("constraints.json")
 
-    assert constraints.body_dict["monitoring_config"]["evaluate_constraints"] == "Enabled"
+    assert (
+        constraints.body_dict["monitoring_config"]["evaluate_constraints"] == "Enabled"
+    )
 
     constraints.set_monitoring(False)
 
-    assert constraints.body_dict["monitoring_config"]["evaluate_constraints"] == "Disabled"
+    assert (
+        constraints.body_dict["monitoring_config"]["evaluate_constraints"] == "Disabled"
+    )
 
     constraints.set_monitoring(True, "message")
 
     assert (
-        constraints.body_dict["features"][0]["string_constraints"]["monitoring_config_overrides"][
-            "evaluate_constraints"
-        ]
+        constraints.body_dict["features"][0]["string_constraints"][
+            "monitoring_config_overrides"
+        ]["evaluate_constraints"]
         == "Enabled"
     )
 
     constraints.set_monitoring(True, "second_message")
 
     assert (
-        constraints.body_dict["features"][0]["string_constraints"]["monitoring_config_overrides"][
-            "evaluate_constraints"
-        ]
+        constraints.body_dict["features"][0]["string_constraints"][
+            "monitoring_config_overrides"
+        ]["evaluate_constraints"]
         == "Enabled"
     )
 
@@ -192,19 +208,28 @@ def test_constraints_object_creation_from_file_path_with_customizations(
         constraints.file_s3_uri, sagemaker_session=sagemaker_session
     )
 
-    assert new_constraints.body_dict["monitoring_config"]["evaluate_constraints"] == "Disabled"
+    assert (
+        new_constraints.body_dict["monitoring_config"]["evaluate_constraints"]
+        == "Disabled"
+    )
 
 
-def test_constraints_object_creation_from_file_path_without_customizations(sagemaker_session):
+def test_constraints_object_creation_from_file_path_without_customizations(
+    sagemaker_session,
+):
     constraints = Constraints.from_file_path(
-        constraints_file_path=os.path.join(tests.integ.DATA_DIR, "monitor/constraints.json"),
+        constraints_file_path=os.path.join(
+            tests.integ.DATA_DIR, "monitor/constraints.json"
+        ),
         sagemaker_session=sagemaker_session,
     )
 
     assert constraints.file_s3_uri.startswith("s3://")
     assert constraints.file_s3_uri.endswith("constraints.json")
 
-    assert constraints.body_dict["monitoring_config"]["evaluate_constraints"] == "Enabled"
+    assert (
+        constraints.body_dict["monitoring_config"]["evaluate_constraints"] == "Enabled"
+    )
 
 
 def test_constraints_object_creation_from_string_with_customizations(
@@ -223,10 +248,14 @@ def test_constraints_object_creation_from_string_with_customizations(
     assert constraints.file_s3_uri.startswith("s3://")
     assert constraints.file_s3_uri.endswith("constraints.json")
 
-    assert constraints.body_dict["monitoring_config"]["evaluate_constraints"] == "Enabled"
+    assert (
+        constraints.body_dict["monitoring_config"]["evaluate_constraints"] == "Enabled"
+    )
 
 
-def test_constraints_object_creation_from_string_without_customizations(sagemaker_session):
+def test_constraints_object_creation_from_string_without_customizations(
+    sagemaker_session,
+):
     with open(os.path.join(tests.integ.DATA_DIR, "monitor/constraints.json"), "r") as f:
         file_body = f.read()
 
@@ -237,7 +266,9 @@ def test_constraints_object_creation_from_string_without_customizations(sagemake
     assert constraints.file_s3_uri.startswith("s3://")
     assert constraints.file_s3_uri.endswith("constraints.json")
 
-    assert constraints.body_dict["monitoring_config"]["evaluate_constraints"] == "Enabled"
+    assert (
+        constraints.body_dict["monitoring_config"]["evaluate_constraints"] == "Enabled"
+    )
 
 
 def test_constraints_object_creation_from_s3_uri_with_customizations(
@@ -271,10 +302,14 @@ def test_constraints_object_creation_from_s3_uri_with_customizations(
     assert constraints.file_s3_uri.startswith("s3://")
     assert constraints.file_s3_uri.endswith("constraints.json")
 
-    assert constraints.body_dict["monitoring_config"]["evaluate_constraints"] == "Enabled"
+    assert (
+        constraints.body_dict["monitoring_config"]["evaluate_constraints"] == "Enabled"
+    )
 
 
-def test_constraints_object_creation_from_s3_uri_without_customizations(sagemaker_session):
+def test_constraints_object_creation_from_s3_uri_without_customizations(
+    sagemaker_session,
+):
     with open(os.path.join(tests.integ.DATA_DIR, "monitor/constraints.json"), "r") as f:
         file_body = f.read()
 
@@ -298,7 +333,9 @@ def test_constraints_object_creation_from_s3_uri_without_customizations(sagemake
     assert constraints.file_s3_uri.startswith("s3://")
     assert constraints.file_s3_uri.endswith("constraints.json")
 
-    assert constraints.body_dict["monitoring_config"]["evaluate_constraints"] == "Enabled"
+    assert (
+        constraints.body_dict["monitoring_config"]["evaluate_constraints"] == "Enabled"
+    )
 
 
 def test_constraint_violations_object_creation_from_file_path_with_customizations(
@@ -315,7 +352,10 @@ def test_constraint_violations_object_creation_from_file_path_with_customization
     assert constraint_violations.file_s3_uri.startswith("s3://")
     assert constraint_violations.file_s3_uri.endswith("constraint_violations.json")
 
-    assert constraint_violations.body_dict["violations"][0]["feature_name"] == "store_and_fwd_flag"
+    assert (
+        constraint_violations.body_dict["violations"][0]["feature_name"]
+        == "store_and_fwd_flag"
+    )
 
 
 def test_constraint_violations_object_creation_from_file_path_without_customizations(
@@ -331,13 +371,18 @@ def test_constraint_violations_object_creation_from_file_path_without_customizat
     assert constraint_violations.file_s3_uri.startswith("s3://")
     assert constraint_violations.file_s3_uri.endswith("constraint_violations.json")
 
-    assert constraint_violations.body_dict["violations"][0]["feature_name"] == "store_and_fwd_flag"
+    assert (
+        constraint_violations.body_dict["violations"][0]["feature_name"]
+        == "store_and_fwd_flag"
+    )
 
 
 def test_constraint_violations_object_creation_from_string_with_customizations(
     sagemaker_session, monitoring_files_kms_key
 ):
-    with open(os.path.join(tests.integ.DATA_DIR, "monitor/constraint_violations.json"), "r") as f:
+    with open(
+        os.path.join(tests.integ.DATA_DIR, "monitor/constraint_violations.json"), "r"
+    ) as f:
         file_body = f.read()
 
     constraint_violations = ConstraintViolations.from_string(
@@ -350,13 +395,18 @@ def test_constraint_violations_object_creation_from_string_with_customizations(
     assert constraint_violations.file_s3_uri.startswith("s3://")
     assert constraint_violations.file_s3_uri.endswith("constraint_violations.json")
 
-    assert constraint_violations.body_dict["violations"][0]["feature_name"] == "store_and_fwd_flag"
+    assert (
+        constraint_violations.body_dict["violations"][0]["feature_name"]
+        == "store_and_fwd_flag"
+    )
 
 
 def test_constraint_violations_object_creation_from_string_without_customizations(
     sagemaker_session,
 ):
-    with open(os.path.join(tests.integ.DATA_DIR, "monitor/constraint_violations.json"), "r") as f:
+    with open(
+        os.path.join(tests.integ.DATA_DIR, "monitor/constraint_violations.json"), "r"
+    ) as f:
         file_body = f.read()
 
     constraint_violations = ConstraintViolations.from_string(
@@ -366,13 +416,18 @@ def test_constraint_violations_object_creation_from_string_without_customization
     assert constraint_violations.file_s3_uri.startswith("s3://")
     assert constraint_violations.file_s3_uri.endswith("constraint_violations.json")
 
-    assert constraint_violations.body_dict["violations"][0]["feature_name"] == "store_and_fwd_flag"
+    assert (
+        constraint_violations.body_dict["violations"][0]["feature_name"]
+        == "store_and_fwd_flag"
+    )
 
 
 def test_constraint_violations_object_creation_from_s3_uri_with_customizations(
     sagemaker_session, monitoring_files_kms_key
 ):
-    with open(os.path.join(tests.integ.DATA_DIR, "monitor/constraint_violations.json"), "r") as f:
+    with open(
+        os.path.join(tests.integ.DATA_DIR, "monitor/constraint_violations.json"), "r"
+    ) as f:
         file_body = f.read()
 
     file_name = "constraint_violations.json"
@@ -400,13 +455,18 @@ def test_constraint_violations_object_creation_from_s3_uri_with_customizations(
     assert constraint_violations.file_s3_uri.startswith("s3://")
     assert constraint_violations.file_s3_uri.endswith("constraint_violations.json")
 
-    assert constraint_violations.body_dict["violations"][0]["feature_name"] == "store_and_fwd_flag"
+    assert (
+        constraint_violations.body_dict["violations"][0]["feature_name"]
+        == "store_and_fwd_flag"
+    )
 
 
 def test_constraint_violations_object_creation_from_s3_uri_without_customizations(
     sagemaker_session,
 ):
-    with open(os.path.join(tests.integ.DATA_DIR, "monitor/constraint_violations.json"), "r") as f:
+    with open(
+        os.path.join(tests.integ.DATA_DIR, "monitor/constraint_violations.json"), "r"
+    ) as f:
         file_body = f.read()
 
     file_name = "constraint_violations.json"
@@ -429,4 +489,7 @@ def test_constraint_violations_object_creation_from_s3_uri_without_customization
     assert constraint_violations.file_s3_uri.startswith("s3://")
     assert constraint_violations.file_s3_uri.endswith("constraint_violations.json")
 
-    assert constraint_violations.body_dict["violations"][0]["feature_name"] == "store_and_fwd_flag"
+    assert (
+        constraint_violations.body_dict["violations"][0]["feature_name"]
+        == "store_and_fwd_flag"
+    )

@@ -45,7 +45,9 @@ class NetworkConfig(object):
 
     def _to_request_dict(self):
         """Generates a request dictionary using the parameters provided to the class."""
-        network_config_request = {"EnableNetworkIsolation": self.enable_network_isolation}
+        network_config_request = {
+            "EnableNetworkIsolation": self.enable_network_isolation
+        }
 
         if self.encrypt_inter_container_traffic is not None:
             network_config_request[
@@ -56,7 +58,9 @@ class NetworkConfig(object):
             network_config_request["VpcConfig"] = {}
 
         if self.security_group_ids is not None:
-            network_config_request["VpcConfig"]["SecurityGroupIds"] = self.security_group_ids
+            network_config_request["VpcConfig"][
+                "SecurityGroupIds"
+            ] = self.security_group_ids
 
         if self.subnets is not None:
             network_config_request["VpcConfig"]["Subnets"] = self.subnets

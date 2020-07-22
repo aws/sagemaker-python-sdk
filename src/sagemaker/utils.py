@@ -205,7 +205,9 @@ def secondary_training_status_changed(current_job_description, prev_job_descript
         boolean: Whether the secondary status message of a training job changed
         or not.
     """
-    current_secondary_status_transitions = current_job_description.get("SecondaryStatusTransitions")
+    current_secondary_status_transitions = current_job_description.get(
+        "SecondaryStatusTransitions"
+    )
     if (
         current_secondary_status_transitions is None
         or len(current_secondary_status_transitions) == 0
@@ -250,7 +252,9 @@ def secondary_training_status_message(job_description, prev_description):
         return ""
 
     prev_description_secondary_transitions = (
-        prev_description.get("SecondaryStatusTransitions") if prev_description is not None else None
+        prev_description.get("SecondaryStatusTransitions")
+        if prev_description is not None
+        else None
     )
     prev_transitions_num = (
         len(prev_description["SecondaryStatusTransitions"])
@@ -488,14 +492,21 @@ def repack_model(
         model_dir = _extract_model(model_uri, sagemaker_session, tmp)
 
         _create_or_update_code_dir(
-            model_dir, inference_script, source_directory, dependencies, sagemaker_session, tmp
+            model_dir,
+            inference_script,
+            source_directory,
+            dependencies,
+            sagemaker_session,
+            tmp,
         )
 
         tmp_model_path = os.path.join(tmp, "temp-model.tar.gz")
         with tarfile.open(tmp_model_path, mode="w:gz") as t:
             t.add(model_dir, arcname=os.path.sep)
 
-        _save_model(repacked_model_uri, tmp_model_path, sagemaker_session, kms_key=kms_key)
+        _save_model(
+            repacked_model_uri, tmp_model_path, sagemaker_session, kms_key=kms_key
+        )
 
 
 def _save_model(repacked_model_uri, tmp_model_path, sagemaker_session, kms_key):
@@ -508,7 +519,9 @@ def _save_model(repacked_model_uri, tmp_model_path, sagemaker_session, kms_key):
     if repacked_model_uri.lower().startswith("s3://"):
         url = parse.urlparse(repacked_model_uri)
         bucket, key = url.netloc, url.path.lstrip("/")
-        new_key = key.replace(os.path.basename(key), os.path.basename(repacked_model_uri))
+        new_key = key.replace(
+            os.path.basename(key), os.path.basename(repacked_model_uri)
+        )
 
         if kms_key:
             extra_args = {"ServerSideEncryption": "aws:kms", "SSEKMSKeyId": kms_key}
@@ -559,7 +572,9 @@ def _create_or_update_code_dir(
     for dependency in dependencies:
         lib_dir = os.path.join(code_dir, "lib")
         if os.path.isdir(dependency):
-            shutil.copytree(dependency, os.path.join(lib_dir, os.path.basename(dependency)))
+            shutil.copytree(
+                dependency, os.path.join(lib_dir, os.path.basename(dependency))
+            )
         else:
             if not os.path.exists(lib_dir):
                 os.mkdir(lib_dir)
@@ -649,7 +664,11 @@ def sts_regional_endpoint(region):
     return "https://{}".format(endpoint_data["hostname"])
 
 
-def retries(max_retry_count, exception_message_prefix, seconds_to_sleep=DEFAULT_SLEEP_TIME_SECONDS):
+def retries(
+    max_retry_count,
+    exception_message_prefix,
+    seconds_to_sleep=DEFAULT_SLEEP_TIME_SECONDS,
+):
     """Retries until max retry count is reached.
 
     Args:

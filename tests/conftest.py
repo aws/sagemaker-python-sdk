@@ -49,17 +49,25 @@ def pytest_addoption(parser):
     parser.addoption("--sagemaker-client-config", action="store", default=None)
     parser.addoption("--sagemaker-runtime-config", action="store", default=None)
     parser.addoption("--boto-config", action="store", default=None)
-    parser.addoption("--chainer-full-version", action="store", default=Chainer.LATEST_VERSION)
-    parser.addoption("--mxnet-full-version", action="store", default=MXNet.LATEST_VERSION)
+    parser.addoption(
+        "--chainer-full-version", action="store", default=Chainer.LATEST_VERSION
+    )
+    parser.addoption(
+        "--mxnet-full-version", action="store", default=MXNet.LATEST_VERSION
+    )
     parser.addoption("--ei-mxnet-full-version", action="store", default="1.5.1")
-    parser.addoption("--pytorch-full-version", action="store", default=PyTorch.LATEST_VERSION)
+    parser.addoption(
+        "--pytorch-full-version", action="store", default=PyTorch.LATEST_VERSION
+    )
     parser.addoption(
         "--rl-coach-mxnet-full-version",
         action="store",
         default=RLEstimator.COACH_LATEST_VERSION_MXNET,
     )
     parser.addoption(
-        "--rl-coach-tf-full-version", action="store", default=RLEstimator.COACH_LATEST_VERSION_TF
+        "--rl-coach-tf-full-version",
+        action="store",
+        default=RLEstimator.COACH_LATEST_VERSION_TF,
     )
     parser.addoption(
         "--rl-ray-full-version", action="store", default=RLEstimator.RAY_LATEST_VERSION
@@ -322,7 +330,9 @@ def pytest_generate_tests(metafunc):
         boto_config = metafunc.config.getoption("--boto-config")
         parsed_config = json.loads(boto_config) if boto_config else {}
         region = parsed_config.get("region_name", DEFAULT_REGION)
-        cpu_instance_type = "ml.m5.xlarge" if region in NO_M4_REGIONS else "ml.m4.xlarge"
+        cpu_instance_type = (
+            "ml.m5.xlarge" if region in NO_M4_REGIONS else "ml.m4.xlarge"
+        )
 
         params = [cpu_instance_type]
         if not (

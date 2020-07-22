@@ -23,7 +23,9 @@ LOCK_PATH_EFS = os.path.join(tempfile.gettempdir(), "sagemaker_efs_fsx_vpc_lock"
 
 
 def _get_subnet_ids_by_name(ec2_client, name):
-    desc = ec2_client.describe_subnets(Filters=[{"Name": "tag-value", "Values": [name]}])
+    desc = ec2_client.describe_subnets(
+        Filters=[{"Name": "tag-value", "Values": [name]}]
+    )
     if len(desc["Subnets"]) == 0:
         return None
     else:
@@ -31,7 +33,9 @@ def _get_subnet_ids_by_name(ec2_client, name):
 
 
 def _get_security_id_by_name(ec2_client, name):
-    desc = ec2_client.describe_security_groups(Filters=[{"Name": "tag-value", "Values": [name]}])
+    desc = ec2_client.describe_security_groups(
+        Filters=[{"Name": "tag-value", "Values": [name]}]
+    )
     if len(desc["SecurityGroups"]) == 0:
         return None
     else:
@@ -59,7 +63,9 @@ def _vpc_id_by_name(ec2_client, name):
 
 
 def _route_table_id(ec2_client, vpc_id):
-    desc = ec2_client.describe_route_tables(Filters=[{"Name": "vpc-id", "Values": [vpc_id]}])
+    desc = ec2_client.describe_route_tables(
+        Filters=[{"Name": "vpc-id", "Values": [vpc_id]}]
+    )
     return desc["RouteTables"][0]["RouteTableId"]
 
 
@@ -79,16 +85,22 @@ def check_or_create_vpc_resources_efs_fsx(sagemaker_session, name=VPC_NAME):
 
 
 def _create_vpc_with_name_efs_fsx(ec2_client, name):
-    vpc_id, [subnet_id_a, subnet_id_b], security_group_id = _create_vpc_resources(ec2_client, name)
+    vpc_id, [subnet_id_a, subnet_id_b], security_group_id = _create_vpc_resources(
+        ec2_client, name
+    )
     ec2_client.modify_vpc_attribute(EnableDnsHostnames={"Value": True}, VpcId=vpc_id)
 
     ig = ec2_client.create_internet_gateway()
     internet_gateway_id = ig["InternetGateway"]["InternetGatewayId"]
-    ec2_client.attach_internet_gateway(InternetGatewayId=internet_gateway_id, VpcId=vpc_id)
+    ec2_client.attach_internet_gateway(
+        InternetGatewayId=internet_gateway_id, VpcId=vpc_id
+    )
 
     route_table_id = _route_table_id(ec2_client, vpc_id)
     ec2_client.create_route(
-        DestinationCidrBlock="0.0.0.0/0", GatewayId=internet_gateway_id, RouteTableId=route_table_id
+        DestinationCidrBlock="0.0.0.0/0",
+        GatewayId=internet_gateway_id,
+        RouteTableId=route_table_id,
     )
     ec2_client.associate_route_table(RouteTableId=route_table_id, SubnetId=subnet_id_a)
     ec2_client.associate_route_table(RouteTableId=route_table_id, SubnetId=subnet_id_b)
@@ -124,9 +136,9 @@ def _create_vpc_resources(ec2_client, name):
     vpc_id = ec2_client.create_vpc(CidrBlock="10.0.0.0/16")["Vpc"]["VpcId"]
     ec2_client.create_tags(Resources=[vpc_id], Tags=[{"Key": "Name", "Value": name}])
 
-    availability_zone_name = ec2_client.describe_availability_zones()["AvailabilityZones"][0][
-        "ZoneName"
-    ]
+    availability_zone_name = ec2_client.describe_availability_zones()[
+        "AvailabilityZones"
+    ][0]["ZoneName"]
 
     subnet_id_a = ec2_client.create_subnet(
         CidrBlock="10.0.0.0/24", VpcId=vpc_id, AvailabilityZone=availability_zone_name
@@ -138,10 +150,14 @@ def _create_vpc_resources(ec2_client, name):
     print("created subnet: {}".format(subnet_id_b))
 
     s3_service = [
-        s for s in ec2_client.describe_vpc_endpoint_services()["ServiceNames"] if s.endswith("s3")
+        s
+        for s in ec2_client.describe_vpc_endpoint_services()["ServiceNames"]
+        if s.endswith("s3")
     ][0]
     ec2_client.create_vpc_endpoint(
-        VpcId=vpc_id, ServiceName=s3_service, RouteTableIds=[_route_table_id(ec2_client, vpc_id)]
+        VpcId=vpc_id,
+        ServiceName=s3_service,
+        RouteTableIds=[_route_table_id(ec2_client, vpc_id)],
     )
     print("created s3 vpc endpoint")
 
@@ -171,7 +187,9 @@ def _create_vpc_resources(ec2_client, name):
 
 
 def _create_vpc_with_name(ec2_client, name):
-    vpc_id, [subnet_id_a, subnet_id_b], security_group_id = _create_vpc_resources(ec2_client, name)
+    vpc_id, [subnet_id_a, subnet_id_b], security_group_id = _create_vpc_resources(
+        ec2_client, name
+    )
     return [subnet_id_a, subnet_id_b], security_group_id
 
 
@@ -196,7 +214,10 @@ def setup_security_group_for_encryption(ec2_client, security_group_id):
         ec2_client.authorize_security_group_ingress(
             GroupId=security_group_id,
             IpPermissions=[
-                {"IpProtocol": "50", "UserIdGroupPairs": [{"GroupId": security_group_id}]},
+                {
+                    "IpProtocol": "50",
+                    "UserIdGroupPairs": [{"GroupId": security_group_id}],
+                },
                 {
                     "IpProtocol": "udp",
                     "FromPort": 500,

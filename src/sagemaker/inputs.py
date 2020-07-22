@@ -85,14 +85,18 @@ class s3_input(object):
         )
 
         self.config = {
-            "DataSource": {"S3DataSource": {"S3DataType": s3_data_type, "S3Uri": s3_data}}
+            "DataSource": {
+                "S3DataSource": {"S3DataType": s3_data_type, "S3Uri": s3_data}
+            }
         }
 
         if not (target_attribute_name or distribution):
             distribution = "FullyReplicated"
 
         if distribution is not None:
-            self.config["DataSource"]["S3DataSource"]["S3DataDistributionType"] = distribution
+            self.config["DataSource"]["S3DataSource"][
+                "S3DataDistributionType"
+            ] = distribution
 
         if compression is not None:
             self.config["CompressionType"] = compression
@@ -103,7 +107,9 @@ class s3_input(object):
         if input_mode is not None:
             self.config["InputMode"] = input_mode
         if attribute_names is not None:
-            self.config["DataSource"]["S3DataSource"]["AttributeNames"] = attribute_names
+            self.config["DataSource"]["S3DataSource"][
+                "AttributeNames"
+            ] = attribute_names
         if target_attribute_name is not None:
             self.config["TargetAttributeName"] = target_attribute_name
         if shuffle_config is not None:

@@ -36,7 +36,9 @@ MODEL_NAME = "test-xgboost-model-{}".format(sagemaker_timestamp())
 DEFAULT_REGION = "us-west-2"
 DEFAULT_INSTANCE_TYPE = "ml.m5.xlarge"
 DEFAULT_INSTANCE_COUNT = 1
-XG_BOOST_MODEL_LOCAL_PATH = os.path.join(tests.integ.DATA_DIR, "xgboost_model", "xgb_model.tar.gz")
+XG_BOOST_MODEL_LOCAL_PATH = os.path.join(
+    tests.integ.DATA_DIR, "xgboost_model", "xgb_model.tar.gz"
+)
 
 TEST_VARIANT_1 = "Variant1"
 TEST_VARIANT_1_WEIGHT = 0.3
@@ -96,7 +98,9 @@ def multi_variant_endpoint(sagemaker_session):
             session=sagemaker_session,
         )
 
-        image_uri = get_image_uri(sagemaker_session.boto_session.region_name, "xgboost", "0.90-1")
+        image_uri = get_image_uri(
+            sagemaker_session.boto_session.region_name, "xgboost", "0.90-1"
+        )
 
         multi_variant_endpoint_model = sagemaker_session.create_model(
             name=MODEL_NAME,
@@ -120,7 +124,8 @@ def multi_variant_endpoint(sagemaker_session):
             initial_weight=TEST_VARIANT_2_WEIGHT,
         )
         sagemaker_session.endpoint_from_production_variants(
-            name=multi_variant_endpoint.endpoint_name, production_variants=[variant1, variant2]
+            name=multi_variant_endpoint.endpoint_name,
+            production_variants=[variant1, variant2],
         )
 
         # Yield to run the integration tests
@@ -165,7 +170,9 @@ def test_target_variant_invocation(sagemaker_session, multi_variant_endpoint):
     assert response["InvokedProductionVariant"] == TEST_VARIANT_2
 
 
-def test_predict_invocation_with_target_variant(sagemaker_session, multi_variant_endpoint):
+def test_predict_invocation_with_target_variant(
+    sagemaker_session, multi_variant_endpoint
+):
     predictor = RealTimePredictor(
         endpoint=multi_variant_endpoint.endpoint_name,
         sagemaker_session=sagemaker_session,
@@ -195,26 +202,47 @@ def test_variant_traffic_distribution(sagemaker_session, multi_variant_endpoint)
         elif response["InvokedProductionVariant"] == TEST_VARIANT_2:
             variant_2_invocation_count += 1
 
-    assert variant_1_invocation_count + variant_2_invocation_count == VARIANT_TRAFFIC_SAMPLING_COUNT
+    assert (
+        variant_1_invocation_count + variant_2_invocation_count
+        == VARIANT_TRAFFIC_SAMPLING_COUNT
+    )
 
     variant_1_invocation_percentage = float(variant_1_invocation_count) / float(
         VARIANT_TRAFFIC_SAMPLING_COUNT
     )
-    variant_1_margin_of_error = _compute_and_retrieve_margin_of_error(TEST_VARIANT_1_WEIGHT)
-    assert variant_1_invocation_percentage < TEST_VARIANT_1_WEIGHT + variant_1_margin_of_error
-    assert variant_1_invocation_percentage > TEST_VARIANT_1_WEIGHT - variant_1_margin_of_error
+    variant_1_margin_of_error = _compute_and_retrieve_margin_of_error(
+        TEST_VARIANT_1_WEIGHT
+    )
+    assert (
+        variant_1_invocation_percentage
+        < TEST_VARIANT_1_WEIGHT + variant_1_margin_of_error
+    )
+    assert (
+        variant_1_invocation_percentage
+        > TEST_VARIANT_1_WEIGHT - variant_1_margin_of_error
+    )
 
     variant_2_invocation_percentage = float(variant_2_invocation_count) / float(
         VARIANT_TRAFFIC_SAMPLING_COUNT
     )
-    variant_2_margin_of_error = _compute_and_retrieve_margin_of_error(TEST_VARIANT_2_WEIGHT)
-    assert variant_2_invocation_percentage < TEST_VARIANT_2_WEIGHT + variant_2_margin_of_error
-    assert variant_2_invocation_percentage > TEST_VARIANT_2_WEIGHT - variant_2_margin_of_error
+    variant_2_margin_of_error = _compute_and_retrieve_margin_of_error(
+        TEST_VARIANT_2_WEIGHT
+    )
+    assert (
+        variant_2_invocation_percentage
+        < TEST_VARIANT_2_WEIGHT + variant_2_margin_of_error
+    )
+    assert (
+        variant_2_invocation_percentage
+        > TEST_VARIANT_2_WEIGHT - variant_2_margin_of_error
+    )
 
 
 def test_spark_ml_predict_invocation_with_target_variant(sagemaker_session):
 
-    spark_ml_model_endpoint_name = unique_name_from_base("integ-test-target-variant-sparkml")
+    spark_ml_model_endpoint_name = unique_name_from_base(
+        "integ-test-target-variant-sparkml"
+    )
 
     model_data = sagemaker_session.upload_data(
         path=SPARK_ML_MODEL_LOCAL_PATH, key_prefix="integ-test-data/sparkml/model"
@@ -237,10 +265,14 @@ def test_spark_ml_predict_invocation_with_target_variant(sagemaker_session):
         )
 
         # Validate that no exception is raised when the target_variant is specified.
-        predictor.predict(SPARK_ML_TEST_DATA, target_variant=SPARK_ML_DEFAULT_VARIANT_NAME)
+        predictor.predict(
+            SPARK_ML_TEST_DATA, target_variant=SPARK_ML_DEFAULT_VARIANT_NAME
+        )
 
         with pytest.raises(Exception) as exception_info:
-            predictor.predict(SPARK_ML_TEST_DATA, target_variant=SPARK_ML_WRONG_VARIANT_NAME)
+            predictor.predict(
+                SPARK_ML_TEST_DATA, target_variant=SPARK_ML_WRONG_VARIANT_NAME
+            )
 
         assert "ValidationError" in str(exception_info.value)
         assert SPARK_ML_WRONG_VARIANT_NAME in str(exception_info.value)
@@ -262,7 +294,9 @@ def test_spark_ml_predict_invocation_with_target_variant(sagemaker_session):
 
 
 @pytest.mark.local_mode
-def test_target_variant_invocation_local_mode(sagemaker_session, multi_variant_endpoint):
+def test_target_variant_invocation_local_mode(
+    sagemaker_session, multi_variant_endpoint
+):
 
     if sagemaker_session._region_name is None:
         sagemaker_session._region_name = DEFAULT_REGION
@@ -313,6 +347,8 @@ def _compute_and_retrieve_margin_of_error(variant_weight):
     intervals of a binomial distribution.
     """
     z_value = st.norm.ppf(DESIRED_CONFIDENCE_FOR_VARIANT_TRAFFIC_DISTRIBUTION)
-    margin_of_error = (variant_weight * (1 - variant_weight)) / VARIANT_TRAFFIC_SAMPLING_COUNT
+    margin_of_error = (
+        variant_weight * (1 - variant_weight)
+    ) / VARIANT_TRAFFIC_SAMPLING_COUNT
     margin_of_error = z_value * math.sqrt(margin_of_error)
     return margin_of_error

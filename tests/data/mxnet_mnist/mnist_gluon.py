@@ -20,7 +20,10 @@ def parse_args():
         "--context", type=str, default="cpu", help="Context can be either cpu or gpu"
     )
     parser.add_argument(
-        "--validate", type=bool, default=True, help="Run validation if running with smdebug"
+        "--validate",
+        type=bool,
+        default=True,
+        help="Run validation if running with smdebug",
     )
 
     opt = parser.parse_args()
@@ -43,7 +46,9 @@ def train_model(net, epochs, ctx, learning_rate, momentum, train_data, val_data)
     net.initialize(mx.init.Xavier(magnitude=2.24), ctx=ctx)
     # Trainer is for updating parameters with gradient.
     trainer = gluon.Trainer(
-        net.collect_params(), "sgd", {"learning_rate": learning_rate, "momentum": momentum}
+        net.collect_params(),
+        "sgd",
+        {"learning_rate": learning_rate, "momentum": momentum},
     )
     metric = mx.metric.Accuracy()
     loss = gluon.loss.SoftmaxCrossEntropyLoss()

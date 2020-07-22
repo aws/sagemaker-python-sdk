@@ -193,7 +193,9 @@ TRANSFORM_JOB = {
     "MaxConcurrentTransforms": 1,
     "MaxPayloadInMB": 2000,
     "ModelName": "string",
-    "TransformInput": {"DataSource": {"S3DataSource": {"S3DataType": "string", "S3Uri": "string"}}},
+    "TransformInput": {
+        "DataSource": {"S3DataSource": {"S3DataType": "string", "S3Uri": "string"}}
+    },
     "TransformJobStatus": "string",
     "TransformJobArn": "string",
     "TransformJobName": "string",
@@ -234,7 +236,9 @@ def sagemaker_session():
         name="describe_transform_job", return_value=TRANSFORM_JOB
     )
     sms.list_candidates = Mock(name="list_candidates", return_value={"Candidates": []})
-    sms.sagemaker_client.list_tags = Mock(name="list_tags", return_value=LIST_TAGS_RESULT)
+    sms.sagemaker_client.list_tags = Mock(
+        name="list_tags", return_value=LIST_TAGS_RESULT
+    )
     return sms
 
 
@@ -251,7 +255,9 @@ def candidate_mock(sagemaker_session):
 
 def test_auto_ml_default_channel_name(sagemaker_session):
     auto_ml = AutoML(
-        role=ROLE, target_attribute_name=TARGET_ATTRIBUTE_NAME, sagemaker_session=sagemaker_session
+        role=ROLE,
+        target_attribute_name=TARGET_ATTRIBUTE_NAME,
+        sagemaker_session=sagemaker_session,
     )
     inputs = DEFAULT_S3_INPUT_DATA
     AutoMLJob.start_new(auto_ml, inputs)
@@ -260,7 +266,10 @@ def test_auto_ml_default_channel_name(sagemaker_session):
     assert args["input_config"] == [
         {
             "DataSource": {
-                "S3DataSource": {"S3DataType": "S3Prefix", "S3Uri": DEFAULT_S3_INPUT_DATA}
+                "S3DataSource": {
+                    "S3DataType": "S3Prefix",
+                    "S3Uri": DEFAULT_S3_INPUT_DATA,
+                }
             },
             "TargetAttributeName": TARGET_ATTRIBUTE_NAME,
         }
@@ -269,14 +278,18 @@ def test_auto_ml_default_channel_name(sagemaker_session):
 
 def test_auto_ml_invalid_input_data_format(sagemaker_session):
     auto_ml = AutoML(
-        role=ROLE, target_attribute_name=TARGET_ATTRIBUTE_NAME, sagemaker_session=sagemaker_session
+        role=ROLE,
+        target_attribute_name=TARGET_ATTRIBUTE_NAME,
+        sagemaker_session=sagemaker_session,
     )
     inputs = {}
 
     with pytest.raises(ValueError) as excinfo:
         AutoMLJob.start_new(auto_ml, inputs)
 
-    expected_error_msg = "Cannot format input {}. Expecting a string or a list of strings."
+    expected_error_msg = (
+        "Cannot format input {}. Expecting a string or a list of strings."
+    )
     assert expected_error_msg.format(inputs) in str(excinfo.value)
 
     sagemaker_session.auto_ml.assert_not_called()
@@ -301,12 +314,17 @@ def test_auto_ml_only_one_of_problem_type_and_job_objective_provided(sagemaker_s
 @patch("sagemaker.automl.automl.AutoMLJob.start_new")
 def test_auto_ml_fit_set_logs_to_false(start_new, sagemaker_session, caplog):
     auto_ml = AutoML(
-        role=ROLE, target_attribute_name=TARGET_ATTRIBUTE_NAME, sagemaker_session=sagemaker_session
+        role=ROLE,
+        target_attribute_name=TARGET_ATTRIBUTE_NAME,
+        sagemaker_session=sagemaker_session,
     )
     inputs = DEFAULT_S3_INPUT_DATA
     auto_ml.fit(inputs, job_name=JOB_NAME, wait=False, logs=True)
     start_new.wait.assert_not_called()
-    assert "Setting logs to False. logs is only meaningful when wait is True." in caplog.text
+    assert (
+        "Setting logs to False. logs is only meaningful when wait is True."
+        in caplog.text
+    )
 
 
 def test_auto_ml_additional_optional_params(sagemaker_session):
@@ -338,7 +356,10 @@ def test_auto_ml_additional_optional_params(sagemaker_session):
             {
                 "CompressionType": COMPRESSION_TYPE,
                 "DataSource": {
-                    "S3DataSource": {"S3DataType": "S3Prefix", "S3Uri": DEFAULT_S3_INPUT_DATA}
+                    "S3DataSource": {
+                        "S3DataType": "S3Prefix",
+                        "S3Uri": DEFAULT_S3_INPUT_DATA,
+                    }
                 },
                 "TargetAttributeName": TARGET_ATTRIBUTE_NAME,
             }
@@ -368,7 +389,9 @@ def test_auto_ml_additional_optional_params(sagemaker_session):
 @patch("time.strftime", return_value=TIMESTAMP)
 def test_auto_ml_default_fit(strftime, sagemaker_session):
     auto_ml = AutoML(
-        role=ROLE, target_attribute_name=TARGET_ATTRIBUTE_NAME, sagemaker_session=sagemaker_session
+        role=ROLE,
+        target_attribute_name=TARGET_ATTRIBUTE_NAME,
+        sagemaker_session=sagemaker_session,
     )
     inputs = DEFAULT_S3_INPUT_DATA
     auto_ml.fit(inputs)
@@ -378,7 +401,10 @@ def test_auto_ml_default_fit(strftime, sagemaker_session):
         "input_config": [
             {
                 "DataSource": {
-                    "S3DataSource": {"S3DataType": "S3Prefix", "S3Uri": DEFAULT_S3_INPUT_DATA}
+                    "S3DataSource": {
+                        "S3DataType": "S3Prefix",
+                        "S3Uri": DEFAULT_S3_INPUT_DATA,
+                    }
                 },
                 "TargetAttributeName": TARGET_ATTRIBUTE_NAME,
             }
@@ -401,13 +427,18 @@ def test_auto_ml_default_fit(strftime, sagemaker_session):
 
 def test_auto_ml_local_input(sagemaker_session):
     auto_ml = AutoML(
-        role=ROLE, target_attribute_name=TARGET_ATTRIBUTE_NAME, sagemaker_session=sagemaker_session
+        role=ROLE,
+        target_attribute_name=TARGET_ATTRIBUTE_NAME,
+        sagemaker_session=sagemaker_session,
     )
     inputs = DEFAULT_S3_INPUT_DATA
     auto_ml.fit(inputs)
     sagemaker_session.auto_ml.assert_called_once()
     _, args = sagemaker_session.auto_ml.call_args
-    assert args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] == DEFAULT_S3_INPUT_DATA
+    assert (
+        args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"]
+        == DEFAULT_S3_INPUT_DATA
+    )
 
 
 def test_auto_ml_input(sagemaker_session):
@@ -415,7 +446,9 @@ def test_auto_ml_input(sagemaker_session):
         inputs=DEFAULT_S3_INPUT_DATA, target_attribute_name="target", compression="Gzip"
     )
     auto_ml = AutoML(
-        role=ROLE, target_attribute_name=TARGET_ATTRIBUTE_NAME, sagemaker_session=sagemaker_session
+        role=ROLE,
+        target_attribute_name=TARGET_ATTRIBUTE_NAME,
+        sagemaker_session=sagemaker_session,
     )
     auto_ml.fit(inputs)
     _, args = sagemaker_session.auto_ml.call_args
@@ -423,7 +456,10 @@ def test_auto_ml_input(sagemaker_session):
         {
             "CompressionType": "Gzip",
             "DataSource": {
-                "S3DataSource": {"S3DataType": "S3Prefix", "S3Uri": DEFAULT_S3_INPUT_DATA}
+                "S3DataSource": {
+                    "S3DataType": "S3Prefix",
+                    "S3Uri": DEFAULT_S3_INPUT_DATA,
+                }
             },
             "TargetAttributeName": TARGET_ATTRIBUTE_NAME,
         }
@@ -432,7 +468,9 @@ def test_auto_ml_input(sagemaker_session):
 
 def test_describe_auto_ml_job(sagemaker_session):
     auto_ml = AutoML(
-        role=ROLE, target_attribute_name=TARGET_ATTRIBUTE_NAME, sagemaker_session=sagemaker_session
+        role=ROLE,
+        target_attribute_name=TARGET_ATTRIBUTE_NAME,
+        sagemaker_session=sagemaker_session,
     )
     auto_ml.describe_auto_ml_job(job_name=JOB_NAME)
     sagemaker_session.describe_auto_ml_job.assert_called_once()
@@ -441,17 +479,23 @@ def test_describe_auto_ml_job(sagemaker_session):
 
 def test_list_candidates_default(sagemaker_session):
     auto_ml = AutoML(
-        role=ROLE, target_attribute_name=TARGET_ATTRIBUTE_NAME, sagemaker_session=sagemaker_session
+        role=ROLE,
+        target_attribute_name=TARGET_ATTRIBUTE_NAME,
+        sagemaker_session=sagemaker_session,
     )
     auto_ml.current_job_name = "current_job_name"
     auto_ml.list_candidates()
     sagemaker_session.list_candidates.assert_called_once()
-    sagemaker_session.list_candidates.assert_called_with(job_name=auto_ml.current_job_name)
+    sagemaker_session.list_candidates.assert_called_with(
+        job_name=auto_ml.current_job_name
+    )
 
 
 def test_list_candidates_with_optional_args(sagemaker_session):
     auto_ml = AutoML(
-        role=ROLE, target_attribute_name=TARGET_ATTRIBUTE_NAME, sagemaker_session=sagemaker_session
+        role=ROLE,
+        target_attribute_name=TARGET_ATTRIBUTE_NAME,
+        sagemaker_session=sagemaker_session,
     )
     auto_ml.list_candidates(
         job_name=JOB_NAME,
@@ -477,7 +521,9 @@ def test_list_candidates_with_optional_args(sagemaker_session):
 
 def test_best_candidate_with_existing_best_candidate(sagemaker_session):
     auto_ml = AutoML(
-        role=ROLE, target_attribute_name=TARGET_ATTRIBUTE_NAME, sagemaker_session=sagemaker_session
+        role=ROLE,
+        target_attribute_name=TARGET_ATTRIBUTE_NAME,
+        sagemaker_session=sagemaker_session,
     )
     auto_ml._best_candidate = BEST_CANDIDATE
     best_candidate = auto_ml.best_candidate()
@@ -487,7 +533,9 @@ def test_best_candidate_with_existing_best_candidate(sagemaker_session):
 
 def test_best_candidate_default_job_name(sagemaker_session):
     auto_ml = AutoML(
-        role=ROLE, target_attribute_name=TARGET_ATTRIBUTE_NAME, sagemaker_session=sagemaker_session
+        role=ROLE,
+        target_attribute_name=TARGET_ATTRIBUTE_NAME,
+        sagemaker_session=sagemaker_session,
     )
     auto_ml.current_job_name = JOB_NAME
     auto_ml._auto_ml_job_desc = AUTO_ML_DESC
@@ -498,7 +546,9 @@ def test_best_candidate_default_job_name(sagemaker_session):
 
 def test_best_candidate_job_no_desc(sagemaker_session):
     auto_ml = AutoML(
-        role=ROLE, target_attribute_name=TARGET_ATTRIBUTE_NAME, sagemaker_session=sagemaker_session
+        role=ROLE,
+        target_attribute_name=TARGET_ATTRIBUTE_NAME,
+        sagemaker_session=sagemaker_session,
     )
     auto_ml.current_job_name = JOB_NAME
     best_candidate = auto_ml.best_candidate()
@@ -509,7 +559,9 @@ def test_best_candidate_job_no_desc(sagemaker_session):
 
 def test_best_candidate_no_desc_no_job_name(sagemaker_session):
     auto_ml = AutoML(
-        role=ROLE, target_attribute_name=TARGET_ATTRIBUTE_NAME, sagemaker_session=sagemaker_session
+        role=ROLE,
+        target_attribute_name=TARGET_ATTRIBUTE_NAME,
+        sagemaker_session=sagemaker_session,
     )
     best_candidate = auto_ml.best_candidate(job_name=JOB_NAME)
     sagemaker_session.describe_auto_ml_job.assert_called_once()
@@ -519,7 +571,9 @@ def test_best_candidate_no_desc_no_job_name(sagemaker_session):
 
 def test_best_candidate_job_name_not_match(sagemaker_session):
     auto_ml = AutoML(
-        role=ROLE, target_attribute_name=TARGET_ATTRIBUTE_NAME, sagemaker_session=sagemaker_session
+        role=ROLE,
+        target_attribute_name=TARGET_ATTRIBUTE_NAME,
+        sagemaker_session=sagemaker_session,
     )
     auto_ml.current_job_name = JOB_NAME
     auto_ml._auto_ml_job_desc = AUTO_ML_DESC
@@ -531,7 +585,9 @@ def test_best_candidate_job_name_not_match(sagemaker_session):
 
 def test_deploy(sagemaker_session, candidate_mock):
     auto_ml = AutoML(
-        role=ROLE, target_attribute_name=TARGET_ATTRIBUTE_NAME, sagemaker_session=sagemaker_session
+        role=ROLE,
+        target_attribute_name=TARGET_ATTRIBUTE_NAME,
+        sagemaker_session=sagemaker_session,
     )
     mock_pipeline = Mock(name="pipeline_model")
     mock_pipeline.deploy = Mock(name="model_deploy")
@@ -551,7 +607,9 @@ def test_deploy_optional_args(candidate_estimator, sagemaker_session, candidate_
     candidate_estimator.return_value = candidate_mock
 
     auto_ml = AutoML(
-        role=ROLE, target_attribute_name=TARGET_ATTRIBUTE_NAME, sagemaker_session=sagemaker_session
+        role=ROLE,
+        target_attribute_name=TARGET_ATTRIBUTE_NAME,
+        sagemaker_session=sagemaker_session,
     )
     mock_pipeline = Mock(name="pipeline_model")
     mock_pipeline.deploy = Mock(name="model_deploy")
@@ -600,13 +658,17 @@ def test_deploy_optional_args(candidate_estimator, sagemaker_session, candidate_
 
 
 def test_candidate_estimator_get_steps(sagemaker_session):
-    candidate_estimator = CandidateEstimator(CANDIDATE_DICT, sagemaker_session=sagemaker_session)
+    candidate_estimator = CandidateEstimator(
+        CANDIDATE_DICT, sagemaker_session=sagemaker_session
+    )
     steps = candidate_estimator.get_steps()
     assert len(steps) == 3
 
 
 def test_candidate_estimator_fit(sagemaker_session):
-    candidate_estimator = CandidateEstimator(CANDIDATE_DICT, sagemaker_session=sagemaker_session)
+    candidate_estimator = CandidateEstimator(
+        CANDIDATE_DICT, sagemaker_session=sagemaker_session
+    )
     candidate_estimator._check_all_job_finished = Mock(
         name="_check_all_job_finished", return_value=True
     )
@@ -621,7 +683,12 @@ def test_validate_and_update_inference_response():
 
     AutoML.validate_and_update_inference_response(
         inference_containers=cic,
-        inference_response_keys=["predicted_label", "labels", "probabilities", "probability"],
+        inference_response_keys=[
+            "predicted_label",
+            "labels",
+            "probabilities",
+            "probability",
+        ],
     )
 
     assert (
@@ -644,7 +711,12 @@ def test_validate_and_update_inference_response_wrong_input():
     with pytest.raises(ValueError) as excinfo:
         AutoML.validate_and_update_inference_response(
             inference_containers=cic,
-            inference_response_keys=["wrong_key", "wrong_label", "probabilities", "probability"],
+            inference_response_keys=[
+                "wrong_key",
+                "wrong_label",
+                "probabilities",
+                "probability",
+            ],
         )
     message = (
         "Requested inference output keys [wrong_key, wrong_label] are unsupported. "
@@ -655,7 +727,9 @@ def test_validate_and_update_inference_response_wrong_input():
 
 def test_create_model(sagemaker_session):
     auto_ml = AutoML(
-        role=ROLE, target_attribute_name=TARGET_ATTRIBUTE_NAME, sagemaker_session=sagemaker_session
+        role=ROLE,
+        target_attribute_name=TARGET_ATTRIBUTE_NAME,
+        sagemaker_session=sagemaker_session,
     )
 
     pipeline_model = auto_ml.create_model(
@@ -673,7 +747,9 @@ def test_create_model(sagemaker_session):
 
 
 def test_attach(sagemaker_session):
-    aml = AutoML.attach(auto_ml_job_name=JOB_NAME_3, sagemaker_session=sagemaker_session)
+    aml = AutoML.attach(
+        auto_ml_job_name=JOB_NAME_3, sagemaker_session=sagemaker_session
+    )
     assert aml.current_job_name == JOB_NAME_3
     assert aml.role == "mock_role_arn"
     assert aml.target_attribute_name == "y"

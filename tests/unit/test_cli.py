@@ -79,7 +79,9 @@ def test_args_mxnet_train_defaults():
 
 def test_args_mxnet_train_non_defaults():
     args = cli.parse_arguments(
-        "{} mxnet train --role-name role {} {}".format(LOG_ARGS, COMMON_ARGS, TRAIN_ARGS).split()
+        "{} mxnet train --role-name role {} {}".format(
+            LOG_ARGS, COMMON_ARGS, TRAIN_ARGS
+        ).split()
     )
     assert_common_non_defaults(args)
     assert_train_non_defaults(args)
@@ -97,7 +99,9 @@ def test_args_mxnet_host_defaults():
 
 def test_args_mxnet_host_non_defaults():
     args = cli.parse_arguments(
-        "{} mxnet host --role-name role {} {}".format(LOG_ARGS, COMMON_ARGS, HOST_ARGS).split()
+        "{} mxnet host --role-name role {} {}".format(
+            LOG_ARGS, COMMON_ARGS, HOST_ARGS
+        ).split()
     )
     assert_common_non_defaults(args)
     assert_host_non_defaults(args)
@@ -139,7 +143,9 @@ def test_args_tensorflow_host_defaults():
 
 def test_args_tensorflow_host_non_defaults():
     args = cli.parse_arguments(
-        "{} tensorflow host --role-name role {} {}".format(LOG_ARGS, COMMON_ARGS, HOST_ARGS).split()
+        "{} tensorflow host --role-name role {} {}".format(
+            LOG_ARGS, COMMON_ARGS, HOST_ARGS
+        ).split()
     )
     assert_common_non_defaults(args)
     assert_host_non_defaults(args)
@@ -174,7 +180,9 @@ def test_args_invalid_host_args_in_train():
 
 def test_args_invalid_train_args_in_host():
     with pytest.raises(SystemExit):
-        cli.parse_arguments("tensorflow host --role-name role --hyperparameters foo.json".split())
+        cli.parse_arguments(
+            "tensorflow host --role-name role --hyperparameters foo.json".split()
+        )
 
 
 @patch("sagemaker.mxnet.estimator.MXNet")

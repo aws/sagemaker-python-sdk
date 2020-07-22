@@ -28,7 +28,9 @@ ENDPOINT = "some-endpoint"
 
 ENDPOINT_DESC = {"EndpointConfigName": ENDPOINT}
 
-ENDPOINT_CONFIG_DESC = {"ProductionVariants": [{"ModelName": "model-1"}, {"ModelName": "model-2"}]}
+ENDPOINT_CONFIG_DESC = {
+    "ProductionVariants": [{"ModelName": "model-1"}, {"ModelName": "model-2"}]
+}
 
 
 @pytest.fixture()
@@ -43,17 +45,26 @@ def sagemaker_session():
     )
     sms.boto_region_name = REGION
     sms.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)
-    sms.sagemaker_client.describe_endpoint_config = Mock(return_value=ENDPOINT_CONFIG_DESC)
+    sms.sagemaker_client.describe_endpoint_config = Mock(
+        return_value=ENDPOINT_CONFIG_DESC
+    )
     return sms
 
 
 def test_sparkml_model(sagemaker_session):
-    sparkml = SparkMLModel(sagemaker_session=sagemaker_session, model_data=MODEL_DATA, role=ROLE)
-    assert sparkml.image == registry(REGION, "sparkml-serving") + "/sagemaker-sparkml-serving:2.2"
+    sparkml = SparkMLModel(
+        sagemaker_session=sagemaker_session, model_data=MODEL_DATA, role=ROLE
+    )
+    assert (
+        sparkml.image
+        == registry(REGION, "sparkml-serving") + "/sagemaker-sparkml-serving:2.2"
+    )
 
 
 def test_predictor_type(sagemaker_session):
-    sparkml = SparkMLModel(sagemaker_session=sagemaker_session, model_data=MODEL_DATA, role=ROLE)
+    sparkml = SparkMLModel(
+        sagemaker_session=sagemaker_session, model_data=MODEL_DATA, role=ROLE
+    )
     predictor = sparkml.deploy(1, TRAIN_INSTANCE_TYPE)
 
     assert isinstance(predictor, SparkMLPredictor)

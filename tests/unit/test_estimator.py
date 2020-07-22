@@ -79,7 +79,11 @@ RETURNED_JOB_DESCRIPTION = {
         "training_steps": "100",
     },
     "RoleArn": "arn:aws:iam::366:role/SageMakerRole",
-    "ResourceConfig": {"VolumeSizeInGB": 30, "InstanceCount": 1, "InstanceType": "ml.c4.xlarge"},
+    "ResourceConfig": {
+        "VolumeSizeInGB": 30,
+        "InstanceCount": 1,
+        "InstanceType": "ml.c4.xlarge",
+    },
     "EnableNetworkIsolation": False,
     "StoppingCondition": {"MaxRuntimeInSeconds": 24 * 60 * 60},
     "TrainingJobName": "neo",
@@ -104,7 +108,9 @@ MODEL_CONTAINER_DEF = {
 
 ENDPOINT_DESC = {"EndpointConfigName": "test-endpoint"}
 
-ENDPOINT_CONFIG_DESC = {"ProductionVariants": [{"ModelName": "model-1"}, {"ModelName": "model-2"}]}
+ENDPOINT_CONFIG_DESC = {
+    "ProductionVariants": [{"ModelName": "model-1"}, {"ModelName": "model-2"}]
+}
 
 LIST_TAGS_RESULT = {"Tags": [{"Key": "TagtestKey", "Value": "TagtestValue"}]}
 
@@ -137,10 +143,12 @@ class DummyFramework(Framework):
         )
 
     @classmethod
-    def _prepare_init_params_from_job_description(cls, job_details, model_channel_name=None):
-        init_params = super(DummyFramework, cls)._prepare_init_params_from_job_description(
-            job_details, model_channel_name
-        )
+    def _prepare_init_params_from_job_description(
+        cls, job_details, model_channel_name=None
+    ):
+        init_params = super(
+            DummyFramework, cls
+        )._prepare_init_params_from_job_description(job_details, model_channel_name)
         init_params.pop("image", None)
         return init_params
 
@@ -186,7 +194,9 @@ def sagemaker_session():
         name="describe_training_job", return_value=DESCRIBE_TRAINING_JOB_RESULT
     )
     sms.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)
-    sms.sagemaker_client.describe_endpoint_config = Mock(return_value=ENDPOINT_CONFIG_DESC)
+    sms.sagemaker_client.describe_endpoint_config = Mock(
+        return_value=ENDPOINT_CONFIG_DESC
+    )
     sms.sagemaker_client.list_tags = Mock(return_value=LIST_TAGS_RESULT)
     return sms
 
@@ -208,7 +218,9 @@ def test_framework_all_init_args(sagemaker_session):
         tags=[{"foo": "bar"}],
         subnets=["123", "456"],
         security_group_ids=["789", "012"],
-        metric_definitions=[{"Name": "validation-rmse", "Regex": "validation-rmse=(\\d+)"}],
+        metric_definitions=[
+            {"Name": "validation-rmse", "Regex": "validation-rmse=(\\d+)"}
+        ],
         encrypt_inter_container_traffic=True,
         checkpoint_s3_uri="s3://bucket/checkpoint",
         checkpoint_local_path="file://local/checkpoint",
@@ -246,7 +258,9 @@ def test_framework_all_init_args(sagemaker_session):
             "VolumeKmsKeyId": "volumekms",
             "InstanceType": "ml.m4.xlarge",
         },
-        "metric_definitions": [{"Name": "validation-rmse", "Regex": "validation-rmse=(\\d+)"}],
+        "metric_definitions": [
+            {"Name": "validation-rmse", "Regex": "validation-rmse=(\\d+)"}
+        ],
         "encrypt_inter_container_traffic": True,
         "experiment_config": None,
         "checkpoint_s3_uri": "s3://bucket/checkpoint",
@@ -273,7 +287,9 @@ def test_framework_with_spot_and_checkpoints(sagemaker_session):
         tags=[{"foo": "bar"}],
         subnets=["123", "456"],
         security_group_ids=["789", "012"],
-        metric_definitions=[{"Name": "validation-rmse", "Regex": "validation-rmse=(\\d+)"}],
+        metric_definitions=[
+            {"Name": "validation-rmse", "Regex": "validation-rmse=(\\d+)"}
+        ],
         encrypt_inter_container_traffic=True,
         train_use_spot_instances=True,
         train_max_wait=500,
@@ -311,7 +327,9 @@ def test_framework_with_spot_and_checkpoints(sagemaker_session):
             "VolumeKmsKeyId": "volumekms",
             "InstanceType": "ml.m4.xlarge",
         },
-        "metric_definitions": [{"Name": "validation-rmse", "Regex": "validation-rmse=(\\d+)"}],
+        "metric_definitions": [
+            {"Name": "validation-rmse", "Regex": "validation-rmse=(\\d+)"}
+        ],
         "encrypt_inter_container_traffic": True,
         "train_use_spot_instances": True,
         "checkpoint_s3_uri": "s3://mybucket/checkpoints/",
@@ -531,7 +549,9 @@ def test_s3_input_mode(sagemaker_session):
         train_instance_type=INSTANCE_TYPE,
         enable_cloudwatch_metrics=True,
     )
-    fw.fit(inputs=s3_input("s3://mybucket/train_manifest", input_mode=expected_input_mode))
+    fw.fit(
+        inputs=s3_input("s3://mybucket/train_manifest", input_mode=expected_input_mode)
+    )
 
     actual_input_mode = sagemaker_session.method_calls[1][2]["input_mode"]
     assert actual_input_mode == expected_input_mode
@@ -546,7 +566,11 @@ def test_shuffle_config(sagemaker_session):
         train_instance_type=INSTANCE_TYPE,
         enable_cloudwatch_metrics=True,
     )
-    fw.fit(inputs=s3_input("s3://mybucket/train_manifest", shuffle_config=ShuffleConfig(100)))
+    fw.fit(
+        inputs=s3_input(
+            "s3://mybucket/train_manifest", shuffle_config=ShuffleConfig(100)
+        )
+    )
     _, _, train_kwargs = sagemaker_session.train.mock_calls[0]
     channel = train_kwargs["input_config"][0]
     assert channel["ShuffleConfig"]["Seed"] == 100
@@ -708,7 +732,10 @@ def test_enable_cloudwatch_metrics(sagemaker_session):
 
 def test_attach_framework(sagemaker_session):
     returned_job_description = RETURNED_JOB_DESCRIPTION.copy()
-    returned_job_description["VpcConfig"] = {"Subnets": ["foo"], "SecurityGroupIds": ["bar"]}
+    returned_job_description["VpcConfig"] = {
+        "Subnets": ["foo"],
+        "SecurityGroupIds": ["bar"],
+    }
     returned_job_description["EnableNetworkIsolation"] = True
     sagemaker_session.sagemaker_client.describe_training_job = Mock(
         name="describe_training_job", return_value=returned_job_description
@@ -743,21 +770,29 @@ def test_attach_without_hyperparameters(sagemaker_session):
     mock_describe_training_job = Mock(
         name="describe_training_job", return_value=returned_job_description
     )
-    sagemaker_session.sagemaker_client.describe_training_job = mock_describe_training_job
+    sagemaker_session.sagemaker_client.describe_training_job = (
+        mock_describe_training_job
+    )
 
-    estimator = Estimator.attach(training_job_name="job", sagemaker_session=sagemaker_session)
+    estimator = Estimator.attach(
+        training_job_name="job", sagemaker_session=sagemaker_session
+    )
 
     assert estimator.hyperparameters() == {}
 
 
 def test_attach_framework_with_tuning(sagemaker_session):
     returned_job_description = RETURNED_JOB_DESCRIPTION.copy()
-    returned_job_description["HyperParameters"]["_tuning_objective_metric"] = "Validation-accuracy"
+    returned_job_description["HyperParameters"][
+        "_tuning_objective_metric"
+    ] = "Validation-accuracy"
 
     mock_describe_training_job = Mock(
         name="describe_training_job", return_value=returned_job_description
     )
-    sagemaker_session.sagemaker_client.describe_training_job = mock_describe_training_job
+    sagemaker_session.sagemaker_client.describe_training_job = (
+        mock_describe_training_job
+    )
 
     framework_estimator = DummyFramework.attach(
         training_job_name="neo", sagemaker_session=sagemaker_session
@@ -800,7 +835,9 @@ def test_attach_framework_with_model_channel(sagemaker_session):
     assert framework_estimator.encrypt_inter_container_traffic is False
 
 
-def test_attach_framework_with_inter_container_traffic_encryption_flag(sagemaker_session):
+def test_attach_framework_with_inter_container_traffic_encryption_flag(
+    sagemaker_session,
+):
     returned_job_description = RETURNED_JOB_DESCRIPTION.copy()
     returned_job_description["EnableInterContainerTrafficEncryption"] = True
 
@@ -953,11 +990,15 @@ def test_git_support_with_dependencies_succeed(git_clone_repo, sagemaker_session
         enable_cloudwatch_metrics=True,
     )
     fw.fit()
-    git_clone_repo.assert_called_once_with(git_config, entry_point, None, ["foo", "foo/bar"])
+    git_clone_repo.assert_called_once_with(
+        git_config, entry_point, None, ["foo", "foo/bar"]
+    )
 
 
 @patch("sagemaker.git_utils.git_clone_repo")
-def test_git_support_without_branch_and_commit_succeed(git_clone_repo, sagemaker_session):
+def test_git_support_without_branch_and_commit_succeed(
+    git_clone_repo, sagemaker_session
+):
     git_clone_repo.side_effect = lambda gitconfig, entrypoint, source_dir, dependencies=None: {
         "entry_point": "/tmp/repo_dir/source_dir/entry_point",
         "source_dir": None,
@@ -1015,7 +1056,8 @@ def test_git_support_bad_repo_url_format(sagemaker_session):
 @patch(
     "sagemaker.git_utils.git_clone_repo",
     side_effect=subprocess.CalledProcessError(
-        returncode=1, cmd="git clone https://github.com/aws/no-such-repo.git /tmp/repo_dir"
+        returncode=1,
+        cmd="git clone https://github.com/aws/no-such-repo.git /tmp/repo_dir",
     ),
 )
 def test_git_support_git_clone_fail(sagemaker_session):
@@ -1041,7 +1083,11 @@ def test_git_support_git_clone_fail(sagemaker_session):
     ),
 )
 def test_git_support_branch_not_exist(sagemaker_session):
-    git_config = {"repo": GIT_REPO, "branch": "branch-that-does-not-exist", "commit": COMMIT}
+    git_config = {
+        "repo": GIT_REPO,
+        "branch": "branch-that-does-not-exist",
+        "commit": COMMIT,
+    }
     fw = DummyFramework(
         entry_point="entry_point",
         git_config=git_config,
@@ -1063,7 +1109,11 @@ def test_git_support_branch_not_exist(sagemaker_session):
     ),
 )
 def test_git_support_commit_not_exist(sagemaker_session):
-    git_config = {"repo": GIT_REPO, "branch": BRANCH, "commit": "commit-sha-that-does-not-exist"}
+    git_config = {
+        "repo": GIT_REPO,
+        "branch": BRANCH,
+        "commit": "commit-sha-that-does-not-exist",
+    }
     fw = DummyFramework(
         entry_point="entry_point",
         git_config=git_config,
@@ -1212,7 +1262,11 @@ def test_git_support_with_token_2fa(git_clone_repo, sagemaker_session):
     },
 )
 def test_git_support_ssh_no_passphrase_needed(git_clone_repo, sagemaker_session):
-    git_config = {"repo": PRIVATE_GIT_REPO_SSH, "branch": PRIVATE_BRANCH, "commit": PRIVATE_COMMIT}
+    git_config = {
+        "repo": PRIVATE_GIT_REPO_SSH,
+        "branch": PRIVATE_BRANCH,
+        "commit": PRIVATE_COMMIT,
+    }
     entry_point = "entry_point"
     fw = DummyFramework(
         entry_point=entry_point,
@@ -1235,7 +1289,11 @@ def test_git_support_ssh_no_passphrase_needed(git_clone_repo, sagemaker_session)
     ),
 )
 def test_git_support_ssh_passphrase_required(git_clone_repo, sagemaker_session):
-    git_config = {"repo": PRIVATE_GIT_REPO_SSH, "branch": PRIVATE_BRANCH, "commit": PRIVATE_COMMIT}
+    git_config = {
+        "repo": PRIVATE_GIT_REPO_SSH,
+        "branch": PRIVATE_BRANCH,
+        "commit": PRIVATE_COMMIT,
+    }
     entry_point = "entry_point"
     fw = DummyFramework(
         entry_point=entry_point,
@@ -1291,7 +1349,9 @@ def test_git_support_codecommit_with_username_and_password_succeed(
         "dependencies": None,
     },
 )
-def test_git_support_codecommit_with_ssh_no_passphrase_needed(git_clone_repo, sagemaker_session):
+def test_git_support_codecommit_with_ssh_no_passphrase_needed(
+    git_clone_repo, sagemaker_session
+):
     git_config = {"repo": CODECOMMIT_REPO_SSH, "branch": CODECOMMIT_BRANCH}
     entry_point = "entry_point"
     fw = DummyFramework(
@@ -1368,7 +1428,9 @@ def test_framework_transformer_creation(name_from_image, sagemaker_session):
 
 
 @patch("sagemaker.model.utils.name_from_image", return_value=MODEL_IMAGE)
-def test_framework_transformer_creation_with_optional_params(name_from_image, sagemaker_session):
+def test_framework_transformer_creation_with_optional_params(
+    name_from_image, sagemaker_session
+):
     base_name = "foo"
     vpc_config = {"Subnets": ["foo"], "SecurityGroupIds": ["bar"]}
     fw = DummyFramework(
@@ -1492,7 +1554,9 @@ def test_estimator_transformer_creation(create_model, sagemaker_session):
 
 
 @patch("sagemaker.estimator.Estimator.create_model")
-def test_estimator_transformer_creation_with_optional_params(create_model, sagemaker_session):
+def test_estimator_transformer_creation_with_optional_params(
+    create_model, sagemaker_session
+):
     base_name = "foo"
     kms_key = "key"
 
@@ -1535,7 +1599,9 @@ def test_estimator_transformer_creation_with_optional_params(create_model, sagem
     )
 
     create_model.assert_called_with(
-        vpc_config_override=new_vpc_config, model_kms_key=kms_key, enable_network_isolation=True
+        vpc_config_override=new_vpc_config,
+        model_kms_key=kms_key,
+        enable_network_isolation=True,
     )
 
     assert transformer.strategy == strategy
@@ -1567,9 +1633,15 @@ def test_start_new(sagemaker_session):
         hyperparameters=hyperparameters,
     )
 
-    exp_config = {"ExperimentName": "exp", "TrialName": "t", "TrialComponentDisplayName": "tc"}
+    exp_config = {
+        "ExperimentName": "exp",
+        "TrialName": "t",
+        "TrialComponentDisplayName": "tc",
+    }
 
-    started_training_job = training_job.start_new(estimator, inputs, experiment_config=exp_config)
+    started_training_job = training_job.start_new(
+        estimator, inputs, experiment_config=exp_config
+    )
     called_args = sagemaker_session.train.call_args
 
     assert started_training_job.sagemaker_session == sagemaker_session
@@ -1592,8 +1664,9 @@ def test_start_new_not_local_mode_error(sagemaker_session):
     )
     with pytest.raises(ValueError) as error:
         training_job.start_new(estimator, inputs, None)
-        assert "File URIs are supported in local mode only. Please use a S3 URI instead." == str(
-            error
+        assert (
+            "File URIs are supported in local mode only. Please use a S3 URI instead."
+            == str(error)
         )
 
 
@@ -1628,7 +1701,9 @@ def test_same_code_location_keeps_kms_key(utils, sagemaker_session):
     extra_args = {"ServerSideEncryption": "aws:kms", "SSEKMSKeyId": "kms-key"}
     obj = sagemaker_session.boto_session.resource("s3").Object
 
-    obj.assert_called_with("mybucket", "%s/source/sourcedir.tar.gz" % fw._current_job_name)
+    obj.assert_called_with(
+        "mybucket", "%s/source/sourcedir.tar.gz" % fw._current_job_name
+    )
 
     obj().upload_file.assert_called_with(utils.create_tar_file(), ExtraArgs=extra_args)
 
@@ -1649,7 +1724,9 @@ def test_different_code_location_kms_key(utils, sagemaker_session):
 
     obj = sagemaker_session.boto_session.resource("s3").Object
 
-    obj.assert_called_with("another-location", "%s/source/sourcedir.tar.gz" % fw._current_job_name)
+    obj.assert_called_with(
+        "another-location", "%s/source/sourcedir.tar.gz" % fw._current_job_name
+    )
 
     obj().upload_file.assert_called_with(utils.create_tar_file(), ExtraArgs=None)
 
@@ -1670,7 +1747,9 @@ def test_default_code_location_uses_output_path(utils, sagemaker_session):
 
     obj = sagemaker_session.boto_session.resource("s3").Object
 
-    obj.assert_called_with("output_path", "%s/source/sourcedir.tar.gz" % fw._current_job_name)
+    obj.assert_called_with(
+        "output_path", "%s/source/sourcedir.tar.gz" % fw._current_job_name
+    )
 
     extra_args = {"ServerSideEncryption": "aws:kms", "SSEKMSKeyId": "kms-key"}
     obj().upload_file.assert_called_with(utils.create_tar_file(), ExtraArgs=extra_args)
@@ -1791,7 +1870,11 @@ def test_fit_deploy_tags_in_estimator(sagemaker_session):
     sagemaker_session.create_model.assert_called_with(
         ANY,
         "DummyRole",
-        {"ModelDataUrl": "s3://bucket/model.tar.gz", "Environment": {}, "Image": "fakeimage"},
+        {
+            "ModelDataUrl": "s3://bucket/model.tar.gz",
+            "Environment": {},
+            "Image": "fakeimage",
+        },
         enable_network_isolation=False,
         vpc_config=None,
         tags=tags,
@@ -1800,7 +1883,11 @@ def test_fit_deploy_tags_in_estimator(sagemaker_session):
 
 def test_fit_deploy_tags(sagemaker_session):
     estimator = Estimator(
-        IMAGE_NAME, ROLE, INSTANCE_COUNT, INSTANCE_TYPE, sagemaker_session=sagemaker_session
+        IMAGE_NAME,
+        ROLE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        sagemaker_session=sagemaker_session,
     )
 
     estimator.fit()
@@ -1831,7 +1918,11 @@ def test_fit_deploy_tags(sagemaker_session):
     sagemaker_session.create_model.assert_called_with(
         ANY,
         "DummyRole",
-        {"ModelDataUrl": "s3://bucket/model.tar.gz", "Environment": {}, "Image": "fakeimage"},
+        {
+            "ModelDataUrl": "s3://bucket/model.tar.gz",
+            "Environment": {},
+            "Image": "fakeimage",
+        },
         enable_network_isolation=False,
         vpc_config=None,
         tags=tags,
@@ -2103,7 +2194,9 @@ def test_generic_to_deploy_kms(create_model, sagemaker_session):
 
     endpoint_name = "foo"
     kms_key = "key"
-    e.deploy(INSTANCE_COUNT, INSTANCE_TYPE, endpoint_name=endpoint_name, kms_key=kms_key)
+    e.deploy(
+        INSTANCE_COUNT, INSTANCE_TYPE, endpoint_name=endpoint_name, kms_key=kms_key
+    )
 
     model.deploy.assert_called_with(
         instance_type=INSTANCE_TYPE,
@@ -2129,7 +2222,10 @@ def test_generic_training_job_analytics(sagemaker_session):
                 "TrainingInputMode": "File",
                 "MetricDefinitions": [
                     {"Name": "train:loss", "Regex": "train_loss=([0-9]+\\.[0-9]+)"},
-                    {"Name": "validation:loss", "Regex": "valid_loss=([0-9]+\\.[0-9]+)"},
+                    {
+                        "Name": "validation:loss",
+                        "Regex": "valid_loss=([0-9]+\\.[0-9]+)",
+                    },
                 ],
             },
         },
@@ -2160,7 +2256,11 @@ def test_generic_create_model_vpc_config_override(sagemaker_session):
     vpc_config_b = {"Subnets": ["foo", "bar"], "SecurityGroupIds": ["baz"]}
 
     e = Estimator(
-        IMAGE_NAME, ROLE, INSTANCE_COUNT, INSTANCE_TYPE, sagemaker_session=sagemaker_session
+        IMAGE_NAME,
+        ROLE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        sagemaker_session=sagemaker_session,
     )
     e.fit({"train": "s3://bucket/training-prefix"})
     assert e.get_vpc_config() is None
@@ -2186,7 +2286,11 @@ def test_generic_deploy_vpc_config_override(sagemaker_session):
     vpc_config_b = {"Subnets": ["foo", "bar"], "SecurityGroupIds": ["baz"]}
 
     e = Estimator(
-        IMAGE_NAME, ROLE, INSTANCE_COUNT, INSTANCE_TYPE, sagemaker_session=sagemaker_session
+        IMAGE_NAME,
+        ROLE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        sagemaker_session=sagemaker_session,
     )
     e.fit({"train": "s3://bucket/training-prefix"})
     e.deploy(INSTANCE_COUNT, INSTANCE_TYPE)
@@ -2195,10 +2299,16 @@ def test_generic_deploy_vpc_config_override(sagemaker_session):
     e.subnets = vpc_config_a["Subnets"]
     e.security_group_ids = vpc_config_a["SecurityGroupIds"]
     e.deploy(INSTANCE_COUNT, INSTANCE_TYPE)
-    assert sagemaker_session.create_model.call_args_list[1][1]["vpc_config"] == vpc_config_a
+    assert (
+        sagemaker_session.create_model.call_args_list[1][1]["vpc_config"]
+        == vpc_config_a
+    )
 
     e.deploy(INSTANCE_COUNT, INSTANCE_TYPE, vpc_config_override=vpc_config_b)
-    assert sagemaker_session.create_model.call_args_list[2][1]["vpc_config"] == vpc_config_b
+    assert (
+        sagemaker_session.create_model.call_args_list[2][1]["vpc_config"]
+        == vpc_config_b
+    )
 
     e.deploy(INSTANCE_COUNT, INSTANCE_TYPE, vpc_config_override=None)
     assert sagemaker_session.create_model.call_args_list[3][1]["vpc_config"] is None
@@ -2206,7 +2316,11 @@ def test_generic_deploy_vpc_config_override(sagemaker_session):
 
 def test_generic_deploy_accelerator_type(sagemaker_session):
     e = Estimator(
-        IMAGE_NAME, ROLE, INSTANCE_COUNT, INSTANCE_TYPE, sagemaker_session=sagemaker_session
+        IMAGE_NAME,
+        ROLE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        sagemaker_session=sagemaker_session,
     )
     e.fit({"train": "s3://bucket/training-prefix"})
     e.deploy(INSTANCE_COUNT, INSTANCE_TYPE, ACCELERATOR_TYPE)
@@ -2314,7 +2428,9 @@ def test_local_mode_file_output_path(local_session_class):
     local_session.local_mode = True
     local_session_class.return_value = local_session
 
-    e = Estimator(IMAGE_NAME, ROLE, INSTANCE_COUNT, "local", output_path="file:///tmp/model/")
+    e = Estimator(
+        IMAGE_NAME, ROLE, INSTANCE_COUNT, "local", output_path="file:///tmp/model/"
+    )
     assert e.output_path == "file:///tmp/model/"
 
 
@@ -2325,7 +2441,13 @@ def test_file_output_path_not_supported_outside_local_mode(session_class):
     session_class.return_value = session
 
     with pytest.raises(RuntimeError):
-        Estimator(IMAGE_NAME, ROLE, INSTANCE_COUNT, INSTANCE_TYPE, output_path="file:///tmp/model")
+        Estimator(
+            IMAGE_NAME,
+            ROLE,
+            INSTANCE_COUNT,
+            INSTANCE_TYPE,
+            output_path="file:///tmp/model",
+        )
 
 
 def test_prepare_init_params_from_job_description_with_image_training_job():
@@ -2336,7 +2458,10 @@ def test_prepare_init_params_from_job_description_with_image_training_job():
 
     assert init_params["role"] == "arn:aws:iam::366:role/SageMakerRole"
     assert init_params["train_instance_count"] == 1
-    assert init_params["image"] == "1.dkr.ecr.us-west-2.amazonaws.com/sagemaker-other-py2-cpu:1.0.4"
+    assert (
+        init_params["image"]
+        == "1.dkr.ecr.us-west-2.amazonaws.com/sagemaker-other-py2-cpu:1.0.4"
+    )
 
 
 def test_prepare_init_params_from_job_description_with_algorithm_training_job():
@@ -2365,7 +2490,9 @@ def test_prepare_init_params_from_job_description_with_invalid_training_job():
     invalid_job_description["AlgorithmSpecification"] = {"TrainingInputMode": "File"}
 
     with pytest.raises(RuntimeError) as error:
-        EstimatorBase._prepare_init_params_from_job_description(job_details=invalid_job_description)
+        EstimatorBase._prepare_init_params_from_job_description(
+            job_details=invalid_job_description
+        )
         assert "Invalid AlgorithmSpecification" in str(error)
 
 
@@ -2397,7 +2524,10 @@ def test_prepare_for_training_with_name_based_on_image(sagemaker_session):
 
 
 @patch("sagemaker.algorithm.AlgorithmEstimator.validate_train_spec", Mock())
-@patch("sagemaker.algorithm.AlgorithmEstimator._parse_hyperparameters", Mock(return_value={}))
+@patch(
+    "sagemaker.algorithm.AlgorithmEstimator._parse_hyperparameters",
+    Mock(return_value={}),
+)
 def test_prepare_for_training_with_name_based_on_algorithm(sagemaker_session):
     estimator = AlgorithmEstimator(
         algorithm_arn="arn:aws:sagemaker:us-west-2:1234:algorithm/scikit-decision-trees-1542410022",

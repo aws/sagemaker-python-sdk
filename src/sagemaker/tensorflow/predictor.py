@@ -18,7 +18,11 @@ import json
 import google.protobuf.json_format as json_format
 from google.protobuf.message import DecodeError
 from protobuf_to_dict import protobuf_to_dict
-from sagemaker.content_types import CONTENT_TYPE_JSON, CONTENT_TYPE_OCTET_STREAM, CONTENT_TYPE_CSV
+from sagemaker.content_types import (
+    CONTENT_TYPE_JSON,
+    CONTENT_TYPE_OCTET_STREAM,
+    CONTENT_TYPE_CSV,
+)
 from sagemaker.predictor import json_serializer, csv_serializer
 
 
@@ -26,7 +30,9 @@ def _possible_responses():
     """
     Returns: Possible available request types.
     """
-    from tensorflow.core.framework import tensor_pb2  # pylint: disable=no-name-in-module
+    from tensorflow.core.framework import (
+        tensor_pb2,
+    )  # pylint: disable=no-name-in-module
     from tensorflow_serving.apis import (
         predict_pb2,
         classification_pb2,
@@ -125,7 +131,9 @@ class _TFJsonSerializer(object):
             data:
         """
 
-        from tensorflow.core.framework import tensor_pb2  # pylint: disable=no-name-in-module
+        from tensorflow.core.framework import (
+            tensor_pb2,
+        )  # pylint: disable=no-name-in-module
 
         if isinstance(data, tensor_pb2.TensorProto):
             return json_format.MessageToJson(data)
@@ -178,8 +186,12 @@ class _TFCsvSerializer(object):
         """
         to_serialize = data
 
-        from tensorflow.core.framework import tensor_pb2  # pylint: disable=no-name-in-module
-        from tensorflow.python.framework import tensor_util  # pylint: disable=no-name-in-module
+        from tensorflow.core.framework import (
+            tensor_pb2,
+        )  # pylint: disable=no-name-in-module
+        from tensorflow.python.framework import (
+            tensor_util,
+        )  # pylint: disable=no-name-in-module
 
         if isinstance(data, tensor_pb2.TensorProto):
             to_serialize = tensor_util.MakeNdarray(data)

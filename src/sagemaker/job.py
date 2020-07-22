@@ -82,7 +82,9 @@ class _Job(object):
             if expand_role
             else estimator.role
         )
-        output_config = _Job._prepare_output_config(estimator.output_path, estimator.output_kms_key)
+        output_config = _Job._prepare_output_config(
+            estimator.output_path, estimator.output_kms_key
+        )
         resource_config = _Job._prepare_resource_config(
             estimator.train_instance_count,
             estimator.train_instance_type,
@@ -108,7 +110,10 @@ class _Job(object):
 
         if estimator.enable_network_isolation():
             code_channel = _Job._prepare_channel(
-                input_config, estimator.code_uri, estimator.code_channel_name, validate_uri
+                input_config,
+                estimator.code_uri,
+                estimator.code_channel_name,
+                validate_uri,
             )
 
             if code_channel:
@@ -160,7 +165,8 @@ class _Job(object):
             raise ValueError(msg.format(inputs))
 
         channels = [
-            _Job._convert_input_to_channel(name, input) for name, input in input_dict.items()
+            _Job._convert_input_to_channel(name, input)
+            for name, input in input_dict.items()
         ]
 
         return channels
@@ -194,7 +200,11 @@ class _Job(object):
             compression:
             target_attribute_name:
         """
-        if isinstance(uri_input, str) and validate_uri and uri_input.startswith("s3://"):
+        if (
+            isinstance(uri_input, str)
+            and validate_uri
+            and uri_input.startswith("s3://")
+        ):
             s3_input_result = s3_input(
                 uri_input,
                 content_type=content_type,
@@ -203,7 +213,11 @@ class _Job(object):
                 target_attribute_name=target_attribute_name,
             )
             return s3_input_result
-        if isinstance(uri_input, str) and validate_uri and uri_input.startswith("file://"):
+        if (
+            isinstance(uri_input, str)
+            and validate_uri
+            and uri_input.startswith("file://")
+        ):
             return file_input(uri_input)
         if isinstance(uri_input, str) and validate_uri:
             raise ValueError(
@@ -249,13 +263,17 @@ class _Job(object):
             return None
         if not channel_name:
             raise ValueError(
-                "Expected a channel name if a channel URI {} is specified".format(channel_uri)
+                "Expected a channel name if a channel URI {} is specified".format(
+                    channel_uri
+                )
             )
 
         if input_config:
             for existing_channel in input_config:
                 if existing_channel["ChannelName"] == channel_name:
-                    raise ValueError("Duplicate channel {} not allowed.".format(channel_name))
+                    raise ValueError(
+                        "Duplicate channel {} not allowed.".format(channel_name)
+                    )
 
         channel_input = _Job._format_string_uri_input(
             channel_uri, validate_uri, content_type, input_mode
@@ -271,18 +289,27 @@ class _Job(object):
             model_uri:
             validate_uri:
         """
-        if isinstance(model_uri, string_types) and validate_uri and model_uri.startswith("s3://"):
+        if (
+            isinstance(model_uri, string_types)
+            and validate_uri
+            and model_uri.startswith("s3://")
+        ):
             return s3_input(
                 model_uri,
                 input_mode="File",
                 distribution="FullyReplicated",
                 content_type="application/x-sagemaker-model",
             )
-        if isinstance(model_uri, string_types) and validate_uri and model_uri.startswith("file://"):
+        if (
+            isinstance(model_uri, string_types)
+            and validate_uri
+            and model_uri.startswith("file://")
+        ):
             return file_input(model_uri)
         if isinstance(model_uri, string_types) and validate_uri:
             raise ValueError(
-                'Model URI must be a valid S3 or FILE URI: must start with "s3://" or ' '"file://'
+                'Model URI must be a valid S3 or FILE URI: must start with "s3://" or '
+                '"file://'
             )
         if isinstance(model_uri, string_types):
             return s3_input(
@@ -305,7 +332,9 @@ class _Job(object):
         input_dict = {}
         for record in inputs:
             if not isinstance(record, (RecordSet, FileSystemRecordSet)):
-                raise ValueError("List compatible only with RecordSets or FileSystemRecordSets.")
+                raise ValueError(
+                    "List compatible only with RecordSets or FileSystemRecordSets."
+                )
 
             if record.channel in input_dict:
                 raise ValueError("Duplicate channels not allowed.")
@@ -329,7 +358,9 @@ class _Job(object):
         return config
 
     @staticmethod
-    def _prepare_resource_config(instance_count, instance_type, volume_size, train_volume_kms_key):
+    def _prepare_resource_config(
+        instance_count, instance_type, volume_size, train_volume_kms_key
+    ):
         """
         Args:
             instance_count:

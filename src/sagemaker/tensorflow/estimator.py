@@ -188,7 +188,13 @@ class Tensorboard(threading.Thread):
             self.event.wait(1)
         with self._temporary_directory() as aws_sync_dir:
             while not self.event.is_set():
-                args = ["aws", "s3", "sync", self.estimator.checkpoint_path, aws_sync_dir]
+                args = [
+                    "aws",
+                    "s3",
+                    "sync",
+                    self.estimator.checkpoint_path,
+                    aws_sync_dir,
+                ]
                 subprocess.call(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 self._sync_directories(aws_sync_dir, self.logdir)
                 self.event.wait(10)
@@ -297,7 +303,9 @@ class TensorFlow(Framework):
         """
         if framework_version is None:
             logger.warning(
-                fw.empty_framework_version_warning(defaults.TF_VERSION, self.LATEST_VERSION)
+                fw.empty_framework_version_warning(
+                    defaults.TF_VERSION, self.LATEST_VERSION
+                )
             )
         self.framework_version = framework_version or defaults.TF_VERSION
 
@@ -305,11 +313,15 @@ class TensorFlow(Framework):
             py_version = "py3" if self._only_python_3_supported() else "py2"
         if py_version == "py2":
             logger.warning(
-                fw.python_deprecation_warning(self.__framework_name__, defaults.LATEST_PY2_VERSION)
+                fw.python_deprecation_warning(
+                    self.__framework_name__, defaults.LATEST_PY2_VERSION
+                )
             )
 
         if distributions is not None:
-            logger.warning(fw.parameter_v2_rename_warning("distribution", distributions))
+            logger.warning(
+                fw.parameter_v2_rename_warning("distribution", distributions)
+            )
             train_instance_type = kwargs.get("train_instance_type")
             fw.warn_if_parameter_server_with_multi_gpu(
                 training_instance_type=train_instance_type, distributions=distributions
@@ -398,7 +410,9 @@ class TensorFlow(Framework):
 
     def _only_python_3_supported(self):
         """Placeholder docstring"""
-        return [int(s) for s in self.framework_version.split(".")] > self._HIGHEST_PYTHON_2_VERSION
+        return [
+            int(s) for s in self.framework_version.split(".")
+        ] > self._HIGHEST_PYTHON_2_VERSION
 
     def _validate_requirements_file(self, requirements_file):
         """Placeholder docstring"""
@@ -419,7 +433,9 @@ class TensorFlow(Framework):
             )
 
         if not os.path.exists(os.path.join(self.source_dir, requirements_file)):
-            raise ValueError("Requirements file {} does not exist.".format(requirements_file))
+            raise ValueError(
+                "Requirements file {} does not exist.".format(requirements_file)
+            )
 
     def fit(
         self,
@@ -483,7 +499,9 @@ class TensorFlow(Framework):
             fit_super()
 
     @classmethod
-    def _prepare_init_params_from_job_description(cls, job_details, model_channel_name=None):
+    def _prepare_init_params_from_job_description(
+        cls, job_details, model_channel_name=None
+    ):
         """Convert the job description to init params that can be handled by the class constructor
 
         Args:
@@ -499,13 +517,20 @@ class TensorFlow(Framework):
 
         # Move some of the tensorflow specific init params from hyperparameters into the main init
         # params.
-        for argument in ("checkpoint_path", "training_steps", "evaluation_steps", "model_dir"):
+        for argument in (
+            "checkpoint_path",
+            "training_steps",
+            "evaluation_steps",
+            "model_dir",
+        ):
             value = init_params["hyperparameters"].pop(argument, None)
             if value is not None:
                 init_params[argument] = value
 
         image_name = init_params.pop("image")
-        framework, py_version, tag, script_mode = fw.framework_name_from_image(image_name)
+        framework, py_version, tag, script_mode = fw.framework_name_from_image(
+            image_name
+        )
         if not framework:
             # If we were unable to parse the framework name from the image it is not one of our
             # officially supported images, in this case just add the image to the init params.
@@ -678,14 +703,18 @@ class TensorFlow(Framework):
         """Return hyperparameters used by your custom TensorFlow code during model training."""
         hyperparameters = super(TensorFlow, self).hyperparameters()
 
-        self.checkpoint_path = self.checkpoint_path or self._default_s3_path("checkpoints")
+        self.checkpoint_path = self.checkpoint_path or self._default_s3_path(
+            "checkpoints"
+        )
         mpi_enabled = False
 
         if self._script_mode_enabled():
             additional_hyperparameters = {}
 
             if "parameter_server" in self.distributions:
-                ps_enabled = self.distributions["parameter_server"].get("enabled", False)
+                ps_enabled = self.distributions["parameter_server"].get(
+                    "enabled", False
+                )
                 additional_hyperparameters[self.LAUNCH_PS_ENV_NAME] = ps_enabled
 
             if "mpi" in self.distributions:
@@ -694,15 +723,17 @@ class TensorFlow(Framework):
                 additional_hyperparameters[self.LAUNCH_MPI_ENV_NAME] = mpi_enabled
 
                 if mpi_dict.get("processes_per_host"):
-                    additional_hyperparameters[self.MPI_NUM_PROCESSES_PER_HOST] = mpi_dict.get(
-                        "processes_per_host"
-                    )
+                    additional_hyperparameters[
+                        self.MPI_NUM_PROCESSES_PER_HOST
+                    ] = mpi_dict.get("processes_per_host")
 
                 additional_hyperparameters[self.MPI_CUSTOM_MPI_OPTIONS] = mpi_dict.get(
                     "custom_mpi_options", ""
                 )
 
-            self.model_dir = self.model_dir or self._default_s3_path("model", mpi=mpi_enabled)
+            self.model_dir = self.model_dir or self._default_s3_path(
+                "model", mpi=mpi_enabled
+            )
             additional_hyperparameters["model_dir"] = self.model_dir
         else:
             additional_hyperparameters = {
@@ -712,12 +743,16 @@ class TensorFlow(Framework):
                 "sagemaker_requirements": self.requirements_file,
             }
 
-        hyperparameters.update(Framework._json_encode_hyperparameters(additional_hyperparameters))
+        hyperparameters.update(
+            Framework._json_encode_hyperparameters(additional_hyperparameters)
+        )
         return hyperparameters
 
     def _default_s3_path(self, directory, mpi=False):
         """Placeholder docstring"""
-        local_code = utils.get_config_value("local.local_code", self.sagemaker_session.config)
+        local_code = utils.get_config_value(
+            "local.local_code", self.sagemaker_session.config
+        )
         if self.sagemaker_session.local_mode and local_code:
             return "/opt/ml/shared/{}".format(directory)
         if mpi:
@@ -741,7 +776,10 @@ class TensorFlow(Framework):
             "parameter_server"
         ].get("enabled", False)
         if ps_enabled:
-            if self.debugger_hook_config is not None or self.debugger_rule_configs is not None:
+            if (
+                self.debugger_hook_config is not None
+                or self.debugger_rule_configs is not None
+            ):
                 logger.info(
                     "Amazon SageMaker Debugger does not currently support "
                     "Parameter Server distribution"
@@ -752,7 +790,9 @@ class TensorFlow(Framework):
             self.sagemaker_session.boto_session.region_name
         ):
             # Set defaults for debugging.
-            self.debugger_hook_config = DebuggerHookConfig(s3_output_path=self.output_path)
+            self.debugger_hook_config = DebuggerHookConfig(
+                s3_output_path=self.output_path
+            )
 
     def train_image(self):
         """Placeholder docstring"""

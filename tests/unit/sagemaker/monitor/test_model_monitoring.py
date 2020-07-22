@@ -57,9 +57,7 @@ OUTPUT_S3_URI = "s3://output-s3-uri/"
 
 CUSTOM_IMAGE_URI = "012345678901.dkr.ecr.us-west-2.amazonaws.com/my-custom-image-uri"
 
-INTER_CONTAINER_ENCRYPTION_EXCEPTION_MSG = (
-    "EnableInterContainerTrafficEncryption is not supported in Model Monitor. Please ensure that "
-)
+INTER_CONTAINER_ENCRYPTION_EXCEPTION_MSG = "EnableInterContainerTrafficEncryption is not supported in Model Monitor. Please ensure that "
 "encrypt_inter_container_traffic=None when creating your NetworkConfig object."
 
 
@@ -140,7 +138,9 @@ def test_default_model_monitor_suggest_baseline(sagemaker_session):
 def test_default_model_monitor_with_invalid_network_config(sagemaker_session):
     invalid_network_config = NetworkConfig(encrypt_inter_container_traffic=False)
     my_default_monitor = DefaultModelMonitor(
-        role=ROLE, sagemaker_session=sagemaker_session, network_config=invalid_network_config
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        network_config=invalid_network_config,
     )
     with pytest.raises(ValueError) as exception:
         my_default_monitor.create_monitoring_schedule(endpoint_input="test_endpoint")
@@ -163,7 +163,8 @@ def test_model_monitor_with_invalid_network_config(sagemaker_session):
         my_model_monitor.create_monitoring_schedule(
             endpoint_input="test_endpoint",
             output=MonitoringOutput(
-                source="/opt/ml/processing/output", destination="/opt/ml/processing/output"
+                source="/opt/ml/processing/output",
+                destination="/opt/ml/processing/output",
             ),
         )
     assert INTER_CONTAINER_ENCRYPTION_EXCEPTION_MSG in str(exception.value)

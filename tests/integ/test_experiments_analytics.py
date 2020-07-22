@@ -30,7 +30,8 @@ def experiment(sagemaker_session):
                 TrialComponentName=trial_component_name, DisplayName="Training"
             )
             sm.update_trial_component(
-                TrialComponentName=trial_component_name, Parameters={"hp1": {"NumberValue": i}}
+                TrialComponentName=trial_component_name,
+                Parameters={"hp1": {"NumberValue": i}},
             )
             sm.associate_trial_component(
                 TrialComponentName=trial_component_name, TrialName=trial_name
@@ -67,10 +68,16 @@ def experiment_with_artifacts(sagemaker_session):
                 TrialComponentName=trial_component_name,
                 Parameters={"hp1": {"NumberValue": i}},
                 InputArtifacts={
-                    "inputArtifacts1": {"MediaType": "text/csv", "Value": "s3:/foo/bar1"}
+                    "inputArtifacts1": {
+                        "MediaType": "text/csv",
+                        "Value": "s3:/foo/bar1",
+                    }
                 },
                 OutputArtifacts={
-                    "outputArtifacts1": {"MediaType": "text/plain", "Value": "s3:/foo/bar2"}
+                    "outputArtifacts1": {
+                        "MediaType": "text/plain",
+                        "Value": "s3:/foo/bar2",
+                    }
                 },
             )
             sm.associate_trial_component(
@@ -109,7 +116,11 @@ def test_experiment_analytics(sagemaker_session):
             experiment_name=experiment_name, sagemaker_session=sagemaker_session
         )
 
-        assert list(analytics.dataframe().columns) == ["TrialComponentName", "DisplayName", "hp1"]
+        assert list(analytics.dataframe().columns) == [
+            "TrialComponentName",
+            "DisplayName",
+            "hp1",
+        ]
 
 
 def test_experiment_analytics_pagination(sagemaker_session):
@@ -118,7 +129,11 @@ def test_experiment_analytics_pagination(sagemaker_session):
             experiment_name=experiment_name, sagemaker_session=sagemaker_session
         )
 
-        assert list(analytics.dataframe().columns) == ["TrialComponentName", "DisplayName", "hp1"]
+        assert list(analytics.dataframe().columns) == [
+            "TrialComponentName",
+            "DisplayName",
+            "hp1",
+        ]
         assert (
             len(analytics.dataframe()) > 10
         )  # TODO [owen-t] Replace with == 20 and put test in retry block
@@ -128,8 +143,16 @@ def test_experiment_analytics_search_by_nested_filter(sagemaker_session):
     with experiment(sagemaker_session) as experiment_name:
         search_exp = {
             "Filters": [
-                {"Name": "Parents.ExperimentName", "Operator": "Equals", "Value": experiment_name},
-                {"Name": "Parameters.hp1", "Operator": "GreaterThanOrEqualTo", "Value": "10"},
+                {
+                    "Name": "Parents.ExperimentName",
+                    "Operator": "Equals",
+                    "Value": experiment_name,
+                },
+                {
+                    "Name": "Parameters.hp1",
+                    "Operator": "GreaterThanOrEqualTo",
+                    "Value": "10",
+                },
             ]
         }
 
@@ -137,7 +160,11 @@ def test_experiment_analytics_search_by_nested_filter(sagemaker_session):
             sagemaker_session=sagemaker_session, search_expression=search_exp
         )
 
-        assert list(analytics.dataframe().columns) == ["TrialComponentName", "DisplayName", "hp1"]
+        assert list(analytics.dataframe().columns) == [
+            "TrialComponentName",
+            "DisplayName",
+            "hp1",
+        ]
         assert (
             len(analytics.dataframe()) > 5
         )  # TODO [owen-t] Replace with == 10 and put test in retry block
@@ -147,8 +174,16 @@ def test_experiment_analytics_search_by_nested_filter_sort_ascending(sagemaker_s
     with experiment(sagemaker_session) as experiment_name:
         search_exp = {
             "Filters": [
-                {"Name": "Parents.ExperimentName", "Operator": "Equals", "Value": experiment_name},
-                {"Name": "Parameters.hp1", "Operator": "GreaterThanOrEqualTo", "Value": "10"},
+                {
+                    "Name": "Parents.ExperimentName",
+                    "Operator": "Equals",
+                    "Value": experiment_name,
+                },
+                {
+                    "Name": "Parameters.hp1",
+                    "Operator": "GreaterThanOrEqualTo",
+                    "Value": "10",
+                },
             ]
         }
 
@@ -159,7 +194,11 @@ def test_experiment_analytics_search_by_nested_filter_sort_ascending(sagemaker_s
             sort_order="Ascending",
         )
 
-        assert list(analytics.dataframe().columns) == ["TrialComponentName", "DisplayName", "hp1"]
+        assert list(analytics.dataframe().columns) == [
+            "TrialComponentName",
+            "DisplayName",
+            "hp1",
+        ]
         assert (
             len(analytics.dataframe()) > 5
         )  # TODO [owen-t] Replace with == 10 and put test in retry block
@@ -168,12 +207,22 @@ def test_experiment_analytics_search_by_nested_filter_sort_ascending(sagemaker_s
         )
 
 
-def test_experiment_analytics_search_by_nested_filter_sort_descending(sagemaker_session):
+def test_experiment_analytics_search_by_nested_filter_sort_descending(
+    sagemaker_session,
+):
     with experiment(sagemaker_session) as experiment_name:
         search_exp = {
             "Filters": [
-                {"Name": "Parents.ExperimentName", "Operator": "Equals", "Value": experiment_name},
-                {"Name": "Parameters.hp1", "Operator": "GreaterThanOrEqualTo", "Value": "10"},
+                {
+                    "Name": "Parents.ExperimentName",
+                    "Operator": "Equals",
+                    "Value": experiment_name,
+                },
+                {
+                    "Name": "Parameters.hp1",
+                    "Operator": "GreaterThanOrEqualTo",
+                    "Value": "10",
+                },
             ]
         }
 
@@ -183,7 +232,11 @@ def test_experiment_analytics_search_by_nested_filter_sort_descending(sagemaker_
             sort_by="Parameters.hp1",
         )
 
-        assert list(analytics.dataframe().columns) == ["TrialComponentName", "DisplayName", "hp1"]
+        assert list(analytics.dataframe().columns) == [
+            "TrialComponentName",
+            "DisplayName",
+            "hp1",
+        ]
         assert (
             len(analytics.dataframe()) > 5
         )  # TODO [owen-t] Replace with == 10 and put test in retry block
@@ -196,7 +249,9 @@ def test_experiment_analytics_search_by_nested_filter_sort_descending(sagemaker_
 def _delete_resources(sagemaker_client, experiment_name, trials):
     for trial, tc in trials.items():
         with _ignore_resource_not_found(sagemaker_client):
-            sagemaker_client.disassociate_trial_component(TrialName=trial, TrialComponentName=tc)
+            sagemaker_client.disassociate_trial_component(
+                TrialName=trial, TrialComponentName=tc
+            )
             _wait_for_trial_component_disassociation(sagemaker_client, tc)
 
         with _ignore_resource_not_found(sagemaker_client):

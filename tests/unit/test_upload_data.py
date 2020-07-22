@@ -22,7 +22,9 @@ from tests.unit import DATA_DIR
 
 UPLOAD_DATA_TESTS_FILES_DIR = os.path.join(DATA_DIR, "upload_data_tests")
 SINGLE_FILE_NAME = "file1.py"
-UPLOAD_DATA_TESTS_SINGLE_FILE = os.path.join(UPLOAD_DATA_TESTS_FILES_DIR, SINGLE_FILE_NAME)
+UPLOAD_DATA_TESTS_SINGLE_FILE = os.path.join(
+    UPLOAD_DATA_TESTS_FILES_DIR, SINGLE_FILE_NAME
+)
 BUCKET_NAME = "mybucket"
 AES_ENCRYPTION_ENABLED = {"ServerSideEncryption": "AES256"}
 ENDPOINT_URL = "http://127.0.0.1:9000"
@@ -74,7 +76,9 @@ def test_upload_data_absolute_dir_custom_endpoint(sagemaker_session_custom_endpo
 
     sagemaker_session_custom_endpoint.s3_resource.Object = Mock()
 
-    result_s3_uri = sagemaker_session_custom_endpoint.upload_data(UPLOAD_DATA_TESTS_FILES_DIR)
+    result_s3_uri = sagemaker_session_custom_endpoint.upload_data(
+        UPLOAD_DATA_TESTS_FILES_DIR
+    )
 
     uploaded_files_with_args = [
         (args[0], kwargs)

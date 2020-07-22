@@ -196,7 +196,10 @@ class Model(sagemaker.model.FrameworkModel):
     ):
 
         if accelerator_type and not self._eia_supported():
-            msg = "The TensorFlow version %s doesn't support EIA." % self._framework_version
+            msg = (
+                "The TensorFlow version %s doesn't support EIA."
+                % self._framework_version
+            )
 
             raise AttributeError(msg)
         return super(Model, self).deploy(
@@ -213,7 +216,9 @@ class Model(sagemaker.model.FrameworkModel):
 
     def _eia_supported(self):
         """Return true if TF version is EIA enabled"""
-        return [int(s) for s in self._framework_version.split(".")][:2] <= self.LATEST_EIA_VERSION
+        return [int(s) for s in self._framework_version.split(".")][
+            :2
+        ] <= self.LATEST_EIA_VERSION
 
     def prepare_container_def(self, instance_type=None, accelerator_type=None):
         """
@@ -230,7 +235,9 @@ class Model(sagemaker.model.FrameworkModel):
         env = self._get_container_env()
 
         if self.entry_point:
-            key_prefix = sagemaker.fw_utils.model_code_key_prefix(self.key_prefix, self.name, image)
+            key_prefix = sagemaker.fw_utils.model_code_key_prefix(
+                self.key_prefix, self.name, image
+            )
 
             bucket = self.bucket or self.sagemaker_session.default_bucket()
             model_data = "s3://{}/{}/model.tar.gz".format(bucket, key_prefix)
@@ -255,7 +262,9 @@ class Model(sagemaker.model.FrameworkModel):
             return self.env
 
         if self._container_log_level not in Model.LOG_LEVEL_MAP:
-            logging.warning("ignoring invalid container log level: %s", self._container_log_level)
+            logging.warning(
+                "ignoring invalid container log level: %s", self._container_log_level
+            )
             return self.env
 
         env = dict(self.env)
@@ -297,4 +306,6 @@ class Model(sagemaker.model.FrameworkModel):
             str: The appropriate image URI based on the given parameters.
 
         """
-        return self._get_image_uri(instance_type=instance_type, accelerator_type=accelerator_type)
+        return self._get_image_uri(
+            instance_type=instance_type, accelerator_type=accelerator_type
+        )

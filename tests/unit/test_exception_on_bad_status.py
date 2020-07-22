@@ -29,7 +29,9 @@ def get_sagemaker_session(returns_status):
     client_mock.describe_model_package = MagicMock(
         return_value={"ModelPackageStatus": returns_status}
     )
-    client_mock.describe_endpoint = MagicMock(return_value={"EndpointStatus": returns_status})
+    client_mock.describe_endpoint = MagicMock(
+        return_value={"EndpointStatus": returns_status}
+    )
     ims = sagemaker.Session(boto_session=boto_mock, sagemaker_client=client_mock)
     ims.expand_role = Mock(return_value=EXPANDED_ROLE)
     return ims

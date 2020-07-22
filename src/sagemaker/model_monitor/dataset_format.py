@@ -35,7 +35,12 @@ class DatasetFormat(object):
             dict: JSON string containing DatasetFormat to be used by DefaultModelMonitor.
 
         """
-        return {"csv": {"header": header, "output_columns_position": output_columns_position}}
+        return {
+            "csv": {
+                "header": header,
+                "output_columns_position": output_columns_position,
+            }
+        }
 
     @staticmethod
     def json(lines=True):
