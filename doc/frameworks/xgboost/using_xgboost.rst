@@ -414,7 +414,7 @@ and ``predict_fn`` to customize how the model server gets predictions from the l
 For information about how to write an inference script, see `SageMaker XGBoost Model Server <#sagemaker-xgboost-model-server>`_.
 Pass the filename of the inference script as the ``entry_point`` parameter when you create the `XGBoostModel` object.
 
-Create a XGBoostModel object
+Create an XGBoostModel Object
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Now call the ``sagemaker.xgboost.model.XGBoostModel`` constructor to create a model object,
