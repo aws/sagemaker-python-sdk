@@ -1722,6 +1722,20 @@ class Session(object):  # pylint: disable=too-many-public-methods
         LOGGER.debug("tune request: %s", json.dumps(tune_request, indent=4))
         self.sagemaker_client.create_hyper_parameter_tuning_job(**tune_request)
 
+    def describe_tuning_job(self, job_name):
+        """Calls the DescribeHyperParameterTuningJob API for the given job name
+        and returns the response.
+
+            Args:
+                job_name (str): The name of the hyperparameter tuning job to describe.
+
+            Returns:
+                dict: A dictionary response with the hyperparameter tuning job description.
+        """
+        return self.sagemaker_client.describe_hyper_parameter_tuning_job(
+            HyperParameterTuningJobName=job_name
+        )
+
     @classmethod
     def _map_tuning_config(
         cls,
@@ -1982,6 +1996,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         experiment_config,
         tags,
         data_processing,
+        model_client_config=None,
     ):
         """Create an Amazon SageMaker transform job.
 
@@ -2006,6 +2021,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             data_processing(dict): A dictionary describing config for combining the input data and
                 transformed data. For more, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
+            model_client_config (dict): A dictionary describing the model configuration for the
+                job. Dictionary contains two optional keys,
+                'InvocationsTimeoutInSeconds', and 'InvocationsMaxRetries'.
         """
         transform_request = {
             "TransformJobName": job_name,
@@ -2035,6 +2053,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         if experiment_config and len(experiment_config) > 0:
             transform_request["ExperimentConfig"] = experiment_config
+
+        if model_client_config and len(model_client_config) > 0:
+            transform_request["ModelClientConfig"] = model_client_config
 
         LOGGER.info("Creating transform job with name: %s", job_name)
         LOGGER.debug("Transform request: %s", json.dumps(transform_request, indent=4))

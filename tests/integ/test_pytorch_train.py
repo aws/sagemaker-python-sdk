@@ -48,7 +48,6 @@ def fixture_training_job(sagemaker_session, pytorch_full_version, cpu_instance_t
 
 
 @pytest.mark.canary_quick
-@pytest.mark.regional_testing
 @pytest.mark.skipif(
     PYTHON_VERSION == "py2",
     reason="Python 2 is supported by PyTorch {} and lower versions.".format(LATEST_PY2_VERSION),

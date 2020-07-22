@@ -92,10 +92,10 @@ class WarmStartConfig(object):
                 warm start the new tuning job.
         """
 
-        if warm_start_type not in WarmStartTypes:
+        if warm_start_type not in list(WarmStartTypes):
             raise ValueError(
-                "Invalid type: {}, valid warm start types are: [{}]".format(
-                    warm_start_type, [t for t in WarmStartTypes]
+                "Invalid type: {}, valid warm start types are: {}".format(
+                    warm_start_type, list(WarmStartTypes)
                 )
             )
 
@@ -750,6 +750,10 @@ class HyperparameterTuner(object):
         self._ensure_last_tuning_job()
         self.latest_tuning_job.stop()
 
+    def describe(self):
+        """Returns a response from the DescribeHyperParameterTuningJob API call."""
+        return self.sagemaker_session.describe_tuning_job(self._current_job_name)
+
     def wait(self):
         """Wait for latest hyperparameter tuning job to finish."""
         self._ensure_last_tuning_job()
@@ -836,6 +840,11 @@ class HyperparameterTuner(object):
         Args:
             endpoint_name (str): Name of the endpoint to delete
         """
+        logging.warning(
+            "HyperparameterTuner.delete_endpoint() will be deprecated in SageMaker Python SDK v2. "
+            "Please use the delete_endpoint() function on your predictor instead."
+        )
+
         endpoint_name = endpoint_name or self.best_training_job()
         self.sagemaker_session.delete_endpoint(endpoint_name)
 

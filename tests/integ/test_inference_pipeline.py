@@ -51,8 +51,6 @@ SCHEMA = json.dumps(
 )
 
 
-@pytest.mark.continuous_testing
-@pytest.mark.regional_testing
 def test_inference_pipeline_batch_transform(sagemaker_session, cpu_instance_type):
     sparkml_model_data = sagemaker_session.upload_data(
         path=os.path.join(SPARKML_DATA_PATH, "mleap_model.tar.gz"),
@@ -94,7 +92,6 @@ def test_inference_pipeline_batch_transform(sagemaker_session, cpu_instance_type
 
 
 @pytest.mark.canary_quick
-@pytest.mark.regional_testing
 @pytest.mark.skip(
     reason="This test has always failed, but the failure was masked by a bug. "
     "This test should be fixed. Details in https://github.com/aws/sagemaker-python-sdk/pull/968"

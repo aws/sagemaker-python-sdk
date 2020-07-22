@@ -576,6 +576,7 @@ EXPERIMENT_CONFIG = {
     "TrialName": "dummyT",
     "TrialComponentDisplayName": "dummyTC",
 }
+MODEL_CLIENT_CONFIG = {"InvocationsMaxRetries": 2, "InvocationsTimeoutInSeconds": 60}
 
 DEFAULT_EXPECTED_TRAIN_JOB_ARGS = {
     "OutputDataConfig": {"S3OutputPath": S3_OUTPUT},
@@ -1258,6 +1259,7 @@ def test_transform_pack_to_request(sagemaker_session):
         output_config=out_config,
         resource_config=resource_config,
         experiment_config=None,
+        model_client_config=None,
         tags=None,
         data_processing=data_processing,
     )
@@ -1283,6 +1285,7 @@ def test_transform_pack_to_request_with_optional_params(sagemaker_session):
         output_config={},
         resource_config={},
         experiment_config=EXPERIMENT_CONFIG,
+        model_client_config=MODEL_CLIENT_CONFIG,
         tags=TAGS,
         data_processing=None,
     )
@@ -1294,6 +1297,7 @@ def test_transform_pack_to_request_with_optional_params(sagemaker_session):
     assert actual_args["Environment"] == env
     assert actual_args["Tags"] == TAGS
     assert actual_args["ExperimentConfig"] == EXPERIMENT_CONFIG
+    assert actual_args["ModelClientConfig"] == MODEL_CLIENT_CONFIG
 
 
 @patch("sys.stdout", new_callable=io.BytesIO if six.PY2 else io.StringIO)
@@ -2124,4 +2128,12 @@ def test_list_candidates_for_auto_ml_job_with_optional_args(sagemaker_session):
     sagemaker_session.sagemaker_client.list_candidates_for_auto_ml_job.assert_called_once()
     sagemaker_session.sagemaker_client.list_candidates_for_auto_ml_job.assert_called_with(
         **COMPLETE_EXPECTED_LIST_CANDIDATES_ARGS
+    )
+
+
+def test_describe_tuning_Job(sagemaker_session):
+    job_name = "hyper-parameter-tuning"
+    sagemaker_session.describe_tuning_job(job_name=job_name)
+    sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job.assert_called_with(
+        HyperParameterTuningJobName=job_name
     )

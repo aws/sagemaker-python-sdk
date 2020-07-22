@@ -15,6 +15,11 @@ from __future__ import absolute_import
 
 SKLEARN_NAME = "scikit-learn"
 
+# Default SKLearn version for when the framework version is not specified.
+# This is no longer updated so as to not break existing workflows.
 SKLEARN_VERSION = "0.20.0"
+SKLEARN_LATEST_VERSION = "0.23-1"
+SKLEARN_SUPPORTED_VERSIONS = [SKLEARN_VERSION, SKLEARN_LATEST_VERSION]
+
 
 LATEST_PY2_VERSION = "0.20.0"

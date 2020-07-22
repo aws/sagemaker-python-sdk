@@ -41,7 +41,7 @@ CUSTOM_JSON_CONTENT_TYPES = ["application/jsontype1", "application/jsontype2"]
 
 
 def test_enabling_data_capture_on_endpoint_shows_correct_data_capture_status(
-    sagemaker_session, tf_serving_version
+    sagemaker_session, tf_full_version
 ):
     endpoint_name = unique_name_from_base("sagemaker-tensorflow-serving")
     model_data = sagemaker_session.upload_data(
@@ -52,7 +52,7 @@ def test_enabling_data_capture_on_endpoint_shows_correct_data_capture_status(
         model = Model(
             model_data=model_data,
             role=ROLE,
-            framework_version=tf_serving_version,
+            framework_version=tf_full_version,
             sagemaker_session=sagemaker_session,
         )
         predictor = model.deploy(
@@ -98,7 +98,7 @@ def test_enabling_data_capture_on_endpoint_shows_correct_data_capture_status(
 
 
 def test_disabling_data_capture_on_endpoint_shows_correct_data_capture_status(
-    sagemaker_session, tf_serving_version
+    sagemaker_session, tf_full_version
 ):
     endpoint_name = unique_name_from_base("sagemaker-tensorflow-serving")
     model_data = sagemaker_session.upload_data(
@@ -109,7 +109,7 @@ def test_disabling_data_capture_on_endpoint_shows_correct_data_capture_status(
         model = Model(
             model_data=model_data,
             role=ROLE,
-            framework_version=tf_serving_version,
+            framework_version=tf_full_version,
             sagemaker_session=sagemaker_session,
         )
         destination_s3_uri = os.path.join(
@@ -184,7 +184,7 @@ def test_disabling_data_capture_on_endpoint_shows_correct_data_capture_status(
 
 
 def test_updating_data_capture_on_endpoint_shows_correct_data_capture_status(
-    sagemaker_session, tf_serving_version
+    sagemaker_session, tf_full_version
 ):
     endpoint_name = sagemaker.utils.unique_name_from_base("sagemaker-tensorflow-serving")
     model_data = sagemaker_session.upload_data(
@@ -195,7 +195,7 @@ def test_updating_data_capture_on_endpoint_shows_correct_data_capture_status(
         model = Model(
             model_data=model_data,
             role=ROLE,
-            framework_version=tf_serving_version,
+            framework_version=tf_full_version,
             sagemaker_session=sagemaker_session,
         )
         destination_s3_uri = os.path.join(

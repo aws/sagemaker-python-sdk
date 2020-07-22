@@ -57,6 +57,7 @@ _DEFAULT_MONITOR_IMAGE_REGION_ACCOUNT_MAPPING = {
     "ca-central-1": "536280801234",
     "cn-north-1": "453000072557",
     "cn-northwest-1": "453252182341",
+    "us-gov-west-1": "362178532790",
 }
 
 STATISTICS_JSON_DEFAULT_FILE_NAME = "statistics.json"

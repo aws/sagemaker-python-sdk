@@ -109,7 +109,8 @@ def is_mxnet_1_4_py2(framework, framework_version, py_version):
 
 
 @pytest.fixture(
-    scope="module", params=["1.11", "1.11.0", "1.12", "1.12.0", "1.14", "1.14.0", "1.15", "1.15.0"]
+    scope="module",
+    params=["1.11", "1.11.0", "1.12", "1.12.0", "1.14", "1.14.0", "1.15", "1.15.0", "2.0", "2.2.0"],
 )
 def tf_version(request):
     return request.param
@@ -1266,6 +1267,16 @@ def test_region_supports_debugger_feature_returns_false_for_unsupported_regions(
 
 def test_warn_if_parameter_server_with_multi_gpu(caplog):
     train_instance_type = "ml.p2.8xlarge"
+    distributions = {"parameter_server": {"enabled": True}}
+
+    fw_utils.warn_if_parameter_server_with_multi_gpu(
+        training_instance_type=train_instance_type, distributions=distributions
+    )
+    assert fw_utils.PARAMETER_SERVER_MULTI_GPU_WARNING in caplog.text
+
+
+def test_warn_if_parameter_server_with_local_multi_gpu(caplog):
+    train_instance_type = "local_gpu"
     distributions = {"parameter_server": {"enabled": True}}
 
     fw_utils.warn_if_parameter_server_with_multi_gpu(

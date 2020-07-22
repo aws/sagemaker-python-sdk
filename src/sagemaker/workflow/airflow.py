@@ -181,6 +181,9 @@ def training_base_config(estimator, inputs=None, job_name=None, mini_batch_size=
     if job_config["vpc_config"] is not None:
         train_config["VpcConfig"] = job_config["vpc_config"]
 
+    if estimator.train_use_spot_instances:
+        train_config["EnableManagedSpotTraining"] = True
+
     if estimator.hyperparameters() is not None:
         hyperparameters = {str(k): str(v) for (k, v) in estimator.hyperparameters().items()}
 
@@ -315,15 +318,17 @@ def tuning_config(tuner, inputs, job_name=None, include_cls_metadata=False, mini
     }
 
     if tuner.estimator:
-        tune_config[
-            "TrainingJobDefinition"
-        ], s3_operations = _extract_training_config_from_estimator(
+        (
+            tune_config["TrainingJobDefinition"],
+            s3_operations,
+        ) = _extract_training_config_from_estimator(
             tuner, inputs, include_cls_metadata, mini_batch_size
         )
     else:
-        tune_config[
-            "TrainingJobDefinitions"
-        ], s3_operations = _extract_training_config_list_from_estimator_dict(
+        (
+            tune_config["TrainingJobDefinitions"],
+            s3_operations,
+        ) = _extract_training_config_list_from_estimator_dict(
             tuner, inputs, include_cls_metadata, mini_batch_size
         )
 
@@ -1065,3 +1070,111 @@ def deploy_config_from_estimator(
     model.name = model_name
     config = deploy_config(model, initial_instance_count, instance_type, endpoint_name, tags)
     return config
+
+
+def processing_config(
+    processor,
+    inputs=None,
+    outputs=None,
+    job_name=None,
+    experiment_config=None,
+    container_arguments=None,
+    container_entrypoint=None,
+    kms_key_id=None,
+):
+    """Export Airflow processing config from a SageMaker processor
+
+    Args:
+        processor (sagemaker.processor.Processor): The SageMaker
+            processor to export Airflow config from.
+        inputs (list[:class:`~sagemaker.processing.ProcessingInput`]): Input files for
+                the processing job. These must be provided as
+                :class:`~sagemaker.processing.ProcessingInput` objects (default: None).
+        outputs (list[:class:`~sagemaker.processing.ProcessingOutput`]): Outputs for
+            the processing job. These can be specified as either path strings or
+            :class:`~sagemaker.processing.ProcessingOutput` objects (default: None).
+        job_name (str): Processing job name. If not specified, the processor generates
+            a default job name, based on the base job name and current timestamp.
+        experiment_config (dict[str, str]): Experiment management configuration.
+            Dictionary contains three optional keys:
+            'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+        container_arguments ([str]): The arguments for a container used to run a processing job.
+        container_entrypoint ([str]): The entrypoint for a container used to run a processing job.
+        kms_key_id (str): The AWS Key Management Service (AWS KMS) key that Amazon SageMaker
+            uses to encrypt the processing job output. KmsKeyId can be an ID of a KMS key,
+            ARN of a KMS key, alias of a KMS key, or alias of a KMS key.
+            The KmsKeyId is applied to all outputs.
+
+    Returns:
+        dict: Processing config that can be directly used by
+            SageMakerProcessingOperator in Airflow.
+    """
+    if job_name is not None:
+        processor._current_job_name = job_name
+    else:
+        base_name = processor.base_job_name
+        processor._current_job_name = (
+            utils.name_from_base(base_name)
+            if base_name is not None
+            else utils.base_name_from_image(processor.image_uri)
+        )
+
+    config = {
+        "ProcessingJobName": processor._current_job_name,
+        "ProcessingInputs": input_output_list_converter(inputs),
+    }
+
+    processing_output_config = sagemaker.processing.ProcessingJob.prepare_output_config(
+        kms_key_id, input_output_list_converter(outputs)
+    )
+
+    config["ProcessingOutputConfig"] = processing_output_config
+
+    if experiment_config is not None:
+        config["ExperimentConfig"] = experiment_config
+
+    app_specification = sagemaker.processing.ProcessingJob.prepare_app_specification(
+        container_arguments, container_entrypoint, processor.image_uri
+    )
+    config["AppSpecification"] = app_specification
+
+    config["RoleArn"] = processor.role
+
+    if processor.env is not None:
+        config["Environment"] = processor.env
+
+    if processor.network_config is not None:
+        config["NetworkConfig"] = processor.network_config._to_request_dict()
+
+    processing_resources = sagemaker.processing.ProcessingJob.prepare_processing_resources(
+        instance_count=processor.instance_count,
+        instance_type=processor.instance_type,
+        volume_kms_key_id=processor.volume_kms_key,
+        volume_size_in_gb=processor.volume_size_in_gb,
+    )
+    config["ProcessingResources"] = processing_resources
+
+    if processor.max_runtime_in_seconds is not None:
+        stopping_condition = sagemaker.processing.ProcessingJob.prepare_stopping_condition(
+            processor.max_runtime_in_seconds
+        )
+        config["StoppingCondition"] = stopping_condition
+
+    if processor.tags is not None:
+        config["Tags"] = processor.tags
+
+    return config
+
+
+def input_output_list_converter(object_list):
+    """Converts a list of ProcessingInput or ProcessingOutput objects to a list of dicts
+
+    Args:
+        object_list (list[ProcessingInput or ProcessingOutput]
+
+    Returns:
+        List of dicts
+    """
+    if object_list:
+        return [obj._to_request_dict() for obj in object_list]
+    return object_list

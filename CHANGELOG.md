@@ -1,5 +1,160 @@
 # Changelog
 
+## v1.70.2 (2020-07-22)
+
+### Bug Fixes and Other Changes
+
+ * convert network_config in processing_config to dict
+
+### Documentation Changes
+
+ * Add ECR URI Estimator example
+
+## v1.70.1 (2020-07-21)
+
+### Bug Fixes and Other Changes
+
+ * Nullable fields in processing_config
+
+## v1.70.0 (2020-07-20)
+
+### Features
+
+ * Add model monitor support for us-gov-west-1
+ * support TFS 2.2
+
+### Bug Fixes and Other Changes
+
+ * reshape Artifacts into data frame in ExperimentsAnalytics
+
+### Documentation Changes
+
+ * fix MXNet version info for requirements.txt support
+
+## v1.69.0 (2020-07-09)
+
+### Features
+
+ * Add ModelClientConfig Fields for Batch Transform
+
+### Documentation Changes
+
+ * add KFP Processing component
+
+## v1.68.0 (2020-07-07)
+
+### Features
+
+ * add spot instance support for AlgorithmEstimator
+
+### Documentation Changes
+
+ * add xgboost documentation for inference
+
+## v1.67.1.post0 (2020-07-01)
+
+### Documentation Changes
+
+ * add Step Functions SDK info
+
+## v1.67.1 (2020-06-30)
+
+### Bug Fixes and Other Changes
+
+ * add deprecation warnings for estimator.delete_endpoint() and tuner.delete_endpoint()
+
+## v1.67.0 (2020-06-29)
+
+### Features
+
+ * Apache Airflow integration for SageMaker Processing Jobs
+
+### Bug Fixes and Other Changes
+
+ * fix punctuation in warning message
+
+### Testing and Release Infrastructure
+
+ * address warnings about pytest custom marks, error message checking, and yaml loading
+ * mark long-running cron tests
+ * fix tox test dependencies and bump coverage threshold to 86%
+
+## v1.66.0 (2020-06-25)
+
+### Features
+
+ * add 3.8 as supported python version
+
+### Testing and Release Infrastructure
+
+ * upgrade airflow to latest stable version
+ * update feature request issue template
+
+## v1.65.1.post1 (2020-06-24)
+
+### Testing and Release Infrastructure
+
+ * add py38 to buildspecs
+
+## v1.65.1.post0 (2020-06-22)
+
+### Documentation Changes
+
+ * document that Local Mode + local code doesn't support dependencies arg
+
+### Testing and Release Infrastructure
+
+ * upgrade Sphinx to 3.1.1
+
+## v1.65.1 (2020-06-18)
+
+### Bug Fixes and Other Changes
+
+ * remove include_package_data=True from setup.py
+
+### Documentation Changes
+
+ * add some clarification to Processing docs
+
+### Testing and Release Infrastructure
+
+ * specify what kinds of clients in PR template
+
+## v1.65.0 (2020-06-17)
+
+### Features
+
+ * support for describing hyperparameter tuning job
+
+### Bug Fixes and Other Changes
+
+ * update distributed GPU utilization warning message
+ * set logs to False if wait is False in AutoML
+ * workflow passing spot training param to training job
+
+## v1.64.1 (2020-06-16)
+
+### Bug Fixes and Other Changes
+
+ * include py38 tox env and some dependency upgrades
+
+## v1.64.0 (2020-06-15)
+
+### Features
+
+ * add support for SKLearn 0.23
+
+## v1.63.0 (2020-06-12)
+
+### Features
+
+ * Allow selecting inference response content for automl generated models
+ * Support for multi variant endpoint invocation with target variant param
+
+### Documentation Changes
+
+ * improve docstring and remove unavailable links
+
 ## v1.62.0 (2020-06-11)
 
 ### Features

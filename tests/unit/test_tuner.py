@@ -517,7 +517,7 @@ def test_attach_tuning_job_with_estimator_from_hyperparameters(sagemaker_session
 
 
 def test_attach_tuning_job_with_estimator_from_hyperparameters_with_early_stopping(
-    sagemaker_session
+    sagemaker_session,
 ):
     job_details = copy.deepcopy(TUNING_JOB_DETAILS)
     job_details["HyperParameterTuningJobConfig"]["TrainingJobEarlyStoppingType"] = "Auto"
@@ -909,6 +909,17 @@ def test_delete_endpoint(tuner):
 
     tuner.delete_endpoint()
     tuner.sagemaker_session.delete_endpoint.assert_called_with(JOB_NAME)
+
+
+def test_delete_endpoint_deprecation_warning(tuner, caplog):
+    tuner.best_training_job = Mock()
+    tuner.delete_endpoint()
+
+    expected_warning = (
+        "HyperparameterTuner.delete_endpoint() will be deprecated in SageMaker Python SDK v2. "
+        "Please use the delete_endpoint() function on your predictor instead."
+    )
+    assert expected_warning in caplog.text
 
 
 def test_fit_no_inputs(tuner, sagemaker_session):
@@ -1421,6 +1432,11 @@ def test_create_warm_start_tuner_with_single_estimator_dict(
 
     additional_parents.add(JOB_NAME)
     assert tuner.warm_start_config.parents == additional_parents
+
+
+def test_describe(tuner):
+    tuner.describe()
+    tuner.sagemaker_session.describe_tuning_job.assert_called_once()
 
 
 def _convert_tuning_job_details(job_details, estimator_name):

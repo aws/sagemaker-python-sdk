@@ -13,6 +13,7 @@
 """A class for SageMaker AutoML Jobs."""
 from __future__ import absolute_import
 
+import logging
 from six import string_types
 
 from sagemaker import Model, PipelineModel
@@ -20,6 +21,8 @@ from sagemaker.automl.candidate_estimator import CandidateEstimator
 from sagemaker.job import _Job
 from sagemaker.session import Session
 from sagemaker.utils import name_from_base
+
+logger = logging.getLogger("sagemaker")
 
 
 class AutoML(object):
@@ -78,16 +81,15 @@ class AutoML(object):
                 is stored. Or an AutoMLInput object. If a local path is provided, the dataset will
                 be uploaded to an S3 location.
             wait (bool): Whether the call should wait until the job completes (default: True).
-            logs (bool): Whether to show the logs produced by the job.
-                Only meaningful when wait is True (default: True).
+            logs (bool): Whether to show the logs produced by the job. Only meaningful when wait
+                is True (default: True). if ``wait`` is False, ``logs`` will be set to False as
+                well.
             job_name (str): Training job name. If not specified, the estimator generates
                 a default job name, based on the training image name and current timestamp.
         """
-        if logs and not wait:
-            raise ValueError(
-                """Logs can only be shown if wait is set to True.
-                Please either set wait to True or set logs to False."""
-            )
+        if not wait and logs:
+            logs = False
+            logger.warning("Setting logs to False. logs is only meaningful when wait is True.")
 
         # upload data for users if provided local path
         # validations are done in _Job._format_inputs_to_input_config
@@ -99,6 +101,67 @@ class AutoML(object):
         self.latest_auto_ml_job = AutoMLJob.start_new(self, inputs)  # pylint: disable=W0201
         if wait:
             self.latest_auto_ml_job.wait(logs=logs)
+
+    @classmethod
+    def attach(cls, auto_ml_job_name, sagemaker_session=None):
+        """Attach to an existing AutoML job.
+
+        Creates and returns a AutoML bound to an existing automl job.
+
+        Args:
+            auto_ml_job_name (str): AutoML job name
+            sagemaker_session (sagemaker.session.Session): A SageMaker Session
+                object, used for SageMaker interactions (default: None). If not
+                specified, the one originally associated with the ``AutoML`` instance is used.
+
+        Returns:
+            sagemaker.automl.AutoML: A ``AutoML`` instance with the attached automl job.
+
+        """
+        sagemaker_session = sagemaker_session or Session()
+
+        auto_ml_job_desc = sagemaker_session.describe_auto_ml_job(auto_ml_job_name)
+        automl_job_tags = sagemaker_session.sagemaker_client.list_tags(
+            ResourceArn=auto_ml_job_desc["AutoMLJobArn"]
+        )["Tags"]
+
+        amlj = AutoML(
+            role=auto_ml_job_desc["RoleArn"],
+            target_attribute_name=auto_ml_job_desc["InputDataConfig"][0]["TargetAttributeName"],
+            output_kms_key=auto_ml_job_desc["OutputDataConfig"].get("KmsKeyId"),
+            output_path=auto_ml_job_desc["OutputDataConfig"]["S3OutputPath"],
+            base_job_name=auto_ml_job_name,
+            compression_type=auto_ml_job_desc["InputDataConfig"][0].get("CompressionType"),
+            sagemaker_session=sagemaker_session,
+            volume_kms_key=auto_ml_job_desc.get("AutoMLJobConfig", {})
+            .get("SecurityConfig", {})
+            .get("VolumeKmsKeyId"),
+            encrypt_inter_container_traffic=auto_ml_job_desc.get("AutoMLJobConfig", {})
+            .get("SecurityConfig", {})
+            .get("EnableInterContainerTrafficEncryption", False),
+            vpc_config=auto_ml_job_desc.get("AutoMLJobConfig", {})
+            .get("SecurityConfig", {})
+            .get("VpcConfig"),
+            problem_type=auto_ml_job_desc.get("ProblemType"),
+            max_candidates=auto_ml_job_desc.get("AutoMLJobConfig", {})
+            .get("CompletionCriteria", {})
+            .get("MaxCandidates"),
+            max_runtime_per_training_job_in_seconds=auto_ml_job_desc.get("AutoMLJobConfig", {})
+            .get("CompletionCriteria", {})
+            .get("MaxRuntimePerTrainingJobInSeconds"),
+            total_job_runtime_in_seconds=auto_ml_job_desc.get("AutoMLJobConfig", {})
+            .get("CompletionCriteria", {})
+            .get("MaxAutoMLJobRuntimeInSeconds"),
+            job_objective=auto_ml_job_desc.get("AutoMLJobObjective", {}).get("MetricName"),
+            generate_candidate_definitions_only=auto_ml_job_desc.get(
+                "GenerateCandidateDefinitionsOnly", False
+            ),
+            tags=automl_job_tags,
+        )
+        amlj.current_job_name = auto_ml_job_name
+        amlj.latest_auto_ml_job = auto_ml_job_name  # pylint: disable=W0201
+        amlj._auto_ml_job_desc = auto_ml_job_desc
+        return amlj
 
     def describe_auto_ml_job(self, job_name=None):
         """Returns the job description of an AutoML job for the given job name.
@@ -187,6 +250,89 @@ class AutoML(object):
 
         return self.sagemaker_session.list_candidates(**list_candidates_args)["Candidates"]
 
+    def create_model(
+        self,
+        name,
+        sagemaker_session=None,
+        candidate=None,
+        vpc_config=None,
+        enable_network_isolation=False,
+        model_kms_key=None,
+        predictor_cls=None,
+        inference_response_keys=None,
+    ):
+        """Creates a model from a given candidate or the best candidate
+        from the automl job
+
+        Args:
+            name (str): The pipeline model name.
+            sagemaker_session (sagemaker.session.Session): A SageMaker Session
+                object, used for SageMaker interactions (default: None). If not
+                specified, the one originally associated with the ``AutoML`` instance is used.:
+            candidate (CandidateEstimator or dict): a CandidateEstimator used for deploying
+                to a SageMaker Inference Pipeline. If None, the best candidate will
+                be used. If the candidate input is a dict, a CandidateEstimator will be
+                created from it.
+            vpc_config (dict): Specifies a VPC that your training jobs and hosted models have
+                access to. Contents include "SecurityGroupIds" and "Subnets".
+            enable_network_isolation (bool): Isolates the training container. No inbound or
+                outbound network calls can be made, except for calls between peers within a
+                training cluster for distributed training. Default: False
+            model_kms_key (str): KMS key ARN used to encrypt the repacked
+                model archive file if the model is repacked
+            predictor_cls (callable[string, sagemaker.session.Session]): A
+                function to call to create a predictor (default: None). If
+                specified, ``deploy()``  returns the result of invoking this
+                function on the created endpoint name.
+            inference_response_keys (list): List of keys for response content. The order of the
+                keys will dictate the content order in the response.
+
+        Returns:
+            PipelineModel object
+
+        """
+        sagemaker_session = sagemaker_session or self.sagemaker_session
+
+        if candidate is None:
+            candidate_dict = self.best_candidate()
+            candidate = CandidateEstimator(candidate_dict, sagemaker_session=sagemaker_session)
+        elif isinstance(candidate, dict):
+            candidate = CandidateEstimator(candidate, sagemaker_session=sagemaker_session)
+
+        inference_containers = candidate.containers
+
+        self.validate_and_update_inference_response(inference_containers, inference_response_keys)
+
+        # construct Model objects
+        models = []
+
+        for container in inference_containers:
+            image = container["Image"]
+            model_data = container["ModelDataUrl"]
+            env = container["Environment"]
+
+            model = Model(
+                image=image,
+                model_data=model_data,
+                role=self.role,
+                env=env,
+                vpc_config=vpc_config,
+                sagemaker_session=sagemaker_session or self.sagemaker_session,
+                enable_network_isolation=enable_network_isolation,
+                model_kms_key=model_kms_key,
+            )
+            models.append(model)
+
+        pipeline = PipelineModel(
+            models=models,
+            role=self.role,
+            predictor_cls=predictor_cls,
+            name=name,
+            vpc_config=vpc_config,
+            sagemaker_session=sagemaker_session or self.sagemaker_session,
+        )
+        return pipeline
+
     def deploy(
         self,
         initial_instance_count,
@@ -202,6 +348,7 @@ class AutoML(object):
         enable_network_isolation=False,
         model_kms_key=None,
         predictor_cls=None,
+        inference_response_keys=None,
     ):
         """Deploy a candidate to a SageMaker Inference Pipeline and return a Predictor
 
@@ -241,6 +388,8 @@ class AutoML(object):
                 function to call to create a predictor (default: None). If
                 specified, ``deploy()``  returns the result of invoking this
                 function on the created endpoint name.
+            inference_response_keys (list): List of keys for response content. The order of the
+                keys will dictate the content order in the response.
 
         Returns:
             callable[string, sagemaker.session.Session] or ``None``:
@@ -248,30 +397,24 @@ class AutoML(object):
                 the created endpoint name. Otherwise, ``None``.
         """
         sagemaker_session = sagemaker_session or self.sagemaker_session
-
-        if candidate is None:
-            candidate_dict = self.best_candidate()
-            candidate = CandidateEstimator(candidate_dict, sagemaker_session=sagemaker_session)
-        elif isinstance(candidate, dict):
-            candidate = CandidateEstimator(candidate, sagemaker_session=sagemaker_session)
-
-        inference_containers = candidate.containers
-        endpoint_name = endpoint_name or self.current_job_name
-
-        return self._deploy_inference_pipeline(
-            inference_containers,
-            initial_instance_count=initial_instance_count,
-            instance_type=instance_type,
+        model = self.create_model(
             name=name,
             sagemaker_session=sagemaker_session,
-            endpoint_name=endpoint_name,
-            tags=tags,
-            wait=wait,
-            update_endpoint=update_endpoint,
+            candidate=candidate,
+            inference_response_keys=inference_response_keys,
             vpc_config=vpc_config,
             enable_network_isolation=enable_network_isolation,
             model_kms_key=model_kms_key,
             predictor_cls=predictor_cls,
+        )
+
+        return model.deploy(
+            initial_instance_count=initial_instance_count,
+            instance_type=instance_type,
+            endpoint_name=endpoint_name,
+            tags=tags,
+            wait=wait,
+            update_endpoint=update_endpoint,
         )
 
     def _check_problem_type_and_job_objective(self, problem_type, job_objective):
@@ -293,93 +436,6 @@ class AutoML(object):
                 "Either both of them should be provided or none of them should be provided."
             )
 
-    def _deploy_inference_pipeline(
-        self,
-        inference_containers,
-        initial_instance_count,
-        instance_type,
-        name=None,
-        sagemaker_session=None,
-        endpoint_name=None,
-        tags=None,
-        wait=True,
-        update_endpoint=False,
-        vpc_config=None,
-        enable_network_isolation=False,
-        model_kms_key=None,
-        predictor_cls=None,
-    ):
-        """Deploy a SageMaker Inference Pipeline.
-
-        Args:
-            inference_containers (list): a list of inference container definitions
-            initial_instance_count (int): The initial number of instances to run
-                in the ``Endpoint`` created from this ``Model``.
-            instance_type (str): The EC2 instance type to deploy this Model to.
-                For example, 'ml.p2.xlarge'.
-            name (str): The pipeline model name. If None, a default model name will
-                be selected on each ``deploy``.
-            sagemaker_session (sagemaker.session.Session): A SageMaker Session
-                object, used for SageMaker interactions (default: None). If not
-                specified, one is created using the default AWS configuration
-                chain.
-            endpoint_name (str): The name of the endpoint to create (default:
-                None). If not specified, a unique endpoint name will be created.
-            tags (List[dict[str, str]]): The list of tags to attach to this
-                specific endpoint.
-            wait (bool): Whether the call should wait until the deployment of
-                model completes (default: True).
-            update_endpoint (bool): Flag to update the model in an existing
-                Amazon SageMaker endpoint. If True, this will deploy a new
-                EndpointConfig to an already existing endpoint and delete
-                resources corresponding to the previous EndpointConfig. If
-                False, a new endpoint will be created. Default: False
-            vpc_config (dict): information about vpc configuration, optionally
-                contains "SecurityGroupIds", "Subnets"
-            model_kms_key (str): KMS key ARN used to encrypt the repacked
-                model archive file if the model is repacked
-            predictor_cls (callable[string, sagemaker.session.Session]): A
-                function to call to create a predictor (default: None). If
-                specified, ``deploy()``  returns the result of invoking this
-                function on the created endpoint name.
-        """
-        # construct Model objects
-        models = []
-        for container in inference_containers:
-            image = container["Image"]
-            model_data = container["ModelDataUrl"]
-            env = container["Environment"]
-
-            model = Model(
-                image=image,
-                model_data=model_data,
-                role=self.role,
-                env=env,
-                vpc_config=vpc_config,
-                sagemaker_session=sagemaker_session or self.sagemaker_session,
-                enable_network_isolation=enable_network_isolation,
-                model_kms_key=model_kms_key,
-            )
-            models.append(model)
-
-        pipeline = PipelineModel(
-            models=models,
-            role=self.role,
-            predictor_cls=predictor_cls,
-            name=name,
-            vpc_config=vpc_config,
-            sagemaker_session=sagemaker_session or self.sagemaker_session,
-        )
-
-        return pipeline.deploy(
-            initial_instance_count=initial_instance_count,
-            instance_type=instance_type,
-            endpoint_name=endpoint_name,
-            tags=tags,
-            wait=wait,
-            update_endpoint=update_endpoint,
-        )
-
     def _prepare_for_auto_ml_job(self, job_name=None):
         """Set any values in the AutoMLJob that need to be set before creating request.
 
@@ -399,6 +455,114 @@ class AutoML(object):
 
         if self.output_path is None:
             self.output_path = "s3://{}/".format(self.sagemaker_session.default_bucket())
+
+    @classmethod
+    def _get_supported_inference_keys(cls, container, default=None):
+        """Returns the inference keys supported by the container.
+
+        Args:
+            container (dict): Dictionary representing container
+            default (object): The value to be returned if the container definition
+                              has no marker environment variable
+
+        Returns:
+            List of keys the container support or default
+
+        Raises:
+            KeyError if the default is None and the container definition has
+            no marker environment variable SAGEMAKER_INFERENCE_SUPPORTED.
+        """
+        try:
+            return [
+                x.strip()
+                for x in container["Environment"]["SAGEMAKER_INFERENCE_SUPPORTED"].split(",")
+            ]
+        except KeyError:
+            if default is None:
+                raise
+        return default
+
+    @classmethod
+    def _check_inference_keys(cls, inference_response_keys, containers):
+        """Given an inference container list, checks if the pipeline supports the
+        requested inference keys
+
+        Args:
+            inference_response_keys (list): List of keys for inference response content
+            containers (list): list of inference container
+
+        Raises:
+            ValueError, if one or more keys in inference_response_keys are not supported
+            the inference pipeline.
+
+        """
+        if not inference_response_keys:
+            return
+        try:
+            supported_inference_keys = cls._get_supported_inference_keys(container=containers[-1])
+        except KeyError:
+            raise ValueError(
+                "The inference model does not support selection of inference content beyond "
+                "it's default content. Please retry without setting "
+                "inference_response_keys key word argument."
+            )
+        bad_keys = []
+        for key in inference_response_keys:
+            if key not in supported_inference_keys:
+                bad_keys.append(key)
+
+        if bad_keys:
+            raise ValueError(
+                "Requested inference output keys [{bad_keys_str}] are unsupported. "
+                "The supported inference keys are [{allowed_keys_str}]".format(
+                    bad_keys_str=", ".join(bad_keys),
+                    allowed_keys_str=", ".join(supported_inference_keys),
+                )
+            )
+
+    @classmethod
+    def validate_and_update_inference_response(cls, inference_containers, inference_response_keys):
+        """Validates the requested inference keys and updates inference containers to emit the
+        requested content in the inference response.
+
+        Args:
+            inference_containers (list): list of inference containers
+            inference_response_keys (list): list of inference response keys
+
+        Raises:
+            ValueError: if one or more of inference_response_keys are unsupported by the model
+
+        """
+        if not inference_response_keys:
+            return
+
+        cls._check_inference_keys(inference_response_keys, inference_containers)
+
+        previous_container_output = None
+
+        for container in inference_containers:
+            supported_inference_keys_container = cls._get_supported_inference_keys(
+                container, default=[]
+            )
+            if not supported_inference_keys_container:
+                previous_container_output = None
+                continue
+            current_container_output = None
+            for key in inference_response_keys:
+                if key in supported_inference_keys_container:
+                    current_container_output = (
+                        current_container_output + "," + key if current_container_output else key
+                    )
+
+            if previous_container_output:
+                container["Environment"].update(
+                    {"SAGEMAKER_INFERENCE_INPUT": previous_container_output}
+                )
+            if current_container_output:
+                container["Environment"].update(
+                    {"SAGEMAKER_INFERENCE_OUTPUT": current_container_output}
+                )
+            previous_container_output = current_container_output
 
 
 class AutoMLInput(object):

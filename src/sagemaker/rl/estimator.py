@@ -199,6 +199,7 @@ class RLEstimator(Framework):
                 folders will be copied to SageMaker in the same folder where the
                 entry_point is copied. If the ```source_dir``` points to S3,
                 code will be uploaded and the S3 location will be used instead.
+                This is not supported with "local code" in Local Mode.
             **kwargs: Additional kwargs passed to the :class:`~sagemaker.model.FrameworkModel`
                 constructor.
 
@@ -362,10 +363,10 @@ class RLEstimator(Framework):
         Args:
             framework:
         """
-        if framework and framework not in RLFramework:
+        if framework and framework not in list(RLFramework):
             raise ValueError(
-                "Invalid type: {}, valid RL frameworks types are: [{}]".format(
-                    framework, [t for t in RLFramework]
+                "Invalid type: {}, valid RL frameworks types are: {}".format(
+                    framework, list(RLFramework)
                 )
             )
 
@@ -375,11 +376,9 @@ class RLEstimator(Framework):
         Args:
             toolkit:
         """
-        if toolkit and toolkit not in RLToolkit:
+        if toolkit and toolkit not in list(RLToolkit):
             raise ValueError(
-                "Invalid type: {}, valid RL toolkits types are: [{}]".format(
-                    toolkit, [t for t in RLToolkit]
-                )
+                "Invalid type: {}, valid RL toolkits types are: {}".format(toolkit, list(RLToolkit))
             )
 
     @classmethod
