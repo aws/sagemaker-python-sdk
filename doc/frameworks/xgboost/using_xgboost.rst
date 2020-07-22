@@ -434,7 +434,7 @@ and then call its ``deploy()`` method to deploy your model for inference.
         initial_instance_count=1
     )
 
-Now you can call the ``predict()`` method to get predictions from your deployed model.
+To get predictions from your deployed model, you can call the ``predict()`` method.
 
 Host Multiple Models with Multi-Model Endpoints
 -----------------------------------------------
