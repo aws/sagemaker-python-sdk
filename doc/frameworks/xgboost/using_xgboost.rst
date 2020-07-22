@@ -422,12 +422,9 @@ and then call its ``deploy()`` method to deploy your model for inference.
 
 .. code:: python
 
-    from sagemaker import get_execution_role
-    role = get_execution_role()
-
-    xgboos_model = XGBoostModel(
+    xgboost_model = XGBoostModel(
         model_data="s3://my-bucket/my-path/model.tar.gz",
-        role=role,
+        role="my-role",
         entry_point="inference.py",
         framework_version="1.0-1"
     )
