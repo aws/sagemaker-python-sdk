@@ -33,6 +33,7 @@ from tests.unit.sagemaker.cli.compatibility.v2.modifiers.ast_converter import as
         ("sagemaker.predictor.StreamDeserializer()", True),
         ("sagemaker.predictor._NumpyDeserializer()", True),
         ("sagemaker.predictor._JsonDeserializer()", True),
+        ("sagemaker.predictor.OtherClass()", False),
         ("sagemaker.amazon.common.numpy_to_record_serializer()", True),
         ("sagemaker.amazon.common.record_deserializer()", True),
         ("_CsvSerializer()", True),
