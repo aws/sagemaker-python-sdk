@@ -28,6 +28,20 @@ from tests.integ import timeout
 horovod_dir = os.path.join(os.path.dirname(__file__), "..", "data", "horovod")
 
 
+@pytest.mark.canary_quick
+def test_hvd_cpu(sagemaker_session, cpu_instance_type, tmpdir):
+    _create_and_fit_estimator(sagemaker_session, cpu_instance_type, tmpdir)
+
+
+@pytest.mark.canary_quick
+@pytest.mark.skipif(
+    integ.test_region() in integ.TRAINING_NO_P2_REGIONS, reason="no ml.p2 instances in this region"
+)
+def test_hvd_gpu(sagemaker_session, gpu_instance_type, tmpdir):
+    _create_and_fit_estimator(sagemaker_session, gpu_instance_type, tmpdir)
+
+
+
 @pytest.mark.local_mode
 @pytest.mark.parametrize("instances, processes", [[1, 2], (2, 1), (2, 2)])
 def test_horovod_local_mode(sagemaker_local_session, instances, processes, tmpdir):
@@ -67,18 +81,28 @@ def read_json(file, tmp):
         return json.load(f)
 
 
-@pytest.mark.parametrize("instances, processes", [[2, 4]])
-def test_horovod(sagemaker_session, gpu_instance_type, instances, processes, tmpdir):
+def extract_files_from_s3(s3_url, tmpdir, sagemaker_session):
+    parsed_url = urlparse(s3_url)
+    s3 = boto3.resource("s3", region_name=sagemaker_session.boto_region_name)
+
+    model = os.path.join(tmpdir, "model")
+    s3.Bucket(parsed_url.netloc).download_file(parsed_url.path.lstrip("/"), model)
+
+    with tarfile.open(model, "r") as tar_file:
+        tar_file.extractall(tmpdir)
+
+
+def _create_and_fit_estimator(sagemaker_session, instance_type, tmpdir):
     job_name = sagemaker.utils.unique_name_from_base("mx-horovod")
     estimator = MXNet(
         entry_point=os.path.join(horovod_dir, "hvd_mnist_mxnet.py"),
         role="SageMakerRole",
-        train_instance_count=instances,
-        train_instance_type=gpu_instance_type,
+        train_instance_count=2,
+        train_instance_type=instance_type,
         sagemaker_session=sagemaker_session,
         py_version=integ.PYTHON_VERSION,
         framework_version="1.6.0",
-        distributions={"mpi": {"enabled": True, "processes_per_host": processes}},
+        distributions={"mpi": {"enabled": True}},
     )
 
     with timeout.timeout(minutes=integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
@@ -89,14 +113,3 @@ def test_horovod(sagemaker_session, gpu_instance_type, instances, processes, tmp
 
         for rank in range(2):
             assert read_json("rank-%s" % rank, tmp)["rank"] == rank
-
-
-def extract_files_from_s3(s3_url, tmpdir, sagemaker_session):
-    parsed_url = urlparse(s3_url)
-    s3 = boto3.resource("s3", region_name=sagemaker_session.boto_region_name)
-
-    model = os.path.join(tmpdir, "model")
-    s3.Bucket(parsed_url.netloc).download_file(parsed_url.path.lstrip("/"), model)
-
-    with tarfile.open(model, "r") as tar_file:
-        tar_file.extractall(tmpdir)
