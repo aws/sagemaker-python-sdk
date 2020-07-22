@@ -415,7 +415,7 @@ For information about how to write an inference script, see `SageMaker XGBoost M
 Pass the filename of the inference script as the ``entry_point`` parameter when you create the `XGBoostModel` object.
 
 Create an XGBoostModel Object
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 To create a model object, call the ``sagemaker.xgboost.model.XGBoostModel`` constructor,
 and then call its ``deploy()`` method to deploy your model for inference.
@@ -433,6 +433,10 @@ and then call its ``deploy()`` method to deploy your model for inference.
         instance_type='ml.c4.xlarge',
         initial_instance_count=1
     )
+
+    # If payload is a string in LIBSVM format, we need to change serializer.
+    predictor.serializer = str
+    predictor.predict("<label> <index1>:<value1> <index2>:<value2>")
 
 To get predictions from your deployed model, you can call the ``predict()`` method.
 
