@@ -417,7 +417,7 @@ Pass the filename of the inference script as the ``entry_point`` parameter when 
 Create an XGBoostModel Object
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Now call the ``sagemaker.xgboost.model.XGBoostModel`` constructor to create a model object,
+To create a model object, call the ``sagemaker.xgboost.model.XGBoostModel`` constructor,
 and then call its ``deploy()`` method to deploy your model for inference.
 
 .. code:: python
