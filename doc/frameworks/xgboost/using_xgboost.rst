@@ -397,9 +397,6 @@ You can deploy an XGBoost model that you trained outside of SageMaker by using t
 Typically, you save an XGBoost model by pickling the ``Booster`` object or calling ``booster.save_model``.
 The XGBoost `built-in algorithm mode <https://docs.aws.amazon.com/sagemaker/latest/dg/xgboost.html#xgboost-modes>`_
 supports both a pickled ``Booster`` object and a model produced by ``booster.save_model``.
-For a sample notebook that shows to use the XGBoost built-in algorith mode to load a pre-existing XGBoost model,
-see `Amazon SageMaker XGBoost Bring Your Own Model <https://github.com/awslabs/amazon-sagemaker-examples/blob/master/advanced_functionality/xgboost_bring_your_own_model/xgboost_bring_your_own_model.ipynb>`_.
-
 You can also deploy an XGBoost model by using XGBoost as a framework.
 By using XGBoost as a framework, you have more flexibility.
 To deploy an XGBoost model by using XGBoost as a framework, you need to:
