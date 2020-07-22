@@ -22,6 +22,13 @@ import json
 
 import numpy as np
 
+from sagemaker.utils import DeferredError
+
+try:
+    import pandas
+except ImportError as e:
+    pandas = DeferredError(e)
+
 
 class BaseDeserializer(abc.ABC):
     """Abstract base class for creation of new deserializers.
@@ -208,3 +215,31 @@ class JSONDeserializer(BaseDeserializer):
             return json.load(codecs.getreader("utf-8")(data))
         finally:
             data.close()
+
+
+class PandasDeserializer(BaseDeserializer):
+    """Deserialize CSV or JSON data from an inference endpoint into a pandas dataframe."""
+
+    ACCEPT = "text/csv"
+
+    def deserialize(self, data, content_type):
+        """Deserialize CSV or JSON data from an inference endpoint into a pandas
+        dataframe.
+
+        If the data is JSON, the data should be formatted in the 'columns' orient.
+        See https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.read_json.html
+
+        Args:
+            data (botocore.response.StreamingBody): Data to be deserialized.
+            content_type (str): The MIME type of the data.
+
+        Returns:
+            pandas.DataFrame: The data deserialized into a pandas DataFrame.
+        """
+        if content_type == "text/csv":
+            return pandas.read_csv(data)
+
+        if content_type == "application/json":
+            return pandas.read_json(data)
+
+        raise ValueError("%s cannot read content type %s." % (__class__.__name__, content_type))
