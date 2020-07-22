@@ -390,7 +390,7 @@ The function should return a byte array of data serialized to ``content_type``.
 The default implementation expects ``prediction`` to be a NumPy array and can serialize the result to JSON, CSV, or NPY.
 It accepts response content types of "application/json", "text/csv", and "application/x-npy".
 
-Bring your own model
+Bring Your Own Model
 --------------------
 
 You can deploy an XGBoost model that you trained outside of SageMaker by using the Amazon SageMaker XGBoost container.
