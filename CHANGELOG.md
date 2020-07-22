@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.70.2 (2020-07-22)
+
+### Bug Fixes and Other Changes
+
+ * convert network_config in processing_config to dict
+
+### Documentation Changes
+
+ * Add ECR URI Estimator example
+
 ## v1.70.1 (2020-07-21)
 
 ### Bug Fixes and Other Changes
