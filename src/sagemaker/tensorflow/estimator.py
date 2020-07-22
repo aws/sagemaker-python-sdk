@@ -728,7 +728,7 @@ class TensorFlow(Framework):
 
     def _script_mode_enabled(self):
         """Placeholder docstring"""
-        return self.py_version == "py3" or self.script_mode
+        return self.py_version.startswith("py3") or self.script_mode
 
     def _validate_and_set_debugger_configs(self):
         """
