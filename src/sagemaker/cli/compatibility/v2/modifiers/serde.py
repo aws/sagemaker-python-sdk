@@ -310,7 +310,7 @@ class _ImportInserter(Modifier):
     """A class to insert import statements into the Python module."""
 
     def __init__(self, class_names, import_node):
-        """Initialize the ``class_names`` and ``import_node attributes``.
+        """Initialize the ``class_names`` and ``import_node`` attributes.
 
         Args:
             class_names (set): If any of these class names are referenced in the
