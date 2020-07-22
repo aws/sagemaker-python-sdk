@@ -400,6 +400,7 @@ supports both a pickled ``Booster`` object and a model produced by ``booster.sav
 You can also deploy an XGBoost model by using XGBoost as a framework.
 By using XGBoost as a framework, you have more flexibility.
 To deploy an XGBoost model by using XGBoost as a framework, you need to:
+
 - Write an inference script.
 - Create the XGBoostModel object.
 
