@@ -99,8 +99,8 @@ class MXNet(Framework):
                     * ``custom-image:latest``
 
             distributions (dict): A dictionary with information on how to run distributed
-                training (default: None). Currently we support distributed training with parameter server
-                and MPI [Horovod].
+                training (default: None). Currently we support distributed training with
+                parameter server and MPI [Horovod].
                 To enable parameter server use the following setup:
 
                 .. code:: python

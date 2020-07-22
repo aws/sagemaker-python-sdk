@@ -28,11 +28,6 @@ from tests.integ import timeout
 horovod_dir = os.path.join(os.path.dirname(__file__), "..", "data", "horovod")
 
 
-@pytest.fixture(scope="module")
-def gpu_instance_type(request):
-    return "ml.p2.xlarge"
-
-
 @pytest.mark.canary_quick
 def test_hvd_cpu(sagemaker_session, cpu_instance_type, tmpdir):
     _create_and_fit_estimator(sagemaker_session, cpu_instance_type, tmpdir)
