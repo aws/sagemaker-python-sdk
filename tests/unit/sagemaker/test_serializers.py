@@ -19,8 +19,13 @@ import os
 import numpy as np
 import pytest
 
-from sagemaker.serializers import CSVSerializer, NumpySerializer, JSONSerializer
+from sagemaker.serializers import CSVSerializer, NumpySerializer, JSONSerializer, SparseMatrixSerializer
 from tests.unit import DATA_DIR
+
+try:
+    import scipy
+except ImportError as e:
+    scipy = DeferredError(e)
 
 
 @pytest.fixture
@@ -227,3 +232,16 @@ def test_json_serializer_csv_buffer(json_serializer):
         csv_file.seek(0)
         result = json_serializer.serialize(csv_file)
         assert result == validation_value
+
+
+@pytest.fixture
+def sparse_matrix_serializer():
+    return SparseMatrixSerializer()
+
+
+def test_sparse_matrix_serializer(sparse_matrix_serializer):
+    data = scipy.sparse.csc_matrix(np.array([[0, 0, 3], [4, 0, 0]]))
+    stream = sparse_matrix_serializer.serialize(data)
+    result = scipy.sparse.load_npz(stream).toarray()
+    expected = data.toarray()
+    assert result.equal(expected)
