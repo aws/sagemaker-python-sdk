@@ -29,7 +29,7 @@ horovod_dir = os.path.join(os.path.dirname(__file__), "..", "data", "horovod")
 
 
 @pytest.mark.local_mode
-@pytest.mark.parametrize("instances, processes", [[1, 1]])
+@pytest.mark.parametrize("instances, processes", [[1, 2], (2, 1), (2, 2)])
 def test_horovod_local_mode(sagemaker_local_session, instances, processes, tmpdir):
     output_path = "file://%s" % tmpdir
     job_name = sagemaker.utils.unique_name_from_base("mx-local-horovod")
@@ -37,7 +37,7 @@ def test_horovod_local_mode(sagemaker_local_session, instances, processes, tmpdi
         entry_point=os.path.join(horovod_dir, "hvd_mnist_mxnet.py"),
         role="SageMakerRole",
         train_instance_count=instances,
-        train_instance_type="local_gpu",
+        train_instance_type="local",
         sagemaker_session=sagemaker_local_session,
         py_version=integ.PYTHON_VERSION,
         output_path=output_path,
