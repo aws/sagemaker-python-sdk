@@ -15,10 +15,10 @@ from __future__ import absolute_import
 import json
 import os
 import tarfile
-from six.moves.urllib.parse import urlparse
 
 import boto3
 import pytest
+from six.moves.urllib.parse import urlparse
 
 import sagemaker.utils
 import tests.integ as integ

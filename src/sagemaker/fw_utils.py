@@ -621,7 +621,7 @@ def warn_if_parameter_server_with_multi_gpu(training_instance_type, distribution
 
 
     """
-    if training_instance_type == "local" or distributions is None or "mpi" in distributions:
+    if training_instance_type == "local" or distributions is None:
         return
 
     is_multi_gpu_instance = (

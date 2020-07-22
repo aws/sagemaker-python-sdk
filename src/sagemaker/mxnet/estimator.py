@@ -123,7 +123,8 @@ class MXNet(Framework):
                         }
                     }
 
-                Option parameters within `mpi` are `processes_per_host` and `custom_mpi_options`.
+                Option parameters within ``mpi`` are ``processes_per_host``
+                and ``custom_mpi_options``.
 
                 .. code:: python
 
