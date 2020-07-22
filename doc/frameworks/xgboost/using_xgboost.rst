@@ -404,7 +404,7 @@ To deploy an XGBoost model by using XGBoost as a framework, you need to:
 - Write an inference script.
 - Create the XGBoostModel object.
 
-Write an inference script
+Write an Inference Script
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 You must create an inference script that implements (at least) the ``model_fn`` function that calls the loaded model to get a prediction.
