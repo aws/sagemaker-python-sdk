@@ -294,7 +294,7 @@ class Model(object):
             sagemaker.model.Model: A SageMaker ``Model`` object. See
             :func:`~sagemaker.model.Model` for full details.
         """
-        framework = self._framework() or framework
+        framework = framework or self._framework()
         if framework is None:
             raise ValueError(
                 "You must specify framework, allowed values {}".format(NEO_ALLOWED_FRAMEWORKS)
@@ -308,7 +308,7 @@ class Model(object):
         if self.model_data is None:
             raise ValueError("You must provide an S3 path to the compressed model artifacts.")
 
-        framework_version = self._get_framework_version() or framework_version
+        framework_version = framework_version or self._get_framework_version()
 
         self._init_sagemaker_session_if_does_not_exist(target_instance_family)
         config = self._compilation_job_config(
