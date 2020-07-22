@@ -54,6 +54,8 @@ HYPERPARAMETER_TUNING_JOB_NAME = "HyperParameterTuningJobName"
 PARENT_HYPERPARAMETER_TUNING_JOBS = "ParentHyperParameterTuningJobs"
 WARM_START_TYPE = "WarmStartType"
 
+logger = logging.getLogger(__name__)
+
 
 class WarmStartTypes(Enum):
     """Warm Start Configuration type. There can be two types of warm start jobs:
@@ -840,7 +842,7 @@ class HyperparameterTuner(object):
         Args:
             endpoint_name (str): Name of the endpoint to delete
         """
-        logging.warning(
+        logger.warning(
             "HyperparameterTuner.delete_endpoint() will be deprecated in SageMaker Python SDK v2. "
             "Please use the delete_endpoint() function on your predictor instead."
         )
@@ -1459,7 +1461,7 @@ class _TuningJob(_Job):
             information about the started job.
         """
 
-        logging.info("_TuningJob.start_new!!!")
+        logger.info("_TuningJob.start_new!!!")
 
         warm_start_config_req = None
         if tuner.warm_start_config:
@@ -1529,7 +1531,7 @@ class _TuningJob(_Job):
 
         if isinstance(inputs, s3_input):
             if "InputMode" in inputs.config:
-                logging.debug(
+                logger.debug(
                     "Selecting s3_input's input_mode (%s) for TrainingInputMode.",
                     inputs.config["InputMode"],
                 )

@@ -21,6 +21,8 @@ from sagemaker.fw_utils import create_image_uri
 from sagemaker.predictor import json_serializer, json_deserializer
 from sagemaker.tensorflow.defaults import TF_VERSION
 
+logger = logging.getLogger(__name__)
+
 
 class Predictor(sagemaker.RealTimePredictor):
     """A ``RealTimePredictor`` implementation for inference against TensorFlow
@@ -255,7 +257,7 @@ class Model(sagemaker.model.FrameworkModel):
             return self.env
 
         if self._container_log_level not in Model.LOG_LEVEL_MAP:
-            logging.warning("ignoring invalid container log level: %s", self._container_log_level)
+            logger.warning("ignoring invalid container log level: %s", self._container_log_level)
             return self.env
 
         env = dict(self.env)
