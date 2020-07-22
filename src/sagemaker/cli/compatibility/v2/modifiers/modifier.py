@@ -22,9 +22,10 @@ class Modifier(object):
     """
 
     def check_and_modify_node(self, node):
-        """Check an AST node, and modify it if applicable."""
+        """Check an AST node, and modify, replace, or remove it if applicable."""
         if self.node_should_be_modified(node):
-            self.modify_node(node)
+            node = self.modify_node(node)
+        return node
 
     @abstractmethod
     def node_should_be_modified(self, node):

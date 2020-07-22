@@ -35,14 +35,24 @@ FUNCTION_CALL_MODIFIERS = [
     modifiers.renamed_params.SessionCreateEndpointImageURIRenamer(),
     modifiers.training_params.TrainPrefixRemover(),
     modifiers.training_input.TrainingInputConstructorRefactor(),
+    modifiers.serde.SerdeConstructorRenamer(),
 ]
 
 IMPORT_MODIFIERS = [modifiers.tfs.TensorFlowServingImportRenamer()]
+
+NAME_MODIFIERS = [modifiers.serde.SerdeObjectRenamer()]
+
+MODULE_MODIFIERS = [
+    modifiers.serde.SerializerImportInserter(),
+    modifiers.serde.DeserializerImportInserter(),
+]
 
 IMPORT_FROM_MODIFIERS = [
     modifiers.predictors.PredictorImportFromRenamer(),
     modifiers.tfs.TensorFlowServingImportFromRenamer(),
     modifiers.training_input.TrainingInputImportFromRenamer(),
+    modifiers.serde.SerdeImportFromAmazonCommonRenamer(),
+    modifiers.serde.SerdeImportFromPredictorRenamer(),
 ]
 
 
@@ -52,52 +62,88 @@ class ASTTransformer(ast.NodeTransformer):
     """
 
     def visit_Call(self, node):
-        """Visits an ``ast.Call`` node and returns a modified node, if needed.
+        """Visits an ``ast.Call`` node and returns a modified node or None.
         See https://docs.python.org/3/library/ast.html#ast.NodeTransformer.
 
         Args:
             node (ast.Call): a node that represents a function call.
 
         Returns:
-            ast.Call: a node that represents a function call, which has
-                potentially been modified from the original input.
+            ast.AST: if the returned node is None, the original node is removed
+            from its location. Otherwise, the original node is replaced with the
+            returned node.
         """
         for function_checker in FUNCTION_CALL_MODIFIERS:
-            function_checker.check_and_modify_node(node)
+            node = function_checker.check_and_modify_node(node)
+        return ast.fix_missing_locations(node) if node else None
 
-        ast.fix_missing_locations(node)
+    def visit_Name(self, node):
+        """Visits an ``ast.Name`` node and returns a modified node or None.
+        See https://docs.python.org/3/library/ast.html#ast.NodeTransformer.
+
+        Args:
+            node (ast.Name): a node that represents an identifier.
+
+        Returns:
+            ast.AST: if the returned node is None, the original node is removed
+            from its location. Otherwise, the original node is replaced with the
+            returned node.
+        """
+        for name_checker in NAME_MODIFIERS:
+            node = name_checker.check_and_modify_node(node)
+            if node is None:
+                return None
+            node = ast.fix_missing_locations(node)
         return node
 
     def visit_Import(self, node):
-        """Visits an ``ast.Import`` node and returns a modified node, if needed.
+        """Visits an ``ast.Import`` node and returns a modified node or None.
         See https://docs.python.org/3/library/ast.html#ast.NodeTransformer.
 
         Args:
             node (ast.Import): a node that represents an import statement.
 
         Returns:
-            ast.Import: a node that represents an import statement, which has
-                potentially been modified from the original input.
+            ast.AST: if the returned node is None, the original node is removed
+            from its location. Otherwise, the original node is replaced with the
+            returned node.
         """
         for import_checker in IMPORT_MODIFIERS:
-            import_checker.check_and_modify_node(node)
+            node = import_checker.check_and_modify_node(node)
+        return ast.fix_missing_locations(node) if node else None
 
-        ast.fix_missing_locations(node)
-        return node
+    def visit_Module(self, node):
+        """Visits an ``ast.Module`` node and returns a modified node or None.
+        See https://docs.python.org/3/library/ast.html#ast.NodeTransformer.
+
+        The ``ast.NodeTransformer`` walks the abstract syntax tree and modifies
+        all other nodes before modifying the ``ast.Module`` node.
+
+        Args:
+            node (ast.Module): a node that represents a Python module.
+
+        Returns:
+            ast.AST: if the returned node is None, the original node is removed
+            from its location. Otherwise, the original node is replaced with the
+            returned node.
+        """
+        self.generic_visit(node)
+        for module_checker in MODULE_MODIFIERS:
+            node = module_checker.check_and_modify_node(node)
+        return ast.fix_missing_locations(node) if node else None
 
     def visit_ImportFrom(self, node):
-        """Visits an ``ast.ImportFrom`` node and returns a modified node, if needed.
+        """Visits an ``ast.ImportFrom`` node and returns a modified node or None.
         See https://docs.python.org/3/library/ast.html#ast.NodeTransformer.
 
         Args:
             node (ast.ImportFrom): a node that represents an import statement.
 
         Returns:
-            ast.ImportFrom: a node that represents an import statement, which has
-                potentially been modified from the original input.
+            ast.AST: if the returned node is None, the original node is removed
+            from its location. Otherwise, the original node is replaced with the
+            returned node.
         """
         for import_checker in IMPORT_FROM_MODIFIERS:
-            import_checker.check_and_modify_node(node)
-
-        ast.fix_missing_locations(node)
-        return node
+            node = import_checker.check_and_modify_node(node)
+        return ast.fix_missing_locations(node) if node else None
