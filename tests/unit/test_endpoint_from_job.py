@@ -43,7 +43,9 @@ REGION = "us-west-2"
 @pytest.fixture()
 def sagemaker_session():
     boto_mock = MagicMock(name="boto_session", region_name=REGION)
-    ims = sagemaker.Session(sagemaker_client=MagicMock(name="sagemaker_client"), boto_session=boto_mock)
+    ims = sagemaker.Session(
+        sagemaker_client=MagicMock(name="sagemaker_client"), boto_session=boto_mock
+    )
     ims.sagemaker_client.describe_training_job = Mock(
         name="describe_training_job", return_value=TRAINING_JOB_RESPONSE
     )

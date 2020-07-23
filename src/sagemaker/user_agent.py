@@ -29,7 +29,7 @@ PYTHON_VERSION = "Python/{}.{}.{}".format(
 )
 
 
-def determine_prefix(user_agent):
+def determine_prefix(user_agent=""):
     """Placeholder docstring"""
     prefix = "AWS-SageMaker-Python-SDK/{}".format(SDK_VERSION)
 
@@ -56,7 +56,7 @@ def prepend_user_agent(client):
     Args:
         client:
     """
-    prefix = determine_prefix(client._client_config.user_agent or "")
+    prefix = determine_prefix(client._client_config.user_agent)
 
     if client._client_config.user_agent is None:
         client._client_config.user_agent = prefix
