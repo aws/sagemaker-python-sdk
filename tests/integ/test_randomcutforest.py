@@ -34,7 +34,6 @@ def test_randomcutforest(sagemaker_session, cpu_instance_type):
             instance_type=cpu_instance_type,
             num_trees=50,
             num_samples_per_tree=20,
-            eval_metrics=["accuracy", "precision_recall_fscore"],
             sagemaker_session=sagemaker_session,
         )
 
