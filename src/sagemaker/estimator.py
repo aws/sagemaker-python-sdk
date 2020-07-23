@@ -59,6 +59,8 @@ from sagemaker.transformer import Transformer
 from sagemaker.utils import base_name_from_image, name_from_base, get_config_value
 from sagemaker import vpc_utils
 
+logger = logging.getLogger(__name__)
+
 
 class EstimatorBase(with_metaclass(ABCMeta, object)):
     """Handle end-to-end Amazon SageMaker training and deployment tasks.
@@ -730,7 +732,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                 TrainingJobName=self.latest_training_job.name
             )["ModelArtifacts"]["S3ModelArtifacts"]
         else:
-            logging.warning(
+            logger.warning(
                 "No finished training job found associated with this estimator. Please make sure "
                 "this estimator is only used for building workflow config"
             )
@@ -826,7 +828,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         Raises:
             botocore.exceptions.ClientError: If the endpoint does not exist.
         """
-        logging.warning(
+        logger.warning(
             "estimator.delete_endpoint() will be deprecated in SageMaker Python SDK v2. "
             "Please use the delete_endpoint() function on your predictor instead."
         )
@@ -908,7 +910,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         tags = tags or self.tags
 
         if self.latest_training_job is None:
-            logging.warning(
+            logger.warning(
                 "No finished training job found associated with this estimator. Please make sure "
                 "this estimator is only used for building workflow config"
             )
@@ -1029,7 +1031,7 @@ class _TrainingJob(_Job):
 
         if isinstance(inputs, s3_input):
             if "InputMode" in inputs.config:
-                logging.debug(
+                logger.debug(
                     "Selecting s3_input's input_mode (%s) for TrainingInputMode.",
                     inputs.config["InputMode"],
                 )
@@ -1279,7 +1281,7 @@ class Estimator(EstimatorBase):
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_AlgorithmSpecification.html#SageMaker-Type-AlgorithmSpecification-EnableSageMakerMetricsTimeSeries
                 (default: ``None``).
         """
-        logging.warning(parameter_v2_rename_warning("image_name", "image_uri"))
+        logger.warning(parameter_v2_rename_warning("image_name", "image_uri"))
         self.image_name = image_name
         self.hyperparam_dict = hyperparameters.copy() if hyperparameters else {}
         super(Estimator, self).__init__(
@@ -1653,7 +1655,7 @@ class Framework(EstimatorBase):
         self.code_location = code_location
         self.image_name = image_name
         if image_name is not None:
-            logging.warning(parameter_v2_rename_warning("image_name", "image_uri"))
+            logger.warning(parameter_v2_rename_warning("image_name", "image_uri"))
 
         self.uploaded_code = None
 
@@ -2029,7 +2031,7 @@ class Framework(EstimatorBase):
             if env is not None:
                 transform_env.update(env)
         else:
-            logging.warning(
+            logger.warning(
                 "No finished training job found associated with this estimator. Please make sure "
                 "this estimator is only used for building workflow config"
             )

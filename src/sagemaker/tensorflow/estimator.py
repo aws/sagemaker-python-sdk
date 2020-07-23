@@ -856,7 +856,7 @@ class TensorFlow(Framework):
         role = role or self.role
 
         if self.latest_training_job is None:
-            logging.warning(
+            logger.warning(
                 "No finished training job found associated with this estimator. Please make sure "
                 "this estimator is only used for building workflow config"
             )

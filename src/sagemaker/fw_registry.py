@@ -12,9 +12,12 @@
 # language governing permissions and limitations under the License.
 """Placeholder docstring"""
 from __future__ import absolute_import
+
 import logging
 
 from sagemaker.utils import get_ecr_image_uri_prefix
+
+logger = logging.getLogger(__name__)
 
 image_registry_map = {
     "us-west-1": {
@@ -142,7 +145,7 @@ def registry(region_name, framework=None):
         account_id = image_registry_map[region_name][framework]
         return get_ecr_image_uri_prefix(account_id, region_name)
     except KeyError:
-        logging.error("The specific image or region does not exist")
+        logger.error("The specific image or region does not exist")
         raise
 
 

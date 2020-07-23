@@ -708,7 +708,7 @@ class DeferredError(object):
         try:
             import obscurelib
         except ImportError as e:
-            logging.warning("Failed to import obscurelib. Obscure features will not work.")
+            logger.warning("Failed to import obscurelib. Obscure features will not work.")
             obscurelib = DeferredError(e)
     """
 
