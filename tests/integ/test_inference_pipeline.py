@@ -23,7 +23,6 @@ from tests.integ.timeout import (
 )
 
 from sagemaker import image_uris
-from sagemaker.content_types import CONTENT_TYPE_CSV
 from sagemaker.model import Model
 from sagemaker.pipeline import PipelineModel
 from sagemaker.predictor import Predictor
@@ -88,7 +87,7 @@ def test_inference_pipeline_batch_transform(sagemaker_session, cpu_instance_type
         transformer, sagemaker_session, minutes=TRANSFORM_DEFAULT_TIMEOUT_MINUTES
     ):
         transformer.transform(
-            transform_input, content_type=CONTENT_TYPE_CSV, job_name=batch_job_name
+            transform_input, content_type="text/csv", job_name=batch_job_name
         )
         transformer.wait()
 
@@ -134,8 +133,8 @@ def test_inference_pipeline_model_deploy(sagemaker_session, cpu_instance_type):
             endpoint_name=endpoint_name,
             sagemaker_session=sagemaker_session,
             serializer=JSONSerializer,
-            content_type=CONTENT_TYPE_CSV,
-            accept=CONTENT_TYPE_CSV,
+            content_type="text/csv",
+            accept="text/csv",
         )
 
         with open(VALID_DATA_PATH, "r") as f:
