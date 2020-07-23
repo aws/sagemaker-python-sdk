@@ -1126,8 +1126,9 @@ def test_legacy_mode_deprecated(sagemaker_session):
 
 
 def test_script_mode_enabled(sagemaker_session):
-    tf = _build_tf(sagemaker_session=sagemaker_session, py_version="py3")
-    assert tf._script_mode_enabled() is True
+    for py_version in ("py3", "py36", "py37"):
+        tf = _build_tf(sagemaker_session=sagemaker_session, py_version=py_version)
+        assert tf._script_mode_enabled() is True
 
     tf = _build_tf(sagemaker_session=sagemaker_session, script_mode=True)
     assert tf._script_mode_enabled() is True
