@@ -41,41 +41,6 @@ def test_hvd_gpu(sagemaker_session, gpu_instance_type, tmpdir):
     _create_and_fit_estimator(sagemaker_session, gpu_instance_type, tmpdir)
 
 
-@pytest.mark.local_mode
-@pytest.mark.parametrize("instances, processes", [[1, 2], (2, 1), (2, 2)])
-def test_horovod_local_mode(sagemaker_local_session, instances, processes, tmpdir):
-    output_path = "file://%s" % tmpdir
-    job_name = sagemaker.utils.unique_name_from_base("tf-horovod")
-    estimator = TensorFlow(
-        entry_point=os.path.join(horovod_dir, "hvd_basic.py"),
-        role="SageMakerRole",
-        train_instance_count=2,
-        train_instance_type="local",
-        sagemaker_session=sagemaker_local_session,
-        py_version=integ.PYTHON_VERSION,
-        script_mode=True,
-        output_path=output_path,
-        framework_version="1.12",
-        distributions={"mpi": {"enabled": True, "processes_per_host": processes}},
-    )
-
-    with timeout.timeout(minutes=integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
-        estimator.fit(job_name=job_name)
-
-        tmp = str(tmpdir)
-        extract_files(output_path.replace("file://", ""), tmp)
-
-        size = instances * processes
-
-        for rank in range(size):
-            assert read_json("rank-%s" % rank, tmp)["rank"] == rank
-
-
-def extract_files(output_path, tmpdir):
-    with tarfile.open(os.path.join(output_path, "model.tar.gz")) as tar:
-        tar.extractall(tmpdir)
-
-
 def read_json(file, tmp):
     with open(os.path.join(tmp, file)) as f:
         return json.load(f)
