@@ -89,7 +89,7 @@ write MIME types as a string,
 | ``CONTENT_TYPE_OCTET_STREAM`` | ``"application/octet-stream"`` |
 +-------------------------------+--------------------------------+
 | ``CONTENT_TYPE_NPY``          | ``"application/x-npy"``        |
-+------------------------------+---------------------------------+
++-------------------------------+---------------------------------+
 
 
 Require ``framework_version`` and ``py_version`` for Frameworks
