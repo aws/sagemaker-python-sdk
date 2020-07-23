@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.71.0 (2020-07-23)
+
+### Features
+
+ * Add mpi support for mxnet estimator api
+
+### Bug Fixes and Other Changes
+
+ * use 'sagemaker' logger instead of root logger
+ * account for "py36" and "py37" in image tag parsing
+
 ## v1.70.2 (2020-07-22)
 
 ### Bug Fixes and Other Changes
