@@ -23,21 +23,26 @@ import importlib_metadata
 SDK_VERSION = importlib_metadata.version("sagemaker")
 OS_NAME = platform.system() or "UnresolvedOS"
 OS_VERSION = platform.release() or "UnresolvedOSVersion"
-PYTHON_VERSION = "{}.{}.{}".format(
+OS_NAME_VERSION = "{}/{}".format(OS_NAME, OS_VERSION)
+PYTHON_VERSION = "Python/{}.{}.{}".format(
     sys.version_info.major, sys.version_info.minor, sys.version_info.micro
 )
 
 
-def determine_prefix():
+def determine_prefix(user_agent):
     """Placeholder docstring"""
-    prefix = "AWS-SageMaker-Python-SDK/{} Python/{} {}/{} Boto3/{} Botocore/{}".format(
-        SDK_VERSION, PYTHON_VERSION, OS_NAME, OS_VERSION, boto3.__version__, botocore.__version__
-    )
+    prefix = "AWS-SageMaker-Python-SDK/{}".format(SDK_VERSION)
+
+    if PYTHON_VERSION not in user_agent:
+        prefix = "{} {}".format(prefix, PYTHON_VERSION)
+
+    if OS_NAME_VERSION not in user_agent:
+        prefix = "{} {}".format(prefix, OS_NAME_VERSION)
 
     try:
         with open("/etc/opt/ml/sagemaker-notebook-instance-version.txt") as sagemaker_nbi_file:
-            prefix = "AWS-SageMaker-Notebook-Instance/{} {}".format(
-                sagemaker_nbi_file.read().strip(), prefix
+            prefix = "{} AWS-SageMaker-Notebook-Instance/{}".format(
+                prefix, sagemaker_nbi_file.read().strip()
             )
     except IOError:
         # This file isn't expected to always exist, and we DO want to silently ignore failures.
@@ -51,7 +56,7 @@ def prepend_user_agent(client):
     Args:
         client:
     """
-    prefix = determine_prefix()
+    prefix = determine_prefix(client._client_config.user_agent or "")
 
     if client._client_config.user_agent is None:
         client._client_config.user_agent = prefix

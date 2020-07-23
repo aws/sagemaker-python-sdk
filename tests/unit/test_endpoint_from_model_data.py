@@ -14,7 +14,7 @@ from __future__ import absolute_import
 
 import pytest
 from botocore.exceptions import ClientError
-from mock import Mock
+from mock import MagicMock, Mock
 from mock import patch
 
 import sagemaker
@@ -35,8 +35,8 @@ REGION = "us-west-2"
 
 @pytest.fixture()
 def sagemaker_session():
-    boto_mock = Mock(name="boto_session", region_name=REGION)
-    ims = sagemaker.Session(sagemaker_client=Mock(name="sagemaker_client"), boto_session=boto_mock)
+    boto_mock = MagicMock(name="boto_session", region_name=REGION)
+    ims = sagemaker.Session(sagemaker_client=MagicMock(name="sagemaker_client"), boto_session=boto_mock)
     ims.sagemaker_client.describe_model = Mock(
         name="describe_model", side_effect=_raise_does_not_exist_client_error
     )

@@ -13,7 +13,7 @@
 from __future__ import absolute_import
 
 import pytest
-from mock import Mock
+from mock import MagicMock, Mock
 
 import sagemaker
 
@@ -42,8 +42,8 @@ REGION = "us-west-2"
 
 @pytest.fixture()
 def sagemaker_session():
-    boto_mock = Mock(name="boto_session", region_name=REGION)
-    ims = sagemaker.Session(sagemaker_client=Mock(name="sagemaker_client"), boto_session=boto_mock)
+    boto_mock = MagicMock(name="boto_session", region_name=REGION)
+    ims = sagemaker.Session(sagemaker_client=MagicMock(name="sagemaker_client"), boto_session=boto_mock)
     ims.sagemaker_client.describe_training_job = Mock(
         name="describe_training_job", return_value=TRAINING_JOB_RESPONSE
     )
