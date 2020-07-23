@@ -18,6 +18,7 @@ import os
 
 import numpy as np
 import pytest
+import scipy
 
 from sagemaker.serializers import (
     CSVSerializer,
@@ -26,13 +27,6 @@ from sagemaker.serializers import (
     SparseMatrixSerializer,
 )
 from tests.unit import DATA_DIR
-
-from sagemaker.utils import DeferredError
-
-try:
-    import scipy
-except ImportError as e:
-    scipy = DeferredError(e)
 
 
 @pytest.fixture
