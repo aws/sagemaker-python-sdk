@@ -86,9 +86,7 @@ def test_inference_pipeline_batch_transform(sagemaker_session, cpu_instance_type
     with timeout_and_delete_model_with_transformer(
         transformer, sagemaker_session, minutes=TRANSFORM_DEFAULT_TIMEOUT_MINUTES
     ):
-        transformer.transform(
-            transform_input, content_type="text/csv", job_name=batch_job_name
-        )
+        transformer.transform(transform_input, content_type="text/csv", job_name=batch_job_name)
         transformer.wait()
 
 
