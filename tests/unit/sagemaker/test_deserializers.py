@@ -16,6 +16,7 @@ import io
 import json
 
 import numpy as np
+import pandas as pd
 import pytest
 
 from sagemaker.deserializers import (
@@ -27,12 +28,6 @@ from sagemaker.deserializers import (
     JSONDeserializer,
     PandasDeserializer,
 )
-from sagemaker.utils import DeferredError
-
-try:
-    import pandas as pd
-except ImportError as e:
-    pd = DeferredError(e)
 
 
 def test_string_deserializer():
