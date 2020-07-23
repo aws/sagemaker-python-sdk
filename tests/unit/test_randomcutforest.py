@@ -24,7 +24,6 @@ INSTANCE_COUNT = 1
 INSTANCE_TYPE = "ml.c4.xlarge"
 NUM_SAMPLES_PER_TREE = 20
 NUM_TREES = 50
-EVAL_METRICS = ["accuracy", "precision_recall_fscore"]
 
 COMMON_TRAIN_ARGS = {
     "role": ROLE,
@@ -71,7 +70,6 @@ def test_init_required_positional(sagemaker_session):
         INSTANCE_TYPE,
         NUM_SAMPLES_PER_TREE,
         NUM_TREES,
-        EVAL_METRICS,
         sagemaker_session=sagemaker_session,
     )
     assert randomcutforest.role == ROLE
@@ -79,7 +77,6 @@ def test_init_required_positional(sagemaker_session):
     assert randomcutforest.instance_type == INSTANCE_TYPE
     assert randomcutforest.num_trees == NUM_TREES
     assert randomcutforest.num_samples_per_tree == NUM_SAMPLES_PER_TREE
-    assert randomcutforest.eval_metrics == EVAL_METRICS
 
 
 def test_init_required_named(sagemaker_session):
@@ -95,13 +92,10 @@ def test_all_hyperparameters(sagemaker_session):
         sagemaker_session=sagemaker_session,
         num_trees=NUM_TREES,
         num_samples_per_tree=NUM_SAMPLES_PER_TREE,
-        eval_metrics=EVAL_METRICS,
         **ALL_REQ_ARGS
     )
     assert randomcutforest.hyperparameters() == dict(
-        num_samples_per_tree=str(NUM_SAMPLES_PER_TREE),
-        num_trees=str(NUM_TREES),
-        eval_metrics='["accuracy", "precision_recall_fscore"]',
+        num_samples_per_tree=str(NUM_SAMPLES_PER_TREE), num_trees=str(NUM_TREES),
     )
 
 
@@ -110,7 +104,7 @@ def test_image(sagemaker_session):
     assert image_uris.retrieve("randomcutforest", REGION) == randomcutforest.train_image()
 
 
-@pytest.mark.parametrize("iterable_hyper_parameters, value", [("eval_metrics", 0)])
+@pytest.mark.parametrize("iterable_hyper_parameters, value", [("eval_metrics", [0])])
 def test_iterable_hyper_parameters_type(sagemaker_session, iterable_hyper_parameters, value):
     with pytest.raises(TypeError):
         test_params = ALL_REQ_ARGS.copy()

@@ -111,7 +111,6 @@ def test_kmeans_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_
         kmeans.half_life_time_size = 1
         kmeans.epochs = 1
         kmeans.center_factor = 1
-        kmeans.eval_metrics = ["ssd", "msd"]
 
         records = kmeans.record_set(datasets.one_p_mnist()[0][:100])
 
@@ -386,7 +385,6 @@ def test_rcf_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_ins
             instance_type=cpu_instance_type,
             num_trees=50,
             num_samples_per_tree=20,
-            eval_metrics=["accuracy", "precision_recall_fscore"],
             sagemaker_session=sagemaker_session,
         )
 

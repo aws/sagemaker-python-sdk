@@ -92,7 +92,6 @@ def test_all_hyperparameters(sagemaker_session):
         half_life_time_size=0,
         epochs=10,
         center_factor=2,
-        eval_metrics=["msd", "ssd"],
         **ALL_REQ_ARGS
     )
     assert kmeans.hyperparameters() == dict(
@@ -105,7 +104,6 @@ def test_all_hyperparameters(sagemaker_session):
         half_life_time_size="0",
         epochs="10",
         extra_center_factor="2",
-        eval_metrics='["msd", "ssd"]',
         force_dense="True",
     )
 
@@ -131,7 +129,7 @@ def test_required_hyper_parameters_value(sagemaker_session, required_hyper_param
         KMeans(sagemaker_session=sagemaker_session, **test_params)
 
 
-@pytest.mark.parametrize("iterable_hyper_parameters, value", [("eval_metrics", 0)])
+@pytest.mark.parametrize("iterable_hyper_parameters, value", [("eval_metrics", [0])])
 def test_iterable_hyper_parameters_type(sagemaker_session, iterable_hyper_parameters, value):
     with pytest.raises(TypeError):
         test_params = ALL_REQ_ARGS.copy()

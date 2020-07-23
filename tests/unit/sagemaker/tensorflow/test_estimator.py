@@ -88,7 +88,6 @@ def _hyperparameters(horovod=False):
         "sagemaker_submit_directory": json.dumps(
             "s3://{}/{}/source/sourcedir.tar.gz".format(BUCKET_NAME, JOB_NAME)
         ),
-        "sagemaker_enable_cloudwatch_metrics": "false",
         "sagemaker_container_log_level": str(logging.INFO),
         "sagemaker_job_name": json.dumps(JOB_NAME),
         "sagemaker_region": json.dumps("us-west-2"),
@@ -220,7 +219,6 @@ def test_create_model_with_optional_params(
 
     container_log_level = '"logging.INFO"'
     source_dir = "s3://mybucket/source"
-    enable_cloudwatch_metrics = "true"
     tf = TensorFlow(
         entry_point=SCRIPT_PATH,
         framework_version=tensorflow_inference_version,
@@ -232,7 +230,6 @@ def test_create_model_with_optional_params(
         container_log_level=container_log_level,
         base_job_name="job",
         source_dir=source_dir,
-        enable_cloudwatch_metrics=enable_cloudwatch_metrics,
         output_path="s3://mybucket/output",
     )
 
