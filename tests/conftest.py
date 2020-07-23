@@ -287,6 +287,11 @@ def cpu_instance_type(sagemaker_session, request):
         return "ml.m4.xlarge"
 
 
+@pytest.fixture(scope="module")
+def gpu_instance_type(request):
+    return "ml.p2.xlarge"
+
+
 @pytest.fixture(scope="session")
 def inf_instance_type(sagemaker_session, request):
     return "ml.inf1.xlarge"

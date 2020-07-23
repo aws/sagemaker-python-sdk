@@ -22,7 +22,7 @@ from six.moves.urllib.parse import urlparse
 
 import sagemaker.utils
 import tests.integ as integ
-from sagemaker.tensorflow import TensorFlow
+from sagemaker.mxnet import MXNet
 from tests.integ import timeout
 
 horovod_dir = os.path.join(os.path.dirname(__file__), "..", "data", "horovod")
@@ -58,16 +58,15 @@ def extract_files_from_s3(s3_url, tmpdir, sagemaker_session):
 
 
 def _create_and_fit_estimator(sagemaker_session, instance_type, tmpdir):
-    job_name = sagemaker.utils.unique_name_from_base("tf-horovod")
-    estimator = TensorFlow(
-        entry_point=os.path.join(horovod_dir, "hvd_basic.py"),
+    job_name = sagemaker.utils.unique_name_from_base("mx-horovod")
+    estimator = MXNet(
+        entry_point=os.path.join(horovod_dir, "hvd_mnist_mxnet.py"),
         role="SageMakerRole",
         train_instance_count=2,
         train_instance_type=instance_type,
         sagemaker_session=sagemaker_session,
         py_version=integ.PYTHON_VERSION,
-        script_mode=True,
-        framework_version="1.12",
+        framework_version="1.6.0",
         distributions={"mpi": {"enabled": True}},
     )
 
