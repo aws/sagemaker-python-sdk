@@ -16,8 +16,6 @@ from __future__ import absolute_import
 import platform
 import sys
 
-import boto3
-import botocore
 import importlib_metadata
 
 SDK_VERSION = importlib_metadata.version("sagemaker")
