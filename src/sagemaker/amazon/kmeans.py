@@ -43,6 +43,11 @@ class KMeans(AmazonAlgorithmEstimatorBase):
     )
     epochs = hp("epochs", gt(0), "An integer greater-than 0", int)
     center_factor = hp("extra_center_factor", gt(0), "An integer greater-than 0", int)
+    eval_metrics = hp(
+        name="eval_metrics",
+        validation_message='A comma separated list of "msd" or "ssd"',
+        data_type=list,
+    )
 
     def __init__(
         self,
@@ -58,6 +63,7 @@ class KMeans(AmazonAlgorithmEstimatorBase):
         half_life_time_size=None,
         epochs=None,
         center_factor=None,
+        eval_metrics=None,
         **kwargs
     ):
         """A k-means clustering
@@ -124,6 +130,11 @@ class KMeans(AmazonAlgorithmEstimatorBase):
             center_factor (int): The algorithm will create
                 ``num_clusters * extra_center_factor`` as it runs and reduce the
                 number of centers to ``k`` when finalizing
+            eval_metrics (list): JSON list of metrics types to be used for
+                reporting the score for the model. Allowed values are "msd"
+                Means Square Error, "ssd": Sum of square distance. If test data
+                is provided, the score shall be reported in terms of all
+                requested metrics.
             **kwargs: base class keyword argument values.
 
         .. tip::
@@ -142,6 +153,7 @@ class KMeans(AmazonAlgorithmEstimatorBase):
         self.half_life_time_size = half_life_time_size
         self.epochs = epochs
         self.center_factor = center_factor
+        self.eval_metrics = eval_metrics
 
     def create_model(self, vpc_config_override=VPC_CONFIG_DEFAULT, **kwargs):
         """Return a :class:`~sagemaker.amazon.kmeans.KMeansModel` referencing

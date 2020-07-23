@@ -31,6 +31,12 @@ class RandomCutForest(AmazonAlgorithmEstimatorBase):
     repo_version = 1
     MINI_BATCH_SIZE = 1000
 
+    eval_metrics = hp(
+        name="eval_metrics",
+        validation_message='A comma separated list of "accuracy" or "precision_recall_fscore"',
+        data_type=list,
+    )
+
     num_trees = hp("num_trees", (ge(50), le(1000)), "An integer in [50, 1000]", int)
     num_samples_per_tree = hp(
         "num_samples_per_tree", (ge(1), le(2048)), "An integer in [1, 2048]", int
@@ -44,6 +50,7 @@ class RandomCutForest(AmazonAlgorithmEstimatorBase):
         instance_type,
         num_samples_per_tree=None,
         num_trees=None,
+        eval_metrics=None,
         **kwargs
     ):
         """RandomCutForest is :class:`Estimator` used for anomaly detection.
@@ -92,6 +99,11 @@ class RandomCutForest(AmazonAlgorithmEstimatorBase):
                 build each tree in the forest. The total number of samples drawn
                 from the train dataset is num_trees * num_samples_per_tree.
             num_trees (int): Optional. The number of trees used in the forest.
+            eval_metrics (list): Optional. JSON list of metrics types to be used
+                for reporting the score for the model. Allowed values are
+                "accuracy", "precision_recall_fscore": positive and negative
+                precision, recall, and f1 scores. If test data is provided, the
+                score shall be reported in terms of all requested metrics.
             **kwargs: base class keyword argument values.
 
         .. tip::
@@ -104,6 +116,7 @@ class RandomCutForest(AmazonAlgorithmEstimatorBase):
         super(RandomCutForest, self).__init__(role, instance_count, instance_type, **kwargs)
         self.num_samples_per_tree = num_samples_per_tree
         self.num_trees = num_trees
+        self.eval_metrics = eval_metrics
 
     def create_model(self, vpc_config_override=VPC_CONFIG_DEFAULT, **kwargs):
         """Return a :class:`~sagemaker.amazon.RandomCutForestModel` referencing

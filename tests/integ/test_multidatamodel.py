@@ -439,6 +439,7 @@ def __rcf_training_job(
             instance_type=cpu_instance_type,
             num_trees=num_trees,
             num_samples_per_tree=num_samples_per_tree,
+            eval_metrics=["accuracy", "precision_recall_fscore"],
             sagemaker_session=sagemaker_session,
         )
 

@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import json
 import time
 
 import pytest
@@ -46,6 +47,7 @@ def test_kmeans(sagemaker_session, cpu_instance_type, training_set):
         kmeans.half_life_time_size = 1
         kmeans.epochs = 1
         kmeans.center_factor = 1
+        kmeans.eval_metrics = ["ssd", "msd"]
 
         assert kmeans.hyperparameters() == dict(
             init_method=kmeans.init_method,
@@ -57,6 +59,7 @@ def test_kmeans(sagemaker_session, cpu_instance_type, training_set):
             epochs=str(kmeans.epochs),
             extra_center_factor=str(kmeans.center_factor),
             k=str(kmeans.k),
+            eval_metrics=json.dumps(kmeans.eval_metrics),
             force_dense="True",
         )
 
