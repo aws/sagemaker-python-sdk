@@ -130,7 +130,6 @@ def _create_train_job(toolkit, toolkit_version, framework):
         },
         "hyperparameters": {
             "sagemaker_program": json.dumps("dummy_script.py"),
-            "sagemaker_enable_cloudwatch_metrics": "false",
             "sagemaker_estimator": '"RLEstimator"',
             "sagemaker_container_log_level": str(logging.INFO),
             "sagemaker_job_name": json.dumps(job_name),
@@ -341,7 +340,6 @@ def test_rl(strftime, sagemaker_session, rl_coach_mxnet_version):
         "Environment": {
             "SAGEMAKER_SUBMIT_DIRECTORY": submit_dir,
             "SAGEMAKER_PROGRAM": "dummy_script.py",
-            "SAGEMAKER_ENABLE_CLOUDWATCH_METRICS": "false",
             "SAGEMAKER_REGION": "us-west-2",
             "SAGEMAKER_CONTAINER_LOG_LEVEL": "20",
         },
@@ -426,7 +424,6 @@ def test_attach(sagemaker_session, rl_coach_mxnet_version):
         "HyperParameters": {
             "sagemaker_submit_directory": '"s3://some/sourcedir.tar.gz"',
             "sagemaker_program": '"train_coach.py"',
-            "sagemaker_enable_cloudwatch_metrics": "false",
             "sagemaker_container_log_level": '"logging.INFO"',
             "sagemaker_job_name": '"neo"',
             "training_steps": "100",
@@ -476,7 +473,6 @@ def test_attach_wrong_framework(sagemaker_session):
             "sagemaker_submit_directory": '"s3://some/sourcedir.tar.gz"',
             "checkpoint_path": '"s3://other/1508872349"',
             "sagemaker_program": '"iris-dnn-classifier.py"',
-            "sagemaker_enable_cloudwatch_metrics": "false",
             "sagemaker_container_log_level": '"logging.INFO"',
             "training_steps": "100",
             "sagemaker_region": '"us-west-2"',
@@ -511,7 +507,6 @@ def test_attach_custom_image(sagemaker_session):
             "sagemaker_submit_directory": '"s3://some/sourcedir.tar.gz"',
             "sagemaker_program": '"iris-dnn-classifier.py"',
             "sagemaker_s3_uri_training": '"sagemaker-3/integ-test-data/tf_iris"',
-            "sagemaker_enable_cloudwatch_metrics": "false",
             "sagemaker_container_log_level": '"logging.INFO"',
             "sagemaker_job_name": '"neo"',
             "training_steps": "100",

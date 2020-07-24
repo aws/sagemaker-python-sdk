@@ -599,7 +599,6 @@ class Model(object):
 
 SCRIPT_PARAM_NAME = "sagemaker_program"
 DIR_PARAM_NAME = "sagemaker_submit_directory"
-CLOUDWATCH_METRICS_PARAM_NAME = "sagemaker_enable_cloudwatch_metrics"
 CONTAINER_LOG_LEVEL_PARAM_NAME = "sagemaker_container_log_level"
 JOB_NAME_PARAM_NAME = "sagemaker_job_name"
 MODEL_SERVER_WORKERS_PARAM_NAME = "sagemaker_model_server_workers"
@@ -624,7 +623,6 @@ class FrameworkModel(Model):
         predictor_cls=None,
         env=None,
         name=None,
-        enable_cloudwatch_metrics=False,
         container_log_level=logging.INFO,
         code_location=None,
         sagemaker_session=None,
@@ -682,9 +680,6 @@ class FrameworkModel(Model):
                 when hosted in SageMaker (default: None).
             name (str): The model name. If None, a default model name will be
                 selected on each ``deploy``.
-            enable_cloudwatch_metrics (bool): Whether training and hosting
-                containers will generate CloudWatch metrics under the
-                AWS/SageMakerContainer namespace (default: False).
             container_log_level (int): Log level to use within the container
                 (default: logging.INFO). Valid values are defined in the Python
                 logging module.
@@ -792,7 +787,6 @@ class FrameworkModel(Model):
         self.source_dir = source_dir
         self.dependencies = dependencies or []
         self.git_config = git_config
-        self.enable_cloudwatch_metrics = enable_cloudwatch_metrics
         self.container_log_level = container_log_level
         if code_location:
             self.bucket, self.key_prefix = fw_utils.parse_s3_url(code_location)
@@ -890,7 +884,6 @@ class FrameworkModel(Model):
         return {
             SCRIPT_PARAM_NAME.upper(): script_name,
             DIR_PARAM_NAME.upper(): dir_name,
-            CLOUDWATCH_METRICS_PARAM_NAME.upper(): str(self.enable_cloudwatch_metrics).lower(),
             CONTAINER_LOG_LEVEL_PARAM_NAME.upper(): str(self.container_log_level),
             SAGEMAKER_REGION_PARAM_NAME.upper(): self.sagemaker_session.boto_region_name,
         }

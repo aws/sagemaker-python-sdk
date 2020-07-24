@@ -13,9 +13,9 @@
 """Placeholder docstring"""
 from __future__ import print_function, absolute_import
 
-from sagemaker.deserializers import BaseDeserializer, BytesDeserializer
+from sagemaker.deserializers import BytesDeserializer
 from sagemaker.model_monitor import DataCaptureConfig
-from sagemaker.serializers import BaseSerializer, IdentitySerializer
+from sagemaker.serializers import IdentitySerializer
 from sagemaker.session import production_variant, Session
 from sagemaker.utils import name_from_base
 
@@ -58,11 +58,6 @@ class Predictor(object):
                 deserializer object, used to decode data from an inference
                 endpoint (default: ``BytesDeserializer()``).
         """
-        if serializer is not None and not isinstance(serializer, BaseSerializer):
-            serializer = LegacySerializer(serializer)
-        if deserializer is not None and not isinstance(deserializer, BaseDeserializer):
-            deserializer = LegacyDeserializer(deserializer)
-
         self.endpoint_name = endpoint_name
         self.sagemaker_session = sagemaker_session or Session()
         self.serializer = serializer
@@ -109,8 +104,6 @@ class Predictor(object):
         """
         response_body = response["Body"]
         content_type = response.get("ContentType", "application/octet-stream")
-        if not isinstance(self.deserializer, BaseDeserializer):
-            self.deserializer = LegacyDeserializer(self.deserializer)
         return self.deserializer.deserialize(response_body, content_type)
 
     def _create_request_args(self, data, initial_args=None, target_model=None, target_variant=None):
@@ -138,8 +131,6 @@ class Predictor(object):
         if target_variant:
             args["TargetVariant"] = target_variant
 
-        if not isinstance(self.serializer, BaseSerializer):
-            self.serializer = LegacySerializer(self.serializer)
         data = self.serializer.serialize(data)
 
         args["Body"] = data
@@ -392,85 +383,3 @@ class Predictor(object):
         )
         production_variants = endpoint_config["ProductionVariants"]
         return [d["ModelName"] for d in production_variants]
-
-
-class LegacySerializer(BaseSerializer):
-    """Wrapper that makes legacy serializers forward compatibile."""
-
-    def __init__(self, serializer):
-        """Initialize a ``LegacySerializer``.
-
-        Args:
-            serializer (callable): A legacy serializer.
-        """
-        self.serializer = serializer
-        self.content_type = getattr(serializer, "content_type", None)
-
-    def __call__(self, *args, **kwargs):
-        """Wraps the call method of the legacy serializer.
-
-        Args:
-            data (object): Data to be serialized.
-
-        Returns:
-            object: Serialized data used for a request.
-        """
-        return self.serializer(*args, **kwargs)
-
-    def serialize(self, data):
-        """Wraps the call method of the legacy serializer.
-
-        Args:
-            data (object): Data to be serialized.
-
-        Returns:
-            object: Serialized data used for a request.
-        """
-        return self.serializer(data)
-
-    @property
-    def CONTENT_TYPE(self):
-        """The MIME type of the data sent to the inference endpoint."""
-        return self.content_type
-
-
-class LegacyDeserializer(BaseDeserializer):
-    """Wrapper that makes legacy deserializers forward compatibile."""
-
-    def __init__(self, deserializer):
-        """Initialize a ``LegacyDeserializer``.
-
-        Args:
-            deserializer (callable): A legacy deserializer.
-        """
-        self.deserializer = deserializer
-        self.accept = getattr(deserializer, "accept", None)
-
-    def __call__(self, *args, **kwargs):
-        """Wraps the call method of the legacy deserializer.
-
-        Args:
-            data (object): Data to be deserialized.
-            content_type (str): The MIME type of the data.
-
-        Returns:
-            object: The data deserialized into an object.
-        """
-        return self.deserializer(*args, **kwargs)
-
-    def deserialize(self, data, content_type):
-        """Wraps the call method of the legacy deserializer.
-
-        Args:
-            data (object): Data to be deserialized.
-            content_type (str): The MIME type of the data.
-
-        Returns:
-            object: The data deserialized into an object.
-        """
-        return self.deserializer(data, content_type)
-
-    @property
-    def ACCEPT(self):
-        """The content type that is expected from the inference endpoint."""
-        return self.accept

@@ -75,7 +75,6 @@ def test_deploy(sagemaker_session, tf_version):
         ROLE,
         {
             "Environment": {
-                "SAGEMAKER_ENABLE_CLOUDWATCH_METRICS": "false",
                 "SAGEMAKER_CONTAINER_LOG_LEVEL": "20",
                 "SAGEMAKER_SUBMIT_DIRECTORY": SOURCE_DIR,
                 "SAGEMAKER_REGION": REGION,
