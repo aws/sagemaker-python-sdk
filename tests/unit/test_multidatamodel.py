@@ -175,7 +175,6 @@ def test_multi_data_model_create_with_model_arg_only(mxnet_model):
 def test_prepare_container_def_mxnet(sagemaker_session, mxnet_model):
     expected_container_env_keys = [
         "SAGEMAKER_CONTAINER_LOG_LEVEL",
-        "SAGEMAKER_ENABLE_CLOUDWATCH_METRICS",
         "SAGEMAKER_PROGRAM",
         "SAGEMAKER_REGION",
         "SAGEMAKER_SUBMIT_DIRECTORY",

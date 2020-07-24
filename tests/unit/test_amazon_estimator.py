@@ -53,7 +53,6 @@ def sagemaker_session():
             "sagemaker_submit_directory": '"s3://some/sourcedir.tar.gz"',
             "checkpoint_path": '"s3://other/1508872349"',
             "sagemaker_program": '"iris-dnn-classifier.py"',
-            "sagemaker_enable_cloudwatch_metrics": "false",
             "sagemaker_container_log_level": '"logging.INFO"',
             "sagemaker_job_name": '"neo"',
             "training_steps": "100",

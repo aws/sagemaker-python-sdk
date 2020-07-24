@@ -93,7 +93,6 @@ def test_prepare_container_def(tfo, time, sagemaker_session):
                 "SAGEMAKER_SUBMIT_DIRECTORY": "s3://mybucket/mi-1-2017-10-10-14-14-15/sourcedir.tar.gz",
                 "SAGEMAKER_CONTAINER_LOG_LEVEL": "20",
                 "SAGEMAKER_REGION": "us-west-2",
-                "SAGEMAKER_ENABLE_CLOUDWATCH_METRICS": "false",
             },
             "Image": "mi-1",
             "ModelDataUrl": "s3://bucket/model_1.tar.gz",

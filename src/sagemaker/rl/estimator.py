@@ -244,7 +244,6 @@ class RLEstimator(Framework):
             source_dir=source_dir,
             code_location=self.code_location,
             dependencies=dependencies,
-            enable_cloudwatch_metrics=self.enable_cloudwatch_metrics,
         )
         extended_args.update(base_args)
 

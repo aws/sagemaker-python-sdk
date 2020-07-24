@@ -63,7 +63,6 @@ def test_attach(sagemaker_session, tensorflow_training_version, tensorflow_train
         "HyperParameters": {
             "sagemaker_submit_directory": '"s3://some/sourcedir.tar.gz"',
             "sagemaker_program": '"iris-dnn-classifier.py"',
-            "sagemaker_enable_cloudwatch_metrics": "false",
             "sagemaker_container_log_level": '"logging.INFO"',
             "sagemaker_job_name": '"neo"',
         },
@@ -110,7 +109,6 @@ def test_attach_old_container(sagemaker_session):
         "HyperParameters": {
             "sagemaker_submit_directory": '"s3://some/sourcedir.tar.gz"',
             "sagemaker_program": '"iris-dnn-classifier.py"',
-            "sagemaker_enable_cloudwatch_metrics": "false",
             "sagemaker_container_log_level": '"logging.INFO"',
             "sagemaker_job_name": '"neo"',
         },
@@ -156,7 +154,6 @@ def test_attach_wrong_framework(sagemaker_session):
         "HyperParameters": {
             "sagemaker_submit_directory": '"s3://some/sourcedir.tar.gz"',
             "sagemaker_program": '"iris-dnn-classifier.py"',
-            "sagemaker_enable_cloudwatch_metrics": "false",
             "sagemaker_container_log_level": '"logging.INFO"',
         },
         "RoleArn": "arn:aws:iam::366:role/SageMakerRole",
@@ -188,7 +185,6 @@ def test_attach_custom_image(sagemaker_session):
         "HyperParameters": {
             "sagemaker_submit_directory": '"s3://some/sourcedir.tar.gz"',
             "sagemaker_program": '"iris-dnn-classifier.py"',
-            "sagemaker_enable_cloudwatch_metrics": "false",
             "sagemaker_container_log_level": '"logging.INFO"',
             "sagemaker_job_name": '"neo"',
         },
