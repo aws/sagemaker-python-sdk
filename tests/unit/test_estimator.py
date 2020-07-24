@@ -72,7 +72,6 @@ RETURNED_JOB_DESCRIPTION = {
         "sagemaker_submit_directory": '"s3://some/sourcedir.tar.gz"',
         "checkpoint_path": '"s3://other/1508872349"',
         "sagemaker_program": '"iris-dnn-classifier.py"',
-        "sagemaker_enable_cloudwatch_metrics": "false",
         "sagemaker_container_log_level": '"logging.INFO"',
         "sagemaker_job_name": '"neo"',
         "training_steps": "100",
@@ -95,7 +94,6 @@ MODEL_CONTAINER_DEF = {
         "SAGEMAKER_SUBMIT_DIRECTORY": "s3://mybucket/mi-2017-10-10-14-14-15/sourcedir.tar.gz",
         "SAGEMAKER_CONTAINER_LOG_LEVEL": "20",
         "SAGEMAKER_REGION": REGION,
-        "SAGEMAKER_ENABLE_CLOUDWATCH_METRICS": "false",
     },
     "Image": MODEL_IMAGE,
     "ModelDataUrl": MODEL_DATA,
@@ -513,7 +511,6 @@ def test_augmented_manifest(sagemaker_session):
         sagemaker_session=sagemaker_session,
         instance_count=INSTANCE_COUNT,
         instance_type=INSTANCE_TYPE,
-        enable_cloudwatch_metrics=True,
     )
     fw.fit(
         inputs=TrainingInput(
@@ -538,7 +535,6 @@ def test_s3_input_mode(sagemaker_session):
         sagemaker_session=sagemaker_session,
         instance_count=INSTANCE_COUNT,
         instance_type=INSTANCE_TYPE,
-        enable_cloudwatch_metrics=True,
     )
     fw.fit(inputs=TrainingInput("s3://mybucket/train_manifest", input_mode=expected_input_mode))
 
@@ -553,7 +549,6 @@ def test_shuffle_config(sagemaker_session):
         sagemaker_session=sagemaker_session,
         instance_count=INSTANCE_COUNT,
         instance_type=INSTANCE_TYPE,
-        enable_cloudwatch_metrics=True,
     )
     fw.fit(inputs=TrainingInput("s3://mybucket/train_manifest", shuffle_config=ShuffleConfig(100)))
     _, _, train_kwargs = sagemaker_session.train.mock_calls[0]
@@ -611,7 +606,6 @@ def test_start_new_convert_hyperparameters_to_str(strftime, sagemaker_session):
     t.fit("s3://{}".format(uri))
 
     expected_hyperparameters = BASE_HP.copy()
-    expected_hyperparameters["sagemaker_enable_cloudwatch_metrics"] = "false"
     expected_hyperparameters["sagemaker_container_log_level"] = str(logging.INFO)
     expected_hyperparameters["learning_rate"] = json.dumps(0.1)
     expected_hyperparameters["123"] = json.dumps([456])
@@ -636,28 +630,12 @@ def test_start_new_wait_called(strftime, sagemaker_session):
     t.fit("s3://{}".format(uri))
 
     expected_hyperparameters = BASE_HP.copy()
-    expected_hyperparameters["sagemaker_enable_cloudwatch_metrics"] = "false"
     expected_hyperparameters["sagemaker_container_log_level"] = str(logging.INFO)
     expected_hyperparameters["sagemaker_region"] = '"us-west-2"'
 
     actual_hyperparameter = sagemaker_session.method_calls[1][2]["hyperparameters"]
     assert actual_hyperparameter == expected_hyperparameters
     assert sagemaker_session.wait_for_job.assert_called_once
-
-
-def test_enable_cloudwatch_metrics(sagemaker_session):
-    fw = DummyFramework(
-        entry_point=SCRIPT_PATH,
-        role="DummyRole",
-        sagemaker_session=sagemaker_session,
-        instance_count=INSTANCE_COUNT,
-        instance_type=INSTANCE_TYPE,
-        enable_cloudwatch_metrics=True,
-    )
-    fw.fit(inputs=TrainingInput("s3://mybucket/train"))
-
-    _, _, train_kwargs = sagemaker_session.train.mock_calls[0]
-    assert train_kwargs["hyperparameters"]["sagemaker_enable_cloudwatch_metrics"]
 
 
 def test_attach_framework(sagemaker_session, training_job_description):
@@ -769,7 +747,6 @@ def test_fit_verify_job_name(strftime, sagemaker_session):
         sagemaker_session=sagemaker_session,
         instance_count=INSTANCE_COUNT,
         instance_type=INSTANCE_TYPE,
-        enable_cloudwatch_metrics=True,
         tags=TAGS,
         encrypt_inter_container_traffic=True,
     )
@@ -777,7 +754,6 @@ def test_fit_verify_job_name(strftime, sagemaker_session):
 
     _, _, train_kwargs = sagemaker_session.train.mock_calls[0]
 
-    assert train_kwargs["hyperparameters"]["sagemaker_enable_cloudwatch_metrics"]
     assert train_kwargs["image_uri"] == IMAGE_URI
     assert train_kwargs["input_mode"] == "File"
     assert train_kwargs["tags"] == TAGS
@@ -793,7 +769,6 @@ def test_prepare_for_training_unique_job_name_generation(sagemaker_session):
         sagemaker_session=sagemaker_session,
         instance_count=INSTANCE_COUNT,
         instance_type=INSTANCE_TYPE,
-        enable_cloudwatch_metrics=True,
     )
     fw._prepare_for_training()
     first_job_name = fw._current_job_name
@@ -813,7 +788,6 @@ def test_prepare_for_training_force_name(sagemaker_session):
         instance_count=INSTANCE_COUNT,
         instance_type=INSTANCE_TYPE,
         base_job_name="some",
-        enable_cloudwatch_metrics=True,
     )
     fw._prepare_for_training(job_name="use_it")
     assert "use_it" == fw._current_job_name
@@ -828,7 +802,6 @@ def test_prepare_for_training_force_name_generation(strftime, sagemaker_session)
         instance_count=INSTANCE_COUNT,
         instance_type=INSTANCE_TYPE,
         base_job_name="some",
-        enable_cloudwatch_metrics=True,
     )
     fw.base_job_name = None
     fw._prepare_for_training()
@@ -851,7 +824,6 @@ def test_git_support_with_branch_and_commit_succeed(git_clone_repo, sagemaker_se
         sagemaker_session=sagemaker_session,
         instance_count=INSTANCE_COUNT,
         instance_type=INSTANCE_TYPE,
-        enable_cloudwatch_metrics=True,
     )
     fw.fit()
     git_clone_repo.assert_called_once_with(git_config, entry_point, None, [])
@@ -873,7 +845,6 @@ def test_git_support_with_branch_succeed(git_clone_repo, sagemaker_session):
         sagemaker_session=sagemaker_session,
         instance_count=INSTANCE_COUNT,
         instance_type=INSTANCE_TYPE,
-        enable_cloudwatch_metrics=True,
     )
     fw.fit()
     git_clone_repo.assert_called_once_with(git_config, entry_point, None, [])
@@ -896,7 +867,6 @@ def test_git_support_with_dependencies_succeed(git_clone_repo, sagemaker_session
         sagemaker_session=sagemaker_session,
         instance_count=INSTANCE_COUNT,
         instance_type=INSTANCE_TYPE,
-        enable_cloudwatch_metrics=True,
     )
     fw.fit()
     git_clone_repo.assert_called_once_with(git_config, entry_point, None, ["foo", "foo/bar"])
@@ -918,7 +888,6 @@ def test_git_support_without_branch_and_commit_succeed(git_clone_repo, sagemaker
         sagemaker_session=sagemaker_session,
         instance_count=INSTANCE_COUNT,
         instance_type=INSTANCE_TYPE,
-        enable_cloudwatch_metrics=True,
     )
     fw.fit()
     git_clone_repo.assert_called_once_with(git_config, entry_point, None, [])
@@ -934,7 +903,6 @@ def test_git_support_repo_not_provided(sagemaker_session):
         sagemaker_session=sagemaker_session,
         instance_count=INSTANCE_COUNT,
         instance_type=INSTANCE_TYPE,
-        enable_cloudwatch_metrics=True,
     )
     with pytest.raises(ValueError) as error:
         fw.fit()
@@ -951,7 +919,6 @@ def test_git_support_bad_repo_url_format(sagemaker_session):
         sagemaker_session=sagemaker_session,
         instance_count=INSTANCE_COUNT,
         instance_type=INSTANCE_TYPE,
-        enable_cloudwatch_metrics=True,
     )
     with pytest.raises(ValueError) as error:
         fw.fit()
@@ -973,7 +940,6 @@ def test_git_support_git_clone_fail(sagemaker_session):
         sagemaker_session=sagemaker_session,
         instance_count=INSTANCE_COUNT,
         instance_type=INSTANCE_TYPE,
-        enable_cloudwatch_metrics=True,
     )
     with pytest.raises(subprocess.CalledProcessError) as error:
         fw.fit()
@@ -995,7 +961,6 @@ def test_git_support_branch_not_exist(sagemaker_session):
         sagemaker_session=sagemaker_session,
         instance_count=INSTANCE_COUNT,
         instance_type=INSTANCE_TYPE,
-        enable_cloudwatch_metrics=True,
     )
     with pytest.raises(subprocess.CalledProcessError) as error:
         fw.fit()
@@ -1017,7 +982,6 @@ def test_git_support_commit_not_exist(sagemaker_session):
         sagemaker_session=sagemaker_session,
         instance_count=INSTANCE_COUNT,
         instance_type=INSTANCE_TYPE,
-        enable_cloudwatch_metrics=True,
     )
     with pytest.raises(subprocess.CalledProcessError) as error:
         fw.fit()
@@ -1037,7 +1001,6 @@ def test_git_support_entry_point_not_exist(sagemaker_session):
         sagemaker_session=sagemaker_session,
         instance_count=INSTANCE_COUNT,
         instance_type=INSTANCE_TYPE,
-        enable_cloudwatch_metrics=True,
     )
     with pytest.raises(ValueError) as error:
         fw.fit()
@@ -1058,7 +1021,6 @@ def test_git_support_source_dir_not_exist(sagemaker_session):
         sagemaker_session=sagemaker_session,
         instance_count=INSTANCE_COUNT,
         instance_type=INSTANCE_TYPE,
-        enable_cloudwatch_metrics=True,
     )
     with pytest.raises(ValueError) as error:
         fw.fit()
@@ -1080,7 +1042,6 @@ def test_git_support_dependencies_not_exist(sagemaker_session):
         sagemaker_session=sagemaker_session,
         instance_count=INSTANCE_COUNT,
         instance_type=INSTANCE_TYPE,
-        enable_cloudwatch_metrics=True,
     )
     with pytest.raises(ValueError) as error:
         fw.fit()
@@ -1111,7 +1072,6 @@ def test_git_support_with_username_password_no_2fa(git_clone_repo, sagemaker_ses
         sagemaker_session=sagemaker_session,
         instance_count=INSTANCE_COUNT,
         instance_type=INSTANCE_TYPE,
-        enable_cloudwatch_metrics=True,
     )
     fw.fit()
     git_clone_repo.assert_called_once_with(git_config, entry_point, None, [])
@@ -1142,7 +1102,6 @@ def test_git_support_with_token_2fa(git_clone_repo, sagemaker_session):
         sagemaker_session=sagemaker_session,
         instance_count=INSTANCE_COUNT,
         instance_type=INSTANCE_TYPE,
-        enable_cloudwatch_metrics=True,
     )
     fw.fit()
     git_clone_repo.assert_called_once_with(git_config, entry_point, None, [])
@@ -1167,7 +1126,6 @@ def test_git_support_ssh_no_passphrase_needed(git_clone_repo, sagemaker_session)
         sagemaker_session=sagemaker_session,
         instance_count=INSTANCE_COUNT,
         instance_type=INSTANCE_TYPE,
-        enable_cloudwatch_metrics=True,
     )
     fw.fit()
     git_clone_repo.assert_called_once_with(git_config, entry_point, None, [])
@@ -1190,7 +1148,6 @@ def test_git_support_ssh_passphrase_required(git_clone_repo, sagemaker_session):
         sagemaker_session=sagemaker_session,
         instance_count=INSTANCE_COUNT,
         instance_type=INSTANCE_TYPE,
-        enable_cloudwatch_metrics=True,
     )
     with pytest.raises(subprocess.CalledProcessError) as error:
         fw.fit()
@@ -1222,7 +1179,6 @@ def test_git_support_codecommit_with_username_and_password_succeed(
         sagemaker_session=sagemaker_session,
         instance_count=INSTANCE_COUNT,
         instance_type=INSTANCE_TYPE,
-        enable_cloudwatch_metrics=True,
     )
     fw.fit()
     git_clone_repo.assert_called_once_with(git_config, entry_point, None, [])
@@ -1247,7 +1203,6 @@ def test_git_support_codecommit_with_ssh_no_passphrase_needed(git_clone_repo, sa
         sagemaker_session=sagemaker_session,
         instance_count=INSTANCE_COUNT,
         instance_type=INSTANCE_TYPE,
-        # enable_cloudwatch_metrics=True,
     )
     fw.fit()
     git_clone_repo.assert_called_once_with(git_config, entry_point, None, [])
@@ -1263,14 +1218,12 @@ def test_init_with_source_dir_s3(strftime, sagemaker_session):
         sagemaker_session=sagemaker_session,
         instance_count=INSTANCE_COUNT,
         instance_type=INSTANCE_TYPE,
-        enable_cloudwatch_metrics=False,
     )
     fw._prepare_for_training()
 
     expected_hyperparameters = {
         "sagemaker_program": SCRIPT_NAME,
         "sagemaker_job_name": JOB_NAME,
-        "sagemaker_enable_cloudwatch_metrics": False,
         "sagemaker_container_log_level": logging.INFO,
         "sagemaker_submit_directory": "s3://location",
         "sagemaker_region": "us-west-2",
