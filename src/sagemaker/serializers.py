@@ -183,3 +183,20 @@ class JSONSerializer(BaseSerializer):
             return json.dumps(data.tolist())
 
         return json.dumps(data)
+
+
+class IdentitySerializer(BaseSerializer):
+    """Serialize data by returning data without modification."""
+
+    CONTENT_TYPE = "application/json"
+
+    def serialize(self, data):
+        """Return data without modification.
+
+        Args:
+            data (object): Data to be serialized.
+
+        Returns:
+            object: The unmodified data.
+        """
+        return data

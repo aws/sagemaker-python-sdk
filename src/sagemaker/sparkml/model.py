@@ -14,7 +14,6 @@
 from __future__ import absolute_import
 
 from sagemaker import Model, Predictor, Session, image_uris
-from sagemaker.content_types import CONTENT_TYPE_CSV
 from sagemaker.serializers import CSVSerializer
 
 framework_name = "sparkml-serving"
@@ -50,7 +49,6 @@ class SparkMLPredictor(Predictor):
             endpoint_name=endpoint_name,
             sagemaker_session=sagemaker_session,
             serializer=CSVSerializer(),
-            content_type=CONTENT_TYPE_CSV,
         )
 
 

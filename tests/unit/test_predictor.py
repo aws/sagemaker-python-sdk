@@ -24,6 +24,7 @@ ENDPOINT = "mxnet_endpoint"
 BUCKET_NAME = "mxnet_endpoint"
 DEFAULT_CONTENT_TYPE = "application/json"
 CSV_CONTENT_TYPE = "text/csv"
+DEFAULT_ACCEPT = "*/*"
 RETURN_VALUE = 0
 CSV_RETURN_VALUE = "1,2,3\r\n"
 PRODUCTION_VARIANT_1 = "PRODUCTION_VARIANT_1"
@@ -58,30 +59,13 @@ def test_predict_call_pass_through():
 
     assert sagemaker_session.sagemaker_runtime_client.invoke_endpoint.called
 
-    expected_request_args = {"Body": data, "EndpointName": ENDPOINT}
-    call_args, kwargs = sagemaker_session.sagemaker_runtime_client.invoke_endpoint.call_args
-    assert kwargs == expected_request_args
-
-    assert result == RETURN_VALUE
-
-
-def test_predict_call_with_headers():
-    sagemaker_session = empty_sagemaker_session()
-    predictor = Predictor(
-        ENDPOINT, sagemaker_session, content_type=DEFAULT_CONTENT_TYPE, accept=DEFAULT_CONTENT_TYPE
-    )
-
-    data = "untouched"
-    result = predictor.predict(data)
-
-    assert sagemaker_session.sagemaker_runtime_client.invoke_endpoint.called
-
     expected_request_args = {
-        "Accept": DEFAULT_CONTENT_TYPE,
+        "Accept": DEFAULT_ACCEPT,
         "Body": data,
         "ContentType": DEFAULT_CONTENT_TYPE,
         "EndpointName": ENDPOINT,
     }
+
     call_args, kwargs = sagemaker_session.sagemaker_runtime_client.invoke_endpoint.call_args
     assert kwargs == expected_request_args
 
@@ -90,9 +74,7 @@ def test_predict_call_with_headers():
 
 def test_predict_call_with_target_variant():
     sagemaker_session = empty_sagemaker_session()
-    predictor = Predictor(
-        ENDPOINT, sagemaker_session, content_type=DEFAULT_CONTENT_TYPE, accept=DEFAULT_CONTENT_TYPE
-    )
+    predictor = Predictor(ENDPOINT, sagemaker_session)
 
     data = "untouched"
     result = predictor.predict(data, target_variant=PRODUCTION_VARIANT_1)
@@ -100,7 +82,7 @@ def test_predict_call_with_target_variant():
     assert sagemaker_session.sagemaker_runtime_client.invoke_endpoint.called
 
     expected_request_args = {
-        "Accept": DEFAULT_CONTENT_TYPE,
+        "Accept": DEFAULT_ACCEPT,
         "Body": data,
         "ContentType": DEFAULT_CONTENT_TYPE,
         "EndpointName": ENDPOINT,
@@ -113,11 +95,9 @@ def test_predict_call_with_target_variant():
     assert result == RETURN_VALUE
 
 
-def test_multi_model_predict_call_with_headers():
+def test_multi_model_predict_call():
     sagemaker_session = empty_sagemaker_session()
-    predictor = Predictor(
-        ENDPOINT, sagemaker_session, content_type=DEFAULT_CONTENT_TYPE, accept=DEFAULT_CONTENT_TYPE
-    )
+    predictor = Predictor(ENDPOINT, sagemaker_session)
 
     data = "untouched"
     result = predictor.predict(data, target_model="model.tar.gz")
@@ -125,7 +105,7 @@ def test_multi_model_predict_call_with_headers():
     assert sagemaker_session.sagemaker_runtime_client.invoke_endpoint.called
 
     expected_request_args = {
-        "Accept": DEFAULT_CONTENT_TYPE,
+        "Accept": DEFAULT_ACCEPT,
         "Body": data,
         "ContentType": DEFAULT_CONTENT_TYPE,
         "EndpointName": ENDPOINT,
@@ -157,15 +137,9 @@ def json_sagemaker_session():
     return ims
 
 
-def test_predict_call_with_headers_and_json():
+def test_predict_call_with_json():
     sagemaker_session = json_sagemaker_session()
-    predictor = Predictor(
-        ENDPOINT,
-        sagemaker_session,
-        content_type="not/json",
-        accept="also/not-json",
-        serializer=JSONSerializer(),
-    )
+    predictor = Predictor(ENDPOINT, sagemaker_session, serializer=JSONSerializer())
 
     data = [1, 2]
     result = predictor.predict(data)
@@ -173,9 +147,9 @@ def test_predict_call_with_headers_and_json():
     assert sagemaker_session.sagemaker_runtime_client.invoke_endpoint.called
 
     expected_request_args = {
-        "Accept": "also/not-json",
+        "Accept": DEFAULT_ACCEPT,
         "Body": json.dumps(data),
-        "ContentType": "not/json",
+        "ContentType": "application/json",
         "EndpointName": ENDPOINT,
     }
     call_args, kwargs = sagemaker_session.sagemaker_runtime_client.invoke_endpoint.call_args
@@ -204,11 +178,9 @@ def ret_csv_sagemaker_session():
     return ims
 
 
-def test_predict_call_with_headers_and_csv():
+def test_predict_call_with_csv():
     sagemaker_session = ret_csv_sagemaker_session()
-    predictor = Predictor(
-        ENDPOINT, sagemaker_session, accept=CSV_CONTENT_TYPE, serializer=CSVSerializer()
-    )
+    predictor = Predictor(ENDPOINT, sagemaker_session, serializer=CSVSerializer())
 
     data = [1, 2]
     result = predictor.predict(data)
@@ -216,7 +188,7 @@ def test_predict_call_with_headers_and_csv():
     assert sagemaker_session.sagemaker_runtime_client.invoke_endpoint.called
 
     expected_request_args = {
-        "Accept": CSV_CONTENT_TYPE,
+        "Accept": DEFAULT_ACCEPT,
         "Body": "1,2",
         "ContentType": CSV_CONTENT_TYPE,
         "EndpointName": ENDPOINT,

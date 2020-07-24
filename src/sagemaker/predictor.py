@@ -13,9 +13,9 @@
 """Placeholder docstring"""
 from __future__ import print_function, absolute_import
 
-from sagemaker.deserializers import BaseDeserializer
+from sagemaker.deserializers import BaseDeserializer, BytesDeserializer
 from sagemaker.model_monitor import DataCaptureConfig
-from sagemaker.serializers import BaseSerializer
+from sagemaker.serializers import BaseSerializer, IdentitySerializer
 from sagemaker.session import production_variant, Session
 from sagemaker.utils import name_from_base
 
@@ -33,10 +33,8 @@ class Predictor(object):
         self,
         endpoint_name,
         sagemaker_session=None,
-        serializer=None,
-        deserializer=None,
-        content_type=None,
-        accept=None,
+        serializer=IdentitySerializer(),
+        deserializer=BytesDeserializer(),
     ):
         """Initialize a ``Predictor``.
 
@@ -55,14 +53,10 @@ class Predictor(object):
                 chain.
             serializer (sagemaker.serializers.BaseSerializer): A serializer
                 object, used to encode data for an inference endpoint
-                (default: None).
+                (default: ``IdentitySerializer()``).
             deserializer (sagemaker.deserializers.BaseDeserializer): A
                 deserializer object, used to decode data from an inference
-                endpoint (default: None).
-            content_type (str): The invocation's "ContentType", overriding any
-                ``CONTENT_TYPE`` from the serializer (default: None).
-            accept (str): The invocation's "Accept", overriding any accept from
-                the deserializer (default: None).
+                endpoint (default: ``BytesDeserializer()``).
         """
         if serializer is not None and not isinstance(serializer, BaseSerializer):
             serializer = LegacySerializer(serializer)
@@ -73,8 +67,8 @@ class Predictor(object):
         self.sagemaker_session = sagemaker_session or Session()
         self.serializer = serializer
         self.deserializer = deserializer
-        self.content_type = content_type or getattr(serializer, "CONTENT_TYPE", None)
-        self.accept = accept or getattr(deserializer, "ACCEPT", None)
+        self.content_type = serializer.CONTENT_TYPE
+        self.accept = deserializer.ACCEPT
         self._endpoint_config_name = self._get_endpoint_config_name()
         self._model_names = self._get_model_names()
 
@@ -114,14 +108,10 @@ class Predictor(object):
             response:
         """
         response_body = response["Body"]
-        if self.deserializer is not None:
-            if not isinstance(self.deserializer, BaseDeserializer):
-                self.deserializer = LegacyDeserializer(self.deserializer)
-            # It's the deserializer's responsibility to close the stream
-            return self.deserializer.deserialize(response_body, response["ContentType"])
-        data = response_body.read()
-        response_body.close()
-        return data
+        content_type = response.get("ContentType", "application/octet-stream")
+        if not isinstance(self.deserializer, BaseDeserializer):
+            self.deserializer = LegacyDeserializer(self.deserializer)
+        return self.deserializer.deserialize(response_body, content_type)
 
     def _create_request_args(self, data, initial_args=None, target_model=None, target_variant=None):
         """
@@ -136,10 +126,10 @@ class Predictor(object):
         if "EndpointName" not in args:
             args["EndpointName"] = self.endpoint_name
 
-        if self.content_type and "ContentType" not in args:
+        if "ContentType" not in args:
             args["ContentType"] = self.content_type
 
-        if self.accept and "Accept" not in args:
+        if "Accept" not in args:
             args["Accept"] = self.accept
 
         if target_model:
@@ -148,10 +138,9 @@ class Predictor(object):
         if target_variant:
             args["TargetVariant"] = target_variant
 
-        if self.serializer is not None:
-            if not isinstance(self.serializer, BaseSerializer):
-                self.serializer = LegacySerializer(self.serializer)
-            data = self.serializer.serialize(data)
+        if not isinstance(self.serializer, BaseSerializer):
+            self.serializer = LegacySerializer(self.serializer)
+        data = self.serializer.serialize(data)
 
         args["Body"] = data
         return args

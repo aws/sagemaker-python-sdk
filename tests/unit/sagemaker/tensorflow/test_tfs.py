@@ -20,7 +20,7 @@ import mock
 import pytest
 from mock import Mock, patch
 
-from sagemaker.serializers import CSVSerializer
+from sagemaker.serializers import CSVSerializer, IdentitySerializer
 from sagemaker.tensorflow import TensorFlow, TensorFlowModel, TensorFlowPredictor
 
 JSON_CONTENT_TYPE = "application/json"
@@ -318,9 +318,8 @@ def test_predictor(sagemaker_session):
 
 
 def test_predictor_jsons(sagemaker_session):
-    predictor = TensorFlowPredictor(
-        "endpoint", sagemaker_session, serializer=None, content_type="application/jsons"
-    )
+    predictor = TensorFlowPredictor("endpoint", sagemaker_session, serializer=IdentitySerializer())
+    predictor.content_type = "application/jsons"
 
     mock_response(json.dumps(PREDICT_RESPONSE).encode("utf-8"), sagemaker_session)
     result = predictor.predict("[1.0, 2.0, 3.0]\n[4.0, 5.0, 6.0]")
