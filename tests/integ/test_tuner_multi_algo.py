@@ -21,6 +21,7 @@ from sagemaker import image_uris, utils
 from sagemaker.analytics import HyperparameterTuningJobAnalytics
 from sagemaker.deserializers import JSONDeserializer
 from sagemaker.estimator import Estimator
+from sagemaker.serializers import BaseSerializer
 from sagemaker.tuner import ContinuousParameter, IntegerParameter, HyperparameterTuner
 from tests.integ import datasets, DATA_DIR, TUNING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
@@ -213,14 +214,17 @@ def _create_training_inputs(sagemaker_session):
 
 
 def _make_prediction(predictor, data):
-    predictor.serializer = _prediction_data_serializer
-    predictor.content_type = "application/json"
+    predictor.serializer = PredictionDataSerializer()
     predictor.deserializer = JSONDeserializer()
     return predictor.predict(data)
 
 
-def _prediction_data_serializer(data):
-    js = {"instances": []}
-    for row in data:
-        js["instances"].append({"features": row.tolist()})
-    return json.dumps(js)
+class PredictionDataSerializer(BaseSerializer):
+
+    CONTENT_TYPE = "application/json"
+
+    def serialize(self, data):
+        js = {"instances": []}
+        for row in data:
+            js["instances"].append({"features": row.tolist()})
+        return json.dumps(js)
