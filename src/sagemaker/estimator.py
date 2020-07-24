@@ -31,6 +31,7 @@ from sagemaker.debugger import DebuggerHookConfig
 from sagemaker.debugger import TensorBoardOutputConfig  # noqa: F401 # pylint: disable=unused-import
 from sagemaker.debugger import get_rule_container_image_uri
 from sagemaker.s3 import S3Uploader
+from sagemaker.sdk_metrics import SDKMetrics
 
 from sagemaker.fw_utils import (
     create_image_uri,
@@ -493,7 +494,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         """
         self._prepare_for_training(job_name=job_name)
 
-        self.latest_training_job = _TrainingJob.start_new(self, inputs, experiment_config)
+        self.latest_training_job = _TrainingJob.start_new(self, inputs, experiment_config,
+                                                          SDKMetrics(__name__, "fit"))
         self.jobs.append(self.latest_training_job)
         if wait:
             self.latest_training_job.wait(logs=logs)
@@ -988,7 +990,7 @@ class _TrainingJob(_Job):
     """Placeholder docstring"""
 
     @classmethod
-    def start_new(cls, estimator, inputs, experiment_config):
+    def start_new(cls, estimator, inputs, experiment_config, sdk_metrics=None):
         """Create a new Amazon SageMaker training job from the estimator.
 
         Args:
@@ -1065,7 +1067,7 @@ class _TrainingJob(_Job):
         if estimator.enable_sagemaker_metrics is not None:
             train_args["enable_sagemaker_metrics"] = estimator.enable_sagemaker_metrics
 
-        estimator.sagemaker_session.train(**train_args)
+        estimator.sagemaker_session.train(**train_args, sdk_metrics=sdk_metrics)
 
         return cls(estimator.sagemaker_session, estimator._current_job_name)
 

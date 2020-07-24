@@ -52,7 +52,9 @@ def determine_prefix(user_agent=""):
 def prepend_user_agent(client):
     """
     Args:
-        client:
+        client: boto3 client (e.g. sagemaker or sagemaker-runtime client)
+    Returns:
+        (str): Prepended user_agent string
     """
     prefix = determine_prefix(client._client_config.user_agent)
 
@@ -60,3 +62,22 @@ def prepend_user_agent(client):
         client._client_config.user_agent = prefix
     else:
         client._client_config.user_agent = "{} {}".format(prefix, client._client_config.user_agent)
+
+    return client._client_config.user_agent
+
+
+def update_sdk_metrics(client, default_user_agent, sdk_metrics):
+    """
+    Args:
+        client (boto3.*.Client): boto3 client (e.g. boto3.SageMaker.Client or
+            boto3.SageMakerRuntime.Client client)
+        default_user_agent (str): default user agent string without any call specific SDK metrics
+        sdk_metrics (sagemaker.SDKMetrics): an object of SDKMetrics specific to a call
+    """
+    try:
+        client._client_config.user_agent = "{} {}".format(
+            default_user_agent, sdk_metrics.get_metrics_string()
+        )
+    except:
+        # Any telemetry is secondary and we DO want to silently ignore failures.
+        pass

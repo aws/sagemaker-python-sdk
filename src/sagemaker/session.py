@@ -31,7 +31,7 @@ from sagemaker import vpc_utils
 
 # import s3_input for backward compatibility
 from sagemaker.inputs import s3_input  # noqa # pylint: disable=unused-import
-from sagemaker.user_agent import prepend_user_agent
+from sagemaker.user_agent import prepend_user_agent, update_sdk_metrics
 from sagemaker.utils import (
     name_from_image,
     secondary_training_status_changed,
@@ -132,7 +132,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             )
 
         self.sagemaker_client = sagemaker_client or self.boto_session.client("sagemaker")
-        prepend_user_agent(self.sagemaker_client)
+        self._sagemaker_client_default_user_agent = prepend_user_agent(self.sagemaker_client)
 
         if sagemaker_runtime_client is not None:
             self.sagemaker_runtime_client = sagemaker_runtime_client
@@ -142,9 +142,27 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 "runtime.sagemaker", config=config
             )
 
-        prepend_user_agent(self.sagemaker_runtime_client)
+        self._sagemaker_runtime_client_default_user_agent = prepend_user_agent(
+            self.sagemaker_runtime_client
+        )
 
         self.local_mode = False
+
+    def sagemaker_client_sdk_metrics(self, sdk_metrics):
+        """
+            sdk_metrics (sagemaker.SDKMetrics): An object that defines
+                the Python SDK telemetry metrics used to track Python SDK usage
+        Returns:
+            boto3.SageMaker.Client: Client which makes Amazon SageMaker service
+                calls other than ``InvokeEndpoint`` with updated user_agent string
+                with sdk_metrics.
+        """
+        update_sdk_metrics(
+            self.sagemaker_client,
+            self._sagemaker_client_default_user_agent,
+            sdk_metrics
+        )
+        return self.sagemaker_client
 
     @property
     def boto_region_name(self):
@@ -440,6 +458,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         debugger_hook_config=None,
         tensorboard_output_config=None,
         enable_sagemaker_metrics=None,
+        sdk_metrics=None,
     ):
         """Create an Amazon SageMaker training job.
 
@@ -509,7 +528,6 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 Series. For more information see:
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_AlgorithmSpecification.html#SageMaker-Type-AlgorithmSpecification-EnableSageMakerMetricsTimeSeries
                 (default: ``None``).
-
         Returns:
             str: ARN of the training job, if it is created.
         """
@@ -587,7 +605,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         LOGGER.info("Creating training-job with name: %s", job_name)
         LOGGER.debug("train request: %s", json.dumps(train_request, indent=4))
-        self.sagemaker_client.create_training_job(**train_request)
+
+        self.sagemaker_client_sdk_metrics(sdk_metrics=sdk_metrics)\
+            .create_training_job(**train_request)
 
     def process(
         self,
@@ -664,7 +684,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         LOGGER.info("Creating processing-job with name %s", job_name)
         LOGGER.debug("process request: %s", json.dumps(process_request, indent=4))
-        self.sagemaker_client.create_processing_job(**process_request)
+        self.sagemaker_client_sdk_metrics([]).create_processing_job(**process_request)
 
     def create_monitoring_schedule(
         self,
