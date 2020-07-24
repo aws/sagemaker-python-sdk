@@ -255,10 +255,7 @@ class SerdeImportFromPredictorRenamer(Modifier):
             else:
                 i += 1
 
-        if not node.names:
-            return None
-
-        return node
+        return node if node.names else None
 
 
 class SerdeImportFromAmazonCommonRenamer(Modifier):
