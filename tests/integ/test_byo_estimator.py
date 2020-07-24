@@ -20,6 +20,7 @@ import pytest
 import sagemaker
 from sagemaker import image_uris
 from sagemaker.estimator import Estimator
+from sagemaker.serializers import BaseSerializer
 from sagemaker.utils import unique_name_from_base
 from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES, datasets
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
@@ -35,11 +36,15 @@ def training_set():
     return datasets.one_p_mnist()
 
 
-def fm_serializer(data):
-    js = {"instances": []}
-    for row in data:
-        js["instances"].append({"features": row.tolist()})
-    return json.dumps(js)
+class _FactorizationMachineSerializer(BaseSerializer):
+
+    CONTENT_TYPE = "application/json"
+
+    def serialize(self, data):
+        js = {"instances": []}
+        for row in data:
+            js["instances"].append({"features": row.tolist()})
+        return json.dumps(js)
 
 
 @pytest.mark.canary_quick
@@ -84,8 +89,7 @@ def test_byo_estimator(sagemaker_session, region, cpu_instance_type, training_se
     with timeout_and_delete_endpoint_by_name(job_name, sagemaker_session):
         model = estimator.create_model()
         predictor = model.deploy(1, cpu_instance_type, endpoint_name=job_name)
-        predictor.serializer = fm_serializer
-        predictor.content_type = "application/json"
+        predictor.serializer = _FactorizationMachineSerializer()
         predictor.deserializer = sagemaker.deserializers.JSONDeserializer()
 
         result = predictor.predict(training_set[0][:10])
@@ -130,8 +134,7 @@ def test_async_byo_estimator(sagemaker_session, region, cpu_instance_type, train
         )
         model = estimator.create_model()
         predictor = model.deploy(1, cpu_instance_type, endpoint_name=endpoint_name)
-        predictor.serializer = fm_serializer
-        predictor.content_type = "application/json"
+        predictor.serializer = _FactorizationMachineSerializer()
         predictor.deserializer = sagemaker.deserializers.JSONDeserializer()
 
         result = predictor.predict(training_set[0][:10])
