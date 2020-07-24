@@ -31,11 +31,11 @@ class BaseDeserializer(abc.ABC):
     """
 
     @abc.abstractmethod
-    def deserialize(self, data, content_type):
+    def deserialize(self, stream, content_type):
         """Deserialize data received from an inference endpoint.
 
         Args:
-            data (object): Data to be deserialized.
+            stream (botocore.response.StreamingBody): Data to be deserialized.
             content_type (str): The MIME type of the data.
 
         Returns:
@@ -61,20 +61,20 @@ class StringDeserializer(BaseDeserializer):
         """
         self.encoding = encoding
 
-    def deserialize(self, data, content_type):
+    def deserialize(self, stream, content_type):
         """Deserialize data from an inference endpoint into a decoded string.
 
         Args:
-            data (object): Data to be deserialized.
+            stream (botocore.response.StreamingBody): Data to be deserialized.
             content_type (str): The MIME type of the data.
 
         Returns:
             str: The data deserialized into a decoded string.
         """
         try:
-            return data.read().decode(self.encoding)
+            return stream.read().decode(self.encoding)
         finally:
-            data.close()
+            stream.close()
 
 
 class BytesDeserializer(BaseDeserializer):
@@ -82,20 +82,20 @@ class BytesDeserializer(BaseDeserializer):
 
     ACCEPT = "*/*"
 
-    def deserialize(self, data, content_type):
+    def deserialize(self, stream, content_type):
         """Read a stream of bytes returned from an inference endpoint.
 
         Args:
-            data (object): A stream of bytes.
+            stream (botocore.response.StreamingBody): A stream of bytes.
             content_type (str): The MIME type of the data.
 
         Returns:
             bytes: The bytes object read from the stream.
         """
         try:
-            return data.read()
+            return stream.read()
         finally:
-            data.close()
+            stream.close()
 
 
 class CSVDeserializer(BaseDeserializer):
@@ -111,11 +111,11 @@ class CSVDeserializer(BaseDeserializer):
         """
         self.encoding = encoding
 
-    def deserialize(self, data, content_type):
+    def deserialize(self, stream, content_type):
         """Deserialize data from an inference endpoint into a list of lists.
 
         Args:
-            data (botocore.response.StreamingBody): Data to be deserialized.
+            stream (botocore.response.StreamingBody): Data to be deserialized.
             content_type (str): The MIME type of the data.
 
         Returns:
@@ -123,10 +123,10 @@ class CSVDeserializer(BaseDeserializer):
                 contents of a CSV file.
         """
         try:
-            decoded_string = data.read().decode(self.encoding)
+            decoded_string = stream.read().decode(self.encoding)
             return list(csv.reader(decoded_string.splitlines()))
         finally:
-            data.close()
+            stream.close()
 
 
 class StreamDeserializer(BaseDeserializer):
@@ -138,17 +138,17 @@ class StreamDeserializer(BaseDeserializer):
 
     ACCEPT = "*/*"
 
-    def deserialize(self, data, content_type):
+    def deserialize(self, stream, content_type):
         """Returns a stream of the response body and the MIME type of the data.
 
         Args:
-            data (object): A stream of bytes.
+            stream (botocore.response.StreamingBody): A stream of bytes.
             content_type (str): The MIME type of the data.
 
         Returns:
             tuple: A two-tuple containing the stream and content-type.
         """
-        return data, content_type
+        return stream, content_type
 
 
 class NumpyDeserializer(BaseDeserializer):
@@ -164,11 +164,11 @@ class NumpyDeserializer(BaseDeserializer):
         """
         self.dtype = dtype
 
-    def deserialize(self, data, content_type):
+    def deserialize(self, stream, content_type):
         """Deserialize data from an inference endpoint into a NumPy array.
 
         Args:
-            data (botocore.response.StreamingBody): Data to be deserialized.
+            stream (botocore.response.StreamingBody): Data to be deserialized.
             content_type (str): The MIME type of the data.
 
         Returns:
@@ -177,14 +177,14 @@ class NumpyDeserializer(BaseDeserializer):
         try:
             if content_type == "text/csv":
                 return np.genfromtxt(
-                    codecs.getreader("utf-8")(data), delimiter=",", dtype=self.dtype
+                    codecs.getreader("utf-8")(stream), delimiter=",", dtype=self.dtype
                 )
             if content_type == "application/json":
-                return np.array(json.load(codecs.getreader("utf-8")(data)), dtype=self.dtype)
+                return np.array(json.load(codecs.getreader("utf-8")(stream)), dtype=self.dtype)
             if content_type == "application/x-npy":
-                return np.load(io.BytesIO(data.read()))
+                return np.load(io.BytesIO(stream.read()))
         finally:
-            data.close()
+            stream.close()
 
         raise ValueError("%s cannot read content type %s." % (__class__.__name__, content_type))
 
@@ -194,17 +194,17 @@ class JSONDeserializer(BaseDeserializer):
 
     ACCEPT = "application/json"
 
-    def deserialize(self, data, content_type):
+    def deserialize(self, stream, content_type):
         """Deserialize JSON data from an inference endpoint into a Python object.
 
         Args:
-            data (botocore.response.StreamingBody): Data to be deserialized.
+            stream (botocore.response.StreamingBody): Data to be deserialized.
             content_type (str): The MIME type of the data.
 
         Returns:
             object: The JSON-formatted data deserialized into a Python object.
         """
         try:
-            return json.load(codecs.getreader("utf-8")(data))
+            return json.load(codecs.getreader("utf-8")(stream))
         finally:
-            data.close()
+            stream.close()
