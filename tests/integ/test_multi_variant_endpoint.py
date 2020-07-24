@@ -23,7 +23,6 @@ from sagemaker import image_uris
 from sagemaker.s3 import S3Uploader
 from sagemaker.session import production_variant
 from sagemaker.sparkml import SparkMLModel
-from sagemaker.content_types import CONTENT_TYPE_CSV
 from sagemaker.utils import unique_name_from_base
 from sagemaker.predictor import Predictor
 from sagemaker.serializers import CSVSerializer
@@ -153,8 +152,8 @@ def test_target_variant_invocation(sagemaker_session, multi_variant_endpoint):
     response = sagemaker_session.sagemaker_runtime_client.invoke_endpoint(
         EndpointName=multi_variant_endpoint.endpoint_name,
         Body=TEST_CSV_DATA,
-        ContentType=CONTENT_TYPE_CSV,
-        Accept=CONTENT_TYPE_CSV,
+        ContentType="text/csv",
+        Accept="text/csv",
         TargetVariant=TEST_VARIANT_1,
     )
     assert response["InvokedProductionVariant"] == TEST_VARIANT_1
@@ -162,8 +161,8 @@ def test_target_variant_invocation(sagemaker_session, multi_variant_endpoint):
     response = sagemaker_session.sagemaker_runtime_client.invoke_endpoint(
         EndpointName=multi_variant_endpoint.endpoint_name,
         Body=TEST_CSV_DATA,
-        ContentType=CONTENT_TYPE_CSV,
-        Accept=CONTENT_TYPE_CSV,
+        ContentType="text/csv",
+        Accept="text/csv",
         TargetVariant=TEST_VARIANT_2,
     )
     assert response["InvokedProductionVariant"] == TEST_VARIANT_2
@@ -174,8 +173,8 @@ def test_predict_invocation_with_target_variant(sagemaker_session, multi_variant
         endpoint_name=multi_variant_endpoint.endpoint_name,
         sagemaker_session=sagemaker_session,
         serializer=CSVSerializer(),
-        content_type=CONTENT_TYPE_CSV,
-        accept=CONTENT_TYPE_CSV,
+        content_type="text/csv",
+        accept="text/csv",
     )
 
     # Validate that no exception is raised when the target_variant is specified.
@@ -191,8 +190,8 @@ def test_variant_traffic_distribution(sagemaker_session, multi_variant_endpoint)
         response = sagemaker_session.sagemaker_runtime_client.invoke_endpoint(
             EndpointName=multi_variant_endpoint.endpoint_name,
             Body=TEST_CSV_DATA,
-            ContentType=CONTENT_TYPE_CSV,
-            Accept=CONTENT_TYPE_CSV,
+            ContentType="text/csv",
+            Accept="text/csv",
         )
         if response["InvokedProductionVariant"] == TEST_VARIANT_1:
             variant_1_invocation_count += 1
@@ -274,8 +273,8 @@ def test_target_variant_invocation_local_mode(sagemaker_session, multi_variant_e
     response = sagemaker_session.sagemaker_runtime_client.invoke_endpoint(
         EndpointName=multi_variant_endpoint.endpoint_name,
         Body=TEST_CSV_DATA,
-        ContentType=CONTENT_TYPE_CSV,
-        Accept=CONTENT_TYPE_CSV,
+        ContentType="text/csv",
+        Accept="text/csv",
         TargetVariant=TEST_VARIANT_1,
     )
     assert response["InvokedProductionVariant"] == TEST_VARIANT_1
@@ -283,8 +282,8 @@ def test_target_variant_invocation_local_mode(sagemaker_session, multi_variant_e
     response = sagemaker_session.sagemaker_runtime_client.invoke_endpoint(
         EndpointName=multi_variant_endpoint.endpoint_name,
         Body=TEST_CSV_DATA,
-        ContentType=CONTENT_TYPE_CSV,
-        Accept=CONTENT_TYPE_CSV,
+        ContentType="text/csv",
+        Accept="text/csv",
         TargetVariant=TEST_VARIANT_2,
     )
     assert response["InvokedProductionVariant"] == TEST_VARIANT_2
@@ -302,8 +301,8 @@ def test_predict_invocation_with_target_variant_local_mode(
         endpoint_name=multi_variant_endpoint.endpoint_name,
         sagemaker_session=sagemaker_session,
         serializer=CSVSerializer(),
-        content_type=CONTENT_TYPE_CSV,
-        accept=CONTENT_TYPE_CSV,
+        content_type="text/csv",
+        accept="text/csv",
     )
 
     # Validate that no exception is raised when the target_variant is specified.

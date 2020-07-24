@@ -225,7 +225,6 @@ class MXNet(Framework):
             framework_version=self.framework_version,
             py_version=self.py_version,
             source_dir=(source_dir or self._model_source_dir()),
-            enable_cloudwatch_metrics=self.enable_cloudwatch_metrics,
             container_log_level=self.container_log_level,
             code_location=self.code_location,
             model_server_workers=model_server_workers,
