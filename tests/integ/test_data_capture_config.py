@@ -32,7 +32,6 @@ MAX_RUNTIME_IN_SECONDS = 2 * 60 * 60
 ENVIRONMENT = {"env_key_1": "env_value_1"}
 TAGS = [{"Key": "tag_key_1", "Value": "tag_value_1"}]
 NETWORK_CONFIG = NetworkConfig(enable_network_isolation=True)
-ENABLE_CLOUDWATCH_METRICS = True
 
 CUSTOM_SAMPLING_PERCENTAGE = 10
 CUSTOM_CAPTURE_OPTIONS = ["REQUEST"]

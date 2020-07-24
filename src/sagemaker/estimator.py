@@ -17,7 +17,6 @@ import json
 import logging
 import os
 import uuid
-import warnings
 from abc import ABCMeta
 from abc import abstractmethod
 
@@ -48,7 +47,6 @@ from sagemaker.model import Model, NEO_ALLOWED_FRAMEWORKS
 from sagemaker.model import (
     SCRIPT_PARAM_NAME,
     DIR_PARAM_NAME,
-    CLOUDWATCH_METRICS_PARAM_NAME,
     CONTAINER_LOG_LEVEL_PARAM_NAME,
     JOB_NAME_PARAM_NAME,
     SAGEMAKER_REGION_PARAM_NAME,
@@ -1428,7 +1426,6 @@ class Framework(EstimatorBase):
         entry_point,
         source_dir=None,
         hyperparameters=None,
-        enable_cloudwatch_metrics=False,
         container_log_level=logging.INFO,
         code_location=None,
         image_uri=None,
@@ -1486,9 +1483,6 @@ class Framework(EstimatorBase):
                 SageMaker. For convenience, this accepts other types for keys
                 and values, but ``str()`` will be called to convert them before
                 training.
-            enable_cloudwatch_metrics (bool): [DEPRECATED] Now there are
-                cloudwatch metrics emitted by all SageMaker training jobs. This
-                will be ignored for now and removed in a further release.
             container_log_level (int): Log level to use within the container
                 (default: logging.INFO). Valid values are defined in the Python
                 logging module.
@@ -1619,12 +1613,6 @@ class Framework(EstimatorBase):
         self.dependencies = dependencies or []
         self.uploaded_code = None
 
-        if enable_cloudwatch_metrics:
-            warnings.warn(
-                "enable_cloudwatch_metrics is now deprecated and will be removed in the future.",
-                DeprecationWarning,
-            )
-        self.enable_cloudwatch_metrics = False
         self.container_log_level = container_log_level
         self.code_location = code_location
         self.image_uri = image_uri
@@ -1682,7 +1670,6 @@ class Framework(EstimatorBase):
         # Modify hyperparameters in-place to point to the right code directory and script URIs
         self._hyperparameters[DIR_PARAM_NAME] = code_dir
         self._hyperparameters[SCRIPT_PARAM_NAME] = script
-        self._hyperparameters[CLOUDWATCH_METRICS_PARAM_NAME] = self.enable_cloudwatch_metrics
         self._hyperparameters[CONTAINER_LOG_LEVEL_PARAM_NAME] = self.container_log_level
         self._hyperparameters[JOB_NAME_PARAM_NAME] = self._current_job_name
         self._hyperparameters[SAGEMAKER_REGION_PARAM_NAME] = self.sagemaker_session.boto_region_name
@@ -1793,9 +1780,6 @@ class Framework(EstimatorBase):
             init_params["hyperparameters"].get(SCRIPT_PARAM_NAME)
         )
         init_params["source_dir"] = json.loads(init_params["hyperparameters"].get(DIR_PARAM_NAME))
-        init_params["enable_cloudwatch_metrics"] = json.loads(
-            init_params["hyperparameters"].get(CLOUDWATCH_METRICS_PARAM_NAME)
-        )
         init_params["container_log_level"] = json.loads(
             init_params["hyperparameters"].get(CONTAINER_LOG_LEVEL_PARAM_NAME)
         )

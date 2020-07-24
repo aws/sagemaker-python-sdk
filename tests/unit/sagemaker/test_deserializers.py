@@ -13,8 +13,10 @@
 from __future__ import absolute_import
 
 import io
+import json
 
 import numpy as np
+import pandas as pd
 import pytest
 
 from sagemaker.deserializers import (
@@ -24,6 +26,7 @@ from sagemaker.deserializers import (
     StreamDeserializer,
     NumpyDeserializer,
     JSONDeserializer,
+    PandasDeserializer,
 )
 
 
@@ -171,3 +174,25 @@ def test_json_deserializer_invalid_data(json_deserializer):
     with pytest.raises(ValueError) as error:
         json_deserializer.deserialize(io.BytesIO(b"[[1]"), "application/json")
     assert "column" in str(error)
+
+
+@pytest.fixture
+def pandas_deserializer():
+    return PandasDeserializer()
+
+
+def test_pandas_deserializer_json(pandas_deserializer):
+    data = {"col 1": {"row 1": "a", "row 2": "c"}, "col 2": {"row 1": "b", "row 2": "d"}}
+    stream = io.StringIO(json.dumps(data))
+    result = pandas_deserializer.deserialize(stream, "application/json")
+    expected = pd.DataFrame(
+        [["a", "b"], ["c", "d"]], index=["row 1", "row 2"], columns=["col 1", "col 2"]
+    )
+    assert result.equals(expected)
+
+
+def test_pandas_deserializer_csv(pandas_deserializer):
+    stream = io.StringIO("col 1,col 2\na,b\nc,d")
+    result = pandas_deserializer.deserialize(stream, "text/csv")
+    expected = pd.DataFrame([["a", "b"], ["c", "d"]], columns=["col 1", "col 2"])
+    assert result.equals(expected)

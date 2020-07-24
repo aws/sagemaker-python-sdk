@@ -82,6 +82,27 @@ following methods:
 
 Please specify content types in a serializer or deserializer class instead.
 
+``sagemaker.content_types``
+---------------------------
+
+The ``sagemaker.content_types`` module is removed in v2.0 and later of the
+SageMaker Python SDK.
+
+Instead of importing constants from ``sagemaker.content_types``, explicitly
+write MIME types as a string,
+
++-------------------------------+--------------------------------+
+| v1.x                          | v2.0 and later                 |
++===============================+================================+
+| ``CONTENT_TYPE_JSON``         | ``"application/json"``         |
++-------------------------------+--------------------------------+
+| ``CONTENT_TYPE_CSV``          | ``"text/csv"``                 |
++-------------------------------+--------------------------------+
+| ``CONTENT_TYPE_OCTET_STREAM`` | ``"application/octet-stream"`` |
++-------------------------------+--------------------------------+
+| ``CONTENT_TYPE_NPY``          | ``"application/x-npy"``        |
++-------------------------------+--------------------------------+
+
 Require ``framework_version`` and ``py_version`` for Frameworks
 ===============================================================
 
