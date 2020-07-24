@@ -159,7 +159,7 @@ class SerdeConstructorRenamer(Modifier):
             return node
 
         namespace_name = NEW_CLASS_NAME_TO_NAMESPACES[new_class_name][0]
-        subpackage_name = namespace_name[namespace_name.find(".") + 1 :]
+        subpackage_name = namespace_name.split(".")[1]
         assert subpackage_name in {"serializers", "deserializers"}
         return pasta.parse("%s.%s()" % (subpackage_name, new_class_name)).body[0].value
 
