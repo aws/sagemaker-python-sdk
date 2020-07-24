@@ -24,6 +24,7 @@ from sagemaker.serializers import (
     CSVSerializer,
     NumpySerializer,
     JSONSerializer,
+    IdentitySerializer,
     SparseMatrixSerializer,
 )
 from tests.unit import DATA_DIR
@@ -233,6 +234,15 @@ def test_json_serializer_csv_buffer(json_serializer):
         csv_file.seek(0)
         result = json_serializer.serialize(csv_file)
         assert result == validation_value
+
+
+@pytest.fixture
+def identity_serializer():
+    return IdentitySerializer()
+
+
+def test_identity_serializer(identity_serializer):
+    assert identity_serializer.serialize(b"{}") == b"{}"
 
 
 @pytest.fixture
