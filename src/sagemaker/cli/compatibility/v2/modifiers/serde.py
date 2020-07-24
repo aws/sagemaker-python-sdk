@@ -37,9 +37,9 @@ OLD_CLASS_NAME_TO_NAMESPACES = {
     "_NumpyDeserializer": ("sagemaker.predictor",),
     "_JsonDeserializer": ("sagemaker.predictor",),
 }
-OLD_CLASS_NAMES_TO_NAMESPACES.update({
-    class_name: ("sagemaker.amazon.common",) for class_name in OLD_AMAZON_CLASS_NAMES
-})
+OLD_CLASS_NAME_TO_NAMESPACES.update(
+    {class_name: ("sagemaker.amazon.common",) for class_name in OLD_AMAZON_CLASS_NAMES}
+)
 
 # The values are tuples so that the object can be passed to matching.matches_any.
 NEW_CLASS_NAME_TO_NAMESPACES = {
@@ -151,8 +151,11 @@ class SerdeConstructorRenamer(Modifier):
 
         namespace_name = NEW_CLASS_NAME_TO_NAMESPACES[new_class_name][0]
         subpackage_name = namespace_name.split(".")[1]
-        assert subpackage_name in {"serializers", "deserializers"}
-        return pasta.parse("%s.%s()" % (subpackage_name, new_class_name)).body[0].value
+        return ast.Call(
+            func=ast.Attribute(value=ast.Name(id=subpackage_name), attr=new_class_name),
+            args=[],
+            keywords=[],
+        )
 
 
 class SerdeObjectRenamer(Modifier):
@@ -203,8 +206,11 @@ class SerdeObjectRenamer(Modifier):
         new_class_name = OLD_OBJECT_NAME_TO_NEW_CLASS_NAME[object_name]
         namespace_name = NEW_CLASS_NAME_TO_NAMESPACES[new_class_name][0]
         subpackage_name = namespace_name[namespace_name.find(".") + 1 :]
-        assert subpackage_name in {"serializers", "deserializers"}
-        return pasta.parse("%s.%s()" % (subpackage_name, new_class_name)).body[0].value
+        return ast.Call(
+            func=ast.Attribute(value=ast.Name(id=subpackage_name), attr=new_class_name),
+            args=[],
+            keywords=[],
+        )
 
 
 class SerdeImportFromPredictorRenamer(Modifier):

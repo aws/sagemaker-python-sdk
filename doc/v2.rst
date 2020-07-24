@@ -67,14 +67,14 @@ Please use :func:`sagemaker.predictor.Predictor.delete_endpoint` instead.
 Pre-instantiated Serializer and Deserializer Objects
 ----------------------------------------------------
 
-The ``csv_serializer``, ``json_serializer``, ``npy_serializer``, ``csv_deserializer``, 
+The ``csv_serializer``, ``json_serializer``, ``npy_serializer``, ``csv_deserializer``,
 ``json_deserializer``, and ``numpy_deserializer`` objects have been deprecated.
 
 Please instantiate the objects instead.
 
 +--------------------------------------------+------------------------------------------------+
 | v1.x                                       | v2.0 and later                                 |
-+============================================|================================================+
++============================================+================================================+
 | ``sagemaker.predictor.csv_serializer``     | ``sagemaker.deserializers.CSVSerializer()``    |
 +--------------------------------------------+------------------------------------------------+
 | ``sagemaker.predictor.json_serializer``    | ``sagemaker.serializers.JSONSerializer()``     |
