@@ -22,6 +22,9 @@ import pasta
 from sagemaker.cli.compatibility.v2.modifiers import matching
 from sagemaker.cli.compatibility.v2.modifiers.modifier import Modifier
 
+OLD_AMAZON_CLASS_NAMES = {"numpy_to_record_serializer", "record_deserializer"}
+NEW_AMAZON_CLASS_NAMES = {"RecordSerializer", "RecordDeserializer"}
+
 # The values are tuples so that the object can be passed to matching.matches_any.
 OLD_CLASS_NAME_TO_NAMESPACES = {
     "_CsvSerializer": ("sagemaker.predictor",),
@@ -33,9 +36,10 @@ OLD_CLASS_NAME_TO_NAMESPACES = {
     "StreamDeserializer": ("sagemaker.predictor",),
     "_NumpyDeserializer": ("sagemaker.predictor",),
     "_JsonDeserializer": ("sagemaker.predictor",),
-    "numpy_to_record_serializer": ("sagemaker.amazon.common",),
-    "record_deserializer": ("sagemaker.amazon.common",),
 }
+OLD_CLASS_NAMES_TO_NAMESPACES.update({
+    class_name: ("sagemaker.amazon.common",) for class_name in OLD_AMAZON_CLASS_NAMES
+})
 
 # The values are tuples so that the object can be passed to matching.matches_any.
 NEW_CLASS_NAME_TO_NAMESPACES = {
@@ -75,21 +79,6 @@ OLD_OBJECT_NAME_TO_NEW_CLASS_NAME = {
     "numpy_deserializer": "NumpyDeserializer",
 }
 
-OLD_AMAZON_CLASS_NAMES = set(
-    {
-        class_name
-        for class_name, namespaces in OLD_CLASS_NAME_TO_NAMESPACES.items()
-        if "sagemaker.amazon.common" in namespaces
-    }
-)
-NEW_AMAZON_CLASS_NAMES = set(
-    {
-        class_name
-        for class_name, namespaces in NEW_CLASS_NAME_TO_NAMESPACES.items()
-        if "sagemaker.amazon.common" in namespaces
-    }
-)
-
 NEW_CLASS_NAMES = set(OLD_CLASS_NAME_TO_NEW_CLASS_NAME.values())
 OLD_CLASS_NAMES = set(OLD_CLASS_NAME_TO_NEW_CLASS_NAME.keys())
 
@@ -102,7 +91,7 @@ class SerdeConstructorRenamer(Modifier):
     def node_should_be_modified(self, node):
         """Checks if the ``ast.Call`` node instantiates a SerDe class.
 
-        This looks for the following calls:
+        This looks for the following calls (both with and without namespaces):
 
         - ``sagemaker.predictor._CsvSerializer``
         - ``sagemaker.predictor._JsonSerializer``
@@ -126,7 +115,9 @@ class SerdeConstructorRenamer(Modifier):
         return matching.matches_any(node, OLD_CLASS_NAME_TO_NAMESPACES)
 
     def modify_node(self, node):
-        """Modifies the ``ast.Call`` node to use the classes for SerDe
+        """Updates the name and namespace of the ``ast.Call`` node, as applicable.
+
+        This method modifies the ``ast.Call`` node to use the SerDe classes
         available in version 2.0 and later of the Python SDK:
 
         - ``sagemaker.serializers.CSVSerializer``
@@ -232,7 +223,7 @@ class SerdeImportFromPredictorRenamer(Modifier):
                 from the ``sagemaker.predictor`` module.
         """
         return node.module == "sagemaker.predictor" and any(
-            [name.name in (OLD_CLASS_NAMES | OLD_OBJECT_NAMES) for name in node.names]
+            name.name in (OLD_CLASS_NAMES | OLD_OBJECT_NAMES) for name in node.names
         )
 
     def modify_node(self, node):
