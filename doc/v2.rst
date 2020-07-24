@@ -70,6 +70,18 @@ Please use :func:`sagemaker.predictor.Predictor.delete_endpoint` instead.
 The ``update_endpoint`` argument in ``deploy()`` methods for estimators and models has been deprecated.
 Please use :func:`sagemaker.predictor.Predictor.update_endpoint` instead.
 
+``content_type`` and ``accept`` in the Predictor Constructor
+------------------------------------------------------------
+
+The ``content_type`` and ``accept`` parameters have been removed from the
+following methods:
+- ``sagemaker.predictor.Predictor.__init__``
+- ``sagemaker.estimator.Estimator.create_model``
+- ``sagemaker.algorithms.AlgorithmEstimator.create_model``
+- ``sagemaker.tensorflow.model.TensorFlowPredictor.__init__``
+
+Please specify content types in a serializer or deserializer class instead.
+
 Require ``framework_version`` and ``py_version`` for Frameworks
 ===============================================================
 
