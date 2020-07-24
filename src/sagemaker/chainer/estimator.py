@@ -216,7 +216,6 @@ class Chainer(Framework):
             role or self.role,
             entry_point or self._model_entry_point(),
             source_dir=(source_dir or self._model_source_dir()),
-            enable_cloudwatch_metrics=self.enable_cloudwatch_metrics,
             container_log_level=self.container_log_level,
             code_location=self.code_location,
             py_version=self.py_version,
