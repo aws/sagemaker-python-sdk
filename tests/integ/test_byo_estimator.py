@@ -40,7 +40,7 @@ class _FactorizationMachineSerializer(BaseSerializer):
 
     CONTENT_TYPE = "application/json"
 
-    def serialize(data):
+    def serialize(self, data):
         js = {"instances": []}
         for row in data:
             js["instances"].append({"features": row.tolist()})
