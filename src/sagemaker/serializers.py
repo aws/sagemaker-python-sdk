@@ -20,6 +20,13 @@ import json
 
 import numpy as np
 
+from sagemaker.utils import DeferredError
+
+try:
+    import scipy
+except ImportError as e:
+    scipy = DeferredError(e)
+
 
 class BaseSerializer(abc.ABC):
     """Abstract base class for creation of new serializers.
@@ -200,3 +207,25 @@ class IdentitySerializer(BaseSerializer):
             object: The unmodified data.
         """
         return data
+
+
+class SparseMatrixSerializer(BaseSerializer):
+    """Serialize a sparse matrix to a buffer using the .npz format."""
+
+    CONTENT_TYPE = "application/x-npz"
+
+    def serialize(self, data):
+        """Serialize a sparse matrix to a buffer using the .npz format.
+
+        Sparse matrices can be in the ``csc``, ``csr``, ``bsr``, ``dia`` or
+        ``coo`` formats.
+
+        Args:
+            data (scipy.sparse.spmatrix): The sparse matrix to serialize.
+
+        Returns:
+            io.BytesIO: A buffer containing the serialized sparse matrix.
+        """
+        buffer = io.BytesIO()
+        scipy.sparse.save_npz(buffer, data)
+        return buffer.getvalue()
