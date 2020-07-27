@@ -21,13 +21,13 @@ To install the latest release candidate:
 
 .. code:: bash
 
-    pip install git+git@github.com:aws/sagemaker-python-sdk.git@v2.0.0.rc1
+    pip install git+git://github.com/aws/sagemaker-python-sdk.git@v2.0.0.rc1
 
 To install the latest version of v2:
 
 .. code:: bash
 
-    pip install git+git@github.com:aws/sagemaker-python-sdk.git@zwei
+    pip install git+git://github.com/aws/sagemaker-python-sdk.git@zwei
 
 If you are executing this pip install command in a notebook, make sure to restart your kernel.
 
@@ -69,6 +69,28 @@ Please use :func:`sagemaker.predictor.Predictor.delete_endpoint` instead.
 
 The ``update_endpoint`` argument in ``deploy()`` methods for estimators and models has been deprecated.
 Please use :func:`sagemaker.predictor.Predictor.update_endpoint` instead.
+
+``sagemaker.content_types``
+---------------------------
+
+The ``sagemaker.content_types`` module is removed in v2.0 and later of the
+SageMaker Python SDK.
+
+Instead of importing constants from ``sagemaker.content_types``, explicitly
+write MIME types as a string,
+
++-------------------------------+--------------------------------+
+| v1.x                          | v2.0 and later                 |
++===============================+================================+
+| ``CONTENT_TYPE_JSON``         | ``"application/json"``         |
++-------------------------------+--------------------------------+
+| ``CONTENT_TYPE_CSV``          | ``"text/csv"``                 |
++-------------------------------+--------------------------------+
+| ``CONTENT_TYPE_OCTET_STREAM`` | ``"application/octet-stream"`` |
++-------------------------------+--------------------------------+
+| ``CONTENT_TYPE_NPY``          | ``"application/x-npy"``        |
++-------------------------------+--------------------------------+
+
 
 Require ``framework_version`` and ``py_version`` for Frameworks
 ===============================================================

@@ -221,7 +221,6 @@ def test_framework_training_config_required_args(retrieve_image_uri, sagemaker_s
             "sagemaker_submit_directory": '"s3://output/tensorflow-training-%s/source/sourcedir.tar.gz"'
             % TIME_STAMP,
             "sagemaker_program": '"script.py"',
-            "sagemaker_enable_cloudwatch_metrics": "false",
             "sagemaker_container_log_level": "20",
             "sagemaker_job_name": '"tensorflow-training-%s"' % TIME_STAMP,
             "sagemaker_region": '"us-west-2"',
@@ -256,7 +255,6 @@ def test_framework_training_config_all_args(retrieve_image_uri, sagemaker_sessio
     tf = tensorflow.TensorFlow(
         entry_point="{{ entry_point }}",
         source_dir="{{ source_dir }}",
-        enable_cloudwatch_metrics=False,
         container_log_level="{{ log_level }}",
         code_location="s3://{{ bucket_name }}/{{ prefix }}",
         hyperparameters={"epochs": 1},
@@ -321,7 +319,6 @@ def test_framework_training_config_all_args(retrieve_image_uri, sagemaker_sessio
             "sagemaker_submit_directory": '"s3://{{ bucket_name }}/{{ prefix }}/{{ base_job_name }}-%s/'
             'source/sourcedir.tar.gz"' % TIME_STAMP,
             "sagemaker_program": '"{{ entry_point }}"',
-            "sagemaker_enable_cloudwatch_metrics": "false",
             "sagemaker_container_log_level": '"{{ log_level }}"',
             "sagemaker_job_name": '"{{ base_job_name }}-%s"' % TIME_STAMP,
             "sagemaker_region": '"us-west-2"',
@@ -586,7 +583,6 @@ def test_framework_tuning_config(retrieve_image_uri, sagemaker_session):
                 "sagemaker_submit_directory": '"s3://output/{{ base_job_name }}-%s/source/sourcedir.tar.gz"'
                 % TIME_STAMP,
                 "sagemaker_program": '"{{ entry_point }}"',
-                "sagemaker_enable_cloudwatch_metrics": "false",
                 "sagemaker_container_log_level": "20",
                 "sagemaker_job_name": '"{{ base_job_name }}-%s"' % TIME_STAMP,
                 "sagemaker_region": '"us-west-2"',
@@ -778,7 +774,6 @@ def test_multi_estimator_tuning_config(botocore_resolver, sagemaker_session):
                 "StaticHyperParameters": {
                     "batch_size": "100",
                     "sagemaker_container_log_level": "20",
-                    "sagemaker_enable_cloudwatch_metrics": "false",
                     "sagemaker_estimator_class_name": '"MXNet"',
                     "sagemaker_estimator_module": '"sagemaker.mxnet.estimator"',
                     "sagemaker_job_name": '"{{ base_job_name }}-%s"' % TIME_STAMP,
@@ -935,7 +930,6 @@ def test_byo_framework_model_config(sagemaker_session):
                 "{{ key }}": "{{ value }}",
                 "SAGEMAKER_PROGRAM": "{{ entry_point }}",
                 "SAGEMAKER_SUBMIT_DIRECTORY": "s3://output/model/source/sourcedir.tar.gz",
-                "SAGEMAKER_ENABLE_CLOUDWATCH_METRICS": "false",
                 "SAGEMAKER_CONTAINER_LOG_LEVEL": "20",
                 "SAGEMAKER_REGION": "us-west-2",
             },
@@ -980,7 +974,6 @@ def test_framework_model_config(sagemaker_session):
                 "SAGEMAKER_PROGRAM": "{{ entry_point }}",
                 "SAGEMAKER_SUBMIT_DIRECTORY": "s3://output/sagemaker-chainer-%s/source/sourcedir.tar.gz"
                 % TIME_STAMP,
-                "SAGEMAKER_ENABLE_CLOUDWATCH_METRICS": "false",
                 "SAGEMAKER_CONTAINER_LOG_LEVEL": "20",
                 "SAGEMAKER_REGION": "us-west-2",
                 "SAGEMAKER_MODEL_SERVER_WORKERS": "{{ model_server_worker }}",
@@ -1072,7 +1065,6 @@ def test_model_config_from_framework_estimator(retrieve_image_uri, sagemaker_ses
                 "SAGEMAKER_PROGRAM": "{{ entry_point }}",
                 "SAGEMAKER_SUBMIT_DIRECTORY": "s3://output/{{ ti.xcom_pull(task_ids='task_id')['Training']"
                 "['TrainingJobName'] }}/source/sourcedir.tar.gz",
-                "SAGEMAKER_ENABLE_CLOUDWATCH_METRICS": "false",
                 "SAGEMAKER_CONTAINER_LOG_LEVEL": "20",
                 "SAGEMAKER_REGION": "us-west-2",
             },
@@ -1246,7 +1238,6 @@ def test_transform_config_from_framework_estimator(retrieve_image_uri, sagemaker
                     "SAGEMAKER_SUBMIT_DIRECTORY": "s3://output/{{ ti.xcom_pull(task_ids='task_id')"
                     "['Training']['TrainingJobName'] }}"
                     "/source/sourcedir.tar.gz",
-                    "SAGEMAKER_ENABLE_CLOUDWATCH_METRICS": "false",
                     "SAGEMAKER_CONTAINER_LOG_LEVEL": "20",
                     "SAGEMAKER_REGION": "us-west-2",
                 },
@@ -1362,7 +1353,6 @@ def test_deploy_framework_model_config(sagemaker_session):
                     "SAGEMAKER_PROGRAM": "{{ entry_point }}",
                     "SAGEMAKER_SUBMIT_DIRECTORY": "s3://output/sagemaker-chainer-%s/source/sourcedir.tar.gz"
                     % TIME_STAMP,
-                    "SAGEMAKER_ENABLE_CLOUDWATCH_METRICS": "false",
                     "SAGEMAKER_CONTAINER_LOG_LEVEL": "20",
                     "SAGEMAKER_REGION": "us-west-2",
                     "SAGEMAKER_MODEL_SERVER_WORKERS": "{{ model_server_worker }}",
@@ -1494,7 +1484,6 @@ def test_deploy_config_from_framework_estimator(retrieve_image_uri, sagemaker_se
                     "SAGEMAKER_PROGRAM": "{{ entry_point }}",
                     "SAGEMAKER_SUBMIT_DIRECTORY": "s3://output/{{ ti.xcom_pull(task_ids='task_id')['Training']"
                     "['TrainingJobName'] }}/source/sourcedir.tar.gz",
-                    "SAGEMAKER_ENABLE_CLOUDWATCH_METRICS": "false",
                     "SAGEMAKER_CONTAINER_LOG_LEVEL": "20",
                     "SAGEMAKER_REGION": "us-west-2",
                 },

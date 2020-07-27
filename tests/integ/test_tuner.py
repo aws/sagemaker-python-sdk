@@ -28,6 +28,7 @@ from sagemaker.deserializers import JSONDeserializer
 from sagemaker.estimator import Estimator
 from sagemaker.mxnet.estimator import MXNet
 from sagemaker.pytorch import PyTorch
+from sagemaker.serializers import BaseSerializer
 from sagemaker.tensorflow import TensorFlow
 from sagemaker.tuner import (
     IntegerParameter,
@@ -900,8 +901,7 @@ def test_tuning_byo_estimator(sagemaker_session, cpu_instance_type):
     best_training_job = tuner.best_training_job()
     with timeout_and_delete_endpoint_by_name(best_training_job, sagemaker_session):
         predictor = tuner.deploy(1, cpu_instance_type, endpoint_name=best_training_job)
-        predictor.serializer = _fm_serializer
-        predictor.content_type = "application/json"
+        predictor.serializer = _FactorizationMachineSerializer()
         predictor.deserializer = JSONDeserializer()
 
         result = predictor.predict(datasets.one_p_mnist()[0][:10])
@@ -912,11 +912,15 @@ def test_tuning_byo_estimator(sagemaker_session, cpu_instance_type):
 
 
 # Serializer for the Factorization Machines predictor (for BYO example)
-def _fm_serializer(data):
-    js = {"instances": []}
-    for row in data:
-        js["instances"].append({"features": row.tolist()})
-    return json.dumps(js)
+class _FactorizationMachineSerializer(BaseSerializer):
+
+    CONTENT_TYPE = "application/json"
+
+    def serialize(self, data):
+        js = {"instances": []}
+        for row in data:
+            js["instances"].append({"features": row.tolist()})
+        return json.dumps(js)
 
 
 def _assert_model_name_match(sagemaker_client, endpoint_config_name, model_name):

@@ -17,7 +17,6 @@ import logging
 
 import sagemaker
 from sagemaker import image_uris
-from sagemaker.content_types import CONTENT_TYPE_JSON
 from sagemaker.deserializers import JSONDeserializer
 from sagemaker.predictor import Predictor
 from sagemaker.serializers import JSONSerializer
@@ -96,7 +95,7 @@ class TensorFlowPredictor(Predictor):
         if method not in ["classify", "regress"]:
             raise ValueError("invalid TensorFlow Serving method: {}".format(method))
 
-        if self.content_type != CONTENT_TYPE_JSON:
+        if self.content_type != "application/json":
             raise ValueError("The {} api requires json requests.".format(method))
 
         args = {"CustomAttributes": "tfs-method={}".format(method)}

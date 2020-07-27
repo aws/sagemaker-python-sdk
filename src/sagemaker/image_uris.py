@@ -72,7 +72,7 @@ def retrieve(
     processor = _processor(
         instance_type, config.get("processors") or version_config.get("processors")
     )
-    tag = _format_tag(version, processor, py_version)
+    tag = _format_tag(version_config.get("tag_prefix", version), processor, py_version)
 
     repo = version_config["repository"]
 
@@ -223,6 +223,6 @@ def _validate_arg(arg, available_options, arg_name):
         )
 
 
-def _format_tag(version, processor, py_version):
+def _format_tag(tag_prefix, processor, py_version):
     """Creates a tag for the image URI."""
-    return "-".join([x for x in (version, processor, py_version) if x])
+    return "-".join([x for x in (tag_prefix, processor, py_version) if x])

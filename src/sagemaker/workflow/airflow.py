@@ -60,9 +60,6 @@ def prepare_framework(estimator, s3_operations):
     estimator._hyperparameters[sagemaker.model.DIR_PARAM_NAME] = code_dir
     estimator._hyperparameters[sagemaker.model.SCRIPT_PARAM_NAME] = script
     estimator._hyperparameters[
-        sagemaker.model.CLOUDWATCH_METRICS_PARAM_NAME
-    ] = estimator.enable_cloudwatch_metrics
-    estimator._hyperparameters[
         sagemaker.model.CONTAINER_LOG_LEVEL_PARAM_NAME
     ] = estimator.container_log_level
     estimator._hyperparameters[sagemaker.model.JOB_NAME_PARAM_NAME] = estimator._current_job_name

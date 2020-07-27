@@ -549,3 +549,22 @@ def test_retrieve_unsupported_processor_type(config_for_framework):
 
     assert "Unsupported processor: gpu." in str(e.value)
     assert "Supported processor(s): cpu." in str(e.value)
+
+
+@patch("sagemaker.image_uris.config_for_framework")
+def test_tag_prefix(config_for_framework):
+    tag_prefix = "1.0.0-build123"
+
+    config = copy.deepcopy(BASE_CONFIG)
+    config["versions"]["1.0.0"]["tag_prefix"] = "1.0.0-build123"
+    config_for_framework.return_value = config
+
+    uri = image_uris.retrieve(
+        framework="useless-string",
+        version="1.0.0",
+        py_version="py3",
+        instance_type="ml.c4.xlarge",
+        region="us-west-2",
+        image_scope="training",
+    )
+    assert "123412341234.dkr.ecr.us-west-2.amazonaws.com/dummy:{}-cpu-py3".format(tag_prefix) == uri

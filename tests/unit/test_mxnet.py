@@ -127,7 +127,6 @@ def _get_train_args(job_name):
         },
         "hyperparameters": {
             "sagemaker_program": json.dumps("dummy_script.py"),
-            "sagemaker_enable_cloudwatch_metrics": "false",
             "sagemaker_container_log_level": str(logging.INFO),
             "sagemaker_job_name": json.dumps(job_name),
             "sagemaker_submit_directory": json.dumps(
@@ -152,7 +151,6 @@ def _get_environment(submit_directory, model_url, image_uri):
         "Environment": {
             "SAGEMAKER_SUBMIT_DIRECTORY": submit_directory,
             "SAGEMAKER_PROGRAM": "dummy_script.py",
-            "SAGEMAKER_ENABLE_CLOUDWATCH_METRICS": "false",
             "SAGEMAKER_REGION": "us-west-2",
             "SAGEMAKER_CONTAINER_LOG_LEVEL": "20",
         },
@@ -227,7 +225,6 @@ def test_create_model_with_optional_params(
 ):
     container_log_level = '"logging.INFO"'
     source_dir = "s3://mybucket/source"
-    enable_cloudwatch_metrics = "true"
     mx = MXNet(
         entry_point=SCRIPT_NAME,
         source_dir=source_dir,
@@ -239,7 +236,6 @@ def test_create_model_with_optional_params(
         instance_type=INSTANCE_TYPE,
         container_log_level=container_log_level,
         base_job_name="job",
-        enable_cloudwatch_metrics=enable_cloudwatch_metrics,
     )
 
     mx.fit(inputs="s3://mybucket/train", job_name="new_name")
@@ -519,7 +515,6 @@ def test_attach(sagemaker_session, mxnet_training_version, mxnet_py_version):
             "sagemaker_submit_directory": '"s3://some/sourcedir.tar.gz"',
             "sagemaker_program": '"iris-dnn-classifier.py"',
             "sagemaker_s3_uri_training": '"sagemaker-3/integ-test-data/tf_iris"',
-            "sagemaker_enable_cloudwatch_metrics": "false",
             "sagemaker_container_log_level": '"logging.INFO"',
             "sagemaker_job_name": '"neo"',
             "training_steps": "100",
@@ -569,7 +564,6 @@ def test_attach_old_container(sagemaker_session):
             "sagemaker_submit_directory": '"s3://some/sourcedir.tar.gz"',
             "sagemaker_program": '"iris-dnn-classifier.py"',
             "sagemaker_s3_uri_training": '"sagemaker-3/integ-test-data/tf_iris"',
-            "sagemaker_enable_cloudwatch_metrics": "false",
             "sagemaker_container_log_level": '"logging.INFO"',
             "sagemaker_job_name": '"neo"',
             "training_steps": "100",
@@ -618,7 +612,6 @@ def test_attach_wrong_framework(sagemaker_session):
             "sagemaker_submit_directory": '"s3://some/sourcedir.tar.gz"',
             "checkpoint_path": '"s3://other/1508872349"',
             "sagemaker_program": '"iris-dnn-classifier.py"',
-            "sagemaker_enable_cloudwatch_metrics": "false",
             "sagemaker_container_log_level": '"logging.INFO"',
             "training_steps": "100",
             "sagemaker_region": '"us-west-2"',
@@ -653,7 +646,6 @@ def test_attach_custom_image(sagemaker_session):
             "sagemaker_submit_directory": '"s3://some/sourcedir.tar.gz"',
             "sagemaker_program": '"iris-dnn-classifier.py"',
             "sagemaker_s3_uri_training": '"sagemaker-3/integ-test-data/tf_iris"',
-            "sagemaker_enable_cloudwatch_metrics": "false",
             "sagemaker_container_log_level": '"logging.INFO"',
             "sagemaker_job_name": '"neo"',
             "training_steps": "100",

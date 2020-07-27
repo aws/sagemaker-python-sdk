@@ -17,8 +17,7 @@ import logging
 import os
 
 import pytest
-from mock import MagicMock, Mock
-from mock import patch
+from mock import MagicMock, Mock, patch
 
 from sagemaker.mxnet import MXNetModel, MXNetPredictor
 from sagemaker.rl import RLEstimator, RLFramework, RLToolkit, TOOLKIT_FRAMEWORK_VERSION_MAP
@@ -82,12 +81,6 @@ def _get_full_cpu_image_uri(toolkit, toolkit_version, framework):
     )
 
 
-def _get_full_gpu_image_uri(toolkit, toolkit_version, framework):
-    return IMAGE_URI_FORMAT_STRING.format(
-        REGION, IMAGE_URI, framework, toolkit, toolkit_version, "gpu"
-    )
-
-
 def _rl_estimator(
     sagemaker_session,
     toolkit=RLToolkit.COACH,
@@ -137,7 +130,6 @@ def _create_train_job(toolkit, toolkit_version, framework):
         },
         "hyperparameters": {
             "sagemaker_program": json.dumps("dummy_script.py"),
-            "sagemaker_enable_cloudwatch_metrics": "false",
             "sagemaker_estimator": '"RLEstimator"',
             "sagemaker_container_log_level": str(logging.INFO),
             "sagemaker_job_name": json.dumps(job_name),
@@ -348,7 +340,6 @@ def test_rl(strftime, sagemaker_session, rl_coach_mxnet_version):
         "Environment": {
             "SAGEMAKER_SUBMIT_DIRECTORY": submit_dir,
             "SAGEMAKER_PROGRAM": "dummy_script.py",
-            "SAGEMAKER_ENABLE_CLOUDWATCH_METRICS": "false",
             "SAGEMAKER_REGION": "us-west-2",
             "SAGEMAKER_CONTAINER_LOG_LEVEL": "20",
         },
@@ -388,11 +379,11 @@ def test_deploy_tfs(sagemaker_session, rl_coach_tf_version):
 
 
 @patch("sagemaker.utils.create_tar_file", MagicMock())
-def test_deploy_ray(sagemaker_session, rl_ray_version):
+def test_deploy_ray(sagemaker_session, rl_ray_tf_version):
     rl = _rl_estimator(
         sagemaker_session,
         RLToolkit.RAY,
-        rl_ray_version,
+        rl_ray_tf_version,
         RLFramework.TENSORFLOW,
         instance_type="ml.g2.2xlarge",
     )
@@ -402,54 +393,23 @@ def test_deploy_ray(sagemaker_session, rl_ray_version):
     assert "deployment of Ray models is not currently available" in str(e.value)
 
 
-def test_train_image_cpu_instances(sagemaker_session, rl_ray_version):
+@patch("sagemaker.image_uris.retrieve")
+def test_train_image(retrieve_image_uri, sagemaker_session, rl_ray_tf_version):
     toolkit = RLToolkit.RAY
     framework = RLFramework.TENSORFLOW
-    rl = _rl_estimator(
-        sagemaker_session, toolkit, rl_ray_version, framework, instance_type="ml.c2.2xlarge"
-    )
-    assert rl.train_image() == _get_full_cpu_image_uri(
-        toolkit.value, rl_ray_version, framework.value
-    )
 
+    image = "custom-image:latest"
     rl = _rl_estimator(
-        sagemaker_session, toolkit, rl_ray_version, framework, instance_type="ml.c4.2xlarge"
+        sagemaker_session, toolkit, rl_ray_tf_version, framework, instance_type=CPU, image_uri=image
     )
-    assert rl.train_image() == _get_full_cpu_image_uri(
-        toolkit.value, rl_ray_version, framework.value
-    )
+    assert image == rl.train_image()
+    retrieve_image_uri.assert_not_called()
 
-    rl = _rl_estimator(
-        sagemaker_session, toolkit, rl_ray_version, framework, instance_type="ml.m16"
-    )
-    assert rl.train_image() == _get_full_cpu_image_uri(
-        toolkit.value, rl_ray_version, framework.value
-    )
+    rl = _rl_estimator(sagemaker_session, toolkit, rl_ray_tf_version, framework, instance_type=CPU)
+    assert retrieve_image_uri.return_value == rl.train_image()
 
-
-def test_train_image_gpu_instances(sagemaker_session, rl_coach_mxnet_version):
-    toolkit = RLToolkit.COACH
-    framework = RLFramework.MXNET
-    rl = _rl_estimator(
-        sagemaker_session,
-        toolkit,
-        rl_coach_mxnet_version,
-        framework,
-        instance_type="ml.g2.2xlarge",
-    )
-    assert rl.train_image() == _get_full_gpu_image_uri(
-        toolkit.value, rl_coach_mxnet_version, framework.value
-    )
-
-    rl = _rl_estimator(
-        sagemaker_session,
-        toolkit,
-        rl_coach_mxnet_version,
-        framework,
-        instance_type="ml.p2.2xlarge",
-    )
-    assert rl.train_image() == _get_full_gpu_image_uri(
-        toolkit.value, rl_coach_mxnet_version, framework.value
+    retrieve_image_uri.assert_called_with(
+        "ray-tensorflow", REGION, version=rl_ray_tf_version, instance_type=CPU
     )
 
 
@@ -464,7 +424,6 @@ def test_attach(sagemaker_session, rl_coach_mxnet_version):
         "HyperParameters": {
             "sagemaker_submit_directory": '"s3://some/sourcedir.tar.gz"',
             "sagemaker_program": '"train_coach.py"',
-            "sagemaker_enable_cloudwatch_metrics": "false",
             "sagemaker_container_log_level": '"logging.INFO"',
             "sagemaker_job_name": '"neo"',
             "training_steps": "100",
@@ -514,7 +473,6 @@ def test_attach_wrong_framework(sagemaker_session):
             "sagemaker_submit_directory": '"s3://some/sourcedir.tar.gz"',
             "checkpoint_path": '"s3://other/1508872349"',
             "sagemaker_program": '"iris-dnn-classifier.py"',
-            "sagemaker_enable_cloudwatch_metrics": "false",
             "sagemaker_container_log_level": '"logging.INFO"',
             "training_steps": "100",
             "sagemaker_region": '"us-west-2"',
@@ -549,7 +507,6 @@ def test_attach_custom_image(sagemaker_session):
             "sagemaker_submit_directory": '"s3://some/sourcedir.tar.gz"',
             "sagemaker_program": '"iris-dnn-classifier.py"',
             "sagemaker_s3_uri_training": '"sagemaker-3/integ-test-data/tf_iris"',
-            "sagemaker_enable_cloudwatch_metrics": "false",
             "sagemaker_container_log_level": '"logging.INFO"',
             "sagemaker_job_name": '"neo"',
             "training_steps": "100",
@@ -640,11 +597,3 @@ def test_wrong_type_parameters(sagemaker_session):
             instance_type=INSTANCE_TYPE,
         )
     assert "combination is not supported." in str(e.value)
-
-
-def test_custom_image_estimator_deploy(sagemaker_session):
-    custom_image = "mycustomimage:latest"
-    rl = _rl_estimator(sagemaker_session)
-    rl.fit(inputs="s3://mybucket/train", job_name="new_name")
-    model = rl.create_model(image_uri=custom_image)
-    assert model.image_uri == custom_image
