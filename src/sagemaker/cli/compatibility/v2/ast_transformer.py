@@ -71,8 +71,8 @@ class ASTTransformer(ast.NodeTransformer):
 
         Returns:
             ast.AST: if the returned node is None, the original node is removed
-            from its location. Otherwise, the original node is replaced with the
-            returned node.
+                from its location. Otherwise, the original node is replaced with
+                the returned node.
         """
         for function_checker in FUNCTION_CALL_MODIFIERS:
             node = function_checker.check_and_modify_node(node)
