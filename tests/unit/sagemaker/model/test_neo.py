@@ -77,6 +77,7 @@ def test_compile_model_for_edge_device(sagemaker_session):
     assert model._is_compiled_model is False
 
 
+@pytest.mark.xfail(reason="tflite images are not available yet.")
 def test_compile_model_for_edge_device_tflite(sagemaker_session):
     sagemaker_session.wait_for_compilation_job = Mock(
         return_value=DESCRIBE_COMPILATION_JOB_RESPONSE
@@ -109,6 +110,7 @@ def test_compile_model_for_cloud(sagemaker_session):
     assert model._is_compiled_model is True
 
 
+@pytest.mark.xfail(reason="tflite images are not available yet.")
 def test_compile_model_for_cloud_tflite(sagemaker_session):
     sagemaker_session.wait_for_compilation_job = Mock(
         return_value=DESCRIBE_COMPILATION_JOB_RESPONSE
