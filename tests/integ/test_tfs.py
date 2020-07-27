@@ -39,6 +39,7 @@ def tfs_predictor(sagemaker_session, tf_full_version):
             role="SageMakerRole",
             framework_version=tf_full_version,
             sagemaker_session=sagemaker_session,
+            name=endpoint_name,
         )
         predictor = model.deploy(1, "ml.c5.xlarge", endpoint_name=endpoint_name)
         yield predictor
@@ -67,6 +68,7 @@ def tfs_predictor_with_model_and_entry_point_same_tar(
         role="SageMakerRole",
         framework_version=tf_full_version,
         sagemaker_session=sagemaker_local_session,
+        name=endpoint_name,
     )
     predictor = model.deploy(1, "local", endpoint_name=endpoint_name)
 
@@ -100,6 +102,7 @@ def tfs_predictor_with_model_and_entry_point_and_dependencies(
         dependencies=dependencies,
         framework_version=tf_full_version,
         sagemaker_session=sagemaker_local_session,
+        name=endpoint_name,
     )
 
     predictor = model.deploy(1, "local", endpoint_name=endpoint_name)
@@ -123,6 +126,7 @@ def tfs_predictor_with_accelerator(sagemaker_session, ei_tf_full_version, cpu_in
             role="SageMakerRole",
             framework_version=ei_tf_full_version,
             sagemaker_session=sagemaker_session,
+            name=endpoint_name,
         )
         predictor = model.deploy(
             1, cpu_instance_type, endpoint_name=endpoint_name, accelerator_type="ml.eia1.medium"
