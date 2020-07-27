@@ -151,6 +151,18 @@ def test_numpy_deserializer_from_npy_object_array(numpy_deserializer):
     assert np.array_equal(array, result)
 
 
+def test_numpy_deserializer_from_npy_object_array_with_allow_pickle_false():
+    numpy_deserializer = NumpyDeserializer(allow_pickle=False)
+
+    array = np.array([{"a": "", "b": ""}, {"c": "", "d": ""}])
+    stream = io.BytesIO()
+    np.save(stream, array)
+    stream.seek(0)
+
+    with pytest.raises(ValueError):
+        numpy_deserializer.deserialize(stream, "application/x-npy")
+
+
 @pytest.fixture
 def json_deserializer():
     return JSONDeserializer()
