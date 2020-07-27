@@ -141,7 +141,7 @@ def test_numpy_deserializer_from_npy(numpy_deserializer):
 
 
 def test_numpy_deserializer_from_npy_object_array(numpy_deserializer):
-    array = np.array(["one", "two"])
+    array = np.array([{"a": "", "b": ""}, {"c": "", "d": ""}])
     stream = io.BytesIO()
     np.save(stream, array)
     stream.seek(0)
