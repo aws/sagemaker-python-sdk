@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.71.1 (2020-07-27)
+
+### Bug Fixes and Other Changes
+
+ * remove redundant information from the user_agent string.
+
+### Testing and Release Infrastructure
+
+ * use unique model name in TFS integ tests
+ * use pytest-cov instead of coverage
+
 ## v1.71.0 (2020-07-23)
 
 ### Features
