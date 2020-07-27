@@ -10,32 +10,31 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Classes to modify serializer and deserializer code to be compatible with
-version 2.0 and later of the SageMaker Python SDK.
-"""
+"""Classes to modify SerDe code to be compatibile with version 2.0 and later."""
 from __future__ import absolute_import
 
 import ast
-
-import pasta
 
 from sagemaker.cli.compatibility.v2.modifiers import matching
 from sagemaker.cli.compatibility.v2.modifiers.modifier import Modifier
 
 OLD_AMAZON_CLASS_NAMES = {"numpy_to_record_serializer", "record_deserializer"}
 NEW_AMAZON_CLASS_NAMES = {"RecordSerializer", "RecordDeserializer"}
+OLD_PREDICTOR_CLASS_NAMES = {
+    "_CsvSerializer",
+    "_JsonSerializer",
+    "_NpySerializer",
+    "_CsvDeserializer",
+    "BytesDeserializer",
+    "StringDeserializer",
+    "StreamDeserializer",
+    "_NumpyDeserializer",
+    "_JsonDeserializer",
+}
 
 # The values are tuples so that the object can be passed to matching.matches_any.
 OLD_CLASS_NAME_TO_NAMESPACES = {
-    "_CsvSerializer": ("sagemaker.predictor",),
-    "_JsonSerializer": ("sagemaker.predictor",),
-    "_NpySerializer": ("sagemaker.predictor",),
-    "_CsvDeserializer": ("sagemaker.predictor",),
-    "BytesDeserializer": ("sagemaker.predictor",),
-    "StringDeserializer": ("sagemaker.predictor",),
-    "StreamDeserializer": ("sagemaker.predictor",),
-    "_NumpyDeserializer": ("sagemaker.predictor",),
-    "_JsonDeserializer": ("sagemaker.predictor",),
+    class_name: ("sagemaker.predictor",) for class_name in OLD_PREDICTOR_CLASS_NAMES
 }
 OLD_CLASS_NAME_TO_NAMESPACES.update(
     {class_name: ("sagemaker.amazon.common",) for class_name in OLD_AMAZON_CLASS_NAMES}
@@ -205,7 +204,7 @@ class SerdeObjectRenamer(Modifier):
         object_name = node.id if isinstance(node, ast.Name) else node.attr
         new_class_name = OLD_OBJECT_NAME_TO_NEW_CLASS_NAME[object_name]
         namespace_name = NEW_CLASS_NAME_TO_NAMESPACES[new_class_name][0]
-        subpackage_name = namespace_name[namespace_name.find(".") + 1 :]
+        subpackage_name = namespace_name.split(".")[1]
         return ast.Call(
             func=ast.Attribute(value=ast.Name(id=subpackage_name), attr=new_class_name),
             args=[],
@@ -375,7 +374,9 @@ class SerializerImportInserter(_ImportInserter):
             for class_name in NEW_CLASS_NAMES - NEW_AMAZON_CLASS_NAMES
             if "Serializer" in class_name
         }
-        import_node = pasta.parse("from sagemaker import serializers\n").body[0]
+        import_node = ast.ImportFrom(
+            module="sagemaker", names=[ast.alias(name="serializers", asname=None)], level=0
+        )
         super().__init__(class_names, import_node)
 
 
@@ -403,5 +404,7 @@ class DeserializerImportInserter(_ImportInserter):
             for class_name in NEW_CLASS_NAMES - NEW_AMAZON_CLASS_NAMES
             if "Deserializer" in class_name
         }
-        import_node = pasta.parse("from sagemaker import deserializers\n").body[0]
+        import_node = ast.ImportFrom(
+            module="sagemaker", names=[ast.alias(name="deserializers", asname=None)], level=0
+        )
         super().__init__(class_names, import_node)

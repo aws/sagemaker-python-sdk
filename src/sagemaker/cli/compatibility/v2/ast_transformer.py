@@ -63,6 +63,7 @@ class ASTTransformer(ast.NodeTransformer):
 
     def visit_Call(self, node):
         """Visits an ``ast.Call`` node and returns a modified node or None.
+
         See https://docs.python.org/3/library/ast.html#ast.NodeTransformer.
 
         Args:
@@ -79,6 +80,7 @@ class ASTTransformer(ast.NodeTransformer):
 
     def visit_Name(self, node):
         """Visits an ``ast.Name`` node and returns a modified node or None.
+
         See https://docs.python.org/3/library/ast.html#ast.NodeTransformer.
 
         Args:
@@ -86,8 +88,8 @@ class ASTTransformer(ast.NodeTransformer):
 
         Returns:
             ast.AST: if the returned node is None, the original node is removed
-            from its location. Otherwise, the original node is replaced with the
-            returned node.
+                from its location. Otherwise, the original node is replaced with
+                the returned node.
         """
         for name_checker in NAME_MODIFIERS:
             node = name_checker.check_and_modify_node(node)
@@ -95,6 +97,7 @@ class ASTTransformer(ast.NodeTransformer):
 
     def visit_Import(self, node):
         """Visits an ``ast.Import`` node and returns a modified node or None.
+
         See https://docs.python.org/3/library/ast.html#ast.NodeTransformer.
 
         Args:
@@ -102,8 +105,8 @@ class ASTTransformer(ast.NodeTransformer):
 
         Returns:
             ast.AST: if the returned node is None, the original node is removed
-            from its location. Otherwise, the original node is replaced with the
-            returned node.
+                from its location. Otherwise, the original node is replaced with
+                the returned node.
         """
         for import_checker in IMPORT_MODIFIERS:
             node = import_checker.check_and_modify_node(node)
@@ -111,6 +114,7 @@ class ASTTransformer(ast.NodeTransformer):
 
     def visit_Module(self, node):
         """Visits an ``ast.Module`` node and returns a modified node or None.
+
         See https://docs.python.org/3/library/ast.html#ast.NodeTransformer.
 
         The ``ast.NodeTransformer`` walks the abstract syntax tree and modifies
@@ -121,8 +125,8 @@ class ASTTransformer(ast.NodeTransformer):
 
         Returns:
             ast.AST: if the returned node is None, the original node is removed
-            from its location. Otherwise, the original node is replaced with the
-            returned node.
+                from its location. Otherwise, the original node is replaced with
+                the returned node.
         """
         self.generic_visit(node)
         for module_checker in MODULE_MODIFIERS:
@@ -131,6 +135,7 @@ class ASTTransformer(ast.NodeTransformer):
 
     def visit_ImportFrom(self, node):
         """Visits an ``ast.ImportFrom`` node and returns a modified node or None.
+
         See https://docs.python.org/3/library/ast.html#ast.NodeTransformer.
 
         Args:
@@ -138,8 +143,8 @@ class ASTTransformer(ast.NodeTransformer):
 
         Returns:
             ast.AST: if the returned node is None, the original node is removed
-            from its location. Otherwise, the original node is replaced with the
-            returned node.
+                from its location. Otherwise, the original node is replaced with
+                the returned node.
         """
         for import_checker in IMPORT_FROM_MODIFIERS:
             node = import_checker.check_and_modify_node(node)
