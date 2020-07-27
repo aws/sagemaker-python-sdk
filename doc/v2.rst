@@ -21,13 +21,13 @@ To install the latest release candidate:
 
 .. code:: bash
 
-    pip install git+git@github.com:aws/sagemaker-python-sdk.git@v2.0.0.rc1
+    pip install git+git://github.com/aws/sagemaker-python-sdk.git@v2.0.0.rc1
 
 To install the latest version of v2:
 
 .. code:: bash
 
-    pip install git+git@github.com:aws/sagemaker-python-sdk.git@zwei
+    pip install git+git://github.com/aws/sagemaker-python-sdk.git@zwei
 
 If you are executing this pip install command in a notebook, make sure to restart your kernel.
 
