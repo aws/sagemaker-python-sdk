@@ -187,14 +187,33 @@ Specify Custom Serving Image
 
 The ``image`` parameter has been renamed to ``image_uri`` for specifying a custom Docker image URI to use with inference.
 
+TensorFlow Serving Model
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+``sagemaker.tensorflow.serving.Model`` has been renamed to :class:`sagemaker.tensorflow.model.TensorFlowModel`.
+(For the previous implementation of that class, see `Deprecate Legacy TensorFlow <#deprecate-legacy-tensorflow>`_).
+
 Predictors
 ----------
 
+Generic Predictor Class Name
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 ``sagemaker.predictor.RealTimePredictor`` has been renamed to :class:`sagemaker.predictor.Predictor`.
 
-In addition, for :class:`sagemaker.predictor.Predictor`, :class:`sagemaker.sparkml.model.SparkMLPredictor`,
+Endpoint Argument Name
+~~~~~~~~~~~~~~~~~~~~~~
+
+For :class:`sagemaker.predictor.Predictor`, :class:`sagemaker.sparkml.model.SparkMLPredictor`,
 and predictors for Amazon algorithm (e.g. Factorization Machines, Linear Learner, etc.),
 the ``endpoint`` attribute has been renamed to ``endpoint_name``.
+
+TensorFlow Serving Predictor
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``sagemaker.tensorflow.serving.Predictor`` has been renamed to :class:`sagemaker.tensorflow.model.TensorFlowPredictor`.
+(For the previous implementation of that class, see `Deprecate Legacy TensorFlow <#deprecate-legacy-tensorflow>`_).
+
 
 Airflow
 -------
