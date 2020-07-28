@@ -18,7 +18,7 @@ import os
 
 import numpy as np
 import pytest
-import scipy
+import scipy.sparse
 
 from sagemaker.serializers import (
     CSVSerializer,
