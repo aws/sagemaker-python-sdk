@@ -499,54 +499,14 @@ parameters for each component of your pipeline. These parameters can
 also be updated when using other pipelines. We have provided default
 values for all parameters in the sample classification pipeline file.
 
-The following are the only parameters you may need to modify to run the
-sample pipelines. To modify these parameters, update their entries in
-the sample classification pipeline file.
+The following are the only parameters you need to pass to run the
+sample pipelines. To pass these parameters, update their entries when creating a new run.
 
 -  **Role-ARN:** This must be the ARN of an IAM role that has full
    Amazon SageMaker access in your AWS account. Use the ARN
    of  ``kfp-example-pod-role``.
 
--  **The Dataset Buckets**: You must change the S3 bucket with the input
-   data for each of the components. Replace the following with the link
-   to your S3 bucket:
-
-   -  **Train channel:** ``"S3Uri": "s3://<your-s3-bucket-name>/data"``
-
-   -  **HPO channels for test/HPO channel for
-      train:** ``"S3Uri": "s3://<your-s3-bucket-name>/data"``
-
-   -  **Batch
-      transform:** ``"batch-input": "s3://<your-s3-bucket-name>/data"``
-
--  **Output buckets:** Replace the output buckets with S3 buckets you
-   have write permission to. Replace the following with the link to your
-   S3 bucket:
-
-   -  **Training/HPO**:
-      ``output_location='s3://<your-s3-bucket-name>/output'``
-
-   -  **Batch Transform**:
-      ``batch_transform_ouput='s3://<your-s3-bucket-name>/output'``
-
--  **Region:**\ The default pipelines work in us-east-1. If your
-   cluster is in a different region, update the following:
-
-   -  The ``region='us-east-1'`` Parameter in the input list.
-
-   -  The algorithm images for Amazon SageMaker. If you use one of
-      the Amazon SageMaker built-in algorithm images, select the image
-      for your region. Construct the image name using the information
-      in `Common parameters for built-in
-      algorithms <https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-algo-docker-registry-paths.html>`__.
-      For Example:
-
-      ::
-
-          382416733822.dkr.ecr.us-east-1.amazonaws.com/kmeans:1
-
-   -  The S3 buckets with the dataset. Use the steps in Prepare datasets
-      to copy the data to a bucket in the same region as the cluster.
+-  **The Dataset Bucket**: This is the name of the S3 bucket that you uploaded the ``kmeans_preprocessing.py`` file to.
 
 You can adjust any of the input parameters using the KFP UI and trigger
 your run again.
