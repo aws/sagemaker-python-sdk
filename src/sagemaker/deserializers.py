@@ -163,13 +163,15 @@ class NumpyDeserializer(BaseDeserializer):
 
     ACCEPT = "application/x-npy"
 
-    def __init__(self, dtype=None):
-        """Initialize the dtype.
+    def __init__(self, dtype=None, allow_pickle=True):
+        """Initialize the dtype and allow_pickle arguments.
 
         Args:
-            dtype (str): The dtype of the data.
+            dtype (str): The dtype of the data (default: None).
+            allow_pickle (bool): Allow loading pickled object arrays (default: True).
         """
         self.dtype = dtype
+        self.allow_pickle = allow_pickle
 
     def deserialize(self, stream, content_type):
         """Deserialize data from an inference endpoint into a NumPy array.
@@ -189,7 +191,7 @@ class NumpyDeserializer(BaseDeserializer):
             if content_type == "application/json":
                 return np.array(json.load(codecs.getreader("utf-8")(stream)), dtype=self.dtype)
             if content_type == "application/x-npy":
-                return np.load(io.BytesIO(stream.read()))
+                return np.load(io.BytesIO(stream.read()), allow_pickle=self.allow_pickle)
         finally:
             stream.close()
 
