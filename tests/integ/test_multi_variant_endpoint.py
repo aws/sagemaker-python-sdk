@@ -173,8 +173,6 @@ def test_predict_invocation_with_target_variant(sagemaker_session, multi_variant
         endpoint_name=multi_variant_endpoint.endpoint_name,
         sagemaker_session=sagemaker_session,
         serializer=CSVSerializer(),
-        content_type="text/csv",
-        accept="text/csv",
     )
 
     # Validate that no exception is raised when the target_variant is specified.

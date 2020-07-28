@@ -190,10 +190,8 @@ def test_predict_jsons_json_content_type(tfs_predictor):
     predictor = sagemaker.Predictor(
         tfs_predictor.endpoint_name,
         tfs_predictor.sagemaker_session,
-        serializer=None,
+        serializer=sagemaker.serializers.IdentitySerializer(),
         deserializer=sagemaker.deserializers.JSONDeserializer(),
-        content_type="application/json",
-        accept="application/json",
     )
 
     result = predictor.predict(input_data)
@@ -207,10 +205,8 @@ def test_predict_jsons(tfs_predictor):
     predictor = sagemaker.Predictor(
         tfs_predictor.endpoint_name,
         tfs_predictor.sagemaker_session,
-        serializer=None,
+        serializer=sagemaker.serializer.IdentitySerializer(),
         deserializer=sagemaker.deserializers.JSONDeserializer(),
-        content_type="application/jsons",
-        accept="application/jsons",
     )
 
     result = predictor.predict(input_data)
@@ -224,10 +220,8 @@ def test_predict_jsonlines(tfs_predictor):
     predictor = sagemaker.Predictor(
         tfs_predictor.endpoint_name,
         tfs_predictor.sagemaker_session,
-        serializer=None,
-        deserializer=sagemaker.deserializers.JSONDeserializer(),
-        content_type="application/jsonlines",
-        accept="application/jsonlines",
+        serializer=sagemaker.serializers.JSONLinesSerializer(),
+        deserializer=sagemaker.deserializers.JSONLinesDeserializer(),
     )
 
     result = predictor.predict(input_data)

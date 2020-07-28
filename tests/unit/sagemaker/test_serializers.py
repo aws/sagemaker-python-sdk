@@ -246,6 +246,7 @@ def test_identity_serializer(identity_serializer):
     assert identity_serializer.serialize(b"{}") == b"{}"
 
 
+@pytest.fixture
 def json_lines_serializer():
     return JSONLinesSerializer()
 
