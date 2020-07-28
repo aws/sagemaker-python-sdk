@@ -22,6 +22,13 @@ import json
 
 import numpy as np
 
+from sagemaker.utils import DeferredError
+
+try:
+    import pandas
+except ImportError as e:
+    pandas = DeferredError(e)
+
 
 class BaseDeserializer(abc.ABC):
     """Abstract base class for creation of new deserializers.
@@ -156,13 +163,15 @@ class NumpyDeserializer(BaseDeserializer):
 
     ACCEPT = "application/x-npy"
 
-    def __init__(self, dtype=None):
-        """Initialize the dtype.
+    def __init__(self, dtype=None, allow_pickle=True):
+        """Initialize the dtype and allow_pickle arguments.
 
         Args:
-            dtype (str): The dtype of the data.
+            dtype (str): The dtype of the data (default: None).
+            allow_pickle (bool): Allow loading pickled object arrays (default: True).
         """
         self.dtype = dtype
+        self.allow_pickle = allow_pickle
 
     def deserialize(self, stream, content_type):
         """Deserialize data from an inference endpoint into a NumPy array.
@@ -182,7 +191,7 @@ class NumpyDeserializer(BaseDeserializer):
             if content_type == "application/json":
                 return np.array(json.load(codecs.getreader("utf-8")(stream)), dtype=self.dtype)
             if content_type == "application/x-npy":
-                return np.load(io.BytesIO(stream.read()))
+                return np.load(io.BytesIO(stream.read()), allow_pickle=self.allow_pickle)
         finally:
             stream.close()
 
@@ -208,3 +217,31 @@ class JSONDeserializer(BaseDeserializer):
             return json.load(codecs.getreader("utf-8")(stream))
         finally:
             stream.close()
+
+
+class PandasDeserializer(BaseDeserializer):
+    """Deserialize CSV or JSON data from an inference endpoint into a pandas dataframe."""
+
+    ACCEPT = "text/csv"
+
+    def deserialize(self, stream, content_type):
+        """Deserialize CSV or JSON data from an inference endpoint into a pandas
+        dataframe.
+
+        If the data is JSON, the data should be formatted in the 'columns' orient.
+        See https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.read_json.html
+
+        Args:
+            stream (botocore.response.StreamingBody): Data to be deserialized.
+            content_type (str): The MIME type of the data.
+
+        Returns:
+            pandas.DataFrame: The data deserialized into a pandas DataFrame.
+        """
+        if content_type == "text/csv":
+            return pandas.read_csv(stream)
+
+        if content_type == "application/json":
+            return pandas.read_json(stream)
+
+        raise ValueError("%s cannot read content type %s." % (__class__.__name__, content_type))

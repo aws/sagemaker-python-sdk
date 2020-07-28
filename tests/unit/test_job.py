@@ -49,7 +49,6 @@ MODEL_CONTAINER_DEF = {
         "SAGEMAKER_SUBMIT_DIRECTORY": "s3://mybucket/mi-2017-10-10-14-14-15/sourcedir.tar.gz",
         "SAGEMAKER_CONTAINER_LOG_LEVEL": "20",
         "SAGEMAKER_REGION": REGION,
-        "SAGEMAKER_ENABLE_CLOUDWATCH_METRICS": "false",
     },
     "Image": IMAGE_NAME,
     "ModelDataUrl": MODEL_URI,
