@@ -245,3 +245,28 @@ class PandasDeserializer(BaseDeserializer):
             return pandas.read_json(stream)
 
         raise ValueError("%s cannot read content type %s." % (__class__.__name__, content_type))
+
+
+class JSONLinesDeserializer(BaseDeserializer):
+    """Deserialize JSON lines data from an inference endpoint."""
+
+    ACCEPT = "application/jsonlines"
+
+    def deserialize(self, stream, content_type):
+        """Deserialize JSON lines data from an inference endpoint.
+
+        See https://docs.python.org/3/library/json.html#py-to-json-table tp
+        understand how JSON values are converted to Python objects.
+
+        Args:
+            stream (botocore.response.StreamingBody): Data to be deserialized.
+            content_type (str): The MIME type of the data.
+
+        Returns:
+            list: A list of JSON serializable objects.
+        """
+        try:
+            lines = stream.read().split("\n")
+            return [json.loads(line) for line in lines]
+        finally:
+            stream.close()
