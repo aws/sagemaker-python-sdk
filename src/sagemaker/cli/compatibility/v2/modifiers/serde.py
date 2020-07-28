@@ -274,7 +274,7 @@ class SerdeImportFromAmazonCommonRenamer(Modifier):
                 the ``sagemaker.amazon.common`` module.
         """
         return node.module == "sagemaker.amazon.common" and any(
-            [alias.name in OLD_AMAZON_CLASS_NAMES for alias in node.names]
+            alias.name in OLD_AMAZON_CLASS_NAMES for alias in node.names
         )
 
     def modify_node(self, node):
@@ -368,7 +368,11 @@ class SerializerImportInserter(_ImportInserter):
     """
 
     def __init__(self):
-        # Amazon SerDe are not defined in the sagemaker.serializers module.
+        """Initialize the ``class_names`` and ``import_node`` attributes.
+
+        Amazon-specific serializers are ignored because they are not defined in
+        the ``sagemaker.serializers`` module.
+        """
         class_names = {
             class_name
             for class_name in NEW_CLASS_NAMES - NEW_AMAZON_CLASS_NAMES
@@ -398,7 +402,11 @@ class DeserializerImportInserter(_ImportInserter):
     """
 
     def __init__(self):
-        # Amazon SerDe are not defined in the sagemaker.serializers module.
+        """Initialize the ``class_names`` and ``import_node`` attributes.
+
+        Amazon-specific deserializers are ignored because they are not defined
+        in the ``sagemaker.deserializers`` module.
+        """
         class_names = {
             class_name
             for class_name in NEW_CLASS_NAMES - NEW_AMAZON_CLASS_NAMES
