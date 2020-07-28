@@ -22,6 +22,7 @@ from sagemaker import utils
 logger = logging.getLogger(__name__)
 
 ECR_URI_TEMPLATE = "{registry}.dkr.{hostname}/{repository}:{tag}"
+MONITOR_URI_TEMPLATE = "{registry}.dkr.{hostname}/{repository}"
 
 
 def retrieve(
@@ -68,12 +69,16 @@ def retrieve(
     registry = _registry_from_region(region, version_config["registries"])
     hostname = utils._botocore_resolver().construct_endpoint("ecr", region)["hostname"]
 
+    repo = version_config["repository"]
+
+    # model-monitoring image uri does not have tags
+    if framework == "model-monitor":
+        return MONITOR_URI_TEMPLATE.format(registry=registry, hostname=hostname, repository=repo)
+
     processor = _processor(
         instance_type, config.get("processors") or version_config.get("processors")
     )
     tag = _format_tag(version_config.get("tag_prefix", version), processor, py_version)
-
-    repo = version_config["repository"]
 
     return ECR_URI_TEMPLATE.format(registry=registry, hostname=hostname, repository=repo, tag=tag)
 
