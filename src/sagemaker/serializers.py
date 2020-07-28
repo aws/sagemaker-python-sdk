@@ -25,7 +25,7 @@ from sagemaker.utils import DeferredError
 try:
     import scipy.sparse
 except ImportError as e:
-    scipy.sparse = DeferredError(e)
+    scipy = DeferredError(e)
 
 
 class BaseSerializer(abc.ABC):
