@@ -237,13 +237,15 @@ def test_json_serializer_csv_buffer(json_serializer):
         assert result == validation_value
 
 
-@pytest.fixture
-def identity_serializer():
-    return IdentitySerializer()
-
-
 def test_identity_serializer(identity_serializer):
+    identity_serializer = IdentitySerializer()
     assert identity_serializer.serialize(b"{}") == b"{}"
+
+
+def test_identity_serializer_with_custom_content_type():
+    identity_serializer = IdentitySerializer(content_type="text/csv")
+    assert identity_serializer.serialize(b"a,b\n1,2") == b"a,b\n1,2"
+    assert identity_serializer.CONTENT_TYPE == "text/csv"
 
 
 @pytest.fixture
