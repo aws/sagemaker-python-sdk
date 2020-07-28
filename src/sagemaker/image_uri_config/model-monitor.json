@@ -1,7 +1,7 @@
 {
     "scope": ["monitoring"],
     "versions": {
-        "1": {
+        "": {
             "registries": {
                 "eu-north-1": "895015795356",
                 "me-south-1": "607024016150",
