@@ -16,8 +16,7 @@ for models hosted on SageMaker Endpoints.
 """
 from __future__ import print_function, absolute_import
 
-import os
-
+from sagemaker import s3
 from sagemaker.session import Session
 
 _MODEL_MONITOR_S3_PATH = "model-monitor"
@@ -67,7 +66,7 @@ class DataCaptureConfig(object):
         self.destination_s3_uri = destination_s3_uri
         if self.destination_s3_uri is None:
             sagemaker_session = sagemaker_session or Session()
-            self.destination_s3_uri = os.path.join(
+            self.destination_s3_uri = s3.s3_path_join(
                 "s3://",
                 sagemaker_session.default_bucket(),
                 _MODEL_MONITOR_S3_PATH,
