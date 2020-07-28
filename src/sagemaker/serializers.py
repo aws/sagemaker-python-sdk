@@ -14,6 +14,7 @@
 from __future__ import absolute_import
 
 import abc
+from collections.abc import Iterable
 import csv
 import io
 import json
@@ -202,7 +203,7 @@ class JSONLinesSerializer(BaseSerializer):
 
         Args:
             data (object): Data to be serialized. The data can be a string,
-                list of JSON serializable objects, or a file-like object.
+                iterable of JSON serializable objects, or a file-like object.
 
         Returns:
             str: The data serialized as a string containing newline-separated
@@ -211,7 +212,7 @@ class JSONLinesSerializer(BaseSerializer):
         if isinstance(data, str):
             return data
 
-        if isinstance(data, list):
+        if isinstance(data, Iterable):
             return "\n".join(json.dumps(element) for element in data)
 
         if hasattr(data, "read"):
