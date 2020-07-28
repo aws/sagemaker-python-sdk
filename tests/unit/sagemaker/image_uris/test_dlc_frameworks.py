@@ -31,9 +31,11 @@ DLC_ALTERNATE_REGION_ACCOUNTS = {
 }
 SAGEMAKER_ACCOUNT = "520713654638"
 SAGEMAKER_ALTERNATE_REGION_ACCOUNTS = {
+    "af-south-1": "313743910680",
     "ap-east-1": "057415533634",
     "cn-north-1": "422961961927",
     "cn-northwest-1": "423003514399",
+    "eu-south-1": "048378556238",
     "me-south-1": "724002660598",
     "us-gov-west-1": "246785580436",
     "us-iso-east-1": "744548109606",
