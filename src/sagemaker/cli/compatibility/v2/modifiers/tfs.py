@@ -61,12 +61,16 @@ class TensorFlowServingConstructorRenamer(Modifier):
 
         Args:
             node (ast.Call): a node that represents a TensorFlow Serving constructor.
+
+        Returns:
+            ast.AST: the original node, which has been potentially modified.
         """
         if isinstance(node.func, ast.Name):
             node.func.id = self._new_cls_name(node.func.id)
         else:
             node.func.attr = self._new_cls_name(node.func.attr)
             node.func.value = node.func.value.value
+        return node
 
     def _new_cls_name(self, cls_name):
         """Returns the updated class name."""
@@ -95,11 +99,15 @@ class TensorFlowServingImportFromRenamer(Modifier):
         Args:
             node (ast.ImportFrom): a node that represents a ``from ... import ... `` statement.
                 For more, see https://docs.python.org/3/library/ast.html#abstract-grammar.
+
+        Returns:
+            ast.AST: the original node, which has been potentially modified.
         """
         node.module = "sagemaker.tensorflow"
 
         for cls in node.names:
             cls.name = "TensorFlow{}".format(cls.name)
+        return node
 
 
 class TensorFlowServingImportRenamer(Modifier):
@@ -112,7 +120,11 @@ class TensorFlowServingImportRenamer(Modifier):
         Args:
             node (ast.Import): a node that represents an import statement. For more,
                 see https://docs.python.org/3/library/ast.html#abstract-grammar.
+
+        Returns:
+            ast.AST: the original node, which has been potentially modified.
         """
         for module in node.names:
             if module.name == "sagemaker.tensorflow.serving":
                 module.name = "sagemaker.tensorflow"
+        return node

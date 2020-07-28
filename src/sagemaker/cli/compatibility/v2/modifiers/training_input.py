@@ -56,6 +56,7 @@ class TrainingInputConstructorRefactor(Modifier):
         elif matching.matches_attr(node, S3_INPUT_NAME):
             node.func.attr = "TrainingInput"
             _rename_namespace(node, "session")
+        return node
 
 
 def _rename_namespace(node, name):
@@ -89,9 +90,13 @@ class TrainingInputImportFromRenamer(Modifier):
         Args:
             node (ast.ImportFrom): a node that represents a ``from ... import ... `` statement.
                 For more, see https://docs.python.org/3/library/ast.html#abstract-grammar.
+
+        Returns:
+            ast.AST: the original node, which has been potentially modified.
         """
         for name in node.names:
             if name.name == S3_INPUT_NAME:
                 name.name = "TrainingInput"
             if node.module == "sagemaker.session":
                 node.module = "sagemaker.inputs"
+        return node
