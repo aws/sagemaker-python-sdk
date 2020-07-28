@@ -463,21 +463,24 @@ you can create your classification pipeline. To create your pipeline,
 you need to define and compile it. You then deploy it and use it to run
 workflows. You can define your pipeline in Python and use the KFP
 dashboard, KFP CLI, or Python SDK to compile, deploy, and run your
-workflows.
+workflows. The full code for the MNIST classification pipeline example is available in the
+`Kubeflow Github
+repository <https://github.com/kubeflow/pipelines/blob/master/samples/contrib/aws-samples/mnist-kmeans-sagemaker>`__.
+To use it, clone the example Python files to your gateway node.
 
 Prepare datasets
 ~~~~~~~~~~~~~~~~
 
-To run the pipelines, you need to have the datasets in an S3 bucket in
-your account. This bucket must be located in the region where you want
-to run Amazon SageMaker jobs. If you don’t have a bucket, create one
+To run the pipelines, you need to upload the data extraction pre-processing script to an S3 bucket. This bucket and all resources for this example must be located in the ``us-east-1`` Amazon Region. If you don’t have a bucket, create one
 using the steps in `Creating a
 bucket <https://docs.aws.amazon.com/AmazonS3/latest/gsg/CreatingABucket.html>`__.
 
-From your gateway node, run the `sample dataset
-creation <https://github.com/kubeflow/pipelines/tree/34615cb19edfacf9f4d9f2417e9254d52dd53474/samples/contrib/aws-samples/mnist-kmeans-sagemaker#the-sample-dataset>`__
-script to copy the datasets into your bucket. Change the bucket name in
-the script to the one you created.
+From the ``mnist-kmeans-sagemaker`` folder of the Kubeflow repository you cloned on your gateway node, run the following command to upload the ``kmeans_preprocessing.py`` file to your S3 bucket. Change ``<bucket-name>`` to the name of the S3 bucket you created.
+
+::
+
+    aws s3 cp mnist-kmeans-sagemaker/kmeans_preprocessing.py s3://<bucket-name>/mnist_kmeans_example/processing_code/kmeans_preprocessing.py
+
 
 Create a Kubeflow Pipeline using Amazon SageMaker Components
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
