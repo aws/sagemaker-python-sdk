@@ -212,11 +212,11 @@ class JSONLinesSerializer(BaseSerializer):
         if isinstance(data, str):
             return data
 
-        if isinstance(data, Iterable):
-            return "\n".join(json.dumps(element) for element in data)
-
         if hasattr(data, "read"):
             return data.read()
+
+        if isinstance(data, Iterable):
+            return "\n".join(json.dumps(element) for element in data)
 
         raise ValueError("Object of type %s is not JSON Lines serializable." % type(data))
 
