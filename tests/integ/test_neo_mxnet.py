@@ -119,6 +119,7 @@ def test_deploy_model(
         predictor.predict(data)
 
 
+@pytest.mark.skip(reason="Inferentia is not supported yet.")
 def test_inferentia_deploy_model(
     mxnet_training_job,
     sagemaker_session,
