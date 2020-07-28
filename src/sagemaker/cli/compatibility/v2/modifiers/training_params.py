@@ -91,7 +91,11 @@ class TrainPrefixRemover(Modifier):
 
         Args:
             node (ast.Call): a node that represents an estimator constructor.
+
+        Returns:
+            ast.AST: the original node, which has been potentially modified.
         """
         for kw in node.keywords:
             if kw.arg in PARAMS:
                 kw.arg = kw.arg.replace("train_", "")
+        return node
