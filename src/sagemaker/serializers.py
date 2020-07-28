@@ -192,6 +192,34 @@ class JSONSerializer(BaseSerializer):
         return json.dumps(data)
 
 
+class JSONLinesSerializer(BaseSerializer):
+    """Serialize data to a JSON Lines formatted string."""
+
+    CONTENT_TYPE = "application/jsonlines"
+
+    def serialize(self, data):
+        """Serialize data of various formats to a JSON Lines formatted string.
+
+        Args:
+            data (object): Data to be serialized. The data can be a string,
+                list of JSON serializable objects, or a file-like object.
+
+        Returns:
+            str: The data serialized as a string containing newline-separated
+                JSON values.
+        """
+        if isinstance(data, str):
+            return data
+
+        if isinstance(data, list):
+            return "\n".join(json.dumps(element) for element in data)
+
+        if hasattr(data, "read"):
+            return data.read()
+
+        raise ValueError("Object of type %s is not JSON Lines serializable." % type(data))
+
+
 class SparseMatrixSerializer(BaseSerializer):
     """Serialize a sparse matrix to a buffer using the .npz format."""
 
