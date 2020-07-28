@@ -100,6 +100,9 @@ class TensorFlowLegacyModeConstructorUpgrader(Modifier):
 
         Args:
             node (ast.Call): a node that represents a TensorFlow constructor.
+
+        Returns:
+            ast.AST: the original node, which has been potentially modified.
         """
         base_hps = {}
         additional_hps = {}
@@ -130,6 +133,7 @@ class TensorFlowLegacyModeConstructorUpgrader(Modifier):
                 node.keywords.append(ast.keyword(arg="image_uri", value=ast.Str(s=image_uri)))
 
         node.keywords.append(ast.keyword(arg="model_dir", value=ast.NameConstant(value=False)))
+        return node
 
     def _hyperparameter_key_for_param(self, arg):
         """Returns an ``ast.Str`` for a hyperparameter key replacing a legacy mode parameter."""
@@ -210,7 +214,11 @@ class TensorBoardParameterRemover(Modifier):
         Args:
             node (ast.Call): a node that represents ``fit`` being called with
                 ``run_tensorboard_locally`` set.
+
+        Returns:
+            ast.AST: the original node, which has been potentially modified.
         """
         for kw in node.keywords:
             if kw.arg == "run_tensorboard_locally":
                 node.keywords.remove(kw)
+        return node

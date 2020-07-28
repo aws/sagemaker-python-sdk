@@ -19,6 +19,7 @@ from sagemaker.cli.compatibility.v2.modifiers import (  # noqa: F401 (imported b
     framework_version,
     predictors,
     renamed_params,
+    serde,
     tf_legacy_mode,
     tfs,
     training_params,

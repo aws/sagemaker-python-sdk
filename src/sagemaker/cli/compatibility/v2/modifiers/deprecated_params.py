@@ -54,7 +54,11 @@ class TensorFlowScriptModeParameterRemover(Modifier):
 
         Args:
             node (ast.Call): a node that represents a TensorFlow constructor.
+
+        Returns:
+            ast.AST: the original node, which has been potentially modified.
         """
         for kw in node.keywords:
             if kw.arg == "script_mode":
                 node.keywords.remove(kw)
+        return node
