@@ -62,9 +62,13 @@ class PredictorConstructorRefactor(Modifier):
 
         Args:
             node (ast.Call): a node that represents a *Predictor constructor.
+
+        Returns:
+            ast.AST: the original node, which has been potentially modified.
         """
         _rename_class(node)
         _rename_endpoint(node)
+        return node
 
 
 def _rename_class(node):
@@ -106,7 +110,11 @@ class PredictorImportFromRenamer(Modifier):
         Args:
             node (ast.ImportFrom): a node that represents a ``from ... import ... `` statement.
                 For more, see https://docs.python.org/3/library/ast.html#abstract-grammar.
+
+        Returns:
+            ast.AST: the original node, which has been potentially modified.
         """
         for name in node.names:
             if name.name == BASE_PREDICTOR:
                 name.name = "Predictor"
+        return node

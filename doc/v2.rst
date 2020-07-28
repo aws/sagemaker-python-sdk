@@ -21,13 +21,13 @@ To install the latest release candidate:
 
 .. code:: bash
 
-    pip install git+git@github.com:aws/sagemaker-python-sdk.git@v2.0.0.rc1
+    pip install git+git://github.com/aws/sagemaker-python-sdk.git@v2.0.0.rc1
 
 To install the latest version of v2:
 
 .. code:: bash
 
-    pip install git+git@github.com:aws/sagemaker-python-sdk.git@zwei
+    pip install git+git://github.com/aws/sagemaker-python-sdk.git@zwei
 
 If you are executing this pip install command in a notebook, make sure to restart your kernel.
 
@@ -63,6 +63,30 @@ For more information, see `Upgrade from Legacy TensorFlow Support <frameworks/te
 
 The ``delete_endpoint()`` method for estimators and ``HyperparameterTuner`` has been deprecated.
 Please use :func:`sagemaker.predictor.Predictor.delete_endpoint` instead.
+
+Pre-instantiated Serializer and Deserializer Objects
+----------------------------------------------------
+
+The ``csv_serializer``, ``json_serializer``, ``npy_serializer``, ``csv_deserializer``,
+``json_deserializer``, and ``numpy_deserializer`` objects have been deprecated.
+
+Please instantiate the objects instead.
+
++--------------------------------------------+------------------------------------------------+
+| v1.x                                       | v2.0 and later                                 |
++============================================+================================================+
+| ``sagemaker.predictor.csv_serializer``     | ``sagemaker.deserializers.CSVSerializer()``    |
++--------------------------------------------+------------------------------------------------+
+| ``sagemaker.predictor.json_serializer``    | ``sagemaker.serializers.JSONSerializer()``     |
++--------------------------------------------+------------------------------------------------+
+| ``sagemaker.predictor.npy_serializer``     | ``sagemaker.deserializers.NumpySerializer()``  |
++--------------------------------------------+------------------------------------------------+
+| ``sagemaker.predictor.csv_deserializer``   | ``sagemaker.deserializers.CSVDeserializer()``  |
++--------------------------------------------+------------------------------------------------+
+| ``sagemaker.predictor.json_deserializer``  | ``sagemaker.deserializers.JSONDeserializer()`` |
++--------------------------------------------+------------------------------------------------+
+| ``sagemaker.predictor.numpy_deserializer`` | ``sagemaker.serializers.NumpyDeserializer()``  |
++--------------------------------------------+------------------------------------------------+
 
 ``update_endpoint`` in ``deploy()``
 -----------------------------------
@@ -163,6 +187,37 @@ The following estimator parameters have been renamed:
 | ``train_volume_kms_key``     | ``volume_kms_key``     |
 +------------------------------+------------------------+
 
+Serializer and Deserializer Classes
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The follow serializer/deserializer classes have been renamed and/or moved:
+
++--------------------------------------------------------+-------------------------------------------------------+
+| v1.x                                                   | v2.0 and later                                        |
++========================================================+=======================================================+
+| ``sagemaker.predictor._CsvDeserializer``               | ``sagemaker.deserializers.CSVDeserializer``           |
++--------------------------------------------------------+-------------------------------------------------------+
+| ``sagemaker.predictor._CsvSerializer``                 | ``sagemaker.serializers.CSVSerializer``               |
++--------------------------------------------------------+-------------------------------------------------------+
+| ``sagemaker.predictor.BytesDeserializer``              | ``sagemaker.deserializers.BytesDeserializers``        |
++--------------------------------------------------------+-------------------------------------------------------+
+| ``sagemaker.predictor.StringDeserializer``             | ``sagemaker.deserializers.StringDeserializer``        |
++--------------------------------------------------------+-------------------------------------------------------+
+| ``sagemaker.predictor.StreamDeserializer``             | ``sagemaker.deserializers.StreamDeserializer``        |
++--------------------------------------------------------+-------------------------------------------------------+
+| ``sagemaker.predictor._JsonSerializer``                | ``sagemaker.serializers.JSONSerializer``              |
++--------------------------------------------------------+-------------------------------------------------------+
+| ``sagemaker.predictor._NumpyDeserializer``             | ``sagemaker.deserializers.NumpyDeserializer``         |
++--------------------------------------------------------+-------------------------------------------------------+
+| ``sagemaker.predictor._NPYSerializer``                 | ``sagemaker.serializers.NumpySerializer``             |
++--------------------------------------------------------+-------------------------------------------------------+
+| ``sagemaker.amazon.common.numpy_to_record_serializer`` | ``sagemaker.amazon.serializers.RecordSerializer``     |
++--------------------------------------------------------+-------------------------------------------------------+
+| ``sagemaker.amazon.common.record_deserializer``        | ``sagemaker.amazon.deserializers.RecordDeserializer`` |
++--------------------------------------------------------+-------------------------------------------------------+
+| ``sagemaker.predictor._JsonDeserializer``              | ``sagemaker.deserializers.JSONDeserializer``          |
++--------------------------------------------------------+-------------------------------------------------------+
+
 ``distributions``
 ~~~~~~~~~~~~~~~~~
 
@@ -198,14 +253,33 @@ Specify Custom Serving Image
 
 The ``image`` parameter has been renamed to ``image_uri`` for specifying a custom Docker image URI to use with inference.
 
+TensorFlow Serving Model
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+``sagemaker.tensorflow.serving.Model`` has been renamed to :class:`sagemaker.tensorflow.model.TensorFlowModel`.
+(For the previous implementation of that class, see `Deprecate Legacy TensorFlow <#deprecate-legacy-tensorflow>`_).
+
 Predictors
 ----------
 
+Generic Predictor Class Name
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 ``sagemaker.predictor.RealTimePredictor`` has been renamed to :class:`sagemaker.predictor.Predictor`.
 
-In addition, for :class:`sagemaker.predictor.Predictor`, :class:`sagemaker.sparkml.model.SparkMLPredictor`,
+Endpoint Argument Name
+~~~~~~~~~~~~~~~~~~~~~~
+
+For :class:`sagemaker.predictor.Predictor`, :class:`sagemaker.sparkml.model.SparkMLPredictor`,
 and predictors for Amazon algorithm (e.g. Factorization Machines, Linear Learner, etc.),
 the ``endpoint`` attribute has been renamed to ``endpoint_name``.
+
+TensorFlow Serving Predictor
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``sagemaker.tensorflow.serving.Predictor`` has been renamed to :class:`sagemaker.tensorflow.model.TensorFlowPredictor`.
+(For the previous implementation of that class, see `Deprecate Legacy TensorFlow <#deprecate-legacy-tensorflow>`_).
+
 
 Airflow
 -------

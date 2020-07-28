@@ -94,6 +94,9 @@ class FrameworkVersionEnforcer(Modifier):
 
         Args:
             node (ast.Call): a node that represents the constructor of a framework class.
+
+        Returns:
+            ast.AST: the original node, which has been potentially modified.
         """
         framework, is_model = _framework_from_node(node)
 
@@ -109,6 +112,7 @@ class FrameworkVersionEnforcer(Modifier):
             py_version = _py_version_defaults(framework, framework_version, is_model)
             if py_version:
                 node.keywords.append(ast.keyword(arg=PY_ARG, value=ast.Str(s=py_version)))
+        return node
 
 
 def _py_version_defaults(framework, framework_version, is_model=False):

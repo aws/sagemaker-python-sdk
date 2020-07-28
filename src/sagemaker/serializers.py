@@ -14,6 +14,7 @@
 from __future__ import absolute_import
 
 import abc
+from collections.abc import Iterable
 import csv
 import io
 import json
@@ -207,6 +208,34 @@ class IdentitySerializer(BaseSerializer):
             object: The unmodified data.
         """
         return data
+
+
+class JSONLinesSerializer(BaseSerializer):
+    """Serialize data to a JSON Lines formatted string."""
+
+    CONTENT_TYPE = "application/jsonlines"
+
+    def serialize(self, data):
+        """Serialize data of various formats to a JSON Lines formatted string.
+
+        Args:
+            data (object): Data to be serialized. The data can be a string,
+                iterable of JSON serializable objects, or a file-like object.
+
+        Returns:
+            str: The data serialized as a string containing newline-separated
+                JSON values.
+        """
+        if isinstance(data, str):
+            return data
+
+        if hasattr(data, "read"):
+            return data.read()
+
+        if isinstance(data, Iterable):
+            return "\n".join(json.dumps(element) for element in data)
+
+        raise ValueError("Object of type %s is not JSON Lines serializable." % type(data))
 
 
 class SparseMatrixSerializer(BaseSerializer):
