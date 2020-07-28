@@ -61,9 +61,13 @@ class ParamRenamer(Modifier):
 
         Args:
             node (ast.Call): a node that represents the relevant function call.
+
+        Returns:
+            ast.AST: the original node, which has been potentially modified.
         """
         keyword = parsing.arg_from_keywords(node, self.old_param_name)
         keyword.arg = self.new_param_name
+        return node
 
 
 class MethodParamRenamer(ParamRenamer):
