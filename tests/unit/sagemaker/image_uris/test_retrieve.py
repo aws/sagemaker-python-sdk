@@ -143,12 +143,26 @@ def test_retrieve_eia(config_for_framework, caplog):
         version="1.0.0",
         py_version="py3",
         instance_type="ml.c4.xlarge",
-        accelerator_type="ml.eia1.medium",
+        accelerator_type="local_sagemaker_notebook",
         region="us-west-2",
         image_scope="training",
     )
     assert "123412341234.dkr.ecr.us-west-2.amazonaws.com/dummy-eia:1.0.0-cpu-py3" == uri
     assert "Ignoring image scope: training." in caplog.text
+
+
+@patch("sagemaker.image_uris.config_for_framework", return_value=BASE_CONFIG)
+def test_retrieve_invalid_accelerator(config_for_framework):
+    with pytest.raises(ValueError) as e:
+        image_uris.retrieve(
+            framework="useless-string",
+            version="1.0.0",
+            py_version="py3",
+            instance_type="ml.c4.xlarge",
+            accelerator_type="fake-accelerator",
+            region="us-west-2",
+        )
+    assert "Invalid SageMaker Elastic Inference accelerator type: fake-accelerator." in str(e.value)
 
 
 @patch("sagemaker.image_uris.config_for_framework")
