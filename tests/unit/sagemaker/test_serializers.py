@@ -237,7 +237,7 @@ def test_json_serializer_csv_buffer(json_serializer):
         assert result == validation_value
 
 
-def test_identity_serializer(identity_serializer):
+def test_identity_serializer():
     identity_serializer = IdentitySerializer()
     assert identity_serializer.serialize(b"{}") == b"{}"
 

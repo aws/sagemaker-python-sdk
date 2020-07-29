@@ -22,7 +22,7 @@ from sagemaker.serializers import JSONSerializer, CSVSerializer
 
 ENDPOINT = "mxnet_endpoint"
 BUCKET_NAME = "mxnet_endpoint"
-DEFAULT_CONTENT_TYPE = "application/json"
+DEFAULT_CONTENT_TYPE = "application/octet-stream"
 CSV_CONTENT_TYPE = "text/csv"
 DEFAULT_ACCEPT = "*/*"
 RETURN_VALUE = 0
