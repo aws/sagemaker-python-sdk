@@ -270,12 +270,12 @@ class AlgorithmEstimator(EstimatorBase):
                 role from the Estimator will be used.
             predictor_cls (Predictor): The predictor class to use when
                 deploying the model.
-            serializer (sagemaker.serializers.BaseSerializer): A serializer
-                object, used to encode data for an inference endpoint
+            serializer (:class:`~sagemaker.serializers.BaseSerializer`): A
+                serializer object, used to encode data for an inference endpoint
                 (default: :class:`~sagemaker.serializers.IdentitySerializer`).
-            deserializer (sagemaker.deserializers.BaseDeserializer): A
+            deserializer (:class:`~sagemaker.deserializers.BaseDeserializer`): A
                 deserializer object, used to decode data from an inference
-                endpoint (default: :class:`~sagemaker.serializers.BytesDeserializer`).
+                endpoint (default: :class:`~sagemaker.deserializers.BytesDeserializer`).
             vpc_config_override (dict[str, list[str]]): Optional override for VpcConfig set on
                 the model. Default: use subnets and security groups from this Estimator.
                 * 'Subnets' (list[str]): List of subnet ids.

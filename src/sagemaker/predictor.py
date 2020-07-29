@@ -51,12 +51,12 @@ class Predictor(object):
                 object, used for SageMaker interactions (default: None). If not
                 specified, one is created using the default AWS configuration
                 chain.
-            serializer (sagemaker.serializers.BaseSerializer): A serializer
-                object, used to encode data for an inference endpoint
+            serializer (:class:`~sagemaker.serializers.BaseSerializer`): A
+                serializer object, used to encode data for an inference endpoint
                 (default: :class:`~sagemaker.serializers.IdentitySerializer`).
-            deserializer (sagemaker.deserializers.BaseDeserializer): A
+            deserializer (:class:`~sagemaker.deserializers.BaseDeserializer`): A
                 deserializer object, used to decode data from an inference
-                endpoint (default: :class:`~sagemaker.serializers.BytesDeserializer`).
+                endpoint (default: :class:`~sagemaker.deserializers.BytesDeserializer`).
         """
         self.endpoint_name = endpoint_name
         self.sagemaker_session = sagemaker_session or Session()
