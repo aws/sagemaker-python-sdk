@@ -69,7 +69,7 @@ class RLEstimator(Framework):
 
     COACH_LATEST_VERSION_TF = "0.11.1"
     COACH_LATEST_VERSION_MXNET = "0.11.0"
-    RAY_LATEST_VERSION = "0.6.5"
+    RAY_LATEST_VERSION = "0.8.5"
 
     def __init__(
         self,
