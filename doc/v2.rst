@@ -98,11 +98,11 @@ Please use :func:`sagemaker.predictor.Predictor.update_endpoint` instead.
 ------------------------------------------------------------
 
 The ``content_type`` and ``accept`` parameters have been removed from the
-following methods:
-- ``sagemaker.predictor.Predictor.__init__``
+following classes and methods:
+- ``sagemaker.predictor.Predictor``
 - ``sagemaker.estimator.Estimator.create_model``
 - ``sagemaker.algorithms.AlgorithmEstimator.create_model``
-- ``sagemaker.tensorflow.model.TensorFlowPredictor.__init__``
+- ``sagemaker.tensorflow.model.TensorFlowPredictor``
 
 Please specify content types in a serializer or deserializer class instead.
 

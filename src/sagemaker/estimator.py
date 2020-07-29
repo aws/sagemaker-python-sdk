@@ -1364,10 +1364,10 @@ class Estimator(EstimatorBase):
                 deploying the model.
             serializer (sagemaker.serializers.BaseSerializer): A serializer
                 object, used to encode data for an inference endpoint
-                (default: ``IdentitySerializer()``).
+                (default: :class:`~sagemaker.serializers.IdentitySerializer`).
             deserializer (sagemaker.deserializers.BaseDeserializer): A
                 deserializer object, used to decode data from an inference
-                endpoint (default: ``BytesDeserializer()``).
+                endpoint (default: :class:`~sagemaker.serializers.BytesDeserializer`).
             vpc_config_override (dict[str, list[str]]): Optional override for VpcConfig set on
                 the model.
                 Default: use subnets and security groups from this Estimator.

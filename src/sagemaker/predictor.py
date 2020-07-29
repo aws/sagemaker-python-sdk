@@ -53,10 +53,10 @@ class Predictor(object):
                 chain.
             serializer (sagemaker.serializers.BaseSerializer): A serializer
                 object, used to encode data for an inference endpoint
-                (default: ``IdentitySerializer()``).
+                (default: :class:`~sagemaker.serializers.IdentitySerializer`).
             deserializer (sagemaker.deserializers.BaseDeserializer): A
                 deserializer object, used to decode data from an inference
-                endpoint (default: ``BytesDeserializer()``).
+                endpoint (default: :class:`~sagemaker.serializers.BytesDeserializer`).
         """
         self.endpoint_name = endpoint_name
         self.sagemaker_session = sagemaker_session or Session()
