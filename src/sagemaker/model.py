@@ -18,7 +18,7 @@ import logging
 import os
 
 import sagemaker
-from sagemaker import fw_utils, local, session, utils, git_utils
+from sagemaker import fw_utils, image_uris, local, session, utils, git_utils
 from sagemaker.fw_utils import UploadedCode
 from sagemaker.transformer import Transformer
 
@@ -27,32 +27,6 @@ LOGGER = logging.getLogger("sagemaker")
 NEO_ALLOWED_FRAMEWORKS = set(
     ["mxnet", "tensorflow", "keras", "pytorch", "onnx", "xgboost", "tflite"]
 )
-
-NEO_IMAGE_ACCOUNT = {
-    "us-west-1": "710691900526",
-    "us-west-2": "301217895009",
-    "us-east-1": "785573368785",
-    "us-east-2": "007439368137",
-    "eu-west-1": "802834080501",
-    "eu-west-2": "205493899709",
-    "eu-west-3": "254080097072",
-    "eu-central-1": "746233611703",
-    "eu-north-1": "601324751636",
-    "ap-northeast-1": "941853720454",
-    "ap-northeast-2": "151534178276",
-    "ap-east-1": "110948597952",
-    "ap-southeast-1": "324986816169",
-    "ap-southeast-2": "355873309152",
-    "ap-south-1": "763008648453",
-    "sa-east-1": "756306329178",
-    "ca-central-1": "464438896020",
-    "me-south-1": "836785723513",
-    "cn-north-1": "472730292857",
-    "cn-northwest-1": "474822919863",
-    "us-gov-west-1": "263933020539",
-}
-
-INFERENTIA_INSTANCE_PREFIX = "ml_inf"
 
 
 class Model(object):
@@ -243,7 +217,7 @@ class Model(object):
             "DataInputConfig": input_shape
             if not isinstance(input_shape, dict)
             else json.dumps(input_shape),
-            "Framework": framework,
+            "Framework": framework.upper(),
         }
         role = self.sagemaker_session.expand_role(role)
         output_model_config = {
@@ -260,64 +234,23 @@ class Model(object):
             "job_name": job_name,
         }
 
-    def check_neo_region(self, region):
-        """Check if this ``Model`` in the available region where neo support.
+    def _compilation_image_uri(self, region, target_instance_type, framework, framework_version):
+        """Retrieve the Neo or Inferentia image URI.
 
         Args:
-            region (str): Specifies the region where want to execute compilation
-
-        Returns:
-            bool: boolean value whether if neo is available in the specified
-            region
+            region (str): The AWS region.
+            target_instance_type (str): Identifies the device on which you want to run
+                your model after compilation, for example: ml_c5. For valid values, see
+                https://docs.aws.amazon.com/sagemaker/latest/dg/API_OutputConfig.html.
+            framework (str): The framework name.
+            framework_version (str): The framework version.
         """
-        if region in NEO_IMAGE_ACCOUNT:
-            return True
-        return False
-
-    def _neo_image_account(self, region):
-        """
-        Args:
-            region:
-        """
-        if region not in NEO_IMAGE_ACCOUNT:
-            raise ValueError(
-                "Neo is not currently supported in {}, "
-                "valid regions: {}".format(region, NEO_IMAGE_ACCOUNT.keys())
-            )
-        return NEO_IMAGE_ACCOUNT[region]
-
-    def _neo_image_uri(self, region, target_instance_type, framework, framework_version):
-        """
-        Args:
-            region:
-            target_instance_type:
-            framework:
-            framework_version:
-        """
-        return fw_utils.create_image_uri(
+        framework_prefix = "inferentia-" if target_instance_type.startswith("ml_inf") else "neo-"
+        return image_uris.retrieve(
+            "{}{}".format(framework_prefix, framework),
             region,
-            "neo-" + framework.lower(),
-            target_instance_type.replace("_", "."),
-            framework_version,
-            py_version="py3",
-            account=self._neo_image_account(region),
-        )
-
-    def _inferentia_image_uri(self, region, target_instance_type, framework, framework_version):
-        """
-                Args:
-                    region:
-                    target_instance_type:
-                    framework:
-                    framework_version:
-                """
-        return fw_utils.create_image_uri(
-            region,
-            "neo-" + framework.lower(),
-            target_instance_type.replace("_", "."),
-            framework_version,
-            py_version="py3",
-            account=self._neo_image_account(region),
+            instance_type=target_instance_type,
+            version=framework_version,
         )
 
     def compile(
@@ -361,7 +294,7 @@ class Model(object):
             sagemaker.model.Model: A SageMaker ``Model`` object. See
             :func:`~sagemaker.model.Model` for full details.
         """
-        framework = self._framework() or framework
+        framework = framework or self._framework()
         if framework is None:
             raise ValueError(
                 "You must specify framework, allowed values {}".format(NEO_ALLOWED_FRAMEWORKS)
@@ -375,8 +308,7 @@ class Model(object):
         if self.model_data is None:
             raise ValueError("You must provide an S3 path to the compressed model artifacts.")
 
-        framework = framework.upper()
-        framework_version = self._get_framework_version() or framework_version
+        framework_version = framework_version or self._get_framework_version()
 
         self._init_sagemaker_session_if_does_not_exist(target_instance_family)
         config = self._compilation_job_config(
@@ -392,16 +324,9 @@ class Model(object):
         self.sagemaker_session.compile_model(**config)
         job_status = self.sagemaker_session.wait_for_compilation_job(job_name)
         self.model_data = job_status["ModelArtifacts"]["S3ModelArtifacts"]
+
         if target_instance_family.startswith("ml_"):
-            self.image_uri = self._neo_image_uri(
-                self.sagemaker_session.boto_region_name,
-                target_instance_family,
-                framework,
-                framework_version,
-            )
-            self._is_compiled_model = True
-        elif target_instance_family.startswith(INFERENTIA_INSTANCE_PREFIX):
-            self.image_uri = self._inferentia_image_uri(
+            self.image_uri = self._compilation_image_uri(
                 self.sagemaker_session.boto_region_name,
                 target_instance_family,
                 framework,
@@ -414,6 +339,7 @@ class Model(object):
                 "please deploy the model manually.",
                 target_instance_family,
             )
+
         return self
 
     def deploy(

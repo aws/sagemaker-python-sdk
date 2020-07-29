@@ -39,6 +39,20 @@ NO_M4_REGIONS = [
 
 NO_T2_REGIONS = ["eu-north-1", "ap-east-1", "me-south-1"]
 
+FRAMEWORKS_FOR_GENERATED_VERSION_FIXTURES = (
+    "chainer",
+    "inferentia_mxnet",
+    "inferentia_tensorflow",
+    "mxnet",
+    "neo_mxnet",
+    "neo_pytorch",
+    "neo_tensorflow",
+    "pytorch",
+    "sklearn",
+    "tensorflow",
+    "xgboost",
+)
+
 
 def pytest_addoption(parser):
     parser.addoption("--sagemaker-client-config", action="store", default=None)
@@ -295,8 +309,8 @@ def pytest_generate_tests(metafunc):
 
 
 def _generate_all_framework_version_fixtures(metafunc):
-    for fw in ("chainer", "mxnet", "pytorch", "sklearn", "tensorflow", "xgboost"):
-        config = image_uris.config_for_framework(fw)
+    for fw in FRAMEWORKS_FOR_GENERATED_VERSION_FIXTURES:
+        config = image_uris.config_for_framework(fw.replace("_", "-"))
         if "scope" in config:
             _parametrize_framework_version_fixtures(metafunc, fw, config)
         else:
