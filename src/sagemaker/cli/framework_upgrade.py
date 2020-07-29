@@ -261,7 +261,7 @@ if __name__ == "__main__":
 
     if not framework:
         raise ValueError("Please specify a framework or algorithm name to upgrade")
-    file = "{}.json".format(framework)
+    file = "../image_uri_config/{}.json".format(framework)
     content = _read_json_to_dict(file)
 
     if region or account:

@@ -14,7 +14,7 @@ from __future__ import absolute_import
 
 import pytest
 
-from sagemaker.image_uri_config import framework_upgrade
+from sagemaker.cli import framework_upgrade
 
 
 FRAMEWORK_REGION_REGISTRY = {
