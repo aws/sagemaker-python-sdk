@@ -18,13 +18,14 @@ import os
 
 import numpy as np
 import pytest
-import scipy
+import scipy.sparse
 
 from sagemaker.serializers import (
     CSVSerializer,
     NumpySerializer,
     JSONSerializer,
     SparseMatrixSerializer,
+    JSONLinesSerializer,
 )
 from tests.unit import DATA_DIR
 
@@ -233,6 +234,57 @@ def test_json_serializer_csv_buffer(json_serializer):
         csv_file.seek(0)
         result = json_serializer.serialize(csv_file)
         assert result == validation_value
+
+
+@pytest.fixture
+def json_lines_serializer():
+    return JSONLinesSerializer()
+
+
+@pytest.mark.parametrize(
+    "input, expected",
+    [
+        ('["Name", "Score"]\n["Gilbert", 24]', '["Name", "Score"]\n["Gilbert", 24]'),
+        (
+            '{"Name": "Gilbert", "Score": 24}\n{"Name": "Alexa", "Score": 29}',
+            '{"Name": "Gilbert", "Score": 24}\n{"Name": "Alexa", "Score": 29}',
+        ),
+    ],
+)
+def test_json_lines_serializer_string(json_lines_serializer, input, expected):
+    actual = json_lines_serializer.serialize(input)
+    assert actual == expected
+
+
+@pytest.mark.parametrize(
+    "input, expected",
+    [
+        ([["Name", "Score"], ["Gilbert", 24]], '["Name", "Score"]\n["Gilbert", 24]'),
+        (
+            [{"Name": "Gilbert", "Score": 24}, {"Name": "Alexa", "Score": 29}],
+            '{"Name": "Gilbert", "Score": 24}\n{"Name": "Alexa", "Score": 29}',
+        ),
+    ],
+)
+def test_json_lines_serializer_list(json_lines_serializer, input, expected):
+    actual = json_lines_serializer.serialize(input)
+    assert actual == expected
+
+
+@pytest.mark.parametrize(
+    "source, expected",
+    [
+        ('["Name", "Score"]\n["Gilbert", 24]', '["Name", "Score"]\n["Gilbert", 24]'),
+        (
+            '{"Name": "Gilbert", "Score": 24}\n{"Name": "Alexa", "Score": 29}',
+            '{"Name": "Gilbert", "Score": 24}\n{"Name": "Alexa", "Score": 29}',
+        ),
+    ],
+)
+def test_json_lines_serializer_file_like(json_lines_serializer, source, expected):
+    input = io.StringIO(source)
+    actual = json_lines_serializer.serialize(input)
+    assert actual == expected
 
 
 @pytest.fixture
