@@ -24,5 +24,5 @@ def input_handler(data, context):
 
 def output_handler(data, context):
     response_content_type = context.accept_header
-    prediction = data.dlc_content
+    prediction = data.content
     return prediction, response_content_type
