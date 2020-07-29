@@ -113,8 +113,50 @@ def algo_expected_content():
     return new_content
 
 
+@pytest.fixture
+def dlc_region_content():
+    region_info = {
+        "training": {"versions": {"1.0": {"registries": {"us-west-2": "123456789012"}}}},
+        "inference": {"versions": {"1.0": {"registries": {"us-west-2": "123456789012"}}}},
+    }
+    return region_info
+
+
+@pytest.fixture
+def dlc_expected_region_content():
+    region_info = {
+        "training": {
+            "versions": {
+                "1.0": {"registries": {"us-west-2": "123456789012", "us-east-1": "987654321098"}}
+            }
+        },
+        "inference": {
+            "versions": {
+                "1.0": {"registries": {"us-west-2": "123456789012", "us-east-1": "987654321098"}}
+            }
+        },
+    }
+    return region_info
+
+
+@pytest.fixture
+def algo_region_content():
+    region_info = {"versions": {"1.0": {"registries": {"us-west-2": "123456789012"}}}}
+    return region_info
+
+
+@pytest.fixture
+def algo_expected_region_content():
+    region_info = {
+        "versions": {
+            "1.0": {"registries": {"us-west-2": "123456789012", "us-east-1": "987654321098"}}
+        }
+    }
+    return region_info
+
+
 def test_add_tensorflow_eia(dlc_content, dlc_expected_content):
-    framework = "tensorflow"
+    latest_repository = "tensorflow-inference-eia"
     processors = ["cpu", "gpu"]
     short_version = "2.0"
     full_version = "2.0.0"
@@ -122,13 +164,13 @@ def test_add_tensorflow_eia(dlc_content, dlc_expected_content):
     py_versions = ["py37"]
     framework_upgrade.add_dlc_framework_version(
         dlc_content,
-        framework,
         short_version,
         full_version,
         type,
         processors,
         py_versions,
         FRAMEWORK_REGION_REGISTRY,
+        latest_repository,
     )
     assert dlc_content["eia"]["processors"] == dlc_expected_content["eia"]["processors"]
     assert dlc_content["eia"]["version_aliases"] == dlc_expected_content["eia"]["version_aliases"]
@@ -158,3 +200,19 @@ def test_add_coach_tensorflow(algo_content, algo_expected_content):
     assert algo_content["processors"] == algo_expected_content["processors"]
     assert algo_content["scope"] == algo_expected_content["scope"]
     assert algo_content["versions"][full_version] == algo_expected_content["versions"][full_version]
+
+
+def test_dlc_add_region(dlc_region_content, dlc_expected_region_content):
+    region = "us-east-1"
+    account = "987654321098"
+    framework = "tensorflow"
+    framework_upgrade.add_region(framework, dlc_region_content, region, account)
+    assert dlc_region_content == dlc_expected_region_content
+
+
+def test_algo_add_region(algo_region_content, algo_expected_region_content):
+    region = "us-east-1"
+    account = "987654321098"
+    framework = "blazingtext"
+    framework_upgrade.add_region(framework, algo_region_content, region, account)
+    assert algo_region_content == algo_expected_region_content
