@@ -22,7 +22,6 @@ from packaging.version import Version
 
 from sagemaker import Session, image_uris, utils
 from sagemaker.local import LocalSession
-from sagemaker.rl import RLEstimator
 import tests.integ
 
 DEFAULT_REGION = "us-west-2"
@@ -41,6 +40,8 @@ NO_T2_REGIONS = ["eu-north-1", "ap-east-1", "me-south-1"]
 
 FRAMEWORKS_FOR_GENERATED_VERSION_FIXTURES = (
     "chainer",
+    "coach_mxnet",
+    "coach_tensorflow",
     "inferentia_mxnet",
     "inferentia_tensorflow",
     "mxnet",
@@ -48,8 +49,11 @@ FRAMEWORKS_FOR_GENERATED_VERSION_FIXTURES = (
     "neo_pytorch",
     "neo_tensorflow",
     "pytorch",
+    "ray_pytorch",
+    "ray_tensorflow",
     "sklearn",
     "tensorflow",
+    "vw",
     "xgboost",
 )
 
@@ -179,46 +183,6 @@ def _tf_py_version(tf_version, request):
     if version < Version("2.2"):
         return request.param
     return "py37"
-
-
-@pytest.fixture(scope="module", params=["0.10.1", "0.10.1", "0.11", "0.11.0", "0.11.1"])
-def rl_coach_tf_version(request):
-    return request.param
-
-
-@pytest.fixture(scope="module", params=["0.11", "0.11.0"])
-def rl_coach_mxnet_version(request):
-    return request.param
-
-
-@pytest.fixture(scope="module", params=["0.5", "0.5.3", "0.6", "0.6.5", "0.8.2", "0.8.5"])
-def rl_ray_tf_version(request):
-    return request.param
-
-
-@pytest.fixture(scope="module", params=["0.8.5"])
-def rl_ray_pytorch_version(request):
-    return request.param
-
-
-@pytest.fixture(scope="module", params=["8.7.0"])
-def rl_vw_version(request):
-    return request.param
-
-
-@pytest.fixture(scope="module")
-def rl_coach_mxnet_full_version():
-    return RLEstimator.COACH_LATEST_VERSION_MXNET
-
-
-@pytest.fixture(scope="module")
-def rl_coach_tf_full_version():
-    return RLEstimator.COACH_LATEST_VERSION_TF
-
-
-@pytest.fixture(scope="module")
-def rl_ray_full_version():
-    return RLEstimator.RAY_LATEST_VERSION
 
 
 @pytest.fixture(scope="module")
