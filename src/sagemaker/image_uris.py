@@ -16,6 +16,7 @@ from __future__ import absolute_import
 import json
 import logging
 import os
+import re
 
 from sagemaker import utils
 
@@ -169,14 +170,28 @@ def _processor(instance_type, available_processors):
 
     if instance_type.startswith("local"):
         processor = "cpu" if instance_type == "local" else "gpu"
-    elif not instance_type.startswith("ml."):
-        raise ValueError(
-            "Invalid SageMaker instance type: {}. For options, see: "
-            "https://aws.amazon.com/sagemaker/pricing/instance-types".format(instance_type)
-        )
     else:
-        family = instance_type.split(".")[1]
-        processor = "gpu" if family[0] in ("g", "p") else "cpu"
+        # looks for either "ml.<family>.<size>" or "ml_<family>"
+        match = re.match(r"^ml[\._]([a-z\d]+)\.?\w*$", instance_type)
+        if match:
+            family = match[1]
+
+            # For some frameworks, we have optimized images for specific families, e.g c5 or p3.
+            # In those cases, we use the family name in the image tag. In other cases, we use
+            # 'cpu' or 'gpu'.
+            if family in available_processors:
+                processor = family
+            elif family.startswith("inf"):
+                processor = "inf"
+            elif family[0] in ("g", "p"):
+                processor = "gpu"
+            else:
+                processor = "cpu"
+        else:
+            raise ValueError(
+                "Invalid SageMaker instance type: {}. For options, see: "
+                "https://aws.amazon.com/sagemaker/pricing/instance-types".format(instance_type)
+            )
 
     _validate_arg(processor, available_processors, "processor")
     return processor
