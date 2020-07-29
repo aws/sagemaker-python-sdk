@@ -221,7 +221,7 @@ def test_predict_jsonlines(tfs_predictor):
     predictor = sagemaker.Predictor(
         tfs_predictor.endpoint_name,
         tfs_predictor.sagemaker_session,
-        serializer=JSONLinesSerializer(),
+        serializer=IdentitySerializer(content_type="application/jsonlines"),
         deserializer=JSONLinesDeserializer(),
     )
 

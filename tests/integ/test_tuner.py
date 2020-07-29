@@ -903,6 +903,7 @@ def test_tuning_byo_estimator(sagemaker_session, cpu_instance_type):
         predictor = tuner.deploy(1, cpu_instance_type, endpoint_name=best_training_job)
         predictor.serializer = _FactorizationMachineSerializer()
         predictor.deserializer = JSONDeserializer()
+        predictor.content_type = "application/json"
 
         result = predictor.predict(datasets.one_p_mnist()[0][:10])
 
