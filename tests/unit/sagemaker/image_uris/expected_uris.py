@@ -19,6 +19,7 @@ ALTERNATE_DOMAINS = {
 }
 DOMAIN = "amazonaws.com"
 IMAGE_URI_FORMAT = "{}.dkr.ecr.{}.{}/{}:{}"
+MONITOR_URI_FORMAT = "{}.dkr.ecr.{}.{}/sagemaker-model-monitor-analyzer"
 REGION = "us-west-2"
 
 
@@ -34,3 +35,8 @@ def framework_uri(repo, fw_version, account, py_version=None, processor="cpu", r
 def algo_uri(algo, account, region, version=1):
     domain = ALTERNATE_DOMAINS.get(region, DOMAIN)
     return IMAGE_URI_FORMAT.format(account, region, domain, algo, version)
+
+
+def monitor_uri(account, region=REGION):
+    domain = ALTERNATE_DOMAINS.get(region, DOMAIN)
+    return MONITOR_URI_FORMAT.format(account, region, domain)
