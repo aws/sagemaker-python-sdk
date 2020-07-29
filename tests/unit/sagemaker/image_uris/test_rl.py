@@ -31,12 +31,15 @@ def _version_for_tag(toolkit, toolkit_version, framework, framework_in_tag=False
         return "{}{}".format(toolkit, toolkit_version)
 
 
-def test_coach_tf(rl_coach_tf_version):
+def test_coach_tf(coach_tensorflow_version):
     for instance_type, processor in INSTANCE_TYPES_AND_PROCESSORS:
         uri = image_uris.retrieve(
-            "coach-tensorflow", REGION, version=rl_coach_tf_version, instance_type=instance_type
+            "coach-tensorflow",
+            REGION,
+            version=coach_tensorflow_version,
+            instance_type=instance_type,
         )
-        assert _expected_coach_tf_uri(rl_coach_tf_version, processor) == uri
+        assert _expected_coach_tf_uri(coach_tensorflow_version, processor) == uri
 
 
 def _expected_coach_tf_uri(coach_tf_version, processor):
@@ -58,15 +61,15 @@ def _expected_coach_tf_uri(coach_tf_version, processor):
         )
 
 
-def test_coach_mxnet(rl_coach_mxnet_version):
+def test_coach_mxnet(coach_mxnet_version):
     for instance_type, processor in INSTANCE_TYPES_AND_PROCESSORS:
         uri = image_uris.retrieve(
-            "coach-mxnet", REGION, version=rl_coach_mxnet_version, instance_type=instance_type
+            "coach-mxnet", REGION, version=coach_mxnet_version, instance_type=instance_type
         )
 
         expected = expected_uris.framework_uri(
             "sagemaker-rl-mxnet",
-            "coach{}".format(rl_coach_mxnet_version),
+            "coach{}".format(coach_mxnet_version),
             SAGEMAKER_ACCOUNT,
             py_version="py3",
             processor=processor,
@@ -74,12 +77,12 @@ def test_coach_mxnet(rl_coach_mxnet_version):
         assert expected == uri
 
 
-def test_ray_tf(rl_ray_tf_version):
+def test_ray_tf(ray_tensorflow_version):
     for instance_type, processor in INSTANCE_TYPES_AND_PROCESSORS:
         uri = image_uris.retrieve(
-            "ray-tensorflow", REGION, version=rl_ray_tf_version, instance_type=instance_type
+            "ray-tensorflow", REGION, version=ray_tensorflow_version, instance_type=instance_type
         )
-        assert _expected_ray_tf_uri(rl_ray_tf_version, processor) == uri
+        assert _expected_ray_tf_uri(ray_tensorflow_version, processor) == uri
 
 
 def _expected_ray_tf_uri(ray_tf_version, processor):
@@ -101,15 +104,15 @@ def _expected_ray_tf_uri(ray_tf_version, processor):
         )
 
 
-def test_ray_pytorch(rl_ray_pytorch_version):
+def test_ray_pytorch(ray_pytorch_version):
     for instance_type, processor in INSTANCE_TYPES_AND_PROCESSORS:
         uri = image_uris.retrieve(
-            "ray-pytorch", REGION, version=rl_ray_pytorch_version, instance_type=instance_type
+            "ray-pytorch", REGION, version=ray_pytorch_version, instance_type=instance_type
         )
 
         expected = expected_uris.framework_uri(
             "sagemaker-rl-ray-container",
-            "ray-{}-torch".format(rl_ray_pytorch_version),
+            "ray-{}-torch".format(ray_pytorch_version),
             RL_ACCOUNT,
             py_version="py36",
             processor=processor,
@@ -118,8 +121,8 @@ def test_ray_pytorch(rl_ray_pytorch_version):
         assert expected == uri
 
 
-def test_vw(rl_vw_version):
-    version = "vw-{}".format(rl_vw_version)
+def test_vw(vw_version):
+    version = "vw-{}".format(vw_version)
     uri = image_uris.retrieve("vw", REGION, version=version, instance_type="ml.c4.xlarge")
 
     expected = expected_uris.framework_uri("sagemaker-rl-vw-container", version, RL_ACCOUNT)

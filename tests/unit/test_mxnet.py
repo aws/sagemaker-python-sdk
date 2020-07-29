@@ -356,30 +356,31 @@ def test_mxnet(
     )
 
 
-@patch("sagemaker.utils.create_tar_file", MagicMock())
+@patch("sagemaker.utils.repack_model", MagicMock())
+@patch("sagemaker.fw_utils.tar_and_upload_dir", MagicMock())
 @patch("time.strftime", return_value=TIMESTAMP)
-def test_mxnet_neo(
-    strftime, sagemaker_session, mxnet_inference_version, mxnet_py_version, skip_if_mms_version
-):
+def test_mxnet_neo(strftime, sagemaker_session, neo_mxnet_version):
     mx = MXNet(
         entry_point=SCRIPT_PATH,
-        framework_version=mxnet_inference_version,
-        py_version=mxnet_py_version,
+        framework_version="1.6",
+        py_version="py3",
         role=ROLE,
         sagemaker_session=sagemaker_session,
         instance_count=INSTANCE_COUNT,
         instance_type=INSTANCE_TYPE,
+        base_job_name="sagemaker-mxnet",
     )
-
-    inputs = "s3://mybucket/train"
-
-    mx.fit(inputs=inputs)
+    mx.fit()
 
     input_shape = {"data": [100, 1, 28, 28]}
     output_location = "s3://neo-sdk-test"
 
     compiled_model = mx.compile_model(
-        target_instance_family="ml_c4", input_shape=input_shape, output_path=output_location
+        target_instance_family="ml_c4",
+        input_shape=input_shape,
+        output_path=output_location,
+        framework="mxnet",
+        framework_version=neo_mxnet_version,
     )
 
     sagemaker_call_names = [c[0] for c in sagemaker_session.method_calls]
@@ -395,7 +396,7 @@ def test_mxnet_neo(
     actual_compile_model_args = sagemaker_session.method_calls[3][2]
     assert expected_compile_model_args == actual_compile_model_args
 
-    assert compiled_model.image_uri == _neo_inference_image(mxnet_inference_version)
+    assert compiled_model.image_uri == _neo_inference_image(neo_mxnet_version)
 
     predictor = mx.deploy(1, CPU, use_compiled_model=True)
     assert isinstance(predictor, MXNetPredictor)
