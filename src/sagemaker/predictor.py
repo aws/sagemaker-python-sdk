@@ -18,7 +18,7 @@ from sagemaker.session import production_variant, Session
 from sagemaker.utils import name_from_base
 
 from sagemaker.model_monitor.model_monitoring import (
-    _DEFAULT_MONITOR_IMAGE_URI_WITH_PLACEHOLDERS,
+    DEFAULT_REPOSITORY_NAME,
     ModelMonitor,
     DefaultModelMonitor,
 )
@@ -357,10 +357,7 @@ class Predictor(object):
             image_uri = schedule["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
                 "MonitoringAppSpecification"
             ]["ImageUri"]
-            index_after_placeholders = _DEFAULT_MONITOR_IMAGE_URI_WITH_PLACEHOLDERS.rfind("{}")
-            if image_uri.endswith(
-                _DEFAULT_MONITOR_IMAGE_URI_WITH_PLACEHOLDERS[index_after_placeholders + len("{}") :]
-            ):
+            if image_uri.endswith(DEFAULT_REPOSITORY_NAME):
                 monitors.append(
                     DefaultModelMonitor.attach(
                         monitor_schedule_name=schedule_name,
