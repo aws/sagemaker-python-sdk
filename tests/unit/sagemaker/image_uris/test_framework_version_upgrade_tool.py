@@ -44,37 +44,14 @@ FRAMEWORK_REGION_REGISTRY = {
 
 
 @pytest.fixture
-def content():
+def dlc_content():
     content = {
         "eia": {
             "processors": ["cpu"],
             "version_aliases": {"1.0": "1.0.0"},
             "versions": {
                 "1.0.0": {
-                    "registries": {
-                        "ap-east-1": "871362719292",
-                        "ap-northeast-1": "763104351884",
-                        "ap-northeast-2": "763104351884",
-                        "ap-south-1": "763104351884",
-                        "ap-southeast-1": "763104351884",
-                        "ap-southeast-2": "763104351884",
-                        "ca-central-1": "763104351884",
-                        "cn-north-1": "727897471807",
-                        "cn-northwest-1": "727897471807",
-                        "eu-central-1": "763104351884",
-                        "eu-north-1": "763104351884",
-                        "eu-west-1": "763104351884",
-                        "eu-west-2": "763104351884",
-                        "eu-west-3": "763104351884",
-                        "me-south-1": "217643126080",
-                        "sa-east-1": "763104351884",
-                        "us-east-1": "763104351884",
-                        "us-east-2": "763104351884",
-                        "us-gov-west-1": "442386744353",
-                        "us-iso-east-1": "886529160074",
-                        "us-west-1": "763104351884",
-                        "us-west-2": "763104351884",
-                    },
+                    "registries": FRAMEWORK_REGION_REGISTRY,
                     "repository": "tensorflow-inference-eia",
                     "py_versions": ["py2", "py3"],
                 }
@@ -85,37 +62,14 @@ def content():
 
 
 @pytest.fixture
-def expected_content():
+def dlc_expected_content():
     new_content = {
         "eia": {
             "processors": ["cpu", "gpu"],
             "version_aliases": {"1.0": "1.0.0", "2.0": "2.0.0"},
             "versions": {
                 "2.0.0": {
-                    "registries": {
-                        "ap-east-1": "871362719292",
-                        "ap-northeast-1": "763104351884",
-                        "ap-northeast-2": "763104351884",
-                        "ap-south-1": "763104351884",
-                        "ap-southeast-1": "763104351884",
-                        "ap-southeast-2": "763104351884",
-                        "ca-central-1": "763104351884",
-                        "cn-north-1": "727897471807",
-                        "cn-northwest-1": "727897471807",
-                        "eu-central-1": "763104351884",
-                        "eu-north-1": "763104351884",
-                        "eu-west-1": "763104351884",
-                        "eu-west-2": "763104351884",
-                        "eu-west-3": "763104351884",
-                        "me-south-1": "217643126080",
-                        "sa-east-1": "763104351884",
-                        "us-east-1": "763104351884",
-                        "us-east-2": "763104351884",
-                        "us-gov-west-1": "442386744353",
-                        "us-iso-east-1": "886529160074",
-                        "us-west-1": "763104351884",
-                        "us-west-2": "763104351884",
-                    },
+                    "registries": FRAMEWORK_REGION_REGISTRY,
                     "repository": "tensorflow-inference-eia",
                     "py_versions": ["py37"],
                 }
@@ -125,7 +79,41 @@ def expected_content():
     return new_content
 
 
-def test_add_tensorflow_eia(content, expected_content):
+@pytest.fixture
+def algo_content():
+    content = {
+        "processors": ["cpu"],
+        "scope": ["training"],
+        "versions": {
+            "0.10": {
+                "py_versions": ["py3"],
+                "registries": FRAMEWORK_REGION_REGISTRY,
+                "repository": "sagemaker-rl-tensorflow",
+                "tag_prefix": "coach0.10",
+            }
+        },
+    }
+    return content
+
+
+@pytest.fixture
+def algo_expected_content():
+    new_content = {
+        "processors": ["cpu", "gpu"],
+        "scope": ["training", "inference"],
+        "versions": {
+            "0.20": {
+                "py_versions": ["py3", "py37"],
+                "registries": FRAMEWORK_REGION_REGISTRY,
+                "repository": "sagemaker-rl-tensorflow",
+                "tag_prefix": "coach0.20",
+            }
+        },
+    }
+    return new_content
+
+
+def test_add_tensorflow_eia(dlc_content, dlc_expected_content):
     framework = "tensorflow"
     processors = ["cpu", "gpu"]
     short_version = "2.0"
@@ -133,7 +121,7 @@ def test_add_tensorflow_eia(content, expected_content):
     type = "eia"
     py_versions = ["py37"]
     framework_upgrade.add_dlc_framework_version(
-        content,
+        dlc_content,
         framework,
         short_version,
         full_version,
@@ -142,9 +130,31 @@ def test_add_tensorflow_eia(content, expected_content):
         py_versions,
         FRAMEWORK_REGION_REGISTRY,
     )
-    assert content["eia"]["processors"] == expected_content["eia"]["processors"]
-    assert content["eia"]["version_aliases"] == expected_content["eia"]["version_aliases"]
+    assert dlc_content["eia"]["processors"] == dlc_expected_content["eia"]["processors"]
+    assert dlc_content["eia"]["version_aliases"] == dlc_expected_content["eia"]["version_aliases"]
     assert (
-        content["eia"]["versions"][full_version]
-        == expected_content["eia"]["versions"][full_version]
+        dlc_content["eia"]["versions"][full_version]
+        == dlc_expected_content["eia"]["versions"][full_version]
     )
+
+
+def test_add_coach_tensorflow(algo_content, algo_expected_content):
+    processors = ["cpu", "gpu"]
+    full_version = "0.20"
+    scopes = ["training", "inference"]
+    py_versions = ["py3", "py37"]
+    repository = "sagemaker-rl-tensorflow"
+    tag_prefix = "coach0.20"
+    framework_upgrade.add_algo_version(
+        algo_content,
+        processors,
+        scopes,
+        full_version,
+        py_versions,
+        FRAMEWORK_REGION_REGISTRY,
+        repository,
+        tag_prefix,
+    )
+    assert algo_content["processors"] == algo_expected_content["processors"]
+    assert algo_content["scope"] == algo_expected_content["scope"]
+    assert algo_content["versions"][full_version] == algo_expected_content["versions"][full_version]

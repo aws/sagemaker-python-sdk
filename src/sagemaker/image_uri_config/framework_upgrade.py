@@ -17,6 +17,9 @@ import argparse
 import json
 
 
+DLC_FRAMEWORK = {"tensorflow", "mxnet", "pytorch"}
+
+
 def _read_json_to_dict(filename):
     """Read a json file into a Python dictionary
 
@@ -66,7 +69,7 @@ def add_dlc_framework_version(
     py_versions,  # pylint: disable=W0621
     registries,  # pylint: disable=W0621
 ):
-    """Update framework image uri json file with new version information.
+    """Update DLC framework image uri json file with new version information.
 
     Args:
         content (dict): Existing framework image uri information read from "<framework>.json" file.
@@ -76,6 +79,7 @@ def add_dlc_framework_version(
         image_type (str): Framework image type, it could be "training", "inference" or "eia"
         processors (list): Supported processors (e.g. ["cpu", "gpu"])
         py_versions (list): Supported Python versions (e.g. ["py3", "py37"])
+        registries (dict): Framework image's region to account mapping.
     """
     for processor in processors:
         if processor not in content[image_type]["processors"]:
@@ -86,6 +90,7 @@ def add_dlc_framework_version(
         repo = repo.format(framework, "inference", "-eia")
     else:
         repo = repo.format(framework, image_type, "")
+
     add_version = {
         "registries": registries,
         "repository": repo,
@@ -94,8 +99,40 @@ def add_dlc_framework_version(
     content[image_type]["versions"][full_version] = add_version
 
 
+def add_algo_version(
+    content, processors, scopes, full_version, py_versions, registries, repository, tag_prefix
+):  # pylint: disable=W0621
+    """Update Algorithm image uri json file with new version information.
+
+    Args:
+        content (dict): Existing Algorithm image uri information read from "<framework>.json" file.
+        processors (list): Supported processors (e.g. ["cpu", "gpu"])
+        scopes (str): Framework image type, it could be "training", "inference
+        full_version (str): Complete framework version (e.g. 1.0.0, 1.5.2)
+        py_versions (list): Supported Python versions (e.g. ["py3", "py37"])
+        registries (dict): Algorithm image's region to account mapping.
+        repository (str): Algorithm's corresponding repository name.
+        tag_prefix (str): Algorithm image's tag prefix.
+    """
+    for processor in processors:
+        if processor not in content["processors"]:
+            content["processors"].append(processor)
+    for scope in scopes:
+        if scope not in content["scope"]:
+            content["scope"].append(scope)
+
+    add_version = {
+        "py_versions": py_versions,
+        "registries": registries,
+        "repository": repository,
+    }
+    if tag_prefix:
+        add_version["tag_prefix"] = tag_prefix
+    content["versions"][full_version] = add_version
+
+
 def update_json(
-    framework, short_version, full_version, image_type, processors, py_versions
+    framework, short_version, full_version, image_type, scopes, processors, py_versions, tag_prefix,
 ):  # pylint: disable=W0621
     """Read framework image uri information from json file to a dictionary, update it with new
     framework version information, then write the dictionary back to json file.
@@ -105,24 +142,43 @@ def update_json(
         short_version (str): Abbreviated framework version (e.g. 1.0, 1.5)
         full_version (str): Complete framework version (e.g. 1.0.0, 1.5.2)
         image_type (str): Framework image type, it could be "training", "inference" or "eia"
+        scopes (str): Framework image type, it could be "training", "inference
         processors (str): Supported processors (e.g. "cpu,gpu")
         py_versions (str): Supported Python versions (e.g. "py3,py37")
+        tag_prefix (str): Algorithm image's tag prefix.
      """
     filename = "{}.json".format(framework)
     content = _read_json_to_dict(filename)
     py_versions = py_versions.split(",")
     processors = processors.split(",")
     registries = _read_framework_region_regestries(framework)["registries"]
-    add_dlc_framework_version(
-        content,
-        framework,
-        short_version,
-        full_version,
-        image_type,
-        processors,
-        py_versions,
-        registries,
-    )
+
+    if framework in DLC_FRAMEWORK:
+        add_dlc_framework_version(
+            content,
+            framework,
+            short_version,
+            full_version,
+            image_type,
+            processors,
+            py_versions,
+            registries,
+        )
+    else:
+        repo_map = _read_json_to_dict("algo-repository.json")
+        repository = repo_map[framework]
+        scopes = scopes.split(",")
+        add_algo_version(
+            content,
+            processors,
+            scopes,
+            full_version,
+            py_versions,
+            registries,
+            repository,
+            tag_prefix,
+        )
+
     _write_dict_to_json(filename, content)
 
 
@@ -134,6 +190,12 @@ if __name__ == "__main__":
     parser.add_argument("--image-type", help="Framework image type (e.g. training, inference, eia)")
     parser.add_argument("--processors", help="Suppoted processors (e.g. cpu, gpu)")
     parser.add_argument("--py-versions", help="Supported Python versions (e.g. py3,py37)")
+    parser.add_argument(
+        "--scopes", help="Scopes for the Algorithm image (e.g. inference, training)"
+    )
+    parser.add_argument(
+        "--tag-prefix", help="Tag prefix of the Algorithm image (e.g. ray-0.8.5-torch)"
+    )
 
     args = parser.parse_args()
     framework = args.framework
@@ -142,5 +204,16 @@ if __name__ == "__main__":
     image_type = args.image_type
     processors = args.processors
     py_versions = args.py_versions
+    scopes = args.scopes
+    tag_prefix = args.tag_prefix
 
-    update_json(framework, short_version, full_version, image_type, processors, py_versions)
+    update_json(
+        framework,
+        short_version,
+        full_version,
+        image_type,
+        scopes,
+        processors,
+        py_versions,
+        tag_prefix,
+    )
