@@ -168,6 +168,7 @@ def _processor(instance_type, available_processors):
     if instance_type.startswith("local"):
         processor = "cpu" if instance_type == "local" else "gpu"
     else:
+        # looks for either "ml.<family>.<size>" or "ml_<family>"
         match = re.match(r"^ml[\._]([a-z\d]+)\.?\w*$", instance_type)
         if match:
             family = match[1]
