@@ -84,6 +84,8 @@ def _config_for_framework_and_scope(framework, image_scope, accelerator_type=Non
     config = config_for_framework(framework)
 
     if accelerator_type:
+        _validate_accelerator_type(accelerator_type)
+
         if image_scope not in ("eia", "inference"):
             logger.warning(
                 "Elastic inference is for inference only. Ignoring image scope: %s.", image_scope
@@ -116,6 +118,15 @@ def config_for_framework(framework):
     fname = os.path.join(os.path.dirname(__file__), "image_uri_config", "{}.json".format(framework))
     with open(fname) as f:
         return json.load(f)
+
+
+def _validate_accelerator_type(accelerator_type):
+    """Raises a ``ValueError`` if ``accelerator_type`` is invalid."""
+    if not accelerator_type.startswith("ml.eia") and accelerator_type != "local_sagemaker_notebook":
+        raise ValueError(
+            "Invalid SageMaker Elastic Inference accelerator type: {}. "
+            "See https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html".format(accelerator_type)
+        )
 
 
 def _validate_version_and_set_if_needed(version, config, framework):
