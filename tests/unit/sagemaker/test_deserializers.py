@@ -220,6 +220,7 @@ def json_lines_deserializer():
     "source, expected",
     [
         ('["Name", "Score"]\n["Gilbert", 24]', [["Name", "Score"], ["Gilbert", 24]]),
+        ('["Name", "Score"]\n["Gilbert", 24]\n', [["Name", "Score"], ["Gilbert", 24]]),
         (
             '{"Name": "Gilbert", "Score": 24}\n{"Name": "Alexa", "Score": 29}',
             [{"Name": "Gilbert", "Score": 24}, {"Name": "Alexa", "Score": 29}],
