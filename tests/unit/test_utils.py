@@ -755,14 +755,6 @@ def list_tar_files(tar_ball, tmp):
     return result if result else {}
 
 
-def test_get_ecr_image_uri_prefix():
-    ecr_prefix = sagemaker.utils.get_ecr_image_uri_prefix("123456789012", "us-west-2")
-    assert ecr_prefix == "123456789012.dkr.ecr.us-west-2.amazonaws.com"
-
-    ecr_prefix = sagemaker.utils.get_ecr_image_uri_prefix("123456789012", "us-iso-east-1")
-    assert ecr_prefix == "123456789012.dkr.ecr.us-iso-east-1.c2s.ic.gov"
-
-
 def test_sts_regional_endpoint():
     endpoint = sagemaker.utils.sts_regional_endpoint("us-west-2")
     assert endpoint == "https://sts.us-west-2.amazonaws.com"
