@@ -15,11 +15,11 @@ from __future__ import absolute_import
 import pytest
 
 from sagemaker import image_uris
-from tests.unit import NEO_REGION_LIST
 from tests.unit.sagemaker.image_uris import expected_uris, regions
 
 
-ALGO_NAMES = ("image-classification-neo", "xgboost-neo")
+INFERENTIA_REGIONS = ("us-east-1", "us-west-2")
+NEO_ALGOS = ("image-classification-neo", "xgboost-neo")
 
 ACCOUNTS = {
     "ap-east-1": "110948597952",
@@ -46,10 +46,10 @@ ACCOUNTS = {
 }
 
 
-@pytest.mark.parametrize("algo", ALGO_NAMES)
+@pytest.mark.parametrize("algo", NEO_ALGOS)
 def test_algo_uris(algo):
     for region in regions.regions():
-        if region in NEO_REGION_LIST:
+        if region in ACCOUNTS:
             uri = image_uris.retrieve(algo, region)
             expected = expected_uris.algo_uri(algo, ACCOUNTS[region], region, version="latest")
             assert expected == uri
@@ -57,3 +57,71 @@ def test_algo_uris(algo):
             with pytest.raises(ValueError) as e:
                 image_uris.retrieve(algo, region)
             assert "Unsupported region: {}.".format(region) in str(e.value)
+
+
+def _test_neo_framework_uris(framework, version):
+    framework = "neo-{}".format(framework)
+
+    for region in regions.regions():
+        if region in ACCOUNTS:
+            uri = image_uris.retrieve(framework, region, instance_type="ml_c5", version=version)
+            assert _expected_framework_uri(framework, version, region=region) == uri
+        else:
+            with pytest.raises(ValueError) as e:
+                image_uris.retrieve(framework, region, instance_type="ml_c5", version=version)
+            assert "Unsupported region: {}.".format(region) in str(e.value)
+
+    uri = image_uris.retrieve(framework, "us-west-2", instance_type="ml_p2", version=version)
+    assert _expected_framework_uri(framework, version, processor="gpu") == uri
+
+
+def test_neo_mxnet(neo_mxnet_version):
+    _test_neo_framework_uris("mxnet", neo_mxnet_version)
+
+
+def test_neo_tf(neo_tensorflow_version):
+    _test_neo_framework_uris("tensorflow", neo_tensorflow_version)
+
+
+def test_neo_pytorch(neo_pytorch_version):
+    _test_neo_framework_uris("pytorch", neo_pytorch_version)
+
+
+def _test_inferentia_framework_uris(framework, version):
+    for region in regions.regions():
+        if region in INFERENTIA_REGIONS:
+            uri = image_uris.retrieve(
+                "inferentia-{}".format(framework), region, instance_type="ml_inf1", version=version
+            )
+            expected = _expected_framework_uri(
+                "neo-{}".format(framework), version, region=region, processor="inf"
+            )
+            assert expected == uri
+        else:
+            with pytest.raises(ValueError) as e:
+                image_uris.retrieve(
+                    "inferentia-{}".format(framework),
+                    region,
+                    instance_type="ml_inf",
+                    version=version,
+                )
+            assert "Unsupported region: {}.".format(region) in str(e.value)
+
+
+def test_inferentia_mxnet(inferentia_mxnet_version):
+    _test_inferentia_framework_uris("mxnet", inferentia_mxnet_version)
+
+
+def test_inferentia_tensorflow(inferentia_tensorflow_version):
+    _test_inferentia_framework_uris("tensorflow", inferentia_tensorflow_version)
+
+
+def _expected_framework_uri(framework, version, region="us-west-2", processor="cpu"):
+    return expected_uris.framework_uri(
+        "sagemaker-{}".format(framework),
+        fw_version=version,
+        py_version="py3",
+        account=ACCOUNTS[region],
+        region=region,
+        processor=processor,
+    )
