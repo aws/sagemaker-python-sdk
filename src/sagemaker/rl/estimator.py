@@ -36,6 +36,7 @@ TOOLKIT_FRAMEWORK_VERSION_MAP = {
         "0.11.0": {"tensorflow": "1.11", "mxnet": "1.3"},
         "0.11.1": {"tensorflow": "1.12"},
         "0.11": {"tensorflow": "1.12", "mxnet": "1.3"},
+        "1.0.0": {"tensorflow": "1.12"},
     },
     "ray": {
         "0.5.3": {"tensorflow": "1.11"},
@@ -68,7 +69,7 @@ class RLEstimator(Framework):
 
     COACH_LATEST_VERSION_TF = "0.11.1"
     COACH_LATEST_VERSION_MXNET = "0.11.0"
-    RAY_LATEST_VERSION = "0.6.5"
+    RAY_LATEST_VERSION = "0.8.5"
 
     def __init__(
         self,

@@ -22,7 +22,7 @@ from sagemaker import utils
 
 logger = logging.getLogger(__name__)
 
-ECR_URI_TEMPLATE = "{registry}.dkr.{hostname}/{repository}:{tag}"
+ECR_URI_TEMPLATE = "{registry}.dkr.{hostname}/{repository}"
 
 
 def retrieve(
@@ -69,14 +69,17 @@ def retrieve(
     registry = _registry_from_region(region, version_config["registries"])
     hostname = utils._botocore_resolver().construct_endpoint("ecr", region)["hostname"]
 
+    repo = version_config["repository"]
+
     processor = _processor(
         instance_type, config.get("processors") or version_config.get("processors")
     )
     tag = _format_tag(version_config.get("tag_prefix", version), processor, py_version)
 
-    repo = version_config["repository"]
+    if tag:
+        repo += ":{}".format(tag)
 
-    return ECR_URI_TEMPLATE.format(registry=registry, hostname=hostname, repository=repo, tag=tag)
+    return ECR_URI_TEMPLATE.format(registry=registry, hostname=hostname, repository=repo)
 
 
 def _config_for_framework_and_scope(framework, image_scope, accelerator_type=None):
