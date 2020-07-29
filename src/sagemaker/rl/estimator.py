@@ -36,6 +36,7 @@ TOOLKIT_FRAMEWORK_VERSION_MAP = {
         "0.11.0": {"tensorflow": "1.11", "mxnet": "1.3"},
         "0.11.1": {"tensorflow": "1.12"},
         "0.11": {"tensorflow": "1.12", "mxnet": "1.3"},
+        "1.0.0": {"tensorflow": "1.12"},
     },
     "ray": {
         "0.5.3": {"tensorflow": "1.11"},
