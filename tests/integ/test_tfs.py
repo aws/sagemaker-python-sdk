@@ -25,7 +25,7 @@ import tests.integ
 import tests.integ.timeout
 from sagemaker.deserializers import JSONDeserializer, JSONLinesDeserializer
 from sagemaker.tensorflow.model import TensorFlowModel, TensorFlowPredictor
-from sagemaker.serializers import CSVSerializer, IdentitySerializer, JSONLinesSerializer
+from sagemaker.serializers import CSVSerializer, IdentitySerializer
 
 
 @pytest.fixture(scope="module")
