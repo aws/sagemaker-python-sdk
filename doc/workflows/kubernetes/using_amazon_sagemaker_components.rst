@@ -506,7 +506,7 @@ sample pipelines. To pass these parameters, update their entries when creating a
    Amazon SageMaker access in your AWS account. Use the ARN
    of  ``kfp-example-pod-role``.
 
--  **The Dataset Bucket**: This is the name of the S3 bucket that you uploaded the ``kmeans_preprocessing.py`` file to.
+-  **Bucket**: This is the name of the S3 bucket that you uploaded the ``kmeans_preprocessing.py`` file to.
 
 You can adjust any of the input parameters using the KFP UI and trigger
 your run again.
@@ -595,18 +595,18 @@ currently does not support specifying input parameters while creating
 the run. You need to update your parameters in the Python pipeline file
 before compiling. Replace ``<experiment-name>`` and ``<job-name>``
 with any names. Replace ``<pipeline-id>`` with the ID of your submitted
-pipeline.
+pipeline. Replace ``<your-role-arn>`` with the ARN of ``kfp-example-pod-role``. Replace ``<your-bucket-name>`` with the name of the S3 bucket you created.
 
 ::
 
-    kfp run submit --experiment-name <experiment-name> --run-name <job-name> --pipeline-id <pipeline-id>
+    kfp run submit --experiment-name <experiment-name> --run-name <job-name> --pipeline-id <pipeline-id> role_arn="<your-role-arn>" bucket_name="<your-bucket-name>"
 
 You can also directly submit a run using the compiled pipeline package
 created as the output of the ``dsl-compile`` command.
 
 ::
 
-    kfp run submit --experiment-name <experiment-name> --run-name <job-name> --package-file <path-to-output>
+    kfp run submit --experiment-name <experiment-name> --run-name <job-name> --package-file <path-to-output> role_arn="<your-role-arn>" bucket_name="<your-bucket-name>"
 
 Your output should look like the following:
 
