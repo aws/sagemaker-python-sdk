@@ -27,6 +27,7 @@ from sagemaker.deserializers import (
     NumpyDeserializer,
     JSONDeserializer,
     PandasDeserializer,
+    JSONLinesDeserializer,
 )
 
 
@@ -208,3 +209,26 @@ def test_pandas_deserializer_csv(pandas_deserializer):
     result = pandas_deserializer.deserialize(stream, "text/csv")
     expected = pd.DataFrame([["a", "b"], ["c", "d"]], columns=["col 1", "col 2"])
     assert result.equals(expected)
+
+
+@pytest.fixture
+def json_lines_deserializer():
+    return JSONLinesDeserializer()
+
+
+@pytest.mark.parametrize(
+    "source, expected",
+    [
+        ('["Name", "Score"]\n["Gilbert", 24]', [["Name", "Score"], ["Gilbert", 24]]),
+        ('["Name", "Score"]\n["Gilbert", 24]\n', [["Name", "Score"], ["Gilbert", 24]]),
+        (
+            '{"Name": "Gilbert", "Score": 24}\n{"Name": "Alexa", "Score": 29}',
+            [{"Name": "Gilbert", "Score": 24}, {"Name": "Alexa", "Score": 29}],
+        ),
+    ],
+)
+def test_json_lines_deserializer(json_lines_deserializer, source, expected):
+    stream = io.StringIO(source)
+    content_type = "application/jsonlines"
+    actual = json_lines_deserializer.deserialize(stream, content_type)
+    assert actual == expected
