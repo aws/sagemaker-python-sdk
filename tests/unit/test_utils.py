@@ -103,18 +103,6 @@ def test_unique_name_from_base_truncated():
     )
 
 
-def test_name_from_tuning_arn():
-    arn = "arn:aws:sagemaker:us-west-2:968277160000:hyper-parameter-tuning-job/resnet-sgd-tuningjob-11-07-34-11"
-    name = sagemaker.utils.extract_name_from_job_arn(arn)
-    assert name == "resnet-sgd-tuningjob-11-07-34-11"
-
-
-def test_name_from_training_arn():
-    arn = "arn:aws:sagemaker:us-west-2:968277160000:training-job/resnet-sgd-tuningjob-11-22-38-46-002-2927640b"
-    name = sagemaker.utils.extract_name_from_job_arn(arn)
-    assert name == "resnet-sgd-tuningjob-11-22-38-46-002-2927640b"
-
-
 def test_base_from_name():
     name = "mxnet-training-2020-06-29-15-19-25-475"
     assert "mxnet-training" == sagemaker.utils.base_from_name(name)
@@ -215,105 +203,6 @@ def test_secondary_training_status_message_prev_missing():
         sagemaker.utils.secondary_training_status_message(TRAINING_JOB_DESCRIPTION_1, {})
         == expected
     )
-
-
-def test_generate_tensorboard_url_valid_domain_and_bucket_paths():
-    domain = "jupyterlab.us-east-2.abcdefgh.com"
-    bucket_paths = ["bucket1/path1", "bucket2/path2"]
-    expected = "https://{}/tensorboard/default?{}".format(
-        domain, "s3urls=s3%3A%2F%2Fbucket1%2Fpath1,s3%3A%2F%2Fbucket2%2Fpath2"
-    )
-    assert sagemaker.utils.generate_tensorboard_url(domain, bucket_paths) == expected
-
-
-def test_generate_tensorboard_url_valid_domain_and_bucket_paths_with_s3_prefixes():
-    domain = "jupyterlab.us-east-2.abcdefgh.com"
-    bucket_paths = ["s3://bucket1/path1", "s3://bucket2/path2"]
-    expected = "https://{}/tensorboard/default?{}".format(
-        domain, "s3urls=s3%3A%2F%2Fbucket1%2Fpath1,s3%3A%2F%2Fbucket2%2Fpath2"
-    )
-    assert sagemaker.utils.generate_tensorboard_url(domain, bucket_paths) == expected
-
-
-def test_generate_tensorboard_url_valid_domain_and_bucket_paths_single():
-    domain = "jupyterlab.us-east-2.abcdefgh.com"
-    bucket_paths = ["bucket1/path1"]
-    expected = "https://{}/tensorboard/default?{}".format(
-        domain, "s3urls=s3%3A%2F%2Fbucket1%2Fpath1"
-    )
-    assert sagemaker.utils.generate_tensorboard_url(domain, bucket_paths) == expected
-
-
-def test_generate_tensorboard_url_valid_domain_and_bucket_paths_string():
-    domain = "jupyterlab.us-east-2.abcdefgh.com"
-    bucket_paths = "bucket1/path1"
-    expected = "https://{}/tensorboard/default?{}".format(
-        domain, "s3urls=s3%3A%2F%2Fbucket1%2Fpath1"
-    )
-    assert sagemaker.utils.generate_tensorboard_url(domain, bucket_paths) == expected
-
-
-def test_generate_tensorboard_url_valid_domain_with_http_prefix_and_bucket_paths():
-    domain = "http://jupyterlab.us-east-2.abcdefgh.com"
-    bucket_paths = ["bucket1/path1"]
-    expected = "https://{}/tensorboard/default?{}".format(
-        "jupyterlab.us-east-2.abcdefgh.com", "s3urls=s3%3A%2F%2Fbucket1%2Fpath1"
-    )
-    assert sagemaker.utils.generate_tensorboard_url(domain, bucket_paths) == expected
-
-
-def test_generate_tensorboard_url_valid_domain_with_https_prefix_and_bucket_paths():
-    domain = "https://jupyterlab.us-east-2.abcdefgh.com"
-    bucket_paths = ["bucket1/path1"]
-    expected = "https://{}/tensorboard/default?{}".format(
-        "jupyterlab.us-east-2.abcdefgh.com", "s3urls=s3%3A%2F%2Fbucket1%2Fpath1"
-    )
-    assert sagemaker.utils.generate_tensorboard_url(domain, bucket_paths) == expected
-
-
-def test_generate_tensorboard_url_bucket_path_neither_string_nor_list():
-    domain = "jupyterlab.us-east-2.abcdefgh.com"
-    bucket_paths = None
-    try:
-        sagemaker.utils.generate_tensorboard_url(domain, bucket_paths)
-    except AttributeError as error:
-        assert str(error) == "bucket paths should be a list or a string"
-
-
-def test_generate_tensorboard_url_empty_domain():
-    domain = ""
-    bucket_paths = ["bucket1/path1"]
-    try:
-        sagemaker.utils.generate_tensorboard_url(domain, bucket_paths)
-    except AttributeError as error:
-        assert str(error) == "domain parameter should not be empty"
-
-
-def test_generate_tensorboard_url_empty_bucket_paths():
-    domain = "jupyterlab.us-east-2.abcdefgh.com"
-    bucket_paths = []
-    try:
-        sagemaker.utils.generate_tensorboard_url(domain, bucket_paths)
-    except AttributeError as error:
-        assert str(error) == "bucket_paths parameter should not be empty list"
-
-
-def test_generate_tensorboard_url_bucket_paths_with_empty_string():
-    domain = "jupyterlab.us-east-2.abcdefgh.com"
-    bucket_paths = [""]
-    try:
-        sagemaker.utils.generate_tensorboard_url(domain, bucket_paths)
-    except AttributeError as error:
-        assert str(error) == "bucket_paths element should not be empty"
-
-
-def test_generate_tensorboard_url_domain_non_string():
-    domain = None
-    bucket_paths = ["bucket1/path1"]
-    try:
-        sagemaker.utils.generate_tensorboard_url(domain, bucket_paths)
-    except AttributeError as error:
-        assert str(error) == "domain parameter should be string"
 
 
 @patch("os.makedirs")

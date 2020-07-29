@@ -33,15 +33,6 @@ This is for the source code used for the entry point with an ``Estimator``. It c
 instantiated with positional or keyword arguments.
 """
 
-EMPTY_FRAMEWORK_VERSION_WARNING = (
-    "No framework_version specified, defaulting to version {}. "
-    "framework_version will be required in SageMaker Python SDK v2."
-)
-LATER_FRAMEWORK_VERSION_WARNING = (
-    "This is not the latest supported version. "
-    "If you would like to use version {latest}, "
-    "please add framework_version={latest} to your constructor."
-)
 PYTHON_2_DEPRECATION_WARNING = (
     "{latest_supported_version} is the latest version of {framework} that supports "
     "Python 2. Newer versions of {framework} will only be available for Python 3."
@@ -54,20 +45,9 @@ PARAMETER_SERVER_MULTI_GPU_WARNING = (
     "fully leverage all GPU cores; the parameter server will be configured to run "
     "only one worker per host regardless of the number of GPUs."
 )
-PARAMETER_V2_RENAME_WARNING = (
-    "Parameter {v1_parameter_name} will be renamed to {v2_parameter_name} "
-    "in SageMaker Python SDK v2."
-)
 
-
-EMPTY_FRAMEWORK_VERSION_ERROR = (
-    "framework_version is required for script mode estimator. "
-    "Please add framework_version={} to your constructor to avoid this error."
-)
-
+DEBUGGER_UNSUPPORTED_REGIONS = ("us-gov-west-1", "us-iso-east-1")
 SINGLE_GPU_INSTANCE_TYPES = ("ml.p2.xlarge", "ml.p3.2xlarge")
-
-DEBUGGER_UNSUPPORTED_REGIONS = ["us-gov-west-1", "us-iso-east-1"]
 
 
 def is_version_equal_or_higher(lowest_version, framework_version):
@@ -294,26 +274,6 @@ def model_code_key_prefix(code_location_key_prefix, model_name, image):
     return "/".join(filter(None, [code_location_key_prefix, model_name or training_job_name]))
 
 
-def empty_framework_version_warning(default_version, latest_version):
-    """
-    Args:
-        default_version:
-        latest_version:
-    """
-    msgs = [EMPTY_FRAMEWORK_VERSION_WARNING.format(default_version)]
-    if default_version != latest_version:
-        msgs.append(later_framework_version_warning(latest_version))
-    return " ".join(msgs)
-
-
-def later_framework_version_warning(latest_version):
-    """
-    Args:
-        latest_version:
-    """
-    return LATER_FRAMEWORK_VERSION_WARNING.format(latest=latest_version)
-
-
 def warn_if_parameter_server_with_multi_gpu(training_instance_type, distribution):
     """Warn the user that training will not fully leverage all the GPU
     cores if parameter server is enabled and a multi-GPU instance is selected.
@@ -360,17 +320,6 @@ def python_deprecation_warning(framework, latest_supported_version):
     """
     return PYTHON_2_DEPRECATION_WARNING.format(
         framework=framework, latest_supported_version=latest_supported_version
-    )
-
-
-def parameter_v2_rename_warning(v1_parameter_name, v2_parameter_name):
-    """
-    Args:
-        v1_parameter_name: parameter name used in SageMaker Python SDK v1
-        v2_parameter_name: parameter name used in SageMaker Python SDK v2
-    """
-    return PARAMETER_V2_RENAME_WARNING.format(
-        v1_parameter_name=v1_parameter_name, v2_parameter_name=v2_parameter_name
     )
 
 
