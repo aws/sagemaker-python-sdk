@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.72.0 (2020-07-29)
+
+### Features
+
+ * Neo: Add Granular Target Description support for compilation
+
+### Documentation Changes
+
+ * Add xgboost doc on bring your own model
+ * fix typos on processing docs
+
 ## v1.71.1 (2020-07-27)
 
 ### Bug Fixes and Other Changes
