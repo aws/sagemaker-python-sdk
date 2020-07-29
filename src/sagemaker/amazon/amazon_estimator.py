@@ -665,7 +665,7 @@ def get_image_uri(region_name, repo_name, repo_version=1):
 
 def _warn_newer_xgboost_image():
     """Print a warning when there is a newer XGBoost image"""
-    logging.warning(
+    logger.warning(
         "There is a more up to date SageMaker XGBoost image. "
         "To use the newer image, please set 'repo_version'="
         "'%s'. For example:\n"

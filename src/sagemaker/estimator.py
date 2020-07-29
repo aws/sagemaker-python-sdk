@@ -59,6 +59,8 @@ from sagemaker.transformer import Transformer
 from sagemaker.utils import base_name_from_image, name_from_base, get_config_value
 from sagemaker import vpc_utils
 
+logger = logging.getLogger(__name__)
+
 
 class EstimatorBase(with_metaclass(ABCMeta, object)):
     """Handle end-to-end Amazon SageMaker training and deployment tasks.
@@ -510,6 +512,10 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         framework_version=None,
         compile_max_run=15 * 60,
         tags=None,
+        target_platform_os=None,
+        target_platform_arch=None,
+        target_platform_accelerator=None,
+        compiler_options=None,
         **kwargs
     ):
         """Compile a Neo model using the input model.
@@ -534,6 +540,21 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             tags (list[dict]): List of tags for labeling a compilation job. For
                 more, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
+            target_platform_os (str): Target Platform OS, for example: 'LINUX'.
+                For allowed strings see
+                https://docs.aws.amazon.com/sagemaker/latest/dg/API_OutputConfig.html.
+                It can be used instead of target_instance_family.
+            target_platform_arch (str): Target Platform Architecture, for example: 'X86_64'.
+                For allowed strings see
+                https://docs.aws.amazon.com/sagemaker/latest/dg/API_OutputConfig.html.
+                It can be used instead of target_instance_family.
+            target_platform_accelerator (str, optional): Target Platform Accelerator,
+                for example: 'NVIDIA'. For allowed strings see
+                https://docs.aws.amazon.com/sagemaker/latest/dg/API_OutputConfig.html.
+                It can be used instead of target_instance_family.
+            compiler_options (dict, optional): Additional parameters for compiler.
+                Compiler Options are TargetPlatform / target_instance_family specific. See
+                https://docs.aws.amazon.com/sagemaker/latest/dg/API_OutputConfig.html for details.
             **kwargs: Passed to invocation of ``create_model()``.
                 Implementations may customize ``create_model()`` to accept
                 ``**kwargs`` to customize model creation during deploy. For
@@ -563,6 +584,10 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             compile_max_run,
             framework=framework,
             framework_version=framework_version,
+            target_platform_os=target_platform_os,
+            target_platform_arch=target_platform_arch,
+            target_platform_accelerator=target_platform_accelerator,
+            compiler_options=compiler_options,
         )
         return self._compiled_models[target_instance_family]
 
@@ -730,7 +755,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                 TrainingJobName=self.latest_training_job.name
             )["ModelArtifacts"]["S3ModelArtifacts"]
         else:
-            logging.warning(
+            logger.warning(
                 "No finished training job found associated with this estimator. Please make sure "
                 "this estimator is only used for building workflow config"
             )
@@ -826,7 +851,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         Raises:
             botocore.exceptions.ClientError: If the endpoint does not exist.
         """
-        logging.warning(
+        logger.warning(
             "estimator.delete_endpoint() will be deprecated in SageMaker Python SDK v2. "
             "Please use the delete_endpoint() function on your predictor instead."
         )
@@ -908,7 +933,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         tags = tags or self.tags
 
         if self.latest_training_job is None:
-            logging.warning(
+            logger.warning(
                 "No finished training job found associated with this estimator. Please make sure "
                 "this estimator is only used for building workflow config"
             )
@@ -1029,7 +1054,7 @@ class _TrainingJob(_Job):
 
         if isinstance(inputs, s3_input):
             if "InputMode" in inputs.config:
-                logging.debug(
+                logger.debug(
                     "Selecting s3_input's input_mode (%s) for TrainingInputMode.",
                     inputs.config["InputMode"],
                 )
@@ -1279,7 +1304,7 @@ class Estimator(EstimatorBase):
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_AlgorithmSpecification.html#SageMaker-Type-AlgorithmSpecification-EnableSageMakerMetricsTimeSeries
                 (default: ``None``).
         """
-        logging.warning(parameter_v2_rename_warning("image_name", "image_uri"))
+        logger.warning(parameter_v2_rename_warning("image_name", "image_uri"))
         self.image_name = image_name
         self.hyperparam_dict = hyperparameters.copy() if hyperparameters else {}
         super(Estimator, self).__init__(
@@ -1653,7 +1678,7 @@ class Framework(EstimatorBase):
         self.code_location = code_location
         self.image_name = image_name
         if image_name is not None:
-            logging.warning(parameter_v2_rename_warning("image_name", "image_uri"))
+            logger.warning(parameter_v2_rename_warning("image_name", "image_uri"))
 
         self.uploaded_code = None
 
@@ -2029,7 +2054,7 @@ class Framework(EstimatorBase):
             if env is not None:
                 transform_env.update(env)
         else:
-            logging.warning(
+            logger.warning(
                 "No finished training job found associated with this estimator. Please make sure "
                 "this estimator is only used for building workflow config"
             )

@@ -728,7 +728,7 @@ class TensorFlow(Framework):
 
     def _script_mode_enabled(self):
         """Placeholder docstring"""
-        return self.py_version == "py3" or self.script_mode
+        return self.py_version.startswith("py3") or self.script_mode
 
     def _validate_and_set_debugger_configs(self):
         """
@@ -856,7 +856,7 @@ class TensorFlow(Framework):
         role = role or self.role
 
         if self.latest_training_job is None:
-            logging.warning(
+            logger.warning(
                 "No finished training job found associated with this estimator. Please make sure "
                 "this estimator is only used for building workflow config"
             )
