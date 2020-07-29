@@ -255,7 +255,7 @@ class JSONLinesDeserializer(BaseDeserializer):
     def deserialize(self, stream, content_type):
         """Deserialize JSON lines data from an inference endpoint.
 
-        See https://docs.python.org/3/library/json.html#py-to-json-table tp
+        See https://docs.python.org/3/library/json.html#py-to-json-table to
         understand how JSON values are converted to Python objects.
 
         Args:
