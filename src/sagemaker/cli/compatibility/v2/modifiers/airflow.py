@@ -58,9 +58,13 @@ class ModelConfigArgModifier(Modifier):
         Args:
             node (ast.Call): a node that represents either a ``model_config`` call or
                 a ``model_config_from_estimator`` call.
+
+        Returns:
+            ast.AST: the original node, which has been potentially modified.
         """
         instance_type = node.args.pop(0)
         node.keywords.append(ast.keyword(arg="instance_type", value=instance_type))
+        return node
 
 
 class ModelConfigImageURIRenamer(renamed_params.ParamRenamer):
