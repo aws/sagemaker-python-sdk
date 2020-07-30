@@ -168,7 +168,7 @@ def test_byo_training_config_all_args(sagemaker_session):
 @patch("os.path.isfile", MagicMock(return_value=True))
 @patch("sagemaker.estimator.tar_and_upload_dir", MagicMock())
 @patch(
-    "sagemaker.fw_utils.parse_s3_url",
+    "sagemaker.s3.parse_s3_url",
     MagicMock(
         return_value=["output", "tensorflow-training-{}/source/sourcedir.tar.gz".format(TIME_STAMP)]
     ),
@@ -468,7 +468,7 @@ def test_amazon_alg_training_config_all_args(sagemaker_session):
 @patch("os.path.isfile", MagicMock(return_value=True))
 @patch("sagemaker.estimator.tar_and_upload_dir", MagicMock())
 @patch(
-    "sagemaker.fw_utils.parse_s3_url",
+    "sagemaker.s3.parse_s3_url",
     MagicMock(
         return_value=[
             "output",
@@ -610,7 +610,7 @@ def test_framework_tuning_config(retrieve_image_uri, sagemaker_session):
 @patch("os.path.isfile", MagicMock(return_value=True))
 @patch("sagemaker.estimator.tar_and_upload_dir", MagicMock())
 @patch(
-    "sagemaker.fw_utils.parse_s3_url",
+    "sagemaker.s3.parse_s3_url",
     MagicMock(
         return_value=[
             "output",
@@ -1020,7 +1020,7 @@ def test_amazon_alg_model_config(sagemaker_session):
 @patch("os.path.isfile", MagicMock(return_value=True))
 @patch("sagemaker.estimator.tar_and_upload_dir", MagicMock())
 @patch(
-    "sagemaker.fw_utils.parse_s3_url",
+    "sagemaker.s3.parse_s3_url",
     MagicMock(
         return_value=[
             "output",
@@ -1185,7 +1185,7 @@ def test_transform_config(sagemaker_session):
 @patch("os.path.isfile", MagicMock(return_value=True))
 @patch("sagemaker.estimator.tar_and_upload_dir", MagicMock())
 @patch(
-    "sagemaker.fw_utils.parse_s3_url",
+    "sagemaker.s3.parse_s3_url",
     MagicMock(
         return_value=[
             "output",
@@ -1436,7 +1436,7 @@ def test_deploy_amazon_alg_model_config(sagemaker_session):
 @patch("os.path.isfile", MagicMock(return_value=True))
 @patch("sagemaker.estimator.tar_and_upload_dir", MagicMock())
 @patch(
-    "sagemaker.fw_utils.parse_s3_url",
+    "sagemaker.s3.parse_s3_url",
     MagicMock(
         return_value=[
             "output",
