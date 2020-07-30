@@ -143,6 +143,8 @@ class MultiDataModel(Model):
         self,
         initial_instance_count,
         instance_type,
+        serializer=None,
+        deserializer=None,
         accelerator_type=None,
         endpoint_name=None,
         tags=None,
@@ -171,6 +173,14 @@ class MultiDataModel(Model):
                 in the ``Endpoint`` created from this ``Model``.
             instance_type (str): The EC2 instance type to deploy this Model to.
                 For example, 'ml.p2.xlarge', or 'local' for local mode.
+            serializer (:class:`~sagemaker.serializers.BaseSerializer`): A
+                serializer object, used to encode data for an inference endpoint
+                (default: None). If ``serializer`` is not None, then
+                ``serializer`` will override the default serializer.
+            deserializer (:class:`~sagemaker.deserializers.BaseDeserializer`): A
+                deserializer object, used to decode data from an inference
+                endpoint (default: None). If ``deserializer`` is not None, then
+                ``deserializer`` will override the default deserializer.
             accelerator_type (str): Type of Elastic Inference accelerator to
                 deploy this model for model loading and inference, for example,
                 'ml.eia1.medium'. If not specified, no Elastic Inference
@@ -246,7 +256,12 @@ class MultiDataModel(Model):
         )
 
         if predictor:
-            return predictor(self.endpoint_name, self.sagemaker_session)
+            predictor = self.predictor_cls(self.endpoint_name, self.sagemaker_session)
+            if serializer:
+                predictor.serializer = serializer
+            if deserializer:
+                predictor.deserializer = deserializer
+            return predictor
         return None
 
     def add_model(self, model_data_source, model_data_path=None):

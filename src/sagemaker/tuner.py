@@ -672,6 +672,8 @@ class HyperparameterTuner(object):
         self,
         initial_instance_count,
         instance_type,
+        serializer=None,
+        deserializer=None,
         accelerator_type=None,
         endpoint_name=None,
         wait=True,
@@ -691,6 +693,14 @@ class HyperparameterTuner(object):
                 deploy to an endpoint for prediction.
             instance_type (str): Type of EC2 instance to deploy to an endpoint
                 for prediction, for example, 'ml.c4.xlarge'.
+            serializer (:class:`~sagemaker.serializers.BaseSerializer`): A
+                serializer object, used to encode data for an inference endpoint
+                (default: None). If ``serializer`` is not None, then
+                ``serializer`` will override the default serializer.
+            deserializer (:class:`~sagemaker.deserializers.BaseDeserializer`): A
+                deserializer object, used to decode data from an inference
+                endpoint (default: None). If ``deserializer`` is not None, then
+                ``deserializer`` will override the default deserializer.
             accelerator_type (str): Type of Elastic Inference accelerator to
                 attach to an endpoint for model loading and inference, for
                 example, 'ml.eia1.medium'. If not specified, no Elastic
@@ -725,6 +735,8 @@ class HyperparameterTuner(object):
         return best_estimator.deploy(
             initial_instance_count=initial_instance_count,
             instance_type=instance_type,
+            serializer=serializer,
+            deserializer=deserializer,
             accelerator_type=accelerator_type,
             endpoint_name=endpoint_name or best_training_job["TrainingJobName"],
             wait=wait,
