@@ -22,35 +22,33 @@ from sagemaker.image_uris import config_for_framework
 IMAGE_URI_CONFIG_DIR = os.path.join("..", "image_uri_config")
 
 
-def _get_latest_values(existing_content, scope=None):  # pylint: disable=W0621
-    """Get the latest "registries", "py_versions", "repository", values
+def _get_latest_values(existing_content, scope=None):
+    """Get the latest "registries", "py_versions" and "repository" values
 
     Args:
         existing_content (dict): Dictionary of complete framework image information.
         scope (str): Type of the image, required if the target is DLC
             framework (Default: None).
     """
-    if "scope" not in existing_content:
-        latest_version = list(existing_content["versions"].keys())[-1]
-        registries = existing_content["versions"][latest_version]["registries"]
-        py_versions = existing_content["versions"][latest_version][  # pylint: disable=W0621
-            "py_versions"
-        ]
-        repository = existing_content["versions"][latest_version]["repository"]
+    if scope in existing_content:
+        existing_content = existing_content[scope]
     else:
-        if scope is None:
+        if "versions" not in existing_content:
             raise ValueError(
-                "Image type ('training', 'inference', 'eia') is required for DLC framework."
+                "Invalid image scope: {}. Valid options: {}.".format(
+                    scope, ", ".join(existing_content.key())
+                )
             )
-        latest_version = list(existing_content[scope]["versions"].keys())[-1]
-        registries = existing_content[scope]["versions"][latest_version]["registries"]
-        py_versions = existing_content[scope]["versions"][latest_version]["py_versions"]
-        repository = existing_content[scope]["versions"][latest_version]["repository"]
+
+    latest_version = list(existing_content[scope]["versions"].keys())[-1]
+    registries = existing_content[scope]["versions"][latest_version]["registries"]
+    py_versions = existing_content[scope]["versions"][latest_version]["py_versions"]
+    repository = existing_content[scope]["versions"][latest_version]["repository"]
 
     return registries, py_versions, repository
 
 
-def _write_dict_to_json(filename, existing_content):  # pylint: disable=W0621
+def _write_dict_to_json(filename, existing_content):
     """Write a Python dictionary to a json file.
 
     Args:
@@ -70,7 +68,7 @@ def add_dlc_framework_version(
     py_versions,
     registries,
     repository,
-):  # pylint: disable=W0621
+):
     """Update DLC framework image uri json file with new version information.
 
     Args:
@@ -108,7 +106,7 @@ def add_algo_version(
     registries,
     repository,
     tag_prefix,
-):  # pylint: disable=W0621
+):
     """Update Algorithm image uri json file with new version information.
 
     Args:
@@ -139,7 +137,7 @@ def add_algo_version(
     existing_content["versions"][full_version] = add_version
 
 
-def add_region(existing_content, region, account):  # pylint: disable=W0621
+def add_region(existing_content, region, account):
     """Add region account to framework/algorithm registries.
 
     Args:
@@ -149,7 +147,7 @@ def add_region(existing_content, region, account):  # pylint: disable=W0621
         account (str): Region registry account number.
     """
     if "scope" not in existing_content:
-        for scope in existing_content:  # pylint: disable=W0621
+        for scope in existing_content:
             for version in existing_content[scope]["versions"]:
                 existing_content[scope]["versions"][version]["registries"][region] = account
     else:
@@ -159,7 +157,7 @@ def add_region(existing_content, region, account):  # pylint: disable=W0621
 
 def update_json(
     existing_content, short_version, full_version, scope, processors, py_versions, tag_prefix,
-):  # pylint: disable=W0621
+):
     """Read framework image uri information from json file to a dictionary, update it with new
     framework version information, then write the dictionary back to json file.
 
@@ -206,7 +204,8 @@ def update_json(
         )
 
 
-if __name__ == "__main__":
+def main():
+    """Parse command line arguments, call corresponding methods."""
     parser = argparse.ArgumentParser(description="Framework upgrade tool.")
     parser.add_argument(
         "--framework", required=True, help="Name of the framework (e.g. tensorflow, mxnet, etc.)"
@@ -246,3 +245,7 @@ if __name__ == "__main__":
 
     file = os.path.join(IMAGE_URI_CONFIG_DIR, "{}.json".format(framework))
     _write_dict_to_json(file, content)
+
+
+if __name__ == "__main__":
+    main()
