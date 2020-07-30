@@ -266,7 +266,8 @@ class JSONLinesDeserializer(BaseDeserializer):
             list: A list of JSON serializable objects.
         """
         try:
-            lines = stream.read().rstrip().split("\n")
+            body = stream.read().decode("utf-8")
+            lines = body.rstrip().split("\n")
             return [json.loads(line) for line in lines]
         finally:
             stream.close()
