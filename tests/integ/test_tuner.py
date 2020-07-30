@@ -130,7 +130,7 @@ def _tune(
     hyperparameter_ranges=None,
     job_name=None,
     warm_start_config=None,
-    wait_till_terminal=True,
+    wait=True,
     max_jobs=2,
     max_parallel_jobs=2,
     early_stopping_type="Off",
@@ -155,7 +155,7 @@ def _tune(
         tuner.fit([records, test_record_set], job_name=job_name)
         print("Started hyperparameter tuning job with name:" + tuner.latest_tuning_job.name)
 
-        if wait_till_terminal:
+        if wait:
             tuner.wait()
 
     return tuner
@@ -388,7 +388,7 @@ def test_tuning_kmeans_identical_dataset_algorithm_tuner_from_non_terminal_paren
         kmeans_train_set,
         job_name=parent_tuning_job_name,
         hyperparameter_ranges=hyperparameter_ranges,
-        wait_till_terminal=False,
+        wait=False,
         max_parallel_jobs=1,
         max_jobs=1,
     )
@@ -453,14 +453,8 @@ def test_tuning_lda(sagemaker_session, cpu_instance_type):
         )
 
         tuning_job_name = unique_name_from_base("test-lda", max_length=32)
+        print("Started hyperparameter tuning job with name:" + tuning_job_name)
         tuner.fit([record_set, test_record_set], mini_batch_size=1, job_name=tuning_job_name)
-
-        latest_tuning_job_name = tuner.latest_tuning_job.name
-
-        print("Started hyperparameter tuning job with name:" + latest_tuning_job_name)
-
-        time.sleep(15)
-        tuner.wait()
 
     attached_tuner = HyperparameterTuner.attach(
         tuning_job_name, sagemaker_session=sagemaker_session
@@ -575,12 +569,8 @@ def test_tuning_mxnet(
         )
 
         tuning_job_name = unique_name_from_base("tune-mxnet", max_length=32)
-        tuner.fit({"train": train_input, "test": test_input}, job_name=tuning_job_name)
-
         print("Started hyperparameter tuning job with name:" + tuning_job_name)
-
-        time.sleep(15)
-        tuner.wait()
+        tuner.fit({"train": train_input, "test": test_input}, job_name=tuning_job_name)
 
     best_training_job = tuner.best_training_job()
     with timeout_and_delete_endpoint_by_name(best_training_job, sagemaker_session):
@@ -628,12 +618,8 @@ def test_tuning_tf(
         )
 
         tuning_job_name = unique_name_from_base("tune-tf", max_length=32)
-        tuner.fit(inputs, job_name=tuning_job_name)
-
         print("Started hyperparameter tuning job with name: " + tuning_job_name)
-
-        time.sleep(15)
-        tuner.wait()
+        tuner.fit(inputs, job_name=tuning_job_name)
 
 
 def test_tuning_tf_vpc_multi(
@@ -686,12 +672,8 @@ def test_tuning_tf_vpc_multi(
         )
 
         tuning_job_name = unique_name_from_base("tune-tf", max_length=32)
-        tuner.fit(inputs, job_name=tuning_job_name)
-
         print(f"Started hyperparameter tuning job with name: {tuning_job_name}")
-
-        time.sleep(15)
-        tuner.wait()
+        tuner.fit(inputs, job_name=tuning_job_name)
 
 
 @pytest.mark.canary_quick
@@ -740,12 +722,8 @@ def test_tuning_chainer(
         )
 
         tuning_job_name = unique_name_from_base("chainer", max_length=32)
+        print("Started hyperparameter tuning job with name: {}".format(tuning_job_name))
         tuner.fit({"train": train_input, "test": test_input}, job_name=tuning_job_name)
-
-        print("Started hyperparameter tuning job with name:" + tuning_job_name)
-
-        time.sleep(15)
-        tuner.wait()
 
     best_training_job = tuner.best_training_job()
     with timeout_and_delete_endpoint_by_name(best_training_job, sagemaker_session):
@@ -812,12 +790,8 @@ def test_attach_tuning_pytorch(
         )
 
         tuning_job_name = unique_name_from_base("pytorch", max_length=32)
+        print("Started hyperparameter tuning job with name: {}".format(tuning_job_name))
         tuner.fit({"training": training_data}, job_name=tuning_job_name)
-
-        print("Started hyperparameter tuning job with name:" + tuning_job_name)
-
-        time.sleep(15)
-        tuner.wait()
 
     endpoint_name = tuning_job_name
     model_name = "model-name-1"
@@ -887,16 +861,13 @@ def test_tuning_byo_estimator(sagemaker_session, cpu_instance_type):
             max_parallel_jobs=2,
         )
 
+        tuning_job_name = unique_name_from_base("byo", 32)
+        print("Started hyperparameter tuning job with name {}:".format(tuning_job_name))
         tuner.fit(
             {"train": s3_train_data, "test": s3_train_data},
             include_cls_metadata=False,
-            job_name=unique_name_from_base("byo", 32),
+            job_name=tuning_job_name,
         )
-
-        print("Started hyperparameter tuning job with name:" + tuner.latest_tuning_job.name)
-
-        time.sleep(15)
-        tuner.wait()
 
     best_training_job = tuner.best_training_job()
     with timeout_and_delete_endpoint_by_name(best_training_job, sagemaker_session):

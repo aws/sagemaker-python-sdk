@@ -369,6 +369,7 @@ class HyperparameterTuner(object):
         job_name=None,
         include_cls_metadata=False,
         estimator_kwargs=None,
+        wait=True,
         **kwargs
     ):
         """Start a hyperparameter tuning job.
@@ -424,6 +425,7 @@ class HyperparameterTuner(object):
                 The keys are the estimator names for the estimator_dict argument of create()
                 method. Each value is a dictionary for the other arguments needed for training
                 of the corresponding estimator.
+            wait (bool): Whether the call should wait until the job completes (default: ``True``).
             **kwargs: Other arguments needed for training. Please refer to the
                 ``fit()`` method of the associated estimator to see what other
                 arguments are needed.
@@ -432,6 +434,9 @@ class HyperparameterTuner(object):
             self._fit_with_estimator(inputs, job_name, include_cls_metadata, **kwargs)
         else:
             self._fit_with_estimator_dict(inputs, job_name, include_cls_metadata, estimator_kwargs)
+
+        if wait:
+            self.latest_tuning_job.wait()
 
     def _fit_with_estimator(self, inputs, job_name, include_cls_metadata, **kwargs):
         """Start tuning for tuner instances that have the ``estimator`` field set"""
