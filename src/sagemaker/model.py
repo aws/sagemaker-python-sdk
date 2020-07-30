@@ -184,7 +184,7 @@ class Model(object):
 
     def _framework(self):
         """Placeholder docstring"""
-        return getattr(self, "__framework_name__", None)
+        return getattr(self, "_framework_name", None)
 
     def _get_framework_version(self):
         """Placeholder docstring"""
