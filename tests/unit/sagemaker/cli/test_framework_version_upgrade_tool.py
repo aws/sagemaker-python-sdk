@@ -141,16 +141,20 @@ def dlc_expected_region_content():
 
 @pytest.fixture
 def algo_region_content():
-    region_info = {"versions": {"1.0": {"registries": {"us-west-2": "123456789012"}}}}
+    region_info = {
+        "scope": ["training"],
+        "versions": {"1.0": {"registries": {"us-west-2": "123456789012"}}},
+    }
     return region_info
 
 
 @pytest.fixture
 def algo_expected_region_content():
     region_info = {
+        "scope": ["training"],
         "versions": {
             "1.0": {"registries": {"us-west-2": "123456789012", "us-east-1": "987654321098"}}
-        }
+        },
     }
     return region_info
 
@@ -205,14 +209,12 @@ def test_add_coach_tensorflow(algo_content, algo_expected_content):
 def test_dlc_add_region(dlc_region_content, dlc_expected_region_content):
     region = "us-east-1"
     account = "987654321098"
-    framework = "tensorflow"
-    framework_upgrade.add_region(framework, dlc_region_content, region, account)
+    framework_upgrade.add_region(dlc_region_content, region, account)
     assert dlc_region_content == dlc_expected_region_content
 
 
 def test_algo_add_region(algo_region_content, algo_expected_region_content):
     region = "us-east-1"
     account = "987654321098"
-    framework = "blazingtext"
-    framework_upgrade.add_region(framework, algo_region_content, region, account)
+    framework_upgrade.add_region(algo_region_content, region, account)
     assert algo_region_content == algo_expected_region_content

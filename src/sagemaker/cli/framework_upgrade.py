@@ -10,40 +10,27 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""A Python script to upgrade framework versions"""
+"""A Python script to upgrade framework versions and regions"""
 from __future__ import absolute_import
 
 import argparse
 import json
+import os
+
+from sagemaker.image_uris import config_for_framework
+
+IMAGE_URI_CONFIG_DIR = os.path.join("..", "image_uri_config")
 
 
-DLC_FRAMEWORK = {"tensorflow", "mxnet", "pytorch"}
-
-
-def _read_json_to_dict(filename):
-    """Read a json file into a Python dictionary
-
-    Args:
-        filename (str): Name of the json file.
-
-    Returns:
-        dict: A Python Dictionary.
-    """
-    with open(filename, "r") as f:
-        existing_content = json.load(f)
-        return existing_content
-
-
-def _get_latest_values(framework, existing_content, image_type=None):  # pylint: disable=W0621
+def _get_latest_values(existing_content, scope=None):  # pylint: disable=W0621
     """Get the latest "registries", "py_versions", "repository", values
 
     Args:
-        framework (str): Name of the target framework.
         existing_content (dict): Dictionary of complete framework image information.
-        image_type (str): Type of the image, required if the target is DLC
+        scope (str): Type of the image, required if the target is DLC
             framework (Default: None).
     """
-    if framework not in DLC_FRAMEWORK:
+    if "scope" not in existing_content:
         latest_version = list(existing_content["versions"].keys())[-1]
         registries = existing_content["versions"][latest_version]["registries"]
         py_versions = existing_content["versions"][latest_version][  # pylint: disable=W0621
@@ -51,14 +38,14 @@ def _get_latest_values(framework, existing_content, image_type=None):  # pylint:
         ]
         repository = existing_content["versions"][latest_version]["repository"]
     else:
-        if image_type is None:
+        if scope is None:
             raise ValueError(
-                "Image type ('training', 'inference', 'eia') " "is required for DLC framework."
+                "Image type ('training', 'inference', 'eia') is required for DLC framework."
             )
-        latest_version = list(existing_content[image_type]["versions"].keys())[-1]
-        registries = existing_content[image_type]["versions"][latest_version]["registries"]
-        py_versions = existing_content[image_type]["versions"][latest_version]["py_versions"]
-        repository = existing_content[image_type]["versions"][latest_version]["repository"]
+        latest_version = list(existing_content[scope]["versions"].keys())[-1]
+        registries = existing_content[scope]["versions"][latest_version]["registries"]
+        py_versions = existing_content[scope]["versions"][latest_version]["py_versions"]
+        repository = existing_content[scope]["versions"][latest_version]["repository"]
 
     return registries, py_versions, repository
 
@@ -78,7 +65,7 @@ def add_dlc_framework_version(
     existing_content,
     short_version,
     full_version,
-    image_type,
+    scope,
     processors,
     py_versions,
     registries,
@@ -92,7 +79,7 @@ def add_dlc_framework_version(
         framework (str): Framework name (e.g. tensorflow, pytorch, mxnet)
         short_version (str): Abbreviated framework version (e.g. 1.0, 1.5)
         full_version (str): Complete framework version (e.g. 1.0.0, 1.5.2)
-        image_type (str): Framework image type, it could be "training", "inference"
+        scope (str): Framework image type, it could be "training", "inference"
             or "eia"
         processors (list): Supported processors (e.g. ["cpu", "gpu"])
         py_versions (list): Supported Python versions (e.g. ["py3", "py37"])
@@ -100,16 +87,16 @@ def add_dlc_framework_version(
         repository (str): Framework image's ECR repository.
     """
     for processor in processors:
-        if processor not in existing_content[image_type]["processors"]:
-            existing_content[image_type]["processors"].append(processor)
-    existing_content[image_type]["version_aliases"][short_version] = full_version
+        if processor not in existing_content[scope]["processors"]:
+            existing_content[scope]["processors"].append(processor)
+    existing_content[scope]["version_aliases"][short_version] = full_version
 
     add_version = {
         "registries": registries,
         "repository": repository,
         "py_versions": py_versions,
     }
-    existing_content[image_type]["versions"][full_version] = add_version
+    existing_content[scope]["versions"][full_version] = add_version
 
 
 def add_algo_version(
@@ -152,18 +139,17 @@ def add_algo_version(
     existing_content["versions"][full_version] = add_version
 
 
-def add_region(framework, existing_content, region, account):  # pylint: disable=W0621
+def add_region(existing_content, region, account):  # pylint: disable=W0621
     """Add region account to framework/algorithm registries.
 
     Args:
-        framework (str): Framework name (e.g. tensorflow, pytorch, mxnet).
         existing_content (dict): Existing framework/algorithm image uri information read from
             json file.
         region (str): New region to be added to framework/algorithm registries (e.g. us-west-2).
         account (str): Region registry account number.
     """
-    if framework in DLC_FRAMEWORK:
-        for scope in existing_content:
+    if "scope" not in existing_content:
+        for scope in existing_content:  # pylint: disable=W0621
             for version in existing_content[scope]["versions"]:
                 existing_content[scope]["versions"][version]["registries"][region] = account
     else:
@@ -172,27 +158,17 @@ def add_region(framework, existing_content, region, account):  # pylint: disable
 
 
 def update_json(
-    framework,
-    existing_content,
-    short_version,
-    full_version,
-    image_type,
-    scopes,
-    processors,
-    py_versions,
-    tag_prefix,
+    existing_content, short_version, full_version, scope, processors, py_versions, tag_prefix,
 ):  # pylint: disable=W0621
     """Read framework image uri information from json file to a dictionary, update it with new
     framework version information, then write the dictionary back to json file.
 
     Args:
-        framework (str): Framework name (e.g. tensorflow, pytorch, mxnet).
         existing_content (dict): Existing framework/algorithm image uri information read from
             json file.
         short_version (str): Abbreviated framework version (e.g. 1.0, 1.5).
         full_version (str): Complete framework version (e.g. 1.0.0, 1.5.2).
-        image_type (str): Framework image type, it could be "training", "inference" or "eia".
-        scopes (str): Framework image type, it could be "training", "inference".
+        scope (str): Framework image type, it could be "training", "inference".
         processors (str): Supported processors (e.g. "cpu,gpu").
         py_versions (str): Supported Python versions (e.g. "py3,py37").
         tag_prefix (str): Algorithm image's tag prefix.
@@ -200,24 +176,24 @@ def update_json(
     py_versions = py_versions.split(",")
     processors = processors.split(",")
     latest_registries, latest_py_versions, latest_repository = _get_latest_values(
-        framework, existing_content, image_type
+        existing_content, scope
     )
     if not py_versions:
         py_versions = latest_py_versions
 
-    if framework in DLC_FRAMEWORK:
+    if scope in existing_content:
         add_dlc_framework_version(
             existing_content,
             short_version,
             full_version,
-            image_type,
+            scope,
             processors,
             py_versions,
             latest_registries,
             latest_repository,
         )
     else:
-        scopes = scopes.split(",")
+        scopes = scope.split(",")
         add_algo_version(
             existing_content,
             processors,
@@ -232,15 +208,14 @@ def update_json(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Framework upgrade tool.")
-    parser.add_argument("--framework", help="Name of the framework (e.g. tensorflow, mxnet, etc.)")
+    parser.add_argument(
+        "--framework", required=True, help="Name of the framework (e.g. tensorflow, mxnet, etc.)"
+    )
     parser.add_argument("--short-version", help="Abbreviated framework version (e.g. 2.0)")
     parser.add_argument("--full-version", help="Full framework version (e.g. 2.0.1)")
-    parser.add_argument("--image-type", help="Framework image type (e.g. training, inference, eia)")
     parser.add_argument("--processors", help="Suppoted processors (e.g. cpu, gpu)")
     parser.add_argument("--py-versions", help="Supported Python versions (e.g. py3,py37)")
-    parser.add_argument(
-        "--scopes", help="Scopes for the Algorithm image (e.g. inference, training)"
-    )
+    parser.add_argument("--scope", help="Scope for the Algorithm image (e.g. inference, training)")
     parser.add_argument(
         "--tag-prefix", help="Tag prefix of the Algorithm image (e.g. ray-0.8.5-torch)"
     )
@@ -251,34 +226,23 @@ if __name__ == "__main__":
     framework = args.framework
     short_version = args.short_version
     full_version = args.full_version
-    image_type = args.image_type
     processors = args.processors
     py_versions = args.py_versions
-    scopes = args.scopes
+    scope = args.scope
     tag_prefix = args.tag_prefix
     region = args.region
     account = args.account
 
-    if not framework:
-        raise ValueError("Please specify a framework or algorithm name to upgrade")
-    file = "../image_uri_config/{}.json".format(framework)
-    content = _read_json_to_dict(file)
+    content = config_for_framework(framework)
 
     if region or account:
         if region and not account or account and not region:
             raise ValueError("--region and --account must be used together to expand region.")
-        add_region(framework, content, region, account)
+        add_region(content, region, account)
     else:
         update_json(
-            framework,
-            content,
-            short_version,
-            full_version,
-            image_type,
-            scopes,
-            processors,
-            py_versions,
-            tag_prefix,
+            content, short_version, full_version, scope, processors, py_versions, tag_prefix,
         )
 
+    file = os.path.join(IMAGE_URI_CONFIG_DIR, "{}.json".format(framework))
     _write_dict_to_json(file, content)
