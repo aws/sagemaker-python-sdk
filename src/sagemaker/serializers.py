@@ -54,7 +54,7 @@ class BaseSerializer(abc.ABC):
 
 
 class CSVSerializer(BaseSerializer):
-    """Searilize data of various formats to a CSV-formatted string."""
+    """Serialize data of various formats to a CSV-formatted string."""
 
     CONTENT_TYPE = "text/csv"
 
@@ -102,7 +102,7 @@ class CSVSerializer(BaseSerializer):
             csv_writer.writerow(data)
             return csv_buffer.getvalue().rstrip("\r\n")
 
-        raise ValueError("Unable to handle input format: ", type(data))
+        raise ValueError("Unable to handle input format: %s" % type(data))
 
     def _is_sequence_like(self, data):
         """Returns true if obj is iterable and subscriptable."""
@@ -270,3 +270,34 @@ class SparseMatrixSerializer(BaseSerializer):
         buffer = io.BytesIO()
         scipy.sparse.save_npz(buffer, data)
         return buffer.getvalue()
+
+
+class LibSVMSerializer(BaseSerializer):
+    """Serialize data of various formats to a LibSVM-formatted string.
+
+    The data must already be in LIBSVM file format:
+    <label> <index1>:<value1> <index2>:<value2> ...
+
+    It is suitable for sparse datasets since it does not store zero-valued
+    features.
+    """
+
+    CONTENT_TYPE = "text/libsvm"
+
+    def serialize(self, data):
+        """Serialize data of various formats to a LibSVM-formatted string.
+
+        Args:
+            data (object): Data to be serialized. Can be a string or a
+                file-like object.
+
+        Returns:
+            str: The data serialized as a LibSVM-formatted string.
+        """
+        if isinstance(data, str):
+            return data
+
+        if hasattr(data, "read"):
+            return data.read()
+
+        raise ValueError("Unable to handle input format: %s" % type(data))

@@ -203,6 +203,12 @@ To view logs after attaching a training job to an estimator, use :func:`sagemake
 until the completion of the Hyperparameter Tuning Job or Batch Transform Job, respectively.
 To make the function non-blocking, use ``wait=False``.
 
+XGBoost Predictor
+-----------------
+
+The default serializer of ``sagemaker.xgboost.model.XGBoostPredictor`` has been changed from ``NumpySerializer`` to ``LibSVMSerializer``.
+
+
 Parameter and Class Name Changes
 ================================
 
@@ -262,6 +268,8 @@ The follow serializer/deserializer classes have been renamed and/or moved:
 +--------------------------------------------------------+-------------------------------------------------------+
 | ``sagemaker.predictor._JsonDeserializer``              | ``sagemaker.deserializers.JSONDeserializer``          |
 +--------------------------------------------------------+-------------------------------------------------------+
+
+``sagemaker.serializers.LibSVMSerializer`` has been added in v2.0.
 
 ``distributions``
 ~~~~~~~~~~~~~~~~~
