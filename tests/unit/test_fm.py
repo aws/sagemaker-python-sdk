@@ -147,7 +147,7 @@ def test_all_hyperparameters(sagemaker_session):
 
 def test_image(sagemaker_session):
     fm = FactorizationMachines(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-    assert image_uris.retrieve("factorization-machines", REGION) == fm.train_image()
+    assert image_uris.retrieve("factorization-machines", REGION) == fm.training_image_uri()
 
 
 @pytest.mark.parametrize(

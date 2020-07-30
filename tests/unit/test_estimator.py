@@ -109,7 +109,7 @@ LIST_TAGS_RESULT = {"Tags": [{"Key": "TagtestKey", "Value": "TagtestValue"}]}
 class DummyFramework(Framework):
     _framework_name = "dummy"
 
-    def train_image(self):
+    def training_image_uri(self):
         return IMAGE_URI
 
     def create_model(

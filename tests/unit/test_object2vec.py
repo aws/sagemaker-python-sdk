@@ -144,7 +144,7 @@ def test_all_hyperparameters(sagemaker_session):
 
 def test_image(sagemaker_session):
     object2vec = Object2Vec(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-    assert image_uris.retrieve("object2vec", REGION) == object2vec.train_image()
+    assert image_uris.retrieve("object2vec", REGION) == object2vec.training_image_uri()
 
 
 @pytest.mark.parametrize("required_hyper_parameters, value", [("epochs", "string")])

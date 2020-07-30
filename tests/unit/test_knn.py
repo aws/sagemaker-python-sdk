@@ -146,7 +146,7 @@ def test_all_hyperparameters_classifier(sagemaker_session):
 
 def test_image(sagemaker_session):
     knn = KNN(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-    assert image_uris.retrieve("knn", REGION) == knn.train_image()
+    assert image_uris.retrieve("knn", REGION) == knn.training_image_uri()
 
 
 @pytest.mark.parametrize(

@@ -317,7 +317,7 @@ class HyperparameterTuner(object):
                 estimator = (
                     self.estimator or self.estimator_dict[sorted(self.estimator_dict.keys())[0]]
                 )
-                base_name = base_name_from_image(estimator.train_image())
+                base_name = base_name_from_image(estimator.training_image_uri())
             self._current_job_name = name_from_base(
                 base_name, max_length=self.TUNING_JOB_NAME_MAX_LENGTH, short=True
             )
@@ -1513,7 +1513,7 @@ class _TuningJob(_Job):
         if isinstance(estimator, sagemaker.algorithm.AlgorithmEstimator):
             training_config["algorithm_arn"] = estimator.algorithm_arn
         else:
-            training_config["image_uri"] = estimator.train_image()
+            training_config["image_uri"] = estimator.training_image_uri()
 
         training_config["enable_network_isolation"] = estimator.enable_network_isolation()
         training_config[

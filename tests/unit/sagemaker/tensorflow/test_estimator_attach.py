@@ -98,7 +98,7 @@ def test_attach(sagemaker_session, tensorflow_training_version, tensorflow_train
     assert estimator.hyperparameters() is not None
     assert estimator.source_dir == "s3://some/sourcedir.tar.gz"
     assert estimator.entry_point == "iris-dnn-classifier.py"
-    assert estimator.train_image() == training_image
+    assert estimator.training_image_uri() == training_image
 
 
 @patch("sagemaker.utils.create_tar_file", MagicMock())
@@ -207,4 +207,4 @@ def test_attach_custom_image(sagemaker_session):
 
     estimator = TensorFlow.attach(training_job_name="neo", sagemaker_session=sagemaker_session)
     assert estimator.image_uri == training_image
-    assert estimator.train_image() == training_image
+    assert estimator.training_image_uri() == training_image

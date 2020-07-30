@@ -380,7 +380,7 @@ def test_model(sagemaker_session, xgboost_framework_version):
     assert isinstance(predictor, XGBoostPredictor)
 
 
-def test_train_image(sagemaker_session, xgboost_framework_version):
+def test_training_image_uri(sagemaker_session, xgboost_framework_version):
     xgboost = XGBoost(
         entry_point=SCRIPT_PATH,
         role=ROLE,
@@ -391,7 +391,7 @@ def test_train_image(sagemaker_session, xgboost_framework_version):
         py_version=PYTHON_VERSION,
     )
 
-    assert _get_full_cpu_image_uri(xgboost_framework_version) in xgboost.train_image()
+    assert _get_full_cpu_image_uri(xgboost_framework_version) in xgboost.training_image_uri()
 
 
 def test_attach(sagemaker_session, xgboost_framework_version):
