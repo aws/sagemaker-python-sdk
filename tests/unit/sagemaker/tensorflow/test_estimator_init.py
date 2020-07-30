@@ -65,7 +65,7 @@ def test_py2_version_is_not_deprecated(sagemaker_session):
 
 def test_framework_name(sagemaker_session):
     tf = _build_tf(sagemaker_session, framework_version="1.15.2", py_version="py3")
-    assert tf.__framework_name__ == "tensorflow"
+    assert tf._framework_name == "tensorflow"
 
 
 def test_enable_sm_metrics(sagemaker_session):

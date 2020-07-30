@@ -59,7 +59,7 @@ class ChainerModel(FrameworkModel):
     ``Endpoint``.
     """
 
-    __framework_name__ = "chainer"
+    _framework_name = "chainer"
 
     def __init__(
         self,
@@ -116,7 +116,7 @@ class ChainerModel(FrameworkModel):
         validate_version_or_image_args(framework_version, py_version, image_uri)
         if py_version == "py2":
             logger.warning(
-                python_deprecation_warning(self.__framework_name__, defaults.LATEST_PY2_VERSION)
+                python_deprecation_warning(self._framework_name, defaults.LATEST_PY2_VERSION)
             )
         self.framework_version = framework_version
         self.py_version = py_version
@@ -176,7 +176,7 @@ class ChainerModel(FrameworkModel):
 
         """
         return image_uris.retrieve(
-            self.__framework_name__,
+            self._framework_name,
             region_name,
             version=self.framework_version,
             py_version=self.py_version,

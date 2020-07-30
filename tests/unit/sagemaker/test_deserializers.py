@@ -219,16 +219,16 @@ def json_lines_deserializer():
 @pytest.mark.parametrize(
     "source, expected",
     [
-        ('["Name", "Score"]\n["Gilbert", 24]', [["Name", "Score"], ["Gilbert", 24]]),
-        ('["Name", "Score"]\n["Gilbert", 24]\n', [["Name", "Score"], ["Gilbert", 24]]),
+        (b'["Name", "Score"]\n["Gilbert", 24]', [["Name", "Score"], ["Gilbert", 24]]),
+        (b'["Name", "Score"]\n["Gilbert", 24]\n', [["Name", "Score"], ["Gilbert", 24]]),
         (
-            '{"Name": "Gilbert", "Score": 24}\n{"Name": "Alexa", "Score": 29}',
+            b'{"Name": "Gilbert", "Score": 24}\n{"Name": "Alexa", "Score": 29}',
             [{"Name": "Gilbert", "Score": 24}, {"Name": "Alexa", "Score": 29}],
         ),
     ],
 )
 def test_json_lines_deserializer(json_lines_deserializer, source, expected):
-    stream = io.StringIO(source)
+    stream = io.BytesIO(source)
     content_type = "application/jsonlines"
     actual = json_lines_deserializer.deserialize(stream, content_type)
     assert actual == expected

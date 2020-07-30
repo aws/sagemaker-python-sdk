@@ -1417,7 +1417,7 @@ class Framework(EstimatorBase):
     such as training/deployment images and predictor instances.
     """
 
-    __framework_name__ = None
+    _framework_name = None
 
     LAUNCH_PS_ENV_NAME = "sagemaker_parameter_server_enabled"
     LAUNCH_MPI_ENV_NAME = "sagemaker_mpi_enabled"
@@ -1815,7 +1815,7 @@ class Framework(EstimatorBase):
         if self.image_uri:
             return self.image_uri
         return image_uris.retrieve(
-            self.__framework_name__,
+            self._framework_name,
             self.sagemaker_session.boto_region_name,
             instance_type=self.instance_type,
             version=self.framework_version,  # pylint: disable=no-member

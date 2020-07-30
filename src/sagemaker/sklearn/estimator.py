@@ -32,7 +32,7 @@ logger = logging.getLogger("sagemaker")
 class SKLearn(Framework):
     """Handle end-to-end training and deployment of custom Scikit-learn code."""
 
-    __framework_name__ = defaults.SKLEARN_NAME
+    _framework_name = defaults.SKLEARN_NAME
 
     def __init__(
         self,
@@ -138,7 +138,7 @@ class SKLearn(Framework):
 
         if image_uri is None:
             self.image_uri = image_uris.retrieve(
-                SKLearn.__framework_name__,
+                SKLearn._framework_name,
                 self.sagemaker_session.boto_region_name,
                 version=self.framework_version,
                 py_version=self.py_version,
