@@ -29,11 +29,10 @@ from sagemaker.analytics import TrainingJobAnalytics
 from sagemaker.debugger import DebuggerHookConfig
 from sagemaker.debugger import TensorBoardOutputConfig  # noqa: F401 # pylint: disable=unused-import
 from sagemaker.debugger import get_rule_container_image_uri
-from sagemaker.s3 import S3Uploader
+from sagemaker.s3 import S3Uploader, parse_s3_url
 
 from sagemaker.fw_utils import (
     tar_and_upload_dir,
-    parse_s3_url,
     UploadedCode,
     validate_source_dir,
     _region_supports_debugger,

@@ -17,7 +17,7 @@ import os
 import re
 
 import sagemaker
-from sagemaker import fw_utils, job, utils, session, vpc_utils
+from sagemaker import fw_utils, job, utils, s3, session, vpc_utils
 from sagemaker.amazon import amazon_estimator
 from sagemaker.tensorflow import TensorFlow
 
@@ -33,10 +33,10 @@ def prepare_framework(estimator, s3_operations):
             `source_dir` ).
     """
     if estimator.code_location is not None:
-        bucket, key = fw_utils.parse_s3_url(estimator.code_location)
+        bucket, key = s3.parse_s3_url(estimator.code_location)
         key = os.path.join(key, estimator._current_job_name, "source", "sourcedir.tar.gz")
     elif estimator.uploaded_code is not None:
-        bucket, key = fw_utils.parse_s3_url(estimator.uploaded_code.s3_prefix)
+        bucket, key = s3.parse_s3_url(estimator.uploaded_code.s3_prefix)
     else:
         bucket = estimator.sagemaker_session._default_bucket
         key = os.path.join(estimator._current_job_name, "source", "sourcedir.tar.gz")

@@ -21,7 +21,6 @@ import tempfile
 from collections import namedtuple
 
 import sagemaker.utils
-from sagemaker import s3
 
 logger = logging.getLogger("sagemaker")
 
@@ -262,20 +261,6 @@ def framework_version_from_tag(image_tag):
     tag_pattern = re.compile("^(.*)-(cpu|gpu)-(py2|py3)$")
     tag_match = tag_pattern.match(image_tag)
     return None if tag_match is None else tag_match.group(1)
-
-
-def parse_s3_url(url):
-    """Calls the method with the same name in the s3 module.
-
-    :func:~sagemaker.s3.parse_s3_url
-
-    Args:
-        url: A URL, expected with an s3 scheme.
-
-    Returns: The return value of s3.parse_s3_url, which is a tuple containing:
-        str: S3 bucket name str: S3 key
-    """
-    return s3.parse_s3_url(url)
 
 
 def model_code_key_prefix(code_location_key_prefix, model_name, image):
