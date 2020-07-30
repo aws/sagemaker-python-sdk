@@ -2020,6 +2020,8 @@ def test_generic_to_deploy_kms(create_model, sagemaker_session):
     model.deploy.assert_called_with(
         instance_type=INSTANCE_TYPE,
         initial_instance_count=INSTANCE_COUNT,
+        serializer=None,
+        deserializer=None,
         accelerator_type=None,
         endpoint_name=endpoint_name,
         tags=None,
