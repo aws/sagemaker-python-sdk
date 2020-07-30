@@ -43,7 +43,7 @@ string_deserializer = StringDeserializer()
 @pytest.fixture(scope="module")
 def container_image(sagemaker_session):
     """Create a Multi-Model image since pre-built ones are not available yet."""
-    algorithm_name = unique_name_from_base("sagemaker-multimodel-integ-test-{}")
+    algorithm_name = unique_name_from_base("sagemaker-multimodel-integ-test")
     ecr_image = _ecr_image_uri(sagemaker_session, algorithm_name)
 
     # Build and tag docker image locally
