@@ -24,6 +24,7 @@ from sagemaker.serializers import (
     CSVSerializer,
     NumpySerializer,
     JSONSerializer,
+    IdentitySerializer,
     SparseMatrixSerializer,
     JSONLinesSerializer,
 )
@@ -234,6 +235,17 @@ def test_json_serializer_csv_buffer(json_serializer):
         csv_file.seek(0)
         result = json_serializer.serialize(csv_file)
         assert result == validation_value
+
+
+def test_identity_serializer():
+    identity_serializer = IdentitySerializer()
+    assert identity_serializer.serialize(b"{}") == b"{}"
+
+
+def test_identity_serializer_with_custom_content_type():
+    identity_serializer = IdentitySerializer(content_type="text/csv")
+    assert identity_serializer.serialize(b"a,b\n1,2") == b"a,b\n1,2"
+    assert identity_serializer.CONTENT_TYPE == "text/csv"
 
 
 @pytest.fixture
