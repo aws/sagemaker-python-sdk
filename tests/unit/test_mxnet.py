@@ -715,7 +715,7 @@ def test_estimator_py2_warning(warning, sagemaker_session):
     )
 
     assert estimator.py_version == "py2"
-    warning.assert_called_with(estimator.__framework_name__, defaults.LATEST_PY2_VERSION)
+    warning.assert_called_with(estimator._framework_name, defaults.LATEST_PY2_VERSION)
 
 
 @patch("sagemaker.mxnet.model.python_deprecation_warning")
@@ -729,7 +729,7 @@ def test_model_py2_warning(warning, sagemaker_session):
         sagemaker_session=sagemaker_session,
     )
     assert model.py_version == "py2"
-    warning.assert_called_with(model.__framework_name__, defaults.LATEST_PY2_VERSION)
+    warning.assert_called_with(model._framework_name, defaults.LATEST_PY2_VERSION)
 
 
 def test_create_model_with_custom_hosting_image(sagemaker_session):
