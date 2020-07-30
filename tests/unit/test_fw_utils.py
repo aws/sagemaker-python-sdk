@@ -411,18 +411,6 @@ def test_framework_version_from_tag_other():
     assert version is None
 
 
-def test_parse_s3_url():
-    bucket, key_prefix = fw_utils.parse_s3_url("s3://bucket/code_location")
-    assert "bucket" == bucket
-    assert "code_location" == key_prefix
-
-
-def test_parse_s3_url_fail():
-    with pytest.raises(ValueError) as error:
-        fw_utils.parse_s3_url("t3://code_location")
-    assert "Expecting 's3' scheme" in str(error)
-
-
 def test_model_code_key_prefix_with_all_values_present():
     key_prefix = fw_utils.model_code_key_prefix("prefix", "model_name", "image_uri")
     assert key_prefix == "prefix/model_name"
