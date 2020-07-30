@@ -89,12 +89,12 @@ def add_dlc_framework_version(
             existing_content[scope]["processors"].append(processor)
     existing_content[scope]["version_aliases"][short_version] = full_version
 
-    add_version = {
+    new_version = {
         "registries": registries,
         "repository": repository,
         "py_versions": py_versions,
     }
-    existing_content[scope]["versions"][full_version] = add_version
+    existing_content[scope]["versions"][full_version] = new_version
 
 
 def add_algo_version(
@@ -127,14 +127,14 @@ def add_algo_version(
         if scope not in existing_content["scope"]:
             existing_content["scope"].append(scope)
 
-    add_version = {
+    new_version = {
         "py_versions": py_versions,
         "registries": registries,
         "repository": repository,
     }
     if tag_prefix:
-        add_version["tag_prefix"] = tag_prefix
-    existing_content["versions"][full_version] = add_version
+        new_version["tag_prefix"] = tag_prefix
+    existing_content["versions"][full_version] = new_version
 
 
 def add_region(existing_content, region, account):
@@ -155,7 +155,7 @@ def add_region(existing_content, region, account):
             existing_content["versions"][version]["registries"][region] = account
 
 
-def update_json(
+def add_version(
     existing_content, short_version, full_version, scope, processors, py_versions, tag_prefix,
 ):
     """Read framework image uri information from json file to a dictionary, update it with new
@@ -222,28 +222,25 @@ def main():
     parser.add_argument("--account", help="Registry account of new region")
 
     args = parser.parse_args()
-    framework = args.framework
-    short_version = args.short_version
-    full_version = args.full_version
-    processors = args.processors
-    py_versions = args.py_versions
-    scope = args.scope
-    tag_prefix = args.tag_prefix
-    region = args.region
-    account = args.account
 
-    content = config_for_framework(framework)
+    content = config_for_framework(args.framework)
 
-    if region or account:
-        if region and not account or account and not region:
+    if args.region or args.account:
+        if args.region and not args.account or args.account and not args.region:
             raise ValueError("--region and --account must be used together to expand region.")
-        add_region(content, region, account)
+        add_region(content, args.region, args.account)
     else:
-        update_json(
-            content, short_version, full_version, scope, processors, py_versions, tag_prefix,
+        add_version(
+            content,
+            args.short_version,
+            args.full_version,
+            args.scope,
+            args.processors,
+            args.py_versions,
+            args.tag_prefix,
         )
 
-    file = os.path.join(IMAGE_URI_CONFIG_DIR, "{}.json".format(framework))
+    file = os.path.join(IMAGE_URI_CONFIG_DIR, "{}.json".format(args.framework))
     _write_dict_to_json(file, content)
 
 
