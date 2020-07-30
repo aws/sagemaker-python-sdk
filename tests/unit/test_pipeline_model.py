@@ -18,7 +18,6 @@ from mock import Mock, patch
 from sagemaker.model import FrameworkModel
 from sagemaker.pipeline import PipelineModel
 from sagemaker.predictor import Predictor
-from sagemaker.session import ModelContainer
 from sagemaker.sparkml import SparkMLModel
 
 ENTRY_POINT = "blah.py"
@@ -30,8 +29,6 @@ INSTANCE_TYPE = "ml.m4.xlarge"
 ROLE = "some-role"
 ENV_1 = {"SAGEMAKER_DEFAULT_INVOCATIONS_ACCEPT": "application/json"}
 ENV_2 = {"SAGEMAKER_DEFAULT_INVOCATIONS_ACCEPT": "text/csv"}
-MODEL_CONTAINER_1 = ModelContainer(image_uri=MODEL_IMAGE_1, model_data=MODEL_DATA_1, env=ENV_1)
-MODEL_CONTAINER_2 = ModelContainer(image_uri=MODEL_IMAGE_2, model_data=MODEL_DATA_2, env=ENV_2)
 ENDPOINT = "some-ep"
 
 

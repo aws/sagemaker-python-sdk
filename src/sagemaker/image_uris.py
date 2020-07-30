@@ -16,12 +16,13 @@ from __future__ import absolute_import
 import json
 import logging
 import os
+import re
 
 from sagemaker import utils
 
 logger = logging.getLogger(__name__)
 
-ECR_URI_TEMPLATE = "{registry}.dkr.{hostname}/{repository}:{tag}"
+ECR_URI_TEMPLATE = "{registry}.dkr.{hostname}/{repository}"
 
 
 def retrieve(
@@ -68,14 +69,17 @@ def retrieve(
     registry = _registry_from_region(region, version_config["registries"])
     hostname = utils._botocore_resolver().construct_endpoint("ecr", region)["hostname"]
 
+    repo = version_config["repository"]
+
     processor = _processor(
         instance_type, config.get("processors") or version_config.get("processors")
     )
     tag = _format_tag(version_config.get("tag_prefix", version), processor, py_version)
 
-    repo = version_config["repository"]
+    if tag:
+        repo += ":{}".format(tag)
 
-    return ECR_URI_TEMPLATE.format(registry=registry, hostname=hostname, repository=repo, tag=tag)
+    return ECR_URI_TEMPLATE.format(registry=registry, hostname=hostname, repository=repo)
 
 
 def _config_for_framework_and_scope(framework, image_scope, accelerator_type=None):
@@ -83,6 +87,8 @@ def _config_for_framework_and_scope(framework, image_scope, accelerator_type=Non
     config = config_for_framework(framework)
 
     if accelerator_type:
+        _validate_accelerator_type(accelerator_type)
+
         if image_scope not in ("eia", "inference"):
             logger.warning(
                 "Elastic inference is for inference only. Ignoring image scope: %s.", image_scope
@@ -115,6 +121,15 @@ def config_for_framework(framework):
     fname = os.path.join(os.path.dirname(__file__), "image_uri_config", "{}.json".format(framework))
     with open(fname) as f:
         return json.load(f)
+
+
+def _validate_accelerator_type(accelerator_type):
+    """Raises a ``ValueError`` if ``accelerator_type`` is invalid."""
+    if not accelerator_type.startswith("ml.eia") and accelerator_type != "local_sagemaker_notebook":
+        raise ValueError(
+            "Invalid SageMaker Elastic Inference accelerator type: {}. "
+            "See https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html".format(accelerator_type)
+        )
 
 
 def _validate_version_and_set_if_needed(version, config, framework):
@@ -166,14 +181,28 @@ def _processor(instance_type, available_processors):
 
     if instance_type.startswith("local"):
         processor = "cpu" if instance_type == "local" else "gpu"
-    elif not instance_type.startswith("ml."):
-        raise ValueError(
-            "Invalid SageMaker instance type: {}. For options, see: "
-            "https://aws.amazon.com/sagemaker/pricing/instance-types".format(instance_type)
-        )
     else:
-        family = instance_type.split(".")[1]
-        processor = "gpu" if family[0] in ("g", "p") else "cpu"
+        # looks for either "ml.<family>.<size>" or "ml_<family>"
+        match = re.match(r"^ml[\._]([a-z\d]+)\.?\w*$", instance_type)
+        if match:
+            family = match[1]
+
+            # For some frameworks, we have optimized images for specific families, e.g c5 or p3.
+            # In those cases, we use the family name in the image tag. In other cases, we use
+            # 'cpu' or 'gpu'.
+            if family in available_processors:
+                processor = family
+            elif family.startswith("inf"):
+                processor = "inf"
+            elif family[0] in ("g", "p"):
+                processor = "gpu"
+            else:
+                processor = "cpu"
+        else:
+            raise ValueError(
+                "Invalid SageMaker instance type: {}. For options, see: "
+                "https://aws.amazon.com/sagemaker/pricing/instance-types".format(instance_type)
+            )
 
     _validate_arg(processor, available_processors, "processor")
     return processor

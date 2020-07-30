@@ -49,7 +49,6 @@ class SparkMLPredictor(Predictor):
             endpoint_name=endpoint_name,
             sagemaker_session=sagemaker_session,
             serializer=CSVSerializer(),
-            content_type="text/csv",
         )
 
 
