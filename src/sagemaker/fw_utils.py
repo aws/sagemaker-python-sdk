@@ -49,40 +49,6 @@ DEBUGGER_UNSUPPORTED_REGIONS = ("us-gov-west-1", "us-iso-east-1")
 SINGLE_GPU_INSTANCE_TYPES = ("ml.p2.xlarge", "ml.p3.2xlarge")
 
 
-def is_version_equal_or_higher(lowest_version, framework_version):
-    """Determine whether the ``framework_version`` is equal to or higher than
-    ``lowest_version``
-
-    Args:
-        lowest_version (List[int]): lowest version represented in an integer
-            list
-        framework_version (str): framework version string
-
-    Returns:
-        bool: Whether or not ``framework_version`` is equal to or higher than
-            ``lowest_version``
-    """
-    version_list = [int(s) for s in framework_version.split(".")]
-    return version_list >= lowest_version[0 : len(version_list)]
-
-
-def is_version_equal_or_lower(highest_version, framework_version):
-    """Determine whether the ``framework_version`` is equal to or lower than
-    ``highest_version``
-
-    Args:
-        highest_version (List[int]): highest version represented in an integer
-            list
-        framework_version (str): framework version string
-
-    Returns:
-        bool: Whether or not ``framework_version`` is equal to or lower than
-            ``highest_version``
-    """
-    version_list = [int(s) for s in framework_version.split(".")]
-    return version_list <= highest_version[0 : len(version_list)]
-
-
 def validate_source_dir(script, directory):
     """Validate that the source directory exists and it contains the user script
     Args:

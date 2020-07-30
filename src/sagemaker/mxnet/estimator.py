@@ -15,11 +15,12 @@ from __future__ import absolute_import
 
 import logging
 
+from packaging.version import Version
+
 from sagemaker.estimator import Framework
 from sagemaker.fw_utils import (
     framework_name_from_image,
     framework_version_from_tag,
-    is_version_equal_or_higher,
     python_deprecation_warning,
     validate_version_or_image_args,
     warn_if_parameter_server_with_multi_gpu,
@@ -157,9 +158,7 @@ class MXNet(Framework):
 
         if "enable_sagemaker_metrics" not in kwargs:
             # enable sagemaker metrics for MXNet v1.6 or greater:
-            if self.framework_version and is_version_equal_or_higher(
-                [1, 6], self.framework_version
-            ):
+            if self.framework_version and Version(self.framework_version) >= Version("1.6"):
                 kwargs["enable_sagemaker_metrics"] = True
 
         super(MXNet, self).__init__(
