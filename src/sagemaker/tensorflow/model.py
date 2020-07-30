@@ -117,7 +117,7 @@ class TensorFlowPredictor(Predictor):
 class TensorFlowModel(sagemaker.model.FrameworkModel):
     """A ``FrameworkModel`` implementation for inference with TensorFlow Serving."""
 
-    __framework_name__ = "tensorflow"
+    _framework_name = "tensorflow"
     LOG_LEVEL_PARAM_NAME = "SAGEMAKER_TFS_NGINX_LOGLEVEL"
     LOG_LEVEL_MAP = {
         logging.DEBUG: "debug",
@@ -282,7 +282,7 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
             return self.image_uri
 
         return image_uris.retrieve(
-            self.__framework_name__,
+            self._framework_name,
             self.sagemaker_session.boto_region_name,
             version=self.framework_version,
             instance_type=instance_type,

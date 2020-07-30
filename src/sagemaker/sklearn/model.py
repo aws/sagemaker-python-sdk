@@ -55,7 +55,7 @@ class SKLearnModel(FrameworkModel):
     ``Endpoint``.
     """
 
-    __framework_name__ = defaults.SKLEARN_NAME
+    _framework_name = defaults.SKLEARN_NAME
 
     def __init__(
         self,
@@ -175,7 +175,7 @@ class SKLearnModel(FrameworkModel):
 
         """
         return image_uris.retrieve(
-            self.__framework_name__,
+            self._framework_name,
             region_name,
             version=self.framework_version,
             py_version=self.py_version,
