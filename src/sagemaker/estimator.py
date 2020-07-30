@@ -29,11 +29,10 @@ from sagemaker.analytics import TrainingJobAnalytics
 from sagemaker.debugger import DebuggerHookConfig
 from sagemaker.debugger import TensorBoardOutputConfig  # noqa: F401 # pylint: disable=unused-import
 from sagemaker.debugger import get_rule_container_image_uri
-from sagemaker.s3 import S3Uploader
+from sagemaker.s3 import S3Uploader, parse_s3_url
 
 from sagemaker.fw_utils import (
     tar_and_upload_dir,
-    parse_s3_url,
     UploadedCode,
     validate_source_dir,
     _region_supports_debugger,
@@ -1418,7 +1417,7 @@ class Framework(EstimatorBase):
     such as training/deployment images and predictor instances.
     """
 
-    __framework_name__ = None
+    _framework_name = None
 
     LAUNCH_PS_ENV_NAME = "sagemaker_parameter_server_enabled"
     LAUNCH_MPI_ENV_NAME = "sagemaker_mpi_enabled"
@@ -1816,7 +1815,7 @@ class Framework(EstimatorBase):
         if self.image_uri:
             return self.image_uri
         return image_uris.retrieve(
-            self.__framework_name__,
+            self._framework_name,
             self.sagemaker_session.boto_region_name,
             instance_type=self.instance_type,
             version=self.framework_version,  # pylint: disable=no-member
