@@ -24,10 +24,8 @@ import tarfile
 import tempfile
 import time
 from datetime import datetime
-from functools import wraps
 
 import botocore
-import six
 from six.moves.urllib import parse
 
 
@@ -132,21 +130,6 @@ def sagemaker_short_timestamp():
     return time.strftime("%y%m%d-%H%M")
 
 
-def debug(func):
-    """Print the function name and arguments for debugging.
-
-    Args:
-        func:
-    """
-
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        print("{} args: {} kwargs: {}".format(func.__name__, args, kwargs))
-        return func(*args, **kwargs)
-
-    return wrapper
-
-
 def get_config_value(key_path, config):
     """
     Args:
@@ -176,19 +159,6 @@ def get_short_version(framework_version):
         str: The short version string
     """
     return ".".join(framework_version.split(".")[:2])
-
-
-def extract_name_from_job_arn(arn):
-    """Returns the name used in the API given a full ARN for a training job or
-    hyperparameter tuning job.
-
-    Args:
-        arn:
-    """
-    slash_pos = arn.find("/")
-    if slash_pos == -1:
-        raise ValueError("Cannot parse invalid ARN: %s" % arn)
-    return arn[(slash_pos + 1) :]
 
 
 def secondary_training_status_changed(current_job_description, prev_job_description):
@@ -274,55 +244,6 @@ def secondary_training_status_message(job_description, prev_description):
         status_strs.append("{} {} - {}".format(time_str, transition["Status"], message))
 
     return "\n".join(status_strs)
-
-
-def generate_tensorboard_url(domain, bucket_paths):
-    """Generate Tensorboard URL for given list of s3 buckets
-
-    Args:
-        domain: JupyterLab app domain
-        bucket_paths: List of S3 bucket paths in format `bucket/path`
-                      or a single string in the same format
-
-    Returns:
-        str: Tensorboard URL
-
-    Raises:
-        AttributeError if invalid inputs are passed
-    """
-
-    def trim_prefix(s, prefix):
-        if s.startswith(prefix):
-            return s[len(prefix) :]
-        return s
-
-    def encode_s3_url(s3_url):
-        if not s3_url:
-            raise AttributeError("bucket_paths element should not be empty")
-        s3_url = trim_prefix(s3_url, S3_PREFIX)
-        return parse.quote_plus("{}{}".format(S3_PREFIX, s3_url))
-
-    if not isinstance(domain, six.string_types):
-        raise AttributeError("domain parameter should be string")
-
-    if len(domain) == 0:
-        raise AttributeError("domain parameter should not be empty")
-
-    if isinstance(bucket_paths, six.string_types):
-        bucket_paths = [bucket_paths]
-    elif not isinstance(bucket_paths, list):
-        raise AttributeError("bucket paths should be a list or a string")
-
-    if len(bucket_paths) == 0:
-        raise AttributeError("bucket_paths parameter should not be empty list")
-
-    domain = trim_prefix(domain, HTTPS_PREFIX)
-    domain = trim_prefix(domain, HTTP_PREFIX)
-
-    s3_urls = map(encode_s3_url, bucket_paths)
-    query = ",".join(s3_urls)
-
-    return "https://{}/tensorboard/default?s3urls={}".format(domain, query)
 
 
 def download_folder(bucket_name, prefix, target, sagemaker_session):

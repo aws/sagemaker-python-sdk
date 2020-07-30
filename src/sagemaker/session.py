@@ -3370,29 +3370,6 @@ class ShuffleConfig(object):
         self.seed = seed
 
 
-class ModelContainer(object):
-    """Amazon SageMaker Model configurations for inference pipelines.
-
-    Attributes:
-        model_data (str): S3 Model artifact location
-        image_uri (str): Docker image URL in ECR
-        env (dict[str,str]): Environment variable mapping
-    """
-
-    def __init__(self, model_data, image_uri, env=None):
-        """Create a definition of a model which can be part of an Inference Pipeline
-
-        Args:
-            model_data (str): The S3 location of a SageMaker model data ``.tar.gz`` file.
-            image_uri (str): A Docker image URI.
-            env (dict[str, str]): Environment variables to run with ``image_uri`` when hosted in
-                SageMaker (default: None).
-        """
-        self.model_data = model_data
-        self.image_uri = image_uri
-        self.env = env
-
-
 def _create_model_request(
     name, role, container_def=None, tags=None
 ):  # pylint: disable=redefined-outer-name
