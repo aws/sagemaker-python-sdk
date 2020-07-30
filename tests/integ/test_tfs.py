@@ -23,7 +23,7 @@ import sagemaker.predictor
 import sagemaker.utils
 import tests.integ
 import tests.integ.timeout
-from sagemaker.deserializers import JSONDeserializer, JSONLinesDeserializer
+from sagemaker.deserializers import JSONDeserializer
 from sagemaker.tensorflow.model import TensorFlowModel, TensorFlowPredictor
 from sagemaker.serializers import CSVSerializer, IdentitySerializer
 
@@ -222,7 +222,7 @@ def test_predict_jsonlines(tfs_predictor):
         tfs_predictor.endpoint_name,
         tfs_predictor.sagemaker_session,
         serializer=IdentitySerializer(content_type="application/jsonlines"),
-        deserializer=JSONLinesDeserializer(),
+        deserializer=JSONDeserializer(),
     )
 
     result = predictor.predict(input_data)
