@@ -18,12 +18,12 @@ To install the latest version:
 
 If you are executing this pip install command in a notebook, make sure to restart your kernel.
 
-*******
-Changes
-*******
+****************
+Breaking Changes
+****************
 
 This section is for major changes that may require updates to your SageMaker Python SDK code.
-You can also see what changes have been made in the `CHANGELOG <https://github.com/aws/sagemaker-python-sdk/blob/master/CHANGELOG.md>`_.
+For the full list of changes, see the `CHANGELOG <https://github.com/aws/sagemaker-python-sdk/blob/master/CHANGELOG.md>`_.
 
 Deprecations
 ============
