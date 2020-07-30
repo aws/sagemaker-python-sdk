@@ -34,7 +34,7 @@ class XGBoost(Framework):
     """Handle end-to-end training and deployment of XGBoost booster training or training using
     customer provided XGBoost entry point script."""
 
-    __framework_name__ = defaults.XGBOOST_NAME
+    _framework_name = defaults.XGBOOST_NAME
 
     def __init__(
         self,
@@ -103,7 +103,7 @@ class XGBoost(Framework):
 
         if image_uri is None:
             self.image_uri = image_uris.retrieve(
-                self.__framework_name__,
+                self._framework_name,
                 self.sagemaker_session.boto_region_name,
                 version=framework_version,
                 py_version=self.py_version,
@@ -252,7 +252,7 @@ class XGBoost(Framework):
         framework, py_version, tag, _ = framework_name_from_image(image_uri)
         init_params["py_version"] = py_version
 
-        if framework and framework != cls.__framework_name__:
+        if framework and framework != cls._framework_name:
             raise ValueError(
                 "Training job: {} didn't use image for requested framework".format(
                     job_details["TrainingJobName"]
