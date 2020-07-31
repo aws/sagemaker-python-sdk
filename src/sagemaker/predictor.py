@@ -131,7 +131,7 @@ class Predictor(object):
             args["ContentType"] = self.content_type
 
         if self.accept and "Accept" not in args:
-            args["Accept"] = self.accept
+            args["Accept"] = ", ".join(self.accept)
 
         if target_model:
             args["TargetModel"] = target_model
