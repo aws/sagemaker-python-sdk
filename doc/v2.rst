@@ -94,6 +94,13 @@ Please instantiate the objects instead.
 The ``update_endpoint`` argument in ``deploy()`` methods for estimators and models has been deprecated.
 Please use :func:`sagemaker.predictor.Predictor.update_endpoint` instead.
 
+``serializer`` and ``deserializer`` in ``create_model()``
+---------------------------------------------------------
+
+The ``serializer`` and ``deserializer`` arguments in
+:func:`sagemaker.estimator.Estimator.create_model` have been deprecated. Please
+specify serializers and deserializers in ``deploy()`` methods instead.
+
 ``content_type`` and ``accept`` in the Predictor Constructor
 ------------------------------------------------------------
 

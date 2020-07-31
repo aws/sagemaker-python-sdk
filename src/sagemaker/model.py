@@ -376,11 +376,13 @@ class Model(object):
             serializer (:class:`~sagemaker.serializers.BaseSerializer`): A
                 serializer object, used to encode data for an inference endpoint
                 (default: None). If ``serializer`` is not None, then
-                ``serializer`` will override the default serializer.
+                ``serializer`` will override the default serializer. The
+                default serializer is set by the ``predictor_cls``.
             deserializer (:class:`~sagemaker.deserializers.BaseDeserializer`): A
                 deserializer object, used to decode data from an inference
                 endpoint (default: None). If ``deserializer`` is not None, then
-                ``deserializer`` will override the default deserializer.
+                ``deserializer`` will override the default deserializer. The
+                default deserializer is set by the ``predictor_cls``.
             accelerator_type (str): Type of Elastic Inference accelerator to
                 deploy this model for model loading and inference, for example,
                 'ml.eia1.medium'. If not specified, no Elastic Inference

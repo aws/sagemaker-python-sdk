@@ -361,11 +361,13 @@ class AutoML(object):
             serializer (:class:`~sagemaker.serializers.BaseSerializer`): A
                 serializer object, used to encode data for an inference endpoint
                 (default: None). If ``serializer`` is not None, then
-                ``serializer`` will override the default serializer.
+                ``serializer`` will override the default serializer. The
+                default serializer is set by the ``predictor_cls``.
             deserializer (:class:`~sagemaker.deserializers.BaseDeserializer`): A
                 deserializer object, used to decode data from an inference
                 endpoint (default: None). If ``deserializer`` is not None, then
-                ``deserializer`` will override the default deserializer.
+                ``deserializer`` will override the default deserializer. The
+                default deserializer is set by the ``predictor_cls``.
             candidate (CandidateEstimator or dict): a CandidateEstimator used for deploying
                 to a SageMaker Inference Pipeline. If None, the best candidate will
                 be used. If the candidate input is a dict, a CandidateEstimator will be
