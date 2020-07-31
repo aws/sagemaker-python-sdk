@@ -181,7 +181,9 @@ def ret_csv_sagemaker_session():
 
 def test_predict_call_with_csv():
     sagemaker_session = ret_csv_sagemaker_session()
-    predictor = Predictor(ENDPOINT, sagemaker_session, serializer=CSVSerializer(), deserializer=CSVDeserializer())
+    predictor = Predictor(
+        ENDPOINT, sagemaker_session, serializer=CSVSerializer(), deserializer=CSVDeserializer()
+    )
 
     data = [1, 2]
     result = predictor.predict(data)
@@ -202,7 +204,9 @@ def test_predict_call_with_csv():
 
 def test_predict_call_with_multiple_accept_types():
     sagemaker_session = ret_csv_sagemaker_session()
-    predictor = Predictor(ENDPOINT, sagemaker_session, serializer=CSVSerializer(), deserializer=StringDeserializer())
+    predictor = Predictor(
+        ENDPOINT, sagemaker_session, serializer=CSVSerializer(), deserializer=StringDeserializer()
+    )
 
     data = [1, 2]
     result = predictor.predict(data)
