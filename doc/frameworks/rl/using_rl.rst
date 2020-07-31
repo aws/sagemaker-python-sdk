@@ -14,10 +14,10 @@ RL Training
 Training RL models using ``RLEstimator`` is a two-step process:
 
 1. Prepare a training script to run on SageMaker
-2. Run this script on SageMaker via an ``RlEstimator``.
+2. Run this script on SageMaker via an ``RLEstimator``.
 
 You should prepare your script in a separate source file than the notebook, terminal session, or source file you're
-using to submit the script to SageMaker via an ``RlEstimator``. This will be discussed in further detail below.
+using to submit the script to SageMaker via an ``RLEstimator``. This will be discussed in further detail below.
 
 Suppose that you already have a training script called ``coach-train.py``.
 You can then create an ``RLEstimator`` with keyword arguments to point to this script and define how SageMaker runs it:
@@ -31,8 +31,8 @@ You can then create an ``RLEstimator`` with keyword arguments to point to this s
                                toolkit_version='0.11.1',
                                framework=RLFramework.TENSORFLOW,
                                role='SageMakerRole',
-                               train_instance_type='ml.p3.2xlarge',
-                               train_instance_count=1)
+                               instance_type='ml.p3.2xlarge',
+                               instance_count=1)
 
 After that, you simply tell the estimator to start a training job:
 
@@ -71,7 +71,7 @@ The ``RLEstimator`` constructor takes both required and optional arguments.
 Required arguments
 ~~~~~~~~~~~~~~~~~~
 
-The following are required arguments to the ``RLEstimator`` constructor. When you create an instance of RLEstimator, you must include
+The following are required arguments to the ``RLEstimator`` constructor. When you create an instance of ``RLEstimator``, you must include
 these in the constructor, either positionally or as keyword arguments.
 
 -  ``entry_point`` Path (absolute or relative) to the Python file which
@@ -81,9 +81,9 @@ these in the constructor, either positionally or as keyword arguments.
    endpoints use this role to access training data and model artifacts.
    After the endpoint is created, the inference code might use the IAM
    role, if accessing AWS resource.
--  ``train_instance_count`` Number of Amazon EC2 instances to use for
+-  ``instance_count`` Number of Amazon EC2 instances to use for
    training.
--  ``train_instance_type`` Type of EC2 instance to use for training, for
+-  ``instance_type`` Type of EC2 instance to use for training, for
    example, 'ml.m4.xlarge'.
 
 You must as well include either:
@@ -97,7 +97,7 @@ You must as well include either:
 
 or provide:
 
--  ``image_name`` An alternative docker image to use for training and
+-  ``image_uri`` An alternative Docker image to use for training and
    serving.  If specified, the estimator will use this image for training and
    hosting, instead of selecting the appropriate SageMaker official image based on
    framework_version and py_version. Refer to: `SageMaker RL Docker Containers
@@ -108,85 +108,14 @@ or provide:
 Optional arguments
 ~~~~~~~~~~~~~~~~~~
 
-The following are optional arguments. When you create an ``RlEstimator`` object, you can specify these as keyword arguments.
-
--  ``source_dir`` Path (absolute or relative) to a directory with any
-   other training source code dependencies including the entry point
-   file. Structure within this directory will be preserved when training
-   on SageMaker.
--  ``dependencies (list[str])`` A list of paths to directories (absolute or relative) with
-   any additional libraries that will be exported to the container (default: ``[]``).
-   The library folders will be copied to SageMaker in the same folder where the entrypoint is copied.
-   If the ``source_dir`` points to S3, code will be uploaded and the S3 location will be used
-   instead.
-
-   For example, the following call:
-
-   .. code:: python
-
-        >>> RLEstimator(entry_point='train.py',
-                        toolkit=RLToolkit.COACH,
-                        toolkit_version='0.11.0',
-                        framework=RLFramework.TENSORFLOW,
-                        dependencies=['my/libs/common', 'virtual-env'])
-
-   results in the following inside the container:
-
-   .. code:: bash
-
-        >>> $ ls
-
-        >>> opt/ml/code
-        >>>     ├── train.py
-        >>>     ├── common
-        >>>     └── virtual-env
-
--  ``hyperparameters`` Hyperparameters that will be used for training.
-   Will be made accessible as a ``dict[str, str]`` to the training code on
-   SageMaker. For convenience, accepts other types besides strings, but
-   ``str`` will be called on keys and values to convert them before
-   training.
--  ``train_volume_size`` Size in GB of the EBS volume to use for storing
-   input data during training. Must be large enough to store training
-   data if ``input_mode='File'`` is used (which is the default).
--  ``train_max_run`` Timeout in seconds for training, after which Amazon
-   SageMaker terminates the job regardless of its current status.
--  ``input_mode`` The input mode that the algorithm supports. Valid
-   modes: 'File' - Amazon SageMaker copies the training dataset from the
-   S3 location to a directory in the Docker container. 'Pipe' - Amazon
-   SageMaker streams data directly from S3 to the container via a Unix
-   named pipe.
--  ``output_path`` S3 location where you want the training result (model
-   artifacts and optional output files) saved. If not specified, results
-   are stored to a default bucket. If the bucket with the specific name
-   does not exist, the estimator creates the bucket during the ``fit``
-   method execution.
--  ``output_kms_key`` Optional KMS key ID to optionally encrypt training
-   output with.
--  ``job_name`` Name to assign for the training job that the ``fit```
-   method launches. If not specified, the estimator generates a default
-   job name, based on the training image name and current timestamp
+When you create an ``RLEstimator`` object, you can specify a number of optional arguments.
+For more information, see :class:`sagemaker.rl.estimator.RLEstimator`.
 
 Calling fit
 ~~~~~~~~~~~
 
-You start your training script by calling ``fit`` on an ``RLEstimator``. ``fit`` takes a few optional
-arguments.
-
-fit Optional arguments
-''''''''''''''''''''''
-
--  ``inputs``: This can take one of the following forms: A string
-   S3 URI, for example ``s3://my-bucket/my-training-data``. In this
-   case, the S3 objects rooted at the ``my-training-data`` prefix will
-   be available in the default ``train`` channel. A dict from
-   string channel names to S3 URIs. In this case, the objects rooted at
-   each S3 prefix will available as files in each channel directory.
--  ``wait``: Defaults to True, whether to block and wait for the
-   training script to complete before returning.
--  ``logs``: Defaults to True, whether to show logs produced by training
-   job in the Python session. Only meaningful when wait is True.
-
+You start your training script by calling ``fit`` on an ``RLEstimator``.
+For more information about what arguments can be passed to ``fit``, see :func:`sagemaker.estimator.EstimatorBase.fit`.
 
 Distributed RL Training
 -----------------------
@@ -210,14 +139,14 @@ Deploying RL Models
 
 After an RL Estimator has been fit, you can host the newly created model in SageMaker.
 
-After calling ``fit``, you can call ``deploy`` on an ``RlEstimator`` Estimator to create a SageMaker Endpoint.
+After calling ``fit``, you can call ``deploy`` on an ``RLEstimator`` Estimator to create a SageMaker Endpoint.
 The Endpoint runs one of the SageMaker-provided model server based on the ``framework`` parameter
 specified in the ``RLEstimator`` constructor and hosts the model produced by your training script,
 which was run when you called ``fit``. This was the model you saved to ``model_dir``.
-In case if ``image_name`` was specified it would use provided image for the deployment.
+In case if ``image_uri`` was specified it would use provided image for the deployment.
 
 ``deploy`` returns a ``sagemaker.mxnet.MXNetPredictor`` for MXNet or
-``sagemaker.tensorflow.serving.Predictor`` for TensorFlow.
+``sagemaker.tensorflow.TensorFlowPredictor`` for TensorFlow.
 
 ``predict`` returns the result of inference against your model.
 
@@ -229,8 +158,8 @@ In case if ``image_name`` was specified it would use provided image for the depl
                                toolkit_version='0.11.0',
                                framework=RLFramework.MXNET,
                                role='SageMakerRole',
-                               train_instance_type='ml.c4.2xlarge',
-                               train_instance_count=1)
+                               instance_type='ml.c4.2xlarge',
+                               instance_count=1)
 
     rl_estimator.fit()
 
@@ -241,7 +170,7 @@ In case if ``image_name`` was specified it would use provided image for the depl
     response = predictor.predict(data)
 
 For more information please see `The SageMaker MXNet Model Server <https://sagemaker.readthedocs.io/en/stable/using_mxnet.html#the-sagemaker-mxnet-model-server>`_
-and `Deploying to TensorFlow Serving Endpoints <https://github.com/aws/sagemaker-python-sdk/blob/master/src/sagemaker/tensorflow/deploying_tensorflow_serving.rst>`_ documentation.
+and `Deploying to TensorFlow Serving Endpoints <deploying_tensorflow_serving.html>`_ documentation.
 
 
 Working with Existing Training Jobs

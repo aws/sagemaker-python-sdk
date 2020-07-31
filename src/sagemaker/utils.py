@@ -20,15 +20,12 @@ import os
 import random
 import re
 import shutil
-import sys
 import tarfile
 import tempfile
 import time
 from datetime import datetime
-from functools import wraps
 
 import botocore
-import six
 from six.moves.urllib import parse
 
 
@@ -43,7 +40,7 @@ logger = logging.getLogger(__name__)
 
 
 # Use the base name of the image as the job name if the user doesn't give us one
-def name_from_image(image):
+def name_from_image(image, max_length=63):
     """Create a training job name based on the image name and a timestamp.
 
     Args:
@@ -51,9 +48,10 @@ def name_from_image(image):
 
     Returns:
         str: Training job name using the algorithm from the image name and a
-        timestamp.
+            timestamp.
+        max_length (int): Maximum length for the resulting string (default: 63).
     """
-    return name_from_base(base_name_from_image(image))
+    return name_from_base(base_name_from_image(image), max_length=max_length)
 
 
 def name_from_base(base, max_length=63, short=False):
@@ -65,8 +63,8 @@ def name_from_base(base, max_length=63, short=False):
 
     Args:
         base (str): String used as prefix to generate the unique name.
-        max_length (int): Maximum length for the resulting string.
-        short (bool): Whether or not to use a truncated timestamp.
+        max_length (int): Maximum length for the resulting string (default: 63).
+        short (bool): Whether or not to use a truncated timestamp (default: False).
 
     Returns:
         str: Input parameter with appended timestamp.
@@ -104,6 +102,22 @@ def base_name_from_image(image):
     return algo_name
 
 
+def base_from_name(name):
+    """Extract the base name of the resource name (for use with future resource name generation).
+
+    This function looks for timestamps that match the ones produced by
+    :func:`~sagemaker.utils.name_from_base`.
+
+    Args:
+        name (str): The resource name.
+
+    Returns:
+        str: The base name, as extracted from the resource name.
+    """
+    m = re.match(r"^(.+)-(\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2}-\d{3}|\d{6}-\d{4})", name)
+    return m.group(1) if m else name
+
+
 def sagemaker_timestamp():
     """Return a timestamp with millisecond precision."""
     moment = time.time()
@@ -114,21 +128,6 @@ def sagemaker_timestamp():
 def sagemaker_short_timestamp():
     """Return a timestamp that is relatively short in length"""
     return time.strftime("%y%m%d-%H%M")
-
-
-def debug(func):
-    """Print the function name and arguments for debugging.
-
-    Args:
-        func:
-    """
-
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        print("{} args: {} kwargs: {}".format(func.__name__, args, kwargs))
-        return func(*args, **kwargs)
-
-    return wrapper
 
 
 def get_config_value(key_path, config):
@@ -160,38 +159,6 @@ def get_short_version(framework_version):
         str: The short version string
     """
     return ".".join(framework_version.split(".")[:2])
-
-
-def to_str(value):
-    """Convert the input to a string, unless it is a unicode string in Python 2.
-
-    Unicode strings are supported as native strings in Python 3, but
-    ``str()`` cannot be invoked on unicode strings in Python 2, so we need to
-    check for that case when converting user-specified values to strings.
-
-    Args:
-        value: The value to convert to a string.
-
-    Returns:
-        str or unicode: The string representation of the value or the unicode
-        string itself.
-    """
-    if sys.version_info.major < 3 and isinstance(value, six.string_types):
-        return value
-    return str(value)
-
-
-def extract_name_from_job_arn(arn):
-    """Returns the name used in the API given a full ARN for a training job or
-    hyperparameter tuning job.
-
-    Args:
-        arn:
-    """
-    slash_pos = arn.find("/")
-    if slash_pos == -1:
-        raise ValueError("Cannot parse invalid ARN: %s" % arn)
-    return arn[(slash_pos + 1) :]
 
 
 def secondary_training_status_changed(current_job_description, prev_job_description):
@@ -277,55 +244,6 @@ def secondary_training_status_message(job_description, prev_description):
         status_strs.append("{} {} - {}".format(time_str, transition["Status"], message))
 
     return "\n".join(status_strs)
-
-
-def generate_tensorboard_url(domain, bucket_paths):
-    """Generate Tensorboard URL for given list of s3 buckets
-
-    Args:
-        domain: JupyterLab app domain
-        bucket_paths: List of S3 bucket paths in format `bucket/path`
-                      or a single string in the same format
-
-    Returns:
-        str: Tensorboard URL
-
-    Raises:
-        AttributeError if invalid inputs are passed
-    """
-
-    def trim_prefix(s, prefix):
-        if s.startswith(prefix):
-            return s[len(prefix) :]
-        return s
-
-    def encode_s3_url(s3_url):
-        if not s3_url:
-            raise AttributeError("bucket_paths element should not be empty")
-        s3_url = trim_prefix(s3_url, S3_PREFIX)
-        return parse.quote_plus("{}{}".format(S3_PREFIX, s3_url))
-
-    if not isinstance(domain, six.string_types):
-        raise AttributeError("domain parameter should be string")
-
-    if len(domain) == 0:
-        raise AttributeError("domain parameter should not be empty")
-
-    if isinstance(bucket_paths, six.string_types):
-        bucket_paths = [bucket_paths]
-    elif not isinstance(bucket_paths, list):
-        raise AttributeError("bucket paths should be a list or a string")
-
-    if len(bucket_paths) == 0:
-        raise AttributeError("bucket_paths parameter should not be empty list")
-
-    domain = trim_prefix(domain, HTTPS_PREFIX)
-    domain = trim_prefix(domain, HTTP_PREFIX)
-
-    s3_urls = map(encode_s3_url, bucket_paths)
-    query = ",".join(s3_urls)
-
-    return "https://{}/tensorboard/default?s3urls={}".format(domain, query)
 
 
 def download_folder(bucket_name, prefix, target, sagemaker_session):

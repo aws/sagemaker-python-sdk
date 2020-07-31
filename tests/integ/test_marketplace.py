@@ -22,6 +22,7 @@ import pytest
 import sagemaker
 import tests.integ
 from sagemaker import AlgorithmEstimator, ModelPackage
+from sagemaker.serializers import CSVSerializer
 from sagemaker.tuner import IntegerParameter, HyperparameterTuner
 from sagemaker.utils import sagemaker_timestamp
 from sagemaker.utils import _aws_partition
@@ -71,8 +72,8 @@ def test_marketplace_estimator(sagemaker_session, cpu_instance_type):
         algo = AlgorithmEstimator(
             algorithm_arn=algorithm_arn,
             role="SageMakerRole",
-            train_instance_count=1,
-            train_instance_type=cpu_instance_type,
+            instance_count=1,
+            instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
         )
 
@@ -113,8 +114,8 @@ def test_marketplace_attach(sagemaker_session, cpu_instance_type):
         mktplace = AlgorithmEstimator(
             algorithm_arn=algorithm_arn,
             role="SageMakerRole",
-            train_instance_count=1,
-            train_instance_type=cpu_instance_type,
+            instance_count=1,
+            instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
             base_job_name="test-marketplace",
         )
@@ -136,10 +137,7 @@ def test_marketplace_attach(sagemaker_session, cpu_instance_type):
             training_job_name=training_job_name, sagemaker_session=sagemaker_session
         )
         predictor = estimator.deploy(
-            1,
-            cpu_instance_type,
-            endpoint_name=endpoint_name,
-            serializer=sagemaker.predictor.csv_serializer,
+            1, cpu_instance_type, endpoint_name=endpoint_name, serializer=CSVSerializer()
         )
         shape = pandas.read_csv(os.path.join(data_path, "iris.csv"), header=None)
         a = [50 * i for i in range(3)]
@@ -165,9 +163,7 @@ def test_marketplace_model(sagemaker_session, cpu_instance_type):
     )
 
     def predict_wrapper(endpoint, session):
-        return sagemaker.RealTimePredictor(
-            endpoint, session, serializer=sagemaker.predictor.csv_serializer
-        )
+        return sagemaker.Predictor(endpoint, session, serializer=CSVSerializer())
 
     model = ModelPackage(
         role="SageMakerRole",
@@ -206,8 +202,8 @@ def test_marketplace_tuning_job(sagemaker_session, cpu_instance_type):
     mktplace = AlgorithmEstimator(
         algorithm_arn=algorithm_arn,
         role="SageMakerRole",
-        train_instance_count=1,
-        train_instance_type=cpu_instance_type,
+        instance_count=1,
+        instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
         base_job_name="test-marketplace",
     )
@@ -249,8 +245,8 @@ def test_marketplace_transform_job(sagemaker_session, cpu_instance_type):
     algo = AlgorithmEstimator(
         algorithm_arn=algorithm_arn,
         role="SageMakerRole",
-        train_instance_count=1,
-        train_instance_type=cpu_instance_type,
+        instance_count=1,
+        instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
         base_job_name="test-marketplace",
     )

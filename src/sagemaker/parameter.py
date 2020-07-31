@@ -14,8 +14,6 @@
 from __future__ import absolute_import
 import json
 
-from sagemaker.utils import to_str
-
 
 class ParameterRange(object):
     """Base class for representing parameter ranges. This is used to define what
@@ -71,8 +69,8 @@ class ParameterRange(object):
         """
         return {
             "Name": name,
-            "MinValue": to_str(self.min_value),
-            "MaxValue": to_str(self.max_value),
+            "MinValue": str(self.min_value),
+            "MaxValue": str(self.max_value),
             "ScalingType": self.scaling_type,
         }
 
@@ -111,9 +109,9 @@ class CategoricalParameter(ParameterRange):
                 This input will be converted into a list of strings.
         """
         if isinstance(values, list):
-            self.values = [to_str(v) for v in values]
+            self.values = [str(v) for v in values]
         else:
-            self.values = [to_str(values)]
+            self.values = [str(values)]
 
     def as_tuning_range(self, name):
         """Represent the parameter range as a dicionary suitable for a request
@@ -158,7 +156,7 @@ class CategoricalParameter(ParameterRange):
         Args:
             value:
         """
-        return to_str(value)
+        return str(value)
 
 
 class IntegerParameter(ParameterRange):

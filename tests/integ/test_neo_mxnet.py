@@ -19,16 +19,19 @@ import pytest
 
 from sagemaker.mxnet.estimator import MXNet
 from sagemaker.mxnet.model import MXNetModel
+from sagemaker.serializers import JSONSerializer
 from sagemaker.utils import unique_name_from_base
-from tests.integ import DATA_DIR, PYTHON_VERSION, TRAINING_DEFAULT_TIMEOUT_MINUTES
+from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
-
-NEO_MXNET_VERSION = "1.4.1"  # Neo doesn't support MXNet 1.6 yet.
-INF_MXNET_VERSION = "1.5.1"
 
 
 @pytest.fixture(scope="module")
-def mxnet_training_job(sagemaker_session, cpu_instance_type):
+def mxnet_training_job(
+    sagemaker_session,
+    cpu_instance_type,
+    mxnet_training_latest_version,
+    mxnet_training_latest_py_version,
+):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         script_path = os.path.join(DATA_DIR, "mxnet_mnist", "mnist_neo.py")
         data_path = os.path.join(DATA_DIR, "mxnet_mnist")
@@ -36,10 +39,10 @@ def mxnet_training_job(sagemaker_session, cpu_instance_type):
         mx = MXNet(
             entry_point=script_path,
             role="SageMakerRole",
-            framework_version=NEO_MXNET_VERSION,
-            py_version=PYTHON_VERSION,
-            train_instance_count=1,
-            train_instance_type=cpu_instance_type,
+            framework_version=mxnet_training_latest_version,
+            py_version=mxnet_training_latest_py_version,
+            instance_count=1,
+            instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
         )
 
@@ -69,16 +72,27 @@ def test_attach_deploy(
             output_path=estimator.output_path,
         )
 
+        serializer = JSONSerializer()
+        serializer.CONTENT_TYPE = "application/vnd+python.numpy+binary"
+
         predictor = estimator.deploy(
-            1, cpu_instance_type, use_compiled_model=True, endpoint_name=endpoint_name
+            1,
+            cpu_instance_type,
+            serializer=serializer,
+            use_compiled_model=True,
+            endpoint_name=endpoint_name,
         )
-        predictor.content_type = "application/vnd+python.numpy+binary"
         data = numpy.zeros(shape=(1, 1, 28, 28))
         predictor.predict(data)
 
 
 def test_deploy_model(
-    mxnet_training_job, sagemaker_session, cpu_instance_type, cpu_instance_family
+    mxnet_training_job,
+    sagemaker_session,
+    cpu_instance_type,
+    cpu_instance_family,
+    neo_mxnet_latest_version,
+    neo_mxnet_latest_py_version,
 ):
     endpoint_name = unique_name_from_base("test-neo-deploy-model")
 
@@ -93,10 +107,13 @@ def test_deploy_model(
             model_data,
             role,
             entry_point=script_path,
-            py_version=PYTHON_VERSION,
-            framework_version=NEO_MXNET_VERSION,
+            py_version=neo_mxnet_latest_py_version,
+            framework_version=neo_mxnet_latest_version,
             sagemaker_session=sagemaker_session,
         )
+
+        serializer = JSONSerializer()
+        serializer.CONTENT_TYPE = "application/vnd+python.numpy+binary"
 
         model.compile(
             target_instance_family=cpu_instance_family,
@@ -105,16 +122,22 @@ def test_deploy_model(
             job_name=unique_name_from_base("test-deploy-model-compilation-job"),
             output_path="/".join(model_data.split("/")[:-1]),
         )
-        predictor = model.deploy(1, cpu_instance_type, endpoint_name=endpoint_name)
+        predictor = model.deploy(
+            1, cpu_instance_type, serializer=serializer, endpoint_name=endpoint_name
+        )
 
-        predictor.content_type = "application/vnd+python.numpy+binary"
         data = numpy.zeros(shape=(1, 1, 28, 28))
         predictor.predict(data)
 
 
 @pytest.mark.skip(reason="Inferentia is not supported yet.")
 def test_inferentia_deploy_model(
-    mxnet_training_job, sagemaker_session, inf_instance_type, inf_instance_family
+    mxnet_training_job,
+    sagemaker_session,
+    inf_instance_type,
+    inf_instance_family,
+    inferentia_mxnet_latest_version,
+    inferentia_mxnet_latest_py_version,
 ):
     endpoint_name = unique_name_from_base("test-neo-deploy-model")
 
@@ -129,7 +152,8 @@ def test_inferentia_deploy_model(
             model_data,
             role,
             entry_point=script_path,
-            framework_version=INF_MXNET_VERSION,
+            framework_version=inferentia_mxnet_latest_version,
+            py_version=inferentia_mxnet_latest_py_version,
             sagemaker_session=sagemaker_session,
         )
 
@@ -140,8 +164,13 @@ def test_inferentia_deploy_model(
             job_name=unique_name_from_base("test-deploy-model-compilation-job"),
             output_path="/".join(model_data.split("/")[:-1]),
         )
-        predictor = model.deploy(1, inf_instance_type, endpoint_name=endpoint_name)
 
-        predictor.content_type = "application/vnd+python.numpy+binary"
+        serializer = JSONSerializer()
+        serializer.CONTENT_TYPE = "application/vnd+python.numpy+binary"
+
+        predictor = model.deploy(
+            1, inf_instance_type, serializer=serializer, endpoint_name=endpoint_name
+        )
+
         data = numpy.zeros(shape=(1, 1, 28, 28))
         predictor.predict(data)

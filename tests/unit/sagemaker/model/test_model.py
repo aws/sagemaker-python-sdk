@@ -33,9 +33,17 @@ def sagemaker_session():
     return Mock()
 
 
-def test_prepare_container_def():
+def test_prepare_container_def_with_model_data():
+    model = Model(MODEL_IMAGE)
+    container_def = model.prepare_container_def(INSTANCE_TYPE, "ml.eia.medium")
+
+    expected = {"Image": MODEL_IMAGE, "Environment": {}}
+    assert expected == container_def
+
+
+def test_prepare_container_def_with_model_data_and_env():
     env = {"FOO": "BAR"}
-    model = Model(MODEL_DATA, MODEL_IMAGE, env=env)
+    model = Model(MODEL_IMAGE, MODEL_DATA, env=env)
 
     expected = {"Image": MODEL_IMAGE, "Environment": env, "ModelDataUrl": MODEL_DATA}
 
@@ -47,45 +55,38 @@ def test_prepare_container_def():
 
 
 def test_model_enable_network_isolation():
-    model = Model(MODEL_DATA, MODEL_IMAGE)
+    model = Model(MODEL_IMAGE, MODEL_DATA)
     assert model.enable_network_isolation() is False
 
-    model = Model(MODEL_DATA, MODEL_IMAGE, enable_network_isolation=True)
+    model = Model(MODEL_IMAGE, MODEL_DATA, enable_network_isolation=True)
     assert model.enable_network_isolation()
 
 
 @patch("sagemaker.model.Model.prepare_container_def")
-@patch("sagemaker.utils.name_from_image")
-def test_create_sagemaker_model(name_from_image, prepare_container_def, sagemaker_session):
-    name_from_image.return_value = MODEL_NAME
-
+def test_create_sagemaker_model(prepare_container_def, sagemaker_session):
     container_def = {"Image": MODEL_IMAGE, "Environment": {}, "ModelDataUrl": MODEL_DATA}
     prepare_container_def.return_value = container_def
 
-    model = Model(MODEL_DATA, MODEL_IMAGE, sagemaker_session=sagemaker_session)
+    model = Model(MODEL_DATA, MODEL_IMAGE, name=MODEL_NAME, sagemaker_session=sagemaker_session)
     model._create_sagemaker_model()
 
     prepare_container_def.assert_called_with(None, accelerator_type=None)
-    name_from_image.assert_called_with(MODEL_IMAGE)
-
     sagemaker_session.create_model.assert_called_with(
         MODEL_NAME, None, container_def, vpc_config=None, enable_network_isolation=False, tags=None
     )
 
 
-@patch("sagemaker.utils.name_from_image", Mock())
 @patch("sagemaker.model.Model.prepare_container_def")
 def test_create_sagemaker_model_instance_type(prepare_container_def, sagemaker_session):
-    model = Model(MODEL_DATA, MODEL_IMAGE, sagemaker_session=sagemaker_session)
+    model = Model(MODEL_DATA, MODEL_IMAGE, name=MODEL_NAME, sagemaker_session=sagemaker_session)
     model._create_sagemaker_model(INSTANCE_TYPE)
 
     prepare_container_def.assert_called_with(INSTANCE_TYPE, accelerator_type=None)
 
 
-@patch("sagemaker.utils.name_from_image", Mock())
 @patch("sagemaker.model.Model.prepare_container_def")
 def test_create_sagemaker_model_accelerator_type(prepare_container_def, sagemaker_session):
-    model = Model(MODEL_DATA, MODEL_IMAGE, sagemaker_session=sagemaker_session)
+    model = Model(MODEL_IMAGE, MODEL_DATA, name=MODEL_NAME, sagemaker_session=sagemaker_session)
 
     accelerator_type = "ml.eia.medium"
     model._create_sagemaker_model(INSTANCE_TYPE, accelerator_type=accelerator_type)
@@ -94,14 +95,11 @@ def test_create_sagemaker_model_accelerator_type(prepare_container_def, sagemake
 
 
 @patch("sagemaker.model.Model.prepare_container_def")
-@patch("sagemaker.utils.name_from_image")
-def test_create_sagemaker_model_tags(name_from_image, prepare_container_def, sagemaker_session):
+def test_create_sagemaker_model_tags(prepare_container_def, sagemaker_session):
     container_def = {"Image": MODEL_IMAGE, "Environment": {}, "ModelDataUrl": MODEL_DATA}
     prepare_container_def.return_value = container_def
 
-    name_from_image.return_value = MODEL_NAME
-
-    model = Model(MODEL_DATA, MODEL_IMAGE, sagemaker_session=sagemaker_session)
+    model = Model(MODEL_IMAGE, MODEL_DATA, name=MODEL_NAME, sagemaker_session=sagemaker_session)
 
     tags = {"Key": "foo", "Value": "bar"}
     model._create_sagemaker_model(INSTANCE_TYPE, tags=tags)
@@ -112,9 +110,10 @@ def test_create_sagemaker_model_tags(name_from_image, prepare_container_def, sag
 
 
 @patch("sagemaker.model.Model.prepare_container_def")
-@patch("sagemaker.utils.name_from_image")
+@patch("sagemaker.utils.name_from_base")
+@patch("sagemaker.utils.base_name_from_image")
 def test_create_sagemaker_model_optional_model_params(
-    name_from_image, prepare_container_def, sagemaker_session
+    base_name_from_image, name_from_base, prepare_container_def, sagemaker_session
 ):
     container_def = {"Image": MODEL_IMAGE, "Environment": {}, "ModelDataUrl": MODEL_DATA}
     prepare_container_def.return_value = container_def
@@ -122,8 +121,8 @@ def test_create_sagemaker_model_optional_model_params(
     vpc_config = {"Subnets": ["123"], "SecurityGroupIds": ["456", "789"]}
 
     model = Model(
-        MODEL_DATA,
         MODEL_IMAGE,
+        MODEL_DATA,
         name=MODEL_NAME,
         role=ROLE,
         vpc_config=vpc_config,
@@ -132,7 +131,8 @@ def test_create_sagemaker_model_optional_model_params(
     )
     model._create_sagemaker_model(INSTANCE_TYPE)
 
-    name_from_image.assert_not_called()
+    base_name_from_image.assert_not_called()
+    name_from_base.assert_not_called()
 
     sagemaker_session.create_model.assert_called_with(
         MODEL_NAME,
@@ -144,14 +144,52 @@ def test_create_sagemaker_model_optional_model_params(
     )
 
 
+@patch("sagemaker.model.Model.prepare_container_def")
+@patch("sagemaker.utils.name_from_base", return_value=MODEL_NAME)
+@patch("sagemaker.utils.base_name_from_image")
+def test_create_sagemaker_model_generates_model_name(
+    base_name_from_image, name_from_base, prepare_container_def, sagemaker_session
+):
+    container_def = {"Image": MODEL_IMAGE, "Environment": {}, "ModelDataUrl": MODEL_DATA}
+    prepare_container_def.return_value = container_def
+
+    model = Model(MODEL_IMAGE, MODEL_DATA, sagemaker_session=sagemaker_session,)
+    model._create_sagemaker_model(INSTANCE_TYPE)
+
+    base_name_from_image.assert_called_with(MODEL_IMAGE)
+    name_from_base.assert_called_with(base_name_from_image.return_value)
+
+    sagemaker_session.create_model.assert_called_with(
+        MODEL_NAME, None, container_def, vpc_config=None, enable_network_isolation=False, tags=None,
+    )
+
+
+@patch("sagemaker.model.Model.prepare_container_def")
+@patch("sagemaker.utils.name_from_base", return_value=MODEL_NAME)
+@patch("sagemaker.utils.base_name_from_image")
+def test_create_sagemaker_model_generates_model_name_each_time(
+    base_name_from_image, name_from_base, prepare_container_def, sagemaker_session
+):
+    container_def = {"Image": MODEL_IMAGE, "Environment": {}, "ModelDataUrl": MODEL_DATA}
+    prepare_container_def.return_value = container_def
+
+    model = Model(MODEL_IMAGE, MODEL_DATA, sagemaker_session=sagemaker_session,)
+    model._create_sagemaker_model(INSTANCE_TYPE)
+    model._create_sagemaker_model(INSTANCE_TYPE)
+
+    base_name_from_image.assert_called_once_with(MODEL_IMAGE)
+    name_from_base.assert_called_with(base_name_from_image.return_value)
+    assert 2 == name_from_base.call_count
+
+
 @patch("sagemaker.session.Session")
 @patch("sagemaker.local.LocalSession")
 def test_create_sagemaker_model_creates_correct_session(local_session, session):
-    model = Model(MODEL_DATA, MODEL_IMAGE)
+    model = Model(MODEL_IMAGE, MODEL_DATA)
     model._create_sagemaker_model("local")
     assert model.sagemaker_session == local_session.return_value
 
-    model = Model(MODEL_DATA, MODEL_IMAGE)
+    model = Model(MODEL_IMAGE, MODEL_DATA)
     model._create_sagemaker_model("ml.m5.xlarge")
     assert model.sagemaker_session == session.return_value
 
@@ -159,7 +197,7 @@ def test_create_sagemaker_model_creates_correct_session(local_session, session):
 @patch("sagemaker.model.Model._create_sagemaker_model")
 def test_model_create_transformer(create_sagemaker_model, sagemaker_session):
     model_name = "auto-generated-model"
-    model = Model(MODEL_DATA, MODEL_IMAGE, name=model_name, sagemaker_session=sagemaker_session)
+    model = Model(MODEL_IMAGE, MODEL_DATA, name=model_name, sagemaker_session=sagemaker_session)
 
     instance_type = "ml.m4.xlarge"
     transformer = model.transformer(instance_count=1, instance_type=instance_type)
@@ -187,7 +225,7 @@ def test_model_create_transformer(create_sagemaker_model, sagemaker_session):
 
 @patch("sagemaker.model.Model._create_sagemaker_model")
 def test_model_create_transformer_optional_params(create_sagemaker_model, sagemaker_session):
-    model = Model(MODEL_DATA, MODEL_IMAGE, sagemaker_session=sagemaker_session)
+    model = Model(MODEL_IMAGE, MODEL_DATA, sagemaker_session=sagemaker_session)
 
     instance_type = "ml.m4.xlarge"
     strategy = "MultiRecord"
@@ -230,39 +268,50 @@ def test_model_create_transformer_optional_params(create_sagemaker_model, sagema
     assert transformer.volume_kms_key == kms_key
 
 
-@patch("sagemaker.model.Model._create_sagemaker_model")
-def test_model_create_transformer_network_isolation(create_sagemaker_model, sagemaker_session):
+@patch("sagemaker.model.Model._create_sagemaker_model", Mock())
+def test_model_create_transformer_network_isolation(sagemaker_session):
     model = Model(
-        MODEL_DATA, MODEL_IMAGE, sagemaker_session=sagemaker_session, enable_network_isolation=True
+        MODEL_IMAGE, MODEL_DATA, sagemaker_session=sagemaker_session, enable_network_isolation=True
     )
 
     transformer = model.transformer(1, "ml.m4.xlarge", env={"should_be": "overwritten"})
     assert transformer.env is None
 
 
+@patch("sagemaker.model.Model._create_sagemaker_model", Mock())
+def test_model_create_transformer_base_name(sagemaker_session):
+    model = Model(MODEL_IMAGE, MODEL_DATA, sagemaker_session=sagemaker_session)
+
+    base_name = "foo"
+    model._base_name = base_name
+
+    transformer = model.transformer(1, "ml.m4.xlarge")
+    assert base_name == transformer.base_transform_job_name
+
+
 @patch("sagemaker.session.Session")
 @patch("sagemaker.local.LocalSession")
 def test_transformer_creates_correct_session(local_session, session):
-    model = Model(MODEL_DATA, MODEL_IMAGE, sagemaker_session=None)
+    model = Model(MODEL_IMAGE, MODEL_DATA, sagemaker_session=None)
     transformer = model.transformer(instance_count=1, instance_type="local")
     assert model.sagemaker_session == local_session.return_value
     assert transformer.sagemaker_session == local_session.return_value
 
-    model = Model(MODEL_DATA, MODEL_IMAGE, sagemaker_session=None)
+    model = Model(MODEL_IMAGE, MODEL_DATA, sagemaker_session=None)
     transformer = model.transformer(instance_count=1, instance_type="ml.m5.xlarge")
     assert model.sagemaker_session == session.return_value
     assert transformer.sagemaker_session == session.return_value
 
 
 def test_delete_model(sagemaker_session):
-    model = Model(MODEL_DATA, MODEL_IMAGE, name=MODEL_NAME, sagemaker_session=sagemaker_session)
+    model = Model(MODEL_IMAGE, MODEL_DATA, name=MODEL_NAME, sagemaker_session=sagemaker_session)
 
     model.delete_model()
     sagemaker_session.delete_model.assert_called_with(model.name)
 
 
 def test_delete_model_no_name(sagemaker_session):
-    model = Model(MODEL_DATA, MODEL_IMAGE, sagemaker_session=sagemaker_session)
+    model = Model(MODEL_IMAGE, MODEL_DATA, sagemaker_session=sagemaker_session)
 
     with pytest.raises(
         ValueError, match="The SageMaker model must be created first before attempting to delete."

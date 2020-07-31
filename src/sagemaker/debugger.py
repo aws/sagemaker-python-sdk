@@ -23,32 +23,9 @@ from __future__ import absolute_import
 
 import smdebug_rulesconfig as rule_configs  # noqa: F401 # pylint: disable=unused-import
 
-from sagemaker.utils import get_ecr_image_uri_prefix
+from sagemaker import image_uris
 
-RULES_ECR_REPO_NAME = "sagemaker-debugger-rules"
-
-SAGEMAKER_RULE_CONTAINERS_ACCOUNTS_MAP = {
-    "eu-north-1": {RULES_ECR_REPO_NAME: "314864569078"},
-    "me-south-1": {RULES_ECR_REPO_NAME: "986000313247"},
-    "ap-south-1": {RULES_ECR_REPO_NAME: "904829902805"},
-    "eu-west-3": {RULES_ECR_REPO_NAME: "447278800020"},
-    "us-east-2": {RULES_ECR_REPO_NAME: "915447279597"},
-    "eu-west-1": {RULES_ECR_REPO_NAME: "929884845733"},
-    "eu-central-1": {RULES_ECR_REPO_NAME: "482524230118"},
-    "sa-east-1": {RULES_ECR_REPO_NAME: "818342061345"},
-    "ap-east-1": {RULES_ECR_REPO_NAME: "199566480951"},
-    "us-east-1": {RULES_ECR_REPO_NAME: "503895931360"},
-    "ap-northeast-2": {RULES_ECR_REPO_NAME: "578805364391"},
-    "eu-west-2": {RULES_ECR_REPO_NAME: "250201462417"},
-    "ap-northeast-1": {RULES_ECR_REPO_NAME: "430734990657"},
-    "us-west-2": {RULES_ECR_REPO_NAME: "895741380848"},
-    "us-west-1": {RULES_ECR_REPO_NAME: "685455198987"},
-    "ap-southeast-1": {RULES_ECR_REPO_NAME: "972752614525"},
-    "ap-southeast-2": {RULES_ECR_REPO_NAME: "184798709955"},
-    "ca-central-1": {RULES_ECR_REPO_NAME: "519511493484"},
-    "cn-north-1": {RULES_ECR_REPO_NAME: "618459771430"},
-    "cn-northwest-1": {RULES_ECR_REPO_NAME: "658757709296"},
-}
+framework_name = "debugger"
 
 
 def get_rule_container_image_uri(region):
@@ -61,9 +38,7 @@ def get_rule_container_image_uri(region):
     Returns:
         str: Formatted image uri for the given region and the rule container type
     """
-    registry_id = SAGEMAKER_RULE_CONTAINERS_ACCOUNTS_MAP.get(region).get(RULES_ECR_REPO_NAME)
-    image_uri_prefix = get_ecr_image_uri_prefix(registry_id, region)
-    return "{}/{}:latest".format(image_uri_prefix, RULES_ECR_REPO_NAME)
+    return image_uris.retrieve(framework_name, region)
 
 
 class Rule(object):

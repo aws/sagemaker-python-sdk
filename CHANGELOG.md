@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.72.0 (2020-07-29)
+
+### Features
+
+ * Neo: Add Granular Target Description support for compilation
+
+### Documentation Changes
+
+ * Add xgboost doc on bring your own model
+ * fix typos on processing docs
+
 ## v1.71.1 (2020-07-27)
 
 ### Bug Fixes and Other Changes
@@ -62,6 +73,63 @@
 ### Documentation Changes
 
  * add KFP Processing component
+
+## v2.0.0.rc1 (2020-07-08)
+
+### Breaking Changes
+
+ * Move StreamDeserializer to sagemaker.deserializers
+ * Move StringDeserializer to sagemaker.deserializers
+ * rename record_deserializer to RecordDeserializer
+ * remove "train_" where redundant in parameter/variable names
+ * Add BytesDeserializer
+ * rename image to image_uri
+ * rename image_name to image_uri
+ * create new inference resources during model.deploy() and model.transformer()
+ * rename session parameter to sagemaker_session in S3 utility classes
+ * rename distributions to distribution in TF/MXNet estimators
+ * deprecate update_endpoint arg in deploy()
+ * create new inference resources during estimator.deploy() or estimator.transformer()
+ * deprecate delete_endpoint() for estimators and HyperparameterTuner
+ * refactor Predictor attribute endpoint to endpoint_name
+ * make instance_type optional for Airflow model configs
+ * refactor name of RealTimePredictor to Predictor
+ * remove check for Python 2 string in sagemaker.predictor._is_sequence_like()
+ * deprecate sagemaker.utils.to_str()
+ * drop Python 2 support
+
+### Features
+
+ * add BaseSerializer and BaseDeserializer
+ * add Predictor.update_endpoint()
+
+### Bug Fixes and Other Changes
+
+ * handle "train_*" renames in v2 migration tool
+ * handle image_uri rename for Session methods in v2 migration tool
+ * Update BytesDeserializer accept header
+ * handle image_uri rename for estimators and models in v2 migration tool
+ * handle image_uri rename in Airflow model config functions in v2 migration tool
+ * update migration tool for S3 utility functions
+ * set _current_job_name and base_tuning_job_name in HyperparameterTuner.attach()
+ * infer base name from job name in estimator.attach()
+ * ensure generated names are < 63 characters when deploying compiled models
+ * add TF migration documentation to error message
+
+### Documentation Changes
+
+ * update documentation with v2.0.0.rc1 changes
+ * remove 'train_*' prefix from estimator parameters
+ * update documentation for image_name/image --> image_uri
+
+### Testing and Release Infrastructure
+
+ * refactor matching logic in v2 migration tool
+ * add cli modifier for RealTimePredictor and derived classes
+ * change coverage settings to reduce intermittent errors
+ * clean up pickle.load logic in integ tests
+ * use fixture for Python version in framework integ tests
+ * remove assumption of Python 2 unit test runs
 
 ## v1.68.0 (2020-07-07)
 
@@ -153,6 +221,31 @@
  * update distributed GPU utilization warning message
  * set logs to False if wait is False in AutoML
  * workflow passing spot training param to training job
+
+## v2.0.0.rc0 (2020-06-17)
+
+### Breaking Changes
+
+ * remove estimator parameters for TF legacy mode
+ * remove legacy `TensorFlowModel` and `TensorFlowPredictor` classes
+ * force image URI to be passed for legacy TF images
+ * rename `sagemaker.tensorflow.serving` to `sagemaker.tensorflow.model`
+ * require `framework_version` and `py_version` for framework estimator and model classes
+ * change `Model` parameter order to make `model_data` optional
+
+### Bug Fixes and Other Changes
+
+ * add v2 migration tool
+
+### Documentation Changes
+
+ * update TF documentation to reflect breaking changes and how to upgrade
+ * start v2 usage and migration documentation
+
+### Testing and Release Infrastructure
+
+ * remove scipy from dependencies
+ * remove TF from optional dependencies
 
 ## v1.64.1 (2020-06-16)
 

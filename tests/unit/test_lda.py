@@ -15,15 +15,16 @@ from __future__ import absolute_import
 import pytest
 from mock import Mock, patch
 
+from sagemaker import image_uris
 from sagemaker.amazon.lda import LDA, LDAPredictor
-from sagemaker.amazon.amazon_estimator import registry, RecordSet
+from sagemaker.amazon.amazon_estimator import RecordSet
 
 ROLE = "myrole"
-TRAIN_INSTANCE_COUNT = 1
-TRAIN_INSTANCE_TYPE = "ml.c4.xlarge"
+INSTANCE_COUNT = 1
+INSTANCE_TYPE = "ml.c4.xlarge"
 NUM_TOPICS = 3
 
-COMMON_TRAIN_ARGS = {"role": ROLE, "train_instance_type": TRAIN_INSTANCE_TYPE}
+COMMON_TRAIN_ARGS = {"role": ROLE, "instance_type": INSTANCE_TYPE}
 ALL_REQ_ARGS = dict({"num_topics": NUM_TOPICS}, **COMMON_TRAIN_ARGS)
 
 REGION = "us-west-2"
@@ -59,10 +60,10 @@ def sagemaker_session():
 
 
 def test_init_required_positional(sagemaker_session):
-    lda = LDA(ROLE, TRAIN_INSTANCE_TYPE, NUM_TOPICS, sagemaker_session=sagemaker_session)
+    lda = LDA(ROLE, INSTANCE_TYPE, NUM_TOPICS, sagemaker_session=sagemaker_session)
     assert lda.role == ROLE
-    assert lda.train_instance_count == TRAIN_INSTANCE_COUNT
-    assert lda.train_instance_type == TRAIN_INSTANCE_TYPE
+    assert lda.instance_count == INSTANCE_COUNT
+    assert lda.instance_type == INSTANCE_TYPE
     assert lda.num_topics == NUM_TOPICS
 
 
@@ -70,8 +71,8 @@ def test_init_required_named(sagemaker_session):
     lda = LDA(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
     assert lda.role == COMMON_TRAIN_ARGS["role"]
-    assert lda.train_instance_count == TRAIN_INSTANCE_COUNT
-    assert lda.train_instance_type == COMMON_TRAIN_ARGS["train_instance_type"]
+    assert lda.instance_count == INSTANCE_COUNT
+    assert lda.instance_type == COMMON_TRAIN_ARGS["instance_type"]
     assert lda.num_topics == ALL_REQ_ARGS["num_topics"]
 
 
@@ -95,7 +96,7 @@ def test_all_hyperparameters(sagemaker_session):
 
 def test_image(sagemaker_session):
     lda = LDA(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-    assert lda.train_image() == registry(REGION, "lda") + "/lda:1"
+    assert image_uris.retrieve("lda", REGION) == lda.train_image()
 
 
 @pytest.mark.parametrize("required_hyper_parameters, value", [("num_topics", "string")])
@@ -215,7 +216,7 @@ def test_model_image(sagemaker_session):
     lda.fit(data, MINI_BATCH_SZIE)
 
     model = lda.create_model()
-    assert model.image == registry(REGION, "lda") + "/lda:1"
+    assert image_uris.retrieve("lda", REGION) == model.image_uri
 
 
 def test_predictor_type(sagemaker_session):
@@ -228,6 +229,6 @@ def test_predictor_type(sagemaker_session):
     )
     lda.fit(data, MINI_BATCH_SZIE)
     model = lda.create_model()
-    predictor = model.deploy(1, TRAIN_INSTANCE_TYPE)
+    predictor = model.deploy(1, INSTANCE_TYPE)
 
     assert isinstance(predictor, LDAPredictor)

@@ -21,8 +21,6 @@ import tempfile
 from collections import namedtuple
 
 import sagemaker.utils
-from sagemaker import s3
-from sagemaker.utils import get_ecr_image_uri_prefix, ECR_URI_PATTERN
 
 logger = logging.getLogger("sagemaker")
 
@@ -34,15 +32,6 @@ This is for the source code used for the entry point with an ``Estimator``. It c
 instantiated with positional or keyword arguments.
 """
 
-EMPTY_FRAMEWORK_VERSION_WARNING = (
-    "No framework_version specified, defaulting to version {}. "
-    "framework_version will be required in SageMaker Python SDK v2."
-)
-LATER_FRAMEWORK_VERSION_WARNING = (
-    "This is not the latest supported version. "
-    "If you would like to use version {latest}, "
-    "please add framework_version={latest} to your constructor."
-)
 PYTHON_2_DEPRECATION_WARNING = (
     "{latest_supported_version} is the latest version of {framework} that supports "
     "Python 2. Newer versions of {framework} will only be available for Python 3."
@@ -55,81 +44,9 @@ PARAMETER_SERVER_MULTI_GPU_WARNING = (
     "fully leverage all GPU cores; the parameter server will be configured to run "
     "only one worker per host regardless of the number of GPUs."
 )
-PARAMETER_V2_RENAME_WARNING = (
-    "Parameter {v1_parameter_name} will be renamed to {v2_parameter_name} "
-    "in SageMaker Python SDK v2."
-)
 
-
-EMPTY_FRAMEWORK_VERSION_ERROR = (
-    "framework_version is required for script mode estimator. "
-    "Please add framework_version={} to your constructor to avoid this error."
-)
-UNSUPPORTED_FRAMEWORK_VERSION_ERROR = (
-    "{} framework does not support version {}. Please use one of the following: {}."
-)
-
-VALID_PY_VERSIONS = ["py2", "py3", "py37"]
-VALID_EIA_FRAMEWORKS = [
-    "tensorflow",
-    "tensorflow-serving",
-    "mxnet",
-    "mxnet-serving",
-    "pytorch-serving",
-]
-PY2_RESTRICTED_EIA_FRAMEWORKS = ["pytorch-serving"]
-PY37_SUPPORTED_FRAMEWORKS = ["tensorflow-scriptmode"]
-VALID_ACCOUNTS_BY_REGION = {
-    "us-gov-west-1": "246785580436",
-    "us-iso-east-1": "744548109606",
-    "cn-north-1": "422961961927",
-    "cn-northwest-1": "423003514399",
-}
-ASIMOV_VALID_ACCOUNTS_BY_REGION = {
-    "us-gov-west-1": "442386744353",
-    "us-iso-east-1": "886529160074",
-    "cn-north-1": "727897471807",
-    "cn-northwest-1": "727897471807",
-}
-OPT_IN_ACCOUNTS_BY_REGION = {"ap-east-1": "057415533634", "me-south-1": "724002660598"}
-ASIMOV_OPT_IN_ACCOUNTS_BY_REGION = {"ap-east-1": "871362719292", "me-south-1": "217643126080"}
-DEFAULT_ACCOUNT = "520713654638"
-ASIMOV_PROD_ACCOUNT = "763104351884"
-ASIMOV_DEFAULT_ACCOUNT = ASIMOV_PROD_ACCOUNT
+DEBUGGER_UNSUPPORTED_REGIONS = ("us-gov-west-1", "us-iso-east-1")
 SINGLE_GPU_INSTANCE_TYPES = ("ml.p2.xlarge", "ml.p3.2xlarge")
-
-MERGED_FRAMEWORKS_REPO_MAP = {
-    "tensorflow-scriptmode": "tensorflow-training",
-    "tensorflow-serving": "tensorflow-inference",
-    "tensorflow-serving-eia": "tensorflow-inference-eia",
-    "mxnet": "mxnet-training",
-    "mxnet-serving": "mxnet-inference",
-    "mxnet-serving-eia": "mxnet-inference-eia",
-    "pytorch": "pytorch-training",
-    "pytorch-serving": "pytorch-inference",
-    "pytorch-serving-eia": "pytorch-inference-eia",
-}
-
-MERGED_FRAMEWORKS_LOWEST_VERSIONS = {
-    "tensorflow-scriptmode": {"py3": [1, 13, 1], "py2": [1, 14, 0], "py37": [1, 15, 2]},
-    "tensorflow-serving": [1, 13, 0],
-    "tensorflow-serving-eia": [1, 14, 0],
-    "mxnet": {"py3": [1, 4, 1], "py2": [1, 6, 0]},
-    "mxnet-serving": {"py3": [1, 4, 1], "py2": [1, 6, 0]},
-    "mxnet-serving-eia": [1, 4, 1],
-    "pytorch": [1, 2, 0],
-    "pytorch-serving": [1, 2, 0],
-    "pytorch-serving-eia": [1, 3, 1],
-}
-
-INFERENTIA_VERSION_RANGES = {
-    "neo-mxnet": [[1, 5, 1], [1, 5, 1]],
-    "neo-tensorflow": [[1, 15, 0], [1, 15, 0]],
-}
-
-INFERENTIA_SUPPORTED_REGIONS = ["us-east-1", "us-west-2"]
-
-DEBUGGER_UNSUPPORTED_REGIONS = ["us-gov-west-1", "us-iso-east-1"]
 
 
 def is_version_equal_or_higher(lowest_version, framework_version):
@@ -164,229 +81,6 @@ def is_version_equal_or_lower(highest_version, framework_version):
     """
     version_list = [int(s) for s in framework_version.split(".")]
     return version_list <= highest_version[0 : len(version_list)]
-
-
-def _is_dlc_version(framework, framework_version, py_version):
-    """Return if the framework's version uses the corresponding DLC image.
-
-    Args:
-        framework (str): The framework name, e.g. "tensorflow-scriptmode"
-        framework_version (str): The framework version
-        py_version (str): The Python version, e.g. "py3"
-
-    Returns:
-        bool: Whether or not the framework's version uses the DLC image.
-    """
-    lowest_version_list = MERGED_FRAMEWORKS_LOWEST_VERSIONS.get(framework)
-    if isinstance(lowest_version_list, dict):
-        lowest_version_list = lowest_version_list[py_version]
-
-    if lowest_version_list:
-        return is_version_equal_or_higher(lowest_version_list, framework_version)
-    return False
-
-
-def _is_inferentia_supported(framework, framework_version):
-    """Return if Inferentia supports the framework and its version.
-
-    Args:
-        framework (str): The framework name, e.g. "tensorflow"
-        framework_version (str): The framework version
-
-    Returns:
-        bool: Whether or not Inferentia supports the framework and its version.
-    """
-    lowest_version_list = INFERENTIA_VERSION_RANGES.get(framework)[0]
-    highest_version_list = INFERENTIA_VERSION_RANGES.get(framework)[1]
-    return is_version_equal_or_higher(
-        lowest_version_list, framework_version
-    ) and is_version_equal_or_lower(highest_version_list, framework_version)
-
-
-def _registry_id(region, framework, py_version, account, framework_version):
-    """Return the Amazon ECR registry number (or AWS account ID) for
-    the given framework, framework version, Python version, and region.
-
-    Args:
-        region (str): The AWS region.
-        framework (str): The framework name, e.g. "tensorflow-scriptmode".
-        py_version (str): The Python version, e.g. "py3".
-        account (str): The AWS account ID to use as a default.
-        framework_version (str): The framework version.
-
-    Returns:
-        str: The appropriate Amazon ECR registry number. If there is no
-            specific one for the framework, framework version, Python version,
-            and region, then ``account`` is returned.
-    """
-    if _is_dlc_version(framework, framework_version, py_version):
-        if region in ASIMOV_OPT_IN_ACCOUNTS_BY_REGION:
-            return ASIMOV_OPT_IN_ACCOUNTS_BY_REGION.get(region)
-        if region in ASIMOV_VALID_ACCOUNTS_BY_REGION:
-            return ASIMOV_VALID_ACCOUNTS_BY_REGION.get(region)
-        return ASIMOV_DEFAULT_ACCOUNT
-    if region in OPT_IN_ACCOUNTS_BY_REGION:
-        return OPT_IN_ACCOUNTS_BY_REGION.get(region)
-    return VALID_ACCOUNTS_BY_REGION.get(region, account)
-
-
-def create_image_uri(
-    region,
-    framework,
-    instance_type,
-    framework_version,
-    py_version=None,
-    account=None,
-    accelerator_type=None,
-    optimized_families=None,
-):
-    """Return the ECR URI of an image.
-
-    Args:
-        region (str): AWS region where the image is uploaded.
-        framework (str): framework used by the image.
-        instance_type (str): SageMaker instance type. Used to determine device
-            type (cpu/gpu/family-specific optimized).
-        framework_version (str): The version of the framework.
-        py_version (str): Optional. Python version. If specified, should be one
-            of 'py2' or 'py3'. If not specified, image uri will not include a
-            python component.
-        account (str): AWS account that contains the image. (default:
-            '520713654638')
-        accelerator_type (str): SageMaker Elastic Inference accelerator type.
-        optimized_families (str): Instance families for which there exist
-            specific optimized images.
-
-    Returns:
-        str: The appropriate image URI based on the given parameters.
-    """
-    logger.warning(
-        "'create_image_uri' will be deprecated in favor of 'ImageURIProvider' class "
-        "in SageMaker Python SDK v2."
-    )
-
-    optimized_families = optimized_families or []
-
-    if py_version and py_version not in VALID_PY_VERSIONS:
-        raise ValueError("invalid py_version argument: {}".format(py_version))
-
-    if py_version == "py37" and framework not in PY37_SUPPORTED_FRAMEWORKS:
-        raise ValueError("{} does not support Python 3.7 at this time.".format(framework))
-
-    if _accelerator_type_valid_for_framework(
-        framework=framework,
-        py_version=py_version,
-        accelerator_type=accelerator_type,
-        optimized_families=optimized_families,
-    ):
-        framework += "-eia"
-
-    # Handle account number for specific cases (e.g. GovCloud, opt-in regions, DLC images etc.)
-    if account is None:
-        account = _registry_id(
-            region=region,
-            framework=framework,
-            py_version=py_version,
-            account=DEFAULT_ACCOUNT,
-            framework_version=framework_version,
-        )
-
-    # Handle Local Mode
-    if instance_type.startswith("local"):
-        device_type = "cpu" if instance_type == "local" else "gpu"
-    elif not instance_type.startswith("ml."):
-        raise ValueError(
-            "{} is not a valid SageMaker instance type. See: "
-            "https://aws.amazon.com/sagemaker/pricing/instance-types/".format(instance_type)
-        )
-    else:
-        family = instance_type.split(".")[1]
-
-        # For some frameworks, we have optimized images for specific families, e.g c5 or p3.
-        # In those cases, we use the family name in the image tag. In other cases, we use
-        # 'cpu' or 'gpu'.
-        if family in optimized_families:
-            device_type = family
-        elif family.startswith("inf"):
-            device_type = "inf"
-        elif family[0] in ["g", "p"]:
-            device_type = "gpu"
-        else:
-            device_type = "cpu"
-
-    if device_type == "inf":
-        if region not in INFERENTIA_SUPPORTED_REGIONS:
-            raise ValueError(
-                "Inferentia is not supported in region {}. Supported regions are {}".format(
-                    region, ", ".join(INFERENTIA_SUPPORTED_REGIONS)
-                )
-            )
-        if framework not in INFERENTIA_VERSION_RANGES:
-            raise ValueError(
-                "Inferentia does not support {}. Currently it supports "
-                "MXNet and TensorFlow with more frameworks coming soon.".format(
-                    framework.split("-")[-1]
-                )
-            )
-        if not _is_inferentia_supported(framework, framework_version):
-            raise ValueError(
-                "Inferentia is not supported with {} version {}.".format(
-                    framework.split("-")[-1], framework_version
-                )
-            )
-
-    use_dlc_image = _is_dlc_version(framework, framework_version, py_version)
-
-    if not py_version or (use_dlc_image and framework == "tensorflow-serving-eia"):
-        tag = "{}-{}".format(framework_version, device_type)
-    else:
-        tag = "{}-{}-{}".format(framework_version, device_type, py_version)
-
-    if use_dlc_image:
-        ecr_repo = MERGED_FRAMEWORKS_REPO_MAP[framework]
-    else:
-        ecr_repo = "sagemaker-{}".format(framework)
-
-    return "{}/{}:{}".format(get_ecr_image_uri_prefix(account, region), ecr_repo, tag)
-
-
-def _accelerator_type_valid_for_framework(
-    framework, py_version, accelerator_type=None, optimized_families=None
-):
-    """
-    Args:
-        framework:
-        py_version:
-        accelerator_type:
-        optimized_families:
-    """
-    if accelerator_type is None:
-        return False
-
-    if py_version == "py2" and framework in PY2_RESTRICTED_EIA_FRAMEWORKS:
-        raise ValueError(
-            "{} is not supported with Amazon Elastic Inference in Python 2.".format(framework)
-        )
-
-    if framework not in VALID_EIA_FRAMEWORKS:
-        raise ValueError(
-            "{} is not supported with Amazon Elastic Inference. Currently only "
-            "Python-based TensorFlow, MXNet, PyTorch are supported.".format(framework)
-        )
-
-    if optimized_families:
-        raise ValueError("Neo does not support Amazon Elastic Inference.")
-
-    if (
-        not accelerator_type.startswith("ml.eia")
-        and not accelerator_type == "local_sagemaker_notebook"
-    ):
-        raise ValueError(
-            "{} is not a valid SageMaker Elastic Inference accelerator type. "
-            "See: https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html".format(accelerator_type)
-        )
-
-    return True
 
 
 def validate_source_dir(script, directory):
@@ -447,7 +141,7 @@ def tar_and_upload_dir(
             script name.
     """
     if directory and directory.lower().startswith("s3://"):
-        return UploadedCode(s3_prefix=directory, script_name=os.path.basename(script))
+        return UploadedCode(s3_prefix=directory, script_name=script)
 
     script_name = script if directory else os.path.basename(script)
     dependencies = dependencies or []
@@ -490,12 +184,12 @@ def _list_files_to_compress(script, directory):
     return [os.path.join(basedir, name) for name in os.listdir(basedir)]
 
 
-def framework_name_from_image(image_name):
+def framework_name_from_image(image_uri):
     # noinspection LongLine
     """Extract the framework and Python version from the image name.
 
     Args:
-        image_name (str): Image URI, which should be one of the following forms:
+        image_uri (str): Image URI, which should be one of the following forms:
             legacy:
             '<account>.dkr.ecr.<region>.amazonaws.com/sagemaker-<fw>-<py_ver>-<device>:<container_version>'
             legacy:
@@ -515,8 +209,8 @@ def framework_name_from_image(image_name):
             - str: The image tag
             - str: If the TensorFlow image is script mode
     """
-    sagemaker_pattern = re.compile(ECR_URI_PATTERN)
-    sagemaker_match = sagemaker_pattern.match(image_name)
+    sagemaker_pattern = re.compile(sagemaker.utils.ECR_URI_PATTERN)
+    sagemaker_match = sagemaker_pattern.match(image_uri)
     if sagemaker_match is None:
         return None, None, None, None
 
@@ -562,20 +256,6 @@ def framework_version_from_tag(image_tag):
     return None if tag_match is None else tag_match.group(1)
 
 
-def parse_s3_url(url):
-    """Calls the method with the same name in the s3 module.
-
-    :func:~sagemaker.s3.parse_s3_url
-
-    Args:
-        url: A URL, expected with an s3 scheme.
-
-    Returns: The return value of s3.parse_s3_url, which is a tuple containing:
-        str: S3 bucket name str: S3 key
-    """
-    return s3.parse_s3_url(url)
-
-
 def model_code_key_prefix(code_location_key_prefix, model_name, image):
     """Returns the s3 key prefix for uploading code during model deployment
     The location returned is a potential concatenation of 2 parts
@@ -592,27 +272,7 @@ def model_code_key_prefix(code_location_key_prefix, model_name, image):
     return "/".join(filter(None, [code_location_key_prefix, model_name or training_job_name]))
 
 
-def empty_framework_version_warning(default_version, latest_version):
-    """
-    Args:
-        default_version:
-        latest_version:
-    """
-    msgs = [EMPTY_FRAMEWORK_VERSION_WARNING.format(default_version)]
-    if default_version != latest_version:
-        msgs.append(later_framework_version_warning(latest_version))
-    return " ".join(msgs)
-
-
-def later_framework_version_warning(latest_version):
-    """
-    Args:
-        latest_version:
-    """
-    return LATER_FRAMEWORK_VERSION_WARNING.format(latest=latest_version)
-
-
-def warn_if_parameter_server_with_multi_gpu(training_instance_type, distributions):
+def warn_if_parameter_server_with_multi_gpu(training_instance_type, distribution):
     """Warn the user that training will not fully leverage all the GPU
     cores if parameter server is enabled and a multi-GPU instance is selected.
     Distributed training with the default parameter server setup doesn't
@@ -620,7 +280,7 @@ def warn_if_parameter_server_with_multi_gpu(training_instance_type, distribution
 
     Args:
         training_instance_type (str): A string representing the type of training instance selected.
-        distributions (dict): A dictionary with information to enable distributed training.
+        distribution (dict): A dictionary with information to enable distributed training.
             (Defaults to None if distributed training is not enabled.) For example:
 
             .. code:: python
@@ -634,7 +294,7 @@ def warn_if_parameter_server_with_multi_gpu(training_instance_type, distribution
 
 
     """
-    if training_instance_type == "local" or distributions is None:
+    if training_instance_type == "local" or distribution is None:
         return
 
     is_multi_gpu_instance = (
@@ -642,31 +302,12 @@ def warn_if_parameter_server_with_multi_gpu(training_instance_type, distribution
         or training_instance_type.split(".")[1].startswith("p")
     ) and training_instance_type not in SINGLE_GPU_INSTANCE_TYPES
 
-    ps_enabled = "parameter_server" in distributions and distributions["parameter_server"].get(
+    ps_enabled = "parameter_server" in distribution and distribution["parameter_server"].get(
         "enabled", False
     )
 
     if is_multi_gpu_instance and ps_enabled:
         logger.warning(PARAMETER_SERVER_MULTI_GPU_WARNING)
-
-
-def get_unsupported_framework_version_error(
-    framework_name, unsupported_version, supported_versions
-):
-    """Return error message for unsupported framework version.
-
-    This should also return the supported versions for customers.
-
-    :param framework_name:
-    :param unsupported_version:
-    :param supported_versions:
-    :return:
-    """
-    return UNSUPPORTED_FRAMEWORK_VERSION_ERROR.format(
-        framework_name,
-        unsupported_version,
-        ", ".join('"{}"'.format(version) for version in supported_versions),
-    )
 
 
 def python_deprecation_warning(framework, latest_supported_version):
@@ -677,17 +318,6 @@ def python_deprecation_warning(framework, latest_supported_version):
     """
     return PYTHON_2_DEPRECATION_WARNING.format(
         framework=framework, latest_supported_version=latest_supported_version
-    )
-
-
-def parameter_v2_rename_warning(v1_parameter_name, v2_parameter_name):
-    """
-    Args:
-        v1_parameter_name: parameter name used in SageMaker Python SDK v1
-        v2_parameter_name: parameter name used in SageMaker Python SDK v2
-    """
-    return PARAMETER_V2_RENAME_WARNING.format(
-        v1_parameter_name=v1_parameter_name, v2_parameter_name=v2_parameter_name
     )
 
 
@@ -702,3 +332,24 @@ def _region_supports_debugger(region_name):
 
     """
     return region_name.lower() not in DEBUGGER_UNSUPPORTED_REGIONS
+
+
+def validate_version_or_image_args(framework_version, py_version, image_uri):
+    """Checks if version or image arguments are specified.
+
+    Validates framework and model arguments to enforce version or image specification.
+
+    Args:
+        framework_version (str): The version of the framework.
+        py_version (str): The version of Python.
+        image_uri (str): The URI of the image.
+
+    Raises:
+        ValueError: if `image_uri` is None and either `framework_version` or `py_version` is
+            None.
+    """
+    if (framework_version is None or py_version is None) and image_uri is None:
+        raise ValueError(
+            "framework_version or py_version was None, yet image_uri was also None. "
+            "Either specify both framework_version and py_version, or specify image_uri."
+        )

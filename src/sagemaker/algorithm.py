@@ -16,9 +16,11 @@ from __future__ import absolute_import
 import sagemaker
 import sagemaker.parameter
 from sagemaker import vpc_utils
+from sagemaker.deserializers import BytesDeserializer
 from sagemaker.estimator import EstimatorBase
+from sagemaker.serializers import IdentitySerializer
 from sagemaker.transformer import Transformer
-from sagemaker.predictor import RealTimePredictor
+from sagemaker.predictor import Predictor
 
 
 class AlgorithmEstimator(EstimatorBase):
@@ -35,11 +37,11 @@ class AlgorithmEstimator(EstimatorBase):
         self,
         algorithm_arn,
         role,
-        train_instance_count,
-        train_instance_type,
-        train_volume_size=30,
-        train_volume_kms_key=None,
-        train_max_run=24 * 60 * 60,
+        instance_count,
+        instance_type,
+        volume_size=30,
+        volume_kms_key=None,
+        max_run=24 * 60 * 60,
         input_mode="File",
         output_path=None,
         output_kms_key=None,
@@ -53,8 +55,8 @@ class AlgorithmEstimator(EstimatorBase):
         model_channel_name="model",
         metric_definitions=None,
         encrypt_inter_container_traffic=False,
-        train_use_spot_instances=False,
-        train_max_wait=None,
+        use_spot_instances=False,
+        max_wait=None,
         **kwargs  # pylint: disable=W0613
     ):
         """Initialize an ``AlgorithmEstimator`` instance.
@@ -67,15 +69,15 @@ class AlgorithmEstimator(EstimatorBase):
                 access training data and model artifacts. After the endpoint
                 is created, the inference code might use the IAM role, if it
                 needs to access an AWS resource.
-            train_instance_count (int): Number of Amazon EC2 instances to
-                use for training. train_instance_type (str): Type of EC2
+            instance_count (int): Number of Amazon EC2 instances to
+                use for training. instance_type (str): Type of EC2
                 instance to use for training, for example, 'ml.c4.xlarge'.
-            train_volume_size (int): Size in GB of the EBS volume to use for
+            volume_size (int): Size in GB of the EBS volume to use for
                 storing input data during training (default: 30). Must be large enough to store
                 training data if File Mode is used (which is the default).
-            train_volume_kms_key (str): Optional. KMS key ID for encrypting EBS volume attached
+            volume_kms_key (str): Optional. KMS key ID for encrypting EBS volume attached
                 to the training instance (default: None).
-            train_max_run (int): Timeout in seconds for training (default: 24 * 60 * 60).
+            max_run (int): Timeout in seconds for training (default: 24 * 60 * 60).
                 After this amount of time Amazon SageMaker terminates the
                 job regardless of its current status.
             input_mode (str): The input mode that the algorithm supports
@@ -87,7 +89,7 @@ class AlgorithmEstimator(EstimatorBase):
                   the container via a Unix-named pipe.
 
                 This argument can be overriden on a per-channel basis using
-                ``sagemaker.session.s3_input.input_mode``.
+                ``sagemaker.inputs.TrainingInput.input_mode``.
 
             output_path (str): S3 location for saving the training result (model artifacts and
                 output files). If not specified, results are stored to a default bucket. If
@@ -127,14 +129,14 @@ class AlgorithmEstimator(EstimatorBase):
                 expression used to extract the metric from the logs.
             encrypt_inter_container_traffic (bool): Specifies whether traffic between training
                 containers is encrypted for the training job (default: ``False``).
-            train_use_spot_instances (bool): Specifies whether to use SageMaker
+            use_spot_instances (bool): Specifies whether to use SageMaker
                 Managed Spot instances for training. If enabled then the
-                `train_max_wait` arg should also be set.
+                `max_wait` arg should also be set.
 
                 More information:
                 https://docs.aws.amazon.com/sagemaker/latest/dg/model-managed-spot-training.html
                 (default: ``False``).
-            train_max_wait (int): Timeout in seconds waiting for spot training
+            max_wait (int): Timeout in seconds waiting for spot training
                 instances (default: None). After this amount of time Amazon
                 SageMaker will stop waiting for Spot instances to become
                 available (default: ``None``).
@@ -144,11 +146,11 @@ class AlgorithmEstimator(EstimatorBase):
         self.algorithm_arn = algorithm_arn
         super(AlgorithmEstimator, self).__init__(
             role,
-            train_instance_count,
-            train_instance_type,
-            train_volume_size,
-            train_volume_kms_key,
-            train_max_run,
+            instance_count,
+            instance_type,
+            volume_size,
+            volume_kms_key,
+            max_run,
             input_mode,
             output_path,
             output_kms_key,
@@ -161,8 +163,8 @@ class AlgorithmEstimator(EstimatorBase):
             model_channel_name=model_channel_name,
             metric_definitions=metric_definitions,
             encrypt_inter_container_traffic=encrypt_inter_container_traffic,
-            train_use_spot_instances=train_use_spot_instances,
-            train_max_wait=train_max_wait,
+            use_spot_instances=use_spot_instances,
+            max_wait=max_wait,
         )
 
         self.algorithm_spec = self.sagemaker_session.sagemaker_client.describe_algorithm(
@@ -182,30 +184,30 @@ class AlgorithmEstimator(EstimatorBase):
 
         # Check that the input mode provided is compatible with the training input modes for the
         # algorithm.
-        train_input_modes = self._algorithm_training_input_modes(train_spec["TrainingChannels"])
-        if self.input_mode not in train_input_modes:
+        input_modes = self._algorithm_training_input_modes(train_spec["TrainingChannels"])
+        if self.input_mode not in input_modes:
             raise ValueError(
                 "Invalid input mode: %s. %s only supports: %s"
-                % (self.input_mode, algorithm_name, train_input_modes)
+                % (self.input_mode, algorithm_name, input_modes)
             )
 
         # Check that the training instance type is compatible with the algorithm.
         supported_instances = train_spec["SupportedTrainingInstanceTypes"]
-        if self.train_instance_type not in supported_instances:
+        if self.instance_type not in supported_instances:
             raise ValueError(
-                "Invalid train_instance_type: %s. %s supports the following instance types: %s"
-                % (self.train_instance_type, algorithm_name, supported_instances)
+                "Invalid instance_type: %s. %s supports the following instance types: %s"
+                % (self.instance_type, algorithm_name, supported_instances)
             )
 
         # Verify if distributed training is supported by the algorithm
         if (
-            self.train_instance_count > 1
+            self.instance_count > 1
             and "SupportsDistributedTraining" in train_spec
             and not train_spec["SupportsDistributedTraining"]
         ):
             raise ValueError(
                 "Distributed training is not supported by %s. "
-                "Please set train_instance_count=1" % algorithm_name
+                "Please set instance_count=1" % algorithm_name
             )
 
     def set_hyperparameters(self, **kwargs):
@@ -251,37 +253,29 @@ class AlgorithmEstimator(EstimatorBase):
         self,
         role=None,
         predictor_cls=None,
-        serializer=None,
-        deserializer=None,
-        content_type=None,
-        accept=None,
+        serializer=IdentitySerializer(),
+        deserializer=BytesDeserializer(),
         vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT,
         **kwargs
     ):
         """Create a model to deploy.
 
-        The serializer, deserializer, content_type, and accept arguments are
-        only used to define a default RealTimePredictor. They are ignored if an
-        explicit predictor class is passed in. Other arguments are passed
-        through to the Model class.
+        The serializer and deserializer are only used to define a default
+        Predictor. They are ignored if an explicit predictor class is passed in.
+        Other arguments are passed through to the Model class.
 
         Args:
             role (str): The ``ExecutionRoleArn`` IAM Role ARN for the ``Model``,
                 which is also used during transform jobs. If not specified, the
                 role from the Estimator will be used.
-            predictor_cls (RealTimePredictor): The predictor class to use when
+            predictor_cls (Predictor): The predictor class to use when
                 deploying the model.
-            serializer (callable): Should accept a single argument, the input
-                data, and return a sequence of bytes. May provide a content_type
-                attribute that defines the endpoint request content type
-            deserializer (callable): Should accept two arguments, the result
-                data and the response content type, and return a sequence of
-                bytes. May provide a content_type attribute that defines the
-                endpoint response Accept content type.
-            content_type (str): The invocation ContentType, overriding any
-                content_type from the serializer
-            accept (str): The invocation Accept, overriding any accept from the
-                deserializer.
+            serializer (:class:`~sagemaker.serializers.BaseSerializer`): A
+                serializer object, used to encode data for an inference endpoint
+                (default: :class:`~sagemaker.serializers.IdentitySerializer`).
+            deserializer (:class:`~sagemaker.deserializers.BaseDeserializer`): A
+                deserializer object, used to decode data from an inference
+                endpoint (default: :class:`~sagemaker.deserializers.BytesDeserializer`).
             vpc_config_override (dict[str, list[str]]): Optional override for VpcConfig set on
                 the model. Default: use subnets and security groups from this Estimator.
                 * 'Subnets' (list[str]): List of subnet ids.
@@ -300,9 +294,7 @@ class AlgorithmEstimator(EstimatorBase):
         if predictor_cls is None:
 
             def predict_wrapper(endpoint, session):
-                return RealTimePredictor(
-                    endpoint, session, serializer, deserializer, content_type, accept
-                )
+                return Predictor(endpoint, session, serializer, deserializer)
 
             predictor_cls = predict_wrapper
 
@@ -407,6 +399,11 @@ class AlgorithmEstimator(EstimatorBase):
     def _is_marketplace(self):
         """Placeholder docstring"""
         return "ProductId" in self.algorithm_spec
+
+    def _ensure_base_job_name(self):
+        """Set ``self.base_job_name`` if it is not set already."""
+        if self.base_job_name is None:
+            self.base_job_name = self.algorithm_arn.split("/")[-1]
 
     def _prepare_for_training(self, job_name=None):
         # Validate hyperparameters

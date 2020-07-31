@@ -222,7 +222,7 @@ class Processor(object):
                     s3_uri = S3Uploader.upload(
                         local_path=file_input.source,
                         desired_s3_uri=desired_s3_uri,
-                        session=self.sagemaker_session,
+                        sagemaker_session=self.sagemaker_session,
                     )
                     file_input.source = s3_uri
                 normalized_inputs.append(file_input)
@@ -480,7 +480,7 @@ class ScriptProcessor(Processor):
             self._CODE_CONTAINER_INPUT_NAME,
         )
         return S3Uploader.upload(
-            local_path=code, desired_s3_uri=desired_s3_uri, session=self.sagemaker_session
+            local_path=code, desired_s3_uri=desired_s3_uri, sagemaker_session=self.sagemaker_session
         )
 
     def _convert_code_and_add_to_inputs(self, inputs, s3_uri):

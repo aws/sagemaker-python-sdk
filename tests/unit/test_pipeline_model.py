@@ -17,8 +17,7 @@ from mock import Mock, patch
 
 from sagemaker.model import FrameworkModel
 from sagemaker.pipeline import PipelineModel
-from sagemaker.predictor import RealTimePredictor
-from sagemaker.session import ModelContainer
+from sagemaker.predictor import Predictor
 from sagemaker.sparkml import SparkMLModel
 
 ENTRY_POINT = "blah.py"
@@ -30,8 +29,6 @@ INSTANCE_TYPE = "ml.m4.xlarge"
 ROLE = "some-role"
 ENV_1 = {"SAGEMAKER_DEFAULT_INVOCATIONS_ACCEPT": "application/json"}
 ENV_2 = {"SAGEMAKER_DEFAULT_INVOCATIONS_ACCEPT": "text/csv"}
-MODEL_CONTAINER_1 = ModelContainer(image=MODEL_IMAGE_1, model_data=MODEL_DATA_1, env=ENV_1)
-MODEL_CONTAINER_2 = ModelContainer(image=MODEL_IMAGE_2, model_data=MODEL_DATA_2, env=ENV_2)
 ENDPOINT = "some-ep"
 
 
@@ -54,7 +51,7 @@ class DummyFrameworkModel(FrameworkModel):
         )
 
     def create_predictor(self, endpoint_name):
-        return RealTimePredictor(endpoint_name, self.sagemaker_session)
+        return Predictor(endpoint_name, self.sagemaker_session)
 
 
 @pytest.fixture()
@@ -93,7 +90,6 @@ def test_prepare_container_def(tfo, time, sagemaker_session):
                 "SAGEMAKER_SUBMIT_DIRECTORY": "s3://mybucket/mi-1-2017-10-10-14-14-15/sourcedir.tar.gz",
                 "SAGEMAKER_CONTAINER_LOG_LEVEL": "20",
                 "SAGEMAKER_REGION": "us-west-2",
-                "SAGEMAKER_ENABLE_CLOUDWATCH_METRICS": "false",
             },
             "Image": "mi-1",
             "ModelDataUrl": "s3://bucket/model_1.tar.gz",

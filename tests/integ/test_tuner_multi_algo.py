@@ -12,27 +12,21 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-import gzip
 import json
 import os
-import pickle
-import sys
 
 import pytest
-from sagemaker import utils
-from sagemaker.amazon.amazon_estimator import get_image_uri
-from sagemaker.analytics import HyperparameterTuningJobAnalytics
-from sagemaker.content_types import CONTENT_TYPE_JSON
-from sagemaker.estimator import Estimator
-from sagemaker.predictor import json_deserializer
-from sagemaker.tuner import ContinuousParameter, IntegerParameter, HyperparameterTuner
 
-from tests.integ import DATA_DIR, TUNING_DEFAULT_TIMEOUT_MINUTES
+from sagemaker import image_uris, utils
+from sagemaker.analytics import HyperparameterTuningJobAnalytics
+from sagemaker.deserializers import JSONDeserializer
+from sagemaker.estimator import Estimator
+from sagemaker.serializers import BaseSerializer
+from sagemaker.tuner import ContinuousParameter, IntegerParameter, HyperparameterTuner
+from tests.integ import datasets, DATA_DIR, TUNING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 BASE_TUNING_JOB_NAME = "multi-algo-pysdk"
-
-DATA_PATH = os.path.join(DATA_DIR, "one_p_mnist", "mnist.pkl.gz")
 
 EXECUTION_ROLE = "SageMakerRole"
 
@@ -63,23 +57,18 @@ MAX_PARALLEL_JOBS = 2
 
 @pytest.fixture(scope="module")
 def data_set():
-    pickle_args = {} if sys.version_info.major == 2 else {"encoding": "latin1"}
-    with gzip.open(DATA_PATH, "rb") as f:
-        data_set, _, _ = pickle.load(f, **pickle_args)
-    return data_set
+    return datasets.one_p_mnist()
 
 
 @pytest.fixture(scope="function")
 def estimator_fm(sagemaker_session, cpu_instance_type):
-    fm_image = get_image_uri(
-        sagemaker_session.boto_session.region_name, "factorization-machines", repo_version="1"
-    )
+    fm_image = image_uris.retrieve("factorization-machines", sagemaker_session.boto_region_name)
 
     estimator = Estimator(
-        image_name=fm_image,
+        image_uri=fm_image,
         role=EXECUTION_ROLE,
-        train_instance_count=1,
-        train_instance_type=cpu_instance_type,
+        instance_count=1,
+        instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
     )
 
@@ -92,13 +81,13 @@ def estimator_fm(sagemaker_session, cpu_instance_type):
 
 @pytest.fixture(scope="function")
 def estimator_knn(sagemaker_session, cpu_instance_type):
-    knn_image = get_image_uri(sagemaker_session.boto_session.region_name, "knn", repo_version="1")
+    knn_image = image_uris.retrieve("knn", sagemaker_session.boto_region_name)
 
     estimator = Estimator(
-        image_name=knn_image,
+        image_uri=knn_image,
         role=EXECUTION_ROLE,
-        train_instance_count=1,
-        train_instance_type=cpu_instance_type,
+        instance_count=1,
+        instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
     )
 
@@ -200,11 +189,17 @@ def _deploy_and_predict(sagemaker_session, tuner, data_set, cpu_instance_type):
                 tuner.latest_tuning_job.name, best_training_job
             )
         )
-        predictor = tuner.deploy(1, cpu_instance_type, endpoint_name=best_training_job)
+        predictor = tuner.deploy(
+            1,
+            cpu_instance_type,
+            endpoint_name=best_training_job,
+            serializer=PredictionDataSerializer(),
+            deserializer=JSONDeserializer(),
+        )
 
         print("Making prediction using the deployed model")
         data = data_set[0][:10]
-        result = _make_prediction(predictor, data)
+        result = predictor.predict(data)
 
         assert len(result["predictions"]) == len(data)
         for prediction in result["predictions"]:
@@ -224,15 +219,12 @@ def _create_training_inputs(sagemaker_session):
     return {"train": s3_train_data, "test": s3_train_data}
 
 
-def _make_prediction(predictor, data):
-    predictor.serializer = _prediction_data_serializer
-    predictor.content_type = CONTENT_TYPE_JSON
-    predictor.deserializer = json_deserializer
-    return predictor.predict(data)
+class PredictionDataSerializer(BaseSerializer):
 
+    CONTENT_TYPE = "application/json"
 
-def _prediction_data_serializer(data):
-    js = {"instances": []}
-    for row in data:
-        js["instances"].append({"features": row.tolist()})
-    return json.dumps(js)
+    def serialize(self, data):
+        js = {"instances": []}
+        for row in data:
+            js["instances"].append({"features": row.tolist()})
+        return json.dumps(js)

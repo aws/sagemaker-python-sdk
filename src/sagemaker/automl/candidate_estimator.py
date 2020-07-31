@@ -103,7 +103,7 @@ class CandidateEstimator(object):
         self.name = candidate_name or self.name
         running_jobs = {}
 
-        # convert inputs to s3_input format
+        # convert inputs to TrainingInput format
         if isinstance(inputs, string_types):
             if not inputs.startswith("s3://"):
                 inputs = self.sagemaker_session.upload_data(inputs, key_prefix="auto-ml-input-data")
@@ -211,24 +211,25 @@ class CandidateEstimator(object):
         Returns (dcit): a dictionary that can be used as args of
             sagemaker_session.train method.
         """
-        train_args = {}
-        train_args["input_config"] = inputs
-        train_args["job_name"] = name
-        train_args["input_mode"] = desc["AlgorithmSpecification"]["TrainingInputMode"]
-        train_args["role"] = desc["RoleArn"]
-        train_args["output_config"] = desc["OutputDataConfig"]
-        train_args["resource_config"] = desc["ResourceConfig"]
-        train_args["image"] = desc["AlgorithmSpecification"]["TrainingImage"]
-        train_args["enable_network_isolation"] = desc["EnableNetworkIsolation"]
-        train_args["encrypt_inter_container_traffic"] = encrypt_inter_container_traffic
-        train_args["train_use_spot_instances"] = desc["EnableManagedSpotTraining"]
-        train_args["hyperparameters"] = {}
-        train_args["stop_condition"] = {}
-        train_args["metric_definitions"] = None
-        train_args["checkpoint_s3_uri"] = None
-        train_args["checkpoint_local_path"] = None
-        train_args["tags"] = []
-        train_args["vpc_config"] = None
+        train_args = {
+            "input_config": inputs,
+            "job_name": name,
+            "input_mode": desc["AlgorithmSpecification"]["TrainingInputMode"],
+            "role": desc["RoleArn"],
+            "output_config": desc["OutputDataConfig"],
+            "resource_config": desc["ResourceConfig"],
+            "image_uri": desc["AlgorithmSpecification"]["TrainingImage"],
+            "enable_network_isolation": desc["EnableNetworkIsolation"],
+            "encrypt_inter_container_traffic": encrypt_inter_container_traffic,
+            "use_spot_instances": desc["EnableManagedSpotTraining"],
+            "hyperparameters": {},
+            "stop_condition": {},
+            "metric_definitions": None,
+            "checkpoint_s3_uri": None,
+            "checkpoint_local_path": None,
+            "tags": [],
+            "vpc_config": None,
+        }
 
         if volume_kms_key is not None:
             train_args["resource_config"]["VolumeKmsKeyId"] = volume_kms_key
