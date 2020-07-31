@@ -16,12 +16,50 @@ with version 2.0 and later of the SageMaker Python SDK.
 from __future__ import absolute_import
 
 import ast
+import logging
+import pasta
 
 from sagemaker.cli.compatibility.v2.modifiers import matching
 from sagemaker.cli.compatibility.v2.modifiers.modifier import Modifier
 
 GET_IMAGE_URI_NAME = "get_image_uri"
-GET_IMAGE_URI_NAMESPACES = ("sagemaker", "sagemaker.amazon_estimator")
+GET_IMAGE_URI_NAMESPACES = (
+    "sagemaker",
+    "sagemaker.amazon_estimator",
+    "sagemaker.amazon.amazon_estimator",
+    "amazon_estimator",
+    "amazon.amazon_estimator",
+)
+
+ALGORITHM_NAME_FROM_REPO = {
+    "blazingtext": "blazingtext",
+    "sagemaker-rl-mxnet": "coach-mxnet",
+    "sagemaker-rl-tensorflow": ["coach-tensorflow", "ray-tensorflow"],
+    "factorization-machine": "factorization-machines",
+    "forecasting-deepar": "forecasting-deepar",
+    "image-classification": "image-classification",
+    "image-classification-neo": "image-classification-neo",
+    "ipinsights": "ipinsights",
+    "kmeans": "kmeans",
+    "knn": "knn",
+    "lda": "lda",
+    "linear-learner": "linear-learner",
+    "ntm": "ntm",
+    "object2vec": "object2vec",
+    "object-detection": "object-detection",
+    "pca": "pca",
+    "randomcutforest": "randomcutforest",
+    "sagemaker-rl-ray-container": "ray-pytorch",
+    "semantic-segmentation": "semantic-segmentation",
+    "seq2seq": "seq2seq",
+    "sagemaker-scikit-learn": "sklearn",
+    "sagemaker-sparkml-serving": "sparkml-serving",
+    "sagemaker-rl-vw-container": "vw",
+    "sagemaker-xgboost": "xgboost",
+    "xgboost-neo": "xgboost-neo",
+}
+
+logger = logging.getLogger("sagemaker")
 
 
 class ImageURIRetrieveRefactor(Modifier):
@@ -43,7 +81,9 @@ class ImageURIRetrieveRefactor(Modifier):
         Returns:
             bool: If the ``ast.Call`` instantiates a class of interest.
         """
-        return matching.matches_name_or_namespaces(node, GET_IMAGE_URI_NAME, GET_IMAGE_URI_NAMESPACES)
+        return matching.matches_name_or_namespaces(
+            node, GET_IMAGE_URI_NAME, GET_IMAGE_URI_NAMESPACES
+        )
 
     def modify_node(self, node):
         """Modifies the ``ast.Call`` node to call ``image_uris.retrieve`` instead.
@@ -52,12 +92,59 @@ class ImageURIRetrieveRefactor(Modifier):
         Args:
             node (ast.Call): a node that represents a *image_uris.retrieve call.
         """
-        if matching.matches_name(node, GET_IMAGE_URI_NAME):
-            node.func.id = "image_uris.retrieve"
-            node.func.params.argOne, node.func.params.argTwo = node.func.params.argTwo, node.func.params.argOne
-        elif matching.matches_attr(node, GET_IMAGE_URI_NAME):
-            node.func.attr = "image_uris.retrieve"
-            node.func.params.argOne, node.func.params.argTwo = node.func.params.argTwo, node.func.params.argOne
+        original_args = [None] * 3
+        for kw in node.keywords:
+            if kw.arg == "repo_name":
+                arg = kw.value.s
+                modified_arg = ALGORITHM_NAME_FROM_REPO[arg]
+                if isinstance(modified_arg, list):
+                    logger.warning(
+                        "There are more than one value mapping to {}, {} will be used".format(
+                            arg, modified_arg[0]
+                        )
+                    )
+                    modified_arg = modified_arg[0]
+                original_args[0] = ast.Str(modified_arg)
+            elif kw.arg == "repo_region":
+                original_args[1] = ast.Str(kw.value.s)
+            elif kw.arg == "repo_version":
+                original_args[2] = ast.Str(kw.value.s)
+
+        if len(node.args) > 0:
+            original_args[1] = ast.Str(node.args[0].s)
+        if len(node.args) > 1:
+            arg = node.args[1].s
+            modified_arg = ALGORITHM_NAME_FROM_REPO[arg]
+            if isinstance(modified_arg, list):
+                logger.warning(
+                    "There are more than one value mapping to {}, {} will be used".format(
+                        arg, modified_arg[0]
+                    )
+                )
+                modified_arg = modified_arg[0]
+            original_args[0] = ast.Str(modified_arg)
+        if len(node.args) > 2:
+            original_args[2] = ast.Str(node.args[2].s)
+
+        args = []
+        for arg in original_args:
+            if arg:
+                args.append(arg)
+
+        if matching.matches_name(node, GET_IMAGE_URI_NAME) or matching.matches_attr(
+            node, GET_IMAGE_URI_NAME
+        ):
+            node_components = list(pasta.dump(node).split("."))
+            node_modules = node_components[: len(node_components) - 1]
+            if "sagemaker" in node_modules:
+                node.func = ast.Attribute(
+                    value=ast.Attribute(attr="image_uris", value=ast.Name(id="sagemaker")),
+                    attr="retrieve",
+                )
+            else:
+                node.func = ast.Attribute(value=ast.Name(id="image_uris"), attr="retrieve")
+            node.args = args
+            node.keywords = []
         return node
 
 
@@ -75,7 +162,7 @@ class ImageURIRetrieveImportFromRenamer(Modifier):
             bool: If the import statement imports ``get_image_uri`` from the correct module.
         """
         return node.module in GET_IMAGE_URI_NAMESPACES and any(
-            name.name == GET_IMAGE_URI_NAMESPACES for name in node.names
+            name.name == GET_IMAGE_URI_NAME for name in node.names
         )
 
     def modify_node(self, node):
@@ -91,6 +178,6 @@ class ImageURIRetrieveImportFromRenamer(Modifier):
         for name in node.names:
             if name.name == GET_IMAGE_URI_NAME:
                 name.name = "image_uris"
-            if node.module == "sagemaker.amazon_estimator":
+            if node.module in GET_IMAGE_URI_NAMESPACES:
                 node.module = "sagemaker"
         return node

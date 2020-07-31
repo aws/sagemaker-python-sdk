@@ -36,6 +36,7 @@ FUNCTION_CALL_MODIFIERS = [
     modifiers.training_params.TrainPrefixRemover(),
     modifiers.training_input.TrainingInputConstructorRefactor(),
     modifiers.serde.SerdeConstructorRenamer(),
+    modifiers.image_uris.ImageURIRetrieveRefactor(),
 ]
 
 IMPORT_MODIFIERS = [modifiers.tfs.TensorFlowServingImportRenamer()]
@@ -53,6 +54,7 @@ IMPORT_FROM_MODIFIERS = [
     modifiers.training_input.TrainingInputImportFromRenamer(),
     modifiers.serde.SerdeImportFromAmazonCommonRenamer(),
     modifiers.serde.SerdeImportFromPredictorRenamer(),
+    modifiers.image_uris.ImageURIRetrieveImportFromRenamer(),
 ]
 
 
