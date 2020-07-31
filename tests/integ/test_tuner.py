@@ -507,7 +507,7 @@ def test_stop_tuning_job(sagemaker_session, cpu_instance_type):
     )
 
     tuning_job_name = unique_name_from_base("test-randomcutforest", max_length=32)
-    tuner.fit([records, test_records], tuning_job_name)
+    tuner.fit([records, test_records], tuning_job_name, wait=False)
 
     time.sleep(15)
 
