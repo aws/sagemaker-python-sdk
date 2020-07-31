@@ -284,8 +284,9 @@ def test_dlc_get_latest_content_no_optional(dlc_no_optional_content):
 
 def test_algo_get_latest_content_no_optional(algo_no_optional_content):
     latest_version = "0.10"
-    registries, py_versions, repository = framework_upgrade.get_latest_values(algo_no_optional_content)
+    registries, py_versions, repository = framework_upgrade.get_latest_values(
+        algo_no_optional_content
+    )
     assert py_versions is None
     assert registries == algo_no_optional_content["versions"][latest_version]["registries"]
     assert repository == algo_no_optional_content["versions"][latest_version]["repository"]
-

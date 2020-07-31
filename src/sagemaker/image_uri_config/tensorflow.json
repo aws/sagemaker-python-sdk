@@ -684,9 +684,6 @@
                 "repository": "tensorflow-inference"
             },
             "2.2.0": {
-                "py_versions": [
-                    "py3"
-                ],
                 "registries": {
                     "ap-east-1": "871362719292",
                     "ap-northeast-1": "763104351884",

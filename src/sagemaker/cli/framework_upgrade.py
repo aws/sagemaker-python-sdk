@@ -173,7 +173,8 @@ def add_version(
         py_versions (str): Supported Python versions (e.g. "py3,py37").
         tag_prefix (str): Algorithm image's tag prefix.
      """
-    py_versions = py_versions.split(",")
+    if py_versions:
+        py_versions = py_versions.split(",")
     processors = processors.split(",")
     latest_registries, latest_py_versions, latest_repository = get_latest_values(
         existing_content, scope
