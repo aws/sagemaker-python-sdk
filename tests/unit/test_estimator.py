@@ -2122,7 +2122,7 @@ def test_generic_deploy_accelerator_type(sagemaker_session):
         IMAGE_URI, ROLE, INSTANCE_COUNT, INSTANCE_TYPE, sagemaker_session=sagemaker_session
     )
     e.fit({"train": "s3://bucket/training-prefix"})
-    e.deploy(INSTANCE_COUNT, INSTANCE_TYPE, ACCELERATOR_TYPE)
+    e.deploy(INSTANCE_COUNT, INSTANCE_TYPE, accelerator_type=ACCELERATOR_TYPE)
 
     args = e.sagemaker_session.endpoint_from_production_variants.call_args[1]
     print(args)

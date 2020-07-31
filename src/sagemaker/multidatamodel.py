@@ -211,12 +211,12 @@ class MultiDataModel(Model):
             enable_network_isolation = self.model.enable_network_isolation()
             role = self.model.role
             vpc_config = self.model.vpc_config
-            predictor = self.model.predictor_cls
+            predictor_cls = self.model.predictor_cls
         else:
             enable_network_isolation = self.enable_network_isolation()
             role = self.role
             vpc_config = self.vpc_config
-            predictor = self.predictor_cls
+            predictor_cls = self.predictor_cls
 
         if role is None:
             raise ValueError("Role can not be null for deploying a model")
@@ -255,8 +255,8 @@ class MultiDataModel(Model):
             data_capture_config_dict=data_capture_config_dict,
         )
 
-        if predictor:
-            predictor = self.predictor_cls(self.endpoint_name, self.sagemaker_session)
+        if predictor_cls:
+            predictor = predictor_cls(self.endpoint_name, self.sagemaker_session)
             if serializer:
                 predictor.serializer = serializer
             if deserializer:
