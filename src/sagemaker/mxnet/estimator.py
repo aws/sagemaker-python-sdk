@@ -34,7 +34,7 @@ logger = logging.getLogger("sagemaker")
 class MXNet(Framework):
     """Handle end-to-end training and deployment of custom MXNet code."""
 
-    __framework_name__ = "mxnet"
+    _framework_name = "mxnet"
     _LOWEST_SCRIPT_MODE_VERSION = ["1", "3"]
 
     def __init__(
@@ -100,8 +100,44 @@ class MXNet(Framework):
                 ``image_uri`` is required. If also ``None``, then a ``ValueError``
                 will be raised.
             distribution (dict): A dictionary with information on how to run distributed
-                training (default: None). To have parameter servers launched for training,
-                set this value to be ``{'parameter_server': {'enabled': True}}``.
+                training (default: None). Currently we support distributed training with
+                parameter server and MPI [Horovod].
+                To enable parameter server use the following setup:
+
+                .. code:: python
+
+                    {
+                        'parameter_server':
+                        {
+                            'enabled': True
+                        }
+                    }
+
+                To enable MPI:
+
+                .. code:: python
+
+                    {
+                        'mpi':
+                        {
+                            'enabled': True
+                        }
+                    }
+
+                Option parameters within ``mpi`` are ``processes_per_host``
+                and ``custom_mpi_options``.
+
+                .. code:: python
+
+                    {
+                        'mpi':
+                        {
+                            'enabled': True,
+                            'processes_per_host': 2,
+                            'custom_mpi_options': '-verbose --NCCL_DEBUG=INFO'
+                        }
+                    }
+
             **kwargs: Additional kwargs passed to the
                 :class:`~sagemaker.estimator.Framework` constructor.
 
@@ -114,7 +150,7 @@ class MXNet(Framework):
         validate_version_or_image_args(framework_version, py_version, image_uri)
         if py_version == "py2":
             logger.warning(
-                python_deprecation_warning(self.__framework_name__, defaults.LATEST_PY2_VERSION)
+                python_deprecation_warning(self._framework_name, defaults.LATEST_PY2_VERSION)
             )
         self.framework_version = framework_version
         self.py_version = py_version
@@ -159,6 +195,20 @@ class MXNet(Framework):
         if "parameter_server" in distribution:
             enabled = distribution["parameter_server"].get("enabled", False)
             self._hyperparameters[self.LAUNCH_PS_ENV_NAME] = enabled
+
+        if "mpi" in distribution:
+            mpi_dict = distribution["mpi"]
+            mpi_enabled = mpi_dict.get("enabled", False)
+            self._hyperparameters[self.LAUNCH_MPI_ENV_NAME] = mpi_enabled
+
+            if mpi_dict.get("processes_per_host"):
+                self._hyperparameters[self.MPI_NUM_PROCESSES_PER_HOST] = mpi_dict.get(
+                    "processes_per_host"
+                )
+
+                self._hyperparameters[self.MPI_CUSTOM_MPI_OPTIONS] = mpi_dict.get(
+                    "custom_mpi_options", ""
+                )
 
     def create_model(
         self,
@@ -280,7 +330,7 @@ class MXNet(Framework):
             init_params["image_uri"] = image_uri
             return init_params
 
-        if framework != cls.__framework_name__:
+        if framework != cls._framework_name:
             raise ValueError(
                 "Training job: {} didn't use image for requested framework".format(
                     job_details["TrainingJobName"]

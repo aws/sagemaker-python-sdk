@@ -22,7 +22,6 @@ from packaging.version import Version
 
 from sagemaker import Session, image_uris, utils
 from sagemaker.local import LocalSession
-from sagemaker.rl import RLEstimator
 import tests.integ
 
 DEFAULT_REGION = "us-west-2"
@@ -38,6 +37,25 @@ NO_M4_REGIONS = [
 ]
 
 NO_T2_REGIONS = ["eu-north-1", "ap-east-1", "me-south-1"]
+
+FRAMEWORKS_FOR_GENERATED_VERSION_FIXTURES = (
+    "chainer",
+    "coach_mxnet",
+    "coach_tensorflow",
+    "inferentia_mxnet",
+    "inferentia_tensorflow",
+    "mxnet",
+    "neo_mxnet",
+    "neo_pytorch",
+    "neo_tensorflow",
+    "pytorch",
+    "ray_pytorch",
+    "ray_tensorflow",
+    "sklearn",
+    "tensorflow",
+    "vw",
+    "xgboost",
+)
 
 
 def pytest_addoption(parser):
@@ -167,46 +185,6 @@ def _tf_py_version(tf_version, request):
     return "py37"
 
 
-@pytest.fixture(scope="module", params=["0.10.1", "0.10.1", "0.11", "0.11.0", "0.11.1"])
-def rl_coach_tf_version(request):
-    return request.param
-
-
-@pytest.fixture(scope="module", params=["0.11", "0.11.0"])
-def rl_coach_mxnet_version(request):
-    return request.param
-
-
-@pytest.fixture(scope="module", params=["0.5", "0.5.3", "0.6", "0.6.5", "0.8.2", "0.8.5"])
-def rl_ray_tf_version(request):
-    return request.param
-
-
-@pytest.fixture(scope="module", params=["0.8.5"])
-def rl_ray_pytorch_version(request):
-    return request.param
-
-
-@pytest.fixture(scope="module", params=["8.7.0"])
-def rl_vw_version(request):
-    return request.param
-
-
-@pytest.fixture(scope="module")
-def rl_coach_mxnet_full_version():
-    return RLEstimator.COACH_LATEST_VERSION_MXNET
-
-
-@pytest.fixture(scope="module")
-def rl_coach_tf_full_version():
-    return RLEstimator.COACH_LATEST_VERSION_TF
-
-
-@pytest.fixture(scope="module")
-def rl_ray_full_version():
-    return RLEstimator.RAY_LATEST_VERSION
-
-
 @pytest.fixture(scope="module")
 def tf_full_version(tensorflow_training_latest_version, tensorflow_inference_latest_version):
     """Fixture for TF tests that test both training and inference.
@@ -244,6 +222,11 @@ def cpu_instance_type(sagemaker_session, request):
         return "ml.m5.xlarge"
     else:
         return "ml.m4.xlarge"
+
+
+@pytest.fixture(scope="module")
+def gpu_instance_type(request):
+    return "ml.p2.xlarge"
 
 
 @pytest.fixture(scope="session")
@@ -295,8 +278,8 @@ def pytest_generate_tests(metafunc):
 
 
 def _generate_all_framework_version_fixtures(metafunc):
-    for fw in ("chainer", "mxnet", "pytorch", "sklearn", "tensorflow", "xgboost"):
-        config = image_uris.config_for_framework(fw)
+    for fw in FRAMEWORKS_FOR_GENERATED_VERSION_FIXTURES:
+        config = image_uris.config_for_framework(fw.replace("_", "-"))
         if "scope" in config:
             _parametrize_framework_version_fixtures(metafunc, fw, config)
         else:

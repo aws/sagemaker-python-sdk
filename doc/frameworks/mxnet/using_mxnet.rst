@@ -159,13 +159,14 @@ If there are other packages you want to use with your script, you can include a 
 Both ``requirements.txt`` and your training script should be put in the same folder.
 You must specify this folder in ``source_dir`` argument when creating an MXNet estimator.
 
-The function of installing packages using ``requirements.txt`` is supported for all MXNet versions during training.
+The function of installing packages using ``requirements.txt`` is supported for MXNet versions 1.3.0 and higher during training.
+
 When serving an MXNet model, support for this function varies with MXNet versions.
 For MXNet 1.6.0 or newer, ``requirements.txt`` must be under folder ``code``.
 The SageMaker MXNet Estimator automatically saves ``code`` in ``model.tar.gz`` after training (assuming you set up your script and ``requirements.txt`` correctly as stipulated in the previous paragraph).
 In the case of bringing your own trained model for deployment, you must save ``requirements.txt`` under folder ``code`` in ``model.tar.gz`` yourself or specify it through ``dependencies``.
-For MXNet 1.4.1, ``requirements.txt`` is not supported for inference.
-For MXNet 0.12.1-1.3.0, ``requirements.txt`` must be in ``source_dir``.
+For MXNet 0.12.1-1.2.1, 1.4.0-1.4.1, ``requirements.txt`` is not supported for inference.
+For MXNet 1.3.0, ``requirements.txt`` must be in ``source_dir``.
 
 A ``requirements.txt`` file is a text file that contains a list of items that are installed by using ``pip install``.
 You can also specify the version of an item to install.

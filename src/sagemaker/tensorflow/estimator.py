@@ -33,7 +33,7 @@ logger = logging.getLogger("sagemaker")
 class TensorFlow(Framework):
     """Handle end-to-end training and deployment of user-provided TensorFlow code."""
 
-    __framework_name__ = "tensorflow"
+    _framework_name = "tensorflow"
 
     _HIGHEST_LEGACY_MODE_ONLY_VERSION = version.Version("1.10.0")
     _HIGHEST_PYTHON_2_VERSION = version.Version("2.1.0")
@@ -116,7 +116,7 @@ class TensorFlow(Framework):
         fw.validate_version_or_image_args(framework_version, py_version, image_uri)
         if py_version == "py2":
             logger.warning(
-                fw.python_deprecation_warning(self.__framework_name__, defaults.LATEST_PY2_VERSION)
+                fw.python_deprecation_warning(self._framework_name, defaults.LATEST_PY2_VERSION)
             )
         self.framework_version = framework_version
         self.py_version = py_version
@@ -221,7 +221,7 @@ class TensorFlow(Framework):
         if not script_mode:
             init_params["image_uri"] = image_uri
 
-        if framework != cls.__framework_name__:
+        if framework != cls._framework_name:
             raise ValueError(
                 "Training job: {} didn't use image for requested framework".format(
                     job_details["TrainingJobName"]
@@ -433,7 +433,7 @@ class TensorFlow(Framework):
         model_name = self._get_or_create_name(model_name)
 
         if self.latest_training_job is None:
-            logging.warning(
+            logger.warning(
                 "No finished training job found associated with this estimator. Please make sure "
                 "this estimator is only used for building workflow config"
             )

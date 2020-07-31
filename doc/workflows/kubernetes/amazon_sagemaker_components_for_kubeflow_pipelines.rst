@@ -89,6 +89,10 @@ Pipelines workflow. For more information, see \ `SageMaker
 hyperparameter optimization Kubeflow Pipeline
 component <https://github.com/kubeflow/pipelines/tree/master/components/aws/sagemaker/hyperparameter_tuning>`__.
 
+**Processing**
+
+The Processing component enables you to submit processing jobs to Amazon SageMaker directly from a Kubeflow Pipelines workflow. For more information, see \ `SageMaker Processing Kubeflow Pipeline component <https://github.com/kubeflow/pipelines/tree/master/components/aws/sagemaker/process>`__.
+
 Inference components
 ^^^^^^^^^^^^^^^^^^^^
 

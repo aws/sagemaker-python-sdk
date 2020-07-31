@@ -51,7 +51,7 @@ class XGBoostPredictor(Predictor):
 class XGBoostModel(FrameworkModel):
     """An XGBoost SageMaker ``Model`` that can be deployed to a SageMaker ``Endpoint``."""
 
-    __framework_name__ = XGBOOST_NAME
+    _framework_name = XGBOOST_NAME
 
     def __init__(
         self,
@@ -144,7 +144,7 @@ class XGBoostModel(FrameworkModel):
             str: The appropriate image URI based on the given parameters.
         """
         return image_uris.retrieve(
-            self.__framework_name__,
+            self._framework_name,
             region_name,
             version=self.framework_version,
             py_version=self.py_version,

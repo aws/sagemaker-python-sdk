@@ -1,42 +1,29 @@
-##########################################################
-Use Version 2.0 of the SageMaker Python SDK (experimental)
-##########################################################
-
-Development on v2.0.0 of the SageMaker Python SDK is underway.
-For more info on our plans, see https://github.com/aws/sagemaker-python-sdk/issues/1459.
+###########################################
+Use Version 2.x of the SageMaker Python SDK
+###########################################
 
 .. contents::
     :local:
+    :depth: 2
 
 ************
 Installation
 ************
 
-.. warning::
-    Version 2.0.0 is currently experimental, so proceed with caution. If you do run into issues or have any other feedback,
-    please let us know by `opening an issue <https://github.com/aws/sagemaker-python-sdk/issues/new/choose>`_
-    or `commenting on our planning issue <https://github.com/aws/sagemaker-python-sdk/issues/1459>`_.
-
-To install the latest release candidate:
+To install the latest version:
 
 .. code:: bash
 
-    pip install git+git://github.com/aws/sagemaker-python-sdk.git@v2.0.0.rc1
-
-To install the latest version of v2:
-
-.. code:: bash
-
-    pip install git+git://github.com/aws/sagemaker-python-sdk.git@zwei
+    pip install --upgrade sagemaker
 
 If you are executing this pip install command in a notebook, make sure to restart your kernel.
 
-*******
-Changes
-*******
+****************
+Breaking Changes
+****************
 
 This section is for major changes that may require updates to your SageMaker Python SDK code.
-You can also see what changes have been made in the `CHANGELOG <https://github.com/aws/sagemaker-python-sdk/blob/zwei/CHANGELOG.md>`_.
+For the full list of changes, see the `CHANGELOG <https://github.com/aws/sagemaker-python-sdk/blob/master/CHANGELOG.md>`_.
 
 Deprecations
 ============
@@ -94,6 +81,25 @@ Please instantiate the objects instead.
 The ``update_endpoint`` argument in ``deploy()`` methods for estimators and models has been deprecated.
 Please use :func:`sagemaker.predictor.Predictor.update_endpoint` instead.
 
+``serializer`` and ``deserializer`` in ``create_model()``
+---------------------------------------------------------
+
+The ``serializer`` and ``deserializer`` arguments in
+:func:`sagemaker.estimator.Estimator.create_model` have been deprecated. Please
+specify serializers and deserializers in ``deploy()`` methods instead.
+
+``content_type`` and ``accept`` in the Predictor Constructor
+------------------------------------------------------------
+
+The ``content_type`` and ``accept`` parameters have been removed from the
+following classes and methods:
+- ``sagemaker.predictor.Predictor``
+- ``sagemaker.estimator.Estimator.create_model``
+- ``sagemaker.algorithms.AlgorithmEstimator.create_model``
+- ``sagemaker.tensorflow.model.TensorFlowPredictor``
+
+Please specify content types in a serializer or deserializer class instead.
+
 ``sagemaker.content_types``
 ---------------------------
 
@@ -115,9 +121,46 @@ write MIME types as a string,
 | ``CONTENT_TYPE_NPY``          | ``"application/x-npy"``        |
 +-------------------------------+--------------------------------+
 
+Image URI Functions (e.g. ``get_image_uri``)
+--------------------------------------------
+
+The following functions have been deprecated in favor of :func:`sagemaker.image_uris.retrieve`:
+
+- ``sagemaker.amazon_estimator.get_image_uri()``
+- ``sagemaker.fw_utils.create_image_uri()``
+- ``sagemaker.fw_registry.registry()``
+- ``sagemaker.utils.get_ecr_image_uri_prefix()``
+
+For more information about usage, see :func:`sagemaker.image_uris.retrieve`.
+
+SageMaker Python SDK CLI
+------------------------
+
+The SageMaker Python SDK CLI has been deprecated.
+(This is different from the AWS CLI.)
+
+``enable_cloudwatch_metrics`` for Estimators and Models
+-------------------------------------------------------
+
+The parameter ``enable_cloudwatch_metrics`` has been deprecated.
+CloudWatch metrics are already emitted for all Training Jobs, etc.
+
+``sagemaker.fw_utils.parse_s3_url``
+-----------------------------------
+
+The ``sagemaker.fw_utils.parse_s3_url`` function has been deprecated.
+Please use :func:`sagemaker.s3.parse_s3_url` instead.
+
+``sagemaker.session.ModelContainer``
+------------------------------------
+
+The class ``sagemaker.session.ModelContainer`` has been deprecated, as it is not needed for creating inference pipelines.
+
+Changes in Default Behavior
+===========================
 
 Require ``framework_version`` and ``py_version`` for Frameworks
-===============================================================
+---------------------------------------------------------------
 
 Framework estimator and model classes now require ``framework_version`` and ``py_version`` instead of supplying defaults,
 unless an image URI is explicitly supplied.
@@ -146,6 +189,19 @@ For example:
         framework_version="1.6.0",  # now required
         py_version="py3",  # now required
     )
+
+Log Display Behavior with ``attach()``
+--------------------------------------
+
+Logs are no longer printed when using ``attach()`` with an estimator.
+To view logs after attaching a training job to an estimator, use :func:`sagemaker.estimator.EstimatorBase.logs`.
+
+``HyperparameterTuner.fit()`` and ``Transformer.transform()``
+-------------------------------------------------------------
+
+:func:`sagemaker.tuner.HyperparameterTuner.fit` and :func:`sagemaker.transformer.Transformer.transform` now wait
+until the completion of the Hyperparameter Tuning Job or Batch Transform Job, respectively.
+To make the function non-blocking, use ``wait=False``.
 
 Parameter and Class Name Changes
 ================================
@@ -269,6 +325,19 @@ TensorFlow Serving Predictor
 ``sagemaker.tensorflow.serving.Predictor`` has been renamed to :class:`sagemaker.tensorflow.model.TensorFlowPredictor`.
 (For the previous implementation of that class, see `Deprecate Legacy TensorFlow <#deprecate-legacy-tensorflow>`_).
 
+
+Inputs
+------
+
+``s3_input``
+~~~~~~~~~~~~
+
+``sagemaker.session.s3_input`` has been renamed to :class:`sagemaker.inputs.TrainingInput`.
+
+``ShuffleConfig``
+~~~~~~~~~~~~~~~~~
+
+``sagemaker.session.ShuffleConfig`` has been renamed to :class:`sagemaker.inputs.ShuffleConfig`.
 
 Airflow
 -------

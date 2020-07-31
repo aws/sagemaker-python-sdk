@@ -900,9 +900,13 @@ def test_tuning_byo_estimator(sagemaker_session, cpu_instance_type):
 
     best_training_job = tuner.best_training_job()
     with timeout_and_delete_endpoint_by_name(best_training_job, sagemaker_session):
-        predictor = tuner.deploy(1, cpu_instance_type, endpoint_name=best_training_job)
-        predictor.serializer = _FactorizationMachineSerializer()
-        predictor.deserializer = JSONDeserializer()
+        predictor = tuner.deploy(
+            1,
+            cpu_instance_type,
+            endpoint_name=best_training_job,
+            serializer=_FactorizationMachineSerializer(),
+            deserializer=JSONDeserializer(),
+        )
 
         result = predictor.predict(datasets.one_p_mnist()[0][:10])
 

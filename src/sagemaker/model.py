@@ -18,8 +18,7 @@ import logging
 import os
 
 import sagemaker
-from sagemaker import fw_utils, local, session, utils, git_utils
-from sagemaker.fw_utils import UploadedCode
+from sagemaker import fw_utils, image_uris, local, s3, session, utils, git_utils
 from sagemaker.transformer import Transformer
 
 LOGGER = logging.getLogger("sagemaker")
@@ -27,32 +26,6 @@ LOGGER = logging.getLogger("sagemaker")
 NEO_ALLOWED_FRAMEWORKS = set(
     ["mxnet", "tensorflow", "keras", "pytorch", "onnx", "xgboost", "tflite"]
 )
-
-NEO_IMAGE_ACCOUNT = {
-    "us-west-1": "710691900526",
-    "us-west-2": "301217895009",
-    "us-east-1": "785573368785",
-    "us-east-2": "007439368137",
-    "eu-west-1": "802834080501",
-    "eu-west-2": "205493899709",
-    "eu-west-3": "254080097072",
-    "eu-central-1": "746233611703",
-    "eu-north-1": "601324751636",
-    "ap-northeast-1": "941853720454",
-    "ap-northeast-2": "151534178276",
-    "ap-east-1": "110948597952",
-    "ap-southeast-1": "324986816169",
-    "ap-southeast-2": "355873309152",
-    "ap-south-1": "763008648453",
-    "sa-east-1": "756306329178",
-    "ca-central-1": "464438896020",
-    "me-south-1": "836785723513",
-    "cn-north-1": "472730292857",
-    "cn-northwest-1": "474822919863",
-    "us-gov-west-1": "263933020539",
-}
-
-INFERENTIA_INSTANCE_PREFIX = "ml_inf"
 
 
 class Model(object):
@@ -210,7 +183,7 @@ class Model(object):
 
     def _framework(self):
         """Placeholder docstring"""
-        return getattr(self, "__framework_name__", None)
+        return getattr(self, "_framework_name", None)
 
     def _get_framework_version(self):
         """Placeholder docstring"""
@@ -226,6 +199,10 @@ class Model(object):
         job_name,
         framework,
         tags,
+        target_platform_os=None,
+        target_platform_arch=None,
+        target_platform_accelerator=None,
+        compiler_options=None,
     ):
         """
         Args:
@@ -237,19 +214,45 @@ class Model(object):
             job_name:
             framework:
             tags:
+            target_platform_os:
+            target_platform_arch:
+            target_platform_accelerator:
+            compiler_options:
         """
         input_model_config = {
             "S3Uri": self.model_data,
-            "DataInputConfig": input_shape
-            if not isinstance(input_shape, dict)
-            else json.dumps(input_shape),
-            "Framework": framework,
+            "DataInputConfig": json.dumps(input_shape)
+            if isinstance(input_shape, dict)
+            else input_shape,
+            "Framework": framework.upper(),
         }
         role = self.sagemaker_session.expand_role(role)
         output_model_config = {
-            "TargetDevice": target_instance_type,
             "S3OutputLocation": output_path,
         }
+
+        if target_instance_type is not None:
+            output_model_config["TargetDevice"] = target_instance_type
+        else:
+            if target_platform_os is None and target_platform_arch is None:
+                raise ValueError(
+                    "target_instance_type or (target_platform_os and target_platform_arch) "
+                    "should be provided"
+                )
+            target_platform = {
+                "Os": target_platform_os,
+                "Arch": target_platform_arch,
+            }
+            if target_platform_accelerator is not None:
+                target_platform["Accelerator"] = target_platform_accelerator
+            output_model_config["TargetPlatform"] = target_platform
+
+        if compiler_options is not None:
+            output_model_config["CompilerOptions"] = (
+                json.dumps(compiler_options)
+                if isinstance(compiler_options, dict)
+                else compiler_options
+            )
 
         return {
             "input_model_config": input_model_config,
@@ -260,64 +263,23 @@ class Model(object):
             "job_name": job_name,
         }
 
-    def check_neo_region(self, region):
-        """Check if this ``Model`` in the available region where neo support.
+    def _compilation_image_uri(self, region, target_instance_type, framework, framework_version):
+        """Retrieve the Neo or Inferentia image URI.
 
         Args:
-            region (str): Specifies the region where want to execute compilation
-
-        Returns:
-            bool: boolean value whether if neo is available in the specified
-            region
+            region (str): The AWS region.
+            target_instance_type (str): Identifies the device on which you want to run
+                your model after compilation, for example: ml_c5. For valid values, see
+                https://docs.aws.amazon.com/sagemaker/latest/dg/API_OutputConfig.html.
+            framework (str): The framework name.
+            framework_version (str): The framework version.
         """
-        if region in NEO_IMAGE_ACCOUNT:
-            return True
-        return False
-
-    def _neo_image_account(self, region):
-        """
-        Args:
-            region:
-        """
-        if region not in NEO_IMAGE_ACCOUNT:
-            raise ValueError(
-                "Neo is not currently supported in {}, "
-                "valid regions: {}".format(region, NEO_IMAGE_ACCOUNT.keys())
-            )
-        return NEO_IMAGE_ACCOUNT[region]
-
-    def _neo_image_uri(self, region, target_instance_type, framework, framework_version):
-        """
-        Args:
-            region:
-            target_instance_type:
-            framework:
-            framework_version:
-        """
-        return fw_utils.create_image_uri(
+        framework_prefix = "inferentia-" if target_instance_type.startswith("ml_inf") else "neo-"
+        return image_uris.retrieve(
+            "{}{}".format(framework_prefix, framework),
             region,
-            "neo-" + framework.lower(),
-            target_instance_type.replace("_", "."),
-            framework_version,
-            py_version="py3",
-            account=self._neo_image_account(region),
-        )
-
-    def _inferentia_image_uri(self, region, target_instance_type, framework, framework_version):
-        """
-                Args:
-                    region:
-                    target_instance_type:
-                    framework:
-                    framework_version:
-                """
-        return fw_utils.create_image_uri(
-            region,
-            "neo-" + framework.lower(),
-            target_instance_type.replace("_", "."),
-            framework_version,
-            py_version="py3",
-            account=self._neo_image_account(region),
+            instance_type=target_instance_type,
+            version=framework_version,
         )
 
     def compile(
@@ -331,6 +293,10 @@ class Model(object):
         compile_max_run=5 * 60,
         framework=None,
         framework_version=None,
+        target_platform_os=None,
+        target_platform_arch=None,
+        target_platform_accelerator=None,
+        compiler_options=None,
     ):
         """Compile this ``Model`` with SageMaker Neo.
 
@@ -339,6 +305,9 @@ class Model(object):
                 run your model after compilation, for example: ml_c5. For allowed
                 strings see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_OutputConfig.html.
+                Alternatively, you can select an OS, Architecture and Accelerator using
+                ``target_platform_os``, ``target_platform_arch``,
+                and ``target_platform_accelerator``.
             input_shape (dict): Specifies the name and shape of the expected
                 inputs for your trained model in json dictionary form, for
                 example: {'data': [1,3,1024,1024]}, or {'var1': [1,1,28,28],
@@ -356,12 +325,27 @@ class Model(object):
                 model. Allowed values: 'mxnet', 'tensorflow', 'keras', 'pytorch',
                 'onnx', 'xgboost'
             framework_version (str):
+            target_platform_os (str): Target Platform OS, for example: 'LINUX'.
+                For allowed strings see
+                https://docs.aws.amazon.com/sagemaker/latest/dg/API_OutputConfig.html.
+                It can be used instead of target_instance_family.
+            target_platform_arch (str): Target Platform Architecture, for example: 'X86_64'.
+                For allowed strings see
+                https://docs.aws.amazon.com/sagemaker/latest/dg/API_OutputConfig.html.
+                It can be used instead of target_instance_family.
+            target_platform_accelerator (str, optional): Target Platform Accelerator,
+                for example: 'NVIDIA'. For allowed strings see
+                https://docs.aws.amazon.com/sagemaker/latest/dg/API_OutputConfig.html.
+                It can be used instead of target_instance_family.
+            compiler_options (dict, optional): Additional parameters for compiler.
+                Compiler Options are TargetPlatform / target_instance_family specific. See
+                https://docs.aws.amazon.com/sagemaker/latest/dg/API_OutputConfig.html for details.
 
         Returns:
             sagemaker.model.Model: A SageMaker ``Model`` object. See
             :func:`~sagemaker.model.Model` for full details.
         """
-        framework = self._framework() or framework
+        framework = framework or self._framework()
         if framework is None:
             raise ValueError(
                 "You must specify framework, allowed values {}".format(NEO_ALLOWED_FRAMEWORKS)
@@ -375,8 +359,7 @@ class Model(object):
         if self.model_data is None:
             raise ValueError("You must provide an S3 path to the compressed model artifacts.")
 
-        framework = framework.upper()
-        framework_version = self._get_framework_version() or framework_version
+        framework_version = framework_version or self._get_framework_version()
 
         self._init_sagemaker_session_if_does_not_exist(target_instance_family)
         config = self._compilation_job_config(
@@ -388,38 +371,44 @@ class Model(object):
             job_name,
             framework,
             tags,
+            target_platform_os,
+            target_platform_arch,
+            target_platform_accelerator,
+            compiler_options,
         )
         self.sagemaker_session.compile_model(**config)
         job_status = self.sagemaker_session.wait_for_compilation_job(job_name)
         self.model_data = job_status["ModelArtifacts"]["S3ModelArtifacts"]
-        if target_instance_family.startswith("ml_"):
-            self.image_uri = self._neo_image_uri(
-                self.sagemaker_session.boto_region_name,
-                target_instance_family,
-                framework,
-                framework_version,
-            )
-            self._is_compiled_model = True
-        elif target_instance_family.startswith(INFERENTIA_INSTANCE_PREFIX):
-            self.image_uri = self._inferentia_image_uri(
-                self.sagemaker_session.boto_region_name,
-                target_instance_family,
-                framework,
-                framework_version,
-            )
-            self._is_compiled_model = True
+
+        if target_instance_family is not None:
+            if target_instance_family.startswith("ml_"):
+                self.image_uri = self._compilation_image_uri(
+                    self.sagemaker_session.boto_region_name,
+                    target_instance_family,
+                    framework,
+                    framework_version,
+                )
+                self._is_compiled_model = True
+            else:
+                LOGGER.warning(
+                    "The instance type %s is not supported for deployment via SageMaker."
+                    "Please deploy the model manually.",
+                    target_instance_family,
+                )
         else:
             LOGGER.warning(
-                "The instance type %s is not supported to deploy via SageMaker,"
-                "please deploy the model manually.",
-                target_instance_family,
+                "Devices described by Target Platform OS, Architecture and Accelerator are not"
+                "supported for deployment via SageMaker. Please deploy the model manually."
             )
+
         return self
 
     def deploy(
         self,
         initial_instance_count,
         instance_type,
+        serializer=None,
+        deserializer=None,
         accelerator_type=None,
         endpoint_name=None,
         tags=None,
@@ -446,6 +435,16 @@ class Model(object):
                 in the ``Endpoint`` created from this ``Model``.
             instance_type (str): The EC2 instance type to deploy this Model to.
                 For example, 'ml.p2.xlarge', or 'local' for local mode.
+            serializer (:class:`~sagemaker.serializers.BaseSerializer`): A
+                serializer object, used to encode data for an inference endpoint
+                (default: None). If ``serializer`` is not None, then
+                ``serializer`` will override the default serializer. The
+                default serializer is set by the ``predictor_cls``.
+            deserializer (:class:`~sagemaker.deserializers.BaseDeserializer`): A
+                deserializer object, used to decode data from an inference
+                endpoint (default: None). If ``deserializer`` is not None, then
+                ``deserializer`` will override the default deserializer. The
+                default deserializer is set by the ``predictor_cls``.
             accelerator_type (str): Type of Elastic Inference accelerator to
                 deploy this model for model loading and inference, for example,
                 'ml.eia1.medium'. If not specified, no Elastic Inference
@@ -512,7 +511,12 @@ class Model(object):
         )
 
         if self.predictor_cls:
-            return self.predictor_cls(self.endpoint_name, self.sagemaker_session)
+            predictor = self.predictor_cls(self.endpoint_name, self.sagemaker_session)
+            if serializer:
+                predictor.serializer = serializer
+            if deserializer:
+                predictor.deserializer = deserializer
+            return predictor
         return None
 
     def transformer(
@@ -789,7 +793,7 @@ class FrameworkModel(Model):
         self.git_config = git_config
         self.container_log_level = container_log_level
         if code_location:
-            self.bucket, self.key_prefix = fw_utils.parse_s3_url(code_location)
+            self.bucket, self.key_prefix = s3.parse_s3_url(code_location)
         else:
             self.bucket, self.key_prefix = None, None
         if self.git_config:
@@ -862,7 +866,7 @@ class FrameworkModel(Model):
             )
 
             self.repacked_model_data = repacked_model_data
-            self.uploaded_code = UploadedCode(
+            self.uploaded_code = fw_utils.UploadedCode(
                 s3_prefix=self.repacked_model_data, script_name=os.path.basename(self.entry_point)
             )
 

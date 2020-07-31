@@ -107,7 +107,7 @@ LIST_TAGS_RESULT = {"Tags": [{"Key": "TagtestKey", "Value": "TagtestValue"}]}
 
 
 class DummyFramework(Framework):
-    __framework_name__ = "dummy"
+    _framework_name = "dummy"
 
     def train_image(self):
         return IMAGE_URI
@@ -2020,6 +2020,8 @@ def test_generic_to_deploy_kms(create_model, sagemaker_session):
     model.deploy.assert_called_with(
         instance_type=INSTANCE_TYPE,
         initial_instance_count=INSTANCE_COUNT,
+        serializer=None,
+        deserializer=None,
         accelerator_type=None,
         endpoint_name=endpoint_name,
         tags=None,
@@ -2120,7 +2122,7 @@ def test_generic_deploy_accelerator_type(sagemaker_session):
         IMAGE_URI, ROLE, INSTANCE_COUNT, INSTANCE_TYPE, sagemaker_session=sagemaker_session
     )
     e.fit({"train": "s3://bucket/training-prefix"})
-    e.deploy(INSTANCE_COUNT, INSTANCE_TYPE, ACCELERATOR_TYPE)
+    e.deploy(INSTANCE_COUNT, INSTANCE_TYPE, accelerator_type=ACCELERATOR_TYPE)
 
     args = e.sagemaker_session.endpoint_from_production_variants.call_args[1]
     print(args)

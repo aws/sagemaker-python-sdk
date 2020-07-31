@@ -143,12 +143,26 @@ def test_retrieve_eia(config_for_framework, caplog):
         version="1.0.0",
         py_version="py3",
         instance_type="ml.c4.xlarge",
-        accelerator_type="ml.eia1.medium",
+        accelerator_type="local_sagemaker_notebook",
         region="us-west-2",
         image_scope="training",
     )
     assert "123412341234.dkr.ecr.us-west-2.amazonaws.com/dummy-eia:1.0.0-cpu-py3" == uri
     assert "Ignoring image scope: training." in caplog.text
+
+
+@patch("sagemaker.image_uris.config_for_framework", return_value=BASE_CONFIG)
+def test_retrieve_invalid_accelerator(config_for_framework):
+    with pytest.raises(ValueError) as e:
+        image_uris.retrieve(
+            framework="useless-string",
+            version="1.0.0",
+            py_version="py3",
+            instance_type="ml.c4.xlarge",
+            accelerator_type="fake-accelerator",
+            region="us-west-2",
+        )
+    assert "Invalid SageMaker Elastic Inference accelerator type: fake-accelerator." in str(e.value)
 
 
 @patch("sagemaker.image_uris.config_for_framework")
@@ -425,6 +439,59 @@ def test_retrieve_processor_type(config_for_framework):
             image_scope="training",
         )
         assert "123412341234.dkr.ecr.us-west-2.amazonaws.com/dummy:1.0.0-gpu-py3" == uri
+
+
+@patch("sagemaker.image_uris.config_for_framework", return_value=BASE_CONFIG)
+def test_retrieve_processor_type_neo(config_for_framework):
+    for cpu in ("ml_m4", "ml_m5", "ml_c4", "ml_c5"):
+        uri = image_uris.retrieve(
+            framework="useless-string",
+            version="1.0.0",
+            py_version="py3",
+            instance_type=cpu,
+            region="us-west-2",
+            image_scope="training",
+        )
+        assert "123412341234.dkr.ecr.us-west-2.amazonaws.com/dummy:1.0.0-cpu-py3" == uri
+
+    for gpu in ("ml_p2", "ml_p3"):
+        uri = image_uris.retrieve(
+            framework="useless-string",
+            version="1.0.0",
+            py_version="py3",
+            instance_type=gpu,
+            region="us-west-2",
+            image_scope="training",
+        )
+        assert "123412341234.dkr.ecr.us-west-2.amazonaws.com/dummy:1.0.0-gpu-py3" == uri
+
+    config = copy.deepcopy(BASE_CONFIG)
+    config["processors"] = ["inf"]
+    config_for_framework.return_value = config
+
+    uri = image_uris.retrieve(
+        framework="useless-string",
+        version="1.0.0",
+        py_version="py3",
+        instance_type="ml_inf1",
+        region="us-west-2",
+        image_scope="training",
+    )
+    assert "123412341234.dkr.ecr.us-west-2.amazonaws.com/dummy:1.0.0-inf-py3" == uri
+
+    config = copy.deepcopy(BASE_CONFIG)
+    config["processors"] = ["c5"]
+    config_for_framework.return_value = config
+
+    uri = image_uris.retrieve(
+        framework="useless-string",
+        version="1.0.0",
+        py_version="py3",
+        instance_type="ml_c5",
+        region="us-west-2",
+        image_scope="training",
+    )
+    assert "123412341234.dkr.ecr.us-west-2.amazonaws.com/dummy:1.0.0-c5-py3" == uri
 
 
 @patch("sagemaker.image_uris.config_for_framework")

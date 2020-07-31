@@ -24,9 +24,9 @@ from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 
 @pytest.mark.canary_quick
-def test_coach_mxnet(sagemaker_session, rl_coach_mxnet_full_version, cpu_instance_type):
+def test_coach_mxnet(sagemaker_session, coach_mxnet_latest_version, cpu_instance_type):
     estimator = _test_coach(
-        sagemaker_session, RLFramework.MXNET, rl_coach_mxnet_full_version, cpu_instance_type
+        sagemaker_session, RLFramework.MXNET, coach_mxnet_latest_version, cpu_instance_type
     )
     job_name = unique_name_from_base("test-coach-mxnet")
 
@@ -51,9 +51,12 @@ def test_coach_mxnet(sagemaker_session, rl_coach_mxnet_full_version, cpu_instanc
     assert 0 < action[0][1] < 1
 
 
-def test_coach_tf(sagemaker_session, rl_coach_tf_full_version, cpu_instance_type):
+def test_coach_tf(sagemaker_session, coach_tensorflow_latest_version, cpu_instance_type):
     estimator = _test_coach(
-        sagemaker_session, RLFramework.TENSORFLOW, rl_coach_tf_full_version, cpu_instance_type
+        sagemaker_session,
+        RLFramework.TENSORFLOW,
+        coach_tensorflow_latest_version,
+        cpu_instance_type,
     )
     job_name = unique_name_from_base("test-coach-tf")
 
@@ -96,7 +99,7 @@ def _test_coach(sagemaker_session, rl_framework, rl_coach_version, cpu_instance_
 
 
 @pytest.mark.canary_quick
-def test_ray_tf(sagemaker_session, rl_ray_full_version, cpu_instance_type):
+def test_ray_tf(sagemaker_session, ray_tensorflow_latest_version, cpu_instance_type):
     source_dir = os.path.join(DATA_DIR, "ray_cartpole")
     cartpole = "train_ray.py"
 
@@ -105,7 +108,7 @@ def test_ray_tf(sagemaker_session, rl_ray_full_version, cpu_instance_type):
         source_dir=source_dir,
         toolkit=RLToolkit.RAY,
         framework=RLFramework.TENSORFLOW,
-        toolkit_version=rl_ray_full_version,
+        toolkit_version=ray_tensorflow_latest_version,
         sagemaker_session=sagemaker_session,
         role="SageMakerRole",
         instance_type=cpu_instance_type,

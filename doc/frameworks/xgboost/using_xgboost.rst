@@ -192,12 +192,14 @@ inference against your model.
 
 .. code::
 
+    serializer = StringSerializer()
+    serializer.CONTENT_TYPE = "text/libsvm"
+
     predictor = estimator.deploy(
         initial_instance_count=1,
-        instance_type="ml.m5.xlarge"
+        instance_type="ml.m5.xlarge",
+        serializer=serializer
     )
-    predictor.serializer = str
-    predictor.content_type = "text/libsvm"
 
     with open("abalone") as f:
         payload = f.read()
@@ -390,6 +392,56 @@ The function should return a byte array of data serialized to ``content_type``.
 The default implementation expects ``prediction`` to be a NumPy array and can serialize the result to JSON, CSV, or NPY.
 It accepts response content types of "application/json", "text/csv", and "application/x-npy".
 
+Bring Your Own Model
+--------------------
+
+You can deploy an XGBoost model that you trained outside of SageMaker by using the Amazon SageMaker XGBoost container.
+Typically, you save an XGBoost model by pickling the ``Booster`` object or calling ``booster.save_model``.
+The XGBoost `built-in algorithm mode <https://docs.aws.amazon.com/sagemaker/latest/dg/xgboost.html#xgboost-modes>`_
+supports both a pickled ``Booster`` object and a model produced by ``booster.save_model``.
+You can also deploy an XGBoost model by using XGBoost as a framework.
+By using XGBoost as a framework, you have more flexibility.
+To deploy an XGBoost model by using XGBoost as a framework, you need to:
+
+- Write an inference script.
+- Create the XGBoostModel object.
+
+Write an Inference Script
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+You must create an inference script that implements (at least) the ``model_fn`` function that calls the loaded model to get a prediction.
+
+Optionally, you can also implement ``input_fn`` and ``output_fn`` to process input and output,
+and ``predict_fn`` to customize how the model server gets predictions from the loaded model.
+For information about how to write an inference script, see `SageMaker XGBoost Model Server <#sagemaker-xgboost-model-server>`_.
+Pass the filename of the inference script as the ``entry_point`` parameter when you create the `XGBoostModel` object.
+
+Create an XGBoostModel Object
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+To create a model object, call the ``sagemaker.xgboost.model.XGBoostModel`` constructor,
+and then call its ``deploy()`` method to deploy your model for inference.
+
+.. code:: python
+
+    xgboost_model = XGBoostModel(
+        model_data="s3://my-bucket/my-path/model.tar.gz",
+        role="my-role",
+        entry_point="inference.py",
+        framework_version="1.0-1"
+    )
+
+    predictor = xgboost_model.deploy(
+        instance_type='ml.c4.xlarge',
+        initial_instance_count=1
+    )
+
+    # If payload is a string in LIBSVM format, we need to change serializer.
+    predictor.serializer = str
+    predictor.predict("<label> <index1>:<value1> <index2>:<value2>")
+
+To get predictions from your deployed model, you can call the ``predict()`` method.
+
 Host Multiple Models with Multi-Model Endpoints
 -----------------------------------------------
 
@@ -400,7 +452,6 @@ For information about using multiple XGBoost models with multi-model endpoints, 
 in the AWS documentation.
 For a sample notebook that uses Amazon SageMaker to deploy multiple XGBoost models to an endpoint, see the
 `Multi-Model Endpoint XGBoost Sample Notebook <https://github.com/awslabs/amazon-sagemaker-examples/blob/master/advanced_functionality/multi_model_xgboost_home_value/xgboost_multi_model_endpoint_home_value.ipynb>`_.
-
 
 *************************
 SageMaker XGBoost Classes

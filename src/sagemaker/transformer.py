@@ -120,6 +120,7 @@ class Transformer(object):
         output_filter=None,
         join_source=None,
         experiment_config=None,
+        model_client_config=None,
         wait=False,
         logs=False,
     ):
@@ -172,6 +173,10 @@ class Transformer(object):
                 Dictionary contains three optional keys,
                 'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
                 (default: ``None``).
+            model_client_config (dict[str, str]): Model configuration.
+                Dictionary contains two optional keys,
+                'InvocationsTimeoutInSeconds', and 'InvocationsMaxRetries'.
+                (default: ``None``).
             wait (bool): Whether the call should wait until the job completes
                 (default: False).
             logs (bool): Whether to show the logs produced by the job.
@@ -208,6 +213,7 @@ class Transformer(object):
             output_filter,
             join_source,
             experiment_config,
+            model_client_config,
         )
 
         if wait:
@@ -342,6 +348,7 @@ class _TransformJob(_Job):
         output_filter,
         join_source,
         experiment_config,
+        model_client_config,
     ):
         """
         Args:
@@ -355,6 +362,7 @@ class _TransformJob(_Job):
             output_filter:
             join_source:
             experiment_config:
+            model_client_config:
         """
         config = _TransformJob._load_config(
             data, data_type, content_type, compression_type, split_type, transformer
@@ -374,6 +382,7 @@ class _TransformJob(_Job):
             output_config=config["output_config"],
             resource_config=config["resource_config"],
             experiment_config=experiment_config,
+            model_client_config=model_client_config,
             tags=transformer.tags,
             data_processing=data_processing,
         )
