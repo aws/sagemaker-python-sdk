@@ -20,6 +20,7 @@ import pytest
 import scipy.stats as st
 
 from sagemaker import image_uris
+from sagemaker.deserializers import CSVDeserializer
 from sagemaker.s3 import S3Uploader
 from sagemaker.session import production_variant
 from sagemaker.sparkml import SparkMLModel
@@ -173,8 +174,6 @@ def test_predict_invocation_with_target_variant(sagemaker_session, multi_variant
         endpoint_name=multi_variant_endpoint.endpoint_name,
         sagemaker_session=sagemaker_session,
         serializer=CSVSerializer(),
-        content_type="text/csv",
-        accept="text/csv",
     )
 
     # Validate that no exception is raised when the target_variant is specified.
@@ -301,8 +300,7 @@ def test_predict_invocation_with_target_variant_local_mode(
         endpoint_name=multi_variant_endpoint.endpoint_name,
         sagemaker_session=sagemaker_session,
         serializer=CSVSerializer(),
-        content_type="text/csv",
-        accept="text/csv",
+        deserializer=CSVDeserializer(),
     )
 
     # Validate that no exception is raised when the target_variant is specified.

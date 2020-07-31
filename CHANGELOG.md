@@ -1,5 +1,79 @@
 # Changelog
 
+## v1.72.0 (2020-07-29)
+
+### Features
+
+ * Neo: Add Granular Target Description support for compilation
+
+### Documentation Changes
+
+ * Add xgboost doc on bring your own model
+ * fix typos on processing docs
+
+## v1.71.1 (2020-07-27)
+
+### Bug Fixes and Other Changes
+
+ * remove redundant information from the user_agent string.
+
+### Testing and Release Infrastructure
+
+ * use unique model name in TFS integ tests
+ * use pytest-cov instead of coverage
+
+## v1.71.0 (2020-07-23)
+
+### Features
+
+ * Add mpi support for mxnet estimator api
+
+### Bug Fixes and Other Changes
+
+ * use 'sagemaker' logger instead of root logger
+ * account for "py36" and "py37" in image tag parsing
+
+## v1.70.2 (2020-07-22)
+
+### Bug Fixes and Other Changes
+
+ * convert network_config in processing_config to dict
+
+### Documentation Changes
+
+ * Add ECR URI Estimator example
+
+## v1.70.1 (2020-07-21)
+
+### Bug Fixes and Other Changes
+
+ * Nullable fields in processing_config
+
+## v1.70.0 (2020-07-20)
+
+### Features
+
+ * Add model monitor support for us-gov-west-1
+ * support TFS 2.2
+
+### Bug Fixes and Other Changes
+
+ * reshape Artifacts into data frame in ExperimentsAnalytics
+
+### Documentation Changes
+
+ * fix MXNet version info for requirements.txt support
+
+## v1.69.0 (2020-07-09)
+
+### Features
+
+ * Add ModelClientConfig Fields for Batch Transform
+
+### Documentation Changes
+
+ * add KFP Processing component
+
 ## v2.0.0.rc1 (2020-07-08)
 
 ### Breaking Changes

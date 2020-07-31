@@ -193,6 +193,35 @@ class JSONSerializer(BaseSerializer):
         return json.dumps(data)
 
 
+class IdentitySerializer(BaseSerializer):
+    """Serialize data by returning data without modification."""
+
+    def __init__(self, content_type="application/octet-stream"):
+        """Initialize the ``content_type`` attribute.
+
+        Args:
+            content_type (str): The MIME type of the serialized data (default:
+                "application/octet-stream").
+        """
+        self.content_type = content_type
+
+    def serialize(self, data):
+        """Return data without modification.
+
+        Args:
+            data (object): Data to be serialized.
+
+        Returns:
+            object: The unmodified data.
+        """
+        return data
+
+    @property
+    def CONTENT_TYPE(self):
+        """The MIME type of the data sent to the inference endpoint."""
+        return self.content_type
+
+
 class JSONLinesSerializer(BaseSerializer):
     """Serialize data to a JSON Lines formatted string."""
 

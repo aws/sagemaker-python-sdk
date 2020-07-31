@@ -29,7 +29,9 @@ from sagemaker.analytics import TrainingJobAnalytics
 from sagemaker.debugger import DebuggerHookConfig
 from sagemaker.debugger import TensorBoardOutputConfig  # noqa: F401 # pylint: disable=unused-import
 from sagemaker.debugger import get_rule_container_image_uri
+from sagemaker.deserializers import BytesDeserializer
 from sagemaker.s3 import S3Uploader, parse_s3_url
+from sagemaker.serializers import IdentitySerializer
 
 from sagemaker.fw_utils import (
     tar_and_upload_dir,
@@ -53,6 +55,8 @@ from sagemaker.session import Session
 from sagemaker.transformer import Transformer
 from sagemaker.utils import base_from_name, base_name_from_image, name_from_base, get_config_value
 from sagemaker import vpc_utils
+
+logger = logging.getLogger(__name__)
 
 
 class EstimatorBase(with_metaclass(ABCMeta, object)):
@@ -517,6 +521,10 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         framework_version=None,
         compile_max_run=15 * 60,
         tags=None,
+        target_platform_os=None,
+        target_platform_arch=None,
+        target_platform_accelerator=None,
+        compiler_options=None,
         **kwargs
     ):
         """Compile a Neo model using the input model.
@@ -541,6 +549,21 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             tags (list[dict]): List of tags for labeling a compilation job. For
                 more, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
+            target_platform_os (str): Target Platform OS, for example: 'LINUX'.
+                For allowed strings see
+                https://docs.aws.amazon.com/sagemaker/latest/dg/API_OutputConfig.html.
+                It can be used instead of target_instance_family.
+            target_platform_arch (str): Target Platform Architecture, for example: 'X86_64'.
+                For allowed strings see
+                https://docs.aws.amazon.com/sagemaker/latest/dg/API_OutputConfig.html.
+                It can be used instead of target_instance_family.
+            target_platform_accelerator (str, optional): Target Platform Accelerator,
+                for example: 'NVIDIA'. For allowed strings see
+                https://docs.aws.amazon.com/sagemaker/latest/dg/API_OutputConfig.html.
+                It can be used instead of target_instance_family.
+            compiler_options (dict, optional): Additional parameters for compiler.
+                Compiler Options are TargetPlatform / target_instance_family specific. See
+                https://docs.aws.amazon.com/sagemaker/latest/dg/API_OutputConfig.html for details.
             **kwargs: Passed to invocation of ``create_model()``.
                 Implementations may customize ``create_model()`` to accept
                 ``**kwargs`` to customize model creation during deploy. For
@@ -570,6 +593,10 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             compile_max_run,
             framework=framework,
             framework_version=framework_version,
+            target_platform_os=target_platform_os,
+            target_platform_arch=target_platform_arch,
+            target_platform_accelerator=target_platform_accelerator,
+            compiler_options=compiler_options,
         )
         return self._compiled_models[target_instance_family]
 
@@ -744,7 +771,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                 TrainingJobName=self.latest_training_job.name
             )["ModelArtifacts"]["S3ModelArtifacts"]
         else:
-            logging.warning(
+            logger.warning(
                 "No finished training job found associated with this estimator. Please make sure "
                 "this estimator is only used for building workflow config"
             )
@@ -910,7 +937,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         model_name = self._get_or_create_name(model_name)
 
         if self.latest_training_job is None:
-            logging.warning(
+            logger.warning(
                 "No finished training job found associated with this estimator. Please make sure "
                 "this estimator is only used for building workflow config"
             )
@@ -1029,7 +1056,7 @@ class _TrainingJob(_Job):
 
         if isinstance(inputs, TrainingInput):
             if "InputMode" in inputs.config:
-                logging.debug(
+                logger.debug(
                     "Selecting TrainingInput's input_mode (%s) for TrainingInputMode.",
                     inputs.config["InputMode"],
                 )
@@ -1340,16 +1367,14 @@ class Estimator(EstimatorBase):
         role=None,
         image_uri=None,
         predictor_cls=None,
-        serializer=None,
-        deserializer=None,
-        content_type=None,
-        accept=None,
+        serializer=IdentitySerializer(),
+        deserializer=BytesDeserializer(),
         vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT,
         **kwargs
     ):
         """Create a model to deploy.
 
-        The serializer, deserializer, content_type, and accept arguments are only used to define a
+        The serializer and deserializer arguments are only used to define a
         default Predictor. They are ignored if an explicit predictor class is passed in.
         Other arguments are passed through to the Model class.
 
@@ -1361,17 +1386,12 @@ class Estimator(EstimatorBase):
                 Defaults to the image used for training.
             predictor_cls (Predictor): The predictor class to use when
                 deploying the model.
-            serializer (callable): Should accept a single argument, the input
-                data, and return a sequence of bytes. May provide a content_type
-                attribute that defines the endpoint request content type
-            deserializer (callable): Should accept two arguments, the result
-                data and the response content type, and return a sequence of
-                bytes. May provide a content_type attribute that defines th
-                endpoint response Accept content type.
-            content_type (str): The invocation ContentType, overriding any
-                content_type from the serializer
-            accept (str): The invocation Accept, overriding any accept from the
-                deserializer.
+            serializer (:class:`~sagemaker.serializers.BaseSerializer`): A
+                serializer object, used to encode data for an inference endpoint
+                (default: :class:`~sagemaker.serializers.IdentitySerializer`).
+            deserializer (:class:`~sagemaker.deserializers.BaseDeserializer`): A
+                deserializer object, used to decode data from an inference
+                endpoint (default: :class:`~sagemaker.deserializers.BytesDeserializer`).
             vpc_config_override (dict[str, list[str]]): Optional override for VpcConfig set on
                 the model.
                 Default: use subnets and security groups from this Estimator.
@@ -1390,7 +1410,7 @@ class Estimator(EstimatorBase):
         if predictor_cls is None:
 
             def predict_wrapper(endpoint, session):
-                return Predictor(endpoint, session, serializer, deserializer, content_type, accept)
+                return Predictor(endpoint, session, serializer, deserializer)
 
             predictor_cls = predict_wrapper
 
@@ -2004,7 +2024,7 @@ class Framework(EstimatorBase):
             if env is not None:
                 transform_env.update(env)
         else:
-            logging.warning(
+            logger.warning(
                 "No finished training job found associated with this estimator. Please make sure "
                 "this estimator is only used for building workflow config"
             )
