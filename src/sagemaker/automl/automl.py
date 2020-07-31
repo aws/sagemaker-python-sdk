@@ -337,6 +337,8 @@ class AutoML(object):
         self,
         initial_instance_count,
         instance_type,
+        serializer=None,
+        deserializer=None,
         candidate=None,
         sagemaker_session=None,
         name=None,
@@ -356,6 +358,16 @@ class AutoML(object):
                 in the ``Endpoint`` created from this ``Model``.
             instance_type (str): The EC2 instance type to deploy this Model to.
                 For example, 'ml.p2.xlarge'.
+            serializer (:class:`~sagemaker.serializers.BaseSerializer`): A
+                serializer object, used to encode data for an inference endpoint
+                (default: None). If ``serializer`` is not None, then
+                ``serializer`` will override the default serializer. The
+                default serializer is set by the ``predictor_cls``.
+            deserializer (:class:`~sagemaker.deserializers.BaseDeserializer`): A
+                deserializer object, used to decode data from an inference
+                endpoint (default: None). If ``deserializer`` is not None, then
+                ``deserializer`` will override the default deserializer. The
+                default deserializer is set by the ``predictor_cls``.
             candidate (CandidateEstimator or dict): a CandidateEstimator used for deploying
                 to a SageMaker Inference Pipeline. If None, the best candidate will
                 be used. If the candidate input is a dict, a CandidateEstimator will be
@@ -405,6 +417,8 @@ class AutoML(object):
         return model.deploy(
             initial_instance_count=initial_instance_count,
             instance_type=instance_type,
+            serializer=serializer,
+            deserializer=deserializer,
             endpoint_name=endpoint_name,
             tags=tags,
             wait=wait,
