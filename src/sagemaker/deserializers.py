@@ -52,7 +52,7 @@ class BaseDeserializer(abc.ABC):
     @property
     @abc.abstractmethod
     def ACCEPT(self):
-        """The content type that is expected from the inference endpoint."""
+        """The content types that are expected from the inference endpoint."""
 
 
 class StringDeserializer(BaseDeserializer):
@@ -161,7 +161,7 @@ class StreamDeserializer(BaseDeserializer):
 class NumpyDeserializer(BaseDeserializer):
     """Deserialize a stream of data in the .npy format."""
 
-    ACCEPT = ["application/x-npy"]
+    ACCEPT = ["application/x-npy", "text/csv", "application/json"]
 
     def __init__(self, dtype=None, allow_pickle=True):
         """Initialize the dtype and allow_pickle arguments.
@@ -250,7 +250,7 @@ class PandasDeserializer(BaseDeserializer):
 class JSONLinesDeserializer(BaseDeserializer):
     """Deserialize JSON lines data from an inference endpoint."""
 
-    ACCEPT = "application/jsonlines"
+    ACCEPT = ["application/jsonlines"]
 
     def deserialize(self, stream, content_type):
         """Deserialize JSON lines data from an inference endpoint.
