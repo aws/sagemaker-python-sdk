@@ -59,7 +59,7 @@ class MXNetPredictor(Predictor):
 class MXNetModel(FrameworkModel):
     """An MXNet SageMaker ``Model`` that can be deployed to a SageMaker ``Endpoint``."""
 
-    __framework_name__ = "mxnet"
+    _framework_name = "mxnet"
     _LOWEST_MMS_VERSION = "1.4.0"
 
     def __init__(
@@ -119,7 +119,7 @@ class MXNetModel(FrameworkModel):
         validate_version_or_image_args(framework_version, py_version, image_uri)
         if py_version == "py2":
             logger.warning(
-                python_deprecation_warning(self.__framework_name__, defaults.LATEST_PY2_VERSION)
+                python_deprecation_warning(self._framework_name, defaults.LATEST_PY2_VERSION)
             )
         self.framework_version = framework_version
         self.py_version = py_version
@@ -184,7 +184,7 @@ class MXNetModel(FrameworkModel):
 
         """
         return image_uris.retrieve(
-            self.__framework_name__,
+            self._framework_name,
             region_name,
             version=self.framework_version,
             py_version=self.py_version,

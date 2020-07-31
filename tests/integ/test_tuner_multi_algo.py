@@ -190,6 +190,7 @@ def _deploy_and_predict(sagemaker_session, tuner, data_set, cpu_instance_type):
             )
         )
         predictor = tuner.deploy(1, cpu_instance_type, endpoint_name=best_training_job)
+        predictor.content_type = "application/json"
 
         print("Making prediction using the deployed model")
         data = data_set[0][:10]

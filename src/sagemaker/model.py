@@ -18,8 +18,7 @@ import logging
 import os
 
 import sagemaker
-from sagemaker import fw_utils, image_uris, local, session, utils, git_utils
-from sagemaker.fw_utils import UploadedCode
+from sagemaker import fw_utils, image_uris, local, s3, session, utils, git_utils
 from sagemaker.transformer import Transformer
 
 LOGGER = logging.getLogger("sagemaker")
@@ -184,7 +183,7 @@ class Model(object):
 
     def _framework(self):
         """Placeholder docstring"""
-        return getattr(self, "__framework_name__", None)
+        return getattr(self, "_framework_name", None)
 
     def _get_framework_version(self):
         """Placeholder docstring"""
@@ -715,7 +714,7 @@ class FrameworkModel(Model):
         self.git_config = git_config
         self.container_log_level = container_log_level
         if code_location:
-            self.bucket, self.key_prefix = fw_utils.parse_s3_url(code_location)
+            self.bucket, self.key_prefix = s3.parse_s3_url(code_location)
         else:
             self.bucket, self.key_prefix = None, None
         if self.git_config:
@@ -788,7 +787,7 @@ class FrameworkModel(Model):
             )
 
             self.repacked_model_data = repacked_model_data
-            self.uploaded_code = UploadedCode(
+            self.uploaded_code = fw_utils.UploadedCode(
                 s3_prefix=self.repacked_model_data, script_name=os.path.basename(self.entry_point)
             )
 

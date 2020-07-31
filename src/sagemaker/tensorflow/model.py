@@ -33,7 +33,6 @@ class TensorFlowPredictor(Predictor):
         sagemaker_session=None,
         serializer=JSONSerializer(),
         deserializer=JSONDeserializer(),
-        content_type=None,
         model_name=None,
         model_version=None,
     ):
@@ -51,9 +50,6 @@ class TensorFlowPredictor(Predictor):
                 json. Handles dicts, lists, and numpy arrays.
             deserializer (callable): Optional. Default parses the response using
                 ``json.load(...)``.
-            content_type (str): Optional. The "ContentType" for invocation
-                requests. If specified, overrides the ``content_type`` from the
-                serializer (default: None).
             model_name (str): Optional. The name of the SavedModel model that
                 should handle the request. If not specified, the endpoint's
                 default model will handle the request.
@@ -62,7 +58,7 @@ class TensorFlowPredictor(Predictor):
                 version of the model will be used.
         """
         super(TensorFlowPredictor, self).__init__(
-            endpoint_name, sagemaker_session, serializer, deserializer, content_type
+            endpoint_name, sagemaker_session, serializer, deserializer,
         )
 
         attributes = []
@@ -121,7 +117,7 @@ class TensorFlowPredictor(Predictor):
 class TensorFlowModel(sagemaker.model.FrameworkModel):
     """A ``FrameworkModel`` implementation for inference with TensorFlow Serving."""
 
-    __framework_name__ = "tensorflow"
+    _framework_name = "tensorflow"
     LOG_LEVEL_PARAM_NAME = "SAGEMAKER_TFS_NGINX_LOGLEVEL"
     LOG_LEVEL_MAP = {
         logging.DEBUG: "debug",
@@ -286,7 +282,7 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
             return self.image_uri
 
         return image_uris.retrieve(
-            self.__framework_name__,
+            self._framework_name,
             self.sagemaker_session.boto_region_name,
             version=self.framework_version,
             instance_type=instance_type,
