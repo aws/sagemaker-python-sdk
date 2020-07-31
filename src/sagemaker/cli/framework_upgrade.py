@@ -41,9 +41,9 @@ def get_latest_values(existing_content, scope=None):
             )
 
     latest_version = list(existing_content["versions"].keys())[-1]
-    registries = existing_content["versions"][latest_version]["registries"]
-    py_versions = existing_content["versions"][latest_version]["py_versions"]
-    repository = existing_content["versions"][latest_version]["repository"]
+    registries = existing_content["versions"][latest_version].get("registries", None)
+    py_versions = existing_content["versions"][latest_version].get("py_versions", None)
+    repository = existing_content["versions"][latest_version].get("repository", None)
 
     return registries, py_versions, repository
 
@@ -92,8 +92,9 @@ def add_dlc_framework_version(
     new_version = {
         "registries": registries,
         "repository": repository,
-        "py_versions": py_versions,
     }
+    if py_versions:
+        new_version["py_versions"] = py_versions
     existing_content[scope]["versions"][full_version] = new_version
 
 
@@ -128,10 +129,11 @@ def add_algo_version(
             existing_content["scope"].append(scope)
 
     new_version = {
-        "py_versions": py_versions,
         "registries": registries,
         "repository": repository,
     }
+    if py_versions:
+        new_version["py_versions"] = py_versions
     if tag_prefix:
         new_version["tag_prefix"] = tag_prefix
     existing_content["versions"][full_version] = new_version
