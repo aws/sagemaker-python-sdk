@@ -16,7 +16,9 @@ from __future__ import absolute_import
 import sagemaker
 import sagemaker.parameter
 from sagemaker import vpc_utils
+from sagemaker.deserializers import BytesDeserializer
 from sagemaker.estimator import EstimatorBase
+from sagemaker.serializers import IdentitySerializer
 from sagemaker.transformer import Transformer
 from sagemaker.predictor import Predictor
 
@@ -251,19 +253,16 @@ class AlgorithmEstimator(EstimatorBase):
         self,
         role=None,
         predictor_cls=None,
-        serializer=None,
-        deserializer=None,
-        content_type=None,
-        accept=None,
+        serializer=IdentitySerializer(),
+        deserializer=BytesDeserializer(),
         vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT,
         **kwargs
     ):
         """Create a model to deploy.
 
-        The serializer, deserializer, content_type, and accept arguments are
-        only used to define a default Predictor. They are ignored if an
-        explicit predictor class is passed in. Other arguments are passed
-        through to the Model class.
+        The serializer and deserializer are only used to define a default
+        Predictor. They are ignored if an explicit predictor class is passed in.
+        Other arguments are passed through to the Model class.
 
         Args:
             role (str): The ``ExecutionRoleArn`` IAM Role ARN for the ``Model``,
@@ -271,17 +270,12 @@ class AlgorithmEstimator(EstimatorBase):
                 role from the Estimator will be used.
             predictor_cls (Predictor): The predictor class to use when
                 deploying the model.
-            serializer (callable): Should accept a single argument, the input
-                data, and return a sequence of bytes. May provide a content_type
-                attribute that defines the endpoint request content type
-            deserializer (callable): Should accept two arguments, the result
-                data and the response content type, and return a sequence of
-                bytes. May provide a content_type attribute that defines the
-                endpoint response Accept content type.
-            content_type (str): The invocation ContentType, overriding any
-                content_type from the serializer
-            accept (str): The invocation Accept, overriding any accept from the
-                deserializer.
+            serializer (:class:`~sagemaker.serializers.BaseSerializer`): A
+                serializer object, used to encode data for an inference endpoint
+                (default: :class:`~sagemaker.serializers.IdentitySerializer`).
+            deserializer (:class:`~sagemaker.deserializers.BaseDeserializer`): A
+                deserializer object, used to decode data from an inference
+                endpoint (default: :class:`~sagemaker.deserializers.BytesDeserializer`).
             vpc_config_override (dict[str, list[str]]): Optional override for VpcConfig set on
                 the model. Default: use subnets and security groups from this Estimator.
                 * 'Subnets' (list[str]): List of subnet ids.
@@ -300,7 +294,7 @@ class AlgorithmEstimator(EstimatorBase):
         if predictor_cls is None:
 
             def predict_wrapper(endpoint, session):
-                return Predictor(endpoint, session, serializer, deserializer, content_type, accept)
+                return Predictor(endpoint, session, serializer, deserializer)
 
             predictor_cls = predict_wrapper
 
