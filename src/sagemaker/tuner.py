@@ -1438,9 +1438,6 @@ class _TuningJob(_Job):
             sagemaker.tuner._TuningJob: Constructed object that captures all
             information about the started job.
         """
-
-        logger.info("_TuningJob.start_new!!!")
-
         warm_start_config_req = None
         if tuner.warm_start_config:
             warm_start_config_req = tuner.warm_start_config.to_input_req()

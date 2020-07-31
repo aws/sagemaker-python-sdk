@@ -152,11 +152,8 @@ def _tune(
         records = kmeans_estimator.record_set(kmeans_train_set[0][:100])
         test_record_set = kmeans_estimator.record_set(kmeans_train_set[0][:100], channel="test")
 
-        tuner.fit([records, test_record_set], job_name=job_name)
-        print("Started hyperparameter tuning job with name:" + tuner.latest_tuning_job.name)
-
-        if wait:
-            tuner.wait()
+        print("Started hyperparameter tuning job with name: {}".format(job_name))
+        tuner.fit([records, test_record_set], job_name=job_name, wait=wait)
 
     return tuner
 
