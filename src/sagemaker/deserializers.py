@@ -58,7 +58,7 @@ class BaseDeserializer(abc.ABC):
 class StringDeserializer(BaseDeserializer):
     """Deserialize data from an inference endpoint into a decoded string."""
 
-    ACCEPT = ["application/json", "text/csv"]
+    ACCEPT = ("application/json", "text/csv")
 
     def __init__(self, encoding="UTF-8"):
         """Initialize the string encoding.
@@ -87,7 +87,7 @@ class StringDeserializer(BaseDeserializer):
 class BytesDeserializer(BaseDeserializer):
     """Deserialize a stream of bytes into a bytes object."""
 
-    ACCEPT = ["*/*"]
+    ACCEPT = ("*/*",)
 
     def deserialize(self, stream, content_type):
         """Read a stream of bytes returned from an inference endpoint.
@@ -108,7 +108,7 @@ class BytesDeserializer(BaseDeserializer):
 class CSVDeserializer(BaseDeserializer):
     """Deserialize a stream of bytes into a list of lists."""
 
-    ACCEPT = ["text/csv"]
+    ACCEPT = ("text/csv",)
 
     def __init__(self, encoding="utf-8"):
         """Initialize the string encoding.
@@ -143,7 +143,7 @@ class StreamDeserializer(BaseDeserializer):
     reading it.
     """
 
-    ACCEPT = ["*/*"]
+    ACCEPT = ("*/*",)
 
     def deserialize(self, stream, content_type):
         """Returns a stream of the response body and the MIME type of the data.
@@ -161,7 +161,7 @@ class StreamDeserializer(BaseDeserializer):
 class NumpyDeserializer(BaseDeserializer):
     """Deserialize a stream of data in the .npy format."""
 
-    ACCEPT = ["application/x-npy", "text/csv", "application/json"]
+    ACCEPT = ("application/x-npy", "text/csv", "application/json")
 
     def __init__(self, dtype=None, allow_pickle=True):
         """Initialize the dtype and allow_pickle arguments.
@@ -201,7 +201,7 @@ class NumpyDeserializer(BaseDeserializer):
 class JSONDeserializer(BaseDeserializer):
     """Deserialize JSON data from an inference endpoint into a Python object."""
 
-    ACCEPT = ["application/json"]
+    ACCEPT = ("application/json",)
 
     def deserialize(self, stream, content_type):
         """Deserialize JSON data from an inference endpoint into a Python object.
@@ -222,7 +222,7 @@ class JSONDeserializer(BaseDeserializer):
 class PandasDeserializer(BaseDeserializer):
     """Deserialize CSV or JSON data from an inference endpoint into a pandas dataframe."""
 
-    ACCEPT = ["text/csv", "application/json"]
+    ACCEPT = ("text/csv", "application/json")
 
     def deserialize(self, stream, content_type):
         """Deserialize CSV or JSON data from an inference endpoint into a pandas
@@ -250,7 +250,7 @@ class PandasDeserializer(BaseDeserializer):
 class JSONLinesDeserializer(BaseDeserializer):
     """Deserialize JSON lines data from an inference endpoint."""
 
-    ACCEPT = ["application/jsonlines"]
+    ACCEPT = ("application/jsonlines",)
 
     def deserialize(self, stream, content_type):
         """Deserialize JSON lines data from an inference endpoint.
