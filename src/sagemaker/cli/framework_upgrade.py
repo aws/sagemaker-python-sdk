@@ -22,7 +22,7 @@ from sagemaker.image_uris import config_for_framework
 IMAGE_URI_CONFIG_DIR = os.path.join("..", "image_uri_config")
 
 
-def _get_latest_values(existing_content, scope=None):
+def get_latest_values(existing_content, scope=None):
     """Get the latest "registries", "py_versions" and "repository" values
 
     Args:
@@ -40,10 +40,10 @@ def _get_latest_values(existing_content, scope=None):
                 )
             )
 
-    latest_version = list(existing_content[scope]["versions"].keys())[-1]
-    registries = existing_content[scope]["versions"][latest_version]["registries"]
-    py_versions = existing_content[scope]["versions"][latest_version]["py_versions"]
-    repository = existing_content[scope]["versions"][latest_version]["repository"]
+    latest_version = list(existing_content["versions"].keys())[-1]
+    registries = existing_content["versions"][latest_version]["registries"]
+    py_versions = existing_content["versions"][latest_version]["py_versions"]
+    repository = existing_content["versions"][latest_version]["repository"]
 
     return registries, py_versions, repository
 
@@ -173,7 +173,7 @@ def add_version(
      """
     py_versions = py_versions.split(",")
     processors = processors.split(",")
-    latest_registries, latest_py_versions, latest_repository = _get_latest_values(
+    latest_registries, latest_py_versions, latest_repository = get_latest_values(
         existing_content, scope
     )
     if not py_versions:

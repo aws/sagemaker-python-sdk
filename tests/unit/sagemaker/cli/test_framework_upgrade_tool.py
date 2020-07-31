@@ -218,3 +218,22 @@ def test_algo_add_region(algo_region_content, algo_expected_region_content):
     account = "987654321098"
     framework_upgrade.add_region(algo_region_content, region, account)
     assert algo_region_content == algo_expected_region_content
+
+
+def test_dlc_get_latest_content(dlc_content):
+    latest_version = "1.0.0"
+    scope = "eia"
+    registries, py_versions, repository = framework_upgrade.get_latest_values(
+        dlc_content, scope=scope
+    )
+    assert registries == dlc_content[scope]["versions"][latest_version]["registries"]
+    assert py_versions == dlc_content[scope]["versions"][latest_version]["py_versions"]
+    assert repository == dlc_content[scope]["versions"][latest_version]["repository"]
+
+
+def test_algo_get_latest_content(algo_content):
+    latest_version = "0.10"
+    registries, py_versions, repository = framework_upgrade.get_latest_values(algo_content)
+    assert registries == algo_content["versions"][latest_version]["registries"]
+    assert py_versions == algo_content["versions"][latest_version]["py_versions"]
+    assert repository == algo_content["versions"][latest_version]["repository"]
