@@ -10,9 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Classes to modify image_uris.retrieve() code to be compatible
-with version 2.0 and later of the SageMaker Python SDK.
-"""
+"""Classes to modify image uri retrieve methods for Python SDK v2.0 and later."""
 from __future__ import absolute_import
 
 import ast
@@ -33,8 +31,6 @@ GET_IMAGE_URI_NAMESPACES = (
 
 ALGORITHM_NAME_FROM_REPO = {
     "blazingtext": "blazingtext",
-    "sagemaker-rl-mxnet": "coach-mxnet",
-    "sagemaker-rl-tensorflow": ["coach-tensorflow", "ray-tensorflow"],
     "factorization-machine": "factorization-machines",
     "forecasting-deepar": "forecasting-deepar",
     "image-classification": "image-classification",
@@ -49,12 +45,8 @@ ALGORITHM_NAME_FROM_REPO = {
     "object-detection": "object-detection",
     "pca": "pca",
     "randomcutforest": "randomcutforest",
-    "sagemaker-rl-ray-container": "ray-pytorch",
     "semantic-segmentation": "semantic-segmentation",
     "seq2seq": "seq2seq",
-    "sagemaker-scikit-learn": "sklearn",
-    "sagemaker-sparkml-serving": "sparkml-serving",
-    "sagemaker-rl-vw-container": "vw",
     "sagemaker-xgboost": "xgboost",
     "xgboost-neo": "xgboost-neo",
 }
@@ -97,13 +89,6 @@ class ImageURIRetrieveRefactor(Modifier):
             if kw.arg == "repo_name":
                 arg = kw.value.s
                 modified_arg = ALGORITHM_NAME_FROM_REPO[arg]
-                if isinstance(modified_arg, list):
-                    logger.warning(
-                        "There are more than one value mapping to {}, {} will be used".format(
-                            arg, modified_arg[0]
-                        )
-                    )
-                    modified_arg = modified_arg[0]
                 original_args[0] = ast.Str(modified_arg)
             elif kw.arg == "repo_region":
                 original_args[1] = ast.Str(kw.value.s)
@@ -115,13 +100,6 @@ class ImageURIRetrieveRefactor(Modifier):
         if len(node.args) > 1:
             arg = node.args[1].s
             modified_arg = ALGORITHM_NAME_FROM_REPO[arg]
-            if isinstance(modified_arg, list):
-                logger.warning(
-                    "There are more than one value mapping to {}, {} will be used".format(
-                        arg, modified_arg[0]
-                    )
-                )
-                modified_arg = modified_arg[0]
             original_args[0] = ast.Str(modified_arg)
         if len(node.args) > 2:
             original_args[2] = ast.Str(node.args[2].s)
