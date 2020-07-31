@@ -23,11 +23,12 @@ from six import with_metaclass
 from sagemaker.session import Session
 from sagemaker.utils import DeferredError
 
+logger = logging.getLogger(__name__)
 
 try:
     import pandas as pd
 except ImportError as e:
-    logging.warning("pandas failed to import. Analytics features will be impaired or broken.")
+    logger.warning("pandas failed to import. Analytics features will be impaired or broken.")
     # Any subsequent attempt to use pandas will raise the ImportError
     pd = DeferredError(e)
 
@@ -251,15 +252,13 @@ class HyperparameterTuningJobAnalytics(AnalyticsMetricsBase):
         output = []
         next_args = {}
         for count in range(100):
-            logging.debug("Calling list_training_jobs_for_hyper_parameter_tuning_job %d", count)
+            logger.debug("Calling list_training_jobs_for_hyper_parameter_tuning_job %d", count)
             raw_result = self._sage_client.list_training_jobs_for_hyper_parameter_tuning_job(
                 HyperParameterTuningJobName=self.name, MaxResults=100, **next_args
             )
             new_output = raw_result["TrainingJobSummaries"]
             output.extend(new_output)
-            logging.debug(
-                "Got %d more TrainingJobs. Total so far: %d", len(new_output), len(output)
-            )
+            logger.debug("Got %d more TrainingJobs. Total so far: %d", len(new_output), len(output))
             if ("NextToken" in raw_result) and (len(new_output) > 0):
                 next_args["NextToken"] = raw_result["NextToken"]
             else:
@@ -373,7 +372,7 @@ class TrainingJobAnalytics(AnalyticsMetricsBase):
         }
         raw_cwm_data = self._cloudwatch.get_metric_statistics(**request)["Datapoints"]
         if len(raw_cwm_data) == 0:
-            logging.warning("Warning: No metrics called %s found", metric_name)
+            logger.warning("Warning: No metrics called %s found", metric_name)
             return
 
         # Process data: normalize to starting time, and sort.
@@ -431,6 +430,8 @@ class ExperimentAnalytics(AnalyticsMetricsBase):
         metric_names=None,
         parameter_names=None,
         sagemaker_session=None,
+        input_artifact_names=None,
+        output_artifact_names=None,
     ):
         """Initialize a ``ExperimentAnalytics`` instance.
 
@@ -450,6 +451,11 @@ class ExperimentAnalytics(AnalyticsMetricsBase):
             sagemaker_session (sagemaker.session.Session): Session object which manages interactions
                 with Amazon SageMaker APIs and any other AWS services needed. If not specified,
                 one is created using the default AWS configuration chain.
+            input_artifact_names(dict optional):The input artifacts for the experiment. Examples of
+                input artifacts are datasets, algorithms, hyperparameters, source code, and instance
+                types.
+            output_artifact_names(dict optional): The output artifacts for the experiment. Examples
+                of output artifacts are metrics, snapshots, logs, and images.
         """
         sagemaker_session = sagemaker_session or Session()
         self._sage_client = sagemaker_session.sagemaker_client
@@ -463,6 +469,8 @@ class ExperimentAnalytics(AnalyticsMetricsBase):
         self._sort_order = sort_order
         self._metric_names = metric_names
         self._parameter_names = parameter_names
+        self._input_artifact_names = input_artifact_names
+        self._output_artifact_names = output_artifact_names
         self._trial_components = None
         super(ExperimentAnalytics, self).__init__()
         self.clear_cache()
@@ -516,6 +524,21 @@ class ExperimentAnalytics(AnalyticsMetricsBase):
                     out["{} - {}".format(metric_name, stat_type)] = stat_value
         return out
 
+    def _reshape_artifacts(self, artifacts, _artifact_names):
+        """Reshape trial component input/output artifacts to a pandas column
+        Args:
+            artifacts: trial component input/output artifacts
+        Returns:
+            dict: Key: artifacts name, Value: artifacts value
+        """
+        out = OrderedDict()
+        for name, value in sorted(artifacts.items()):
+            if _artifact_names and (name not in _artifact_names):
+                continue
+            out["{} - {}".format(name, "MediaType")] = value.get("MediaType")
+            out["{} - {}".format(name, "Value")] = value.get("Value")
+        return out
+
     def _reshape(self, trial_component):
         """Reshape trial component data to pandas columns
         Args:
@@ -533,6 +556,16 @@ class ExperimentAnalytics(AnalyticsMetricsBase):
 
         out.update(self._reshape_parameters(trial_component.get("Parameters", [])))
         out.update(self._reshape_metrics(trial_component.get("Metrics", [])))
+        out.update(
+            self._reshape_artifacts(
+                trial_component.get("InputArtifacts", []), self._input_artifact_names
+            )
+        )
+        out.update(
+            self._reshape_artifacts(
+                trial_component.get("OutputArtifacts", []), self._output_artifact_names
+            )
+        )
         return out
 
     def _fetch_dataframe(self):

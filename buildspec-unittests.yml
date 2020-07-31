@@ -7,11 +7,11 @@ phases:
       - TOX_PARALLEL_NO_SPINNER=1
       - PY_COLORS=0
       - start_time=`date +%s`
-      - tox -e flake8,pylint,twine,black-check
+      - tox -e flake8,pylint,twine,black-check --parallel all
       - ./ci-scripts/displaytime.sh 'flake8,pylint,twine,black-check' $start_time
 
       - start_time=`date +%s`
-      - tox -e sphinx,doc8
+      - tox -e sphinx,doc8 --parallel all
       - ./ci-scripts/displaytime.sh 'sphinx,doc8' $start_time
 
       # run unit tests

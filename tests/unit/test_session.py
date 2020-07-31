@@ -576,6 +576,7 @@ EXPERIMENT_CONFIG = {
     "TrialName": "dummyT",
     "TrialComponentDisplayName": "dummyTC",
 }
+MODEL_CLIENT_CONFIG = {"InvocationsMaxRetries": 2, "InvocationsTimeoutInSeconds": 60}
 
 DEFAULT_EXPECTED_TRAIN_JOB_ARGS = {
     "OutputDataConfig": {"S3OutputPath": S3_OUTPUT},
@@ -651,11 +652,11 @@ IN_PROGRESS_DESCRIBE_TRANSFORM_JOB_RESULT.update({"TransformJobStatus": "InProgr
 
 @pytest.fixture()
 def sagemaker_session():
-    boto_mock = Mock(name="boto_session")
+    boto_mock = MagicMock(name="boto_session")
     boto_mock.client("sts", endpoint_url=STS_ENDPOINT).get_caller_identity.return_value = {
         "Account": "123"
     }
-    ims = sagemaker.Session(boto_session=boto_mock, sagemaker_client=Mock())
+    ims = sagemaker.Session(boto_session=boto_mock, sagemaker_client=MagicMock())
     ims.expand_role = Mock(return_value=EXPANDED_ROLE)
     return ims
 
@@ -1258,6 +1259,7 @@ def test_transform_pack_to_request(sagemaker_session):
         output_config=out_config,
         resource_config=resource_config,
         experiment_config=None,
+        model_client_config=None,
         tags=None,
         data_processing=data_processing,
     )
@@ -1283,6 +1285,7 @@ def test_transform_pack_to_request_with_optional_params(sagemaker_session):
         output_config={},
         resource_config={},
         experiment_config=EXPERIMENT_CONFIG,
+        model_client_config=MODEL_CLIENT_CONFIG,
         tags=TAGS,
         data_processing=None,
     )
@@ -1294,6 +1297,7 @@ def test_transform_pack_to_request_with_optional_params(sagemaker_session):
     assert actual_args["Environment"] == env
     assert actual_args["Tags"] == TAGS
     assert actual_args["ExperimentConfig"] == EXPERIMENT_CONFIG
+    assert actual_args["ModelClientConfig"] == MODEL_CLIENT_CONFIG
 
 
 @patch("sys.stdout", new_callable=io.BytesIO if six.PY2 else io.StringIO)
@@ -1348,10 +1352,10 @@ STREAM_LOG_EVENTS = [
 
 @pytest.fixture()
 def sagemaker_session_complete():
-    boto_mock = Mock(name="boto_session")
+    boto_mock = MagicMock(name="boto_session")
     boto_mock.client("logs").describe_log_streams.return_value = DEFAULT_LOG_STREAMS
     boto_mock.client("logs").get_log_events.side_effect = DEFAULT_LOG_EVENTS
-    ims = sagemaker.Session(boto_session=boto_mock, sagemaker_client=Mock())
+    ims = sagemaker.Session(boto_session=boto_mock, sagemaker_client=MagicMock())
     ims.sagemaker_client.describe_training_job.return_value = COMPLETED_DESCRIBE_JOB_RESULT
     ims.sagemaker_client.describe_transform_job.return_value = (
         COMPLETED_DESCRIBE_TRANSFORM_JOB_RESULT
@@ -1361,10 +1365,10 @@ def sagemaker_session_complete():
 
 @pytest.fixture()
 def sagemaker_session_stopped():
-    boto_mock = Mock(name="boto_session")
+    boto_mock = MagicMock(name="boto_session")
     boto_mock.client("logs").describe_log_streams.return_value = DEFAULT_LOG_STREAMS
     boto_mock.client("logs").get_log_events.side_effect = DEFAULT_LOG_EVENTS
-    ims = sagemaker.Session(boto_session=boto_mock, sagemaker_client=Mock())
+    ims = sagemaker.Session(boto_session=boto_mock, sagemaker_client=MagicMock())
     ims.sagemaker_client.describe_training_job.return_value = STOPPED_DESCRIBE_JOB_RESULT
     ims.sagemaker_client.describe_transform_job.return_value = STOPPED_DESCRIBE_TRANSFORM_JOB_RESULT
     return ims
@@ -1372,10 +1376,10 @@ def sagemaker_session_stopped():
 
 @pytest.fixture()
 def sagemaker_session_ready_lifecycle():
-    boto_mock = Mock(name="boto_session")
+    boto_mock = MagicMock(name="boto_session")
     boto_mock.client("logs").describe_log_streams.return_value = DEFAULT_LOG_STREAMS
     boto_mock.client("logs").get_log_events.side_effect = STREAM_LOG_EVENTS
-    ims = sagemaker.Session(boto_session=boto_mock, sagemaker_client=Mock())
+    ims = sagemaker.Session(boto_session=boto_mock, sagemaker_client=MagicMock())
     ims.sagemaker_client.describe_training_job.side_effect = [
         IN_PROGRESS_DESCRIBE_JOB_RESULT,
         IN_PROGRESS_DESCRIBE_JOB_RESULT,
@@ -1391,10 +1395,10 @@ def sagemaker_session_ready_lifecycle():
 
 @pytest.fixture()
 def sagemaker_session_full_lifecycle():
-    boto_mock = Mock(name="boto_session")
+    boto_mock = MagicMock(name="boto_session")
     boto_mock.client("logs").describe_log_streams.side_effect = LIFECYCLE_LOG_STREAMS
     boto_mock.client("logs").get_log_events.side_effect = STREAM_LOG_EVENTS
-    ims = sagemaker.Session(boto_session=boto_mock, sagemaker_client=Mock())
+    ims = sagemaker.Session(boto_session=boto_mock, sagemaker_client=MagicMock())
     ims.sagemaker_client.describe_training_job.side_effect = [
         IN_PROGRESS_DESCRIBE_JOB_RESULT,
         IN_PROGRESS_DESCRIBE_JOB_RESULT,

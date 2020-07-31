@@ -24,8 +24,8 @@ ENDPOINT_NAME = "the_point_of_end"
 
 
 def get_sagemaker_session(returns_status):
-    boto_mock = Mock(name="boto_session", region_name=REGION)
-    client_mock = Mock()
+    boto_mock = MagicMock(name="boto_session", region_name=REGION)
+    client_mock = MagicMock()
     client_mock.describe_model_package = MagicMock(
         return_value={"ModelPackageStatus": returns_status}
     )
