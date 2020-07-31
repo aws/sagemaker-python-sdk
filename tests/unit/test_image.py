@@ -76,11 +76,11 @@ LOCAL_CODE_HYPERPARAMETERS = {
 
 @pytest.fixture()
 def sagemaker_session():
-    boto_mock = Mock(name="boto_session", region_name=REGION)
+    boto_mock = MagicMock(name="boto_session", region_name=REGION)
     boto_mock.client("sts").get_caller_identity.return_value = {"Account": "123"}
     boto_mock.resource("s3").Bucket(BUCKET_NAME).objects.filter.return_value = []
 
-    sms = sagemaker.Session(boto_session=boto_mock, sagemaker_client=Mock())
+    sms = sagemaker.Session(boto_session=boto_mock, sagemaker_client=MagicMock())
 
     sms.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
     sms.expand_role = Mock(return_value=EXPANDED_ROLE)

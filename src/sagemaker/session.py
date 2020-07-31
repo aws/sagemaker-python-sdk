@@ -1994,6 +1994,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         experiment_config,
         tags,
         data_processing,
+        model_client_config=None,
     ):
         """Create an Amazon SageMaker transform job.
 
@@ -2018,6 +2019,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             data_processing(dict): A dictionary describing config for combining the input data and
                 transformed data. For more, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
+            model_client_config (dict): A dictionary describing the model configuration for the
+                job. Dictionary contains two optional keys,
+                'InvocationsTimeoutInSeconds', and 'InvocationsMaxRetries'.
         """
         transform_request = {
             "TransformJobName": job_name,
@@ -2047,6 +2051,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         if experiment_config and len(experiment_config) > 0:
             transform_request["ExperimentConfig"] = experiment_config
+
+        if model_client_config and len(model_client_config) > 0:
+            transform_request["ModelClientConfig"] = model_client_config
 
         LOGGER.info("Creating transform job with name: %s", job_name)
         LOGGER.debug("Transform request: %s", json.dumps(transform_request, indent=4))

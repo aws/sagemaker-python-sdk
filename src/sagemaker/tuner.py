@@ -54,6 +54,8 @@ HYPERPARAMETER_TUNING_JOB_NAME = "HyperParameterTuningJobName"
 PARENT_HYPERPARAMETER_TUNING_JOBS = "ParentHyperParameterTuningJobs"
 WARM_START_TYPE = "WarmStartType"
 
+logger = logging.getLogger(__name__)
+
 
 class WarmStartTypes(Enum):
     """Warm Start Configuration type. There can be two types of warm start jobs:
@@ -1446,7 +1448,7 @@ class _TuningJob(_Job):
             information about the started job.
         """
 
-        logging.info("_TuningJob.start_new!!!")
+        logger.info("_TuningJob.start_new!!!")
 
         warm_start_config_req = None
         if tuner.warm_start_config:
@@ -1516,7 +1518,7 @@ class _TuningJob(_Job):
 
         if isinstance(inputs, TrainingInput):
             if "InputMode" in inputs.config:
-                logging.debug(
+                logger.debug(
                     "Selecting TrainingInput's input_mode (%s) for TrainingInputMode.",
                     inputs.config["InputMode"],
                 )

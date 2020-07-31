@@ -207,8 +207,8 @@ def test_secondary_training_status_message_prev_missing():
 
 @patch("os.makedirs")
 def test_download_folder(makedirs):
-    boto_mock = Mock(name="boto_session")
-    session = sagemaker.Session(boto_session=boto_mock, sagemaker_client=Mock())
+    boto_mock = MagicMock(name="boto_session")
+    session = sagemaker.Session(boto_session=boto_mock, sagemaker_client=MagicMock())
     s3_mock = boto_mock.resource("s3")
 
     obj_mock = Mock()
@@ -261,10 +261,10 @@ def test_download_folder(makedirs):
 
 @patch("os.makedirs")
 def test_download_folder_points_to_single_file(makedirs):
-    boto_mock = Mock(name="boto_session")
+    boto_mock = MagicMock(name="boto_session")
     boto_mock.client("sts").get_caller_identity.return_value = {"Account": "123"}
 
-    session = sagemaker.Session(boto_session=boto_mock, sagemaker_client=Mock())
+    session = sagemaker.Session(boto_session=boto_mock, sagemaker_client=MagicMock())
 
     train_data = Mock()
 
@@ -288,11 +288,11 @@ def test_download_folder_points_to_single_file(makedirs):
 
 
 def test_download_file():
-    boto_mock = Mock(name="boto_session")
+    boto_mock = MagicMock(name="boto_session")
     boto_mock.client("sts").get_caller_identity.return_value = {"Account": "123"}
     bucket_mock = Mock()
     boto_mock.resource("s3").Bucket.return_value = bucket_mock
-    session = sagemaker.Session(boto_session=boto_mock, sagemaker_client=Mock())
+    session = sagemaker.Session(boto_session=boto_mock, sagemaker_client=MagicMock())
 
     sagemaker.utils.download_file(
         BUCKET_NAME, "/prefix/path/file.tar.gz", "/tmp/file.tar.gz", session

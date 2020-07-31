@@ -327,7 +327,7 @@ class LocalSagemakerRuntimeClient(object):
         try:
             import urllib3
         except ImportError as e:
-            logging.error(_module_import_error("urllib3", "Local mode", "local"))
+            logger.error(_module_import_error("urllib3", "Local mode", "local"))
             raise e
 
         self.http = urllib3.PoolManager()
@@ -423,7 +423,7 @@ class LocalSession(Session):
             try:
                 import yaml
             except ImportError as e:
-                logging.error(_module_import_error("yaml", "Local mode", "local"))
+                logger.error(_module_import_error("yaml", "Local mode", "local"))
                 raise e
 
             self.config = yaml.load(open(sagemaker_config_file, "r"))
