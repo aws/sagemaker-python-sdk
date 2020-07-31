@@ -196,6 +196,8 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
         self,
         initial_instance_count,
         instance_type,
+        serializer=None,
+        deserializer=None,
         accelerator_type=None,
         endpoint_name=None,
         tags=None,
@@ -211,6 +213,8 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
         return super(TensorFlowModel, self).deploy(
             initial_instance_count=initial_instance_count,
             instance_type=instance_type,
+            serializer=serializer,
+            deserializer=deserializer,
             accelerator_type=accelerator_type,
             endpoint_name=endpoint_name,
             tags=tags,

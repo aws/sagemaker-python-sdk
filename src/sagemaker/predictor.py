@@ -62,8 +62,6 @@ class Predictor(object):
         self.sagemaker_session = sagemaker_session or Session()
         self.serializer = serializer
         self.deserializer = deserializer
-        self.content_type = serializer.CONTENT_TYPE
-        self.accept = deserializer.ACCEPT
         self._endpoint_config_name = self._get_endpoint_config_name()
         self._model_names = self._get_model_names()
 
@@ -380,3 +378,13 @@ class Predictor(object):
         )
         production_variants = endpoint_config["ProductionVariants"]
         return [d["ModelName"] for d in production_variants]
+
+    @property
+    def content_type(self):
+        """The MIME type of the data sent to the inference endpoint."""
+        return self.serializer.CONTENT_TYPE
+
+    @property
+    def accept(self):
+        """The content type(s) that are expected from the inference endpoint."""
+        return self.deserializer.ACCEPT
