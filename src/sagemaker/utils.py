@@ -534,20 +534,6 @@ def download_file(bucket_name, path, target, sagemaker_session):
     bucket.download_file(path, target)
 
 
-def get_ecr_image_uri_prefix(account, region):
-    """get prefix of ECR image URI
-
-    Args:
-        account (str): AWS account number
-        region (str): AWS region name
-
-    Returns:
-        (str): URI prefix of ECR image
-    """
-    endpoint_data = _botocore_resolver().construct_endpoint("ecr", region)
-    return "{}.dkr.{}".format(account, endpoint_data["hostname"])
-
-
 def sts_regional_endpoint(region):
     """Get the AWS STS endpoint specific for the given region.
 
