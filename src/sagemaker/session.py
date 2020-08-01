@@ -3362,21 +3362,6 @@ def get_execution_role(sagemaker_session=None):
     raise ValueError(message.format(arn))
 
 
-class ShuffleConfig(object):
-    """
-    Used to configure channel shuffling using a seed. See SageMaker documentation for
-    more detail: https://docs.aws.amazon.com/sagemaker/latest/dg/API_ShuffleConfig.html
-    """
-
-    def __init__(self, seed):
-        """
-        Create a ShuffleConfig.
-        Args:
-            seed (long): the long value used to seed the shuffled sequence.
-        """
-        self.seed = seed
-
-
 def _create_model_request(
     name, role, container_def=None, tags=None
 ):  # pylint: disable=redefined-outer-name

@@ -72,8 +72,8 @@ class TrainingInput(object):
                 found in a specified AugmentedManifestFile.
             target_attribute_name (str): The name of the attribute will be predicted (classified)
                 in a SageMaker AutoML job. It is required if the input is for SageMaker AutoML job.
-            shuffle_config (ShuffleConfig): If specified this configuration enables shuffling on
-                this channel. See the SageMaker API documentation for more info:
+            shuffle_config (sagemaker.inputs.ShuffleConfig): If specified this configuration enables
+                shuffling on this channel. See the SageMaker API documentation for more info:
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_ShuffleConfig.html
         """
         self.config = {
@@ -100,6 +100,22 @@ class TrainingInput(object):
             self.config["TargetAttributeName"] = target_attribute_name
         if shuffle_config is not None:
             self.config["ShuffleConfig"] = {"Seed": shuffle_config.seed}
+
+
+class ShuffleConfig(object):
+    """For configuring channel shuffling using a seed.
+
+    For more detail, see the AWS documentation:
+    https://docs.aws.amazon.com/sagemaker/latest/dg/API_ShuffleConfig.html
+    """
+
+    def __init__(self, seed):
+        """Create a ShuffleConfig.
+
+        Args:
+            seed (long): the long value used to seed the shuffled sequence.
+        """
+        self.seed = seed
 
 
 class FileSystemInput(object):
