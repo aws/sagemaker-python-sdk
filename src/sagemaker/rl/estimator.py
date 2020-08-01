@@ -268,7 +268,7 @@ class RLEstimator(Framework):
             "An unknown RLFramework enum was passed in. framework: {}".format(self.framework)
         )
 
-    def train_image(self):
+    def training_image_uri(self):
         """Return the Docker image to use for training.
 
         The :meth:`~sagemaker.estimator.EstimatorBase.fit` method, which does

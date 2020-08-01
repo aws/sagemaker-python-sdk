@@ -317,7 +317,7 @@ class HyperparameterTuner(object):
                 estimator = (
                     self.estimator or self.estimator_dict[sorted(self.estimator_dict.keys())[0]]
                 )
-                base_name = base_name_from_image(estimator.train_image())
+                base_name = base_name_from_image(estimator.training_image_uri())
             self._current_job_name = name_from_base(
                 base_name, max_length=self.TUNING_JOB_NAME_MAX_LENGTH, short=True
             )
@@ -369,6 +369,7 @@ class HyperparameterTuner(object):
         job_name=None,
         include_cls_metadata=False,
         estimator_kwargs=None,
+        wait=True,
         **kwargs
     ):
         """Start a hyperparameter tuning job.
@@ -424,6 +425,7 @@ class HyperparameterTuner(object):
                 The keys are the estimator names for the estimator_dict argument of create()
                 method. Each value is a dictionary for the other arguments needed for training
                 of the corresponding estimator.
+            wait (bool): Whether the call should wait until the job completes (default: ``True``).
             **kwargs: Other arguments needed for training. Please refer to the
                 ``fit()`` method of the associated estimator to see what other
                 arguments are needed.
@@ -432,6 +434,9 @@ class HyperparameterTuner(object):
             self._fit_with_estimator(inputs, job_name, include_cls_metadata, **kwargs)
         else:
             self._fit_with_estimator_dict(inputs, job_name, include_cls_metadata, estimator_kwargs)
+
+        if wait:
+            self.latest_tuning_job.wait()
 
     def _fit_with_estimator(self, inputs, job_name, include_cls_metadata, **kwargs):
         """Start tuning for tuner instances that have the ``estimator`` field set"""
@@ -1447,9 +1452,6 @@ class _TuningJob(_Job):
             sagemaker.tuner._TuningJob: Constructed object that captures all
             information about the started job.
         """
-
-        logger.info("_TuningJob.start_new!!!")
-
         warm_start_config_req = None
         if tuner.warm_start_config:
             warm_start_config_req = tuner.warm_start_config.to_input_req()
@@ -1527,7 +1529,7 @@ class _TuningJob(_Job):
         if isinstance(estimator, sagemaker.algorithm.AlgorithmEstimator):
             training_config["algorithm_arn"] = estimator.algorithm_arn
         else:
-            training_config["image_uri"] = estimator.train_image()
+            training_config["image_uri"] = estimator.training_image_uri()
 
         training_config["enable_network_isolation"] = estimator.enable_network_isolation()
         training_config[

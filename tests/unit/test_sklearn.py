@@ -140,7 +140,7 @@ def _create_train_job(version):
     }
 
 
-def test_train_image(sagemaker_session, sklearn_version):
+def test_training_image_uri(sagemaker_session, sklearn_version):
     container_log_level = '"logging.INFO"'
     source_dir = "s3://mybucket/source"
     sklearn = SKLearn(
@@ -155,7 +155,7 @@ def test_train_image(sagemaker_session, sklearn_version):
         source_dir=source_dir,
     )
 
-    assert _get_full_cpu_image_uri(sklearn_version) == sklearn.train_image()
+    assert _get_full_cpu_image_uri(sklearn_version) == sklearn.training_image_uri()
 
 
 def test_create_model(sagemaker_session, sklearn_version):
@@ -525,7 +525,7 @@ def test_attach_custom_image(sagemaker_session):
 
     estimator = SKLearn.attach(training_job_name="neo", sagemaker_session=sagemaker_session)
     assert estimator.image_uri == training_image
-    assert estimator.train_image() == training_image
+    assert estimator.training_image_uri() == training_image
 
 
 def test_estimator_py2_raises(sagemaker_session, sklearn_version):

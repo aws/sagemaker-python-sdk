@@ -173,6 +173,10 @@ def _processor(instance_type, available_processors):
         logger.info("Ignoring unnecessary instance type: %s.", instance_type)
         return None
 
+    if len(available_processors) == 1 and not instance_type:
+        logger.info("Defaulting to only supported image scope: %s.", available_processors[0])
+        return available_processors[0]
+
     if not instance_type:
         raise ValueError(
             "Empty SageMaker instance type. For options, see: "

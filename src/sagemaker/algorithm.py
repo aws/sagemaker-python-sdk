@@ -229,13 +229,13 @@ class AlgorithmEstimator(EstimatorBase):
         """
         return self.hyperparam_dict
 
-    def train_image(self):
+    def training_image_uri(self):
         """Returns the docker image to use for training.
 
         The fit() method, that does the model training, calls this method to
         find the image to use for model training.
         """
-        raise RuntimeError("train_image is never meant to be called on Algorithm Estimators")
+        raise RuntimeError("training_image_uri is never meant to be called on Algorithm Estimators")
 
     def enable_network_isolation(self):
         """Return True if this Estimator will need network isolation to run.

@@ -120,7 +120,7 @@ def test_all_hyperparameters(sagemaker_session):
 
 def test_image(sagemaker_session):
     ipinsights = IPInsights(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-    assert image_uris.retrieve("ipinsights", REGION) == ipinsights.train_image()
+    assert image_uris.retrieve("ipinsights", REGION) == ipinsights.training_image_uri()
 
 
 @pytest.mark.parametrize(
