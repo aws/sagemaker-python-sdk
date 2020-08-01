@@ -893,6 +893,8 @@ def test_deploy_optional_params(_get_best_training_job, best_estimator, tuner):
     estimator.deploy.assert_called_with(
         initial_instance_count=INSTANCE_COUNT,
         instance_type=INSTANCE_TYPE,
+        serializer=None,
+        deserializer=None,
         accelerator_type=accelerator,
         endpoint_name=endpoint_name,
         wait=False,

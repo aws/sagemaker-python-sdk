@@ -29,7 +29,7 @@ from sagemaker.multidatamodel import MultiDataModel
 from sagemaker.mxnet import MXNet
 from sagemaker.predictor import Predictor
 from sagemaker.serializers import NumpySerializer
-from sagemaker.utils import sagemaker_timestamp, unique_name_from_base, get_ecr_image_uri_prefix
+from sagemaker.utils import sagemaker_timestamp, unique_name_from_base
 from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.retry import retries
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
@@ -42,19 +42,9 @@ string_deserializer = StringDeserializer()
 
 @pytest.fixture(scope="module")
 def container_image(sagemaker_session):
-    """ Create a Multi-Model container image for use with integration testcases
-    since 1P containers supporting multiple models are not available yet"""
-    region = sagemaker_session.boto_region_name
-    ecr_client = sagemaker_session.boto_session.client("ecr", region_name=region)
-    sts_client = sagemaker_session.boto_session.client(
-        "sts", region_name=region, endpoint_url=utils.sts_regional_endpoint(region)
-    )
-    account_id = sts_client.get_caller_identity()["Account"]
-    algorithm_name = "sagemaker-multimodel-integ-test-{}".format(sagemaker_timestamp())
-    ecr_image_uri_prefix = get_ecr_image_uri_prefix(account=account_id, region=region)
-    ecr_image = "{prefix}/{algorithm_name}:latest".format(
-        prefix=ecr_image_uri_prefix, algorithm_name=algorithm_name
-    )
+    """Create a Multi-Model image since pre-built ones are not available yet."""
+    algorithm_name = unique_name_from_base("sagemaker-multimodel-integ-test")
+    ecr_image = _ecr_image_uri(sagemaker_session, algorithm_name)
 
     # Build and tag docker image locally
     docker_client = docker.from_env()
@@ -64,7 +54,9 @@ def container_image(sagemaker_session):
     image.tag(ecr_image, tag="latest")
 
     # Create AWS ECR and push the local docker image to it
+    ecr_client = sagemaker_session.boto_session.client("ecr")
     _create_repository(ecr_client, algorithm_name)
+
     username, password = _ecr_login(ecr_client)
     # Retry docker image push
     for _ in retries(3, "Upload docker image to ECR repo", seconds_to_sleep=10):
@@ -81,6 +73,18 @@ def container_image(sagemaker_session):
 
     # Delete repository after the multi model integration tests complete
     _delete_repository(ecr_client, algorithm_name)
+
+
+def _ecr_image_uri(sagemaker_session, algorithm_name):
+    region = sagemaker_session.boto_region_name
+
+    sts_client = sagemaker_session.boto_session.client(
+        "sts", region_name=region, endpoint_url=utils.sts_regional_endpoint(region)
+    )
+    account_id = sts_client.get_caller_identity()["Account"]
+
+    endpoint_data = utils._botocore_resolver().construct_endpoint("ecr", region)
+    return "{}.dkr.{}/{}:latest".format(account_id, endpoint_data["hostname"], algorithm_name)
 
 
 def _create_repository(ecr_client, repository_name):

@@ -29,9 +29,7 @@ from sagemaker.analytics import TrainingJobAnalytics
 from sagemaker.debugger import DebuggerHookConfig
 from sagemaker.debugger import TensorBoardOutputConfig  # noqa: F401 # pylint: disable=unused-import
 from sagemaker.debugger import get_rule_container_image_uri
-from sagemaker.deserializers import BytesDeserializer
 from sagemaker.s3 import S3Uploader, parse_s3_url
-from sagemaker.serializers import IdentitySerializer
 
 from sagemaker.fw_utils import (
     tar_and_upload_dir,
@@ -670,6 +668,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         self,
         initial_instance_count,
         instance_type,
+        serializer=None,
+        deserializer=None,
         accelerator_type=None,
         endpoint_name=None,
         use_compiled_model=False,
@@ -691,6 +691,16 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                 deploy to an endpoint for prediction.
             instance_type (str): Type of EC2 instance to deploy to an endpoint
                 for prediction, for example, 'ml.c4.xlarge'.
+            serializer (:class:`~sagemaker.serializers.BaseSerializer`): A
+                serializer object, used to encode data for an inference endpoint
+                (default: None). If ``serializer`` is not None, then
+                ``serializer`` will override the default serializer. The
+                default serializer is set by the ``predictor_cls``.
+            deserializer (:class:`~sagemaker.deserializers.BaseDeserializer`): A
+                deserializer object, used to decode data from an inference
+                endpoint (default: None). If ``deserializer`` is not None, then
+                ``deserializer`` will override the default deserializer. The
+                default deserializer is set by the ``predictor_cls``.
             accelerator_type (str): Type of Elastic Inference accelerator to
                 attach to an endpoint for model loading and inference, for
                 example, 'ml.eia1.medium'. If not specified, no Elastic
@@ -753,6 +763,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         return model.deploy(
             instance_type=instance_type,
             initial_instance_count=initial_instance_count,
+            serializer=serializer,
+            deserializer=deserializer,
             accelerator_type=accelerator_type,
             endpoint_name=endpoint_name,
             tags=tags or self.tags,
@@ -1367,8 +1379,6 @@ class Estimator(EstimatorBase):
         role=None,
         image_uri=None,
         predictor_cls=None,
-        serializer=IdentitySerializer(),
-        deserializer=BytesDeserializer(),
         vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT,
         **kwargs
     ):
@@ -1386,12 +1396,6 @@ class Estimator(EstimatorBase):
                 Defaults to the image used for training.
             predictor_cls (Predictor): The predictor class to use when
                 deploying the model.
-            serializer (:class:`~sagemaker.serializers.BaseSerializer`): A
-                serializer object, used to encode data for an inference endpoint
-                (default: :class:`~sagemaker.serializers.IdentitySerializer`).
-            deserializer (:class:`~sagemaker.deserializers.BaseDeserializer`): A
-                deserializer object, used to decode data from an inference
-                endpoint (default: :class:`~sagemaker.deserializers.BytesDeserializer`).
             vpc_config_override (dict[str, list[str]]): Optional override for VpcConfig set on
                 the model.
                 Default: use subnets and security groups from this Estimator.
@@ -1410,7 +1414,7 @@ class Estimator(EstimatorBase):
         if predictor_cls is None:
 
             def predict_wrapper(endpoint, session):
-                return Predictor(endpoint, session, serializer, deserializer)
+                return Predictor(endpoint, session)
 
             predictor_cls = predict_wrapper
 
