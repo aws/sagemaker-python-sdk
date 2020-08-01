@@ -100,3 +100,73 @@ class TrainingInputImportFromRenamer(Modifier):
             if node.module == "sagemaker.session":
                 node.module = "sagemaker.inputs"
         return node
+
+
+class ShuffleConfigModuleRenamer(Modifier):
+    """A class to change ``ShuffleConfig`` usage to use ``sagemaker.inputs.ShuffleConfig``."""
+
+    def node_should_be_modified(self, node):
+        """Checks if the ``ast.Call`` node instantiates a class of interest.
+
+        This looks for the following calls:
+
+        - ``sagemaker.session.ShuffleConfig``
+        - ``session.ShuffleConfig``
+
+        Args:
+            node (ast.Call): a node that represents a function call. For more,
+                see https://docs.python.org/3/library/ast.html#abstract-grammar.
+
+        Returns:
+            bool: If the ``ast.Call`` instantiates a class of interest.
+        """
+        if isinstance(node.func, ast.Name):
+            return False
+
+        return matching.matches_name_or_namespaces(
+            node, "ShuffleConfig", ("sagemaker.session", "session")
+        )
+
+    def modify_node(self, node):
+        """Modifies the ``ast.Call`` node to call ``sagemaker.inputs.ShuffleConfig``.
+
+        Args:
+            node (ast.Call): a node that represents a ``sagemaker.session.ShuffleConfig``
+                constructor.
+
+        Returns:
+            ast.Call: the original node, with its namespace changed to use the ``inputs`` module.
+        """
+        _rename_namespace(node, "session")
+        return node
+
+
+class ShuffleConfigImportFromRenamer(Modifier):
+    """A class to update import statements of ``ShuffleConfig``."""
+
+    def node_should_be_modified(self, node):
+        """Checks if the import statement imports ``sagemaker.session.ShuffleConfig``.
+
+        Args:
+            node (ast.ImportFrom): a node that represents a ``from ... import ... `` statement.
+                For more, see https://docs.python.org/3/library/ast.html#abstract-grammar.
+
+        Returns:
+            bool: If the import statement imports ``sagemaker.session.ShuffleConfig``.
+        """
+        return node.module == "sagemaker.session" and any(
+            name.name == "ShuffleConfig" for name in node.names
+        )
+
+    def modify_node(self, node):
+        """Changes the ``ast.ImportFrom`` node's namespace to ``sagemaker.inputs``.
+
+        Args:
+            node (ast.ImportFrom): a node that represents a ``from ... import ... `` statement.
+                For more, see https://docs.python.org/3/library/ast.html#abstract-grammar.
+
+        Returns:
+            ast.ImportFrom: the original node, with its module modified to ``"sagemaker.inputs"``.
+        """
+        node.module = "sagemaker.inputs"
+        return node

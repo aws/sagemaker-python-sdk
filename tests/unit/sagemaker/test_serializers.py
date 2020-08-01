@@ -27,6 +27,7 @@ from sagemaker.serializers import (
     IdentitySerializer,
     SparseMatrixSerializer,
     JSONLinesSerializer,
+    LibSVMSerializer,
 )
 from tests.unit import DATA_DIR
 
@@ -310,3 +311,23 @@ def test_sparse_matrix_serializer(sparse_matrix_serializer):
     result = scipy.sparse.load_npz(stream).toarray()
     expected = data.toarray()
     assert np.array_equal(result, expected)
+
+
+@pytest.fixture
+def libsvm_serializer():
+    return LibSVMSerializer()
+
+
+def test_libsvm_serializer_str(libsvm_serializer):
+    original = "0 0:1 5:1"
+    result = libsvm_serializer.serialize("0 0:1 5:1")
+    assert result == original
+
+
+def test_libsvm_serializer_file_like(libsvm_serializer):
+    libsvm_file_path = os.path.join(DATA_DIR, "xgboost_abalone", "abalone")
+    with open(libsvm_file_path) as libsvm_file:
+        validation_data = libsvm_file.read()
+        libsvm_file.seek(0)
+        result = libsvm_serializer.serialize(libsvm_file)
+        assert result == validation_data

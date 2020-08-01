@@ -91,7 +91,7 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
         )
         self._data_location = data_location
 
-    def train_image(self):
+    def training_image_uri(self):
         """Placeholder docstring"""
         return image_uris.retrieve(
             self.repo_name, self.sagemaker_session.boto_region_name, version=self.repo_version,
