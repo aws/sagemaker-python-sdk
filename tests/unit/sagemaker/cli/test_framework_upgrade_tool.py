@@ -159,6 +159,38 @@ def algo_expected_region_content():
     return region_info
 
 
+@pytest.fixture
+def dlc_no_optional_content():
+    content = {
+        "inference": {
+            "processors": ["cpu"],
+            "version_aliases": {"1.0": "1.0.0"},
+            "versions": {
+                "1.0.0": {
+                    "registries": FRAMEWORK_REGION_REGISTRY,
+                    "repository": "tensorflow-inference",
+                }
+            },
+        }
+    }
+    return content
+
+
+@pytest.fixture
+def algo_no_optional_content():
+    content = {
+        "processors": ["cpu"],
+        "scope": ["training"],
+        "versions": {
+            "0.10": {
+                "registries": FRAMEWORK_REGION_REGISTRY,
+                "repository": "sagemaker-rl-tensorflow",
+            }
+        },
+    }
+    return content
+
+
 def test_add_tensorflow_eia(dlc_content, dlc_expected_content):
     latest_repository = "tensorflow-inference-eia"
     processors = ["cpu", "gpu"]
@@ -237,3 +269,24 @@ def test_algo_get_latest_content(algo_content):
     assert registries == algo_content["versions"][latest_version]["registries"]
     assert py_versions == algo_content["versions"][latest_version]["py_versions"]
     assert repository == algo_content["versions"][latest_version]["repository"]
+
+
+def test_dlc_get_latest_content_no_optional(dlc_no_optional_content):
+    latest_version = "1.0.0"
+    scope = "inference"
+    registries, py_versions, repository = framework_upgrade.get_latest_values(
+        dlc_no_optional_content, scope=scope
+    )
+    assert py_versions is None
+    assert registries == dlc_no_optional_content[scope]["versions"][latest_version]["registries"]
+    assert repository == dlc_no_optional_content[scope]["versions"][latest_version]["repository"]
+
+
+def test_algo_get_latest_content_no_optional(algo_no_optional_content):
+    latest_version = "0.10"
+    registries, py_versions, repository = framework_upgrade.get_latest_values(
+        algo_no_optional_content
+    )
+    assert py_versions is None
+    assert registries == algo_no_optional_content["versions"][latest_version]["registries"]
+    assert repository == algo_no_optional_content["versions"][latest_version]["repository"]
