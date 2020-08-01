@@ -26,9 +26,9 @@ import sagemaker.local
 from sagemaker import TrainingInput, utils, vpc_utils
 from sagemaker.algorithm import AlgorithmEstimator
 from sagemaker.estimator import Estimator, EstimatorBase, Framework, _TrainingJob
+from sagemaker.inputs import ShuffleConfig
 from sagemaker.model import FrameworkModel
 from sagemaker.predictor import Predictor
-from sagemaker.session import ShuffleConfig
 from sagemaker.transformer import Transformer
 
 MODEL_DATA = "s3://bucket/model.tar.gz"
