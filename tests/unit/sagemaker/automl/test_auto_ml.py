@@ -591,6 +591,8 @@ def test_deploy_optional_args(candidate_estimator, sagemaker_session, candidate_
     mock_pipeline.deploy.assert_called_with(
         initial_instance_count=INSTANCE_COUNT,
         instance_type=INSTANCE_TYPE,
+        serializer=None,
+        deserializer=None,
         endpoint_name=JOB_NAME,
         tags=TAGS,
         wait=False,

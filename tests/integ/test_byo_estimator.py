@@ -88,10 +88,13 @@ def test_byo_estimator(sagemaker_session, region, cpu_instance_type, training_se
 
     with timeout_and_delete_endpoint_by_name(job_name, sagemaker_session):
         model = estimator.create_model()
-        predictor = model.deploy(1, cpu_instance_type, endpoint_name=job_name)
-        predictor.serializer = _FactorizationMachineSerializer()
-        predictor.deserializer = sagemaker.deserializers.JSONDeserializer()
-        predictor.content_type = "application/json"
+        predictor = model.deploy(
+            1,
+            cpu_instance_type,
+            endpoint_name=job_name,
+            serializer=_FactorizationMachineSerializer(),
+            deserializer=sagemaker.deserializers.JSONDeserializer(),
+        )
 
         result = predictor.predict(training_set[0][:10])
 
@@ -134,10 +137,13 @@ def test_async_byo_estimator(sagemaker_session, region, cpu_instance_type, train
             training_job_name=job_name, sagemaker_session=sagemaker_session
         )
         model = estimator.create_model()
-        predictor = model.deploy(1, cpu_instance_type, endpoint_name=endpoint_name)
-        predictor.serializer = _FactorizationMachineSerializer()
-        predictor.deserializer = sagemaker.deserializers.JSONDeserializer()
-        predictor.content_type = "application/json"
+        predictor = model.deploy(
+            1,
+            cpu_instance_type,
+            endpoint_name=endpoint_name,
+            serializer=_FactorizationMachineSerializer(),
+            deserializer=sagemaker.deserializers.JSONDeserializer(),
+        )
 
         result = predictor.predict(training_set[0][:10])
 
