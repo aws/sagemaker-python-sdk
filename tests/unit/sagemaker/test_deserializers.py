@@ -196,7 +196,7 @@ def pandas_deserializer():
 
 def test_pandas_deserializer_json(pandas_deserializer):
     data = {"col 1": {"row 1": "a", "row 2": "c"}, "col 2": {"row 1": "b", "row 2": "d"}}
-    stream = io.StringIO(json.dumps(data))
+    stream = io.BytesIO(json.dumps(data).encode("utf-8"))
     result = pandas_deserializer.deserialize(stream, "application/json")
     expected = pd.DataFrame(
         [["a", "b"], ["c", "d"]], index=["row 1", "row 2"], columns=["col 1", "col 2"]
@@ -205,7 +205,7 @@ def test_pandas_deserializer_json(pandas_deserializer):
 
 
 def test_pandas_deserializer_csv(pandas_deserializer):
-    stream = io.StringIO("col 1,col 2\na,b\nc,d")
+    stream = io.BytesIO(b"col 1,col 2\na,b\nc,d")
     result = pandas_deserializer.deserialize(stream, "text/csv")
     expected = pd.DataFrame([["a", "b"], ["c", "d"]], columns=["col 1", "col 2"])
     assert result.equals(expected)

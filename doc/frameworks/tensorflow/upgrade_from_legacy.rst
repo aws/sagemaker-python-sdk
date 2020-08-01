@@ -248,7 +248,6 @@ For example, if you want to use JSON serialization and deserialization:
     from sagemaker.deserializers import JSONDeserializer
     from sagemaker.serializers import JSONSerializer
 
-    predictor.serializer = JSONSerializer()
-    predictor.deserializer = JSONDeserializer()
+    predictor = model.deploy(..., serializer=JSONSerializer(), deserializer=JSONDeserializer())
 
     predictor.predict(data)

@@ -85,6 +85,8 @@ class PipelineModel(object):
         self,
         initial_instance_count,
         instance_type,
+        serializer=None,
+        deserializer=None,
         endpoint_name=None,
         tags=None,
         wait=True,
@@ -110,6 +112,16 @@ class PipelineModel(object):
                 in the ``Endpoint`` created from this ``Model``.
             instance_type (str): The EC2 instance type to deploy this Model to.
                 For example, 'ml.p2.xlarge'.
+            serializer (:class:`~sagemaker.serializers.BaseSerializer`): A
+                serializer object, used to encode data for an inference endpoint
+                (default: None). If ``serializer`` is not None, then
+                ``serializer`` will override the default serializer. The
+                default serializer is set by the ``predictor_cls``.
+            deserializer (:class:`~sagemaker.deserializers.BaseDeserializer`): A
+                deserializer object, used to decode data from an inference
+                endpoint (default: None). If ``deserializer`` is not None, then
+                ``deserializer`` will override the default deserializer. The
+                default deserializer is set by the ``predictor_cls``.
             endpoint_name (str): The name of the endpoint to create (default:
                 None). If not specified, a unique endpoint name will be created.
             tags (List[dict[str, str]]): The list of tags to attach to this
@@ -171,7 +183,12 @@ class PipelineModel(object):
             )
 
         if self.predictor_cls:
-            return self.predictor_cls(self.endpoint_name, self.sagemaker_session)
+            predictor = self.predictor_cls(self.endpoint_name, self.sagemaker_session)
+            if serializer:
+                predictor.serializer = serializer
+            if deserializer:
+                predictor.deserializer = deserializer
+            return predictor
         return None
 
     def _create_sagemaker_pipeline_model(self, instance_type):
