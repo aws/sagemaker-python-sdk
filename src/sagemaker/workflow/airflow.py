@@ -149,7 +149,9 @@ def training_base_config(estimator, inputs=None, job_name=None, mini_batch_size=
     if job_name is not None:
         estimator._current_job_name = job_name
     else:
-        base_name = estimator.base_job_name or utils.base_name_from_image(estimator.train_image())
+        base_name = estimator.base_job_name or utils.base_name_from_image(
+            estimator.training_image_uri()
+        )
         estimator._current_job_name = utils.name_from_base(base_name)
 
     if estimator.output_path is None:
@@ -164,7 +166,7 @@ def training_base_config(estimator, inputs=None, job_name=None, mini_batch_size=
 
     train_config = {
         "AlgorithmSpecification": {
-            "TrainingImage": estimator.train_image(),
+            "TrainingImage": estimator.training_image_uri(),
             "TrainingInputMode": estimator.input_mode,
         },
         "OutputDataConfig": job_config["output_config"],

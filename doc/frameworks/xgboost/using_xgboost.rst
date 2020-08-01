@@ -192,12 +192,14 @@ inference against your model.
 
 .. code::
 
+    serializer = StringSerializer()
+    serializer.CONTENT_TYPE = "text/libsvm"
+
     predictor = estimator.deploy(
         initial_instance_count=1,
-        instance_type="ml.m5.xlarge"
+        instance_type="ml.m5.xlarge",
+        serializer=serializer
     )
-    predictor.serializer = str
-    predictor.content_type = "text/libsvm"
 
     with open("abalone") as f:
         payload = f.read()

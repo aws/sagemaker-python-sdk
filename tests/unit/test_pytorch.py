@@ -537,7 +537,7 @@ def test_attach_custom_image(sagemaker_session):
     estimator = PyTorch.attach(training_job_name="neo", sagemaker_session=sagemaker_session)
     assert estimator.latest_training_job.job_name == "neo"
     assert estimator.image_uri == training_image
-    assert estimator.train_image() == training_image
+    assert estimator.training_image_uri() == training_image
 
 
 @patch("sagemaker.pytorch.estimator.python_deprecation_warning")
