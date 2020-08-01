@@ -325,7 +325,7 @@ def test_single_transformer_multiple_jobs(
 
 def test_stop_transform_job(mxnet_estimator, mxnet_transform_input, cpu_instance_type):
     transformer = mxnet_estimator.transformer(1, cpu_instance_type)
-    transformer.transform(mxnet_transform_input, content_type="text/csv")
+    transformer.transform(mxnet_transform_input, content_type="text/csv", wait=False)
 
     time.sleep(15)
 

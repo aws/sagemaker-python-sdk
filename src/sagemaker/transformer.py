@@ -121,8 +121,8 @@ class Transformer(object):
         join_source=None,
         experiment_config=None,
         model_client_config=None,
-        wait=False,
-        logs=False,
+        wait=True,
+        logs=True,
     ):
         """Start a new transform job.
 
@@ -178,9 +178,9 @@ class Transformer(object):
                 'InvocationsTimeoutInSeconds', and 'InvocationsMaxRetries'.
                 (default: ``None``).
             wait (bool): Whether the call should wait until the job completes
-                (default: False).
+                (default: ``True``).
             logs (bool): Whether to show the logs produced by the job.
-                Only meaningful when wait is True (default: False).
+                Only meaningful when wait is ``True`` (default: ``True``).
         """
         local_mode = self.sagemaker_session.local_mode
         if not local_mode and not data.startswith("s3://"):
