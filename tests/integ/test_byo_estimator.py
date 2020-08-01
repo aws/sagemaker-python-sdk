@@ -151,4 +151,4 @@ def test_async_byo_estimator(sagemaker_session, region, cpu_instance_type, train
         for prediction in result["predictions"]:
             assert prediction["score"] is not None
 
-        assert estimator.train_image() == image_uri
+        assert estimator.training_image_uri() == image_uri

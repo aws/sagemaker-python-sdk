@@ -285,7 +285,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         self._enable_network_isolation = enable_network_isolation
 
     @abstractmethod
-    def train_image(self):
+    def training_image_uri(self):
         """Return the Docker image to use for training.
 
         The :meth:`~sagemaker.estimator.EstimatorBase.fit` method, which does
@@ -329,7 +329,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         """Set ``self.base_job_name`` if it is not set already."""
         # honor supplied base_job_name or generate it
         if self.base_job_name is None:
-            self.base_job_name = base_name_from_image(self.train_image())
+            self.base_job_name = base_name_from_image(self.training_image_uri())
 
     def _get_or_create_name(self, name=None):
         """Generate a name based on the base job name or training image if needed.
@@ -507,7 +507,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
 
     def _compilation_job_name(self):
         """Placeholder docstring"""
-        base_name = self.base_job_name or base_name_from_image(self.train_image())
+        base_name = self.base_job_name or base_name_from_image(self.training_image_uri())
         return name_from_base("compilation-" + base_name)
 
     def compile_model(
@@ -1083,7 +1083,7 @@ class _TrainingJob(_Job):
         if isinstance(estimator, sagemaker.algorithm.AlgorithmEstimator):
             train_args["algorithm_arn"] = estimator.algorithm_arn
         else:
-            train_args["image_uri"] = estimator.train_image()
+            train_args["image_uri"] = estimator.training_image_uri()
 
         if estimator.debugger_rule_configs:
             train_args["debugger_rule_configs"] = estimator.debugger_rule_configs
@@ -1350,7 +1350,7 @@ class Estimator(EstimatorBase):
             enable_network_isolation=enable_network_isolation,
         )
 
-    def train_image(self):
+    def training_image_uri(self):
         """Returns the docker image to use for training.
 
         The fit() method, that does the model training, calls this method to
@@ -1424,7 +1424,7 @@ class Estimator(EstimatorBase):
             kwargs["enable_network_isolation"] = self.enable_network_isolation()
 
         return Model(
-            image_uri or self.train_image(),
+            image_uri or self.training_image_uri(),
             self.model_data,
             role,
             vpc_config=self.get_vpc_config(vpc_config_override),
@@ -1826,7 +1826,7 @@ class Framework(EstimatorBase):
 
         return init_params
 
-    def train_image(self):
+    def training_image_uri(self):
         """Return the Docker image to use for training.
 
         The :meth:`~sagemaker.estimator.EstimatorBase.fit` method, which does

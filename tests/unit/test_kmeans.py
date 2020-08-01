@@ -112,7 +112,7 @@ def test_all_hyperparameters(sagemaker_session):
 
 def test_image(sagemaker_session):
     kmeans = KMeans(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-    assert image_uris.retrieve("kmeans", REGION) == kmeans.train_image()
+    assert image_uris.retrieve("kmeans", REGION) == kmeans.training_image_uri()
 
 
 @pytest.mark.parametrize("required_hyper_parameters, value", [("k", "string")])
