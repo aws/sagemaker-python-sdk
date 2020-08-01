@@ -522,6 +522,22 @@ def test_retrieve_processor_type_from_version_specific_processor_config(config_f
     assert "123412341234.dkr.ecr.us-west-2.amazonaws.com/dummy:1.1.0-py3" == uri
 
 
+@patch("sagemaker.image_uris.config_for_framework")
+def test_retrieve_default_processor_type_if_possible(config_for_framework):
+    config = copy.deepcopy(BASE_CONFIG)
+    config["processors"] = ["cpu"]
+    config_for_framework.return_value = config
+
+    uri = image_uris.retrieve(
+        framework="useless-string",
+        version="1.0.0",
+        py_version="py3",
+        region="us-west-2",
+        image_scope="training",
+    )
+    assert "123412341234.dkr.ecr.us-west-2.amazonaws.com/dummy:1.0.0-cpu-py3" == uri
+
+
 @patch("sagemaker.image_uris.config_for_framework", return_value=BASE_CONFIG)
 def test_retrieve_unsupported_processor_type(config_for_framework):
     with pytest.raises(ValueError) as e:
