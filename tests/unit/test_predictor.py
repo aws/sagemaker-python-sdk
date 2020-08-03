@@ -214,7 +214,7 @@ def test_predict_call_with_multiple_accept_types():
     assert sagemaker_session.sagemaker_runtime_client.invoke_endpoint.called
 
     expected_request_args = {
-        "Accept": "application/json, text/csv",
+        "Accept": "application/json",
         "Body": "1,2",
         "ContentType": CSV_CONTENT_TYPE,
         "EndpointName": ENDPOINT,

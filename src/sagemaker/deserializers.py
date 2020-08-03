@@ -58,7 +58,7 @@ class BaseDeserializer(abc.ABC):
 class StringDeserializer(BaseDeserializer):
     """Deserialize data from an inference endpoint into a decoded string."""
 
-    ACCEPT = ("application/json", "text/csv")
+    ACCEPT = ("application/json",)
 
     def __init__(self, encoding="UTF-8"):
         """Initialize the string encoding.
@@ -161,16 +161,17 @@ class StreamDeserializer(BaseDeserializer):
 class NumpyDeserializer(BaseDeserializer):
     """Deserialize a stream of data in the .npy format."""
 
-    ACCEPT = ("application/x-npy", "text/csv", "application/json")
-
-    def __init__(self, dtype=None, allow_pickle=True):
+    def __init__(self, dtype=None, accept="application/x-npy", allow_pickle=True):
         """Initialize the dtype and allow_pickle arguments.
 
         Args:
             dtype (str): The dtype of the data (default: None).
+            accept (str): The MIME type that is expected from the inference
+                endpoint (default: "application/x-npy").
             allow_pickle (bool): Allow loading pickled object arrays (default: True).
         """
         self.dtype = dtype
+        self.accept = accept
         self.allow_pickle = allow_pickle
 
     def deserialize(self, stream, content_type):
@@ -196,6 +197,16 @@ class NumpyDeserializer(BaseDeserializer):
             stream.close()
 
         raise ValueError("%s cannot read content type %s." % (__class__.__name__, content_type))
+
+    @property
+    def ACCEPT(self):
+        """The content types that are expected from the inference endpoint.
+
+        To maintain backwards compatability with legacy images, the
+        NumpyDeserializer supports sending only one content type in the Accept
+        header.
+        """
+        return (self.accept,)
 
 
 class JSONDeserializer(BaseDeserializer):
