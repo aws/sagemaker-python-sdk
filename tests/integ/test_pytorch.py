@@ -55,8 +55,26 @@ def fixture_training_job(
         return pytorch.latest_training_job.name
 
 
+@pytest.fixture(scope="module", name="pytorch_training_job_with_latest_infernce_version")
+def fixture_training_job_with_latest_inference_version(
+        sagemaker_session,
+        pytorch_inference_latest_version,
+        pytorch_inference_latest_py_version,
+        cpu_instance_type,
+):
+    with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
+        pytorch = _get_pytorch_estimator(
+            sagemaker_session,
+            pytorch_inference_latest_version,
+            pytorch_inference_latest_py_version,
+            cpu_instance_type,
+        )
+        pytorch.fit({"training": _upload_training_data(pytorch)})
+        return pytorch.latest_training_job.name
+
+
 @pytest.mark.canary_quick
-def test_fit_deploy(pytorch_training_job, sagemaker_session, cpu_instance_type):
+def test_fit_deploy(pytorch_training_job_with_latest_infernce_version, sagemaker_session, cpu_instance_type):
     endpoint_name = "test-pytorch-sync-fit-attach-deploy{}".format(sagemaker_timestamp())
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         estimator = PyTorch.attach(pytorch_training_job, sagemaker_session=sagemaker_session)
