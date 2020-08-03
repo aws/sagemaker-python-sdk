@@ -79,26 +79,23 @@ class ImageURIRetrieveRefactor(Modifier):
             if arg:
                 args.append(arg)
 
-        if matching.matches_name(node, GET_IMAGE_URI_NAME) or matching.matches_attr(
-            node, GET_IMAGE_URI_NAME
-        ):
-            func = node.func
-            has_sagemaker = False
-            while hasattr(func, "value"):
-                if hasattr(func.value, "id") and func.value.id == "sagemaker":
-                    has_sagemaker = True
-                    break
-                func = func.value
+        func = node.func
+        has_sagemaker = False
+        while hasattr(func, "value"):
+            if hasattr(func.value, "id") and func.value.id == "sagemaker":
+                has_sagemaker = True
+                break
+            func = func.value
 
-            if has_sagemaker:
-                node.func = ast.Attribute(
-                    value=ast.Attribute(attr="image_uris", value=ast.Name(id="sagemaker")),
-                    attr="retrieve",
-                )
-            else:
-                node.func = ast.Attribute(value=ast.Name(id="image_uris"), attr="retrieve")
-            node.args = args
-            node.keywords = []
+        if has_sagemaker:
+            node.func = ast.Attribute(
+                value=ast.Attribute(attr="image_uris", value=ast.Name(id="sagemaker")),
+                attr="retrieve",
+            )
+        else:
+            node.func = ast.Attribute(value=ast.Name(id="image_uris"), attr="retrieve")
+        node.args = args
+        node.keywords = []
         return node
 
 
