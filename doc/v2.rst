@@ -407,6 +407,12 @@ You can apply it to a set of files using a loop:
 Limitations
 ===========
 
+Jupyter Notebook Cells with Shell Commands
+------------------------------------------
+
+If your Jupyter notebook has a code cell with lines that start with either ``%%`` or ``!``, the tool ignores that cell.
+The other cells in the notebook are still updated.
+
 Aliased Imports
 ---------------
 
