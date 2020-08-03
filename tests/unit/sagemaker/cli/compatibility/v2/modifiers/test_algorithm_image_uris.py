@@ -54,27 +54,29 @@ def test_methodnode_should_be_modified_random_call():
 def test_method_modify_node(methods, caplog):
     modifier = image_uris.ImageURIRetrieveRefactor()
 
-    method = "get_image_uri('us-west-2', 'sagemaker-xgboost')"
+    method = "get_image_uri('us-west-2', 'xgboost')"
     node = ast_call(method)
     modifier.modify_node(node)
     assert "image_uris.retrieve('xgboost', 'us-west-2')" == pasta.dump(node)
 
-    method = "amazon_estimator.get_image_uri('us-west-2', 'sagemaker-xgboost')"
+    method = "amazon_estimator.get_image_uri('us-west-2', 'xgboost')"
     node = ast_call(method)
     modifier.modify_node(node)
     assert "image_uris.retrieve('xgboost', 'us-west-2')" == pasta.dump(node)
 
-    method = "sagemaker.get_image_uri(repo_region='us-west-2', repo_name='sagemaker-xgboost')"
+    method = "sagemaker.get_image_uri(repo_region='us-west-2', repo_name='xgboost')"
     node = ast_call(method)
     modifier.modify_node(node)
     assert "sagemaker.image_uris.retrieve('xgboost', 'us-west-2')" == pasta.dump(node)
 
-    method = "sagemaker.amazon_estimator.get_image_uri('us-west-2', repo_name='sagemaker-xgboost')"
+    method = "sagemaker.amazon_estimator.get_image_uri('us-west-2', repo_name='xgboost')"
     node = ast_call(method)
     modifier.modify_node(node)
     assert "sagemaker.image_uris.retrieve('xgboost', 'us-west-2')" == pasta.dump(node)
 
-    method = "sagemaker.amazon.amazon_estimator.get_image_uri('us-west-2', 'sagemaker-xgboost', repo_version='1')"
+    method = (
+        "sagemaker.amazon.amazon_estimator.get_image_uri('us-west-2', 'xgboost', repo_version='1')"
+    )
     node = ast_call(method)
     modifier.modify_node(node)
     assert "sagemaker.image_uris.retrieve('xgboost', 'us-west-2', '1')" == pasta.dump(node)

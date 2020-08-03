@@ -14,8 +14,6 @@
 from __future__ import absolute_import
 
 import ast
-import logging
-import pasta
 
 from sagemaker.cli.compatibility.v2.modifiers import matching
 from sagemaker.cli.compatibility.v2.modifiers.modifier import Modifier
@@ -28,30 +26,6 @@ GET_IMAGE_URI_NAMESPACES = (
     "amazon_estimator",
     "amazon.amazon_estimator",
 )
-
-ALGORITHM_NAME_FROM_REPO = {
-    "blazingtext": "blazingtext",
-    "factorization-machine": "factorization-machines",
-    "forecasting-deepar": "forecasting-deepar",
-    "image-classification": "image-classification",
-    "image-classification-neo": "image-classification-neo",
-    "ipinsights": "ipinsights",
-    "kmeans": "kmeans",
-    "knn": "knn",
-    "lda": "lda",
-    "linear-learner": "linear-learner",
-    "ntm": "ntm",
-    "object2vec": "object2vec",
-    "object-detection": "object-detection",
-    "pca": "pca",
-    "randomcutforest": "randomcutforest",
-    "semantic-segmentation": "semantic-segmentation",
-    "seq2seq": "seq2seq",
-    "sagemaker-xgboost": "xgboost",
-    "xgboost-neo": "xgboost-neo",
-}
-
-logger = logging.getLogger("sagemaker")
 
 
 class ImageURIRetrieveRefactor(Modifier):
@@ -87,9 +61,7 @@ class ImageURIRetrieveRefactor(Modifier):
         original_args = [None] * 3
         for kw in node.keywords:
             if kw.arg == "repo_name":
-                arg = kw.value.s
-                modified_arg = ALGORITHM_NAME_FROM_REPO[arg]
-                original_args[0] = ast.Str(modified_arg)
+                original_args[0] = ast.Str(kw.value.s)
             elif kw.arg == "repo_region":
                 original_args[1] = ast.Str(kw.value.s)
             elif kw.arg == "repo_version":
@@ -98,9 +70,7 @@ class ImageURIRetrieveRefactor(Modifier):
         if len(node.args) > 0:
             original_args[1] = ast.Str(node.args[0].s)
         if len(node.args) > 1:
-            arg = node.args[1].s
-            modified_arg = ALGORITHM_NAME_FROM_REPO[arg]
-            original_args[0] = ast.Str(modified_arg)
+            original_args[0] = ast.Str(node.args[1].s)
         if len(node.args) > 2:
             original_args[2] = ast.Str(node.args[2].s)
 
@@ -112,9 +82,15 @@ class ImageURIRetrieveRefactor(Modifier):
         if matching.matches_name(node, GET_IMAGE_URI_NAME) or matching.matches_attr(
             node, GET_IMAGE_URI_NAME
         ):
-            node_components = list(pasta.dump(node).split("."))
-            node_modules = node_components[: len(node_components) - 1]
-            if "sagemaker" in node_modules:
+            func = node.func
+            has_sagemaker = False
+            while hasattr(func, "value"):
+                if hasattr(func.value, "id") and func.value.id == "sagemaker":
+                    has_sagemaker = True
+                    break
+                func = func.value
+
+            if has_sagemaker:
                 node.func = ast.Attribute(
                     value=ast.Attribute(attr="image_uris", value=ast.Name(id="sagemaker")),
                     attr="retrieve",
