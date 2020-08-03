@@ -121,11 +121,29 @@ class JupyterNotebookFileUpdater(FileUpdater):
         """
         nb_json = self._read_input_file()
         for cell in nb_json["cells"]:
-            if cell["cell_type"] == "code":
+            if cell["cell_type"] == "code" and not self._contains_shell_cmds(cell):
                 updated_source = self._update_code_from_cell(cell)
                 cell["source"] = updated_source
 
         self._write_output_file(nb_json)
+
+    def _contains_shell_cmds(self, cell):
+        """Checks if the cell's source uses either ``%%`` or ``!`` to execute shell commands.
+
+        Args:
+            cell (dict): A dictionary representation of a code cell from
+                a Jupyter notebook. For more info, see
+                https://ipython.org/ipython-doc/dev/notebook/nbformat.html#code-cells.
+
+        Returns:
+            bool: If the first line starts with ``%%`` or any line starts with ``!``.
+        """
+        source = cell["source"]
+
+        if source[0].startswith("%%"):
+            return True
+
+        return any(line.startswith("!") for line in source)
 
     def _update_code_from_cell(self, cell):
         """Updates the code from a code cell so that it is
