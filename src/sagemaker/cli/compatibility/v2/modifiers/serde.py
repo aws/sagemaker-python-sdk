@@ -157,6 +157,48 @@ class SerdeConstructorRenamer(Modifier):
         )
 
 
+class SerdeKeywordRemover(Modifier):
+    """A class to remove Serde-related keyword arguments from call expressions."""
+
+    def node_should_be_modified(self, node):
+        """Checks if the ``ast.Call`` node uses deprecated keywords.
+
+        In particular, this function checks if:
+
+        - The ``ast.Call`` represents the ``create_model`` method.
+        - Either the serializer or deserializer keywords are used.
+
+        Args:
+            node (ast.Call): a node that represents a function call. For more,
+                see https://docs.python.org/3/library/ast.html#abstract-grammar.
+
+        Returns:
+            bool: If the ``ast.Call`` contains keywords that should be removed.
+        """
+        if not isinstance(node.func, ast.Attribute) or node.func.attr != "create_model":
+            return False
+        return any(keyword.arg in {"serializer", "deserializer"} for keyword in node.keywords)
+
+    def modify_node(self, node):
+        """Removes the serializer and deserializer keywords, as applicable.
+
+        Args:
+            node (ast.Call): a node that represents a ``create_model`` call.
+
+        Returns:
+            ast.Call: the node that represents a ``create_model`` call without
+                serializer or deserializers keywords.
+        """
+        i = 0
+        while i < len(node.keywords):
+            keyword = node.keywords[i]
+            if keyword.arg in {"serializer", "deserializer"}:
+                node.keywords.pop(i)
+            else:
+                i += 1
+        return node
+
+
 class SerdeObjectRenamer(Modifier):
     """A class to rename SerDe objects imported from ``sagemaker.predictor``."""
 
