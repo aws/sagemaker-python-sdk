@@ -57,10 +57,10 @@ def fixture_training_job(
 
 @pytest.fixture(scope="module", name="pytorch_training_job_with_latest_infernce_version")
 def fixture_training_job_with_latest_inference_version(
-        sagemaker_session,
-        pytorch_inference_latest_version,
-        pytorch_inference_latest_py_version,
-        cpu_instance_type,
+    sagemaker_session,
+    pytorch_inference_latest_version,
+    pytorch_inference_latest_py_version,
+    cpu_instance_type,
 ):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         pytorch = _get_pytorch_estimator(
@@ -74,10 +74,14 @@ def fixture_training_job_with_latest_inference_version(
 
 
 @pytest.mark.canary_quick
-def test_fit_deploy(pytorch_training_job_with_latest_infernce_version, sagemaker_session, cpu_instance_type):
+def test_fit_deploy(
+    pytorch_training_job_with_latest_infernce_version, sagemaker_session, cpu_instance_type
+):
     endpoint_name = "test-pytorch-sync-fit-attach-deploy{}".format(sagemaker_timestamp())
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
-        estimator = PyTorch.attach(pytorch_training_job, sagemaker_session=sagemaker_session)
+        estimator = PyTorch.attach(
+            pytorch_training_job_with_latest_infernce_version, sagemaker_session=sagemaker_session
+        )
         predictor = estimator.deploy(1, cpu_instance_type, endpoint_name=endpoint_name)
         data = numpy.zeros(shape=(1, 1, 28, 28), dtype=numpy.float32)
         predictor.predict(data)
