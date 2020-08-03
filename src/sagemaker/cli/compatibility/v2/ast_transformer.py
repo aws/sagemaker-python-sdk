@@ -38,6 +38,7 @@ FUNCTION_CALL_MODIFIERS = [
     modifiers.training_input.ShuffleConfigModuleRenamer(),
     modifiers.serde.SerdeConstructorRenamer(),
     modifiers.serde.SerdeKeywordRemover(),
+    modifiers.image_uris.ImageURIRetrieveRefactor(),
 ]
 
 IMPORT_MODIFIERS = [modifiers.tfs.TensorFlowServingImportRenamer()]
@@ -56,6 +57,7 @@ IMPORT_FROM_MODIFIERS = [
     modifiers.training_input.ShuffleConfigImportFromRenamer(),
     modifiers.serde.SerdeImportFromAmazonCommonRenamer(),
     modifiers.serde.SerdeImportFromPredictorRenamer(),
+    modifiers.image_uris.ImageURIRetrieveImportFromRenamer(),
 ]
 
 
