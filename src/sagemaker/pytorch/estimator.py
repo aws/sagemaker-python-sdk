@@ -15,11 +15,12 @@ from __future__ import absolute_import
 
 import logging
 
+from packaging.version import Version
+
 from sagemaker.estimator import Framework
 from sagemaker.fw_utils import (
     framework_name_from_image,
     framework_version_from_tag,
-    is_version_equal_or_higher,
     python_deprecation_warning,
     validate_version_or_image_args,
 )
@@ -116,9 +117,7 @@ class PyTorch(Framework):
 
         if "enable_sagemaker_metrics" not in kwargs:
             # enable sagemaker metrics for PT v1.3 or greater:
-            if self.framework_version and is_version_equal_or_higher(
-                [1, 3], self.framework_version
-            ):
+            if self.framework_version and Version(self.framework_version) >= Version("1.3"):
                 kwargs["enable_sagemaker_metrics"] = True
 
         super(PyTorch, self).__init__(

@@ -415,7 +415,7 @@ def test_model_prepare_container_def_no_instance_type_or_image(chainer_version, 
     assert expected_msg in str(e)
 
 
-def test_train_image_default(sagemaker_session, chainer_version, chainer_py_version):
+def test_training_image_default(sagemaker_session, chainer_version, chainer_py_version):
     chainer = Chainer(
         entry_point=SCRIPT_PATH,
         role=ROLE,
@@ -426,7 +426,9 @@ def test_train_image_default(sagemaker_session, chainer_version, chainer_py_vers
         py_version=chainer_py_version,
     )
 
-    assert _get_full_cpu_image_uri(chainer_version, chainer_py_version) == chainer.train_image()
+    assert (
+        _get_full_cpu_image_uri(chainer_version, chainer_py_version) == chainer.training_image_uri()
+    )
 
 
 def test_attach(sagemaker_session, chainer_version, chainer_py_version):
@@ -545,7 +547,7 @@ def test_attach_custom_image(sagemaker_session):
 
     estimator = Chainer.attach(training_job_name="neo", sagemaker_session=sagemaker_session)
     assert estimator.image_uri == training_image
-    assert estimator.train_image() == training_image
+    assert estimator.training_image_uri() == training_image
 
 
 @patch("sagemaker.chainer.estimator.python_deprecation_warning")

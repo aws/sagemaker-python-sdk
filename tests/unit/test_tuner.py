@@ -386,7 +386,7 @@ def test_fit_multi_estimators(sagemaker_session):
     assert training_config_one["objective_type"] == "Minimize"
     assert training_config_one["objective_metric_name"] == OBJECTIVE_METRIC_NAME
     assert training_config_one["input_config"] is None
-    assert training_config_one["image_uri"] == estimator_one.train_image()
+    assert training_config_one["image_uri"] == estimator_one.training_image_uri()
     assert training_config_one["metric_definitions"] == METRIC_DEFINITIONS
     assert (
         training_config_one["static_hyperparameters"]["sagemaker_estimator_module"]
@@ -403,7 +403,7 @@ def test_fit_multi_estimators(sagemaker_session):
     assert training_config_two["objective_metric_name"] == OBJECTIVE_METRIC_NAME_TWO
     assert len(training_config_two["input_config"]) == 1
     assert training_config_two["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] == INPUTS
-    assert training_config_two["image_uri"] == estimator_two.train_image()
+    assert training_config_two["image_uri"] == estimator_two.training_image_uri()
     assert training_config_two["metric_definitions"] is None
     assert training_config_two["static_hyperparameters"]["mini_batch_size"] == "4000"
     _assert_parameter_ranges(

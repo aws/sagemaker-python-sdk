@@ -670,7 +670,7 @@ def test_attach_custom_image(sagemaker_session):
 
     estimator = MXNet.attach(training_job_name="neo", sagemaker_session=sagemaker_session)
     assert estimator.image_uri == training_image
-    assert estimator.train_image() == training_image
+    assert estimator.training_image_uri() == training_image
 
 
 def test_estimator_script_mode_dont_launch_parameter_server(sagemaker_session):

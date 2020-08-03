@@ -395,7 +395,7 @@ def test_deploy_ray(sagemaker_session, ray_tensorflow_version):
 
 
 @patch("sagemaker.image_uris.retrieve")
-def test_train_image(retrieve_image_uri, sagemaker_session, ray_tensorflow_version):
+def test_training_image_uri(retrieve_image_uri, sagemaker_session, ray_tensorflow_version):
     toolkit = RLToolkit.RAY
     framework = RLFramework.TENSORFLOW
 
@@ -408,13 +408,13 @@ def test_train_image(retrieve_image_uri, sagemaker_session, ray_tensorflow_versi
         instance_type=CPU,
         image_uri=image,
     )
-    assert image == rl.train_image()
+    assert image == rl.training_image_uri()
     retrieve_image_uri.assert_not_called()
 
     rl = _rl_estimator(
         sagemaker_session, toolkit, ray_tensorflow_version, framework, instance_type=CPU
     )
-    assert retrieve_image_uri.return_value == rl.train_image()
+    assert retrieve_image_uri.return_value == rl.training_image_uri()
 
     retrieve_image_uri.assert_called_with(
         "ray-tensorflow", REGION, version=ray_tensorflow_version, instance_type=CPU
@@ -540,7 +540,7 @@ def test_attach_custom_image(sagemaker_session):
     estimator = RLEstimator.attach(training_job_name="neo", sagemaker_session=sagemaker_session)
     assert estimator.latest_training_job.job_name == "neo"
     assert estimator.image_uri == training_image
-    assert estimator.train_image() == training_image
+    assert estimator.training_image_uri() == training_image
 
 
 def test_wrong_framework_format(sagemaker_session):
