@@ -358,6 +358,17 @@ def test_framework_name_from_image_rl():
     )
 
 
+def test_framework_name_from_image_python_versions():
+    image_name = "123.dkr.ecr.us-west-2.amazonaws.com/tensorflow-training:2.2-cpu-py37"
+    assert ("tensorflow", "py37", "2.2-cpu-py37", "training") == fw_utils.framework_name_from_image(
+        image_name
+    )
+
+    image_name = "123.dkr.ecr.us-west-2.amazonaws.com/tensorflow-training:1.15.2-cpu-py36"
+    expected_result = ("tensorflow", "py36", "1.15.2-cpu-py36", "training")
+    assert expected_result == fw_utils.framework_name_from_image(image_name)
+
+
 def test_legacy_name_from_framework_image():
     image_uri = "123.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet-py3-gpu:2.5.6-gpu-py2"
     framework, py_ver, tag, _ = fw_utils.framework_name_from_image(image_uri)
@@ -402,25 +413,22 @@ def test_legacy_name_from_image_any_tag():
 
 
 def test_framework_version_from_tag():
-    version = fw_utils.framework_version_from_tag("1.5rc-keras-gpu-py2")
-    assert version == "1.5rc-keras"
+    tags = (
+        "1.5rc-keras-cpu-py2",
+        "1.5rc-keras-gpu-py2",
+        "1.5rc-keras-cpu-py3",
+        "1.5rc-keras-gpu-py36",
+        "1.5rc-keras-gpu-py37",
+    )
+
+    for tag in tags:
+        version = fw_utils.framework_version_from_tag(tag)
+        assert "1.5rc-keras" == version
 
 
 def test_framework_version_from_tag_other():
     version = fw_utils.framework_version_from_tag("weird-tag-py2")
     assert version is None
-
-
-def test_parse_s3_url():
-    bucket, key_prefix = fw_utils.parse_s3_url("s3://bucket/code_location")
-    assert "bucket" == bucket
-    assert "code_location" == key_prefix
-
-
-def test_parse_s3_url_fail():
-    with pytest.raises(ValueError) as error:
-        fw_utils.parse_s3_url("t3://code_location")
-    assert "Expecting 's3' scheme" in str(error)
 
 
 def test_model_code_key_prefix_with_all_values_present():

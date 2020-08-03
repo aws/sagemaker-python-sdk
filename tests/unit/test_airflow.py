@@ -16,6 +16,7 @@ import pytest
 from mock import Mock, MagicMock, patch
 
 from sagemaker import chainer, estimator, model, mxnet, tensorflow, transformer, tuner, processing
+from sagemaker.network import NetworkConfig
 from sagemaker.processing import ProcessingInput, ProcessingOutput
 from sagemaker.workflow import airflow
 from sagemaker.amazon import amazon_estimator
@@ -168,7 +169,7 @@ def test_byo_training_config_all_args(sagemaker_session):
 @patch("os.path.isfile", MagicMock(return_value=True))
 @patch("sagemaker.estimator.tar_and_upload_dir", MagicMock())
 @patch(
-    "sagemaker.fw_utils.parse_s3_url",
+    "sagemaker.s3.parse_s3_url",
     MagicMock(
         return_value=["output", "tensorflow-training-{}/source/sourcedir.tar.gz".format(TIME_STAMP)]
     ),
@@ -468,7 +469,7 @@ def test_amazon_alg_training_config_all_args(sagemaker_session):
 @patch("os.path.isfile", MagicMock(return_value=True))
 @patch("sagemaker.estimator.tar_and_upload_dir", MagicMock())
 @patch(
-    "sagemaker.fw_utils.parse_s3_url",
+    "sagemaker.s3.parse_s3_url",
     MagicMock(
         return_value=[
             "output",
@@ -610,7 +611,7 @@ def test_framework_tuning_config(retrieve_image_uri, sagemaker_session):
 @patch("os.path.isfile", MagicMock(return_value=True))
 @patch("sagemaker.estimator.tar_and_upload_dir", MagicMock())
 @patch(
-    "sagemaker.fw_utils.parse_s3_url",
+    "sagemaker.s3.parse_s3_url",
     MagicMock(
         return_value=[
             "output",
@@ -1020,7 +1021,7 @@ def test_amazon_alg_model_config(sagemaker_session):
 @patch("os.path.isfile", MagicMock(return_value=True))
 @patch("sagemaker.estimator.tar_and_upload_dir", MagicMock())
 @patch(
-    "sagemaker.fw_utils.parse_s3_url",
+    "sagemaker.s3.parse_s3_url",
     MagicMock(
         return_value=[
             "output",
@@ -1185,7 +1186,7 @@ def test_transform_config(sagemaker_session):
 @patch("os.path.isfile", MagicMock(return_value=True))
 @patch("sagemaker.estimator.tar_and_upload_dir", MagicMock())
 @patch(
-    "sagemaker.fw_utils.parse_s3_url",
+    "sagemaker.s3.parse_s3_url",
     MagicMock(
         return_value=[
             "output",
@@ -1436,7 +1437,7 @@ def test_deploy_amazon_alg_model_config(sagemaker_session):
 @patch("os.path.isfile", MagicMock(return_value=True))
 @patch("sagemaker.estimator.tar_and_upload_dir", MagicMock())
 @patch(
-    "sagemaker.fw_utils.parse_s3_url",
+    "sagemaker.s3.parse_s3_url",
     MagicMock(
         return_value=[
             "output",
@@ -1572,6 +1573,13 @@ def test_deploy_config_from_amazon_alg_estimator(sagemaker_session):
 @patch("sagemaker.utils.sagemaker_timestamp", MagicMock(return_value=TIME_STAMP))
 def test_processing_config(sagemaker_session):
 
+    network_config = NetworkConfig(
+        encrypt_inter_container_traffic=False,
+        enable_network_isolation=True,
+        security_group_ids=["sg1"],
+        subnets=["subnet1"],
+    )
+
     processor = processing.Processor(
         role="arn:aws:iam::0122345678910:role/SageMakerPowerUser",
         image_uri="{{ image_uri }}",
@@ -1586,6 +1594,7 @@ def test_processing_config(sagemaker_session):
         sagemaker_session=sagemaker_session,
         tags=[{"{{ key }}": "{{ value }}"}],
         env={"{{ key }}": "{{ value }}"},
+        network_config=network_config,
     )
 
     outputs = [
@@ -1673,5 +1682,10 @@ def test_processing_config(sagemaker_session):
         "RoleArn": "arn:aws:iam::0122345678910:role/SageMakerPowerUser",
         "StoppingCondition": {"MaxRuntimeInSeconds": 3600},
         "Tags": [{"{{ key }}": "{{ value }}"}],
+        "NetworkConfig": {
+            "EnableInterContainerTrafficEncryption": False,
+            "EnableNetworkIsolation": True,
+            "VpcConfig": {"SecurityGroupIds": ["sg1"], "Subnets": ["subnet1"]},
+        },
     }
     assert config == expected_config

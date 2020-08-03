@@ -1994,6 +1994,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         experiment_config,
         tags,
         data_processing,
+        model_client_config=None,
     ):
         """Create an Amazon SageMaker transform job.
 
@@ -2018,6 +2019,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             data_processing(dict): A dictionary describing config for combining the input data and
                 transformed data. For more, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
+            model_client_config (dict): A dictionary describing the model configuration for the
+                job. Dictionary contains two optional keys,
+                'InvocationsTimeoutInSeconds', and 'InvocationsMaxRetries'.
         """
         transform_request = {
             "TransformJobName": job_name,
@@ -2047,6 +2051,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         if experiment_config and len(experiment_config) > 0:
             transform_request["ExperimentConfig"] = experiment_config
+
+        if model_client_config and len(model_client_config) > 0:
+            transform_request["ModelClientConfig"] = model_client_config
 
         LOGGER.info("Creating transform job with name: %s", job_name)
         LOGGER.debug("Transform request: %s", json.dumps(transform_request, indent=4))
@@ -3353,44 +3360,6 @@ def get_execution_role(sagemaker_session=None):
         "SageMaker execution role"
     )
     raise ValueError(message.format(arn))
-
-
-class ShuffleConfig(object):
-    """
-    Used to configure channel shuffling using a seed. See SageMaker documentation for
-    more detail: https://docs.aws.amazon.com/sagemaker/latest/dg/API_ShuffleConfig.html
-    """
-
-    def __init__(self, seed):
-        """
-        Create a ShuffleConfig.
-        Args:
-            seed (long): the long value used to seed the shuffled sequence.
-        """
-        self.seed = seed
-
-
-class ModelContainer(object):
-    """Amazon SageMaker Model configurations for inference pipelines.
-
-    Attributes:
-        model_data (str): S3 Model artifact location
-        image_uri (str): Docker image URL in ECR
-        env (dict[str,str]): Environment variable mapping
-    """
-
-    def __init__(self, model_data, image_uri, env=None):
-        """Create a definition of a model which can be part of an Inference Pipeline
-
-        Args:
-            model_data (str): The S3 location of a SageMaker model data ``.tar.gz`` file.
-            image_uri (str): A Docker image URI.
-            env (dict[str, str]): Environment variables to run with ``image_uri`` when hosted in
-                SageMaker (default: None).
-        """
-        self.model_data = model_data
-        self.image_uri = image_uri
-        self.env = env
 
 
 def _create_model_request(

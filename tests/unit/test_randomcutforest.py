@@ -107,7 +107,7 @@ def test_all_hyperparameters(sagemaker_session):
 
 def test_image(sagemaker_session):
     randomcutforest = RandomCutForest(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-    assert image_uris.retrieve("randomcutforest", REGION) == randomcutforest.train_image()
+    assert image_uris.retrieve("randomcutforest", REGION) == randomcutforest.training_image_uri()
 
 
 @pytest.mark.parametrize("iterable_hyper_parameters, value", [("eval_metrics", 0)])

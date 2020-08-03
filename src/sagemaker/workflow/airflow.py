@@ -17,7 +17,7 @@ import os
 import re
 
 import sagemaker
-from sagemaker import fw_utils, job, utils, session, vpc_utils
+from sagemaker import fw_utils, job, utils, s3, session, vpc_utils
 from sagemaker.amazon import amazon_estimator
 from sagemaker.tensorflow import TensorFlow
 
@@ -33,10 +33,10 @@ def prepare_framework(estimator, s3_operations):
             `source_dir` ).
     """
     if estimator.code_location is not None:
-        bucket, key = fw_utils.parse_s3_url(estimator.code_location)
+        bucket, key = s3.parse_s3_url(estimator.code_location)
         key = os.path.join(key, estimator._current_job_name, "source", "sourcedir.tar.gz")
     elif estimator.uploaded_code is not None:
-        bucket, key = fw_utils.parse_s3_url(estimator.uploaded_code.s3_prefix)
+        bucket, key = s3.parse_s3_url(estimator.uploaded_code.s3_prefix)
     else:
         bucket = estimator.sagemaker_session._default_bucket
         key = os.path.join(estimator._current_job_name, "source", "sourcedir.tar.gz")
@@ -149,7 +149,9 @@ def training_base_config(estimator, inputs=None, job_name=None, mini_batch_size=
     if job_name is not None:
         estimator._current_job_name = job_name
     else:
-        base_name = estimator.base_job_name or utils.base_name_from_image(estimator.train_image())
+        base_name = estimator.base_job_name or utils.base_name_from_image(
+            estimator.training_image_uri()
+        )
         estimator._current_job_name = utils.name_from_base(base_name)
 
     if estimator.output_path is None:
@@ -164,7 +166,7 @@ def training_base_config(estimator, inputs=None, job_name=None, mini_batch_size=
 
     train_config = {
         "AlgorithmSpecification": {
-            "TrainingImage": estimator.train_image(),
+            "TrainingImage": estimator.training_image_uri(),
             "TrainingInputMode": estimator.input_mode,
         },
         "OutputDataConfig": job_config["output_config"],
@@ -1145,7 +1147,7 @@ def processing_config(
         config["Environment"] = processor.env
 
     if processor.network_config is not None:
-        config["NetworkConfig"] = processor.network_config
+        config["NetworkConfig"] = processor.network_config._to_request_dict()
 
     processing_resources = sagemaker.processing.ProcessingJob.prepare_processing_resources(
         instance_count=processor.instance_count,
@@ -1155,10 +1157,11 @@ def processing_config(
     )
     config["ProcessingResources"] = processing_resources
 
-    stopping_condition = sagemaker.processing.ProcessingJob.prepare_stopping_condition(
-        processor.max_runtime_in_seconds
-    )
-    config["StoppingCondition"] = stopping_condition
+    if processor.max_runtime_in_seconds is not None:
+        stopping_condition = sagemaker.processing.ProcessingJob.prepare_stopping_condition(
+            processor.max_runtime_in_seconds
+        )
+        config["StoppingCondition"] = stopping_condition
 
     if processor.tags is not None:
         config["Tags"] = processor.tags
@@ -1175,4 +1178,6 @@ def input_output_list_converter(object_list):
     Returns:
         List of dicts
     """
-    return [obj._to_request_dict() for obj in object_list]
+    if object_list:
+        return [obj._to_request_dict() for obj in object_list]
+    return object_list

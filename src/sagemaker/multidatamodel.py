@@ -143,6 +143,8 @@ class MultiDataModel(Model):
         self,
         initial_instance_count,
         instance_type,
+        serializer=None,
+        deserializer=None,
         accelerator_type=None,
         endpoint_name=None,
         tags=None,
@@ -171,6 +173,16 @@ class MultiDataModel(Model):
                 in the ``Endpoint`` created from this ``Model``.
             instance_type (str): The EC2 instance type to deploy this Model to.
                 For example, 'ml.p2.xlarge', or 'local' for local mode.
+            serializer (:class:`~sagemaker.serializers.BaseSerializer`): A
+                serializer object, used to encode data for an inference endpoint
+                (default: None). If ``serializer`` is not None, then
+                ``serializer`` will override the default serializer. The
+                default serializer is set by the ``predictor_cls``.
+            deserializer (:class:`~sagemaker.deserializers.BaseDeserializer`): A
+                deserializer object, used to decode data from an inference
+                endpoint (default: None). If ``deserializer`` is not None, then
+                ``deserializer`` will override the default deserializer. The
+                default deserializer is set by the ``predictor_cls``.
             accelerator_type (str): Type of Elastic Inference accelerator to
                 deploy this model for model loading and inference, for example,
                 'ml.eia1.medium'. If not specified, no Elastic Inference
@@ -201,12 +213,12 @@ class MultiDataModel(Model):
             enable_network_isolation = self.model.enable_network_isolation()
             role = self.model.role
             vpc_config = self.model.vpc_config
-            predictor = self.model.predictor_cls
+            predictor_cls = self.model.predictor_cls
         else:
             enable_network_isolation = self.enable_network_isolation()
             role = self.role
             vpc_config = self.vpc_config
-            predictor = self.predictor_cls
+            predictor_cls = self.predictor_cls
 
         if role is None:
             raise ValueError("Role can not be null for deploying a model")
@@ -245,8 +257,13 @@ class MultiDataModel(Model):
             data_capture_config_dict=data_capture_config_dict,
         )
 
-        if predictor:
-            return predictor(self.endpoint_name, self.sagemaker_session)
+        if predictor_cls:
+            predictor = predictor_cls(self.endpoint_name, self.sagemaker_session)
+            if serializer:
+                predictor.serializer = serializer
+            if deserializer:
+                predictor.deserializer = deserializer
+            return predictor
         return None
 
     def add_model(self, model_data_source, model_data_path=None):

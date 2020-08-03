@@ -129,7 +129,7 @@ class TensorFlow(Framework):
 
         if "enable_sagemaker_metrics" not in kwargs:
             # enable sagemaker metrics for TF v1.15 or greater:
-            if framework_version and fw.is_version_equal_or_higher([1, 15], framework_version):
+            if framework_version and version.Version(framework_version) >= version.Version("1.15"):
                 kwargs["enable_sagemaker_metrics"] = True
 
         super(TensorFlow, self).__init__(image_uri=image_uri, **kwargs)
@@ -433,7 +433,7 @@ class TensorFlow(Framework):
         model_name = self._get_or_create_name(model_name)
 
         if self.latest_training_job is None:
-            logging.warning(
+            logger.warning(
                 "No finished training job found associated with this estimator. Please make sure "
                 "this estimator is only used for building workflow config"
             )

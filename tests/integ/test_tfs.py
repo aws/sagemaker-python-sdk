@@ -23,8 +23,9 @@ import sagemaker.predictor
 import sagemaker.utils
 import tests.integ
 import tests.integ.timeout
+from sagemaker.deserializers import JSONDeserializer
 from sagemaker.tensorflow.model import TensorFlowModel, TensorFlowPredictor
-from sagemaker.serializers import CSVSerializer
+from sagemaker.serializers import CSVSerializer, IdentitySerializer
 
 
 @pytest.fixture(scope="module")
@@ -40,6 +41,7 @@ def tfs_predictor(sagemaker_session, tensorflow_inference_latest_version):
             role="SageMakerRole",
             framework_version=tensorflow_inference_latest_version,
             sagemaker_session=sagemaker_session,
+            name=endpoint_name,
         )
         predictor = model.deploy(1, "ml.c5.xlarge", endpoint_name=endpoint_name)
         yield predictor
@@ -68,6 +70,7 @@ def tfs_predictor_with_model_and_entry_point_same_tar(
         role="SageMakerRole",
         framework_version=tensorflow_inference_latest_version,
         sagemaker_session=sagemaker_local_session,
+        name=endpoint_name,
     )
     predictor = model.deploy(1, "local", endpoint_name=endpoint_name)
 
@@ -101,6 +104,7 @@ def tfs_predictor_with_model_and_entry_point_and_dependencies(
         dependencies=dependencies,
         framework_version=tensorflow_inference_latest_version,
         sagemaker_session=sagemaker_local_session,
+        name=endpoint_name,
     )
 
     predictor = model.deploy(1, "local", endpoint_name=endpoint_name)
@@ -126,6 +130,7 @@ def tfs_predictor_with_accelerator(
             role="SageMakerRole",
             framework_version=tensorflow_eia_latest_version,
             sagemaker_session=sagemaker_session,
+            name=endpoint_name,
         )
         predictor = model.deploy(
             1, cpu_instance_type, endpoint_name=endpoint_name, accelerator_type="ml.eia1.medium"
@@ -190,10 +195,8 @@ def test_predict_jsons_json_content_type(tfs_predictor):
     predictor = sagemaker.Predictor(
         tfs_predictor.endpoint_name,
         tfs_predictor.sagemaker_session,
-        serializer=None,
-        deserializer=sagemaker.deserializers.JSONDeserializer(),
-        content_type="application/json",
-        accept="application/json",
+        serializer=IdentitySerializer(content_type="application/json"),
+        deserializer=JSONDeserializer(),
     )
 
     result = predictor.predict(input_data)
@@ -207,10 +210,8 @@ def test_predict_jsons(tfs_predictor):
     predictor = sagemaker.Predictor(
         tfs_predictor.endpoint_name,
         tfs_predictor.sagemaker_session,
-        serializer=None,
-        deserializer=sagemaker.deserializers.JSONDeserializer(),
-        content_type="application/jsons",
-        accept="application/jsons",
+        serializer=IdentitySerializer(content_type="application/json"),
+        deserializer=JSONDeserializer(),
     )
 
     result = predictor.predict(input_data)
@@ -224,10 +225,8 @@ def test_predict_jsonlines(tfs_predictor):
     predictor = sagemaker.Predictor(
         tfs_predictor.endpoint_name,
         tfs_predictor.sagemaker_session,
-        serializer=None,
-        deserializer=sagemaker.deserializers.JSONDeserializer(),
-        content_type="application/jsonlines",
-        accept="application/jsonlines",
+        serializer=IdentitySerializer(content_type="application/jsonlines"),
+        deserializer=JSONDeserializer(),
     )
 
     result = predictor.predict(input_data)

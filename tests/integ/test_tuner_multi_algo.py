@@ -189,11 +189,17 @@ def _deploy_and_predict(sagemaker_session, tuner, data_set, cpu_instance_type):
                 tuner.latest_tuning_job.name, best_training_job
             )
         )
-        predictor = tuner.deploy(1, cpu_instance_type, endpoint_name=best_training_job)
+        predictor = tuner.deploy(
+            1,
+            cpu_instance_type,
+            endpoint_name=best_training_job,
+            serializer=PredictionDataSerializer(),
+            deserializer=JSONDeserializer(),
+        )
 
         print("Making prediction using the deployed model")
         data = data_set[0][:10]
-        result = _make_prediction(predictor, data)
+        result = predictor.predict(data)
 
         assert len(result["predictions"]) == len(data)
         for prediction in result["predictions"]:
@@ -211,12 +217,6 @@ def _create_training_inputs(sagemaker_session):
     )
 
     return {"train": s3_train_data, "test": s3_train_data}
-
-
-def _make_prediction(predictor, data):
-    predictor.serializer = PredictionDataSerializer()
-    predictor.deserializer = JSONDeserializer()
-    return predictor.predict(data)
 
 
 class PredictionDataSerializer(BaseSerializer):

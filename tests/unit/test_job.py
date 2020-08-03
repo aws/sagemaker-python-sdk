@@ -83,7 +83,7 @@ def sagemaker_session():
 class DummyFramework(Framework):
     _framework_name = "dummy"
 
-    def train_image(self):
+    def training_image_uri(self):
         return IMAGE_NAME
 
     def create_model(self, role=None, model_server_workers=None):

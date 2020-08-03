@@ -521,7 +521,7 @@ def test_hyperparameters_no_model_dir(
     assert "model_dir" not in hyperparameters
 
 
-def test_train_image_custom_image(sagemaker_session):
+def test_custom_image(sagemaker_session):
     custom_image = "tensorflow:latest"
     tf = _build_tf(sagemaker_session, image_uri=custom_image)
-    assert custom_image == tf.train_image()
+    assert custom_image == tf.training_image_uri()

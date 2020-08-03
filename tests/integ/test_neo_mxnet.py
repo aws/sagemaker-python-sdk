@@ -19,6 +19,7 @@ import pytest
 
 from sagemaker.mxnet.estimator import MXNet
 from sagemaker.mxnet.model import MXNetModel
+from sagemaker.serializers import JSONSerializer
 from sagemaker.utils import unique_name_from_base
 from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
@@ -71,10 +72,16 @@ def test_attach_deploy(
             output_path=estimator.output_path,
         )
 
+        serializer = JSONSerializer()
+        serializer.CONTENT_TYPE = "application/vnd+python.numpy+binary"
+
         predictor = estimator.deploy(
-            1, cpu_instance_type, use_compiled_model=True, endpoint_name=endpoint_name
+            1,
+            cpu_instance_type,
+            serializer=serializer,
+            use_compiled_model=True,
+            endpoint_name=endpoint_name,
         )
-        predictor.content_type = "application/vnd+python.numpy+binary"
         data = numpy.zeros(shape=(1, 1, 28, 28))
         predictor.predict(data)
 
@@ -105,6 +112,9 @@ def test_deploy_model(
             sagemaker_session=sagemaker_session,
         )
 
+        serializer = JSONSerializer()
+        serializer.CONTENT_TYPE = "application/vnd+python.numpy+binary"
+
         model.compile(
             target_instance_family=cpu_instance_family,
             input_shape={"data": [1, 1, 28, 28]},
@@ -112,9 +122,10 @@ def test_deploy_model(
             job_name=unique_name_from_base("test-deploy-model-compilation-job"),
             output_path="/".join(model_data.split("/")[:-1]),
         )
-        predictor = model.deploy(1, cpu_instance_type, endpoint_name=endpoint_name)
+        predictor = model.deploy(
+            1, cpu_instance_type, serializer=serializer, endpoint_name=endpoint_name
+        )
 
-        predictor.content_type = "application/vnd+python.numpy+binary"
         data = numpy.zeros(shape=(1, 1, 28, 28))
         predictor.predict(data)
 
@@ -153,8 +164,13 @@ def test_inferentia_deploy_model(
             job_name=unique_name_from_base("test-deploy-model-compilation-job"),
             output_path="/".join(model_data.split("/")[:-1]),
         )
-        predictor = model.deploy(1, inf_instance_type, endpoint_name=endpoint_name)
 
-        predictor.content_type = "application/vnd+python.numpy+binary"
+        serializer = JSONSerializer()
+        serializer.CONTENT_TYPE = "application/vnd+python.numpy+binary"
+
+        predictor = model.deploy(
+            1, inf_instance_type, serializer=serializer, endpoint_name=endpoint_name
+        )
+
         data = numpy.zeros(shape=(1, 1, 28, 28))
         predictor.predict(data)

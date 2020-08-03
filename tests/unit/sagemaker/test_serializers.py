@@ -24,8 +24,10 @@ from sagemaker.serializers import (
     CSVSerializer,
     NumpySerializer,
     JSONSerializer,
+    IdentitySerializer,
     SparseMatrixSerializer,
     JSONLinesSerializer,
+    LibSVMSerializer,
 )
 from tests.unit import DATA_DIR
 
@@ -236,6 +238,17 @@ def test_json_serializer_csv_buffer(json_serializer):
         assert result == validation_value
 
 
+def test_identity_serializer():
+    identity_serializer = IdentitySerializer()
+    assert identity_serializer.serialize(b"{}") == b"{}"
+
+
+def test_identity_serializer_with_custom_content_type():
+    identity_serializer = IdentitySerializer(content_type="text/csv")
+    assert identity_serializer.serialize(b"a,b\n1,2") == b"a,b\n1,2"
+    assert identity_serializer.CONTENT_TYPE == "text/csv"
+
+
 @pytest.fixture
 def json_lines_serializer():
     return JSONLinesSerializer()
@@ -298,3 +311,23 @@ def test_sparse_matrix_serializer(sparse_matrix_serializer):
     result = scipy.sparse.load_npz(stream).toarray()
     expected = data.toarray()
     assert np.array_equal(result, expected)
+
+
+@pytest.fixture
+def libsvm_serializer():
+    return LibSVMSerializer()
+
+
+def test_libsvm_serializer_str(libsvm_serializer):
+    original = "0 0:1 5:1"
+    result = libsvm_serializer.serialize("0 0:1 5:1")
+    assert result == original
+
+
+def test_libsvm_serializer_file_like(libsvm_serializer):
+    libsvm_file_path = os.path.join(DATA_DIR, "xgboost_abalone", "abalone")
+    with open(libsvm_file_path) as libsvm_file:
+        validation_data = libsvm_file.read()
+        libsvm_file.seek(0)
+        result = libsvm_serializer.serialize(libsvm_file)
+        assert result == validation_data

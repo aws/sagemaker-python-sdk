@@ -25,15 +25,14 @@ from sagemaker.local.image import _SageMakerContainer
 from sagemaker.local.utils import copy_directory_structure, move_to_destination
 from sagemaker.utils import DeferredError, get_config_value
 
+logger = logging.getLogger(__name__)
+
 try:
     import urllib3
 except ImportError as e:
-    logging.warning("urllib3 failed to import. Local mode features will be impaired or broken.")
+    logger.warning("urllib3 failed to import. Local mode features will be impaired or broken.")
     # Any subsequent attempt to use urllib3 will raise the ImportError
     urllib3 = DeferredError(e)
-
-
-logger = logging.getLogger(__name__)
 
 _UNUSED_ARN = "local:arn-does-not-matter"
 HEALTH_CHECK_TIMEOUT_LIMIT = 120

@@ -15,11 +15,12 @@ from __future__ import absolute_import
 
 import logging
 
+from packaging.version import Version
+
 from sagemaker.estimator import Framework
 from sagemaker.fw_utils import (
     framework_name_from_image,
     framework_version_from_tag,
-    is_version_equal_or_higher,
     python_deprecation_warning,
     validate_version_or_image_args,
     warn_if_parameter_server_with_multi_gpu,
@@ -100,8 +101,44 @@ class MXNet(Framework):
                 ``image_uri`` is required. If also ``None``, then a ``ValueError``
                 will be raised.
             distribution (dict): A dictionary with information on how to run distributed
-                training (default: None). To have parameter servers launched for training,
-                set this value to be ``{'parameter_server': {'enabled': True}}``.
+                training (default: None). Currently we support distributed training with
+                parameter server and MPI [Horovod].
+                To enable parameter server use the following setup:
+
+                .. code:: python
+
+                    {
+                        'parameter_server':
+                        {
+                            'enabled': True
+                        }
+                    }
+
+                To enable MPI:
+
+                .. code:: python
+
+                    {
+                        'mpi':
+                        {
+                            'enabled': True
+                        }
+                    }
+
+                Option parameters within ``mpi`` are ``processes_per_host``
+                and ``custom_mpi_options``.
+
+                .. code:: python
+
+                    {
+                        'mpi':
+                        {
+                            'enabled': True,
+                            'processes_per_host': 2,
+                            'custom_mpi_options': '-verbose --NCCL_DEBUG=INFO'
+                        }
+                    }
+
             **kwargs: Additional kwargs passed to the
                 :class:`~sagemaker.estimator.Framework` constructor.
 
@@ -121,9 +158,7 @@ class MXNet(Framework):
 
         if "enable_sagemaker_metrics" not in kwargs:
             # enable sagemaker metrics for MXNet v1.6 or greater:
-            if self.framework_version and is_version_equal_or_higher(
-                [1, 6], self.framework_version
-            ):
+            if self.framework_version and Version(self.framework_version) >= Version("1.6"):
                 kwargs["enable_sagemaker_metrics"] = True
 
         super(MXNet, self).__init__(
@@ -159,6 +194,20 @@ class MXNet(Framework):
         if "parameter_server" in distribution:
             enabled = distribution["parameter_server"].get("enabled", False)
             self._hyperparameters[self.LAUNCH_PS_ENV_NAME] = enabled
+
+        if "mpi" in distribution:
+            mpi_dict = distribution["mpi"]
+            mpi_enabled = mpi_dict.get("enabled", False)
+            self._hyperparameters[self.LAUNCH_MPI_ENV_NAME] = mpi_enabled
+
+            if mpi_dict.get("processes_per_host"):
+                self._hyperparameters[self.MPI_NUM_PROCESSES_PER_HOST] = mpi_dict.get(
+                    "processes_per_host"
+                )
+
+                self._hyperparameters[self.MPI_CUSTOM_MPI_OPTIONS] = mpi_dict.get(
+                    "custom_mpi_options", ""
+                )
 
     def create_model(
         self,
