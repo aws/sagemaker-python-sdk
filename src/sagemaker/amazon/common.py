@@ -58,7 +58,7 @@ class RecordSerializer(BaseSerializer):
 class RecordDeserializer(BaseDeserializer):
     """Deserialize RecordIO Protobuf data from an inference endpoint."""
 
-    ACCEPT = "application/x-recordio-protobuf"
+    ACCEPT = ("application/x-recordio-protobuf",)
 
     def deserialize(self, data, content_type):
         """Deserialize RecordIO Protobuf data from an inference endpoint.
