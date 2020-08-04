@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.0.0 (2020-08-04)
+
+### Breaking Changes
+
+ * merge v2 changes into master
+
 ## v1.72.0 (2020-07-29)
 
 ### Features
