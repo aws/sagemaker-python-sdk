@@ -108,7 +108,7 @@ def test_statistics_object_creation_from_s3_uri_with_customizations(
         body=file_body,
         desired_s3_uri=desired_s3_uri,
         kms_key=monitoring_files_kms_key,
-        session=sagemaker_session,
+        sagemaker_session=sagemaker_session,
     )
 
     statistics = Statistics.from_s3_uri(
@@ -137,7 +137,7 @@ def test_statistics_object_creation_from_s3_uri_without_customizations(sagemaker
     )
 
     s3_uri = S3Uploader.upload_string_as_file_body(
-        body=file_body, desired_s3_uri=desired_s3_uri, session=sagemaker_session
+        body=file_body, desired_s3_uri=desired_s3_uri, sagemaker_session=sagemaker_session
     )
 
     statistics = Statistics.from_s3_uri(
@@ -259,7 +259,7 @@ def test_constraints_object_creation_from_s3_uri_with_customizations(
         body=file_body,
         desired_s3_uri=desired_s3_uri,
         kms_key=monitoring_files_kms_key,
-        session=sagemaker_session,
+        sagemaker_session=sagemaker_session,
     )
 
     constraints = Constraints.from_s3_uri(
@@ -288,7 +288,7 @@ def test_constraints_object_creation_from_s3_uri_without_customizations(sagemake
     )
 
     s3_uri = S3Uploader.upload_string_as_file_body(
-        body=file_body, desired_s3_uri=desired_s3_uri, session=sagemaker_session
+        body=file_body, desired_s3_uri=desired_s3_uri, sagemaker_session=sagemaker_session
     )
 
     constraints = Constraints.from_s3_uri(
@@ -388,7 +388,7 @@ def test_constraint_violations_object_creation_from_s3_uri_with_customizations(
         body=file_body,
         desired_s3_uri=desired_s3_uri,
         kms_key=monitoring_files_kms_key,
-        session=sagemaker_session,
+        sagemaker_session=sagemaker_session,
     )
 
     constraint_violations = ConstraintViolations.from_s3_uri(
@@ -419,7 +419,7 @@ def test_constraint_violations_object_creation_from_s3_uri_without_customization
     )
 
     s3_uri = S3Uploader.upload_string_as_file_body(
-        body=file_body, desired_s3_uri=desired_s3_uri, session=sagemaker_session
+        body=file_body, desired_s3_uri=desired_s3_uri, sagemaker_session=sagemaker_session
     )
 
     constraint_violations = ConstraintViolations.from_s3_uri(

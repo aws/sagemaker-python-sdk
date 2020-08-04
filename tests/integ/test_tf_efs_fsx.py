@@ -36,7 +36,7 @@ EFS_DIR_PATH = "/tensorflow"
 FSX_DIR_PATH = "/fsx/tensorflow"
 MAX_JOBS = 2
 MAX_PARALLEL_JOBS = 2
-PY_VERSION = "py3"
+PY_VERSION = "py37"
 
 
 @pytest.fixture(scope="module")
@@ -54,7 +54,13 @@ def efs_fsx_setup(sagemaker_session, ec2_instance_type):
     tests.integ.test_region() not in tests.integ.EFS_TEST_ENABLED_REGION,
     reason="EFS integration tests need to be fixed before running in all regions.",
 )
-def test_mnist_efs(efs_fsx_setup, sagemaker_session, cpu_instance_type):
+def test_mnist_efs(
+    efs_fsx_setup,
+    sagemaker_session,
+    cpu_instance_type,
+    tensorflow_training_latest_version,
+    tensorflow_training_latest_py_version,
+):
     role = efs_fsx_setup["role_name"]
     subnets = [efs_fsx_setup["subnet_id"]]
     security_group_ids = efs_fsx_setup["security_group_ids"]
@@ -62,12 +68,11 @@ def test_mnist_efs(efs_fsx_setup, sagemaker_session, cpu_instance_type):
     estimator = TensorFlow(
         entry_point=SCRIPT,
         role=role,
-        train_instance_count=1,
-        train_instance_type=cpu_instance_type,
+        instance_count=1,
+        instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
-        script_mode=True,
-        framework_version=TensorFlow.LATEST_VERSION,
-        py_version=PY_VERSION,
+        framework_version=tensorflow_training_latest_version,
+        py_version=tensorflow_training_latest_py_version,
         subnets=subnets,
         security_group_ids=security_group_ids,
     )
@@ -94,7 +99,13 @@ def test_mnist_efs(efs_fsx_setup, sagemaker_session, cpu_instance_type):
     tests.integ.test_region() not in tests.integ.EFS_TEST_ENABLED_REGION,
     reason="EFS integration tests need to be fixed before running in all regions.",
 )
-def test_mnist_lustre(efs_fsx_setup, sagemaker_session, cpu_instance_type):
+def test_mnist_lustre(
+    efs_fsx_setup,
+    sagemaker_session,
+    cpu_instance_type,
+    tensorflow_training_latest_version,
+    tensorflow_training_latest_py_version,
+):
     role = efs_fsx_setup["role_name"]
     subnets = [efs_fsx_setup["subnet_id"]]
     security_group_ids = efs_fsx_setup["security_group_ids"]
@@ -102,12 +113,11 @@ def test_mnist_lustre(efs_fsx_setup, sagemaker_session, cpu_instance_type):
     estimator = TensorFlow(
         entry_point=SCRIPT,
         role=role,
-        train_instance_count=1,
-        train_instance_type=cpu_instance_type,
+        instance_count=1,
+        instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
-        script_mode=True,
-        framework_version=TensorFlow.LATEST_VERSION,
-        py_version=PY_VERSION,
+        framework_version=tensorflow_training_latest_version,
+        py_version=tensorflow_training_latest_py_version,
         subnets=subnets,
         security_group_ids=security_group_ids,
     )
@@ -130,7 +140,13 @@ def test_mnist_lustre(efs_fsx_setup, sagemaker_session, cpu_instance_type):
     tests.integ.test_region() not in tests.integ.EFS_TEST_ENABLED_REGION,
     reason="EFS integration tests need to be fixed before running in all regions.",
 )
-def test_tuning_tf_script_mode_efs(efs_fsx_setup, sagemaker_session, cpu_instance_type):
+def test_tuning_tf_efs(
+    efs_fsx_setup,
+    sagemaker_session,
+    cpu_instance_type,
+    tensorflow_training_latest_version,
+    tensorflow_training_latest_py_version,
+):
     role = efs_fsx_setup["role_name"]
     subnets = [efs_fsx_setup["subnet_id"]]
     security_group_ids = efs_fsx_setup["security_group_ids"]
@@ -138,12 +154,11 @@ def test_tuning_tf_script_mode_efs(efs_fsx_setup, sagemaker_session, cpu_instanc
     estimator = TensorFlow(
         entry_point=SCRIPT,
         role=role,
-        train_instance_count=1,
-        train_instance_type=cpu_instance_type,
-        script_mode=True,
+        instance_count=1,
+        instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
-        py_version=PY_VERSION,
-        framework_version=TensorFlow.LATEST_VERSION,
+        framework_version=tensorflow_training_latest_version,
+        py_version=tensorflow_training_latest_py_version,
         subnets=subnets,
         security_group_ids=security_group_ids,
     )
@@ -178,7 +193,13 @@ def test_tuning_tf_script_mode_efs(efs_fsx_setup, sagemaker_session, cpu_instanc
     tests.integ.test_region() not in tests.integ.EFS_TEST_ENABLED_REGION,
     reason="EFS integration tests need to be fixed before running in all regions.",
 )
-def test_tuning_tf_script_mode_lustre(efs_fsx_setup, sagemaker_session, cpu_instance_type):
+def test_tuning_tf_lustre(
+    efs_fsx_setup,
+    sagemaker_session,
+    cpu_instance_type,
+    tensorflow_training_latest_version,
+    tensorflow_training_latest_py_version,
+):
     role = efs_fsx_setup["role_name"]
     subnets = [efs_fsx_setup["subnet_id"]]
     security_group_ids = efs_fsx_setup["security_group_ids"]
@@ -186,12 +207,11 @@ def test_tuning_tf_script_mode_lustre(efs_fsx_setup, sagemaker_session, cpu_inst
     estimator = TensorFlow(
         entry_point=SCRIPT,
         role=role,
-        train_instance_count=1,
-        train_instance_type=cpu_instance_type,
-        script_mode=True,
+        instance_count=1,
+        instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
-        py_version=PY_VERSION,
-        framework_version=TensorFlow.LATEST_VERSION,
+        framework_version=tensorflow_training_latest_version,
+        py_version=tensorflow_training_latest_py_version,
         subnets=subnets,
         security_group_ids=security_group_ids,
     )

@@ -19,13 +19,10 @@ import re
 import pytest
 from mock import Mock, patch
 
-from sagemaker import RealTimePredictor
+from sagemaker import Predictor, TrainingInput, utils
 from sagemaker.amazon.amazon_estimator import RecordSet
 from sagemaker.estimator import Framework
 from sagemaker.mxnet import MXNet
-
-from sagemaker.session import s3_input
-
 from sagemaker.parameter import ParameterRange
 from sagemaker.tuner import (
     _TuningJob,
@@ -56,8 +53,8 @@ def estimator(sagemaker_session):
     return Estimator(
         IMAGE_NAME,
         ROLE,
-        TRAIN_INSTANCE_COUNT,
-        TRAIN_INSTANCE_TYPE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
         output_path="s3://bucket/prefix",
         sagemaker_session=sagemaker_session,
     )
@@ -83,11 +80,7 @@ def test_prepare_for_training(tuner):
 
 def test_prepare_for_tuning_with_amazon_estimator(tuner, sagemaker_session):
     tuner.estimator = PCA(
-        ROLE,
-        TRAIN_INSTANCE_COUNT,
-        TRAIN_INSTANCE_TYPE,
-        NUM_COMPONENTS,
-        sagemaker_session=sagemaker_session,
+        ROLE, INSTANCE_COUNT, INSTANCE_TYPE, NUM_COMPONENTS, sagemaker_session=sagemaker_session,
     )
 
     tuner._prepare_for_tuning()
@@ -112,8 +105,8 @@ def test_prepare_for_tuning_with_job_name(tuner):
 def test_validate_parameter_ranges_number_validation_error(sagemaker_session):
     pca = PCA(
         ROLE,
-        TRAIN_INSTANCE_COUNT,
-        TRAIN_INSTANCE_TYPE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
         NUM_COMPONENTS,
         base_job_name="pca",
         sagemaker_session=sagemaker_session,
@@ -135,8 +128,8 @@ def test_validate_parameter_ranges_number_validation_error(sagemaker_session):
 def test_validate_parameter_ranges_string_value_validation_error(sagemaker_session):
     pca = PCA(
         ROLE,
-        TRAIN_INSTANCE_COUNT,
-        TRAIN_INSTANCE_TYPE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
         NUM_COMPONENTS,
         base_job_name="pca",
         sagemaker_session=sagemaker_session,
@@ -158,8 +151,8 @@ def test_validate_parameter_ranges_string_value_validation_error(sagemaker_sessi
 def test_fit_pca(sagemaker_session, tuner):
     pca = PCA(
         ROLE,
-        TRAIN_INSTANCE_COUNT,
-        TRAIN_INSTANCE_TYPE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
         NUM_COMPONENTS,
         base_job_name="pca",
         sagemaker_session=sagemaker_session,
@@ -205,8 +198,8 @@ def test_fit_pca(sagemaker_session, tuner):
 def test_fit_pca_with_early_stopping(sagemaker_session, tuner):
     pca = PCA(
         ROLE,
-        TRAIN_INSTANCE_COUNT,
-        TRAIN_INSTANCE_TYPE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
         NUM_COMPONENTS,
         base_job_name="pca",
         sagemaker_session=sagemaker_session,
@@ -230,8 +223,8 @@ def test_fit_pca_with_vpc_config(sagemaker_session, tuner):
 
     pca = PCA(
         ROLE,
-        TRAIN_INSTANCE_COUNT,
-        TRAIN_INSTANCE_TYPE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
         NUM_COMPONENTS,
         base_job_name="pca",
         sagemaker_session=sagemaker_session,
@@ -251,16 +244,17 @@ def test_fit_pca_with_vpc_config(sagemaker_session, tuner):
     }
 
 
-def test_s3_input_mode(sagemaker_session, tuner):
+def test_training_input_mode(sagemaker_session, tuner):
     expected_input_mode = "Pipe"
 
     script_path = os.path.join(DATA_DIR, "mxnet_mnist", "failure_script.py")
     mxnet = MXNet(
         entry_point=script_path,
-        role=ROLE,
         framework_version=FRAMEWORK_VERSION,
-        train_instance_count=TRAIN_INSTANCE_COUNT,
-        train_instance_type=TRAIN_INSTANCE_TYPE,
+        py_version=PY_VERSION,
+        role=ROLE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         sagemaker_session=sagemaker_session,
     )
     tuner.estimator = mxnet
@@ -274,7 +268,7 @@ def test_s3_input_mode(sagemaker_session, tuner):
     }
     tuner._hyperparameter_ranges = hyperparameter_ranges
 
-    tuner.fit(inputs=s3_input("s3://mybucket/train_manifest", input_mode=expected_input_mode))
+    tuner.fit(inputs=TrainingInput("s3://mybucket/train_manifest", input_mode=expected_input_mode))
 
     actual_input_mode = sagemaker_session.method_calls[1][2]["training_config"]["input_mode"]
     assert actual_input_mode == expected_input_mode
@@ -283,8 +277,8 @@ def test_s3_input_mode(sagemaker_session, tuner):
 def test_fit_pca_with_inter_container_traffic_encryption_flag(sagemaker_session, tuner):
     pca = PCA(
         ROLE,
-        TRAIN_INSTANCE_COUNT,
-        TRAIN_INSTANCE_TYPE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
         NUM_COMPONENTS,
         base_job_name="pca",
         sagemaker_session=sagemaker_session,
@@ -392,7 +386,7 @@ def test_fit_multi_estimators(sagemaker_session):
     assert training_config_one["objective_type"] == "Minimize"
     assert training_config_one["objective_metric_name"] == OBJECTIVE_METRIC_NAME
     assert training_config_one["input_config"] is None
-    assert training_config_one["image"] == estimator_one.train_image()
+    assert training_config_one["image_uri"] == estimator_one.training_image_uri()
     assert training_config_one["metric_definitions"] == METRIC_DEFINITIONS
     assert (
         training_config_one["static_hyperparameters"]["sagemaker_estimator_module"]
@@ -409,7 +403,7 @@ def test_fit_multi_estimators(sagemaker_session):
     assert training_config_two["objective_metric_name"] == OBJECTIVE_METRIC_NAME_TWO
     assert len(training_config_two["input_config"]) == 1
     assert training_config_two["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] == INPUTS
-    assert training_config_two["image"] == estimator_two.train_image()
+    assert training_config_two["image_uri"] == estimator_two.training_image_uri()
     assert training_config_two["metric_definitions"] is None
     assert training_config_two["static_hyperparameters"]["mini_batch_size"] == "4000"
     _assert_parameter_ranges(
@@ -423,17 +417,18 @@ def _create_multi_estimator_tuner(sagemaker_session):
     mxnet_script_path = os.path.join(DATA_DIR, "mxnet_mnist", "failure_script.py")
     mxnet = MXNet(
         entry_point=mxnet_script_path,
-        role=ROLE,
         framework_version=FRAMEWORK_VERSION,
-        train_instance_count=TRAIN_INSTANCE_COUNT,
-        train_instance_type=TRAIN_INSTANCE_TYPE,
+        py_version=PY_VERSION,
+        role=ROLE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         sagemaker_session=sagemaker_session,
     )
 
     pca = PCA(
         ROLE,
-        TRAIN_INSTANCE_COUNT,
-        TRAIN_INSTANCE_TYPE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
         NUM_COMPONENTS,
         base_job_name="pca",
         sagemaker_session=sagemaker_session,
@@ -496,6 +491,9 @@ def test_attach_tuning_job_with_estimator_from_hyperparameters(sagemaker_session
     tuner = HyperparameterTuner.attach(JOB_NAME, sagemaker_session=sagemaker_session)
 
     assert tuner.latest_tuning_job.name == JOB_NAME
+    assert tuner.base_tuning_job_name == JOB_NAME
+    assert tuner._current_job_name == JOB_NAME
+
     assert tuner.objective_metric_name == OBJECTIVE_METRIC_NAME
     assert tuner.max_jobs == 1
     assert tuner.max_parallel_jobs == 1
@@ -506,8 +504,8 @@ def test_attach_tuning_job_with_estimator_from_hyperparameters(sagemaker_session
 
     assert isinstance(tuner.estimator, PCA)
     assert tuner.estimator.role == ROLE
-    assert tuner.estimator.train_instance_count == 1
-    assert tuner.estimator.train_max_run == 24 * 60 * 60
+    assert tuner.estimator.instance_count == 1
+    assert tuner.estimator.max_run == 24 * 60 * 60
     assert tuner.estimator.input_mode == "File"
     assert tuner.estimator.output_path == BUCKET_NAME
     assert tuner.estimator.output_kms_key == ""
@@ -576,6 +574,20 @@ def test_attach_with_no_specified_estimator(sagemaker_session):
 
     tuner = HyperparameterTuner.attach(JOB_NAME, sagemaker_session=sagemaker_session)
     assert isinstance(tuner.estimator, Estimator)
+
+
+def test_attach_with_generated_job_name(sagemaker_session):
+    job_name = utils.name_from_base(BASE_JOB_NAME, max_length=32, short=True)
+
+    job_details = copy.deepcopy(TUNING_JOB_DETAILS)
+    job_details["HyperParameterTuningJobName"] = job_name
+
+    sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job = Mock(
+        name="describe_tuning_job", return_value=job_details
+    )
+
+    tuner = HyperparameterTuner.attach(job_name, sagemaker_session=sagemaker_session)
+    assert BASE_JOB_NAME == tuner.base_tuning_job_name
 
 
 def test_attach_with_warm_start_config(sagemaker_session):
@@ -664,10 +676,11 @@ def test_analytics(tuner):
 def test_serialize_categorical_ranges_for_frameworks(sagemaker_session, tuner):
     tuner.estimator = MXNet(
         entry_point=SCRIPT_NAME,
-        role=ROLE,
         framework_version=FRAMEWORK_VERSION,
-        train_instance_count=TRAIN_INSTANCE_COUNT,
-        train_instance_type=TRAIN_INSTANCE_TYPE,
+        py_version=PY_VERSION,
+        role=ROLE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         sagemaker_session=sagemaker_session,
     )
 
@@ -784,7 +797,7 @@ def test_deploy_default(tuner):
 
     tuner.sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job = Mock(
         name="describe_hyper_parameter_tuning_job",
-        return_value={"BestTrainingJob": {"TrainingJobName": JOB_NAME}},
+        return_value={"BestTrainingJob": {"TrainingJobName": TRAINING_JOB_NAME}},
     )
 
     tuner.sagemaker_session.sagemaker_client.list_tags = Mock(
@@ -794,17 +807,17 @@ def test_deploy_default(tuner):
     tuner.sagemaker_session.log_for_jobs = Mock(name="log_for_jobs")
 
     tuner.latest_tuning_job = _TuningJob(tuner.sagemaker_session, JOB_NAME)
-    predictor = tuner.deploy(TRAIN_INSTANCE_COUNT, TRAIN_INSTANCE_TYPE)
+    predictor = tuner.deploy(INSTANCE_COUNT, INSTANCE_TYPE)
 
     tuner.sagemaker_session.create_model.assert_called_once()
     args = tuner.sagemaker_session.create_model.call_args[0]
-    assert args[0] == TRAINING_JOB_NAME
+    assert args[0].startswith(TRAINING_JOB_NAME)
     assert args[1] == ROLE
     assert args[2]["Image"] == IMAGE_NAME
     assert args[2]["ModelDataUrl"] == MODEL_DATA
 
-    assert isinstance(predictor, RealTimePredictor)
-    assert predictor.endpoint.startswith(JOB_NAME)
+    assert isinstance(predictor, Predictor)
+    assert predictor.endpoint_name.startswith(TRAINING_JOB_NAME)
     assert predictor.sagemaker_session == tuner.sagemaker_session
 
 
@@ -820,7 +833,7 @@ def test_deploy_estimator_dict(tuner):
         name="describe_hyper_parameter_tuning_job",
         return_value={
             "BestTrainingJob": {
-                "TrainingJobName": JOB_NAME,
+                "TrainingJobName": TRAINING_JOB_NAME,
                 "TrainingJobDefinitionName": ESTIMATOR_NAME,
             }
         },
@@ -833,17 +846,17 @@ def test_deploy_estimator_dict(tuner):
     tuner.sagemaker_session.log_for_jobs = Mock(name="log_for_jobs")
 
     tuner.latest_tuning_job = _TuningJob(tuner.sagemaker_session, JOB_NAME)
-    predictor = tuner.deploy(TRAIN_INSTANCE_COUNT, TRAIN_INSTANCE_TYPE)
+    predictor = tuner.deploy(INSTANCE_COUNT, INSTANCE_TYPE)
 
     tuner.sagemaker_session.create_model.assert_called_once()
     args = tuner.sagemaker_session.create_model.call_args[0]
-    assert args[0] == TRAINING_JOB_NAME
+    assert args[0].startswith(TRAINING_JOB_NAME)
     assert args[1] == ROLE
     assert args[2]["Image"] == IMAGE_NAME
     assert args[2]["ModelDataUrl"] == MODEL_DATA
 
-    assert isinstance(predictor, RealTimePredictor)
-    assert predictor.endpoint.startswith(JOB_NAME)
+    assert isinstance(predictor, Predictor)
+    assert predictor.endpoint_name.startswith(TRAINING_JOB_NAME)
     assert predictor.sagemaker_session == tuner.sagemaker_session
 
 
@@ -865,8 +878,8 @@ def test_deploy_optional_params(_get_best_training_job, best_estimator, tuner):
     kwargs = {"some_arg": "some_value"}
 
     tuner.deploy(
-        TRAIN_INSTANCE_COUNT,
-        TRAIN_INSTANCE_TYPE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
         accelerator_type=accelerator,
         endpoint_name=endpoint_name,
         wait=False,
@@ -878,8 +891,10 @@ def test_deploy_optional_params(_get_best_training_job, best_estimator, tuner):
     best_estimator.assert_called_with(training_job)
 
     estimator.deploy.assert_called_with(
-        initial_instance_count=TRAIN_INSTANCE_COUNT,
-        instance_type=TRAIN_INSTANCE_TYPE,
+        initial_instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        serializer=None,
+        deserializer=None,
         accelerator_type=accelerator,
         endpoint_name=endpoint_name,
         wait=False,
@@ -899,37 +914,15 @@ def test_wait(tuner):
     tuner.estimator.sagemaker_session.wait_for_tuning_job.assert_called_once_with(JOB_NAME)
 
 
-def test_delete_endpoint(tuner):
-    tuner.latest_tuning_job = _TuningJob(tuner.estimator.sagemaker_session, JOB_NAME)
-
-    tuning_job_description = {"BestTrainingJob": {"TrainingJobName": JOB_NAME}}
-    tuner.estimator.sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job = Mock(
-        name="describe_hyper_parameter_tuning_job", return_value=tuning_job_description
-    )
-
-    tuner.delete_endpoint()
-    tuner.sagemaker_session.delete_endpoint.assert_called_with(JOB_NAME)
-
-
-def test_delete_endpoint_deprecation_warning(tuner, caplog):
-    tuner.best_training_job = Mock()
-    tuner.delete_endpoint()
-
-    expected_warning = (
-        "HyperparameterTuner.delete_endpoint() will be deprecated in SageMaker Python SDK v2. "
-        "Please use the delete_endpoint() function on your predictor instead."
-    )
-    assert expected_warning in caplog.text
-
-
 def test_fit_no_inputs(tuner, sagemaker_session):
     script_path = os.path.join(DATA_DIR, "mxnet_mnist", "failure_script.py")
     tuner.estimator = MXNet(
         entry_point=script_path,
-        role=ROLE,
         framework_version=FRAMEWORK_VERSION,
-        train_instance_count=TRAIN_INSTANCE_COUNT,
-        train_instance_type=TRAIN_INSTANCE_TYPE,
+        py_version=PY_VERSION,
+        role=ROLE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
         sagemaker_session=sagemaker_session,
     )
 

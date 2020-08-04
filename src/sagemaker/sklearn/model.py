@@ -16,17 +16,19 @@ from __future__ import absolute_import
 import logging
 
 import sagemaker
-from sagemaker.fw_utils import model_code_key_prefix, python_deprecation_warning
-from sagemaker.fw_registry import default_framework_uri
+from sagemaker import image_uris
+from sagemaker.deserializers import NumpyDeserializer
+from sagemaker.fw_utils import model_code_key_prefix, validate_version_or_image_args
 from sagemaker.model import FrameworkModel, MODEL_SERVER_WORKERS_PARAM_NAME
-from sagemaker.predictor import RealTimePredictor, npy_serializer, numpy_deserializer
+from sagemaker.predictor import Predictor
+from sagemaker.serializers import NumpySerializer
 from sagemaker.sklearn import defaults
 
 logger = logging.getLogger("sagemaker")
 
 
-class SKLearnPredictor(RealTimePredictor):
-    """A RealTimePredictor for inference against Scikit-learn Endpoints.
+class SKLearnPredictor(Predictor):
+    """A Predictor for inference against Scikit-learn Endpoints.
 
     This is able to serialize Python lists, dictionaries, and numpy arrays to
     multidimensional tensors for Scikit-learn inference.
@@ -44,7 +46,7 @@ class SKLearnPredictor(RealTimePredictor):
                 using the default AWS configuration chain.
         """
         super(SKLearnPredictor, self).__init__(
-            endpoint_name, sagemaker_session, npy_serializer, numpy_deserializer
+            endpoint_name, sagemaker_session, NumpySerializer(), NumpyDeserializer()
         )
 
 
@@ -53,16 +55,16 @@ class SKLearnModel(FrameworkModel):
     ``Endpoint``.
     """
 
-    __framework_name__ = defaults.SKLEARN_NAME
+    _framework_name = defaults.SKLEARN_NAME
 
     def __init__(
         self,
         model_data,
         role,
         entry_point,
-        image=None,
+        framework_version=None,
         py_version="py3",
-        framework_version=defaults.SKLEARN_VERSION,
+        image_uri=None,
         predictor_cls=SKLearnPredictor,
         model_server_workers=None,
         **kwargs
@@ -81,12 +83,19 @@ class SKLearnModel(FrameworkModel):
                 file which should be executed as the entry point to model
                 hosting. If ``source_dir`` is specified, then ``entry_point``
                 must point to a file located at the root of ``source_dir``.
-            image (str): A Docker image URI (default: None). If not specified, a
-                default image for Scikit-learn will be used.
-            py_version (str): Python version you want to use for executing your
-                model training code (default: 'py3').
             framework_version (str): Scikit-learn version you want to use for
-                executing your model training code.
+                executing your model training code. Defaults to ``None``. Required
+                unless ``image_uri`` is provided.
+            py_version (str): Python version you want to use for executing your
+                model training code (default: 'py3'). Currently, 'py3' is the only
+                supported version. If ``None`` is passed in, ``image_uri`` must be
+                provided.
+            image_uri (str): A Docker image URI (default: None). If not specified, a
+                default image for Scikit-learn will be used.
+
+                If ``framework_version`` or ``py_version`` are ``None``, then
+                ``image_uri`` is required. If also ``None``, then a ``ValueError``
+                will be raised.
             predictor_cls (callable[str, sagemaker.session.Session]): A function
                 to call to create a predictor with an endpoint name and
                 SageMaker ``Session``. If specified, ``deploy()`` returns the
@@ -103,17 +112,18 @@ class SKLearnModel(FrameworkModel):
             :class:`~sagemaker.model.FrameworkModel` and
             :class:`~sagemaker.model.Model`.
         """
+        validate_version_or_image_args(framework_version, py_version, image_uri)
+        if py_version and py_version != "py3":
+            raise AttributeError(
+                "Scikit-learn image only supports Python 3. Please use 'py3' for py_version."
+            )
+        self.framework_version = framework_version
+        self.py_version = py_version
+
         super(SKLearnModel, self).__init__(
-            model_data, image, role, entry_point, predictor_cls=predictor_cls, **kwargs
+            model_data, image_uri, role, entry_point, predictor_cls=predictor_cls, **kwargs
         )
 
-        if py_version == "py2":
-            logger.warning(
-                python_deprecation_warning(self.__framework_name__, defaults.LATEST_PY2_VERSION)
-            )
-
-        self.py_version = py_version
-        self.framework_version = framework_version
         self.model_server_workers = model_server_workers
 
     def prepare_container_def(self, instance_type=None, accelerator_type=None):
@@ -135,7 +145,7 @@ class SKLearnModel(FrameworkModel):
         if accelerator_type:
             raise ValueError("Accelerator types are not supported for Scikit-Learn.")
 
-        deploy_image = self.image
+        deploy_image = self.image_uri
         if not deploy_image:
             deploy_image = self.serving_image_uri(
                 self.sagemaker_session.boto_region_name, instance_type
@@ -153,17 +163,21 @@ class SKLearnModel(FrameworkModel):
         )
         return sagemaker.container_def(deploy_image, model_data_uri, deploy_env)
 
-    def serving_image_uri(self, region_name, instance_type):  # pylint: disable=unused-argument
+    def serving_image_uri(self, region_name, instance_type):
         """Create a URI for the serving image.
 
         Args:
             region_name (str): AWS region where the image is uploaded.
-            instance_type (str): SageMaker instance type. This parameter is unused because
-                Scikit-learn supports only CPU.
+            instance_type (str): SageMaker instance type.
 
         Returns:
             str: The appropriate image URI based on the given parameters.
 
         """
-        image_tag = "{}-{}-{}".format(self.framework_version, "cpu", self.py_version)
-        return default_framework_uri(self.__framework_name__, region_name, image_tag)
+        return image_uris.retrieve(
+            self._framework_name,
+            region_name,
+            version=self.framework_version,
+            py_version=self.py_version,
+            instance_type=instance_type,
+        )

@@ -13,11 +13,12 @@
 """Placeholder docstring"""
 from __future__ import absolute_import
 
-from sagemaker.amazon.amazon_estimator import AmazonAlgorithmEstimatorBase, registry
-from sagemaker.amazon.common import numpy_to_record_serializer, record_deserializer
+from sagemaker import image_uris
+from sagemaker.amazon.amazon_estimator import AmazonAlgorithmEstimatorBase
+from sagemaker.amazon.common import RecordSerializer, RecordDeserializer
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
 from sagemaker.amazon.validation import isin, gt, lt, ge, le
-from sagemaker.predictor import RealTimePredictor
+from sagemaker.predictor import Predictor
 from sagemaker.model import Model
 from sagemaker.session import Session
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
@@ -120,8 +121,8 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
     def __init__(
         self,
         role,
-        train_instance_count,
-        train_instance_type,
+        instance_count,
+        instance_type,
         predictor_type,
         binary_classifier_model_selection_criteria=None,
         target_recall=None,
@@ -214,9 +215,9 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
                 endpoints use this role to access training data and model
                 artifacts. After the endpoint is created, the inference code
                 might use the IAM role, if accessing AWS resource.
-            train_instance_count (int): Number of Amazon EC2 instances to use
+            instance_count (int): Number of Amazon EC2 instances to use
                 for training.
-            train_instance_type (str): Type of EC2 instance to use for training,
+            instance_type (str): Type of EC2 instance to use for training,
                 for example, 'ml.c4.xlarge'.
             predictor_type (str): The type of predictor to learn. Either
                 "binary_classifier" or "multiclass_classifier" or "regressor".
@@ -325,9 +326,7 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
             :class:`~sagemaker.estimator.amazon_estimator.AmazonAlgorithmEstimatorBase` and
             :class:`~sagemaker.estimator.EstimatorBase`.
         """
-        super(LinearLearner, self).__init__(
-            role, train_instance_count, train_instance_type, **kwargs
-        )
+        super(LinearLearner, self).__init__(role, instance_count, instance_type, **kwargs)
         self.predictor_type = predictor_type
         self.binary_classifier_model_selection_criteria = binary_classifier_model_selection_criteria
         self.target_recall = target_recall
@@ -418,7 +417,7 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
 
         # mini_batch_size can't be greater than number of records or training job fails
         default_mini_batch_size = min(
-            self.DEFAULT_MINI_BATCH_SIZE, max(1, int(num_records / self.train_instance_count))
+            self.DEFAULT_MINI_BATCH_SIZE, max(1, int(num_records / self.instance_count))
         )
         mini_batch_size = mini_batch_size or default_mini_batch_size
         super(LinearLearner, self)._prepare_for_training(
@@ -426,13 +425,13 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
         )
 
 
-class LinearLearnerPredictor(RealTimePredictor):
+class LinearLearnerPredictor(Predictor):
     """Performs binary-classification or regression prediction from input
     vectors.
 
     The implementation of
-    :meth:`~sagemaker.predictor.RealTimePredictor.predict` in this
-    `RealTimePredictor` requires a numpy ``ndarray`` as input. The array should
+    :meth:`~sagemaker.predictor.Predictor.predict` in this
+    `Predictor` requires a numpy ``ndarray`` as input. The array should
     contain the same number of columns as the feature-dimension of the data used
     to fit the model this Predictor performs inference on.
 
@@ -442,17 +441,21 @@ class LinearLearnerPredictor(RealTimePredictor):
     key of the ``Record.label`` field.
     """
 
-    def __init__(self, endpoint, sagemaker_session=None):
+    def __init__(self, endpoint_name, sagemaker_session=None):
         """
         Args:
-            endpoint:
-            sagemaker_session:
+            endpoint_name (str): Name of the Amazon SageMaker endpoint to which
+                requests are sent.
+            sagemaker_session (sagemaker.session.Session): A SageMaker Session
+                object, used for SageMaker interactions (default: None). If not
+                specified, one is created using the default AWS configuration
+                chain.
         """
         super(LinearLearnerPredictor, self).__init__(
-            endpoint,
+            endpoint_name,
             sagemaker_session,
-            serializer=numpy_to_record_serializer(),
-            deserializer=record_deserializer(),
+            serializer=RecordSerializer(),
+            deserializer=RecordDeserializer(),
         )
 
 
@@ -471,11 +474,14 @@ class LinearLearnerModel(Model):
             **kwargs:
         """
         sagemaker_session = sagemaker_session or Session()
-        repo = "{}:{}".format(LinearLearner.repo_name, LinearLearner.repo_version)
-        image = "{}/{}".format(registry(sagemaker_session.boto_session.region_name), repo)
+        image_uri = image_uris.retrieve(
+            LinearLearner.repo_name,
+            sagemaker_session.boto_region_name,
+            version=LinearLearner.repo_version,
+        )
         super(LinearLearnerModel, self).__init__(
+            image_uri,
             model_data,
-            image,
             role,
             predictor_cls=LinearLearnerPredictor,
             sagemaker_session=sagemaker_session,

@@ -26,39 +26,16 @@ from six import string_types
 from six.moves.urllib.parse import urlparse
 from botocore.exceptions import ClientError
 
+from sagemaker import image_uris
 from sagemaker.exceptions import UnexpectedStatusException
 from sagemaker.model_monitor.monitoring_files import Constraints, ConstraintViolations, Statistics
 from sagemaker.network import NetworkConfig
 from sagemaker.processing import Processor, ProcessingInput, ProcessingJob, ProcessingOutput
 from sagemaker.s3 import S3Uploader
 from sagemaker.session import Session
-from sagemaker.utils import name_from_base, retries, get_ecr_image_uri_prefix
+from sagemaker.utils import name_from_base, retries
 
-_DEFAULT_MONITOR_IMAGE_URI_WITH_PLACEHOLDERS = "{}/sagemaker-model-monitor-analyzer"
-
-_DEFAULT_MONITOR_IMAGE_REGION_ACCOUNT_MAPPING = {
-    "eu-north-1": "895015795356",
-    "me-south-1": "607024016150",
-    "ap-south-1": "126357580389",
-    "us-east-2": "777275614652",
-    "eu-west-1": "468650794304",
-    "eu-central-1": "048819808253",
-    "sa-east-1": "539772159869",
-    "ap-east-1": "001633400207",
-    "us-east-1": "156813124566",
-    "ap-northeast-2": "709848358524",
-    "eu-west-2": "749857270468",
-    "eu-west-3": "680080141114",
-    "ap-northeast-1": "574779866223",
-    "us-west-2": "159807026194",
-    "us-west-1": "890145073186",
-    "ap-southeast-1": "245545462676",
-    "ap-southeast-2": "563025443158",
-    "ca-central-1": "536280801234",
-    "cn-north-1": "453000072557",
-    "cn-northwest-1": "453252182341",
-    "us-gov-west-1": "362178532790",
-}
+DEFAULT_REPOSITORY_NAME = "sagemaker-model-monitor-analyzer"
 
 STATISTICS_JSON_DEFAULT_FILE_NAME = "statistics.json"
 CONSTRAINTS_JSON_DEFAULT_FILE_NAME = "constraints.json"
@@ -89,6 +66,8 @@ _POST_ANALYTICS_PROCESSOR_SCRIPT_ENV_NAME = "post_analytics_processor_script"
 _PUBLISH_CLOUDWATCH_METRICS_ENV_NAME = "publish_cloudwatch_metrics"
 
 _LOGGER = logging.getLogger(__name__)
+
+framework_name = "model-monitor"
 
 
 class ModelMonitor(object):
@@ -872,7 +851,7 @@ class ModelMonitor(object):
                     S3Uploader.upload(
                         local_path=file_input.source,
                         desired_s3_uri=s3_uri,
-                        session=self.sagemaker_session,
+                        sagemaker_session=self.sagemaker_session,
                     )
                     file_input.source = s3_uri
                 normalized_inputs.append(file_input)
@@ -945,7 +924,7 @@ class ModelMonitor(object):
                 str(uuid.uuid4()),
             )
             S3Uploader.upload(
-                local_path=path, desired_s3_uri=s3_uri, session=self.sagemaker_session
+                local_path=path, desired_s3_uri=s3_uri, sagemaker_session=self.sagemaker_session
             )
             path = os.path.join(s3_uri, os.path.basename(path))
         return path
@@ -1772,7 +1751,7 @@ class DefaultModelMonitor(ModelMonitor):
                 name,
             )
             S3Uploader.upload(
-                local_path=source, desired_s3_uri=s3_uri, session=self.sagemaker_session
+                local_path=source, desired_s3_uri=s3_uri, sagemaker_session=self.sagemaker_session
             )
             source = s3_uri
 
@@ -1788,9 +1767,7 @@ class DefaultModelMonitor(ModelMonitor):
         Returns:
             str: The Default Model Monitoring image uri based on the region.
         """
-        return _DEFAULT_MONITOR_IMAGE_URI_WITH_PLACEHOLDERS.format(
-            get_ecr_image_uri_prefix(_DEFAULT_MONITOR_IMAGE_REGION_ACCOUNT_MAPPING[region], region)
-        )
+        return image_uris.retrieve(framework=framework_name, region=region)
 
 
 class BaseliningJob(ProcessingJob):

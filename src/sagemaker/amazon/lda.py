@@ -13,11 +13,12 @@
 """Placeholder docstring"""
 from __future__ import absolute_import
 
-from sagemaker.amazon.amazon_estimator import AmazonAlgorithmEstimatorBase, registry
-from sagemaker.amazon.common import numpy_to_record_serializer, record_deserializer
+from sagemaker import image_uris
+from sagemaker.amazon.amazon_estimator import AmazonAlgorithmEstimatorBase
+from sagemaker.amazon.common import RecordSerializer, RecordDeserializer
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
 from sagemaker.amazon.validation import gt
-from sagemaker.predictor import RealTimePredictor
+from sagemaker.predictor import Predictor
 from sagemaker.model import Model
 from sagemaker.session import Session
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
@@ -38,7 +39,7 @@ class LDA(AmazonAlgorithmEstimatorBase):
     def __init__(
         self,
         role,
-        train_instance_type,
+        instance_type,
         num_topics,
         alpha0=None,
         max_restarts=None,
@@ -92,7 +93,7 @@ class LDA(AmazonAlgorithmEstimatorBase):
                 endpoints use this role to access training data and model
                 artifacts. After the endpoint is created, the inference code
                 might use the IAM role, if accessing AWS resource.
-            train_instance_type (str): Type of EC2 instance to use for training,
+            instance_type (str): Type of EC2 instance to use for training,
                 for example, 'ml.c4.xlarge'.
             num_topics (int): The number of topics for LDA to find within the
                 data.
@@ -114,14 +115,14 @@ class LDA(AmazonAlgorithmEstimatorBase):
             :class:`~sagemaker.estimator.EstimatorBase`.
         """
         # this algorithm only supports single instance training
-        if kwargs.pop("train_instance_count", 1) != 1:
+        if kwargs.pop("instance_count", 1) != 1:
             print(
                 "LDA only supports single instance training. Defaulting to 1 {}.".format(
-                    train_instance_type
+                    instance_type
                 )
             )
 
-        super(LDA, self).__init__(role, 1, train_instance_type, **kwargs)
+        super(LDA, self).__init__(role, 1, instance_type, **kwargs)
         self.num_topics = num_topics
         self.alpha0 = alpha0
         self.max_restarts = max_restarts
@@ -166,12 +167,12 @@ class LDA(AmazonAlgorithmEstimatorBase):
         )
 
 
-class LDAPredictor(RealTimePredictor):
+class LDAPredictor(Predictor):
     """Transforms input vectors to lower-dimesional representations.
 
     The implementation of
-    :meth:`~sagemaker.predictor.RealTimePredictor.predict` in this
-    `RealTimePredictor` requires a numpy ``ndarray`` as input. The array should
+    :meth:`~sagemaker.predictor.Predictor.predict` in this
+    `Predictor` requires a numpy ``ndarray`` as input. The array should
     contain the same number of columns as the feature-dimension of the data used
     to fit the model this Predictor performs inference on.
 
@@ -181,17 +182,21 @@ class LDAPredictor(RealTimePredictor):
     ``projection`` key of the ``Record.label`` field.
     """
 
-    def __init__(self, endpoint, sagemaker_session=None):
+    def __init__(self, endpoint_name, sagemaker_session=None):
         """
         Args:
-            endpoint:
-            sagemaker_session:
+            endpoint_name (str): Name of the Amazon SageMaker endpoint to which
+                requests are sent.
+            sagemaker_session (sagemaker.session.Session): A SageMaker Session
+                object, used for SageMaker interactions (default: None). If not
+                specified, one is created using the default AWS configuration
+                chain.
         """
         super(LDAPredictor, self).__init__(
-            endpoint,
+            endpoint_name,
             sagemaker_session,
-            serializer=numpy_to_record_serializer(),
-            deserializer=record_deserializer(),
+            serializer=RecordSerializer(),
+            deserializer=RecordDeserializer(),
         )
 
 
@@ -210,13 +215,12 @@ class LDAModel(Model):
             **kwargs:
         """
         sagemaker_session = sagemaker_session or Session()
-        repo = "{}:{}".format(LDA.repo_name, LDA.repo_version)
-        image = "{}/{}".format(
-            registry(sagemaker_session.boto_session.region_name, LDA.repo_name), repo
+        image_uri = image_uris.retrieve(
+            LDA.repo_name, sagemaker_session.boto_region_name, version=LDA.repo_version,
         )
         super(LDAModel, self).__init__(
+            image_uri,
             model_data,
-            image,
             role,
             predictor_cls=LDAPredictor,
             sagemaker_session=sagemaker_session,

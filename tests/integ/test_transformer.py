@@ -12,11 +12,8 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-import gzip
 import json
 import os
-import pickle
-import sys
 import time
 
 import pytest
@@ -25,13 +22,12 @@ from sagemaker import KMeans, s3
 from sagemaker.mxnet import MXNet
 from sagemaker.pytorch import PyTorchModel
 from sagemaker.tensorflow import TensorFlow
-from sagemaker.tensorflow.defaults import LATEST_VERSION
 from sagemaker.transformer import Transformer
 from sagemaker.estimator import Estimator
 from sagemaker.utils import unique_name_from_base
 from tests.integ import (
+    datasets,
     DATA_DIR,
-    PYTHON_VERSION,
     TRAINING_DEFAULT_TIMEOUT_MINUTES,
     TRANSFORM_DEFAULT_TIMEOUT_MINUTES,
 )
@@ -43,19 +39,20 @@ MXNET_MNIST_PATH = os.path.join(DATA_DIR, "mxnet_mnist")
 
 
 @pytest.fixture(scope="module")
-def py_version(tf_full_version):
-    return "py37" if tf_full_version == LATEST_VERSION else PYTHON_VERSION
-
-
-@pytest.fixture(scope="module")
-def mxnet_estimator(sagemaker_session, mxnet_full_version, cpu_instance_type):
+def mxnet_estimator(
+    sagemaker_session,
+    mxnet_inference_latest_version,
+    mxnet_inference_latest_py_version,
+    cpu_instance_type,
+):
     mx = MXNet(
         entry_point=os.path.join(MXNET_MNIST_PATH, "mnist.py"),
         role="SageMakerRole",
-        train_instance_count=1,
-        train_instance_type=cpu_instance_type,
+        instance_count=1,
+        instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
-        framework_version=mxnet_full_version,
+        framework_version=mxnet_inference_latest_version,
+        py_version=mxnet_inference_latest_py_version,
     )
 
     train_input = mx.sagemaker_session.upload_data(
@@ -113,18 +110,10 @@ def test_transform_mxnet(
 
 @pytest.mark.canary_quick
 def test_attach_transform_kmeans(sagemaker_session, cpu_instance_type):
-    data_path = os.path.join(DATA_DIR, "one_p_mnist")
-    pickle_args = {} if sys.version_info.major == 2 else {"encoding": "latin1"}
-
-    # Load the data into memory as numpy arrays
-    train_set_path = os.path.join(data_path, "mnist.pkl.gz")
-    with gzip.open(train_set_path, "rb") as f:
-        train_set, _, _ = pickle.load(f, **pickle_args)
-
     kmeans = KMeans(
         role="SageMakerRole",
-        train_instance_count=1,
-        train_instance_type=cpu_instance_type,
+        instance_count=1,
+        instance_type=cpu_instance_type,
         k=10,
         sagemaker_session=sagemaker_session,
         output_path="s3://{}/".format(sagemaker_session.default_bucket()),
@@ -139,14 +128,14 @@ def test_attach_transform_kmeans(sagemaker_session, cpu_instance_type):
     kmeans.half_life_time_size = 1
     kmeans.epochs = 1
 
-    records = kmeans.record_set(train_set[0][:100])
+    records = kmeans.record_set(datasets.one_p_mnist()[0][:100])
 
     job_name = unique_name_from_base("test-kmeans-attach")
 
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         kmeans.fit(records, job_name=job_name)
 
-    transform_input_path = os.path.join(data_path, "transform_input.csv")
+    transform_input_path = os.path.join(DATA_DIR, "one_p_mnist", "transform_input.csv")
     transform_input_key_prefix = "integ-test-data/one_p_mnist/transform"
     transform_input = kmeans.sagemaker_session.upload_data(
         path=transform_input_path, key_prefix=transform_input_key_prefix
@@ -164,7 +153,11 @@ def test_attach_transform_kmeans(sagemaker_session, cpu_instance_type):
 
 
 def test_transform_pytorch_vpc_custom_model_bucket(
-    sagemaker_session, pytorch_full_version, cpu_instance_type, custom_bucket_name
+    sagemaker_session,
+    pytorch_inference_latest_version,
+    pytorch_inference_latest_py_version,
+    cpu_instance_type,
+    custom_bucket_name,
 ):
     data_dir = os.path.join(DATA_DIR, "pytorch_mnist")
 
@@ -181,8 +174,8 @@ def test_transform_pytorch_vpc_custom_model_bucket(
         model_data=model_data,
         entry_point=os.path.join(data_dir, "mnist.py"),
         role="SageMakerRole",
-        framework_version=pytorch_full_version,
-        py_version=PYTHON_VERSION,
+        framework_version=pytorch_inference_latest_version,
+        py_version=pytorch_inference_latest_py_version,
         sagemaker_session=sagemaker_session,
         vpc_config={"Subnets": subnet_ids, "SecurityGroupIds": [security_group_id]},
         code_location="s3://{}".format(custom_bucket_name),
@@ -256,19 +249,12 @@ def test_transform_model_client_config(
 
 
 def test_transform_byo_estimator(sagemaker_session, cpu_instance_type):
-    data_path = os.path.join(DATA_DIR, "one_p_mnist")
-    pickle_args = {} if sys.version_info.major == 2 else {"encoding": "latin1"}
     tags = [{"Key": "some-tag", "Value": "value-for-tag"}]
-
-    # Load the data into memory as numpy arrays
-    train_set_path = os.path.join(data_path, "mnist.pkl.gz")
-    with gzip.open(train_set_path, "rb") as f:
-        train_set, _, _ = pickle.load(f, **pickle_args)
 
     kmeans = KMeans(
         role="SageMakerRole",
-        train_instance_count=1,
-        train_instance_type=cpu_instance_type,
+        instance_count=1,
+        instance_type=cpu_instance_type,
         k=10,
         sagemaker_session=sagemaker_session,
         output_path="s3://{}/".format(sagemaker_session.default_bucket()),
@@ -283,7 +269,7 @@ def test_transform_byo_estimator(sagemaker_session, cpu_instance_type):
     kmeans.half_life_time_size = 1
     kmeans.epochs = 1
 
-    records = kmeans.record_set(train_set[0][:100])
+    records = kmeans.record_set(datasets.one_p_mnist()[0][:100])
 
     job_name = unique_name_from_base("test-kmeans-attach")
 
@@ -293,7 +279,7 @@ def test_transform_byo_estimator(sagemaker_session, cpu_instance_type):
     estimator = Estimator.attach(training_job_name=job_name, sagemaker_session=sagemaker_session)
     estimator._enable_network_isolation = True
 
-    transform_input_path = os.path.join(data_path, "transform_input.csv")
+    transform_input_path = os.path.join(DATA_DIR, "one_p_mnist", "transform_input.csv")
     transform_input_key_prefix = "integ-test-data/one_p_mnist/transform"
     transform_input = kmeans.sagemaker_session.upload_data(
         path=transform_input_path, key_prefix=transform_input_key_prefix
@@ -339,7 +325,7 @@ def test_single_transformer_multiple_jobs(
 
 def test_stop_transform_job(mxnet_estimator, mxnet_transform_input, cpu_instance_type):
     transformer = mxnet_estimator.transformer(1, cpu_instance_type)
-    transformer.transform(mxnet_transform_input, content_type="text/csv")
+    transformer.transform(mxnet_transform_input, content_type="text/csv", wait=False)
 
     time.sleep(15)
 
@@ -370,18 +356,17 @@ def test_transform_mxnet_logs(
 
 
 def test_transform_tf_kms_network_isolation(
-    sagemaker_session, cpu_instance_type, tmpdir, tf_full_version, py_version
+    sagemaker_session, cpu_instance_type, tmpdir, tf_full_version, tf_full_py_version
 ):
     data_path = os.path.join(DATA_DIR, "tensorflow_mnist")
 
     tf = TensorFlow(
         entry_point=os.path.join(data_path, "mnist.py"),
         role="SageMakerRole",
-        train_instance_count=1,
-        train_instance_type=cpu_instance_type,
+        instance_count=1,
+        instance_type=cpu_instance_type,
         framework_version=tf_full_version,
-        script_mode=True,
-        py_version=py_version,
+        py_version=tf_full_py_version,
         sagemaker_session=sagemaker_session,
     )
 
@@ -429,7 +414,7 @@ def test_transform_tf_kms_network_isolation(
         s3.S3Downloader.download(
             s3_uri=output_path,
             local_path=os.path.join(tmpdir, "tf-batch-output"),
-            session=sagemaker_session,
+            sagemaker_session=sagemaker_session,
         )
 
         with open(os.path.join(tmpdir, "tf-batch-output", "data.csv.out")) as f:

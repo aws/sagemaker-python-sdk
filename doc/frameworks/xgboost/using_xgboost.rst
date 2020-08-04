@@ -159,8 +159,8 @@ and a dictionary of the hyperparameters to pass to the training script.
         entry_point="abalone.py",
         hyperparameters=hyperparameters,
         role=role,
-        train_instance_count=1,
-        train_instance_type="ml.m5.2xlarge",
+        instance_count=1,
+        instance_type="ml.m5.2xlarge",
         framework_version="1.0-1",
     )
 
@@ -192,12 +192,14 @@ inference against your model.
 
 .. code::
 
+    serializer = StringSerializer()
+    serializer.CONTENT_TYPE = "text/libsvm"
+
     predictor = estimator.deploy(
         initial_instance_count=1,
-        instance_type="ml.m5.xlarge"
+        instance_type="ml.m5.xlarge",
+        serializer=serializer
     )
-    predictor.serializer = str
-    predictor.content_type = "text/libsvm"
 
     with open("abalone") as f:
         payload = f.read()

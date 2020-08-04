@@ -125,7 +125,7 @@ Using ``DefaultMonitor.create_monitoring_schedule()``, you can create a model mo
 
     my_monitor.create_monitoring_schedule(
         monitor_schedule_name='my-monitoring-schedule',
-        endpoint_input=predictor.endpoint,
+        endpoint_input=predictor.endpoint_name,
         statistics=my_monitor.baseline_statistics(),
         constraints=my_monitor.suggested_constraints(),
         schedule_cron_expression=CronExpressionGenerator.hourly(),

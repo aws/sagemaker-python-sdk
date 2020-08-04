@@ -15,7 +15,7 @@ from __future__ import absolute_import
 import os
 
 from sagemaker import IPInsights, IPInsightsModel
-from sagemaker.predictor import RealTimePredictor
+from sagemaker.predictor import Predictor
 from sagemaker.utils import unique_name_from_base
 from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.record_set import prepare_record_set_from_local_files
@@ -36,8 +36,8 @@ def test_ipinsights(sagemaker_session, cpu_instance_type):
 
             ipinsights = IPInsights(
                 role="SageMakerRole",
-                train_instance_count=1,
-                train_instance_type=cpu_instance_type,
+                instance_count=1,
+                instance_type=cpu_instance_type,
                 num_entity_vectors=10,
                 vector_dim=100,
                 sagemaker_session=sagemaker_session,
@@ -53,7 +53,7 @@ def test_ipinsights(sagemaker_session, cpu_instance_type):
             ipinsights.model_data, role="SageMakerRole", sagemaker_session=sagemaker_session
         )
         predictor = model.deploy(1, cpu_instance_type, endpoint_name=job_name)
-        assert isinstance(predictor, RealTimePredictor)
+        assert isinstance(predictor, Predictor)
 
         predict_input = [["user_1", "1.1.1.1"]]
         result = predictor.predict(predict_input)
