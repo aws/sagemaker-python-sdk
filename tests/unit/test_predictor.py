@@ -12,11 +12,13 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import io
 import json
 
 import pytest
 from mock import Mock, call, patch
 
+from sagemaker.deserializers import CSVDeserializer, PandasDeserializer
 from sagemaker.predictor import Predictor
 from sagemaker.serializers import JSONSerializer, CSVSerializer
 
@@ -132,7 +134,7 @@ def json_sagemaker_session():
     response_body.close = Mock("close", return_value=None)
     ims.sagemaker_runtime_client.invoke_endpoint = Mock(
         name="invoke_endpoint",
-        return_value={"Body": response_body, "ContentType": DEFAULT_CONTENT_TYPE},
+        return_value={"Body": response_body, "ContentType": "application/json"},
     )
     return ims
 
@@ -168,9 +170,7 @@ def ret_csv_sagemaker_session():
     ims.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)
     ims.sagemaker_client.describe_endpoint_config = Mock(return_value=ENDPOINT_CONFIG_DESC)
 
-    response_body = Mock("body")
-    response_body.read = Mock("read", return_value=CSV_RETURN_VALUE)
-    response_body.close = Mock("close", return_value=None)
+    response_body = io.BytesIO(bytes(CSV_RETURN_VALUE, "utf-8"))
     ims.sagemaker_runtime_client.invoke_endpoint = Mock(
         name="invoke_endpoint",
         return_value={"Body": response_body, "ContentType": CSV_CONTENT_TYPE},
@@ -180,7 +180,9 @@ def ret_csv_sagemaker_session():
 
 def test_predict_call_with_csv():
     sagemaker_session = ret_csv_sagemaker_session()
-    predictor = Predictor(ENDPOINT, sagemaker_session, serializer=CSVSerializer())
+    predictor = Predictor(
+        ENDPOINT, sagemaker_session, serializer=CSVSerializer(), deserializer=CSVDeserializer()
+    )
 
     data = [1, 2]
     result = predictor.predict(data)
@@ -188,7 +190,7 @@ def test_predict_call_with_csv():
     assert sagemaker_session.sagemaker_runtime_client.invoke_endpoint.called
 
     expected_request_args = {
-        "Accept": DEFAULT_ACCEPT,
+        "Accept": CSV_CONTENT_TYPE,
         "Body": "1,2",
         "ContentType": CSV_CONTENT_TYPE,
         "EndpointName": ENDPOINT,
@@ -196,7 +198,28 @@ def test_predict_call_with_csv():
     call_args, kwargs = sagemaker_session.sagemaker_runtime_client.invoke_endpoint.call_args
     assert kwargs == expected_request_args
 
-    assert result == CSV_RETURN_VALUE
+    assert result == [["1", "2", "3"]]
+
+
+def test_predict_call_with_multiple_accept_types():
+    sagemaker_session = ret_csv_sagemaker_session()
+    predictor = Predictor(
+        ENDPOINT, sagemaker_session, serializer=CSVSerializer(), deserializer=PandasDeserializer()
+    )
+
+    data = [1, 2]
+    predictor.predict(data)
+
+    assert sagemaker_session.sagemaker_runtime_client.invoke_endpoint.called
+
+    expected_request_args = {
+        "Accept": "text/csv, application/json",
+        "Body": "1,2",
+        "ContentType": CSV_CONTENT_TYPE,
+        "EndpointName": ENDPOINT,
+    }
+    call_args, kwargs = sagemaker_session.sagemaker_runtime_client.invoke_endpoint.call_args
+    assert kwargs == expected_request_args
 
 
 @patch("sagemaker.predictor.name_from_base")
