@@ -346,3 +346,42 @@ def test_deserializer_module_modify_node(src, expected):
     node = pasta.parse(src)
     modified_node = modifier.modify_node(node)
     assert expected == pasta.dump(modified_node)
+
+
+@pytest.mark.parametrize(
+    "src, expected",
+    [
+        ('estimator.create_model(entry_point="inference.py")', False),
+        ("estimator.create_model(serializer=CSVSerializer())", True),
+        ("estimator.create_model(deserializer=CSVDeserializer())", True),
+        (
+            "estimator.create_model(serializer=CSVSerializer(), deserializer=CSVDeserializer())",
+            True,
+        ),
+        ("estimator.deploy(serializer=CSVSerializer())", False),
+    ],
+)
+def test_create_model_call_node_should_be_modified(src, expected):
+    modifier = serde.SerdeKeywordRemover()
+    node = ast_call(src)
+    assert modifier.node_should_be_modified(node) is expected
+
+
+@pytest.mark.parametrize(
+    "src, expected",
+    [
+        (
+            'estimator.create_model(entry_point="inference.py", serializer=CSVSerializer())',
+            'estimator.create_model(entry_point="inference.py")',
+        ),
+        (
+            'estimator.create_model(entry_point="inference.py", deserializer=CSVDeserializer())',
+            'estimator.create_model(entry_point="inference.py")',
+        ),
+    ],
+)
+def test_create_model_call_modify_node(src, expected):
+    modifier = serde.SerdeKeywordRemover()
+    node = ast_call(src)
+    modified_node = modifier.modify_node(node)
+    assert expected == pasta.dump(modified_node)

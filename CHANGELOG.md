@@ -1,5 +1,109 @@
 # Changelog
 
+## v2.0.1 (2020-08-05)
+
+### Bug Fixes and Other Changes
+
+ * use pathlib.PurePosixPath for S3 URLs and Unix paths
+ * fix regions for updated RL images
+
+### Documentation Changes
+
+ * update CHANGELOG to reflect v2.0.0 changes
+
+### Testing and Release Infrastructure
+
+ * remove v2-incompatible notebooks from notebook build
+
+## v2.0.0 (2020-08-04)
+
+### Breaking Changes
+
+ * rename s3_input to TrainingInput
+ * Move _NumpyDeserializer to sagemaker.deserializers.NumpyDeserializer
+ * rename numpy_to_record_serializer to RecordSerializer
+ * Move _CsvDeserializer to sagemaker.deserializers and rename to CSVDeserializer
+ * Move _JsonSerializer to sagemaker.serializers.JSONSerializer
+ * Move _NPYSerializer to sagemaker.serializers and rename to NumpySerializer
+ * Move _JsonDeserializer to sagemaker.deserializers.JSONDeserializer
+ * Move _CsvSerializer to sagemaker.serializers.CSVSerializer
+ * preserve script path when S3 source_dir is provided
+ * use image_uris.retrieve() for XGBoost URIs
+ * deprecate sagemaker.amazon.amazon_estimator.get_image_uri()
+ * deprecate fw_registry module and use image_uris.retrieve() for SparkML
+ * deprecate Python SDK CLI
+ * Remove the content_types module
+ * deprecate unused parameters
+ * deprecate fw_utils.create_image_uri()
+ * use images_uris.retrieve() for Debugger
+ * deprecate fw_utils.parse_s3_url in favor of s3.parse_s3_url
+ * deprecate unused functions from utils and fw_utils
+ * Remove content_type and accept parameters from Predictor
+ * Add parameters to deploy and remove parameters from create_model
+ * Add LibSVM serializer for XGBoost predictor
+ * move ShuffleConfig from sagemaker.session to sagemaker.inputs
+ * deprecate get_ecr_image_uri_prefix
+ * rename estimator.train_image() to estimator.training_image_uri()
+ * deprecate is_version_equal_or_higher and is_version_equal_or_lower
+ * default wait=True for HyperparameterTuner.fit() and Transformer.transform()
+ * remove unused bin/sagemaker-submit file
+
+### Features
+
+ * start new module for retrieving prebuilt SageMaker image URIs
+ * handle separate training/inference images and EI in image_uris.retrieve
+ * add support for Amazon algorithms in image_uris.retrieve()
+ * Add pandas deserializer
+ * Remove LegacySerializer and LegacyDeserializer
+ * Add sparse matrix serializer
+ * Add v2 SerDe compatability
+ * Add JSON Lines serializer
+ * add framework upgrade tool
+ * add 1p algorithm image_uris migration tool
+ * Update migration tool to support breaking changes to create_model
+ * support PyTorch 1.6 training
+
+### Bug Fixes and Other Changes
+
+ * handle named variables in v2 migration tool
+ * add modifier for s3_input class
+ * add XGBoost support to image_uris.retrieve()
+ * add MXNet configuration to image_uris.retrieve()
+ * add remaining Amazon algorithms for image_uris.retrieve()
+ * add PyTorch configuration for image_uris.retrieve()
+ * make image_scope optional for some images in image_uris.retrieve()
+ * separate logs() from attach()
+ * use image_uris.retrieve instead of fw_utils.create_image_uri for DLC frameworks
+ * use images_uris.retrieve() for scikit-learn classes
+ * use image_uris.retrieve() for RL images
+ * Rename BaseDeserializer.deserialize data parameter
+ * Add allow_pickle parameter to NumpyDeserializer
+ * Fix scipy.sparse imports
+ * Improve code style of SerDe compatibility
+ * use image_uris.retrieve for Neo and Inferentia images
+ * use generated RL version fixtures and update Ray version
+ * use image_uris.retrieve() for ModelMonitor default image
+ * use _framework_name for 'protected' attribute
+ * Fix JSONLinesDeserializer
+ * upgrade TFS version and fix py_versions KeyError
+ * Fix PandasDeserializer tests to more accurately mock response
+ * don't require instance_type for image_uris.retrieve() if only one option
+ * ignore code cells with shell commands in v2 migration tool
+ * Support multiple Accept types
+
+### Documentation Changes
+
+ * fix pip install command
+ * document name changes for TFS classes
+ * document v2.0.0 changes
+ * update KFP full pipeline
+
+### Testing and Release Infrastructure
+
+ * generate Chainer latest version fixtures from config
+ * use generated TensorFlow version fixtures
+ * use generated MXNet version fixtures
+
 ## v1.72.0 (2020-07-29)
 
 ### Features

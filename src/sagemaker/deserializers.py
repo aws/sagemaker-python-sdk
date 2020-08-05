@@ -52,13 +52,13 @@ class BaseDeserializer(abc.ABC):
     @property
     @abc.abstractmethod
     def ACCEPT(self):
-        """The content type that is expected from the inference endpoint."""
+        """The content types that are expected from the inference endpoint."""
 
 
 class StringDeserializer(BaseDeserializer):
     """Deserialize data from an inference endpoint into a decoded string."""
 
-    ACCEPT = "application/json"
+    ACCEPT = ("application/json",)
 
     def __init__(self, encoding="UTF-8"):
         """Initialize the string encoding.
@@ -87,7 +87,7 @@ class StringDeserializer(BaseDeserializer):
 class BytesDeserializer(BaseDeserializer):
     """Deserialize a stream of bytes into a bytes object."""
 
-    ACCEPT = "*/*"
+    ACCEPT = ("*/*",)
 
     def deserialize(self, stream, content_type):
         """Read a stream of bytes returned from an inference endpoint.
@@ -108,7 +108,7 @@ class BytesDeserializer(BaseDeserializer):
 class CSVDeserializer(BaseDeserializer):
     """Deserialize a stream of bytes into a list of lists."""
 
-    ACCEPT = "text/csv"
+    ACCEPT = ("text/csv",)
 
     def __init__(self, encoding="utf-8"):
         """Initialize the string encoding.
@@ -143,7 +143,7 @@ class StreamDeserializer(BaseDeserializer):
     reading it.
     """
 
-    ACCEPT = "*/*"
+    ACCEPT = ("*/*",)
 
     def deserialize(self, stream, content_type):
         """Returns a stream of the response body and the MIME type of the data.
@@ -161,16 +161,17 @@ class StreamDeserializer(BaseDeserializer):
 class NumpyDeserializer(BaseDeserializer):
     """Deserialize a stream of data in the .npy format."""
 
-    ACCEPT = "application/x-npy"
-
-    def __init__(self, dtype=None, allow_pickle=True):
+    def __init__(self, dtype=None, accept="application/x-npy", allow_pickle=True):
         """Initialize the dtype and allow_pickle arguments.
 
         Args:
             dtype (str): The dtype of the data (default: None).
+            accept (str): The MIME type that is expected from the inference
+                endpoint (default: "application/x-npy").
             allow_pickle (bool): Allow loading pickled object arrays (default: True).
         """
         self.dtype = dtype
+        self.accept = accept
         self.allow_pickle = allow_pickle
 
     def deserialize(self, stream, content_type):
@@ -197,11 +198,21 @@ class NumpyDeserializer(BaseDeserializer):
 
         raise ValueError("%s cannot read content type %s." % (__class__.__name__, content_type))
 
+    @property
+    def ACCEPT(self):
+        """The content types that are expected from the inference endpoint.
+
+        To maintain backwards compatability with legacy images, the
+        NumpyDeserializer supports sending only one content type in the Accept
+        header.
+        """
+        return (self.accept,)
+
 
 class JSONDeserializer(BaseDeserializer):
     """Deserialize JSON data from an inference endpoint into a Python object."""
 
-    ACCEPT = "application/json"
+    ACCEPT = ("application/json",)
 
     def deserialize(self, stream, content_type):
         """Deserialize JSON data from an inference endpoint into a Python object.
@@ -222,7 +233,7 @@ class JSONDeserializer(BaseDeserializer):
 class PandasDeserializer(BaseDeserializer):
     """Deserialize CSV or JSON data from an inference endpoint into a pandas dataframe."""
 
-    ACCEPT = "text/csv"
+    ACCEPT = ("text/csv", "application/json")
 
     def deserialize(self, stream, content_type):
         """Deserialize CSV or JSON data from an inference endpoint into a pandas
@@ -250,7 +261,7 @@ class PandasDeserializer(BaseDeserializer):
 class JSONLinesDeserializer(BaseDeserializer):
     """Deserialize JSON lines data from an inference endpoint."""
 
-    ACCEPT = "application/jsonlines"
+    ACCEPT = ("application/jsonlines",)
 
     def deserialize(self, stream, content_type):
         """Deserialize JSON lines data from an inference endpoint.

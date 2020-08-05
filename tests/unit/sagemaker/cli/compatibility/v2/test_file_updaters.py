@@ -96,6 +96,25 @@ def test_update(ast_transformer, pasta_parse, pasta_dump, json_dump):
           "metadata": {},
           "outputs": [],
           "source": [
+           "!echo ignore this"
+          ]
+         },
+         {
+          "cell_type": "code",
+          "execution_count": 2,
+          "metadata": {},
+          "outputs": [],
+          "source": [
+           "%%%%bash\\n",
+           "echo ignore this too"
+          ]
+         },
+         {
+          "cell_type": "code",
+          "execution_count": 3,
+          "metadata": {},
+          "outputs": [],
+          "source": [
            "# code to be modified\\n",
            "%s"
           ]

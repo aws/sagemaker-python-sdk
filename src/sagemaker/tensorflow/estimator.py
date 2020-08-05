@@ -14,11 +14,10 @@
 from __future__ import absolute_import
 
 import logging
-import os
 
 from packaging import version
 
-from sagemaker import image_uris, utils
+from sagemaker import image_uris, s3, utils
 from sagemaker.debugger import DebuggerHookConfig
 from sagemaker.estimator import Framework
 import sagemaker.fw_utils as fw
@@ -329,7 +328,7 @@ class TensorFlow(Framework):
         if mpi:
             return "/opt/ml/model"
         if self._current_job_name:
-            return os.path.join(self.output_path, self._current_job_name, directory)
+            return s3.s3_path_join(self.output_path, self._current_job_name, directory)
         return None
 
     def _validate_and_set_debugger_configs(self):

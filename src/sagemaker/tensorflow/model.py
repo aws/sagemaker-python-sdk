@@ -16,7 +16,7 @@ from __future__ import absolute_import
 import logging
 
 import sagemaker
-from sagemaker import image_uris
+from sagemaker import image_uris, s3
 from sagemaker.deserializers import JSONDeserializer
 from sagemaker.predictor import Predictor
 from sagemaker.serializers import JSONSerializer
@@ -247,7 +247,7 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
             )
 
             bucket = self.bucket or self.sagemaker_session.default_bucket()
-            model_data = "s3://{}/{}/model.tar.gz".format(bucket, key_prefix)
+            model_data = s3.s3_path_join("s3://", bucket, key_prefix, "model.tar.gz")
 
             sagemaker.utils.repack_model(
                 self.entry_point,

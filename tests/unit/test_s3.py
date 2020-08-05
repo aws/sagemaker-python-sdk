@@ -110,3 +110,17 @@ def test_parse_s3_url_fail():
     with pytest.raises(ValueError) as error:
         s3.parse_s3_url("t3://code_location")
     assert "Expecting 's3' scheme" in str(error)
+
+
+def test_path_join():
+    test_cases = (
+        ("foo/bar", ("foo", "bar")),
+        ("foo/bar", ("foo/", "bar")),
+        ("foo/bar", ("/foo/", "bar")),
+        ("s3://foo/bar", ("s3://", "foo", "bar")),
+        ("s3://foo/bar", ("s3://", "/foo", "bar")),
+        ("s3://foo/bar", ("s3://foo", "bar")),
+    )
+
+    for expected, args in test_cases:
+        assert expected == s3.s3_path_join(*args)
