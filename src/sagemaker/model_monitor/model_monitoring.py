@@ -19,6 +19,7 @@ from __future__ import print_function, absolute_import
 import copy
 import json
 import os
+import pathlib
 import logging
 import uuid
 
@@ -26,12 +27,11 @@ from six import string_types
 from six.moves.urllib.parse import urlparse
 from botocore.exceptions import ClientError
 
-from sagemaker import image_uris
+from sagemaker import image_uris, s3
 from sagemaker.exceptions import UnexpectedStatusException
 from sagemaker.model_monitor.monitoring_files import Constraints, ConstraintViolations, Statistics
 from sagemaker.network import NetworkConfig
 from sagemaker.processing import Processor, ProcessingInput, ProcessingJob, ProcessingOutput
-from sagemaker.s3 import S3Uploader
 from sagemaker.session import Session
 from sagemaker.utils import name_from_base, retries
 
@@ -809,8 +809,10 @@ class ModelMonitor(object):
         if isinstance(endpoint_input, string_types):
             endpoint_input = EndpointInput(
                 endpoint_name=endpoint_input,
-                destination=os.path.join(
-                    _CONTAINER_BASE_PATH, _CONTAINER_INPUT_PATH, _CONTAINER_ENDPOINT_INPUT_PATH
+                destination=str(
+                    pathlib.PurePosixPath(
+                        _CONTAINER_BASE_PATH, _CONTAINER_INPUT_PATH, _CONTAINER_ENDPOINT_INPUT_PATH
+                    )
                 ),
             )
 
@@ -842,13 +844,13 @@ class ModelMonitor(object):
                 # and save the S3 uri in the ProcessingInput source.
                 parse_result = urlparse(file_input.source)
                 if parse_result.scheme != "s3":
-                    s3_uri = os.path.join(
+                    s3_uri = s3.s3_path_join(
                         "s3://",
                         self.sagemaker_session.default_bucket(),
                         self.latest_baselining_job_name,
                         file_input.input_name,
                     )
-                    S3Uploader.upload(
+                    s3.S3Uploader.upload(
                         local_path=file_input.source,
                         desired_s3_uri=s3_uri,
                         sagemaker_session=self.sagemaker_session,
@@ -869,7 +871,7 @@ class ModelMonitor(object):
         """
         # If the output is a string, turn it into a ProcessingOutput object.
         if isinstance(output, string_types):
-            s3_uri = os.path.join(
+            s3_uri = s3.s3_path_join(
                 "s3://",
                 self.sagemaker_session.default_bucket(),
                 self.latest_baselining_job_name,
@@ -893,7 +895,7 @@ class ModelMonitor(object):
         """
         # If the output is a string, turn it into a ProcessingOutput object.
         if output.destination is None:
-            output.destination = os.path.join(
+            output.destination = s3.s3_path_join(
                 "s3://",
                 self.sagemaker_session.default_bucket(),
                 self.monitoring_schedule_name,
@@ -914,7 +916,7 @@ class ModelMonitor(object):
         """
         parse_result = urlparse(path)
         if parse_result.scheme != "s3":
-            s3_uri = os.path.join(
+            s3_uri = s3.s3_path_join(
                 "s3://",
                 self.sagemaker_session.default_bucket(),
                 _MODEL_MONITOR_S3_PATH,
@@ -923,10 +925,10 @@ class ModelMonitor(object):
                 _INPUT_S3_PATH,
                 str(uuid.uuid4()),
             )
-            S3Uploader.upload(
+            s3.S3Uploader.upload(
                 local_path=path, desired_s3_uri=s3_uri, sagemaker_session=self.sagemaker_session
             )
-            path = os.path.join(s3_uri, os.path.basename(path))
+            path = s3.s3_path_join(s3_uri, os.path.basename(path))
         return path
 
     def _wait_for_schedule_changes_to_apply(self):
@@ -1074,8 +1076,10 @@ class DefaultModelMonitor(ModelMonitor):
 
         normalized_baseline_dataset_input = self._upload_and_convert_to_processing_input(
             source=baseline_dataset,
-            destination=os.path.join(
-                _CONTAINER_BASE_PATH, _CONTAINER_INPUT_PATH, _BASELINE_DATASET_INPUT_NAME
+            destination=str(
+                pathlib.PurePosixPath(
+                    _CONTAINER_BASE_PATH, _CONTAINER_INPUT_PATH, _BASELINE_DATASET_INPUT_NAME
+                )
             ),
             name=_BASELINE_DATASET_INPUT_NAME,
         )
@@ -1085,34 +1089,44 @@ class DefaultModelMonitor(ModelMonitor):
 
         normalized_record_preprocessor_script_input = self._upload_and_convert_to_processing_input(
             source=record_preprocessor_script,
-            destination=os.path.join(
-                _CONTAINER_BASE_PATH, _CONTAINER_INPUT_PATH, _RECORD_PREPROCESSOR_SCRIPT_INPUT_NAME
+            destination=str(
+                pathlib.PurePosixPath(
+                    _CONTAINER_BASE_PATH,
+                    _CONTAINER_INPUT_PATH,
+                    _RECORD_PREPROCESSOR_SCRIPT_INPUT_NAME,
+                )
             ),
             name=_RECORD_PREPROCESSOR_SCRIPT_INPUT_NAME,
         )
 
         record_preprocessor_script_container_path = None
         if normalized_record_preprocessor_script_input is not None:
-            record_preprocessor_script_container_path = os.path.join(
-                normalized_record_preprocessor_script_input.destination,
-                os.path.basename(record_preprocessor_script),
+            record_preprocessor_script_container_path = str(
+                pathlib.PurePosixPath(
+                    normalized_record_preprocessor_script_input.destination,
+                    os.path.basename(record_preprocessor_script),
+                )
             )
 
         normalized_post_processor_script_input = self._upload_and_convert_to_processing_input(
             source=post_analytics_processor_script,
-            destination=os.path.join(
-                _CONTAINER_BASE_PATH,
-                _CONTAINER_INPUT_PATH,
-                _POST_ANALYTICS_PROCESSOR_SCRIPT_INPUT_NAME,
+            destination=str(
+                pathlib.PurePosixPath(
+                    _CONTAINER_BASE_PATH,
+                    _CONTAINER_INPUT_PATH,
+                    _POST_ANALYTICS_PROCESSOR_SCRIPT_INPUT_NAME,
+                )
             ),
             name=_POST_ANALYTICS_PROCESSOR_SCRIPT_INPUT_NAME,
         )
 
         post_processor_script_container_path = None
         if normalized_post_processor_script_input is not None:
-            post_processor_script_container_path = os.path.join(
-                normalized_post_processor_script_input.destination,
-                os.path.basename(post_analytics_processor_script),
+            post_processor_script_container_path = str(
+                pathlib.PurePosixPath(
+                    normalized_post_processor_script_input.destination,
+                    os.path.basename(post_analytics_processor_script),
+                )
             )
 
         normalized_baseline_output = self._normalize_baseline_output(output_s3_uri=output_s3_uri)
@@ -1631,7 +1645,7 @@ class DefaultModelMonitor(ModelMonitor):
             sagemaker.processing.ProcessingOutput: The normalized ProcessingOutput object.
 
         """
-        s3_uri = output_s3_uri or os.path.join(
+        s3_uri = output_s3_uri or s3.s3_path_join(
             "s3://",
             self.sagemaker_session.default_bucket(),
             _MODEL_MONITOR_S3_PATH,
@@ -1640,7 +1654,7 @@ class DefaultModelMonitor(ModelMonitor):
             _RESULTS_S3_PATH,
         )
         return ProcessingOutput(
-            source=os.path.join(_CONTAINER_BASE_PATH, _CONTAINER_OUTPUT_PATH),
+            source=str(pathlib.PurePosixPath(_CONTAINER_BASE_PATH, _CONTAINER_OUTPUT_PATH)),
             destination=s3_uri,
             output_name=_DEFAULT_OUTPUT_NAME,
         )
@@ -1655,7 +1669,7 @@ class DefaultModelMonitor(ModelMonitor):
             sagemaker.model_monitor.MonitoringOutput: The normalized MonitoringOutput object.
 
         """
-        s3_uri = output_s3_uri or os.path.join(
+        s3_uri = output_s3_uri or s3.s3_path_join(
             "s3://",
             self.sagemaker_session.default_bucket(),
             _MODEL_MONITOR_S3_PATH,
@@ -1664,7 +1678,8 @@ class DefaultModelMonitor(ModelMonitor):
             _RESULTS_S3_PATH,
         )
         output = MonitoringOutput(
-            source=os.path.join(_CONTAINER_BASE_PATH, _CONTAINER_OUTPUT_PATH), destination=s3_uri
+            source=str(pathlib.PurePosixPath(_CONTAINER_BASE_PATH, _CONTAINER_OUTPUT_PATH)),
+            destination=s3_uri,
         )
 
         return output
@@ -1741,7 +1756,7 @@ class DefaultModelMonitor(ModelMonitor):
         parse_result = urlparse(url=source)
 
         if parse_result.scheme != "s3":
-            s3_uri = os.path.join(
+            s3_uri = s3.s3_path_join(
                 "s3://",
                 self.sagemaker_session.default_bucket(),
                 _MODEL_MONITOR_S3_PATH,
@@ -1750,7 +1765,7 @@ class DefaultModelMonitor(ModelMonitor):
                 _INPUT_S3_PATH,
                 name,
             )
-            S3Uploader.upload(
+            s3.S3Uploader.upload(
                 local_path=source, desired_s3_uri=s3_uri, sagemaker_session=self.sagemaker_session
             )
             source = s3_uri
@@ -1839,7 +1854,7 @@ class BaseliningJob(ProcessingJob):
         try:
             baselining_job_output_s3_path = self.outputs[0].destination
             return Statistics.from_s3_uri(
-                statistics_file_s3_uri=os.path.join(baselining_job_output_s3_path, file_name),
+                statistics_file_s3_uri=s3.s3_path_join(baselining_job_output_s3_path, file_name),
                 kms_key=kms_key,
                 sagemaker_session=self.sagemaker_session,
             )
@@ -1877,7 +1892,7 @@ class BaseliningJob(ProcessingJob):
         try:
             baselining_job_output_s3_path = self.outputs[0].destination
             return Constraints.from_s3_uri(
-                constraints_file_s3_uri=os.path.join(baselining_job_output_s3_path, file_name),
+                constraints_file_s3_uri=s3.s3_path_join(baselining_job_output_s3_path, file_name),
                 kms_key=kms_key,
                 sagemaker_session=self.sagemaker_session,
             )
@@ -1993,7 +2008,7 @@ class MonitoringExecution(ProcessingJob):
         try:
             baselining_job_output_s3_path = self.outputs[0].destination
             return Statistics.from_s3_uri(
-                statistics_file_s3_uri=os.path.join(baselining_job_output_s3_path, file_name),
+                statistics_file_s3_uri=s3.s3_path_join(baselining_job_output_s3_path, file_name),
                 kms_key=kms_key,
                 sagemaker_session=self.sagemaker_session,
             )
@@ -2033,7 +2048,7 @@ class MonitoringExecution(ProcessingJob):
         try:
             baselining_job_output_s3_path = self.outputs[0].destination
             return ConstraintViolations.from_s3_uri(
-                constraint_violations_file_s3_uri=os.path.join(
+                constraint_violations_file_s3_uri=s3.s3_path_join(
                     baselining_job_output_s3_path, file_name
                 ),
                 kms_key=kms_key,

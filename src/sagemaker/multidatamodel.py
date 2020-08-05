@@ -14,6 +14,7 @@
 from __future__ import absolute_import
 
 import os
+
 from six.moves.urllib.parse import urlparse
 
 import sagemaker
@@ -290,24 +291,24 @@ class MultiDataModel(Model):
                 model_data_path = source_model_data_path
 
             # Construct the destination path
-            dst_url = os.path.join(self.model_data_prefix, model_data_path)
+            dst_url = s3.s3_path_join(self.model_data_prefix, model_data_path)
             destination_bucket, destination_model_data_path = s3.parse_s3_url(dst_url)
 
             # Copy the model artifact
             self.s3_client.copy(copy_source, destination_bucket, destination_model_data_path)
-            return os.path.join("s3://", destination_bucket, destination_model_data_path)
+            return s3.s3_path_join("s3://", destination_bucket, destination_model_data_path)
 
         # If the model source is a local path, upload the local model artifact to the destination
-        #  s3 path
+        # S3 path
         if os.path.exists(model_data_source):
             destination_bucket, dst_prefix = s3.parse_s3_url(self.model_data_prefix)
             if model_data_path:
-                dst_s3_uri = os.path.join(dst_prefix, model_data_path)
+                dst_s3_uri = s3.s3_path_join(dst_prefix, model_data_path)
             else:
-                dst_s3_uri = os.path.join(dst_prefix, os.path.basename(model_data_source))
+                dst_s3_uri = s3.s3_path_join(dst_prefix, os.path.basename(model_data_source))
             self.s3_client.upload_file(model_data_source, destination_bucket, dst_s3_uri)
             # return upload_path
-            return os.path.join("s3://", destination_bucket, dst_s3_uri)
+            return s3.s3_path_join("s3://", destination_bucket, dst_s3_uri)
 
         # Raise error if the model source is of an unexpected type
         raise ValueError(
