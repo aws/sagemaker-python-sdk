@@ -22,18 +22,22 @@ REGION = "us-west-2"
 
 DLC_ACCOUNT = "763104351884"
 DLC_ALTERNATE_REGION_ACCOUNTS = {
+    "af-south-1": "626614931356",
     "ap-east-1": "871362719292",
     "cn-north-1": "727897471807",
     "cn-northwest-1": "727897471807",
+    "eu-south-1": "692866216735",
     "me-south-1": "217643126080",
     "us-gov-west-1": "442386744353",
     "us-iso-east-1": "886529160074",
 }
 SAGEMAKER_ACCOUNT = "520713654638"
 SAGEMAKER_ALTERNATE_REGION_ACCOUNTS = {
+    "af-south-1": "313743910680",
     "ap-east-1": "057415533634",
     "cn-north-1": "422961961927",
     "cn-northwest-1": "423003514399",
+    "eu-south-1": "048378556238",
     "me-south-1": "724002660598",
     "us-gov-west-1": "246785580436",
     "us-iso-east-1": "744548109606",
