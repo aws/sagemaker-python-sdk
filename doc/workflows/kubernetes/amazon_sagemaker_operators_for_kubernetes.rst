@@ -144,7 +144,7 @@ To work around this, run the following command:
 
 ::
 
-    aws eks describe-cluster --query cluster --name ${CLUSTER_NAME} --output text | grep OIDC
+    aws eks describe-cluster --region ${AWS_REGION} --query cluster --name ${CLUSTER_NAME} --output text | grep OIDC
 
 The OIDC URL will be returned as follows:
 
@@ -179,13 +179,37 @@ relationship code block into it. Be sure to replace all ``<OIDC ID>``, ``<AWS ac
       ]
     }
 
+If you're using the Amazon SageMaker Operators in China, create a file named ``trust.json``  and insert the following trust
+relationship code block into it instead. Be sure to replace all ``<OIDC ID>``, ``<AWS account number>``, and ``<EKS Cluster region>`` placeholders with values corresponding to your cluster.
+
+::
+
+      {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Effect": "Allow",
+            "Principal": {
+              "Federated": "arn:aws-cn:iam::<AWS account number>:oidc-provider/oidc.eks.<EKS Cluster region>.amazonaws.com/id/<OIDC ID>"
+            },
+            "Action": "sts:AssumeRoleWithWebIdentity",
+            "Condition": {
+              "StringEquals": {
+                "oidc.eks.<EKS Cluster region>.amazonaws.com/id/<OIDC ID>:aud": "sts.amazonaws.com",
+                "oidc.eks.<EKS Cluster region>.amazonaws.com/id/<OIDC ID>:sub": "system:serviceaccount:sagemaker-k8s-operator-system:sagemaker-k8s-operator-default"
+              }
+            }
+          }
+        ]
+      }
+
 Run the following command to create a role with the trust
 relationship defined in ``trust.json``. This role enables the
 Amazon EKS cluster to get and refresh credentials from IAM.
 
 ::
 
-    aws iam create-role --role-name <role name> --assume-role-policy-document file://trust.json --output=text
+    aws iam create-role --region ${AWS_REGION} --role-name <role name> --assume-role-policy-document file://trust.json --output=text
 
 Your output should look like the following:
 
@@ -213,6 +237,12 @@ To attach AmazonSageMakerFullAccess, run the following command:
 ::
 
     aws iam attach-role-policy --role-name <role name>  --policy-arn arn:aws:iam::aws:policy/AmazonSageMakerFullAccess
+    
+If you're using the Amazon SageMaker Operators in China, attach the following policy instead:
+
+::
+
+    aws iam attach-role-policy --region ${AWS_REGION} --role-name <role name> --policy-arn arn:aws-cn:iam::aws:policy/AmazonSageMakerFullAccess
 
 The Kubernetes
 ServiceAccount ``sagemaker-k8s-operator-default`` should
@@ -236,6 +266,12 @@ follows:
    ::
 
        wget https://raw.githubusercontent.com/aws/amazon-sagemaker-operator-for-k8s/master/release/rolebased/installer.yaml
+       
+   If you're using the Amazon SageMaker Operators in China, download the following installer script instead. Whenever ``installer.yaml`` is referenced, use ``installer_china.yaml`` instead.
+   
+   ::
+    
+       wget https://raw.githubusercontent.com/aws/amazon-sagemaker-operator-for-k8s/master/release/rolebased/china/installer_china.yaml
 
 -  Edit the ``installer.yaml`` file to
    replace ``eks.amazonaws.com/role-arn``. Replace the ARN here with
@@ -405,7 +441,7 @@ To work around this, run the following command:
 
 ::
 
-    aws eks describe-cluster --query cluster --name ${CLUSTER_NAME} --output text | grep OIDC
+    aws eks describe-cluster --region ${AWS_REGION} --query cluster --name ${CLUSTER_NAME} --output text | grep OIDC
 
 The OIDC URL will be returned as follows:
 
@@ -439,6 +475,30 @@ relationship code block into it. Be sure to replace all ``<OIDC ID>``, ``<AWS ac
         }
       ]
     }
+    
+If you're using the Amazon SageMaker Operators in China, create a file named ``trust.json``  and insert the following trust
+relationship code block into it instead. Be sure to replace all ``<OIDC ID>``, ``<AWS account number>``, and ``<EKS Cluster region>`` placeholders with values corresponding to your cluster.
+
+::
+
+      {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Effect": "Allow",
+            "Principal": {
+              "Federated": "arn:aws-cn:iam::<AWS account number>:oidc-provider/oidc.eks.<EKS Cluster region>.amazonaws.com/id/<OIDC ID>"
+            },
+            "Action": "sts:AssumeRoleWithWebIdentity",
+            "Condition": {
+              "StringEquals": {
+                "oidc.eks.<EKS Cluster region>.amazonaws.com/id/<OIDC ID>:aud": "sts.amazonaws.com",
+                "oidc.eks.<EKS Cluster region>.amazonaws.com/id/<OIDC ID>:sub": "system:serviceaccount:<Namespace>:sagemaker-k8s-operator-default"
+              }
+            }
+          }
+        ]
+      }
 
 Run the following command to create a role with the trust
 relationship defined in ``trust.json``. This role enables the
@@ -446,7 +506,7 @@ Amazon EKS cluster to get and refresh credentials from IAM.
 
 ::
 
-    aws iam create-role --role-name <role name> --assume-role-policy-document file://trust.json --output=text
+    aws iam create-role --region ${AWS_REGION} --role-name <role name> --assume-role-policy-document file://trust.json --output=text
 
 Your output should look like the following:
 
@@ -474,6 +534,12 @@ To attach AmazonSageMakerFullAccess, run the following command:
 ::
 
     aws iam attach-role-policy --role-name <role name>  --policy-arn arn:aws:iam::aws:policy/AmazonSageMakerFullAccess
+    
+If you're using the Amazon SageMaker Operators in China, attach the following policy instead:
+
+::
+
+    aws iam attach-role-policy --region ${AWS_REGION} --role-name <role name> --policy-arn arn:aws-cn:iam::aws:policy/AmazonSageMakerFullAccess
 
 The Kubernetes
 ServiceAccount ``sagemaker-k8s-operator-default`` should
@@ -504,6 +570,12 @@ To install the operator onto the cluster:
    ::
 
        wget https://raw.githubusercontent.com/aws/amazon-sagemaker-operator-for-k8s/master/release/rolebased/namespaced/operator.yaml
+       
+   If you're using the Amazon SageMaker Operators in China, download the following operator script instead. Whenever ``operator.yaml`` is referenced, use ``operator_china.yaml`` instead.
+   
+   ::
+    
+       wget https://raw.githubusercontent.com/aws/amazon-sagemaker-operator-for-k8s/master/release/rolebased/namespaced/china/operator_china.yaml
 
 -  Update the installer YAML to place the resources into your specified namespace using the following command:
 
