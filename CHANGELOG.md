@@ -1,5 +1,20 @@
 # Changelog
 
+## v2.0.1 (2020-08-05)
+
+### Bug Fixes and Other Changes
+
+ * use pathlib.PurePosixPath for S3 URLs and Unix paths
+ * fix regions for updated RL images
+
+### Documentation Changes
+
+ * update CHANGELOG to reflect v2.0.0 changes
+
+### Testing and Release Infrastructure
+
+ * remove v2-incompatible notebooks from notebook build
+
 ## v2.0.0 (2020-08-04)
 
 ### Breaking Changes
