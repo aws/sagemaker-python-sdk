@@ -237,7 +237,7 @@ To attach AmazonSageMakerFullAccess, run the following command:
 ::
 
     aws iam attach-role-policy --role-name <role name>  --policy-arn arn:aws:iam::aws:policy/AmazonSageMakerFullAccess
-    
+
 If you're using the Amazon SageMaker Operators in China, attach the following policy instead:
 
 ::
@@ -266,11 +266,11 @@ follows:
    ::
 
        wget https://raw.githubusercontent.com/aws/amazon-sagemaker-operator-for-k8s/master/release/rolebased/installer.yaml
-       
+
    If you're using the Amazon SageMaker Operators in China, download the following installer script instead. Whenever ``installer.yaml`` is referenced, use ``installer_china.yaml`` instead.
-   
+
    ::
-    
+
        wget https://raw.githubusercontent.com/aws/amazon-sagemaker-operator-for-k8s/master/release/rolebased/china/installer_china.yaml
 
 -  Edit the ``installer.yaml`` file to
@@ -475,7 +475,7 @@ relationship code block into it. Be sure to replace all ``<OIDC ID>``, ``<AWS ac
         }
       ]
     }
-    
+
 If you're using the Amazon SageMaker Operators in China, create a file named ``trust.json``  and insert the following trust
 relationship code block into it instead. Be sure to replace all ``<OIDC ID>``, ``<AWS account number>``, and ``<EKS Cluster region>`` placeholders with values corresponding to your cluster.
 
@@ -534,7 +534,7 @@ To attach AmazonSageMakerFullAccess, run the following command:
 ::
 
     aws iam attach-role-policy --role-name <role name>  --policy-arn arn:aws:iam::aws:policy/AmazonSageMakerFullAccess
-    
+
 If you're using the Amazon SageMaker Operators in China, attach the following policy instead:
 
 ::
@@ -570,11 +570,11 @@ To install the operator onto the cluster:
    ::
 
        wget https://raw.githubusercontent.com/aws/amazon-sagemaker-operator-for-k8s/master/release/rolebased/namespaced/operator.yaml
-       
+
    If you're using the Amazon SageMaker Operators in China, download the following operator script instead. Whenever ``operator.yaml`` is referenced, use ``operator_china.yaml`` instead.
-   
+
    ::
-    
+
        wget https://raw.githubusercontent.com/aws/amazon-sagemaker-operator-for-k8s/master/release/rolebased/namespaced/china/operator_china.yaml
 
 -  Update the installer YAML to place the resources into your specified namespace using the following command:
