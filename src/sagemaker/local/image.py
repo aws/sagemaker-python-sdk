@@ -473,7 +473,7 @@ class _SageMakerContainer(object):
         try:
             import yaml
         except ImportError as e:
-            logging.error(sagemaker.utils._module_import_error("yaml", "Local mode", "local"))
+            logger.error(sagemaker.utils._module_import_error("yaml", "Local mode", "local"))
             raise e
 
         yaml_content = yaml.dump(content, default_flow_style=False)

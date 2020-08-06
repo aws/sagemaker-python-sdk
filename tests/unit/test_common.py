@@ -18,19 +18,19 @@ import pytest
 import itertools
 from scipy.sparse import coo_matrix
 from sagemaker.amazon.common import (
-    record_deserializer,
+    RecordDeserializer,
     write_numpy_to_dense_tensor,
     read_recordio,
-    numpy_to_record_serializer,
+    RecordSerializer,
     write_spmatrix_to_sparse_tensor,
 )
 from sagemaker.amazon.record_pb2 import Record
 
 
 def test_serializer():
-    s = numpy_to_record_serializer()
+    s = RecordSerializer()
     array_data = [[1.0, 2.0, 3.0], [10.0, 20.0, 30.0]]
-    buf = s(np.array(array_data))
+    buf = s.serialize(np.array(array_data))
     for record_data, expected in zip(read_recordio(buf), array_data):
         record = Record()
         record.ParseFromString(record_data)
@@ -38,9 +38,9 @@ def test_serializer():
 
 
 def test_serializer_accepts_one_dimensional_array():
-    s = numpy_to_record_serializer()
+    s = RecordSerializer()
     array_data = [1.0, 2.0, 3.0]
-    buf = s(np.array(array_data))
+    buf = s.serialize(np.array(array_data))
     record_data = next(read_recordio(buf))
     record = Record()
     record.ParseFromString(record_data)
@@ -49,10 +49,10 @@ def test_serializer_accepts_one_dimensional_array():
 
 def test_deserializer():
     array_data = [[1.0, 2.0, 3.0], [10.0, 20.0, 30.0]]
-    s = numpy_to_record_serializer()
-    buf = s(np.array(array_data))
-    d = record_deserializer()
-    for record, expected in zip(d(buf, "who cares"), array_data):
+    s = RecordSerializer()
+    buf = s.serialize(np.array(array_data))
+    d = RecordDeserializer()
+    for record, expected in zip(d.deserialize(buf, "who cares"), array_data):
         assert record.features["values"].float64_tensor.values == expected
 
 

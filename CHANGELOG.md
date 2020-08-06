@@ -1,5 +1,148 @@
 # Changelog
 
+## v2.1.0 (2020-08-06)
+
+### Features
+
+ * add DLC account numbers for af-south-1 and eu-south-1
+
+## v2.0.1 (2020-08-05)
+
+### Bug Fixes and Other Changes
+
+ * use pathlib.PurePosixPath for S3 URLs and Unix paths
+ * fix regions for updated RL images
+
+### Documentation Changes
+
+ * update CHANGELOG to reflect v2.0.0 changes
+
+### Testing and Release Infrastructure
+
+ * remove v2-incompatible notebooks from notebook build
+
+## v2.0.0 (2020-08-04)
+
+### Breaking Changes
+
+ * rename s3_input to TrainingInput
+ * Move _NumpyDeserializer to sagemaker.deserializers.NumpyDeserializer
+ * rename numpy_to_record_serializer to RecordSerializer
+ * Move _CsvDeserializer to sagemaker.deserializers and rename to CSVDeserializer
+ * Move _JsonSerializer to sagemaker.serializers.JSONSerializer
+ * Move _NPYSerializer to sagemaker.serializers and rename to NumpySerializer
+ * Move _JsonDeserializer to sagemaker.deserializers.JSONDeserializer
+ * Move _CsvSerializer to sagemaker.serializers.CSVSerializer
+ * preserve script path when S3 source_dir is provided
+ * use image_uris.retrieve() for XGBoost URIs
+ * deprecate sagemaker.amazon.amazon_estimator.get_image_uri()
+ * deprecate fw_registry module and use image_uris.retrieve() for SparkML
+ * deprecate Python SDK CLI
+ * Remove the content_types module
+ * deprecate unused parameters
+ * deprecate fw_utils.create_image_uri()
+ * use images_uris.retrieve() for Debugger
+ * deprecate fw_utils.parse_s3_url in favor of s3.parse_s3_url
+ * deprecate unused functions from utils and fw_utils
+ * Remove content_type and accept parameters from Predictor
+ * Add parameters to deploy and remove parameters from create_model
+ * Add LibSVM serializer for XGBoost predictor
+ * move ShuffleConfig from sagemaker.session to sagemaker.inputs
+ * deprecate get_ecr_image_uri_prefix
+ * rename estimator.train_image() to estimator.training_image_uri()
+ * deprecate is_version_equal_or_higher and is_version_equal_or_lower
+ * default wait=True for HyperparameterTuner.fit() and Transformer.transform()
+ * remove unused bin/sagemaker-submit file
+
+### Features
+
+ * start new module for retrieving prebuilt SageMaker image URIs
+ * handle separate training/inference images and EI in image_uris.retrieve
+ * add support for Amazon algorithms in image_uris.retrieve()
+ * Add pandas deserializer
+ * Remove LegacySerializer and LegacyDeserializer
+ * Add sparse matrix serializer
+ * Add v2 SerDe compatability
+ * Add JSON Lines serializer
+ * add framework upgrade tool
+ * add 1p algorithm image_uris migration tool
+ * Update migration tool to support breaking changes to create_model
+ * support PyTorch 1.6 training
+
+### Bug Fixes and Other Changes
+
+ * handle named variables in v2 migration tool
+ * add modifier for s3_input class
+ * add XGBoost support to image_uris.retrieve()
+ * add MXNet configuration to image_uris.retrieve()
+ * add remaining Amazon algorithms for image_uris.retrieve()
+ * add PyTorch configuration for image_uris.retrieve()
+ * make image_scope optional for some images in image_uris.retrieve()
+ * separate logs() from attach()
+ * use image_uris.retrieve instead of fw_utils.create_image_uri for DLC frameworks
+ * use images_uris.retrieve() for scikit-learn classes
+ * use image_uris.retrieve() for RL images
+ * Rename BaseDeserializer.deserialize data parameter
+ * Add allow_pickle parameter to NumpyDeserializer
+ * Fix scipy.sparse imports
+ * Improve code style of SerDe compatibility
+ * use image_uris.retrieve for Neo and Inferentia images
+ * use generated RL version fixtures and update Ray version
+ * use image_uris.retrieve() for ModelMonitor default image
+ * use _framework_name for 'protected' attribute
+ * Fix JSONLinesDeserializer
+ * upgrade TFS version and fix py_versions KeyError
+ * Fix PandasDeserializer tests to more accurately mock response
+ * don't require instance_type for image_uris.retrieve() if only one option
+ * ignore code cells with shell commands in v2 migration tool
+ * Support multiple Accept types
+
+### Documentation Changes
+
+ * fix pip install command
+ * document name changes for TFS classes
+ * document v2.0.0 changes
+ * update KFP full pipeline
+
+### Testing and Release Infrastructure
+
+ * generate Chainer latest version fixtures from config
+ * use generated TensorFlow version fixtures
+ * use generated MXNet version fixtures
+
+## v1.72.0 (2020-07-29)
+
+### Features
+
+ * Neo: Add Granular Target Description support for compilation
+
+### Documentation Changes
+
+ * Add xgboost doc on bring your own model
+ * fix typos on processing docs
+
+## v1.71.1 (2020-07-27)
+
+### Bug Fixes and Other Changes
+
+ * remove redundant information from the user_agent string.
+
+### Testing and Release Infrastructure
+
+ * use unique model name in TFS integ tests
+ * use pytest-cov instead of coverage
+
+## v1.71.0 (2020-07-23)
+
+### Features
+
+ * Add mpi support for mxnet estimator api
+
+### Bug Fixes and Other Changes
+
+ * use 'sagemaker' logger instead of root logger
+ * account for "py36" and "py37" in image tag parsing
+
 ## v1.70.2 (2020-07-22)
 
 ### Bug Fixes and Other Changes
@@ -40,6 +183,63 @@
 ### Documentation Changes
 
  * add KFP Processing component
+
+## v2.0.0.rc1 (2020-07-08)
+
+### Breaking Changes
+
+ * Move StreamDeserializer to sagemaker.deserializers
+ * Move StringDeserializer to sagemaker.deserializers
+ * rename record_deserializer to RecordDeserializer
+ * remove "train_" where redundant in parameter/variable names
+ * Add BytesDeserializer
+ * rename image to image_uri
+ * rename image_name to image_uri
+ * create new inference resources during model.deploy() and model.transformer()
+ * rename session parameter to sagemaker_session in S3 utility classes
+ * rename distributions to distribution in TF/MXNet estimators
+ * deprecate update_endpoint arg in deploy()
+ * create new inference resources during estimator.deploy() or estimator.transformer()
+ * deprecate delete_endpoint() for estimators and HyperparameterTuner
+ * refactor Predictor attribute endpoint to endpoint_name
+ * make instance_type optional for Airflow model configs
+ * refactor name of RealTimePredictor to Predictor
+ * remove check for Python 2 string in sagemaker.predictor._is_sequence_like()
+ * deprecate sagemaker.utils.to_str()
+ * drop Python 2 support
+
+### Features
+
+ * add BaseSerializer and BaseDeserializer
+ * add Predictor.update_endpoint()
+
+### Bug Fixes and Other Changes
+
+ * handle "train_*" renames in v2 migration tool
+ * handle image_uri rename for Session methods in v2 migration tool
+ * Update BytesDeserializer accept header
+ * handle image_uri rename for estimators and models in v2 migration tool
+ * handle image_uri rename in Airflow model config functions in v2 migration tool
+ * update migration tool for S3 utility functions
+ * set _current_job_name and base_tuning_job_name in HyperparameterTuner.attach()
+ * infer base name from job name in estimator.attach()
+ * ensure generated names are < 63 characters when deploying compiled models
+ * add TF migration documentation to error message
+
+### Documentation Changes
+
+ * update documentation with v2.0.0.rc1 changes
+ * remove 'train_*' prefix from estimator parameters
+ * update documentation for image_name/image --> image_uri
+
+### Testing and Release Infrastructure
+
+ * refactor matching logic in v2 migration tool
+ * add cli modifier for RealTimePredictor and derived classes
+ * change coverage settings to reduce intermittent errors
+ * clean up pickle.load logic in integ tests
+ * use fixture for Python version in framework integ tests
+ * remove assumption of Python 2 unit test runs
 
 ## v1.68.0 (2020-07-07)
 
@@ -131,6 +331,31 @@
  * update distributed GPU utilization warning message
  * set logs to False if wait is False in AutoML
  * workflow passing spot training param to training job
+
+## v2.0.0.rc0 (2020-06-17)
+
+### Breaking Changes
+
+ * remove estimator parameters for TF legacy mode
+ * remove legacy `TensorFlowModel` and `TensorFlowPredictor` classes
+ * force image URI to be passed for legacy TF images
+ * rename `sagemaker.tensorflow.serving` to `sagemaker.tensorflow.model`
+ * require `framework_version` and `py_version` for framework estimator and model classes
+ * change `Model` parameter order to make `model_data` optional
+
+### Bug Fixes and Other Changes
+
+ * add v2 migration tool
+
+### Documentation Changes
+
+ * update TF documentation to reflect breaking changes and how to upgrade
+ * start v2 usage and migration documentation
+
+### Testing and Release Infrastructure
+
+ * remove scipy from dependencies
+ * remove TF from optional dependencies
 
 ## v1.64.1 (2020-06-16)
 

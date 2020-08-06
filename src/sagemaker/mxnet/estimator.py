@@ -15,14 +15,14 @@ from __future__ import absolute_import
 
 import logging
 
+from packaging.version import Version
+
 from sagemaker.estimator import Framework
 from sagemaker.fw_utils import (
     framework_name_from_image,
     framework_version_from_tag,
-    empty_framework_version_warning,
     python_deprecation_warning,
-    parameter_v2_rename_warning,
-    is_version_equal_or_higher,
+    validate_version_or_image_args,
     warn_if_parameter_server_with_multi_gpu,
 )
 from sagemaker.mxnet import defaults
@@ -35,20 +35,18 @@ logger = logging.getLogger("sagemaker")
 class MXNet(Framework):
     """Handle end-to-end training and deployment of custom MXNet code."""
 
-    __framework_name__ = "mxnet"
+    _framework_name = "mxnet"
     _LOWEST_SCRIPT_MODE_VERSION = ["1", "3"]
-
-    LATEST_VERSION = defaults.LATEST_VERSION
 
     def __init__(
         self,
         entry_point,
+        framework_version=None,
+        py_version=None,
         source_dir=None,
         hyperparameters=None,
-        py_version="py2",
-        framework_version=None,
-        image_name=None,
-        distributions=None,
+        image_uri=None,
+        distribution=None,
         **kwargs
     ):
         """This ``Estimator`` executes an MXNet script in a managed MXNet
@@ -73,6 +71,13 @@ class MXNet(Framework):
                 file which should be executed as the entry point to training.
                 If ``source_dir`` is specified, then ``entry_point``
                 must point to a file located at the root of ``source_dir``.
+            framework_version (str): MXNet version you want to use for executing
+                your model training code. Defaults to `None`. Required unless
+                ``image_uri`` is provided. List of supported versions.
+                https://github.com/aws/sagemaker-python-sdk#mxnet-sagemaker-estimators.
+            py_version (str): Python version you want to use for executing your
+                model training code. One of 'py2' or 'py3'. Defaults to ``None``. Required
+                unless ``image_uri`` is provided.
             source_dir (str): Path (absolute, relative or an S3 URI) to a directory
                 with any other training source code dependencies aside from the entry
                 point file (default: None). If ``source_dir`` is an S3 URI, it must
@@ -84,13 +89,7 @@ class MXNet(Framework):
                 SageMaker. For convenience, this accepts other types for keys
                 and values, but ``str()`` will be called to convert them before
                 training.
-            py_version (str): Python version you want to use for executing your
-                model training code (default: 'py2'). One of 'py2' or 'py3'.
-            framework_version (str): MXNet version you want to use for executing
-                your model training code. List of supported versions
-                https://github.com/aws/sagemaker-python-sdk#mxnet-sagemaker-estimators.
-                If not specified, this will default to 1.2.1.
-            image_name (str): If specified, the estimator will use this image for training and
+            image_uri (str): If specified, the estimator will use this image for training and
                 hosting, instead of selecting the appropriate SageMaker official image based on
                 framework_version and py_version. It can be an ECR url or dockerhub image and tag.
 
@@ -98,9 +97,48 @@ class MXNet(Framework):
                     * ``123412341234.dkr.ecr.us-west-2.amazonaws.com/my-custom-image:1.0``
                     * ``custom-image:latest``
 
-            distributions (dict): A dictionary with information on how to run distributed
-                training (default: None). To have parameter servers launched for training,
-                set this value to be ``{'parameter_server': {'enabled': True}}``.
+                If ``framework_version`` or ``py_version`` are ``None``, then
+                ``image_uri`` is required. If also ``None``, then a ``ValueError``
+                will be raised.
+            distribution (dict): A dictionary with information on how to run distributed
+                training (default: None). Currently we support distributed training with
+                parameter server and MPI [Horovod].
+                To enable parameter server use the following setup:
+
+                .. code:: python
+
+                    {
+                        'parameter_server':
+                        {
+                            'enabled': True
+                        }
+                    }
+
+                To enable MPI:
+
+                .. code:: python
+
+                    {
+                        'mpi':
+                        {
+                            'enabled': True
+                        }
+                    }
+
+                Option parameters within ``mpi`` are ``processes_per_host``
+                and ``custom_mpi_options``.
+
+                .. code:: python
+
+                    {
+                        'mpi':
+                        {
+                            'enabled': True,
+                            'processes_per_host': 2,
+                            'custom_mpi_options': '-verbose --NCCL_DEBUG=INFO'
+                        }
+                    }
+
             **kwargs: Additional kwargs passed to the
                 :class:`~sagemaker.estimator.Framework` constructor.
 
@@ -110,54 +148,66 @@ class MXNet(Framework):
             :class:`~sagemaker.estimator.Framework` and
             :class:`~sagemaker.estimator.EstimatorBase`.
         """
-        if framework_version is None:
+        validate_version_or_image_args(framework_version, py_version, image_uri)
+        if py_version == "py2":
             logger.warning(
-                empty_framework_version_warning(defaults.MXNET_VERSION, self.LATEST_VERSION)
+                python_deprecation_warning(self._framework_name, defaults.LATEST_PY2_VERSION)
             )
-        self.framework_version = framework_version or defaults.MXNET_VERSION
+        self.framework_version = framework_version
+        self.py_version = py_version
 
         if "enable_sagemaker_metrics" not in kwargs:
             # enable sagemaker metrics for MXNet v1.6 or greater:
-            if is_version_equal_or_higher([1, 6], self.framework_version):
+            if self.framework_version and Version(self.framework_version) >= Version("1.6"):
                 kwargs["enable_sagemaker_metrics"] = True
 
         super(MXNet, self).__init__(
-            entry_point, source_dir, hyperparameters, image_name=image_name, **kwargs
+            entry_point, source_dir, hyperparameters, image_uri=image_uri, **kwargs
         )
 
-        if py_version == "py2":
-            logger.warning(
-                python_deprecation_warning(self.__framework_name__, defaults.LATEST_PY2_VERSION)
-            )
-
-        if distributions is not None:
-            logger.warning(parameter_v2_rename_warning("distributions", "distribution"))
-            train_instance_type = kwargs.get("train_instance_type")
+        if distribution is not None:
+            instance_type = kwargs.get("instance_type")
             warn_if_parameter_server_with_multi_gpu(
-                training_instance_type=train_instance_type, distributions=distributions
+                training_instance_type=instance_type, distribution=distribution
             )
 
-        self.py_version = py_version
-        self._configure_distribution(distributions)
+        self._configure_distribution(distribution)
 
-    def _configure_distribution(self, distributions):
+    def _configure_distribution(self, distribution):
         """
         Args:
-            distributions:
+            distribution:
         """
-        if distributions is None:
+        if distribution is None:
             return
 
-        if self.framework_version.split(".") < self._LOWEST_SCRIPT_MODE_VERSION:
+        if (
+            self.framework_version
+            and self.framework_version.split(".") < self._LOWEST_SCRIPT_MODE_VERSION
+        ):
             raise ValueError(
-                "The distributions option is valid for only versions {} and higher".format(
+                "The distribution option is valid for only versions {} and higher".format(
                     ".".join(self._LOWEST_SCRIPT_MODE_VERSION)
                 )
             )
 
-        if "parameter_server" in distributions:
-            enabled = distributions["parameter_server"].get("enabled", False)
+        if "parameter_server" in distribution:
+            enabled = distribution["parameter_server"].get("enabled", False)
             self._hyperparameters[self.LAUNCH_PS_ENV_NAME] = enabled
+
+        if "mpi" in distribution:
+            mpi_dict = distribution["mpi"]
+            mpi_enabled = mpi_dict.get("enabled", False)
+            self._hyperparameters[self.LAUNCH_MPI_ENV_NAME] = mpi_enabled
+
+            if mpi_dict.get("processes_per_host"):
+                self._hyperparameters[self.MPI_NUM_PROCESSES_PER_HOST] = mpi_dict.get(
+                    "processes_per_host"
+                )
+
+                self._hyperparameters[self.MPI_CUSTOM_MPI_OPTIONS] = mpi_dict.get(
+                    "custom_mpi_options", ""
+                )
 
     def create_model(
         self,
@@ -167,7 +217,7 @@ class MXNet(Framework):
         entry_point=None,
         source_dir=None,
         dependencies=None,
-        image_name=None,
+        image_uri=None,
         **kwargs
     ):
         """Create a SageMaker ``MXNetModel`` object that can be deployed to an
@@ -197,7 +247,7 @@ class MXNet(Framework):
                 any additional libraries that will be exported to the container.
                 If not specified, the dependencies from training are used.
                 This is not supported with "local code" in Local Mode.
-            image_name (str): If specified, the estimator will use this image for hosting, instead
+            image_uri (str): If specified, the estimator will use this image for hosting, instead
                 of selecting the appropriate SageMaker official image based on framework_version
                 and py_version. It can be an ECR url or dockerhub image and tag.
 
@@ -212,28 +262,33 @@ class MXNet(Framework):
             sagemaker.mxnet.model.MXNetModel: A SageMaker ``MXNetModel`` object.
             See :func:`~sagemaker.mxnet.model.MXNetModel` for full details.
         """
-        if "image" not in kwargs:
-            kwargs["image"] = image_name or self.image_name
+        if "image_uri" not in kwargs:
+            kwargs["image_uri"] = image_uri or self.image_uri
 
-        if "name" not in kwargs:
-            kwargs["name"] = self._current_job_name
+        kwargs["name"] = self._get_or_create_name(kwargs.get("name"))
 
-        return MXNetModel(
+        model = MXNetModel(
             self.model_data,
             role or self.role,
-            entry_point or self.entry_point,
+            entry_point,
+            framework_version=self.framework_version,
+            py_version=self.py_version,
             source_dir=(source_dir or self._model_source_dir()),
-            enable_cloudwatch_metrics=self.enable_cloudwatch_metrics,
             container_log_level=self.container_log_level,
             code_location=self.code_location,
-            py_version=self.py_version,
-            framework_version=self.framework_version,
             model_server_workers=model_server_workers,
             sagemaker_session=self.sagemaker_session,
             vpc_config=self.get_vpc_config(vpc_config_override),
             dependencies=(dependencies or self.dependencies),
             **kwargs
         )
+
+        if entry_point is None:
+            model.entry_point = (
+                self.entry_point if model._is_mms_version() else self._model_entry_point()
+            )
+
+        return model
 
     @classmethod
     def _prepare_init_params_from_job_description(cls, job_details, model_channel_name=None):
@@ -252,31 +307,32 @@ class MXNet(Framework):
         init_params = super(MXNet, cls)._prepare_init_params_from_job_description(
             job_details, model_channel_name
         )
-        image_name = init_params.pop("image")
-        framework, py_version, tag, _ = framework_name_from_image(image_name)
-
-        if not framework:
-            # If we were unable to parse the framework name from the image it is not one of our
-            # officially supported images, in this case just add the image to the init params.
-            init_params["image_name"] = image_name
-            return init_params
-
-        init_params["py_version"] = py_version
+        image_uri = init_params.pop("image_uri")
+        framework, py_version, tag, _ = framework_name_from_image(image_uri)
 
         # We switched image tagging scheme from regular image version (e.g. '1.0') to more
         # expressive containing framework version, device type and python version
         # (e.g. '0.12-gpu-py2'). For backward compatibility map deprecated image tag '1.0' to a
         # '0.12' framework version otherwise extract framework version from the tag itself.
-        init_params["framework_version"] = (
-            "0.12" if tag == "1.0" else framework_version_from_tag(tag)
-        )
+        if tag is None:
+            framework_version = None
+        elif tag == "1.0":
+            framework_version = "0.12"
+        else:
+            framework_version = framework_version_from_tag(tag)
+        init_params["framework_version"] = framework_version
+        init_params["py_version"] = py_version
 
-        training_job_name = init_params["base_job_name"]
+        if not framework:
+            # If we were unable to parse the framework name from the image it is not one of our
+            # officially supported images, in this case just add the image to the init params.
+            init_params["image_uri"] = image_uri
+            return init_params
 
-        if framework != cls.__framework_name__:
+        if framework != cls._framework_name:
             raise ValueError(
                 "Training job: {} didn't use image for requested framework".format(
-                    training_job_name
+                    job_details["TrainingJobName"]
                 )
             )
 

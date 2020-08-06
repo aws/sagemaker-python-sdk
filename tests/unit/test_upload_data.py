@@ -14,7 +14,7 @@ from __future__ import absolute_import
 
 import os
 
-from mock import Mock
+from mock import MagicMock, Mock
 import pytest
 
 import sagemaker
@@ -30,7 +30,7 @@ ENDPOINT_URL = "http://127.0.0.1:9000"
 
 @pytest.fixture()
 def sagemaker_session():
-    boto_mock = Mock(name="boto_session")
+    boto_mock = MagicMock(name="boto_session")
     ims = sagemaker.Session(boto_session=boto_mock)
     ims.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
     return ims
@@ -39,9 +39,9 @@ def sagemaker_session():
 @pytest.fixture()
 def sagemaker_session_custom_endpoint():
 
-    boto_session = Mock("boto_session")
+    boto_session = MagicMock("boto_session")
     resource_mock = Mock("resource")
-    client_mock = Mock("client")
+    client_mock = MagicMock("client")
     boto_attrs = {"region_name": "us-east-1"}
     boto_session.configure_mock(**boto_attrs)
     boto_session.resource = Mock(name="resource", return_value=resource_mock)

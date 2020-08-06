@@ -18,7 +18,7 @@ import sagemaker
 import tests.integ
 import tests.integ.timeout
 from sagemaker.model_monitor import DataCaptureConfig, NetworkConfig
-from sagemaker.tensorflow.serving import Model
+from sagemaker.tensorflow.model import TensorFlowModel
 from sagemaker.utils import unique_name_from_base
 from tests.integ.retry import retries
 
@@ -32,7 +32,6 @@ MAX_RUNTIME_IN_SECONDS = 2 * 60 * 60
 ENVIRONMENT = {"env_key_1": "env_value_1"}
 TAGS = [{"Key": "tag_key_1", "Value": "tag_value_1"}]
 NETWORK_CONFIG = NetworkConfig(enable_network_isolation=True)
-ENABLE_CLOUDWATCH_METRICS = True
 
 CUSTOM_SAMPLING_PERCENTAGE = 10
 CUSTOM_CAPTURE_OPTIONS = ["REQUEST"]
@@ -41,7 +40,7 @@ CUSTOM_JSON_CONTENT_TYPES = ["application/jsontype1", "application/jsontype2"]
 
 
 def test_enabling_data_capture_on_endpoint_shows_correct_data_capture_status(
-    sagemaker_session, tf_full_version
+    sagemaker_session, tensorflow_inference_latest_version
 ):
     endpoint_name = unique_name_from_base("sagemaker-tensorflow-serving")
     model_data = sagemaker_session.upload_data(
@@ -49,10 +48,10 @@ def test_enabling_data_capture_on_endpoint_shows_correct_data_capture_status(
         key_prefix="tensorflow-serving/models",
     )
     with tests.integ.timeout.timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
-        model = Model(
+        model = TensorFlowModel(
             model_data=model_data,
             role=ROLE,
-            framework_version=tf_full_version,
+            framework_version=tensorflow_inference_latest_version,
             sagemaker_session=sagemaker_session,
         )
         predictor = model.deploy(
@@ -62,7 +61,7 @@ def test_enabling_data_capture_on_endpoint_shows_correct_data_capture_status(
         )
 
         endpoint_desc = sagemaker_session.sagemaker_client.describe_endpoint(
-            EndpointName=predictor.endpoint
+            EndpointName=predictor.endpoint_name
         )
 
         endpoint_config_desc = sagemaker_session.sagemaker_client.describe_endpoint_config(
@@ -81,13 +80,13 @@ def test_enabling_data_capture_on_endpoint_shows_correct_data_capture_status(
             seconds_to_sleep=60,
         ):
             new_endpoint = sagemaker_session.sagemaker_client.describe_endpoint(
-                EndpointName=predictor.endpoint
+                EndpointName=predictor.endpoint_name
             )
             if new_endpoint["EndpointStatus"] == "InService":
                 break
 
         endpoint_desc = sagemaker_session.sagemaker_client.describe_endpoint(
-            EndpointName=predictor.endpoint
+            EndpointName=predictor.endpoint_name
         )
 
         endpoint_config_desc = sagemaker_session.sagemaker_client.describe_endpoint_config(
@@ -98,7 +97,7 @@ def test_enabling_data_capture_on_endpoint_shows_correct_data_capture_status(
 
 
 def test_disabling_data_capture_on_endpoint_shows_correct_data_capture_status(
-    sagemaker_session, tf_full_version
+    sagemaker_session, tensorflow_inference_latest_version
 ):
     endpoint_name = unique_name_from_base("sagemaker-tensorflow-serving")
     model_data = sagemaker_session.upload_data(
@@ -106,10 +105,10 @@ def test_disabling_data_capture_on_endpoint_shows_correct_data_capture_status(
         key_prefix="tensorflow-serving/models",
     )
     with tests.integ.timeout.timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
-        model = Model(
+        model = TensorFlowModel(
             model_data=model_data,
             role=ROLE,
-            framework_version=tf_full_version,
+            framework_version=tensorflow_inference_latest_version,
             sagemaker_session=sagemaker_session,
         )
         destination_s3_uri = os.path.join(
@@ -131,7 +130,7 @@ def test_disabling_data_capture_on_endpoint_shows_correct_data_capture_status(
         )
 
         endpoint_desc = sagemaker_session.sagemaker_client.describe_endpoint(
-            EndpointName=predictor.endpoint
+            EndpointName=predictor.endpoint_name
         )
 
         endpoint_config_desc = sagemaker_session.sagemaker_client.describe_endpoint_config(
@@ -167,13 +166,13 @@ def test_disabling_data_capture_on_endpoint_shows_correct_data_capture_status(
             seconds_to_sleep=60,
         ):
             new_endpoint = sagemaker_session.sagemaker_client.describe_endpoint(
-                EndpointName=predictor.endpoint
+                EndpointName=predictor.endpoint_name
             )
             if new_endpoint["EndpointStatus"] == "InService":
                 break
 
         endpoint_desc = sagemaker_session.sagemaker_client.describe_endpoint(
-            EndpointName=predictor.endpoint
+            EndpointName=predictor.endpoint_name
         )
 
         endpoint_config_desc = sagemaker_session.sagemaker_client.describe_endpoint_config(
@@ -184,7 +183,7 @@ def test_disabling_data_capture_on_endpoint_shows_correct_data_capture_status(
 
 
 def test_updating_data_capture_on_endpoint_shows_correct_data_capture_status(
-    sagemaker_session, tf_full_version
+    sagemaker_session, tensorflow_inference_latest_version
 ):
     endpoint_name = sagemaker.utils.unique_name_from_base("sagemaker-tensorflow-serving")
     model_data = sagemaker_session.upload_data(
@@ -192,10 +191,10 @@ def test_updating_data_capture_on_endpoint_shows_correct_data_capture_status(
         key_prefix="tensorflow-serving/models",
     )
     with tests.integ.timeout.timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
-        model = Model(
+        model = TensorFlowModel(
             model_data=model_data,
             role=ROLE,
-            framework_version=tf_full_version,
+            framework_version=tensorflow_inference_latest_version,
             sagemaker_session=sagemaker_session,
         )
         destination_s3_uri = os.path.join(
@@ -208,7 +207,7 @@ def test_updating_data_capture_on_endpoint_shows_correct_data_capture_status(
         )
 
         endpoint_desc = sagemaker_session.sagemaker_client.describe_endpoint(
-            EndpointName=predictor.endpoint
+            EndpointName=predictor.endpoint_name
         )
 
         endpoint_config_desc = sagemaker_session.sagemaker_client.describe_endpoint_config(
@@ -237,13 +236,13 @@ def test_updating_data_capture_on_endpoint_shows_correct_data_capture_status(
             seconds_to_sleep=60,
         ):
             new_endpoint = sagemaker_session.sagemaker_client.describe_endpoint(
-                EndpointName=predictor.endpoint
+                EndpointName=predictor.endpoint_name
             )
             if new_endpoint["EndpointStatus"] == "InService":
                 break
 
         endpoint_desc = sagemaker_session.sagemaker_client.describe_endpoint(
-            EndpointName=predictor.endpoint
+            EndpointName=predictor.endpoint_name
         )
 
         endpoint_config_desc = sagemaker_session.sagemaker_client.describe_endpoint_config(

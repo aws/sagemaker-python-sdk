@@ -15,19 +15,20 @@ from __future__ import absolute_import
 import pytest
 from mock import Mock, patch
 
+from sagemaker import image_uris
 from sagemaker.amazon.linear_learner import LinearLearner, LinearLearnerPredictor
-from sagemaker.amazon.amazon_estimator import registry, RecordSet
+from sagemaker.amazon.amazon_estimator import RecordSet
 
 ROLE = "myrole"
-TRAIN_INSTANCE_COUNT = 1
-TRAIN_INSTANCE_TYPE = "ml.c4.xlarge"
+INSTANCE_COUNT = 1
+INSTANCE_TYPE = "ml.c4.xlarge"
 
 PREDICTOR_TYPE = "binary_classifier"
 
 COMMON_TRAIN_ARGS = {
     "role": ROLE,
-    "train_instance_count": TRAIN_INSTANCE_COUNT,
-    "train_instance_type": TRAIN_INSTANCE_TYPE,
+    "instance_count": INSTANCE_COUNT,
+    "instance_type": INSTANCE_TYPE,
 }
 ALL_REQ_ARGS = dict({"predictor_type": PREDICTOR_TYPE}, **COMMON_TRAIN_ARGS)
 
@@ -66,15 +67,11 @@ def sagemaker_session():
 
 def test_init_required_positional(sagemaker_session):
     lr = LinearLearner(
-        ROLE,
-        TRAIN_INSTANCE_COUNT,
-        TRAIN_INSTANCE_TYPE,
-        PREDICTOR_TYPE,
-        sagemaker_session=sagemaker_session,
+        ROLE, INSTANCE_COUNT, INSTANCE_TYPE, PREDICTOR_TYPE, sagemaker_session=sagemaker_session,
     )
     assert lr.role == ROLE
-    assert lr.train_instance_count == TRAIN_INSTANCE_COUNT
-    assert lr.train_instance_type == TRAIN_INSTANCE_TYPE
+    assert lr.instance_count == INSTANCE_COUNT
+    assert lr.instance_type == INSTANCE_TYPE
     assert lr.predictor_type == PREDICTOR_TYPE
 
 
@@ -82,8 +79,8 @@ def test_init_required_named(sagemaker_session):
     lr = LinearLearner(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
     assert lr.role == ALL_REQ_ARGS["role"]
-    assert lr.train_instance_count == ALL_REQ_ARGS["train_instance_count"]
-    assert lr.train_instance_type == ALL_REQ_ARGS["train_instance_type"]
+    assert lr.instance_count == ALL_REQ_ARGS["instance_count"]
+    assert lr.instance_type == ALL_REQ_ARGS["instance_type"]
     assert lr.predictor_type == ALL_REQ_ARGS["predictor_type"]
 
 
@@ -182,7 +179,7 @@ def test_all_hyperparameters(sagemaker_session):
 
 def test_image(sagemaker_session):
     lr = LinearLearner(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-    assert lr.train_image() == registry(REGION, "linear-learner") + "/linear-learner:1"
+    assert image_uris.retrieve("linear-learner", REGION) == lr.training_image_uri()
 
 
 @pytest.mark.parametrize("required_hyper_parameters, value", [("predictor_type", 0)])
@@ -219,7 +216,7 @@ def test_num_classes_can_be_string_for_multiclass_classifier(sagemaker_session):
     LinearLearner(sagemaker_session=sagemaker_session, **test_params)
 
 
-@pytest.mark.parametrize("iterable_hyper_parameters, value", [("eval_metrics", 0)])
+@pytest.mark.parametrize("iterable_hyper_parameters, value", [("max_iterations", [0])])
 def test_iterable_hyper_parameters_type(sagemaker_session, iterable_hyper_parameters, value):
     with pytest.raises(TypeError):
         test_params = ALL_REQ_ARGS.copy()
@@ -416,7 +413,7 @@ def test_model_image(sagemaker_session):
     lr.fit(data)
 
     model = lr.create_model()
-    assert model.image == registry(REGION, "linear-learner") + "/linear-learner:1"
+    assert image_uris.retrieve("linear-learner", REGION) == model.image_uri
 
 
 def test_predictor_type(sagemaker_session):
@@ -429,6 +426,6 @@ def test_predictor_type(sagemaker_session):
     )
     lr.fit(data)
     model = lr.create_model()
-    predictor = model.deploy(1, TRAIN_INSTANCE_TYPE)
+    predictor = model.deploy(1, INSTANCE_TYPE)
 
     assert isinstance(predictor, LinearLearnerPredictor)

@@ -69,6 +69,17 @@ def test_bad_import():
         pd.DataFrame()
 
 
+@patch("sagemaker.utils.name_from_base")
+@patch("sagemaker.utils.base_name_from_image")
+def test_name_from_image(base_name_from_image, name_from_base):
+    image = "image:latest"
+    max_length = 32
+
+    sagemaker.utils.name_from_image(image, max_length=max_length)
+    base_name_from_image.assert_called_with(image)
+    name_from_base.assert_called_with(base_name_from_image.return_value, max_length=max_length)
+
+
 @patch("sagemaker.utils.sagemaker_timestamp")
 def test_name_from_base(sagemaker_timestamp):
     sagemaker.utils.name_from_base(NAME, short=False)
@@ -92,26 +103,12 @@ def test_unique_name_from_base_truncated():
     )
 
 
-def test_to_str_with_native_string():
-    value = "some string"
-    assert sagemaker.utils.to_str(value) == value
+def test_base_from_name():
+    name = "mxnet-training-2020-06-29-15-19-25-475"
+    assert "mxnet-training" == sagemaker.utils.base_from_name(name)
 
-
-def test_to_str_with_unicode_string():
-    value = u"åñøthér strîng"
-    assert sagemaker.utils.to_str(value) == value
-
-
-def test_name_from_tuning_arn():
-    arn = "arn:aws:sagemaker:us-west-2:968277160000:hyper-parameter-tuning-job/resnet-sgd-tuningjob-11-07-34-11"
-    name = sagemaker.utils.extract_name_from_job_arn(arn)
-    assert name == "resnet-sgd-tuningjob-11-07-34-11"
-
-
-def test_name_from_training_arn():
-    arn = "arn:aws:sagemaker:us-west-2:968277160000:training-job/resnet-sgd-tuningjob-11-22-38-46-002-2927640b"
-    name = sagemaker.utils.extract_name_from_job_arn(arn)
-    assert name == "resnet-sgd-tuningjob-11-22-38-46-002-2927640b"
+    name = "sagemaker-pytorch-200629-1611"
+    assert "sagemaker-pytorch" == sagemaker.utils.base_from_name(name)
 
 
 MESSAGE = "message"
@@ -208,109 +205,10 @@ def test_secondary_training_status_message_prev_missing():
     )
 
 
-def test_generate_tensorboard_url_valid_domain_and_bucket_paths():
-    domain = "jupyterlab.us-east-2.abcdefgh.com"
-    bucket_paths = ["bucket1/path1", "bucket2/path2"]
-    expected = "https://{}/tensorboard/default?{}".format(
-        domain, "s3urls=s3%3A%2F%2Fbucket1%2Fpath1,s3%3A%2F%2Fbucket2%2Fpath2"
-    )
-    assert sagemaker.utils.generate_tensorboard_url(domain, bucket_paths) == expected
-
-
-def test_generate_tensorboard_url_valid_domain_and_bucket_paths_with_s3_prefixes():
-    domain = "jupyterlab.us-east-2.abcdefgh.com"
-    bucket_paths = ["s3://bucket1/path1", "s3://bucket2/path2"]
-    expected = "https://{}/tensorboard/default?{}".format(
-        domain, "s3urls=s3%3A%2F%2Fbucket1%2Fpath1,s3%3A%2F%2Fbucket2%2Fpath2"
-    )
-    assert sagemaker.utils.generate_tensorboard_url(domain, bucket_paths) == expected
-
-
-def test_generate_tensorboard_url_valid_domain_and_bucket_paths_single():
-    domain = "jupyterlab.us-east-2.abcdefgh.com"
-    bucket_paths = ["bucket1/path1"]
-    expected = "https://{}/tensorboard/default?{}".format(
-        domain, "s3urls=s3%3A%2F%2Fbucket1%2Fpath1"
-    )
-    assert sagemaker.utils.generate_tensorboard_url(domain, bucket_paths) == expected
-
-
-def test_generate_tensorboard_url_valid_domain_and_bucket_paths_string():
-    domain = "jupyterlab.us-east-2.abcdefgh.com"
-    bucket_paths = "bucket1/path1"
-    expected = "https://{}/tensorboard/default?{}".format(
-        domain, "s3urls=s3%3A%2F%2Fbucket1%2Fpath1"
-    )
-    assert sagemaker.utils.generate_tensorboard_url(domain, bucket_paths) == expected
-
-
-def test_generate_tensorboard_url_valid_domain_with_http_prefix_and_bucket_paths():
-    domain = "http://jupyterlab.us-east-2.abcdefgh.com"
-    bucket_paths = ["bucket1/path1"]
-    expected = "https://{}/tensorboard/default?{}".format(
-        "jupyterlab.us-east-2.abcdefgh.com", "s3urls=s3%3A%2F%2Fbucket1%2Fpath1"
-    )
-    assert sagemaker.utils.generate_tensorboard_url(domain, bucket_paths) == expected
-
-
-def test_generate_tensorboard_url_valid_domain_with_https_prefix_and_bucket_paths():
-    domain = "https://jupyterlab.us-east-2.abcdefgh.com"
-    bucket_paths = ["bucket1/path1"]
-    expected = "https://{}/tensorboard/default?{}".format(
-        "jupyterlab.us-east-2.abcdefgh.com", "s3urls=s3%3A%2F%2Fbucket1%2Fpath1"
-    )
-    assert sagemaker.utils.generate_tensorboard_url(domain, bucket_paths) == expected
-
-
-def test_generate_tensorboard_url_bucket_path_neither_string_nor_list():
-    domain = "jupyterlab.us-east-2.abcdefgh.com"
-    bucket_paths = None
-    try:
-        sagemaker.utils.generate_tensorboard_url(domain, bucket_paths)
-    except AttributeError as error:
-        assert str(error) == "bucket paths should be a list or a string"
-
-
-def test_generate_tensorboard_url_empty_domain():
-    domain = ""
-    bucket_paths = ["bucket1/path1"]
-    try:
-        sagemaker.utils.generate_tensorboard_url(domain, bucket_paths)
-    except AttributeError as error:
-        assert str(error) == "domain parameter should not be empty"
-
-
-def test_generate_tensorboard_url_empty_bucket_paths():
-    domain = "jupyterlab.us-east-2.abcdefgh.com"
-    bucket_paths = []
-    try:
-        sagemaker.utils.generate_tensorboard_url(domain, bucket_paths)
-    except AttributeError as error:
-        assert str(error) == "bucket_paths parameter should not be empty list"
-
-
-def test_generate_tensorboard_url_bucket_paths_with_empty_string():
-    domain = "jupyterlab.us-east-2.abcdefgh.com"
-    bucket_paths = [""]
-    try:
-        sagemaker.utils.generate_tensorboard_url(domain, bucket_paths)
-    except AttributeError as error:
-        assert str(error) == "bucket_paths element should not be empty"
-
-
-def test_generate_tensorboard_url_domain_non_string():
-    domain = None
-    bucket_paths = ["bucket1/path1"]
-    try:
-        sagemaker.utils.generate_tensorboard_url(domain, bucket_paths)
-    except AttributeError as error:
-        assert str(error) == "domain parameter should be string"
-
-
 @patch("os.makedirs")
 def test_download_folder(makedirs):
-    boto_mock = Mock(name="boto_session")
-    session = sagemaker.Session(boto_session=boto_mock, sagemaker_client=Mock())
+    boto_mock = MagicMock(name="boto_session")
+    session = sagemaker.Session(boto_session=boto_mock, sagemaker_client=MagicMock())
     s3_mock = boto_mock.resource("s3")
 
     obj_mock = Mock()
@@ -363,10 +261,10 @@ def test_download_folder(makedirs):
 
 @patch("os.makedirs")
 def test_download_folder_points_to_single_file(makedirs):
-    boto_mock = Mock(name="boto_session")
+    boto_mock = MagicMock(name="boto_session")
     boto_mock.client("sts").get_caller_identity.return_value = {"Account": "123"}
 
-    session = sagemaker.Session(boto_session=boto_mock, sagemaker_client=Mock())
+    session = sagemaker.Session(boto_session=boto_mock, sagemaker_client=MagicMock())
 
     train_data = Mock()
 
@@ -390,11 +288,11 @@ def test_download_folder_points_to_single_file(makedirs):
 
 
 def test_download_file():
-    boto_mock = Mock(name="boto_session")
+    boto_mock = MagicMock(name="boto_session")
     boto_mock.client("sts").get_caller_identity.return_value = {"Account": "123"}
     bucket_mock = Mock()
     boto_mock.resource("s3").Bucket.return_value = bucket_mock
-    session = sagemaker.Session(boto_session=boto_mock, sagemaker_client=Mock())
+    session = sagemaker.Session(boto_session=boto_mock, sagemaker_client=MagicMock())
 
     sagemaker.utils.download_file(
         BUCKET_NAME, "/prefix/path/file.tar.gz", "/tmp/file.tar.gz", session
@@ -744,14 +642,6 @@ def list_tar_files(tar_ball, tmp):
 
     result = set(walk())
     return result if result else {}
-
-
-def test_get_ecr_image_uri_prefix():
-    ecr_prefix = sagemaker.utils.get_ecr_image_uri_prefix("123456789012", "us-west-2")
-    assert ecr_prefix == "123456789012.dkr.ecr.us-west-2.amazonaws.com"
-
-    ecr_prefix = sagemaker.utils.get_ecr_image_uri_prefix("123456789012", "us-iso-east-1")
-    assert ecr_prefix == "123456789012.dkr.ecr.us-iso-east-1.c2s.ic.gov"
 
 
 def test_sts_regional_endpoint():

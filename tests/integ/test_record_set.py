@@ -12,15 +12,10 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-import gzip
-import os
-import pickle
-import sys
-
 from six.moves.urllib.parse import urlparse
 
 from sagemaker import KMeans
-from tests.integ import DATA_DIR
+from tests.integ import datasets
 
 
 def test_record_set(sagemaker_session, cpu_instance_type):
@@ -28,18 +23,14 @@ def test_record_set(sagemaker_session, cpu_instance_type):
 
     In particular, test that the objects uploaded to the S3 bucket are encrypted.
     """
-    data_path = os.path.join(DATA_DIR, "one_p_mnist", "mnist.pkl.gz")
-    pickle_args = {} if sys.version_info.major == 2 else {"encoding": "latin1"}
-    with gzip.open(data_path, "rb") as file_object:
-        train_set, _, _ = pickle.load(file_object, **pickle_args)
     kmeans = KMeans(
         role="SageMakerRole",
-        train_instance_count=1,
-        train_instance_type=cpu_instance_type,
+        instance_count=1,
+        instance_type=cpu_instance_type,
         k=10,
         sagemaker_session=sagemaker_session,
     )
-    record_set = kmeans.record_set(train_set[0][:100], encrypt=True)
+    record_set = kmeans.record_set(datasets.one_p_mnist()[0][:100], encrypt=True)
     parsed_url = urlparse(record_set.s3_data)
     s3_client = sagemaker_session.boto_session.client("s3")
     head = s3_client.head_object(Bucket=parsed_url.netloc, Key=parsed_url.path.lstrip("/"))

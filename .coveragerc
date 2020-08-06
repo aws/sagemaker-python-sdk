@@ -1,2 +1,4 @@
 [run]
-omit = sagemaker/tests/*, sagemaker/tensorflow/tensorflow_serving/*
+concurrency = threading
+omit = sagemaker/tests/*
+timid = True

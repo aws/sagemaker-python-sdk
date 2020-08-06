@@ -28,6 +28,7 @@ from sagemaker.amazon.amazon_estimator import (
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
 from sagemaker.analytics import HyperparameterTuningJobAnalytics
 from sagemaker.estimator import Framework
+from sagemaker.inputs import TrainingInput
 from sagemaker.job import _Job
 from sagemaker.parameter import (
     CategoricalParameter,
@@ -36,8 +37,7 @@ from sagemaker.parameter import (
     ParameterRange,
 )
 from sagemaker.session import Session
-from sagemaker.session import s3_input
-from sagemaker.utils import base_name_from_image, name_from_base, to_str
+from sagemaker.utils import base_from_name, base_name_from_image, name_from_base
 
 AMAZON_ESTIMATOR_MODULE = "sagemaker"
 AMAZON_ESTIMATOR_CLS_NAMES = {
@@ -53,6 +53,8 @@ AMAZON_ESTIMATOR_CLS_NAMES = {
 HYPERPARAMETER_TUNING_JOB_NAME = "HyperParameterTuningJobName"
 PARENT_HYPERPARAMETER_TUNING_JOBS = "ParentHyperParameterTuningJobs"
 WARM_START_TYPE = "WarmStartType"
+
+logger = logging.getLogger(__name__)
 
 
 class WarmStartTypes(Enum):
@@ -315,7 +317,7 @@ class HyperparameterTuner(object):
                 estimator = (
                     self.estimator or self.estimator_dict[sorted(self.estimator_dict.keys())[0]]
                 )
-                base_name = base_name_from_image(estimator.train_image())
+                base_name = base_name_from_image(estimator.training_image_uri())
             self._current_job_name = name_from_base(
                 base_name, max_length=self.TUNING_JOB_NAME_MAX_LENGTH, short=True
             )
@@ -345,9 +347,7 @@ class HyperparameterTuner(object):
     ):
         """Prepare static hyperparameters for one estimator before tuning"""
         # Remove any hyperparameter that will be tuned
-        static_hyperparameters = {
-            to_str(k): to_str(v) for (k, v) in estimator.hyperparameters().items()
-        }
+        static_hyperparameters = {str(k): str(v) for (k, v) in estimator.hyperparameters().items()}
         for hyperparameter_name in hyperparameter_ranges.keys():
             static_hyperparameters.pop(hyperparameter_name, None)
 
@@ -369,6 +369,7 @@ class HyperparameterTuner(object):
         job_name=None,
         include_cls_metadata=False,
         estimator_kwargs=None,
+        wait=True,
         **kwargs
     ):
         """Start a hyperparameter tuning job.
@@ -379,13 +380,13 @@ class HyperparameterTuner(object):
                 any of the following forms:
 
                 * (str) - The S3 location where training data is saved.
-                * (dict[str, str] or dict[str, sagemaker.session.s3_input]) -
+                * (dict[str, str] or dict[str, sagemaker.inputs.TrainingInput]) -
                     If using multiple channels for training data, you can specify
                     a dict mapping channel names to strings or
-                    :func:`~sagemaker.session.s3_input` objects.
-                * (sagemaker.session.s3_input) - Channel configuration for S3 data sources that can
-                    provide additional information about the training dataset.
-                    See :func:`sagemaker.session.s3_input` for full details.
+                    :func:`~sagemaker.inputs.TrainingInput` objects.
+                * (sagemaker.inputs.TrainingInput) - Channel configuration for S3 data sources
+                    that can provide additional information about the training dataset.
+                    See :func:`sagemaker.inputs.TrainingInput` for full details.
                 * (sagemaker.session.FileSystemInput) - channel configuration for
                     a file system data source that can provide additional information as well as
                     the path to the training dataset.
@@ -424,6 +425,7 @@ class HyperparameterTuner(object):
                 The keys are the estimator names for the estimator_dict argument of create()
                 method. Each value is a dictionary for the other arguments needed for training
                 of the corresponding estimator.
+            wait (bool): Whether the call should wait until the job completes (default: ``True``).
             **kwargs: Other arguments needed for training. Please refer to the
                 ``fit()`` method of the associated estimator to see what other
                 arguments are needed.
@@ -432,6 +434,9 @@ class HyperparameterTuner(object):
             self._fit_with_estimator(inputs, job_name, include_cls_metadata, **kwargs)
         else:
             self._fit_with_estimator_dict(inputs, job_name, include_cls_metadata, estimator_kwargs)
+
+        if wait:
+            self.latest_tuning_job.wait()
 
     def _fit_with_estimator(self, inputs, job_name, include_cls_metadata, **kwargs):
         """Start tuning for tuner instances that have the ``estimator`` field set"""
@@ -589,18 +594,21 @@ class HyperparameterTuner(object):
             )
 
         if "TrainingJobDefinition" in job_details:
-            return cls._attach_with_training_details(
-                tuning_job_name, sagemaker_session, estimator_cls, job_details
+            tuner = cls._attach_with_training_details(sagemaker_session, estimator_cls, job_details)
+        else:
+            tuner = cls._attach_with_training_details_list(
+                sagemaker_session, estimator_cls, job_details
             )
 
-        return cls._attach_with_training_details_list(
-            tuning_job_name, sagemaker_session, estimator_cls, job_details
+        tuner.latest_tuning_job = _TuningJob(
+            sagemaker_session=sagemaker_session, job_name=tuning_job_name
         )
+        tuner._current_job_name = tuning_job_name
+
+        return tuner
 
     @classmethod
-    def _attach_with_training_details(
-        cls, tuning_job_name, sagemaker_session, estimator_cls, job_details
-    ):
+    def _attach_with_training_details(cls, sagemaker_session, estimator_cls, job_details):
         """Create a HyperparameterTuner bound to an existing hyperparameter
         tuning job that has the ``TrainingJobDefinition`` field set."""
         estimator = cls._prepare_estimator(
@@ -611,17 +619,10 @@ class HyperparameterTuner(object):
         )
         init_params = cls._prepare_init_params_from_job_description(job_details)
 
-        tuner = cls(estimator=estimator, **init_params)
-        tuner.latest_tuning_job = _TuningJob(
-            sagemaker_session=sagemaker_session, job_name=tuning_job_name
-        )
-
-        return tuner
+        return cls(estimator=estimator, **init_params)
 
     @classmethod
-    def _attach_with_training_details_list(
-        cls, tuning_job_name, sagemaker_session, estimator_cls, job_details
-    ):
+    def _attach_with_training_details_list(cls, sagemaker_session, estimator_cls, job_details):
         """Create a HyperparameterTuner bound to an existing hyperparameter
         tuning job that has the ``TrainingJobDefinitions`` field set."""
         estimator_names = sorted(
@@ -666,23 +667,20 @@ class HyperparameterTuner(object):
 
         init_params = cls._prepare_init_params_from_job_description(job_details)
 
-        tuner = HyperparameterTuner.create(
+        return HyperparameterTuner.create(
             estimator_dict=estimator_dict,
             objective_metric_name_dict=objective_metric_name_dict,
             hyperparameter_ranges_dict=hyperparameter_ranges_dict,
             metric_definitions_dict=metric_definitions_dict,
             **init_params
         )
-        tuner.latest_tuning_job = _TuningJob(
-            sagemaker_session=sagemaker_session, job_name=tuning_job_name
-        )
-
-        return tuner
 
     def deploy(
         self,
         initial_instance_count,
         instance_type,
+        serializer=None,
+        deserializer=None,
         accelerator_type=None,
         endpoint_name=None,
         wait=True,
@@ -692,7 +690,7 @@ class HyperparameterTuner(object):
         **kwargs
     ):
         """Deploy the best trained or user specified model to an Amazon
-        SageMaker endpoint and return a ``sagemaker.RealTimePredictor`` object.
+        SageMaker endpoint and return a ``sagemaker.Predictor`` object.
 
         For more information:
         http://docs.aws.amazon.com/sagemaker/latest/dg/how-it-works-training.html
@@ -702,6 +700,16 @@ class HyperparameterTuner(object):
                 deploy to an endpoint for prediction.
             instance_type (str): Type of EC2 instance to deploy to an endpoint
                 for prediction, for example, 'ml.c4.xlarge'.
+            serializer (:class:`~sagemaker.serializers.BaseSerializer`): A
+                serializer object, used to encode data for an inference endpoint
+                (default: None). If ``serializer`` is not None, then
+                ``serializer`` will override the default serializer. The
+                default serializer is set by the ``predictor_cls``.
+            deserializer (:class:`~sagemaker.deserializers.BaseDeserializer`): A
+                deserializer object, used to decode data from an inference
+                endpoint (default: None). If ``deserializer`` is not None, then
+                ``deserializer`` will override the default deserializer. The
+                default deserializer is set by the ``predictor_cls``.
             accelerator_type (str): Type of Elastic Inference accelerator to
                 attach to an endpoint for model loading and inference, for
                 example, 'ml.eia1.medium'. If not specified, no Elastic
@@ -726,7 +734,7 @@ class HyperparameterTuner(object):
                 what other arguments are needed.
 
         Returns:
-            sagemaker.predictor.RealTimePredictor: A predictor that provides a ``predict()``
+            sagemaker.predictor.Predictor: A predictor that provides a ``predict()``
                 method, which can be used to send requests to the Amazon SageMaker endpoint
                 and obtain inferences.
         """
@@ -736,6 +744,8 @@ class HyperparameterTuner(object):
         return best_estimator.deploy(
             initial_instance_count=initial_instance_count,
             instance_type=instance_type,
+            serializer=serializer,
+            deserializer=deserializer,
             accelerator_type=accelerator_type,
             endpoint_name=endpoint_name or best_training_job["TrainingJobName"],
             wait=wait,
@@ -761,7 +771,7 @@ class HyperparameterTuner(object):
 
     def best_estimator(self, best_training_job=None):
         """Return the estimator that has best training job attached. The trained model can then
-        be deployed to an Amazon SageMaker endpoint and return a ``sagemaker.RealTimePredictor``
+        be deployed to an Amazon SageMaker endpoint and return a ``sagemaker.Predictor``
         object.
 
         Args:
@@ -831,23 +841,6 @@ class HyperparameterTuner(object):
                 )
             )
 
-    def delete_endpoint(self, endpoint_name=None):
-        """Delete an Amazon SageMaker endpoint.
-
-        If an endpoint name is not specified, this defaults to looking for an
-        endpoint that shares a name with the best training job for deletion.
-
-        Args:
-            endpoint_name (str): Name of the endpoint to delete
-        """
-        logging.warning(
-            "HyperparameterTuner.delete_endpoint() will be deprecated in SageMaker Python SDK v2. "
-            "Please use the delete_endpoint() function on your predictor instead."
-        )
-
-        endpoint_name = endpoint_name or self.best_training_job()
-        self.sagemaker_session.delete_endpoint(endpoint_name)
-
     def _ensure_last_tuning_job(self):
         """Placeholder docstring"""
         if self.latest_tuning_job is None:
@@ -886,8 +879,8 @@ class HyperparameterTuner(object):
             return getattr(importlib.import_module(json.loads(module)), json.loads(cls_name))
 
         # Then try to derive the estimator from the image name for 1P algorithms
-        image_name = training_details["AlgorithmSpecification"]["TrainingImage"]
-        algorithm = image_name[image_name.find("/") + 1 : image_name.find(":")]
+        image_uri = training_details["AlgorithmSpecification"]["TrainingImage"]
+        algorithm = image_uri[image_uri.find("/") + 1 : image_uri.find(":")]
         if algorithm in AMAZON_ESTIMATOR_CLS_NAMES:
             cls_name = AMAZON_ESTIMATOR_CLS_NAMES[algorithm]
             return getattr(importlib.import_module(AMAZON_ESTIMATOR_MODULE), cls_name)
@@ -948,6 +941,7 @@ class HyperparameterTuner(object):
                 job_details.get("WarmStartConfig", None)
             ),
             "early_stopping_type": tuning_config["TrainingJobEarlyStoppingType"],
+            "base_tuning_job_name": base_from_name(job_details["HyperParameterTuningJobName"]),
         }
 
         if "HyperParameterTuningJobObjective" in tuning_config:
@@ -1458,9 +1452,6 @@ class _TuningJob(_Job):
             sagemaker.tuner._TuningJob: Constructed object that captures all
             information about the started job.
         """
-
-        logging.info("_TuningJob.start_new!!!")
-
         warm_start_config_req = None
         if tuner.warm_start_config:
             warm_start_config_req = tuner.warm_start_config.to_input_req()
@@ -1527,10 +1518,10 @@ class _TuningJob(_Job):
         training_config["input_mode"] = estimator.input_mode
         training_config["metric_definitions"] = metric_definitions
 
-        if isinstance(inputs, s3_input):
+        if isinstance(inputs, TrainingInput):
             if "InputMode" in inputs.config:
-                logging.debug(
-                    "Selecting s3_input's input_mode (%s) for TrainingInputMode.",
+                logger.debug(
+                    "Selecting TrainingInput's input_mode (%s) for TrainingInputMode.",
                     inputs.config["InputMode"],
                 )
                 training_config["input_mode"] = inputs.config["InputMode"]
@@ -1538,14 +1529,14 @@ class _TuningJob(_Job):
         if isinstance(estimator, sagemaker.algorithm.AlgorithmEstimator):
             training_config["algorithm_arn"] = estimator.algorithm_arn
         else:
-            training_config["image"] = estimator.train_image()
+            training_config["image_uri"] = estimator.training_image_uri()
 
         training_config["enable_network_isolation"] = estimator.enable_network_isolation()
         training_config[
             "encrypt_inter_container_traffic"
         ] = estimator.encrypt_inter_container_traffic
 
-        training_config["train_use_spot_instances"] = estimator.train_use_spot_instances
+        training_config["use_spot_instances"] = estimator.use_spot_instances
         training_config["checkpoint_s3_uri"] = estimator.checkpoint_s3_uri
         training_config["checkpoint_local_path"] = estimator.checkpoint_local_path
 

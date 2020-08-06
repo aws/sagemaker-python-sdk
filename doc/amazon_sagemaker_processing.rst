@@ -10,14 +10,14 @@ Amazon SageMaker Processing allows you to run steps for data pre- or post-proces
 Background
 ==========
 
-Amazon SageMaker lets developers and data scientists train and deploy machine learning models. With Amazon SageMaker Processing, you can run processing jobs on for data processing steps in your machine learning pipeline, which accept data from Amazon S3 as input, and put data into Amazon S3 as output.
+Amazon SageMaker lets developers and data scientists train and deploy machine learning models. With Amazon SageMaker Processing, you can run processing jobs for data processing steps in your machine learning pipeline. Processing jobs accept data from Amazon S3 as input and store data into Amazon S3 as output.
 
 .. image:: ./amazon_sagemaker_processing_image1.png
 
 Setup
 =====
 
-The fastest way to run get started with Amazon SageMaker Processing is by running a Jupyter notebook. You can follow the `Getting Started with Amazon SageMaker`_ guide to start running notebooks on Amazon SageMaker.
+The fastest way to get started with Amazon SageMaker Processing is by running a Jupyter notebook. You can follow the `Getting Started with Amazon SageMaker`_ guide to start running notebooks on Amazon SageMaker.
 
 .. _Getting Started with Amazon SageMaker: https://docs.aws.amazon.com/sagemaker/latest/dg/gs.html
 

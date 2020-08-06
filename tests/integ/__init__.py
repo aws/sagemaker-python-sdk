@@ -14,7 +14,6 @@ from __future__ import absolute_import
 
 import logging
 import os
-import sys
 
 import boto3
 
@@ -23,20 +22,22 @@ TRAINING_DEFAULT_TIMEOUT_MINUTES = 20
 TUNING_DEFAULT_TIMEOUT_MINUTES = 20
 TRANSFORM_DEFAULT_TIMEOUT_MINUTES = 20
 AUTO_ML_DEFAULT_TIMEMOUT_MINUTES = 60
-PYTHON_VERSION = "py" + str(sys.version_info.major)
 
 # these regions have some p2 and p3 instances, but not enough for continuous testing
 HOSTING_NO_P2_REGIONS = [
+    "af-south-1",
     "ap-east-1",
     "ca-central-1",
     "eu-central-1",
     "eu-north-1",
     "eu-west-2",
     "eu-west-3",
+    "eu-south-1",
     "sa-east-1",
     "us-west-1",
 ]
 HOSTING_NO_P3_REGIONS = [
+    "af-south-1",
     "ap-east-1",
     "ap-south-1",
     "ap-southeast-1",
@@ -46,10 +47,12 @@ HOSTING_NO_P3_REGIONS = [
     "eu-north-1",
     "eu-west-2",
     "eu-west-3",
+    "eu-south-1",
     "sa-east-1",
     "us-west-1",
 ]
 TRAINING_NO_P2_REGIONS = [
+    "af-south-1",
     "ap-east-1",
     "ap-southeast-1",
     "ap-southeast-2",
@@ -58,6 +61,7 @@ TRAINING_NO_P2_REGIONS = [
     "eu-north-1",
     "eu-west-2",
     "eu-west-3",
+    "eu-south-1",
     "me-south-1",
     "sa-east-1",
     "us-west-1",
@@ -74,10 +78,50 @@ EI_SUPPORTED_REGIONS = [
     "us-west-2",
 ]
 
-NO_LDA_REGIONS = ["eu-west-3", "eu-north-1", "sa-east-1", "ap-east-1", "me-south-1"]
-NO_MARKET_PLACE_REGIONS = ["eu-west-3", "eu-north-1", "sa-east-1", "ap-east-1", "me-south-1"]
-NO_AUTO_ML_REGIONS = ["sa-east-1", "me-south-1", "ap-east-1", "eu-west-3"]
-NO_MODEL_MONITORING_REGIONS = ["me-south-1"]
+RL_SUPPORTED_REGIONS = (
+    "ap-northeast-1",
+    "ap-northeast-2",
+    "ap-south-1",
+    "ap-southeast-1",
+    "ap-southeast-2",
+    "ca-central-1",
+    "eu-central-1",
+    "eu-west-1",
+    "eu-west-2",
+    "us-east-1",
+    "us-east-2",
+    "us-west-1",
+    "us-west-2",
+)
+
+NO_LDA_REGIONS = [
+    "eu-west-3",
+    "eu-north-1",
+    "sa-east-1",
+    "ap-east-1",
+    "me-south-1",
+    "af-south-1",
+    "eu-south-1",
+]
+NO_MARKET_PLACE_REGIONS = [
+    "eu-west-3",
+    "eu-north-1",
+    "sa-east-1",
+    "ap-east-1",
+    "me-south-1",
+    "af-south-1",
+    "eu-south-1",
+]
+NO_AUTO_ML_REGIONS = [
+    "sa-east-1",
+    "me-south-1",
+    "ap-east-1",
+    "eu-west-3",
+    "af-south-1",
+    "eu-south-1",
+]
+NO_MODEL_MONITORING_REGIONS = ["me-south-1", "af-south-1", "eu-south-1"]
+
 
 EFS_TEST_ENABLED_REGION = []
 

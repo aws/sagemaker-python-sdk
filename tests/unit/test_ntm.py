@@ -15,18 +15,19 @@ from __future__ import absolute_import
 import pytest
 from mock import Mock, patch
 
+from sagemaker import image_uris
 from sagemaker.amazon.ntm import NTM, NTMPredictor
-from sagemaker.amazon.amazon_estimator import registry, RecordSet
+from sagemaker.amazon.amazon_estimator import RecordSet
 
 ROLE = "myrole"
-TRAIN_INSTANCE_COUNT = 1
-TRAIN_INSTANCE_TYPE = "ml.c4.xlarge"
+INSTANCE_COUNT = 1
+INSTANCE_TYPE = "ml.c4.xlarge"
 NUM_TOPICS = 5
 
 COMMON_TRAIN_ARGS = {
     "role": ROLE,
-    "train_instance_count": TRAIN_INSTANCE_COUNT,
-    "train_instance_type": TRAIN_INSTANCE_TYPE,
+    "instance_count": INSTANCE_COUNT,
+    "instance_type": INSTANCE_TYPE,
 }
 ALL_REQ_ARGS = dict({"num_topics": NUM_TOPICS}, **COMMON_TRAIN_ARGS)
 
@@ -64,16 +65,10 @@ def sagemaker_session():
 
 
 def test_init_required_positional(sagemaker_session):
-    ntm = NTM(
-        ROLE,
-        TRAIN_INSTANCE_COUNT,
-        TRAIN_INSTANCE_TYPE,
-        NUM_TOPICS,
-        sagemaker_session=sagemaker_session,
-    )
+    ntm = NTM(ROLE, INSTANCE_COUNT, INSTANCE_TYPE, NUM_TOPICS, sagemaker_session=sagemaker_session,)
     assert ntm.role == ROLE
-    assert ntm.train_instance_count == TRAIN_INSTANCE_COUNT
-    assert ntm.train_instance_type == TRAIN_INSTANCE_TYPE
+    assert ntm.instance_count == INSTANCE_COUNT
+    assert ntm.instance_type == INSTANCE_TYPE
     assert ntm.num_topics == NUM_TOPICS
 
 
@@ -81,8 +76,8 @@ def test_init_required_named(sagemaker_session):
     ntm = NTM(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
     assert ntm.role == COMMON_TRAIN_ARGS["role"]
-    assert ntm.train_instance_count == TRAIN_INSTANCE_COUNT
-    assert ntm.train_instance_type == COMMON_TRAIN_ARGS["train_instance_type"]
+    assert ntm.instance_count == INSTANCE_COUNT
+    assert ntm.instance_type == COMMON_TRAIN_ARGS["instance_type"]
     assert ntm.num_topics == ALL_REQ_ARGS["num_topics"]
 
 
@@ -120,7 +115,7 @@ def test_all_hyperparameters(sagemaker_session):
 
 def test_image(sagemaker_session):
     ntm = NTM(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-    assert ntm.train_image() == registry(REGION, "ntm") + "/ntm:1"
+    assert image_uris.retrieve("ntm", REGION) == ntm.training_image_uri()
 
 
 @pytest.mark.parametrize("required_hyper_parameters, value", [("num_topics", "string")])
@@ -284,7 +279,7 @@ def test_model_image(sagemaker_session):
     ntm.fit(data, MINI_BATCH_SIZE)
 
     model = ntm.create_model()
-    assert model.image == registry(REGION, "ntm") + "/ntm:1"
+    assert image_uris.retrieve("ntm", REGION) == model.image_uri
 
 
 def test_predictor_type(sagemaker_session):
@@ -297,6 +292,6 @@ def test_predictor_type(sagemaker_session):
     )
     ntm.fit(data, MINI_BATCH_SIZE)
     model = ntm.create_model()
-    predictor = model.deploy(1, TRAIN_INSTANCE_TYPE)
+    predictor = model.deploy(1, INSTANCE_TYPE)
 
     assert isinstance(predictor, NTMPredictor)

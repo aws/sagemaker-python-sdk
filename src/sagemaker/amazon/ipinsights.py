@@ -13,11 +13,14 @@
 """Placeholder docstring"""
 from __future__ import absolute_import
 
-from sagemaker.amazon.amazon_estimator import AmazonAlgorithmEstimatorBase, registry
+from sagemaker import image_uris
+from sagemaker.amazon.amazon_estimator import AmazonAlgorithmEstimatorBase
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
 from sagemaker.amazon.validation import ge, le
-from sagemaker.predictor import RealTimePredictor, csv_serializer, json_deserializer
+from sagemaker.deserializers import JSONDeserializer
+from sagemaker.predictor import Predictor
 from sagemaker.model import Model
+from sagemaker.serializers import CSVSerializer
 from sagemaker.session import Session
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
@@ -53,8 +56,8 @@ class IPInsights(AmazonAlgorithmEstimatorBase):
     def __init__(
         self,
         role,
-        train_instance_count,
-        train_instance_type,
+        instance_count,
+        instance_type,
         num_entity_vectors,
         vector_dim,
         batch_metrics_publish_interval=None,
@@ -94,9 +97,9 @@ class IPInsights(AmazonAlgorithmEstimatorBase):
                 endpoints use this role to access training data and model
                 artifacts. After the endpoint is created, the inference code
                 might use the IAM role, if accessing AWS resource.
-            train_instance_count (int): Number of Amazon EC2 instances to use
+            instance_count (int): Number of Amazon EC2 instances to use
                 for training.
-            train_instance_type (str): Type of EC2 instance to use for training,
+            instance_type (str): Type of EC2 instance to use for training,
                 for example, 'ml.m5.xlarge'.
             num_entity_vectors (int): Required. The number of embeddings to
                 train for entities accessing online resources. We recommend 2x
@@ -126,7 +129,7 @@ class IPInsights(AmazonAlgorithmEstimatorBase):
             :class:`~sagemaker.estimator.amazon_estimator.AmazonAlgorithmEstimatorBase` and
             :class:`~sagemaker.estimator.EstimatorBase`.
         """
-        super(IPInsights, self).__init__(role, train_instance_count, train_instance_type, **kwargs)
+        super(IPInsights, self).__init__(role, instance_count, instance_type, **kwargs)
         self.num_entity_vectors = num_entity_vectors
         self.vector_dim = vector_dim
         self.batch_metrics_publish_interval = batch_metrics_publish_interval
@@ -173,25 +176,32 @@ class IPInsights(AmazonAlgorithmEstimatorBase):
         )
 
 
-class IPInsightsPredictor(RealTimePredictor):
+class IPInsightsPredictor(Predictor):
     """Returns dot product of entity and IP address embeddings as a score for
     compatibility.
 
     The implementation of
-    :meth:`~sagemaker.predictor.RealTimePredictor.predict` in this
-    `RealTimePredictor` requires a numpy ``ndarray`` as input. The array should
+    :meth:`~sagemaker.predictor.Predictor.predict` in this
+    `Predictor` requires a numpy ``ndarray`` as input. The array should
     contain two columns. The first column should contain the entity ID. The
     second column should contain the IPv4 address in dot notation.
     """
 
-    def __init__(self, endpoint, sagemaker_session=None):
+    def __init__(self, endpoint_name, sagemaker_session=None):
         """
         Args:
-            endpoint:
-            sagemaker_session:
+            endpoint_name (str): Name of the Amazon SageMaker endpoint to which
+                requests are sent.
+            sagemaker_session (sagemaker.session.Session): A SageMaker Session
+                object, used for SageMaker interactions (default: None). If not
+                specified, one is created using the default AWS configuration
+                chain.
         """
         super(IPInsightsPredictor, self).__init__(
-            endpoint, sagemaker_session, serializer=csv_serializer, deserializer=json_deserializer
+            endpoint_name,
+            sagemaker_session,
+            serializer=CSVSerializer(),
+            deserializer=JSONDeserializer(),
         )
 
 
@@ -210,14 +220,14 @@ class IPInsightsModel(Model):
             **kwargs:
         """
         sagemaker_session = sagemaker_session or Session()
-        repo = "{}:{}".format(IPInsights.repo_name, IPInsights.repo_version)
-        image = "{}/{}".format(
-            registry(sagemaker_session.boto_session.region_name, IPInsights.repo_name), repo
+        image_uri = image_uris.retrieve(
+            IPInsights.repo_name,
+            sagemaker_session.boto_region_name,
+            version=IPInsights.repo_version,
         )
-
         super(IPInsightsModel, self).__init__(
+            image_uri,
             model_data,
-            image,
             role,
             predictor_cls=IPInsightsPredictor,
             sagemaker_session=sagemaker_session,

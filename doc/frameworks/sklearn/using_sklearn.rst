@@ -31,7 +31,7 @@ To train a Scikit-learn model by using the SageMaker Python SDK:
 Prepare a Scikit-learn Training Script
 ======================================
 
-Your Scikit-learn training script must be a Python 2.7 or 3.6 compatible source file.
+Your Scikit-learn training script must be a Python 3.6 compatible source file.
 
 The training script is similar to a training script you might run outside of SageMaker, but you
 can access useful properties about the training environment through various environment variables.
@@ -134,7 +134,7 @@ directories ('train' and 'test').
 .. code:: python
 
     sklearn_estimator = SKLearn('sklearn-train.py',
-                                train_instance_type='ml.m4.xlarge',
+                                instance_type='ml.m4.xlarge',
                                 framework_version='0.20.0',
                                 hyperparameters = {'epochs': 20, 'batch-size': 64, 'learning-rate': 0.1})
     sklearn_estimator.fit({'train': 's3://my-data-bucket/path/to/my/training/data',
@@ -198,7 +198,7 @@ operation.
 
     # Train my estimator
     sklearn_estimator = SKLearn(entry_point='train_and_deploy.py',
-                                train_instance_type='ml.m4.xlarge',
+                                instance_type='ml.m4.xlarge',
                                 framework_version='0.20.0')
     sklearn_estimator.fit('s3://my_bucket/my_training_data/')
 
@@ -299,7 +299,7 @@ You can provide your own implementations for these functions in your hosting scr
 If you omit any definition then the SageMaker Scikit-learn model server will use its default implementation for that
 function.
 
-The ``RealTimePredictor`` used by Scikit-learn in the SageMaker Python SDK serializes NumPy arrays to the `NPY <https://docs.scipy.org/doc/numpy/neps/npy-format.html>`_ format
+The ``Predictor`` used by Scikit-learn in the SageMaker Python SDK serializes NumPy arrays to the `NPY <https://docs.scipy.org/doc/numpy/neps/npy-format.html>`_ format
 by default, with Content-Type ``application/x-npy``. The SageMaker Scikit-learn model server can deserialize NPY-formatted
 data (along with JSON and CSV data).
 
@@ -465,41 +465,14 @@ The following code sample shows how to do this, using the ``SKLearnModel`` class
 
 .. code:: python
 
-    sklearn_model = SKLearnModel(model_data="s3://bucket/model.tar.gz", role="SageMakerRole",
-        entry_point="transform_script.py")
+    sklearn_model = SKLearnModel(model_data="s3://bucket/model.tar.gz",
+                                 role="SageMakerRole",
+                                 entry_point="transform_script.py",
+                                 framework_version="0.20.0")
 
     predictor = sklearn_model.deploy(instance_type="ml.c4.xlarge", initial_instance_count=1)
 
-The sklearn_model constructor takes the following arguments:
-
--  ``model_data (str):`` An S3 location of a SageMaker model data
-   .tar.gz file
--  ``image (str):`` A Docker image URI
--  ``role (str):`` An IAM role name or Arn for SageMaker to access AWS
-   resources on your behalf.
--  ``predictor_cls (callable[string,sagemaker.Session]):`` A function to
-   call to create a predictor. If not None, ``deploy`` will return the
-   result of invoking this function on the created endpoint name
--  ``env (dict[string,string]):`` Environment variables to run with
-   ``image`` when hosted in SageMaker.
--  ``name (str):`` The model name. If None, a default model name will be
-   selected on each ``deploy.``
--  ``entry_point (str):`` Path (absolute or relative) to the Python file
-   which should be executed as the entry point to model hosting.
--  ``source_dir (str):`` Optional. Path (absolute or relative) to a
-   directory with any other training source code dependencies including
-   the entry point file. Structure within this directory will be
-   preserved when training on SageMaker.
--  ``enable_cloudwatch_metrics (boolean):`` Optional. If true, training
-   and hosting containers will generate Cloudwatch metrics under the
-   AWS/SageMakerContainer namespace.
--  ``container_log_level (int):`` Log level to use within the container.
-   Valid values are defined in the Python logging module.
--  ``code_location (str):`` Optional. Name of the S3 bucket where your
-   custom code will be uploaded to. If not specified, will use the
-   SageMaker default bucket created by sagemaker.Session.
--  ``sagemaker_session (sagemaker.Session):`` The SageMaker Session
-   object, used for SageMaker interaction"""
+To see what arguments are accepted by the ``SKLearnModel`` constructor, see :class:`sagemaker.sklearn.model.SKLearnModel`.
 
 Your model data must be a .tar.gz file in S3. SageMaker Training Job model data is saved to .tar.gz files in S3,
 however if you have local data you want to deploy, you can prepare the data yourself.
@@ -528,69 +501,11 @@ https://github.com/awslabs/amazon-sagemaker-examples/tree/master/sagemaker-pytho
 
 These are also available in SageMaker Notebook Instance hosted Jupyter notebooks under the "sample notebooks" folder.
 
-*******************************
-sagemaker.sklearn.SKLearn Class
-*******************************
+******************************
+SageMaker scikit-learn Classes
+******************************
 
-The `SKLearn` constructor takes both required and optional arguments.
-
-Required arguments
-==================
-
-The following are required arguments to the ``SKLearn`` constructor. When you create a Scikit-learn object, you must
-include these in the constructor, either positionally or as keyword arguments.
-
--  ``entry_point`` Path (absolute or relative) to the Python file which
-   should be executed as the entry point to training.
--  ``role`` An AWS IAM role (either name or full ARN). The Amazon
-   SageMaker training jobs and APIs that create Amazon SageMaker
-   endpoints use this role to access training data and model artifacts.
-   After the endpoint is created, the inference code might use the IAM
-   role, if accessing AWS resource.
--  ``train_instance_type`` Type of EC2 instance to use for training, for
-   example, 'ml.m4.xlarge'. Please note that Scikit-learn does not have GPU support.
-
-Optional arguments
-==================
-
-The following are optional arguments. When you create a ``SKLearn`` object, you can specify these as keyword arguments.
-
--  ``source_dir`` Path (absolute or relative) to a directory with any
-   other training source code dependencies including the entry point
-   file. Structure within this directory will be preserved when training
-   on SageMaker.
--  ``hyperparameters`` Hyperparameters that will be used for training.
-   Will be made accessible as a dict[str, str] to the training code on
-   SageMaker. For convenience, accepts other types besides str, but
-   str() will be called on keys and values to convert them before
-   training.
--  ``py_version`` Python version you want to use for executing your
-   model training code.
--  ``train_volume_size`` Size in GB of the EBS volume to use for storing
-   input data during training. Must be large enough to store training
-   data if input_mode='File' is used (which is the default).
--  ``train_max_run`` Timeout in seconds for training, after which Amazon
-   SageMaker terminates the job regardless of its current status.
--  ``input_mode`` The input mode that the algorithm supports. Valid
-   modes: 'File' - Amazon SageMaker copies the training dataset from the
-   s3 location to a directory in the Docker container. 'Pipe' - Amazon
-   SageMaker streams data directly from s3 to the container via a Unix
-   named pipe.
--  ``output_path`` s3 location where you want the training result (model
-   artifacts and optional output files) saved. If not specified, results
-   are stored to a default bucket. If the bucket with the specific name
-   does not exist, the estimator creates the bucket during the fit()
-   method execution.
--  ``output_kms_key`` Optional KMS key ID to optionally encrypt training
-   output with.
--  ``base_job_name`` Name to assign for the training job that the fit()
-   method launches. If not specified, the estimator generates a default
-   job name, based on the training image name and current timestamp
--  ``image_name`` An alternative docker image to use for training and
-   serving.  If specified, the estimator will use this image for training and
-   hosting, instead of selecting the appropriate SageMaker official image based on
-   framework_version and py_version. Refer to: `SageMaker Scikit-learn Docker Containers <https://github.com/aws/sagemaker-python-sdk/tree/master/src/sagemaker/sklearn#sagemaker-scikit-learn-docker-containers>`_ for details on what the official images support
-   and where to find the source code to build your custom image.
+For information about the different scikit-learn classes in the SageMaker Python SDK, see https://sagemaker.readthedocs.io/en/stable/frameworks/sklearn/sagemaker.sklearn.html.
 
 ****************************************
 SageMaker Scikit-learn Docker Containers

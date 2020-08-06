@@ -28,7 +28,7 @@ from sagemaker.network import NetworkConfig
 BUCKET_NAME = "mybucket"
 REGION = "us-west-2"
 ROLE = "arn:aws:iam::012345678901:role/SageMakerRole"
-ECR_PREFIX = "246618743249.dkr.ecr.us-west-2.amazonaws.com"
+ECR_HOSTNAME = "ecr.us-west-2.amazonaws.com"
 CUSTOM_IMAGE_URI = "012345678901.dkr.ecr.us-west-2.amazonaws.com/my-custom-image-uri"
 
 PROCESSING_JOB_DESCRIPTION = {
@@ -95,16 +95,18 @@ def sagemaker_session():
     return session_mock
 
 
-@patch("sagemaker.fw_registry.get_ecr_image_uri_prefix", return_value=ECR_PREFIX)
+@patch("sagemaker.utils._botocore_resolver")
 @patch("os.path.exists", return_value=True)
 @patch("os.path.isfile", return_value=True)
 def test_sklearn_processor_with_required_parameters(
-    exists_mock, isfile_mock, ecr_prefix, sagemaker_session
+    exists_mock, isfile_mock, botocore_resolver, sagemaker_session, sklearn_version
 ):
+    botocore_resolver.return_value.construct_endpoint.return_value = {"hostname": ECR_HOSTNAME}
+
     processor = SKLearnProcessor(
         role=ROLE,
         instance_type="ml.m4.xlarge",
-        framework_version="0.20.0",
+        framework_version=sklearn_version,
         instance_count=1,
         sagemaker_session=sagemaker_session,
     )
@@ -114,20 +116,24 @@ def test_sklearn_processor_with_required_parameters(
     expected_args = _get_expected_args(processor._current_job_name)
 
     sklearn_image_uri = (
-        "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:0.20.0-cpu-py3"
-    )
+        "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:{}-cpu-py3"
+    ).format(sklearn_version)
     expected_args["app_specification"]["ImageUri"] = sklearn_image_uri
 
     sagemaker_session.process.assert_called_with(**expected_args)
 
 
-@patch("sagemaker.fw_registry.get_ecr_image_uri_prefix", return_value=ECR_PREFIX)
+@patch("sagemaker.utils._botocore_resolver")
 @patch("os.path.exists", return_value=True)
 @patch("os.path.isfile", return_value=True)
-def test_sklearn_with_all_parameters(exists_mock, isfile_mock, ecr_prefix, sagemaker_session):
+def test_sklearn_with_all_parameters(
+    exists_mock, isfile_mock, botocore_resolver, sklearn_version, sagemaker_session
+):
+    botocore_resolver.return_value.construct_endpoint.return_value = {"hostname": ECR_HOSTNAME}
+
     processor = SKLearnProcessor(
         role=ROLE,
-        framework_version="0.20.0",
+        framework_version=sklearn_version,
         instance_type="ml.m4.xlarge",
         instance_count=1,
         volume_size_in_gb=100,
@@ -176,26 +182,11 @@ def test_sklearn_with_all_parameters(exists_mock, isfile_mock, ecr_prefix, sagem
 
     expected_args = _get_expected_args_all_parameters(processor._current_job_name)
     sklearn_image_uri = (
-        "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:0.20.0-cpu-py3"
-    )
+        "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:{}-cpu-py3"
+    ).format(sklearn_version)
     expected_args["app_specification"]["ImageUri"] = sklearn_image_uri
 
     sagemaker_session.process.assert_called_with(**expected_args)
-
-
-@patch("os.path.exists", return_value=True)
-@patch("os.path.isfile", return_value=True)
-def test_sklearn_processor_errors_with_invalid_framework_version(
-    exists_mock, isfile_mock, sagemaker_session
-):
-    with pytest.raises(ValueError):
-        SKLearnProcessor(
-            role=ROLE,
-            framework_version="0.21.0",
-            instance_type="ml.m4.xlarge",
-            instance_count=1,
-            sagemaker_session=sagemaker_session,
-        )
 
 
 @patch("os.path.exists", return_value=False)

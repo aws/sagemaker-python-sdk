@@ -1,0 +1,14 @@
+{
+    "processors": ["inf"],
+    "scope": ["inference"],
+    "versions": {
+        "1.5.1": {
+            "py_versions": ["py3"],
+            "registries": {
+                "us-east-1": "785573368785",
+                "us-west-2": "301217895009"
+            },
+            "repository": "sagemaker-neo-mxnet"
+        }
+    }
+}

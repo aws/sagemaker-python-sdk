@@ -19,15 +19,14 @@ import pytest
 
 from sagemaker.rl import RLEstimator, RLFramework, RLToolkit
 from sagemaker.utils import sagemaker_timestamp, unique_name_from_base
-from tests.integ import DATA_DIR, PYTHON_VERSION
+from tests.integ import DATA_DIR, RL_SUPPORTED_REGIONS, test_region
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 
 @pytest.mark.canary_quick
-@pytest.mark.skipif(PYTHON_VERSION != "py3", reason="RL images supports only Python 3.")
-def test_coach_mxnet(sagemaker_session, rl_coach_mxnet_full_version, cpu_instance_type):
+def test_coach_mxnet(sagemaker_session, coach_mxnet_latest_version, cpu_instance_type):
     estimator = _test_coach(
-        sagemaker_session, RLFramework.MXNET, rl_coach_mxnet_full_version, cpu_instance_type
+        sagemaker_session, RLFramework.MXNET, coach_mxnet_latest_version, cpu_instance_type
     )
     job_name = unique_name_from_base("test-coach-mxnet")
 
@@ -52,10 +51,16 @@ def test_coach_mxnet(sagemaker_session, rl_coach_mxnet_full_version, cpu_instanc
     assert 0 < action[0][1] < 1
 
 
-@pytest.mark.skipif(PYTHON_VERSION != "py3", reason="RL images supports only Python 3.")
-def test_coach_tf(sagemaker_session, rl_coach_tf_full_version, cpu_instance_type):
+@pytest.mark.skipif(
+    test_region() not in RL_SUPPORTED_REGIONS,
+    reason="Updated RL images aren't in {}".format(test_region()),
+)
+def test_coach_tf(sagemaker_session, coach_tensorflow_latest_version, cpu_instance_type):
     estimator = _test_coach(
-        sagemaker_session, RLFramework.TENSORFLOW, rl_coach_tf_full_version, cpu_instance_type
+        sagemaker_session,
+        RLFramework.TENSORFLOW,
+        coach_tensorflow_latest_version,
+        cpu_instance_type,
     )
     job_name = unique_name_from_base("test-coach-tf")
 
@@ -84,8 +89,8 @@ def _test_coach(sagemaker_session, rl_framework, rl_coach_version, cpu_instance_
         entry_point=cartpole,
         source_dir=source_dir,
         role="SageMakerRole",
-        train_instance_count=1,
-        train_instance_type=cpu_instance_type,
+        instance_count=1,
+        instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
         dependencies=dependencies,
         hyperparameters={
@@ -97,9 +102,12 @@ def _test_coach(sagemaker_session, rl_framework, rl_coach_version, cpu_instance_
     )
 
 
+@pytest.mark.skipif(
+    test_region() not in RL_SUPPORTED_REGIONS,
+    reason="Updated RL images aren't in {}".format(test_region()),
+)
 @pytest.mark.canary_quick
-@pytest.mark.skipif(PYTHON_VERSION != "py3", reason="RL images supports only Python 3.")
-def test_ray_tf(sagemaker_session, rl_ray_full_version, cpu_instance_type):
+def test_ray_tf(sagemaker_session, ray_tensorflow_latest_version, cpu_instance_type):
     source_dir = os.path.join(DATA_DIR, "ray_cartpole")
     cartpole = "train_ray.py"
 
@@ -108,11 +116,11 @@ def test_ray_tf(sagemaker_session, rl_ray_full_version, cpu_instance_type):
         source_dir=source_dir,
         toolkit=RLToolkit.RAY,
         framework=RLFramework.TENSORFLOW,
-        toolkit_version=rl_ray_full_version,
+        toolkit_version=ray_tensorflow_latest_version,
         sagemaker_session=sagemaker_session,
         role="SageMakerRole",
-        train_instance_type=cpu_instance_type,
-        train_instance_count=1,
+        instance_type=cpu_instance_type,
+        instance_count=1,
     )
     job_name = unique_name_from_base("test-ray-tf")
 

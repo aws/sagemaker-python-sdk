@@ -15,7 +15,7 @@ from __future__ import absolute_import
 import pytest
 from mock import Mock
 
-from sagemaker.fw_registry import registry
+from sagemaker import image_uris
 from sagemaker.sparkml import SparkMLModel, SparkMLPredictor
 
 MODEL_DATA = "s3://bucket/model.tar.gz"
@@ -49,7 +49,7 @@ def sagemaker_session():
 
 def test_sparkml_model(sagemaker_session):
     sparkml = SparkMLModel(sagemaker_session=sagemaker_session, model_data=MODEL_DATA, role=ROLE)
-    assert sparkml.image == registry(REGION, "sparkml-serving") + "/sagemaker-sparkml-serving:2.2"
+    assert sparkml.image_uri == image_uris.retrieve("sparkml-serving", REGION, version="2.2")
 
 
 def test_predictor_type(sagemaker_session):

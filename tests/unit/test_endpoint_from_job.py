@@ -13,7 +13,7 @@
 from __future__ import absolute_import
 
 import pytest
-from mock import Mock
+from mock import MagicMock, Mock
 
 import sagemaker
 
@@ -42,8 +42,10 @@ REGION = "us-west-2"
 
 @pytest.fixture()
 def sagemaker_session():
-    boto_mock = Mock(name="boto_session", region_name=REGION)
-    ims = sagemaker.Session(sagemaker_client=Mock(name="sagemaker_client"), boto_session=boto_mock)
+    boto_mock = MagicMock(name="boto_session", region_name=REGION)
+    ims = sagemaker.Session(
+        sagemaker_client=MagicMock(name="sagemaker_client"), boto_session=boto_mock
+    )
     ims.sagemaker_client.describe_training_job = Mock(
         name="describe_training_job", return_value=TRAINING_JOB_RESPONSE
     )
@@ -67,7 +69,7 @@ def test_all_defaults_no_existing_entities(sagemaker_session):
     expected_args = original_args.copy()
     expected_args.pop("job_name")
     expected_args["model_s3_location"] = S3_MODEL_ARTIFACTS
-    expected_args["deployment_image"] = IMAGE
+    expected_args["image_uri"] = IMAGE
     expected_args["role"] = TRAIN_ROLE
     expected_args["name"] = JOB_NAME
     expected_args["model_environment_vars"] = None
@@ -85,7 +87,7 @@ def test_no_defaults_no_existing_entities(sagemaker_session):
         "job_name": JOB_NAME,
         "initial_instance_count": INITIAL_INSTANCE_COUNT,
         "instance_type": INSTANCE_TYPE,
-        "deployment_image": DEPLOY_IMAGE,
+        "image_uri": DEPLOY_IMAGE,
         "role": DEPLOY_ROLE,
         "name": NEW_ENTITY_NAME,
         "model_environment_vars": ENV_VARS,

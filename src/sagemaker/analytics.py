@@ -23,11 +23,12 @@ from six import with_metaclass
 from sagemaker.session import Session
 from sagemaker.utils import DeferredError
 
+logger = logging.getLogger(__name__)
 
 try:
     import pandas as pd
 except ImportError as e:
-    logging.warning("pandas failed to import. Analytics features will be impaired or broken.")
+    logger.warning("pandas failed to import. Analytics features will be impaired or broken.")
     # Any subsequent attempt to use pandas will raise the ImportError
     pd = DeferredError(e)
 
@@ -251,15 +252,13 @@ class HyperparameterTuningJobAnalytics(AnalyticsMetricsBase):
         output = []
         next_args = {}
         for count in range(100):
-            logging.debug("Calling list_training_jobs_for_hyper_parameter_tuning_job %d", count)
+            logger.debug("Calling list_training_jobs_for_hyper_parameter_tuning_job %d", count)
             raw_result = self._sage_client.list_training_jobs_for_hyper_parameter_tuning_job(
                 HyperParameterTuningJobName=self.name, MaxResults=100, **next_args
             )
             new_output = raw_result["TrainingJobSummaries"]
             output.extend(new_output)
-            logging.debug(
-                "Got %d more TrainingJobs. Total so far: %d", len(new_output), len(output)
-            )
+            logger.debug("Got %d more TrainingJobs. Total so far: %d", len(new_output), len(output))
             if ("NextToken" in raw_result) and (len(new_output) > 0):
                 next_args["NextToken"] = raw_result["NextToken"]
             else:
@@ -373,7 +372,7 @@ class TrainingJobAnalytics(AnalyticsMetricsBase):
         }
         raw_cwm_data = self._cloudwatch.get_metric_statistics(**request)["Datapoints"]
         if len(raw_cwm_data) == 0:
-            logging.warning("Warning: No metrics called %s found", metric_name)
+            logger.warning("Warning: No metrics called %s found", metric_name)
             return
 
         # Process data: normalize to starting time, and sort.

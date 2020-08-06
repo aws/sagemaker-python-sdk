@@ -16,7 +16,7 @@ import os
 import pytest
 from mock import Mock
 
-from sagemaker.s3 import S3Uploader, S3Downloader
+from sagemaker import s3
 
 BUCKET_NAME = "mybucket"
 REGION = "us-west-2"
@@ -42,8 +42,10 @@ def sagemaker_session():
 
 def test_upload(sagemaker_session, caplog):
     desired_s3_uri = os.path.join("s3://", BUCKET_NAME, CURRENT_JOB_NAME, SOURCE_NAME)
-    S3Uploader.upload(
-        local_path="/path/to/app.jar", desired_s3_uri=desired_s3_uri, session=sagemaker_session
+    s3.S3Uploader.upload(
+        local_path="/path/to/app.jar",
+        desired_s3_uri=desired_s3_uri,
+        sagemaker_session=sagemaker_session,
     )
     sagemaker_session.upload_data.assert_called_with(
         path="/path/to/app.jar",
@@ -51,19 +53,15 @@ def test_upload(sagemaker_session, caplog):
         key_prefix=os.path.join(CURRENT_JOB_NAME, SOURCE_NAME),
         extra_args=None,
     )
-    warning_message = (
-        "Parameter 'session' will be renamed to 'sagemaker_session' " "in SageMaker Python SDK v2."
-    )
-    assert warning_message in caplog.text
 
 
 def test_upload_with_kms_key(sagemaker_session):
     desired_s3_uri = os.path.join("s3://", BUCKET_NAME, CURRENT_JOB_NAME, SOURCE_NAME)
-    S3Uploader.upload(
+    s3.S3Uploader.upload(
         local_path="/path/to/app.jar",
         desired_s3_uri=desired_s3_uri,
         kms_key=KMS_KEY,
-        session=sagemaker_session,
+        sagemaker_session=sagemaker_session,
     )
     sagemaker_session.upload_data.assert_called_with(
         path="/path/to/app.jar",
@@ -75,8 +73,8 @@ def test_upload_with_kms_key(sagemaker_session):
 
 def test_download(sagemaker_session):
     s3_uri = os.path.join("s3://", BUCKET_NAME, CURRENT_JOB_NAME, SOURCE_NAME)
-    S3Downloader.download(
-        s3_uri=s3_uri, local_path="/path/for/download/", session=sagemaker_session
+    s3.S3Downloader.download(
+        s3_uri=s3_uri, local_path="/path/for/download/", sagemaker_session=sagemaker_session
     )
     sagemaker_session.download_data.assert_called_with(
         path="/path/for/download/",
@@ -88,8 +86,11 @@ def test_download(sagemaker_session):
 
 def test_download_with_kms_key(sagemaker_session):
     s3_uri = os.path.join("s3://", BUCKET_NAME, CURRENT_JOB_NAME, SOURCE_NAME)
-    S3Downloader.download(
-        s3_uri=s3_uri, local_path="/path/for/download/", kms_key=KMS_KEY, session=sagemaker_session
+    s3.S3Downloader.download(
+        s3_uri=s3_uri,
+        local_path="/path/for/download/",
+        kms_key=KMS_KEY,
+        sagemaker_session=sagemaker_session,
     )
     sagemaker_session.download_data.assert_called_with(
         path="/path/for/download/",
@@ -97,3 +98,29 @@ def test_download_with_kms_key(sagemaker_session):
         key_prefix=os.path.join(CURRENT_JOB_NAME, SOURCE_NAME),
         extra_args={"SSECustomerKey": KMS_KEY},
     )
+
+
+def test_parse_s3_url():
+    bucket, key_prefix = s3.parse_s3_url("s3://bucket/code_location")
+    assert "bucket" == bucket
+    assert "code_location" == key_prefix
+
+
+def test_parse_s3_url_fail():
+    with pytest.raises(ValueError) as error:
+        s3.parse_s3_url("t3://code_location")
+    assert "Expecting 's3' scheme" in str(error)
+
+
+def test_path_join():
+    test_cases = (
+        ("foo/bar", ("foo", "bar")),
+        ("foo/bar", ("foo/", "bar")),
+        ("foo/bar", ("/foo/", "bar")),
+        ("s3://foo/bar", ("s3://", "foo", "bar")),
+        ("s3://foo/bar", ("s3://", "/foo", "bar")),
+        ("s3://foo/bar", ("s3://foo", "bar")),
+    )
+
+    for expected, args in test_cases:
+        assert expected == s3.s3_path_join(*args)
