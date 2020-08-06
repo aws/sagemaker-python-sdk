@@ -18,13 +18,14 @@ and interpretation on Amazon SageMaker.
 from __future__ import print_function, absolute_import
 
 import os
+import pathlib
 
 from six.moves.urllib.parse import urlparse
 
+from sagemaker import s3
 from sagemaker.job import _Job
 from sagemaker.utils import base_name_from_image, name_from_base
 from sagemaker.session import Session
-from sagemaker.s3 import S3Uploader
 from sagemaker.network import NetworkConfig  # noqa: F401 # pylint: disable=unused-import
 
 
@@ -214,12 +215,14 @@ class Processor(object):
                 # and save the S3 uri in the ProcessingInput source.
                 parse_result = urlparse(file_input.source)
                 if parse_result.scheme != "s3":
-                    desired_s3_uri = "s3://{}/{}/input/{}".format(
+                    desired_s3_uri = s3.s3_path_join(
+                        "s3://",
                         self.sagemaker_session.default_bucket(),
                         self._current_job_name,
+                        "input",
                         file_input.input_name,
                     )
-                    s3_uri = S3Uploader.upload(
+                    s3_uri = s3.S3Uploader.upload(
                         local_path=file_input.source,
                         desired_s3_uri=desired_s3_uri,
                         sagemaker_session=self.sagemaker_session,
@@ -258,9 +261,11 @@ class Processor(object):
                 # If the output's destination is not an s3_uri, create one.
                 parse_result = urlparse(output.destination)
                 if parse_result.scheme != "s3":
-                    s3_uri = "s3://{}/{}/output/{}".format(
+                    s3_uri = s3.s3_path_join(
+                        "s3://",
                         self.sagemaker_session.default_bucket(),
                         self._current_job_name,
+                        "output",
                         output.output_name,
                     )
                     output.destination = s3_uri
@@ -474,12 +479,14 @@ class ScriptProcessor(Processor):
             str: The S3 URI of the uploaded file or directory.
 
         """
-        desired_s3_uri = "s3://{}/{}/input/{}".format(
+        desired_s3_uri = s3.s3_path_join(
+            "s3://",
             self.sagemaker_session.default_bucket(),
             self._current_job_name,
+            "input",
             self._CODE_CONTAINER_INPUT_NAME,
         )
-        return S3Uploader.upload(
+        return s3.S3Uploader.upload(
             local_path=code, desired_s3_uri=desired_s3_uri, sagemaker_session=self.sagemaker_session
         )
 
@@ -498,8 +505,10 @@ class ScriptProcessor(Processor):
         """
         code_file_input = ProcessingInput(
             source=s3_uri,
-            destination="{}{}".format(
-                self._CODE_CONTAINER_BASE_PATH, self._CODE_CONTAINER_INPUT_NAME
+            destination=str(
+                pathlib.PurePosixPath(
+                    self._CODE_CONTAINER_BASE_PATH, self._CODE_CONTAINER_INPUT_NAME
+                )
             ),
             input_name=self._CODE_CONTAINER_INPUT_NAME,
         )
@@ -511,8 +520,10 @@ class ScriptProcessor(Processor):
         Args:
             user_script_name (str): A filename with an extension.
         """
-        user_script_location = "{}{}/{}".format(
-            self._CODE_CONTAINER_BASE_PATH, self._CODE_CONTAINER_INPUT_NAME, user_script_name
+        user_script_location = str(
+            pathlib.PurePosixPath(
+                self._CODE_CONTAINER_BASE_PATH, self._CODE_CONTAINER_INPUT_NAME, user_script_name
+            )
         )
         self.entrypoint = command + [user_script_location]
 
