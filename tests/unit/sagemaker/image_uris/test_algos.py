@@ -48,6 +48,7 @@ ALGO_REGIONS_AND_ACCOUNTS = (
             "ipinsights",
         ),
         "accounts": {
+            "af-south-1": "455444449433",
             "ap-east-1": "286214385809",
             "ap-northeast-1": "351501993468",
             "ap-northeast-2": "835164637446",
@@ -62,6 +63,7 @@ ALGO_REGIONS_AND_ACCOUNTS = (
             "eu-west-1": "438346466558",
             "eu-west-2": "644912444149",
             "eu-west-3": "749696950732",
+            "eu-south-1": "257386234256",
             "me-south-1": "249704162688",
             "sa-east-1": "855470959533",
             "us-east-1": "382416733822",
@@ -95,6 +97,7 @@ ALGO_REGIONS_AND_ACCOUNTS = (
     {
         "algorithms": ("forecasting-deepar",),
         "accounts": {
+            "af-south-1": "455444449433",
             "ap-east-1": "286214385809",
             "ap-northeast-1": "633353088612",
             "ap-northeast-2": "204372634319",
@@ -109,6 +112,7 @@ ALGO_REGIONS_AND_ACCOUNTS = (
             "eu-west-1": "224300973850",
             "eu-west-2": "644912444149",
             "eu-west-3": "749696950732",
+            "eu-south-1": "257386234256",
             "me-south-1": "249704162688",
             "sa-east-1": "855470959533",
             "us-east-1": "522234722520",
@@ -128,6 +132,7 @@ ALGO_REGIONS_AND_ACCOUNTS = (
             "semantic-segmentation",
         ),
         "accounts": {
+            "af-south-1": "455444449433",
             "ap-east-1": "286214385809",
             "ap-northeast-1": "501404015308",
             "ap-northeast-2": "306986355934",
@@ -142,6 +147,7 @@ ALGO_REGIONS_AND_ACCOUNTS = (
             "eu-west-1": "685385470294",
             "eu-west-2": "644912444149",
             "eu-west-3": "749696950732",
+            "eu-south-1": "257386234256",
             "me-south-1": "249704162688",
             "sa-east-1": "855470959533",
             "us-east-1": "811284229777",
