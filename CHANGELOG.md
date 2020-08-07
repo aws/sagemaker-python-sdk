@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.1.0 (2020-08-06)
+
+### Features
+
+ * add DLC account numbers for af-south-1 and eu-south-1
+
 ## v2.0.1 (2020-08-05)
 
 ### Bug Fixes and Other Changes

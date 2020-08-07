@@ -18,6 +18,7 @@ from sagemaker import image_uris
 from tests.unit.sagemaker.image_uris import expected_uris, regions
 
 ALGO_REGISTRIES = {
+    "af-south-1": "455444449433",
     "ap-east-1": "286214385809",
     "ap-northeast-1": "501404015308",
     "ap-northeast-2": "306986355934",
@@ -32,6 +33,7 @@ ALGO_REGISTRIES = {
     "eu-west-1": "685385470294",
     "eu-west-2": "644912444149",
     "eu-west-3": "749696950732",
+    "eu-south-1": "257386234256",
     "me-south-1": "249704162688",
     "sa-east-1": "855470959533",
     "us-east-1": "811284229777",
@@ -42,8 +44,10 @@ ALGO_REGISTRIES = {
     "us-west-2": "433757028032",
 }
 ALGO_VERSIONS = ("1", "latest")
+XGBOOST_FRAMEWORK_VERSIONS = ("0.90-2", "0.90-1", "1.0-1")
 
 FRAMEWORK_REGISTRIES = {
+    "af-south-1": "510948584623",
     "ap-east-1": "651117190479",
     "ap-northeast-1": "354813040037",
     "ap-northeast-2": "366743142698",
@@ -58,6 +62,7 @@ FRAMEWORK_REGISTRIES = {
     "eu-west-1": "141502667606",
     "eu-west-2": "764974769150",
     "eu-west-3": "659782779980",
+    "eu-south-1": "978288397137",
     "me-south-1": "801668240914",
     "sa-east-1": "737474898029",
     "us-east-1": "683313688378",
@@ -69,6 +74,7 @@ FRAMEWORK_REGISTRIES = {
 }
 
 
+@pytest.mark.parametrize("xgboost_framework_version", XGBOOST_FRAMEWORK_VERSIONS)
 def test_xgboost_framework(xgboost_framework_version):
     for region in regions.regions():
         uri = image_uris.retrieve(
@@ -85,7 +91,7 @@ def test_xgboost_framework(xgboost_framework_version):
         assert expected == uri
 
 
-@pytest.mark.parametrize("xgboost_algo_version", ("1", "latest"))
+@pytest.mark.parametrize("xgboost_algo_version", ALGO_VERSIONS)
 def test_xgboost_algo(xgboost_algo_version):
     for region in regions.regions():
         uri = image_uris.retrieve(framework="xgboost", region=region, version=xgboost_algo_version)
