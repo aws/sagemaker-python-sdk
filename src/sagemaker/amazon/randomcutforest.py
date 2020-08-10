@@ -25,7 +25,10 @@ from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
 
 class RandomCutForest(AmazonAlgorithmEstimatorBase):
-    """Placeholder docstring"""
+    """Amazon SageMaker Random Cut Forest (RCF) is an unsupervised algorithm for detecting
+    anomalous data points within a data set. These are observations which diverge from
+    otherwise well-structured or patterned data. Anomalies can manifest as unexpected
+    spikes in time series data, breaks in periodicity, or unclassifiable data points."""
 
     repo_name = "randomcutforest"
     repo_version = 1

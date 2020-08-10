@@ -25,7 +25,11 @@ from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
 
 class NTM(AmazonAlgorithmEstimatorBase):
-    """Placeholder docstring"""
+    """Amazon SageMaker NTM is an unsupervised learning algorithm that is used to
+    organize a corpus of documents into topics that contain word groupings based
+    on their statistical distribution. Documents that contain frequent occurrences
+    of words such as "bike", "car", "train", "mileage", and "speed" are likely to
+    share a topic on "transportation" for example."""
 
     repo_name = "ntm"
     repo_version = 1

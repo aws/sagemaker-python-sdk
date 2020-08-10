@@ -41,7 +41,11 @@ def _list_check_subset(valid_super_list):
 
 
 class Object2Vec(AmazonAlgorithmEstimatorBase):
-    """Placeholder docstring"""
+    """The Amazon SageMaker Object2Vec algorithm is a general-purpose neural embedding
+    algorithm that is highly customizable. It can learn low-dimensional dense embeddings
+    of high-dimensional objects. The embeddings are learned in a way that preserves the
+    semantics of the relationship between pairs of objects in the original space in the
+    embedding space."""
 
     repo_name = "object2vec"
     repo_version = 1

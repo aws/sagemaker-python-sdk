@@ -25,7 +25,8 @@ from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
 
 class PCA(AmazonAlgorithmEstimatorBase):
-    """Placeholder docstring"""
+    """PCA is an unsupervised machine learning algorithm that attempts to reduce the dimensionality
+    (number of features) within a dataset while still retaining as much information as possible."""
 
     repo_name = "pca"
     repo_version = 1
