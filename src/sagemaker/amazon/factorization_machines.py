@@ -25,9 +25,11 @@ from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
 
 class FactorizationMachines(AmazonAlgorithmEstimatorBase):
-    """A general-purpose supervised learning algorithm that can be used for both
-    classification and regression tasks. It is an extension of a linear model that
-    is designed to capture interactions between features within high dimensional
+    """A supervised learning algorithm used in classification and regression.
+
+    Factorization Machines combine the advantages of Support Vector Machines
+    with factorization models. It is an extension of a linear model that is
+    designed to capture interactions between features within high dimensional
     sparse datasets economically."""
 
     repo_name = "factorization-machines"

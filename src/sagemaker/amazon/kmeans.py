@@ -25,10 +25,11 @@ from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
 
 class KMeans(AmazonAlgorithmEstimatorBase):
-    """An unsupervised learning algorithm. It attempts to find discrete groupings within data,
-    where members of a group are as similar as possible to one another and as different as possible
-    from members of other groups. You define the attributes that you want the algorithm to use to
-    determine similarity. """
+    """An unsupervised learning algorithm that attempts to find discrete groupings within data.
+
+    As the result of KMeans, members of a group are as similar as possible to one another and as
+    different as possible from members of other groups. You define the attributes that you want
+    the algorithm to use to determine similarity. """
 
     repo_name = "kmeans"
     repo_version = 1

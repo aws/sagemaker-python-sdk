@@ -27,6 +27,7 @@ from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
 class IPInsights(AmazonAlgorithmEstimatorBase):
     """An unsupervised learning algorithm that learns the usage patterns for IPv4 addresses.
+
     It is designed to capture associations between IPv4 addresses and various entities, such
     as user IDs or account numbers."""
 
