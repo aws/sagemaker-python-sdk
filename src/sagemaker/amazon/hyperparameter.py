@@ -17,8 +17,9 @@ import json
 
 
 class Hyperparameter(object):
-    """An algorithm hyperparameter with optional validation. Implemented as a
-    python descriptor object.
+    """An algorithm hyperparameter with optional validation.
+
+    Implemented as a python descriptor object.
     """
 
     def __init__(self, name, validate=lambda _: True, validation_message="", data_type=str):
