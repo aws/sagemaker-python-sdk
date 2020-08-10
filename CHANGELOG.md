@@ -1,5 +1,16 @@
 # Changelog
 
+## v2.2.0 (2020-08-10)
+
+### Features
+
+ * new 1P algorithm accounts for af-south-1 and eu-south-1
+
+### Bug Fixes and Other Changes
+
+ * update debugger us-east-1 account
+ * docs: Add information on Amazon SageMaker Operators usage in China
+
 ## v2.1.0 (2020-08-06)
 
 ### Features
