@@ -25,7 +25,14 @@ from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
 
 class LinearLearner(AmazonAlgorithmEstimatorBase):
-    """Placeholder docstring"""
+    """A supervised learning algorithms used for solving classification or regression problems.
+
+    For input, you give the model labeled examples (x, y). x is a high-dimensional vector and
+    y is a numeric label. For binary classification problems, the label must be either 0 or 1.
+    For multiclass classification problems, the labels must be from 0 to num_classes - 1. For
+    regression problems, y is a real number. The algorithm learns a linear function, or, for
+    classification problems, a linear threshold function, and maps a vector x to an approximation
+    of the label y."""
 
     repo_name = "linear-learner"
     repo_version = 1
@@ -468,10 +475,19 @@ class LinearLearnerModel(Model):
     def __init__(self, model_data, role, sagemaker_session=None, **kwargs):
         """
         Args:
-            model_data:
-            role:
-            sagemaker_session:
-            **kwargs:
+            model_data (str): The S3 location of a SageMaker model data
+                ``.tar.gz`` file.
+            role (str): An AWS IAM role (either name or full ARN). The Amazon
+                SageMaker training jobs and APIs that create Amazon SageMaker
+                endpoints use this role to access training data and model
+                artifacts. After the endpoint is created, the inference code
+                might use the IAM role, if it needs to access an AWS resource.
+            sagemaker_session (sagemaker.session.Session): Session object which
+                manages interactions with Amazon SageMaker APIs and any other
+                AWS services needed. If not specified, the estimator creates one
+                using the default AWS configuration chain.
+            **kwargs: Keyword arguments passed to the ``FrameworkModel``
+                initializer.
         """
         sagemaker_session = sagemaker_session or Session()
         image_uri = image_uris.retrieve(

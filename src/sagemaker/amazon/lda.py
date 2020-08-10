@@ -25,7 +25,12 @@ from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
 
 class LDA(AmazonAlgorithmEstimatorBase):
-    """Placeholder docstring"""
+    """An unsupervised learning algorithm attempting to describe data as distinct categories.
+
+     LDA is most commonly used to discover a
+     user-specified number of topics shared by documents within a text corpus. Here each
+     observation is a document, the features are the presence (or occurrence count) of each
+     word, and the categories are the topics."""
 
     repo_name = "lda"
     repo_version = 1
@@ -209,10 +214,19 @@ class LDAModel(Model):
     def __init__(self, model_data, role, sagemaker_session=None, **kwargs):
         """
         Args:
-            model_data:
-            role:
-            sagemaker_session:
-            **kwargs:
+            model_data (str): The S3 location of a SageMaker model data
+                ``.tar.gz`` file.
+            role (str): An AWS IAM role (either name or full ARN). The Amazon
+                SageMaker training jobs and APIs that create Amazon SageMaker
+                endpoints use this role to access training data and model
+                artifacts. After the endpoint is created, the inference code
+                might use the IAM role, if it needs to access an AWS resource.
+            sagemaker_session (sagemaker.session.Session): Session object which
+                manages interactions with Amazon SageMaker APIs and any other
+                AWS services needed. If not specified, the estimator creates one
+                using the default AWS configuration chain.
+            **kwargs: Keyword arguments passed to the ``FrameworkModel``
+                initializer.
         """
         sagemaker_session = sagemaker_session or Session()
         image_uri = image_uris.retrieve(
