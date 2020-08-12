@@ -22,6 +22,7 @@ INFERENTIA_REGIONS = ("us-east-1", "us-west-2")
 NEO_ALGOS = ("image-classification-neo", "xgboost-neo")
 
 ACCOUNTS = {
+    "af-south-1": "774647643957",
     "ap-east-1": "110948597952",
     "ap-northeast-1": "941853720454",
     "ap-northeast-2": "151534178276",
@@ -33,6 +34,7 @@ ACCOUNTS = {
     "cn-northwest-1": "474822919863",
     "eu-central-1": "746233611703",
     "eu-north-1": "601324751636",
+    "eu-south-1": "966458181534",
     "eu-west-1": "802834080501",
     "eu-west-2": "205493899709",
     "eu-west-3": "254080097072",
