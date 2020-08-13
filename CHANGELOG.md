@@ -1,5 +1,15 @@
 # Changelog
 
+## v2.3.0 (2020-08-11)
+
+### Features
+
+ * support TF training 2.3
+
+### Documentation Changes
+
+ * update 1p estimators class description
+
 ## v2.2.0 (2020-08-10)
 
 ### Features
