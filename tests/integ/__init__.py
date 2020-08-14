@@ -113,9 +113,6 @@ NO_MARKET_PLACE_REGIONS = [
     "eu-south-1",
 ]
 NO_AUTO_ML_REGIONS = [
-    "sa-east-1",
-    "me-south-1",
-    "ap-east-1",
     "eu-west-3",
     "af-south-1",
     "eu-south-1",
