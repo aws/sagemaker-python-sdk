@@ -143,7 +143,7 @@ def test_auto_ml_invalid_target_attribute(sagemaker_session):
     inputs = sagemaker_session.upload_data(path=TRAINING_DATA, key_prefix=PREFIX + "/input")
     with pytest.raises(
         ClientError,
-        match="An error occurred (ValidationException) when calling the CreateAutoMLJob "
+        match="An error occurred \(ValidationException\) when calling the CreateAutoMLJob "
         "operation: Target attribute name y does not exist in header.",
     ):
         auto_ml.fit(inputs, job_name=job_name)
