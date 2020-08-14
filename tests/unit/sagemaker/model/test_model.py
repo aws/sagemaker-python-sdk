@@ -17,6 +17,7 @@ from mock import Mock, patch
 
 import sagemaker
 from sagemaker.model import Model
+from sagemaker.image_config import ImageConfig
 
 MODEL_DATA = "s3://bucket/model.tar.gz"
 MODEL_IMAGE = "mi"
@@ -26,6 +27,7 @@ MODEL_NAME = "{}-{}".format(MODEL_IMAGE, TIMESTAMP)
 INSTANCE_COUNT = 2
 INSTANCE_TYPE = "ml.c4.4xlarge"
 ROLE = "some-role"
+REPOSITORY_ACCESS_MODE = "Vpc"
 
 
 @pytest.fixture
@@ -49,6 +51,17 @@ def test_prepare_container_def_with_model_data_and_env():
 
     container_def = model.prepare_container_def(INSTANCE_TYPE, "ml.eia.medium")
     assert expected == container_def
+
+    container_def = model.prepare_container_def()
+    assert expected == container_def
+
+
+def test_prepare_container_def_with_image_config():
+    image_config = ImageConfig(repository_access_mode=REPOSITORY_ACCESS_MODE)
+    model = Model(MODEL_IMAGE, image_config=image_config)
+
+    expected_image_config_dict = {"RepositoryAccessMode": "Vpc"}
+    expected = {"Image": MODEL_IMAGE, "ImageConfig": expected_image_config_dict, "Environment": {}}
 
     container_def = model.prepare_container_def()
     assert expected == container_def
