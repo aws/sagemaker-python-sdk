@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """This module contains code to create and manage SageMaker ``ImageConfig``"""
+from __future__ import absolute_import
 
 
 class ImageConfig(object):
@@ -22,7 +23,8 @@ class ImageConfig(object):
         """Initialize an ``ImageConfig``.
 
         Args:
-            repository_access_mode (str): Set this to one of the following values (default: "Platform"):
+            repository_access_mode (str): Set this to one of the following
+                values (default: "Platform"):
                 * Platform: The model image is hosted in Amazon ECR.
                 * Vpc: The model image is hosted in a private Docker registry in your VPC.
         """
