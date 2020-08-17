@@ -210,7 +210,7 @@ def test_git_support_git_clone_fail(sagemaker_session):
             sagemaker_session=sagemaker_session, entry_point=entry_point, git_config=git_config
         )
         model.prepare_container_def(instance_type=INSTANCE_TYPE)
-    assert "returned non-zero exit status" in str(error)
+    assert "returned non-zero exit status" in str(error.value)
 
 
 @patch(
@@ -227,7 +227,7 @@ def test_git_support_branch_not_exist(git_clone_repo, sagemaker_session):
             sagemaker_session=sagemaker_session, entry_point=entry_point, git_config=git_config
         )
         model.prepare_container_def(instance_type=INSTANCE_TYPE)
-    assert "returned non-zero exit status" in str(error)
+    assert "returned non-zero exit status" in str(error.value)
 
 
 @patch(
@@ -244,7 +244,7 @@ def test_git_support_commit_not_exist(git_clone_repo, sagemaker_session):
             sagemaker_session=sagemaker_session, entry_point=entry_point, git_config=git_config
         )
         model.prepare_container_def(instance_type=INSTANCE_TYPE)
-    assert "returned non-zero exit status" in str(error)
+    assert "returned non-zero exit status" in str(error.value)
 
 
 @patch(
@@ -391,7 +391,7 @@ def test_git_support_ssh_passphrase_required(tar_and_upload_dir, git_clone_repo,
             sagemaker_session=sagemaker_session, entry_point=entry_point, git_config=git_config
         )
         model.prepare_container_def(instance_type=INSTANCE_TYPE)
-    assert "returned non-zero exit status" in str(error)
+    assert "returned non-zero exit status" in str(error.value)
 
 
 @patch(
@@ -460,4 +460,4 @@ def test_git_support_codecommit_ssh_passphrase_required(
             sagemaker_session=sagemaker_session, entry_point=entry_point, git_config=git_config
         )
         model.prepare_container_def(instance_type=INSTANCE_TYPE)
-    assert "returned non-zero exit status" in str(error)
+    assert "returned non-zero exit status" in str(error.value)
