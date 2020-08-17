@@ -943,7 +943,7 @@ def test_git_support_git_clone_fail(sagemaker_session):
     )
     with pytest.raises(subprocess.CalledProcessError) as error:
         fw.fit()
-    assert "returned non-zero exit status" in str(error)
+    assert "returned non-zero exit status" in str(error.value)
 
 
 @patch(
@@ -964,7 +964,7 @@ def test_git_support_branch_not_exist(sagemaker_session):
     )
     with pytest.raises(subprocess.CalledProcessError) as error:
         fw.fit()
-    assert "returned non-zero exit status" in str(error)
+    assert "returned non-zero exit status" in str(error.value)
 
 
 @patch(
@@ -985,7 +985,7 @@ def test_git_support_commit_not_exist(sagemaker_session):
     )
     with pytest.raises(subprocess.CalledProcessError) as error:
         fw.fit()
-    assert "returned non-zero exit status" in str(error)
+    assert "returned non-zero exit status" in str(error.value)
 
 
 @patch(
@@ -1151,7 +1151,7 @@ def test_git_support_ssh_passphrase_required(git_clone_repo, sagemaker_session):
     )
     with pytest.raises(subprocess.CalledProcessError) as error:
         fw.fit()
-    assert "returned non-zero exit status" in str(error)
+    assert "returned non-zero exit status" in str(error.value)
 
 
 @patch(

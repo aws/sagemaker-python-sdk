@@ -120,10 +120,10 @@ def test_multi_data_model_create_with_invalid_model_data_prefix():
         MultiDataModel(
             name=MODEL_NAME, model_data_prefix=invalid_model_data_prefix, image_uri=IMAGE, role=ROLE
         )
-    err_msg = 'ValueError: Expecting S3 model prefix beginning with "s3://". Received: "{}"'.format(
+    err_msg = 'Expecting S3 model prefix beginning with "s3://". Received: "{}"'.format(
         invalid_model_data_prefix
     )
-    assert err_msg in str(ex)
+    assert err_msg in str(ex.value)
 
 
 def test_multi_data_model_create_with_invalid_arguments(sagemaker_session, mxnet_model):
@@ -309,11 +309,9 @@ def test_add_model_with_invalid_model_uri(multi_data_model):
     with pytest.raises(ValueError) as ex:
         multi_data_model.add_model(INVALID_S3_URL)
 
-    assert 'ValueError: model_source must either be a valid local file path or s3 uri. Received: "{}"'.format(
+    assert 'model_source must either be a valid local file path or s3 uri. Received: "{}"'.format(
         INVALID_S3_URL
-    ) in str(
-        ex
-    )
+    ) in str(ex.value)
 
 
 def test_list_models(multi_data_model):
