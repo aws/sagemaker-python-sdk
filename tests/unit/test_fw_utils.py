@@ -456,13 +456,13 @@ def test_model_code_key_prefix_and_image_present(time):
 def test_model_code_key_prefix_with_prefix_present_and_others_none_fail():
     with pytest.raises(TypeError) as error:
         fw_utils.model_code_key_prefix("prefix", None, None)
-    assert "expected string" in str(error)
+    assert "expected string" in str(error.value)
 
 
 def test_model_code_key_prefix_with_all_none_fail():
     with pytest.raises(TypeError) as error:
         fw_utils.model_code_key_prefix(None, None, None)
-    assert "expected string" in str(error)
+    assert "expected string" in str(error.value)
 
 
 def test_region_supports_debugger_feature_returns_true_for_supported_regions():

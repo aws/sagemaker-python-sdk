@@ -286,7 +286,7 @@ def test_get_execution_role_throws_exception_if_arn_is_not_role():
 
     with pytest.raises(ValueError) as error:
         get_execution_role(session)
-    assert "ValueError: The current AWS identity is not a role" in str(error)
+    assert "The current AWS identity is not a role" in str(error.value)
 
 
 def test_get_execution_role_throws_exception_if_arn_is_not_role_with_role_in_name():
@@ -295,7 +295,7 @@ def test_get_execution_role_throws_exception_if_arn_is_not_role_with_role_in_nam
 
     with pytest.raises(ValueError) as error:
         get_execution_role(session)
-    assert "ValueError: The current AWS identity is not a role" in str(error)
+    assert "The current AWS identity is not a role" in str(error.value)
 
 
 @patch("six.moves.builtins.open", mock_open(read_data='{"ResourceName": "SageMakerInstance"}'))

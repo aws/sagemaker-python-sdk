@@ -222,7 +222,7 @@ def test_github_with_ssh_passphrase_not_configured(
 
     with pytest.raises(subprocess.CalledProcessError) as error:
         sklearn.fit({"train": train_input, "test": test_input})
-    assert "returned non-zero exit status" in str(error)
+    assert "returned non-zero exit status" in str(error.value)
 
 
 @pytest.mark.local_mode

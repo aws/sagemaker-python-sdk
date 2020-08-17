@@ -95,7 +95,7 @@ def test_git_clone_repo_clone_fail(mkdtemp, check_call):
     dependencies = ["foo", "bar"]
     with pytest.raises(subprocess.CalledProcessError) as error:
         git_utils.git_clone_repo(git_config, entry_point, source_dir, dependencies)
-    assert "returned non-zero exit status" in str(error)
+    assert "returned non-zero exit status" in str(error.value)
 
 
 @patch(
@@ -110,7 +110,7 @@ def test_git_clone_repo_branch_not_exist(mkdtemp, check_call):
     dependencies = ["foo", "bar"]
     with pytest.raises(subprocess.CalledProcessError) as error:
         git_utils.git_clone_repo(git_config, entry_point, source_dir, dependencies)
-    assert "returned non-zero exit status" in str(error)
+    assert "returned non-zero exit status" in str(error.value)
 
 
 @patch(
@@ -129,7 +129,7 @@ def test_git_clone_repo_commit_not_exist(mkdtemp, check_call):
     dependencies = ["foo", "bar"]
     with pytest.raises(subprocess.CalledProcessError) as error:
         git_utils.git_clone_repo(git_config, entry_point, source_dir, dependencies)
-    assert "returned non-zero exit status" in str(error)
+    assert "returned non-zero exit status" in str(error.value)
 
 
 @patch("subprocess.check_call")
@@ -358,7 +358,7 @@ def test_git_clone_repo_with_username_and_password_wrong_creds(mkdtemp, check_ca
     env["GIT_TERMINAL_PROMPT"] = "0"
     with pytest.raises(subprocess.CalledProcessError) as error:
         git_utils.git_clone_repo(git_config=git_config, entry_point=entry_point)
-    assert "returned non-zero exit status" in str(error)
+    assert "returned non-zero exit status" in str(error.value)
 
 
 @patch(
@@ -381,7 +381,7 @@ def test_git_clone_repo_with_token_wrong_creds(mkdtemp, check_call):
     env["GIT_TERMINAL_PROMPT"] = "0"
     with pytest.raises(subprocess.CalledProcessError) as error:
         git_utils.git_clone_repo(git_config=git_config, entry_point=entry_point)
-    assert "returned non-zero exit status" in str(error)
+    assert "returned non-zero exit status" in str(error.value)
 
 
 @patch(
@@ -404,7 +404,7 @@ def test_git_clone_repo_with_and_token_2fa_wrong_creds(mkdtemp, check_call):
     env["GIT_TERMINAL_PROMPT"] = "0"
     with pytest.raises(subprocess.CalledProcessError) as error:
         git_utils.git_clone_repo(git_config=git_config, entry_point=entry_point)
-    assert "returned non-zero exit status" in str(error)
+    assert "returned non-zero exit status" in str(error.value)
 
 
 @patch("subprocess.check_call")
@@ -448,7 +448,7 @@ def test_git_clone_repo_codecommit_ssh_passphrase_required(mkdtemp, check_call):
     entry_point = "entry_point"
     with pytest.raises(subprocess.CalledProcessError) as error:
         git_utils.git_clone_repo(git_config, entry_point)
-    assert "returned non-zero exit status" in str(error)
+    assert "returned non-zero exit status" in str(error.value)
 
 
 @patch(
@@ -463,4 +463,4 @@ def test_git_clone_repo_codecommit_https_creds_not_stored_locally(mkdtemp, check
     entry_point = "entry_point"
     with pytest.raises(subprocess.CalledProcessError) as error:
         git_utils.git_clone_repo(git_config, entry_point)
-    assert "returned non-zero exit status" in str(error)
+    assert "returned non-zero exit status" in str(error.value)

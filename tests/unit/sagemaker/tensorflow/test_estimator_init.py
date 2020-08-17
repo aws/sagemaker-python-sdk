@@ -138,4 +138,4 @@ def test_require_image_uri_if_fw_ver_is_less_than_1_11(
         "make sure to pass them directly as hyperparameters instead."
     ).format(version=tensorflow_training_version, region=REGION)
 
-    assert expected_msg in str(e)
+    assert expected_msg in str(e.value)
