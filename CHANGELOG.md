@@ -1,5 +1,18 @@
 # Changelog
 
+## v2.4.0 (2020-08-17)
+
+### Features
+
+ * Neo algorithm accounts for af-south-1 and eu-south-1
+
+### Bug Fixes and Other Changes
+
+ * upgrade pytest and other deps, tox clean-up
+ * upgrade airflow to 1.10.11
+ * update exception assertion with new api change
+ * docs: Add SerDe documentation
+
 ## v2.3.0 (2020-08-11)
 
 ### Features
