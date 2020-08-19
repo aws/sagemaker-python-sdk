@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.4.1 (2020-08-19)
+
+### Bug Fixes and Other Changes
+
+ * update rulesconfig to 0.1.5
+
 ## v2.4.0 (2020-08-17)
 
 ### Features
