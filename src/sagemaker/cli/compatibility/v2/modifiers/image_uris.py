@@ -112,8 +112,10 @@ class ImageURIRetrieveImportFromRenamer(Modifier):
         Returns:
             bool: If the import statement imports ``get_image_uri`` from the correct module.
         """
-        return node.module in GET_IMAGE_URI_NAMESPACES and any(
-            name.name == GET_IMAGE_URI_NAME for name in node.names
+        return (
+            node is not None
+            and node.module in GET_IMAGE_URI_NAMESPACES
+            and any(name.name == GET_IMAGE_URI_NAME for name in node.names)
         )
 
     def modify_node(self, node):
