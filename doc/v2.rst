@@ -25,7 +25,7 @@ Breaking Changes
 This section is for major changes that may require updates to your SageMaker Python SDK code.
 For the full list of changes, see the `CHANGELOG <https://github.com/aws/sagemaker-python-sdk/blob/master/CHANGELOG.md>`_.
 
-Deprecations
+Removals
 ============
 
 Python 2 Support
@@ -34,7 +34,7 @@ Python 2 Support
 This library is no longer supported for Python 2.
 Please upgrade to Python 3 if you haven't already.
 
-Deprecate Legacy TensorFlow
+Remove Legacy TensorFlow
 ---------------------------
 
 TensorFlow versions 1.4-1.10 and some variations of versions 1.11-1.12
@@ -48,14 +48,14 @@ For more information, see `Upgrade from Legacy TensorFlow Support <frameworks/te
 ``delete_endpoint()`` for Estimators and ``HyperparameterTuner``
 ----------------------------------------------------------------
 
-The ``delete_endpoint()`` method for estimators and ``HyperparameterTuner`` has been deprecated.
+The ``delete_endpoint()`` method for estimators and ``HyperparameterTuner`` has been removed.
 Please use :func:`sagemaker.predictor.Predictor.delete_endpoint` instead.
 
 Pre-instantiated Serializer and Deserializer Objects
 ----------------------------------------------------
 
 The ``csv_serializer``, ``json_serializer``, ``npy_serializer``, ``csv_deserializer``,
-``json_deserializer``, and ``numpy_deserializer`` objects have been deprecated.
+``json_deserializer``, and ``numpy_deserializer`` objects have been removed.
 
 Please instantiate the objects instead.
 
@@ -78,14 +78,14 @@ Please instantiate the objects instead.
 ``update_endpoint`` in ``deploy()``
 -----------------------------------
 
-The ``update_endpoint`` argument in ``deploy()`` methods for estimators and models has been deprecated.
+The ``update_endpoint`` argument in ``deploy()`` methods for estimators and models has been removed.
 Please use :func:`sagemaker.predictor.Predictor.update_endpoint` instead.
 
 ``serializer`` and ``deserializer`` in ``create_model()``
 ---------------------------------------------------------
 
 The ``serializer`` and ``deserializer`` arguments in
-:func:`sagemaker.estimator.Estimator.create_model` have been deprecated. Please
+:func:`sagemaker.estimator.Estimator.create_model` have been removed. Please
 specify serializers and deserializers in ``deploy()`` methods instead.
 
 ``content_type`` and ``accept`` in the Predictor Constructor
@@ -124,7 +124,7 @@ write MIME types as a string,
 Image URI Functions (e.g. ``get_image_uri``)
 --------------------------------------------
 
-The following functions have been deprecated in favor of :func:`sagemaker.image_uris.retrieve`:
+The following functions have been removed in favor of :func:`sagemaker.image_uris.retrieve`:
 
 - ``sagemaker.amazon_estimator.get_image_uri()``
 - ``sagemaker.fw_utils.create_image_uri()``
@@ -136,25 +136,25 @@ For more information about usage, see :func:`sagemaker.image_uris.retrieve`.
 SageMaker Python SDK CLI
 ------------------------
 
-The SageMaker Python SDK CLI has been deprecated.
+The SageMaker Python SDK CLI has been removed.
 (This is different from the AWS CLI.)
 
 ``enable_cloudwatch_metrics`` for Estimators and Models
 -------------------------------------------------------
 
-The parameter ``enable_cloudwatch_metrics`` has been deprecated.
+The parameter ``enable_cloudwatch_metrics`` has been removed.
 CloudWatch metrics are already emitted for all Training Jobs, etc.
 
 ``sagemaker.fw_utils.parse_s3_url``
 -----------------------------------
 
-The ``sagemaker.fw_utils.parse_s3_url`` function has been deprecated.
+The ``sagemaker.fw_utils.parse_s3_url`` function has been removed.
 Please use :func:`sagemaker.s3.parse_s3_url` instead.
 
 ``sagemaker.session.ModelContainer``
 ------------------------------------
 
-The class ``sagemaker.session.ModelContainer`` has been deprecated, as it is not needed for creating inference pipelines.
+The class ``sagemaker.session.ModelContainer`` has been removed, as it is not needed for creating inference pipelines.
 
 Changes in Default Behavior
 ===========================
@@ -310,7 +310,7 @@ TensorFlow Serving Model
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
 ``sagemaker.tensorflow.serving.Model`` has been renamed to :class:`sagemaker.tensorflow.model.TensorFlowModel`.
-(For the previous implementation of that class, see `Deprecate Legacy TensorFlow <#deprecate-legacy-tensorflow>`_).
+(For the previous implementation of that class, see `Remove Legacy TensorFlow <#remove-legacy-tensorflow>`_).
 
 Predictors
 ----------
@@ -331,7 +331,7 @@ TensorFlow Serving Predictor
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ``sagemaker.tensorflow.serving.Predictor`` has been renamed to :class:`sagemaker.tensorflow.model.TensorFlowPredictor`.
-(For the previous implementation of that class, see `Deprecate Legacy TensorFlow <#deprecate-legacy-tensorflow>`_).
+(For the previous implementation of that class, see `Remove Legacy TensorFlow <#remove-legacy-tensorflow>`_).
 
 
 Inputs
