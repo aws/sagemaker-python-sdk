@@ -1,5 +1,15 @@
 # Changelog
 
+## v2.4.2 (2020-08-24)
+
+### Bug Fixes and Other Changes
+
+ * check ast node on later renamers for cli v2 updater
+
+### Documentation Changes
+
+ * Clarify removals in v2
+
 ## v2.4.1 (2020-08-19)
 
 ### Bug Fixes and Other Changes
