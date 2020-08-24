@@ -511,7 +511,133 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Returns:
             str: ARN of the training job, if it is created.
         """
+        train_request = self._get_train_request(
+            input_mode=input_mode,
+            input_config=input_config,
+            role=role,
+            job_name=job_name,
+            output_config=output_config,
+            resource_config=resource_config,
+            vpc_config=vpc_config,
+            hyperparameters=hyperparameters,
+            stop_condition=stop_condition,
+            tags=tags,
+            metric_definitions=metric_definitions,
+            enable_network_isolation=enable_network_isolation,
+            image_uri=image_uri,
+            algorithm_arn=algorithm_arn,
+            encrypt_inter_container_traffic=encrypt_inter_container_traffic,
+            use_spot_instances=use_spot_instances,
+            checkpoint_s3_uri=checkpoint_s3_uri,
+            checkpoint_local_path=checkpoint_local_path,
+            experiment_config=experiment_config,
+            debugger_rule_configs=debugger_rule_configs,
+            debugger_hook_config=debugger_hook_config,
+            tensorboard_output_config=tensorboard_output_config,
+            enable_sagemaker_metrics=enable_sagemaker_metrics,
+        )
+        LOGGER.info("Creating training-job with name: %s", job_name)
+        LOGGER.debug("train request: %s", json.dumps(train_request, indent=4))
+        self.sagemaker_client.create_training_job(**train_request)
 
+    def _get_train_request(  # noqa: C901
+        self,
+        input_mode,
+        input_config,
+        role,
+        job_name,
+        output_config,
+        resource_config,
+        vpc_config,
+        hyperparameters,
+        stop_condition,
+        tags,
+        metric_definitions,
+        enable_network_isolation=False,
+        image_uri=None,
+        algorithm_arn=None,
+        encrypt_inter_container_traffic=False,
+        use_spot_instances=False,
+        checkpoint_s3_uri=None,
+        checkpoint_local_path=None,
+        experiment_config=None,
+        debugger_rule_configs=None,
+        debugger_hook_config=None,
+        tensorboard_output_config=None,
+        enable_sagemaker_metrics=None,
+    ):
+        """Constructs a request compatible for creating an Amazon SageMaker training job.
+
+        Args:
+            input_mode (str): The input mode that the algorithm supports. Valid modes:
+                * 'File' - Amazon SageMaker copies the training dataset from the S3 location to
+                a directory in the Docker container.
+                * 'Pipe' - Amazon SageMaker streams data directly from S3 to the container via a
+                Unix-named pipe.
+
+            input_config (list): A list of Channel objects. Each channel is a named input source.
+                Please refer to the format details described:
+                https://botocore.readthedocs.io/en/latest/reference/services/sagemaker.html#SageMaker.Client.create_training_job
+            role (str): An AWS IAM role (either name or full ARN). The Amazon SageMaker training
+                jobs and APIs that create Amazon SageMaker endpoints use this role to access
+                training data and model artifacts. You must grant sufficient permissions to this
+                role.
+            job_name (str): Name of the training job being created.
+            output_config (dict): The S3 URI where you want to store the training results and
+                optional KMS key ID.
+            resource_config (dict): Contains values for ResourceConfig:
+                * instance_count (int): Number of EC2 instances to use for training.
+                The key in resource_config is 'InstanceCount'.
+                * instance_type (str): Type of EC2 instance to use for training, for example,
+                'ml.c4.xlarge'. The key in resource_config is 'InstanceType'.
+
+            vpc_config (dict): Contains values for VpcConfig:
+                * subnets (list[str]): List of subnet ids.
+                The key in vpc_config is 'Subnets'.
+                * security_group_ids (list[str]): List of security group ids.
+                The key in vpc_config is 'SecurityGroupIds'.
+
+            hyperparameters (dict): Hyperparameters for model training. The hyperparameters are
+                made accessible as a dict[str, str] to the training code on SageMaker. For
+                convenience, this accepts other types for keys and values, but ``str()`` will be
+                called to convert them before training.
+            stop_condition (dict): Defines when training shall finish. Contains entries that can
+                be understood by the service like ``MaxRuntimeInSeconds``.
+            tags (list[dict]): List of tags for labeling a training job. For more, see
+                https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
+            metric_definitions (list[dict]): A list of dictionaries that defines the metric(s)
+                used to evaluate the training jobs. Each dictionary contains two keys: 'Name' for
+                the name of the metric, and 'Regex' for the regular expression used to extract the
+                metric from the logs.
+            enable_network_isolation (bool): Whether to request for the training job to run with
+                network isolation or not.
+            image_uri (str): Docker image containing training code.
+            algorithm_arn (str): Algorithm Arn from Marketplace.
+            encrypt_inter_container_traffic (bool): Specifies whether traffic between training
+                containers is encrypted for the training job (default: ``False``).
+            use_spot_instances (bool): whether to use spot instances for training.
+            checkpoint_s3_uri (str): The S3 URI in which to persist checkpoints
+                that the algorithm persists (if any) during training. (default:
+                ``None``).
+            checkpoint_local_path (str): The local path that the algorithm
+                writes its checkpoints to. SageMaker will persist all files
+                under this path to `checkpoint_s3_uri` continually during
+                training. On job startup the reverse happens - data from the
+                s3 location is downloaded to this path before the algorithm is
+                started. If the path is unset then SageMaker assumes the
+                checkpoints will be provided under `/opt/ml/checkpoints/`.
+                (default: ``None``).
+            experiment_config (dict): Experiment management configuration. Dictionary contains
+                three optional keys, 'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+                (default: ``None``)
+            enable_sagemaker_metrics (bool): enable SageMaker Metrics Time
+                Series. For more information see:
+                https://docs.aws.amazon.com/sagemaker/latest/dg/API_AlgorithmSpecification.html#SageMaker-Type-AlgorithmSpecification-EnableSageMakerMetricsTimeSeries
+                (default: ``None``).
+
+        Returns:
+            Dict: a training request dictionary
+        """
         train_request = {
             "AlgorithmSpecification": {"TrainingInputMode": input_mode},
             "OutputDataConfig": output_config,
@@ -583,9 +709,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if tensorboard_output_config is not None:
             train_request["TensorBoardOutputConfig"] = tensorboard_output_config
 
-        LOGGER.info("Creating training-job with name: %s", job_name)
-        LOGGER.debug("train request: %s", json.dumps(train_request, indent=4))
-        self.sagemaker_client.create_training_job(**train_request)
+        return train_request
 
     def process(
         self,
