@@ -636,7 +636,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 (default: ``None``).
 
         Returns:
-            Dict: a training request dictionary
+            Dict: a training request dict
         """
         train_request = {
             "AlgorithmSpecification": {"TrainingInputMode": input_mode},
@@ -756,6 +756,71 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 three optional keys, 'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
                 (default: ``None``)
         """
+        process_request = self._get_process_request(
+            inputs=inputs,
+            output_config=output_config,
+            job_name=job_name,
+            resources=resources,
+            stopping_condition=stopping_condition,
+            app_specification=app_specification,
+            environment=environment,
+            network_config=network_config,
+            role_arn=role_arn,
+            tags=tags,
+            experiment_config=experiment_config,
+        )
+        LOGGER.info("Creating processing-job with name %s", job_name)
+        LOGGER.debug("process request: %s", json.dumps(process_request, indent=4))
+        self.sagemaker_client.create_processing_job(**process_request)
+
+    def _get_process_request(
+        self,
+        inputs,
+        output_config,
+        job_name,
+        resources,
+        stopping_condition,
+        app_specification,
+        environment,
+        network_config,
+        role_arn,
+        tags,
+        experiment_config=None,
+    ):
+        """Constructs a request compatible for an Amazon SageMaker processing job.
+
+        Args:
+            inputs ([dict]): List of up to 10 ProcessingInput dictionaries.
+            output_config (dict): A config dictionary, which contains a list of up
+                to 10 ProcessingOutput dictionaries, as well as an optional KMS key ID.
+            job_name (str): The name of the processing job. The name must be unique
+                within an AWS Region in an AWS account. Names should have minimum
+                length of 1 and maximum length of 63 characters.
+            resources (dict): Encapsulates the resources, including ML instances
+                and storage, to use for the processing job.
+            stopping_condition (dict[str,int]): Specifies a limit to how long
+                the processing job can run, in seconds.
+            app_specification (dict[str,str]): Configures the processing job to
+                run the given image. Details are in the processing container
+                specification.
+            environment (dict): Environment variables to start the processing
+                container with.
+            network_config (dict): Specifies networking options, such as network
+                traffic encryption between processing containers, whether to allow
+                inbound and outbound network calls to and from processing containers,
+                and VPC subnets and security groups to use for VPC-enabled processing
+                jobs.
+            role_arn (str): The Amazon Resource Name (ARN) of an IAM role that
+                Amazon SageMaker can assume to perform tasks on your behalf.
+            tags ([dict[str,str]]): A list of dictionaries containing key-value
+                pairs.
+            experiment_config (dict): Experiment management configuration. Dictionary contains
+                three optional keys, 'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+                (default: ``None``)
+
+        Returns:
+            Dict: a processing job request dict
+        """
         process_request = {
             "ProcessingJobName": job_name,
             "ProcessingResources": resources,
@@ -784,9 +849,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if experiment_config:
             process_request["ExperimentConfig"] = experiment_config
 
-        LOGGER.info("Creating processing-job with name %s", job_name)
-        LOGGER.debug("process request: %s", json.dumps(process_request, indent=4))
-        self.sagemaker_client.create_processing_job(**process_request)
+        return process_request
 
     def create_monitoring_schedule(
         self,
