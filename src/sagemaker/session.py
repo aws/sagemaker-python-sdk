@@ -3030,7 +3030,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             lambda: self.sagemaker_client.describe_model(ModelName=name)
         ):
             primary_container = container_def(
-                image_uri=image_uri, model_data_url=model_s3_location, env=model_environment_vars,
+                image_uri=image_uri,
+                model_data_url=model_s3_location,
+                env=model_environment_vars,
             )
             self.create_model(
                 name=name, role=role, container_defs=primary_container, vpc_config=model_vpc_config
@@ -3441,9 +3443,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 print()
 
 
-def container_def(
-    image_uri, model_data_url=None, env=None, container_mode=None, image_config_dict=None
-):
+def container_def(image_uri, model_data_url=None, env=None, container_mode=None, image_config=None):
     """Create a definition for executing a container as part of a SageMaker model.
 
     Args:
@@ -3455,7 +3455,7 @@ def container_def(
                 * MultiModel: Indicates that model container can support hosting multiple models
                 * SingleModel: Indicates that model container can support hosting a single model
                 This is the default model container mode when container_mode = None
-        image_config_dict (dict): Specifies whether the image of model container is pulled from ECR,
+        image_config (dict): Specifies whether the image of model container is pulled from ECR,
             or private registry in your VPC. By default it is set to pull model container image
             from ECR. (default: None).
     Returns:
@@ -3469,8 +3469,8 @@ def container_def(
         c_def["ModelDataUrl"] = model_data_url
     if container_mode:
         c_def["Mode"] = container_mode
-    if image_config_dict:
-        c_def["ImageConfig"] = image_config_dict
+    if image_config:
+        c_def["ImageConfig"] = image_config
     return c_def
 
 

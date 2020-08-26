@@ -448,8 +448,7 @@ class file_input(object):
     """Amazon SageMaker channel configuration for FILE data sources, used in local mode."""
 
     def __init__(self, fileUri, content_type=None):
-        """Create a definition for input data used by an SageMaker training job in local mode.
-        """
+        """Create a definition for input data used by an SageMaker training job in local mode."""
         self.config = {
             "DataSource": {
                 "FileDataSource": {

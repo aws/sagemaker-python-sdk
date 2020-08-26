@@ -81,7 +81,7 @@ class Model(object):
                 or from the model container.
             model_kms_key (str): KMS key ARN used to encrypt the repacked
                 model archive file if the model is repacked
-            image_config (sagemaker.ImageConfig): Specifies whether the image of
+            image_config (dict[str, object]): Specifies whether the image of
                 model container is pulled from ECR, or private registry in your
                 VPC. By default it is set to pull model container image from
                 ECR. (default: None).
@@ -133,12 +133,8 @@ class Model(object):
         Returns:
             dict: A container definition object usable with the CreateModel API.
         """
-        image_config_dict = None
-        if self.image_config:
-            image_config_dict = self.image_config._to_request_dict()
-
         return sagemaker.container_def(
-            self.image_uri, self.model_data, self.env, image_config_dict=image_config_dict
+            self.image_uri, self.model_data, self.env, image_config=self.image_config
         )
 
     def enable_network_isolation(self):

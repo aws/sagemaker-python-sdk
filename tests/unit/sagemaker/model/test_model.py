@@ -17,7 +17,6 @@ from mock import Mock, patch
 
 import sagemaker
 from sagemaker.model import Model
-from sagemaker.image_config import ImageConfig
 
 MODEL_DATA = "s3://bucket/model.tar.gz"
 MODEL_IMAGE = "mi"
@@ -27,7 +26,6 @@ MODEL_NAME = "{}-{}".format(MODEL_IMAGE, TIMESTAMP)
 INSTANCE_COUNT = 2
 INSTANCE_TYPE = "ml.c4.4xlarge"
 ROLE = "some-role"
-REPOSITORY_ACCESS_MODE = "Vpc"
 
 
 @pytest.fixture
@@ -57,11 +55,14 @@ def test_prepare_container_def_with_model_data_and_env():
 
 
 def test_prepare_container_def_with_image_config():
-    image_config = ImageConfig(repository_access_mode=REPOSITORY_ACCESS_MODE)
+    image_config = {"RepositoryAccessMode": "Vpc"}
     model = Model(MODEL_IMAGE, image_config=image_config)
 
-    expected_image_config_dict = {"RepositoryAccessMode": "Vpc"}
-    expected = {"Image": MODEL_IMAGE, "ImageConfig": expected_image_config_dict, "Environment": {}}
+    expected = {
+        "Image": MODEL_IMAGE,
+        "ImageConfig": {"RepositoryAccessMode": "Vpc"},
+        "Environment": {},
+    }
 
     container_def = model.prepare_container_def()
     assert expected == container_def
@@ -166,14 +167,23 @@ def test_create_sagemaker_model_generates_model_name(
     container_def = {"Image": MODEL_IMAGE, "Environment": {}, "ModelDataUrl": MODEL_DATA}
     prepare_container_def.return_value = container_def
 
-    model = Model(MODEL_IMAGE, MODEL_DATA, sagemaker_session=sagemaker_session,)
+    model = Model(
+        MODEL_IMAGE,
+        MODEL_DATA,
+        sagemaker_session=sagemaker_session,
+    )
     model._create_sagemaker_model(INSTANCE_TYPE)
 
     base_name_from_image.assert_called_with(MODEL_IMAGE)
     name_from_base.assert_called_with(base_name_from_image.return_value)
 
     sagemaker_session.create_model.assert_called_with(
-        MODEL_NAME, None, container_def, vpc_config=None, enable_network_isolation=False, tags=None,
+        MODEL_NAME,
+        None,
+        container_def,
+        vpc_config=None,
+        enable_network_isolation=False,
+        tags=None,
     )
 
 
@@ -186,7 +196,11 @@ def test_create_sagemaker_model_generates_model_name_each_time(
     container_def = {"Image": MODEL_IMAGE, "Environment": {}, "ModelDataUrl": MODEL_DATA}
     prepare_container_def.return_value = container_def
 
-    model = Model(MODEL_IMAGE, MODEL_DATA, sagemaker_session=sagemaker_session,)
+    model = Model(
+        MODEL_IMAGE,
+        MODEL_DATA,
+        sagemaker_session=sagemaker_session,
+    )
     model._create_sagemaker_model(INSTANCE_TYPE)
     model._create_sagemaker_model(INSTANCE_TYPE)
 

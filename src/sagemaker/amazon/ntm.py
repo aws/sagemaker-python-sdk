@@ -259,7 +259,9 @@ class NTMModel(Model):
         """
         sagemaker_session = sagemaker_session or Session()
         image_uri = image_uris.retrieve(
-            NTM.repo_name, sagemaker_session.boto_region_name, version=NTM.repo_version,
+            NTM.repo_name,
+            sagemaker_session.boto_region_name,
+            version=NTM.repo_version,
         )
         super(NTMModel, self).__init__(
             image_uri,

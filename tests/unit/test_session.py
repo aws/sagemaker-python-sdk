@@ -1710,7 +1710,10 @@ def test_create_model_from_job_with_container_def(sagemaker_session):
     ims = sagemaker_session
     ims.sagemaker_client.describe_training_job.return_value = COMPLETED_DESCRIBE_JOB_RESULT
     ims.create_model_from_job(
-        JOB_NAME, image_uri="some-image", model_data_url="some-data", env={"a": "b"},
+        JOB_NAME,
+        image_uri="some-image",
+        model_data_url="some-data",
+        env={"a": "b"},
     )
     [create_model_call] = ims.sagemaker_client.create_model.call_args_list
     c_def = create_model_call[1]["PrimaryContainer"]

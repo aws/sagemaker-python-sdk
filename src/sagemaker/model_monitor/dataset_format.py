@@ -18,8 +18,7 @@ from __future__ import print_function, absolute_import
 
 
 class DatasetFormat(object):
-    """Represents a Dataset Format that is used when calling a DefaultModelMonitor.
-    """
+    """Represents a Dataset Format that is used when calling a DefaultModelMonitor."""
 
     @staticmethod
     def csv(header=True, output_columns_position="START"):

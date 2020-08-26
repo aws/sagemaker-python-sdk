@@ -240,7 +240,9 @@ class PCAModel(Model):
         """
         sagemaker_session = sagemaker_session or Session()
         image_uri = image_uris.retrieve(
-            PCA.repo_name, sagemaker_session.boto_region_name, version=PCA.repo_version,
+            PCA.repo_name,
+            sagemaker_session.boto_region_name,
+            version=PCA.repo_version,
         )
         super(PCAModel, self).__init__(
             image_uri,

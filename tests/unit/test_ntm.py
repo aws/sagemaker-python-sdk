@@ -65,7 +65,13 @@ def sagemaker_session():
 
 
 def test_init_required_positional(sagemaker_session):
-    ntm = NTM(ROLE, INSTANCE_COUNT, INSTANCE_TYPE, NUM_TOPICS, sagemaker_session=sagemaker_session,)
+    ntm = NTM(
+        ROLE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        NUM_TOPICS,
+        sagemaker_session=sagemaker_session,
+    )
     assert ntm.role == ROLE
     assert ntm.instance_count == INSTANCE_COUNT
     assert ntm.instance_type == INSTANCE_TYPE
