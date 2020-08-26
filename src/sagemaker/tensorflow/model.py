@@ -58,7 +58,10 @@ class TensorFlowPredictor(Predictor):
                 version of the model will be used.
         """
         super(TensorFlowPredictor, self).__init__(
-            endpoint_name, sagemaker_session, serializer, deserializer,
+            endpoint_name,
+            sagemaker_session,
+            serializer,
+            deserializer,
         )
 
         attributes = []

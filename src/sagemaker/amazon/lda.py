@@ -27,10 +27,10 @@ from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 class LDA(AmazonAlgorithmEstimatorBase):
     """An unsupervised learning algorithm attempting to describe data as distinct categories.
 
-     LDA is most commonly used to discover a
-     user-specified number of topics shared by documents within a text corpus. Here each
-     observation is a document, the features are the presence (or occurrence count) of each
-     word, and the categories are the topics."""
+    LDA is most commonly used to discover a
+    user-specified number of topics shared by documents within a text corpus. Here each
+    observation is a document, the features are the presence (or occurrence count) of each
+    word, and the categories are the topics."""
 
     repo_name = "lda"
     repo_version = 1
@@ -230,7 +230,9 @@ class LDAModel(Model):
         """
         sagemaker_session = sagemaker_session or Session()
         image_uri = image_uris.retrieve(
-            LDA.repo_name, sagemaker_session.boto_region_name, version=LDA.repo_version,
+            LDA.repo_name,
+            sagemaker_session.boto_region_name,
+            version=LDA.repo_version,
         )
         super(LDAModel, self).__init__(
             image_uri,

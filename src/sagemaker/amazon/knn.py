@@ -246,7 +246,9 @@ class KNNModel(Model):
         """
         sagemaker_session = sagemaker_session or Session()
         image_uri = image_uris.retrieve(
-            KNN.repo_name, sagemaker_session.boto_region_name, version=KNN.repo_version,
+            KNN.repo_name,
+            sagemaker_session.boto_region_name,
+            version=KNN.repo_version,
         )
         super(KNNModel, self).__init__(
             image_uri,

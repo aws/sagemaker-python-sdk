@@ -410,7 +410,11 @@ def test_model_image_accelerator(sagemaker_session):
 
 def test_model_prepare_container_def_no_instance_type_or_image():
     model = PyTorchModel(
-        MODEL_DATA, role=ROLE, entry_point=SCRIPT_PATH, framework_version="1.3.1", py_version="py3",
+        MODEL_DATA,
+        role=ROLE,
+        entry_point=SCRIPT_PATH,
+        framework_version="1.3.1",
+        py_version="py3",
     )
 
     with pytest.raises(ValueError) as e:

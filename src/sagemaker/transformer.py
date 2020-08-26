@@ -262,8 +262,7 @@ class Transformer(object):
         self.latest_transform_job.wait(logs=logs)
 
     def stop_transform_job(self, wait=True):
-        """Stop latest running batch transform job.
-        """
+        """Stop latest running batch transform job."""
         self._ensure_last_transform_job()
         self.latest_transform_job.stop()
         if wait:
