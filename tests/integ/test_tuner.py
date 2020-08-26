@@ -213,7 +213,7 @@ def test_tuning_kmeans_identical_dataset_algorithm_tuner(
     sagemaker_session, kmeans_train_set, kmeans_estimator, hyperparameter_ranges
 ):
     """Tests Identical dataset and algorithm use case with one parent and child job launched with
-        .identical_dataset_and_algorithm_tuner() """
+    .identical_dataset_and_algorithm_tuner()"""
 
     parent_tuning_job_name = unique_name_from_base("km-iden1-parent", max_length=32)
     child_tuning_job_name = unique_name_from_base("km-iden1-child", max_length=32)
@@ -249,7 +249,7 @@ def test_create_tuning_kmeans_identical_dataset_algorithm_tuner(
     sagemaker_session, kmeans_train_set, kmeans_estimator, hyperparameter_ranges
 ):
     """Tests Identical dataset and algorithm use case with one parent and child job launched with
-        .create_identical_dataset_and_algorithm_tuner() """
+    .create_identical_dataset_and_algorithm_tuner()"""
 
     parent_tuning_job_name = unique_name_from_base("km-iden2-parent", max_length=32)
     child_tuning_job_name = unique_name_from_base("km-iden2-child", max_length=32)
@@ -290,7 +290,7 @@ def test_transfer_learning_tuner(
     sagemaker_session, kmeans_train_set, kmeans_estimator, hyperparameter_ranges
 ):
     """Tests Transfer learning use case with one parent and child job launched with
-        .transfer_learning_tuner() """
+    .transfer_learning_tuner()"""
 
     parent_tuning_job_name = unique_name_from_base("km-tran1-parent", max_length=32)
     child_tuning_job_name = unique_name_from_base("km-tran1-child", max_length=32)
@@ -328,7 +328,7 @@ def test_create_transfer_learning_tuner(
     sagemaker_session, kmeans_train_set, kmeans_estimator, hyperparameter_ranges
 ):
     """Tests Transfer learning use case with two parents and child job launched with
-        create_transfer_learning_tuner() """
+    create_transfer_learning_tuner()"""
     parent_tuning_job_name_1 = unique_name_from_base("km-tran2-parent1", max_length=32)
     parent_tuning_job_name_2 = unique_name_from_base("km-tran2-parent2", max_length=32)
     child_tuning_job_name = unique_name_from_base("km-tran2-child", max_length=32)

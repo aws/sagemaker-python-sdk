@@ -161,9 +161,9 @@ class CategoricalParameter(ParameterRange):
 
 class IntegerParameter(ParameterRange):
     """A class for representing hyperparameters that have an integer range of possible values.
-        Args:
-            min_value (int): The minimum value for the range.
-            max_value (int): The maximum value for the range.
+    Args:
+        min_value (int): The minimum value for the range.
+        max_value (int): The maximum value for the range.
     """
 
     __name__ = "Integer"

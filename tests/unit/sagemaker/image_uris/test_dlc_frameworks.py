@@ -170,7 +170,12 @@ def _expected_tf_inference_uri(tf_inference_version, processor="cpu", region=REG
 
     account = _sagemaker_or_dlc_account(repo, region)
     return expected_uris.framework_uri(
-        repo, tf_inference_version, account, py_version, processor=processor, region=region,
+        repo,
+        tf_inference_version,
+        account,
+        py_version,
+        processor=processor,
+        region=region,
     )
 
 

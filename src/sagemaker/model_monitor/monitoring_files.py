@@ -29,8 +29,7 @@ NO_SUCH_KEY_CODE = "NoSuchKey"
 
 
 class ModelMonitoringFile(object):
-    """Represents a file with a body and an S3 uri.
-    """
+    """Represents a file with a body and an S3 uri."""
 
     def __init__(self, body_dict, file_s3_uri, kms_key, sagemaker_session):
         """Initializes a file with a body and an S3 uri.
@@ -76,8 +75,7 @@ class ModelMonitoringFile(object):
 
 
 class Statistics(ModelMonitoringFile):
-    """Represents the statistics JSON file used in Amazon SageMaker Model Monitoring.
-    """
+    """Represents the statistics JSON file used in Amazon SageMaker Model Monitoring."""
 
     def __init__(self, body_dict, statistics_file_s3_uri, kms_key=None, sagemaker_session=None):
         """Initializes the Statistics object used in Amazon SageMaker Model Monitoring.
@@ -202,8 +200,7 @@ class Statistics(ModelMonitoringFile):
 
 
 class Constraints(ModelMonitoringFile):
-    """Represents the constraints JSON file used in Amazon SageMaker Model Monitoring.
-    """
+    """Represents the constraints JSON file used in Amazon SageMaker Model Monitoring."""
 
     def __init__(self, body_dict, constraints_file_s3_uri, kms_key=None, sagemaker_session=None):
         """Initializes the Constraints object used in Amazon SageMaker Model Monitoring.
@@ -354,8 +351,7 @@ class Constraints(ModelMonitoringFile):
 
 
 class ConstraintViolations(ModelMonitoringFile):
-    """Represents the constraint violations JSON file used in Amazon SageMaker Model Monitoring.
-    """
+    """Represents the constraint violations JSON file used in Amazon SageMaker Model Monitoring."""
 
     def __init__(
         self, body_dict, constraint_violations_file_s3_uri, kms_key=None, sagemaker_session=None

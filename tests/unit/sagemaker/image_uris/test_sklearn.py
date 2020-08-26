@@ -81,7 +81,10 @@ def test_py2_error(sklearn_version):
 def test_gpu_error(sklearn_version):
     with pytest.raises(ValueError) as e:
         image_uris.retrieve(
-            "sklearn", region="us-west-2", version=sklearn_version, instance_type="ml.p2.xlarge",
+            "sklearn",
+            region="us-west-2",
+            version=sklearn_version,
+            instance_type="ml.p2.xlarge",
         )
 
     assert "Unsupported processor: gpu." in str(e.value)

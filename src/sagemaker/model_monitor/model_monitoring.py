@@ -566,8 +566,7 @@ class ModelMonitor(object):
         return latest_monitoring_execution.constraint_violations(file_name=file_name)
 
     def describe_latest_baselining_job(self):
-        """Describe the latest baselining job kicked off by the suggest workflow.
-        """
+        """Describe the latest baselining job kicked off by the suggest workflow."""
         if self.latest_baselining_job is None:
             raise ValueError("No suggestion jobs were kicked off.")
         return self.latest_baselining_job.describe()

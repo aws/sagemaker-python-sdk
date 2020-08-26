@@ -416,8 +416,7 @@ class TrainingJobAnalytics(AnalyticsMetricsBase):
 
 
 class ExperimentAnalytics(AnalyticsMetricsBase):
-    """Fetch trial component data and make them accessible for analytics.
-    """
+    """Fetch trial component data and make them accessible for analytics."""
 
     MAX_TRIAL_COMPONENTS = 10000
 
@@ -477,16 +476,14 @@ class ExperimentAnalytics(AnalyticsMetricsBase):
 
     @property
     def name(self):
-        """Name of the Experiment being analyzed
-        """
+        """Name of the Experiment being analyzed"""
         return self._experiment_name
 
     def __repr__(self):
         return "<sagemaker.ExperimentAnalytics for %s>" % self.name
 
     def clear_cache(self):
-        """Clear the object of all local caches of API methods.
-        """
+        """Clear the object of all local caches of API methods."""
         super(ExperimentAnalytics, self).clear_cache()
         self._trial_components = None
 
@@ -570,13 +567,13 @@ class ExperimentAnalytics(AnalyticsMetricsBase):
 
     def _fetch_dataframe(self):
         """Return a pandas dataframe with all the trial_components,
-            along with their parameters and metrics.
+        along with their parameters and metrics.
         """
         df = pd.DataFrame([self._reshape(component) for component in self._get_trial_components()])
         return df
 
     def _get_trial_components(self, force_refresh=False):
-        """ Get all trial components matching the given search query expression.
+        """Get all trial components matching the given search query expression.
 
         Args:
             force_refresh (bool): Set to True to fetch the latest data from SageMaker API.
