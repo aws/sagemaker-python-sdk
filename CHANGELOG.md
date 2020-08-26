@@ -1,5 +1,32 @@
 # Changelog
 
+## v2.5.0 (2020-08-25)
+
+### Features
+
+ * add mypy tox target
+
+### Bug Fixes and Other Changes
+
+ * break out methods to get processing arguments
+ * break out methods to get train arguments
+
+## v2.4.2 (2020-08-24)
+
+### Bug Fixes and Other Changes
+
+ * check ast node on later renamers for cli v2 updater
+
+### Documentation Changes
+
+ * Clarify removals in v2
+
+## v2.4.1 (2020-08-19)
+
+### Bug Fixes and Other Changes
+
+ * update rulesconfig to 0.1.5
+
 ## v2.4.0 (2020-08-17)
 
 ### Features
