@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.5.1 (2020-08-27)
+
+### Bug Fixes and Other Changes
+
+ * formatting changes from updates to black
+
 ## v2.5.0 (2020-08-25)
 
 ### Features
