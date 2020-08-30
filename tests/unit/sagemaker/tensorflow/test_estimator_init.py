@@ -39,18 +39,18 @@ def _build_tf(sagemaker_session, **kwargs):
 
 @patch("sagemaker.fw_utils.python_deprecation_warning")
 def test_estimator_py2_deprecation_warning(warning, sagemaker_session):
-    estimator = _build_tf(sagemaker_session, framework_version="2.1.0", py_version="py2")
+    estimator = _build_tf(sagemaker_session, framework_version="2.1.1", py_version="py2")
 
     assert estimator.py_version == "py2"
-    warning.assert_called_with("tensorflow", "2.1.0")
+    warning.assert_called_with("tensorflow", "2.1.1")
 
 
 def test_py2_version_deprecated(sagemaker_session):
     with pytest.raises(AttributeError) as e:
-        _build_tf(sagemaker_session, framework_version="2.1.1", py_version="py2")
+        _build_tf(sagemaker_session, framework_version="2.1.2", py_version="py2")
 
     msg = (
-        "Python 2 containers are only available with 2.1.0 and lower versions. "
+        "Python 2 containers are only available with 2.1.1 and lower versions. "
         "Please use a Python 3 container."
     )
     assert msg in str(e.value)
