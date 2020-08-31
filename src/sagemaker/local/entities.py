@@ -37,6 +37,89 @@ except ImportError as e:
 _UNUSED_ARN = "local:arn-does-not-matter"
 HEALTH_CHECK_TIMEOUT_LIMIT = 120
 
+class _LocalProcessingJob(object):
+    """Placeholder docstring"""
+    
+    _STARTING = "Starting"
+    _PROCESSING = "Processing"
+    _COMPLETED = "Completed"
+    _states = ["Starting", "Processing", "Completed"]
+    
+    def __init__(self, container):
+        """
+        Args:
+            container:
+        """
+        self.container = container
+        self.state = "created"
+        self.start_time = None
+        self.end_time = None
+
+    def start(self, processing_inputs, processing_outputs, environment, processing_job_name):
+        """
+        Args:
+            processing_inputs:
+            processing_outputs:
+            environment:
+            processing_job_name:
+        """
+        
+        for item in processing_inputs:
+            if item["S3Input"]:
+                data_distribution = item["S3Input"]["S3DataDistributionType"]
+                compression_type = item["S3Input"]["S3CompressionType"]
+                data_uri = item["S3Input"]["S3Uri"]
+            else:
+                raise ValueError(
+                    "Processing input must have a valid ['S3Input']"
+                    )
+
+            item["DataUri"] = data_uri
+            
+            if data_distribution != "FullyReplicated":
+                raise RuntimeError(
+                    "DataDistribution: %s is not currently supported in Local Mode"
+                    % data_distribution
+                )
+                
+            if compression_type != "None":
+                raise RuntimeError(
+                    "CompressionType: %s is not currently supported in Local Mode"
+                    % compression_type
+                )
+                
+        for item in processing_outputs:
+            if item["S3Output"]:
+                upload_mode = item["S3Output"]["S3UploadMode"]
+            else:
+                raise ValueError(
+                    "Processing output must have a valid ['S3Output']"
+                    )
+                    
+            if upload_mode != "EndOfJob":
+                raise RuntimeError(
+                    "UploadMode: %s is not currently supported in Local Mode"
+                    % upload_mode
+                )
+
+        self.start_time = datetime.datetime.now()
+        self.state = self._PROCESSING
+
+        self.container.process(
+            processing_inputs, processing_outputs, environment, processing_job_name
+        )
+        self.end_time = datetime.datetime.now()
+        self.state = self._COMPLETED
+
+    def describe(self):
+        """Placeholder docstring"""
+        response = {
+            "ProcessingResources": {"InstanceCount": self.container.instance_count},
+            "ProcessingJobStatus": self.state,
+            "ProcessingStartTime": self.start_time,
+            "ProcessingEndTime": self.end_time
+        }
+        return response
 
 class _LocalTrainingJob(object):
     """Placeholder docstring"""

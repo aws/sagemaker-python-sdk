@@ -24,6 +24,7 @@ from six.moves.urllib.parse import urlparse
 
 from sagemaker import s3
 from sagemaker.job import _Job
+from sagemaker.local import LocalSession
 from sagemaker.utils import base_name_from_image, name_from_base
 from sagemaker.session import Session
 from sagemaker.network import NetworkConfig  # noqa: F401 # pylint: disable=unused-import
@@ -100,7 +101,6 @@ class Processor(object):
         self.output_kms_key = output_kms_key
         self.max_runtime_in_seconds = max_runtime_in_seconds
         self.base_job_name = base_job_name
-        self.sagemaker_session = sagemaker_session or Session()
         self.env = env
         self.tags = tags
         self.network_config = network_config
@@ -109,6 +109,16 @@ class Processor(object):
         self.latest_job = None
         self._current_job_name = None
         self.arguments = None
+        
+        if self.instance_type in ("local", "local_gpu"):
+            self.sagemaker_session = sagemaker_session or LocalSession()
+            if not isinstance(self.sagemaker_session, LocalSession):
+                raise RuntimeError(
+                    "instance_type local or local_gpu is only supported with an"
+                    "instance of LocalSession"
+                )
+        else:
+            self.sagemaker_session = sagemaker_session or Session()
 
     def run(
         self,

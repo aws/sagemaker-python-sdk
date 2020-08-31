@@ -25,6 +25,7 @@ from sagemaker.local.entities import (
     _LocalEndpointConfig,
     _LocalEndpoint,
     _LocalModel,
+    _LocalProcessingJob,
     _LocalTrainingJob,
     _LocalTransformJob,
 )
@@ -48,6 +49,7 @@ class LocalSagemakerClient(object):
 
     """
 
+    _processing_jobs = {}
     _training_jobs = {}
     _transform_jobs = {}
     _models = {}
@@ -62,6 +64,68 @@ class LocalSagemakerClient(object):
                 from, and use its boto client.
         """
         self.sagemaker_session = sagemaker_session or LocalSession()
+
+    def create_processing_job(
+        self,
+        ProcessingJobName,
+        AppSpecification,
+        ProcessingResources,
+        Environment=None,
+        ProcessingInputs=None,
+        ProcessingOutputConfig=None,
+        **kwargs
+    ):
+        """Create a processing job in Local Mode
+
+        Args:
+          ProcessingJobName(str): local processing job name.
+          AppSpecification(dict): Identifies the container and application to run.
+          ProcessingResources(dict): Identifies the resources to use for local processing.
+          Environment(dict, optional): Describes the environment variables to pass to the container. (Default value = None)
+          ProcessingInputs(dict, optional): Describes the processing input data. (Default value = None)
+          ProcessingOutputConfig(dict, optional): Describes the processing output configuration. (Default value = None)
+          **kwargs:
+
+        Returns:
+
+        """
+        Environment = Environment or {}
+        ProcessingInputs = ProcessingInputs or []
+        ProcessingOutputs = []
+        if ProcessingOutputConfig is not None:
+            ProcessingOutputs = ProcessingOutputConfig["Outputs"]
+        
+        container = _SageMakerContainer(
+            ProcessingResources["ClusterConfig"]["InstanceType"],
+            ProcessingResources["ClusterConfig"]["InstanceCount"],
+            AppSpecification["ImageUri"],
+            self.sagemaker_session,
+        )
+        processing_job = _LocalProcessingJob(container)
+        logger.info("Starting processing job")
+        processing_job.start(ProcessingInputs, ProcessingOutputs, Environment, ProcessingJobName)
+
+        LocalSagemakerClient._processing_jobs[ProcessingJobName] = processing_job
+        
+    def describe_processing_job(self, ProcessingJobName):
+        """Describe a local processing job.
+
+        Args:
+          ProcessingJobName(str): Processing job name to describe.
+        Returns: (dict) DescribeProcessingJob Response.
+
+        Returns:
+
+        """
+        if ProcessingJobName not in LocalSagemakerClient._processing_jobs:
+            error_response = {
+                "Error": {
+                    "Code": "ValidationException",
+                    "Message": "Could not find local processing job",
+                }
+            }
+            raise ClientError(error_response, "describe_processing_job")
+        return LocalSagemakerClient._processing_jobs[ProcessingJobName].describe()
 
     def create_training_job(
         self,
@@ -402,7 +466,12 @@ class LocalSession(Session):
 
         """
 
-        self.boto_session = boto_session or boto3.Session()
+        if boto_session is None:
+            self.boto_session = boto3.Session()
+        else:
+            self.boto_session = boto_session
+
+        # self.boto_session = boto_session or boto3.Session()
         self._region_name = self.boto_session.region_name
 
         if self._region_name is None:
@@ -448,8 +517,7 @@ class file_input(object):
     """Amazon SageMaker channel configuration for FILE data sources, used in local mode."""
 
     def __init__(self, fileUri, content_type=None):
-        """Create a definition for input data used by an SageMaker training job in local mode.
-        """
+        """Create a definition for input data used by an SageMaker training job in local mode."""
         self.config = {
             "DataSource": {
                 "FileDataSource": {
