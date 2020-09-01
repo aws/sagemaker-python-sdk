@@ -66,13 +66,13 @@ Please instantiate the objects instead.
 +--------------------------------------------+------------------------------------------------+
 | ``sagemaker.predictor.json_serializer``    | ``sagemaker.serializers.JSONSerializer()``     |
 +--------------------------------------------+------------------------------------------------+
-| ``sagemaker.predictor.npy_serializer``     | ``sagemaker.deserializers.NumpySerializer()``  |
+| ``sagemaker.predictor.npy_serializer``     | ``sagemaker.serializers.NumpySerializer()``    |
 +--------------------------------------------+------------------------------------------------+
 | ``sagemaker.predictor.csv_deserializer``   | ``sagemaker.deserializers.CSVDeserializer()``  |
 +--------------------------------------------+------------------------------------------------+
 | ``sagemaker.predictor.json_deserializer``  | ``sagemaker.deserializers.JSONDeserializer()`` |
 +--------------------------------------------+------------------------------------------------+
-| ``sagemaker.predictor.numpy_deserializer`` | ``sagemaker.serializers.NumpyDeserializer()``  |
+| ``sagemaker.predictor.numpy_deserializer`` | ``sagemaker.deserializers.NumpyDeserializer()``|
 +--------------------------------------------+------------------------------------------------+
 
 ``update_endpoint`` in ``deploy()``
