@@ -1,5 +1,13 @@
 # Changelog
 
+## v2.5.2 (2020-08-31)
+
+### Bug Fixes and Other Changes
+
+ * refactor normalization of args for processing
+ * set TF 2.1.1 as highest py2 version for TF
+ * decrease integ test concurrency and increase delay between retries
+
 ## v2.5.1 (2020-08-27)
 
 ### Bug Fixes and Other Changes

@@ -13,4 +13,4 @@
 """Placeholder docstring"""
 from __future__ import absolute_import
 
-LATEST_PY2_VERSION = "2.1.0"
+LATEST_PY2_VERSION = "2.1.1"
