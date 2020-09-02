@@ -1,5 +1,13 @@
 # Changelog
 
+## v2.5.3 (2020-09-02)
+
+### Bug Fixes and Other Changes
+
+ * Revert "change: update image uri config for pytorch 1.6.0 inference (#1864)"
+ * update image uri config for pytorch 1.6.0 inference
+ * add missing framework version image uri config
+
 ## v2.5.2 (2020-08-31)
 
 ### Bug Fixes and Other Changes
