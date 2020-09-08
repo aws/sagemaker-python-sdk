@@ -1,5 +1,13 @@
 # Changelog
 
+## v2.5.4 (2020-09-08)
+
+### Bug Fixes and Other Changes
+
+ * update max_run_wait to max_wait in v2.rst for estimator parameters
+ * Updating regional account ids for af-south-1 and eu-south-1
+ * add account ids for af-south-1 and eu-south-1 for debugger rules
+
 ## v2.5.3 (2020-09-02)
 
 ### Bug Fixes and Other Changes
