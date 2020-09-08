@@ -51,15 +51,15 @@ class _LocalProcessingJob(object):
             container:
         """
         self.container = container
-        self.state = "created"
+        self.state = "Created"
         self.start_time = None
         self.end_time = None
 
-    def start(self, processing_inputs, processing_outputs, environment, processing_job_name):
+    def start(self, processing_inputs, processing_output_config, environment, processing_job_name):
         """
         Args:
             processing_inputs:
-            processing_outputs:
+            processing_output_config:
             environment:
             processing_job_name:
         """
@@ -87,26 +87,29 @@ class _LocalProcessingJob(object):
                     "CompressionType: %s is not currently supported in Local Mode"
                     % compression_type
                 )
-                
-        for item in processing_outputs:
-            if item["S3Output"]:
-                upload_mode = item["S3Output"]["S3UploadMode"]
-            else:
-                raise ValueError(
-                    "Processing output must have a valid ['S3Output']"
+        
+        if processing_output_config and 'Outputs' in processing_output_config:
+            processing_outputs = processing_output_config['Outputs']
+        
+            for item in processing_outputs:
+                if item["S3Output"]:
+                    upload_mode = item["S3Output"]["S3UploadMode"]
+                else:
+                    raise ValueError(
+                        "Processing output must have a valid ['S3Output']"
+                        )
+                        
+                if upload_mode != "EndOfJob":
+                    raise RuntimeError(
+                        "UploadMode: %s is not currently supported in Local Mode"
+                        % upload_mode
                     )
-                    
-            if upload_mode != "EndOfJob":
-                raise RuntimeError(
-                    "UploadMode: %s is not currently supported in Local Mode"
-                    % upload_mode
-                )
 
         self.start_time = datetime.datetime.now()
         self.state = self._PROCESSING
 
         self.container.process(
-            processing_inputs, processing_outputs, environment, processing_job_name
+            processing_inputs, processing_output_config, environment, processing_job_name
         )
         self.end_time = datetime.datetime.now()
         self.state = self._COMPLETED
@@ -114,7 +117,7 @@ class _LocalProcessingJob(object):
     def describe(self):
         """Placeholder docstring"""
         response = {
-            "ProcessingResources": {"InstanceCount": self.container.instance_count},
+            "ProcessingResources": {"ClusterConfig": {"InstanceCount": self.container.instance_count}},
             "ProcessingJobStatus": self.state,
             "ProcessingStartTime": self.start_time,
             "ProcessingEndTime": self.end_time

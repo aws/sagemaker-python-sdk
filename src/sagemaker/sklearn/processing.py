@@ -18,6 +18,7 @@ and interpretation on SageMaker.
 from __future__ import absolute_import
 
 from sagemaker import image_uris, Session
+from sagemaker.local import LocalSession
 from sagemaker.processing import ScriptProcessor
 from sagemaker.sklearn import defaults
 
@@ -83,7 +84,16 @@ class SKLearnProcessor(ScriptProcessor):
         if not command:
             command = ["python3"]
 
-        session = sagemaker_session or Session()
+        if instance_type in ("local", "local_gpu"):
+            session = sagemaker_session or LocalSession()
+            if not isinstance(session, LocalSession):
+                raise RuntimeError(
+                    "instance_type local or local_gpu is only supported with an"
+                    "instance of LocalSession"
+                )
+        else:
+            session = sagemaker_session or Session()
+        
         region = session.boto_region_name
         image_uri = image_uris.retrieve(
             defaults.SKLEARN_NAME, region, version=framework_version, instance_type=instance_type

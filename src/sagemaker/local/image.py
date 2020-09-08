@@ -59,7 +59,8 @@ class _SageMakerContainer(object):
     files that the docker containers will use for either training or serving.
     """
 
-    def __init__(self, instance_type, instance_count, image, sagemaker_session=None):
+    def __init__(self, instance_type, instance_count, image, sagemaker_session=None, 
+        container_entrypoint=None, container_arguments=None):
         """Initialize a SageMakerContainer instance
 
         It uses a :class:`sagemaker.session.Session` for general interaction
@@ -73,6 +74,8 @@ class _SageMakerContainer(object):
             image (str): docker image to use.
             sagemaker_session (sagemaker.session.Session): a sagemaker session
                 to use when interacting with SageMaker.
+            container_entrypoint (str): the container entrypoint to execute
+            container_arguments (str): the container entrypoint arguments
         """
         from sagemaker.local.local_session import LocalSession
 
@@ -89,6 +92,8 @@ class _SageMakerContainer(object):
         self.instance_type = instance_type
         self.instance_count = instance_count
         self.image = image
+        self.container_entrypoint = container_entrypoint
+        self.container_arguments = container_arguments
         # Since we are using a single docker network, Generate a random suffix to attach to the
         # container names. This way multiple jobs can run in parallel.
         suffix = "".join(random.choice(string.ascii_lowercase + string.digits) for _ in range(5))
@@ -99,12 +104,12 @@ class _SageMakerContainer(object):
         self.container_root = None
         self.container = None
 
-    def process(self, processing_inputs, processing_outputs, environment, processing_job_name):
+    def process(self, processing_inputs, processing_output_config, environment, processing_job_name):
         """Run a processing job locally using docker-compose.
 
         Args:
             processing_inputs (dict): The processing input specification.
-            processing_outputs: The processing output specification.
+            processing_output_config: The processing output configuration specification.
             environment (dict): The environment collection for the processing job.
             processing_job_name (str): Name of the local processing job being run.
 
@@ -119,18 +124,21 @@ class _SageMakerContainer(object):
 
         data_dir = self._create_tmp_folder()
         volumes = self._prepare_processing_volumes(
-            data_dir, processing_inputs, processing_outputs
+            data_dir, processing_inputs, processing_output_config
         )
         
         # Create the configuration files for each container that we will create
         # Each container will map the additional local volumes (if any).
         for host in self.hosts:
             _create_processing_config_file_directories(self.container_root, host)
-            self.write_processing_config_files(host, environment, processing_inputs, processing_outputs)
+            self.write_processing_config_files(host, environment, processing_inputs, processing_output_config)
             shutil.copytree(data_dir, os.path.join(self.container_root, host, "processing", "data"))
+        
+        # Adding region name environment variable.
+        environment[REGION_ENV_NAME] = self.sagemaker_session.boto_region_name
 
         compose_data = self._generate_compose_file(
-            "", additional_volumes=volumes, additional_env_vars=environment
+            "process", additional_volumes=volumes, additional_env_vars=environment
         )
         compose_command = self._compose()
 
@@ -357,7 +365,7 @@ class _SageMakerContainer(object):
 
         return os.path.join(output_data, "model.tar.gz")
         
-    def write_processing_config_files(self, host, environment, processing_inputs, processing_outputs):
+    def write_processing_config_files(self, host, environment, processing_inputs, processing_output_config):
         """Write the config files for the processing containers.
 
         This method writes the hyperparameters, resources and input data
@@ -369,7 +377,7 @@ class _SageMakerContainer(object):
             host (str): Host to write the configuration for
             environment (dict): Environment variable collection.
             processing_inputs (dict): Processing inputs.
-            processing_outputs (dict): Processing outputs.
+            processing_output_config (dict): Processing output configuration.
         """
         config_path = os.path.join(self.container_root, host, "config")
 
@@ -455,7 +463,7 @@ class _SageMakerContainer(object):
         return volumes
         
     def _prepare_processing_volumes(
-        self, data_dir, processing_inputs, processing_outputs
+        self, data_dir, processing_inputs, processing_output_config
     ):
         """
         Args:
@@ -476,15 +484,15 @@ class _SageMakerContainer(object):
             data_source = sagemaker.local.data.get_data_source_instance(uri, self.sagemaker_session)
             volumes.append(_Volume(data_source.get_root_dir(), input_container_dir))
         
-        for item in processing_outputs:
-            uri = item["DataUri"]
-            output_name = item["OutputName"]
-            output_container_dir = item["S3Output"]["LocalPath"]
-            
-            output_dir = os.path.join(data_dir, "output", output_name)
-            os.makedirs(output_dir)
-            
-            volumes.append(_Volume(output_dir, output_container_dir))
+        if processing_output_config and 'Outputs' in processing_output_config: 
+            for item in processing_output_config['Outputs']:
+                output_name = item["OutputName"]
+                output_container_dir = item["S3Output"]["LocalPath"]
+                
+                output_dir = os.path.join(data_dir, "output", output_name)
+                os.makedirs(output_dir)
+                
+                volumes.append(_Volume(output_dir, output_container_dir))
 
         return volumes
 
@@ -565,6 +573,8 @@ class _SageMakerContainer(object):
 
         if command == "train":
             optml_dirs = {"output", "output/data", "input"}
+        elif command == "process":
+            optml_dirs = {"output", "config", "processing"}
 
         services = {
             h: self._create_docker_host(h, environment, optml_dirs, command, additional_volumes)
@@ -630,9 +640,16 @@ class _SageMakerContainer(object):
             "tty": True,
             "volumes": [v.map for v in optml_volumes],
             "environment": environment,
-            "command": command,
             "networks": {"sagemaker-local": {"aliases": [host]}},
         }
+        
+        if (command != 'process'):
+            host_config['command'] = command
+        else:
+            if self.container_entrypoint:
+                host_config['entrypoint'] = " ".join(self.container_entrypoint) + " " \
+                    + " ".join(self.container_arguments)
+        
 
         # for GPU support pass in nvidia as the runtime, this is equivalent
         # to setting --runtime=nvidia in the docker commandline.

@@ -91,19 +91,27 @@ class LocalSagemakerClient(object):
         """
         Environment = Environment or {}
         ProcessingInputs = ProcessingInputs or []
-        ProcessingOutputs = []
-        if ProcessingOutputConfig is not None:
-            ProcessingOutputs = ProcessingOutputConfig["Outputs"]
+        ProcessingOutputConfig = ProcessingOutputConfig or {}
+        
+        container_entrypoint = None
+        if 'ContainerEntrypoint' in AppSpecification:
+            container_entrypoint = AppSpecification['ContainerEntrypoint']
+            
+        container_arguments = None
+        if 'ContainerArguments' in AppSpecification:
+            container_arguments = AppSpecification['ContainerArguments']
         
         container = _SageMakerContainer(
             ProcessingResources["ClusterConfig"]["InstanceType"],
             ProcessingResources["ClusterConfig"]["InstanceCount"],
             AppSpecification["ImageUri"],
-            self.sagemaker_session,
+            sagemaker_session = self.sagemaker_session,
+            container_entrypoint = container_entrypoint,
+            container_arguments = container_arguments
         )
         processing_job = _LocalProcessingJob(container)
         logger.info("Starting processing job")
-        processing_job.start(ProcessingInputs, ProcessingOutputs, Environment, ProcessingJobName)
+        processing_job.start(ProcessingInputs, ProcessingOutputConfig, Environment, ProcessingJobName)
 
         LocalSagemakerClient._processing_jobs[ProcessingJobName] = processing_job
         
@@ -158,7 +166,7 @@ class LocalSagemakerClient(object):
             ResourceConfig["InstanceType"],
             ResourceConfig["InstanceCount"],
             AlgorithmSpecification["TrainingImage"],
-            self.sagemaker_session,
+            sagemaker_session = self.sagemaker_session
         )
         training_job = _LocalTrainingJob(container)
         hyperparameters = kwargs["HyperParameters"] if "HyperParameters" in kwargs else {}
