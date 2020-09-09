@@ -1,5 +1,21 @@
 # Changelog
 
+## v2.5.4 (2020-09-08)
+
+### Bug Fixes and Other Changes
+
+ * update max_run_wait to max_wait in v2.rst for estimator parameters
+ * Updating regional account ids for af-south-1 and eu-south-1
+ * add account ids for af-south-1 and eu-south-1 for debugger rules
+
+## v2.5.3 (2020-09-02)
+
+### Bug Fixes and Other Changes
+
+ * Revert "change: update image uri config for pytorch 1.6.0 inference (#1864)"
+ * update image uri config for pytorch 1.6.0 inference
+ * add missing framework version image uri config
+
 ## v2.5.2 (2020-08-31)
 
 ### Bug Fixes and Other Changes
