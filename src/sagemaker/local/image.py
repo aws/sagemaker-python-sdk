@@ -121,19 +121,21 @@ class _SageMakerContainer(object):
         # A shared directory for all the containers. It is only mounted if the processing script is Local.
         shared_dir = os.path.join(self.container_root, "shared")
         os.mkdir(shared_dir)
-
+        
         data_dir = self._create_tmp_folder()
         volumes = self._prepare_processing_volumes(
             data_dir, processing_inputs, processing_output_config
         )
         
-        # Create the configuration files for each container that we will create
-        # Each container will map the additional local volumes (if any).
+        print('Processing volumes: ')
+        for vol in volumes:
+            print(vol.host_dir + ':' + vol.container_dir)
+        
+        # Create the configuration files for each container that we will create.
         for host in self.hosts:
             _create_processing_config_file_directories(self.container_root, host)
             self.write_processing_config_files(host, environment, processing_inputs, processing_output_config)
-            shutil.copytree(data_dir, os.path.join(self.container_root, host, "processing", "data"))
-        
+            
         # Adding region name environment variable.
         environment[REGION_ENV_NAME] = self.sagemaker_session.boto_region_name
 
@@ -157,11 +159,12 @@ class _SageMakerContainer(object):
             msg = "Failed to run: %s, %s" % (compose_command, str(e))
             raise RuntimeError(msg)
         finally:
-            # free up the processing data directory as it may contain
-            # lots of data downloaded from S3. This doesn't delete any local
-            # data that was just mounted to the container.
-            dirs_to_delete = [data_dir, shared_dir]
+            dirs_to_delete = [shared_dir]
             self._cleanup(dirs_to_delete)
+        
+        # Print our Job Complete line to have a similar experience to training on SageMaker where
+        # you see this line at the end.
+        print("===== Job Complete =====")
         
 
     def train(self, input_data_config, output_data_config, hyperparameters, job_name):
@@ -481,6 +484,9 @@ class _SageMakerContainer(object):
             input_name = item["InputName"]
             input_container_dir = item["S3Input"]["LocalPath"]
             
+            input_dir = os.path.join(data_dir, "input", input_name)
+            os.makedirs(input_dir)
+            
             data_source = sagemaker.local.data.get_data_source_instance(uri, self.sagemaker_session)
             volumes.append(_Volume(data_source.get_root_dir(), input_container_dir))
         
@@ -493,6 +499,8 @@ class _SageMakerContainer(object):
                 os.makedirs(output_dir)
                 
                 volumes.append(_Volume(output_dir, output_container_dir))
+        
+        volumes.append(_Volume(shared_dir, '/opt/ml/shared'))
 
         return volumes
 
@@ -574,7 +582,7 @@ class _SageMakerContainer(object):
         if command == "train":
             optml_dirs = {"output", "output/data", "input"}
         elif command == "process":
-            optml_dirs = {"output", "config", "processing"}
+            optml_dirs = {"output", "config"}
 
         services = {
             h: self._create_docker_host(h, environment, optml_dirs, command, additional_volumes)
