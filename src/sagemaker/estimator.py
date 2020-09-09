@@ -871,6 +871,12 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                     init_params["model_uri"] = channel["DataSource"]["S3DataSource"]["S3Uri"]
                     break
 
+        if job_details.get("EnableManagedSpotTraining", False):
+            init_params["use_spot_instances"] = True
+            max_wait = job_details.get("StoppingCondition", {}).get("MaxWaitTimeInSeconds")
+            if max_wait:
+                init_params["max_wait"] = max_wait
+
         return init_params
 
     def transformer(
