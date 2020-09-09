@@ -1037,10 +1037,30 @@ class _TrainingJob(_Job):
                 :meth:`~sagemaker.estimator.EstimatorBase.fit`.  Dictionary contains
                 three optional keys, 'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
 
-
         Returns:
             sagemaker.estimator._TrainingJob: Constructed object that captures
             all information about the started training job.
+        """
+        train_args = cls._get_train_args(estimator, inputs, experiment_config)
+        estimator.sagemaker_session.train(**train_args)
+
+        return cls(estimator.sagemaker_session, estimator._current_job_name)
+
+    @classmethod
+    def _get_train_args(cls, estimator, inputs, experiment_config):
+        """Constructs a dict of arguments for an Amazon SageMaker training job from the estimator.
+
+        Args:
+            estimator (sagemaker.estimator.EstimatorBase): Estimator object
+                created by the user.
+            inputs (str): Parameters used when called
+                :meth:`~sagemaker.estimator.EstimatorBase.fit`.
+            experiment_config (dict[str, str]): Experiment management configuration used when called
+                :meth:`~sagemaker.estimator.EstimatorBase.fit`.  Dictionary contains
+                three optional keys, 'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+
+        Returns:
+            Dict: dict for `sagemaker.session.Session.train` method
         """
 
         local_mode = estimator.sagemaker_session.local_mode
@@ -1102,9 +1122,7 @@ class _TrainingJob(_Job):
         if estimator.enable_sagemaker_metrics is not None:
             train_args["enable_sagemaker_metrics"] = estimator.enable_sagemaker_metrics
 
-        estimator.sagemaker_session.train(**train_args)
-
-        return cls(estimator.sagemaker_session, estimator._current_job_name)
+        return train_args
 
     @classmethod
     def _add_spot_checkpoint_args(cls, local_mode, estimator, train_args):

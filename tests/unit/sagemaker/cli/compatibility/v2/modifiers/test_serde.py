@@ -64,8 +64,14 @@ def test_constructor_node_should_be_modified(src, expected):
         ("sagemaker.predictor._NpySerializer()", "serializers.NumpySerializer()"),
         ("sagemaker.predictor._CsvDeserializer()", "deserializers.CSVDeserializer()"),
         ("sagemaker.predictor.BytesDeserializer()", "deserializers.BytesDeserializer()"),
-        ("sagemaker.predictor.StringDeserializer()", "deserializers.StringDeserializer()",),
-        ("sagemaker.predictor.StreamDeserializer()", "deserializers.StreamDeserializer()",),
+        (
+            "sagemaker.predictor.StringDeserializer()",
+            "deserializers.StringDeserializer()",
+        ),
+        (
+            "sagemaker.predictor.StreamDeserializer()",
+            "deserializers.StreamDeserializer()",
+        ),
         ("sagemaker.predictor._NumpyDeserializer()", "deserializers.NumpyDeserializer()"),
         ("sagemaker.predictor._JsonDeserializer()", "deserializers.JSONDeserializer()"),
         (
@@ -100,18 +106,54 @@ def test_constructor_modify_node(src, expected):
 @pytest.mark.parametrize(
     "src, expected",
     [
-        ("sagemaker.predictor.csv_serializer", True,),
-        ("sagemaker.predictor.json_serializer", True,),
-        ("sagemaker.predictor.npy_serializer", True,),
-        ("sagemaker.predictor.csv_deserializer", True,),
-        ("sagemaker.predictor.json_deserializer", True,),
-        ("sagemaker.predictor.numpy_deserializer", True,),
-        ("csv_serializer", True,),
-        ("json_serializer", True,),
-        ("npy_serializer", True,),
-        ("csv_deserializer", True,),
-        ("json_deserializer", True,),
-        ("numpy_deserializer", True,),
+        (
+            "sagemaker.predictor.csv_serializer",
+            True,
+        ),
+        (
+            "sagemaker.predictor.json_serializer",
+            True,
+        ),
+        (
+            "sagemaker.predictor.npy_serializer",
+            True,
+        ),
+        (
+            "sagemaker.predictor.csv_deserializer",
+            True,
+        ),
+        (
+            "sagemaker.predictor.json_deserializer",
+            True,
+        ),
+        (
+            "sagemaker.predictor.numpy_deserializer",
+            True,
+        ),
+        (
+            "csv_serializer",
+            True,
+        ),
+        (
+            "json_serializer",
+            True,
+        ),
+        (
+            "npy_serializer",
+            True,
+        ),
+        (
+            "csv_deserializer",
+            True,
+        ),
+        (
+            "json_deserializer",
+            True,
+        ),
+        (
+            "numpy_deserializer",
+            True,
+        ),
     ],
 )
 def test_name_node_should_be_modified(src, expected):

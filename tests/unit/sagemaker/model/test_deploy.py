@@ -149,10 +149,12 @@ def test_deploy_generates_endpoint_name_each_time_from_model_name(
     )
 
     model.deploy(
-        instance_type=INSTANCE_TYPE, initial_instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        initial_instance_count=INSTANCE_COUNT,
     )
     model.deploy(
-        instance_type=INSTANCE_TYPE, initial_instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        initial_instance_count=INSTANCE_COUNT,
     )
 
     base_from_name.assert_called_with(MODEL_NAME)
@@ -173,10 +175,12 @@ def test_deploy_generates_endpoint_name_each_time_from_base_name(
     model._base_name = base_name
 
     model.deploy(
-        instance_type=INSTANCE_TYPE, initial_instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        initial_instance_count=INSTANCE_COUNT,
     )
     model.deploy(
-        instance_type=INSTANCE_TYPE, initial_instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        initial_instance_count=INSTANCE_COUNT,
     )
 
     base_from_name.assert_not_called()

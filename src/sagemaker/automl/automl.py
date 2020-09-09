@@ -26,8 +26,7 @@ logger = logging.getLogger("sagemaker")
 
 
 class AutoML(object):
-    """A class for creating and interacting with SageMaker AutoML jobs
-    """
+    """A class for creating and interacting with SageMaker AutoML jobs"""
 
     def __init__(
         self,

@@ -2,20 +2,19 @@ import logging
 
 
 class ConfigurationList(object):
-    """Helper Object for converting CLI arguments (or SageMaker hyperparameters) 
+    """Helper Object for converting CLI arguments (or SageMaker hyperparameters)
     into Coach configuration.
     """
 
     def __init__(self):
         """Args:
-            - arg_list [list]: list of arguments on the command-line like [key1, value1, key2, value2, ...]
-            - prefix [str]: Prefix for every key that must be present, e.g. "--" for common command-line args
+        - arg_list [list]: list of arguments on the command-line like [key1, value1, key2, value2, ...]
+        - prefix [str]: Prefix for every key that must be present, e.g. "--" for common command-line args
         """
         self.hp_dict = {}
 
     def store(self, name, value):
-        """Store a key/value hyperparameter combination
-        """
+        """Store a key/value hyperparameter combination"""
         self.hp_dict[name] = value
 
     def apply_subset(self, config_object, prefix):
@@ -41,8 +40,7 @@ class ConfigurationList(object):
                 del self.hp_dict[key]
 
     def _set_rl_property_value(self, obj, key, val, path=""):
-        """Sets a property on obj to val, or to a sub-object within obj if key looks like "foo.bar"
-        """
+        """Sets a property on obj to val, or to a sub-object within obj if key looks like "foo.bar" """
         if key.find(".") >= 0:
             top_key, sub_keys = key_list = key.split(".", 1)
             if top_key.startswith("__"):
@@ -63,8 +61,7 @@ class ConfigurationList(object):
                 obj.__dict__[key] = val
 
     def _autotype(self, val):
-        """Converts string to an int or float as possible.
-        """
+        """Converts string to an int or float as possible."""
         try:
             return int(val)
         except ValueError:
@@ -83,7 +80,7 @@ class ConfigurationList(object):
         Automatically detects ints and floats when possible.
         If the key takes the form "foo:bar" then it looks in ALLOWED_TYPES
         for an entry of bar, and instantiates one of those objects, passing
-        val to the constructor.  So if key="foo:EnvironmentSteps" then 
+        val to the constructor.  So if key="foo:EnvironmentSteps" then
         """
         val = self._autotype(val)
         if key.find(":") > 0:

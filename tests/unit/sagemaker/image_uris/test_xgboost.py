@@ -78,7 +78,10 @@ FRAMEWORK_REGISTRIES = {
 def test_xgboost_framework(xgboost_framework_version):
     for region in regions.regions():
         uri = image_uris.retrieve(
-            framework="xgboost", region=region, version=xgboost_framework_version, py_version="py3",
+            framework="xgboost",
+            region=region,
+            version=xgboost_framework_version,
+            py_version="py3",
         )
 
         expected = expected_uris.framework_uri(

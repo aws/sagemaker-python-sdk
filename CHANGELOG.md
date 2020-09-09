@@ -1,5 +1,56 @@
 # Changelog
 
+## v2.5.4 (2020-09-08)
+
+### Bug Fixes and Other Changes
+
+ * update max_run_wait to max_wait in v2.rst for estimator parameters
+ * Updating regional account ids for af-south-1 and eu-south-1
+ * add account ids for af-south-1 and eu-south-1 for debugger rules
+
+## v2.5.3 (2020-09-02)
+
+### Bug Fixes and Other Changes
+
+ * Revert "change: update image uri config for pytorch 1.6.0 inference (#1864)"
+ * update image uri config for pytorch 1.6.0 inference
+ * add missing framework version image uri config
+
+## v2.5.2 (2020-08-31)
+
+### Bug Fixes and Other Changes
+
+ * refactor normalization of args for processing
+ * set TF 2.1.1 as highest py2 version for TF
+ * decrease integ test concurrency and increase delay between retries
+
+## v2.5.1 (2020-08-27)
+
+### Bug Fixes and Other Changes
+
+ * formatting changes from updates to black
+
+## v2.5.0 (2020-08-25)
+
+### Features
+
+ * add mypy tox target
+
+### Bug Fixes and Other Changes
+
+ * break out methods to get processing arguments
+ * break out methods to get train arguments
+
+## v2.4.2 (2020-08-24)
+
+### Bug Fixes and Other Changes
+
+ * check ast node on later renamers for cli v2 updater
+
+### Documentation Changes
+
+ * Clarify removals in v2
+
 ## v2.4.1 (2020-08-19)
 
 ### Bug Fixes and Other Changes

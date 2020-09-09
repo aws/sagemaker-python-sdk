@@ -94,7 +94,9 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
     def training_image_uri(self):
         """Placeholder docstring"""
         return image_uris.retrieve(
-            self.repo_name, self.sagemaker_session.boto_region_name, version=self.repo_version,
+            self.repo_name,
+            self.sagemaker_session.boto_region_name,
+            version=self.repo_version,
         )
 
     def hyperparameters(self):

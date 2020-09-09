@@ -35,7 +35,7 @@ class TensorFlow(Framework):
     _framework_name = "tensorflow"
 
     _HIGHEST_LEGACY_MODE_ONLY_VERSION = version.Version("1.10.0")
-    _HIGHEST_PYTHON_2_VERSION = version.Version("2.1.0")
+    _HIGHEST_PYTHON_2_VERSION = version.Version("2.1.1")
 
     def __init__(
         self,

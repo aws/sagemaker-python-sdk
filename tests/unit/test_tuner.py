@@ -80,7 +80,11 @@ def test_prepare_for_training(tuner):
 
 def test_prepare_for_tuning_with_amazon_estimator(tuner, sagemaker_session):
     tuner.estimator = PCA(
-        ROLE, INSTANCE_COUNT, INSTANCE_TYPE, NUM_COMPONENTS, sagemaker_session=sagemaker_session,
+        ROLE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        NUM_COMPONENTS,
+        sagemaker_session=sagemaker_session,
     )
 
     tuner._prepare_for_tuning()
@@ -1434,7 +1438,7 @@ def test_describe(tuner):
 
 def _convert_tuning_job_details(job_details, estimator_name):
     """Convert a tuning job description using the 'TrainingJobDefinition' field into a new one using a single-item
-       'TrainingJobDefinitions' field (list).
+    'TrainingJobDefinitions' field (list).
     """
     assert "TrainingJobDefinition" in job_details
 

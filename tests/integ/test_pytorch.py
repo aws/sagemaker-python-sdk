@@ -182,7 +182,10 @@ def test_deploy_packed_model_with_entry_point_name(
     test_region() not in EI_SUPPORTED_REGIONS, reason="EI isn't supported in that specific region."
 )
 def test_deploy_model_with_accelerator(
-    sagemaker_session, cpu_instance_type, pytorch_eia_latest_version, pytorch_eia_latest_py_version,
+    sagemaker_session,
+    cpu_instance_type,
+    pytorch_eia_latest_version,
+    pytorch_eia_latest_py_version,
 ):
     endpoint_name = "test-pytorch-deploy-eia-{}".format(sagemaker_timestamp())
     model_data = sagemaker_session.upload_data(path=EIA_MODEL)

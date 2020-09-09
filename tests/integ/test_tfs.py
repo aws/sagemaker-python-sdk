@@ -238,7 +238,9 @@ def test_predict_csv(tfs_predictor):
     expected_result = {"predictions": [[3.5, 4.0, 5.5], [3.5, 4.0, 5.5]]}
 
     predictor = TensorFlowPredictor(
-        tfs_predictor.endpoint_name, tfs_predictor.sagemaker_session, serializer=CSVSerializer(),
+        tfs_predictor.endpoint_name,
+        tfs_predictor.sagemaker_session,
+        serializer=CSVSerializer(),
     )
 
     result = predictor.predict(input_data)
