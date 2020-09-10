@@ -1,5 +1,23 @@
 # Changelog
 
+## v2.5.5 (2020-09-10)
+
+### Bug Fixes and Other Changes
+
+ * update PyTorch 1.6.0 inference image uri config
+ * set use_spot_instances and max_wait as init params from job description
+ * run integ tests when image_uri_config jsons are changed
+ * Revert "fix: update pytorch inference 1.6 image uri config (#1873)"
+ * update pytorch inference 1.6 image uri config
+
+### Documentation Changes
+
+ * fix typo in v2.rst
+
+### Testing and Release Infrastructure
+
+ * fix PyTorch inference packed model integ test
+
 ## v2.5.4 (2020-09-08)
 
 ### Bug Fixes and Other Changes
