@@ -13,9 +13,10 @@
 from __future__ import absolute_import
 
 from sagemaker import image_uris
-from tests.unit.sagemaker.image_uris import expected_uris, regions
+from tests.unit.sagemaker.image_uris import expected_uris
 
 ACCOUNTS = {
+    "af-south-1": "875698925577",
     "ap-east-1": "001633400207",
     "ap-northeast-1": "574779866223",
     "ap-northeast-2": "709848358524",
@@ -27,6 +28,7 @@ ACCOUNTS = {
     "cn-northwest-1": "453252182341",
     "eu-central-1": "048819808253",
     "eu-north-1": "895015795356",
+    "eu-south-1": "933208885752",
     "eu-west-1": "468650794304",
     "eu-west-2": "749857270468",
     "eu-west-3": "680080141114",
@@ -40,9 +42,8 @@ ACCOUNTS = {
 
 
 def test_model_monitor():
-    for region in regions.regions():
-        if region in ACCOUNTS.keys():
-            uri = image_uris.retrieve("model-monitor", region=region)
+    for region in ACCOUNTS.keys():
+        uri = image_uris.retrieve("model-monitor", region=region)
 
-            expected = expected_uris.monitor_uri(ACCOUNTS[region], region)
-            assert expected == uri
+        expected = expected_uris.monitor_uri(ACCOUNTS[region], region)
+        assert expected == uri
