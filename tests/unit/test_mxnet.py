@@ -182,7 +182,9 @@ def _neo_inference_image(mxnet_version):
 
 @patch("sagemaker.estimator.name_from_base")
 @patch("sagemaker.utils.create_tar_file", MagicMock())
-def test_create_model(name_from_base, sagemaker_session, mxnet_inference_version, mxnet_inference_py_version):
+def test_create_model(
+    name_from_base, sagemaker_session, mxnet_inference_version, mxnet_inference_py_version
+):
     container_log_level = '"logging.INFO"'
     source_dir = "s3://mybucket/source"
     base_job_name = "job"
@@ -410,7 +412,9 @@ def test_mxnet_neo(strftime, sagemaker_session, neo_mxnet_version):
 
 
 @patch("sagemaker.utils.create_tar_file", MagicMock())
-def test_model(sagemaker_session, mxnet_inference_version, mxnet_inference_py_version, skip_if_mms_version):
+def test_model(
+    sagemaker_session, mxnet_inference_version, mxnet_inference_py_version, skip_if_mms_version
+):
     model = MXNetModel(
         MODEL_DATA,
         role=ROLE,
@@ -769,7 +773,9 @@ def test_mx_enable_sm_metrics(sagemaker_session, mxnet_training_version, mxnet_t
     assert mx.enable_sagemaker_metrics
 
 
-def test_mx_disable_sm_metrics(sagemaker_session, mxnet_training_version, mxnet_training_py_version):
+def test_mx_disable_sm_metrics(
+    sagemaker_session, mxnet_training_version, mxnet_training_py_version
+):
     mx = MXNet(
         entry_point=SCRIPT_PATH,
         framework_version=mxnet_training_version,
@@ -803,7 +809,9 @@ def test_mx_enable_sm_metrics_for_version(
         assert mx.enable_sagemaker_metrics is None
 
 
-def test_custom_image_estimator_deploy(sagemaker_session, mxnet_training_version, mxnet_training_py_version):
+def test_custom_image_estimator_deploy(
+    sagemaker_session, mxnet_training_version, mxnet_training_py_version
+):
     custom_image = "mycustomimage:latest"
     mx = MXNet(
         entry_point=SCRIPT_PATH,
