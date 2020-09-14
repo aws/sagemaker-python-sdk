@@ -24,7 +24,8 @@ from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
 
 def _list_check_subset(valid_super_list):
-    """
+    """Provides a function to check validity of list subset.
+
     Args:
         valid_super_list:
     """
@@ -45,7 +46,8 @@ class Object2Vec(AmazonAlgorithmEstimatorBase):
 
     It can learn low-dimensional dense embeddings of high-dimensional objects. The embeddings
     are learned in a way that preserves the semantics of the relationship between pairs of
-    objects in the original space in the embedding space."""
+    objects in the original space in the embedding space.
+    """
 
     repo_name = "object2vec"
     repo_version = 1

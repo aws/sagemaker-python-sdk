@@ -2077,8 +2077,10 @@ class MonitoringExecution(ProcessingJob):
 
 
 class EndpointInput(object):
-    """Accepts parameters that specify an endpoint input for a monitoring execution and provides
-    a method to turn those parameters into a dictionary."""
+    """Accepts parameters that specify an endpoint input for monitoring execution.
+
+    It also provides a method to turn those parameters into a dictionary.
+    """
 
     def __init__(
         self,
@@ -2119,8 +2121,10 @@ class EndpointInput(object):
 
 
 class MonitoringOutput(object):
-    """Accepts parameters that specify an S3 output for a monitoring job and provides
-    a method to turn those parameters into a dictionary."""
+    """Accepts parameters that specify an S3 output for a monitoring job.
+
+    It also provides a method to turn those parameters into a dictionary.
+    """
 
     def __init__(self, source, destination=None, s3_upload_mode="Continuous"):
         """Initialize a ``MonitoringOutput`` instance. MonitoringOutput accepts parameters that

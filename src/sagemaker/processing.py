@@ -927,8 +927,10 @@ class ProcessingJob(_Job):
 
 
 class ProcessingInput(object):
-    """Accepts parameters that specify an Amazon S3 input for a processing job and
-    provides a method to turn those parameters into a dictionary."""
+    """Accepts parameters that specify an Amazon S3 input for a processing job.
+
+    Also provides a method to turn those parameters into a dictionary.
+    """
 
     def __init__(
         self,
@@ -990,8 +992,10 @@ class ProcessingInput(object):
 
 
 class ProcessingOutput(object):
-    """Accepts parameters that specify an Amazon S3 output for a processing job and provides
-    a method to turn those parameters into a dictionary."""
+    """Accepts parameters that specify an Amazon S3 output for a processing job.
+
+    It also provides a method to turn those parameters into a dictionary.
+    """
 
     def __init__(self, source, destination=None, output_name=None, s3_upload_mode="EndOfJob"):
         """Initializes a ``ProcessingOutput`` instance. ``ProcessingOutput`` accepts parameters that

@@ -17,8 +17,10 @@ from __future__ import absolute_import
 
 
 class NetworkConfig(object):
-    """Accepts network configuration parameters and provides a method to turn these parameters
-    into a dictionary."""
+    """Accepts network configuration parameters for conversion to request dict.
+
+    The `_to_request_dict` provides a method to turn the parameters into a dict.
+    """
 
     def __init__(
         self,

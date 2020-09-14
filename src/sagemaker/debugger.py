@@ -320,11 +320,15 @@ class DebuggerHookConfig(object):
 
 
 class TensorBoardOutputConfig(object):
-    """TensorBoardOutputConfig provides options to customize
-    debugging visualization using TensorBoard."""
+    """A configuration object to provide debugging customizations.
+
+    A configuration specific to TensorBoard output, that provides options
+    to customize debugging visualizations using TensorBoard.
+    """
 
     def __init__(self, s3_output_path, container_local_output_path=None):
         """Initialize an instance of TensorBoardOutputConfig.
+
         TensorBoardOutputConfig provides options to customize
         debugging visualization using TensorBoard.
 
@@ -336,8 +340,7 @@ class TensorBoardOutputConfig(object):
         self.container_local_output_path = container_local_output_path
 
     def _to_request_dict(self):
-        """Generates a request dictionary using the parameters provided
-        when initializing the object.
+        """Generates a request dictionary using the instances attributes.
 
         Returns:
             dict: An portion of an API request as a dictionary.
