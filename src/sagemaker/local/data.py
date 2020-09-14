@@ -237,7 +237,7 @@ class NoneSplitter(Splitter):
             filename (str): path to the file to split
 
         Returns: generator for the individual records that were split from
-        the file
+            the file
         """
         with open(filename, "rb") as f:
             buf = f.read()
@@ -246,15 +246,15 @@ class NoneSplitter(Splitter):
             yield buf
 
     def _is_binary(self, buf):
-        """binary check.
-        Check whether `buf` contains binary data.
-        Returns true if `buf` contains any non-utf-8 characters.
+        """Check whether `buf` contains binary data.
+
+        Returns True if `buf` contains any non-utf-8 characters.
 
         Args:
-                    buf (bytes): data to inspect
+            buf (bytes): data to inspect
 
         Returns:
-                   True if data is binary, otherwise False
+            True if data is binary, otherwise False
         """
         return bool(buf.translate(None, self._textchars))
 
@@ -398,8 +398,9 @@ def _payload_size_within_limit(payload, size):
 
 
 def _validate_payload_size(payload, size):
-    """Check if a payload is within the size in MB threshold. Raise an exception
-    otherwise.
+    """Check if a payload is within the size in MB threshold.
+
+    Raise an exception if the payload is beyond the size in MB threshold.
 
     Args:
         payload: data that will be checked

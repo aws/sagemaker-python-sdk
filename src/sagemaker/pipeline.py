@@ -20,20 +20,24 @@ from sagemaker.transformer import Transformer
 
 
 class PipelineModel(object):
-    """A pipeline of SageMaker
-    ``Model``s that can be deployed to an ``Endpoint``.
+    """A pipeline of SageMaker `Model` instances.
+
+    This pipeline can be deployed as an `Endpoint` on SageMaker.
     """
 
     def __init__(
         self, models, role, predictor_cls=None, name=None, vpc_config=None, sagemaker_session=None
     ):
-        """Initialize an SageMaker ``Model`` which can be used to build an
-        Inference Pipeline comprising of multiple model containers.
+        """Initialize a SageMaker `Model` instance.
+
+        The `Model` can be used to build an Inference Pipeline comprising of
+        multiple model containers.
 
         Args:
             models (list[sagemaker.Model]): For using multiple containers to
-                build an inference pipeline, you can pass a list of ``sagemaker.Model`` objects
-                in the order you want the inference to happen.
+                build an inference pipeline, you can pass a list of
+                ``sagemaker.Model`` objects in the order you want the inference
+                to happen.
             role (str): An AWS IAM role (either name or full ARN). The Amazon
                 SageMaker training jobs and APIs that create Amazon SageMaker
                 endpoints use this role to access training data and model
@@ -63,8 +67,11 @@ class PipelineModel(object):
         self.endpoint_name = None
 
     def pipeline_container_def(self, instance_type):
-        """Return a dict created by ``sagemaker.pipeline_container_def()`` for
-        deploying this model to a specified instance type.
+        """The pipeline definition for deploying this model.
+
+        This is the dict created by ``sagemaker.pipeline_container_def()``.
+
+        The instance type to be used may be specified.
 
         Subclasses can override this to provide custom container definitions
         for deployment to a specific instance type. Called by ``deploy()``.
@@ -93,8 +100,9 @@ class PipelineModel(object):
         update_endpoint=False,
         data_capture_config=None,
     ):
-        """Deploy this ``Model`` to an ``Endpoint`` and optionally return a
-        ``Predictor``.
+        """Deploy the ``Model`` to an ``Endpoint``.
+
+        It optionally return a ``Predictor``.
 
         Create a SageMaker ``Model`` and ``EndpointConfig``, and deploy an
         ``Endpoint`` from this ``Model``. If ``self.predictor_cls`` is not None,

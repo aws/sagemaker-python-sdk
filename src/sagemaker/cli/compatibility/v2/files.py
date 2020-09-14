@@ -164,7 +164,7 @@ class JupyterNotebookFileUpdater(FileUpdater):
         return self._code_str_to_source_list(updated_code)
 
     def _code_str_to_source_list(self, code):
-        """Converts a string of code into a list for a Jupyter notebook code cell.
+        r"""Converts a string of code into a list for a Jupyter notebook code cell.
 
         Args:
             code (str): Code to be converted.

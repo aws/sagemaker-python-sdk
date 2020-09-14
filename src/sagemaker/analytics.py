@@ -108,6 +108,7 @@ class HyperparameterTuningJobAnalytics(AnalyticsMetricsBase):
         return self._tuning_job_name
 
     def __repr__(self):
+        """Human-readable representation override."""
         return "<sagemaker.HyperparameterTuningJobAnalytics for %s>" % self.name
 
     def clear_cache(self):
@@ -117,9 +118,10 @@ class HyperparameterTuningJobAnalytics(AnalyticsMetricsBase):
         self._training_job_summaries = None
 
     def _fetch_dataframe(self):
-        """Return a pandas dataframe with all the training jobs, along with
-        their hyperparameters, results, and metadata. This also includes a
-        column to indicate if a training job was the best seen so far.
+        """Return a pandas dataframe with all the training jobs.
+
+        This includes their hyperparameters, results, and metadata, as well as
+        a column to indicate if a training job was the best seen so far.
         """
 
         def reshape(training_summary):
@@ -320,20 +322,27 @@ class TrainingJobAnalytics(AnalyticsMetricsBase):
         return self._training_job_name
 
     def __repr__(self):
+        """The human-readable representation override."""
         return "<sagemaker.TrainingJobAnalytics for %s>" % self.name
 
     def clear_cache(self):
-        """Clear the object of all local caches of API methods, so that the next
-        time any properties are accessed they will be refreshed from the
-        service.
+        """Clear the object of all local caches of API methods.
+
+        This is so that the next time any properties are accessed they will be
+        refreshed from the service.
         """
         super(TrainingJobAnalytics, self).clear_cache()
         self._data = defaultdict(list)
         self._time_interval = self._determine_timeinterval()
 
     def _determine_timeinterval(self):
-        """Return a dictionary with two datetime objects, start_time and
-        end_time, covering the interval of the training job
+        """Return a dict with two datetime objects.
+
+        The dict includes the `start_time` and `end_time`, covering the interval
+        of the training job.
+
+        Returns:
+            a dict with the `start_time` and `end_time`.
         """
         description = self._sage_client.describe_training_job(TrainingJobName=self.name)
         start_time = self._start_time or description[u"TrainingStartTime"]  # datetime object
@@ -359,7 +368,7 @@ class TrainingJobAnalytics(AnalyticsMetricsBase):
         """Fetch all the values of a named metric, and add them to _data
 
         Args:
-            metric_name:
+            metric_name: The metric name to fetch.
         """
         request = {
             "Namespace": self.CLOUDWATCH_NAMESPACE,
@@ -389,13 +398,14 @@ class TrainingJobAnalytics(AnalyticsMetricsBase):
             self._add_single_metric(elapsed_seconds, metric_name, value)
 
     def _add_single_metric(self, timestamp, metric_name, value):
-        """Store a single metric in the _data dict which can be converted to a
-        dataframe.
+        """Store a single metric in the _data dict.
+
+        This can be converted to a dataframe.
 
         Args:
-            timestamp:
-            metric_name:
-            value:
+            timestamp: The timestamp of the metric.
+            metric_name: The name of the metric.
+            value: The value of the metric.
         """
         # note that this method is built this way to make it possible to
         # support live-refreshing charts in Bokeh at some point in the future.
@@ -480,6 +490,7 @@ class ExperimentAnalytics(AnalyticsMetricsBase):
         return self._experiment_name
 
     def __repr__(self):
+        """The human-readable representation override."""
         return "<sagemaker.ExperimentAnalytics for %s>" % self.name
 
     def clear_cache(self):
