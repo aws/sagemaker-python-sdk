@@ -170,12 +170,7 @@ def _expected_tf_inference_uri(tf_inference_version, processor="cpu", region=REG
 
     account = _sagemaker_or_dlc_account(repo, region)
     return expected_uris.framework_uri(
-        repo,
-        tf_inference_version,
-        account,
-        py_version,
-        processor=processor,
-        region=region,
+        repo, tf_inference_version, account, py_version, processor=processor, region=region,
     )
 
 
@@ -193,16 +188,16 @@ def _expected_tf_inference_repo(version, eia):
     return repo
 
 
-def test_mxnet_training(mxnet_training_version, mxnet_py_version):
+def test_mxnet_training(mxnet_training_version, mxnet_training_py_version):
     expected_fn_args = {
         "mxnet_version": mxnet_training_version,
-        "py_version": mxnet_py_version,
+        "py_version": mxnet_training_py_version,
     }
 
     _test_image_uris(
         "mxnet",
         mxnet_training_version,
-        mxnet_py_version,
+        mxnet_training_py_version,
         "training",
         _expected_mxnet_training_uri,
         expected_fn_args,
@@ -228,27 +223,27 @@ def _expected_mxnet_training_uri(mxnet_version, py_version, processor="cpu", reg
     )
 
 
-def test_mxnet_inference(mxnet_inference_version, mxnet_py_version):
+def test_mxnet_inference(mxnet_inference_version, mxnet_inference_py_version):
     expected_fn_args = {
         "mxnet_version": mxnet_inference_version,
-        "py_version": mxnet_py_version,
+        "py_version": mxnet_inference_py_version,
     }
 
     _test_image_uris(
         "mxnet",
         mxnet_inference_version,
-        mxnet_py_version,
+        mxnet_inference_py_version,
         "inference",
         _expected_mxnet_inference_uri,
         expected_fn_args,
     )
 
 
-def test_mxnet_eia(mxnet_eia_version, mxnet_py_version):
+def test_mxnet_eia(mxnet_eia_version, mxnet_eia_py_version):
     base_args = {
         "framework": "mxnet",
         "version": mxnet_eia_version,
-        "py_version": mxnet_py_version,
+        "py_version": mxnet_eia_py_version,
         "image_scope": "inference",
         "instance_type": "ml.c4.xlarge",
         "accelerator_type": "ml.eia1.medium",
@@ -256,14 +251,14 @@ def test_mxnet_eia(mxnet_eia_version, mxnet_py_version):
 
     uri = image_uris.retrieve(region=REGION, **base_args)
 
-    expected = _expected_mxnet_inference_uri(mxnet_eia_version, mxnet_py_version, eia=True)
+    expected = _expected_mxnet_inference_uri(mxnet_eia_version, mxnet_eia_py_version, eia=True)
     assert expected == uri
 
     for region in SAGEMAKER_ALTERNATE_REGION_ACCOUNTS.keys():
         uri = image_uris.retrieve(region=region, **base_args)
 
         expected = _expected_mxnet_inference_uri(
-            mxnet_eia_version, mxnet_py_version, region=region, eia=True
+            mxnet_eia_version, mxnet_eia_py_version, region=region, eia=True
         )
         assert expected == uri
 

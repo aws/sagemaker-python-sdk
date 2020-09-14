@@ -134,7 +134,23 @@ def chainer_py_version(request):
 
 
 @pytest.fixture(scope="module", params=["py2", "py3"])
-def mxnet_py_version(request):
+def mxnet_inference_py_version(mxnet_inference_version, request):
+    if Version(mxnet_inference_version) < Version("1.7.0"):
+        return request.param
+    else:
+        return "py3"
+
+
+@pytest.fixture(scope="module", params=["py2", "py3"])
+def mxnet_training_py_version(mxnet_training_version, request):
+    if Version(mxnet_training_version) < Version("1.7.0"):
+        return request.param
+    else:
+        return "py3"
+
+
+@pytest.fixture(scope="module", params=["py2", "py3"])
+def mxnet_eia_py_version(request):
     return request.param
 
 
