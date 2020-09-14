@@ -57,9 +57,9 @@ class RandomCutForest(AmazonAlgorithmEstimatorBase):
         eval_metrics=None,
         **kwargs
     ):
-        """RandomCutForest is :class:`Estimator` used for anomaly detection.
+        """An `Estimator` class implementing a Random Cut Forest.
 
-        This Estimator may be fit via calls to
+        Typically used for anomaly detection, this Estimator may be fit via calls to
         :meth:`~sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase.fit`.
         It requires Amazon :class:`~sagemaker.amazon.record_pb2.Record` protobuf
         serialized data to be stored in S3. There is an utility

@@ -22,9 +22,11 @@ from six.moves import urllib
 
 
 def git_clone_repo(git_config, entry_point, source_dir=None, dependencies=None):
-    """Git clone repo containing the training code and serving code. This method
-    also validate ``git_config``, and set ``entry_point``, ``source_dir`` and
-    ``dependencies`` to the right file or directory in the repo cloned.
+    """Git clone repo containing the training code and serving code.
+
+    This method also validate ``git_config``, and set ``entry_point``,
+    ``source_dir`` and ``dependencies`` to the right file or directory in the
+    repo cloned.
 
     Args:
         git_config (dict[str, str]): Git configurations used for cloning files,
@@ -118,9 +120,13 @@ def git_clone_repo(git_config, entry_point, source_dir=None, dependencies=None):
 
 
 def _validate_git_config(git_config):
-    """
+    """Validates the git configuration.
+
+    Checks all configuration values except 2FA_enabled are string types. The
+    2FA_enabled configuration should be a boolean.
+
     Args:
-        git_config:
+        git_config: The configuration to validate.
     """
     if "repo" not in git_config:
         raise ValueError("Please provide a repo for git_config.")
@@ -133,8 +139,9 @@ def _validate_git_config(git_config):
 
 
 def _generate_and_run_clone_command(git_config, dest_dir):
-    """check if a git_config param is valid, if it is, create the command to git
-    clone the repo, and run it.
+    """Check if a git_config param is valid.
+
+    If it is valid, create the command to git, clone the repo, and run it.
 
     Args:
         git_config ((dict[str, str]): Git configurations used for cloning files,
@@ -153,8 +160,9 @@ def _generate_and_run_clone_command(git_config, dest_dir):
 
 
 def _clone_command_for_github_like(git_config, dest_dir):
-    """check if a git_config param representing a GitHub (or like) repo is
-    valid, if it is, create the command to git clone the repo, and run it.
+    """Check if a git_config param representing a GitHub (or like) repo is valid.
+
+    If it is valid, create the command to git clone the repo, and run it.
 
     Args:
         git_config ((dict[str, str]): Git configurations used for cloning files,
@@ -223,8 +231,9 @@ def _clone_command_for_github_like_https_2fa_enabled(git_config, dest_dir):
 
 
 def _clone_command_for_codecommit(git_config, dest_dir):
-    """check if a git_config param representing a CodeCommit repo is valid, if
-    it is, create the command to git clone the repo, and run it.
+    """Check if a git_config param representing a CodeCommit repo is valid.
+
+    If it is, create the command to git clone the repo, and run it.
 
     Args:
         git_config ((dict[str, str]): Git configurations used for cloning files,
@@ -250,10 +259,11 @@ def _clone_command_for_codecommit(git_config, dest_dir):
 
 
 def _clone_command_for_codecommit_https(git_config, dest_dir):
-    """
+    """Invoke the clone command for codecommit.
+
     Args:
-        git_config:
-        dest_dir:
+        git_config: The git configuration.
+        dest_dir: The destination directory for the clone.
     """
     updated_url = git_config["repo"]
     if "username" in git_config and "password" in git_config:

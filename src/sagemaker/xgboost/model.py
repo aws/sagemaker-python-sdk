@@ -31,7 +31,8 @@ class XGBoostPredictor(Predictor):
     """A Predictor for inference against XGBoost Endpoints.
 
     This is able to serialize Python lists, dictionaries, and numpy arrays to xgb.DMatrix
-     for XGBoost inference."""
+    for XGBoost inference.
+    """
 
     def __init__(self, endpoint_name, sagemaker_session=None):
         """Initialize an ``XGBoostPredictor``.

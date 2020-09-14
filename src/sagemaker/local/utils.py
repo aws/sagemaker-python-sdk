@@ -46,7 +46,9 @@ def copy_directory_structure(destination_directory, relative_path):
 
 
 def move_to_destination(source, destination, job_name, sagemaker_session):
-    """move source to destination. Can handle uploading to S3
+    """Move source to destination.
+
+    Can handle uploading to S3.
 
     Args:
         source (str): root directory to move

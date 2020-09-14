@@ -365,6 +365,11 @@ class CollectionConfig(object):
         self.parameters = parameters
 
     def __eq__(self, other):
+        """Equals method override.
+
+        Args:
+            other: Object to test equality against.
+        """
         if not isinstance(other, CollectionConfig):
             raise TypeError(
                 "CollectionConfig is only comparable with other CollectionConfig objects."
@@ -373,6 +378,11 @@ class CollectionConfig(object):
         return self.name == other.name and self.parameters == other.parameters
 
     def __ne__(self, other):
+        """Not-equals method override.
+
+        Args:
+            other: Object to test equality against.
+        """
         if not isinstance(other, CollectionConfig):
             raise TypeError(
                 "CollectionConfig is only comparable with other CollectionConfig objects."
@@ -381,6 +391,7 @@ class CollectionConfig(object):
         return self.name != other.name or self.parameters != other.parameters
 
     def __hash__(self):
+        """Hash method override."""
         return hash((self.name, tuple(sorted((self.parameters or {}).items()))))
 
     def _to_request_dict(self):

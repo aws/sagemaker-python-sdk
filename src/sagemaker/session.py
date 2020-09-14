@@ -1574,8 +1574,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Args:
             job (str): Name of the auto ml job to wait for.
             poll (int): Polling interval in seconds (default: 5).
+
         Returns:
             (dict): Return value from the ``DescribeAutoMLJob`` API.
+
         Raises:
             exceptions.UnexpectedStatusException: If the auto ml job fails.
         """
