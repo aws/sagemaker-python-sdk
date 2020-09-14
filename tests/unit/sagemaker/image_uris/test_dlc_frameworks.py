@@ -44,9 +44,7 @@ SAGEMAKER_ALTERNATE_REGION_ACCOUNTS = {
 }
 
 
-def _test_image_uris(
-    framework, fw_version, py_version, scope, expected_fn, expected_fn_args
-):
+def _test_image_uris(framework, fw_version, py_version, scope, expected_fn, expected_fn_args):
     base_args = {
         "framework": framework,
         "version": fw_version,
@@ -55,17 +53,13 @@ def _test_image_uris(
     }
 
     for instance_type, processor in INSTANCE_TYPES_AND_PROCESSORS:
-        uri = image_uris.retrieve(
-            region=REGION, instance_type=instance_type, **base_args
-        )
+        uri = image_uris.retrieve(region=REGION, instance_type=instance_type, **base_args)
 
         expected = expected_fn(processor=processor, **expected_fn_args)
         assert expected == uri
 
     for region in SAGEMAKER_ALTERNATE_REGION_ACCOUNTS.keys():
-        uri = image_uris.retrieve(
-            region=region, instance_type="ml.c4.xlarge", **base_args
-        )
+        uri = image_uris.retrieve(region=region, instance_type="ml.c4.xlarge", **base_args)
 
         expected = expected_fn(region=region, **expected_fn_args)
         assert expected == uri
@@ -88,11 +82,7 @@ def test_chainer(chainer_version, chainer_py_version):
 
 
 def _expected_chainer_uri(chainer_version, py_version, processor="cpu", region=REGION):
-    account = (
-        SAGEMAKER_ACCOUNT
-        if region == REGION
-        else SAGEMAKER_ALTERNATE_REGION_ACCOUNTS[region]
-    )
+    account = SAGEMAKER_ACCOUNT if region == REGION else SAGEMAKER_ALTERNATE_REGION_ACCOUNTS[region]
     return expected_uris.framework_uri(
         repo="sagemaker-chainer",
         fw_version=chainer_version,
@@ -103,9 +93,7 @@ def _expected_chainer_uri(chainer_version, py_version, processor="cpu", region=R
     )
 
 
-def test_tensorflow_training(
-    tensorflow_training_version, tensorflow_training_py_version
-):
+def test_tensorflow_training(tensorflow_training_version, tensorflow_training_py_version):
     expected_fn_args = {
         "tf_training_version": tensorflow_training_version,
         "py_version": tensorflow_training_py_version,
@@ -121,9 +109,7 @@ def test_tensorflow_training(
     )
 
 
-def _expected_tf_training_uri(
-    tf_training_version, py_version, processor="cpu", region=REGION
-):
+def _expected_tf_training_uri(tf_training_version, py_version, processor="cpu", region=REGION):
     version = Version(tf_training_version)
     if version < Version("1.11"):
         repo = "sagemaker-tensorflow"
@@ -132,11 +118,7 @@ def _expected_tf_training_uri(
     elif version >= Version("1.14"):
         repo = "tensorflow-training"
     else:
-        repo = (
-            "sagemaker-tensorflow-scriptmode"
-            if py_version == "py2"
-            else "tensorflow-training"
-        )
+        repo = "sagemaker-tensorflow-scriptmode" if py_version == "py2" else "tensorflow-training"
 
     return expected_uris.framework_uri(
         repo,
@@ -177,15 +159,11 @@ def test_tensorflow_eia(tensorflow_eia_version):
     for region in SAGEMAKER_ALTERNATE_REGION_ACCOUNTS.keys():
         uri = image_uris.retrieve(region=region, **base_args)
 
-        expected = _expected_tf_inference_uri(
-            tensorflow_eia_version, region=region, eia=True
-        )
+        expected = _expected_tf_inference_uri(tensorflow_eia_version, region=region, eia=True)
         assert expected == uri
 
 
-def _expected_tf_inference_uri(
-    tf_inference_version, processor="cpu", region=REGION, eia=False
-):
+def _expected_tf_inference_uri(tf_inference_version, processor="cpu", region=REGION, eia=False):
     version = Version(tf_inference_version)
     repo = _expected_tf_inference_repo(version, eia)
     py_version = "py2" if version < Version("1.11") else None
@@ -231,9 +209,7 @@ def test_mxnet_training(mxnet_training_version, mxnet_training_py_version):
     )
 
 
-def _expected_mxnet_training_uri(
-    mxnet_version, py_version, processor="cpu", region=REGION
-):
+def _expected_mxnet_training_uri(mxnet_version, py_version, processor="cpu", region=REGION):
     version = Version(mxnet_version)
     if version < Version("1.4") or mxnet_version == "1.4.0":
         repo = "sagemaker-mxnet"
@@ -280,9 +256,7 @@ def test_mxnet_eia(mxnet_eia_version, mxnet_eia_py_version):
 
     uri = image_uris.retrieve(region=REGION, **base_args)
 
-    expected = _expected_mxnet_inference_uri(
-        mxnet_eia_version, mxnet_eia_py_version, eia=True
-    )
+    expected = _expected_mxnet_inference_uri(mxnet_eia_version, mxnet_eia_py_version, eia=True)
     assert expected == uri
 
     for region in SAGEMAKER_ALTERNATE_REGION_ACCOUNTS.keys():
@@ -305,11 +279,7 @@ def _expected_mxnet_inference_uri(
     elif version >= Version("1.5"):
         repo = "mxnet-inference"
     else:
-        repo = (
-            "sagemaker-mxnet-serving"
-            if py_version == "py2" and not eia
-            else "mxnet-inference"
-        )
+        repo = "sagemaker-mxnet-serving" if py_version == "py2" and not eia else "mxnet-inference"
 
     if eia:
         repo = "-".join((repo, "eia"))
@@ -338,9 +308,7 @@ def test_pytorch_training(pytorch_training_version, pytorch_training_py_version)
     )
 
 
-def _expected_pytorch_training_uri(
-    pytorch_version, py_version, processor="cpu", region=REGION
-):
+def _expected_pytorch_training_uri(pytorch_version, py_version, processor="cpu", region=REGION):
     version = Version(pytorch_version)
     if version < Version("1.2"):
         repo = "sagemaker-pytorch"
@@ -371,9 +339,7 @@ def test_pytorch_inference(pytorch_inference_version, pytorch_inference_py_versi
     )
 
 
-def _expected_pytorch_inference_uri(
-    pytorch_version, py_version, processor="cpu", region=REGION
-):
+def _expected_pytorch_inference_uri(pytorch_version, py_version, processor="cpu", region=REGION):
     version = Version(pytorch_version)
     if version < Version("1.2"):
         repo = "sagemaker-pytorch"
@@ -427,11 +393,7 @@ def test_pytorch_eia(pytorch_eia_version, pytorch_eia_py_version):
 def _sagemaker_or_dlc_account(repo, region):
     if repo.startswith("sagemaker"):
         return (
-            SAGEMAKER_ACCOUNT
-            if region == REGION
-            else SAGEMAKER_ALTERNATE_REGION_ACCOUNTS[region]
+            SAGEMAKER_ACCOUNT if region == REGION else SAGEMAKER_ALTERNATE_REGION_ACCOUNTS[region]
         )
     else:
-        return (
-            DLC_ACCOUNT if region == REGION else DLC_ALTERNATE_REGION_ACCOUNTS[region]
-        )
+        return DLC_ACCOUNT if region == REGION else DLC_ALTERNATE_REGION_ACCOUNTS[region]
