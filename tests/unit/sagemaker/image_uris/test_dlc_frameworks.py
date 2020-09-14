@@ -296,7 +296,7 @@ def test_pytorch_training(pytorch_training_version, pytorch_training_py_version)
         pytorch_training_py_version,
         "training",
         _expected_pytorch_training_uri,
-        {"pytorch_version": pytorch_training_version, "py_version": pytorch_training_py_version},
+        {"pytorch_version": pytorch_training_version, "py_version": pytorch_training_py_version,},
     )
 
 
@@ -324,7 +324,7 @@ def test_pytorch_inference(pytorch_inference_version, pytorch_inference_py_versi
         pytorch_inference_py_version,
         "inference",
         _expected_pytorch_inference_uri,
-        {"pytorch_version": pytorch_inference_version, "py_version": pytorch_inference_py_version},
+        {"pytorch_version": pytorch_inference_version, "py_version": pytorch_inference_py_version,},
     )
 
 
