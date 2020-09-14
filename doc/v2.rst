@@ -62,7 +62,7 @@ Please instantiate the objects instead.
 +--------------------------------------------+------------------------------------------------+
 | v1.x                                       | v2.0 and later                                 |
 +============================================+================================================+
-| ``sagemaker.predictor.csv_serializer``     | ``sagemaker.serializers.CSVSerializer()``    |
+| ``sagemaker.predictor.csv_serializer``     | ``sagemaker.serializers.CSVSerializer()``      |
 +--------------------------------------------+------------------------------------------------+
 | ``sagemaker.predictor.json_serializer``    | ``sagemaker.serializers.JSONSerializer()``     |
 +--------------------------------------------+------------------------------------------------+
