@@ -60,7 +60,7 @@ class TrainingInputConstructorRefactor(Modifier):
 
 
 def _rename_namespace(node, name):
-    """Rename namespace ``session`` to ``inputs`` """
+    """Rename namespace ``session`` to ``inputs``."""
     if isinstance(node.func.value, ast.Attribute) and node.func.value.attr == name:
         node.func.value.attr = "inputs"
     elif isinstance(node.func.value, ast.Name) and node.func.value.id == name:
