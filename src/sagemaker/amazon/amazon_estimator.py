@@ -19,22 +19,13 @@ import tempfile
 
 from six.moves.urllib.parse import urlparse
 
+from sagemaker import image_uris
 from sagemaker.amazon import validation
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
 from sagemaker.amazon.common import write_numpy_to_dense_tensor
 from sagemaker.estimator import EstimatorBase, _TrainingJob
-from sagemaker.inputs import FileSystemInput
-from sagemaker.model import NEO_IMAGE_ACCOUNT
-from sagemaker.session import s3_input
-from sagemaker.utils import sagemaker_timestamp, get_ecr_image_uri_prefix
-from sagemaker.xgboost.defaults import (
-    XGBOOST_1P_VERSIONS,
-    XGBOOST_LATEST_VERSION,
-    XGBOOST_NAME,
-    XGBOOST_SUPPORTED_VERSIONS,
-    XGBOOST_VERSION_EQUIVALENTS,
-)
-from sagemaker.xgboost.estimator import get_xgboost_image_uri
+from sagemaker.inputs import FileSystemInput, TrainingInput
+from sagemaker.utils import sagemaker_timestamp
 
 logger = logging.getLogger(__name__)
 
@@ -52,8 +43,8 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
     def __init__(
         self,
         role,
-        train_instance_count,
-        train_instance_type,
+        instance_count,
+        instance_type,
         data_location=None,
         enable_network_isolation=False,
         **kwargs
@@ -66,9 +57,9 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
                 endpoints use this role to access training data and model
                 artifacts. After the endpoint is created, the inference code
                 might use the IAM role, if it needs to access an AWS resource.
-            train_instance_count (int): Number of Amazon EC2 instances to use
+            instance_count (int): Number of Amazon EC2 instances to use
                 for training.
-            train_instance_type (str): Type of EC2 instance to use for training,
+            instance_type (str): Type of EC2 instance to use for training,
                 for example, 'ml.c4.xlarge'.
             data_location (str or None): The s3 prefix to upload RecordSet
                 objects to, expressed as an S3 url. For example
@@ -89,8 +80,8 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
         """
         super(AmazonAlgorithmEstimatorBase, self).__init__(
             role,
-            train_instance_count,
-            train_instance_type,
+            instance_count,
+            instance_type,
             enable_network_isolation=enable_network_isolation,
             **kwargs
         )
@@ -100,10 +91,12 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
         )
         self._data_location = data_location
 
-    def train_image(self):
+    def training_image_uri(self):
         """Placeholder docstring"""
-        return get_image_uri(
-            self.sagemaker_session.boto_region_name, type(self).repo_name, type(self).repo_version
+        return image_uris.retrieve(
+            self.repo_name,
+            self.sagemaker_session.boto_region_name,
+            version=self.repo_version,
         )
 
     def hyperparameters(self):
@@ -156,7 +149,7 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
                     init_params[attribute] = init_params["hyperparameters"][value.name]
 
         del init_params["hyperparameters"]
-        del init_params["image"]
+        del init_params["image_uri"]
         return init_params
 
     def prepare_workflow_for_training(self, records=None, mini_batch_size=None, job_name=None):
@@ -266,7 +259,7 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
         the list of objects created and also stored in S3.
 
         The number of S3 objects created is controlled by the
-        ``train_instance_count`` property on this Estimator. One S3 object is
+        ``instance_count`` property on this Estimator. One S3 object is
         created per training instance.
 
         Args:
@@ -291,7 +284,7 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
         key_prefix = key_prefix.lstrip("/")
         logger.debug("Uploading to bucket %s and key_prefix %s", bucket, key_prefix)
         manifest_s3_file = upload_numpy_to_s3_shards(
-            self.train_instance_count, s3, bucket, key_prefix, train, labels, encrypt
+            self.instance_count, s3, bucket, key_prefix, train, labels, encrypt
         )
         logger.debug("Created manifest file %s", manifest_s3_file)
         return RecordSet(
@@ -341,8 +334,10 @@ class RecordSet(object):
         return {self.channel: self.records_s3_input()}
 
     def records_s3_input(self):
-        """Return a s3_input to represent the training data"""
-        return s3_input(self.s3_data, distribution="ShardedByS3Key", s3_data_type=self.s3_data_type)
+        """Return a TrainingInput to represent the training data"""
+        return TrainingInput(
+            self.s3_data, distribution="ShardedByS3Key", s3_data_type=self.s3_data_type
+        )
 
 
 class FileSystemRecordSet(object):
@@ -459,238 +454,3 @@ def upload_numpy_to_s3_shards(
                 s3.Object(bucket, key_prefix + file).delete()
         finally:
             raise ex
-
-
-def registry(region_name, algorithm=None):
-    """Return docker registry for the given AWS region
-
-    Note: Not all the algorithms listed below have an Amazon Estimator
-    implemented. For full list of pre-implemented Estimators, look at:
-
-    https://github.com/aws/sagemaker-python-sdk/tree/master/src/sagemaker/amazon
-
-    Args:
-        region_name (str): The region name for the account.
-        algorithm (str): The algorithm for the account.
-
-    Raises:
-        ValueError: If invalid algorithm passed in or if mapping does not exist for given algorithm
-            and region.
-    """
-    region_to_accounts = {}
-    if algorithm in [
-        None,
-        "pca",
-        "kmeans",
-        "linear-learner",
-        "factorization-machines",
-        "ntm",
-        "randomcutforest",
-        "knn",
-        "object2vec",
-        "ipinsights",
-    ]:
-        region_to_accounts = {
-            "us-east-1": "382416733822",
-            "us-east-2": "404615174143",
-            "us-west-2": "174872318107",
-            "eu-west-1": "438346466558",
-            "eu-central-1": "664544806723",
-            "ap-northeast-1": "351501993468",
-            "ap-northeast-2": "835164637446",
-            "ap-southeast-2": "712309505854",
-            "us-gov-west-1": "226302683700",
-            "ap-southeast-1": "475088953585",
-            "ap-south-1": "991648021394",
-            "ca-central-1": "469771592824",
-            "eu-west-2": "644912444149",
-            "us-west-1": "632365934929",
-            "us-iso-east-1": "490574956308",
-            "ap-east-1": "286214385809",
-            "eu-north-1": "669576153137",
-            "eu-west-3": "749696950732",
-            "sa-east-1": "855470959533",
-            "me-south-1": "249704162688",
-            "cn-north-1": "390948362332",
-            "cn-northwest-1": "387376663083",
-        }
-    elif algorithm in ["lda"]:
-        region_to_accounts = {
-            "us-east-1": "766337827248",
-            "us-east-2": "999911452149",
-            "us-west-2": "266724342769",
-            "eu-west-1": "999678624901",
-            "eu-central-1": "353608530281",
-            "ap-northeast-1": "258307448986",
-            "ap-northeast-2": "293181348795",
-            "ap-southeast-2": "297031611018",
-            "us-gov-west-1": "226302683700",
-            "ap-southeast-1": "475088953585",
-            "ap-south-1": "991648021394",
-            "ca-central-1": "469771592824",
-            "eu-west-2": "644912444149",
-            "us-west-1": "632365934929",
-            "us-iso-east-1": "490574956308",
-        }
-    elif algorithm in ["forecasting-deepar"]:
-        region_to_accounts = {
-            "us-east-1": "522234722520",
-            "us-east-2": "566113047672",
-            "us-west-2": "156387875391",
-            "eu-west-1": "224300973850",
-            "eu-central-1": "495149712605",
-            "ap-northeast-1": "633353088612",
-            "ap-northeast-2": "204372634319",
-            "ap-southeast-2": "514117268639",
-            "us-gov-west-1": "226302683700",
-            "ap-southeast-1": "475088953585",
-            "ap-south-1": "991648021394",
-            "ca-central-1": "469771592824",
-            "eu-west-2": "644912444149",
-            "us-west-1": "632365934929",
-            "us-iso-east-1": "490574956308",
-            "ap-east-1": "286214385809",
-            "eu-north-1": "669576153137",
-            "eu-west-3": "749696950732",
-            "sa-east-1": "855470959533",
-            "me-south-1": "249704162688",
-            "cn-north-1": "390948362332",
-            "cn-northwest-1": "387376663083",
-        }
-    elif algorithm in [
-        "xgboost",
-        "seq2seq",
-        "image-classification",
-        "blazingtext",
-        "object-detection",
-        "semantic-segmentation",
-    ]:
-        region_to_accounts = {
-            "us-east-1": "811284229777",
-            "us-east-2": "825641698319",
-            "us-west-2": "433757028032",
-            "eu-west-1": "685385470294",
-            "eu-central-1": "813361260812",
-            "ap-northeast-1": "501404015308",
-            "ap-northeast-2": "306986355934",
-            "ap-southeast-2": "544295431143",
-            "us-gov-west-1": "226302683700",
-            "ap-southeast-1": "475088953585",
-            "ap-south-1": "991648021394",
-            "ca-central-1": "469771592824",
-            "eu-west-2": "644912444149",
-            "us-west-1": "632365934929",
-            "us-iso-east-1": "490574956308",
-            "ap-east-1": "286214385809",
-            "eu-north-1": "669576153137",
-            "eu-west-3": "749696950732",
-            "sa-east-1": "855470959533",
-            "me-south-1": "249704162688",
-            "cn-north-1": "390948362332",
-            "cn-northwest-1": "387376663083",
-        }
-    elif algorithm in ["image-classification-neo", "xgboost-neo"]:
-        region_to_accounts = NEO_IMAGE_ACCOUNT
-    else:
-        raise ValueError(
-            "Algorithm class:{} does not have mapping to account_id with images".format(algorithm)
-        )
-
-    if region_name in region_to_accounts:
-        account_id = region_to_accounts[region_name]
-        return get_ecr_image_uri_prefix(account_id, region_name)
-
-    raise ValueError(
-        "Algorithm ({algorithm}) is unsupported for region ({region_name}).".format(
-            algorithm=algorithm, region_name=region_name
-        )
-    )
-
-
-def get_image_uri(region_name, repo_name, repo_version=1):
-    """Return algorithm image URI for the given AWS region, repository name, and
-    repository version
-
-    Args:
-        region_name:
-        repo_name:
-        repo_version:
-    """
-    logger.warning(
-        "'get_image_uri' method will be deprecated in favor of 'ImageURIProvider' class "
-        "in SageMaker Python SDK v2."
-    )
-
-    repo_version = str(repo_version)
-
-    if repo_name == XGBOOST_NAME:
-
-        if repo_version in XGBOOST_1P_VERSIONS:
-            _warn_newer_xgboost_image()
-            return "{}/{}:{}".format(registry(region_name, repo_name), repo_name, repo_version)
-
-        if "-" not in repo_version:
-            xgboost_version_matches = [
-                version
-                for version in XGBOOST_SUPPORTED_VERSIONS
-                if repo_version == version.split("-")[0]
-            ]
-            if xgboost_version_matches:
-                # Assumes that XGBOOST_SUPPORTED_VERSION is sorted from oldest version to latest.
-                # When SageMaker version is not specified, we use the oldest one that matches
-                # XGBoost version for backward compatibility.
-                repo_version = xgboost_version_matches[0]
-
-        supported_framework_versions = [
-            version
-            for version in XGBOOST_SUPPORTED_VERSIONS
-            if repo_version in _generate_version_equivalents(version)
-        ]
-
-        if not supported_framework_versions:
-            raise ValueError(
-                "SageMaker XGBoost version {} is not supported. Supported versions: {}".format(
-                    repo_version, ", ".join(XGBOOST_SUPPORTED_VERSIONS)
-                )
-            )
-
-        if not _is_latest_xgboost_version(repo_version):
-            _warn_newer_xgboost_image()
-
-        return get_xgboost_image_uri(region_name, supported_framework_versions[-1])
-
-    repo = "{}:{}".format(repo_name, repo_version)
-    return "{}/{}".format(registry(region_name, repo_name), repo)
-
-
-def _warn_newer_xgboost_image():
-    """Print a warning when there is a newer XGBoost image"""
-    logging.warning(
-        "There is a more up to date SageMaker XGBoost image. "
-        "To use the newer image, please set 'repo_version'="
-        "'%s'. For example:\n"
-        "\tget_image_uri(region, '%s', '%s').",
-        XGBOOST_LATEST_VERSION,
-        XGBOOST_NAME,
-        XGBOOST_LATEST_VERSION,
-    )
-
-
-def _is_latest_xgboost_version(repo_version):
-    """Compare xgboost image version with latest version
-
-    Args:
-        repo_version:
-    """
-    if repo_version in XGBOOST_1P_VERSIONS:
-        return False
-    return repo_version in _generate_version_equivalents(XGBOOST_LATEST_VERSION)
-
-
-def _generate_version_equivalents(version):
-    """Returns a list of version equivalents for XGBoost
-
-    Args:
-        version:
-    """
-    return [version + suffix for suffix in XGBOOST_VERSION_EQUIVALENTS] + [version]

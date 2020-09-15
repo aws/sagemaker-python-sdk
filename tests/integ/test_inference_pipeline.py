@@ -22,14 +22,13 @@ from tests.integ.timeout import (
     timeout_and_delete_model_with_transformer,
 )
 
-from sagemaker.amazon.amazon_estimator import get_image_uri
-from sagemaker.content_types import CONTENT_TYPE_CSV
+from sagemaker import image_uris
 from sagemaker.model import Model
 from sagemaker.pipeline import PipelineModel
-from sagemaker.predictor import RealTimePredictor, json_serializer
+from sagemaker.predictor import Predictor
+from sagemaker.serializers import JSONSerializer
 from sagemaker.sparkml.model import SparkMLModel
 from sagemaker.utils import sagemaker_timestamp
-from tests.integ.retry import retries
 
 SPARKML_DATA_PATH = os.path.join(DATA_DIR, "sparkml_model")
 XGBOOST_DATA_PATH = os.path.join(DATA_DIR, "xgboost_model")
@@ -66,9 +65,11 @@ def test_inference_pipeline_batch_transform(sagemaker_session, cpu_instance_type
         env={"SAGEMAKER_SPARKML_SCHEMA": SCHEMA},
         sagemaker_session=sagemaker_session,
     )
-    xgb_image = get_image_uri(sagemaker_session.boto_region_name, "xgboost")
+    xgb_image = image_uris.retrieve(
+        "xgboost", sagemaker_session.boto_region_name, version="1", image_scope="inference"
+    )
     xgb_model = Model(
-        model_data=xgb_model_data, image=xgb_image, sagemaker_session=sagemaker_session
+        model_data=xgb_model_data, image_uri=xgb_image, sagemaker_session=sagemaker_session
     )
     model = PipelineModel(
         models=[sparkml_model, xgb_model],
@@ -85,9 +86,7 @@ def test_inference_pipeline_batch_transform(sagemaker_session, cpu_instance_type
     with timeout_and_delete_model_with_transformer(
         transformer, sagemaker_session, minutes=TRANSFORM_DEFAULT_TIMEOUT_MINUTES
     ):
-        transformer.transform(
-            transform_input, content_type=CONTENT_TYPE_CSV, job_name=batch_job_name
-        )
+        transformer.transform(transform_input, content_type="text/csv", job_name=batch_job_name)
         transformer.wait()
 
 
@@ -115,9 +114,11 @@ def test_inference_pipeline_model_deploy(sagemaker_session, cpu_instance_type):
             env={"SAGEMAKER_SPARKML_SCHEMA": SCHEMA},
             sagemaker_session=sagemaker_session,
         )
-        xgb_image = get_image_uri(sagemaker_session.boto_region_name, "xgboost")
+        xgb_image = image_uris.retrieve(
+            "xgboost", sagemaker_session.boto_region_name, version="1", image_scope="inference"
+        )
         xgb_model = Model(
-            model_data=xgb_model_data, image=xgb_image, sagemaker_session=sagemaker_session
+            model_data=xgb_model_data, image_uri=xgb_image, sagemaker_session=sagemaker_session
         )
         model = PipelineModel(
             models=[sparkml_model, xgb_model],
@@ -126,12 +127,12 @@ def test_inference_pipeline_model_deploy(sagemaker_session, cpu_instance_type):
             name=endpoint_name,
         )
         model.deploy(1, cpu_instance_type, endpoint_name=endpoint_name)
-        predictor = RealTimePredictor(
-            endpoint=endpoint_name,
+        predictor = Predictor(
+            endpoint_name=endpoint_name,
             sagemaker_session=sagemaker_session,
-            serializer=json_serializer,
-            content_type=CONTENT_TYPE_CSV,
-            accept=CONTENT_TYPE_CSV,
+            serializer=JSONSerializer,
+            content_type="text/csv",
+            accept="text/csv",
         )
 
         with open(VALID_DATA_PATH, "r") as f:
@@ -148,7 +149,7 @@ def test_inference_pipeline_model_deploy(sagemaker_session, cpu_instance_type):
         assert "Could not find model" in str(exception.value)
 
 
-def test_inference_pipeline_model_deploy_with_update_endpoint(
+def test_inference_pipeline_model_deploy_and_update_endpoint(
     sagemaker_session, cpu_instance_type, alternative_cpu_instance_type
 ):
     sparkml_data_path = os.path.join(DATA_DIR, "sparkml_model")
@@ -169,33 +170,30 @@ def test_inference_pipeline_model_deploy_with_update_endpoint(
             env={"SAGEMAKER_SPARKML_SCHEMA": SCHEMA},
             sagemaker_session=sagemaker_session,
         )
-        xgb_image = get_image_uri(sagemaker_session.boto_region_name, "xgboost")
+        xgb_image = image_uris.retrieve(
+            "xgboost", sagemaker_session.boto_region_name, version="1", image_scope="inference"
+        )
         xgb_model = Model(
-            model_data=xgb_model_data, image=xgb_image, sagemaker_session=sagemaker_session
+            model_data=xgb_model_data, image_uri=xgb_image, sagemaker_session=sagemaker_session
         )
         model = PipelineModel(
             models=[sparkml_model, xgb_model],
             role="SageMakerRole",
+            predictor_cls=Predictor,
             sagemaker_session=sagemaker_session,
         )
-        model.deploy(1, alternative_cpu_instance_type, endpoint_name=endpoint_name)
-        old_endpoint = sagemaker_session.sagemaker_client.describe_endpoint(
+        predictor = model.deploy(1, alternative_cpu_instance_type, endpoint_name=endpoint_name)
+        endpoint_desc = sagemaker_session.sagemaker_client.describe_endpoint(
             EndpointName=endpoint_name
         )
-        old_config_name = old_endpoint["EndpointConfigName"]
+        old_config_name = endpoint_desc["EndpointConfigName"]
 
-        model.deploy(1, cpu_instance_type, update_endpoint=True, endpoint_name=endpoint_name)
+        predictor.update_endpoint(initial_instance_count=1, instance_type=cpu_instance_type)
 
-        # Wait for endpoint to finish updating
-        # Endpoint update takes ~7min. 40 retries * 30s sleeps = 20min timeout
-        for _ in retries(40, "Waiting for 'InService' endpoint status", seconds_to_sleep=30):
-            new_endpoint = sagemaker_session.sagemaker_client.describe_endpoint(
-                EndpointName=endpoint_name
-            )
-            if new_endpoint["EndpointStatus"] == "InService":
-                break
-
-        new_config_name = new_endpoint["EndpointConfigName"]
+        endpoint_desc = sagemaker_session.sagemaker_client.describe_endpoint(
+            EndpointName=endpoint_name
+        )
+        new_config_name = endpoint_desc["EndpointConfigName"]
         new_config = sagemaker_session.sagemaker_client.describe_endpoint_config(
             EndpointConfigName=new_config_name
         )

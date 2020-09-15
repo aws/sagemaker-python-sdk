@@ -56,6 +56,7 @@ OUTPUT_S3_URI = "s3://output-s3-uri/"
 
 
 CUSTOM_IMAGE_URI = "012345678901.dkr.ecr.us-west-2.amazonaws.com/my-custom-image-uri"
+DEFAULT_IMAGE_URI = "159807026194.dkr.ecr.us-west-2.amazonaws.com/sagemaker-model-monitor-analyzer"
 
 INTER_CONTAINER_ENCRYPTION_EXCEPTION_MSG = (
     "EnableInterContainerTrafficEncryption is not supported in Model Monitor. Please ensure that "
@@ -126,6 +127,7 @@ def test_default_model_monitor_suggest_baseline(sagemaker_session):
     assert my_default_monitor.sagemaker_session == sagemaker_session
     assert my_default_monitor.tags == TAGS
     assert my_default_monitor.network_config == NETWORK_CONFIG
+    assert my_default_monitor.image_uri == DEFAULT_IMAGE_URI
 
     assert BASE_JOB_NAME in my_default_monitor.latest_baselining_job_name
     assert my_default_monitor.latest_baselining_job_name != BASE_JOB_NAME

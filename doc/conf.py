@@ -14,36 +14,7 @@
 from __future__ import absolute_import
 
 import pkg_resources
-import sys
 from datetime import datetime
-from unittest.mock import MagicMock
-
-
-class Mock(MagicMock):
-    @classmethod
-    def __getattr__(cls, name):
-        """
-        Args:
-            name:
-        """
-        if name == "__version__":
-            return "1.4.0"
-        else:
-            return MagicMock()
-
-
-MOCK_MODULES = [
-    "tensorflow",
-    "tensorflow.core",
-    "tensorflow.core.framework",
-    "tensorflow.python",
-    "tensorflow.python.framework",
-    "tensorflow_serving",
-    "tensorflow_serving.apis",
-    "scipy",
-    "scipy.sparse",
-]
-sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
 
 project = u"sagemaker"
 version = pkg_resources.require(project)[0].version

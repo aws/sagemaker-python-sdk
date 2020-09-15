@@ -1,23 +1,17 @@
-##############################################
-Using TensorFlow with the SageMaker Python SDK
-##############################################
+############################################
+Use TensorFlow with the SageMaker Python SDK
+############################################
 
 With the SageMaker Python SDK, you can train and host TensorFlow models on Amazon SageMaker.
 
-For information about supported versions of TensorFlow, see the `AWS documentation <https://docs.aws.amazon.com/deep-learning-containers/latest/devguide/deep-learning-containers-images.html>`__.
+For information about supported versions of TensorFlow, see the `AWS documentation <https://aws.amazon.com/releasenotes/available-deep-learning-containers-images>`_.
 We recommend that you use the latest supported version because that's where we focus our development efforts.
 
 For general information about using the SageMaker Python SDK, see :ref:`overview:Using the SageMaker Python SDK`.
 
 .. warning::
-    We have added a new format of your TensorFlow training script with TensorFlow version 1.11.
-    This new way gives the user script more flexibility.
-    This new format is called Script Mode, as opposed to Legacy Mode, which is what we support with TensorFlow 1.11 and older versions.
-    In addition we are adding Python 3 support with Script Mode.
-    The last supported version of Legacy Mode will be TensorFlow 1.12.
-    Script Mode is available with TensorFlow version 1.11 and newer.
-    Make sure you refer to the correct version of this README when you prepare your script.
-    You can find the Legacy Mode README `here <https://github.com/aws/sagemaker-python-sdk/tree/v1.12.0/src/sagemaker/tensorflow#tensorflow-sagemaker-estimators-and-models>`_.
+    Support for TensorFlow versions 1.4-1.10 has been deprecated.
+    For information on how to upgrade, see `Upgrade from Legacy TensorFlow Support <upgrade_from_legacy.html>`_.
 
 .. contents::
 
@@ -33,14 +27,12 @@ To train a TensorFlow model by using the SageMaker Python SDK:
 .. |call fit| replace:: Call the estimator's ``fit`` method
 .. _call fit: #call-the-fit-method
 
-1. `Prepare a training script <#prepare-a-script-mode-training-script>`_
+1. `Prepare a training script <#prepare-a-training-script>`_
 2. |create tf estimator|_
 3. |call fit|_
 
-Prepare a Script Mode Training Script
-=====================================
-
-Your TensorFlow training script must be a Python 2.7-, 3.6- or 3.7-compatible source file.
+Prepare a Training Script
+=========================
 
 The training script is very similar to a training script you might run outside of SageMaker, but you can access useful properties about the training environment through various environment variables, including the following:
 
@@ -141,18 +133,18 @@ For training, support for installing packages using ``requirements.txt`` varies 
 - For TensorFlow 1.15.2 with Python 3.7 or newer, and TensorFlow 2.2 or newer:
     - Include a ``requirements.txt`` file in the same directory as your training script.
     - You must specify this directory using the ``source_dir`` argument when creating a TensorFlow estimator.
-- For older versions of TensorFlow using Script Mode (TensorFlow 1.11-1.15.2, 2.0-2.1 with Python 2.7 or 3.6):
+- For TensorFlow versions 1.11-1.15.2, 2.0-2.1 with Python 2.7 or 3.6:
     - Write a shell script for your entry point that first calls ``pip install -r requirements.txt``, then runs your training script.
     - For an example of using shell scripts, see `this example notebook <https://github.com/awslabs/amazon-sagemaker-examples/blob/master/sagemaker-python-sdk/tensorflow_script_mode_using_shell_commands/tensorflow_script_mode_using_shell_commands.ipynb>`__.
-- For older versions of TensorFlow using Legacy Mode:
-    - Specify the path to your ``requirements.txt`` file using the ``requirements_file`` argument.
+- For legacy versions of TensorFlow:
+    - See `Upgrade from Legacy TensorFlow Support <upgrade_from_legacy.html>`_.
 
 For serving, support for installing packages using ``requirements.txt`` varies by TensorFlow version as follows:
 
 - For TensorFlow 1.11 or newer:
     - Include a ``requirements.txt`` file in the ``code`` directory.
-- For older versions of TensorFlow:
-    - Specify the path to your ``requirements.txt`` file using the ``SAGEMAKER_REQUIREMENTS`` environment variable.
+- For legacy versions of TensorFlow:
+    - See `Upgrade from Legacy TensorFlow Support <upgrade_from_legacy.html>`_.
 
 A ``requirements.txt`` file is a text file that contains a list of items that are installed by using ``pip install``.
 You can also specify the version of an item to install.
@@ -164,74 +156,60 @@ Create an Estimator
 
 After you create your training script, create an instance of the :class:`sagemaker.tensorflow.TensorFlow` estimator.
 
-To use Script Mode, set at least one of these args
-
-- ``py_version='py3'``
-- ``script_mode=True``
-
 To use Python 3.7, please specify both of the args:
 
 - ``py_version='py37'``
 - ``framework_version='1.15.2'``
 
-When using Script Mode, your training script needs to accept the following args:
-
-- ``model_dir``
-
-The following args are not permitted when using Script Mode:
-
-- ``checkpoint_path``
-- ``training_steps``
-- ``evaluation_steps``
-- ``requirements_file``
-
 .. code:: python
 
   from sagemaker.tensorflow import TensorFlow
 
-  tf_estimator = TensorFlow(entry_point='tf-train.py', role='SageMakerRole',
-                            train_instance_count=1, train_instance_type='ml.p2.xlarge',
-                            framework_version='1.12', py_version='py3')
-  tf_estimator.fit('s3://bucket/path/to/training/data')
+  tf_estimator = TensorFlow(
+      entry_point="tf-train.py",
+      role="SageMakerRole",
+      instance_count=1,
+      instance_type="ml.p2.xlarge",
+      framework_version="2.2",
+      py_version="py37",
+  )
+  tf_estimator.fit("s3://bucket/path/to/training/data")
 
 Where the S3 url is a path to your training data within Amazon S3.
 The constructor keyword arguments define how SageMaker runs your training script.
+
+Specify a Docker image using an Estimator
+-----------------------------------------
+
+There are use cases, such as extending an existing pre-built Amazon SageMaker images, that require specifing a Docker image when creating an Estimator by directly specifying the ECR URI instead of the Python and framework version. For a full list of available container URIs, see `Available Deep Learning Containers Images <https://github.com/aws/deep-learning-containers/blob/master/available_images.md>`__ For more information on using Docker containers, see `Use Your Own Algorithms or Models with Amazon SageMaker <https://docs.aws.amazon.com/sagemaker/latest/dg/your-algorithms.html>`__.
+
+When specifying the image, you must use the ``image_name=''`` arg to replace the following arg:
+
+- ``py_version=''``
+
+You should still specify the ``framework_version=''`` arg because the SageMaker Python SDK accomodates for differences in the images based on the version.
+
+The following example uses the ``image_name=''`` arg to specify the container image, Python version, and framework version.
+
+.. code:: python
+
+   tf_estimator = TensorFlow(entry_point='tf-train.py',
+                             role='SageMakerRole',
+                             train_instance_count=1,
+                             train_instance_type='ml.p2.xlarge',
+                             image_name='763104351884.dkr.ecr.<region>.amazonaws.com/<framework>-<job type>:<framework version>-<cpu/gpu>-<python version>-ubuntu18.04',
+                             script_mode=True)
 
 For more information about the sagemaker.tensorflow.TensorFlow estimator, see `SageMaker TensorFlow Classes`_.
 
 Call the fit Method
 ===================
 
-You start your training script by calling the ``fit`` method on a ``TensorFlow`` estimator. ``fit`` takes
-both required and optional arguments.
-
-Required arguments
-------------------
-
-- ``inputs``: The S3 location(s) of datasets to be used for training. This can take one of two forms:
-
-  - ``str``: An S3 URI, for example ``s3://my-bucket/my-training-data``, which indicates the dataset's location.
-  - ``dict[str, str]``: A dictionary mapping channel names to S3 locations, for example ``{'train': 's3://my-bucket/my-training-data/train', 'test': 's3://my-bucket/my-training-data/test'}``
-  - ``sagemaker.session.s3_input``: channel configuration for S3 data sources that can provide additional information as well as the path to the training dataset. See `the API docs <https://sagemaker.readthedocs.io/en/stable/inputs.html#sagemaker.inputs.s3_input>`_ for full details.
-
-Optional arguments
-------------------
-
-- ``wait (bool)``: Defaults to True, whether to block and wait for the
-  training script to complete before returning.
-  If set to False, it will return immediately, and can later be attached to.
-- ``logs (bool)``: Defaults to True, whether to show logs produced by training
-  job in the Python session. Only meaningful when wait is True.
-- ``run_tensorboard_locally (bool)``: Defaults to False. If set to True a Tensorboard command will be printed out.
-- ``job_name (str)``: Training job name. If not specified, the estimator generates a default job name,
-  based on the training image name and current timestamp.
-
-What happens when fit is called
--------------------------------
+You start your training script by calling the ``fit`` method on a ``TensorFlow`` estimator.
 
 Calling ``fit`` starts a SageMaker training job. The training job will execute the following.
 
-- Starts ``train_instance_count`` EC2 instances of the type ``train_instance_type``.
+- Starts ``instance_count`` EC2 instances of the type ``instance_type``.
 - On each instance, it will do the following steps:
 
   - starts a Docker container optimized for TensorFlow.
@@ -254,17 +232,19 @@ After attaching, the estimator can be deployed as usual.
 
     tf_estimator = TensorFlow.attach(training_job_name=training_job_name)
 
+For more information about the options available for ``fit``, see the `API documentation <https://sagemaker.readthedocs.io/en/stable/api/training/estimators.html#sagemaker.estimator.EstimatorBase.fit>`_.
+
 Distributed Training
 ====================
 
-To run your training job with multiple instances in a distributed fashion, set ``train_instance_count``
+To run your training job with multiple instances in a distributed fashion, set ``instance_count``
 to a number larger than 1. We support two different types of distributed training, parameter server and Horovod.
-The ``distributions`` parameter is used to configure which distributed training strategy to use.
+The ``distribution`` parameter is used to configure which distributed training strategy to use.
 
 Training with parameter servers
 -------------------------------
 
-If you specify parameter_server as the value of the distributions parameter, the container launches a parameter server
+If you specify parameter_server as the value of the distribution parameter, the container launches a parameter server
 thread on each instance in the training cluster, and then executes your training code. You can find more information on
 TensorFlow distributed training at `TensorFlow docs <https://www.tensorflow.org/deploy/distributed>`__.
 To enable parameter server training:
@@ -273,11 +253,16 @@ To enable parameter server training:
 
   from sagemaker.tensorflow import TensorFlow
 
-  tf_estimator = TensorFlow(entry_point='tf-train.py', role='SageMakerRole',
-                            train_instance_count=2, train_instance_type='ml.p2.xlarge',
-                            framework_version='1.11', py_version='py3',
-                            distributions={'parameter_server': {'enabled': True}})
-  tf_estimator.fit('s3://bucket/path/to/training/data')
+  tf_estimator = TensorFlow(
+      entry_point="tf-train.py",
+      role="SageMakerRole",
+      instance_count=2,
+      instance_type="ml.p2.xlarge",
+      framework_version="2.2",
+      py_version="py37",
+      distribution={"parameter_server": {"enabled": True}},
+  )
+  tf_estimator.fit("s3://bucket/path/to/training/data")
 
 Training with Horovod
 ---------------------
@@ -285,16 +270,16 @@ Training with Horovod
 Horovod is a distributed training framework based on MPI. Horovod is only available with TensorFlow version ``1.12`` or newer.
 You can find more details at `Horovod README <https://github.com/uber/horovod>`__.
 
-The container sets up the MPI environment and executes the ``mpirun`` command enabling you to run any Horovod
-training script with Script Mode.
+The container sets up the MPI environment and executes the ``mpirun`` command, enabling you to run any Horovod
+training script.
 
-Training with ``MPI`` is configured by specifying following fields in ``distributions``:
+Training with ``MPI`` is configured by specifying following fields in ``distribution``:
 
 - ``enabled (bool)``: If set to ``True``, the MPI setup is performed and ``mpirun`` command is executed.
 - ``processes_per_host (int)``: Number of processes MPI should launch on each host. Note, this should not be
   greater than the available slots on the selected instance type. This flag should be set for the multi-cpu/gpu
   training.
-- ``custom_mpi_options (str)``:  Any `mpirun` flag(s) can be passed in this field that will be added to the `mpirun`
+- ``custom_mpi_options (str)``:  Any ``mpirun`` flag(s) can be passed in this field that will be added to the ``mpirun``
   command executed by SageMaker to launch distributed horovod training.
 
 
@@ -304,17 +289,22 @@ In the below example we create an estimator to launch Horovod distributed traini
 
     from sagemaker.tensorflow import TensorFlow
 
-    tf_estimator = TensorFlow(entry_point='tf-train.py', role='SageMakerRole',
-                              train_instance_count=1, train_instance_type='ml.p3.8xlarge',
-                              framework_version='2.1.0', py_version='py3',
-                              distributions={
-                                  'mpi': {
-                                      'enabled': True,
-                                      'processes_per_host': 4,
-                                      'custom_mpi_options': '--NCCL_DEBUG INFO'
-                                  }
-                              })
-    tf_estimator.fit('s3://bucket/path/to/training/data')
+    tf_estimator = TensorFlow(
+        entry_point="tf-train.py",
+        role="SageMakerRole",
+        instance_count=1,
+        instance_type="ml.p3.8xlarge",
+        framework_version="2.1.0",
+        py_version="py3",
+        distribution={
+            "mpi": {
+                "enabled": True,
+                "processes_per_host": 4,
+                "custom_mpi_options": "--NCCL_DEBUG INFO"
+            },
+        },
+    )
+    tf_estimator.fit("s3://bucket/path/to/training/data")
 
 
 Training with Pipe Mode using PipeModeDataset
@@ -363,12 +353,19 @@ To run training job with Pipe input mode, pass in ``input_mode='Pipe'`` to your 
 
     from sagemaker.tensorflow import TensorFlow
 
-    tf_estimator = TensorFlow(entry_point='tf-train-with-pipemodedataset.py', role='SageMakerRole',
-                              training_steps=10000, evaluation_steps=100,
-                              train_instance_count=1, train_instance_type='ml.p2.xlarge',
-                              framework_version='1.10.0', input_mode='Pipe')
+    tf_estimator = TensorFlow(
+        entry_point="tf-train-with-pipemodedataset.py",
+        role="SageMakerRole",
+        training_steps=10000,
+        evaluation_steps=100,
+        instance_count=1,
+        instance_type="ml.p2.xlarge",
+        framework_version="1.10.0",
+        py_version="py3",
+        input_mode="Pipe",
+    )
 
-    tf_estimator.fit('s3://bucket/path/to/training/data')
+    tf_estimator.fit("s3://bucket/path/to/training/data")
 
 
 If your TFRecords are compressed, you can train on Gzipped TF Records by passing in ``compression='Gzip'`` to the call to
@@ -376,9 +373,9 @@ If your TFRecords are compressed, you can train on Gzipped TF Records by passing
 
 .. code:: python
 
-    from sagemaker.session import s3_input
+    from sagemaker.inputs import TrainingInput
 
-    train_s3_input = s3_input('s3://bucket/path/to/training/data', compression='Gzip')
+    train_s3_input = TrainingInput('s3://bucket/path/to/training/data', compression='Gzip')
     tf_estimator.fit(train_s3_input)
 
 
@@ -429,14 +426,18 @@ estimator object to create a SageMaker Endpoint:
 
   from sagemaker.tensorflow import TensorFlow
 
-  estimator = TensorFlow(entry_point='tf-train.py', ..., train_instance_count=1,
-                         train_instance_type='ml.c4.xlarge', framework_version='1.11')
+  estimator = TensorFlow(
+      entry_point="tf-train.py",
+      ...,
+      instance_count=1,
+      instance_type="ml.c4.xlarge",
+      framework_version="2.2",
+      py_version="py37",
+  )
 
   estimator.fit(inputs)
 
-  predictor = estimator.deploy(initial_instance_count=1,
-                               instance_type='ml.c5.xlarge',
-                               endpoint_type='tensorflow-serving')
+  predictor = estimator.deploy(initial_instance_count=1, instance_type="ml.c5.xlarge")
 
 
 The code block above deploys a SageMaker Endpoint with one instance of the type 'ml.c5.xlarge'.
@@ -465,9 +466,9 @@ If you already have existing model artifacts in S3, you can skip training and de
 
 .. code:: python
 
-  from sagemaker.tensorflow.serving import Model
+  from sagemaker.tensorflow import TensorFlowModel
 
-  model = Model(model_data='s3://mybucket/model.tar.gz', role='MySageMakerRole')
+  model = TensorFlowModel(model_data='s3://mybucket/model.tar.gz', role='MySageMakerRole')
 
   predictor = model.deploy(initial_instance_count=1, instance_type='ml.c5.xlarge')
 
@@ -475,9 +476,9 @@ Python-based TensorFlow serving on SageMaker has support for `Elastic Inference 
 
 .. code:: python
 
-    from sagemaker.tensorflow.serving import Model
+    from sagemaker.tensorflow import TensorFlowModel
 
-    model = Model(model_data='s3://mybucket/model.tar.gz', role='MySageMakerRole')
+    model = TensorFlowModel(model_data='s3://mybucket/model.tar.gz', role='MySageMakerRole')
 
     predictor = model.deploy(initial_instance_count=1, instance_type='ml.c5.xlarge', accelerator_type='ml.eia1.medium')
 
@@ -549,7 +550,7 @@ classify/regress requests) to get multiple prediction results in one request to 
 
 If your application allows request grouping like this, it is **much** more efficient than making separate requests.
 
-See `Deploying to TensorFlow Serving Endpoints <https://github.com/aws/sagemaker-python-sdk/blob/master/src/sagemaker/tensorflow/deploying_tensorflow_serving.rst>` to learn how to deploy your model and make inference requests.
+See `Deploying to TensorFlow Serving Endpoints <deploying_tensorflow_serving.html>`_ to learn how to deploy your model and make inference requests.
 
 Run a Batch Transform Job
 =========================
@@ -731,7 +732,7 @@ your input data to CSV format:
 
   # create a Predictor with JSON serialization
 
-  predictor = Predictor('endpoint-name', serializer=sagemaker.predictor.csv_serializer)
+  predictor = Predictor('endpoint-name', serializer=sagemaker.serializers.CSVSerializer())
 
   # CSV-formatted string input
   input = '1.0,2.0,5.0\n1.0,2.0,5.0\n1.0,2.0,5.0'
@@ -747,7 +748,7 @@ your input data to CSV format:
     ]
   }
 
-You can also use python arrays or numpy arrays as input and let the `csv_serializer` object
+You can also use python arrays or numpy arrays as input and let the ``CSVSerializer`` object
 convert them to CSV, but the client-size CSV conversion is more sophisticated than the
 CSV parsing on the Endpoint, so if you encounter conversion problems, try using one of the
 JSON options instead.
@@ -762,20 +763,20 @@ This customized Python code must be named ``inference.py`` and specified through
 
 .. code::
 
-    from sagemaker.tensorflow.serving import Model
+    from sagemaker.tensorflow import TensorFlowModel
 
-    model = Model(entry_point='inference.py',
-                  model_data='s3://mybucket/model.tar.gz',
-                  role='MySageMakerRole')
+    model = TensorFlowModel(entry_point='inference.py',
+                            model_data='s3://mybucket/model.tar.gz',
+                            role='MySageMakerRole')
 
 How to implement the pre- and/or post-processing handler(s)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Your entry point file must be named ``inference.py`` and should implement
-   either a pair of ``input_handler`` and ``output_handler`` functions or
-   a single ``handler`` function.
-   Note that if ``handler`` function is implemented, ``input_handler``
-   and ``output_handler`` are ignored.
+either a pair of ``input_handler`` and ``output_handler`` functions or
+a single ``handler`` function.
+Note that if ``handler`` function is implemented, ``input_handler``
+and ``output_handler`` are ignored.
 
 To implement pre- and/or post-processing handler(s), use the Context
 object that the Python service creates. The Context object is a namedtuple with the following attributes:
@@ -915,12 +916,12 @@ processing. There are 2 ways to do this:
 
 .. code::
 
-    from sagemaker.tensorflow.serving import Model
+    from sagemaker.tensorflow import TensorFlowModel
 
-    model = Model(entry_point='inference.py',
-                  dependencies=['requirements.txt'],
-                  model_data='s3://mybucket/model.tar.gz',
-                  role='MySageMakerRole')
+    model = TensorFlowModel(entry_point='inference.py',
+                            dependencies=['requirements.txt'],
+                            model_data='s3://mybucket/model.tar.gz',
+                            role='MySageMakerRole')
 
 
 2. If you are working in a network-isolation situation or if you don't
@@ -933,12 +934,12 @@ processing. There are 2 ways to do this:
 
 .. code::
 
-    from sagemaker.tensorflow.serving import Model
+    from sagemaker.tensorflow import TensorFlowModel
 
-    model = Model(entry_point='inference.py',
-                  dependencies=['/path/to/folder/named/lib'],
-                  model_data='s3://mybucket/model.tar.gz',
-                  role='MySageMakerRole')
+    model = TensorFlowModel(entry_point='inference.py',
+                           dependencies=['/path/to/folder/named/lib'],
+                           model_data='s3://mybucket/model.tar.gz',
+                           role='MySageMakerRole')
 
 For more information, see: https://github.com/aws/sagemaker-tensorflow-serving-container#prepost-processing
 

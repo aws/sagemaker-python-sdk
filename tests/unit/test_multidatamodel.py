@@ -27,7 +27,11 @@ ENTRY_POINT = "mock.py"
 MXNET_MODEL_DATA = "s3://mybucket/mxnet_path/model.tar.gz"
 MXNET_MODEL_NAME = "dummy-mxnet-model"
 MXNET_ROLE = "DummyMXNetRole"
-MXNET_IMAGE = "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet:1.2-cpu-py2"
+MXNET_FRAMEWORK_VERSION = "1.2"
+MXNET_PY_VERSION = "py2"
+MXNET_IMAGE = "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet:{}-cpu-{}".format(
+    MXNET_FRAMEWORK_VERSION, MXNET_PY_VERSION
+)
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 IMAGE = "123456789012.dkr.ecr.dummyregion.amazonaws.com/dummyimage:latest"
@@ -90,7 +94,7 @@ def multi_data_model(sagemaker_session):
     return MultiDataModel(
         name=MODEL_NAME,
         model_data_prefix=VALID_MULTI_MODEL_DATA_PREFIX,
-        image=IMAGE,
+        image_uri=IMAGE,
         role=ROLE,
         sagemaker_session=sagemaker_session,
     )
@@ -100,8 +104,10 @@ def multi_data_model(sagemaker_session):
 def mxnet_model(sagemaker_session):
     return MXNetModel(
         MXNET_MODEL_DATA,
-        role=MXNET_ROLE,
         entry_point=ENTRY_POINT,
+        framework_version=MXNET_FRAMEWORK_VERSION,
+        py_version=MXNET_PY_VERSION,
+        role=MXNET_ROLE,
         sagemaker_session=sagemaker_session,
         name=MXNET_MODEL_NAME,
         enable_network_isolation=True,
@@ -112,12 +118,12 @@ def test_multi_data_model_create_with_invalid_model_data_prefix():
     invalid_model_data_prefix = "https://mybucket/path/"
     with pytest.raises(ValueError) as ex:
         MultiDataModel(
-            name=MODEL_NAME, model_data_prefix=invalid_model_data_prefix, image=IMAGE, role=ROLE
+            name=MODEL_NAME, model_data_prefix=invalid_model_data_prefix, image_uri=IMAGE, role=ROLE
         )
-    err_msg = 'ValueError: Expecting S3 model prefix beginning with "s3://". Received: "{}"'.format(
+    err_msg = 'Expecting S3 model prefix beginning with "s3://". Received: "{}"'.format(
         invalid_model_data_prefix
     )
-    assert err_msg in str(ex)
+    assert err_msg in str(ex.value)
 
 
 def test_multi_data_model_create_with_invalid_arguments(sagemaker_session, mxnet_model):
@@ -125,13 +131,13 @@ def test_multi_data_model_create_with_invalid_arguments(sagemaker_session, mxnet
         MultiDataModel(
             name=MODEL_NAME,
             model_data_prefix=VALID_MULTI_MODEL_DATA_PREFIX,
-            image=IMAGE,
+            image_uri=IMAGE,
             role=ROLE,
             sagemaker_session=sagemaker_session,
             model=mxnet_model,
         )
     assert (
-        "Parameters image, role or kwargs are not permitted when model parameter is passed."
+        "Parameters image_uri, role, and kwargs are not permitted when model parameter is passed."
         in str(ex)
     )
 
@@ -140,7 +146,7 @@ def test_multi_data_model_create(sagemaker_session):
     model = MultiDataModel(
         name=MODEL_NAME,
         model_data_prefix=VALID_MULTI_MODEL_DATA_PREFIX,
-        image=IMAGE,
+        image_uri=IMAGE,
         role=ROLE,
         sagemaker_session=sagemaker_session,
     )
@@ -149,7 +155,7 @@ def test_multi_data_model_create(sagemaker_session):
     assert model.name == MODEL_NAME
     assert model.model_data_prefix == VALID_MULTI_MODEL_DATA_PREFIX
     assert model.role == ROLE
-    assert model.image == IMAGE
+    assert model.image_uri == IMAGE
     assert model.vpc_config is None
 
 
@@ -162,14 +168,13 @@ def test_multi_data_model_create_with_model_arg_only(mxnet_model):
     assert model.model_data_prefix == VALID_MULTI_MODEL_DATA_PREFIX
     assert model.model == mxnet_model
     assert hasattr(model, "role") is False
-    assert hasattr(model, "image") is False
+    assert hasattr(model, "image_uri") is False
 
 
 @patch("sagemaker.fw_utils.tar_and_upload_dir", MagicMock())
 def test_prepare_container_def_mxnet(sagemaker_session, mxnet_model):
     expected_container_env_keys = [
         "SAGEMAKER_CONTAINER_LOG_LEVEL",
-        "SAGEMAKER_ENABLE_CLOUDWATCH_METRICS",
         "SAGEMAKER_PROGRAM",
         "SAGEMAKER_REGION",
         "SAGEMAKER_SUBMIT_DIRECTORY",
@@ -196,7 +201,7 @@ def test_deploy_multi_data_model(sagemaker_session):
     model = MultiDataModel(
         name=MODEL_NAME,
         model_data_prefix=VALID_MULTI_MODEL_DATA_PREFIX,
-        image=IMAGE,
+        image_uri=IMAGE,
         role=ROLE,
         sagemaker_session=sagemaker_session,
         env={"EXTRA_ENV_MOCK": "MockValue"},
@@ -261,48 +266,6 @@ def test_deploy_multi_data_framework_model(sagemaker_session, mxnet_model):
     assert isinstance(predictor, MXNetPredictor)
 
 
-@patch("sagemaker.fw_utils.tar_and_upload_dir", MagicMock())
-def test_deploy_model_update(sagemaker_session):
-    model = MultiDataModel(
-        name=MODEL_NAME,
-        model_data_prefix=VALID_MULTI_MODEL_DATA_PREFIX,
-        image=IMAGE,
-        role=ROLE,
-        sagemaker_session=sagemaker_session,
-    )
-
-    model.deploy(
-        initial_instance_count=INSTANCE_COUNT,
-        instance_type=INSTANCE_TYPE,
-        endpoint_name=MULTI_MODEL_ENDPOINT_NAME,
-        update_endpoint=True,
-    )
-
-    sagemaker_session.create_model.assert_called()
-    sagemaker_session.create_endpoint_config.assert_called_with(
-        name=model.name,
-        model_name=model.name,
-        initial_instance_count=INSTANCE_COUNT,
-        instance_type=INSTANCE_TYPE,
-        accelerator_type=None,
-        tags=None,
-        kms_key=None,
-        data_capture_config_dict=None,
-    )
-
-    config_name = sagemaker_session.create_endpoint_config(
-        name=model.name,
-        model_name=model.name,
-        initial_instance_count=INSTANCE_COUNT,
-        instance_type=INSTANCE_TYPE,
-        accelerator_type=None,
-    )
-    sagemaker_session.update_endpoint.assert_called_with(
-        MULTI_MODEL_ENDPOINT_NAME, config_name, wait=True
-    )
-    sagemaker_session.create_endpoint.assert_not_called()
-
-
 def test_add_model_local_file_path(multi_data_model):
     valid_local_model_artifact_path = os.path.join(DATA_DIR, "sparkml_model", "mleap_model.tar.gz")
     uploaded_s3_path = multi_data_model.add_model(valid_local_model_artifact_path)
@@ -346,11 +309,9 @@ def test_add_model_with_invalid_model_uri(multi_data_model):
     with pytest.raises(ValueError) as ex:
         multi_data_model.add_model(INVALID_S3_URL)
 
-    assert 'ValueError: model_source must either be a valid local file path or s3 uri. Received: "{}"'.format(
+    assert 'model_source must either be a valid local file path or s3 uri. Received: "{}"'.format(
         INVALID_S3_URL
-    ) in str(
-        ex
-    )
+    ) in str(ex.value)
 
 
 def test_list_models(multi_data_model):

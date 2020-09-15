@@ -17,18 +17,12 @@ import os
 
 import boto3
 import pytest
-import tests.integ
 from botocore.config import Config
+from packaging.version import Version
 
-from sagemaker import Session, utils
-from sagemaker.chainer import Chainer
+from sagemaker import Session, image_uris, utils
 from sagemaker.local import LocalSession
-from sagemaker.mxnet import MXNet
-from sagemaker.pytorch import PyTorch
-from sagemaker.rl import RLEstimator
-from sagemaker.sklearn.defaults import SKLEARN_VERSION
-from sagemaker.tensorflow import TensorFlow
-from sagemaker.tensorflow.defaults import LATEST_VERSION
+import tests.integ
 
 DEFAULT_REGION = "us-west-2"
 CUSTOM_BUCKET_NAME_PREFIX = "sagemaker-custom-bucket"
@@ -44,30 +38,30 @@ NO_M4_REGIONS = [
 
 NO_T2_REGIONS = ["eu-north-1", "ap-east-1", "me-south-1"]
 
+FRAMEWORKS_FOR_GENERATED_VERSION_FIXTURES = (
+    "chainer",
+    "coach_mxnet",
+    "coach_tensorflow",
+    "inferentia_mxnet",
+    "inferentia_tensorflow",
+    "mxnet",
+    "neo_mxnet",
+    "neo_pytorch",
+    "neo_tensorflow",
+    "pytorch",
+    "ray_pytorch",
+    "ray_tensorflow",
+    "sklearn",
+    "tensorflow",
+    "vw",
+    "xgboost",
+)
+
 
 def pytest_addoption(parser):
     parser.addoption("--sagemaker-client-config", action="store", default=None)
     parser.addoption("--sagemaker-runtime-config", action="store", default=None)
     parser.addoption("--boto-config", action="store", default=None)
-    parser.addoption("--chainer-full-version", action="store", default=Chainer.LATEST_VERSION)
-    parser.addoption("--mxnet-full-version", action="store", default=MXNet.LATEST_VERSION)
-    parser.addoption("--ei-mxnet-full-version", action="store", default="1.5.1")
-    parser.addoption("--pytorch-full-version", action="store", default=PyTorch.LATEST_VERSION)
-    parser.addoption(
-        "--rl-coach-mxnet-full-version",
-        action="store",
-        default=RLEstimator.COACH_LATEST_VERSION_MXNET,
-    )
-    parser.addoption(
-        "--rl-coach-tf-full-version", action="store", default=RLEstimator.COACH_LATEST_VERSION_TF
-    )
-    parser.addoption(
-        "--rl-ray-full-version", action="store", default=RLEstimator.RAY_LATEST_VERSION
-    )
-    parser.addoption("--sklearn-full-version", action="store", default=SKLEARN_VERSION)
-    parser.addoption("--tf-full-version", action="store")
-    parser.addoption("--ei-tf-full-version", action="store")
-    parser.addoption("--xgboost-full-version", action="store", default=SKLEARN_VERSION)
 
 
 def pytest_configure(config):
@@ -134,148 +128,91 @@ def custom_bucket_name(boto_session):
     return "{}-{}-{}".format(CUSTOM_BUCKET_NAME_PREFIX, region, account)
 
 
-@pytest.fixture(scope="module", params=["4.0", "4.0.0", "4.1", "4.1.0", "5.0", "5.0.0"])
-def chainer_version(request):
+@pytest.fixture(scope="module", params=["py2", "py3"])
+def chainer_py_version(request):
     return request.param
 
 
-# TODO: current version fixtures are legacy fixtures that aren't useful
-# and no longer verify whether images are valid
-@pytest.fixture(
-    scope="module",
-    params=[
-        "0.12",
-        "0.12.1",
-        "1.0",
-        "1.0.0",
-        "1.1",
-        "1.1.0",
-        "1.2",
-        "1.2.1",
-        "1.3",
-        "1.3.0",
-        "1.4",
-        "1.4.0",
-        "1.4.1",
-    ],
-)
-def mxnet_version(request):
+@pytest.fixture(scope="module", params=["py2", "py3"])
+def mxnet_py_version(request):
     return request.param
 
 
-@pytest.fixture(scope="module", params=["0.4", "0.4.0", "1.0", "1.0.0"])
-def pytorch_version(request):
-    return request.param
-
-
-@pytest.fixture(scope="module", params=["0.20.0"])
-def sklearn_version(request):
-    return request.param
-
-
-@pytest.fixture(scope="module", params=["0.90-1"])
-def xgboost_version(request):
-    return request.param
-
-
-@pytest.fixture(
-    scope="module",
-    params=[
-        "1.4",
-        "1.4.1",
-        "1.5",
-        "1.5.0",
-        "1.6",
-        "1.6.0",
-        "1.7",
-        "1.7.0",
-        "1.8",
-        "1.8.0",
-        "1.9",
-        "1.9.0",
-        "1.10",
-        "1.10.0",
-        "1.11",
-        "1.11.0",
-        "1.12",
-        "1.12.0",
-    ],
-)
-def tf_version(request):
-    return request.param
-
-
-@pytest.fixture(scope="module", params=["0.10.1", "0.10.1", "0.11", "0.11.0", "0.11.1"])
-def rl_coach_tf_version(request):
-    return request.param
-
-
-@pytest.fixture(scope="module", params=["0.11", "0.11.0"])
-def rl_coach_mxnet_version(request):
-    return request.param
-
-
-@pytest.fixture(scope="module", params=["0.5", "0.5.3", "0.6", "0.6.5"])
-def rl_ray_version(request):
-    return request.param
-
-
-@pytest.fixture(scope="module")
-def chainer_full_version(request):
-    return request.config.getoption("--chainer-full-version")
-
-
-@pytest.fixture(scope="module")
-def mxnet_full_version(request):
-    return request.config.getoption("--mxnet-full-version")
-
-
-@pytest.fixture(scope="module")
-def ei_mxnet_full_version(request):
-    return request.config.getoption("--ei-mxnet-full-version")
-
-
-@pytest.fixture(scope="module")
-def pytorch_full_version(request):
-    return request.config.getoption("--pytorch-full-version")
-
-
-@pytest.fixture(scope="module")
-def rl_coach_mxnet_full_version(request):
-    return request.config.getoption("--rl-coach-mxnet-full-version")
-
-
-@pytest.fixture(scope="module")
-def rl_coach_tf_full_version(request):
-    return request.config.getoption("--rl-coach-tf-full-version")
-
-
-@pytest.fixture(scope="module")
-def rl_ray_full_version(request):
-    return request.config.getoption("--rl-ray-full-version")
-
-
-@pytest.fixture(scope="module")
-def sklearn_full_version(request):
-    return request.config.getoption("--sklearn-full-version")
-
-
-@pytest.fixture(scope="module", params=[TensorFlow._LATEST_1X_VERSION, LATEST_VERSION])
-def tf_full_version(request):
-    tf_version = request.config.getoption("--tf-full-version")
-    if tf_version is None:
+@pytest.fixture(scope="module", params=["py2", "py3"])
+def pytorch_training_py_version(pytorch_training_version, request):
+    if Version(pytorch_training_version) < Version("1.5.0"):
         return request.param
     else:
-        return tf_version
+        return "py3"
 
 
-@pytest.fixture(scope="module", params=["1.15.0", "2.0.0"])
-def ei_tf_full_version(request):
-    tf_ei_version = request.config.getoption("--ei-tf-full-version")
-    if tf_ei_version is None:
+@pytest.fixture(scope="module", params=["py2", "py3"])
+def pytorch_inference_py_version(pytorch_inference_version, request):
+    if Version(pytorch_inference_version) < Version("1.4.0"):
         return request.param
     else:
-        tf_ei_version
+        return "py3"
+
+
+@pytest.fixture(scope="module")
+def pytorch_eia_py_version():
+    return "py3"
+
+
+@pytest.fixture(scope="module")
+def xgboost_framework_version(xgboost_version):
+    if xgboost_version in ("1", "latest"):
+        pytest.skip("Skipping XGBoost algorithm version.")
+    return xgboost_version
+
+
+@pytest.fixture(scope="module", params=["py2", "py3"])
+def tensorflow_training_py_version(tensorflow_training_version, request):
+    return _tf_py_version(tensorflow_training_version, request)
+
+
+@pytest.fixture(scope="module", params=["py2", "py3"])
+def tensorflow_inference_py_version(tensorflow_inference_version, request):
+    return _tf_py_version(tensorflow_inference_version, request)
+
+
+def _tf_py_version(tf_version, request):
+    version = Version(tf_version)
+    if version < Version("1.11"):
+        return "py2"
+    if version < Version("2.2"):
+        return request.param
+    return "py37"
+
+
+@pytest.fixture(scope="module")
+def tf_full_version(tensorflow_training_latest_version, tensorflow_inference_latest_version):
+    """Fixture for TF tests that test both training and inference.
+
+    Fixture exists as such, since TF training and TFS have different latest versions.
+    Otherwise, this would simply be a single latest version.
+    """
+    return str(
+        min(
+            Version(tensorflow_training_latest_version),
+            Version(tensorflow_inference_latest_version),
+        )
+    )
+
+
+@pytest.fixture(scope="module")
+def tf_full_py_version(tf_full_version):
+    """Fixture to match tf_full_version
+
+    Fixture exists as such, since TF training and TFS have different latest versions.
+    Otherwise, this would simply be py37 to match the latest version support.
+    """
+    version = Version(tf_full_version)
+    if version < Version("1.11"):
+        return "py2"
+    if version < Version("2.2"):
+        return "py3"
+    return "py37"
 
 
 @pytest.fixture(scope="session")
@@ -285,6 +222,11 @@ def cpu_instance_type(sagemaker_session, request):
         return "ml.m5.xlarge"
     else:
         return "ml.m4.xlarge"
+
+
+@pytest.fixture(scope="module")
+def gpu_instance_type(request):
+    return "ml.p2.xlarge"
 
 
 @pytest.fixture(scope="session")
@@ -332,7 +274,35 @@ def pytest_generate_tests(metafunc):
             params.append("ml.p2.xlarge")
         metafunc.parametrize("instance_type", params, scope="session")
 
+    _generate_all_framework_version_fixtures(metafunc)
 
-@pytest.fixture(scope="module")
-def xgboost_full_version(request):
-    return request.config.getoption("--xgboost-full-version")
+
+def _generate_all_framework_version_fixtures(metafunc):
+    for fw in FRAMEWORKS_FOR_GENERATED_VERSION_FIXTURES:
+        config = image_uris.config_for_framework(fw.replace("_", "-"))
+        if "scope" in config:
+            _parametrize_framework_version_fixtures(metafunc, fw, config)
+        else:
+            for image_scope in config.keys():
+                _parametrize_framework_version_fixtures(
+                    metafunc, "{}_{}".format(fw, image_scope), config[image_scope]
+                )
+
+
+def _parametrize_framework_version_fixtures(metafunc, fixture_prefix, config):
+    fixture_name = "{}_version".format(fixture_prefix)
+    if fixture_name in metafunc.fixturenames:
+        versions = list(config["versions"].keys()) + list(config.get("version_aliases", {}).keys())
+        metafunc.parametrize(fixture_name, versions, scope="session")
+
+    latest_version = sorted(config["versions"].keys(), key=lambda v: Version(v))[-1]
+
+    fixture_name = "{}_latest_version".format(fixture_prefix)
+    if fixture_name in metafunc.fixturenames:
+        metafunc.parametrize(fixture_name, (latest_version,), scope="session")
+
+    fixture_name = "{}_latest_py_version".format(fixture_prefix)
+    if fixture_name in metafunc.fixturenames:
+        config = config["versions"]
+        py_versions = config[latest_version].get("py_versions", config[latest_version].keys())
+        metafunc.parametrize(fixture_name, (sorted(py_versions)[-1],), scope="session")

@@ -16,6 +16,7 @@ import pytest
 from mock import Mock, MagicMock, patch
 
 from sagemaker import chainer, estimator, model, mxnet, tensorflow, transformer, tuner, processing
+from sagemaker.network import NetworkConfig
 from sagemaker.processing import ProcessingInput, ProcessingOutput
 from sagemaker.workflow import airflow
 from sagemaker.amazon import amazon_estimator
@@ -46,10 +47,10 @@ def sagemaker_session():
 @patch("sagemaker.utils.sagemaker_timestamp", MagicMock(return_value=TIME_STAMP))
 def test_byo_training_config_required_args(sagemaker_session):
     byo = estimator.Estimator(
-        image_name="byo",
+        image_uri="byo",
         role="{{ role }}",
-        train_instance_count="{{ instance_count }}",
-        train_instance_type="ml.c4.2xlarge",
+        instance_count="{{ instance_count }}",
+        instance_type="ml.c4.2xlarge",
         sagemaker_session=sagemaker_session,
     )
 
@@ -89,13 +90,13 @@ def test_byo_training_config_required_args(sagemaker_session):
 @patch("sagemaker.utils.sagemaker_timestamp", MagicMock(return_value=TIME_STAMP))
 def test_byo_training_config_all_args(sagemaker_session):
     byo = estimator.Estimator(
-        image_name="byo",
+        image_uri="byo",
         role="{{ role }}",
-        train_instance_count="{{ instance_count }}",
-        train_instance_type="ml.c4.2xlarge",
-        train_volume_size="{{ train_volume_size }}",
-        train_volume_kms_key="{{ train_volume_kms_key }}",
-        train_max_run="{{ train_max_run }}",
+        instance_count="{{ instance_count }}",
+        instance_type="ml.c4.2xlarge",
+        volume_size="{{ volume_size }}",
+        volume_kms_key="{{ volume_kms_key }}",
+        max_run="{{ max_run }}",
         input_mode="Pipe",
         output_path="{{ output_path }}",
         output_kms_key="{{ output_volume_kms_key }}",
@@ -106,7 +107,7 @@ def test_byo_training_config_all_args(sagemaker_session):
         model_uri="{{ model_uri }}",
         model_channel_name="{{ model_chanel }}",
         sagemaker_session=sagemaker_session,
-        train_use_spot_instances=True,
+        use_spot_instances=True,
     )
 
     byo.set_hyperparameters(epochs=32, feature_dim=1024, mini_batch_size=256)
@@ -121,12 +122,12 @@ def test_byo_training_config_all_args(sagemaker_session):
             "KmsKeyId": "{{ output_volume_kms_key }}",
         },
         "TrainingJobName": "{{ base_job_name }}-%s" % TIME_STAMP,
-        "StoppingCondition": {"MaxRuntimeInSeconds": "{{ train_max_run }}"},
+        "StoppingCondition": {"MaxRuntimeInSeconds": "{{ max_run }}"},
         "ResourceConfig": {
             "InstanceCount": "{{ instance_count }}",
             "InstanceType": "ml.c4.2xlarge",
-            "VolumeSizeInGB": "{{ train_volume_size }}",
-            "VolumeKmsKeyId": "{{ train_volume_kms_key }}",
+            "VolumeSizeInGB": "{{ volume_size }}",
+            "VolumeKmsKeyId": "{{ volume_kms_key }}",
         },
         "RoleArn": "{{ role }}",
         "InputDataConfig": [
@@ -168,27 +169,23 @@ def test_byo_training_config_all_args(sagemaker_session):
 @patch("os.path.isfile", MagicMock(return_value=True))
 @patch("sagemaker.estimator.tar_and_upload_dir", MagicMock())
 @patch(
-    "sagemaker.fw_utils.parse_s3_url",
+    "sagemaker.s3.parse_s3_url",
     MagicMock(
-        return_value=[
-            "output",
-            "sagemaker-tensorflow-{}/source/sourcedir.tar.gz".format(TIME_STAMP),
-        ]
+        return_value=["output", "tensorflow-training-{}/source/sourcedir.tar.gz".format(TIME_STAMP)]
     ),
 )
 @patch(
-    "sagemaker.fw_utils.get_ecr_image_uri_prefix",
-    return_value="520713654638.dkr.ecr.us-west-2.amazonaws.com",
+    "sagemaker.image_uris.retrieve",
+    return_value="763104351884.dkr.ecr.us-west-2.amazonaws.com/tensorflow-training:1.15.2-cpu-py3",
 )
-def test_framework_training_config_required_args(ecr_prefix, sagemaker_session):
+def test_framework_training_config_required_args(retrieve_image_uri, sagemaker_session):
     tf = tensorflow.TensorFlow(
         entry_point="/some/script.py",
-        framework_version="1.10.0",
-        training_steps=1000,
-        evaluation_steps=100,
+        framework_version="1.15.2",
+        py_version="py3",
         role="{{ role }}",
-        train_instance_count="{{ instance_count }}",
-        train_instance_type="ml.c4.2xlarge",
+        instance_count="{{ instance_count }}",
+        instance_type="ml.c4.2xlarge",
         sagemaker_session=sagemaker_session,
     )
 
@@ -197,11 +194,11 @@ def test_framework_training_config_required_args(ecr_prefix, sagemaker_session):
     config = airflow.training_config(tf, data)
     expected_config = {
         "AlgorithmSpecification": {
-            "TrainingImage": "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-tensorflow:1.10.0-cpu-py2",
+            "TrainingImage": "763104351884.dkr.ecr.us-west-2.amazonaws.com/tensorflow-training:1.15.2-cpu-py3",
             "TrainingInputMode": "File",
         },
         "OutputDataConfig": {"S3OutputPath": "s3://output/"},
-        "TrainingJobName": "sagemaker-tensorflow-%s" % TIME_STAMP,
+        "TrainingJobName": "tensorflow-training-%s" % TIME_STAMP,
         "StoppingCondition": {"MaxRuntimeInSeconds": 86400},
         "ResourceConfig": {
             "InstanceCount": "{{ instance_count }}",
@@ -222,24 +219,20 @@ def test_framework_training_config_required_args(ecr_prefix, sagemaker_session):
             }
         ],
         "HyperParameters": {
-            "sagemaker_submit_directory": '"s3://output/sagemaker-tensorflow-%s/source/sourcedir.tar.gz"'
+            "sagemaker_submit_directory": '"s3://output/tensorflow-training-%s/source/sourcedir.tar.gz"'
             % TIME_STAMP,
             "sagemaker_program": '"script.py"',
-            "sagemaker_enable_cloudwatch_metrics": "false",
             "sagemaker_container_log_level": "20",
-            "sagemaker_job_name": '"sagemaker-tensorflow-%s"' % TIME_STAMP,
+            "sagemaker_job_name": '"tensorflow-training-%s"' % TIME_STAMP,
             "sagemaker_region": '"us-west-2"',
-            "checkpoint_path": '"s3://output/sagemaker-tensorflow-%s/checkpoints"' % TIME_STAMP,
-            "training_steps": "1000",
-            "evaluation_steps": "100",
-            "sagemaker_requirements": '""',
+            "model_dir": '"s3://output/tensorflow-training-%s/model"' % TIME_STAMP,
         },
         "S3Operations": {
             "S3Upload": [
                 {
                     "Path": "/some/script.py",
                     "Bucket": "output",
-                    "Key": "sagemaker-tensorflow-%s/source/sourcedir.tar.gz" % TIME_STAMP,
+                    "Key": "tensorflow-training-%s/source/sourcedir.tar.gz" % TIME_STAMP,
                     "Tar": True,
                 }
             ]
@@ -256,28 +249,24 @@ def test_framework_training_config_required_args(ecr_prefix, sagemaker_session):
     MagicMock(return_value=["{{ output_path }}", "{{ output_path }}"]),
 )
 @patch(
-    "sagemaker.fw_utils.get_ecr_image_uri_prefix",
-    return_value="520713654638.dkr.ecr.us-west-2.amazonaws.com",
+    "sagemaker.image_uris.retrieve",
+    return_value="763104351884.dkr.ecr.us-west-2.amazonaws.com/tensorflow-training:1.15.2-cpu-py3",
 )
-def test_framework_training_config_all_args(ecr_prefix, sagemaker_session):
+def test_framework_training_config_all_args(retrieve_image_uri, sagemaker_session):
     tf = tensorflow.TensorFlow(
         entry_point="{{ entry_point }}",
         source_dir="{{ source_dir }}",
-        enable_cloudwatch_metrics=False,
         container_log_level="{{ log_level }}",
         code_location="s3://{{ bucket_name }}/{{ prefix }}",
-        training_steps=1000,
-        evaluation_steps=100,
-        checkpoint_path="{{ checkpoint_path }}",
-        py_version="py2",
-        framework_version="1.10.0",
-        requirements_file="",
+        hyperparameters={"epochs": 1},
+        py_version="py3",
+        framework_version="1.15.2",
         role="{{ role }}",
-        train_instance_count="{{ instance_count }}",
-        train_instance_type="ml.c4.2xlarge",
-        train_volume_size="{{ train_volume_size }}",
-        train_volume_kms_key="{{ train_volume_kms_key }}",
-        train_max_run="{{ train_max_run }}",
+        instance_count="{{ instance_count }}",
+        instance_type="ml.c4.2xlarge",
+        volume_size="{{ volume_size }}",
+        volume_kms_key="{{ volume_kms_key }}",
+        max_run="{{ max_run }}",
         input_mode="Pipe",
         output_path="{{ output_path }}",
         output_kms_key="{{ output_volume_kms_key }}",
@@ -294,7 +283,7 @@ def test_framework_training_config_all_args(ecr_prefix, sagemaker_session):
     config = airflow.training_config(tf, data)
     expected_config = {
         "AlgorithmSpecification": {
-            "TrainingImage": "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-tensorflow:1.10.0-cpu-py2",
+            "TrainingImage": "763104351884.dkr.ecr.us-west-2.amazonaws.com/tensorflow-training:1.15.2-cpu-py3",
             "TrainingInputMode": "Pipe",
             "MetricDefinitions": [{"Name": "{{ name }}", "Regex": "{{ regex }}"}],
         },
@@ -303,12 +292,12 @@ def test_framework_training_config_all_args(ecr_prefix, sagemaker_session):
             "KmsKeyId": "{{ output_volume_kms_key }}",
         },
         "TrainingJobName": "{{ base_job_name }}-%s" % TIME_STAMP,
-        "StoppingCondition": {"MaxRuntimeInSeconds": "{{ train_max_run }}"},
+        "StoppingCondition": {"MaxRuntimeInSeconds": "{{ max_run }}"},
         "ResourceConfig": {
             "InstanceCount": "{{ instance_count }}",
             "InstanceType": "ml.c4.2xlarge",
-            "VolumeSizeInGB": "{{ train_volume_size }}",
-            "VolumeKmsKeyId": "{{ train_volume_kms_key }}",
+            "VolumeSizeInGB": "{{ volume_size }}",
+            "VolumeKmsKeyId": "{{ volume_kms_key }}",
         },
         "RoleArn": "{{ role }}",
         "InputDataConfig": [
@@ -331,14 +320,11 @@ def test_framework_training_config_all_args(ecr_prefix, sagemaker_session):
             "sagemaker_submit_directory": '"s3://{{ bucket_name }}/{{ prefix }}/{{ base_job_name }}-%s/'
             'source/sourcedir.tar.gz"' % TIME_STAMP,
             "sagemaker_program": '"{{ entry_point }}"',
-            "sagemaker_enable_cloudwatch_metrics": "false",
             "sagemaker_container_log_level": '"{{ log_level }}"',
             "sagemaker_job_name": '"{{ base_job_name }}-%s"' % TIME_STAMP,
             "sagemaker_region": '"us-west-2"',
-            "checkpoint_path": '"{{ checkpoint_path }}"',
-            "training_steps": "1000",
-            "evaluation_steps": "100",
-            "sagemaker_requirements": '""',
+            "model_dir": '"{{ output_path }}/{{ base_job_name }}-%s/model"' % TIME_STAMP,
+            "epochs": "1",
         },
         "Tags": [{"{{ key }}": "{{ value }}"}],
         "S3Operations": {
@@ -361,8 +347,8 @@ def test_amazon_alg_training_config_required_args(sagemaker_session):
     ntm_estimator = ntm.NTM(
         role="{{ role }}",
         num_topics=10,
-        train_instance_count="{{ instance_count }}",
-        train_instance_type="ml.c4.2xlarge",
+        instance_count="{{ instance_count }}",
+        instance_type="ml.c4.2xlarge",
         sagemaker_session=sagemaker_session,
     )
 
@@ -412,11 +398,11 @@ def test_amazon_alg_training_config_all_args(sagemaker_session):
     ntm_estimator = ntm.NTM(
         role="{{ role }}",
         num_topics=10,
-        train_instance_count="{{ instance_count }}",
-        train_instance_type="ml.c4.2xlarge",
-        train_volume_size="{{ train_volume_size }}",
-        train_volume_kms_key="{{ train_volume_kms_key }}",
-        train_max_run="{{ train_max_run }}",
+        instance_count="{{ instance_count }}",
+        instance_type="ml.c4.2xlarge",
+        volume_size="{{ volume_size }}",
+        volume_kms_key="{{ volume_kms_key }}",
+        max_run="{{ max_run }}",
         input_mode="Pipe",
         output_path="{{ output_path }}",
         output_kms_key="{{ output_volume_kms_key }}",
@@ -442,12 +428,12 @@ def test_amazon_alg_training_config_all_args(sagemaker_session):
             "KmsKeyId": "{{ output_volume_kms_key }}",
         },
         "TrainingJobName": "{{ base_job_name }}-%s" % TIME_STAMP,
-        "StoppingCondition": {"MaxRuntimeInSeconds": "{{ train_max_run }}"},
+        "StoppingCondition": {"MaxRuntimeInSeconds": "{{ max_run }}"},
         "ResourceConfig": {
             "InstanceCount": "{{ instance_count }}",
             "InstanceType": "ml.c4.2xlarge",
-            "VolumeSizeInGB": "{{ train_volume_size }}",
-            "VolumeKmsKeyId": "{{ train_volume_kms_key }}",
+            "VolumeSizeInGB": "{{ volume_size }}",
+            "VolumeKmsKeyId": "{{ volume_kms_key }}",
         },
         "RoleArn": "{{ role }}",
         "InputDataConfig": [
@@ -483,7 +469,7 @@ def test_amazon_alg_training_config_all_args(sagemaker_session):
 @patch("os.path.isfile", MagicMock(return_value=True))
 @patch("sagemaker.estimator.tar_and_upload_dir", MagicMock())
 @patch(
-    "sagemaker.fw_utils.parse_s3_url",
+    "sagemaker.s3.parse_s3_url",
     MagicMock(
         return_value=[
             "output",
@@ -492,18 +478,18 @@ def test_amazon_alg_training_config_all_args(sagemaker_session):
     ),
 )
 @patch(
-    "sagemaker.fw_utils.get_ecr_image_uri_prefix",
-    return_value="520713654638.dkr.ecr.us-west-2.amazonaws.com",
+    "sagemaker.image_uris.retrieve",
+    return_value="520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet:1.3.0-cpu-py3",
 )
-def test_framework_tuning_config(ecr_prefix, sagemaker_session):
+def test_framework_tuning_config(retrieve_image_uri, sagemaker_session):
     mxnet_estimator = mxnet.MXNet(
         entry_point="{{ entry_point }}",
         source_dir="{{ source_dir }}",
         py_version="py3",
         framework_version="1.3.0",
         role="{{ role }}",
-        train_instance_count=1,
-        train_instance_type="ml.m4.xlarge",
+        instance_count=1,
+        instance_type="ml.m4.xlarge",
         sagemaker_session=sagemaker_session,
         base_job_name="{{ base_job_name }}",
         hyperparameters={"batch_size": 100},
@@ -598,7 +584,6 @@ def test_framework_tuning_config(ecr_prefix, sagemaker_session):
                 "sagemaker_submit_directory": '"s3://output/{{ base_job_name }}-%s/source/sourcedir.tar.gz"'
                 % TIME_STAMP,
                 "sagemaker_program": '"{{ entry_point }}"',
-                "sagemaker_enable_cloudwatch_metrics": "false",
                 "sagemaker_container_log_level": "20",
                 "sagemaker_job_name": '"{{ base_job_name }}-%s"' % TIME_STAMP,
                 "sagemaker_region": '"us-west-2"',
@@ -626,7 +611,7 @@ def test_framework_tuning_config(ecr_prefix, sagemaker_session):
 @patch("os.path.isfile", MagicMock(return_value=True))
 @patch("sagemaker.estimator.tar_and_upload_dir", MagicMock())
 @patch(
-    "sagemaker.fw_utils.parse_s3_url",
+    "sagemaker.s3.parse_s3_url",
     MagicMock(
         return_value=[
             "output",
@@ -634,15 +619,12 @@ def test_framework_tuning_config(ecr_prefix, sagemaker_session):
         ]
     ),
 )
-@patch(
-    "sagemaker.fw_utils.get_ecr_image_uri_prefix",
-    return_value="520713654638.dkr.ecr.us-west-2.amazonaws.com",
-)
-@patch(
-    "sagemaker.amazon.amazon_estimator.get_ecr_image_uri_prefix",
-    return_value="174872318107.dkr.ecr.us-west-2.amazonaws.com",
-)
-def test_multi_estimator_tuning_config(algo_ecr_prefix, fw_ecr_prefix, sagemaker_session):
+@patch("sagemaker.utils._botocore_resolver")
+def test_multi_estimator_tuning_config(botocore_resolver, sagemaker_session):
+    botocore_resolver.return_value.construct_endpoint.return_value = {
+        "hostname": "ecr.us-west-2.amazonaws.com"
+    }
+
     estimator_dict = {}
     hyperparameter_ranges_dict = {}
     objective_metric_name_dict = {}
@@ -655,8 +637,8 @@ def test_multi_estimator_tuning_config(algo_ecr_prefix, fw_ecr_prefix, sagemaker
         py_version="py3",
         framework_version="1.3.0",
         role="{{ role }}",
-        train_instance_count=1,
-        train_instance_type="ml.m4.xlarge",
+        instance_count=1,
+        instance_type="ml.m4.xlarge",
         sagemaker_session=sagemaker_session,
         base_job_name="{{ base_job_name }}",
         hyperparameters={"batch_size": 100},
@@ -675,8 +657,8 @@ def test_multi_estimator_tuning_config(algo_ecr_prefix, fw_ecr_prefix, sagemaker
     estimator_dict[ll_estimator_name] = linear_learner.LinearLearner(
         predictor_type="binary_classifier",
         role="{{ role }}",
-        train_instance_count=1,
-        train_instance_type="ml.c4.2xlarge",
+        instance_count=1,
+        instance_type="ml.c4.2xlarge",
         sagemaker_session=sagemaker_session,
     )
     hyperparameter_ranges_dict[ll_estimator_name] = {
@@ -793,7 +775,6 @@ def test_multi_estimator_tuning_config(algo_ecr_prefix, fw_ecr_prefix, sagemaker
                 "StaticHyperParameters": {
                     "batch_size": "100",
                     "sagemaker_container_log_level": "20",
-                    "sagemaker_enable_cloudwatch_metrics": "false",
                     "sagemaker_estimator_class_name": '"MXNet"',
                     "sagemaker_estimator_module": '"sagemaker.mxnet.estimator"',
                     "sagemaker_job_name": '"{{ base_job_name }}-%s"' % TIME_STAMP,
@@ -908,18 +889,18 @@ def test_merge_s3_operations():
 def test_byo_model_config(sagemaker_session):
     byo_model = model.Model(
         model_data="{{ model_data }}",
-        image="{{ image }}",
+        image_uri="{{ image_uri }}",
         role="{{ role }}",
         env={"{{ key }}": "{{ value }}"},
         name="model",
         sagemaker_session=sagemaker_session,
     )
 
-    config = airflow.model_config(instance_type="ml.c4.xlarge", model=byo_model)
+    config = airflow.model_config(model=byo_model)
     expected_config = {
         "ModelName": "model",
         "PrimaryContainer": {
-            "Image": "{{ image }}",
+            "Image": "{{ image_uri }}",
             "Environment": {"{{ key }}": "{{ value }}"},
             "ModelDataUrl": "{{ model_data }}",
         },
@@ -932,7 +913,7 @@ def test_byo_model_config(sagemaker_session):
 def test_byo_framework_model_config(sagemaker_session):
     byo_model = model.FrameworkModel(
         model_data="{{ model_data }}",
-        image="{{ image }}",
+        image_uri="{{ image_uri }}",
         role="{{ role }}",
         entry_point="{{ entry_point }}",
         source_dir="{{ source_dir }}",
@@ -941,16 +922,15 @@ def test_byo_framework_model_config(sagemaker_session):
         sagemaker_session=sagemaker_session,
     )
 
-    config = airflow.model_config(instance_type="ml.c4.xlarge", model=byo_model)
+    config = airflow.model_config(model=byo_model, instance_type="ml.c4.xlarge")
     expected_config = {
         "ModelName": "model",
         "PrimaryContainer": {
-            "Image": "{{ image }}",
+            "Image": "{{ image_uri }}",
             "Environment": {
                 "{{ key }}": "{{ value }}",
                 "SAGEMAKER_PROGRAM": "{{ entry_point }}",
                 "SAGEMAKER_SUBMIT_DIRECTORY": "s3://output/model/source/sourcedir.tar.gz",
-                "SAGEMAKER_ENABLE_CLOUDWATCH_METRICS": "false",
                 "SAGEMAKER_CONTAINER_LOG_LEVEL": "20",
                 "SAGEMAKER_REGION": "us-west-2",
             },
@@ -979,14 +959,14 @@ def test_framework_model_config(sagemaker_session):
         role="{{ role }}",
         entry_point="{{ entry_point }}",
         source_dir="{{ source_dir }}",
-        image=None,
+        image_uri=None,
         py_version="py3",
         framework_version="5.0.0",
         model_server_workers="{{ model_server_worker }}",
         sagemaker_session=sagemaker_session,
     )
 
-    config = airflow.model_config(instance_type="ml.c4.xlarge", model=chainer_model)
+    config = airflow.model_config(model=chainer_model, instance_type="ml.c4.xlarge")
     expected_config = {
         "ModelName": "sagemaker-chainer-%s" % TIME_STAMP,
         "PrimaryContainer": {
@@ -995,7 +975,6 @@ def test_framework_model_config(sagemaker_session):
                 "SAGEMAKER_PROGRAM": "{{ entry_point }}",
                 "SAGEMAKER_SUBMIT_DIRECTORY": "s3://output/sagemaker-chainer-%s/source/sourcedir.tar.gz"
                 % TIME_STAMP,
-                "SAGEMAKER_ENABLE_CLOUDWATCH_METRICS": "false",
                 "SAGEMAKER_CONTAINER_LOG_LEVEL": "20",
                 "SAGEMAKER_REGION": "us-west-2",
                 "SAGEMAKER_MODEL_SERVER_WORKERS": "{{ model_server_worker }}",
@@ -1024,7 +1003,7 @@ def test_amazon_alg_model_config(sagemaker_session):
         model_data="{{ model_data }}", role="{{ role }}", sagemaker_session=sagemaker_session
     )
 
-    config = airflow.model_config(instance_type="ml.c4.xlarge", model=pca_model)
+    config = airflow.model_config(model=pca_model)
     expected_config = {
         "ModelName": "pca-%s" % TIME_STAMP,
         "PrimaryContainer": {
@@ -1042,7 +1021,7 @@ def test_amazon_alg_model_config(sagemaker_session):
 @patch("os.path.isfile", MagicMock(return_value=True))
 @patch("sagemaker.estimator.tar_and_upload_dir", MagicMock())
 @patch(
-    "sagemaker.fw_utils.parse_s3_url",
+    "sagemaker.s3.parse_s3_url",
     MagicMock(
         return_value=[
             "output",
@@ -1051,18 +1030,18 @@ def test_amazon_alg_model_config(sagemaker_session):
     ),
 )
 @patch(
-    "sagemaker.fw_utils.get_ecr_image_uri_prefix",
-    return_value="763104351884.dkr.ecr.us-west-2.amazonaws.com",
+    "sagemaker.image_uris.retrieve",
+    return_value="763104351884.dkr.ecr.us-west-2.amazonaws.com/mxnet-inference:1.6.0-cpu-py3",
 )
-def test_model_config_from_framework_estimator(ecr_prefix, sagemaker_session):
+def test_model_config_from_framework_estimator(retrieve_image_uri, sagemaker_session):
     mxnet_estimator = mxnet.MXNet(
         entry_point="{{ entry_point }}",
         source_dir="{{ source_dir }}",
         py_version="py3",
         framework_version="1.6.0",
         role="{{ role }}",
-        train_instance_count=1,
-        train_instance_type="ml.m4.xlarge",
+        instance_count=1,
+        instance_type="ml.m4.xlarge",
         sagemaker_session=sagemaker_session,
         base_job_name="{{ base_job_name }}",
         hyperparameters={"batch_size": 100},
@@ -1074,10 +1053,10 @@ def test_model_config_from_framework_estimator(ecr_prefix, sagemaker_session):
     airflow.training_config(mxnet_estimator, data)
 
     config = airflow.model_config_from_estimator(
-        instance_type="ml.c4.xlarge",
         estimator=mxnet_estimator,
         task_id="task_id",
         task_type="training",
+        instance_type="ml.c4.xlarge",
     )
     expected_config = {
         "ModelName": "mxnet-inference-%s" % TIME_STAMP,
@@ -1087,7 +1066,6 @@ def test_model_config_from_framework_estimator(ecr_prefix, sagemaker_session):
                 "SAGEMAKER_PROGRAM": "{{ entry_point }}",
                 "SAGEMAKER_SUBMIT_DIRECTORY": "s3://output/{{ ti.xcom_pull(task_ids='task_id')['Training']"
                 "['TrainingJobName'] }}/source/sourcedir.tar.gz",
-                "SAGEMAKER_ENABLE_CLOUDWATCH_METRICS": "false",
                 "SAGEMAKER_CONTAINER_LOG_LEVEL": "20",
                 "SAGEMAKER_REGION": "us-west-2",
             },
@@ -1104,8 +1082,8 @@ def test_model_config_from_framework_estimator(ecr_prefix, sagemaker_session):
 def test_model_config_from_amazon_alg_estimator(sagemaker_session):
     knn_estimator = knn.KNN(
         role="{{ role }}",
-        train_instance_count="{{ instance_count }}",
-        train_instance_type="ml.m4.xlarge",
+        instance_count="{{ instance_count }}",
+        instance_type="ml.m4.xlarge",
         k=16,
         sample_size=128,
         predictor_type="regressor",
@@ -1118,7 +1096,7 @@ def test_model_config_from_amazon_alg_estimator(sagemaker_session):
     airflow.training_config(knn_estimator, record, mini_batch_size=256)
 
     config = airflow.model_config_from_estimator(
-        instance_type="ml.c4.xlarge", estimator=knn_estimator, task_id="task_id", task_type="tuning"
+        estimator=knn_estimator, task_id="task_id", task_type="tuning"
     )
     expected_config = {
         "ModelName": "knn-%s" % TIME_STAMP,
@@ -1208,7 +1186,7 @@ def test_transform_config(sagemaker_session):
 @patch("os.path.isfile", MagicMock(return_value=True))
 @patch("sagemaker.estimator.tar_and_upload_dir", MagicMock())
 @patch(
-    "sagemaker.fw_utils.parse_s3_url",
+    "sagemaker.s3.parse_s3_url",
     MagicMock(
         return_value=[
             "output",
@@ -1217,18 +1195,18 @@ def test_transform_config(sagemaker_session):
     ),
 )
 @patch(
-    "sagemaker.fw_utils.get_ecr_image_uri_prefix",
-    return_value="763104351884.dkr.ecr.us-west-2.amazonaws.com",
+    "sagemaker.image_uris.retrieve",
+    return_value="763104351884.dkr.ecr.us-west-2.amazonaws.com/mxnet-inference:1.6.0-gpu-py3",
 )
-def test_transform_config_from_framework_estimator(ecr_prefix, sagemaker_session):
+def test_transform_config_from_framework_estimator(retrieve_image_uri, sagemaker_session):
     mxnet_estimator = mxnet.MXNet(
         entry_point="{{ entry_point }}",
         source_dir="{{ source_dir }}",
         py_version="py3",
         framework_version="1.6.0",
         role="{{ role }}",
-        train_instance_count=1,
-        train_instance_type="ml.m4.xlarge",
+        instance_count=1,
+        instance_type="ml.m4.xlarge",
         sagemaker_session=sagemaker_session,
         base_job_name="{{ base_job_name }}",
         hyperparameters={"batch_size": 100},
@@ -1261,7 +1239,6 @@ def test_transform_config_from_framework_estimator(ecr_prefix, sagemaker_session
                     "SAGEMAKER_SUBMIT_DIRECTORY": "s3://output/{{ ti.xcom_pull(task_ids='task_id')"
                     "['Training']['TrainingJobName'] }}"
                     "/source/sourcedir.tar.gz",
-                    "SAGEMAKER_ENABLE_CLOUDWATCH_METRICS": "false",
                     "SAGEMAKER_CONTAINER_LOG_LEVEL": "20",
                     "SAGEMAKER_REGION": "us-west-2",
                 },
@@ -1299,8 +1276,8 @@ def test_transform_config_from_framework_estimator(ecr_prefix, sagemaker_session
 def test_transform_config_from_amazon_alg_estimator(sagemaker_session):
     knn_estimator = knn.KNN(
         role="{{ role }}",
-        train_instance_count="{{ instance_count }}",
-        train_instance_type="ml.m4.xlarge",
+        instance_count="{{ instance_count }}",
+        instance_type="ml.m4.xlarge",
         k=16,
         sample_size=128,
         predictor_type="regressor",
@@ -1358,7 +1335,7 @@ def test_deploy_framework_model_config(sagemaker_session):
         role="{{ role }}",
         entry_point="{{ entry_point }}",
         source_dir="{{ source_dir }}",
-        image=None,
+        image_uri=None,
         py_version="py3",
         framework_version="5.0.0",
         model_server_workers="{{ model_server_worker }}",
@@ -1377,7 +1354,6 @@ def test_deploy_framework_model_config(sagemaker_session):
                     "SAGEMAKER_PROGRAM": "{{ entry_point }}",
                     "SAGEMAKER_SUBMIT_DIRECTORY": "s3://output/sagemaker-chainer-%s/source/sourcedir.tar.gz"
                     % TIME_STAMP,
-                    "SAGEMAKER_ENABLE_CLOUDWATCH_METRICS": "false",
                     "SAGEMAKER_CONTAINER_LOG_LEVEL": "20",
                     "SAGEMAKER_REGION": "us-west-2",
                     "SAGEMAKER_MODEL_SERVER_WORKERS": "{{ model_server_worker }}",
@@ -1461,7 +1437,7 @@ def test_deploy_amazon_alg_model_config(sagemaker_session):
 @patch("os.path.isfile", MagicMock(return_value=True))
 @patch("sagemaker.estimator.tar_and_upload_dir", MagicMock())
 @patch(
-    "sagemaker.fw_utils.parse_s3_url",
+    "sagemaker.s3.parse_s3_url",
     MagicMock(
         return_value=[
             "output",
@@ -1470,18 +1446,18 @@ def test_deploy_amazon_alg_model_config(sagemaker_session):
     ),
 )
 @patch(
-    "sagemaker.fw_utils.get_ecr_image_uri_prefix",
-    return_value="763104351884.dkr.ecr.us-west-2.amazonaws.com",
+    "sagemaker.image_uris.retrieve",
+    return_value="763104351884.dkr.ecr.us-west-2.amazonaws.com/mxnet-inference:1.6.0-cpu-py3",
 )
-def test_deploy_config_from_framework_estimator(ecr_prefix, sagemaker_session):
+def test_deploy_config_from_framework_estimator(retrieve_image_uri, sagemaker_session):
     mxnet_estimator = mxnet.MXNet(
         entry_point="{{ entry_point }}",
         source_dir="{{ source_dir }}",
         py_version="py3",
         framework_version="1.6.0",
         role="{{ role }}",
-        train_instance_count=1,
-        train_instance_type="ml.m4.xlarge",
+        instance_count=1,
+        instance_type="ml.m4.xlarge",
         sagemaker_session=sagemaker_session,
         base_job_name="{{ base_job_name }}",
         hyperparameters={"batch_size": 100},
@@ -1509,7 +1485,6 @@ def test_deploy_config_from_framework_estimator(ecr_prefix, sagemaker_session):
                     "SAGEMAKER_PROGRAM": "{{ entry_point }}",
                     "SAGEMAKER_SUBMIT_DIRECTORY": "s3://output/{{ ti.xcom_pull(task_ids='task_id')['Training']"
                     "['TrainingJobName'] }}/source/sourcedir.tar.gz",
-                    "SAGEMAKER_ENABLE_CLOUDWATCH_METRICS": "false",
                     "SAGEMAKER_CONTAINER_LOG_LEVEL": "20",
                     "SAGEMAKER_REGION": "us-west-2",
                 },
@@ -1543,8 +1518,8 @@ def test_deploy_config_from_framework_estimator(ecr_prefix, sagemaker_session):
 def test_deploy_config_from_amazon_alg_estimator(sagemaker_session):
     knn_estimator = knn.KNN(
         role="{{ role }}",
-        train_instance_count="{{ instance_count }}",
-        train_instance_type="ml.m4.xlarge",
+        instance_count="{{ instance_count }}",
+        instance_type="ml.m4.xlarge",
         k=16,
         sample_size=128,
         predictor_type="regressor",
@@ -1598,6 +1573,13 @@ def test_deploy_config_from_amazon_alg_estimator(sagemaker_session):
 @patch("sagemaker.utils.sagemaker_timestamp", MagicMock(return_value=TIME_STAMP))
 def test_processing_config(sagemaker_session):
 
+    network_config = NetworkConfig(
+        encrypt_inter_container_traffic=False,
+        enable_network_isolation=True,
+        security_group_ids=["sg1"],
+        subnets=["subnet1"],
+    )
+
     processor = processing.Processor(
         role="arn:aws:iam::0122345678910:role/SageMakerPowerUser",
         image_uri="{{ image_uri }}",
@@ -1612,6 +1594,7 @@ def test_processing_config(sagemaker_session):
         sagemaker_session=sagemaker_session,
         tags=[{"{{ key }}": "{{ value }}"}],
         env={"{{ key }}": "{{ value }}"},
+        network_config=network_config,
     )
 
     outputs = [
@@ -1699,5 +1682,10 @@ def test_processing_config(sagemaker_session):
         "RoleArn": "arn:aws:iam::0122345678910:role/SageMakerPowerUser",
         "StoppingCondition": {"MaxRuntimeInSeconds": 3600},
         "Tags": [{"{{ key }}": "{{ value }}"}],
+        "NetworkConfig": {
+            "EnableInterContainerTrafficEncryption": False,
+            "EnableNetworkIsolation": True,
+            "VpcConfig": {"SecurityGroupIds": ["sg1"], "Subnets": ["subnet1"]},
+        },
     }
     assert config == expected_config

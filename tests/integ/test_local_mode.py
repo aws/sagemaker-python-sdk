@@ -23,11 +23,10 @@ import tempfile
 import stopit
 
 import tests.integ.lock as lock
-from tests.integ import DATA_DIR, PYTHON_VERSION
+from tests.integ import DATA_DIR
 
 from sagemaker.local import LocalSession, LocalSagemakerRuntimeClient, LocalSagemakerClient
 from sagemaker.mxnet import MXNet
-from sagemaker.tensorflow import TensorFlow
 
 # endpoint tests all use the same port, so we use this lock to prevent concurrent execution
 LOCK_PATH = os.path.join(tempfile.gettempdir(), "sagemaker_test_local_mode_lock")
@@ -55,7 +54,9 @@ class LocalNoS3Session(LocalSession):
 
 
 @pytest.fixture(scope="module")
-def mxnet_model(sagemaker_local_session, mxnet_full_version):
+def mxnet_model(
+    sagemaker_local_session, mxnet_inference_latest_version, mxnet_inference_latest_py_version
+):
     def _create_model(output_path):
         script_path = os.path.join(DATA_DIR, "mxnet_mnist", "mnist.py")
         data_path = os.path.join(DATA_DIR, "mxnet_mnist")
@@ -63,10 +64,11 @@ def mxnet_model(sagemaker_local_session, mxnet_full_version):
         mx = MXNet(
             entry_point=script_path,
             role="SageMakerRole",
-            train_instance_count=1,
-            train_instance_type="local",
+            instance_count=1,
+            instance_type="local",
             output_path=output_path,
-            framework_version=mxnet_full_version,
+            framework_version=mxnet_inference_latest_version,
+            py_version=mxnet_inference_latest_py_version,
             sagemaker_session=sagemaker_local_session,
         )
 
@@ -85,175 +87,12 @@ def mxnet_model(sagemaker_local_session, mxnet_full_version):
 
 
 @pytest.mark.local_mode
-@pytest.mark.skipif(PYTHON_VERSION != "py2", reason="TensorFlow image supports only python 2.")
-def test_tf_local_mode(sagemaker_local_session):
-    with stopit.ThreadingTimeout(5 * 60, swallow_exc=False):
-        script_path = os.path.join(DATA_DIR, "iris", "iris-dnn-classifier.py")
-
-        estimator = TensorFlow(
-            entry_point=script_path,
-            role="SageMakerRole",
-            framework_version="1.12",
-            training_steps=1,
-            evaluation_steps=1,
-            hyperparameters={"input_tensor_name": "inputs"},
-            train_instance_count=1,
-            train_instance_type="local",
-            base_job_name="test-tf",
-            sagemaker_session=sagemaker_local_session,
-        )
-
-        inputs = estimator.sagemaker_session.upload_data(
-            path=DATA_PATH, key_prefix="integ-test-data/tf_iris"
-        )
-        estimator.fit(inputs)
-        print("job succeeded: {}".format(estimator.latest_training_job.name))
-
-    endpoint_name = estimator.latest_training_job.name
-    with lock.lock(LOCK_PATH):
-        try:
-            json_predictor = estimator.deploy(
-                initial_instance_count=1, instance_type="local", endpoint_name=endpoint_name
-            )
-
-            features = [6.4, 3.2, 4.5, 1.5]
-            dict_result = json_predictor.predict({"inputs": features})
-            print("predict result: {}".format(dict_result))
-            list_result = json_predictor.predict(features)
-            print("predict result: {}".format(list_result))
-
-            assert dict_result == list_result
-        finally:
-            estimator.delete_endpoint()
-
-
-@pytest.mark.local_mode
-@pytest.mark.skipif(PYTHON_VERSION != "py2", reason="TensorFlow image supports only python 2.")
-def test_tf_distributed_local_mode(sagemaker_local_session):
-    with stopit.ThreadingTimeout(5 * 60, swallow_exc=False):
-        script_path = os.path.join(DATA_DIR, "iris", "iris-dnn-classifier.py")
-
-        estimator = TensorFlow(
-            entry_point=script_path,
-            role="SageMakerRole",
-            framework_version="1.12",
-            training_steps=1,
-            evaluation_steps=1,
-            hyperparameters={"input_tensor_name": "inputs"},
-            train_instance_count=3,
-            train_instance_type="local",
-            base_job_name="test-tf",
-            sagemaker_session=sagemaker_local_session,
-        )
-
-        inputs = "file://" + DATA_PATH
-        estimator.fit(inputs)
-        print("job succeeded: {}".format(estimator.latest_training_job.name))
-
-    endpoint_name = estimator.latest_training_job.name
-
-    with lock.lock(LOCK_PATH):
-        try:
-            json_predictor = estimator.deploy(
-                initial_instance_count=1, instance_type="local", endpoint_name=endpoint_name
-            )
-
-            features = [6.4, 3.2, 4.5, 1.5]
-            dict_result = json_predictor.predict({"inputs": features})
-            print("predict result: {}".format(dict_result))
-            list_result = json_predictor.predict(features)
-            print("predict result: {}".format(list_result))
-
-            assert dict_result == list_result
-        finally:
-            estimator.delete_endpoint()
-
-
-@pytest.mark.local_mode
-@pytest.mark.skipif(PYTHON_VERSION != "py2", reason="TensorFlow image supports only python 2.")
-def test_tf_local_data(sagemaker_local_session):
-    with stopit.ThreadingTimeout(5 * 60, swallow_exc=False):
-        script_path = os.path.join(DATA_DIR, "iris", "iris-dnn-classifier.py")
-
-        estimator = TensorFlow(
-            entry_point=script_path,
-            role="SageMakerRole",
-            framework_version="1.12",
-            training_steps=1,
-            evaluation_steps=1,
-            hyperparameters={"input_tensor_name": "inputs"},
-            train_instance_count=1,
-            train_instance_type="local",
-            base_job_name="test-tf",
-            sagemaker_session=sagemaker_local_session,
-        )
-
-        inputs = "file://" + DATA_PATH
-        estimator.fit(inputs)
-        print("job succeeded: {}".format(estimator.latest_training_job.name))
-
-    endpoint_name = estimator.latest_training_job.name
-    with lock.lock(LOCK_PATH):
-        try:
-            json_predictor = estimator.deploy(
-                initial_instance_count=1, instance_type="local", endpoint_name=endpoint_name
-            )
-
-            features = [6.4, 3.2, 4.5, 1.5]
-            dict_result = json_predictor.predict({"inputs": features})
-            print("predict result: {}".format(dict_result))
-            list_result = json_predictor.predict(features)
-            print("predict result: {}".format(list_result))
-
-            assert dict_result == list_result
-        finally:
-            estimator.delete_endpoint()
-
-
-@pytest.mark.local_mode
-@pytest.mark.skipif(PYTHON_VERSION != "py2", reason="TensorFlow image supports only python 2.")
-def test_tf_local_data_local_script():
-    with stopit.ThreadingTimeout(5 * 60, swallow_exc=False):
-        script_path = os.path.join(DATA_DIR, "iris", "iris-dnn-classifier.py")
-
-        estimator = TensorFlow(
-            entry_point=script_path,
-            role="SageMakerRole",
-            framework_version="1.12",
-            training_steps=1,
-            evaluation_steps=1,
-            hyperparameters={"input_tensor_name": "inputs"},
-            train_instance_count=1,
-            train_instance_type="local",
-            base_job_name="test-tf",
-            sagemaker_session=LocalNoS3Session(),
-        )
-
-        inputs = "file://" + DATA_PATH
-
-        estimator.fit(inputs)
-        print("job succeeded: {}".format(estimator.latest_training_job.name))
-
-    endpoint_name = estimator.latest_training_job.name
-    with lock.lock(LOCK_PATH):
-        try:
-            json_predictor = estimator.deploy(
-                initial_instance_count=1, instance_type="local", endpoint_name=endpoint_name
-            )
-
-            features = [6.4, 3.2, 4.5, 1.5]
-            dict_result = json_predictor.predict({"inputs": features})
-            print("predict result: {}".format(dict_result))
-            list_result = json_predictor.predict(features)
-            print("predict result: {}".format(list_result))
-
-            assert dict_result == list_result
-        finally:
-            estimator.delete_endpoint()
-
-
-@pytest.mark.local_mode
-def test_local_mode_serving_from_s3_model(sagemaker_local_session, mxnet_model, mxnet_full_version):
+def test_local_mode_serving_from_s3_model(
+    sagemaker_local_session,
+    mxnet_model,
+    mxnet_inference_latest_version,
+    mxnet_inference_latest_py_version,
+):
     path = "s3://%s" % sagemaker_local_session.default_bucket()
     s3_model = mxnet_model(path)
     s3_model.sagemaker_session = sagemaker_local_session
@@ -287,18 +126,20 @@ def test_local_mode_serving_from_local_model(tmpdir, sagemaker_local_session, mx
 
 
 @pytest.mark.local_mode
-def test_mxnet_local_mode(sagemaker_local_session, mxnet_full_version):
+def test_mxnet_local_mode(
+    sagemaker_local_session, mxnet_training_latest_version, mxnet_training_latest_py_version
+):
     script_path = os.path.join(DATA_DIR, "mxnet_mnist", "mnist.py")
     data_path = os.path.join(DATA_DIR, "mxnet_mnist")
 
     mx = MXNet(
         entry_point=script_path,
         role="SageMakerRole",
-        py_version=PYTHON_VERSION,
-        train_instance_count=1,
-        train_instance_type="local",
+        py_version=mxnet_training_latest_py_version,
+        instance_count=1,
+        instance_type="local",
         sagemaker_session=sagemaker_local_session,
-        framework_version=mxnet_full_version,
+        framework_version=mxnet_training_latest_version,
     )
 
     train_input = mx.sagemaker_session.upload_data(
@@ -317,20 +158,51 @@ def test_mxnet_local_mode(sagemaker_local_session, mxnet_full_version):
             data = numpy.zeros(shape=(1, 1, 28, 28))
             predictor.predict(data)
         finally:
-            mx.delete_endpoint()
+            predictor.delete_endpoint()
 
 
 @pytest.mark.local_mode
-def test_mxnet_local_data_local_script(mxnet_full_version):
+def test_mxnet_distributed_local_mode(
+    sagemaker_local_session, mxnet_training_latest_version, mxnet_training_latest_py_version
+):
+    script_path = os.path.join(DATA_DIR, "mxnet_mnist", "mnist.py")
+    data_path = os.path.join(DATA_DIR, "mxnet_mnist")
+
+    mx = MXNet(
+        entry_point=script_path,
+        role="SageMakerRole",
+        py_version=mxnet_training_latest_py_version,
+        instance_count=2,
+        instance_type="local",
+        sagemaker_session=sagemaker_local_session,
+        framework_version=mxnet_training_latest_version,
+        distribution={"parameter_server": {"enabled": True}},
+    )
+
+    train_input = mx.sagemaker_session.upload_data(
+        path=os.path.join(data_path, "train"), key_prefix="integ-test-data/mxnet_mnist/train"
+    )
+    test_input = mx.sagemaker_session.upload_data(
+        path=os.path.join(data_path, "test"), key_prefix="integ-test-data/mxnet_mnist/test"
+    )
+
+    mx.fit({"train": train_input, "test": test_input})
+
+
+@pytest.mark.local_mode
+def test_mxnet_local_data_local_script(
+    mxnet_training_latest_version, mxnet_training_latest_py_version
+):
     data_path = os.path.join(DATA_DIR, "mxnet_mnist")
     script_path = os.path.join(data_path, "mnist.py")
 
     mx = MXNet(
         entry_point=script_path,
         role="SageMakerRole",
-        train_instance_count=1,
-        train_instance_type="local",
-        framework_version=mxnet_full_version,
+        instance_count=1,
+        instance_type="local",
+        framework_version=mxnet_training_latest_version,
+        py_version=mxnet_training_latest_py_version,
         sagemaker_session=LocalNoS3Session(),
     )
 
@@ -346,20 +218,22 @@ def test_mxnet_local_data_local_script(mxnet_full_version):
             data = numpy.zeros(shape=(1, 1, 28, 28))
             predictor.predict(data)
         finally:
-            mx.delete_endpoint()
+            predictor.delete_endpoint()
 
 
 @pytest.mark.local_mode
-def test_mxnet_training_failure(sagemaker_local_session, mxnet_full_version, tmpdir):
+def test_mxnet_training_failure(
+    sagemaker_local_session, mxnet_training_latest_version, mxnet_training_latest_py_version, tmpdir
+):
     script_path = os.path.join(DATA_DIR, "mxnet_mnist", "failure_script.py")
 
     mx = MXNet(
         entry_point=script_path,
         role="SageMakerRole",
-        framework_version=mxnet_full_version,
-        py_version=PYTHON_VERSION,
-        train_instance_count=1,
-        train_instance_type="local",
+        framework_version=mxnet_training_latest_version,
+        py_version=mxnet_training_latest_py_version,
+        instance_count=1,
+        instance_type="local",
         sagemaker_session=sagemaker_local_session,
         code_location="s3://{}".format(sagemaker_local_session.default_bucket()),
         output_path="file://{}".format(tmpdir),
@@ -374,7 +248,11 @@ def test_mxnet_training_failure(sagemaker_local_session, mxnet_full_version, tmp
 
 @pytest.mark.local_mode
 def test_local_transform_mxnet(
-    sagemaker_local_session, tmpdir, mxnet_full_version, cpu_instance_type
+    sagemaker_local_session,
+    tmpdir,
+    mxnet_inference_latest_version,
+    mxnet_inference_latest_py_version,
+    cpu_instance_type,
 ):
     data_path = os.path.join(DATA_DIR, "mxnet_mnist")
     script_path = os.path.join(data_path, "mnist.py")
@@ -382,9 +260,10 @@ def test_local_transform_mxnet(
     mx = MXNet(
         entry_point=script_path,
         role="SageMakerRole",
-        train_instance_count=1,
-        train_instance_type="local",
-        framework_version=mxnet_full_version,
+        instance_count=1,
+        instance_type="local",
+        framework_version=mxnet_inference_latest_version,
+        py_version=mxnet_inference_latest_py_version,
         sagemaker_session=sagemaker_local_session,
     )
 

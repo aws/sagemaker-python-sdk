@@ -14,7 +14,7 @@ from __future__ import absolute_import
 
 import os
 
-from mock import Mock
+from mock import MagicMock, Mock
 import pytest
 
 import sagemaker
@@ -29,8 +29,8 @@ AES_ENCRYPTION_ENABLED = {"ServerSideEncryption": "AES256"}
 
 @pytest.fixture()
 def sagemaker_session():
-    boto_mock = Mock(name="boto_session")
-    client_mock = Mock()
+    boto_mock = MagicMock(name="boto_session")
+    client_mock = MagicMock()
     client_mock.get_caller_identity.return_value = {
         "UserId": "mock_user_id",
         "Account": "012345678910",

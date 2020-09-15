@@ -22,8 +22,9 @@ from sagemaker.model import Model
 
 MODEL_DATA = "s3://bucket/model.tar.gz"
 MODEL_IMAGE = "mi"
-TIMESTAMP = "2017-10-10-14-14-15"
+TIMESTAMP = "2020-07-02-20-10-30-288"
 MODEL_NAME = "{}-{}".format(MODEL_IMAGE, TIMESTAMP)
+ENDPOINT_NAME = "endpoint-{}".format(TIMESTAMP)
 
 ACCELERATOR_TYPE = "ml.eia.medium"
 INSTANCE_COUNT = 2
@@ -46,18 +47,19 @@ def sagemaker_session():
 
 @patch("sagemaker.production_variant")
 @patch("sagemaker.model.Model.prepare_container_def")
-@patch("sagemaker.utils.name_from_image")
-def test_deploy(name_from_image, prepare_container_def, production_variant, sagemaker_session):
-    name_from_image.return_value = MODEL_NAME
+@patch("sagemaker.utils.name_from_base", return_value=MODEL_NAME)
+def test_deploy(name_from_base, prepare_container_def, production_variant, sagemaker_session):
     production_variant.return_value = BASE_PRODUCTION_VARIANT
 
     container_def = {"Image": MODEL_IMAGE, "Environment": {}, "ModelDataUrl": MODEL_DATA}
     prepare_container_def.return_value = container_def
 
-    model = Model(MODEL_DATA, MODEL_IMAGE, role=ROLE, sagemaker_session=sagemaker_session)
+    model = Model(MODEL_IMAGE, MODEL_DATA, role=ROLE, sagemaker_session=sagemaker_session)
     model.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=INSTANCE_COUNT)
 
-    name_from_image.assert_called_with(MODEL_IMAGE)
+    name_from_base.assert_called_with(MODEL_IMAGE)
+    assert 2 == name_from_base.call_count
+
     prepare_container_def.assert_called_with(INSTANCE_TYPE, accelerator_type=None)
     production_variant.assert_called_with(
         MODEL_NAME, INSTANCE_TYPE, INSTANCE_COUNT, accelerator_type=None
@@ -77,11 +79,14 @@ def test_deploy(name_from_image, prepare_container_def, production_variant, sage
     )
 
 
+@patch("sagemaker.utils.name_from_base", return_value=ENDPOINT_NAME)
 @patch("sagemaker.model.Model._create_sagemaker_model")
 @patch("sagemaker.production_variant")
-def test_deploy_accelerator_type(production_variant, create_sagemaker_model, sagemaker_session):
+def test_deploy_accelerator_type(
+    production_variant, create_sagemaker_model, name_from_base, sagemaker_session
+):
     model = Model(
-        MODEL_DATA, MODEL_IMAGE, role=ROLE, name=MODEL_NAME, sagemaker_session=sagemaker_session
+        MODEL_IMAGE, MODEL_DATA, role=ROLE, name=MODEL_NAME, sagemaker_session=sagemaker_session
     )
 
     production_variant_result = copy.deepcopy(BASE_PRODUCTION_VARIANT)
@@ -100,7 +105,7 @@ def test_deploy_accelerator_type(production_variant, create_sagemaker_model, sag
     )
 
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
-        name=MODEL_NAME,
+        name=ENDPOINT_NAME,
         production_variants=[production_variant_result],
         tags=None,
         kms_key=None,
@@ -109,11 +114,10 @@ def test_deploy_accelerator_type(production_variant, create_sagemaker_model, sag
     )
 
 
-@patch("sagemaker.utils.name_from_image", Mock())
 @patch("sagemaker.model.Model._create_sagemaker_model", Mock())
 @patch("sagemaker.production_variant", return_value=BASE_PRODUCTION_VARIANT)
 def test_deploy_endpoint_name(sagemaker_session):
-    model = Model(MODEL_DATA, MODEL_IMAGE, role=ROLE, sagemaker_session=sagemaker_session)
+    model = Model(MODEL_IMAGE, MODEL_DATA, role=ROLE, sagemaker_session=sagemaker_session)
 
     endpoint_name = "blah"
     model.deploy(
@@ -122,6 +126,7 @@ def test_deploy_endpoint_name(sagemaker_session):
         initial_instance_count=INSTANCE_COUNT,
     )
 
+    assert endpoint_name == model.endpoint_name
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
         name=endpoint_name,
         production_variants=[BASE_PRODUCTION_VARIANT],
@@ -132,11 +137,63 @@ def test_deploy_endpoint_name(sagemaker_session):
     )
 
 
+@patch("sagemaker.model.Model._create_sagemaker_model", Mock())
+@patch("sagemaker.utils.name_from_base")
+@patch("sagemaker.utils.base_from_name")
+@patch("sagemaker.production_variant")
+def test_deploy_generates_endpoint_name_each_time_from_model_name(
+    production_variant, base_from_name, name_from_base, sagemaker_session
+):
+    model = Model(
+        MODEL_IMAGE, MODEL_DATA, name=MODEL_NAME, role=ROLE, sagemaker_session=sagemaker_session
+    )
+
+    model.deploy(
+        instance_type=INSTANCE_TYPE,
+        initial_instance_count=INSTANCE_COUNT,
+    )
+    model.deploy(
+        instance_type=INSTANCE_TYPE,
+        initial_instance_count=INSTANCE_COUNT,
+    )
+
+    base_from_name.assert_called_with(MODEL_NAME)
+    name_from_base.assert_called_with(base_from_name.return_value)
+    assert 2 == name_from_base.call_count
+
+
+@patch("sagemaker.model.Model._create_sagemaker_model", Mock())
+@patch("sagemaker.utils.name_from_base")
+@patch("sagemaker.utils.base_from_name")
+@patch("sagemaker.production_variant")
+def test_deploy_generates_endpoint_name_each_time_from_base_name(
+    production_variant, base_from_name, name_from_base, sagemaker_session
+):
+    model = Model(MODEL_IMAGE, MODEL_DATA, role=ROLE, sagemaker_session=sagemaker_session)
+
+    base_name = "foo"
+    model._base_name = base_name
+
+    model.deploy(
+        instance_type=INSTANCE_TYPE,
+        initial_instance_count=INSTANCE_COUNT,
+    )
+    model.deploy(
+        instance_type=INSTANCE_TYPE,
+        initial_instance_count=INSTANCE_COUNT,
+    )
+
+    base_from_name.assert_not_called()
+    name_from_base.assert_called_with(base_name)
+    assert 2 == name_from_base.call_count
+
+
+@patch("sagemaker.utils.name_from_base", return_value=ENDPOINT_NAME)
 @patch("sagemaker.production_variant", return_value=BASE_PRODUCTION_VARIANT)
 @patch("sagemaker.model.Model._create_sagemaker_model")
-def test_deploy_tags(create_sagemaker_model, production_variant, sagemaker_session):
+def test_deploy_tags(create_sagemaker_model, production_variant, name_from_base, sagemaker_session):
     model = Model(
-        MODEL_DATA, MODEL_IMAGE, role=ROLE, name=MODEL_NAME, sagemaker_session=sagemaker_session
+        MODEL_IMAGE, MODEL_DATA, role=ROLE, name=MODEL_NAME, sagemaker_session=sagemaker_session
     )
 
     tags = [{"Key": "ModelName", "Value": "TestModel"}]
@@ -144,7 +201,7 @@ def test_deploy_tags(create_sagemaker_model, production_variant, sagemaker_sessi
 
     create_sagemaker_model.assert_called_with(INSTANCE_TYPE, None, tags)
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
-        name=MODEL_NAME,
+        name=ENDPOINT_NAME,
         production_variants=[BASE_PRODUCTION_VARIANT],
         tags=tags,
         kms_key=None,
@@ -154,17 +211,18 @@ def test_deploy_tags(create_sagemaker_model, production_variant, sagemaker_sessi
 
 
 @patch("sagemaker.model.Model._create_sagemaker_model", Mock())
+@patch("sagemaker.utils.name_from_base", return_value=ENDPOINT_NAME)
 @patch("sagemaker.production_variant", return_value=BASE_PRODUCTION_VARIANT)
-def test_deploy_kms_key(production_variant, sagemaker_session):
+def test_deploy_kms_key(production_variant, name_from_base, sagemaker_session):
     model = Model(
-        MODEL_DATA, MODEL_IMAGE, role=ROLE, name=MODEL_NAME, sagemaker_session=sagemaker_session
+        MODEL_IMAGE, MODEL_DATA, role=ROLE, name=MODEL_NAME, sagemaker_session=sagemaker_session
     )
 
     key = "some-key-arn"
     model.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=INSTANCE_COUNT, kms_key=key)
 
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
-        name=MODEL_NAME,
+        name=ENDPOINT_NAME,
         production_variants=[BASE_PRODUCTION_VARIANT],
         tags=None,
         kms_key=key,
@@ -174,16 +232,17 @@ def test_deploy_kms_key(production_variant, sagemaker_session):
 
 
 @patch("sagemaker.model.Model._create_sagemaker_model", Mock())
+@patch("sagemaker.utils.name_from_base", return_value=ENDPOINT_NAME)
 @patch("sagemaker.production_variant", return_value=BASE_PRODUCTION_VARIANT)
-def test_deploy_async(production_variant, sagemaker_session):
+def test_deploy_async(production_variant, name_from_base, sagemaker_session):
     model = Model(
-        MODEL_DATA, MODEL_IMAGE, role=ROLE, name=MODEL_NAME, sagemaker_session=sagemaker_session
+        MODEL_IMAGE, MODEL_DATA, role=ROLE, name=MODEL_NAME, sagemaker_session=sagemaker_session
     )
 
     model.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=INSTANCE_COUNT, wait=False)
 
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
-        name=MODEL_NAME,
+        name=ENDPOINT_NAME,
         production_variants=[BASE_PRODUCTION_VARIANT],
         tags=None,
         kms_key=None,
@@ -193,10 +252,11 @@ def test_deploy_async(production_variant, sagemaker_session):
 
 
 @patch("sagemaker.model.Model._create_sagemaker_model", Mock())
+@patch("sagemaker.utils.name_from_base", return_value=ENDPOINT_NAME)
 @patch("sagemaker.production_variant", return_value=BASE_PRODUCTION_VARIANT)
-def test_deploy_data_capture_config(production_variant, sagemaker_session):
+def test_deploy_data_capture_config(production_variant, name_from_base, sagemaker_session):
     model = Model(
-        MODEL_DATA, MODEL_IMAGE, role=ROLE, name=MODEL_NAME, sagemaker_session=sagemaker_session
+        MODEL_IMAGE, MODEL_DATA, role=ROLE, name=MODEL_NAME, sagemaker_session=sagemaker_session
     )
 
     data_capture_config = Mock()
@@ -210,7 +270,7 @@ def test_deploy_data_capture_config(production_variant, sagemaker_session):
 
     data_capture_config._to_request_dict.assert_called_with()
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
-        name=MODEL_NAME,
+        name=ENDPOINT_NAME,
         production_variants=[BASE_PRODUCTION_VARIANT],
         tags=None,
         kms_key=None,
@@ -223,12 +283,12 @@ def test_deploy_data_capture_config(production_variant, sagemaker_session):
 @patch("sagemaker.local.LocalSession")
 def test_deploy_creates_correct_session(local_session, session):
     # We expect a LocalSession when deploying to instance_type = 'local'
-    model = Model(MODEL_DATA, MODEL_IMAGE, role=ROLE)
+    model = Model(MODEL_IMAGE, MODEL_DATA, role=ROLE)
     model.deploy(endpoint_name="blah", instance_type="local", initial_instance_count=1)
     assert model.sagemaker_session == local_session.return_value
 
     # We expect a real Session when deploying to instance_type != local/local_gpu
-    model = Model(MODEL_DATA, MODEL_IMAGE, role=ROLE)
+    model = Model(MODEL_IMAGE, MODEL_DATA, role=ROLE)
     model.deploy(
         endpoint_name="remote_endpoint", instance_type="ml.m4.4xlarge", initial_instance_count=2
     )
@@ -236,23 +296,23 @@ def test_deploy_creates_correct_session(local_session, session):
 
 
 def test_deploy_no_role(sagemaker_session):
-    model = Model(MODEL_DATA, MODEL_IMAGE, sagemaker_session=sagemaker_session)
+    model = Model(MODEL_IMAGE, MODEL_DATA, sagemaker_session=sagemaker_session)
 
     with pytest.raises(ValueError, match="Role can not be null for deploying a model"):
         model.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=INSTANCE_COUNT)
 
 
 @patch("sagemaker.model.Model._create_sagemaker_model", Mock())
-@patch("sagemaker.predictor.RealTimePredictor._get_endpoint_config_name", Mock())
-@patch("sagemaker.predictor.RealTimePredictor._get_model_names", Mock())
+@patch("sagemaker.predictor.Predictor._get_endpoint_config_name", Mock())
+@patch("sagemaker.predictor.Predictor._get_model_names", Mock())
 @patch("sagemaker.production_variant", return_value=BASE_PRODUCTION_VARIANT)
 def test_deploy_predictor_cls(production_variant, sagemaker_session):
     model = Model(
-        MODEL_DATA,
         MODEL_IMAGE,
+        MODEL_DATA,
         role=ROLE,
         name=MODEL_NAME,
-        predictor_cls=sagemaker.predictor.RealTimePredictor,
+        predictor_cls=sagemaker.predictor.Predictor,
         sagemaker_session=sagemaker_session,
     )
 
@@ -263,72 +323,6 @@ def test_deploy_predictor_cls(production_variant, sagemaker_session):
         endpoint_name=endpoint_name,
     )
 
-    assert isinstance(predictor, sagemaker.predictor.RealTimePredictor)
-    assert predictor.endpoint == endpoint_name
+    assert isinstance(predictor, sagemaker.predictor.Predictor)
+    assert predictor.endpoint_name == endpoint_name
     assert predictor.sagemaker_session == sagemaker_session
-
-
-def test_deploy_update_endpoint(sagemaker_session):
-    model = Model(MODEL_DATA, MODEL_IMAGE, role=ROLE, sagemaker_session=sagemaker_session)
-    model.deploy(
-        instance_type=INSTANCE_TYPE, initial_instance_count=INSTANCE_COUNT, update_endpoint=True
-    )
-    sagemaker_session.create_endpoint_config.assert_called_with(
-        name=model.name,
-        model_name=model.name,
-        initial_instance_count=INSTANCE_COUNT,
-        instance_type=INSTANCE_TYPE,
-        accelerator_type=None,
-        tags=None,
-        kms_key=None,
-        data_capture_config_dict=None,
-    )
-    config_name = sagemaker_session.create_endpoint_config(
-        name=model.name,
-        model_name=model.name,
-        initial_instance_count=INSTANCE_COUNT,
-        instance_type=INSTANCE_TYPE,
-        accelerator_type=ACCELERATOR_TYPE,
-    )
-    sagemaker_session.update_endpoint.assert_called_with(model.name, config_name, wait=True)
-    sagemaker_session.create_endpoint.assert_not_called()
-
-
-def test_deploy_update_endpoint_optional_args(sagemaker_session):
-    endpoint_name = "endpoint-name"
-    tags = [{"Key": "Value"}]
-    kms_key = "foo"
-    data_capture_config = Mock()
-
-    model = Model(MODEL_DATA, MODEL_IMAGE, role=ROLE, sagemaker_session=sagemaker_session)
-    model.deploy(
-        instance_type=INSTANCE_TYPE,
-        initial_instance_count=INSTANCE_COUNT,
-        update_endpoint=True,
-        endpoint_name=endpoint_name,
-        accelerator_type=ACCELERATOR_TYPE,
-        tags=tags,
-        kms_key=kms_key,
-        wait=False,
-        data_capture_config=data_capture_config,
-    )
-    sagemaker_session.create_endpoint_config.assert_called_with(
-        name=model.name,
-        model_name=model.name,
-        initial_instance_count=INSTANCE_COUNT,
-        instance_type=INSTANCE_TYPE,
-        accelerator_type=ACCELERATOR_TYPE,
-        tags=tags,
-        kms_key=kms_key,
-        data_capture_config_dict=data_capture_config._to_request_dict(),
-    )
-    config_name = sagemaker_session.create_endpoint_config(
-        name=model.name,
-        model_name=model.name,
-        initial_instance_count=INSTANCE_COUNT,
-        instance_type=INSTANCE_TYPE,
-        accelerator_type=ACCELERATOR_TYPE,
-        wait=False,
-    )
-    sagemaker_session.update_endpoint.assert_called_with(endpoint_name, config_name, wait=False)
-    sagemaker_session.create_endpoint.assert_not_called()

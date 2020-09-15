@@ -29,8 +29,6 @@ import six
 import sagemaker.logs
 from sagemaker import vpc_utils
 
-# import s3_input for backward compatibility
-from sagemaker.inputs import s3_input  # noqa # pylint: disable=unused-import
 from sagemaker.user_agent import prepend_user_agent
 from sagemaker.utils import (
     name_from_image,
@@ -429,10 +427,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
         tags,
         metric_definitions,
         enable_network_isolation=False,
-        image=None,
+        image_uri=None,
         algorithm_arn=None,
         encrypt_inter_container_traffic=False,
-        train_use_spot_instances=False,
+        use_spot_instances=False,
         checkpoint_s3_uri=None,
         checkpoint_local_path=None,
         experiment_config=None,
@@ -486,11 +484,11 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 metric from the logs.
             enable_network_isolation (bool): Whether to request for the training job to run with
                 network isolation or not.
-            image (str): Docker image containing training code.
+            image_uri (str): Docker image containing training code.
             algorithm_arn (str): Algorithm Arn from Marketplace.
             encrypt_inter_container_traffic (bool): Specifies whether traffic between training
                 containers is encrypted for the training job (default: ``False``).
-            train_use_spot_instances (bool): whether to use spot instances for training.
+            use_spot_instances (bool): whether to use spot instances for training.
             checkpoint_s3_uri (str): The S3 URI in which to persist checkpoints
                 that the algorithm persists (if any) during training. (default:
                 ``None``).
@@ -513,7 +511,133 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Returns:
             str: ARN of the training job, if it is created.
         """
+        train_request = self._get_train_request(
+            input_mode=input_mode,
+            input_config=input_config,
+            role=role,
+            job_name=job_name,
+            output_config=output_config,
+            resource_config=resource_config,
+            vpc_config=vpc_config,
+            hyperparameters=hyperparameters,
+            stop_condition=stop_condition,
+            tags=tags,
+            metric_definitions=metric_definitions,
+            enable_network_isolation=enable_network_isolation,
+            image_uri=image_uri,
+            algorithm_arn=algorithm_arn,
+            encrypt_inter_container_traffic=encrypt_inter_container_traffic,
+            use_spot_instances=use_spot_instances,
+            checkpoint_s3_uri=checkpoint_s3_uri,
+            checkpoint_local_path=checkpoint_local_path,
+            experiment_config=experiment_config,
+            debugger_rule_configs=debugger_rule_configs,
+            debugger_hook_config=debugger_hook_config,
+            tensorboard_output_config=tensorboard_output_config,
+            enable_sagemaker_metrics=enable_sagemaker_metrics,
+        )
+        LOGGER.info("Creating training-job with name: %s", job_name)
+        LOGGER.debug("train request: %s", json.dumps(train_request, indent=4))
+        self.sagemaker_client.create_training_job(**train_request)
 
+    def _get_train_request(  # noqa: C901
+        self,
+        input_mode,
+        input_config,
+        role,
+        job_name,
+        output_config,
+        resource_config,
+        vpc_config,
+        hyperparameters,
+        stop_condition,
+        tags,
+        metric_definitions,
+        enable_network_isolation=False,
+        image_uri=None,
+        algorithm_arn=None,
+        encrypt_inter_container_traffic=False,
+        use_spot_instances=False,
+        checkpoint_s3_uri=None,
+        checkpoint_local_path=None,
+        experiment_config=None,
+        debugger_rule_configs=None,
+        debugger_hook_config=None,
+        tensorboard_output_config=None,
+        enable_sagemaker_metrics=None,
+    ):
+        """Constructs a request compatible for creating an Amazon SageMaker training job.
+
+        Args:
+            input_mode (str): The input mode that the algorithm supports. Valid modes:
+                * 'File' - Amazon SageMaker copies the training dataset from the S3 location to
+                a directory in the Docker container.
+                * 'Pipe' - Amazon SageMaker streams data directly from S3 to the container via a
+                Unix-named pipe.
+
+            input_config (list): A list of Channel objects. Each channel is a named input source.
+                Please refer to the format details described:
+                https://botocore.readthedocs.io/en/latest/reference/services/sagemaker.html#SageMaker.Client.create_training_job
+            role (str): An AWS IAM role (either name or full ARN). The Amazon SageMaker training
+                jobs and APIs that create Amazon SageMaker endpoints use this role to access
+                training data and model artifacts. You must grant sufficient permissions to this
+                role.
+            job_name (str): Name of the training job being created.
+            output_config (dict): The S3 URI where you want to store the training results and
+                optional KMS key ID.
+            resource_config (dict): Contains values for ResourceConfig:
+                * instance_count (int): Number of EC2 instances to use for training.
+                The key in resource_config is 'InstanceCount'.
+                * instance_type (str): Type of EC2 instance to use for training, for example,
+                'ml.c4.xlarge'. The key in resource_config is 'InstanceType'.
+
+            vpc_config (dict): Contains values for VpcConfig:
+                * subnets (list[str]): List of subnet ids.
+                The key in vpc_config is 'Subnets'.
+                * security_group_ids (list[str]): List of security group ids.
+                The key in vpc_config is 'SecurityGroupIds'.
+
+            hyperparameters (dict): Hyperparameters for model training. The hyperparameters are
+                made accessible as a dict[str, str] to the training code on SageMaker. For
+                convenience, this accepts other types for keys and values, but ``str()`` will be
+                called to convert them before training.
+            stop_condition (dict): Defines when training shall finish. Contains entries that can
+                be understood by the service like ``MaxRuntimeInSeconds``.
+            tags (list[dict]): List of tags for labeling a training job. For more, see
+                https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
+            metric_definitions (list[dict]): A list of dictionaries that defines the metric(s)
+                used to evaluate the training jobs. Each dictionary contains two keys: 'Name' for
+                the name of the metric, and 'Regex' for the regular expression used to extract the
+                metric from the logs.
+            enable_network_isolation (bool): Whether to request for the training job to run with
+                network isolation or not.
+            image_uri (str): Docker image containing training code.
+            algorithm_arn (str): Algorithm Arn from Marketplace.
+            encrypt_inter_container_traffic (bool): Specifies whether traffic between training
+                containers is encrypted for the training job (default: ``False``).
+            use_spot_instances (bool): whether to use spot instances for training.
+            checkpoint_s3_uri (str): The S3 URI in which to persist checkpoints
+                that the algorithm persists (if any) during training. (default:
+                ``None``).
+            checkpoint_local_path (str): The local path that the algorithm
+                writes its checkpoints to. SageMaker will persist all files
+                under this path to `checkpoint_s3_uri` continually during
+                training. On job startup the reverse happens - data from the
+                s3 location is downloaded to this path before the algorithm is
+                started. If the path is unset then SageMaker assumes the
+                checkpoints will be provided under `/opt/ml/checkpoints/`.
+                (default: ``None``).
+            experiment_config (dict): Experiment management configuration. Dictionary contains
+                three optional keys, 'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+                (default: ``None``)
+            enable_sagemaker_metrics (bool): enable SageMaker Metrics Time
+                Series. For more information see:
+                https://docs.aws.amazon.com/sagemaker/latest/dg/API_AlgorithmSpecification.html#SageMaker-Type-AlgorithmSpecification-EnableSageMakerMetricsTimeSeries
+                (default: ``None``).
+
+        Returns:
+            Dict: a training request dict
+        """
         train_request = {
             "AlgorithmSpecification": {"TrainingInputMode": input_mode},
             "OutputDataConfig": output_config,
@@ -523,17 +647,17 @@ class Session(object):  # pylint: disable=too-many-public-methods
             "RoleArn": role,
         }
 
-        if image and algorithm_arn:
+        if image_uri and algorithm_arn:
             raise ValueError(
-                "image and algorithm_arn are mutually exclusive."
-                "Both were provided: image: %s algorithm_arn: %s" % (image, algorithm_arn)
+                "image_uri and algorithm_arn are mutually exclusive."
+                "Both were provided: image_uri: %s algorithm_arn: %s" % (image_uri, algorithm_arn)
             )
 
-        if image is None and algorithm_arn is None:
-            raise ValueError("either image or algorithm_arn is required. None was provided.")
+        if image_uri is None and algorithm_arn is None:
+            raise ValueError("either image_uri or algorithm_arn is required. None was provided.")
 
-        if image is not None:
-            train_request["AlgorithmSpecification"]["TrainingImage"] = image
+        if image_uri is not None:
+            train_request["AlgorithmSpecification"]["TrainingImage"] = image_uri
 
         if algorithm_arn is not None:
             train_request["AlgorithmSpecification"]["AlgorithmName"] = algorithm_arn
@@ -567,8 +691,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if encrypt_inter_container_traffic:
             train_request["EnableInterContainerTrafficEncryption"] = encrypt_inter_container_traffic
 
-        if train_use_spot_instances:
-            train_request["EnableManagedSpotTraining"] = train_use_spot_instances
+        if use_spot_instances:
+            train_request["EnableManagedSpotTraining"] = use_spot_instances
 
         if checkpoint_s3_uri:
             checkpoint_config = {"S3Uri": checkpoint_s3_uri}
@@ -585,9 +709,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if tensorboard_output_config is not None:
             train_request["TensorBoardOutputConfig"] = tensorboard_output_config
 
-        LOGGER.info("Creating training-job with name: %s", job_name)
-        LOGGER.debug("train request: %s", json.dumps(train_request, indent=4))
-        self.sagemaker_client.create_training_job(**train_request)
+        return train_request
 
     def process(
         self,
@@ -634,6 +756,71 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 three optional keys, 'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
                 (default: ``None``)
         """
+        process_request = self._get_process_request(
+            inputs=inputs,
+            output_config=output_config,
+            job_name=job_name,
+            resources=resources,
+            stopping_condition=stopping_condition,
+            app_specification=app_specification,
+            environment=environment,
+            network_config=network_config,
+            role_arn=role_arn,
+            tags=tags,
+            experiment_config=experiment_config,
+        )
+        LOGGER.info("Creating processing-job with name %s", job_name)
+        LOGGER.debug("process request: %s", json.dumps(process_request, indent=4))
+        self.sagemaker_client.create_processing_job(**process_request)
+
+    def _get_process_request(
+        self,
+        inputs,
+        output_config,
+        job_name,
+        resources,
+        stopping_condition,
+        app_specification,
+        environment,
+        network_config,
+        role_arn,
+        tags,
+        experiment_config=None,
+    ):
+        """Constructs a request compatible for an Amazon SageMaker processing job.
+
+        Args:
+            inputs ([dict]): List of up to 10 ProcessingInput dictionaries.
+            output_config (dict): A config dictionary, which contains a list of up
+                to 10 ProcessingOutput dictionaries, as well as an optional KMS key ID.
+            job_name (str): The name of the processing job. The name must be unique
+                within an AWS Region in an AWS account. Names should have minimum
+                length of 1 and maximum length of 63 characters.
+            resources (dict): Encapsulates the resources, including ML instances
+                and storage, to use for the processing job.
+            stopping_condition (dict[str,int]): Specifies a limit to how long
+                the processing job can run, in seconds.
+            app_specification (dict[str,str]): Configures the processing job to
+                run the given image. Details are in the processing container
+                specification.
+            environment (dict): Environment variables to start the processing
+                container with.
+            network_config (dict): Specifies networking options, such as network
+                traffic encryption between processing containers, whether to allow
+                inbound and outbound network calls to and from processing containers,
+                and VPC subnets and security groups to use for VPC-enabled processing
+                jobs.
+            role_arn (str): The Amazon Resource Name (ARN) of an IAM role that
+                Amazon SageMaker can assume to perform tasks on your behalf.
+            tags ([dict[str,str]]): A list of dictionaries containing key-value
+                pairs.
+            experiment_config (dict): Experiment management configuration. Dictionary contains
+                three optional keys, 'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+                (default: ``None``)
+
+        Returns:
+            Dict: a processing job request dict
+        """
         process_request = {
             "ProcessingJobName": job_name,
             "ProcessingResources": resources,
@@ -662,9 +849,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if experiment_config:
             process_request["ExperimentConfig"] = experiment_config
 
-        LOGGER.info("Creating processing-job with name %s", job_name)
-        LOGGER.debug("process request: %s", json.dumps(process_request, indent=4))
-        self.sagemaker_client.create_processing_job(**process_request)
+        return process_request
 
     def create_monitoring_schedule(
         self,
@@ -1389,8 +1574,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Args:
             job (str): Name of the auto ml job to wait for.
             poll (int): Polling interval in seconds (default: 5).
+
         Returns:
             (dict): Return value from the ``DescribeAutoMLJob`` API.
+
         Raises:
             exceptions.UnexpectedStatusException: If the auto ml job fails.
         """
@@ -1535,12 +1722,12 @@ class Session(object):  # pylint: disable=too-many-public-methods
         tags,
         warm_start_config,
         enable_network_isolation=False,
-        image=None,
+        image_uri=None,
         algorithm_arn=None,
         early_stopping_type="Off",
         encrypt_inter_container_traffic=False,
         vpc_config=None,
-        train_use_spot_instances=False,
+        use_spot_instances=False,
         checkpoint_s3_uri=None,
         checkpoint_local_path=None,
         debugger_rule_configs=None,
@@ -1564,7 +1751,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 hyperparameters remain unchanged across all of the training jobs for the
                 hyperparameter tuning job. The hyperparameters are made accessible as a dictionary
                 for the training code on SageMaker.
-            image (str): Docker image containing training code.
+            image_uri (str): Docker image URI containing training code.
             algorithm_arn (str): Resource ARN for training algorithm created on or subscribed from
                 AWS Marketplace (default: None).
             input_mode (str): The input mode that the algorithm supports. Valid modes:
@@ -1612,7 +1799,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 The key in vpc_config is 'Subnets'.
                 * security_group_ids (list[str]): List of security group ids.
                 The key in vpc_config is 'SecurityGroupIds'.
-            train_use_spot_instances (bool): whether to use spot instances for training.
+            use_spot_instances (bool): whether to use spot instances for training.
             checkpoint_s3_uri (str): The S3 URI in which to persist checkpoints
                 that the algorithm persists (if any) during training. (default:
                 ``None``).
@@ -1642,7 +1829,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 static_hyperparameters=static_hyperparameters,
                 role=role,
                 input_mode=input_mode,
-                image=image,
+                image_uri=image_uri,
                 algorithm_arn=algorithm_arn,
                 metric_definitions=metric_definitions,
                 input_config=input_config,
@@ -1652,7 +1839,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 stop_condition=stop_condition,
                 enable_network_isolation=enable_network_isolation,
                 encrypt_inter_container_traffic=encrypt_inter_container_traffic,
-                train_use_spot_instances=train_use_spot_instances,
+                use_spot_instances=use_spot_instances,
                 checkpoint_s3_uri=checkpoint_s3_uri,
                 checkpoint_local_path=checkpoint_local_path,
                 debugger_rule_configs=debugger_rule_configs,
@@ -1835,7 +2022,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         stop_condition,
         input_config=None,
         metric_definitions=None,
-        image=None,
+        image_uri=None,
         algorithm_arn=None,
         vpc_config=None,
         enable_network_isolation=False,
@@ -1844,7 +2031,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         objective_type=None,
         objective_metric_name=None,
         parameter_ranges=None,
-        train_use_spot_instances=False,
+        use_spot_instances=False,
         checkpoint_s3_uri=None,
         checkpoint_local_path=None,
         debugger_rule_configs=None,
@@ -1888,7 +2075,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 the name of the metric, and 'Regex' for the regular expression used to extract the
                 metric from the logs. This should be defined only for jobs that don't use an
                 Amazon algorithm.
-            image (str): Docker image containing training code.
+            image_uri (str): Docker image URI containing training code.
             algorithm_arn (str): Resource ARN for training algorithm created or subscribed on
                 AWS Marketplace
             vpc_config (dict): Contains values for VpcConfig (default: None):
@@ -1931,7 +2118,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if algorithm_arn:
             algorithm_spec["AlgorithmName"] = algorithm_arn
         else:
-            algorithm_spec["TrainingImage"] = image
+            algorithm_spec["TrainingImage"] = image_uri
 
         training_job_definition["AlgorithmSpecification"] = algorithm_spec
 
@@ -1947,7 +2134,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if encrypt_inter_container_traffic:
             training_job_definition["EnableInterContainerTrafficEncryption"] = True
 
-        if train_use_spot_instances:
+        if use_spot_instances:
             training_job_definition["EnableManagedSpotTraining"] = True
 
         if checkpoint_s3_uri:
@@ -2185,7 +2372,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         training_job_name,
         name=None,
         role=None,
-        primary_container_image=None,
+        image_uri=None,
         model_data_url=None,
         env=None,
         vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT,
@@ -2200,8 +2387,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             role (str): The ``ExecutionRoleArn`` IAM Role ARN for the ``Model``, specified either
                 by an IAM role name or role ARN. If None, the ``RoleArn`` from the SageMaker
                 Training Job will be used.
-            primary_container_image (str): The Docker image reference (default: None). If None, it
-                defaults to the Training Image in ``training_job_name``.
+            image_uri (str): The Docker image URI (default: None). If None, it
+                defaults to the training image URI from ``training_job_name``.
             model_data_url (str): S3 location of the model data (default: None). If None, defaults
                 to the ``ModelS3Artifacts`` of ``training_job_name``.
             env (dict[string,string]): Model environment variables (default: {}).
@@ -2223,7 +2410,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         role = role or training_job["RoleArn"]
         env = env or {}
         primary_container = container_def(
-            primary_container_image or training_job["AlgorithmSpecification"]["TrainingImage"],
+            image_uri or training_job["AlgorithmSpecification"]["TrainingImage"],
             model_data_url=model_data_url or training_job["ModelArtifacts"]["S3ModelArtifacts"],
             env=env,
         )
@@ -2362,6 +2549,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         new_tags=None,
         new_kms_key=None,
         new_data_capture_config_dict=None,
+        new_production_variants=None,
     ):
         """Create an Amazon SageMaker endpoint configuration from an existing one. Updating any
         values that were passed in.
@@ -2375,7 +2563,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             new_config_name (str): Name of the Amazon SageMaker endpoint configuration to create.
             existing_config_name (str): Name of the existing Amazon SageMaker endpoint
                 configuration.
-            new_tags(List[dict[str, str]]): Optional. The list of tags to add to the endpoint
+            new_tags (list[dict[str, str]]): Optional. The list of tags to add to the endpoint
                 config. If not specified, the tags of the existing endpoint configuration are used.
                 If any of the existing tags are reserved AWS ones (i.e. begin with "aws"),
                 they are not carried over to the new endpoint configuration.
@@ -2386,6 +2574,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 capture for use with Amazon SageMaker Model Monitoring (default: None).
                 If not specified, the data capture configuration of the existing
                 endpoint configuration is used.
+            new_production_variants (list[dict]): The configuration for which model(s) to host and
+                the resources to deploy for hosting the model(s). If not specified,
+                the ``ProductionVariants`` of the existing endpoint configuration is used.
 
         Returns:
             str: Name of the endpoint point configuration created.
@@ -2399,8 +2590,11 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         request = {
             "EndpointConfigName": new_config_name,
-            "ProductionVariants": existing_endpoint_config_desc["ProductionVariants"],
         }
+
+        request["ProductionVariants"] = (
+            new_production_variants or existing_endpoint_config_desc["ProductionVariants"]
+        )
 
         request_tags = new_tags or self.list_tags(
             existing_endpoint_config_desc["EndpointConfigArn"]
@@ -2722,7 +2916,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         job_name,
         initial_instance_count,
         instance_type,
-        deployment_image=None,
+        image_uri=None,
         name=None,
         role=None,
         wait=True,
@@ -2747,7 +2941,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 autoscaling.
             instance_type (str): Type of EC2 instance to deploy to an endpoint for prediction,
                 for example, 'ml.c4.xlarge'.
-            deployment_image (str): The Docker image which defines the inference code to be used
+            image_uri (str): The Docker image which defines the inference code to be used
                 as the entry point for accepting prediction requests. If not specified, uses the
                 image used for the training job.
             name (str): Name of the ``Endpoint`` to create. If not specified, uses the training job
@@ -2777,14 +2971,14 @@ class Session(object):  # pylint: disable=too-many-public-methods
         """
         job_desc = self.sagemaker_client.describe_training_job(TrainingJobName=job_name)
         output_url = job_desc["ModelArtifacts"]["S3ModelArtifacts"]
-        deployment_image = deployment_image or job_desc["AlgorithmSpecification"]["TrainingImage"]
+        image_uri = image_uri or job_desc["AlgorithmSpecification"]["TrainingImage"]
         role = role or job_desc["RoleArn"]
         name = name or job_name
         vpc_config_override = _vpc_config_from_training_job(job_desc, vpc_config_override)
 
         return self.endpoint_from_model_data(
             model_s3_location=output_url,
-            deployment_image=deployment_image,
+            image_uri=image_uri,
             initial_instance_count=initial_instance_count,
             instance_type=instance_type,
             name=name,
@@ -2799,7 +2993,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
     def endpoint_from_model_data(
         self,
         model_s3_location,
-        deployment_image,
+        image_uri,
         initial_instance_count,
         instance_type,
         name=None,
@@ -2814,8 +3008,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         Args:
             model_s3_location (str): S3 URI of the model artifacts to use for the endpoint.
-            deployment_image (str): The Docker image which defines the runtime code to be used as
-                the entry point for accepting prediction requests.
+            image_uri (str): The Docker image URI which defines the runtime code to be
+                used as the entry point for accepting prediction requests.
             initial_instance_count (int): Minimum number of EC2 instances to launch. The actual
                 number of active instances for an endpoint at any given time varies due to
                 autoscaling.
@@ -2846,7 +3040,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         """
         model_environment_vars = model_environment_vars or {}
-        name = name or name_from_image(deployment_image)
+        name = name or name_from_image(image_uri)
         model_vpc_config = vpc_utils.sanitize(model_vpc_config)
 
         if _deployment_entity_exists(
@@ -2860,7 +3054,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             lambda: self.sagemaker_client.describe_model(ModelName=name)
         ):
             primary_container = container_def(
-                image=deployment_image, model_data_url=model_s3_location, env=model_environment_vars
+                image_uri=image_uri,
+                model_data_url=model_s3_location,
+                env=model_environment_vars,
             )
             self.create_model(
                 name=name, role=role, container_defs=primary_container, vpc_config=model_vpc_config
@@ -3271,11 +3467,11 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 print()
 
 
-def container_def(image, model_data_url=None, env=None, container_mode=None):
+def container_def(image_uri, model_data_url=None, env=None, container_mode=None):
     """Create a definition for executing a container as part of a SageMaker model.
 
     Args:
-        image (str): Docker image to run for this container.
+        image_uri (str): Docker image URI to run for this container.
         model_data_url (str): S3 URI of data required by this container,
             e.g. SageMaker training job model artifacts (default: None).
         env (dict[str, str]): Environment variables to set inside the container (default: None).
@@ -3289,7 +3485,7 @@ def container_def(image, model_data_url=None, env=None, container_mode=None):
     """
     if env is None:
         env = {}
-    c_def = {"Image": image, "Environment": env}
+    c_def = {"Image": image_uri, "Environment": env}
     if model_data_url:
         c_def["ModelDataUrl"] = model_data_url
     if container_mode:
@@ -3377,44 +3573,6 @@ def get_execution_role(sagemaker_session=None):
         "SageMaker execution role"
     )
     raise ValueError(message.format(arn))
-
-
-class ShuffleConfig(object):
-    """
-    Used to configure channel shuffling using a seed. See SageMaker documentation for
-    more detail: https://docs.aws.amazon.com/sagemaker/latest/dg/API_ShuffleConfig.html
-    """
-
-    def __init__(self, seed):
-        """
-        Create a ShuffleConfig.
-        Args:
-            seed (long): the long value used to seed the shuffled sequence.
-        """
-        self.seed = seed
-
-
-class ModelContainer(object):
-    """Amazon SageMaker Model configurations for inference pipelines.
-
-    Attributes:
-        model_data (str): S3 Model artifact location
-        image (str): Docker image URL in ECR
-        env (dict[str,str]): Environment variable mapping
-    """
-
-    def __init__(self, model_data, image, env=None):
-        """Create a definition of a model which can be part of an Inference Pipeline
-
-        Args:
-            model_data (str): The S3 location of a SageMaker model data ``.tar.gz`` file.
-            image (str): A Docker image URI.
-            env (dict[str, str]): Environment variables to run with ``image`` when hosted in
-                SageMaker (default: None).
-        """
-        self.model_data = model_data
-        self.image = image
-        self.env = env
 
 
 def _create_model_request(

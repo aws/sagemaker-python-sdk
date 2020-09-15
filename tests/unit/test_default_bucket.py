@@ -14,7 +14,7 @@ from __future__ import absolute_import
 
 import pytest
 from botocore.exceptions import ClientError
-from mock import Mock
+from mock import MagicMock
 import sagemaker
 
 ACCOUNT_ID = "123"
@@ -24,7 +24,7 @@ DEFAULT_BUCKET_NAME = "sagemaker-{}-{}".format(REGION, ACCOUNT_ID)
 
 @pytest.fixture()
 def sagemaker_session():
-    boto_mock = Mock(name="boto_session", region_name=REGION)
+    boto_mock = MagicMock(name="boto_session", region_name=REGION)
     boto_mock.client("sts").get_caller_identity.return_value = {"Account": ACCOUNT_ID}
     sagemaker_session = sagemaker.Session(boto_session=boto_mock)
     sagemaker_session.boto_session.resource("s3").Bucket().creation_date = None

@@ -31,12 +31,13 @@ BUCKET_NAME = "Some-Bucket"
 ROLE = "myrole"
 IMAGE_NAME = "image"
 
-TRAIN_INSTANCE_COUNT = 1
-TRAIN_INSTANCE_TYPE = "ml.c4.xlarge"
+INSTANCE_COUNT = 1
+INSTANCE_TYPE = "ml.c4.xlarge"
 NUM_COMPONENTS = 5
 
 SCRIPT_NAME = "my_script.py"
 FRAMEWORK_VERSION = "1.0.0"
+PY_VERSION = "py3"
 
 INPUTS = "s3://mybucket/train"
 
@@ -73,15 +74,15 @@ SAGEMAKER_SESSION = Mock()
 ESTIMATOR = Estimator(
     IMAGE_NAME,
     ROLE,
-    TRAIN_INSTANCE_COUNT,
-    TRAIN_INSTANCE_TYPE,
+    INSTANCE_COUNT,
+    INSTANCE_TYPE,
     output_path="s3://bucket/prefix",
     sagemaker_session=SAGEMAKER_SESSION,
 )
 ESTIMATOR_TWO = PCA(
     ROLE,
-    TRAIN_INSTANCE_COUNT,
-    TRAIN_INSTANCE_TYPE,
+    INSTANCE_COUNT,
+    INSTANCE_TYPE,
     NUM_COMPONENTS,
     sagemaker_session=SAGEMAKER_SESSION,
 )

@@ -16,8 +16,8 @@ import argparse
 import numpy as np
 import os
 
+import joblib
 from sklearn import svm
-from sklearn.externals import joblib
 
 
 def preprocess_mnist(raw, withlabel, ndim, scale, image_dtype, label_dtype, rgb_format):

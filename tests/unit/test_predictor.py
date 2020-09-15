@@ -14,336 +14,19 @@ from __future__ import absolute_import
 
 import io
 import json
-import os
+
 import pytest
-from mock import Mock, call
-
-import numpy as np
-
-from sagemaker.predictor import RealTimePredictor
-from sagemaker.predictor import (
-    json_serializer,
-    json_deserializer,
-    csv_serializer,
-    csv_deserializer,
-    BytesDeserializer,
-    StringDeserializer,
-    StreamDeserializer,
-    numpy_deserializer,
-    npy_serializer,
-    _NumpyDeserializer,
-)
-from tests.unit import DATA_DIR
-
-# testing serialization functions
-
-
-def test_json_serializer_numpy_valid():
-    result = json_serializer(np.array([1, 2, 3]))
-
-    assert result == "[1, 2, 3]"
-
-
-def test_json_serializer_numpy_valid_2dimensional():
-    result = json_serializer(np.array([[1, 2, 3], [3, 4, 5]]))
-
-    assert result == "[[1, 2, 3], [3, 4, 5]]"
-
-
-def test_json_serializer_empty():
-    assert json_serializer(np.array([])) == "[]"
-
-
-def test_json_serializer_python_array():
-    result = json_serializer([1, 2, 3])
-
-    assert result == "[1, 2, 3]"
-
-
-def test_json_serializer_python_dictionary():
-    d = {"gender": "m", "age": 22, "city": "Paris"}
-
-    result = json_serializer(d)
-
-    assert json.loads(result) == d
-
-
-def test_json_serializer_python_invalid_empty():
-    assert json_serializer([]) == "[]"
-
-
-def test_json_serializer_python_dictionary_invalid_empty():
-    assert json_serializer({}) == "{}"
-
-
-def test_json_serializer_csv_buffer():
-    csv_file_path = os.path.join(DATA_DIR, "with_integers.csv")
-    with open(csv_file_path) as csv_file:
-        validation_value = csv_file.read()
-        csv_file.seek(0)
-        result = json_serializer(csv_file)
-        assert result == validation_value
-
-
-def test_csv_serializer_str():
-    original = "1,2,3"
-    result = csv_serializer("1,2,3")
-
-    assert result == original
-
-
-def test_csv_serializer_python_array():
-    result = csv_serializer([1, 2, 3])
-
-    assert result == "1,2,3"
-
-
-def test_csv_serializer_numpy_valid():
-    result = csv_serializer(np.array([1, 2, 3]))
-
-    assert result == "1,2,3"
-
-
-def test_csv_serializer_numpy_valid_2dimensional():
-    result = csv_serializer(np.array([[1, 2, 3], [3, 4, 5]]))
-
-    assert result == "1,2,3\n3,4,5"
-
-
-def test_csv_serializer_list_of_str():
-    result = csv_serializer(["1,2,3", "4,5,6"])
-
-    assert result == "1,2,3\n4,5,6"
-
-
-def test_csv_serializer_list_of_list():
-    result = csv_serializer([[1, 2, 3], [3, 4, 5]])
-
-    assert result == "1,2,3\n3,4,5"
-
-
-def test_csv_serializer_list_of_empty():
-    with pytest.raises(ValueError) as invalid_input:
-        csv_serializer(np.array([[], []]))
-
-    assert "empty array" in str(invalid_input)
-
-
-def test_csv_serializer_numpy_invalid_empty():
-    with pytest.raises(ValueError) as invalid_input:
-        csv_serializer(np.array([]))
-
-    assert "empty array" in str(invalid_input)
-
-
-def test_csv_serializer_python_invalid_empty():
-    with pytest.raises(ValueError) as error:
-        csv_serializer([])
-    assert "empty array" in str(error)
-
-
-def test_csv_serializer_csv_reader():
-    csv_file_path = os.path.join(DATA_DIR, "with_integers.csv")
-    with open(csv_file_path) as csv_file:
-        validation_data = csv_file.read()
-        csv_file.seek(0)
-        result = csv_serializer(csv_file)
-        assert result == validation_data
-
-
-def test_csv_deserializer_single_element():
-    result = csv_deserializer(io.BytesIO(b"1"), "text/csv")
-    assert result == [["1"]]
-
-
-def test_csv_deserializer_array():
-    result = csv_deserializer(io.BytesIO(b"1,2,3"), "text/csv")
-    assert result == [["1", "2", "3"]]
-
-
-def test_csv_deserializer_2dimensional():
-    result = csv_deserializer(io.BytesIO(b"1,2,3\n3,4,5"), "text/csv")
-    assert result == [["1", "2", "3"], ["3", "4", "5"]]
-
-
-def test_json_deserializer_array():
-    result = json_deserializer(io.BytesIO(b"[1, 2, 3]"), "application/json")
-
-    assert result == [1, 2, 3]
-
-
-def test_json_deserializer_2dimensional():
-    result = json_deserializer(io.BytesIO(b"[[1, 2, 3], [3, 4, 5]]"), "application/json")
-
-    assert result == [[1, 2, 3], [3, 4, 5]]
-
-
-def test_json_deserializer_invalid_data():
-    with pytest.raises(ValueError) as error:
-        json_deserializer(io.BytesIO(b"[[1]"), "application/json")
-    assert "column" in str(error)
-
-
-def test_bytes_deserializer():
-    result = BytesDeserializer()(io.BytesIO(b"[1, 2, 3]"), "application/json")
-
-    assert result == b"[1, 2, 3]"
-
-
-def test_string_deserializer():
-    result = StringDeserializer()(io.BytesIO(b"[1, 2, 3]"), "application/json")
-
-    assert result == "[1, 2, 3]"
-
-
-def test_stream_deserializer():
-    stream, content_type = StreamDeserializer()(io.BytesIO(b"[1, 2, 3]"), "application/json")
-    result = stream.read()
-    assert result == b"[1, 2, 3]"
-    assert content_type == "application/json"
-
-
-def test_npy_serializer_python_array():
-    array = [1, 2, 3]
-    result = npy_serializer(array)
-
-    assert np.array_equal(array, np.load(io.BytesIO(result)))
-
-
-def test_npy_serializer_python_array_with_dtype():
-    array = [1, 2, 3]
-    dtype = "float16"
-
-    result = npy_serializer(array, dtype)
-
-    deserialized = np.load(io.BytesIO(result))
-    assert np.array_equal(array, deserialized)
-    assert deserialized.dtype == dtype
-
-
-def test_npy_serializer_numpy_valid_2_dimensional():
-    array = np.array([[1, 2, 3], [3, 4, 5]])
-    result = npy_serializer(array)
-
-    assert np.array_equal(array, np.load(io.BytesIO(result)))
-
-
-def test_npy_serializer_numpy_valid_multidimensional():
-    array = np.ones((10, 10, 10, 10))
-    result = npy_serializer(array)
-
-    assert np.array_equal(array, np.load(io.BytesIO(result)))
-
-
-def test_npy_serializer_numpy_valid_list_of_strings():
-    array = np.array(["one", "two", "three"])
-    result = npy_serializer(array)
-
-    assert np.array_equal(array, np.load(io.BytesIO(result)))
-
-
-def test_npy_serializer_from_buffer_or_file():
-    array = np.ones((2, 3))
-    stream = io.BytesIO()
-    np.save(stream, array)
-    stream.seek(0)
-
-    result = npy_serializer(stream)
-
-    assert np.array_equal(array, np.load(io.BytesIO(result)))
-
-
-def test_npy_serializer_object():
-    object = {1, 2, 3}
-
-    result = npy_serializer(object)
-
-    assert np.array_equal(np.array(object), np.load(io.BytesIO(result), allow_pickle=True))
-
-
-def test_npy_serializer_list_of_empty():
-    with pytest.raises(ValueError) as invalid_input:
-        npy_serializer(np.array([[], []]))
-
-    assert "empty array" in str(invalid_input)
-
-
-def test_npy_serializer_numpy_invalid_empty():
-    with pytest.raises(ValueError) as invalid_input:
-        npy_serializer(np.array([]))
-
-    assert "empty array" in str(invalid_input)
-
-
-def test_npy_serializer_python_invalid_empty():
-    with pytest.raises(ValueError) as error:
-        npy_serializer([])
-    assert "empty array" in str(error)
-
-
-def test_numpy_deser_from_csv():
-    arr = numpy_deserializer(io.BytesIO(b"1,2,3\n4,5,6"), "text/csv")
-    assert np.array_equal(arr, np.array([[1, 2, 3], [4, 5, 6]]))
-
-
-def test_numpy_deser_from_csv_ragged():
-    with pytest.raises(ValueError) as error:
-        numpy_deserializer(io.BytesIO(b"1,2,3\n4,5,6,7"), "text/csv")
-    assert "errors were detected" in str(error)
-
-
-def test_numpy_deser_from_csv_alpha():
-    arr = _NumpyDeserializer(dtype="U5")(io.BytesIO(b"hello,2,3\n4,5,6"), "text/csv")
-    assert np.array_equal(arr, np.array([["hello", 2, 3], [4, 5, 6]]))
-
-
-def test_numpy_deser_from_json():
-    arr = numpy_deserializer(io.BytesIO(b"[[1,2,3],\n[4,5,6]]"), "application/json")
-    assert np.array_equal(arr, np.array([[1, 2, 3], [4, 5, 6]]))
-
-
-# Sadly, ragged arrays work fine in JSON (giving us a 1D array of Python lists
-def test_numpy_deser_from_json_ragged():
-    arr = numpy_deserializer(io.BytesIO(b"[[1,2,3],\n[4,5,6,7]]"), "application/json")
-    assert np.array_equal(arr, np.array([[1, 2, 3], [4, 5, 6, 7]]))
-
-
-def test_numpy_deser_from_json_alpha():
-    arr = _NumpyDeserializer(dtype="U5")(
-        io.BytesIO(b'[["hello",2,3],\n[4,5,6]]'), "application/json"
-    )
-    assert np.array_equal(arr, np.array([["hello", 2, 3], [4, 5, 6]]))
-
-
-def test_numpy_deser_from_npy():
-    array = np.ones((2, 3))
-    stream = io.BytesIO()
-    np.save(stream, array)
-    stream.seek(0)
-
-    result = numpy_deserializer(stream)
-
-    assert np.array_equal(array, result)
-
-
-def test_numpy_deser_from_npy_object_array():
-    array = np.array(["one", "two"])
-    stream = io.BytesIO()
-    np.save(stream, array)
-    stream.seek(0)
-
-    result = numpy_deserializer(stream)
-
-    assert np.array_equal(array, result)
-
-
-# testing 'predict' invocations
-
+from mock import Mock, call, patch
+
+from sagemaker.deserializers import CSVDeserializer, PandasDeserializer
+from sagemaker.predictor import Predictor
+from sagemaker.serializers import JSONSerializer, CSVSerializer
 
 ENDPOINT = "mxnet_endpoint"
 BUCKET_NAME = "mxnet_endpoint"
-DEFAULT_CONTENT_TYPE = "application/json"
+DEFAULT_CONTENT_TYPE = "application/octet-stream"
 CSV_CONTENT_TYPE = "text/csv"
+DEFAULT_ACCEPT = "*/*"
 RETURN_VALUE = 0
 CSV_RETURN_VALUE = "1,2,3\r\n"
 PRODUCTION_VARIANT_1 = "PRODUCTION_VARIANT_1"
@@ -371,25 +54,7 @@ def empty_sagemaker_session():
 
 def test_predict_call_pass_through():
     sagemaker_session = empty_sagemaker_session()
-    predictor = RealTimePredictor(ENDPOINT, sagemaker_session)
-
-    data = "untouched"
-    result = predictor.predict(data)
-
-    assert sagemaker_session.sagemaker_runtime_client.invoke_endpoint.called
-
-    expected_request_args = {"Body": data, "EndpointName": ENDPOINT}
-    call_args, kwargs = sagemaker_session.sagemaker_runtime_client.invoke_endpoint.call_args
-    assert kwargs == expected_request_args
-
-    assert result == RETURN_VALUE
-
-
-def test_predict_call_with_headers():
-    sagemaker_session = empty_sagemaker_session()
-    predictor = RealTimePredictor(
-        ENDPOINT, sagemaker_session, content_type=DEFAULT_CONTENT_TYPE, accept=DEFAULT_CONTENT_TYPE
-    )
+    predictor = Predictor(ENDPOINT, sagemaker_session)
 
     data = "untouched"
     result = predictor.predict(data)
@@ -397,11 +62,12 @@ def test_predict_call_with_headers():
     assert sagemaker_session.sagemaker_runtime_client.invoke_endpoint.called
 
     expected_request_args = {
-        "Accept": DEFAULT_CONTENT_TYPE,
+        "Accept": DEFAULT_ACCEPT,
         "Body": data,
         "ContentType": DEFAULT_CONTENT_TYPE,
         "EndpointName": ENDPOINT,
     }
+
     call_args, kwargs = sagemaker_session.sagemaker_runtime_client.invoke_endpoint.call_args
     assert kwargs == expected_request_args
 
@@ -410,9 +76,7 @@ def test_predict_call_with_headers():
 
 def test_predict_call_with_target_variant():
     sagemaker_session = empty_sagemaker_session()
-    predictor = RealTimePredictor(
-        ENDPOINT, sagemaker_session, content_type=DEFAULT_CONTENT_TYPE, accept=DEFAULT_CONTENT_TYPE
-    )
+    predictor = Predictor(ENDPOINT, sagemaker_session)
 
     data = "untouched"
     result = predictor.predict(data, target_variant=PRODUCTION_VARIANT_1)
@@ -420,7 +84,7 @@ def test_predict_call_with_target_variant():
     assert sagemaker_session.sagemaker_runtime_client.invoke_endpoint.called
 
     expected_request_args = {
-        "Accept": DEFAULT_CONTENT_TYPE,
+        "Accept": DEFAULT_ACCEPT,
         "Body": data,
         "ContentType": DEFAULT_CONTENT_TYPE,
         "EndpointName": ENDPOINT,
@@ -433,11 +97,9 @@ def test_predict_call_with_target_variant():
     assert result == RETURN_VALUE
 
 
-def test_multi_model_predict_call_with_headers():
+def test_multi_model_predict_call():
     sagemaker_session = empty_sagemaker_session()
-    predictor = RealTimePredictor(
-        ENDPOINT, sagemaker_session, content_type=DEFAULT_CONTENT_TYPE, accept=DEFAULT_CONTENT_TYPE
-    )
+    predictor = Predictor(ENDPOINT, sagemaker_session)
 
     data = "untouched"
     result = predictor.predict(data, target_model="model.tar.gz")
@@ -445,7 +107,7 @@ def test_multi_model_predict_call_with_headers():
     assert sagemaker_session.sagemaker_runtime_client.invoke_endpoint.called
 
     expected_request_args = {
-        "Accept": DEFAULT_CONTENT_TYPE,
+        "Accept": DEFAULT_ACCEPT,
         "Body": data,
         "ContentType": DEFAULT_CONTENT_TYPE,
         "EndpointName": ENDPOINT,
@@ -472,20 +134,14 @@ def json_sagemaker_session():
     response_body.close = Mock("close", return_value=None)
     ims.sagemaker_runtime_client.invoke_endpoint = Mock(
         name="invoke_endpoint",
-        return_value={"Body": response_body, "ContentType": DEFAULT_CONTENT_TYPE},
+        return_value={"Body": response_body, "ContentType": "application/json"},
     )
     return ims
 
 
-def test_predict_call_with_headers_and_json():
+def test_predict_call_with_json():
     sagemaker_session = json_sagemaker_session()
-    predictor = RealTimePredictor(
-        ENDPOINT,
-        sagemaker_session,
-        content_type="not/json",
-        accept="also/not-json",
-        serializer=json_serializer,
-    )
+    predictor = Predictor(ENDPOINT, sagemaker_session, serializer=JSONSerializer())
 
     data = [1, 2]
     result = predictor.predict(data)
@@ -493,9 +149,9 @@ def test_predict_call_with_headers_and_json():
     assert sagemaker_session.sagemaker_runtime_client.invoke_endpoint.called
 
     expected_request_args = {
-        "Accept": "also/not-json",
+        "Accept": DEFAULT_ACCEPT,
         "Body": json.dumps(data),
-        "ContentType": "not/json",
+        "ContentType": "application/json",
         "EndpointName": ENDPOINT,
     }
     call_args, kwargs = sagemaker_session.sagemaker_runtime_client.invoke_endpoint.call_args
@@ -514,9 +170,7 @@ def ret_csv_sagemaker_session():
     ims.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)
     ims.sagemaker_client.describe_endpoint_config = Mock(return_value=ENDPOINT_CONFIG_DESC)
 
-    response_body = Mock("body")
-    response_body.read = Mock("read", return_value=CSV_RETURN_VALUE)
-    response_body.close = Mock("close", return_value=None)
+    response_body = io.BytesIO(bytes(CSV_RETURN_VALUE, "utf-8"))
     ims.sagemaker_runtime_client.invoke_endpoint = Mock(
         name="invoke_endpoint",
         return_value={"Body": response_body, "ContentType": CSV_CONTENT_TYPE},
@@ -524,10 +178,10 @@ def ret_csv_sagemaker_session():
     return ims
 
 
-def test_predict_call_with_headers_and_csv():
+def test_predict_call_with_csv():
     sagemaker_session = ret_csv_sagemaker_session()
-    predictor = RealTimePredictor(
-        ENDPOINT, sagemaker_session, accept=CSV_CONTENT_TYPE, serializer=csv_serializer
+    predictor = Predictor(
+        ENDPOINT, sagemaker_session, serializer=CSVSerializer(), deserializer=CSVDeserializer()
     )
 
     data = [1, 2]
@@ -544,7 +198,178 @@ def test_predict_call_with_headers_and_csv():
     call_args, kwargs = sagemaker_session.sagemaker_runtime_client.invoke_endpoint.call_args
     assert kwargs == expected_request_args
 
-    assert result == CSV_RETURN_VALUE
+    assert result == [["1", "2", "3"]]
+
+
+def test_predict_call_with_multiple_accept_types():
+    sagemaker_session = ret_csv_sagemaker_session()
+    predictor = Predictor(
+        ENDPOINT, sagemaker_session, serializer=CSVSerializer(), deserializer=PandasDeserializer()
+    )
+
+    data = [1, 2]
+    predictor.predict(data)
+
+    assert sagemaker_session.sagemaker_runtime_client.invoke_endpoint.called
+
+    expected_request_args = {
+        "Accept": "text/csv, application/json",
+        "Body": "1,2",
+        "ContentType": CSV_CONTENT_TYPE,
+        "EndpointName": ENDPOINT,
+    }
+    call_args, kwargs = sagemaker_session.sagemaker_runtime_client.invoke_endpoint.call_args
+    assert kwargs == expected_request_args
+
+
+@patch("sagemaker.predictor.name_from_base")
+def test_update_endpoint_no_args(name_from_base):
+    new_endpoint_config_name = "new-endpoint-config"
+    name_from_base.return_value = new_endpoint_config_name
+
+    sagemaker_session = empty_sagemaker_session()
+    existing_endpoint_config_name = "existing-endpoint-config"
+
+    predictor = Predictor(ENDPOINT, sagemaker_session=sagemaker_session)
+    predictor._endpoint_config_name = existing_endpoint_config_name
+
+    predictor.update_endpoint()
+
+    assert ["model-1", "model-2"] == predictor._model_names
+    assert new_endpoint_config_name == predictor._endpoint_config_name
+
+    name_from_base.assert_called_with(existing_endpoint_config_name)
+    sagemaker_session.create_endpoint_config_from_existing.assert_called_with(
+        existing_endpoint_config_name,
+        new_endpoint_config_name,
+        new_tags=None,
+        new_kms_key=None,
+        new_data_capture_config_dict=None,
+        new_production_variants=None,
+    )
+    sagemaker_session.update_endpoint.assert_called_with(
+        ENDPOINT, new_endpoint_config_name, wait=True
+    )
+
+
+@patch("sagemaker.predictor.production_variant")
+@patch("sagemaker.predictor.name_from_base")
+def test_update_endpoint_all_args(name_from_base, production_variant):
+    new_endpoint_config_name = "new-endpoint-config"
+    name_from_base.return_value = new_endpoint_config_name
+
+    sagemaker_session = empty_sagemaker_session()
+    existing_endpoint_config_name = "existing-endpoint-config"
+
+    predictor = Predictor(ENDPOINT, sagemaker_session=sagemaker_session)
+    predictor._endpoint_config_name = existing_endpoint_config_name
+
+    new_instance_count = 2
+    new_instance_type = "ml.c4.xlarge"
+    new_accelerator_type = "ml.eia1.medium"
+    new_model_name = "new-model"
+    new_tags = {"Key": "foo", "Value": "bar"}
+    new_kms_key = "new-key"
+    new_data_capture_config_dict = {}
+
+    predictor.update_endpoint(
+        initial_instance_count=new_instance_count,
+        instance_type=new_instance_type,
+        accelerator_type=new_accelerator_type,
+        model_name=new_model_name,
+        tags=new_tags,
+        kms_key=new_kms_key,
+        data_capture_config_dict=new_data_capture_config_dict,
+        wait=False,
+    )
+
+    assert [new_model_name] == predictor._model_names
+    assert new_endpoint_config_name == predictor._endpoint_config_name
+
+    production_variant.assert_called_with(
+        new_model_name,
+        new_instance_type,
+        initial_instance_count=new_instance_count,
+        accelerator_type=new_accelerator_type,
+    )
+    sagemaker_session.create_endpoint_config_from_existing.assert_called_with(
+        existing_endpoint_config_name,
+        new_endpoint_config_name,
+        new_tags=new_tags,
+        new_kms_key=new_kms_key,
+        new_data_capture_config_dict=new_data_capture_config_dict,
+        new_production_variants=[production_variant.return_value],
+    )
+    sagemaker_session.update_endpoint.assert_called_with(
+        ENDPOINT, new_endpoint_config_name, wait=False
+    )
+
+
+@patch("sagemaker.predictor.production_variant")
+@patch("sagemaker.predictor.name_from_base")
+def test_update_endpoint_instance_type_and_count(name_from_base, production_variant):
+    new_endpoint_config_name = "new-endpoint-config"
+    name_from_base.return_value = new_endpoint_config_name
+
+    sagemaker_session = empty_sagemaker_session()
+    existing_endpoint_config_name = "existing-endpoint-config"
+    existing_model_name = "existing-model"
+
+    predictor = Predictor(ENDPOINT, sagemaker_session=sagemaker_session)
+    predictor._endpoint_config_name = existing_endpoint_config_name
+    predictor._model_names = [existing_model_name]
+
+    new_instance_count = 2
+    new_instance_type = "ml.c4.xlarge"
+
+    predictor.update_endpoint(
+        initial_instance_count=new_instance_count,
+        instance_type=new_instance_type,
+    )
+
+    assert [existing_model_name] == predictor._model_names
+    assert new_endpoint_config_name == predictor._endpoint_config_name
+
+    production_variant.assert_called_with(
+        existing_model_name,
+        new_instance_type,
+        initial_instance_count=new_instance_count,
+        accelerator_type=None,
+    )
+    sagemaker_session.create_endpoint_config_from_existing.assert_called_with(
+        existing_endpoint_config_name,
+        new_endpoint_config_name,
+        new_tags=None,
+        new_kms_key=None,
+        new_data_capture_config_dict=None,
+        new_production_variants=[production_variant.return_value],
+    )
+    sagemaker_session.update_endpoint.assert_called_with(
+        ENDPOINT, new_endpoint_config_name, wait=True
+    )
+
+
+def test_update_endpoint_no_instance_type_or_no_instance_count():
+    sagemaker_session = empty_sagemaker_session()
+    predictor = Predictor(ENDPOINT, sagemaker_session=sagemaker_session)
+
+    bad_args = ({"instance_type": "ml.c4.xlarge"}, {"initial_instance_count": 2})
+    for args in bad_args:
+        with pytest.raises(ValueError) as exception:
+            predictor.update_endpoint(**args)
+
+        expected_msg = "Missing initial_instance_count and/or instance_type."
+        assert expected_msg in str(exception.value)
+
+
+def test_update_endpoint_no_one_default_model_name_with_instance_type_and_count():
+    sagemaker_session = empty_sagemaker_session()
+    predictor = Predictor(ENDPOINT, sagemaker_session=sagemaker_session)
+
+    with pytest.raises(ValueError) as exception:
+        predictor.update_endpoint(initial_instance_count=2, instance_type="ml.c4.xlarge")
+
+    assert "Unable to choose a default model for a new EndpointConfig" in str(exception.value)
 
 
 def test_delete_endpoint_with_config():
@@ -552,7 +377,7 @@ def test_delete_endpoint_with_config():
     sagemaker_session.sagemaker_client.describe_endpoint = Mock(
         return_value={"EndpointConfigName": "endpoint-config"}
     )
-    predictor = RealTimePredictor(ENDPOINT, sagemaker_session=sagemaker_session)
+    predictor = Predictor(ENDPOINT, sagemaker_session=sagemaker_session)
     predictor.delete_endpoint()
 
     sagemaker_session.delete_endpoint.assert_called_with(ENDPOINT)
@@ -561,7 +386,7 @@ def test_delete_endpoint_with_config():
 
 def test_delete_endpoint_only():
     sagemaker_session = empty_sagemaker_session()
-    predictor = RealTimePredictor(ENDPOINT, sagemaker_session=sagemaker_session)
+    predictor = Predictor(ENDPOINT, sagemaker_session=sagemaker_session)
     predictor.delete_endpoint(delete_endpoint_config=False)
 
     sagemaker_session.delete_endpoint.assert_called_with(ENDPOINT)
@@ -570,7 +395,7 @@ def test_delete_endpoint_only():
 
 def test_delete_model():
     sagemaker_session = empty_sagemaker_session()
-    predictor = RealTimePredictor(ENDPOINT, sagemaker_session=sagemaker_session)
+    predictor = Predictor(ENDPOINT, sagemaker_session=sagemaker_session)
 
     predictor.delete_model()
 
@@ -587,7 +412,7 @@ def test_delete_model_fail():
     )
     expected_error_message = "One or more models cannot be deleted, please retry."
 
-    predictor = RealTimePredictor(ENDPOINT, sagemaker_session=sagemaker_session)
+    predictor = Predictor(ENDPOINT, sagemaker_session=sagemaker_session)
 
     with pytest.raises(Exception) as exception:
         predictor.delete_model()

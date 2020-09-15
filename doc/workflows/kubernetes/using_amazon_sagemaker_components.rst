@@ -463,21 +463,24 @@ you can create your classification pipeline. To create your pipeline,
 you need to define and compile it. You then deploy it and use it to run
 workflows. You can define your pipeline in Python and use the KFP
 dashboard, KFP CLI, or Python SDK to compile, deploy, and run your
-workflows.
+workflows. The full code for the MNIST classification pipeline example is available in the
+`Kubeflow Github
+repository <https://github.com/kubeflow/pipelines/blob/master/samples/contrib/aws-samples/mnist-kmeans-sagemaker>`__.
+To use it, clone the example Python files to your gateway node.
 
 Prepare datasets
 ~~~~~~~~~~~~~~~~
 
-To run the pipelines, you need to have the datasets in an S3 bucket in
-your account. This bucket must be located in the region where you want
-to run Amazon SageMaker jobs. If you don’t have a bucket, create one
+To run the pipelines, you need to upload the data extraction pre-processing script to an S3 bucket. This bucket and all resources for this example must be located in the ``us-east-1`` Amazon Region. If you don’t have a bucket, create one
 using the steps in `Creating a
 bucket <https://docs.aws.amazon.com/AmazonS3/latest/gsg/CreatingABucket.html>`__.
 
-From your gateway node, run the `sample dataset
-creation <https://github.com/kubeflow/pipelines/tree/34615cb19edfacf9f4d9f2417e9254d52dd53474/samples/contrib/aws-samples/mnist-kmeans-sagemaker#the-sample-dataset>`__
-script to copy the datasets into your bucket. Change the bucket name in
-the script to the one you created.
+From the ``mnist-kmeans-sagemaker`` folder of the Kubeflow repository you cloned on your gateway node, run the following command to upload the ``kmeans_preprocessing.py`` file to your S3 bucket. Change ``<bucket-name>`` to the name of the S3 bucket you created.
+
+::
+
+    aws s3 cp mnist-kmeans-sagemaker/kmeans_preprocessing.py s3://<bucket-name>/mnist_kmeans_example/processing_code/kmeans_preprocessing.py
+
 
 Create a Kubeflow Pipeline using Amazon SageMaker Components
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -496,54 +499,14 @@ parameters for each component of your pipeline. These parameters can
 also be updated when using other pipelines. We have provided default
 values for all parameters in the sample classification pipeline file.
 
-The following are the only parameters you may need to modify to run the
-sample pipelines. To modify these parameters, update their entries in
-the sample classification pipeline file.
+The following are the only parameters you need to pass to run the
+sample pipelines. To pass these parameters, update their entries when creating a new run.
 
 -  **Role-ARN:** This must be the ARN of an IAM role that has full
    Amazon SageMaker access in your AWS account. Use the ARN
    of  ``kfp-example-pod-role``.
 
--  **The Dataset Buckets**: You must change the S3 bucket with the input
-   data for each of the components. Replace the following with the link
-   to your S3 bucket:
-
-   -  **Train channel:** ``"S3Uri": "s3://<your-s3-bucket-name>/data"``
-
-   -  **HPO channels for test/HPO channel for
-      train:** ``"S3Uri": "s3://<your-s3-bucket-name>/data"``
-
-   -  **Batch
-      transform:** ``"batch-input": "s3://<your-s3-bucket-name>/data"``
-
--  **Output buckets:** Replace the output buckets with S3 buckets you
-   have write permission to. Replace the following with the link to your
-   S3 bucket:
-
-   -  **Training/HPO**:
-      ``output_location='s3://<your-s3-bucket-name>/output'``
-
-   -  **Batch Transform**:
-      ``batch_transform_ouput='s3://<your-s3-bucket-name>/output'``
-
--  **Region:**\ The default pipelines work in us-east-1. If your
-   cluster is in a different region, update the following:
-
-   -  The ``region='us-east-1'`` Parameter in the input list.
-
-   -  The algorithm images for Amazon SageMaker. If you use one of
-      the Amazon SageMaker built-in algorithm images, select the image
-      for your region. Construct the image name using the information
-      in `Common parameters for built-in
-      algorithms <https://docs.aws.amazon.com/sagemaker/latest/dg/sagemaker-algo-docker-registry-paths.html>`__.
-      For Example:
-
-      ::
-
-          382416733822.dkr.ecr.us-east-1.amazonaws.com/kmeans:1
-
-   -  The S3 buckets with the dataset. Use the steps in Prepare datasets
-      to copy the data to a bucket in the same region as the cluster.
+-  **Bucket**: This is the name of the S3 bucket that you uploaded the ``kmeans_preprocessing.py`` file to.
 
 You can adjust any of the input parameters using the KFP UI and trigger
 your run again.
@@ -632,18 +595,18 @@ currently does not support specifying input parameters while creating
 the run. You need to update your parameters in the Python pipeline file
 before compiling. Replace ``<experiment-name>`` and ``<job-name>``
 with any names. Replace ``<pipeline-id>`` with the ID of your submitted
-pipeline.
+pipeline. Replace ``<your-role-arn>`` with the ARN of ``kfp-example-pod-role``. Replace ``<your-bucket-name>`` with the name of the S3 bucket you created.
 
 ::
 
-    kfp run submit --experiment-name <experiment-name> --run-name <job-name> --pipeline-id <pipeline-id>
+    kfp run submit --experiment-name <experiment-name> --run-name <job-name> --pipeline-id <pipeline-id> role_arn="<your-role-arn>" bucket_name="<your-bucket-name>"
 
 You can also directly submit a run using the compiled pipeline package
 created as the output of the ``dsl-compile`` command.
 
 ::
 
-    kfp run submit --experiment-name <experiment-name> --run-name <job-name> --package-file <path-to-output>
+    kfp run submit --experiment-name <experiment-name> --run-name <job-name> --package-file <path-to-output> role_arn="<your-role-arn>" bucket_name="<your-bucket-name>"
 
 Your output should look like the following:
 

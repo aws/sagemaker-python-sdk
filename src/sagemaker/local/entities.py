@@ -25,15 +25,14 @@ from sagemaker.local.image import _SageMakerContainer
 from sagemaker.local.utils import copy_directory_structure, move_to_destination
 from sagemaker.utils import DeferredError, get_config_value
 
+logger = logging.getLogger(__name__)
+
 try:
     import urllib3
 except ImportError as e:
-    logging.warning("urllib3 failed to import. Local mode features will be impaired or broken.")
+    logger.warning("urllib3 failed to import. Local mode features will be impaired or broken.")
     # Any subsequent attempt to use urllib3 will raise the ImportError
     urllib3 = DeferredError(e)
-
-
-logger = logging.getLogger(__name__)
 
 _UNUSED_ARN = "local:arn-does-not-matter"
 HEALTH_CHECK_TIMEOUT_LIMIT = 120
@@ -306,10 +305,14 @@ class _LocalTransformJob(object):
         return working_dir
 
     def _prepare_data_transformation(self, input_data, batch_strategy):
-        """
+        """Prepares the data for transformation.
+
         Args:
-            input_data:
-            batch_strategy:
+            input_data: Input data source.
+            batch_strategy: Strategy for batch transformation to get.
+
+        Returns:
+            A (data source, batch provider) pair.
         """
         input_path = input_data["DataSource"]["S3DataSource"]["S3Uri"]
         data_source = sagemaker.local.data.get_data_source_instance(input_path, self.local_session)
@@ -321,15 +324,17 @@ class _LocalTransformJob(object):
         return data_source, batch_provider
 
     def _perform_batch_inference(self, input_data, output_data, **kwargs):
-        # Transform the input data to feed the serving container. We need to first gather the files
-        # from S3 or Local FileSystem. Split them as required (Line, RecordIO, None) and finally
-        # batch them according to the batch strategy and limit the request size.
+        """Perform batch inference on the given input data.
 
-        """
+        Transforms the input data to feed the serving container. It first gathers
+        the files from S3 or Local FileSystem. It then splits the files as required
+        (Line, RecordIO, None), and finally, it batch them according to the batch
+        strategy and limit the request size.
+
         Args:
-            input_data:
-            output_data:
-            **kwargs:
+            input_data: Input data source.
+            output_data: Output data source.
+            **kwargs: Additional configuration arguments.
         """
         batch_strategy = kwargs["BatchStrategy"]
         max_payload = int(kwargs["MaxPayloadInMB"])
@@ -341,15 +346,15 @@ class _LocalTransformJob(object):
         working_dir = self._get_working_directory()
         dataset_dir = data_source.get_root_dir()
 
-        for file in data_source.get_file_list():
+        for fn in data_source.get_file_list():
 
-            relative_path = os.path.dirname(os.path.relpath(file, dataset_dir))
-            filename = os.path.basename(file)
+            relative_path = os.path.dirname(os.path.relpath(fn, dataset_dir))
+            filename = os.path.basename(fn)
             copy_directory_structure(working_dir, relative_path)
             destination_path = os.path.join(working_dir, relative_path, filename + ".out")
 
             with open(destination_path, "wb") as f:
-                for item in batch_provider.pad(file, max_payload):
+                for item in batch_provider.pad(fn, max_payload):
                     # call the container and add the result to inference.
                     response = self.local_session.sagemaker_runtime_client.invoke_endpoint(
                         item, "", input_data["ContentType"], accept

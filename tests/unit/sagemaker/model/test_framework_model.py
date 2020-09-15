@@ -16,7 +16,7 @@ import os
 import subprocess
 
 from sagemaker.model import FrameworkModel
-from sagemaker.predictor import RealTimePredictor
+from sagemaker.predictor import Predictor
 
 import pytest
 from mock import MagicMock, Mock, patch
@@ -60,7 +60,7 @@ class DummyFrameworkModel(FrameworkModel):
         )
 
     def create_predictor(self, endpoint_name):
-        return RealTimePredictor(endpoint_name, sagemaker_session=self.sagemaker_session)
+        return Predictor(endpoint_name, sagemaker_session=self.sagemaker_session)
 
 
 class DummyFrameworkModelForGit(FrameworkModel):
@@ -75,7 +75,7 @@ class DummyFrameworkModelForGit(FrameworkModel):
         )
 
     def create_predictor(self, endpoint_name):
-        return RealTimePredictor(endpoint_name, sagemaker_session=self.sagemaker_session)
+        return Predictor(endpoint_name, sagemaker_session=self.sagemaker_session)
 
 
 @pytest.fixture()
@@ -106,7 +106,6 @@ def test_prepare_container_def(time, sagemaker_session):
             "SAGEMAKER_SUBMIT_DIRECTORY": "s3://mybucket/mi-2017-10-10-14-14-15/sourcedir.tar.gz",
             "SAGEMAKER_CONTAINER_LOG_LEVEL": "20",
             "SAGEMAKER_REGION": REGION,
-            "SAGEMAKER_ENABLE_CLOUDWATCH_METRICS": "false",
         },
         "Image": MODEL_IMAGE,
         "ModelDataUrl": MODEL_DATA,
@@ -125,7 +124,6 @@ def test_prepare_container_def_with_network_isolation(time, sagemaker_session):
             "SAGEMAKER_SUBMIT_DIRECTORY": "/opt/ml/model/code",
             "SAGEMAKER_CONTAINER_LOG_LEVEL": "20",
             "SAGEMAKER_REGION": REGION,
-            "SAGEMAKER_ENABLE_CLOUDWATCH_METRICS": "false",
         },
         "Image": MODEL_IMAGE,
         "ModelDataUrl": MODEL_DATA,
@@ -144,7 +142,6 @@ def test_prepare_container_def_no_model_defaults(sagemaker_session, tmpdir):
         source_dir="sd",
         env={"a": "a"},
         name="name",
-        enable_cloudwatch_metrics=True,
         container_log_level=55,
         code_location="s3://cb/cp",
     )
@@ -155,7 +152,6 @@ def test_prepare_container_def_no_model_defaults(sagemaker_session, tmpdir):
             "SAGEMAKER_SUBMIT_DIRECTORY": "s3://cb/cp/name/sourcedir.tar.gz",
             "SAGEMAKER_CONTAINER_LOG_LEVEL": "55",
             "SAGEMAKER_REGION": REGION,
-            "SAGEMAKER_ENABLE_CLOUDWATCH_METRICS": "true",
             "a": "a",
         },
         "Image": MODEL_IMAGE,
@@ -214,7 +210,7 @@ def test_git_support_git_clone_fail(sagemaker_session):
             sagemaker_session=sagemaker_session, entry_point=entry_point, git_config=git_config
         )
         model.prepare_container_def(instance_type=INSTANCE_TYPE)
-    assert "returned non-zero exit status" in str(error)
+    assert "returned non-zero exit status" in str(error.value)
 
 
 @patch(
@@ -231,7 +227,7 @@ def test_git_support_branch_not_exist(git_clone_repo, sagemaker_session):
             sagemaker_session=sagemaker_session, entry_point=entry_point, git_config=git_config
         )
         model.prepare_container_def(instance_type=INSTANCE_TYPE)
-    assert "returned non-zero exit status" in str(error)
+    assert "returned non-zero exit status" in str(error.value)
 
 
 @patch(
@@ -248,7 +244,7 @@ def test_git_support_commit_not_exist(git_clone_repo, sagemaker_session):
             sagemaker_session=sagemaker_session, entry_point=entry_point, git_config=git_config
         )
         model.prepare_container_def(instance_type=INSTANCE_TYPE)
-    assert "returned non-zero exit status" in str(error)
+    assert "returned non-zero exit status" in str(error.value)
 
 
 @patch(
@@ -395,7 +391,7 @@ def test_git_support_ssh_passphrase_required(tar_and_upload_dir, git_clone_repo,
             sagemaker_session=sagemaker_session, entry_point=entry_point, git_config=git_config
         )
         model.prepare_container_def(instance_type=INSTANCE_TYPE)
-    assert "returned non-zero exit status" in str(error)
+    assert "returned non-zero exit status" in str(error.value)
 
 
 @patch(
@@ -464,4 +460,4 @@ def test_git_support_codecommit_ssh_passphrase_required(
             sagemaker_session=sagemaker_session, entry_point=entry_point, git_config=git_config
         )
         model.prepare_container_def(instance_type=INSTANCE_TYPE)
-    assert "returned non-zero exit status" in str(error)
+    assert "returned non-zero exit status" in str(error.value)

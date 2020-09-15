@@ -13,18 +13,23 @@
 """Placeholder docstring"""
 from __future__ import absolute_import
 
-from sagemaker.amazon.amazon_estimator import AmazonAlgorithmEstimatorBase, registry
-from sagemaker.amazon.common import numpy_to_record_serializer, record_deserializer
+from sagemaker import image_uris
+from sagemaker.amazon.amazon_estimator import AmazonAlgorithmEstimatorBase
+from sagemaker.amazon.common import RecordSerializer, RecordDeserializer
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
 from sagemaker.amazon.validation import ge, le
-from sagemaker.predictor import RealTimePredictor
+from sagemaker.predictor import Predictor
 from sagemaker.model import Model
 from sagemaker.session import Session
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
 
 class RandomCutForest(AmazonAlgorithmEstimatorBase):
-    """Placeholder docstring"""
+    """An unsupervised algorithm for detecting anomalous data points within a data set.
+
+    These are observations which diverge from otherwise well-structured or patterned data.
+    Anomalies can manifest as unexpected spikes in time series data, breaks in periodicity,
+    or unclassifiable data points."""
 
     repo_name = "randomcutforest"
     repo_version = 1
@@ -45,16 +50,16 @@ class RandomCutForest(AmazonAlgorithmEstimatorBase):
     def __init__(
         self,
         role,
-        train_instance_count,
-        train_instance_type,
+        instance_count,
+        instance_type,
         num_samples_per_tree=None,
         num_trees=None,
         eval_metrics=None,
         **kwargs
     ):
-        """RandomCutForest is :class:`Estimator` used for anomaly detection.
+        """An `Estimator` class implementing a Random Cut Forest.
 
-        This Estimator may be fit via calls to
+        Typically used for anomaly detection, this Estimator may be fit via calls to
         :meth:`~sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase.fit`.
         It requires Amazon :class:`~sagemaker.amazon.record_pb2.Record` protobuf
         serialized data to be stored in S3. There is an utility
@@ -90,9 +95,9 @@ class RandomCutForest(AmazonAlgorithmEstimatorBase):
                 endpoints use this role to access training data and model
                 artifacts. After the endpoint is created, the inference code
                 might use the IAM role, if accessing AWS resource.
-            train_instance_count (int): Number of Amazon EC2 instances to use
+            instance_count (int): Number of Amazon EC2 instances to use
                 for training.
-            train_instance_type (str): Type of EC2 instance to use for training,
+            instance_type (str): Type of EC2 instance to use for training,
                 for example, 'ml.c4.xlarge'.
             num_samples_per_tree (int): Optional. The number of samples used to
                 build each tree in the forest. The total number of samples drawn
@@ -112,9 +117,7 @@ class RandomCutForest(AmazonAlgorithmEstimatorBase):
             :class:`~sagemaker.estimator.EstimatorBase`.
         """
 
-        super(RandomCutForest, self).__init__(
-            role, train_instance_count, train_instance_type, **kwargs
-        )
+        super(RandomCutForest, self).__init__(role, instance_count, instance_type, **kwargs)
         self.num_samples_per_tree = num_samples_per_tree
         self.num_trees = num_trees
         self.eval_metrics = eval_metrics
@@ -157,12 +160,12 @@ class RandomCutForest(AmazonAlgorithmEstimatorBase):
         )
 
 
-class RandomCutForestPredictor(RealTimePredictor):
+class RandomCutForestPredictor(Predictor):
     """Assigns an anomaly score to each of the datapoints provided.
 
     The implementation of
-    :meth:`~sagemaker.predictor.RealTimePredictor.predict` in this
-    `RealTimePredictor` requires a numpy ``ndarray`` as input. The array should
+    :meth:`~sagemaker.predictor.Predictor.predict` in this
+    `Predictor` requires a numpy ``ndarray`` as input. The array should
     contain the same number of columns as the feature-dimension of the data used
     to fit the model this Predictor performs inference on.
 
@@ -172,17 +175,21 @@ class RandomCutForestPredictor(RealTimePredictor):
     ``Record.label`` field.
     """
 
-    def __init__(self, endpoint, sagemaker_session=None):
+    def __init__(self, endpoint_name, sagemaker_session=None):
         """
         Args:
-            endpoint:
-            sagemaker_session:
+            endpoint_name (str): Name of the Amazon SageMaker endpoint to which
+                requests are sent.
+            sagemaker_session (sagemaker.session.Session): A SageMaker Session
+                object, used for SageMaker interactions (default: None). If not
+                specified, one is created using the default AWS configuration
+                chain.
         """
         super(RandomCutForestPredictor, self).__init__(
-            endpoint,
+            endpoint_name,
             sagemaker_session,
-            serializer=numpy_to_record_serializer(),
-            deserializer=record_deserializer(),
+            serializer=RecordSerializer(),
+            deserializer=RecordDeserializer(),
         )
 
 
@@ -195,19 +202,29 @@ class RandomCutForestModel(Model):
     def __init__(self, model_data, role, sagemaker_session=None, **kwargs):
         """
         Args:
-            model_data:
-            role:
-            sagemaker_session:
-            **kwargs:
+            model_data (str): The S3 location of a SageMaker model data
+                ``.tar.gz`` file.
+            role (str): An AWS IAM role (either name or full ARN). The Amazon
+                SageMaker training jobs and APIs that create Amazon SageMaker
+                endpoints use this role to access training data and model
+                artifacts. After the endpoint is created, the inference code
+                might use the IAM role, if it needs to access an AWS resource.
+            sagemaker_session (sagemaker.session.Session): Session object which
+                manages interactions with Amazon SageMaker APIs and any other
+                AWS services needed. If not specified, the estimator creates one
+                using the default AWS configuration chain.
+            **kwargs: Keyword arguments passed to the ``FrameworkModel``
+                initializer.
         """
         sagemaker_session = sagemaker_session or Session()
-        repo = "{}:{}".format(RandomCutForest.repo_name, RandomCutForest.repo_version)
-        image = "{}/{}".format(
-            registry(sagemaker_session.boto_session.region_name, RandomCutForest.repo_name), repo
+        image_uri = image_uris.retrieve(
+            RandomCutForest.repo_name,
+            sagemaker_session.boto_region_name,
+            version=RandomCutForest.repo_version,
         )
         super(RandomCutForestModel, self).__init__(
+            image_uri,
             model_data,
-            image,
             role,
             predictor_cls=RandomCutForestPredictor,
             sagemaker_session=sagemaker_session,

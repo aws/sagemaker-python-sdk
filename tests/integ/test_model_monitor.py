@@ -36,7 +36,7 @@ from sagemaker.model_monitor.data_capture_config import _DATA_CAPTURE_S3_PATH
 from sagemaker.model_monitor import CronExpressionGenerator
 from sagemaker.processing import ProcessingInput
 from sagemaker.processing import ProcessingOutput
-from sagemaker.tensorflow.serving import Model
+from sagemaker.tensorflow.model import TensorFlowModel
 from sagemaker.utils import unique_name_from_base
 
 from tests.integ.kms_utils import get_or_create_kms_key
@@ -88,7 +88,7 @@ FIVE_MIN_CRON_EXPRESSION = "cron(0/5 * ? * * *)"
 
 
 @pytest.fixture(scope="module")
-def predictor(sagemaker_session, tf_full_version):
+def predictor(sagemaker_session, tensorflow_inference_latest_version):
     endpoint_name = unique_name_from_base("sagemaker-tensorflow-serving")
     model_data = sagemaker_session.upload_data(
         path=os.path.join(tests.integ.DATA_DIR, "tensorflow-serving-test-model.tar.gz"),
@@ -97,10 +97,10 @@ def predictor(sagemaker_session, tf_full_version):
     with tests.integ.timeout.timeout_and_delete_endpoint_by_name(
         endpoint_name=endpoint_name, sagemaker_session=sagemaker_session, hours=2
     ):
-        model = Model(
+        model = TensorFlowModel(
             model_data=model_data,
             role=ROLE,
-            framework_version=tf_full_version,
+            framework_version=tensorflow_inference_latest_version,
             sagemaker_session=sagemaker_session,
         )
         predictor = model.deploy(
@@ -146,7 +146,7 @@ def default_monitoring_schedule_name(sagemaker_session, output_kms_key, volume_k
     )
 
     my_default_monitor.create_monitoring_schedule(
-        endpoint_input=predictor.endpoint,
+        endpoint_input=predictor.endpoint_name,
         output_s3_uri=output_s3_uri,
         statistics=statistics,
         constraints=constraints,
@@ -206,7 +206,7 @@ def byoc_monitoring_schedule_name(sagemaker_session, output_kms_key, volume_kms_
     )
 
     my_byoc_monitor.create_monitoring_schedule(
-        endpoint_input=predictor.endpoint,
+        endpoint_input=predictor.endpoint_name,
         output=MonitoringOutput(source="/opt/ml/processing/output", destination=output_s3_uri),
         statistics=statistics,
         constraints=constraints,
@@ -365,7 +365,7 @@ def test_default_monitor_suggest_baseline_and_create_monitoring_schedule_with_cu
     constraints.save()
 
     my_default_monitor.create_monitoring_schedule(
-        endpoint_input=predictor.endpoint,
+        endpoint_input=predictor.endpoint_name,
         output_s3_uri=output_s3_uri,
         statistics=my_default_monitor.baseline_statistics(),
         constraints=my_default_monitor.suggested_constraints(),
@@ -546,7 +546,8 @@ def test_default_monitor_suggest_baseline_and_create_monitoring_schedule_without
     constraints.save()
 
     my_default_monitor.create_monitoring_schedule(
-        endpoint_input=predictor.endpoint, schedule_cron_expression=CronExpressionGenerator.daily()
+        endpoint_input=predictor.endpoint_name,
+        schedule_cron_expression=CronExpressionGenerator.daily(),
     )
     schedule_description = my_default_monitor.describe_schedule()
     assert (
@@ -690,7 +691,7 @@ def test_default_monitor_create_stop_and_start_monitoring_schedule_with_customiz
     )
 
     my_default_monitor.create_monitoring_schedule(
-        endpoint_input=predictor.endpoint,
+        endpoint_input=predictor.endpoint_name,
         output_s3_uri=output_s3_uri,
         statistics=statistics,
         constraints=constraints,
@@ -860,7 +861,7 @@ def test_default_monitor_create_and_update_schedule_config_with_customizations(
     )
 
     my_default_monitor.create_monitoring_schedule(
-        endpoint_input=predictor.endpoint,
+        endpoint_input=predictor.endpoint_name,
         output_s3_uri=output_s3_uri,
         statistics=statistics,
         constraints=constraints,
@@ -1112,7 +1113,8 @@ def test_default_monitor_create_and_update_schedule_config_without_customization
     my_default_monitor = DefaultModelMonitor(role=ROLE, sagemaker_session=sagemaker_session)
 
     my_default_monitor.create_monitoring_schedule(
-        endpoint_input=predictor.endpoint, schedule_cron_expression=CronExpressionGenerator.daily()
+        endpoint_input=predictor.endpoint_name,
+        schedule_cron_expression=CronExpressionGenerator.daily(),
     )
 
     schedule_description = my_default_monitor.describe_schedule()
@@ -1507,7 +1509,7 @@ def test_default_monitor_monitoring_execution_interactions(
     desired_s3_uri = os.path.join(executions[-1].output.destination, file_name)
 
     S3Uploader.upload_string_as_file_body(
-        body=file_body, desired_s3_uri=desired_s3_uri, session=sagemaker_session
+        body=file_body, desired_s3_uri=desired_s3_uri, sagemaker_session=sagemaker_session
     )
 
     statistics = my_attached_monitor.latest_monitoring_statistics()
@@ -1520,7 +1522,7 @@ def test_default_monitor_monitoring_execution_interactions(
     desired_s3_uri = os.path.join(executions[-1].output.destination, file_name)
 
     S3Uploader.upload_string_as_file_body(
-        body=file_body, desired_s3_uri=desired_s3_uri, session=sagemaker_session
+        body=file_body, desired_s3_uri=desired_s3_uri, sagemaker_session=sagemaker_session
     )
 
     constraint_violations = my_attached_monitor.latest_monitoring_constraint_violations()
@@ -1632,7 +1634,7 @@ def test_byoc_monitor_suggest_baseline_and_create_monitoring_schedule_with_custo
     constraints.save()
 
     my_byoc_monitor.create_monitoring_schedule(
-        endpoint_input=predictor.endpoint,
+        endpoint_input=predictor.endpoint_name,
         output=MonitoringOutput(source="/opt/ml/processing/output", destination=output_s3_uri),
         statistics=my_byoc_monitor.baseline_statistics(),
         constraints=my_byoc_monitor.suggested_constraints(),
@@ -1838,7 +1840,7 @@ def test_byoc_monitor_suggest_baseline_and_create_monitoring_schedule_without_cu
     constraints.save()
 
     my_byoc_monitor.create_monitoring_schedule(
-        endpoint_input=predictor.endpoint,
+        endpoint_input=predictor.endpoint_name,
         output=MonitoringOutput(source="/opt/ml/processing/output", destination=output_s3_uri),
         schedule_cron_expression=CronExpressionGenerator.daily(),
     )
@@ -1992,7 +1994,7 @@ def test_byoc_monitor_create_and_update_schedule_config_with_customizations(
     )
 
     my_byoc_monitor.create_monitoring_schedule(
-        endpoint_input=predictor.endpoint,
+        endpoint_input=predictor.endpoint_name,
         output=MonitoringOutput(source="/opt/ml/processing/output", destination=output_s3_uri),
         statistics=statistics,
         constraints=constraints,
@@ -2100,7 +2102,7 @@ def test_byoc_monitor_create_and_update_schedule_config_with_customizations(
     byoc_env.update(UPDATED_ENVIRONMENT)
 
     my_byoc_monitor.update_monitoring_schedule(
-        endpoint_input=predictor.endpoint,
+        endpoint_input=predictor.endpoint_name,
         output=MonitoringOutput(source="/opt/ml/processing/output", destination=output_s3_uri),
         statistics=statistics,
         constraints=constraints,
@@ -2325,7 +2327,7 @@ def test_byoc_monitor_attach_followed_by_baseline_and_update_monitoring_schedule
     byoc_env.update(UPDATED_ENVIRONMENT)
 
     my_attached_monitor.update_monitoring_schedule(
-        endpoint_input=predictor.endpoint,
+        endpoint_input=predictor.endpoint_name,
         output=MonitoringOutput(source="/opt/ml/processing/output", destination=output_s3_uri),
         statistics=statistics,
         constraints=constraints,
@@ -2471,7 +2473,7 @@ def test_byoc_monitor_monitoring_execution_interactions(
     desired_s3_uri = os.path.join(executions[-1].output.destination, file_name)
 
     S3Uploader.upload_string_as_file_body(
-        body=file_body, desired_s3_uri=desired_s3_uri, session=sagemaker_session
+        body=file_body, desired_s3_uri=desired_s3_uri, sagemaker_session=sagemaker_session
     )
 
     statistics = my_attached_monitor.latest_monitoring_statistics()
@@ -2484,7 +2486,7 @@ def test_byoc_monitor_monitoring_execution_interactions(
     desired_s3_uri = os.path.join(executions[-1].output.destination, file_name)
 
     S3Uploader.upload_string_as_file_body(
-        body=file_body, desired_s3_uri=desired_s3_uri, session=sagemaker_session
+        body=file_body, desired_s3_uri=desired_s3_uri, sagemaker_session=sagemaker_session
     )
 
     constraint_violations = my_attached_monitor.latest_monitoring_constraint_violations()
@@ -2547,7 +2549,7 @@ def _upload_captured_data_to_endpoint(sagemaker_session, predictor):
         sagemaker_session.default_bucket(),
         _MODEL_MONITOR_S3_PATH,
         _DATA_CAPTURE_S3_PATH,
-        predictor.endpoint,
+        predictor.endpoint_name,
         "AllTraffic",
     )
     s3_uri_previous_hour = os.path.join(s3_uri_base, previous_hour_folder_structure)
@@ -2555,10 +2557,10 @@ def _upload_captured_data_to_endpoint(sagemaker_session, predictor):
     S3Uploader.upload(
         local_path=os.path.join(DATA_DIR, "monitor/captured-data.jsonl"),
         desired_s3_uri=s3_uri_previous_hour,
-        session=sagemaker_session,
+        sagemaker_session=sagemaker_session,
     )
     S3Uploader.upload(
         local_path=os.path.join(DATA_DIR, "monitor/captured-data.jsonl"),
         desired_s3_uri=s3_uri_current_hour,
-        session=sagemaker_session,
+        sagemaker_session=sagemaker_session,
     )

@@ -24,11 +24,13 @@ from botocore.exceptions import ClientError
 
 from sagemaker import utils
 from sagemaker.amazon.randomcutforest import RandomCutForest
+from sagemaker.deserializers import StringDeserializer
 from sagemaker.multidatamodel import MultiDataModel
 from sagemaker.mxnet import MXNet
-from sagemaker.predictor import RealTimePredictor, StringDeserializer, npy_serializer
-from sagemaker.utils import sagemaker_timestamp, unique_name_from_base, get_ecr_image_uri_prefix
-from tests.integ import DATA_DIR, PYTHON_VERSION, TRAINING_DEFAULT_TIMEOUT_MINUTES
+from sagemaker.predictor import Predictor
+from sagemaker.serializers import NumpySerializer
+from sagemaker.utils import sagemaker_timestamp, unique_name_from_base
+from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.retry import retries
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
@@ -40,19 +42,9 @@ string_deserializer = StringDeserializer()
 
 @pytest.fixture(scope="module")
 def container_image(sagemaker_session):
-    """ Create a Multi-Model container image for use with integration testcases
-    since 1P containers supporting multiple models are not available yet"""
-    region = sagemaker_session.boto_region_name
-    ecr_client = sagemaker_session.boto_session.client("ecr", region_name=region)
-    sts_client = sagemaker_session.boto_session.client(
-        "sts", region_name=region, endpoint_url=utils.sts_regional_endpoint(region)
-    )
-    account_id = sts_client.get_caller_identity()["Account"]
-    algorithm_name = "sagemaker-multimodel-integ-test-{}".format(sagemaker_timestamp())
-    ecr_image_uri_prefix = get_ecr_image_uri_prefix(account=account_id, region=region)
-    ecr_image = "{prefix}/{algorithm_name}:latest".format(
-        prefix=ecr_image_uri_prefix, algorithm_name=algorithm_name
-    )
+    """Create a Multi-Model image since pre-built ones are not available yet."""
+    algorithm_name = unique_name_from_base("sagemaker-multimodel-integ-test")
+    ecr_image = _ecr_image_uri(sagemaker_session, algorithm_name)
 
     # Build and tag docker image locally
     docker_client = docker.from_env()
@@ -62,7 +54,9 @@ def container_image(sagemaker_session):
     image.tag(ecr_image, tag="latest")
 
     # Create AWS ECR and push the local docker image to it
+    ecr_client = sagemaker_session.boto_session.client("ecr")
     _create_repository(ecr_client, algorithm_name)
+
     username, password = _ecr_login(ecr_client)
     # Retry docker image push
     for _ in retries(3, "Upload docker image to ECR repo", seconds_to_sleep=10):
@@ -79,6 +73,18 @@ def container_image(sagemaker_session):
 
     # Delete repository after the multi model integration tests complete
     _delete_repository(ecr_client, algorithm_name)
+
+
+def _ecr_image_uri(sagemaker_session, algorithm_name):
+    region = sagemaker_session.boto_region_name
+
+    sts_client = sagemaker_session.boto_session.client(
+        "sts", region_name=region, endpoint_url=utils.sts_regional_endpoint(region)
+    )
+    account_id = sts_client.get_caller_identity()["Account"]
+
+    endpoint_data = utils._botocore_resolver().construct_endpoint("ecr", region)
+    return "{}.dkr.{}/{}:latest".format(account_id, endpoint_data["hostname"], algorithm_name)
 
 
 def _create_repository(ecr_client, repository_name):
@@ -111,8 +117,7 @@ def _delete_repository(ecr_client, repository_name):
 
 
 def _ecr_login(ecr_client):
-    """ Get a login credentials for an ecr client.
-    """
+    """Get a login credentials for an ecr client."""
     login = ecr_client.get_authorization_token()
     b64token = login["authorizationData"][0]["authorizationToken"].encode("utf-8")
     username, password = base64.b64decode(b64token).decode("utf-8").split(":")
@@ -136,7 +141,7 @@ def test_multi_data_model_deploy_pretrained_models(
         multi_data_model = MultiDataModel(
             name=model_name,
             model_data_prefix=model_data_prefix,
-            image=container_image,
+            image_uri=container_image,
             role=ROLE,
             sagemaker_session=sagemaker_session,
         )
@@ -154,10 +159,10 @@ def test_multi_data_model_deploy_pretrained_models(
         assert PRETRAINED_MODEL_PATH_1 in endpoint_models
         assert PRETRAINED_MODEL_PATH_2 in endpoint_models
 
-        predictor = RealTimePredictor(
-            endpoint=endpoint_name,
+        predictor = Predictor(
+            endpoint_name=endpoint_name,
             sagemaker_session=sagemaker_session,
-            serializer=npy_serializer,
+            serializer=NumpySerializer(),
             deserializer=string_deserializer,
         )
 
@@ -194,7 +199,7 @@ def test_multi_data_model_deploy_pretrained_models_local_mode(container_image, s
         multi_data_model = MultiDataModel(
             name=model_name,
             model_data_prefix=model_data_prefix,
-            image=container_image,
+            image_uri=container_image,
             role=ROLE,
             sagemaker_session=sagemaker_session,
         )
@@ -212,10 +217,10 @@ def test_multi_data_model_deploy_pretrained_models_local_mode(container_image, s
         assert PRETRAINED_MODEL_PATH_1 in endpoint_models
         assert PRETRAINED_MODEL_PATH_2 in endpoint_models
 
-        predictor = RealTimePredictor(
-            endpoint=endpoint_name,
+        predictor = Predictor(
+            endpoint_name=endpoint_name,
             sagemaker_session=multi_data_model.sagemaker_session,
-            serializer=npy_serializer,
+            serializer=NumpySerializer(),
             deserializer=string_deserializer,
         )
 
@@ -240,16 +245,24 @@ def test_multi_data_model_deploy_pretrained_models_local_mode(container_image, s
 
 
 def test_multi_data_model_deploy_trained_model_from_framework_estimator(
-    container_image, sagemaker_session, cpu_instance_type
+    container_image,
+    sagemaker_session,
+    cpu_instance_type,
+    mxnet_inference_latest_version,
+    mxnet_inference_latest_py_version,
 ):
     timestamp = sagemaker_timestamp()
     endpoint_name = "test-multimodel-endpoint-{}".format(timestamp)
     model_name = "test-multimodel-{}".format(timestamp)
-    mxnet_version = "1.4.1"
 
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
-        mxnet_model_1 = __mxnet_training_job(
-            sagemaker_session, container_image, mxnet_version, cpu_instance_type, 0.1
+        mxnet_model_1 = _mxnet_training_job(
+            sagemaker_session,
+            container_image,
+            mxnet_inference_latest_version,
+            mxnet_inference_latest_py_version,
+            cpu_instance_type,
+            0.1,
         )
         model_data_prefix = os.path.join(
             "s3://", sagemaker_session.default_bucket(), "multimodel-{}/".format(timestamp)
@@ -267,8 +280,13 @@ def test_multi_data_model_deploy_trained_model_from_framework_estimator(
         multi_data_model.deploy(1, cpu_instance_type, endpoint_name=endpoint_name)
 
         # Train another model
-        mxnet_model_2 = __mxnet_training_job(
-            sagemaker_session, container_image, mxnet_version, cpu_instance_type, 0.01
+        mxnet_model_2 = _mxnet_training_job(
+            sagemaker_session,
+            container_image,
+            mxnet_inference_latest_version,
+            mxnet_inference_latest_py_version,
+            cpu_instance_type,
+            0.01,
         )
         # Deploy newly trained model
         multi_data_model.add_model(mxnet_model_2.model_data, PRETRAINED_MODEL_PATH_2)
@@ -279,13 +297,13 @@ def test_multi_data_model_deploy_trained_model_from_framework_estimator(
         assert PRETRAINED_MODEL_PATH_1 in endpoint_models
         assert PRETRAINED_MODEL_PATH_2 in endpoint_models
 
-        # Define a predictor to set `serializer` parameter with npy_serializer
-        # instead of `json_serializer` in the default predictor returned by `MXNetPredictor`
+        # Define a predictor to set `serializer` parameter with `NumpySerializer`
+        # instead of `JSONSerializer` in the default predictor returned by `MXNetPredictor`
         # Since we are using a placeholder container image the prediction results are not accurate.
-        predictor = RealTimePredictor(
-            endpoint=endpoint_name,
+        predictor = Predictor(
+            endpoint_name=endpoint_name,
             sagemaker_session=sagemaker_session,
-            serializer=npy_serializer,
+            serializer=NumpySerializer(),
             deserializer=string_deserializer,
         )
 
@@ -308,8 +326,8 @@ def test_multi_data_model_deploy_trained_model_from_framework_estimator(
         assert "Could not find endpoint" in str(exception.value)
 
 
-def __mxnet_training_job(
-    sagemaker_session, container_image, mxnet_full_version, cpu_instance_type, learning_rate
+def _mxnet_training_job(
+    sagemaker_session, container_image, mxnet_version, py_version, cpu_instance_type, learning_rate
 ):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         script_path = os.path.join(DATA_DIR, "mxnet_mnist", "mnist.py")
@@ -318,10 +336,10 @@ def __mxnet_training_job(
         mx = MXNet(
             entry_point=script_path,
             role=ROLE,
-            framework_version=mxnet_full_version,
-            py_version=PYTHON_VERSION,
-            train_instance_count=1,
-            train_instance_type=cpu_instance_type,
+            framework_version=mxnet_version,
+            py_version=py_version,
+            instance_count=1,
+            instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
             hyperparameters={"learning-rate": learning_rate},
         )
@@ -337,7 +355,7 @@ def __mxnet_training_job(
 
         # Replace the container image value for now since the frameworks do not support
         # multi-model container image yet.
-        return mx.create_model(image_name=container_image)
+        return mx.create_model(image_uri=container_image)
 
 
 def test_multi_data_model_deploy_train_model_from_amazon_first_party_estimator(
@@ -380,13 +398,13 @@ def test_multi_data_model_deploy_train_model_from_amazon_first_party_estimator(
         assert PRETRAINED_MODEL_PATH_1 in endpoint_models
         assert PRETRAINED_MODEL_PATH_2 in endpoint_models
 
-        # Define a predictor to set `serializer` parameter with npy_serializer
-        # instead of `json_serializer` in the default predictor returned by `MXNetPredictor`
+        # Define a predictor to set `serializer` parameter with `NumpySerializer`
+        # instead of `JSONSerializer` in the default predictor returned by `MXNetPredictor`
         # Since we are using a placeholder container image the prediction results are not accurate.
-        predictor = RealTimePredictor(
-            endpoint=endpoint_name,
+        predictor = Predictor(
+            endpoint_name=endpoint_name,
             sagemaker_session=sagemaker_session,
-            serializer=npy_serializer,
+            serializer=NumpySerializer(),
             deserializer=string_deserializer,
         )
 
@@ -420,8 +438,8 @@ def __rcf_training_job(
 
         rcf = RandomCutForest(
             role=ROLE,
-            train_instance_count=1,
-            train_instance_type=cpu_instance_type,
+            instance_count=1,
+            instance_type=cpu_instance_type,
             num_trees=num_trees,
             num_samples_per_tree=num_samples_per_tree,
             eval_metrics=["accuracy", "precision_recall_fscore"],
@@ -433,7 +451,7 @@ def __rcf_training_job(
         # Replace the container image value with a multi-model container image for now since the
         # frameworks do not support multi-model container image yet.
         rcf_model = rcf.create_model()
-        rcf_model.image = container_image
+        rcf_model.image_uri = container_image
         return rcf_model
 
 
@@ -454,7 +472,7 @@ def test_multi_data_model_deploy_pretrained_models_update_endpoint(
         multi_data_model = MultiDataModel(
             name=model_name,
             model_data_prefix=model_data_prefix,
-            image=container_image,
+            image_uri=container_image,
             role=ROLE,
             sagemaker_session=sagemaker_session,
         )
@@ -473,10 +491,10 @@ def test_multi_data_model_deploy_pretrained_models_update_endpoint(
         assert PRETRAINED_MODEL_PATH_1 in endpoint_models
         assert PRETRAINED_MODEL_PATH_2 in endpoint_models
 
-        predictor = RealTimePredictor(
-            endpoint=endpoint_name,
+        predictor = Predictor(
+            endpoint_name=endpoint_name,
             sagemaker_session=sagemaker_session,
-            serializer=npy_serializer,
+            serializer=NumpySerializer(),
             deserializer=string_deserializer,
         )
 
@@ -487,25 +505,20 @@ def test_multi_data_model_deploy_pretrained_models_update_endpoint(
         result = predictor.predict(data, target_model=PRETRAINED_MODEL_PATH_2)
         assert result == "Invoked model: {}".format(PRETRAINED_MODEL_PATH_2)
 
-        old_endpoint = sagemaker_session.sagemaker_client.describe_endpoint(
+        endpoint_desc = sagemaker_session.sagemaker_client.describe_endpoint(
             EndpointName=endpoint_name
         )
-        old_config_name = old_endpoint["EndpointConfigName"]
+        old_config_name = endpoint_desc["EndpointConfigName"]
 
         # Update endpoint
-        multi_data_model.deploy(
-            1, alternative_cpu_instance_type, endpoint_name=endpoint_name, update_endpoint=True
+        predictor.update_endpoint(
+            initial_instance_count=1, instance_type=alternative_cpu_instance_type
         )
 
-        # Wait for endpoint to finish updating
-        for _ in retries(40, "Waiting for 'InService' endpoint status", seconds_to_sleep=30):
-            new_endpoint = sagemaker_session.sagemaker_client.describe_endpoint(
-                EndpointName=endpoint_name
-            )
-            if new_endpoint["EndpointStatus"] == "InService":
-                break
-
-        new_config_name = new_endpoint["EndpointConfigName"]
+        endpoint_desc = sagemaker_session.sagemaker_client.describe_endpoint(
+            EndpointName=endpoint_name
+        )
+        new_config_name = endpoint_desc["EndpointConfigName"]
 
         new_config = sagemaker_session.sagemaker_client.describe_endpoint_config(
             EndpointConfigName=new_config_name
@@ -522,6 +535,7 @@ def test_multi_data_model_deploy_pretrained_models_update_endpoint(
             EndpointConfigName=new_config_name
         )
         multi_data_model.delete_model()
+
     with pytest.raises(Exception) as exception:
         sagemaker_session.sagemaker_client.describe_model(ModelName=model_name)
         assert "Could not find model" in str(exception.value)

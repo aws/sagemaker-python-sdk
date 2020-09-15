@@ -12,12 +12,10 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-import boto3
 import pytest
 from mock import Mock, patch
 
 from sagemaker.model import Model
-from tests.unit import NEO_REGION_LIST
 
 MODEL_DATA = "s3://bucket/model.tar.gz"
 MODEL_IMAGE = "mi"
@@ -37,7 +35,7 @@ def sagemaker_session():
 
 
 def _create_model(sagemaker_session=None):
-    return Model(MODEL_DATA, MODEL_IMAGE, sagemaker_session=sagemaker_session)
+    return Model(MODEL_IMAGE, MODEL_DATA, role="role", sagemaker_session=sagemaker_session)
 
 
 def test_compile_model_for_inferentia(sagemaker_session):
@@ -58,7 +56,7 @@ def test_compile_model_for_inferentia(sagemaker_session):
         "{}.dkr.ecr.{}.amazonaws.com/sagemaker-neo-tensorflow:1.15.0-inf-py3".format(
             NEO_REGION_ACCOUNT, REGION
         )
-        == model.image
+        == model.image_uri
     )
     assert model._is_compiled_model is True
 
@@ -79,6 +77,7 @@ def test_compile_model_for_edge_device(sagemaker_session):
     assert model._is_compiled_model is False
 
 
+@pytest.mark.xfail(reason="tflite images are not available yet.")
 def test_compile_model_for_edge_device_tflite(sagemaker_session):
     sagemaker_session.wait_for_compilation_job = Mock(
         return_value=DESCRIBE_COMPILATION_JOB_RESPONSE
@@ -91,6 +90,45 @@ def test_compile_model_for_edge_device_tflite(sagemaker_session):
         role="role",
         framework="tflite",
         job_name="tflite-compile-model",
+    )
+    assert model._is_compiled_model is False
+
+
+def test_compile_model_linux_arm64_nvidia(sagemaker_session):
+    sagemaker_session.wait_for_compilation_job = Mock(
+        return_value=DESCRIBE_COMPILATION_JOB_RESPONSE
+    )
+    model = _create_model(sagemaker_session)
+    model.compile(
+        target_instance_family=None,
+        input_shape={"data": [1, 3, 1024, 1024]},
+        output_path="s3://output",
+        role="role",
+        framework="tensorflow",
+        job_name="compile-model",
+        target_platform_os="LINUX",
+        target_platform_arch="ARM64",
+        target_platform_accelerator="NVIDIA",
+        compiler_options={"gpu-code": "sm_72", "trt-ver": "6.0.1", "cuda-ver": "10.1"},
+    )
+    assert model._is_compiled_model is False
+
+
+def test_compile_model_android_armv7(sagemaker_session):
+    sagemaker_session.wait_for_compilation_job = Mock(
+        return_value=DESCRIBE_COMPILATION_JOB_RESPONSE
+    )
+    model = _create_model(sagemaker_session)
+    model.compile(
+        target_instance_family=None,
+        input_shape={"data": [1, 3, 1024, 1024]},
+        output_path="s3://output",
+        role="role",
+        framework="tensorflow",
+        job_name="compile-model",
+        target_platform_os="ANDROID",
+        target_platform_arch="ARM_EABI",
+        compiler_options={"ANDROID_PLATFORM": 25, "mattr": ["+neon"]},
     )
     assert model._is_compiled_model is False
 
@@ -111,6 +149,7 @@ def test_compile_model_for_cloud(sagemaker_session):
     assert model._is_compiled_model is True
 
 
+@pytest.mark.xfail(reason="tflite images are not available yet.")
 def test_compile_model_for_cloud_tflite(sagemaker_session):
     sagemaker_session.wait_for_compilation_job = Mock(
         return_value=DESCRIBE_COMPILATION_JOB_RESPONSE
@@ -144,13 +183,89 @@ def test_compile_creates_session(session):
     assert session.return_value == model.sagemaker_session
 
 
-def test_check_neo_region(sagemaker_session):
-    sagemaker_session.wait_for_compilation_job = Mock(
-        return_value=DESCRIBE_COMPILATION_JOB_RESPONSE
-    )
-    model = _create_model(sagemaker_session)
+def test_compile_validates_framework():
+    model = _create_model()
 
-    boto_session = boto3.Session()
-    for partition in boto_session.get_available_partitions():
-        for region_name in boto_session.get_available_regions("ec2", partition_name=partition):
-            assert (region_name in NEO_REGION_LIST) is model.check_neo_region(region_name)
+    with pytest.raises(ValueError) as e:
+        model.compile(
+            target_instance_family="ml_c4",
+            input_shape={"data": [1, 3, 1024, 1024]},
+            output_path="s3://output",
+            role="role",
+        )
+
+    assert "You must specify framework" in str(e)
+
+    with pytest.raises(ValueError) as e:
+        model.compile(
+            target_instance_family="ml_c4",
+            input_shape={"data": [1, 3, 1024, 1024]},
+            output_path="s3://output",
+            role="role",
+            framework="not-a-real-framework",
+        )
+
+    assert "You must provide valid framework" in str(e)
+
+
+def test_compile_validates_job_name():
+    model = _create_model()
+
+    with pytest.raises(ValueError) as e:
+        model.compile(
+            target_instance_family="ml_c4",
+            input_shape={"data": [1, 3, 1024, 1024]},
+            output_path="s3://output",
+            role="role",
+            framework="tensorflow",
+        )
+
+    assert "You must provide a compilation job name" in str(e)
+
+
+def test_compile_validates_model_data():
+    model = Model(MODEL_IMAGE)
+
+    with pytest.raises(ValueError) as e:
+        model.compile(
+            target_instance_family="ml_c4",
+            input_shape={"data": [1, 3, 1024, 1024]},
+            output_path="s3://output",
+            role="role",
+            framework="tensorflow",
+            job_name="compile-model",
+        )
+
+    assert "You must provide an S3 path to the compressed model artifacts." in str(e)
+
+
+def test_deploy_honors_provided_model_name(sagemaker_session):
+    model = _create_model(sagemaker_session)
+    model._is_compiled_model = True
+
+    model_name = "foo"
+    model.name = model_name
+
+    model.deploy(1, "ml.c4.xlarge")
+    assert model_name == model.name
+
+
+def test_deploy_add_compiled_model_suffix_to_generated_resource_names(sagemaker_session):
+    model = _create_model(sagemaker_session)
+    model._is_compiled_model = True
+
+    model.deploy(1, "ml.c4.xlarge")
+    assert model.name.startswith("mi-ml-c4")
+    assert model.endpoint_name.startswith("mi-ml-c4")
+
+
+@patch("sagemaker.model.Model._create_sagemaker_model", Mock())
+def test_deploy_add_compiled_model_suffix_to_endpoint_name_from_model_name(sagemaker_session):
+    model = _create_model(sagemaker_session)
+    model._is_compiled_model = True
+
+    model_name = "foo"
+    model.name = model_name
+
+    model.deploy(1, "ml.c4.xlarge")
+    assert model.endpoint_name.startswith("{}-ml-c4".format(model_name))

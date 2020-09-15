@@ -15,20 +15,21 @@ from __future__ import absolute_import
 import pytest
 from mock import Mock, patch
 
+from sagemaker import image_uris
 from sagemaker.amazon.randomcutforest import RandomCutForest, RandomCutForestPredictor
-from sagemaker.amazon.amazon_estimator import registry, RecordSet
+from sagemaker.amazon.amazon_estimator import RecordSet
 
 ROLE = "myrole"
-TRAIN_INSTANCE_COUNT = 1
-TRAIN_INSTANCE_TYPE = "ml.c4.xlarge"
+INSTANCE_COUNT = 1
+INSTANCE_TYPE = "ml.c4.xlarge"
 NUM_SAMPLES_PER_TREE = 20
 NUM_TREES = 50
 EVAL_METRICS = ["accuracy", "precision_recall_fscore"]
 
 COMMON_TRAIN_ARGS = {
     "role": ROLE,
-    "train_instance_count": TRAIN_INSTANCE_COUNT,
-    "train_instance_type": TRAIN_INSTANCE_TYPE,
+    "instance_count": INSTANCE_COUNT,
+    "instance_type": INSTANCE_TYPE,
 }
 ALL_REQ_ARGS = dict(**COMMON_TRAIN_ARGS)
 
@@ -66,16 +67,16 @@ def sagemaker_session():
 def test_init_required_positional(sagemaker_session):
     randomcutforest = RandomCutForest(
         ROLE,
-        TRAIN_INSTANCE_COUNT,
-        TRAIN_INSTANCE_TYPE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
         NUM_SAMPLES_PER_TREE,
         NUM_TREES,
         EVAL_METRICS,
         sagemaker_session=sagemaker_session,
     )
     assert randomcutforest.role == ROLE
-    assert randomcutforest.train_instance_count == TRAIN_INSTANCE_COUNT
-    assert randomcutforest.train_instance_type == TRAIN_INSTANCE_TYPE
+    assert randomcutforest.instance_count == INSTANCE_COUNT
+    assert randomcutforest.instance_type == INSTANCE_TYPE
     assert randomcutforest.num_trees == NUM_TREES
     assert randomcutforest.num_samples_per_tree == NUM_SAMPLES_PER_TREE
     assert randomcutforest.eval_metrics == EVAL_METRICS
@@ -85,8 +86,8 @@ def test_init_required_named(sagemaker_session):
     randomcutforest = RandomCutForest(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
     assert randomcutforest.role == COMMON_TRAIN_ARGS["role"]
-    assert randomcutforest.train_instance_count == TRAIN_INSTANCE_COUNT
-    assert randomcutforest.train_instance_type == COMMON_TRAIN_ARGS["train_instance_type"]
+    assert randomcutforest.instance_count == INSTANCE_COUNT
+    assert randomcutforest.instance_type == COMMON_TRAIN_ARGS["instance_type"]
 
 
 def test_all_hyperparameters(sagemaker_session):
@@ -106,9 +107,7 @@ def test_all_hyperparameters(sagemaker_session):
 
 def test_image(sagemaker_session):
     randomcutforest = RandomCutForest(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-    assert (
-        randomcutforest.train_image() == registry(REGION, "randomcutforest") + "/randomcutforest:1"
-    )
+    assert image_uris.retrieve("randomcutforest", REGION) == randomcutforest.training_image_uri()
 
 
 @pytest.mark.parametrize("iterable_hyper_parameters, value", [("eval_metrics", 0)])
@@ -232,7 +231,7 @@ def test_model_image(sagemaker_session):
     randomcutforest.fit(data, MINI_BATCH_SIZE)
 
     model = randomcutforest.create_model()
-    assert model.image == registry(REGION, "randomcutforest") + "/randomcutforest:1"
+    assert image_uris.retrieve("randomcutforest", REGION) == model.image_uri
 
 
 def test_predictor_type(sagemaker_session):
@@ -245,6 +244,6 @@ def test_predictor_type(sagemaker_session):
     )
     randomcutforest.fit(data, MINI_BATCH_SIZE)
     model = randomcutforest.create_model()
-    predictor = model.deploy(1, TRAIN_INSTANCE_TYPE)
+    predictor = model.deploy(1, INSTANCE_TYPE)
 
     assert isinstance(predictor, RandomCutForestPredictor)

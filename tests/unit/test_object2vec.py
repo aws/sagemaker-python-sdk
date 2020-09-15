@@ -15,13 +15,14 @@ from __future__ import absolute_import
 import pytest
 from mock import Mock, patch
 
+from sagemaker import image_uris
 from sagemaker.amazon.object2vec import Object2Vec
-from sagemaker.predictor import RealTimePredictor
-from sagemaker.amazon.amazon_estimator import registry, RecordSet
+from sagemaker.predictor import Predictor
+from sagemaker.amazon.amazon_estimator import RecordSet
 
 ROLE = "myrole"
-TRAIN_INSTANCE_COUNT = 1
-TRAIN_INSTANCE_TYPE = "ml.c4.xlarge"
+INSTANCE_COUNT = 1
+INSTANCE_TYPE = "ml.c4.xlarge"
 EPOCHS = 5
 ENC0_MAX_SEQ_LEN = 100
 ENC0_VOCAB_SIZE = 500
@@ -30,8 +31,8 @@ MINI_BATCH_SIZE = 32
 
 COMMON_TRAIN_ARGS = {
     "role": ROLE,
-    "train_instance_count": TRAIN_INSTANCE_COUNT,
-    "train_instance_type": TRAIN_INSTANCE_TYPE,
+    "instance_count": INSTANCE_COUNT,
+    "instance_type": INSTANCE_TYPE,
 }
 ALL_REQ_ARGS = dict(
     {"epochs": EPOCHS, "enc0_max_seq_len": ENC0_MAX_SEQ_LEN, "enc0_vocab_size": ENC0_VOCAB_SIZE},
@@ -74,16 +75,16 @@ def sagemaker_session():
 def test_init_required_positional(sagemaker_session):
     object2vec = Object2Vec(
         ROLE,
-        TRAIN_INSTANCE_COUNT,
-        TRAIN_INSTANCE_TYPE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
         EPOCHS,
         ENC0_MAX_SEQ_LEN,
         ENC0_VOCAB_SIZE,
         sagemaker_session=sagemaker_session,
     )
     assert object2vec.role == ROLE
-    assert object2vec.train_instance_count == TRAIN_INSTANCE_COUNT
-    assert object2vec.train_instance_type == TRAIN_INSTANCE_TYPE
+    assert object2vec.instance_count == INSTANCE_COUNT
+    assert object2vec.instance_type == INSTANCE_TYPE
     assert object2vec.epochs == EPOCHS
     assert object2vec.enc0_max_seq_len == ENC0_MAX_SEQ_LEN
     assert object2vec.enc0_vocab_size == ENC0_VOCAB_SIZE
@@ -93,8 +94,8 @@ def test_init_required_named(sagemaker_session):
     object2vec = Object2Vec(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
 
     assert object2vec.role == COMMON_TRAIN_ARGS["role"]
-    assert object2vec.train_instance_count == TRAIN_INSTANCE_COUNT
-    assert object2vec.train_instance_type == COMMON_TRAIN_ARGS["train_instance_type"]
+    assert object2vec.instance_count == INSTANCE_COUNT
+    assert object2vec.instance_type == COMMON_TRAIN_ARGS["instance_type"]
     assert object2vec.epochs == ALL_REQ_ARGS["epochs"]
     assert object2vec.enc0_max_seq_len == ALL_REQ_ARGS["enc0_max_seq_len"]
     assert object2vec.enc0_vocab_size == ALL_REQ_ARGS["enc0_vocab_size"]
@@ -143,7 +144,7 @@ def test_all_hyperparameters(sagemaker_session):
 
 def test_image(sagemaker_session):
     object2vec = Object2Vec(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
-    assert object2vec.train_image() == registry(REGION, "object2vec") + "/object2vec:1"
+    assert image_uris.retrieve("object2vec", REGION) == object2vec.training_image_uri()
 
 
 @pytest.mark.parametrize("required_hyper_parameters, value", [("epochs", "string")])
@@ -308,7 +309,7 @@ def test_model_image(sagemaker_session):
     object2vec.fit(data, MINI_BATCH_SIZE)
 
     model = object2vec.create_model()
-    assert model.image == registry(REGION, "object2vec") + "/object2vec:1"
+    assert image_uris.retrieve("object2vec", REGION) == model.image_uri
 
 
 def test_predictor_type(sagemaker_session):
@@ -321,6 +322,6 @@ def test_predictor_type(sagemaker_session):
     )
     object2vec.fit(data, MINI_BATCH_SIZE)
     model = object2vec.create_model()
-    predictor = model.deploy(1, TRAIN_INSTANCE_TYPE)
+    predictor = model.deploy(1, INSTANCE_TYPE)
 
-    assert isinstance(predictor, RealTimePredictor)
+    assert isinstance(predictor, Predictor)

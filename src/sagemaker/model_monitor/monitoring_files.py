@@ -22,16 +22,14 @@ import uuid
 
 from botocore.exceptions import ClientError
 
+from sagemaker import s3
 from sagemaker.session import Session
-from sagemaker.s3 import S3Downloader
-from sagemaker.s3 import S3Uploader
 
 NO_SUCH_KEY_CODE = "NoSuchKey"
 
 
 class ModelMonitoringFile(object):
-    """Represents a file with a body and an S3 uri.
-    """
+    """Represents a file with a body and an S3 uri."""
 
     def __init__(self, body_dict, file_s3_uri, kms_key, sagemaker_session):
         """Initializes a file with a body and an S3 uri.
@@ -68,17 +66,16 @@ class ModelMonitoringFile(object):
         if new_save_location_s3_uri is not None:
             self.file_s3_uri = new_save_location_s3_uri
 
-        return S3Uploader.upload_string_as_file_body(
+        return s3.S3Uploader.upload_string_as_file_body(
             body=json.dumps(self.body_dict),
             desired_s3_uri=self.file_s3_uri,
             kms_key=self.kms_key,
-            session=self.session,
+            sagemaker_session=self.session,
         )
 
 
 class Statistics(ModelMonitoringFile):
-    """Represents the statistics JSON file used in Amazon SageMaker Model Monitoring.
-    """
+    """Represents the statistics JSON file used in Amazon SageMaker Model Monitoring."""
 
     def __init__(self, body_dict, statistics_file_s3_uri, kms_key=None, sagemaker_session=None):
         """Initializes the Statistics object used in Amazon SageMaker Model Monitoring.
@@ -119,7 +116,9 @@ class Statistics(ModelMonitoringFile):
         """
         try:
             body_dict = json.loads(
-                S3Downloader.read_file(s3_uri=statistics_file_s3_uri, session=sagemaker_session)
+                s3.S3Downloader.read_file(
+                    s3_uri=statistics_file_s3_uri, sagemaker_session=sagemaker_session
+                )
             )
         except ClientError as error:
             print(
@@ -156,14 +155,14 @@ class Statistics(ModelMonitoringFile):
         """
         sagemaker_session = sagemaker_session or Session()
         file_name = file_name or "statistics.json"
-        desired_s3_uri = os.path.join(
+        desired_s3_uri = s3.s3_path_join(
             "s3://", sagemaker_session.default_bucket(), "monitoring", str(uuid.uuid4()), file_name
         )
-        s3_uri = S3Uploader.upload_string_as_file_body(
+        s3_uri = s3.S3Uploader.upload_string_as_file_body(
             body=statistics_file_string,
             desired_s3_uri=desired_s3_uri,
             kms_key=kms_key,
-            session=sagemaker_session,
+            sagemaker_session=sagemaker_session,
         )
 
         return Statistics.from_s3_uri(
@@ -201,8 +200,7 @@ class Statistics(ModelMonitoringFile):
 
 
 class Constraints(ModelMonitoringFile):
-    """Represents the constraints JSON file used in Amazon SageMaker Model Monitoring.
-    """
+    """Represents the constraints JSON file used in Amazon SageMaker Model Monitoring."""
 
     def __init__(self, body_dict, constraints_file_s3_uri, kms_key=None, sagemaker_session=None):
         """Initializes the Constraints object used in Amazon SageMaker Model Monitoring.
@@ -243,7 +241,9 @@ class Constraints(ModelMonitoringFile):
         """
         try:
             body_dict = json.loads(
-                S3Downloader.read_file(s3_uri=constraints_file_s3_uri, session=sagemaker_session)
+                s3.S3Downloader.read_file(
+                    s3_uri=constraints_file_s3_uri, sagemaker_session=sagemaker_session
+                )
             )
         except ClientError as error:
             print(
@@ -283,14 +283,14 @@ class Constraints(ModelMonitoringFile):
         """
         sagemaker_session = sagemaker_session or Session()
         file_name = file_name or "constraints.json"
-        desired_s3_uri = os.path.join(
+        desired_s3_uri = s3.s3_path_join(
             "s3://", sagemaker_session.default_bucket(), "monitoring", str(uuid.uuid4()), file_name
         )
-        s3_uri = S3Uploader.upload_string_as_file_body(
+        s3_uri = s3.S3Uploader.upload_string_as_file_body(
             body=constraints_file_string,
             desired_s3_uri=desired_s3_uri,
             kms_key=kms_key,
-            session=sagemaker_session,
+            sagemaker_session=sagemaker_session,
         )
 
         return Constraints.from_s3_uri(
@@ -351,8 +351,7 @@ class Constraints(ModelMonitoringFile):
 
 
 class ConstraintViolations(ModelMonitoringFile):
-    """Represents the constraint violations JSON file used in Amazon SageMaker Model Monitoring.
-    """
+    """Represents the constraint violations JSON file used in Amazon SageMaker Model Monitoring."""
 
     def __init__(
         self, body_dict, constraint_violations_file_s3_uri, kms_key=None, sagemaker_session=None
@@ -395,8 +394,8 @@ class ConstraintViolations(ModelMonitoringFile):
         """
         try:
             body_dict = json.loads(
-                S3Downloader.read_file(
-                    s3_uri=constraint_violations_file_s3_uri, session=sagemaker_session
+                s3.S3Downloader.read_file(
+                    s3_uri=constraint_violations_file_s3_uri, sagemaker_session=sagemaker_session
                 )
             )
         except ClientError as error:
@@ -438,14 +437,14 @@ class ConstraintViolations(ModelMonitoringFile):
         """
         sagemaker_session = sagemaker_session or Session()
         file_name = file_name or "constraint_violations.json"
-        desired_s3_uri = os.path.join(
+        desired_s3_uri = s3.s3_path_join(
             "s3://", sagemaker_session.default_bucket(), "monitoring", str(uuid.uuid4()), file_name
         )
-        s3_uri = S3Uploader.upload_string_as_file_body(
+        s3_uri = s3.S3Uploader.upload_string_as_file_body(
             body=constraint_violations_file_string,
             desired_s3_uri=desired_s3_uri,
             kms_key=kms_key,
-            session=sagemaker_session,
+            sagemaker_session=sagemaker_session,
         )
 
         return ConstraintViolations.from_s3_uri(

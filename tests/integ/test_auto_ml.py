@@ -18,7 +18,7 @@ import pytest
 import tests.integ
 from sagemaker import AutoML, CandidateEstimator, AutoMLInput
 
-from sagemaker.exceptions import UnexpectedStatusException
+from botocore.exceptions import ClientError
 from sagemaker.utils import unique_name_from_base
 from tests.integ import DATA_DIR, AUTO_ML_DEFAULT_TIMEMOUT_MINUTES, auto_ml_utils
 from tests.integ.timeout import timeout
@@ -142,7 +142,9 @@ def test_auto_ml_invalid_target_attribute(sagemaker_session):
     job_name = unique_name_from_base("auto-ml", max_length=32)
     inputs = sagemaker_session.upload_data(path=TRAINING_DATA, key_prefix=PREFIX + "/input")
     with pytest.raises(
-        UnexpectedStatusException, match="Could not complete the data builder processing job."
+        ClientError,
+        match=r"An error occurred \(ValidationException\) when calling the CreateAutoMLJob "
+        "operation: Target attribute name y does not exist in header.",
     ):
         auto_ml.fit(inputs, job_name=job_name)
 
