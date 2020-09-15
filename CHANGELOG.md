@@ -1,5 +1,25 @@
 # Changelog
 
+## v2.7.0 (2020-09-15)
+
+### Features
+
+ * reshape Parents into experiment analytics dataframe
+
+## v2.6.0 (2020-09-14)
+
+### Features
+
+ * add model monitor image accounts for af-south-1 and eu-south-1
+
+### Bug Fixes and Other Changes
+
+ * enforce some docstyle conventions
+
+### Documentation Changes
+
+ * fix CSVSerializer typo in v2.rst
+
 ## v2.5.5 (2020-09-10)
 
 ### Bug Fixes and Other Changes

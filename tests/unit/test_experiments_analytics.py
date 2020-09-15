@@ -48,10 +48,11 @@ def trial_component(trial_component_name):
             "outputArtifacts1": {"MediaType": "text/csv", "Value": "s3:/sky/far1"},
             "outputArtifacts2": {"MediaType": "text/csv", "Value": "s3:/sky/far2"},
         },
+        "Parents": [{"TrialName": "trial1", "ExperimentName": "experiment1"}],
     }
 
 
-def test_trial_analytics_dataframe_all_metrics_hyperparams(mock_session):
+def test_trial_analytics_dataframe_all(mock_session):
     mock_session.sagemaker_client.search.return_value = {
         "Results": [
             {"TrialComponent": trial_component("trial-1")},
@@ -88,6 +89,8 @@ def test_trial_analytics_dataframe_all_metrics_hyperparams(mock_session):
                 ("outputArtifacts1 - Value", ["s3:/sky/far1", "s3:/sky/far1"]),
                 ("outputArtifacts2 - MediaType", ["text/csv", "text/csv"]),
                 ("outputArtifacts2 - Value", ["s3:/sky/far2", "s3:/sky/far2"]),
+                ("Trials", [["trial1"], ["trial1"]]),
+                ("Experiments", [["experiment1"], ["experiment1"]]),
             ]
         )
     )
@@ -141,6 +144,8 @@ def test_trial_analytics_dataframe_selected_hyperparams(mock_session):
                 ("outputArtifacts1 - Value", ["s3:/sky/far1", "s3:/sky/far1"]),
                 ("outputArtifacts2 - MediaType", ["text/csv", "text/csv"]),
                 ("outputArtifacts2 - Value", ["s3:/sky/far2", "s3:/sky/far2"]),
+                ("Trials", [["trial1"], ["trial1"]]),
+                ("Experiments", [["experiment1"], ["experiment1"]]),
             ]
         )
     )
@@ -189,6 +194,8 @@ def test_trial_analytics_dataframe_selected_metrics(mock_session):
                 ("outputArtifacts1 - Value", ["s3:/sky/far1", "s3:/sky/far1"]),
                 ("outputArtifacts2 - MediaType", ["text/csv", "text/csv"]),
                 ("outputArtifacts2 - Value", ["s3:/sky/far2", "s3:/sky/far2"]),
+                ("Trials", [["trial1"], ["trial1"]]),
+                ("Experiments", [["experiment1"], ["experiment1"]]),
             ]
         )
     )
@@ -243,6 +250,8 @@ def test_trial_analytics_dataframe_search_pagination(mock_session):
                 ("outputArtifacts1 - Value", ["s3:/sky/far1", "s3:/sky/far1"]),
                 ("outputArtifacts2 - MediaType", ["text/csv", "text/csv"]),
                 ("outputArtifacts2 - Value", ["s3:/sky/far2", "s3:/sky/far2"]),
+                ("Trials", [["trial1"], ["trial1"]]),
+                ("Experiments", [["experiment1"], ["experiment1"]]),
             ]
         )
     )
