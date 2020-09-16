@@ -69,15 +69,15 @@ For an in-depth look, please see the `Scikit-learn Data Processing and Model Eva
 
 Data Processing with Spark
 ============================================
-SageMaker provides two classes for customers to run Spark applications: :class:`sagemaker.processing.PySparkProcessor` and :class:`sagemaker.processing.SparkJarProcessor`
+SageMaker provides two classes for customers to run Spark applications: :class:`sagemaker.spark.processing.PySparkProcessor` and :class:`sagemaker.spark.processing.SparkJarProcessor`
 
 
 PySparkProcessor
 ---------------------
 
-You can use the :class:`sagemaker.processing.PySparkProcessor` class to run PySpark scripts as processing jobs.
+You can use the :class:`sagemaker.spark.processing.PySparkProcessor` class to run PySpark scripts as processing jobs.
 
-This example shows how you can take an existing PySpark script and run a processing job with the :class:`sagemaker.processing.PySparkProcessor` class and the pre-built SageMaker Spark container.
+This example shows how you can take an existing PySpark script and run a processing job with the :class:`sagemaker.spark.processing.PySparkProcessor` class and the pre-built SageMaker Spark container.
 
 First you need to create a :class:`PySparkProcessor` object
 
