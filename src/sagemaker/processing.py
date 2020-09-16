@@ -167,6 +167,10 @@ class Processor(object):
         if wait:
             self.latest_job.wait(logs=logs)
 
+    def _extend_processing_args(self, inputs, outputs, **kwargs):  # pylint: disable=W0613
+        """Extend inputs and outputs based on extra parameters"""
+        return inputs, outputs
+
     def _normalize_args(self, job_name=None, arguments=None, inputs=None, outputs=None, code=None):
         """Normalizes the arguments so that they can be passed to the job run
 

@@ -19,6 +19,7 @@ import os
 import re
 
 from sagemaker import utils
+from sagemaker.spark import defaults
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +34,7 @@ def retrieve(
     instance_type=None,
     accelerator_type=None,
     image_scope=None,
+    container_version=None,
 ):
     """Retrieves the ECR URI for the Docker image matching the given arguments.
 
@@ -51,6 +53,7 @@ def retrieve(
         image_scope (str): The image type, i.e. what it is used for.
             Valid values: "training", "inference", "eia". If ``accelerator_type`` is set,
             ``image_scope`` is ignored.
+        container_version (str): the version of docker image
 
     Returns:
         str: the ECR URI for the corresponding SageMaker Docker image.
@@ -63,7 +66,7 @@ def retrieve(
     version = _validate_version_and_set_if_needed(version, config, framework)
     version_config = config["versions"][_version_for_config(version, config)]
 
-    py_version = _validate_py_version_and_set_if_needed(py_version, version_config)
+    py_version = _validate_py_version_and_set_if_needed(py_version, version_config, framework)
     version_config = version_config.get(py_version) or version_config
 
     registry = _registry_from_region(region, version_config["registries"])
@@ -74,7 +77,9 @@ def retrieve(
     processor = _processor(
         instance_type, config.get("processors") or version_config.get("processors")
     )
-    tag = _format_tag(version_config.get("tag_prefix", version), processor, py_version)
+    tag = _format_tag(
+        version_config.get("tag_prefix", version), processor, py_version, container_version
+    )
 
     if tag:
         repo += ":{}".format(tag)
@@ -103,7 +108,7 @@ def _config_for_framework_and_scope(framework, image_scope, accelerator_type=Non
                 available_scopes[0],
                 image_scope,
             )
-        image_scope = available_scopes[0]
+        image_scope = list(available_scopes)[0]
 
     if not image_scope and "scope" in config and set(available_scopes) == {"training", "inference"}:
         logger.info(
@@ -212,7 +217,7 @@ def _processor(instance_type, available_processors):
     return processor
 
 
-def _validate_py_version_and_set_if_needed(py_version, version_config):
+def _validate_py_version_and_set_if_needed(py_version, version_config, framework):
     """Checks if the Python version is one of the supported versions."""
     if "repository" in version_config:
         available_versions = version_config.get("py_versions")
@@ -222,6 +227,9 @@ def _validate_py_version_and_set_if_needed(py_version, version_config):
     if not available_versions:
         if py_version:
             logger.info("Ignoring unnecessary Python version: %s.", py_version)
+        return None
+
+    if py_version is None and defaults.SPARK_NAME == framework:
         return None
 
     if py_version is None and len(available_versions) == 1:
@@ -242,6 +250,6 @@ def _validate_arg(arg, available_options, arg_name):
         )
 
 
-def _format_tag(tag_prefix, processor, py_version):
+def _format_tag(tag_prefix, processor, py_version, container_version):
     """Creates a tag for the image URI."""
-    return "-".join([x for x in (tag_prefix, processor, py_version) if x])
+    return "-".join([x for x in (tag_prefix, processor, py_version, container_version) if x])
