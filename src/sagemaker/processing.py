@@ -113,6 +113,7 @@ class Processor(object):
     def run(
         self,
         inputs=None,
+        kms_key=None,
         outputs=None,
         arguments=None,
         wait=True,
@@ -126,6 +127,8 @@ class Processor(object):
             inputs (list[:class:`~sagemaker.processing.ProcessingInput`]): Input files for
                 the processing job. These must be provided as
                 :class:`~sagemaker.processing.ProcessingInput` objects (default: None).
+            kms_key (str): The ARN of the KMS key that is used to encrypt the
+                user code file (default: None).
             outputs (list[:class:`~sagemaker.processing.ProcessingOutput`]): Outputs for
                 the processing job. These can be specified as either path strings or
                 :class:`~sagemaker.processing.ProcessingOutput` objects (default: None).
@@ -153,6 +156,7 @@ class Processor(object):
             job_name=job_name,
             arguments=arguments,
             inputs=inputs,
+            kms_key=kms_key,
             outputs=outputs,
         )
 
@@ -170,7 +174,9 @@ class Processor(object):
         """Extend inputs and outputs based on extra parameters"""
         return inputs, outputs
 
-    def _normalize_args(self, job_name=None, arguments=None, inputs=None, outputs=None, code=None):
+    def _normalize_args(
+        self, job_name=None, arguments=None, inputs=None, kms_key=None, outputs=None, code=None
+    ):
         """Normalizes the arguments so that they can be passed to the job run
 
         Args:
@@ -182,6 +188,8 @@ class Processor(object):
             inputs (list[:class:`~sagemaker.processing.ProcessingInput`]): Input files for
                 the processing job. These must be provided as
                 :class:`~sagemaker.processing.ProcessingInput` objects (default: None).
+            kms_key (str): The ARN of the KMS key that is used to encrypt the
+                user code file (default: None).
             outputs (list[:class:`~sagemaker.processing.ProcessingOutput`]): Outputs for
                 the processing job. These can be specified as either path strings or
                 :class:`~sagemaker.processing.ProcessingOutput` objects (default: None).
@@ -191,7 +199,7 @@ class Processor(object):
         self._current_job_name = self._generate_current_job_name(job_name=job_name)
 
         inputs_with_code = self._include_code_in_inputs(inputs, code)
-        normalized_inputs = self._normalize_inputs(inputs_with_code)
+        normalized_inputs = self._normalize_inputs(inputs_with_code, kms_key)
         normalized_outputs = self._normalize_outputs(outputs)
         self.arguments = arguments
 
@@ -233,13 +241,15 @@ class Processor(object):
 
         return name_from_base(base_name)
 
-    def _normalize_inputs(self, inputs=None):
+    def _normalize_inputs(self, inputs=None, kms_key=None):
         """Ensures that all the ``ProcessingInput`` objects have names and S3 URIs.
 
         Args:
             inputs (list[sagemaker.processing.ProcessingInput]): A list of ``ProcessingInput``
                 objects to be normalized (default: None). If not specified,
                 an empty list is returned.
+            kms_key (str): The ARN of the KMS key that is used to encrypt the
+                user code file (default: None).
 
         Returns:
             list[sagemaker.processing.ProcessingInput]: The list of normalized
@@ -273,6 +283,7 @@ class Processor(object):
                         local_path=file_input.source,
                         desired_s3_uri=desired_s3_uri,
                         sagemaker_session=self.sagemaker_session,
+                        kms_key=kms_key,
                     )
                     file_input.source = s3_uri
                 normalized_inputs.append(file_input)
@@ -406,6 +417,7 @@ class ScriptProcessor(Processor):
         self,
         code,
         inputs=None,
+        kms_key=None,
         outputs=None,
         arguments=None,
         wait=True,
@@ -421,6 +433,8 @@ class ScriptProcessor(Processor):
             inputs (list[:class:`~sagemaker.processing.ProcessingInput`]): Input files for
                 the processing job. These must be provided as
                 :class:`~sagemaker.processing.ProcessingInput` objects (default: None).
+            kms_key (str): The ARN of the KMS key that is used to encrypt the
+                user code file (default: None).
             outputs (list[:class:`~sagemaker.processing.ProcessingOutput`]): Outputs for
                 the processing job. These can be specified as either path strings or
                 :class:`~sagemaker.processing.ProcessingOutput` objects (default: None).
@@ -439,6 +453,7 @@ class ScriptProcessor(Processor):
             job_name=job_name,
             arguments=arguments,
             inputs=inputs,
+            kms_key=kms_key,
             outputs=outputs,
             code=code,
         )
