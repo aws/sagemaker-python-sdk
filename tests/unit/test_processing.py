@@ -497,6 +497,25 @@ def test_processing_job_from_processing_arn(sagemaker_session):
     )
 
 
+def test_extend_processing_args(sagemaker_session):
+    inputs = []
+    outputs = []
+
+    processor = Processor(
+        role=ROLE,
+        image_uri=CUSTOM_IMAGE_URI,
+        instance_count=1,
+        instance_type="ml.m4.xlarge",
+        sagemaker_session=sagemaker_session,
+        network_config=NetworkConfig(encrypt_inter_container_traffic=False),
+    )
+
+    extended_inputs, extended_outputs = processor._extend_processing_args([], [])
+
+    assert extended_inputs == inputs
+    assert extended_outputs == outputs
+
+
 def _get_script_processor(sagemaker_session):
     return ScriptProcessor(
         role=ROLE,

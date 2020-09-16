@@ -55,6 +55,7 @@ FRAMEWORKS_FOR_GENERATED_VERSION_FIXTURES = (
     "tensorflow",
     "vw",
     "xgboost",
+    "spark",
 )
 
 
