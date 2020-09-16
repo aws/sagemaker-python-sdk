@@ -183,6 +183,15 @@ def xgboost_framework_version(xgboost_version):
     return xgboost_version
 
 
+@pytest.fixture(scope="module")
+def xgboost_gpu_framework_version(xgboost_version):
+    if xgboost_version in ("1", "latest"):
+        pytest.skip("Skipping XGBoost algorithm version.")
+    if Version(xgboost_version) < Version("1.2"):
+        pytest.skip("Skipping XGBoost cpu-only version.")
+    return xgboost_version
+
+
 @pytest.fixture(scope="module", params=["py2", "py3"])
 def tensorflow_training_py_version(tensorflow_training_version, request):
     return _tf_py_version(tensorflow_training_version, request)

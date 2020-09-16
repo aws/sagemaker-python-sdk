@@ -14,3 +14,11 @@
 from __future__ import absolute_import
 
 XGBOOST_NAME = "xgboost"
+XGBOOST_UNSUPPORTED_VERSIONS = {
+    "1.1": (
+        "XGBoost 1.1 is not supported on SageMaker because XGBoost 1.1 has broken capability to "
+        "run prediction when the test input has fewer features than the training data in LIBSVM "
+        "inputs. This capability has been restored in XGBoost 1.2 "
+        "(https://github.com/dmlc/xgboost/pull/5955). Consider using SageMaker XGBoost 1.2-1."
+    ),
+}
