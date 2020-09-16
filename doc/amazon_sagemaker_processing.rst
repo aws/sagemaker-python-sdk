@@ -230,8 +230,8 @@ Processing class documentation
 - :class:`sagemaker.processing.Processor`
 - :class:`sagemaker.processing.ScriptProcessor`
 - :class:`sagemaker.sklearn.processing.SKLearnProcessor`
-- :class:`sagemaker.sklearn.processing.PySparkProcessor`
-- :class:`sagemaker.sklearn.processing.SparkJarProcessor`
+- :class:`sagemaker.spark.processing.PySparkProcessor`
+- :class:`sagemaker.spark.processing.SparkJarProcessor`
 - :class:`sagemaker.processing.ProcessingInput`
 - :class:`sagemaker.processing.ProcessingOutput`
 - :class:`sagemaker.processing.ProcessingJob`
