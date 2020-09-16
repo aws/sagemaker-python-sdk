@@ -547,6 +547,23 @@ class ExperimentAnalytics(AnalyticsMetricsBase):
             out["{} - {}".format(name, "Value")] = value.get("Value")
         return out
 
+    def _reshape_parents(self, parents):
+        """Reshape trial component parents to a pandas column
+        Args:
+            parents: trial component parents (trials and experiments)
+        Returns:
+            dict: Key: artifacts name, Value: artifacts value
+        """
+        out = OrderedDict()
+        trials = []
+        experiments = []
+        for parent in parents:
+            trials.append(parent["TrialName"])
+            experiments.append(parent["ExperimentName"])
+        out["Trials"] = trials
+        out["Experiments"] = experiments
+        return out
+
     def _reshape(self, trial_component):
         """Reshape trial component data to pandas columns
         Args:
@@ -574,6 +591,7 @@ class ExperimentAnalytics(AnalyticsMetricsBase):
                 trial_component.get("OutputArtifacts", []), self._output_artifact_names
             )
         )
+        out.update(self._reshape_parents(trial_component.get("Parents", [])))
         return out
 
     def _fetch_dataframe(self):

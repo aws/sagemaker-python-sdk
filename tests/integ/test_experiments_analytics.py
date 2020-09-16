@@ -99,6 +99,8 @@ def test_experiment_analytics_artifacts(sagemaker_session):
             "inputArtifacts1 - Value",
             "outputArtifacts1 - MediaType",
             "outputArtifacts1 - Value",
+            "Trials",
+            "Experiments",
         ]
 
 
@@ -109,7 +111,13 @@ def test_experiment_analytics(sagemaker_session):
             experiment_name=experiment_name, sagemaker_session=sagemaker_session
         )
 
-        assert list(analytics.dataframe().columns) == ["TrialComponentName", "DisplayName", "hp1"]
+        assert list(analytics.dataframe().columns) == [
+            "TrialComponentName",
+            "DisplayName",
+            "hp1",
+            "Trials",
+            "Experiments",
+        ]
 
 
 def test_experiment_analytics_pagination(sagemaker_session):
@@ -118,7 +126,13 @@ def test_experiment_analytics_pagination(sagemaker_session):
             experiment_name=experiment_name, sagemaker_session=sagemaker_session
         )
 
-        assert list(analytics.dataframe().columns) == ["TrialComponentName", "DisplayName", "hp1"]
+        assert list(analytics.dataframe().columns) == [
+            "TrialComponentName",
+            "DisplayName",
+            "hp1",
+            "Trials",
+            "Experiments",
+        ]
         assert (
             len(analytics.dataframe()) > 10
         )  # TODO [owen-t] Replace with == 20 and put test in retry block
@@ -137,7 +151,13 @@ def test_experiment_analytics_search_by_nested_filter(sagemaker_session):
             sagemaker_session=sagemaker_session, search_expression=search_exp
         )
 
-        assert list(analytics.dataframe().columns) == ["TrialComponentName", "DisplayName", "hp1"]
+        assert list(analytics.dataframe().columns) == [
+            "TrialComponentName",
+            "DisplayName",
+            "hp1",
+            "Trials",
+            "Experiments",
+        ]
         assert (
             len(analytics.dataframe()) > 5
         )  # TODO [owen-t] Replace with == 10 and put test in retry block
@@ -159,7 +179,13 @@ def test_experiment_analytics_search_by_nested_filter_sort_ascending(sagemaker_s
             sort_order="Ascending",
         )
 
-        assert list(analytics.dataframe().columns) == ["TrialComponentName", "DisplayName", "hp1"]
+        assert list(analytics.dataframe().columns) == [
+            "TrialComponentName",
+            "DisplayName",
+            "hp1",
+            "Trials",
+            "Experiments",
+        ]
         assert (
             len(analytics.dataframe()) > 5
         )  # TODO [owen-t] Replace with == 10 and put test in retry block
@@ -183,7 +209,13 @@ def test_experiment_analytics_search_by_nested_filter_sort_descending(sagemaker_
             sort_by="Parameters.hp1",
         )
 
-        assert list(analytics.dataframe().columns) == ["TrialComponentName", "DisplayName", "hp1"]
+        assert list(analytics.dataframe().columns) == [
+            "TrialComponentName",
+            "DisplayName",
+            "hp1",
+            "Trials",
+            "Experiments",
+        ]
         assert (
             len(analytics.dataframe()) > 5
         )  # TODO [owen-t] Replace with == 10 and put test in retry block

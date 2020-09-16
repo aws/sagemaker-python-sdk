@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.7.0 (2020-09-15)
+
+### Features
+
+ * reshape Parents into experiment analytics dataframe
+
 ## v2.6.0 (2020-09-14)
 
 ### Features
