@@ -1,7 +1,9 @@
 {
     "scope": ["inference", "training"],
     "version_aliases": {
-        "latest": "1"
+        "latest": "1", 
+        "0.90": "0.90-2", 
+        "1.0": "1.0-1" 
     },
     "versions": {
         "1": {
