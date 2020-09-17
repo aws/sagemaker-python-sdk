@@ -53,7 +53,6 @@ Table of Contents
 #. `Secure Training and Inference with VPC <https://sagemaker.readthedocs.io/en/stable/overview.html#secure-training-and-inference-with-vpc>`__
 #. `BYO Model <https://sagemaker.readthedocs.io/en/stable/overview.html#byo-model>`__
 #. `Inference Pipelines <https://sagemaker.readthedocs.io/en/stable/overview.html#inference-pipelines>`__
-#. `Amazon SageMaker Operators for Kubernetes <https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_operators_for_kubernetes.html>`__
 #. `Amazon SageMaker Operators in Apache Airflow <https://sagemaker.readthedocs.io/en/stable/using_workflow.html>`__
 #. `SageMaker Autopilot <src/sagemaker/automl/README.rst>`__
 #. `Model Monitoring <https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_model_monitoring.html>`__
