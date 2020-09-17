@@ -1,5 +1,15 @@
 # Changelog
 
+## v2.8.0 (2020-09-16)
+
+### Features
+
+ * add spark processing support to processing jobs
+
+### Bug Fixes and Other Changes
+
+ * remove DataFrame assert from unrelated test
+
 ## v2.7.0 (2020-09-15)
 
 ### Features
