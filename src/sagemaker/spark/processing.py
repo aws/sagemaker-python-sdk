@@ -174,6 +174,7 @@ class _SparkProcessorBase(ScriptProcessor):
         self,
         submit_app,
         inputs=None,
+        kms_key=None,
         outputs=None,
         arguments=None,
         wait=True,
@@ -188,6 +189,8 @@ class _SparkProcessorBase(ScriptProcessor):
             inputs (list[:class:`~sagemaker.processing.ProcessingInput`]): Input files for
                 the processing job. These must be provided as
                 :class:`~sagemaker.processing.ProcessingInput` objects (default: None).
+            kms_key (str): The ARN of the KMS key that is used to encrypt the
+                user code file (default: None).
             outputs (list[:class:`~sagemaker.processing.ProcessingOutput`]): Outputs for
                 the processing job. These can be specified as either path strings or
                 :class:`~sagemaker.processing.ProcessingOutput` objects (default: None).
@@ -207,6 +210,7 @@ class _SparkProcessorBase(ScriptProcessor):
         super().run(
             submit_app,
             inputs,
+            kms_key,
             outputs,
             arguments,
             wait,
