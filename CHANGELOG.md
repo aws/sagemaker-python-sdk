@@ -1,5 +1,15 @@
 # Changelog
 
+## v2.9.0 (2020-09-17)
+
+### Features
+
+ * add MXNet 1.7.0 images
+
+### Documentation Changes
+
+ * removed Kubernetes workflow content
+
 ## v2.8.0 (2020-09-16)
 
 ### Features
