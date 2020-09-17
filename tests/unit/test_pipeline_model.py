@@ -97,7 +97,7 @@ def test_prepare_container_def(tfo, time, sagemaker_session):
         {
             "Environment": {"SAGEMAKER_DEFAULT_INVOCATIONS_ACCEPT": "text/csv"},
             "Image": "246618743249.dkr.ecr.us-west-2.amazonaws.com"
-            + "/sagemaker-sparkml-serving:2.2",
+            + "/sagemaker-sparkml-serving:2.4",
             "ModelDataUrl": "s3://bucket/model_2.tar.gz",
         },
     ]
