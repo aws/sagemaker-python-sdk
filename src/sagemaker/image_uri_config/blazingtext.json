@@ -1,7 +1,7 @@
 {
     "scope": ["inference", "training"],
     "versions": {
-        "1": {
+        "latest": {
             "registries": {
                 "af-south-1": "455444449433",
                 "ap-east-1": "286214385809",

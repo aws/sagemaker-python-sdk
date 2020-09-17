@@ -177,7 +177,8 @@ def test_algo_uris(algo):
 
     for region in regions.regions():
         uri = image_uris.retrieve(algo, region)
-        assert expected_uris.algo_uri(algo, accounts[region], region) == uri
+        version = "latest" if algo == "blazingtext" else 1
+        assert expected_uris.algo_uri(algo, accounts[region], region, version) == uri
 
 
 def test_lda():
