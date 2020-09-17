@@ -113,13 +113,13 @@ class Processor(object):
     def run(
         self,
         inputs=None,
-        kms_key=None,
         outputs=None,
         arguments=None,
         wait=True,
         logs=True,
         job_name=None,
         experiment_config=None,
+        kms_key=None,
     ):
         """Runs a processing job.
 
@@ -127,8 +127,6 @@ class Processor(object):
             inputs (list[:class:`~sagemaker.processing.ProcessingInput`]): Input files for
                 the processing job. These must be provided as
                 :class:`~sagemaker.processing.ProcessingInput` objects (default: None).
-            kms_key (str): The ARN of the KMS key that is used to encrypt the
-                user code file (default: None).
             outputs (list[:class:`~sagemaker.processing.ProcessingOutput`]): Outputs for
                 the processing job. These can be specified as either path strings or
                 :class:`~sagemaker.processing.ProcessingOutput` objects (default: None).
@@ -142,6 +140,8 @@ class Processor(object):
             experiment_config (dict[str, str]): Experiment management configuration.
                 Dictionary contains three optional keys:
                 'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+            kms_key (str): The ARN of the KMS key that is used to encrypt the
+                user code file (default: None).
 
         Raises:
             ValueError: if ``logs`` is True but ``wait`` is False.
@@ -175,7 +175,13 @@ class Processor(object):
         return inputs, outputs
 
     def _normalize_args(
-        self, job_name=None, arguments=None, inputs=None, kms_key=None, outputs=None, code=None
+        self,
+        job_name=None,
+        arguments=None,
+        inputs=None,
+        outputs=None,
+        code=None,
+        kms_key=None,
     ):
         """Normalizes the arguments so that they can be passed to the job run
 
@@ -417,13 +423,13 @@ class ScriptProcessor(Processor):
         self,
         code,
         inputs=None,
-        kms_key=None,
         outputs=None,
         arguments=None,
         wait=True,
         logs=True,
         job_name=None,
         experiment_config=None,
+        kms_key=None,
     ):
         """Runs a processing job.
 
@@ -433,8 +439,6 @@ class ScriptProcessor(Processor):
             inputs (list[:class:`~sagemaker.processing.ProcessingInput`]): Input files for
                 the processing job. These must be provided as
                 :class:`~sagemaker.processing.ProcessingInput` objects (default: None).
-            kms_key (str): The ARN of the KMS key that is used to encrypt the
-                user code file (default: None).
             outputs (list[:class:`~sagemaker.processing.ProcessingOutput`]): Outputs for
                 the processing job. These can be specified as either path strings or
                 :class:`~sagemaker.processing.ProcessingOutput` objects (default: None).
@@ -448,14 +452,16 @@ class ScriptProcessor(Processor):
             experiment_config (dict[str, str]): Experiment management configuration.
                 Dictionary contains three optional keys:
                 'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+            kms_key (str): The ARN of the KMS key that is used to encrypt the
+                user code file (default: None).
         """
         normalized_inputs, normalized_outputs = self._normalize_args(
             job_name=job_name,
             arguments=arguments,
             inputs=inputs,
-            kms_key=kms_key,
             outputs=outputs,
             code=code,
+            kms_key=kms_key,
         )
 
         self.latest_job = ProcessingJob.start_new(
