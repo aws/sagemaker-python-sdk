@@ -133,12 +133,12 @@ image_registry_map = {
     "af-south-1": {
         "sparkml-serving": "510948584623",
         "scikit-learn": "510948584623",
-        "xgboost": "455444449433",
+        "xgboost": "510948584623",
     },
     "eu-south-1": {
         "sparkml-serving": "978288397137",
         "scikit-learn": "978288397137",
-        "xgboost": "257386234256",
+        "xgboost": "978288397137",
     },
 }
 
