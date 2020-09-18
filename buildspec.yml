@@ -16,7 +16,7 @@ phases:
 
       - start_time=`date +%s`
       - |
-        execute-command-if-has-matching-changes "env -u AWS_DEFAULT_REGION tox -e py38 -- tests/integ -m \"not local_mode\" -n 384 --reruns 3 --reruns-delay 5 --durations 50 --boto-config '{\"region_name\": \"us-east-2\"}'" "tests/integ" "tests/scripts" "tests/data" "tests/conftest.py" "tests/__init__.py" "src/*.py" "setup.py" "setup.cfg" "buildspec.yml"
+        execute-command-if-has-matching-changes "env -u AWS_DEFAULT_REGION tox -e py38 -- tests/integ -m \"not local_mode and not cron\" -n 384 --reruns 3 --reruns-delay 15 --durations 50 --boto-config '{\"region_name\": \"us-east-2\"}'" "tests/integ" "tests/scripts" "tests/data" "tests/conftest.py" "tests/__init__.py" "src/*.py" "setup.py" "setup.cfg" "buildspec.yml"
       - ./ci-scripts/displaytime.sh 'py38 tests/integ' $start_time
 
   post_build:
