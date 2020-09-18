@@ -58,6 +58,8 @@ _DEFAULT_MONITOR_IMAGE_REGION_ACCOUNT_MAPPING = {
     "cn-north-1": "453000072557",
     "cn-northwest-1": "453252182341",
     "us-gov-west-1": "362178532790",
+    "af-south-1": "875698925577",
+    "eu-south-1": "933208885752",
 }
 
 STATISTICS_JSON_DEFAULT_FILE_NAME = "statistics.json"

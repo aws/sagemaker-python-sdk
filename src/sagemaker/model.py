@@ -50,6 +50,8 @@ NEO_IMAGE_ACCOUNT = {
     "cn-north-1": "472730292857",
     "cn-northwest-1": "474822919863",
     "us-gov-west-1": "263933020539",
+    "af-south-1": "774647643957",
+    "eu-south-1": "966458181534",
 }
 
 INFERENTIA_INSTANCE_PREFIX = "ml_inf"

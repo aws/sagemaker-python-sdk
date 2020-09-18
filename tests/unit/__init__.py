@@ -38,4 +38,6 @@ NEO_REGION_LIST = [
     "cn-north-1",
     "cn-northwest-1",
     "us-gov-west-1",
+    "af-south-1",
+    "eu-south-1",
 ]
