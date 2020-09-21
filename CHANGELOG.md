@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.9.2 (2020-09-21)
+
+### Bug Fixes and Other Changes
+
+ * allow kms encryption upload for processing
+
 ## v2.9.1 (2020-09-17)
 
 ### Bug Fixes and Other Changes
