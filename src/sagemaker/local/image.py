@@ -410,7 +410,7 @@ class _SageMakerContainer(object):
                     "InstanceCount": self.instance_count,
                     "InstanceType": self.instance_type,
                     "VolumeSizeInGB": 30,
-                    "VolumeKmsKeyId": None
+                    "VolumeKmsKeyId": 'None'
                 }
             },
             "RoleArn": "<no_role>",
