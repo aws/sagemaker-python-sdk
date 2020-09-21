@@ -407,7 +407,7 @@ class _SageMakerContainer(object):
             "ProcessingOutputConfig": processing_output_config,
             "ProcessingResources": {
                 "ClusterConfig": {
-                    "InstanceCount": self.hosts,
+                    "InstanceCount": self.instance_count,
                     "InstanceType": self.instance_type,
                     "VolumeSizeInGB": 30,
                     "VolumeKmsKeyId": None
