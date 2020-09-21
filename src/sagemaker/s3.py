@@ -83,7 +83,8 @@ class S3Uploader(object):
         sagemaker_session = sagemaker_session or Session()
         bucket, key_prefix = parse_s3_url(url=desired_s3_uri)
         if kms_key is not None:
-            extra_args = {"SSEKMSKeyId": kms_key}
+            extra_args = {"SSEKMSKeyId": kms_key, "ServerSideEncryption": "aws:kms"}
+
         else:
             extra_args = None
 
