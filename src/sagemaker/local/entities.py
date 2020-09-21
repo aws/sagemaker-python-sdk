@@ -55,7 +55,8 @@ class _LocalProcessingJob(object):
         self.start_time = None
         self.end_time = None
 
-    def start(self, processing_inputs, processing_output_config, environment, processing_job_name):
+    def start(self, processing_inputs, processing_output_config, environment, 
+        processing_job_name):
         """
         Args:
             processing_inputs:
@@ -109,8 +110,8 @@ class _LocalProcessingJob(object):
         self.state = self._PROCESSING
 
         self.container.process(
-            processing_inputs, processing_output_config, environment, processing_job_name
-        )
+            processing_inputs, processing_output_config, environment,
+                processing_job_name)
         self.end_time = datetime.datetime.now()
         self.state = self._COMPLETED
 

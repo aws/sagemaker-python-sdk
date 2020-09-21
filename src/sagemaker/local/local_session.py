@@ -111,7 +111,8 @@ class LocalSagemakerClient(object):
         )
         processing_job = _LocalProcessingJob(container)
         logger.info("Starting processing job")
-        processing_job.start(ProcessingInputs, ProcessingOutputConfig, Environment, ProcessingJobName)
+        processing_job.start(ProcessingInputs, ProcessingOutputConfig, Environment, 
+            ProcessingJobName)
 
         LocalSagemakerClient._processing_jobs[ProcessingJobName] = processing_job
         

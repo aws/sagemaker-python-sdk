@@ -134,7 +134,8 @@ class _SageMakerContainer(object):
         # Create the configuration files for each container that we will create.
         for host in self.hosts:
             _create_processing_config_file_directories(self.container_root, host)
-            self.write_processing_config_files(host, environment, processing_inputs, processing_output_config)
+            self.write_processing_config_files(host, environment, processing_inputs, 
+                processing_output_config, processing_job_name)
             
         # Adding region name environment variable.
         environment[REGION_ENV_NAME] = self.sagemaker_session.boto_region_name
@@ -159,7 +160,11 @@ class _SageMakerContainer(object):
             msg = "Failed to run: %s, %s" % (compose_command, str(e))
             raise RuntimeError(msg)
         finally:
-            dirs_to_delete = [shared_dir]
+            # Uploading processing outputs back to Amazon S3.
+            self._upload_processing_outputs(data_dir, processing_output_config)
+            
+            # Deleting temporary directories.
+            dirs_to_delete = [shared_dir, data_dir]
             self._cleanup(dirs_to_delete)
         
         # Print our Job Complete line to have a similar experience to training on SageMaker where
@@ -368,7 +373,8 @@ class _SageMakerContainer(object):
 
         return os.path.join(output_data, "model.tar.gz")
         
-    def write_processing_config_files(self, host, environment, processing_inputs, processing_output_config):
+    def write_processing_config_files(self, host, environment, processing_inputs, 
+        processing_output_config, processing_job_name):
         """Write the config files for the processing containers.
 
         This method writes the hyperparameters, resources and input data
@@ -381,11 +387,39 @@ class _SageMakerContainer(object):
             environment (dict): Environment variable collection.
             processing_inputs (dict): Processing inputs.
             processing_output_config (dict): Processing output configuration.
+            processing_job_name (str): Processing job name.
         """
         config_path = os.path.join(self.container_root, host, "config")
 
         resource_config = {"current_host": host, "hosts": self.hosts}
         _write_json_file(os.path.join(config_path, "resourceconfig.json"), resource_config)
+        
+        processing_job_config = {
+            "ProcessingJobArn": processing_job_name,
+            "ProcessingJobName": processing_job_name,
+            "AppSpecification": {
+                "ImageUri": self.image,
+                "ContainerEntrypoint": self.container_entrypoint,
+                "ContainerArguments": self.container_arguments
+            },
+            "Environment": environment,
+            "ProcessingInputs": processing_inputs,
+            "ProcessingOutputConfig": processing_output_config,
+            "ProcessingResources": {
+                "ClusterConfig": {
+                    "InstanceCount": self.hosts,
+                    "InstanceType": self.instance_type,
+                    "VolumeSizeInGB": 30,
+                    "VolumeKmsKeyId": None
+                }
+            },
+            "RoleArn": "<no_role>",
+            "StoppingCondition": {
+                "MaxRuntimeInSeconds": 86400
+            }
+        }
+        
+        _write_json_file(os.path.join(config_path, "processingjobconfig.json"), processing_job_config)
 
     def write_config_files(self, host, hyperparameters, input_data_config):
         """Write the config files for the training containers.
@@ -472,7 +506,7 @@ class _SageMakerContainer(object):
         Args:
             data_dir:
             processing_inputs:
-            processing_outputs:
+            processing_output_config:
         """
         shared_dir = os.path.join(self.container_root, "shared")
         volumes = []
@@ -484,8 +518,8 @@ class _SageMakerContainer(object):
             input_name = item["InputName"]
             input_container_dir = item["S3Input"]["LocalPath"]
             
-            input_dir = os.path.join(data_dir, "input", input_name)
-            os.makedirs(input_dir)
+            #input_dir = os.path.join(data_dir, "input", input_name)
+            #os.makedirs(input_dir)
             
             data_source = sagemaker.local.data.get_data_source_instance(uri, self.sagemaker_session)
             volumes.append(_Volume(data_source.get_root_dir(), input_container_dir))
@@ -503,6 +537,27 @@ class _SageMakerContainer(object):
         volumes.append(_Volume(shared_dir, '/opt/ml/shared'))
 
         return volumes
+        
+    def _upload_processing_outputs(self, data_dir, processing_output_config):
+        """
+        Args:
+            data_dir:
+            processing_output_config:
+        """
+        if processing_output_config and 'Outputs' in processing_output_config: 
+            for item in processing_output_config['Outputs']:
+                output_name = item["OutputName"]
+                output_s3_uri = item["S3Output"]["S3Uri"]
+                output_dir = os.path.join(data_dir, "output", output_name)
+                
+                sagemaker.local.utils.move_to_destination(
+                    output_dir,
+                    output_s3_uri,
+                    "",
+                    self.sagemaker_session
+                )
+                
+                print('Moving to destination ' + output_dir + ' --> ' + output_s3_uri)
 
     def _update_local_src_path(self, params, key):
         """
