@@ -1,5 +1,21 @@
 # Changelog
 
+## v2.9.1 (2020-09-17)
+
+### Bug Fixes and Other Changes
+
+ * update spark image_uri config with eu-north-1 account
+
+## v2.9.0 (2020-09-17)
+
+### Features
+
+ * add MXNet 1.7.0 images
+
+### Documentation Changes
+
+ * removed Kubernetes workflow content
+
 ## v2.8.0 (2020-09-16)
 
 ### Features
