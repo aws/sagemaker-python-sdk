@@ -672,15 +672,24 @@ class ModelMonitor(object):
                 "MonitoringJobDefinition"
             ]["StoppingCondition"].get("MaxRuntimeInSeconds")
 
-        env = schedule_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["Environment"]
+        env = schedule_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"].get(
+            "Environment", None
+        )
 
         network_config_dict = schedule_desc["MonitoringScheduleConfig"][
             "MonitoringJobDefinition"
         ].get("NetworkConfig")
 
-        vpc_config = schedule_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-            "NetworkConfig"
-        ].get("VpcConfig")
+        vpc_config = None
+        if (
+            schedule_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"].get(
+                "NetworkConfig"
+            )
+            is not None
+        ):
+            vpc_config = schedule_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+                "NetworkConfig"
+            ].get("VpcConfig")
 
         security_group_ids = None
         if vpc_config is not None:
@@ -690,6 +699,7 @@ class ModelMonitor(object):
         if vpc_config is not None:
             subnets = vpc_config["Subnets"]
 
+        network_config = None
         if network_config_dict:
             network_config = NetworkConfig(
                 enable_network_isolation=network_config_dict["EnableNetworkIsolation"],

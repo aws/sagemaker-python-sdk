@@ -63,6 +63,31 @@ INTER_CONTAINER_ENCRYPTION_EXCEPTION_MSG = (
 )
 "encrypt_inter_container_traffic=None when creating your NetworkConfig object."
 
+MONITORING_SCHEDULE_DESC = {
+    "MonitoringScheduleArn": "arn:aws:monitoring-schedule",
+    "MonitoringScheduleName": "my-monitoring-schedule",
+    "MonitoringScheduleConfig": {
+        "MonitoringJobDefinition": {
+            "MonitoringOutputConfig": {},
+            "MonitoringResources": {
+                "ClusterConfig": {
+                    "InstanceCount": 1,
+                    "InstanceType": "ml.t3.medium",
+                    "VolumeSizeInGB": 8,
+                }
+            },
+            "MonitoringAppSpecification": {
+                "ImageUri": "image-uri",
+                "ContainerEntrypoint": [
+                    "entrypoint.py",
+                ],
+            },
+            "RoleArn": ROLE,
+        }
+    },
+    "EndpointName": "my-endpoint",
+}
+
 
 # TODO-reinvent-2019: Continue to flesh these out.
 @pytest.fixture()
@@ -80,6 +105,9 @@ def sagemaker_session():
         name="upload_data", return_value="mocked_s3_uri_from_upload_data"
     )
     session_mock.download_data = Mock(name="download_data")
+    session_mock.describe_monitoring_schedule = Mock(
+        name="describe_monitoring_schedule", return_value=MONITORING_SCHEDULE_DESC
+    )
     return session_mock
 
 
@@ -151,6 +179,17 @@ def test_default_model_monitor_with_invalid_network_config(sagemaker_session):
     with pytest.raises(ValueError) as exception:
         my_default_monitor.update_monitoring_schedule()
     assert INTER_CONTAINER_ENCRYPTION_EXCEPTION_MSG in str(exception.value)
+
+
+def test_model_monitor_without_network_config(sagemaker_session):
+    my_model_monitor = ModelMonitor(
+        role=ROLE,
+        image_uri=CUSTOM_IMAGE_URI,
+        sagemaker_session=sagemaker_session,
+    )
+    model_monitor_schedule_name = "model-monitoring-without-netwotk-config"
+    attached = my_model_monitor.attach(model_monitor_schedule_name, sagemaker_session)
+    assert attached.network_config is None
 
 
 def test_model_monitor_with_invalid_network_config(sagemaker_session):
