@@ -26,8 +26,7 @@ logger = logging.getLogger("sagemaker")
 
 
 class AutoML(object):
-    """A class for creating and interacting with SageMaker AutoML jobs
-    """
+    """A class for creating and interacting with SageMaker AutoML jobs"""
 
     def __init__(
         self,
@@ -184,6 +183,7 @@ class AutoML(object):
         Args:
             job_name (str): The name of the AutoML job. If None, will use object's
                 _current_auto_ml_job_name.
+
         Returns:
             dict: a dictionary with information of the best candidate
         """
@@ -227,6 +227,7 @@ class AutoML(object):
                 Default to None.
             max_results (int): The number of candidates will be listed in results,
                 between 1 to 100. Default to None. If None, will return all the candidates.
+
         Returns:
             list: A list of dictionaries with candidates information
         """
@@ -289,7 +290,6 @@ class AutoML(object):
 
         Returns:
             PipelineModel object
-
         """
         sagemaker_session = sagemaker_session or self.sagemaker_session
 
@@ -435,7 +435,6 @@ class AutoML(object):
 
         Raises (ValueError): raises ValueError if one of problem_type and job_objective is provided
             while the other is None.
-
         """
         if not (problem_type and job_objective) and (problem_type or job_objective):
             raise ValueError(
@@ -501,7 +500,6 @@ class AutoML(object):
         Raises:
             ValueError, if one or more keys in inference_response_keys are not supported
             the inference pipeline.
-
         """
         if not inference_response_keys:
             return
@@ -538,7 +536,6 @@ class AutoML(object):
 
         Raises:
             ValueError: if one or more of inference_response_keys are unsupported by the model
-
         """
         if not inference_response_keys:
             return
@@ -705,12 +702,11 @@ class AutoMLJob(_Job):
         Args:
             inputs (str, list[str]): local path(s) or S3 uri(s) of input datasets.
             validate_uri (bool): indicates whether it is needed to validate S3 uri.
-            compression (str):
+            compression (str): Compression type of the input data.
             target_attribute_name (str): the target attribute name for classification
                 or regression.
 
         Returns (dict): a dict of AutoML InputDataConfig
-
         """
         if inputs is None:
             return None
@@ -759,7 +755,6 @@ class AutoMLJob(_Job):
             total_job_runtime_in_seconds (int): the total wait time of an AutoML job.
 
         Returns (dict): an AutoML CompletionCriteria.
-
         """
         stopping_condition = {"MaxCandidates": max_candidates}
 
@@ -778,6 +773,7 @@ class AutoMLJob(_Job):
 
     def wait(self, logs=True):
         """Wait for the AutoML job to finish.
+
         Args:
             logs (bool): indicate whether to output logs.
         """

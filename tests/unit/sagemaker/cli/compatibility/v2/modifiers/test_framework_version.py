@@ -28,7 +28,11 @@ class Template:
     """
 
     def __init__(
-        self, framework, framework_version, py_version, py_version_for_model=True,
+        self,
+        framework,
+        framework_version,
+        py_version,
+        py_version_for_model=True,
     ):
         self.framework = framework
         self.framework_version = framework_version
@@ -97,9 +101,21 @@ TEMPLATES = [
         py_version="py2",
         py_version_for_model=False,
     ),
-    Template(framework="MXNet", framework_version="1.2.0", py_version="py2",),
-    Template(framework="Chainer", framework_version="4.1.0", py_version="py3",),
-    Template(framework="PyTorch", framework_version="0.4.0", py_version="py3",),
+    Template(
+        framework="MXNet",
+        framework_version="1.2.0",
+        py_version="py2",
+    ),
+    Template(
+        framework="Chainer",
+        framework_version="4.1.0",
+        py_version="py3",
+    ),
+    Template(
+        framework="PyTorch",
+        framework_version="0.4.0",
+        py_version="py3",
+    ),
     Template(
         framework="SKLearn",
         framework_version="0.20.0",

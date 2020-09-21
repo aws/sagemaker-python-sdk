@@ -1574,8 +1574,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Args:
             job (str): Name of the auto ml job to wait for.
             poll (int): Polling interval in seconds (default: 5).
+
         Returns:
             (dict): Return value from the ``DescribeAutoMLJob`` API.
+
         Raises:
             exceptions.UnexpectedStatusException: If the auto ml job fails.
         """
@@ -3030,7 +3032,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
             lambda: self.sagemaker_client.describe_model(ModelName=name)
         ):
             primary_container = container_def(
-                image_uri=image_uri, model_data_url=model_s3_location, env=model_environment_vars,
+                image_uri=image_uri,
+                model_data_url=model_s3_location,
+                env=model_environment_vars,
             )
             self.create_model(
                 name=name, role=role, container_defs=primary_container, vpc_config=model_vpc_config

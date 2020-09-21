@@ -2125,7 +2125,6 @@ def test_generic_deploy_accelerator_type(sagemaker_session):
     e.deploy(INSTANCE_COUNT, INSTANCE_TYPE, accelerator_type=ACCELERATOR_TYPE)
 
     args = e.sagemaker_session.endpoint_from_production_variants.call_args[1]
-    print(args)
     assert args["name"].startswith(IMAGE_URI)
     assert args["production_variants"][0]["AcceleratorType"] == ACCELERATOR_TYPE
     assert args["production_variants"][0]["InitialInstanceCount"] == INSTANCE_COUNT
@@ -2182,7 +2181,6 @@ def test_local_mode(session_class, local_session_class):
     session_class.return_value = session
 
     e = Estimator(IMAGE_URI, ROLE, INSTANCE_COUNT, "local")
-    print(e.sagemaker_session.local_mode)
     assert e.sagemaker_session.local_mode is True
 
     e2 = Estimator(IMAGE_URI, ROLE, INSTANCE_COUNT, "local_gpu")
@@ -2246,6 +2244,25 @@ def test_prepare_init_params_from_job_description_with_algorithm_training_job():
         init_params["algorithm_arn"]
         == "arn:aws:sagemaker:us-east-2:1234:algorithm/scikit-decision-trees"
     )
+
+
+def test_prepare_init_params_from_job_description_with_spot_training():
+    job_description = RETURNED_JOB_DESCRIPTION.copy()
+    job_description["EnableManagedSpotTraining"] = True
+    job_description["StoppingCondition"] = {
+        "MaxRuntimeInSeconds": 86400,
+        "MaxWaitTimeInSeconds": 87000,
+    }
+
+    init_params = EstimatorBase._prepare_init_params_from_job_description(
+        job_details=job_description
+    )
+
+    assert init_params["role"] == "arn:aws:iam::366:role/SageMakerRole"
+    assert init_params["instance_count"] == 1
+    assert init_params["use_spot_instances"]
+    assert init_params["max_run"] == 86400
+    assert init_params["max_wait"] == 87000
 
 
 def test_prepare_init_params_from_job_description_with_invalid_training_job():

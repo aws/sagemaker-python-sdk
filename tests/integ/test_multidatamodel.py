@@ -117,8 +117,7 @@ def _delete_repository(ecr_client, repository_name):
 
 
 def _ecr_login(ecr_client):
-    """ Get a login credentials for an ecr client.
-    """
+    """Get a login credentials for an ecr client."""
     login = ecr_client.get_authorization_token()
     b64token = login["authorizationData"][0]["authorizationToken"].encode("utf-8")
     username, password = base64.b64decode(b64token).decode("utf-8").split(":")

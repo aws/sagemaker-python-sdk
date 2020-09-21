@@ -178,7 +178,7 @@ class _SageMakerContainer(object):
         Args:
             input_data_config (dict): The Input Data Configuration, this contains data such as the
                 channels to be used for training.
-            output_data_config:
+            output_data_config: The configuration of the output data.
             hyperparameters (dict): The HyperParameters for the training job.
             job_name (str): Name of the local training job being run.
 
@@ -313,8 +313,8 @@ class _SageMakerContainer(object):
         Args:
             compose_data (dict): Docker-Compose configuration in dictionary
                 format.
-            output_data_config:
-            job_name:
+            output_data_config: The configuration of the output data.
+            job_name: The name of the job.
 
         Returns: Local path to the collected model artifacts.
         """
@@ -560,10 +560,14 @@ class _SageMakerContainer(object):
                 print('Moving to destination ' + output_dir + ' --> ' + output_s3_uri)
 
     def _update_local_src_path(self, params, key):
-        """
+        """Updates the local path of source code.
+
         Args:
-            params:
-            key:
+            params: Existing configuration parameters.
+            key: Lookup key for the path of the source code in the configuration parameters.
+
+        Returns:
+            The updated parameters.
         """
         if key in params:
             src_dir = json.loads(params[key])
@@ -575,9 +579,10 @@ class _SageMakerContainer(object):
         return params
 
     def _prepare_serving_volumes(self, model_location):
-        """
+        """Prepares the serving volumes.
+
         Args:
-            model_location:
+            model_location: Location of the models.
         """
         volumes = []
         host = self.hosts[0]
@@ -821,9 +826,10 @@ class _Volume(object):
     """Represent a Volume that will be mapped to a container."""
 
     def __init__(self, host_dir, container_dir=None, channel=None):
-        """Create a Volume instance
+        """Create a Volume instance.
 
-        the container path can be provided as a container_dir or as a channel name but not both.
+        The container path can be provided as a container_dir or as a channel name but not both.
+
         Args:
             host_dir (str): path to the volume data in the host
             container_dir (str): path inside the container that host_dir will be mapped to

@@ -153,14 +153,23 @@ def test_create_sagemaker_model_generates_model_name(
     container_def = {"Image": MODEL_IMAGE, "Environment": {}, "ModelDataUrl": MODEL_DATA}
     prepare_container_def.return_value = container_def
 
-    model = Model(MODEL_IMAGE, MODEL_DATA, sagemaker_session=sagemaker_session,)
+    model = Model(
+        MODEL_IMAGE,
+        MODEL_DATA,
+        sagemaker_session=sagemaker_session,
+    )
     model._create_sagemaker_model(INSTANCE_TYPE)
 
     base_name_from_image.assert_called_with(MODEL_IMAGE)
     name_from_base.assert_called_with(base_name_from_image.return_value)
 
     sagemaker_session.create_model.assert_called_with(
-        MODEL_NAME, None, container_def, vpc_config=None, enable_network_isolation=False, tags=None,
+        MODEL_NAME,
+        None,
+        container_def,
+        vpc_config=None,
+        enable_network_isolation=False,
+        tags=None,
     )
 
 
@@ -173,7 +182,11 @@ def test_create_sagemaker_model_generates_model_name_each_time(
     container_def = {"Image": MODEL_IMAGE, "Environment": {}, "ModelDataUrl": MODEL_DATA}
     prepare_container_def.return_value = container_def
 
-    model = Model(MODEL_IMAGE, MODEL_DATA, sagemaker_session=sagemaker_session,)
+    model = Model(
+        MODEL_IMAGE,
+        MODEL_DATA,
+        sagemaker_session=sagemaker_session,
+    )
     model._create_sagemaker_model(INSTANCE_TYPE)
     model._create_sagemaker_model(INSTANCE_TYPE)
 

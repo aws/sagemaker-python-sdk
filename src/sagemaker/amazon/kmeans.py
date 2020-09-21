@@ -29,7 +29,7 @@ class KMeans(AmazonAlgorithmEstimatorBase):
 
     As the result of KMeans, members of a group are as similar as possible to one another and as
     different as possible from members of other groups. You define the attributes that you want
-    the algorithm to use to determine similarity. """
+    the algorithm to use to determine similarity."""
 
     repo_name = "kmeans"
     repo_version = 1
@@ -257,7 +257,9 @@ class KMeansModel(Model):
         """
         sagemaker_session = sagemaker_session or Session()
         image_uri = image_uris.retrieve(
-            KMeans.repo_name, sagemaker_session.boto_region_name, version=KMeans.repo_version,
+            KMeans.repo_name,
+            sagemaker_session.boto_region_name,
+            version=KMeans.repo_version,
         )
         super(KMeansModel, self).__init__(
             image_uri,

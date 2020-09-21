@@ -33,7 +33,7 @@ screen.set_use_colors(False)  # Simple text logging so it looks good in CloudWat
 
 
 class CoachConfigurationList(ConfigurationList):
-    """Helper Object for converting CLI arguments (or SageMaker hyperparameters) 
+    """Helper Object for converting CLI arguments (or SageMaker hyperparameters)
     into Coach configuration.
     """
 
@@ -270,7 +270,7 @@ class SageMakerCoachPresetLauncher(CoachLauncher):
 
     @classmethod
     def train_main(cls):
-        """Entrypoint for training.  
+        """Entrypoint for training.
         Parses command-line arguments and starts training.
         """
         trainer = cls()
@@ -303,8 +303,7 @@ class SageMakerCoachLauncher(SageMakerCoachPresetLauncher):
         )
 
     def get_graph_manager_from_args(self, args):
-        """Returns the GraphManager object for coach to use to train by calling improve()
-        """
+        """Returns the GraphManager object for coach to use to train by calling improve()"""
         # NOTE: TaskParameters are not configurable at this time.
 
         # Visualization

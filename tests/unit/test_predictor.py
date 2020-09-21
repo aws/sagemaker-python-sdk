@@ -323,7 +323,8 @@ def test_update_endpoint_instance_type_and_count(name_from_base, production_vari
     new_instance_type = "ml.c4.xlarge"
 
     predictor.update_endpoint(
-        initial_instance_count=new_instance_count, instance_type=new_instance_type,
+        initial_instance_count=new_instance_count,
+        instance_type=new_instance_type,
     )
 
     assert [existing_model_name] == predictor._model_names

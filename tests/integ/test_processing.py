@@ -59,7 +59,10 @@ def sagemaker_session_with_custom_bucket(
 
 @pytest.fixture(scope="module")
 def image_uri(
-    sklearn_latest_version, sklearn_latest_py_version, cpu_instance_type, sagemaker_session,
+    sklearn_latest_version,
+    sklearn_latest_py_version,
+    cpu_instance_type,
+    sagemaker_session,
 ):
     return image_uris.retrieve(
         "sklearn",

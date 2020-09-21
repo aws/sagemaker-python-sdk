@@ -158,7 +158,13 @@ def add_region(existing_content, region, account):
 
 
 def add_version(
-    existing_content, short_version, full_version, scope, processors, py_versions, tag_prefix,
+    existing_content,
+    short_version,
+    full_version,
+    scope,
+    processors,
+    py_versions,
+    tag_prefix,
 ):
     """Read framework image uri information from json file to a dictionary, update it with new
     framework version information, then write the dictionary back to json file.
@@ -172,7 +178,7 @@ def add_version(
         processors (str): Supported processors (e.g. "cpu,gpu").
         py_versions (str): Supported Python versions (e.g. "py3,py37").
         tag_prefix (str): Algorithm image's tag prefix.
-     """
+    """
     if py_versions:
         py_versions = py_versions.split(",")
     processors = processors.split(",")

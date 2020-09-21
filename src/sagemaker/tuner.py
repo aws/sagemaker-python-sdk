@@ -1021,8 +1021,7 @@ class HyperparameterTuner(object):
         )
 
     def hyperparameter_ranges_dict(self):
-        """Return a dictionary of hyperparameter ranges for all estimators in ``estimator_dict``
-        """
+        """Return a dictionary of hyperparameter ranges for all estimators in ``estimator_dict``"""
         if self._hyperparameter_ranges_dict is None:
             return None
 

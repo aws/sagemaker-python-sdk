@@ -871,6 +871,12 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                     init_params["model_uri"] = channel["DataSource"]["S3DataSource"]["S3Uri"]
                     break
 
+        if job_details.get("EnableManagedSpotTraining", False):
+            init_params["use_spot_instances"] = True
+            max_wait = job_details.get("StoppingCondition", {}).get("MaxWaitTimeInSeconds")
+            if max_wait:
+                init_params["max_wait"] = max_wait
+
         return init_params
 
     def transformer(
@@ -1483,8 +1489,9 @@ class Framework(EstimatorBase):
         enable_sagemaker_metrics=None,
         **kwargs
     ):
-        """Base class initializer. Subclasses which override ``__init__`` should
-        invoke ``super()``
+        """Base class initializer.
+
+        Subclasses which override ``__init__`` should invoke ``super()``.
 
         Args:
             entry_point (str): Path (absolute or relative) to the local Python
@@ -1493,8 +1500,8 @@ class Framework(EstimatorBase):
                 must point to a file located at the root of ``source_dir``.
                 If 'git_config' is provided, 'entry_point' should be
                 a relative location to the Python source file in the Git repo.
-                Example:
 
+                Example:
                     With the following GitHub repo directory structure:
 
                     >>> |----- README.md
@@ -1723,9 +1730,7 @@ class Framework(EstimatorBase):
         self._validate_and_set_debugger_configs()
 
     def _validate_and_set_debugger_configs(self):
-        """
-        Set defaults for debugging
-        """
+        """Set defaults for debugging."""
         if self.debugger_hook_config is None and _region_supports_debugger(
             self.sagemaker_session.boto_region_name
         ):

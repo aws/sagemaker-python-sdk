@@ -1,5 +1,99 @@
 # Changelog
 
+## v2.9.1 (2020-09-17)
+
+### Bug Fixes and Other Changes
+
+ * update spark image_uri config with eu-north-1 account
+
+## v2.9.0 (2020-09-17)
+
+### Features
+
+ * add MXNet 1.7.0 images
+
+### Documentation Changes
+
+ * removed Kubernetes workflow content
+
+## v2.8.0 (2020-09-16)
+
+### Features
+
+ * add spark processing support to processing jobs
+
+### Bug Fixes and Other Changes
+
+ * remove DataFrame assert from unrelated test
+
+## v2.7.0 (2020-09-15)
+
+### Features
+
+ * reshape Parents into experiment analytics dataframe
+
+## v2.6.0 (2020-09-14)
+
+### Features
+
+ * add model monitor image accounts for af-south-1 and eu-south-1
+
+### Bug Fixes and Other Changes
+
+ * enforce some docstyle conventions
+
+### Documentation Changes
+
+ * fix CSVSerializer typo in v2.rst
+
+## v2.5.5 (2020-09-10)
+
+### Bug Fixes and Other Changes
+
+ * update PyTorch 1.6.0 inference image uri config
+ * set use_spot_instances and max_wait as init params from job description
+ * run integ tests when image_uri_config jsons are changed
+ * Revert "fix: update pytorch inference 1.6 image uri config (#1873)"
+ * update pytorch inference 1.6 image uri config
+
+### Documentation Changes
+
+ * fix typo in v2.rst
+
+### Testing and Release Infrastructure
+
+ * fix PyTorch inference packed model integ test
+
+## v2.5.4 (2020-09-08)
+
+### Bug Fixes and Other Changes
+
+ * update max_run_wait to max_wait in v2.rst for estimator parameters
+ * Updating regional account ids for af-south-1 and eu-south-1
+ * add account ids for af-south-1 and eu-south-1 for debugger rules
+
+## v2.5.3 (2020-09-02)
+
+### Bug Fixes and Other Changes
+
+ * Revert "change: update image uri config for pytorch 1.6.0 inference (#1864)"
+ * update image uri config for pytorch 1.6.0 inference
+ * add missing framework version image uri config
+
+## v2.5.2 (2020-08-31)
+
+### Bug Fixes and Other Changes
+
+ * refactor normalization of args for processing
+ * set TF 2.1.1 as highest py2 version for TF
+ * decrease integ test concurrency and increase delay between retries
+
+## v2.5.1 (2020-08-27)
+
+### Bug Fixes and Other Changes
+
+ * formatting changes from updates to black
+
 ## v2.5.0 (2020-08-25)
 
 ### Features
