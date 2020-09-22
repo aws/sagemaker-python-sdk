@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.9.3 (2020-09-22)
+
+### Feature
+
+ * add sdk support for sparkml serving container version 2.4
+
 ## v2.9.2 (2020-09-21)
 
 ### Bug Fixes and Other Changes
