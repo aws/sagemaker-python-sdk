@@ -1,10 +1,10 @@
 # Changelog
 
-## v2.9.3 (2020-09-22)
+## v2.10.0 (2020-09-23)
 
-### Feature
+### Features
 
- * add sdk support for sparkml serving container version 2.4
+ * add inferentia pytorch inference container config
 
 ## v2.9.2 (2020-09-21)
 
