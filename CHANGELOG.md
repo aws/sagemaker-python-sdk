@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.10.0 (2020-09-23)
+
+### Features
+
+ * add inferentia pytorch inference container config
+
 ## v2.9.2 (2020-09-21)
 
 ### Bug Fixes and Other Changes
