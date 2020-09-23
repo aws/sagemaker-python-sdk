@@ -127,10 +127,6 @@ class _SageMakerContainer(object):
             data_dir, processing_inputs, processing_output_config
         )
         
-        print('Processing volumes: ')
-        for vol in volumes:
-            print(vol.host_dir + ':' + vol.container_dir)
-        
         # Create the configuration files for each container that we will create.
         for host in self.hosts:
             _create_processing_config_file_directories(self.container_root, host)
@@ -556,8 +552,6 @@ class _SageMakerContainer(object):
                     "",
                     self.sagemaker_session
                 )
-                
-                print('Moving to destination ' + output_dir + ' --> ' + output_s3_uri)
 
     def _update_local_src_path(self, params, key):
         """Updates the local path of source code.
@@ -715,10 +709,10 @@ class _SageMakerContainer(object):
             host_config['command'] = command
         else:
             if self.container_entrypoint:
-                host_config['entrypoint'] = " ".join(self.container_entrypoint) + " " \
-                    + " ".join(self.container_arguments)
+                host_config['entrypoint'] = self.container_entrypoint
+            if self.container_arguments:
+                host_config['entrypoint'] += self.container_arguments
         
-
         # for GPU support pass in nvidia as the runtime, this is equivalent
         # to setting --runtime=nvidia in the docker commandline.
         if self.instance_type == "local_gpu":
