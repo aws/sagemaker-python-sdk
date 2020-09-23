@@ -187,7 +187,7 @@ def test_model_monitor_without_network_config(sagemaker_session):
         image_uri=CUSTOM_IMAGE_URI,
         sagemaker_session=sagemaker_session,
     )
-    model_monitor_schedule_name = "model-monitoring-without-netwotk-config"
+    model_monitor_schedule_name = "model-monitoring-without-network-config"
     attached = my_model_monitor.attach(model_monitor_schedule_name, sagemaker_session)
     assert attached.network_config is None
 
