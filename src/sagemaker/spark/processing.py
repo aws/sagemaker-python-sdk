@@ -35,6 +35,7 @@ from sagemaker import image_uris
 from sagemaker.local.image import _ecr_login_if_needed, _pull_image
 from sagemaker.processing import ProcessingInput, ProcessingOutput, ScriptProcessor
 from sagemaker.s3 import S3Uploader
+from sagemaker.local import LocalSession
 from sagemaker.session import Session
 from sagemaker.spark import defaults
 
@@ -143,7 +144,17 @@ class _SparkProcessorBase(ScriptProcessor):
         """
         self.history_server = None
         self._spark_event_logs_s3_uri = None
-        session = sagemaker_session or Session()
+        
+        if instance_type in ("local", "local_gpu"):
+            session = sagemaker_session or LocalSession()
+            if not isinstance(session, LocalSession):
+                raise RuntimeError(
+                    "instance_type local or local_gpu is only supported with an"
+                    "instance of LocalSession"
+                )
+        else:
+            session = sagemaker_session or Session()
+        
         region = session.boto_region_name
 
         self.image_uri = self._retrieve_image_uri(

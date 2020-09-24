@@ -54,6 +54,10 @@ class _LocalProcessingJob(object):
         self.state = "Created"
         self.start_time = None
         self.end_time = None
+        self.processing_job_name = ""
+        self.processing_inputs = None
+        self.processing_output_config = None
+        self.environment = None
 
     def start(self, processing_inputs, processing_output_config, environment, 
         processing_job_name):
@@ -101,13 +105,16 @@ class _LocalProcessingJob(object):
                         )
                         
                 if upload_mode != "EndOfJob":
-                    raise RuntimeError(
-                        "UploadMode: %s is not currently supported in Local Mode"
-                        % upload_mode
-                    )
+                    logger.warn("UploadMode: %s is not currently supported in Local Mode. Using EndOfJob."
+                        % upload_mode)
 
         self.start_time = datetime.datetime.now()
         self.state = self._PROCESSING
+        
+        self.processing_job_name = processing_job_name
+        self.processing_inputs = processing_inputs
+        self.processing_output_config = processing_output_config
+        self.environment = environment
 
         self.container.process(
             processing_inputs, processing_output_config, environment,
@@ -117,12 +124,35 @@ class _LocalProcessingJob(object):
 
     def describe(self):
         """Placeholder docstring"""
+        
         response = {
-            "ProcessingResources": {"ClusterConfig": {"InstanceCount": self.container.instance_count}},
+            "ProcessingJobArn": self.processing_job_name,
+            "ProcessingJobName": self.processing_job_name,
+            "AppSpecification": {
+                "ImageUri": self.container.image,
+                "ContainerEntrypoint": self.container.container_entrypoint,
+                "ContainerArguments": self.container.container_arguments
+            },
+            "Environment": self.environment,
+            "ProcessingInputs": self.processing_inputs,
+            "ProcessingOutputConfig": self.processing_output_config,
+            "ProcessingResources": {
+                "ClusterConfig": {
+                    "InstanceCount": self.container.instance_count,
+                    "InstanceType": self.container.instance_type,
+                    "VolumeSizeInGB": 30,
+                    "VolumeKmsKeyId": 'None'
+                }
+            },
+            "RoleArn": "<no_role>",
+            "StoppingCondition": {
+                "MaxRuntimeInSeconds": 86400
+            },
             "ProcessingJobStatus": self.state,
             "ProcessingStartTime": self.start_time,
             "ProcessingEndTime": self.end_time
         }
+        
         return response
 
 class _LocalTrainingJob(object):
