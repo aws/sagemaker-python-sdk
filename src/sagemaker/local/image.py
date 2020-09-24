@@ -695,9 +695,12 @@ class _SageMakerContainer(object):
         """
         optml_volumes = self._build_optml_volumes(host, optml_subdirs)
         optml_volumes.extend(volumes)
+        
+        container_name_prefix = "".join(random.choice(string.ascii_lowercase + string.digits) for _ in range(10))
 
         host_config = {
             "image": self.image,
+            "container_name": container_name_prefix + "-" + host,
             "stdin_open": True,
             "tty": True,
             "volumes": [v.map for v in optml_volumes],
