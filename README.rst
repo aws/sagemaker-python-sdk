@@ -164,7 +164,7 @@ Setup a Python environment, and install the dependencies listed in ``doc/require
     # conda
     conda create -n sagemaker python=3.7
     conda activate sagemaker
-    conda install --file doc/requirements.txt
+    conda install sphinx=3.1.1 sphinx_rtd_theme=0.5.0
 
     # pip
     pip install -r doc/requirements.txt
