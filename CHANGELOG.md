@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.72.1 (2020-09-28)
+
+### Bug Fixes and Other Changes
+
+ * add missing account IDs for af-south-1 and eu-south-1
+
+### Testing and Release Infrastructure
+
+ * update release build integ test command
+ * remove canary_quick pytest mark
+ * fix release buildspec pytest command flag order
+ * update buildspecs for v1
+
 ## v1.72.0 (2020-07-29)
 
 ### Features
