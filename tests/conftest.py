@@ -44,6 +44,7 @@ FRAMEWORKS_FOR_GENERATED_VERSION_FIXTURES = (
     "coach_tensorflow",
     "inferentia_mxnet",
     "inferentia_tensorflow",
+    "inferentia_pytorch",
     "mxnet",
     "neo_mxnet",
     "neo_pytorch",

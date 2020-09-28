@@ -17,6 +17,8 @@ import os
 
 import pytest
 
+from botocore.errorfactory import ClientError
+
 from sagemaker.sparkml.model import SparkMLModel
 from sagemaker.utils import sagemaker_timestamp
 from tests.integ import DATA_DIR
@@ -24,12 +26,9 @@ from tests.integ.timeout import timeout_and_delete_endpoint_by_name
 
 
 @pytest.mark.canary_quick
-@pytest.mark.skip(
-    reason="This test has always failed, but the failure was masked by a bug. "
-    "This test should be fixed. Details in https://github.com/aws/sagemaker-python-sdk/pull/968"
-)
 def test_sparkml_model_deploy(sagemaker_session, cpu_instance_type):
-    # Uploads an MLeap serialized MLeap model to S3 and use that to deploy a SparkML model to perform inference
+    # Uploads an MLeap serialized MLeap model to S3 and use that to deploy
+    # a SparkML model to perform inference
     data_path = os.path.join(DATA_DIR, "sparkml_model")
     endpoint_name = "test-sparkml-deploy-{}".format(sagemaker_timestamp())
     model_data = sagemaker_session.upload_data(
@@ -59,7 +58,8 @@ def test_sparkml_model_deploy(sagemaker_session, cpu_instance_type):
         predictor = model.deploy(1, cpu_instance_type, endpoint_name=endpoint_name)
 
         valid_data = "1.0,C,38.0,71.5,1.0,female"
-        assert predictor.predict(valid_data) == "1.0,0.0,38.0,1.0,71.5,0.0,1.0"
+        assert predictor.predict(valid_data) == b"1.0,0.0,38.0,1.0,71.5,0.0,1.0"
 
         invalid_data = "1.0,28.0,C,38.0,71.5,1.0"
-        assert predictor.predict(invalid_data) is None
+        with pytest.raises(ClientError):
+            predictor.predict(invalid_data)
