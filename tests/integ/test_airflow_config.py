@@ -67,7 +67,6 @@ ROLE = "SageMakerRole"
 SINGLE_INSTANCE_COUNT = 1
 
 
-@pytest.mark.canary_quick
 def test_byo_airflow_config_uploads_data_source_to_s3_when_inputs_provided(
     sagemaker_session, cpu_instance_type
 ):
