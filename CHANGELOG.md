@@ -1,5 +1,20 @@
 # Changelog
 
+## v2.11.0 (2020-09-28)
+
+### Features
+
+ * Add SDK support for SparkML Serving Container version 2.4
+
+### Bug Fixes and Other Changes
+
+ * pin pytest version <6.1.0 to avoid pytest-rerunfailures breaking changes
+ * temporarily skip the MxNet Neo test until we fix them
+
+### Documentation Changes
+
+ * fix conda setup for docs
+
 ## v2.10.0 (2020-09-23)
 
 ### Features
