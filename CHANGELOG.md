@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.12.0 (2020-09-29)
+
+### Features
+
+ * upgrade Neo MxNet to 1.7
+
 ## v2.11.0 (2020-09-28)
 
 ### Features
