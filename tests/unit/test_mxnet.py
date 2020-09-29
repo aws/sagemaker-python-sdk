@@ -175,7 +175,7 @@ def _create_compilation_job(input_shape, output_location):
 
 
 def _neo_inference_image(mxnet_version):
-    return "301217895009.dkr.ecr.us-west-2.amazonaws.com/sagemaker-inference-{}:{}-cpu-py3".format(
+    return "301217895009.dkr.ecr.us-west-2.amazonaws.com/sagemaker-neo-{}:{}-cpu-py3".format(
         FRAMEWORK.lower(), mxnet_version
     )
 
