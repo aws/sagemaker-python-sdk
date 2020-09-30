@@ -1,5 +1,15 @@
 # Changelog
 
+## v2.13.0 (2020-09-30)
+
+### Features
+
+ * add xgboost framework version 1.2-1
+
+### Bug Fixes and Other Changes
+
+ * revert "feature: upgrade Neo MxNet to 1.7 (#1928)"
+
 ## v2.12.0 (2020-09-29)
 
 ### Features
