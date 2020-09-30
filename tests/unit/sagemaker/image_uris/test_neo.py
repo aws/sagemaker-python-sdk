@@ -19,7 +19,7 @@ from tests.unit.sagemaker.image_uris import expected_uris, regions
 
 
 INFERENTIA_REGIONS = ("us-east-1", "us-west-2")
-NEO_ALGOS = ("image-classification-neo", "xgboost-neo")
+NEO_ALGOS = ("image-classification-neo", "neo-xgboost")
 
 ACCOUNTS = {
     "af-south-1": "774647643957",
