@@ -44,7 +44,8 @@ ALGO_REGISTRIES = {
     "us-west-2": "433757028032",
 }
 ALGO_VERSIONS = ("1", "latest")
-XGBOOST_FRAMEWORK_VERSIONS = ("0.90-2", "0.90-1", "1.0-1")
+XGBOOST_FRAMEWORK_CPU_ONLY_VERSIONS = ("0.90-2", "0.90-1", "1.0-1")
+XGBOOST_FRAMEWORK_CPU_GPU_VERSIONS = ("1.2-1",)
 
 FRAMEWORK_REGISTRIES = {
     "af-south-1": "510948584623",
@@ -74,22 +75,42 @@ FRAMEWORK_REGISTRIES = {
 }
 
 
-@pytest.mark.parametrize("xgboost_framework_version", XGBOOST_FRAMEWORK_VERSIONS)
+@pytest.mark.parametrize("xgboost_framework_version", XGBOOST_FRAMEWORK_CPU_GPU_VERSIONS)
 def test_xgboost_framework(xgboost_framework_version):
     for region in regions.regions():
         uri = image_uris.retrieve(
             framework="xgboost",
             region=region,
             version=xgboost_framework_version,
-            py_version="py3",
         )
 
         expected = expected_uris.framework_uri(
             "sagemaker-xgboost",
             xgboost_framework_version,
             FRAMEWORK_REGISTRIES[region],
-            py_version="py3",
+            py_version=None,
+            processor=None,
             region=region,
+        )
+        assert expected == uri
+
+
+@pytest.mark.parametrize("xgboost_framework_version", XGBOOST_FRAMEWORK_CPU_ONLY_VERSIONS)
+def test_xgboost_framework_cpu_only(xgboost_framework_version):
+    for region in regions.regions():
+        uri = image_uris.retrieve(
+            framework="xgboost",
+            region=region,
+            version=xgboost_framework_version,
+        )
+
+        expected = expected_uris.framework_uri(
+            "sagemaker-xgboost",
+            xgboost_framework_version,
+            FRAMEWORK_REGISTRIES[region],
+            region=region,
+            py_version="py3",
+            processor="cpu",
         )
         assert expected == uri
 
