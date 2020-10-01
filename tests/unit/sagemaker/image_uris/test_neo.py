@@ -118,6 +118,10 @@ def test_inferentia_tensorflow(inferentia_tensorflow_version):
     _test_inferentia_framework_uris("tensorflow", inferentia_tensorflow_version)
 
 
+def test_inferentia_pytorch(inferentia_pytorch_version):
+    _test_inferentia_framework_uris("pytorch", inferentia_pytorch_version)
+
+
 def _expected_framework_uri(framework, version, region="us-west-2", processor="cpu"):
     return expected_uris.framework_uri(
         "sagemaker-{}".format(framework),
