@@ -1,5 +1,128 @@
 # Changelog
 
+## v2.13.0 (2020-09-30)
+
+### Features
+
+ * add xgboost framework version 1.2-1
+
+### Bug Fixes and Other Changes
+
+ * revert "feature: upgrade Neo MxNet to 1.7 (#1928)"
+
+## v2.12.0 (2020-09-29)
+
+### Features
+
+ * upgrade Neo MxNet to 1.7
+
+## v2.11.0 (2020-09-28)
+
+### Features
+
+ * Add SDK support for SparkML Serving Container version 2.4
+
+### Bug Fixes and Other Changes
+
+ * pin pytest version <6.1.0 to avoid pytest-rerunfailures breaking changes
+ * temporarily skip the MxNet Neo test until we fix them
+
+### Documentation Changes
+
+ * fix conda setup for docs
+
+## v2.10.0 (2020-09-23)
+
+### Features
+
+ * add inferentia pytorch inference container config
+
+## v2.9.2 (2020-09-21)
+
+### Bug Fixes and Other Changes
+
+ * allow kms encryption upload for processing
+
+## v2.9.1 (2020-09-17)
+
+### Bug Fixes and Other Changes
+
+ * update spark image_uri config with eu-north-1 account
+
+## v2.9.0 (2020-09-17)
+
+### Features
+
+ * add MXNet 1.7.0 images
+
+### Documentation Changes
+
+ * removed Kubernetes workflow content
+
+## v2.8.0 (2020-09-16)
+
+### Features
+
+ * add spark processing support to processing jobs
+
+### Bug Fixes and Other Changes
+
+ * remove DataFrame assert from unrelated test
+
+## v2.7.0 (2020-09-15)
+
+### Features
+
+ * reshape Parents into experiment analytics dataframe
+
+## v2.6.0 (2020-09-14)
+
+### Features
+
+ * add model monitor image accounts for af-south-1 and eu-south-1
+
+### Bug Fixes and Other Changes
+
+ * enforce some docstyle conventions
+
+### Documentation Changes
+
+ * fix CSVSerializer typo in v2.rst
+
+## v2.5.5 (2020-09-10)
+
+### Bug Fixes and Other Changes
+
+ * update PyTorch 1.6.0 inference image uri config
+ * set use_spot_instances and max_wait as init params from job description
+ * run integ tests when image_uri_config jsons are changed
+ * Revert "fix: update pytorch inference 1.6 image uri config (#1873)"
+ * update pytorch inference 1.6 image uri config
+
+### Documentation Changes
+
+ * fix typo in v2.rst
+
+### Testing and Release Infrastructure
+
+ * fix PyTorch inference packed model integ test
+
+## v2.5.4 (2020-09-08)
+
+### Bug Fixes and Other Changes
+
+ * update max_run_wait to max_wait in v2.rst for estimator parameters
+ * Updating regional account ids for af-south-1 and eu-south-1
+ * add account ids for af-south-1 and eu-south-1 for debugger rules
+
+## v2.5.3 (2020-09-02)
+
+### Bug Fixes and Other Changes
+
+ * Revert "change: update image uri config for pytorch 1.6.0 inference (#1864)"
+ * update image uri config for pytorch 1.6.0 inference
+ * add missing framework version image uri config
+
 ## v2.5.2 (2020-08-31)
 
 ### Bug Fixes and Other Changes

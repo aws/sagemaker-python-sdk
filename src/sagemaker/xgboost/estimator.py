@@ -26,6 +26,7 @@ from sagemaker.session import Session
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 from sagemaker.xgboost import defaults
 from sagemaker.xgboost.model import XGBoostModel
+from sagemaker.xgboost.utils import validate_py_version, validate_framework_version
 
 logger = logging.getLogger("sagemaker")
 
@@ -100,6 +101,9 @@ class XGBoost(Framework):
 
         self.py_version = py_version
         self.framework_version = framework_version
+
+        validate_py_version(py_version)
+        validate_framework_version(framework_version)
 
         if image_uri is None:
             self.image_uri = image_uris.retrieve(

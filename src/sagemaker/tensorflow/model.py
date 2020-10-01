@@ -36,8 +36,9 @@ class TensorFlowPredictor(Predictor):
         model_name=None,
         model_version=None,
     ):
-        """Initialize a ``TensorFlowPredictor``. See :class:`~sagemaker.predictor.Predictor`
-        for more info about parameters.
+        """Initialize a ``TensorFlowPredictor``.
+
+        See :class:`~sagemaker.predictor.Predictor` for more info about parameters.
 
         Args:
             endpoint_name (str): The name of the endpoint to perform inference
@@ -208,6 +209,7 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
         wait=True,
         data_capture_config=None,
     ):
+        """Deploy a Tensorflow ``Model`` to a SageMaker ``Endpoint``."""
 
         if accelerator_type and not self._eia_supported():
             msg = "The TensorFlow version %s doesn't support EIA." % self.framework_version
@@ -231,10 +233,14 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
         return [int(s) for s in self.framework_version.split(".")][:2] <= self.LATEST_EIA_VERSION
 
     def prepare_container_def(self, instance_type=None, accelerator_type=None):
-        """
+        """Prepare the container definition.
+
         Args:
-            instance_type:
-            accelerator_type:
+            instance_type: Instance type of the container.
+            accelerator_type: Accelerator type, if applicable.
+
+        Returns:
+            A container definition for deploying a ``Model`` to an ``Endpoint``.
         """
         if self.image_uri is None and instance_type is None:
             raise ValueError(

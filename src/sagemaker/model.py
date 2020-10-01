@@ -656,8 +656,8 @@ class FrameworkModel(Model):
                 must point to a file located at the root of ``source_dir``.
                 If 'git_config' is provided, 'entry_point' should be
                 a relative location to the Python source file in the Git repo.
-                Example:
 
+                Example:
                     With the following GitHub repo directory structure:
 
                     >>> |----- README.md
@@ -674,6 +674,7 @@ class FrameworkModel(Model):
                 'source_dir' should be a relative location to a directory in the Git repo.
                 If the directory points to S3, no code will be uploaded and the S3 location
                 will be used instead.
+
                 .. admonition:: Example
 
                     With the following GitHub repo directory structure:

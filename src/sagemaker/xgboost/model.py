@@ -23,6 +23,7 @@ from sagemaker.model import FrameworkModel, MODEL_SERVER_WORKERS_PARAM_NAME
 from sagemaker.predictor import Predictor
 from sagemaker.serializers import LibSVMSerializer
 from sagemaker.xgboost.defaults import XGBOOST_NAME
+from sagemaker.xgboost.utils import validate_py_version, validate_framework_version
 
 logger = logging.getLogger("sagemaker")
 
@@ -31,7 +32,8 @@ class XGBoostPredictor(Predictor):
     """A Predictor for inference against XGBoost Endpoints.
 
     This is able to serialize Python lists, dictionaries, and numpy arrays to xgb.DMatrix
-     for XGBoost inference."""
+    for XGBoost inference.
+    """
 
     def __init__(self, endpoint_name, sagemaker_session=None):
         """Initialize an ``XGBoostPredictor``.
@@ -104,13 +106,15 @@ class XGBoostModel(FrameworkModel):
         self.framework_version = framework_version
         self.model_server_workers = model_server_workers
 
+        validate_py_version(py_version)
+        validate_framework_version(framework_version)
+
     def prepare_container_def(self, instance_type=None, accelerator_type=None):
         """Return a container definition with framework configuration
         set in model environment variables.
 
         Args:
             instance_type (str): The EC2 instance type to deploy this Model to.
-                This parameter is unused because XGBoost supports only CPU.
             accelerator_type (str): The Elastic Inference accelerator type to deploy to the
             instance for loading and making inferences to the model. This parameter is
                 unused because accelerator types are not supported by XGBoostModel.
@@ -147,7 +151,5 @@ class XGBoostModel(FrameworkModel):
             self._framework_name,
             region_name,
             version=self.framework_version,
-            py_version=self.py_version,
             instance_type=instance_type,
-            image_scope="inference",
         )
