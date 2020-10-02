@@ -281,7 +281,7 @@ class Model(object):
             framework_suffix = "-neo"
         else:
             if target_instance_type.startswith("ml_inf"):
-                framework_prefix = "inferentia"
+                framework_prefix = "inferentia-"
             else:
                 framework_prefix = "neo-"
 
