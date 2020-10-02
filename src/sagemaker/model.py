@@ -276,11 +276,12 @@ class Model(object):
         """
         framework_prefix = ""
         framework_suffix = ""
-        
+
         if framework == "xgboost":
             framework_suffix = "-neo"
         else:
-            framework_prefix = "inferentia-" if target_instance_type.startswith("ml_inf") else "neo-"
+            framework_prefix = "inferentia-" if \
+            target_instance_type.startswith("ml_inf") else "neo-"
 
 
         return image_uris.retrieve(
