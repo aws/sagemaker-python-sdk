@@ -284,7 +284,7 @@ class Model(object):
 
 
         return image_uris.retrieve(
-            "{}{}".format(framework_prefix, framework, framework_suffix),
+            "{}{}{}".format(framework_prefix, framework, framework_suffix),
             region,
             instance_type=target_instance_type,
             version=framework_version,
