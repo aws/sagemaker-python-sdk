@@ -68,7 +68,7 @@ def test_attach_deploy(
 
         estimator.compile_model(
             target_instance_family=cpu_instance_family,
-            input_shape={"data": [1, 1, 28, 28]},
+            input_shape={"data": [1, 1, 28, 28], "softmax_label": [1]},
             output_path=estimator.output_path,
         )
 
@@ -117,7 +117,7 @@ def test_deploy_model(
 
         model.compile(
             target_instance_family=cpu_instance_family,
-            input_shape={"data": [1, 1, 28, 28]},
+            input_shape={"data": [1, 1, 28, 28], "softmax_label": [1]},
             role=role,
             job_name=unique_name_from_base("test-deploy-model-compilation-job"),
             output_path="/".join(model_data.split("/")[:-1]),
@@ -159,7 +159,7 @@ def test_inferentia_deploy_model(
 
         model.compile(
             target_instance_family=inf_instance_family,
-            input_shape={"data": [1, 1, 28, 28]},
+            input_shape={"data": [1, 1, 28, 28], "softmax_label": [1]},
             role=role,
             job_name=unique_name_from_base("test-deploy-model-compilation-job"),
             output_path="/".join(model_data.split("/")[:-1]),

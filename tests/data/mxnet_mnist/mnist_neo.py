@@ -104,27 +104,32 @@ def train(
         save(model_dir, mlp_model)
 
 
-def neo_preprocess(payload, content_type):
-    logging.info("Invoking user-defined pre-processing function")
+def model_fn(path_to_model_files):
+    import neomxnet  # noqa: F401
 
-    if content_type != "application/vnd+python.numpy+binary":
-        raise RuntimeError("Content type must be application/vnd+python.numpy+binary")
+    ctx = mx.cpu()
+    sym, arg_params, aux_params = mx.model.load_checkpoint(
+        os.path.join(path_to_model_files, "compiled"), 0
+    )
+    mod = mx.mod.Module(symbol=sym, context=ctx, label_names=None)
+    mod.bind(
+        for_training=False, data_shapes=[("data", (1, 1, 28, 28))], label_shapes=mod._label_shapes
+    )
+    mod.set_params(arg_params, aux_params, allow_missing=True)
+    return mod
 
-    return np.asarray(json.loads(payload.decode("utf-8")))
 
+def transform_fn(mod, payload, input_content_type, requested_output_content_type):
+    import neomxnet  # noqa: F401
 
-# NOTE: this function cannot use MXNet
-def neo_postprocess(result):
-    logging.info("Invoking user-defined post-processing function")
+    if input_content_type != "application/vnd+python.numpy+binary":
+        raise RuntimeError("Input content type must be application/vnd+python.numpy+binary")
 
-    # Softmax (assumes batch size 1)
+    inference_payload = np.asarray(json.loads(payload.decode("utf-8")))
+    result = mod.predict(inference_payload)
     result = np.squeeze(result)
-    result_exp = np.exp(result - np.max(result))
-    result = result_exp / np.sum(result_exp)
-
-    response_body = json.dumps(result.tolist())
+    response_body = json.dumps(result.asnumpy().tolist())
     content_type = "application/json"
-
     return response_body, content_type
 
 
@@ -135,7 +140,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--batch-size", type=int, default=100)
-    parser.add_argument("--epochs", type=int, default=10)
+    parser.add_argument("--epochs", type=int, default=1)
     parser.add_argument("--learning-rate", type=float, default=0.1)
 
     parser.add_argument("--model-dir", type=str, default=os.environ["SM_MODEL_DIR"])

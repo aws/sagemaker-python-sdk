@@ -283,9 +283,18 @@ class Model(object):
             framework (str): The framework name.
             framework_version (str): The framework version.
         """
-        framework_prefix = "inferentia-" if target_instance_type.startswith("ml_inf") else "neo-"
+        framework_prefix = ""
+        framework_suffix = ""
+
+        if framework == "xgboost":
+            framework_suffix = "-neo"
+        elif target_instance_type.startswith("ml_inf"):
+            framework_prefix = "inferentia-"
+        else:
+            framework_prefix = "neo-"
+
         return image_uris.retrieve(
-            "{}{}".format(framework_prefix, framework),
+            "{}{}{}".format(framework_prefix, framework, framework_suffix),
             region,
             instance_type=target_instance_type,
             version=framework_version,

@@ -60,7 +60,7 @@ class SparkMLModel(Model):
     model .
     """
 
-    def __init__(self, model_data, role=None, spark_version=2.2, sagemaker_session=None, **kwargs):
+    def __init__(self, model_data, role=None, spark_version=2.4, sagemaker_session=None, **kwargs):
         """Initialize a SparkMLModel.
 
         Args:
@@ -74,7 +74,7 @@ class SparkMLModel(Model):
                 artifacts. After the endpoint is created, the inference code
                 might use the IAM role, if it needs to access an AWS resource.
             spark_version (str): Spark version you want to use for executing the
-                inference (default: '2.2').
+                inference (default: '2.4').
             sagemaker_session (sagemaker.session.Session): Session object which
                 manages interactions with Amazon SageMaker APIs and any other
                 AWS services needed. If not specified, the estimator creates one
