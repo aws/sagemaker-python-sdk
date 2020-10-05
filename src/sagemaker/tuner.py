@@ -17,9 +17,11 @@ import importlib
 import inspect
 import json
 import logging
+
 from enum import Enum
 
 import sagemaker
+from sagemaker import deprecations
 from sagemaker.amazon.amazon_estimator import (
     RecordSet,
     AmazonAlgorithmEstimatorBase,
@@ -1431,6 +1433,8 @@ class HyperparameterTuner(object):
         self._hyperparameter_ranges_dict[estimator_name] = hyperparameter_ranges
         if metric_definitions is not None:
             self.metric_definitions_dict[estimator_name] = metric_definitions
+
+    delete_endpoint = deprecations.removed_method("delete_endpoint")
 
 
 class _TuningJob(_Job):

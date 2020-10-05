@@ -222,10 +222,9 @@ def test_num_classes_can_be_string_for_multiclass_classifier(sagemaker_session):
 
 @pytest.mark.parametrize("iterable_hyper_parameters, value", [("max_iterations", [0])])
 def test_iterable_hyper_parameters_type(sagemaker_session, iterable_hyper_parameters, value):
-    with pytest.raises(TypeError):
-        test_params = ALL_REQ_ARGS.copy()
-        test_params.update({iterable_hyper_parameters: value})
-        LinearLearner(sagemaker_session=sagemaker_session, **test_params)
+    test_params = ALL_REQ_ARGS.copy()
+    test_params.update({iterable_hyper_parameters: value})
+    LinearLearner(sagemaker_session=sagemaker_session, **test_params)
 
 
 @pytest.mark.parametrize(

@@ -17,6 +17,7 @@ import json
 import logging
 import os
 import uuid
+
 from abc import ABCMeta
 from abc import abstractmethod
 
@@ -29,6 +30,11 @@ from sagemaker.analytics import TrainingJobAnalytics
 from sagemaker.debugger import DebuggerHookConfig
 from sagemaker.debugger import TensorBoardOutputConfig  # noqa: F401 # pylint: disable=unused-import
 from sagemaker.debugger import get_rule_container_image_uri
+from sagemaker.deprecations import (
+    removed_kwargs,
+    removed_method,
+    renamed_kwargs,
+)
 from sagemaker.s3 import S3Uploader, parse_s3_url
 
 from sagemaker.fw_utils import (
@@ -71,8 +77,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
     def __init__(
         self,
         role,
-        instance_count,
-        instance_type,
+        instance_count=None,
+        instance_type=None,
         volume_size=30,
         volume_kms_key=None,
         max_run=24 * 60 * 60,
@@ -97,6 +103,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         tensorboard_output_config=None,
         enable_sagemaker_metrics=None,
         enable_network_isolation=False,
+        **kwargs,
     ):
         """Initialize an ``EstimatorBase`` instance.
 
@@ -222,6 +229,17 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                 (such as the Internet). The container does not make any inbound or
                 outbound network calls. Also known as Internet-free mode.
         """
+        instance_count = renamed_kwargs("train_instance_count", instance_count, kwargs)
+        instance_type = renamed_kwargs("train_instance_type", instance_type, kwargs)
+        max_run = renamed_kwargs("train_max_run", max_run, kwargs)
+        use_spot_instances = renamed_kwargs("train_use_spot_instances", use_spot_instances, kwargs)
+        max_wait = renamed_kwargs("train_max_run_wait", max_wait, kwargs)
+        volume_size = renamed_kwargs("train_volume_size", volume_size, kwargs)
+        volume_kms_key = renamed_kwargs("train_volume_kms_key", volume_kms_key, kwargs)
+
+        if instance_count is None or instance_type is None:
+            raise ValueError("Both instance_count and instance_type are required.")
+
         self.role = role
         self.instance_count = instance_count
         self.instance_type = instance_type
@@ -523,7 +541,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         target_platform_arch=None,
         target_platform_accelerator=None,
         compiler_options=None,
-        **kwargs
+        **kwargs,
     ):
         """Compile a Neo model using the input model.
 
@@ -678,7 +696,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         kms_key=None,
         data_capture_config=None,
         tags=None,
-        **kwargs
+        **kwargs,
     ):
         """Deploy the trained model to an Amazon SageMaker endpoint and return a
         ``sagemaker.Predictor`` object.
@@ -739,6 +757,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                 which can be used to send requests to the Amazon SageMaker
                 endpoint and obtain inferences.
         """
+        removed_kwargs("update_endpoint", kwargs)
         self._ensure_latest_training_job()
         self._ensure_base_job_name()
         default_name = name_from_base(self.base_job_name)
@@ -1026,6 +1045,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         if self.latest_training_job is None:
             raise ValueError(error_message)
 
+    delete_endpoint = removed_method("delete_endpoint")
+
 
 class _TrainingJob(_Job):
     """Placeholder docstring"""
@@ -1202,8 +1223,8 @@ class Estimator(EstimatorBase):
         self,
         image_uri,
         role,
-        instance_count,
-        instance_type,
+        instance_count=None,
+        instance_type=None,
         volume_size=30,
         volume_kms_key=None,
         max_run=24 * 60 * 60,
@@ -1229,6 +1250,7 @@ class Estimator(EstimatorBase):
         debugger_hook_config=None,
         tensorboard_output_config=None,
         enable_sagemaker_metrics=None,
+        **kwargs,
     ):
         """Initialize an ``Estimator`` instance.
 
@@ -1372,6 +1394,7 @@ class Estimator(EstimatorBase):
             tensorboard_output_config=tensorboard_output_config,
             enable_sagemaker_metrics=enable_sagemaker_metrics,
             enable_network_isolation=enable_network_isolation,
+            **kwargs,
         )
 
     def training_image_uri(self):
@@ -1404,7 +1427,7 @@ class Estimator(EstimatorBase):
         image_uri=None,
         predictor_cls=None,
         vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT,
-        **kwargs
+        **kwargs,
     ):
         """Create a model to deploy.
 
@@ -1435,6 +1458,11 @@ class Estimator(EstimatorBase):
         Returns:
             (sagemaker.model.Model) a Model ready for deployment.
         """
+        removed_kwargs("serializer", kwargs)
+        removed_kwargs("deserializer", kwargs)
+        removed_kwargs("content_type", kwargs)
+        removed_kwargs("accept", kwargs)
+
         if predictor_cls is None:
 
             def predict_wrapper(endpoint, session):
@@ -1454,7 +1482,7 @@ class Estimator(EstimatorBase):
             vpc_config=self.get_vpc_config(vpc_config_override),
             sagemaker_session=self.sagemaker_session,
             predictor_cls=predictor_cls,
-            **kwargs
+            **kwargs,
         )
 
 
@@ -1487,7 +1515,7 @@ class Framework(EstimatorBase):
         checkpoint_s3_uri=None,
         checkpoint_local_path=None,
         enable_sagemaker_metrics=None,
-        **kwargs
+        **kwargs,
     ):
         """Base class initializer.
 
