@@ -109,7 +109,7 @@ def removed_method(name):
     """A no-op deprecated function factory."""
 
     def func(self, *args, **kwargs):  # pylint: disable=W0613
-        removed_warning(f"The function {name}")
+        removed_warning(f"The method {name}")
 
     return func
 
