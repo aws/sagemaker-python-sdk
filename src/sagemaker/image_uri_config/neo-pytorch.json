@@ -36,7 +36,7 @@
                 "us-west-1": "710691900526",
                 "us-west-2": "301217895009"
             },
-            "repository": "sagemaker-neo-pytorch"
+            "repository": "sagemaker-inference-pytorch"
         }
     }
 }
