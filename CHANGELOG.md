@@ -1,5 +1,15 @@
 # Changelog
 
+## v2.14.0 (2020-10-05)
+
+### Features
+
+ * upgrade Neo MxNet to 1.7
+
+### Bug Fixes and Other Changes
+
+ * add a condition to retrieve correct image URI for xgboost
+
 ## v2.13.0 (2020-09-30)
 
 ### Features
