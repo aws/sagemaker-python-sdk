@@ -791,7 +791,8 @@ class FrameworkModel(Model):
                 authentication if they are provided; otherwise, python SDK will
                 try to use either CodeCommit credential helper or local
                 credential storage for authentication.
-            **kwargs: Keyword arguments passed to the ``Model`` initializer.
+            **kwargs: Keyword arguments passed to the superclass
+                :class:`~sagemaker.model.Model`.
 
         .. tip::
 

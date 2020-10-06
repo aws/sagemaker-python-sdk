@@ -107,8 +107,9 @@ class MXNetModel(FrameworkModel):
             model_server_workers (int): Optional. The number of worker processes
                 used by the inference server. If None, server will use one
                 worker per vCPU.
-            **kwargs: Keyword arguments passed to the ``FrameworkModel``
-                initializer.
+            **kwargs: Keyword arguments passed to the superclass
+                :class:`~sagemaker.model.FrameworkModel` and, subsequently, its
+                superclass :class:`~sagemaker.model.Model`.
 
         .. tip::
 
