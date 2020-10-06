@@ -32,7 +32,7 @@ from sagemaker.debugger import TensorBoardOutputConfig  # noqa: F401 # pylint: d
 from sagemaker.debugger import get_rule_container_image_uri
 from sagemaker.deprecations import (
     removed_kwargs,
-    removed_method,
+    removed_function,
     renamed_kwargs,
 )
 from sagemaker.s3 import S3Uploader, parse_s3_url
@@ -1045,7 +1045,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         if self.latest_training_job is None:
             raise ValueError(error_message)
 
-    delete_endpoint = removed_method("delete_endpoint")
+    delete_endpoint = removed_function("delete_endpoint")
 
 
 class _TrainingJob(_Job):
