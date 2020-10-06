@@ -207,7 +207,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                 :class:`~sagemaker.debugger.Rule` objects used to define
                 rules for continuous analysis with SageMaker Debugger
                 (default: ``None``). For more, see
-                https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_debugger.html#continuous-analyses-through-rules
+                https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_debugger.html#
+                continuous-analyses-through-rules
             debugger_hook_config (:class:`~sagemaker.debugger.DebuggerHookConfig` or bool):
                 Configuration for how debugging information is emitted with
                 SageMaker Debugger. If not specified, a default one is created using
@@ -218,10 +219,12 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             tensorboard_output_config (:class:`~sagemaker.debugger.TensorBoardOutputConfig`):
                 Configuration for customizing debugging visualization using TensorBoard
                 (default: ``None``). For more, see
-                https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_debugger.html#capture-real-time-tensorboard-data-from-the-debugging-hook
+                https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_debugger.html#
+                capture-real-time-tensorboard-data-from-the-debugging-hook
             enable_sagemaker_metrics (bool): Enables SageMaker Metrics Time
                 Series. For more information see:
-                https://docs.aws.amazon.com/sagemaker/latest/dg/API_AlgorithmSpecification.html#SageMaker-Type-AlgorithmSpecification-EnableSageMakerMetricsTimeSeries
+                https://docs.aws.amazon.com/sagemaker/latest/dg/API_AlgorithmSpecification.html#
+                SageMaker-Type-AlgorithmSpecification-EnableSageMakerMetricsTimeSeries
                 (default: ``None``).
             enable_network_isolation (bool): Specifies whether container will
                 run in network isolation mode (default: ``False``). Network
@@ -229,13 +232,21 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                 (such as the Internet). The container does not make any inbound or
                 outbound network calls. Also known as Internet-free mode.
         """
-        instance_count = renamed_kwargs("train_instance_count", instance_count, kwargs)
-        instance_type = renamed_kwargs("train_instance_type", instance_type, kwargs)
-        max_run = renamed_kwargs("train_max_run", max_run, kwargs)
-        use_spot_instances = renamed_kwargs("train_use_spot_instances", use_spot_instances, kwargs)
-        max_wait = renamed_kwargs("train_max_run_wait", max_wait, kwargs)
-        volume_size = renamed_kwargs("train_volume_size", volume_size, kwargs)
-        volume_kms_key = renamed_kwargs("train_volume_kms_key", volume_kms_key, kwargs)
+        instance_count = renamed_kwargs(
+            "train_instance_count", "instance_count", instance_count, kwargs
+        )
+        instance_type = renamed_kwargs(
+            "train_instance_type", "instance_type", instance_type, kwargs
+        )
+        max_run = renamed_kwargs("train_max_run", "max_run", max_run, kwargs)
+        use_spot_instances = renamed_kwargs(
+            "train_use_spot_instances", "use_spot_instances", use_spot_instances, kwargs
+        )
+        max_wait = renamed_kwargs("train_max_run_wait", "max_wait", max_wait, kwargs)
+        volume_size = renamed_kwargs("train_volume_size", "volume_size", volume_size, kwargs)
+        volume_kms_key = renamed_kwargs(
+            "train_volume_kms_key", "volume_kms_key", volume_kms_key, kwargs
+        )
 
         if instance_count is None or instance_type is None:
             raise ValueError("Both instance_count and instance_type are required.")
