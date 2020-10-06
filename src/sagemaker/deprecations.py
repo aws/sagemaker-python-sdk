@@ -51,22 +51,24 @@ def renamed_warning(phrase):
     _warn(f"{phrase} has been renamed")
 
 
-def renamed_kwargs(name, default, kwargs):
+def renamed_kwargs(old_name, new_name, value, kwargs):
     """Checks if the deprecated argument is in kwargs
 
     Raises warning, if present.
 
     Args:
-        name: name of deprecated argument
-        default: default value to use, if not present
+        old_name: name of deprecated argument
+        new_name: name of the new argument
+        value: value associated with new name, if supplied
         kwargs: keyword arguments dict
 
     Returns:
         value of the keyword argument, if present
     """
-    value = kwargs.get(name, default)
-    if value != default:
-        renamed_warning(name)
+    if old_name in kwargs:
+        value = kwargs.get(old_name, value)
+        kwargs[new_name] = value
+        renamed_warning(old_name)
     return value
 
 

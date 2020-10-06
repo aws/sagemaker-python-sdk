@@ -80,7 +80,7 @@ class Predictor(object):
         """
         removed_kwargs("content_type", kwargs)
         removed_kwargs("accept", kwargs)
-        endpoint_name = renamed_kwargs("endpoint", endpoint_name, kwargs)
+        endpoint_name = renamed_kwargs("endpoint", "endpoint_name", endpoint_name, kwargs)
         self.endpoint_name = endpoint_name
         self.sagemaker_session = sagemaker_session or Session()
         self.serializer = serializer
