@@ -44,6 +44,7 @@ FRAMEWORKS_FOR_GENERATED_VERSION_FIXTURES = (
     "coach_tensorflow",
     "inferentia_mxnet",
     "inferentia_tensorflow",
+    "inferentia_pytorch",
     "mxnet",
     "neo_mxnet",
     "neo_pytorch",
@@ -180,6 +181,15 @@ def pytorch_eia_py_version():
 def xgboost_framework_version(xgboost_version):
     if xgboost_version in ("1", "latest"):
         pytest.skip("Skipping XGBoost algorithm version.")
+    return xgboost_version
+
+
+@pytest.fixture(scope="module")
+def xgboost_gpu_framework_version(xgboost_version):
+    if xgboost_version in ("1", "latest"):
+        pytest.skip("Skipping XGBoost algorithm version.")
+    if Version(xgboost_version) < Version("1.2"):
+        pytest.skip("Skipping XGBoost cpu-only version.")
     return xgboost_version
 
 

@@ -19,6 +19,7 @@ from six.moves.urllib.parse import urlparse
 
 import sagemaker
 from sagemaker import local, s3
+from sagemaker.deprecations import removed_kwargs
 from sagemaker.model import Model
 from sagemaker.session import Session
 
@@ -39,7 +40,7 @@ class MultiDataModel(Model):
         image_uri=None,
         role=None,
         sagemaker_session=None,
-        **kwargs
+        **kwargs,
     ):
         """Initialize a ``MultiDataModel``. In addition to these arguments, it supports all
            arguments supported by ``Model`` constructor
@@ -110,7 +111,7 @@ class MultiDataModel(Model):
                 role,
                 name=self.name,
                 sagemaker_session=self.sagemaker_session,
-                **kwargs
+                **kwargs,
             )
 
     def prepare_container_def(self, instance_type=None, accelerator_type=None):
@@ -152,6 +153,7 @@ class MultiDataModel(Model):
         kms_key=None,
         wait=True,
         data_capture_config=None,
+        **kwargs,
     ):
         """Deploy this ``Model`` to an ``Endpoint`` and optionally return a ``Predictor``.
 
@@ -209,6 +211,7 @@ class MultiDataModel(Model):
                 if ``self.predictor_cls``
                 is not None. Otherwise, return None.
         """
+        removed_kwargs("update_endpoint", kwargs)
         # Set model specific parameters
         if self.model:
             enable_network_isolation = self.model.enable_network_isolation()

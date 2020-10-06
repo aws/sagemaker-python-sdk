@@ -61,7 +61,7 @@ extras["test"] = (
         extras["all"],
         "tox",
         "flake8",
-        "pytest",
+        "pytest<6.1.0",
         "pytest-cov",
         "pytest-rerunfailures",
         "pytest-xdist",
