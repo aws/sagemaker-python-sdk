@@ -13,9 +13,28 @@
 """Placeholder docstring"""
 from __future__ import print_function, absolute_import
 
-from sagemaker.deserializers import BytesDeserializer
+from sagemaker.deprecations import (
+    deprecated_class,
+    deprecated_deserialize,
+    deprecated_serialize,
+    removed_kwargs,
+    renamed_kwargs,
+)
+from sagemaker.deserializers import (  # noqa: F401 # pylint: disable=unused-import
+    BytesDeserializer,
+    CSVDeserializer,
+    JSONDeserializer,
+    NumpyDeserializer,
+    StreamDeserializer,
+    StringDeserializer,
+)
 from sagemaker.model_monitor import DataCaptureConfig
-from sagemaker.serializers import IdentitySerializer
+from sagemaker.serializers import (
+    CSVSerializer,
+    IdentitySerializer,
+    JSONSerializer,
+    NumpySerializer,
+)
 from sagemaker.session import production_variant, Session
 from sagemaker.utils import name_from_base
 
@@ -35,6 +54,7 @@ class Predictor(object):
         sagemaker_session=None,
         serializer=IdentitySerializer(),
         deserializer=BytesDeserializer(),
+        **kwargs,
     ):
         """Initialize a ``Predictor``.
 
@@ -58,6 +78,9 @@ class Predictor(object):
                 deserializer object, used to decode data from an inference
                 endpoint (default: :class:`~sagemaker.deserializers.BytesDeserializer`).
         """
+        removed_kwargs("content_type", kwargs)
+        removed_kwargs("accept", kwargs)
+        endpoint_name = renamed_kwargs("endpoint", endpoint_name, kwargs)
         self.endpoint_name = endpoint_name
         self.sagemaker_session = sagemaker_session or Session()
         self.serializer = serializer
@@ -388,3 +411,12 @@ class Predictor(object):
     def accept(self):
         """The content type(s) that are expected from the inference endpoint."""
         return self.deserializer.ACCEPT
+
+
+csv_serializer = deprecated_serialize(CSVSerializer(), "csv_serializer")
+json_serializer = deprecated_serialize(JSONSerializer(), "json_serializer")
+npy_serializer = deprecated_serialize(NumpySerializer(), "npy_serializer")
+csv_deserializer = deprecated_deserialize(CSVDeserializer(), "csv_deserializer")
+json_deserializer = deprecated_deserialize(JSONDeserializer(), "json_deserializer")
+numpy_deserializer = deprecated_deserialize(NumpyDeserializer(), "numpy_deserializer")
+RealTimePredictor = deprecated_class(Predictor, "RealTimePredictor")
