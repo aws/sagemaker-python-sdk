@@ -149,7 +149,7 @@ class MXNet(Framework):
             :class:`~sagemaker.estimator.Framework` and
             :class:`~sagemaker.estimator.EstimatorBase`.
         """
-        distribution = renamed_kwargs("distributions", distribution, kwargs)
+        distribution = renamed_kwargs("distributions", "distribution", distribution, kwargs)
         validate_version_or_image_args(framework_version, py_version, image_uri)
         if py_version == "py2":
             logger.warning(

@@ -27,14 +27,19 @@ from sagemaker.deprecations import (
 
 
 def test_renamed_kwargs():
-    kwargs, b = {"a": 1}, 2
-    val = renamed_kwargs("b", default=b, kwargs=kwargs)
+    kwargs, c = {"a": 1}, 2
+    val = renamed_kwargs("b", new_name="c", value=c, kwargs=kwargs)
+    assert val == 2
+
+    kwargs, c = {"a": 1, "c": 2}, 2
+    val = renamed_kwargs("b", new_name="c", value=c, kwargs=kwargs)
     assert val == 2
 
     with pytest.warns(DeprecationWarning):
-        kwargs, b = {"a": 1, "b": 3}, 2
-        val = renamed_kwargs("b", default=b, kwargs=kwargs)
+        kwargs, c = {"a": 1, "b": 3}, 2
+        val = renamed_kwargs("b", new_name="c", value=c, kwargs=kwargs)
         assert val == 3
+        assert kwargs == {"a": 1, "b": 3, "c": 3}
 
 
 def test_removed_arg():
