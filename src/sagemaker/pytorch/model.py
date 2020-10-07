@@ -75,7 +75,7 @@ class PyTorchModel(FrameworkModel):
         model_server_workers=None,
         **kwargs
     ):
-        """Initialize an PyTorchModel.
+        """Initialize a PyTorchModel.
 
         Args:
             model_data (str): The S3 location of a SageMaker model data
@@ -106,8 +106,9 @@ class PyTorchModel(FrameworkModel):
             model_server_workers (int): Optional. The number of worker processes
                 used by the inference server. If None, server will use one
                 worker per vCPU.
-            **kwargs: Keyword arguments passed to the ``FrameworkModel``
-                initializer.
+            **kwargs: Keyword arguments passed to the superclass
+                :class:`~sagemaker.model.FrameworkModel` and, subsequently, its
+                superclass :class:`~sagemaker.model.Model`.
 
         .. tip::
 
