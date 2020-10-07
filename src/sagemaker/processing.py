@@ -109,7 +109,7 @@ class Processor(object):
         self.latest_job = None
         self._current_job_name = None
         self.arguments = None
-        
+
         if self.instance_type in ("local", "local_gpu"):
             self.sagemaker_session = sagemaker_session or LocalSession()
             if not isinstance(self.sagemaker_session, LocalSession):

@@ -144,7 +144,7 @@ class _SparkProcessorBase(ScriptProcessor):
         """
         self.history_server = None
         self._spark_event_logs_s3_uri = None
-        
+
         if instance_type in ("local", "local_gpu"):
             session = sagemaker_session or LocalSession()
             if not isinstance(session, LocalSession):
@@ -154,7 +154,7 @@ class _SparkProcessorBase(ScriptProcessor):
                 )
         else:
             session = sagemaker_session or Session()
-        
+
         region = session.boto_region_name
 
         self.image_uri = self._retrieve_image_uri(

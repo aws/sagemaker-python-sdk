@@ -37,14 +37,15 @@ except ImportError as e:
 _UNUSED_ARN = "local:arn-does-not-matter"
 HEALTH_CHECK_TIMEOUT_LIMIT = 120
 
+
 class _LocalProcessingJob(object):
     """Placeholder docstring"""
-    
+
     _STARTING = "Starting"
     _PROCESSING = "Processing"
     _COMPLETED = "Completed"
     _states = ["Starting", "Processing", "Completed"]
-    
+
     def __init__(self, container):
         """
         Args:
@@ -59,8 +60,7 @@ class _LocalProcessingJob(object):
         self.processing_output_config = None
         self.environment = None
 
-    def start(self, processing_inputs, processing_output_config, environment, 
-        processing_job_name):
+    def start(self, processing_inputs, processing_output_config, environment, processing_job_name):
         """
         Args:
             processing_inputs:
@@ -68,70 +68,68 @@ class _LocalProcessingJob(object):
             environment:
             processing_job_name:
         """
-        
+
         for item in processing_inputs:
             if item["S3Input"]:
                 data_distribution = item["S3Input"]["S3DataDistributionType"]
                 compression_type = item["S3Input"]["S3CompressionType"]
                 data_uri = item["S3Input"]["S3Uri"]
             else:
-                raise ValueError(
-                    "Processing input must have a valid ['S3Input']"
-                    )
+                raise ValueError("Processing input must have a valid ['S3Input']")
 
             item["DataUri"] = data_uri
-            
+
             if data_distribution != "FullyReplicated":
                 raise RuntimeError(
                     "DataDistribution: %s is not currently supported in Local Mode"
                     % data_distribution
                 )
-                
+
             if compression_type != "None":
                 raise RuntimeError(
                     "CompressionType: %s is not currently supported in Local Mode"
                     % compression_type
                 )
-        
-        if processing_output_config and 'Outputs' in processing_output_config:
-            processing_outputs = processing_output_config['Outputs']
-        
+
+        if processing_output_config and "Outputs" in processing_output_config:
+            processing_outputs = processing_output_config["Outputs"]
+
             for item in processing_outputs:
                 if item["S3Output"]:
                     upload_mode = item["S3Output"]["S3UploadMode"]
                 else:
-                    raise ValueError(
-                        "Processing output must have a valid ['S3Output']"
-                        )
-                        
+                    raise ValueError("Processing output must have a valid ['S3Output']")
+
                 if upload_mode != "EndOfJob":
-                    logger.warn("UploadMode: %s is not currently supported in Local Mode. Using EndOfJob."
-                        % upload_mode)
+                    logger.warning(
+                        "UploadMode: %s is not currently supported in Local Mode. Using EndOfJob.",
+                        upload_mode,
+                    )
 
         self.start_time = datetime.datetime.now()
         self.state = self._PROCESSING
-        
+
         self.processing_job_name = processing_job_name
         self.processing_inputs = processing_inputs
         self.processing_output_config = processing_output_config
         self.environment = environment
 
         self.container.process(
-            processing_inputs, processing_output_config, environment,
-                processing_job_name)
+            processing_inputs, processing_output_config, environment, processing_job_name
+        )
         self.end_time = datetime.datetime.now()
         self.state = self._COMPLETED
 
     def describe(self):
         """Placeholder docstring"""
-        
+
         response = {
             "ProcessingJobArn": self.processing_job_name,
             "ProcessingJobName": self.processing_job_name,
             "AppSpecification": {
                 "ImageUri": self.container.image,
                 "ContainerEntrypoint": self.container.container_entrypoint,
-                "ContainerArguments": self.container.container_arguments
+                "ContainerArguments": self.container.container_arguments,
             },
             "Environment": self.environment,
             "ProcessingInputs": self.processing_inputs,
@@ -141,19 +139,18 @@ class _LocalProcessingJob(object):
                     "InstanceCount": self.container.instance_count,
                     "InstanceType": self.container.instance_type,
                     "VolumeSizeInGB": 30,
-                    "VolumeKmsKeyId": 'None'
+                    "VolumeKmsKeyId": "None",
                 }
             },
             "RoleArn": "<no_role>",
-            "StoppingCondition": {
-                "MaxRuntimeInSeconds": 86400
-            },
+            "StoppingCondition": {"MaxRuntimeInSeconds": 86400},
             "ProcessingJobStatus": self.state,
             "ProcessingStartTime": self.start_time,
-            "ProcessingEndTime": self.end_time
+            "ProcessingEndTime": self.end_time,
         }
-        
+
         return response
+
 
 class _LocalTrainingJob(object):
     """Placeholder docstring"""

@@ -81,10 +81,13 @@ class LocalSagemakerClient(object):
           ProcessingJobName(str): local processing job name.
           AppSpecification(dict): Identifies the container and application to run.
           ProcessingResources(dict): Identifies the resources to use for local processing.
-          Environment(dict, optional): Describes the environment variables to pass to the container. (Default value = None)
-          ProcessingInputs(dict, optional): Describes the processing input data. (Default value = None)
-          ProcessingOutputConfig(dict, optional): Describes the processing output configuration. (Default value = None)
-          **kwargs:
+          Environment(dict, optional): Describes the environment variables to pass
+            to the container. (Default value = None)
+          ProcessingInputs(dict, optional): Describes the processing input data.
+            (Default value = None)
+          ProcessingOutputConfig(dict, optional): Describes the processing output
+            configuration. (Default value = None)
+          **kwargs: Keyword arguments
 
         Returns:
 
@@ -92,30 +95,38 @@ class LocalSagemakerClient(object):
         Environment = Environment or {}
         ProcessingInputs = ProcessingInputs or []
         ProcessingOutputConfig = ProcessingOutputConfig or {}
-        
+
         container_entrypoint = None
-        if 'ContainerEntrypoint' in AppSpecification:
-            container_entrypoint = AppSpecification['ContainerEntrypoint']
-            
+        if "ContainerEntrypoint" in AppSpecification:
+            container_entrypoint = AppSpecification["ContainerEntrypoint"]
+
         container_arguments = None
-        if 'ContainerArguments' in AppSpecification:
-            container_arguments = AppSpecification['ContainerArguments']
-        
+        if "ContainerArguments" in AppSpecification:
+            container_arguments = AppSpecification["ContainerArguments"]
+
+        if "ExperimentConfig" in kwargs:
+            logger.warning("Experiment configuration is not supported in local mode.")
+        if "NetworkConfig" in kwargs:
+            logger.warning("Network configuration is not supported in local mode.")
+        if "StoppingCondition" in kwargs:
+            logger.warning("Stopping condition is not supported in local mode.")
+
         container = _SageMakerContainer(
             ProcessingResources["ClusterConfig"]["InstanceType"],
             ProcessingResources["ClusterConfig"]["InstanceCount"],
             AppSpecification["ImageUri"],
-            sagemaker_session = self.sagemaker_session,
-            container_entrypoint = container_entrypoint,
-            container_arguments = container_arguments
+            sagemaker_session=self.sagemaker_session,
+            container_entrypoint=container_entrypoint,
+            container_arguments=container_arguments,
         )
         processing_job = _LocalProcessingJob(container)
         logger.info("Starting processing job")
-        processing_job.start(ProcessingInputs, ProcessingOutputConfig, Environment, 
-            ProcessingJobName)
+        processing_job.start(
+            ProcessingInputs, ProcessingOutputConfig, Environment, ProcessingJobName
+        )
 
         LocalSagemakerClient._processing_jobs[ProcessingJobName] = processing_job
-        
+
     def describe_processing_job(self, ProcessingJobName):
         """Describe a local processing job.
 
@@ -167,7 +178,7 @@ class LocalSagemakerClient(object):
             ResourceConfig["InstanceType"],
             ResourceConfig["InstanceCount"],
             AlgorithmSpecification["TrainingImage"],
-            sagemaker_session = self.sagemaker_session
+            sagemaker_session=self.sagemaker_session,
         )
         training_job = _LocalTrainingJob(container)
         hyperparameters = kwargs["HyperParameters"] if "HyperParameters" in kwargs else {}
