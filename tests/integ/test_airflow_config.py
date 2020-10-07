@@ -552,13 +552,13 @@ def test_tf_airflow_config_uploads_data_source_to_s3(
 
 @pytest.mark.canary_quick
 def test_xgboost_airflow_config_uploads_data_source_to_s3(
-    sagemaker_session, cpu_instance_type, xgboost_latest_version, xgboost_latest_py_version
+    sagemaker_session, cpu_instance_type, xgboost_latest_version
 ):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         xgboost = XGBoost(
             entry_point=os.path.join(DATA_DIR, "dummy_script.py"),
             framework_version=xgboost_latest_version,
-            py_version=xgboost_latest_py_version,
+            py_version="py3",
             role=ROLE,
             sagemaker_session=sagemaker_session,
             instance_type=cpu_instance_type,

@@ -17,6 +17,7 @@ import importlib
 import inspect
 import json
 import logging
+
 from enum import Enum
 
 import sagemaker
@@ -27,6 +28,7 @@ from sagemaker.amazon.amazon_estimator import (
 )
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
 from sagemaker.analytics import HyperparameterTuningJobAnalytics
+from sagemaker.deprecations import removed_function
 from sagemaker.estimator import Framework
 from sagemaker.inputs import TrainingInput
 from sagemaker.job import _Job
@@ -1431,6 +1433,8 @@ class HyperparameterTuner(object):
         self._hyperparameter_ranges_dict[estimator_name] = hyperparameter_ranges
         if metric_definitions is not None:
             self.metric_definitions_dict[estimator_name] = metric_definitions
+
+    delete_endpoint = removed_function("delete_endpoint")
 
 
 class _TuningJob(_Job):

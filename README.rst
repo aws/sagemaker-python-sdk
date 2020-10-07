@@ -164,7 +164,7 @@ Setup a Python environment, and install the dependencies listed in ``doc/require
     # conda
     conda create -n sagemaker python=3.7
     conda activate sagemaker
-    conda install --file doc/requirements.txt
+    conda install sphinx=3.1.1 sphinx_rtd_theme=0.5.0
 
     # pip
     pip install -r doc/requirements.txt
@@ -201,7 +201,7 @@ In order to host a SparkML model in SageMaker, it should be serialized with ``ML
 
 For more information on MLeap, see https://github.com/combust/mleap .
 
-Supported major version of Spark: 2.2 (MLeap version - 0.9.6)
+Supported major version of Spark: 2.4 (MLeap version - 0.9.6)
 
 Here is an example on how to create an instance of  ``SparkMLModel`` class and use ``deploy()`` method to create an
 endpoint which can be used to perform prediction against your trained SparkML Model.

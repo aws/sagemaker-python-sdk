@@ -86,6 +86,18 @@ def volume_kms_key(sagemaker_session):
 
 
 @pytest.fixture(scope="module")
+def input_kms_key(sagemaker_session):
+    role_arn = sagemaker_session.expand_role(ROLE)
+    return get_or_create_kms_key(
+        sagemaker_session=sagemaker_session,
+        role_arn=role_arn,
+        alias="integ-test-processing-input-kms-key-{}".format(
+            sagemaker_session.boto_session.region_name
+        ),
+    )
+
+
+@pytest.fixture(scope="module")
 def output_kms_key(sagemaker_session):
     role_arn = sagemaker_session.expand_role(ROLE)
     return get_or_create_kms_key(
@@ -584,6 +596,7 @@ def test_processor_with_custom_bucket(
     image_uri,
     cpu_instance_type,
     output_kms_key,
+    input_kms_key,
 ):
     script_path = os.path.join(DATA_DIR, "dummy_script.py")
 
@@ -609,6 +622,7 @@ def test_processor_with_custom_bucket(
                 source=script_path, destination="/opt/ml/processing/input/code/", input_name="code"
             )
         ],
+        kms_key=input_kms_key,
         outputs=[
             ProcessingOutput(
                 source="/opt/ml/processing/output/container/path/",

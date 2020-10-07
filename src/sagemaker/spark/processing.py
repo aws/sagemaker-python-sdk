@@ -191,6 +191,7 @@ class _SparkProcessorBase(ScriptProcessor):
         logs=True,
         job_name=None,
         experiment_config=None,
+        kms_key=None,
     ):
         """Runs a processing job.
 
@@ -212,6 +213,8 @@ class _SparkProcessorBase(ScriptProcessor):
             experiment_config (dict[str, str]): Experiment management configuration.
                 Dictionary contains three optional keys:
                 'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+            kms_key (str): The ARN of the KMS key that is used to encrypt the
+                user code file (default: None).
         """
         self._current_job_name = self._generate_current_job_name(job_name=job_name)
 
@@ -224,6 +227,7 @@ class _SparkProcessorBase(ScriptProcessor):
             logs,
             job_name,
             experiment_config,
+            kms_key,
         )
 
     def _extend_processing_args(self, inputs, outputs, **kwargs):
@@ -706,6 +710,7 @@ class PySparkProcessor(_SparkProcessorBase):
         experiment_config=None,
         configuration=None,
         spark_event_logs_s3_uri=None,
+        kms_key=None,
     ):
         """Runs a processing job.
 
@@ -739,6 +744,8 @@ class PySparkProcessor(_SparkProcessorBase):
                 https://docs.aws.amazon.com/emr/latest/ReleaseGuide/emr-configure-apps.html
             spark_event_logs_s3_uri (str): S3 path where spark application events will
                 be published to.
+            kms_key (str): The ARN of the KMS key that is used to encrypt the
+                user code file (default: None).
         """
         self._current_job_name = self._generate_current_job_name(job_name=job_name)
 
@@ -883,6 +890,7 @@ class SparkJarProcessor(_SparkProcessorBase):
         experiment_config=None,
         configuration=None,
         spark_event_logs_s3_uri=None,
+        kms_key=None,
     ):
         """Runs a processing job.
 
@@ -916,6 +924,8 @@ class SparkJarProcessor(_SparkProcessorBase):
                 https://docs.aws.amazon.com/emr/latest/ReleaseGuide/emr-configure-apps.html
             spark_event_logs_s3_uri (str): S3 path where spark application events will
                 be published to.
+            kms_key (str): The ARN of the KMS key that is used to encrypt the
+                user code file (default: None).
         """
         self._current_job_name = self._generate_current_job_name(job_name=job_name)
 
@@ -941,6 +951,7 @@ class SparkJarProcessor(_SparkProcessorBase):
             logs=logs,
             job_name=self._current_job_name,
             experiment_config=experiment_config,
+            kms_key=kms_key,
         )
 
     def _extend_processing_args(self, inputs, outputs, **kwargs):

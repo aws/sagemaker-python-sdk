@@ -1,5 +1,58 @@
 # Changelog
 
+## v2.14.0 (2020-10-05)
+
+### Features
+
+ * upgrade Neo MxNet to 1.7
+
+### Bug Fixes and Other Changes
+
+ * add a condition to retrieve correct image URI for xgboost
+
+## v2.13.0 (2020-09-30)
+
+### Features
+
+ * add xgboost framework version 1.2-1
+
+### Bug Fixes and Other Changes
+
+ * revert "feature: upgrade Neo MxNet to 1.7 (#1928)"
+
+## v2.12.0 (2020-09-29)
+
+### Features
+
+ * upgrade Neo MxNet to 1.7
+
+## v2.11.0 (2020-09-28)
+
+### Features
+
+ * Add SDK support for SparkML Serving Container version 2.4
+
+### Bug Fixes and Other Changes
+
+ * pin pytest version <6.1.0 to avoid pytest-rerunfailures breaking changes
+ * temporarily skip the MxNet Neo test until we fix them
+
+### Documentation Changes
+
+ * fix conda setup for docs
+
+## v2.10.0 (2020-09-23)
+
+### Features
+
+ * add inferentia pytorch inference container config
+
+## v2.9.2 (2020-09-21)
+
+### Bug Fixes and Other Changes
+
+ * allow kms encryption upload for processing
+
 ## v2.9.1 (2020-09-17)
 
 ### Bug Fixes and Other Changes

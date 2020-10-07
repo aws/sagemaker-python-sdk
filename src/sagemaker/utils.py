@@ -28,6 +28,8 @@ from datetime import datetime
 import botocore
 from six.moves.urllib import parse
 
+from sagemaker import deprecations
+
 
 ECR_URI_PATTERN = r"^(\d+)(\.)dkr(\.)ecr(\.)(.+)(\.)(.*)(/)(.*:.*)$"
 MAX_BUCKET_PATHS_COUNT = 5
@@ -652,3 +654,6 @@ def _module_import_error(py_module, feature, extras):
         "to install all required dependencies."
     )
     return error_msg.format(py_module, feature, extras)
+
+
+get_ecr_image_uri_prefix = deprecations.removed_function("get_ecr_image_uri_prefix")
