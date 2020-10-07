@@ -21,6 +21,7 @@ import sys
 import numpy as np
 
 from sagemaker.amazon.record_pb2 import Record
+from sagemaker.deprecations import deprecated_class
 from sagemaker.deserializers import BaseDeserializer
 from sagemaker.serializers import BaseSerializer
 from sagemaker.utils import DeferredError
@@ -298,3 +299,7 @@ def _resolve_type(dtype):
     if dtype == np.dtype("float32"):
         return "Float32"
     raise ValueError("Unsupported dtype {} on array".format(dtype))
+
+
+numpy_to_record_serializer = deprecated_class(RecordSerializer, "numpy_to_record_serializer")
+record_deserializer = deprecated_class(RecordDeserializer, "record_deserializer")

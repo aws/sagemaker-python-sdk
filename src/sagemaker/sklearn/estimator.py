@@ -16,6 +16,7 @@ from __future__ import absolute_import
 import logging
 
 from sagemaker import image_uris
+from sagemaker.deprecations import renamed_kwargs
 from sagemaker.estimator import Framework
 from sagemaker.fw_utils import (
     framework_name_from_image,
@@ -107,6 +108,12 @@ class SKLearn(Framework):
             :class:`~sagemaker.estimator.Framework` and
             :class:`~sagemaker.estimator.EstimatorBase`.
         """
+        instance_type = renamed_kwargs(
+            "train_instance_type", "instance_type", kwargs.get("instance_type"), kwargs
+        )
+        instance_count = renamed_kwargs(
+            "train_instance_count", "instance_count", kwargs.get("instance_count"), kwargs
+        )
         validate_version_or_image_args(framework_version, py_version, image_uri)
         if py_version and py_version != "py3":
             raise AttributeError(
@@ -117,10 +124,8 @@ class SKLearn(Framework):
 
         # SciKit-Learn does not support distributed training or training on GPU instance types.
         # Fail fast.
-        instance_type = kwargs.get("instance_type")
         _validate_not_gpu_instance_type(instance_type)
 
-        instance_count = kwargs.get("instance_count")
         if instance_count:
             if instance_count != 1:
                 raise AttributeError(
