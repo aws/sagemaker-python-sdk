@@ -175,7 +175,9 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
                 to call to create a predictor with an endpoint name and
                 SageMaker ``Session``. If specified, ``deploy()`` returns the
                 result of invoking this function on the created endpoint name.
-            **kwargs: Keyword arguments passed to the ``Model`` initializer.
+            **kwargs: Keyword arguments passed to the superclass
+                :class:`~sagemaker.model.FrameworkModel` and, subsequently, its
+                superclass :class:`~sagemaker.model.Model`.
 
         .. tip::
 
