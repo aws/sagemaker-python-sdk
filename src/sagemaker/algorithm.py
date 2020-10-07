@@ -17,6 +17,7 @@ import sagemaker
 import sagemaker.parameter
 from sagemaker import vpc_utils
 from sagemaker.deserializers import BytesDeserializer
+from sagemaker.deprecations import removed_kwargs
 from sagemaker.estimator import EstimatorBase
 from sagemaker.serializers import IdentitySerializer
 from sagemaker.transformer import Transformer
@@ -291,6 +292,9 @@ class AlgorithmEstimator(EstimatorBase):
         Returns:
             a Model ready for deployment.
         """
+        removed_kwargs("content_type", kwargs)
+        removed_kwargs("accept", kwargs)
+
         if predictor_cls is None:
 
             def predict_wrapper(endpoint, session):

@@ -31,7 +31,7 @@ class SparkMLPredictor(Predictor):
     list.
     """
 
-    def __init__(self, endpoint_name, sagemaker_session=None):
+    def __init__(self, endpoint_name, sagemaker_session=None, **kwargs):
         """Initializes a SparkMLPredictor which should be used with SparkMLModel
         to perform predictions against SparkML models serialized via MLeap. The
         response is returned in text/csv format which is the default response
@@ -49,6 +49,7 @@ class SparkMLPredictor(Predictor):
             endpoint_name=endpoint_name,
             sagemaker_session=sagemaker_session,
             serializer=CSVSerializer(),
+            **kwargs,
         )
 
 
@@ -97,5 +98,5 @@ class SparkMLModel(Model):
             role,
             predictor_cls=SparkMLPredictor,
             sagemaker_session=sagemaker_session,
-            **kwargs
+            **kwargs,
         )

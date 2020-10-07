@@ -19,6 +19,7 @@ from packaging import version
 
 from sagemaker import image_uris, s3, utils
 from sagemaker.debugger import DebuggerHookConfig
+from sagemaker.deprecations import renamed_kwargs
 from sagemaker.estimator import Framework
 import sagemaker.fw_utils as fw
 from sagemaker.tensorflow import defaults
@@ -112,6 +113,9 @@ class TensorFlow(Framework):
             :class:`~sagemaker.estimator.Framework` and
             :class:`~sagemaker.estimator.EstimatorBase`.
         """
+        instance_type = renamed_kwargs(
+            "train_instance_type", "instance_type", kwargs.get("instance_type"), kwargs
+        )
         fw.validate_version_or_image_args(framework_version, py_version, image_uri)
         if py_version == "py2":
             logger.warning(
@@ -121,7 +125,6 @@ class TensorFlow(Framework):
         self.py_version = py_version
 
         if distribution is not None:
-            instance_type = kwargs.get("instance_type")
             fw.warn_if_parameter_server_with_multi_gpu(
                 training_instance_type=instance_type, distribution=distribution
             )

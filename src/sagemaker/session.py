@@ -29,6 +29,8 @@ import six
 import sagemaker.logs
 from sagemaker import vpc_utils
 
+from sagemaker.deprecations import deprecated_class
+from sagemaker.inputs import ShuffleConfig, TrainingInput
 from sagemaker.user_agent import prepend_user_agent
 from sagemaker.utils import (
     name_from_image,
@@ -3918,3 +3920,7 @@ def _flush_log_streams(
         dot = True
         print(".", end="")
         sys.stdout.flush()
+
+
+s3_input = deprecated_class(TrainingInput, "sagemaker.session.s3_input")
+ShuffleConfig = deprecated_class(ShuffleConfig, "sagemaker.session.ShuffleConfig")

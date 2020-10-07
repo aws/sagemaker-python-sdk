@@ -23,6 +23,7 @@ from sagemaker import image_uris
 from sagemaker.amazon import validation
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
 from sagemaker.amazon.common import write_numpy_to_dense_tensor
+from sagemaker.deprecations import renamed_warning
 from sagemaker.estimator import EstimatorBase, _TrainingJob
 from sagemaker.inputs import FileSystemInput, TrainingInput
 from sagemaker.utils import sagemaker_timestamp
@@ -454,3 +455,22 @@ def upload_numpy_to_s3_shards(
                 s3.Object(bucket, key_prefix + file).delete()
         finally:
             raise ex
+
+
+def get_image_uri(region_name, repo_name, repo_version=1):
+    """Deprecated method. Please use sagemaker.image_uris.retrieve().
+
+    Args:
+        region_name: name of the region
+        repo_name: name of the repo (e.g. xgboost)
+        repo_version: version of the repo
+
+    Returns:
+        the image uri
+    """
+    renamed_warning("The method get_image_uri")
+    return image_uris.retrieve(
+        framework=repo_name,
+        region=region_name,
+        version=repo_version,
+    )

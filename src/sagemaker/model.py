@@ -18,7 +18,16 @@ import logging
 import os
 
 import sagemaker
-from sagemaker import fw_utils, image_uris, local, s3, session, utils, git_utils
+from sagemaker import (
+    fw_utils,
+    image_uris,
+    local,
+    s3,
+    session,
+    utils,
+    git_utils,
+)
+from sagemaker.deprecations import removed_kwargs
 from sagemaker.transformer import Transformer
 
 LOGGER = logging.getLogger("sagemaker")
@@ -274,9 +283,18 @@ class Model(object):
             framework (str): The framework name.
             framework_version (str): The framework version.
         """
-        framework_prefix = "inferentia-" if target_instance_type.startswith("ml_inf") else "neo-"
+        framework_prefix = ""
+        framework_suffix = ""
+
+        if framework == "xgboost":
+            framework_suffix = "-neo"
+        elif target_instance_type.startswith("ml_inf"):
+            framework_prefix = "inferentia-"
+        else:
+            framework_prefix = "neo-"
+
         return image_uris.retrieve(
-            "{}{}".format(framework_prefix, framework),
+            "{}{}{}".format(framework_prefix, framework, framework_suffix),
             region,
             instance_type=target_instance_type,
             version=framework_version,
@@ -415,6 +433,7 @@ class Model(object):
         kms_key=None,
         wait=True,
         data_capture_config=None,
+        **kwargs,
     ):
         """Deploy this ``Model`` to an ``Endpoint`` and optionally return a
         ``Predictor``.
@@ -469,6 +488,7 @@ class Model(object):
                 ``self.predictor_cls`` on the created endpoint name, if ``self.predictor_cls``
                 is not None. Otherwise, return None.
         """
+        removed_kwargs("update_endpoint", kwargs)
         self._init_sagemaker_session_if_does_not_exist(instance_type)
 
         if self.role is None:
@@ -632,7 +652,7 @@ class FrameworkModel(Model):
         sagemaker_session=None,
         dependencies=None,
         git_config=None,
-        **kwargs
+        **kwargs,
     ):
         """Initialize a ``FrameworkModel``.
 
@@ -771,7 +791,8 @@ class FrameworkModel(Model):
                 authentication if they are provided; otherwise, python SDK will
                 try to use either CodeCommit credential helper or local
                 credential storage for authentication.
-            **kwargs: Keyword arguments passed to the ``Model`` initializer.
+            **kwargs: Keyword arguments passed to the superclass
+                :class:`~sagemaker.model.Model`.
 
         .. tip::
 
@@ -786,7 +807,7 @@ class FrameworkModel(Model):
             env=env,
             name=name,
             sagemaker_session=sagemaker_session,
-            **kwargs
+            **kwargs,
         )
         self.entry_point = entry_point
         self.source_dir = source_dir
