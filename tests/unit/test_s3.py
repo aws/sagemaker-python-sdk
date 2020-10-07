@@ -67,7 +67,7 @@ def test_upload_with_kms_key(sagemaker_session):
         path="/path/to/app.jar",
         bucket=BUCKET_NAME,
         key_prefix=os.path.join(CURRENT_JOB_NAME, SOURCE_NAME),
-        extra_args={"SSEKMSKeyId": KMS_KEY},
+        extra_args={"SSEKMSKeyId": KMS_KEY, "ServerSideEncryption": "aws:kms"},
     )
 
 

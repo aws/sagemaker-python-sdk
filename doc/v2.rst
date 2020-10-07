@@ -231,7 +231,7 @@ The following estimator parameters have been renamed:
 +------------------------------+------------------------+
 | ``train_use_spot_instances`` | ``use_spot_instances`` |
 +------------------------------+------------------------+
-| ``train_max_run_wait``       | ``max_wait``           |
+| ``train_max_wait``           | ``max_wait``           |
 +------------------------------+------------------------+
 | ``train_volume_size``        | ``volume_size``        |
 +------------------------------+------------------------+

@@ -252,4 +252,4 @@ def _validate_arg(arg, available_options, arg_name):
 
 def _format_tag(tag_prefix, processor, py_version, container_version):
     """Creates a tag for the image URI."""
-    return "-".join([x for x in (tag_prefix, processor, py_version, container_version) if x])
+    return "-".join(x for x in (tag_prefix, processor, py_version, container_version) if x)

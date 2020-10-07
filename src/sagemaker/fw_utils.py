@@ -20,9 +20,12 @@ import shutil
 import tempfile
 from collections import namedtuple
 
+import sagemaker.image_uris
 import sagemaker.utils
 
-logger = logging.getLogger("sagemaker")
+from sagemaker.deprecations import renamed_warning
+
+logger = logging.getLogger(__name__)
 
 _TAR_SOURCE_FILENAME = "source.tar.gz"
 
@@ -319,3 +322,43 @@ def validate_version_or_image_args(framework_version, py_version, image_uri):
             "framework_version or py_version was None, yet image_uri was also None. "
             "Either specify both framework_version and py_version, or specify image_uri."
         )
+
+
+def create_image_uri(
+    region,
+    framework,
+    instance_type,
+    framework_version,
+    py_version=None,
+    account=None,  # pylint: disable=W0613
+    accelerator_type=None,
+    optimized_families=None,  # pylint: disable=W0613
+):
+    """Deprecated method. Please use sagemaker.image_uris.retrieve().
+
+    Args:
+        region (str): AWS region where the image is uploaded.
+        framework (str): framework used by the image.
+        instance_type (str): SageMaker instance type. Used to determine device
+            type (cpu/gpu/family-specific optimized).
+        framework_version (str): The version of the framework.
+        py_version (str): Optional. Python version. If specified, should be one
+            of 'py2' or 'py3'. If not specified, image uri will not include a
+            python component.
+        account (str): AWS account that contains the image. (default:
+            '520713654638')
+        accelerator_type (str): SageMaker Elastic Inference accelerator type.
+        optimized_families (str): Deprecated. A no-op argument.
+
+    Returns:
+        the image uri
+    """
+    renamed_warning("The method create_image_uri")
+    return sagemaker.image_uris.retrieve(
+        framework=framework,
+        region=region,
+        version=framework_version,
+        py_version=py_version,
+        instance_type=instance_type,
+        accelerator_type=accelerator_type,
+    )

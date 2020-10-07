@@ -16,6 +16,7 @@ from __future__ import absolute_import
 import logging
 
 from sagemaker import image_uris
+from sagemaker.deprecations import renamed_kwargs
 from sagemaker.estimator import Framework, _TrainingJob
 from sagemaker.fw_utils import (
     framework_name_from_image,
@@ -26,6 +27,7 @@ from sagemaker.session import Session
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 from sagemaker.xgboost import defaults
 from sagemaker.xgboost.model import XGBoostModel
+from sagemaker.xgboost.utils import validate_py_version, validate_framework_version
 
 logger = logging.getLogger("sagemaker")
 
@@ -96,6 +98,9 @@ class XGBoost(Framework):
             :class:`~sagemaker.estimator.Framework` and
             :class:`~sagemaker.estimator.EstimatorBase`.
         """
+        instance_type = renamed_kwargs(
+            "train_instance_type", "instance_type", kwargs.get("instance_type"), kwargs
+        )
         super(XGBoost, self).__init__(
             entry_point, source_dir, hyperparameters, image_uri=image_uri, **kwargs
         )
@@ -103,13 +108,16 @@ class XGBoost(Framework):
         self.py_version = py_version
         self.framework_version = framework_version
 
+        validate_py_version(py_version)
+        validate_framework_version(framework_version)
+
         if image_uri is None:
             self.image_uri = image_uris.retrieve(
                 self._framework_name,
                 self.sagemaker_session.boto_region_name,
                 version=framework_version,
                 py_version=self.py_version,
-                instance_type=kwargs.get("instance_type"),
+                instance_type=instance_type,
                 image_scope="training",
             )
 

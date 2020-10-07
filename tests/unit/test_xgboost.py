@@ -19,6 +19,7 @@ import pytest
 
 from mock import Mock
 from mock import patch
+from packaging.version import Version
 
 
 from sagemaker.xgboost import XGBoost, XGBoostModel, XGBoostPredictor
@@ -37,7 +38,7 @@ GPU_INSTANCE_TYPE = "ml.p2.xlarge"
 PYTHON_VERSION = "py3"
 IMAGE_URI = "sagemaker-xgboost"
 JOB_NAME = "{}-{}".format(IMAGE_URI, TIMESTAMP)
-IMAGE_URI_FORMAT_STRING = "246618743249.dkr.ecr.{}.amazonaws.com/{}:{}-{}-{}"
+IMAGE_URI_FORMAT_STRING = "246618743249.dkr.ecr.{}.amazonaws.com/{}:{}"
 ROLE = "Dummy"
 REGION = "us-west-2"
 CPU = "ml.c4.xlarge"
@@ -78,8 +79,12 @@ def sagemaker_session():
     return session
 
 
-def _get_full_cpu_image_uri(version):
-    return IMAGE_URI_FORMAT_STRING.format(REGION, IMAGE_URI, version, "cpu", PYTHON_VERSION)
+def _get_full_image_uri(version):
+    if Version(version) < Version("1.2-1"):
+        image_tag = "-".join([version, "cpu", PYTHON_VERSION])
+    else:
+        image_tag = version
+    return IMAGE_URI_FORMAT_STRING.format(REGION, IMAGE_URI, image_tag)
 
 
 def _xgboost_estimator(
@@ -104,9 +109,9 @@ def _xgboost_estimator(
     )
 
 
-def _create_train_job(version, instance_count=1):
+def _create_train_job(version, instance_count=1, instance_type="ml.c4.4xlarge"):
     return {
-        "image_uri": _get_full_cpu_image_uri(version),
+        "image_uri": _get_full_image_uri(version),
         "input_mode": "File",
         "input_config": [
             {
@@ -123,7 +128,7 @@ def _create_train_job(version, instance_count=1):
         "job_name": JOB_NAME,
         "output_config": {"S3OutputPath": "s3://{}/".format(BUCKET_NAME)},
         "resource_config": {
-            "InstanceType": "ml.c4.4xlarge",
+            "InstanceType": instance_type,
             "InstanceCount": instance_count,
             "VolumeSizeInGB": 30,
         },
@@ -158,7 +163,7 @@ def test_create_model(sagemaker_session, xgboost_framework_version):
         entry_point=SCRIPT_PATH,
         framework_version=xgboost_framework_version,
     )
-    default_image_uri = _get_full_cpu_image_uri(xgboost_framework_version)
+    default_image_uri = _get_full_image_uri(xgboost_framework_version)
     model_values = xgboost_model.prepare_container_def(CPU)
     assert model_values["Image"] == default_image_uri
 
@@ -272,7 +277,7 @@ def test_create_model_with_custom_image(sagemaker_session, xgboost_framework_ver
 
 
 @patch("time.strftime", return_value=TIMESTAMP)
-def test_xgboost(strftime, sagemaker_session, xgboost_framework_version):
+def test_xgboost_cpu(strftime, sagemaker_session, xgboost_framework_version):
     xgboost = XGBoost(
         entry_point=SCRIPT_PATH,
         role=ROLE,
@@ -301,7 +306,6 @@ def test_xgboost(strftime, sagemaker_session, xgboost_framework_version):
 
     model = xgboost.create_model()
 
-    expected_image_base = "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost:{}-cpu-{}"
     assert {
         "Environment": {
             "SAGEMAKER_SUBMIT_DIRECTORY": "s3://mybucket/sagemaker-xgboost-{}/source/sourcedir.tar.gz".format(
@@ -311,12 +315,59 @@ def test_xgboost(strftime, sagemaker_session, xgboost_framework_version):
             "SAGEMAKER_REGION": "us-west-2",
             "SAGEMAKER_CONTAINER_LOG_LEVEL": "20",
         },
-        "Image": expected_image_base.format(xgboost_framework_version, PYTHON_VERSION),
+        "Image": _get_full_image_uri(xgboost_framework_version),
         "ModelDataUrl": "s3://m/m.tar.gz",
     } == model.prepare_container_def(CPU)
 
-    assert "cpu" in model.prepare_container_def(CPU)["Image"]
     predictor = xgboost.deploy(1, CPU)
+    assert isinstance(predictor, XGBoostPredictor)
+
+
+@patch("time.strftime", return_value=TIMESTAMP)
+def test_xgboost_gpu(strftime, sagemaker_session, xgboost_gpu_framework_version):
+    xgboost = XGBoost(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_type=GPU_INSTANCE_TYPE,
+        instance_count=1,
+        framework_version=xgboost_gpu_framework_version,
+    )
+
+    inputs = "s3://mybucket/train"
+
+    xgboost.fit(inputs=inputs, experiment_config=EXPERIMENT_CONFIG)
+
+    sagemaker_call_names = [c[0] for c in sagemaker_session.method_calls]
+    assert sagemaker_call_names == ["train", "logs_for_job"]
+    boto_call_names = [c[0] for c in sagemaker_session.boto_session.method_calls]
+    assert boto_call_names == ["resource"]
+
+    expected_train_args = _create_train_job(
+        xgboost_gpu_framework_version, instance_type=GPU_INSTANCE_TYPE
+    )
+    expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
+    expected_train_args["experiment_config"] = EXPERIMENT_CONFIG
+
+    actual_train_args = sagemaker_session.method_calls[0][2]
+    assert actual_train_args == expected_train_args
+
+    model = xgboost.create_model()
+
+    assert {
+        "Environment": {
+            "SAGEMAKER_SUBMIT_DIRECTORY": "s3://mybucket/sagemaker-xgboost-{}/source/sourcedir.tar.gz".format(
+                TIMESTAMP
+            ),
+            "SAGEMAKER_PROGRAM": "dummy_script.py",
+            "SAGEMAKER_REGION": "us-west-2",
+            "SAGEMAKER_CONTAINER_LOG_LEVEL": "20",
+        },
+        "Image": _get_full_image_uri(xgboost_gpu_framework_version),
+        "ModelDataUrl": "s3://m/m.tar.gz",
+    } == model.prepare_container_def(GPU_INSTANCE_TYPE)
+
+    predictor = xgboost.deploy(1, GPU_INSTANCE_TYPE)
     assert isinstance(predictor, XGBoostPredictor)
 
 
@@ -349,7 +400,6 @@ def test_distributed_training(strftime, sagemaker_session, xgboost_framework_ver
 
     model = xgboost.create_model()
 
-    expected_image_base = "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost:{}-cpu-{}"
     assert {
         "Environment": {
             "SAGEMAKER_SUBMIT_DIRECTORY": "s3://mybucket/sagemaker-xgboost-{}/source/sourcedir.tar.gz".format(
@@ -359,11 +409,10 @@ def test_distributed_training(strftime, sagemaker_session, xgboost_framework_ver
             "SAGEMAKER_REGION": "us-west-2",
             "SAGEMAKER_CONTAINER_LOG_LEVEL": "20",
         },
-        "Image": expected_image_base.format(xgboost_framework_version, PYTHON_VERSION),
+        "Image": _get_full_image_uri(xgboost_framework_version),
         "ModelDataUrl": "s3://m/m.tar.gz",
     } == model.prepare_container_def(CPU)
 
-    assert "cpu" in model.prepare_container_def(CPU)["Image"]
     predictor = xgboost.deploy(1, CPU)
     assert isinstance(predictor, XGBoostPredictor)
 
@@ -391,7 +440,7 @@ def test_training_image_uri(sagemaker_session, xgboost_framework_version):
         py_version=PYTHON_VERSION,
     )
 
-    assert _get_full_cpu_image_uri(xgboost_framework_version) in xgboost.training_image_uri()
+    assert _get_full_image_uri(xgboost_framework_version) in xgboost.training_image_uri()
 
 
 def test_attach(sagemaker_session, xgboost_framework_version):
@@ -538,5 +587,31 @@ def test_py2_xgboost_error(sagemaker_session, xgboost_framework_version):
         model.serving_image_uri(REGION, INSTANCE_TYPE)
 
     error_message = "Unsupported Python version: py2."
+    assert error_message in str(error1)
+    assert error_message in str(error2)
+
+
+def test_unsupported_xgboost_version_error(sagemaker_session):
+    with pytest.raises(ValueError) as error1:
+        XGBoost(
+            entry_point=SCRIPT_PATH,
+            role=ROLE,
+            framework_version="1.1",
+            sagemaker_session=sagemaker_session,
+            instance_type=INSTANCE_TYPE,
+            instance_count=1,
+        )
+
+    with pytest.raises(ValueError) as error2:
+        XGBoost(
+            entry_point=SCRIPT_PATH,
+            role=ROLE,
+            framework_version="1.1-1",
+            sagemaker_session=sagemaker_session,
+            instance_type=INSTANCE_TYPE,
+            instance_count=1,
+        )
+
+    error_message = "XGBoost 1.1 is not supported"
     assert error_message in str(error1)
     assert error_message in str(error2)
