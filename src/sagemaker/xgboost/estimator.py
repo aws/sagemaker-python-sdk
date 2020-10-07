@@ -33,8 +33,10 @@ logger = logging.getLogger("sagemaker")
 
 
 class XGBoost(Framework):
-    """Handle end-to-end training and deployment of XGBoost booster training or training using
-    customer provided XGBoost entry point script."""
+    """Handle end-to-end training and deployment of XGBoost booster training.
+
+    It can also handle training using customer provided XGBoost entry point script.
+    """
 
     _framework_name = defaults.XGBOOST_NAME
 
@@ -48,8 +50,8 @@ class XGBoost(Framework):
         image_uri=None,
         **kwargs
     ):
-        """
-        This ``Estimator`` executes an XGBoost based SageMaker Training Job.
+        """An estimator that executes an XGBoost-based SageMaker Training Job.
+
         The managed XGBoost environment is an Amazon-built Docker container thatexecutes functions
         defined in the supplied ``entry_point`` Python script.
 

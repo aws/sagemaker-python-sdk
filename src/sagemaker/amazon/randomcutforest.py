@@ -29,7 +29,8 @@ class RandomCutForest(AmazonAlgorithmEstimatorBase):
 
     These are observations which diverge from otherwise well-structured or patterned data.
     Anomalies can manifest as unexpected spikes in time series data, breaks in periodicity,
-    or unclassifiable data points."""
+    or unclassifiable data points.
+    """
 
     repo_name = "randomcutforest"
     repo_version = 1

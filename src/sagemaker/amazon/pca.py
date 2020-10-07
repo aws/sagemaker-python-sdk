@@ -28,7 +28,8 @@ class PCA(AmazonAlgorithmEstimatorBase):
     """An unsupervised machine learning algorithm to reduce feature dimensionality.
 
     As a result, number of features within a dataset is reduced but the dataset still
-    retain as much information as possible."""
+    retain as much information as possible.
+    """
 
     repo_name = "pca"
     repo_version = 1
