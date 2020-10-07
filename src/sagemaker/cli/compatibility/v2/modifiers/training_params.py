@@ -45,7 +45,7 @@ PARAMS = (
     "train_instance_count",
     "train_instance_type",
     "train_max_run",
-    "train_max_run_wait",
+    "train_max_wait",
     "train_use_spot_instances",
     "train_volume_size",
     "train_volume_kms_key",
@@ -63,7 +63,7 @@ class TrainPrefixRemover(Modifier):
         - ``train_instance_count``
         - ``train_instance_type``
         - ``train_max_run``
-        - ``train_max_run_wait``
+        - ``train_max_wait``
         - ``train_use_spot_instances``
         - ``train_volume_kms_key``
         - ``train_volume_size``
