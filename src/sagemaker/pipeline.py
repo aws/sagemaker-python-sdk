@@ -26,7 +26,14 @@ class PipelineModel(object):
     """
 
     def __init__(
-        self, models, role, predictor_cls=None, name=None, vpc_config=None, sagemaker_session=None
+        self,
+        models,
+        role,
+        predictor_cls=None,
+        name=None,
+        vpc_config=None,
+        sagemaker_session=None,
+        enable_network_isolation=False,
     ):
         """Initialize a SageMaker `Model` instance.
 
@@ -57,6 +64,10 @@ class PipelineModel(object):
                 object, used for SageMaker interactions (default: None). If not
                 specified, one is created using the default AWS configuration
                 chain.
+            enable_network_isolation (bool): Default False. if True, enables
+                network isolation in the endpoint, isolating the model
+                container. No inbound or outbound network calls can be made to
+                or from the model container.Boolean
         """
         self.models = models
         self.role = role
@@ -64,6 +75,7 @@ class PipelineModel(object):
         self.name = name
         self.vpc_config = vpc_config
         self.sagemaker_session = sagemaker_session
+        self.enable_network_isolation = enable_network_isolation
         self.endpoint_name = None
 
     def pipeline_container_def(self, instance_type):
@@ -157,7 +169,11 @@ class PipelineModel(object):
 
         self.name = self.name or name_from_image(containers[0]["Image"])
         self.sagemaker_session.create_model(
-            self.name, self.role, containers, vpc_config=self.vpc_config
+            self.name,
+            self.role,
+            containers,
+            vpc_config=self.vpc_config,
+            enable_network_isolation=self.enable_network_isolation,
         )
 
         production_variant = sagemaker.production_variant(
@@ -214,7 +230,11 @@ class PipelineModel(object):
 
         self.name = self.name or name_from_image(containers[0]["Image"])
         self.sagemaker_session.create_model(
-            self.name, self.role, containers, vpc_config=self.vpc_config
+            self.name,
+            self.role,
+            containers,
+            vpc_config=self.vpc_config,
+            enable_network_isolation=self.enable_network_isolation,
         )
 
     def transformer(
