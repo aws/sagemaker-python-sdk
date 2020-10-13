@@ -18,6 +18,7 @@ import logging
 import sagemaker
 from sagemaker import image_uris, s3
 from sagemaker.deserializers import JSONDeserializer
+from sagemaker.deprecations import removed_kwargs
 from sagemaker.predictor import Predictor
 from sagemaker.serializers import JSONSerializer
 
@@ -35,6 +36,7 @@ class TensorFlowPredictor(Predictor):
         deserializer=JSONDeserializer(),
         model_name=None,
         model_version=None,
+        **kwargs,
     ):
         """Initialize a ``TensorFlowPredictor``.
 
@@ -58,6 +60,8 @@ class TensorFlowPredictor(Predictor):
                 that should handle the request. If not specified, the latest
                 version of the model will be used.
         """
+        removed_kwargs("content_type", kwargs)
+        removed_kwargs("accept", kwargs)
         super(TensorFlowPredictor, self).__init__(
             endpoint_name,
             sagemaker_session,
@@ -141,7 +145,7 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
         framework_version=None,
         container_log_level=None,
         predictor_cls=TensorFlowPredictor,
-        **kwargs
+        **kwargs,
     ):
         """Initialize a Model.
 
@@ -171,7 +175,9 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
                 to call to create a predictor with an endpoint name and
                 SageMaker ``Session``. If specified, ``deploy()`` returns the
                 result of invoking this function on the created endpoint name.
-            **kwargs: Keyword arguments passed to the ``Model`` initializer.
+            **kwargs: Keyword arguments passed to the superclass
+                :class:`~sagemaker.model.FrameworkModel` and, subsequently, its
+                superclass :class:`~sagemaker.model.Model`.
 
         .. tip::
 
@@ -192,7 +198,7 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
             image_uri=image_uri,
             predictor_cls=predictor_cls,
             entry_point=entry_point,
-            **kwargs
+            **kwargs,
         )
         self._container_log_level = container_log_level
 
@@ -208,6 +214,7 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
         kms_key=None,
         wait=True,
         data_capture_config=None,
+        update_endpoint=None,
     ):
         """Deploy a Tensorflow ``Model`` to a SageMaker ``Endpoint``."""
 
@@ -226,6 +233,7 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
             kms_key=kms_key,
             wait=wait,
             data_capture_config=data_capture_config,
+            update_endpoint=update_endpoint,
         )
 
     def _eia_supported(self):

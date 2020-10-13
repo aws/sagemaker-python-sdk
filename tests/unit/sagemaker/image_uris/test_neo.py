@@ -62,19 +62,26 @@ def test_algo_uris(algo):
 
 
 def _test_neo_framework_uris(framework, version):
-    framework = "neo-{}".format(framework)
+    framework_in_config = f"neo-{framework}"
+    framework_in_uri = f"neo-{framework}" if framework == "tensorflow" else f"inference-{framework}"
 
     for region in regions.regions():
         if region in ACCOUNTS:
-            uri = image_uris.retrieve(framework, region, instance_type="ml_c5", version=version)
-            assert _expected_framework_uri(framework, version, region=region) == uri
+            uri = image_uris.retrieve(
+                framework_in_config, region, instance_type="ml_c5", version=version
+            )
+            assert _expected_framework_uri(framework_in_uri, version, region=region) == uri
         else:
             with pytest.raises(ValueError) as e:
-                image_uris.retrieve(framework, region, instance_type="ml_c5", version=version)
+                image_uris.retrieve(
+                    framework_in_config, region, instance_type="ml_c5", version=version
+                )
             assert "Unsupported region: {}.".format(region) in str(e.value)
 
-    uri = image_uris.retrieve(framework, "us-west-2", instance_type="ml_p2", version=version)
-    assert _expected_framework_uri(framework, version, processor="gpu") == uri
+    uri = image_uris.retrieve(
+        framework_in_config, "us-west-2", instance_type="ml_p2", version=version
+    )
+    assert _expected_framework_uri(framework_in_uri, version, processor="gpu") == uri
 
 
 def test_neo_mxnet(neo_mxnet_version):

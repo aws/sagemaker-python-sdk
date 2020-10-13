@@ -30,7 +30,8 @@ class FactorizationMachines(AmazonAlgorithmEstimatorBase):
     Factorization Machines combine the advantages of Support Vector Machines
     with factorization models. It is an extension of a linear model that is
     designed to capture interactions between features within high dimensional
-    sparse datasets economically."""
+    sparse datasets economically.
+    """
 
     repo_name = "factorization-machines"
     repo_version = 1

@@ -26,7 +26,7 @@ logger = logging.getLogger("sagemaker")
 
 
 class AutoML(object):
-    """A class for creating and interacting with SageMaker AutoML jobs"""
+    """A class for creating and interacting with SageMaker AutoML jobs."""
 
     def __init__(
         self,
@@ -178,14 +178,14 @@ class AutoML(object):
         return self._auto_ml_job_desc
 
     def best_candidate(self, job_name=None):
-        """Returns the best candidate of an AutoML job for a given name
+        """Returns the best candidate of an AutoML job for a given name.
 
         Args:
             job_name (str): The name of the AutoML job. If None, will use object's
                 _current_auto_ml_job_name.
 
         Returns:
-            dict: a dictionary with information of the best candidate
+            dict: A dictionary with information of the best candidate.
         """
         if self._best_candidate:
             return self._best_candidate
@@ -229,7 +229,7 @@ class AutoML(object):
                 between 1 to 100. Default to None. If None, will return all the candidates.
 
         Returns:
-            list: A list of dictionaries with candidates information
+            list: A list of dictionaries with candidates information.
         """
         if job_name is None:
             job_name = self.current_job_name
@@ -262,8 +262,7 @@ class AutoML(object):
         predictor_cls=None,
         inference_response_keys=None,
     ):
-        """Creates a model from a given candidate or the best candidate
-        from the automl job
+        """Creates a model from a given candidate or the best candidate from the job.
 
         Args:
             name (str): The pipeline model name.
@@ -289,7 +288,7 @@ class AutoML(object):
                 keys will dictate the content order in the response.
 
         Returns:
-            PipelineModel object
+            PipelineModel object.
         """
         sagemaker_session = sagemaker_session or self.sagemaker_session
 
@@ -351,7 +350,7 @@ class AutoML(object):
         predictor_cls=None,
         inference_response_keys=None,
     ):
-        """Deploy a candidate to a SageMaker Inference Pipeline and return a Predictor
+        """Deploy a candidate to a SageMaker Inference Pipeline.
 
         Args:
             initial_instance_count (int): The initial number of instances to run
@@ -490,12 +489,14 @@ class AutoML(object):
 
     @classmethod
     def _check_inference_keys(cls, inference_response_keys, containers):
-        """Given an inference container list, checks if the pipeline supports the
-        requested inference keys
+        """Checks if the pipeline supports the inference keys for the containers.
+
+        Given inference response keys and list of containers, determines whether
+        the keys are supported.
 
         Args:
-            inference_response_keys (list): List of keys for inference response content
-            containers (list): list of inference container
+            inference_response_keys (list): List of keys for inference response content.
+            containers (list): list of inference container.
 
         Raises:
             ValueError, if one or more keys in inference_response_keys are not supported
@@ -527,8 +528,10 @@ class AutoML(object):
 
     @classmethod
     def validate_and_update_inference_response(cls, inference_containers, inference_response_keys):
-        """Validates the requested inference keys and updates inference containers to emit the
-        requested content in the inference response.
+        """Validates the requested inference keys and updates response content.
+
+        On validation, also updates the inference containers to emit appropriate response
+        content in the inference response.
 
         Args:
             inference_containers (list): list of inference containers
@@ -570,8 +573,10 @@ class AutoML(object):
 
 
 class AutoMLInput(object):
-    """Accepts parameters that specify an S3 input for an auto ml job and provides
-    a method to turn those parameters into a dictionary."""
+    """Accepts parameters that specify an S3 input for an auto ml job
+
+    Provides a method to turn those parameters into a dictionary.
+    """
 
     def __init__(self, inputs, target_attribute_name, compression=None):
         """Convert an S3 Uri or a list of S3 Uri to an AutoMLInput object.

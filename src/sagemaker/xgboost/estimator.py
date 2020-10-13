@@ -16,6 +16,7 @@ from __future__ import absolute_import
 import logging
 
 from sagemaker import image_uris
+from sagemaker.deprecations import renamed_kwargs
 from sagemaker.estimator import Framework, _TrainingJob
 from sagemaker.fw_utils import (
     framework_name_from_image,
@@ -32,8 +33,10 @@ logger = logging.getLogger("sagemaker")
 
 
 class XGBoost(Framework):
-    """Handle end-to-end training and deployment of XGBoost booster training or training using
-    customer provided XGBoost entry point script."""
+    """Handle end-to-end training and deployment of XGBoost booster training.
+
+    It can also handle training using customer provided XGBoost entry point script.
+    """
 
     _framework_name = defaults.XGBOOST_NAME
 
@@ -47,8 +50,8 @@ class XGBoost(Framework):
         image_uri=None,
         **kwargs
     ):
-        """
-        This ``Estimator`` executes an XGBoost based SageMaker Training Job.
+        """An estimator that executes an XGBoost-based SageMaker Training Job.
+
         The managed XGBoost environment is an Amazon-built Docker container thatexecutes functions
         defined in the supplied ``entry_point`` Python script.
 
@@ -95,6 +98,9 @@ class XGBoost(Framework):
             :class:`~sagemaker.estimator.Framework` and
             :class:`~sagemaker.estimator.EstimatorBase`.
         """
+        instance_type = renamed_kwargs(
+            "train_instance_type", "instance_type", kwargs.get("instance_type"), kwargs
+        )
         super(XGBoost, self).__init__(
             entry_point, source_dir, hyperparameters, image_uri=image_uri, **kwargs
         )
@@ -111,7 +117,7 @@ class XGBoost(Framework):
                 self.sagemaker_session.boto_region_name,
                 version=framework_version,
                 py_version=self.py_version,
-                instance_type=kwargs.get("instance_type"),
+                instance_type=instance_type,
                 image_scope="training",
             )
 

@@ -21,6 +21,7 @@ import os
 import pathlib
 
 from six.moves.urllib.parse import urlparse
+from six.moves.urllib.request import url2pathname
 
 from sagemaker import s3
 from sagemaker.job import _Job
@@ -535,21 +536,22 @@ class ScriptProcessor(Processor):
             user_code_s3_uri = code
         elif code_url.scheme == "" or code_url.scheme == "file":
             # Validate that the file exists locally and is not a directory.
-            if not os.path.exists(code):
+            code_path = url2pathname(code_url.path)
+            if not os.path.exists(code_path):
                 raise ValueError(
                     """code {} wasn't found. Please make sure that the file exists.
                     """.format(
                         code
                     )
                 )
-            if not os.path.isfile(code):
+            if not os.path.isfile(code_path):
                 raise ValueError(
                     """code {} must be a file, not a directory. Please pass a path to a file.
                     """.format(
                         code
                     )
                 )
-            user_code_s3_uri = self._upload_code(code)
+            user_code_s3_uri = self._upload_code(code_path)
         else:
             raise ValueError(
                 "code {} url scheme {} is not recognized. Please pass a file path or S3 url".format(
@@ -952,8 +954,10 @@ class ProcessingJob(_Job):
 
 
 class ProcessingInput(object):
-    """Accepts parameters that specify an Amazon S3 input for a processing job and
-    provides a method to turn those parameters into a dictionary."""
+    """Accepts parameters that specify an Amazon S3 input for a processing job.
+
+    Also provides a method to turn those parameters into a dictionary.
+    """
 
     def __init__(
         self,
@@ -1015,8 +1019,10 @@ class ProcessingInput(object):
 
 
 class ProcessingOutput(object):
-    """Accepts parameters that specify an Amazon S3 output for a processing job and provides
-    a method to turn those parameters into a dictionary."""
+    """Accepts parameters that specify an Amazon S3 output for a processing job.
+
+    It also provides a method to turn those parameters into a dictionary.
+    """
 
     def __init__(self, source, destination=None, output_name=None, s3_upload_mode="EndOfJob"):
         """Initializes a ``ProcessingOutput`` instance. ``ProcessingOutput`` accepts parameters that
