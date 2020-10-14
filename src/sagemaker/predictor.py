@@ -19,6 +19,7 @@ from sagemaker.deprecations import (
     deprecated_serialize,
     removed_kwargs,
     renamed_kwargs,
+    renamed_warning,
 )
 from sagemaker.deserializers import (  # noqa: F401 # pylint: disable=unused-import
     BytesDeserializer,
@@ -411,6 +412,12 @@ class Predictor(object):
     def accept(self):
         """The content type(s) that are expected from the inference endpoint."""
         return self.deserializer.ACCEPT
+
+    @property
+    def endpoint(self):
+        """Deprecated attribute. Please use endpoint_name."""
+        renamed_warning("The endpoint attribute")
+        return self.endpoint_name
 
 
 csv_serializer = deprecated_serialize(CSVSerializer(), "csv_serializer")
