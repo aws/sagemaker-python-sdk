@@ -17,6 +17,9 @@ import logging
 import warnings
 
 logging.captureWarnings(True)
+logger = logging.getLogger(__name__)
+
+V2_URL = "https://sagemaker.readthedocs.io/en/stable/v2.html"
 
 
 def _warn(msg):
@@ -25,12 +28,9 @@ def _warn(msg):
     Args:
         phrase: The phrase to include in the warning.
     """
-    warnings.warn(
-        f"{msg} in sagemaker>=2.\n"
-        "See: https://sagemaker.readthedocs.io/en/stable/v2.html for details.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
+    full_msg = f"{msg} in sagemaker>=2.\nSee: {V2_URL} for details."
+    warnings.warn(full_msg, DeprecationWarning, stacklevel=2)
+    logger.warning(full_msg)
 
 
 def removed_warning(phrase):
