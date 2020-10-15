@@ -21,8 +21,6 @@ import sys
 import time
 import warnings
 
-from typing import Any, Dict, List
-
 import boto3
 import botocore.config
 from botocore.exceptions import ClientError
