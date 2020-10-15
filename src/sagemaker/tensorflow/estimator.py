@@ -135,9 +135,12 @@ class TensorFlow(Framework):
                 kwargs["enable_sagemaker_metrics"] = True
 
         super(TensorFlow, self).__init__(image_uri=image_uri, **kwargs)
-
+        self.disable_model_dir = False
         self.model_dir = model_dir
         self.distribution = distribution or {}
+
+        if self.model_dir is False:
+            self.disable_model_dir = True
 
         self._validate_args(py_version=py_version)
 
@@ -316,7 +319,7 @@ class TensorFlow(Framework):
                 "custom_mpi_options", ""
             )
 
-        if self.model_dir is not False:
+        if not self.disable_model_dir:
             self.model_dir = self.model_dir or self._default_s3_path("model", mpi=mpi_enabled)
             additional_hyperparameters["model_dir"] = self.model_dir
 
