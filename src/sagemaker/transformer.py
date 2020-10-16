@@ -363,6 +363,54 @@ class _TransformJob(_Job):
             experiment_config:
             model_client_config:
         """
+
+        transform_args = cls._get_transform_args(
+            transformer,
+            data,
+            data_type,
+            content_type,
+            compression_type,
+            split_type,
+            input_filter,
+            output_filter,
+            join_source,
+            experiment_config,
+            model_client_config,
+        )
+        transformer.sagemaker_session.transform(**transform_args)
+
+        return cls(transformer.sagemaker_session, transformer._current_job_name)
+
+    @classmethod
+    def _get_transform_args(
+        cls,
+        transformer,
+        data,
+        data_type,
+        content_type,
+        compression_type,
+        split_type,
+        input_filter,
+        output_filter,
+        join_source,
+        experiment_config,
+        model_client_config,
+    ):
+        """
+        Args:
+            transformer:
+            data:
+            data_type:
+            content_type:
+            compression_type:
+            split_type:
+            input_filter:
+            output_filter:
+            join_source:
+            experiment_config:
+            model_client_config:
+        """
+
         config = _TransformJob._load_config(
             data, data_type, content_type, compression_type, split_type, transformer
         )
@@ -370,23 +418,23 @@ class _TransformJob(_Job):
             input_filter, output_filter, join_source
         )
 
-        transformer.sagemaker_session.transform(
-            job_name=transformer._current_job_name,
-            model_name=transformer.model_name,
-            strategy=transformer.strategy,
-            max_concurrent_transforms=transformer.max_concurrent_transforms,
-            max_payload=transformer.max_payload,
-            env=transformer.env,
-            input_config=config["input_config"],
-            output_config=config["output_config"],
-            resource_config=config["resource_config"],
-            experiment_config=experiment_config,
-            model_client_config=model_client_config,
-            tags=transformer.tags,
-            data_processing=data_processing,
+        transform_args = config.copy()
+        transform_args.update(
+            {
+                "job_name": transformer._current_job_name,
+                "model_name": transformer.model_name,
+                "strategy": transformer.strategy,
+                "max_concurrent_transforms": transformer.max_concurrent_transforms,
+                "max_payload": transformer.max_payload,
+                "env": transformer.env,
+                "experiment_config": experiment_config,
+                "model_client_config": model_client_config,
+                "tags": transformer.tags,
+                "data_processing": data_processing,
+            }
         )
 
-        return cls(transformer.sagemaker_session, transformer._current_job_name)
+        return transform_args
 
     def wait(self, logs=True):
         if logs:
