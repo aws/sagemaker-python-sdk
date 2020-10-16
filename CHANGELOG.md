@@ -1,5 +1,13 @@
 # Changelog
 
+## v2.15.1 (2020-10-15)
+
+### Bug Fixes and Other Changes
+
+ * include more notebook tests, logger to warn
+ * include managed spot training notebook test
+ * add missing account IDs for af-south-1 and eu-south-1
+
 ## v2.15.0 (2020-10-07)
 
 ### Features
