@@ -135,7 +135,6 @@ class TensorFlow(Framework):
                 kwargs["enable_sagemaker_metrics"] = True
 
         super(TensorFlow, self).__init__(image_uri=image_uri, **kwargs)
-
         self.model_dir = model_dir
         self.distribution = distribution or {}
 
