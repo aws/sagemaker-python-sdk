@@ -99,7 +99,7 @@ class _LocalProcessingJob(object):
 
             if (
                 "S3CompressionType" in item["S3Input"]
-                and item["S3Input"]["S3CompressionType"] is not None
+                and item["S3Input"]["S3CompressionType"] != "None"
             ):
 
                 raise RuntimeError(
