@@ -60,12 +60,16 @@ logger = logging.getLogger(__name__)
 
 
 class WarmStartTypes(Enum):
-    """Warm Start Configuration type. There can be two types of warm start jobs:
+    """Warm Start Configuration type.
+
+    There can be two types of warm start jobs:
+
     * IdenticalDataAndAlgorithm: Type of warm start that allows users to reuse
     training results from existing tuning jobs that have the same algorithm code
-    and datasets. * TransferLearning: Type of warm start that allows users to
-    reuse training results from existing tuning jobs that have similar algorithm
-    code and datasets.
+    and datasets.
+    * TransferLearning: Type of warm start that allows users to reuse training
+    results from existing tuning jobs that have similar algorithm code and
+    datasets.
     """
 
     IDENTICAL_DATA_AND_ALGORITHM = "IdenticalDataAndAlgorithm"
@@ -73,8 +77,10 @@ class WarmStartTypes(Enum):
 
 
 class WarmStartConfig(object):
-    """Warm Start Configuration which defines the nature of the warm start
-    ``HyperparameterTuner``, with type and parents for warm start.
+    """Warm Start Configuration which defines the nature of the warm start.
+
+    This warm start configuration is provided to the ``HyperparameterTuner``,
+    with type and parents for warm start.
 
     Examples:
         >>> warm_start_config = WarmStartConfig(
@@ -86,8 +92,7 @@ class WarmStartConfig(object):
     """
 
     def __init__(self, warm_start_type, parents):
-        """Initializes the ``WarmStartConfig`` with the provided
-        ``WarmStartTypes`` and parents.
+        """Creates a ``WarmStartConfig`` with provided ``WarmStartTypes`` and parents.
 
         Args:
             warm_start_type (sagemaker.tuner.WarmStartTypes): This should be one
@@ -113,8 +118,9 @@ class WarmStartConfig(object):
 
     @classmethod
     def from_job_desc(cls, warm_start_config):
-        """Creates an instance of ``WarmStartConfig`` class, from warm start
-        configuration response from DescribeTrainingJob.
+        """Creates a ``WarmStartConfig`` from a warm start configuration response.
+
+        This is the warm start configuration from the DescribeTrainingJob response.
 
         Examples:
             >>> warm_start_config = WarmStartConfig.from_job_desc(warm_start_config={
@@ -183,8 +189,9 @@ class WarmStartConfig(object):
 
 
 class HyperparameterTuner(object):
-    """A class for creating and interacting with Amazon SageMaker hyperparameter
-    tuning jobs, as well as deploying the resulting model(s).
+    """Defines interaction with Amazon SageMaker hyperparameter tuning jobs.
+
+    It also supports deploying the resulting models.
     """
 
     TUNING_JOB_NAME_MAX_LENGTH = 32
@@ -211,9 +218,10 @@ class HyperparameterTuner(object):
         early_stopping_type="Off",
         estimator_name=None,
     ):
-        """Initialize a ``HyperparameterTuner``. It takes an estimator to obtain
-        configuration information for training jobs that are created as the
-        result of a hyperparameter tuning job.
+        """Creates a ``HyperparameterTuner`` instance.
+
+        It takes an estimator to obtain configuration information for training
+        jobs that are created as the result of a hyperparameter tuning job.
 
         Args:
             estimator (sagemaker.estimator.EstimatorBase): An estimator object
@@ -305,12 +313,12 @@ class HyperparameterTuner(object):
         self.early_stopping_type = early_stopping_type
 
     def _prepare_for_tuning(self, job_name=None, include_cls_metadata=False):
-        """Prepare the tuner instance for tuning (fit)"""
+        """Prepare the tuner instance for tuning (fit)."""
         self._prepare_job_name_for_tuning(job_name=job_name)
         self._prepare_static_hyperparameters_for_tuning(include_cls_metadata=include_cls_metadata)
 
     def _prepare_job_name_for_tuning(self, job_name=None):
-        """Set current job name before starting tuning"""
+        """Set current job name before starting tuning."""
         if job_name is not None:
             self._current_job_name = job_name
         else:
@@ -325,7 +333,7 @@ class HyperparameterTuner(object):
             )
 
     def _prepare_static_hyperparameters_for_tuning(self, include_cls_metadata=False):
-        """Prepare static hyperparameters for all estimators before tuning"""
+        """Prepare static hyperparameters for all estimators before tuning."""
         self.static_hyperparameters = None
         if self.estimator is not None:
             self.static_hyperparameters = self._prepare_static_hyperparameters(
@@ -347,7 +355,7 @@ class HyperparameterTuner(object):
     def _prepare_static_hyperparameters(
         cls, estimator, hyperparameter_ranges, include_cls_metadata
     ):
-        """Prepare static hyperparameters for one estimator before tuning"""
+        """Prepare static hyperparameters for one estimator before tuning."""
         # Remove any hyperparameter that will be tuned
         static_hyperparameters = {str(k): str(v) for (k, v) in estimator.hyperparameters().items()}
         for hyperparameter_name in hyperparameter_ranges.keys():
@@ -441,13 +449,13 @@ class HyperparameterTuner(object):
             self.latest_tuning_job.wait()
 
     def _fit_with_estimator(self, inputs, job_name, include_cls_metadata, **kwargs):
-        """Start tuning for tuner instances that have the ``estimator`` field set"""
+        """Start tuning for tuner instances that have the ``estimator`` field set."""
         self._prepare_estimator_for_tuning(self.estimator, inputs, job_name, **kwargs)
         self._prepare_for_tuning(job_name=job_name, include_cls_metadata=include_cls_metadata)
         self.latest_tuning_job = _TuningJob.start_new(self, inputs)
 
     def _fit_with_estimator_dict(self, inputs, job_name, include_cls_metadata, estimator_kwargs):
-        """Start tuning for tuner instances that have the ``estimator_dict`` field set"""
+        """Start tuning for tuner instances that have the ``estimator_dict`` field set."""
         estimator_names = sorted(self.estimator_dict.keys())
         self._validate_dict_argument(name="inputs", value=inputs, allowed_keys=estimator_names)
         self._validate_dict_argument(
@@ -469,7 +477,7 @@ class HyperparameterTuner(object):
 
     @classmethod
     def _prepare_estimator_for_tuning(cls, estimator, inputs, job_name, **kwargs):
-        """Prepare one estimator before starting tuning"""
+        """Prepare one estimator before starting tuning."""
         if isinstance(inputs, (list, RecordSet, FileSystemRecordSet)):
             estimator._prepare_for_training(inputs, **kwargs)
         else:
@@ -611,8 +619,10 @@ class HyperparameterTuner(object):
 
     @classmethod
     def _attach_with_training_details(cls, sagemaker_session, estimator_cls, job_details):
-        """Create a HyperparameterTuner bound to an existing hyperparameter
-        tuning job that has the ``TrainingJobDefinition`` field set."""
+        """Create a HyperparameterTuner bound to an existing hyperparameter tuning job.
+
+        The tuning job has the ``TrainingJobDefinition`` field set in this case.
+        """
         estimator = cls._prepare_estimator(
             estimator_cls=estimator_cls,
             training_details=job_details["TrainingJobDefinition"],
@@ -625,8 +635,10 @@ class HyperparameterTuner(object):
 
     @classmethod
     def _attach_with_training_details_list(cls, sagemaker_session, estimator_cls, job_details):
-        """Create a HyperparameterTuner bound to an existing hyperparameter
-        tuning job that has the ``TrainingJobDefinitions`` field set."""
+        """Create a HyperparameterTuner bound to an existing hyperparameter tuning job.
+
+        The tuning job has the ``TrainingJobDefinitions`` field set in this case.
+        """
         estimator_names = sorted(
             [
                 training_details["DefinitionName"]
@@ -1396,7 +1408,7 @@ class HyperparameterTuner(object):
 
     @classmethod
     def _validate_dict_argument(cls, name, value, allowed_keys, require_same_keys=False):
-        """Check if an argument is an dictionary with correct key set"""
+        """Check if an argument is an dictionary with correct key set."""
         if value is None:
             return
 
@@ -1426,8 +1438,11 @@ class HyperparameterTuner(object):
         hyperparameter_ranges,
         metric_definitions=None,
     ):
-        """Add an estimator with corresponding objective metric name, parameter ranges and metric
-        definitions (if applicable)"""
+        """Add an estimator with corresponding attributes, if applicable.
+
+        The objective metric name, parameter ranges and metric definitions are added to
+        the estimator, if populated.
+        """
         self.estimator_dict[estimator_name] = estimator
         self.objective_metric_name_dict[estimator_name] = objective_metric_name
         self._hyperparameter_ranges_dict[estimator_name] = hyperparameter_ranges
@@ -1442,8 +1457,10 @@ class _TuningJob(_Job):
 
     @classmethod
     def start_new(cls, tuner, inputs):
-        """Create a new Amazon SageMaker hyperparameter tuning job from the
-        HyperparameterTuner.
+        """Create a new Amazon SageMaker HyperParameter Tuning job.
+
+        The new HyperParameter Tuning job uses the provided `tuner` and `inputs`
+        to start a new job.
 
         Args:
             tuner (sagemaker.tuner.HyperparameterTuner): HyperparameterTuner
@@ -1515,7 +1532,7 @@ class _TuningJob(_Job):
         objective_metric_name=None,
         parameter_ranges=None,
     ):
-        """Prepare training config for one estimator"""
+        """Prepare training config for one estimator."""
         training_config = _Job._load_config(inputs, estimator)
 
         training_config["input_mode"] = estimator.input_mode
@@ -1560,21 +1577,24 @@ class _TuningJob(_Job):
         return training_config
 
     def stop(self):
-        """Placeholder docstring"""
+        """Placeholder docstring."""
         self.sagemaker_session.stop_tuning_job(name=self.name)
 
     def wait(self):
-        """Placeholder docstring"""
+        """Placeholder docstring."""
         self.sagemaker_session.wait_for_tuning_job(self.name)
 
 
 def create_identical_dataset_and_algorithm_tuner(
     parent, additional_parents=None, sagemaker_session=None
 ):
-    """Creates a new tuner by copying the request fields from the provided parent to the new
-        instance of ``HyperparameterTuner`` followed by addition of warm start configuration
-        with the type as "IdenticalDataAndAlgorithm" and ``parents`` as the
-        union of provided list of ``additional_parents`` and the ``parent``.
+    """Creates a new tuner with an identical dataset and algorithm.
+
+    It does this identical creation by copying the request fields from the
+    provided parent to the new instance of ``HyperparameterTuner`` followed
+    by addition of warm start configuration with the type as
+    "IdenticalDataAndAlgorithm" and ``parents`` as the union of provided list
+    of ``additional_parents`` and the ``parent``.
 
     Args:
         parent (str): Primary parent tuning job's name from which the Tuner and
@@ -1601,11 +1621,13 @@ def create_identical_dataset_and_algorithm_tuner(
 def create_transfer_learning_tuner(
     parent, additional_parents=None, estimator=None, sagemaker_session=None
 ):
-    """Creates a new ``HyperParameterTuner`` by copying the request fields from the
-    provided parent to the new instance
-        of ``HyperparameterTuner`` followed by addition of warm start
-        configuration with the type as "TransferLearning" and ``parents`` as the
-        union of provided list of ``additional_parents`` and the ``parent``.
+    """Creates a new ``HyperParameterTuner`` instance from the parent.
+
+    It creates the new tuner by copying the request fields from the provided
+    parent to the new instance of ``HyperparameterTuner`` followed by addition
+    of warm start configuration with the type as "TransferLearning" and
+    ``parents`` as the union of provided list of ``additional_parents`` and
+    the ``parent``.
 
     Args:
         parent (str): Primary parent tuning job's name from which the Tuner and

@@ -156,7 +156,7 @@ class LocalSagemakerClient(object):
         InputDataConfig=None,
         **kwargs
     ):
-        """Create a training job in Local Mode
+        """Create a training job in Local Mode.
 
         Args:
           TrainingJobName(str): local training job name.
@@ -216,7 +216,7 @@ class LocalSagemakerClient(object):
         TransformResources,
         **kwargs
     ):
-        """
+        """Create the transform job.
 
         Args:
           TransformJobName:
@@ -234,7 +234,7 @@ class LocalSagemakerClient(object):
         transform_job.start(TransformInput, TransformOutput, TransformResources, **kwargs)
 
     def describe_transform_job(self, TransformJobName):
-        """
+        """Describe the transform job.
 
         Args:
           TransformJobName:
@@ -255,8 +255,7 @@ class LocalSagemakerClient(object):
     def create_model(
         self, ModelName, PrimaryContainer, *args, **kwargs
     ):  # pylint: disable=unused-argument
-        """Create a Local Model Object
-
+        """Create a Local Model Object.
 
         Args:
           ModelName (str): the Model Name
@@ -269,13 +268,12 @@ class LocalSagemakerClient(object):
         LocalSagemakerClient._models[ModelName] = _LocalModel(ModelName, PrimaryContainer)
 
     def describe_model(self, ModelName):
-        """
+        """Describe the model.
 
         Args:
           ModelName:
 
         Returns:
-
         """
         if ModelName not in LocalSagemakerClient._models:
             error_response = {
@@ -285,7 +283,7 @@ class LocalSagemakerClient(object):
         return LocalSagemakerClient._models[ModelName].describe()
 
     def describe_endpoint_config(self, EndpointConfigName):
-        """
+        """Describe the endpoint configuration.
 
         Args:
           EndpointConfigName:
@@ -304,7 +302,7 @@ class LocalSagemakerClient(object):
         return LocalSagemakerClient._endpoint_configs[EndpointConfigName].describe()
 
     def create_endpoint_config(self, EndpointConfigName, ProductionVariants, Tags=None):
-        """
+        """Create the endpoint configuration.
 
         Args:
           EndpointConfigName:
@@ -319,7 +317,7 @@ class LocalSagemakerClient(object):
         )
 
     def describe_endpoint(self, EndpointName):
-        """
+        """Describe the endpoint.
 
         Args:
           EndpointName:
@@ -335,7 +333,7 @@ class LocalSagemakerClient(object):
         return LocalSagemakerClient._endpoints[EndpointName].describe()
 
     def create_endpoint(self, EndpointName, EndpointConfigName, Tags=None):
-        """
+        """Create the endpoint.
 
         Args:
           EndpointName:
@@ -350,7 +348,7 @@ class LocalSagemakerClient(object):
         endpoint.serve()
 
     def update_endpoint(self, EndpointName, EndpointConfigName):  # pylint: disable=unused-argument
-        """
+        """Update the endpoint.
 
         Args:
           EndpointName:
@@ -362,7 +360,7 @@ class LocalSagemakerClient(object):
         raise NotImplementedError("Update endpoint name is not supported in local session.")
 
     def delete_endpoint(self, EndpointName):
-        """
+        """Delete the endpoint.
 
         Args:
           EndpointName:
@@ -374,7 +372,7 @@ class LocalSagemakerClient(object):
             LocalSagemakerClient._endpoints[EndpointName].stop()
 
     def delete_endpoint_config(self, EndpointConfigName):
-        """
+        """Delete the endpoint configuration.
 
         Args:
           EndpointConfigName:
@@ -386,7 +384,7 @@ class LocalSagemakerClient(object):
             del LocalSagemakerClient._endpoint_configs[EndpointConfigName]
 
     def delete_model(self, ModelName):
-        """
+        """Delete the model.
 
         Args:
           ModelName:
@@ -402,7 +400,7 @@ class LocalSagemakerRuntimeClient(object):
     """A SageMaker Runtime client that calls a local endpoint only."""
 
     def __init__(self, config=None):
-        """Initializes a LocalSageMakerRuntimeClient
+        """Initializes a LocalSageMakerRuntimeClient.
 
         Args:
             config (dict): Optional configuration for this client. In particular only
@@ -429,7 +427,7 @@ class LocalSagemakerRuntimeClient(object):
         TargetModel=None,
         TargetVariant=None,
     ):
-        """
+        """Invoke the endpoint.
 
         Args:
           Body:
@@ -464,7 +462,7 @@ class LocalSagemakerRuntimeClient(object):
 
 
 class LocalSession(Session):
-    """Placeholder docstring"""
+    """A LocalSession class definition."""
 
     def __init__(self, boto_session=None, s3_endpoint_url=None):
         self.s3_endpoint_url = s3_endpoint_url
@@ -518,7 +516,7 @@ class LocalSession(Session):
             self.config = yaml.load(open(sagemaker_config_file, "r"))
 
     def logs_for_job(self, job_name, wait=False, poll=5, log_type="All"):
-        """
+        """A no-op method meant to override the sagemaker client.
 
         Args:
           job_name:

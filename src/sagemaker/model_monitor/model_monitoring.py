@@ -641,46 +641,32 @@ class ModelMonitor(object):
             monitoring_schedule_name=monitor_schedule_name
         )
 
-        role = schedule_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["RoleArn"]
-        image_uri = schedule_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-            "MonitoringAppSpecification"
-        ]["ImageUri"]
-        instance_count = schedule_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-            "MonitoringResources"
-        ]["ClusterConfig"]["InstanceCount"]
-        instance_type = schedule_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-            "MonitoringResources"
-        ]["ClusterConfig"]["InstanceType"]
-        entrypoint = schedule_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-            "MonitoringAppSpecification"
-        ].get("ContainerEntrypoint")
-        volume_size_in_gb = schedule_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-            "MonitoringResources"
-        ]["ClusterConfig"]["VolumeSizeInGB"]
-        volume_kms_key = schedule_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-            "MonitoringResources"
-        ]["ClusterConfig"].get("VolumeKmsKeyId")
-        output_kms_key = schedule_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-            "MonitoringOutputConfig"
-        ].get("KmsKeyId")
+        monitoring_job_definition = schedule_desc["MonitoringScheduleConfig"][
+            "MonitoringJobDefinition"
+        ]
+        role = monitoring_job_definition["RoleArn"]
+        image_uri = monitoring_job_definition["MonitoringAppSpecification"].get("ImageUri")
+        cluster_config = monitoring_job_definition["MonitoringResources"]["ClusterConfig"]
+        instance_count = cluster_config.get("InstanceCount")
+        instance_type = cluster_config["InstanceType"]
+        volume_size_in_gb = cluster_config["VolumeSizeInGB"]
+        volume_kms_key = cluster_config.get("VolumeKmsKeyId")
+        entrypoint = monitoring_job_definition["MonitoringAppSpecification"].get(
+            "ContainerEntrypoint"
+        )
+        output_kms_key = monitoring_job_definition["MonitoringOutputConfig"].get("KmsKeyId")
+        network_config_dict = monitoring_job_definition.get("NetworkConfig")
 
         max_runtime_in_seconds = None
-        if schedule_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"].get(
-            "StoppingCondition"
-        ):
-            max_runtime_in_seconds = schedule_desc["MonitoringScheduleConfig"][
-                "MonitoringJobDefinition"
-            ]["StoppingCondition"].get("MaxRuntimeInSeconds")
+        stopping_condition = monitoring_job_definition.get("StoppingCondition")
+        if stopping_condition:
+            max_runtime_in_seconds = stopping_condition.get("MaxRuntimeInSeconds")
 
-        env = schedule_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["Environment"]
+        env = monitoring_job_definition.get("Environment", None)
 
-        network_config_dict = schedule_desc["MonitoringScheduleConfig"][
-            "MonitoringJobDefinition"
-        ].get("NetworkConfig")
-
-        vpc_config = schedule_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-            "NetworkConfig"
-        ].get("VpcConfig")
+        vpc_config = None
+        if network_config_dict:
+            vpc_config = network_config_dict.get("VpcConfig")
 
         security_group_ids = None
         if vpc_config is not None:
@@ -690,6 +676,7 @@ class ModelMonitor(object):
         if vpc_config is not None:
             subnets = vpc_config["Subnets"]
 
+        network_config = None
         if network_config_dict:
             network_config = NetworkConfig(
                 enable_network_isolation=network_config_dict["EnableNetworkIsolation"],
@@ -2077,8 +2064,10 @@ class MonitoringExecution(ProcessingJob):
 
 
 class EndpointInput(object):
-    """Accepts parameters that specify an endpoint input for a monitoring execution and provides
-    a method to turn those parameters into a dictionary."""
+    """Accepts parameters that specify an endpoint input for monitoring execution.
+
+    It also provides a method to turn those parameters into a dictionary.
+    """
 
     def __init__(
         self,
@@ -2119,8 +2108,10 @@ class EndpointInput(object):
 
 
 class MonitoringOutput(object):
-    """Accepts parameters that specify an S3 output for a monitoring job and provides
-    a method to turn those parameters into a dictionary."""
+    """Accepts parameters that specify an S3 output for a monitoring job.
+
+    It also provides a method to turn those parameters into a dictionary.
+    """
 
     def __init__(self, source, destination=None, s3_upload_mode="Continuous"):
         """Initialize a ``MonitoringOutput`` instance. MonitoringOutput accepts parameters that

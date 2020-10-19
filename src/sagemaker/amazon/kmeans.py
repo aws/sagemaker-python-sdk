@@ -29,7 +29,8 @@ class KMeans(AmazonAlgorithmEstimatorBase):
 
     As the result of KMeans, members of a group are as similar as possible to one another and as
     different as possible from members of other groups. You define the attributes that you want
-    the algorithm to use to determine similarity."""
+    the algorithm to use to determine similarity.
+    """
 
     repo_name = "kmeans"
     repo_version = 1

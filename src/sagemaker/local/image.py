@@ -52,8 +52,7 @@ logger = logging.getLogger(__name__)
 
 
 class _SageMakerContainer(object):
-    """Handle the lifecycle and configuration of a local docker container
-    execution.
+    """Handle the lifecycle and configuration of a local container execution.
 
     This class is responsible for creating the directories and configuration
     files that the docker containers will use for either training or serving.
@@ -259,13 +258,13 @@ class _SageMakerContainer(object):
 
     def serve(self, model_dir, environment):
         """Host a local endpoint using docker-compose.
+
         Args:
             primary_container (dict): dictionary containing the container runtime settings
                 for serving. Expected keys:
                 - 'ModelDataUrl' pointing to a file or s3:// location.
                 - 'Environment' a dictionary of environment variables to be passed to the
                     hosting container.
-
         """
         logger.info("serving")
 
@@ -460,7 +459,8 @@ class _SageMakerContainer(object):
     def _prepare_training_volumes(
         self, data_dir, input_data_config, output_data_config, hyperparameters
     ):
-        """
+        """Prepares the training volumes based on input and output data configs.
+
         Args:
             data_dir:
             input_data_config:
@@ -671,7 +671,8 @@ class _SageMakerContainer(object):
         return content
 
     def _compose(self, detached=False):
-        """
+        """Invokes the docker compose command.
+
         Args:
             detached:
         """
@@ -690,7 +691,8 @@ class _SageMakerContainer(object):
         return command
 
     def _create_docker_host(self, host, environment, optml_subdirs, command, volumes):
-        """
+        """Creates the docker host configuration.
+
         Args:
             host:
             environment:
@@ -758,11 +760,11 @@ class _SageMakerContainer(object):
         return os.path.abspath(working_dir)
 
     def _build_optml_volumes(self, host, subdirs):
-        """Generate a list of :class:`~sagemaker.local_session.Volume` required
-        for the container to start.
+        """Generate a list of :class:`~sagemaker.local_session.Volume`.
 
-        It takes a folder with the necessary files for training and creates a
-        list of opt volumes that the Container needs to start.
+        These are required for the container to start. It takes a folder with
+        the necessary files for training and creates a list of opt volumes
+        that the Container needs to start.
 
         Args:
             host (str): container for which the volumes will be generated.
@@ -782,7 +784,8 @@ class _SageMakerContainer(object):
         return volumes
 
     def _cleanup(self, dirs_to_delete=None):
-        """
+        """Cleans up directories and the like.
+
         Args:
             dirs_to_delete:
         """
@@ -797,10 +800,11 @@ class _SageMakerContainer(object):
 
 
 class _HostingContainer(Thread):
-    """Placeholder docstring"""
+    """Placeholder docstring."""
 
     def __init__(self, command):
-        """
+        """Creates a new threaded hosting container.
+
         Args:
             command:
         """
@@ -880,7 +884,8 @@ def _stream_output(process):
 
 
 def _check_output(cmd, *popenargs, **kwargs):
-    """
+    """Makes a call to `subprocess.check_output` for the given command and args.
+
     Args:
         cmd:
         *popenargs:
@@ -915,7 +920,8 @@ def _create_processing_config_file_directories(root, host):
 
 
 def _create_config_file_directories(root, host):
-    """
+    """Creates the directories for the config files.
+
     Args:
         root:
         host:
@@ -925,7 +931,8 @@ def _create_config_file_directories(root, host):
 
 
 def _delete_tree(path):
-    """
+    """Makes a call to `shutil.rmtree` for the given path.
+
     Args:
         path:
     """
@@ -944,7 +951,10 @@ def _delete_tree(path):
 
 
 def _aws_credentials(session):
-    """
+    """Provides the AWS credentials of the session as a paired list of strings.
+
+    These can be used to set environment variables on command execution.
+
     Args:
         session:
     """
@@ -1007,7 +1017,8 @@ def _aws_credentials_available_in_metadata_service():
 
 
 def _write_json_file(filename, content):
-    """
+    """Write the contents dict as json to the file.
+
     Args:
         filename:
         content:
@@ -1017,8 +1028,10 @@ def _write_json_file(filename, content):
 
 
 def _ecr_login_if_needed(boto_session, image):
-    # Only ECR images need login
-    """
+    """Log into ECR, if needed.
+
+    Of note, only ECR images need login.
+
     Args:
         boto_session:
         image:
@@ -1053,7 +1066,8 @@ def _ecr_login_if_needed(boto_session, image):
 
 
 def _pull_image(image):
-    """
+    """Invokes the docker pull command for the given image.
+
     Args:
         image:
     """

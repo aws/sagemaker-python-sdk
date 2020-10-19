@@ -30,7 +30,8 @@ class KNN(AmazonAlgorithmEstimatorBase):
     For classification problems, the algorithm queries the k points that are closest to the sample
     point and returns the most frequently used label of their class as the predicted label. For
     regression problems, the algorithm queries the k closest points to the sample point and returns
-    the average of their feature values as the predicted value."""
+    the average of their feature values as the predicted value.
+    """
 
     repo_name = "knn"
     repo_version = 1

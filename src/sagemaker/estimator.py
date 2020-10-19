@@ -242,7 +242,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         use_spot_instances = renamed_kwargs(
             "train_use_spot_instances", "use_spot_instances", use_spot_instances, kwargs
         )
-        max_wait = renamed_kwargs("train_max_run_wait", "max_wait", max_wait, kwargs)
+        max_wait = renamed_kwargs("train_max_wait", "max_wait", max_wait, kwargs)
         volume_size = renamed_kwargs("train_volume_size", "volume_size", volume_size, kwargs)
         volume_kms_key = renamed_kwargs(
             "train_volume_kms_key", "volume_kms_key", volume_kms_key, kwargs
@@ -1113,8 +1113,9 @@ class _TrainingJob(_Job):
 
         config = _Job._load_config(inputs, estimator)
 
-        if estimator.hyperparameters() is not None:
-            hyperparameters = {str(k): str(v) for (k, v) in estimator.hyperparameters().items()}
+        current_hyperparameters = estimator.hyperparameters()
+        if current_hyperparameters is not None:
+            hyperparameters = {str(k): str(v) for (k, v) in current_hyperparameters.items()}
 
         train_args = config.copy()
         train_args["input_mode"] = estimator.input_mode

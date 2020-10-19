@@ -1,5 +1,34 @@
 # Changelog
 
+## v2.15.1 (2020-10-15)
+
+### Bug Fixes and Other Changes
+
+ * include more notebook tests, logger to warn
+ * include managed spot training notebook test
+ * add missing account IDs for af-south-1 and eu-south-1
+
+## v2.15.0 (2020-10-07)
+
+### Features
+
+ * add network isolation support for PipelineModel
+ * forward-port v1 names as deprecated aliases
+
+### Bug Fixes and Other Changes
+
+ * include additional docstyle improvements
+ * check optional keyword before accessing
+ * use local updated args; use train_max_wait
+ * cross-platform file URI for Processing
+ * update kwargs target attribute
+
+### Documentation Changes
+
+ * fix Spark class links
+ * kwargs descriptions include clickable links
+ * fix broken link to moved notebook
+
 ## v2.14.0 (2020-10-05)
 
 ### Features
