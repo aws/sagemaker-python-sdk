@@ -1,5 +1,12 @@
 # Changelog
 
+## v2.15.2 (2020-10-19)
+
+### Bug Fixes and Other Changes
+
+ * preserve model_dir bool value
+ * refactor out batch transform job input generation
+
 ## v2.15.1 (2020-10-15)
 
 ### Bug Fixes and Other Changes
