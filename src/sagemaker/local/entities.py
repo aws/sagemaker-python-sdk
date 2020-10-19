@@ -71,24 +71,40 @@ class _LocalProcessingJob(object):
 
         for item in processing_inputs:
             if item["S3Input"]:
-                data_distribution = item["S3Input"]["S3DataDistributionType"]
-                compression_type = item["S3Input"]["S3CompressionType"]
                 data_uri = item["S3Input"]["S3Uri"]
             else:
                 raise ValueError("Processing input must have a valid ['S3Input']")
 
+            if item["S3Input"]["S3InputMode"]:
+                input_mode = item["S3Input"]["S3InputMode"]
+            else:
+                raise ValueError("Processing input must have a valid ['S3InputMode']")
+
             item["DataUri"] = data_uri
 
-            if data_distribution != "FullyReplicated":
+            if (
+                "S3DataDistributionType" in item["S3Input"]
+                and item["S3Input"]["S3DataDistributionType"] != "FullyReplicated"
+            ):
+
                 raise RuntimeError(
                     "DataDistribution: %s is not currently supported in Local Mode"
-                    % data_distribution
+                    % item["S3Input"]["S3DataDistributionType"]
                 )
 
-            if compression_type != "None":
+            if input_mode != "File":
+                raise RuntimeError(
+                    "S3InputMode: %s is not currently supported in Local Mode" % input_mode
+                )
+
+            if (
+                "S3CompressionType" in item["S3Input"]
+                and item["S3Input"]["S3CompressionType"] is not None
+            ):
+
                 raise RuntimeError(
                     "CompressionType: %s is not currently supported in Local Mode"
-                    % compression_type
+                    % item["S3Input"]["S3CompressionType"]
                 )
 
         if processing_output_config and "Outputs" in processing_output_config:
@@ -101,9 +117,8 @@ class _LocalProcessingJob(object):
                     raise ValueError("Processing output must have a valid ['S3Output']")
 
                 if upload_mode != "EndOfJob":
-                    logger.warning(
-                        "UploadMode: %s is not currently supported in Local Mode. Using EndOfJob.",
-                        upload_mode,
+                    raise RuntimeError(
+                        "UploadMode: %s is not currently supported in Local Mode." % upload_mode
                     )
 
         self.start_time = datetime.datetime.now()
@@ -139,7 +154,7 @@ class _LocalProcessingJob(object):
                     "InstanceCount": self.container.instance_count,
                     "InstanceType": self.container.instance_type,
                     "VolumeSizeInGB": 30,
-                    "VolumeKmsKeyId": "None",
+                    "VolumeKmsKeyId": None,
                 }
             },
             "RoleArn": "<no_role>",
