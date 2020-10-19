@@ -113,7 +113,8 @@ def test_deploy(tfo, time, sagemaker_session):
     model = PipelineModel(
         models=[framework_model, sparkml_model], role=ROLE, sagemaker_session=sagemaker_session
     )
-    model.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=1)
+    kms_key = "pipeline-model-deploy-kms-key"
+    model.deploy(instance_type=INSTANCE_TYPE, initial_instance_count=1, kms_key=kms_key)
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
         name="mi-1-2017-10-10-14-14-15",
         production_variants=[
@@ -126,6 +127,7 @@ def test_deploy(tfo, time, sagemaker_session):
             }
         ],
         tags=None,
+        kms_key=kms_key,
         wait=True,
         data_capture_config_dict=None,
     )
@@ -154,6 +156,7 @@ def test_deploy_endpoint_name(tfo, time, sagemaker_session):
             }
         ],
         tags=None,
+        kms_key=None,
         wait=True,
         data_capture_config_dict=None,
     )
@@ -183,6 +186,7 @@ def test_deploy_update_endpoint(tfo, time, sagemaker_session):
         initial_instance_count=INSTANCE_COUNT,
         instance_type=INSTANCE_TYPE,
         tags=None,
+        kms_key=None,
         data_capture_config_dict=None,
     )
     config_name = sagemaker_session.create_endpoint_config(
@@ -275,6 +279,7 @@ def test_deploy_tags(tfo, time, sagemaker_session):
         ],
         tags=tags,
         wait=True,
+        kms_key=None,
         data_capture_config_dict=None,
     )
 

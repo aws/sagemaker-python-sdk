@@ -111,6 +111,7 @@ class PipelineModel(object):
         wait=True,
         update_endpoint=False,
         data_capture_config=None,
+        kms_key=None,
     ):
         """Deploy the ``Model`` to an ``Endpoint``.
 
@@ -156,6 +157,9 @@ class PipelineModel(object):
             data_capture_config (sagemaker.model_monitor.DataCaptureConfig): Specifies
                 configuration related to Endpoint data capture for use with
                 Amazon SageMaker Model Monitoring. Default: None.
+            kms_key (str): The ARN of the KMS key that is used to encrypt the
+                data on the storage volume attached to the instance hosting the
+                endpoint.
 
         Returns:
             callable[string, sagemaker.session.Session] or None: Invocation of
@@ -192,6 +196,7 @@ class PipelineModel(object):
                 initial_instance_count=initial_instance_count,
                 instance_type=instance_type,
                 tags=tags,
+                kms_key=kms_key,
                 data_capture_config_dict=data_capture_config_dict,
             )
             self.sagemaker_session.update_endpoint(
@@ -202,6 +207,7 @@ class PipelineModel(object):
                 name=self.endpoint_name,
                 production_variants=[production_variant],
                 tags=tags,
+                kms_key=kms_key,
                 wait=wait,
                 data_capture_config_dict=data_capture_config_dict,
             )
