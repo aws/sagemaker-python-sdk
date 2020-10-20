@@ -2314,6 +2314,51 @@ class Session(object):  # pylint: disable=too-many-public-methods
         LOGGER.debug("Transform request: %s", json.dumps(transform_request, indent=4))
         self.sagemaker_client.create_transform_job(**transform_request)
 
+    def _create_model_request(
+        self,
+        name,
+        role,
+        container_defs,
+        vpc_config=None,
+        enable_network_isolation=False,
+        primary_container=None,
+        tags=None,
+    ):  # pylint: disable=redefined-outer-name
+        """Placeholder docstring"""
+        if container_defs and primary_container:
+            raise ValueError("Both container_defs and primary_container can not be passed as input")
+
+        if primary_container:
+            msg = (
+                "primary_container is going to be deprecated in a future release. Please use "
+                "container_defs instead."
+            )
+            warnings.warn(msg, DeprecationWarning)
+            container_defs = primary_container
+
+        role = self.expand_role(role)
+
+        if isinstance(container_defs, list):
+            container_definition = container_defs
+        else:
+            container_definition = _expand_container_def(container_defs)
+
+        request = {"ModelName": name, "ExecutionRoleArn": role}
+        if isinstance(container_definition, list):
+            request["Containers"] = container_definition
+        else:
+            request["PrimaryContainer"] = container_definition
+        if tags:
+            request["Tags"] = tags
+
+        if vpc_config:
+            request["VpcConfig"] = vpc_config
+
+        if enable_network_isolation:
+            request["EnableNetworkIsolation"] = True
+
+        return request
+
     def create_model(
         self,
         name,
@@ -2364,34 +2409,15 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Returns:
             str: Name of the Amazon SageMaker ``Model`` created.
         """
-        if container_defs and primary_container:
-            raise ValueError("Both container_defs and primary_container can not be passed as input")
-
-        if primary_container:
-            msg = (
-                "primary_container is going to be deprecated in a future release. Please use "
-                "container_defs instead."
-            )
-            warnings.warn(msg, DeprecationWarning)
-            container_defs = primary_container
-
-        role = self.expand_role(role)
-
-        if isinstance(container_defs, list):
-            container_definition = container_defs
-        else:
-            container_definition = _expand_container_def(container_defs)
-
-        create_model_request = _create_model_request(
-            name=name, role=role, container_def=container_definition, tags=tags
+        create_model_request = self._create_model_request(
+            name=name,
+            role=role,
+            container_defs=container_defs,
+            vpc_config=vpc_config,
+            enable_network_isolation=enable_network_isolation,
+            primary_container=primary_container,
+            tags=tags,
         )
-
-        if vpc_config:
-            create_model_request["VpcConfig"] = vpc_config
-
-        if enable_network_isolation:
-            create_model_request["EnableNetworkIsolation"] = True
-
         LOGGER.info("Creating model with name: %s", name)
         LOGGER.debug("CreateModel request: %s", json.dumps(create_model_request, indent=4))
 
@@ -3617,23 +3643,6 @@ def get_execution_role(sagemaker_session=None):
         "SageMaker execution role"
     )
     raise ValueError(message.format(arn))
-
-
-def _create_model_request(
-    name, role, container_def=None, tags=None
-):  # pylint: disable=redefined-outer-name
-    """Placeholder docstring"""
-    request = {"ModelName": name, "ExecutionRoleArn": role}
-
-    if isinstance(container_def, list):
-        request["Containers"] = container_def
-    else:
-        request["PrimaryContainer"] = container_def
-
-    if tags:
-        request["Tags"] = tags
-
-    return request
 
 
 def _deployment_entity_exists(describe_fn):
