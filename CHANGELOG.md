@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.15.3 (2020-10-20)
+
+### Bug Fixes and Other Changes
+
+ * refactor _create_model_request
+
 ## v2.15.2 (2020-10-19)
 
 ### Bug Fixes and Other Changes
