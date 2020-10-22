@@ -157,9 +157,9 @@ class PipelineModel(object):
             data_capture_config (sagemaker.model_monitor.DataCaptureConfig): Specifies
                 configuration related to Endpoint data capture for use with
                 Amazon SageMaker Model Monitoring. Default: None.
-            kms_key (str): The ARN of the KMS key that is used to encrypt the
-                data on the storage volume attached to the instance hosting the
-                endpoint.
+            kms_key (str): The ARN, Key ID or Alias of the KMS key that is used to
+                encrypt the data on the storage volume attached to the instance hosting
+                the endpoint.
 
         Returns:
             callable[string, sagemaker.session.Session] or None: Invocation of
