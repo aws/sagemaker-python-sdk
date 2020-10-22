@@ -30,7 +30,8 @@ def get_rule_container_image_uri(region):
     """
     Returns the Debugger rule image URI for the given AWS region.
     For a full list of rule image URIs,
-    see `Use Debugger Docker Images for Built-in or Custom Rules <https://docs.aws.amazon.com/sagemaker/latest/dg/debugger-docker-images-rules.html>`_.
+    see `Use Debugger Docker Images for Built-in or Custom Rules
+    <https://docs.aws.amazon.com/sagemaker/latest/dg/debugger-docker-images-rules.html>`_.
 
     Args:
         region (str): A string of AWS Region. For example, ``'us-east-1'``.
@@ -89,10 +90,11 @@ class Rule(object):
 
         Args:
             base_config (dict): Required. This is the base rule config dictionary returned from the
-                ``rule_configs`` method. For example, 'rule_configs.dead_relu()'.
+                ``rule_configs`` method. For example, ``rule_configs.dead_relu()``.
             name (str): Optional. The name of the debugger rule. If one is not provided,
                 the name of the base_config will be used.
-            container_local_output_path (str): Optional. The local path in the rule processing container.
+            container_local_output_path (str): Optional. The local path in the rule processing
+            container.
             s3_output_path (str): Optional. The location in S3 to store the output tensors.
                 The default Debugger output path is created under the
                 default output path of the :class:`~sagemaker.estimator.Estimator` class.
@@ -212,7 +214,9 @@ class Rule(object):
         """Initialize a ``Rule`` processing job for a *custom* SageMaker Debugging
         Rule. The custom rule analyzes tensors emitted during the training of a model
         and monitors conditions that are critical for the success of a training
-        job. For more information, see `Create Debugger Custom Rules for Training Job Analysis <https://docs.aws.amazon.com/sagemaker/latest/dg/debugger-custom-rules.html>`_
+        job. For more information, see `Create Debugger Custom Rules for Training Job
+        Analysis
+        <https://docs.aws.amazon.com/sagemaker/latest/dg/debugger-custom-rules.html>`_
 
         Args:
             name (str): Required. The name of the debugger rule.
@@ -300,6 +304,15 @@ class Rule(object):
 
 
 class DebuggerHookConfig(object):
+    """
+    Initialize an instance of ``DebuggerHookConfig``.
+    DebuggerHookConfig provides options to customize how debugging
+    information is emitted and saved. This high-level DebuggerHookConfig class
+    runs based on the `smdebug.SaveConfig
+    <https://github.com/awslabs/sagemaker-debugger/blob/master/docs/
+    api.md#saveconfig>`_
+    class.
+    """
 
     def __init__(
         self,
@@ -308,12 +321,7 @@ class DebuggerHookConfig(object):
         hook_parameters=None,
         collection_configs=None,
     ):
-        """Initialize an instance of ``DebuggerHookConfig``.
-        DebuggerHookConfig provides options to customize how debugging
-        information is emitted and saved. This high-level DebuggerHookConfig class
-        runs based on the `smdebug.SaveConfig <https://github.com/awslabs/sagemaker-debugger/blob/master/docs/api.md#saveconfig>`_
-        class.
-
+        """
         Args:
             s3_output_path (str): Optional. The location in S3 to store the output tensors.
                 The default Debugger output path is created under the
@@ -425,7 +433,9 @@ class CollectionConfig(object):
             ]
 
         For a full list of Debugger built-in collection, see
-        `Debugger Built in Collections <https://github.com/awslabs/sagemaker-debugger/blob/master/docs/api.md#built-in-collections>`_.
+        `Debugger Built in Collections
+        <https://github.com/awslabs/sagemaker-debugger/blob/master
+        /docs/api.md#built-in-collections>`_.
 
         **Example of creating a CollectionConfig object with parameter adjustment:**
 
