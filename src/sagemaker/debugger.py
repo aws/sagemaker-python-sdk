@@ -94,7 +94,7 @@ class Rule(object):
             name (str): Optional. The name of the debugger rule. If one is not provided,
                 the name of the base_config will be used.
             container_local_output_path (str): Optional. The local path in the rule processing
-            container.
+                container.
             s3_output_path (str): Optional. The location in S3 to store the output tensors.
                 The default Debugger output path is created under the
                 default output path of the :class:`~sagemaker.estimator.Estimator` class.
@@ -494,7 +494,7 @@ class CollectionConfig(object):
         |                          |                                                         |
         |``eval.save_interval``    |  in TRAIN, EVAL, PREDICT, and GLOBAL modes.             |
         |                          |                                                         |
-        |``predict.save_interval`` |  The default is 500 steps.                              |
+        |``predict.save_interval`` |  The default value is 500 steps.                        |
         |                          |                                                         |
         |``global.save_interval``  |                                                         |
         +--------------------------+---------------------------------------------------------+
