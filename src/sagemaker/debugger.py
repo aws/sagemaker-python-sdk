@@ -10,14 +10,12 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Amazon SageMaker Debugger is a service that provides full visibility
-into the training of machine learning (ML) models, enabling customers
-to automatically detect several classes of errors. Customers can configure
-Debugger when starting their training jobs by specifying debug level, models,
-and location where debug output will be stored. Optionally, customers can
-also specify custom error conditions that they want to be alerted on.
-Debugger automatically collects model specific data, monitors for errors,
-and alerts when it detects errors during training.
+"""Amazon SageMaker Debugger provides a full visibility
+into training jobs of state-of-the-art machine learning models.
+This module provides SageMaker Debugger high-level methods
+to set up Debugger objects, such as Debugger built-in rules, tensor collections,
+and hook configuration. Use the Debugger objects for parameters when constructing
+a SageMaker estimator to initiate a training job.
 """
 from __future__ import absolute_import
 
@@ -30,27 +28,23 @@ framework_name = "debugger"
 
 def get_rule_container_image_uri(region):
     """
-    Returns the rule image uri for the given AWS region and rule type
+    Returns the Debugger rule image URI for the given AWS region.
+    For a full list of rule image URIs,
+    see `Use Debugger Docker Images for Built-in or Custom Rules
+    <https://docs.aws.amazon.com/sagemaker/latest/dg/debugger-docker-images-rules.html>`_.
 
     Args:
-        region: AWS Region
+        region (str): A string of AWS Region. For example, ``'us-east-1'``.
 
     Returns:
-        str: Formatted image uri for the given region and the rule container type
+        str: Formatted image URI for the given region and the rule container type.
     """
     return image_uris.retrieve(framework_name, region)
 
 
 class Rule(object):
-    """Rules analyze tensors emitted during the training of a model. They
-    monitor conditions that are critical for the success of a training job.
-
-    For example, they can detect whether gradients are getting too large or
-    too small or if a model is being overfit. Debugger comes pre-packaged with
-    certain built-in rules (created using the Rule.sagemaker classmethod).
-    You can use these rules or write your own rules using the Amazon SageMaker
-    Debugger APIs. You can also analyze raw tensor data without using rules in,
-    for example, an Amazon SageMaker notebook, using Debugger's full set of APIs.
+    """Debugger rules analyze tensors emitted while training jobs are running.
+    The rules monitor conditions that are critical for success of your training job.
     """
 
     def __init__(
@@ -64,25 +58,10 @@ class Rule(object):
         rule_parameters,
         collections_to_save,
     ):
-        """Do not use this initialization method. Instead, use either the
-        ``Rule.sagemaker`` or ``Rule.custom`` class method.
-
-        Initialize a ``Rule`` instance. The Rule analyzes tensors emitted
-        during the training of a model and monitors conditions that are critical
-        for the success of a training job.
-
-        Args:
-            name (str): The name of the debugger rule.
-            image_uri (str): The URI of the image to be used by the debugger rule.
-            instance_type (str): Type of EC2 instance to use, for example,
-                'ml.c4.xlarge'.
-            container_local_output_path (str): The local path to store the Rule output.
-            s3_output_path (str): The location in S3 to store the output.
-            volume_size_in_gb (int): Size in GB of the EBS volume
-                to use for storing data.
-            rule_parameters (dict): A dictionary of parameters for the rule.
-            collections_to_save ([sagemaker.debugger.CollectionConfig]): A list
-                of CollectionConfig objects to be saved.
+        """
+        Use the following ``Rule.sagemaker`` class method for built-in rules
+        or the ``Rule.custom`` class method for custom rules.
+        Do not directly use the `Rule` initialization method.
         """
         self.name = name
         self.instance_type = instance_type
@@ -104,25 +83,77 @@ class Rule(object):
         rule_parameters=None,
         collections_to_save=None,
     ):
-        """Initialize a ``Rule`` instance for a built-in SageMaker Debugging
-        Rule. The Rule analyzes tensors emitted during the training of a model
-        and monitors conditions that are critical for the success of a training
+        """Initialize a ``Rule`` processing job for a *built-in* SageMaker Debugging
+        Rule. The built-in rule analyzes tensors emitted during the training of a model
+        and monitors conditions that are critical for the success of the training
         job.
 
         Args:
-            base_config (dict): This is the base rule config returned from the
-                built-in list of rules. For example, 'rule_configs.dead_relu()'.
-            name (str): The name of the debugger rule. If one is not provided,
+            base_config (dict): Required. This is the base rule config dictionary returned from the
+                ``rule_configs`` method. For example, ``rule_configs.dead_relu()``.
+            name (str): Optional. The name of the debugger rule. If one is not provided,
                 the name of the base_config will be used.
-            container_local_output_path (str): The path in the container.
-            s3_output_path (str): The location in S3 to store the output.
-            other_trials_s3_input_paths ([str]): S3 input paths for other trials.
-            rule_parameters (dict): A dictionary of parameters for the rule.
-            collections_to_save ([sagemaker.debugger.CollectionConfig]): A list
-                of CollectionConfig objects to be saved.
+            container_local_output_path (str): Optional. The local path in the rule processing
+                container.
+            s3_output_path (str): Optional. The location in S3 to store the output tensors.
+                The default Debugger output path is created under the
+                default output path of the :class:`~sagemaker.estimator.Estimator` class.
+                For example, s3://sagemaker-<region>-111122223333/<training-job-name>/debug-output/.
+            other_trials_s3_input_paths ([str]): Optional. S3 input paths for other trials.
+            rule_parameters (dict): Optional. A dictionary of parameters for the rule.
+            collections_to_save ([sagemaker.debugger.CollectionConfig]): Optional. A list
+                of :class:`~sagemaker.debugger.CollectionConfig` objects to be saved.
 
         Returns:
-            sagemaker.debugger.Rule: The instance of the built-in Rule.
+            sagemaker.debugger.Rule: The instance of the built-in rule.
+
+        **Example of creating a built-in rule instance:**
+
+        .. code-block:: python
+
+            from sagemaker.debugger import Rule, rule_configs
+
+            built_in_rules = [
+                Rule.sagemaker(rule_configs.built_in_rule_name_in_pysdk_format_1()),
+                Rule.sagemaker(rule_configs.built_in_rule_name_in_pysdk_format_2()),
+                ...
+                Rule.sagemaker(rule_configs.built_in_rule_name_in_pysdk_format_n())
+            ]
+
+        You need to replace the ``built_in_rule_name_in_pysdk_format_*`` with the
+        names of built-in rules. You can find the rule names at `List of Debugger Built-in
+        Rules <https://docs.aws.amazon.com/sagemaker/latest/dg/debugger-built-in-rules.html>`_.
+
+        **Example of creating a built-in rule instance with adjusting parameter values:**
+
+        .. code-block:: python
+
+            from sagemaker.debugger import Rule, rule_configs
+
+            built_in_rules = [
+                Rule.sagemaker(
+                    base_config=rule_configs.built_in_rule_name_in_pysdk_format(),
+                    rule_parameters={
+                            "key": "value"
+                    }
+                    collections_to_save=[
+                        CollectionConfig(
+                            name="tensor_collection_name",
+                            parameters={
+                                "key": "value"
+                            }
+                        )
+                    ]
+                )
+            ]
+
+        For more information about setting up the ``rule_parameters`` parameter,
+        see `List of Debugger Built-in
+        Rules <https://docs.aws.amazon.com/sagemaker/latest/dg/debugger-built-in-rules.html>`_.
+
+        For more information about setting up the ``collections_to_save`` parameter,
+        see the :class:`~sagemaker.debugger.CollectionConfig` class.
+
         """
         merged_rule_params = {}
 
@@ -180,29 +211,34 @@ class Rule(object):
         rule_parameters=None,
         collections_to_save=None,
     ):
-        """Initialize a ``Rule`` instance for a custom rule. The Rule
-        analyzes tensors emitted during the training of a model and
-        monitors conditions that are critical for the success of a
-        training job.
+        """Initialize a ``Rule`` processing job for a *custom* SageMaker Debugging
+        Rule. The custom rule analyzes tensors emitted during the training of a model
+        and monitors conditions that are critical for the success of a training
+        job. For more information, see `Create Debugger Custom Rules for Training Job
+        Analysis
+        <https://docs.aws.amazon.com/sagemaker/latest/dg/debugger-custom-rules.html>`_
 
         Args:
-            name (str): The name of the debugger rule.
-            image_uri (str): The URI of the image to be used by the debugger rule.
-            instance_type (str): Type of EC2 instance to use, for example,
+            name (str): Required. The name of the debugger rule.
+            image_uri (str): Required. The URI of the image to be used by the debugger rule.
+            instance_type (str): Required. Type of EC2 instance to use, for example,
                 'ml.c4.xlarge'.
-            volume_size_in_gb (int): Size in GB of the EBS volume
+            volume_size_in_gb (int): Required. Size in GB of the EBS volume
                 to use for storing data.
-            source (str): A source file containing a rule to invoke. If provided,
+            source (str): Optional. A source file containing a rule to invoke. If provided,
                 you must also provide rule_to_invoke. This can either be an S3 uri or
                 a local path.
-            rule_to_invoke (str): The name of the rule to invoke within the source.
+            rule_to_invoke (str): Optional. The name of the rule to invoke within the source.
                 If provided, you must also provide source.
-            container_local_output_path (str): The path in the container.
-            s3_output_path (str): The location in S3 to store the output.
-            other_trials_s3_input_paths ([str]): S3 input paths for other trials.
-            rule_parameters (dict): A dictionary of parameters for the rule.
-            collections_to_save ([sagemaker.debugger.CollectionConfig]): A list
-                of CollectionConfig objects to be saved.
+            container_local_output_path (str): Optional. The local path in the container.
+            s3_output_path (str): Optional. The location in S3 to store the output tensors.
+                The default Debugger output path is created under the
+                default output path of the :class:`~sagemaker.estimator.Estimator` class.
+                For example, s3://sagemaker-<region>-111122223333/<training-job-name>/debug-output/.
+            other_trials_s3_input_paths ([str]): Optional. S3 input paths for other trials.
+            rule_parameters (dict): Optional. A dictionary of parameters for the rule.
+            collections_to_save ([sagemaker.debugger.CollectionConfig]): Optional. A list
+                of :class:`~sagemaker.debugger.CollectionConfig` objects to be saved.
 
         Returns:
             sagemaker.debugger.Rule: The instance of the custom Rule.
@@ -268,8 +304,14 @@ class Rule(object):
 
 
 class DebuggerHookConfig(object):
-    """DebuggerHookConfig provides options to customize how debugging
-    information is emitted.
+    """
+    Initialize an instance of ``DebuggerHookConfig``.
+    DebuggerHookConfig provides options to customize how debugging
+    information is emitted and saved. This high-level DebuggerHookConfig class
+    runs based on the `smdebug.SaveConfig
+    <https://github.com/awslabs/sagemaker-debugger/blob/master/docs/
+    api.md#saveconfig>`_
+    class.
     """
 
     def __init__(
@@ -279,16 +321,34 @@ class DebuggerHookConfig(object):
         hook_parameters=None,
         collection_configs=None,
     ):
-        """Initialize an instance of ``DebuggerHookConfig``.
-        DebuggerHookConfig provides options to customize how debugging
-        information is emitted.
-
+        """
         Args:
-            s3_output_path (str): The location in S3 to store the output.
-            container_local_output_path (str): The path in the container.
-            hook_parameters (dict): A dictionary of parameters.
-            collection_configs ([sagemaker.debugger.CollectionConfig]): A list
-                of CollectionConfig objects to be provided to the API.
+            s3_output_path (str): Optional. The location in S3 to store the output tensors.
+                The default Debugger output path is created under the
+                default output path of the :class:`~sagemaker.estimator.Estimator` class.
+                For example, s3://sagemaker-<region>-111122223333/<training-job-name>/debug-output/.
+            container_local_output_path (str): Optional. The local path in the container.
+            hook_parameters (dict): Optional. A dictionary of parameters.
+            collection_configs ([sagemaker.debugger.CollectionConfig]): Required. A list
+                of :class:`~sagemaker.debugger.CollectionConfig` objects to be saved
+                at the **s3_output_path**.
+
+        **Example of creating a DebuggerHookConfig object:**
+
+        .. code-block:: python
+
+            from sagemaker.debugger import CollectionConfig, DebuggerHookConfig
+
+            collection_configs=[
+                CollectionConfig(name="tensor_collection_1")
+                CollectionConfig(name="tensor_collection_2")
+                ...
+                CollectionConfig(name="tensor_collection_n")
+            ]
+
+            hook_config = DebuggerHookConfig(
+                collection_configs=collection_configs
+            )
         """
         self.s3_output_path = s3_output_path
         self.container_local_output_path = container_local_output_path
@@ -320,21 +380,15 @@ class DebuggerHookConfig(object):
 
 
 class TensorBoardOutputConfig(object):
-    """A configuration object to provide debugging customizations.
-
-    A configuration specific to TensorBoard output, that provides options
+    """A TensorBoard ouput configuration object to provide options
     to customize debugging visualizations using TensorBoard.
     """
 
     def __init__(self, s3_output_path, container_local_output_path=None):
-        """Initialize an instance of TensorBoardOutputConfig.
-
-        TensorBoardOutputConfig provides options to customize
-        debugging visualization using TensorBoard.
-
+        """
         Args:
-            s3_output_path (str): The location in S3 to store the output.
-            container_local_output_path (str): The path in the container.
+            s3_output_path (str): Optional. The location in S3 to store the output.
+            container_local_output_path (str): Optional. The local path in the container.
         """
         self.s3_output_path = s3_output_path
         self.container_local_output_path = container_local_output_path
@@ -354,15 +408,143 @@ class TensorBoardOutputConfig(object):
 
 
 class CollectionConfig(object):
-    """CollectionConfig object for SageMaker Debugger."""
+    """The CollectionConfig class creates tensor collections
+    for SageMaker Debugger."""
 
     def __init__(self, name, parameters=None):
-        """Initialize a ``CollectionConfig`` object.
-
+        """
         Args:
-            name (str): The name of the collection configuration.
-            parameters (dict): The parameters for the collection
+            name (str): Required. The name of the collection configuration.
+
+            parameters (dict): Optional. The parameters for the collection
                 configuration.
+
+        **Example of creating a CollectionConfig object:**
+
+        .. code-block:: python
+
+            from sagemaker.debugger import CollectionConfig
+
+            collection_configs=[
+                CollectionConfig(name="tensor_collection_1")
+                CollectionConfig(name="tensor_collection_2")
+                ...
+                CollectionConfig(name="tensor_collection_n")
+            ]
+
+        For a full list of Debugger built-in collection, see
+        `Debugger Built in Collections
+        <https://github.com/awslabs/sagemaker-debugger/blob/master
+        /docs/api.md#built-in-collections>`_.
+
+        **Example of creating a CollectionConfig object with parameter adjustment:**
+
+        You can use the following CollectionConfig template in two ways:
+        (1) to adjust the parameters of the built-in tensor collections,
+        and (2) to create custom tensor collections.
+
+        If you put the built-in collection names to the ``name`` parameter,
+        ``CollectionConfig`` takes it to match the built-in collections and adjust parameters.
+        If you specify a new name to the ``name`` parameter,
+        ``CollectionConfig`` creates a new tensor collection, and you must use
+        ``include_regex`` parameter to specify regex of tensors you want to collect.
+
+        .. code-block:: python
+
+            from sagemaker.debugger import CollectionConfig
+
+            collection_configs=[
+                CollectionConfig(
+                    name="tensor_collection",
+                    parameters={
+                        "key_1": "value_1",
+                        "key_2": "value_2"
+                        ...
+                        "key_n": "value_n"
+                    }
+                )
+            ]
+
+        The following list shows the available CollectionConfig parameters.
+
+        +--------------------------+---------------------------------------------------------+
+        | Parameter Key            | Descriptions                                            |
+        +==========================+=========================================================+
+        |``include_regex``         |  Specify a list of regex patterns of tensors to save.   |
+        |                          |                                                         |
+        |                          |  Tensors whose names match these patterns will be saved.|
+        +--------------------------+---------------------------------------------------------+
+        |``save_histogram``        |  Set *True* if want to save histogram output data for   |
+        |                          |                                                         |
+        |                          |  TensorFlow visualization.                              |
+        +--------------------------+---------------------------------------------------------+
+        |``reductions``            |  Specify certain reduction values of tensors.           |
+        |                          |                                                         |
+        |                          |  This helps reduce the amount of data saved and         |
+        |                          |                                                         |
+        |                          |  increase training speed.                               |
+        |                          |                                                         |
+        |                          |  Available values are ``min``, ``max``, ``median``,     |
+        |                          |                                                         |
+        |                          |  ``mean``, ``std``, ``variance``, ``sum``, and ``prod``.|
+        +--------------------------+---------------------------------------------------------+
+        |``save_interval``         |  Specify how often to save tensors in steps.            |
+        |                          |                                                         |
+        |``train.save_interval``   |  You can also specify the save intervals                |
+        |                          |                                                         |
+        |``eval.save_interval``    |  in TRAIN, EVAL, PREDICT, and GLOBAL modes.             |
+        |                          |                                                         |
+        |``predict.save_interval`` |  The default value is 500 steps.                        |
+        |                          |                                                         |
+        |``global.save_interval``  |                                                         |
+        +--------------------------+---------------------------------------------------------+
+        |``save_steps``            |  Specify the exact step numbers to save tensors.        |
+        |                          |                                                         |
+        |``train.save_steps``      |  You can also specify the save steps                    |
+        |                          |                                                         |
+        |``eval.save_steps``       |  in TRAIN, EVAL, PREDICT, and GLOBAL modes.             |
+        |                          |                                                         |
+        |``predict.save_steps``    |                                                         |
+        |                          |                                                         |
+        |``global.save_steps``     |                                                         |
+        +--------------------------+---------------------------------------------------------+
+        |``start_step``            |  Specify the exact start step to save tensors.          |
+        |                          |                                                         |
+        |``train.start_step``      |  You can also specify the start steps                   |
+        |                          |                                                         |
+        |``eval.start_step``       |  in TRAIN, EVAL, PREDICT, and GLOBAL modes.             |
+        |                          |                                                         |
+        |``predict.start_step``    |                                                         |
+        |                          |                                                         |
+        |``global.start_step``     |                                                         |
+        +--------------------------+---------------------------------------------------------+
+        |``end_step``              |  Specify the exact end step to save tensors.            |
+        |                          |                                                         |
+        |``train.end_step``        |  You can also specify the end steps                     |
+        |                          |                                                         |
+        |``eval.end_step``         |  in TRAIN, EVAL, PREDICT, and GLOBAL modes.             |
+        |                          |                                                         |
+        |``predict.end_step``      |                                                         |
+        |                          |                                                         |
+        |``global.end_step``       |                                                         |
+        +--------------------------+---------------------------------------------------------+
+
+        For example, the following code shows how to control the save interval parameters
+        of the built-in ``losses`` tensor collection.
+
+        .. code-block:: python
+
+            collection_configs=[
+                CollectionConfig(
+                    name="losses",
+                    parameters={
+                        "train.save_interval": "100",
+                        "eval.save_interval": "10"
+                    }
+                )
+            ]
+
+
         """
         self.name = name
         self.parameters = parameters
