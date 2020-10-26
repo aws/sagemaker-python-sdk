@@ -1,5 +1,15 @@
 # Changelog
 
+## v2.15.4 (2020-10-26)
+
+### Bug Fixes and Other Changes
+
+ * add kms_key optional arg to Pipeline.deploy()
+
+### Documentation Changes
+
+ * Debugger API - improve docstrings and add examples
+
 ## v2.15.3 (2020-10-20)
 
 ### Bug Fixes and Other Changes
