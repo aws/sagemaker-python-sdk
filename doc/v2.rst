@@ -184,9 +184,9 @@ The ``tensorflow`` installation target has been removed, as it is no longer need
 
 If you want to install TensorFlow, see `the TensorFlow documentation <https://www.tensorflow.org/install>`_.
 
-****************
+********************
 Non-Breaking Changes
-****************
+********************
 
 Deprecations
 ============
