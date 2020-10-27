@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.16.0 (2020-10-27)
+
+### Features
+
+ * update image uri for neo tensorflow
+
 ## v2.15.4 (2020-10-26)
 
 ### Bug Fixes and Other Changes
