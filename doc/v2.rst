@@ -137,8 +137,8 @@ XGBoost Predictor
 The default serializer of ``sagemaker.xgboost.model.XGBoostPredictor`` has been changed from ``NumpySerializer`` to ``LibSVMSerializer``.
 
 
-Parameter and Class Name Changes
-================================
+Parameter Order Changes
+=======================
 
 ``sagemaker.model.Model`` Parameter Order
 -----------------------------------------
@@ -156,8 +156,8 @@ If you are using the :class:`sagemaker.model.Model` class, your code should be c
     # v2.0 and later
     Model("my-image:latest", model_data="s3://bucket/path/model.tar.gz")
 
-Airflow
--------
+Airflow Parameter Order
+-----------------------
 
 For :func:`sagemaker.workflow.airflow.model_config` and :func:`sagemaker.workflow.airflow.model_config_from_estimator`,
 ``instance_type`` is no longer the first positional argument and is now an optional keyword argument.
