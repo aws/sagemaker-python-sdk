@@ -63,7 +63,7 @@ def test_algo_uris(algo):
 
 def _test_neo_framework_uris(framework, version):
     framework_in_config = f"neo-{framework}"
-    framework_in_uri = f"neo-{framework}" if framework == "tensorflow" else f"inference-{framework}"
+    framework_in_uri = f"inference-{framework}"
 
     for region in regions.regions():
         if region in ACCOUNTS:
