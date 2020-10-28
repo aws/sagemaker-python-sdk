@@ -408,14 +408,13 @@ class TensorBoardOutputConfig(object):
 
 
 class CollectionConfig(object):
-    """The CollectionConfig class creates tensor collections
-    for SageMaker Debugger."""
+    """Creates tensor collections for SageMaker Debugger."""
 
     def __init__(self, name, parameters=None):
-        """
+        """Constructor for collection configuration.
+
         Args:
             name (str): Required. The name of the collection configuration.
-
             parameters (dict): Optional. The parameters for the collection
                 configuration.
 
