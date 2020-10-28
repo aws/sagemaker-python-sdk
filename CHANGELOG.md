@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.16.1 (2020-10-28)
+
+### Bug Fixes and Other Changes
+
+ * ensure 1p algos are compatible with forward-port
+
 ## v2.16.0.post0 (2020-10-28)
 
 ### Documentation Changes
