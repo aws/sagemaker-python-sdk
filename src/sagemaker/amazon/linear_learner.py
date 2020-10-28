@@ -129,9 +129,9 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
     def __init__(
         self,
         role,
-        instance_count,
-        instance_type,
-        predictor_type,
+        instance_count=None,
+        instance_type=None,
+        predictor_type=None,
         binary_classifier_model_selection_criteria=None,
         target_recall=None,
         target_precision=None,
