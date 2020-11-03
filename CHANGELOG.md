@@ -1,5 +1,23 @@
 # Changelog
 
+## v2.16.1 (2020-10-28)
+
+### Bug Fixes and Other Changes
+
+ * ensure 1p algos are compatible with forward-port
+
+## v2.16.0.post0 (2020-10-28)
+
+### Documentation Changes
+
+ * clarify non-breaking changes after v1 forward port
+
+## v2.16.0 (2020-10-27)
+
+### Features
+
+ * update image uri for neo tensorflow
+
 ## v2.15.4 (2020-10-26)
 
 ### Bug Fixes and Other Changes
