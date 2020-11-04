@@ -738,6 +738,36 @@ def test_py_spark_processor_run(
         )
 
 
+@patch("sagemaker.spark.processing._SparkProcessorBase.run")
+@patch("sagemaker.spark.processing._SparkProcessorBase._stage_submit_deps")
+@patch("sagemaker.spark.processing._SparkProcessorBase._generate_current_job_name")
+def test_py_spark_processor_run_twice(
+        mock_generate_current_job_name,
+        mock_stage_submit_deps,
+        mock_super_run,
+        py_spark_processor
+):
+    mock_stage_submit_deps.return_value = (processing_input, "opt")
+    mock_generate_current_job_name.return_value = "jobName"
+    expected_command = ['smspark-submit', '--py-files', 'opt', '--jars', 'opt', '--files', 'opt']
+    py_spark_processor.run(
+        submit_app="submit_app",
+        submit_py_files="files",
+        submit_jars="test",
+        submit_files="test",
+        inputs=[],
+    )
+
+    py_spark_processor.run(
+        submit_app="submit_app",
+        submit_py_files="files",
+        submit_jars="test",
+        submit_files="test",
+        inputs=[],
+    )
+
+    assert py_spark_processor.command == expected_command
+
 @pytest.mark.parametrize(
     "config, expected",
     [
