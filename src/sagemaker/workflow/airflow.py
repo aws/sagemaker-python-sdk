@@ -143,7 +143,6 @@ def training_base_config(estimator, inputs=None, job_name=None, mini_batch_size=
     else:
         estimator.prepare_workflow_for_training(job_name=job_name)
 
-    default_bucket = estimator.sagemaker_session.default_bucket()
     s3_operations = {}
 
     if job_name is not None:
@@ -155,6 +154,7 @@ def training_base_config(estimator, inputs=None, job_name=None, mini_batch_size=
         estimator._current_job_name = utils.name_from_base(base_name)
 
     if estimator.output_path is None:
+        default_bucket = estimator.sagemaker_session.default_bucket()
         estimator.output_path = "s3://{}/".format(default_bucket)
 
     if isinstance(estimator, sagemaker.estimator.Framework):
