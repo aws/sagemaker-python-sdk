@@ -462,6 +462,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         debugger_hook_config=None,
         tensorboard_output_config=None,
         enable_sagemaker_metrics=None,
+        profiler_rule_configs=None,
+        profiler_config=None,
     ):
         """Create an Amazon SageMaker training job.
 
@@ -531,6 +533,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 Series. For more information see:
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_AlgorithmSpecification.html#SageMaker-Type-AlgorithmSpecification-EnableSageMakerMetricsTimeSeries
                 (default: ``None``).
+            profiler_rule_configs (list[dict]): A list of profiler rule configurations.
+            profiler_config (dict): Configuration for how profiling information is emitted
+                with SageMaker Profiler. (default: ``None``).
 
         Returns:
             str: ARN of the training job, if it is created.
@@ -560,6 +565,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             debugger_hook_config=debugger_hook_config,
             tensorboard_output_config=tensorboard_output_config,
             enable_sagemaker_metrics=enable_sagemaker_metrics,
+            profiler_rule_configs=profiler_rule_configs,
+            profiler_config=profiler_config,
         )
         LOGGER.info("Creating training-job with name: %s", job_name)
         LOGGER.debug("train request: %s", json.dumps(train_request, indent=4))
@@ -590,6 +597,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         debugger_hook_config=None,
         tensorboard_output_config=None,
         enable_sagemaker_metrics=None,
+        profiler_rule_configs=None,
+        profiler_config=None,
     ):
         """Constructs a request compatible for creating an Amazon SageMaker training job.
 
@@ -659,6 +668,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 Series. For more information see:
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_AlgorithmSpecification.html#SageMaker-Type-AlgorithmSpecification-EnableSageMakerMetricsTimeSeries
                 (default: ``None``).
+            profiler_rule_configs (list[dict]): A list of profiler rule configurations.
+            profiler_config(dict): Configuration for how profiling information is emitted with
+                SageMaker Profiler. (default: ``None``).
 
         Returns:
             Dict: a training request dict
@@ -734,7 +746,65 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if tensorboard_output_config is not None:
             train_request["TensorBoardOutputConfig"] = tensorboard_output_config
 
+        if profiler_rule_configs is not None:
+            train_request["ProfilerRuleConfigurations"] = profiler_rule_configs
+
+        if profiler_config is not None:
+            train_request["ProfilerConfig"] = profiler_config
+
         return train_request
+
+    def update_training_job(
+        self,
+        job_name,
+        profiler_rule_configs=None,
+        profiler_config=None,
+    ):
+        """Calls the UpdateTrainingJob API for the given job name and returns the response.
+
+        Args:
+            job_name (str): Name of the training job being updated.
+            profiler_rule_configs (list): List of profiler rule configurations. (default: ``None``).
+            profiler_config(dict): Configuration for how profiling information is emitted with
+                SageMaker Profiler. (default: ``None``).
+        """
+        update_training_job_request = self._get_update_training_job_request(
+            job_name=job_name,
+            profiler_rule_configs=profiler_rule_configs,
+            profiler_config=profiler_config,
+        )
+        LOGGER.info("Updating training job with name %s", job_name)
+        LOGGER.debug("Update request: %s", json.dumps(update_training_job_request, indent=4))
+        self.sagemaker_client.update_training_job(**update_training_job_request)
+
+    def _get_update_training_job_request(
+        self,
+        job_name,
+        profiler_rule_configs=None,
+        profiler_config=None,
+    ):
+        """Constructs a request compatible for updateing an Amazon SageMaker training job.
+
+        Args:
+            job_name (str): Name of the training job being updated.
+            profiler_rule_configs (list): List of profiler rule configurations. (default: ``None``).
+            profiler_config(dict): Configuration for how profiling information is emitted with
+                SageMaker Profiler. (default: ``None``).
+
+        Returns:
+            Dict: an update training request dict
+        """
+        update_training_job_request = {
+            "TrainingJobName": job_name,
+        }
+
+        if profiler_rule_configs is not None:
+            update_training_job_request["ProfilerRuleConfigurations"] = profiler_rule_configs
+
+        if profiler_config is not None:
+            update_training_job_request["ProfilerConfig"] = profiler_config
+
+        return update_training_job_request
 
     def process(
         self,
@@ -3489,6 +3559,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         last_describe_job_call = time.time()
         last_description = description
         last_debug_rule_statuses = None
+        last_profiler_rule_statuses = None
 
         while True:
             _flush_log_streams(
@@ -3527,21 +3598,31 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 debug_rule_statuses = description.get("DebugRuleEvaluationStatuses", {})
                 if (
                     debug_rule_statuses
-                    and _debug_rule_statuses_changed(debug_rule_statuses, last_debug_rule_statuses)
+                    and _rule_statuses_changed(debug_rule_statuses, last_debug_rule_statuses)
                     and (log_type in {"All", "Rules"})
                 ):
-                    print()
-                    print("********* Debugger Rule Status *********")
-                    print("*")
                     for status in debug_rule_statuses:
-                        rule_log = "* {:>18}: {:<18}".format(
-                            status["RuleConfigurationName"], status["RuleEvaluationStatus"]
+                        rule_log = (
+                            f"{status['RuleConfigurationName']}: {status['RuleEvaluationStatus']}"
                         )
                         print(rule_log)
-                    print("*")
-                    print("*" * 40)
 
                     last_debug_rule_statuses = debug_rule_statuses
+
+                # Print prettified logs related to the status of SageMaker Profiler rules.
+                profiler_rule_statuses = description.get("ProfilerRuleEvaluationStatuses", {})
+                if (
+                    profiler_rule_statuses
+                    and _rule_statuses_changed(profiler_rule_statuses, last_profiler_rule_statuses)
+                    and (log_type in {"All", "Rules"})
+                ):
+                    for status in profiler_rule_statuses:
+                        rule_log = (
+                            f"{status['RuleConfigurationName']}: {status['RuleEvaluationStatus']}"
+                        )
+                        print(rule_log)
+
+                    last_profiler_rule_statuses = profiler_rule_statuses
 
         if wait:
             self._check_job_status(job_name, description, "TrainingJobStatus")
@@ -4282,8 +4363,8 @@ def _get_initial_job_state(description, status_key, wait):
     return LogState.TAILING if wait and not job_already_completed else LogState.COMPLETE
 
 
-def _debug_rule_statuses_changed(current_statuses, last_statuses):
-    """Checks the rule evaluation statuses for SageMaker Debugger rules."""
+def _rule_statuses_changed(current_statuses, last_statuses):
+    """Checks the rule evaluation statuses for SageMaker Debugger and Profiler rules."""
     if not last_statuses:
         return True
 
