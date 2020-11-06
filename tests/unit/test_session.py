@@ -2142,6 +2142,16 @@ def test_describe_tuning_job(sagemaker_session):
     )
 
 
+@pytest.fixture
+def pipeline_empty_definition():
+    return '{"Version": "2020-12-01", ' '"Metadata": {}, ' '"Parameters": [], ' '"Steps": []}'
+
+
+@pytest.fixture
+def pipeline_role_arn():
+    return "my:pipeline:role:arn"
+
+
 def test_describe_model(sagemaker_session):
     model_name = "sagemaker-model-name"
     sagemaker_session.describe_model(name=model_name)
@@ -2221,7 +2231,7 @@ def test_create_model_package_from_containers_all_args(sagemaker_session):
         },
         "ModelPackageDescription": description,
         "ModelMetrics": model_metrics,
-        "CertifyForMarketPlace": marketplace_cert,
+        "CertifyForMarketplace": marketplace_cert,
         "ModelApprovalStatus": approval_status,
     }
     sagemaker_session.sagemaker_client.create_model_package.assert_called_with(**expected_args)

@@ -866,6 +866,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             transform_instances,
             model_package_name,
             model_package_group_name,
+            image_uri,
             model_metrics,
             marketplace_cert,
             approval_status,

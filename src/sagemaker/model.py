@@ -112,6 +112,7 @@ class Model(object):
         transform_instances,
         model_package_name=None,
         model_package_group_name=None,
+        image_uri=None,
         model_metrics=None,
         marketplace_cert=False,
         approval_status=None,
@@ -131,6 +132,8 @@ class Model(object):
             model_package_group_name (str): Model Package Group name, exclusive to
                 `model_package_name`, using `model_package_group_name` makes the Model Package
                 versioned (default: None).
+            image_uri (str): Inference image uri for the container. Model class' self.image will
+                be used if it is None (default: None).
             model_metrics (ModelMetrics): ModelMetrics object (default: None).
             marketplace_cert (bool): A boolean value indicating if the Model Package is certified
                 for AWS Marketplace (default: False).
@@ -151,6 +154,7 @@ class Model(object):
             transform_instances,
             model_package_name,
             model_package_group_name,
+            image_uri,
             model_metrics,
             marketplace_cert,
             approval_status,
@@ -159,7 +163,11 @@ class Model(object):
         model_package = self.sagemaker_session.create_model_package_from_containers(
             **model_pkg_args
         )
-        return model_package.get("ModelPackageArn")
+        return ModelPackage(
+            role=self.role,
+            model_data=self.model_data,
+            model_package_arn=model_package.get("ModelPackageArn"),
+        )
 
     def _get_model_package_args(
         self,
@@ -169,6 +177,7 @@ class Model(object):
         transform_instances,
         model_package_name=None,
         model_package_group_name=None,
+        image_uri=None,
         model_metrics=None,
         marketplace_cert=False,
         approval_status=None,
@@ -187,6 +196,8 @@ class Model(object):
             model_package_group_name (str): Model Package Group name, exclusive to
                 `model_package_name`, using `model_package_group_name` makes the Model Package
                 versioned (default: None).
+            image_uri (str): Inference image uri for the container. Model class' self.image will
+                be used if it is None (default: None).
             model_metrics (ModelMetrics): ModelMetrics object (default: None).
             marketplace_cert (bool): A boolean value indicating if the Model Package is certified
                 for AWS Marketplace (default: False).
@@ -196,6 +207,8 @@ class Model(object):
         Returns:
             dict: A dictionary of method argument names and values.
         """
+        if image_uri:
+            self.image_uri = image_uri
         container = {
             "Image": self.image_uri,
             "ModelDataUrl": self.model_data,

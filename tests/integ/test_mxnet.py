@@ -19,6 +19,7 @@ import numpy
 import pytest
 
 import tests.integ
+from sagemaker import ModelPackage
 from sagemaker.mxnet.estimator import MXNet
 from sagemaker.mxnet.model import MXNetModel
 from sagemaker.utils import sagemaker_timestamp
@@ -158,6 +159,45 @@ def test_deploy_model(
     with pytest.raises(Exception) as exception:
         sagemaker_session.sagemaker_client.describe_model(ModelName=model.name)
         assert "Could not find model" in str(exception.value)
+
+
+def test_register_model_package(
+    mxnet_training_job,
+    sagemaker_session,
+    mxnet_inference_latest_version,
+    mxnet_inference_latest_py_version,
+    cpu_instance_type,
+):
+    endpoint_name = "test-mxnet-deploy-model-{}".format(sagemaker_timestamp())
+
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
+        desc = sagemaker_session.sagemaker_client.describe_training_job(
+            TrainingJobName=mxnet_training_job
+        )
+        model_data = desc["ModelArtifacts"]["S3ModelArtifacts"]
+        script_path = os.path.join(DATA_DIR, "mxnet_mnist", "mnist.py")
+        model = MXNetModel(
+            model_data,
+            "SageMakerRole",
+            entry_point=script_path,
+            py_version=mxnet_inference_latest_py_version,
+            sagemaker_session=sagemaker_session,
+            framework_version=mxnet_inference_latest_version,
+        )
+        model_package_name = "register-model-package-{}".format(sagemaker_timestamp())
+        model_pkg = model.register(
+            content_types=["application/json"],
+            response_types=["application/json"],
+            inference_instances=["ml.m5.large"],
+            transform_instances=["ml.m5.large"],
+            model_package_name=model_package_name,
+        )
+        assert isinstance(model_pkg, ModelPackage)
+        predictor = model.deploy(1, cpu_instance_type, endpoint_name=endpoint_name)
+        data = numpy.zeros(shape=(1, 1, 28, 28))
+        result = predictor.predict(data)
+        assert result is not None
+        sagemaker_session.sagemaker_client.delete_model_package(ModelPackageName=model_package_name)
 
 
 def test_deploy_model_with_tags_and_kms(

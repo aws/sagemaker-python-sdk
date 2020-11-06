@@ -305,8 +305,8 @@ class _RegisterModelStep(Step):
             **model_package_args
         )
         # these are not available in the workflow service
-        if "CertifyForMarketPlace" in request_dict:
-            request_dict.pop("CertifyForMarketPlace")
+        if "CertifyForMarketplace" in request_dict:
+            request_dict.pop("CertifyForMarketplace")
         if "Description" in request_dict:
             request_dict.pop("Description")
         if "ModelApprovalStatus" in request_dict:

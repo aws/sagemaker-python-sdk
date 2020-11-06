@@ -2634,7 +2634,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 "SupportedTransformInstanceTypes": transform_instances,
             }
             request_dict["InferenceSpecification"] = inference_specification
-        request_dict["CertifyForMarketPlace"] = marketplace_cert
+        request_dict["CertifyForMarketplace"] = marketplace_cert
         request_dict["ModelApprovalStatus"] = approval_status
         return request_dict
 
