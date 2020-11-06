@@ -127,6 +127,21 @@ def sagemaker_short_timestamp():
     return time.strftime("%y%m%d-%H%M")
 
 
+def build_dict(key, value):
+    """Return a dict of key and value pair if value is not None, otherwise return an empty dict.
+
+    Args:
+        key (str): input key
+        value (str): input value
+
+    Returns:
+        dict: dict of key and value or an empty dict.
+    """
+    if value:
+        return {key: value}
+    return {}
+
+
 def get_config_value(key_path, config):
     """Placeholder Docstring"""
     if config is None:
