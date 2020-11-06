@@ -39,7 +39,7 @@ required_packages = [
     "numpy>=1.9.0",
     "protobuf>=3.1",
     "protobuf3-to-dict>=0.1.5",
-    "smdebug-rulesconfig==0.1.5",
+    "smdebug_rulesconfig",
     "importlib-metadata>=1.4.0",
     "packaging>=20.0",
 ]

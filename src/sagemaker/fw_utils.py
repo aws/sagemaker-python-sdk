@@ -48,7 +48,7 @@ PARAMETER_SERVER_MULTI_GPU_WARNING = (
     "only one worker per host regardless of the number of GPUs."
 )
 
-DEBUGGER_UNSUPPORTED_REGIONS = ("us-gov-west-1", "us-iso-east-1")
+DEBUGGER_UNSUPPORTED_REGIONS = ("us-iso-east-1",)
 SINGLE_GPU_INSTANCE_TYPES = ("ml.p2.xlarge", "ml.p3.2xlarge")
 
 
