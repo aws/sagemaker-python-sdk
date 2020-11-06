@@ -44,8 +44,8 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
     def __init__(
         self,
         role,
-        instance_count,
-        instance_type,
+        instance_count=None,
+        instance_type=None,
         data_location=None,
         enable_network_isolation=False,
         **kwargs
@@ -59,9 +59,9 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
                 artifacts. After the endpoint is created, the inference code
                 might use the IAM role, if it needs to access an AWS resource.
             instance_count (int): Number of Amazon EC2 instances to use
-                for training.
+                for training. Required.
             instance_type (str): Type of EC2 instance to use for training,
-                for example, 'ml.c4.xlarge'.
+                for example, 'ml.c4.xlarge'. Required.
             data_location (str or None): The s3 prefix to upload RecordSet
                 objects to, expressed as an S3 url. For example
                 "s3://example-bucket/some-key-prefix/". Objects will be saved in
@@ -86,7 +86,6 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
             enable_network_isolation=enable_network_isolation,
             **kwargs
         )
-
         data_location = data_location or "s3://{}/sagemaker-record-sets/".format(
             self.sagemaker_session.default_bucket()
         )
