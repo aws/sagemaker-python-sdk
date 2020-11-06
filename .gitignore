@@ -26,3 +26,5 @@ venv/
 .pytest_cache/
 *.swp
 .docker/
+env/
+.vscode/

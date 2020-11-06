@@ -19,9 +19,16 @@ a SageMaker estimator to initiate a training job.
 """
 from __future__ import absolute_import
 
-import smdebug_rulesconfig as rule_configs  # noqa: F401 # pylint: disable=unused-import
+import time
+
+from abc import ABC
+
+import attr
+
+import smdebug_rulesconfig as rule_configs
 
 from sagemaker import image_uris
+from sagemaker.utils import build_dict
 
 framework_name = "debugger"
 
@@ -42,9 +49,79 @@ def get_rule_container_image_uri(region):
     return image_uris.retrieve(framework_name, region)
 
 
-class Rule(object):
-    """Debugger rules analyze tensors emitted while training jobs are running.
-    The rules monitor conditions that are critical for success of your training job.
+def get_default_profiler_rule():
+    """Returns the default built-in profiler rule with a unique name.
+
+    Returns:
+        sagemaker.debugger.ProfilerRule: The instance of the built-in ProfilerRule.
+    """
+    default_rule = rule_configs.ProfilerReport()
+    custom_name = f"{default_rule.rule_name}-{int(time.time())}"
+    return ProfilerRule.sagemaker(default_rule, name=custom_name)
+
+
+@attr.s
+class RuleBase(ABC):
+    """Base Rule class that cannot be instantiated directly.
+
+    Attributes:
+        name (str): The name of the rule.
+        image_uri (str): The URI of the image to be used by the rule.
+        instance_type (str): Type of EC2 instance to use, for example, 'ml.c4.xlarge'.
+        container_local_output_path (str): The local path to store the Rule output.
+        s3_output_path (str): The location in S3 to store the output.
+        volume_size_in_gb (int): Size in GB of the EBS volume to use for storing data.
+        rule_parameters (dict): A dictionary of parameters for the rule.
+    """
+
+    name = attr.ib()
+    image_uri = attr.ib()
+    instance_type = attr.ib()
+    container_local_output_path = attr.ib()
+    s3_output_path = attr.ib()
+    volume_size_in_gb = attr.ib()
+    rule_parameters = attr.ib()
+
+    @staticmethod
+    def _set_rule_parameters(source, rule_to_invoke, rule_parameters):
+        """Create a dictionary of rule parameters.
+
+        Args:
+            source (str): Optional. A source file containing a rule to invoke. If provided,
+                you must also provide rule_to_invoke. This can either be an S3 uri or
+                a local path.
+            rule_to_invoke (str): Optional. The name of the rule to invoke within the source.
+                If provided, you must also provide source.
+            rule_parameters (dict): Optional. A dictionary of parameters for the rule.
+
+        Returns:
+            dict: A dictionary of rule parameters.
+        """
+        if bool(source) ^ bool(rule_to_invoke):
+            raise ValueError(
+                "If you provide a source, you must also provide a rule to invoke (and vice versa)."
+            )
+
+        merged_rule_params = {}
+        merged_rule_params.update(build_dict("source_s3_uri", source))
+        merged_rule_params.update(build_dict("rule_to_invoke", rule_to_invoke))
+        merged_rule_params.update(rule_parameters or {})
+
+        return merged_rule_params
+
+
+class Rule(RuleBase):
+    """The Rule by default refers to Debugger Rule.
+
+    Debugger rules analyze tensors emitted during the training of a model.
+    They monitor conditions that are critical for the success of a training job.
+
+    For example, they can detect whether gradients are getting too large or
+    too small or if a model is being overfit. Debugger comes pre-packaged with
+    certain built-in rules (created using the Rule.sagemaker classmethod).
+    You can use these rules or write your own rules using the Amazon SageMaker
+    Debugger APIs. You can also analyze raw tensor data without using rules in,
+    for example, an Amazon SageMaker notebook, using Debugger's full set of APIs.
     """
 
     def __init__(
@@ -63,14 +140,16 @@ class Rule(object):
         or the ``Rule.custom`` class method for custom rules.
         Do not directly use the `Rule` initialization method.
         """
-        self.name = name
-        self.instance_type = instance_type
-        self.container_local_output_path = container_local_output_path
-        self.s3_output_path = s3_output_path
-        self.volume_size_in_gb = volume_size_in_gb
-        self.rule_parameters = rule_parameters
+        super(Rule, self).__init__(
+            name,
+            image_uri,
+            instance_type,
+            container_local_output_path,
+            s3_output_path,
+            volume_size_in_gb,
+            rule_parameters,
+        )
         self.collection_configs = collections_to_save
-        self.image_uri = image_uri
 
     @classmethod
     def sagemaker(
@@ -83,10 +162,10 @@ class Rule(object):
         rule_parameters=None,
         collections_to_save=None,
     ):
-        """Initialize a ``Rule`` processing job for a *built-in* SageMaker Debugging
-        Rule. The built-in rule analyzes tensors emitted during the training of a model
-        and monitors conditions that are critical for the success of the training
-        job.
+        """Initialize a ``Rule`` processing job for a *built-in* SageMaker Debugging Rule.
+
+        The built-in rule analyzes tensors emitted during the training of a model
+        and monitors conditions that are critical for the success of the training job.
 
         Args:
             base_config (dict): Required. This is the base rule config dictionary returned from the
@@ -211,8 +290,9 @@ class Rule(object):
         rule_parameters=None,
         collections_to_save=None,
     ):
-        """Initialize a ``Rule`` processing job for a *custom* SageMaker Debugging
-        Rule. The custom rule analyzes tensors emitted during the training of a model
+        """Initialize a ``Rule`` processing job for a *custom* SageMaker Debugging Rule.
+
+        The custom rule analyzes tensors emitted during the training of a model
         and monitors conditions that are critical for the success of a training
         job. For more information, see `Create Debugger Custom Rules for Training Job
         Analysis
@@ -243,24 +323,9 @@ class Rule(object):
         Returns:
             sagemaker.debugger.Rule: The instance of the custom Rule.
         """
-        if bool(source) ^ bool(rule_to_invoke):
-            raise ValueError(
-                "If you provide a source, you must also provide a rule to invoke (and vice versa)."
-            )
-
-        merged_rule_params = {}
-
-        if source is not None and rule_to_invoke is not None:
-            merged_rule_params["source_s3_uri"] = source
-            merged_rule_params["rule_to_invoke"] = rule_to_invoke
-
-        other_trials_params = {}
-        if other_trials_s3_input_paths is not None:
-            for index, s3_input_path in enumerate(other_trials_s3_input_paths):
-                other_trials_params["other_trial_{}".format(str(index))] = s3_input_path
-
-        merged_rule_params.update(other_trials_params)
-        merged_rule_params.update(rule_parameters or {})
+        merged_rule_params = cls._set_rule_parameters(
+            source, rule_to_invoke, other_trials_s3_input_paths, rule_parameters
+        )
 
         return cls(
             name=name,
@@ -273,9 +338,34 @@ class Rule(object):
             collections_to_save=collections_to_save or [],
         )
 
+    @staticmethod
+    def _set_rule_parameters(source, rule_to_invoke, other_trials_s3_input_paths, rule_parameters):
+        """Set rule parameters for Debugger Rule.
+
+        Args:
+            source (str): Optional. A source file containing a rule to invoke. If provided,
+                you must also provide rule_to_invoke. This can either be an S3 uri or
+                a local path.
+            rule_to_invoke (str): Optional. The name of the rule to invoke within the source.
+                If provided, you must also provide source.
+            other_trials_s3_input_paths ([str]): Optional. S3 input paths for other trials.
+            rule_parameters (dict): Optional. A dictionary of parameters for the rule.
+
+        Returns:
+            dict: A dictionary of rule parameters.
+        """
+        merged_rule_params = {}
+        if other_trials_s3_input_paths is not None:
+            for index, s3_input_path in enumerate(other_trials_s3_input_paths):
+                merged_rule_params["other_trial_{}".format(str(index))] = s3_input_path
+
+        merged_rule_params.update(
+            super(Rule, Rule)._set_rule_parameters(source, rule_to_invoke, rule_parameters)
+        )
+        return merged_rule_params
+
     def to_debugger_rule_config_dict(self):
-        """Generates a request dictionary using the parameters provided
-        when initializing the object.
+        """Generates a request dictionary using the parameters provided when initializing object.
 
         Returns:
             dict: An portion of an API request as a dictionary.
@@ -285,22 +375,136 @@ class Rule(object):
             "RuleEvaluatorImage": self.image_uri,
         }
 
-        if self.instance_type is not None:
-            debugger_rule_config_request["InstanceType"] = self.instance_type
-
-        if self.volume_size_in_gb is not None:
-            debugger_rule_config_request["VolumeSizeInGB"] = self.volume_size_in_gb
-
-        if self.container_local_output_path is not None:
-            debugger_rule_config_request["LocalPath"] = self.container_local_output_path
-
-        if self.s3_output_path is not None:
-            debugger_rule_config_request["S3OutputPath"] = self.s3_output_path
-
-        if self.rule_parameters:
-            debugger_rule_config_request["RuleParameters"] = self.rule_parameters
+        debugger_rule_config_request.update(build_dict("InstanceType", self.instance_type))
+        debugger_rule_config_request.update(build_dict("VolumeSizeInGB", self.volume_size_in_gb))
+        debugger_rule_config_request.update(
+            build_dict("LocalPath", self.container_local_output_path)
+        )
+        debugger_rule_config_request.update(build_dict("S3OutputPath", self.s3_output_path))
+        debugger_rule_config_request.update(build_dict("RuleParameters", self.rule_parameters))
 
         return debugger_rule_config_request
+
+
+class ProfilerRule(RuleBase):
+    """ProfilerRule is to analyze profiler system and framework metrics.
+
+    Profiler rules automatically analyze profiler system and framework metrics of a
+    given training job to identify performance bottlenecks.
+
+    For example, they can detect whether GPU is underutilized due to CPU bottlenecks or
+    IO bottlenecks. Debugger profiling comes pre-packaged with certain built-in rules
+    (created using the ProfilerRule.sagemaker classmethod). You can use these rules or
+    write your own rules using the Amazon SageMaker Debugger APIs.
+    """
+
+    @classmethod
+    def sagemaker(
+        cls,
+        base_config,
+        name=None,
+        container_local_output_path=None,
+        s3_output_path=None,
+    ):
+        """Initialize a ``ProfilerRule`` instance for a built-in SageMaker Profiling Rule.
+
+        The ProfilerRule analyzes profiler system and framework metrics of a given
+        training job to identify performance bottlenecks.
+
+        Args:
+            base_config (dict): This is the base rule config returned from the
+                built-in list of rules. For example, 'rule_configs.profiler_report()'.
+            name (str): The name of the profiler rule. If one is not provided,
+                the name of the base_config will be used.
+            container_local_output_path (str): The path in the container.
+            s3_output_path (str): The location in S3 to store the profiling output.
+
+        Returns:
+            sagemaker.debugger.ProfilerRule: The instance of the built-in ProfilerRule.
+        """
+        return cls(
+            name=name or base_config.rule_name,
+            image_uri="DEFAULT_RULE_EVALUATOR_IMAGE",
+            instance_type=None,
+            container_local_output_path=container_local_output_path,
+            s3_output_path=s3_output_path,
+            volume_size_in_gb=None,
+            rule_parameters=base_config.rule_parameters,
+        )
+
+    @classmethod
+    def custom(
+        cls,
+        name,
+        image_uri,
+        instance_type,
+        volume_size_in_gb,
+        source=None,
+        rule_to_invoke=None,
+        container_local_output_path=None,
+        s3_output_path=None,
+        rule_parameters=None,
+    ):
+        """Initialize a ``ProfilerRule`` instance for a custom rule.
+
+        The ProfilerRule analyzes profiler system and framework metrics of a given
+        training job to identify performance bottlenecks.
+
+        Args:
+            name (str): The name of the profiler rule.
+            image_uri (str): The URI of the image to be used by the proflier rule.
+            instance_type (str): Type of EC2 instance to use, for example,
+                'ml.c4.xlarge'.
+            volume_size_in_gb (int): Size in GB of the EBS volume
+                to use for storing data.
+            source (str): A source file containing a rule to invoke. If provided,
+                you must also provide rule_to_invoke. This can either be an S3 uri or
+                a local path.
+            rule_to_invoke (str): The name of the rule to invoke within the source.
+                If provided, you must also provide source.
+            container_local_output_path (str): The path in the container.
+            s3_output_path (str): The location in S3 to store the output.
+            rule_parameters (dict): A dictionary of parameters for the rule.
+
+        Returns:
+            sagemaker.debugger.ProfilerRule: The instance of the custom ProfilerRule.
+        """
+        merged_rule_params = super()._set_rule_parameters(source, rule_to_invoke, rule_parameters)
+
+        return cls(
+            name=name,
+            image_uri=image_uri,
+            instance_type=instance_type,
+            container_local_output_path=container_local_output_path,
+            s3_output_path=s3_output_path,
+            volume_size_in_gb=volume_size_in_gb,
+            rule_parameters=merged_rule_params,
+        )
+
+    def to_profiler_rule_config_dict(self):
+        """Generates a request dictionary using the parameters provided when initializing object.
+
+        Returns:
+            dict: An portion of an API request as a dictionary.
+        """
+        profiler_rule_config_request = {
+            "RuleConfigurationName": self.name,
+            "RuleEvaluatorImage": self.image_uri,
+        }
+
+        profiler_rule_config_request.update(build_dict("InstanceType", self.instance_type))
+        profiler_rule_config_request.update(build_dict("VolumeSizeInGB", self.volume_size_in_gb))
+        profiler_rule_config_request.update(
+            build_dict("LocalPath", self.container_local_output_path)
+        )
+        profiler_rule_config_request.update(build_dict("S3OutputPath", self.s3_output_path))
+
+        if self.rule_parameters:
+            profiler_rule_config_request["RuleParameters"] = self.rule_parameters
+            for k, v in profiler_rule_config_request["RuleParameters"].items():
+                profiler_rule_config_request["RuleParameters"][k] = str(v)
+
+        return profiler_rule_config_request
 
 
 class DebuggerHookConfig(object):

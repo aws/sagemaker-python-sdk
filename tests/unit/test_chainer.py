@@ -31,7 +31,7 @@ SERVING_SCRIPT_FILE = "another_dummy_script.py"
 MODEL_DATA = "s3://some/data.tar.gz"
 ENV = {"DUMMY_ENV_VAR": "dummy_value"}
 TIMESTAMP = "2017-11-06-14:14:15.672"
-TIME = 1507167947
+TIME = 1510006209.073025
 BUCKET_NAME = "mybucket"
 INSTANCE_COUNT = 1
 INSTANCE_TYPE = "ml.c4.4xlarge"
@@ -146,6 +146,16 @@ def _create_train_job(version, py_version):
         "experiment_config": None,
         "debugger_hook_config": {
             "CollectionConfigurations": [],
+            "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
+        },
+        "profiler_rule_configs": [
+            {
+                "RuleConfigurationName": "ProfilerReport-1510006209",
+                "RuleEvaluatorImage": "895741380848.dkr.ecr.us-west-2.amazonaws.com/sagemaker-debugger-rules:latest",
+                "RuleParameters": {"rule_to_invoke": "ProfilerReport"},
+            }
+        ],
+        "profiler_config": {
             "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
         },
     }
@@ -321,8 +331,9 @@ def test_create_model_with_custom_image(sagemaker_session):
 
 
 @patch("sagemaker.utils.create_tar_file", MagicMock())
+@patch("time.time", return_value=TIME)
 @patch("time.strftime", return_value=TIMESTAMP)
-def test_chainer(strftime, sagemaker_session, chainer_version, chainer_py_version):
+def test_chainer(strftime, time, sagemaker_session, chainer_version, chainer_py_version):
     chainer = Chainer(
         entry_point=SCRIPT_PATH,
         role=ROLE,
