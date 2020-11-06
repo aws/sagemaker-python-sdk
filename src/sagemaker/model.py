@@ -104,6 +104,124 @@ class Model(object):
         self._enable_network_isolation = enable_network_isolation
         self.model_kms_key = model_kms_key
 
+    def register(
+        self,
+        content_types,
+        response_types,
+        inference_instances,
+        transform_instances,
+        model_package_name=None,
+        model_package_group_name=None,
+        model_metrics=None,
+        marketplace_cert=False,
+        approval_status=None,
+        description=None,
+    ):
+        """Creates a model package for creating SageMaker models or listing on Marketplace.
+
+        Args:
+            content_types (list): The supported MIME types for the input data (default: None).
+            response_types (list): The supported MIME types for the output data (default: None).
+            inference_instances (list): A list of the instance types that are used to
+                generate inferences in real-time (default: None).
+            transform_instances (list): A list of the instance types on which a transformation
+                job can be run or on which an endpoint can be deployed (default: None).
+            model_package_name (str): Model Package name, exclusive to `model_package_group_name`,
+                using `model_package_name` makes the Model Package un-versioned (default: None).
+            model_package_group_name (str): Model Package Group name, exclusive to
+                `model_package_name`, using `model_package_group_name` makes the Model Package
+                versioned (default: None).
+            model_metrics (ModelMetrics): ModelMetrics object (default: None).
+            marketplace_cert (bool): A boolean value indicating if the Model Package is certified
+                for AWS Marketplace (default: False).
+            approval_status (str): Model Approval Status, values can be "Approved", "Rejected",
+                or "PendingManualApproval" (default: "PendingManualApproval").
+            description (str): Model Package description (default: None).
+
+        Returns:
+            str: A string of SageMaker Model Package ARN.
+        """
+        if self.model_data is None:
+            raise ValueError("SageMaker Model Package cannot be created without model data.")
+
+        model_pkg_args = self._get_model_package_args(
+            content_types,
+            response_types,
+            inference_instances,
+            transform_instances,
+            model_package_name,
+            model_package_group_name,
+            model_metrics,
+            marketplace_cert,
+            approval_status,
+            description,
+        )
+        model_package = self.sagemaker_session.create_model_package_from_containers(
+            **model_pkg_args
+        )
+        return model_package.get("ModelPackageArn")
+
+    def _get_model_package_args(
+        self,
+        content_types,
+        response_types,
+        inference_instances,
+        transform_instances,
+        model_package_name=None,
+        model_package_group_name=None,
+        model_metrics=None,
+        marketplace_cert=False,
+        approval_status=None,
+        description=None,
+    ):
+        """Get arguments for session.create_model_package method.
+        Args:
+            content_types (list): The supported MIME types for the input data.
+            response_types (list): The supported MIME types for the output data.
+            inference_instances (list): A list of the instance types that are used to
+                generate inferences in real-time.
+            transform_instances (list): A list of the instance types on which a transformation
+                job can be run or on which an endpoint can be deployed.
+            model_package_name (str): Model Package name, exclusive to `model_package_group_name`,
+                using `model_package_name` makes the Model Package un-versioned (default: None).
+            model_package_group_name (str): Model Package Group name, exclusive to
+                `model_package_name`, using `model_package_group_name` makes the Model Package
+                versioned (default: None).
+            model_metrics (ModelMetrics): ModelMetrics object (default: None).
+            marketplace_cert (bool): A boolean value indicating if the Model Package is certified
+                for AWS Marketplace (default: False).
+            approval_status (str): Model Approval Status, values can be "Approved", "Rejected",
+                or "PendingManualApproval" (default: "PendingManualApproval").
+            description (str): Model Package description (default: None).
+        Returns:
+            dict: A dictionary of method argument names and values.
+        """
+        container = {
+            "Image": self.image_uri,
+            "ModelDataUrl": self.model_data,
+        }
+
+        model_package_args = {
+            "containers": [container],
+            "content_types": content_types,
+            "response_types": response_types,
+            "inference_instances": inference_instances,
+            "transform_instances": transform_instances,
+            "marketplace_cert": marketplace_cert,
+        }
+
+        if model_package_name is not None:
+            model_package_args["model_package_name"] = model_package_name
+        if model_package_group_name is not None:
+            model_package_args["model_package_group_name"] = model_package_group_name
+        if model_metrics is not None:
+            model_package_args["model_metrics"] = model_metrics._to_request_dict()
+        if approval_status is not None:
+            model_package_args["approval_status"] = approval_status
+        if description is not None:
+            model_package_args["description"] = description
+        return model_package_args
+
     def _init_sagemaker_session_if_does_not_exist(self, instance_type):
         """Set ``self.sagemaker_session`` to be a ``LocalSession`` or
         ``Session`` if it is not already. The type of session object is

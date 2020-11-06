@@ -17,11 +17,12 @@ import logging
 import json
 import os
 import pytest
-from mock import MagicMock, Mock
+from mock import MagicMock, Mock, ANY
 from mock import patch
 from pkg_resources import parse_version
 
 from sagemaker.fw_utils import UploadedCode
+from sagemaker.model_metrics import MetricsSource, ModelMetrics
 from sagemaker.mxnet import defaults
 from sagemaker.mxnet import MXNet
 from sagemaker.mxnet import MXNetPredictor, MXNetModel
@@ -60,6 +61,8 @@ EXPERIMENT_CONFIG = {
     "TrialComponentDisplayName": "tc",
 }
 
+MODEL_PKG_RESPONSE = {"ModelPackageArn": "arn:model-pkg-arn"}
+
 
 @pytest.fixture()
 def sagemaker_session():
@@ -76,6 +79,7 @@ def sagemaker_session():
 
     describe = {"ModelArtifacts": {"S3ModelArtifacts": "s3://m/m.tar.gz"}}
     describe_compilation = {"ModelArtifacts": {"S3ModelArtifacts": "s3://m/model_c5.tar.gz"}}
+    session.sagemaker_client.create_model_package.side_effect = MODEL_PKG_RESPONSE
     session.sagemaker_client.describe_training_job = Mock(return_value=describe)
     session.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)
     session.sagemaker_client.describe_endpoint_config = Mock(return_value=ENDPOINT_CONFIG_DESC)
@@ -425,6 +429,52 @@ def test_model(
     )
     predictor = model.deploy(1, GPU)
     assert isinstance(predictor, MXNetPredictor)
+
+    model_package_name = "test-mxnet-register-model"
+    content_types = ["application/json"]
+    response_types = ["application/json"]
+    inference_instances = ["ml.m4.xlarge"]
+    transform_instances = ["ml.m4.xlarget"]
+
+    dummy_metrics_source = MetricsSource(
+        content_type="a",
+        s3_uri="s3://b/c",
+        content_digest="d",
+    )
+    model_metrics = ModelMetrics(
+        model_statistics=dummy_metrics_source,
+        model_constraints=dummy_metrics_source,
+        model_data_statistics=dummy_metrics_source,
+        model_data_constraints=dummy_metrics_source,
+        bias=dummy_metrics_source,
+        explainability=dummy_metrics_source,
+    )
+    model.register(
+        content_types,
+        response_types,
+        inference_instances,
+        transform_instances,
+        model_package_name=model_package_name,
+        model_metrics=model_metrics,
+        marketplace_cert=True,
+        approval_status="Approved",
+        description="description",
+    )
+    expected_create_model_package_request = {
+        "containers": ANY,
+        "content_types": content_types,
+        "response_types": response_types,
+        "inference_instances": inference_instances,
+        "transform_instances": transform_instances,
+        "model_package_name": model_package_name,
+        "model_metrics": model_metrics._to_request_dict(),
+        "marketplace_cert": True,
+        "approval_status": "Approved",
+        "description": "description",
+    }
+    sagemaker_session.create_model_package_from_containers.assert_called_with(
+        **expected_create_model_package_request
+    )
 
 
 @patch("sagemaker.utils.repack_model")

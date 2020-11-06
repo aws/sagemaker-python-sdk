@@ -22,6 +22,7 @@ import time
 import warnings
 
 import boto3
+import botocore
 import botocore.config
 from botocore.exceptions import ClientError
 import six
@@ -2392,7 +2393,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             vpc_config (dict[str, list[str]]): The VpcConfig set on the model (default: None)
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
-            enable_network_isolation (bool): Wether the model requires network isolation or not.
+            enable_network_isolation (bool): Whether the model requires network isolation or not.
             primary_container (str or dict[str, str]): Docker image which defines the inference
                 code. You can also specify the return value of ``sagemaker.container_def()``,
                 which is used to create more advanced container configurations, including model
@@ -2515,6 +2516,128 @@ class Session(object):  # pylint: disable=too-many-public-methods
             else:
                 raise
 
+    def create_model_package_from_containers(
+        self,
+        containers=None,
+        content_types=None,
+        response_types=None,
+        inference_instances=None,
+        transform_instances=None,
+        model_package_name=None,
+        model_package_group_name=None,
+        model_metrics=None,
+        marketplace_cert=False,
+        approval_status="PendingManualApproval",
+        description=None,
+    ):
+        """Get request dictionary for CreateModelPackage API.
+
+        Args:
+            containers (list): A list of inference containers that can be used for inference
+                specifications of Model Package (default: None).
+            content_types (list): The supported MIME types for the input data (default: None).
+            response_types (list): The supported MIME types for the output data (default: None).
+            inference_instances (list): A list of the instance types that are used to
+                generate inferences in real-time (default: None).
+            transform_instances (list): A list of the instance types on which a transformation
+                job can be run or on which an endpoint can be deployed (default: None).
+            model_package_name (str): Model Package name, exclusive to `model_package_group_name`,
+                using `model_package_name` makes the Model Package un-versioned (default: None).
+            model_package_group_name (str): Model Package Group name, exclusive to
+                `model_package_name`, using `model_package_group_name` makes the Model Package
+                versioned (default: None).
+            model_metrics (ModelMetrics): ModelMetrics object (default: None).
+            marketplace_cert (bool): A boolean value indicating if the Model Package is certified
+                for AWS Marketplace (default: False).
+            approval_status (str): Model Approval Status, values can be "Approved", "Rejected",
+                or "PendingManualApproval" (default: "PendingManualApproval").
+            description (str): Model Package description (default: None).
+        """
+
+        request = self._get_create_model_package_request(
+            model_package_name,
+            model_package_group_name,
+            containers,
+            content_types,
+            response_types,
+            inference_instances,
+            transform_instances,
+            model_metrics,
+            marketplace_cert,
+            approval_status,
+            description,
+        )
+        return self.sagemaker_client.create_model_package(**request)
+
+    def _get_create_model_package_request(
+        self,
+        model_package_name=None,
+        model_package_group_name=None,
+        containers=None,
+        content_types=None,
+        response_types=None,
+        inference_instances=None,
+        transform_instances=None,
+        model_metrics=None,
+        marketplace_cert=False,
+        approval_status="PendingManualApproval",
+        description=None,
+    ):
+        """Get request dictionary for CreateModelPackage API.
+
+        Args:
+            model_package_name (str): Model Package name, exclusive to `model_package_group_name`,
+                using `model_package_name` makes the Model Package un-versioned (default: None).
+            model_package_group_name (str): Model Package Group name, exclusive to
+                `model_package_name`, using `model_package_group_name` makes the Model Package
+                versioned (default: None).
+            containers (list): A list of inference containers that can be used for inference
+                specifications of Model Package (default: None).
+            content_types (list): The supported MIME types for the input data (default: None).
+            response_types (list): The supported MIME types for the output data (default: None).
+            inference_instances (list): A list of the instance types that are used to
+                generate inferences in real-time (default: None).
+            transform_instances (list): A list of the instance types on which a transformation
+                job can be run or on which an endpoint can be deployed (default: None).
+            model_metrics (ModelMetrics): ModelMetrics object (default: None).
+            marketplace_cert (bool): A boolean value indicating if the Model Package is certified
+                for AWS Marketplace (default: False).
+            approval_status (str): Model Approval Status, values can be "Approved", "Rejected",
+                or "PendingManualApproval" (default: "PendingManualApproval").
+            description (str): Model Package description (default: None).
+        """
+        if all([model_package_name, model_package_group_name]):
+            raise ValueError(
+                "model_package_name and model_package_group_name cannot be present at the "
+                "same time."
+            )
+        request_dict = {}
+        if model_package_name is not None:
+            request_dict["ModelPackageName"] = model_package_name
+        if model_package_group_name is not None:
+            request_dict["ModelPackageGroupName"] = model_package_group_name
+        if description is not None:
+            request_dict["ModelPackageDescription"] = description
+        if model_metrics:
+            request_dict["ModelMetrics"] = model_metrics
+        if containers is not None:
+            if not all([content_types, response_types, inference_instances, transform_instances]):
+                raise ValueError(
+                    "content_types, response_types, inference_inferences and transform_instances "
+                    "must be provided if containers is present."
+                )
+            inference_specification = {
+                "Containers": containers,
+                "SupportedContentTypes": content_types,
+                "SupportedResponseMIMETypes": response_types,
+                "SupportedRealtimeInferenceInstanceTypes": inference_instances,
+                "SupportedTransformInstanceTypes": transform_instances,
+            }
+            request_dict["InferenceSpecification"] = inference_specification
+        request_dict["CertifyForMarketPlace"] = marketplace_cert
+        request_dict["ModelApprovalStatus"] = approval_status
+        return request_dict
+
     def wait_for_model_package(self, model_package_name, poll=5):
         """Wait for an Amazon SageMaker endpoint deployment to complete.
 
@@ -2540,6 +2663,17 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 actual_status=status,
             )
         return desc
+
+    def describe_model(self, name):
+        """Calls the DescribeModel API for the given model name.
+
+        Args:
+            name (str): The name of the SageMaker model.
+
+        Returns:
+            dict: A dictionary response with the model description.
+        """
+        return self.sagemaker_client.describe_model(ModelName=name)
 
     def create_endpoint_config(
         self,

@@ -31,7 +31,7 @@ RETURN_VALUE = 0
 CSV_RETURN_VALUE = "1,2,3\r\n"
 PRODUCTION_VARIANT_1 = "PRODUCTION_VARIANT_1"
 
-ENDPOINT_DESC = {"EndpointConfigName": ENDPOINT}
+ENDPOINT_DESC = {"EndpointArn": "foo", "EndpointConfigName": ENDPOINT}
 
 ENDPOINT_CONFIG_DESC = {"ProductionVariants": [{"ModelName": "model-1"}, {"ModelName": "model-2"}]}
 
@@ -417,3 +417,50 @@ def test_delete_model_fail():
     with pytest.raises(Exception) as exception:
         predictor.delete_model()
         assert expected_error_message in str(exception.val)
+
+
+def context_sagemaker_session(summaries=True):
+    ims = Mock(name="sagemaker_session")
+    ims.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)
+    ims.sagemaker_client.describe_endpoint_config = Mock(return_value=ENDPOINT_CONFIG_DESC)
+
+    if summaries:
+        ims.sagemaker_client.list_contexts = Mock(
+            return_value={"ContextSummaries": [{"ContextName": "bar"}]}
+        )
+    else:
+        ims.sagemaker_client.list_contexts = Mock(return_value={"ContextSummaries": []})
+
+    ims.sagemaker_client.describe_context = Mock(
+        return_value={
+            "ContextArn": "foo",
+            "ContextName": "bar",
+        }
+    )
+
+    response_body = Mock("body")
+    response_body.read = Mock("read", return_value=json.dumps([RETURN_VALUE]))
+    response_body.close = Mock("close", return_value=None)
+    ims.sagemaker_runtime_client.invoke_endpoint = Mock(
+        name="invoke_endpoint",
+        return_value={"Body": response_body, "ContentType": "application/json"},
+    )
+    return ims
+
+
+def test_endpoint_context_success():
+    session = context_sagemaker_session()
+    pdctr = Predictor(ENDPOINT, sagemaker_session=session)
+
+    context = pdctr.endpoint_context()
+
+    assert context
+
+
+def test_endpoint_context_fail():
+    session = context_sagemaker_session(summaries=False)
+    pdctr = Predictor(ENDPOINT, sagemaker_session=session)
+
+    context = pdctr.endpoint_context()
+
+    assert not context

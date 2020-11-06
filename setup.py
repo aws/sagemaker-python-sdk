@@ -33,6 +33,7 @@ def read_version():
 
 # Declare minimal set for installation
 required_packages = [
+    "attrs",
     "boto3>=1.14.12",
     "google-pasta",
     "numpy>=1.9.0",
@@ -73,6 +74,7 @@ extras["test"] = (
         "apache-airflow==1.10.11",
         "fabric>=2.0",
         "requests>=2.20.0, <3",
+        "sagemaker-experiments",
     ],
 )
 

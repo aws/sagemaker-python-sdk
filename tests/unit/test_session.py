@@ -2134,9 +2134,94 @@ def test_list_candidates_for_auto_ml_job_with_optional_args(sagemaker_session):
     )
 
 
-def test_describe_tuning_Job(sagemaker_session):
+def test_describe_tuning_job(sagemaker_session):
     job_name = "hyper-parameter-tuning"
     sagemaker_session.describe_tuning_job(job_name=job_name)
     sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job.assert_called_with(
         HyperParameterTuningJobName=job_name
     )
+
+
+def test_describe_model(sagemaker_session):
+    model_name = "sagemaker-model-name"
+    sagemaker_session.describe_model(name=model_name)
+    sagemaker_session.sagemaker_client.describe_model.assert_called_with(ModelName=model_name)
+
+
+def test_create_model_package_from_containers(sagemaker_session):
+    model_package_name = "sagemaker-model-package"
+    sagemaker_session.create_model_package_from_containers(model_package_name=model_package_name)
+    sagemaker_session.sagemaker_client.create_model_package.assert_called_once()
+
+
+def test_create_model_package_from_containers_name_conflict(sagemaker_session):
+    model_package_name = "sagemaker-model-package"
+    model_package_group_name = "sagemaker-model-package-group"
+    with pytest.raises(ValueError) as error:
+        sagemaker_session.create_model_package_from_containers(
+            model_package_name=model_package_name,
+            model_package_group_name=model_package_group_name,
+        )
+        assert (
+            "model_package_name and model_package_group_name cannot be present at the same "
+            "time." == str(error)
+        )
+
+
+def test_create_model_package_from_containers_incomplete_args(sagemaker_session):
+    model_package_name = "sagemaker-model-package"
+    containers = ["dummy-container"]
+    with pytest.raises(ValueError) as error:
+        sagemaker_session.create_model_package_from_containers(
+            model_package_name=model_package_name,
+            containers=containers,
+        )
+        assert (
+            "content_types, response_types, inference_inferences and transform_instances "
+            "must be provided if containers is present." == str(error)
+        )
+
+
+def test_create_model_package_from_containers_all_args(sagemaker_session):
+    model_package_name = "sagemaker-model-package"
+    containers = ["dummy-container"]
+    content_types = ["application/json"]
+    response_types = ["application/json"]
+    inference_instances = ["ml.m4.xlarge"]
+    transform_instances = ["ml.m4.xlarget"]
+    model_metrics = {
+        "Bias": {
+            "ContentType": "content-type",
+            "S3Uri": "s3://...",
+        }
+    }
+    marketplace_cert = (True,)
+    approval_status = ("Approved",)
+    description = "description"
+    sagemaker_session.create_model_package_from_containers(
+        containers=containers,
+        content_types=content_types,
+        response_types=response_types,
+        inference_instances=inference_instances,
+        transform_instances=transform_instances,
+        model_package_name=model_package_name,
+        model_metrics=model_metrics,
+        marketplace_cert=marketplace_cert,
+        approval_status=approval_status,
+        description=description,
+    )
+    expected_args = {
+        "ModelPackageName": model_package_name,
+        "InferenceSpecification": {
+            "Containers": containers,
+            "SupportedContentTypes": content_types,
+            "SupportedResponseMIMETypes": response_types,
+            "SupportedRealtimeInferenceInstanceTypes": inference_instances,
+            "SupportedTransformInstanceTypes": transform_instances,
+        },
+        "ModelPackageDescription": description,
+        "ModelMetrics": model_metrics,
+        "CertifyForMarketPlace": marketplace_cert,
+        "ModelApprovalStatus": approval_status,
+    }
+    sagemaker_session.sagemaker_client.create_model_package.assert_called_with(**expected_args)
