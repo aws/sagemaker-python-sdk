@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.16.2 (2020-11-09)
+
+### Bug Fixes and Other Changes
+
+ * create default bucket only if needed
+
 ## v2.16.1 (2020-10-28)
 
 ### Bug Fixes and Other Changes
