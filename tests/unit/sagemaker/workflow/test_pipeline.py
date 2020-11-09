@@ -28,6 +28,7 @@ from sagemaker.workflow.steps import (
     Step,
     StepTypeEnum,
 )
+from tests.unit.sagemaker.workflow.helpers import ordered
 
 
 class CustomStep(Step):
@@ -47,16 +48,6 @@ class CustomStep(Step):
     @property
     def properties(self):
         return self._properties
-
-
-def ordered(obj):
-    """Helper function for dict comparison"""
-    if isinstance(obj, dict):
-        return sorted((k, ordered(v)) for k, v in obj.items())
-    if isinstance(obj, list):
-        return sorted(ordered(x) for x in obj)
-    else:
-        return obj
 
 
 @pytest.fixture
@@ -211,11 +202,16 @@ def test_pipeline_basic():
     )
 
 
-def test_pipeline_two_step():
+def test_pipeline_two_step(sagemaker_session_mock):
     parameter = ParameterString("MyStr")
     step1 = CustomStep(name="MyStep1", input_data=parameter)
     step2 = CustomStep(name="MyStep2", input_data=step1.properties.S3Uri)
-    pipeline = Pipeline(name="MyPipeline", parameters=[parameter], steps=[step1, step2])
+    pipeline = Pipeline(
+        name="MyPipeline",
+        parameters=[parameter],
+        steps=[step1, step2],
+        sagemaker_session=sagemaker_session_mock,
+    )
     assert pipeline.to_request() == {
         "Version": "2020-12-01",
         "Metadata": {},

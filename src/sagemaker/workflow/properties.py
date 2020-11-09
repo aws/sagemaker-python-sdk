@@ -13,7 +13,7 @@
 """The properties definitions for workflow."""
 from __future__ import absolute_import
 
-from typing import Union
+from typing import Dict, Union
 
 import attr
 
@@ -79,7 +79,7 @@ class PropertiesList(Properties):
             shape_name (str): botocore sagemaker service model shape name.
         """
         super(PropertiesList, self).__init__(path, shape_name)
-        self._items = dict()
+        self._items: Dict[Union[int, str], Properties] = dict()
 
     def __getitem__(self, item: Union[int, str]):
         """Populate the indexing item with a Property, working for both list and dictionary.
@@ -114,7 +114,7 @@ class PropertyFile(Expression):
     path: str = attr.ib()
 
     @property
-    def expr(self):
+    def expr(self) -> Dict[str, str]:
         """The expression dict for a `PropertyFile`."""
         return {
             "PropertyFileName": self.name,

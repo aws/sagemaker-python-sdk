@@ -21,6 +21,7 @@ import boto3
 import pytest
 
 from botocore.config import Config
+from botocore.exceptions import WaiterError
 from sagemaker.inputs import TrainingInput
 from sagemaker.processing import ProcessingInput, ProcessingOutput
 from sagemaker.pytorch.estimator import PyTorch
@@ -263,6 +264,10 @@ def test_one_step_sklearn_processing_pipeline(
         response = execution.describe()
         assert response["PipelineArn"] == create_arn
 
+        try:
+            execution.wait(delay=5, max_attempts=6)
+        except WaiterError:
+            pass
         execution_steps = execution.list_steps()
         assert len(execution_steps) == 1
         assert execution_steps[0]["StepName"] == "sklearn-process"

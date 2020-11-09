@@ -49,13 +49,15 @@ class Pipeline(Entity):
             `else_steps` of any `ConditionStep`. In particular, any steps that are within the
             `if_steps` or `else_steps` of a `ConditionStep` cannot be listed in the steps of a
             pipeline.
-
+        sagemaker_session (sagemaker.session.Session): Session object which manages interactions
+            with Amazon SageMaker APIs and any other AWS services needed. If not specified, the
+            pipeline creates one using the default AWS configuration chain.
     """
 
     name: str = attr.ib(factory=str)
     parameters: Sequence[Parameter] = attr.ib(factory=list)
     steps: Sequence[Union[Step, StepCollection]] = attr.ib(factory=list)
-    sagemaker_session: Session = attr.ib(default=Session)
+    sagemaker_session: Session = attr.ib(factory=Session)
 
     _version: str = "2020-12-01"
     _metadata: Dict[str, Any] = dict()
@@ -180,7 +182,7 @@ class Pipeline(Entity):
         self,
         parameters: Dict[str, Any] = None,
         execution_description: str = None,
-    ) -> Dict[str, Any]:
+    ):
         """Starts a Pipeline execution in the Workflow service.
 
         Args:
@@ -189,7 +191,7 @@ class Pipeline(Entity):
             execution_description (str): Description of the execution.
 
         Returns:
-            Response dict from service.
+            A `_PipelineExecution` instance, if successful.
         """
         exists = True
         try:
@@ -286,10 +288,17 @@ def update_args(args: Dict[str, Any], **kwargs):
 
 @attr.s
 class _PipelineExecution:
-    """Internal class for encapsulating pipeline execution instances"""
+    """Internal class for encapsulating pipeline execution instances.
+
+    Attributes:
+        arn (str): The arn of the pipeline exeuction.
+        sagemaker_session (sagemaker.session.Session): Session object which manages interactions
+            with Amazon SageMaker APIs and any other AWS services needed. If not specified, the
+            pipeline creates one using the default AWS configuration chain.
+    """
 
     arn: str = attr.ib()
-    sagemaker_session: Session = attr.ib(default=Session)
+    sagemaker_session: Session = attr.ib(factory=Session)
 
     def stop(self):
         """Stops a pipeline execution."""

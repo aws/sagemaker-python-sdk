@@ -226,7 +226,7 @@ class TransformStep(Step):
         self,
         name: str,
         transformer: Transformer,
-        inputs: TransformInput = None,
+        inputs: TransformInput,
     ):
         """Constructs a TrainingStep, given an `Transformer` instance.
 
@@ -237,7 +237,6 @@ class TransformStep(Step):
             name (str): The name of the transform step.
             transformer (Transformer): A `sagemaker.transformer.Transformer` instance.
             inputs (TransformInput): A `sagemaker.inputs.TransformInput` instance.
-                Defaults to `None`.
         """
         super(TransformStep, self).__init__(name, StepTypeEnum.TRANSFORM)
         self.transformer = transformer

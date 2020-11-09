@@ -32,6 +32,7 @@ from sagemaker.workflow.step_collections import (
     StepCollection,
     RegisterModel,
 )
+from tests.unit.sagemaker.workflow.helpers import ordered
 
 REGION = "us-west-2"
 BUCKET = "my-bucket"
@@ -124,20 +125,23 @@ def test_register_model(estimator):
         inference_instances=["inference_instance"],
         transform_instances=["transform_instance"],
     )
-    assert register_model.request_dicts() == [
-        {
-            "Name": "RegisterModelStep",
-            "Type": "RegisterModel",
-            "Arguments": {
-                "InferenceSpecification": {
-                    "Containers": [
-                        {"Image": "fakeimage", "ModelDataUrl": "s3://my-bucket/model.tar.gz"}
-                    ],
-                    "SupportedContentTypes": ["content_type"],
-                    "SupportedRealtimeInferenceInstanceTypes": ["inference_instance"],
-                    "SupportedResponseMIMETypes": ["response_type"],
-                    "SupportedTransformInstanceTypes": ["transform_instance"],
+    assert ordered(register_model.request_dicts()) == ordered(
+        [
+            {
+                "Name": "RegisterModelStep",
+                "Type": "RegisterModel",
+                "Arguments": {
+                    "InferenceSpecification": {
+                        "Containers": [
+                            {"Image": "fakeimage", "ModelDataUrl": "s3://my-bucket/model.tar.gz"}
+                        ],
+                        "SupportedContentTypes": ["content_type"],
+                        "SupportedRealtimeInferenceInstanceTypes": ["inference_instance"],
+                        "SupportedResponseMIMETypes": ["response_type"],
+                        "SupportedTransformInstanceTypes": ["transform_instance"],
+                    },
+                    "ModelApprovalStatus": "PendingManualApproval",
                 },
             },
-        },
-    ]
+        ]
+    )
