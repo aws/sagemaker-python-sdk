@@ -46,18 +46,26 @@ def container_image(sagemaker_session):
     algorithm_name = unique_name_from_base("sagemaker-multimodel-integ-test")
     ecr_image = _ecr_image_uri(sagemaker_session, algorithm_name)
 
-    # Build and tag docker image locally
+    ecr_client = sagemaker_session.boto_session.client("ecr")
+    username, password = _ecr_login(ecr_client)
+
     docker_client = docker.from_env()
+
+    # Base image pull
+    base_image = "142577830533.dkr.ecr.us-west-2.amazonaws.com/ubuntu:16.04"
+    docker_client.images.pull(base_image, auth_config={"username": username, "password": password})
+
+    # Build and tag docker image locally
     image, build_log = docker_client.images.build(
-        path=os.path.join(DATA_DIR, "multimodel", "container"), tag=algorithm_name, rm=True
+        path=os.path.join(DATA_DIR, "multimodel", "container"),
+        tag=algorithm_name,
+        rm=True,
     )
     image.tag(ecr_image, tag="latest")
 
     # Create AWS ECR and push the local docker image to it
-    ecr_client = sagemaker_session.boto_session.client("ecr")
     _create_repository(ecr_client, algorithm_name)
 
-    username, password = _ecr_login(ecr_client)
     # Retry docker image push
     for _ in retries(3, "Upload docker image to ECR repo", seconds_to_sleep=10):
         try:
