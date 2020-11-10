@@ -47,6 +47,7 @@ required_packages = [
 # Specific use case dependencies
 extras = {
     "analytics": ["pandas"],
+    "feature-store": ["pandas"],
     "local": [
         "urllib3>=1.21.1,<1.26,!=1.25.0,!=1.25.1",
         "docker-compose>=1.25.2",

@@ -2235,3 +2235,88 @@ def test_create_model_package_from_containers_all_args(sagemaker_session):
         "ModelApprovalStatus": approval_status,
     }
     sagemaker_session.sagemaker_client.create_model_package.assert_called_with(**expected_args)
+
+
+@pytest.fixture
+def feature_group_dummy_definitions():
+    return [{"FeatureName": "feature1", "FeatureType": "String"}]
+
+
+def test_feature_group_create(sagemaker_session, feature_group_dummy_definitions):
+    sagemaker_session.create_feature_group(
+        feature_group_name="MyFeatureGroup",
+        record_identifier_name="feature1",
+        event_time_feature_name="feature2",
+        feature_definitions=feature_group_dummy_definitions,
+        role_arn="dummy_role",
+    )
+    assert sagemaker_session.sagemaker_client.create_feature_group.called_with(
+        FeatureGroupName="MyFeatureGroup",
+        RecordIdentifierFeatureName="feature1",
+        EventTimeFeatureName="feature2",
+        FeatureDefinitions=feature_group_dummy_definitions,
+        RoleArn="dummy_role",
+    )
+
+
+def test_feature_group_delete(sagemaker_session):
+    sagemaker_session.delete_feature_group(feature_group_name="MyFeatureGroup")
+    assert sagemaker_session.sagemaker_client.delete_feature_group.called_with(
+        FeatureGroupName="MyFeatureGroup",
+    )
+
+
+def test_feature_group_describe(sagemaker_session):
+    sagemaker_session.describe_feature_group(feature_group_name="MyFeatureGroup")
+    assert sagemaker_session.sagemaker_client.describe_feature_group.called_with(
+        FeatureGroupName="MyFeatureGroup",
+    )
+
+
+def test_start_query_execution(sagemaker_session):
+    athena_mock = Mock()
+    sagemaker_session.boto_session.client(
+        "athena", region_name=sagemaker_session.boto_region_name
+    ).return_value = athena_mock
+    sagemaker_session.start_query_execution(
+        catalog="catalog",
+        database="database",
+        query_string="query",
+        output_location="s3://results",
+    )
+    assert athena_mock.start_query_execution.called_once_with(
+        QueryString="query",
+        QueryExecutionContext={"Catalog": "catalog", "Database": "database"},
+        OutputLocation="s3://results",
+    )
+
+
+def test_get_query_execution(sagemaker_session):
+    athena_mock = Mock()
+    sagemaker_session.boto_session.client(
+        "athena", region_name=sagemaker_session.boto_region_name
+    ).return_value = athena_mock
+    sagemaker_session.get_query_execution(query_execution_id="query_id")
+    assert athena_mock.get_query_execution.called_with(QueryExecutionId="query_id")
+
+
+def test_download_athena_query_result(sagemaker_session):
+    sagemaker_session.s3_client = Mock()
+    sagemaker_session.download_athena_query_result(
+        bucket="bucket",
+        prefix="prefix",
+        query_execution_id="query_id",
+        filename="filename",
+    )
+    assert sagemaker_session.s3_client.download_file.called_with(
+        Bucket="bucket",
+        Key="prefix/query_id.csv",
+        Filename="filename",
+    )
+
+
+@patch("sagemaker.session.Session.get_query_execution")
+def test_wait_for_athena_query(query_execution, sagemaker_session):
+    query_execution.return_value = {"QueryExecution": {"Status": {"State": "SUCCEEDED"}}}
+    sagemaker_session.wait_for_athena_query(query_execution_id="query_id")
+    assert query_execution.called_with(query_execution_id="query_id")

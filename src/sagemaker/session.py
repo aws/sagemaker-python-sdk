@@ -20,6 +20,7 @@ import re
 import sys
 import time
 import warnings
+from typing import List, Dict, Any, Sequence
 
 import boto3
 import botocore
@@ -82,6 +83,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         boto_session=None,
         sagemaker_client=None,
         sagemaker_runtime_client=None,
+        sagemaker_featurestore_runtime_client=None,
         default_bucket=None,
     ):
         """Initialize a SageMaker ``Session``.
@@ -97,6 +99,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
             sagemaker_runtime_client (boto3.SageMakerRuntime.Client): Client which makes
                 ``InvokeEndpoint`` calls to Amazon SageMaker (default: None). Predictors created
                 using this ``Session`` use this client. If not provided, one will be created using
+                this instance's ``boto_session``.
+            sagemaker_featurestore_runtime_client (boto3.SageMakerFeatureStoreRuntime.Client):
+                Client which makes SageMaker FeatureStore record related calls to Amazon SageMaker
+                (default: None). If not provided, one will be created using
                 this instance's ``boto_session``.
             default_bucket (str): The default Amazon S3 bucket to be used by this session.
                 This will be created the next time an Amazon S3 bucket is needed (by calling
@@ -116,9 +122,16 @@ class Session(object):  # pylint: disable=too-many-public-methods
             boto_session=boto_session,
             sagemaker_client=sagemaker_client,
             sagemaker_runtime_client=sagemaker_runtime_client,
+            sagemaker_featurestore_runtime_client=sagemaker_featurestore_runtime_client,
         )
 
-    def _initialize(self, boto_session, sagemaker_client, sagemaker_runtime_client):
+    def _initialize(
+        self,
+        boto_session,
+        sagemaker_client,
+        sagemaker_runtime_client,
+        sagemaker_featurestore_runtime_client,
+    ):
         """Initialize this SageMaker Session.
 
         Creates or uses a boto_session, sagemaker_client and sagemaker_runtime_client.
@@ -144,6 +157,13 @@ class Session(object):  # pylint: disable=too-many-public-methods
             )
 
         prepend_user_agent(self.sagemaker_runtime_client)
+
+        if sagemaker_featurestore_runtime_client:
+            self.sagemaker_featurestore_runtime_client = sagemaker_featurestore_runtime_client
+        else:
+            self.sagemaker_featurestore_runtime_client = self.boto_session.client(
+                "sagemaker-featurestore-runtime"
+            )
 
         self.local_mode = False
 
@@ -3669,6 +3689,212 @@ class Session(object):  # pylint: disable=too-many-public-methods
             self._check_job_status(job_name, description, "TransformJobStatus")
             if dot:
                 print()
+
+    def delete_feature_group(self, feature_group_name: str):
+        """Deletes a FeatureGroup in the FeatureStore service
+
+        Args:
+            feature_group_name (str): name of the feature group to be deleted.
+        """
+        self.sagemaker_client.delete_feature_group(FeatureGroupName=feature_group_name)
+
+    def create_feature_group(
+        self,
+        feature_group_name: str,
+        record_identifier_name: str,
+        event_time_feature_name: str,
+        feature_definitions: Sequence[Dict[str, str]],
+        role_arn: str,
+        online_store_config: Dict[str, str] = None,
+        offline_store_config: Dict[str, str] = None,
+        description: str = None,
+        tags: List[Dict[str, str]] = None,
+    ) -> Dict[str, Any]:
+        """Creates a FeatureGroup in the FeatureStore service
+
+        Args:
+            feature_group_name (str): name of the FeatureGroup.
+            record_identifier_name (str): name of the record identifier feature.
+            event_time_feature_name (str): name of the event time feature.
+            feature_definitions (Sequence[Dict[str, str]]): list of feature definitions.
+            role_arn (str): ARN of the role will be used to execute the api.
+            online_store_config (Dict[str, str]): dict contains configuration of the
+                feature online store.
+            offline_store_config (Dict[str, str]): dict contains configuration of the
+                feature offline store.
+            description (str): description of the FeatureGroup.
+            tags (List[Dict[str, str]]): list of tags for labeling a FeatureGroup.
+
+        Returns:
+            Response dict from service.
+        """
+        kwargs = dict(
+            FeatureGroupName=feature_group_name,
+            RecordIdentifierFeatureName=record_identifier_name,
+            EventTimeFeatureName=event_time_feature_name,
+            FeatureDefinitions=feature_definitions,
+            RoleArn=role_arn,
+        )
+        update_args(
+            kwargs,
+            OnlineStoreConfig=online_store_config,
+            OfflineStoreConfig=offline_store_config,
+            Description=description,
+            Tags=tags,
+        )
+        return self.sagemaker_client.create_feature_group(**kwargs)
+
+    def describe_feature_group(
+        self,
+        feature_group_name: str,
+        next_token: str = None,
+    ) -> Dict[str, Any]:
+        """Describe a FeatureGroup by name in FeatureStore service.
+
+        Args:
+            feature_group_name (str): name of the FeatureGroup to descibe.
+            next_token (str): next_token to get next page of features.
+
+        Returns:
+            Response dict from service.
+        """
+
+        kwargs = dict(FeatureGroupName=feature_group_name)
+        update_args(kwargs, NextToken=next_token)
+        return self.sagemaker_client.describe_feature_group(**kwargs)
+
+    def put_record(
+        self,
+        feature_group_name: str,
+        record: Sequence[Dict[str, str]],
+    ):
+        """Puts a single record in the FeatureGroup
+
+        Args:
+            feature_group_name (str): name of the FeatureGroup.
+            record (Sequence[Dict[str, str]]): list of FeatureValue dicts to be ingested
+                into FeatureStore.
+        """
+        return self.sagemaker_featurestore_runtime_client.put_record(
+            FeatureGroupName=feature_group_name,
+            Record=record,
+        )
+
+    def start_query_execution(
+        self,
+        catalog: str,
+        database: str,
+        query_string: str,
+        output_location: str,
+        kms_key: str = None,
+    ) -> Dict[str, str]:
+        """Start Athena query execution.
+
+        Args:
+            catalog (str): name of the data catalog.
+            database (str): name of the data catalog database.
+            query_string (str): SQL expression.
+            output_location (str): S3 location of the output file.
+            kms_key (str): KMS key id will be used to encrypt the result if given.
+
+        Returns:
+            Response dict from the service.
+        """
+        kwargs = dict(
+            QueryString=query_string, QueryExecutionContext=dict(Catalog=catalog, Database=database)
+        )
+        result_config = dict(OutputLocation=output_location)
+        if kms_key:
+            result_config.update(
+                EncryptionConfiguration=dict(EncryptionOption="SSE_KMS", KmsKey=kms_key)
+            )
+        kwargs.update(ResultConfiguration=result_config)
+
+        athena_client = self.boto_session.client("athena", region_name=self.boto_region_name)
+        return athena_client.start_query_execution(**kwargs)
+
+    def get_query_execution(self, query_execution_id: str) -> Dict[str, Any]:
+        """Get execution status of the Athena query.
+
+        Args:
+            query_execution_id (str): execution ID of the Athena query.
+        """
+        athena_client = self.boto_session.client("athena", region_name=self.boto_region_name)
+        return athena_client.get_query_execution(QueryExecutionId=query_execution_id)
+
+    def wait_for_athena_query(self, query_execution_id: str, poll: int = 5):
+        """Wait for Athena query to finish.
+
+        Args:
+             query_execution_id (str): execution ID of the Athena query.
+             poll (int): time interval to poll get_query_execution API.
+        """
+        query_state = (
+            self.get_query_execution(query_execution_id=query_execution_id)
+            .get("QueryExecution")
+            .get("Status")
+            .get("State")
+        )
+        while query_state not in ("SUCCEEDED", "FAILED"):
+            LOGGER.info("Query %s is being executed.", query_execution_id)
+            time.sleep(poll)
+            query_state = (
+                self.get_query_execution(query_execution_id=query_execution_id)
+                .get("QueryExecution")
+                .get("Status")
+                .get("State")
+            )
+        if query_state == "SUCCEEDED":
+            LOGGER.info("Query %s successfully executed.", query_execution_id)
+        else:
+            LOGGER.error("Failed to execute query %s.", query_execution_id)
+
+    def download_athena_query_result(
+        self,
+        bucket: str,
+        prefix: str,
+        query_execution_id: str,
+        filename: str,
+    ):
+        """Download query result file from S3.
+
+        Args:
+            bucket (str): name of the S3 bucket where the result file is stored.
+            prefix (str): S3 prefix of the result file.
+            query_execution_id (str): execution ID of the Athena query.
+            filename (str): name of the downloaded file.
+        """
+        if self.s3_client is None:
+            s3 = self.boto_session.client("s3", region_name=self.boto_region_name)
+        else:
+            s3 = self.s3_client
+        s3.download_file(Bucket=bucket, Key=f"{prefix}/{query_execution_id}.csv", Filename=filename)
+
+    def account_id(self) -> str:
+        """Get the AWS account id of the caller.
+
+        Returns:
+            AWS account ID.
+        """
+        region = self.boto_session.region_name
+        sts_client = self.boto_session.client(
+            "sts", region_name=region, endpoint_url=sts_regional_endpoint(region)
+        )
+        return sts_client.get_caller_identity()["Account"]
+
+
+def update_args(args: Dict[str, Any], **kwargs):
+    """Updates the request arguments dict with the value if populated.
+
+    This is to handle the case that the service API doesn't like NoneTypes for argument values.
+
+    Args:
+        request_args (Dict[str, Any]): the request arguments dict
+        kwargs: key, value pairs to update the args dict
+    """
+    for key, value in kwargs.items():
+        if value is not None:
+            args.update({key: value})
 
 
 def container_def(image_uri, model_data_url=None, env=None, container_mode=None):
