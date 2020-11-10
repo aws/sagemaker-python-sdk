@@ -50,6 +50,12 @@ PARAMETER_SERVER_MULTI_GPU_WARNING = (
 
 DEBUGGER_UNSUPPORTED_REGIONS = ("us-iso-east-1",)
 SINGLE_GPU_INSTANCE_TYPES = ("ml.p2.xlarge", "ml.p3.2xlarge")
+SM_DATAPARALLEL_SUPPORTED_INSTANCE_TYPES = ("ml.p3.16xlarge", "ml.p3dn.24xlarge", "local_gpu")
+SM_DATAPARALLEL_SUPPORTED_FRAMEWORK_VERSIONS = {
+    "tensorflow": ["2.3.0", "2.3.1"],
+    "pytorch": ["1.6.0"],
+}
+SMDISTRIBUTED_SUPPORTED_STRATEGIES = ["dataparallel", "modelparallel"]
 
 
 def validate_source_dir(script, directory):
@@ -255,9 +261,8 @@ def warn_if_parameter_server_with_multi_gpu(training_instance_type, distribution
             .. code:: python
 
                 {
-                    'parameter_server':
-                    {
-                        'enabled': True
+                    "parameter_server": {
+                        "enabled": True
                     }
                 }
 
@@ -277,6 +282,154 @@ def warn_if_parameter_server_with_multi_gpu(training_instance_type, distribution
 
     if is_multi_gpu_instance and ps_enabled:
         logger.warning(PARAMETER_SERVER_MULTI_GPU_WARNING)
+
+
+def validate_smdistributed(
+    instance_type, framework_name, framework_version, py_version, distribution, image_uri=None
+):
+    """Check if smdistributed strategy is correctly invoked by the user.
+
+    Currently, two strategies are supported: `dataparallel` or `modelparallel`.
+    Validate if the user requested strategy is supported.
+
+    Currently, only one strategy can be specified at a time. Validate if the user has requested
+    more than one strategy simultaneously.
+
+    Validate if the smdistributed dict arg is syntactically correct.
+
+    Additionally, perform strategy-specific validations.
+
+    Args:
+        instance_type (str): A string representing the type of training instance selected.
+        framework_name (str): A string representing the name of framework selected.
+        framework_version (str): A string representing the framework version selected.
+        py_version (str): A string representing the python version selected.
+        distribution (dict): A dictionary with information to enable distributed training.
+            (Defaults to None if distributed training is not enabled.) For example:
+
+            .. code:: python
+
+                {
+                    "smdistributed": {
+                        "dataparallel": {
+                            "enabled": True
+                        }
+                    }
+                }
+        image_uri (str): A string representing a Docker image URI.
+
+    Raises:
+        ValueError: if distribution dictionary isn't correctly formatted or
+            multiple strategies are requested simultaneously or
+            an unsupported strategy is requested or
+            strategy-specific inputs are incorrect/unsupported
+    """
+    if "smdistributed" not in distribution:
+        # Distribution strategy other than smdistributed is selected
+        return
+
+    # distribution contains smdistributed
+    smdistributed = distribution["smdistributed"]
+    if not isinstance(smdistributed, dict):
+        raise ValueError("smdistributed strategy requires a dictionary")
+
+    if len(smdistributed) > 1:
+        # more than 1 smdistributed strategy requested by the user
+        err_msg = (
+            "Cannot use more than 1 smdistributed strategy. \n"
+            "Choose one of the following supported strategies:"
+            f"{SMDISTRIBUTED_SUPPORTED_STRATEGIES}"
+        )
+        raise ValueError(err_msg)
+
+    # validate if smdistributed strategy is supported
+    # currently this for loop essentially checks for only 1 key
+    for strategy in smdistributed:
+        if strategy not in SMDISTRIBUTED_SUPPORTED_STRATEGIES:
+            err_msg = (
+                f"Invalid smdistributed strategy provided: {strategy} \n"
+                f"Supported strategies: {SMDISTRIBUTED_SUPPORTED_STRATEGIES}"
+            )
+            raise ValueError(err_msg)
+
+    # smdataparallel-specific input validation
+    if "dataparallel" in smdistributed:
+        _validate_smdataparallel_args(
+            instance_type, framework_name, framework_version, py_version, distribution, image_uri
+        )
+
+
+def _validate_smdataparallel_args(
+    instance_type, framework_name, framework_version, py_version, distribution, image_uri=None
+):
+    """Check if request is using unsupported arguments.
+
+    Validate if user specifies a supported instance type, framework version, and python
+    version.
+
+    Args:
+        instance_type (str): A string representing the type of training instance selected. Ex: `ml.p3.16xlarge`
+        framework_name (str): A string representing the name of framework selected. Ex: `tensorflow`
+        framework_version (str): A string representing the framework version selected. Ex: `2.3.1`
+        py_version (str): A string representing the python version selected. Ex: `py3`
+        distribution (dict): A dictionary with information to enable distributed training.
+            (Defaults to None if distributed training is not enabled.) Ex:
+
+            .. code:: python
+
+                {
+                    "smdistributed": {
+                        "dataparallel": {
+                            "enabled": True
+                        }
+                    }
+                }
+        image_uri (str): A string representing a Docker image URI.
+
+    Raises:
+        ValueError: if
+            (`instance_type` is not in SM_DATAPARALLEL_SUPPORTED_INSTANCE_TYPES or
+            `py_version` is not python3 or
+            `framework_version` is not in SM_DATAPARALLEL_SUPPORTED_FRAMEWORK_VERSION
+    """
+    smdataparallel_enabled = (
+        distribution.get("smdistributed").get("dataparallel").get("enabled", False)
+    )
+
+    if not smdataparallel_enabled:
+        return
+
+    is_instance_type_supported = instance_type in SM_DATAPARALLEL_SUPPORTED_INSTANCE_TYPES
+
+    err_msg = ""
+
+    if not is_instance_type_supported:
+        # instance_type is required
+        err_msg += (
+            f"Provided instance_type {instance_type} is not supported by smdataparallel.\n"
+            "Please specify one of the supported instance types:"
+            f"{SM_DATAPARALLEL_SUPPORTED_INSTANCE_TYPES}\n"
+        )
+
+    if not image_uri:
+        # ignore framework_version & py_version if image_uri is set
+        # in case image_uri is not set, then both are mandatory
+        supported = SM_DATAPARALLEL_SUPPORTED_FRAMEWORK_VERSIONS[framework_name]
+        if framework_version not in supported:
+            err_msg += (
+                f"Provided framework_version {framework_version} is not supported by"
+                " smdataparallel.\n"
+                f"Please specify one of the supported framework versions: {supported} \n"
+            )
+
+        if "py3" not in py_version:
+            err_msg += (
+                f"Provided py_version {py_version} is not supported by smdataparallel.\n"
+                "Please specify py_version=py3"
+            )
+
+    if err_msg:
+        raise ValueError(err_msg)
 
 
 def python_deprecation_warning(framework, latest_supported_version):

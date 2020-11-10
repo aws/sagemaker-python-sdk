@@ -15,11 +15,12 @@ from __future__ import absolute_import
 import inspect
 import os
 import tarfile
+from contextlib import contextmanager
+from itertools import product
 
 import pytest
 from mock import Mock, patch
 
-from contextlib import contextmanager
 from sagemaker import fw_utils
 from sagemaker.utils import name_from_image
 
@@ -505,3 +506,93 @@ def test_validate_version_or_image_args_raises():
     for framework_version, py_version, image_uri in bad_args:
         with pytest.raises(ValueError):
             fw_utils.validate_version_or_image_args(framework_version, py_version, image_uri)
+
+
+def test_validate_smdistributed_not_raises():
+    smdataparallel_enabled = {"smdistributed": {"dataparallel": {"enabled": True}}}
+    smdataparallel_disabled = {"smdistributed": {"dataparallel": {"enabled": False}}}
+    instance_types = ["ml.p3.16xlarge", "ml.p3dn.24xlarge"]
+
+    good_args = [
+        (smdataparallel_enabled, "custom-container"),
+        (smdataparallel_disabled, "custom-container"),
+    ]
+    frameworks = ["tensorflow", "pytorch"]
+
+    for framework, instance_type in product(frameworks, instance_types):
+        for distribution, image_uri in good_args:
+            fw_utils.validate_smdistributed(
+                instance_type=instance_type,
+                framework_name=framework,
+                framework_version=None,
+                py_version=None,
+                distribution=distribution,
+                image_uri=image_uri,
+            )
+
+
+def test_validate_smdistributed_raises():
+    bad_args = [
+        {"smdistributed": {"dataparallel": {"enabled": True}}},
+        {"smdistributed": "dummy"},
+        {"smdistributed": {"dummy"}},
+        {"smdistributed": {"dummy": "val"}},
+        {"smdistributed": {"dummy": {"enabled": True}}},
+    ]
+    frameworks = ["tensorflow", "pytorch"]
+    for framework, distribution in product(frameworks, bad_args):
+        with pytest.raises(ValueError):
+            fw_utils.validate_smdistributed(
+                instance_type=None,
+                framework_name=framework,
+                framework_version=None,
+                py_version=None,
+                distribution=distribution,
+                image_uri="custom-container",
+            )
+
+
+def test_validate_smdataparallel_args_raises():
+    # TODO: add validation for dataparallel in mxnet
+    smdataparallel_enabled = {"smdistributed": {"dataparallel": {"enabled": True}}}
+
+    # Cases {PT|TF2}
+    # 1. None instance type
+    # 2. incorrect instance type
+    # 3. incorrect python version
+    # 4. incorrect framework version
+
+    bad_args = [
+        (None, "tensorflow", "2.3.1", "py3", smdataparallel_enabled),
+        ("ml.p3.2xlarge", "tensorflow", "2.3.1", "py3", smdataparallel_enabled),
+        ("ml.p3dn.24xlarge", "tensorflow", "2.3.1", "py2", smdataparallel_enabled),
+        ("ml.p3.16xlarge", "tensorflow", "1.3.1", "py3", smdataparallel_enabled),
+        (None, "pytorch", "1.6.0", "py3", smdataparallel_enabled),
+        ("ml.p3.2xlarge", "pytorch", "1.6.0", "py3", smdataparallel_enabled),
+        ("ml.p3dn.24xlarge", "pytorch", "1.6.0", "py2", smdataparallel_enabled),
+        ("ml.p3.16xlarge", "pytorch", "1.5.0", "py3", smdataparallel_enabled),
+    ]
+    for instance_type, framework_name, framework_version, py_version, distribution in bad_args:
+        with pytest.raises(ValueError):
+            fw_utils._validate_smdataparallel_args(
+                instance_type, framework_name, framework_version, py_version, distribution
+            )
+
+
+def test_validate_smdataparallel_args_not_raises():
+    smdataparallel_enabled = {"smdistributed": {"dataparallel": {"enabled": True}}}
+    smdataparallel_disabled = {"smdistributed": {"dataparallel": {"enabled": False}}}
+
+    # Cases {PT|TF2}
+    # 1. SM Distributed dataparallel disabled
+    # 2. SM Distributed dataparallel enabled with supported args
+
+    good_args = [
+        (None, None, None, None, smdataparallel_disabled),
+        ("ml.p3.16xlarge", "tensorflow", "2.3.1", "py3", smdataparallel_enabled),
+        ("ml.p3.16xlarge", "pytorch", "1.6.0", "py3", smdataparallel_enabled),
+    ]
+    for instance_type, framework_name, framework_version, py_version, distribution in good_args:
+        fw_utils._validate_smdataparallel_args(
+            instance_type, framework_name, framework_version, py_version, distribution
+        )
