@@ -29,7 +29,7 @@ from sagemaker.debugger.framework_profile import FrameworkProfile  # noqa: F401
 from sagemaker.debugger.metrics_config import (  # noqa: F401
     DataloaderProfilingConfig,
     DetailedProfilingConfig,
-    HerringProfilingConfig,
+    SMDataParallelProfilingConfig,
     HorovodProfilingConfig,
     PythonProfilingConfig,
 )

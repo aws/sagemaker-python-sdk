@@ -16,7 +16,7 @@ from __future__ import absolute_import
 from sagemaker.debugger.metrics_config import (
     DetailedProfilingConfig,
     DataloaderProfilingConfig,
-    HerringProfilingConfig,
+    SMDataParallelProfilingConfig,
     HorovodProfilingConfig,
     PythonProfilingConfig,
 )
@@ -33,7 +33,7 @@ ALL_METRIC_CONFIGS = [
     DataloaderProfilingConfig,
     PythonProfilingConfig,
     HorovodProfilingConfig,
-    HerringProfilingConfig,
+    SMDataParallelProfilingConfig,
 ]
 
 
@@ -53,7 +53,7 @@ class FrameworkProfile:
         dataloader_profiling_config=None,
         python_profiling_config=None,
         horovod_profiling_config=None,
-        herring_profiling_config=None,
+        smdataparallel_profiling_config=None,
         start_step=None,
         num_steps=None,
         start_unix_time=None,
@@ -88,8 +88,8 @@ class FrameworkProfile:
                 collected by the Python profiler (cProfile or Pyinstrument).
             horovod_profiling_config (HorovodProfilingConfig): The configuration for metrics
                 collected by horovod when using horovod for distributed training.
-            herring_profiling_config (HerringProfilingConfig): The configuration for metrics
-                collected by herring when using herring for distributed training.
+            smdataparallel_profiling_config (SMDataParallelProfilingConfig): The configuration for
+                metrics collected by SageMaker Distributed training.
             start_step (int): The step at which to start profiling.
             num_steps (int): The number of steps to profile.
             start_unix_time (int): The UNIX time at which to start profiling.
@@ -108,7 +108,7 @@ class FrameworkProfile:
             dataloader_profiling_config,
             python_profiling_config,
             horovod_profiling_config,
-            herring_profiling_config,
+            smdataparallel_profiling_config,
         )
 
         use_one_config_for_all_metrics = (

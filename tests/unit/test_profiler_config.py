@@ -26,7 +26,7 @@ from sagemaker.debugger.metrics_config import (
     DataloaderProfilingConfig,
     PythonProfilingConfig,
     HorovodProfilingConfig,
-    HerringProfilingConfig,
+    SMDataParallelProfilingConfig,
 )
 from sagemaker.debugger.profiler_constants import (
     BASE_FOLDER_DEFAULT,
@@ -37,8 +37,8 @@ from sagemaker.debugger.profiler_constants import (
     DATALOADER_PROFILING_START_STEP_DEFAULT,
     DETAILED_PROFILING_CONFIG_NAME,
     DETAILED_PROFILING_START_STEP_DEFAULT,
-    HERRING_PROFILING_CONFIG_NAME,
-    HERRING_PROFILING_START_STEP_DEFAULT,
+    SMDATAPARALLEL_PROFILING_CONFIG_NAME,
+    SMDATAPARALLEL_PROFILING_START_STEP_DEFAULT,
     HOROVOD_PROFILING_CONFIG_NAME,
     HOROVOD_PROFILING_START_STEP_DEFAULT,
     PROFILING_NUM_STEPS_DEFAULT,
@@ -164,8 +164,8 @@ def custom_horovod_profiling_config(custom_start_unix_time):
 
 
 @pytest.fixture
-def custom_herring_profiling_config(custom_duration):
-    return HerringProfilingConfig(duration=custom_duration)
+def custom_smdataparallel_profiling_config(custom_duration):
+    return SMDataParallelProfilingConfig(duration=custom_duration)
 
 
 @pytest.fixture
@@ -174,14 +174,14 @@ def framework_profile_with_custom_metrics_configs(
     custom_dataloader_profiling_config,
     custom_python_profiling_config,
     custom_horovod_profiling_config,
-    custom_herring_profiling_config,
+    custom_smdataparallel_profiling_config,
 ):
     return FrameworkProfile(
         detailed_profiling_config=custom_detailed_profiling_config,
         dataloader_profiling_config=custom_dataloader_profiling_config,
         python_profiling_config=custom_python_profiling_config,
         horovod_profiling_config=custom_horovod_profiling_config,
-        herring_profiling_config=custom_herring_profiling_config,
+        smdataparallel_profiling_config=custom_smdataparallel_profiling_config,
     )
 
 
@@ -251,7 +251,7 @@ def test_profiler_config_with_default_framework_profile(default_framework_profil
         "StartStep": PYTHON_PROFILING_START_STEP_DEFAULT,
         "NumSteps": PYTHON_PROFILING_NUM_STEPS_DEFAULT,
         "ProfilerName": PythonProfiler.CPROFILE.value,
-        "cProfileTimer": cProfileTimer.TOTAL_TIME.value,
+        "cProfileTimer": cProfileTimer.DEFAULT.value,
     }
 
     horovod_profiling_config = eval(profiling_parameters[HOROVOD_PROFILING_CONFIG_NAME])
@@ -260,9 +260,11 @@ def test_profiler_config_with_default_framework_profile(default_framework_profil
         "NumSteps": PROFILING_NUM_STEPS_DEFAULT,
     }
 
-    herring_profiling_config = eval(profiling_parameters[HERRING_PROFILING_CONFIG_NAME])
-    assert herring_profiling_config == {
-        "StartStep": HERRING_PROFILING_START_STEP_DEFAULT,
+    smdataparallel_profiling_config = eval(
+        profiling_parameters[SMDATAPARALLEL_PROFILING_CONFIG_NAME]
+    )
+    assert smdataparallel_profiling_config == {
+        "StartStep": SMDATAPARALLEL_PROFILING_START_STEP_DEFAULT,
         "NumSteps": PROFILING_NUM_STEPS_DEFAULT,
     }
 
@@ -288,7 +290,7 @@ def test_default_python_profiling_config():
     assert python_profiling_config.range.start_step == PYTHON_PROFILING_START_STEP_DEFAULT
     assert python_profiling_config.range.num_steps == PYTHON_PROFILING_NUM_STEPS_DEFAULT
     assert python_profiling_config.python_profiler == PythonProfiler.CPROFILE
-    assert python_profiling_config.cprofile_timer == cProfileTimer.TOTAL_TIME
+    assert python_profiling_config.cprofile_timer == cProfileTimer.DEFAULT
 
 
 def test_default_horovod_profiling_config():
@@ -298,11 +300,14 @@ def test_default_horovod_profiling_config():
     assert horovod_profiling_config.range.num_steps == PROFILING_NUM_STEPS_DEFAULT
 
 
-def test_default_herring_profiling_config():
-    herring_profiling_config = HerringProfilingConfig(profile_default_steps=True)
-    assert isinstance(herring_profiling_config.range, StepRange)
-    assert herring_profiling_config.range.start_step == HERRING_PROFILING_START_STEP_DEFAULT
-    assert herring_profiling_config.range.num_steps == PROFILING_NUM_STEPS_DEFAULT
+def test_default_smdataparallel_profiling_config():
+    smdataparallel_profiling_config = SMDataParallelProfilingConfig(profile_default_steps=True)
+    assert isinstance(smdataparallel_profiling_config.range, StepRange)
+    assert (
+        smdataparallel_profiling_config.range.start_step
+        == SMDATAPARALLEL_PROFILING_START_STEP_DEFAULT
+    )
+    assert smdataparallel_profiling_config.range.num_steps == PROFILING_NUM_STEPS_DEFAULT
 
 
 def test_profiler_config_with_custom_trace_file_fields(
@@ -345,7 +350,7 @@ def test_profiler_config_with_custom_trace_file_fields(
         "StartStep": PYTHON_PROFILING_START_STEP_DEFAULT,
         "NumSteps": PYTHON_PROFILING_NUM_STEPS_DEFAULT,
         "ProfilerName": PythonProfiler.CPROFILE.value,
-        "cProfileTimer": cProfileTimer.TOTAL_TIME.value,
+        "cProfileTimer": cProfileTimer.DEFAULT.value,
     }
 
     horovod_profiling_config = eval(profiling_parameters[HOROVOD_PROFILING_CONFIG_NAME])
@@ -354,9 +359,11 @@ def test_profiler_config_with_custom_trace_file_fields(
         "NumSteps": PROFILING_NUM_STEPS_DEFAULT,
     }
 
-    herring_profiling_config = eval(profiling_parameters[HERRING_PROFILING_CONFIG_NAME])
-    assert herring_profiling_config == {
-        "StartStep": HERRING_PROFILING_START_STEP_DEFAULT,
+    smdataparallel_profiling_config = eval(
+        profiling_parameters[SMDATAPARALLEL_PROFILING_CONFIG_NAME]
+    )
+    assert smdataparallel_profiling_config == {
+        "StartStep": SMDATAPARALLEL_PROFILING_START_STEP_DEFAULT,
         "NumSteps": PROFILING_NUM_STEPS_DEFAULT,
     }
 
@@ -410,8 +417,10 @@ def test_profiler_config_with_custom_metrics_configs(
     horovod_profiling_config = eval(profiling_parameters[HOROVOD_PROFILING_CONFIG_NAME])
     assert horovod_profiling_config == {"StartTimeInSecSinceEpoch": custom_start_unix_time}
 
-    herring_profiling_config = eval(profiling_parameters[HERRING_PROFILING_CONFIG_NAME])
-    assert herring_profiling_config == {"Duration": custom_duration}
+    smdataparallel_profiling_config = eval(
+        profiling_parameters[SMDATAPARALLEL_PROFILING_CONFIG_NAME]
+    )
+    assert smdataparallel_profiling_config == {"Duration": custom_duration}
 
     profiler_config = ProfilerConfig(
         framework_profile_params=framework_profile_with_only_custom_python_profiling_config
@@ -431,7 +440,7 @@ def test_profiler_config_with_custom_metrics_configs(
         DETAILED_PROFILING_CONFIG_NAME,
         DATALOADER_PROFILING_CONFIG_NAME,
         HOROVOD_PROFILING_CONFIG_NAME,
-        HERRING_PROFILING_CONFIG_NAME,
+        SMDATAPARALLEL_PROFILING_CONFIG_NAME,
     ]:
         assert config_name not in profiling_parameters
 
@@ -479,10 +488,12 @@ def test_custom_horovod_profiling_config(custom_horovod_profiling_config, custom
     assert custom_horovod_profiling_config.range.duration is None
 
 
-def test_custom_herring_profiling_config(custom_herring_profiling_config, custom_duration):
-    assert isinstance(custom_herring_profiling_config.range, TimeRange)
-    assert custom_herring_profiling_config.range.start_unix_time is None
-    assert custom_herring_profiling_config.range.duration == custom_duration
+def test_custom_smdataparallel_profiling_config(
+    custom_smdataparallel_profiling_config, custom_duration
+):
+    assert isinstance(custom_smdataparallel_profiling_config.range, TimeRange)
+    assert custom_smdataparallel_profiling_config.range.start_unix_time is None
+    assert custom_smdataparallel_profiling_config.range.duration == custom_duration
 
 
 def test_profiler_config_with_custom_step_range(custom_start_step, custom_num_steps):
@@ -530,8 +541,10 @@ def test_profiler_config_with_custom_step_range(custom_start_step, custom_num_st
         "NumSteps": custom_num_steps,
     }
 
-    herring_profiling_config = eval(profiling_parameters[HERRING_PROFILING_CONFIG_NAME])
-    assert herring_profiling_config == {
+    smdataparallel_profiling_config = eval(
+        profiling_parameters[SMDATAPARALLEL_PROFILING_CONFIG_NAME]
+    )
+    assert smdataparallel_profiling_config == {
         "StartStep": custom_start_step,
         "NumSteps": custom_num_steps,
     }
@@ -582,8 +595,10 @@ def test_profiler_config_with_custom_time_range(custom_start_unix_time, custom_d
         "Duration": custom_duration,
     }
 
-    herring_profiling_config = eval(profiling_parameters[HERRING_PROFILING_CONFIG_NAME])
-    assert herring_profiling_config == {
+    smdataparallel_profiling_config = eval(
+        profiling_parameters[SMDATAPARALLEL_PROFILING_CONFIG_NAME]
+    )
+    assert smdataparallel_profiling_config == {
         "StartTimeInSecSinceEpoch": custom_start_unix_time,
         "Duration": custom_duration,
     }
@@ -627,4 +642,4 @@ def test_validation():
         PythonProfilingConfig(python_profiler="bad_python_profiler", profile_default_steps=True)
 
     with pytest.raises(AssertionError, match=ErrorMessages.INVALID_CPROFILE_TIMER.value):
-        PythonProfilingConfig(cprofile_timer="bad_cprofile_timer", profile_default_steps=True)
+        PythonProfilingConfig(cprofile_timer="bad_cprofile_timer")

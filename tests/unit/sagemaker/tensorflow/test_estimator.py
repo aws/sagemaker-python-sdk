@@ -42,6 +42,7 @@ DISTRIBUTION_PS_ENABLED = {"parameter_server": {"enabled": True}}
 DISTRIBUTION_MPI_ENABLED = {
     "mpi": {"enabled": True, "custom_mpi_options": "options", "processes_per_host": 2}
 }
+DISTRIBUTION_SM_DDP_ENABLED = {"smdistributed": {"dataparallel": {"enabled": True}}}
 
 ENDPOINT_DESC = {"EndpointConfigName": "test-endpoint"}
 
@@ -82,7 +83,7 @@ def _image_uri(tf_version, py_version):
     return IMAGE_URI_FORMAT_STRING.format(REGION, tf_version, py_version)
 
 
-def _hyperparameters(horovod=False):
+def _hyperparameters(horovod=False, smdataparallel=False):
     hps = {
         "sagemaker_program": json.dumps("dummy_script.py"),
         "sagemaker_submit_directory": json.dumps(
@@ -93,7 +94,7 @@ def _hyperparameters(horovod=False):
         "sagemaker_region": json.dumps("us-west-2"),
     }
 
-    if horovod:
+    if horovod or smdataparallel:
         hps["model_dir"] = json.dumps("/opt/ml/model")
     else:
         hps["model_dir"] = json.dumps("s3://{}/{}/model".format(BUCKET_NAME, JOB_NAME))
@@ -101,7 +102,7 @@ def _hyperparameters(horovod=False):
     return hps
 
 
-def _create_train_job(tf_version, horovod=False, ps=False, py_version="py2"):
+def _create_train_job(tf_version, horovod=False, ps=False, py_version="py2", smdataparallel=False):
     conf = {
         "image_uri": _image_uri(tf_version, py_version),
         "input_mode": "File",
@@ -124,7 +125,7 @@ def _create_train_job(tf_version, horovod=False, ps=False, py_version="py2"):
             "InstanceCount": 1,
             "VolumeSizeInGB": 30,
         },
-        "hyperparameters": _hyperparameters(horovod),
+        "hyperparameters": _hyperparameters(horovod, smdataparallel),
         "stop_condition": {"MaxRuntimeInSeconds": 24 * 60 * 60},
         "tags": None,
         "vpc_config": None,

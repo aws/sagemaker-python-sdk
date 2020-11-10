@@ -18,8 +18,8 @@ from sagemaker.debugger.profiler_constants import (
     DATALOADER_PROFILING_START_STEP_DEFAULT,
     DETAILED_PROFILING_CONFIG_NAME,
     DETAILED_PROFILING_START_STEP_DEFAULT,
-    HERRING_PROFILING_CONFIG_NAME,
-    HERRING_PROFILING_START_STEP_DEFAULT,
+    SMDATAPARALLEL_PROFILING_CONFIG_NAME,
+    SMDATAPARALLEL_PROFILING_START_STEP_DEFAULT,
     HOROVOD_PROFILING_CONFIG_NAME,
     HOROVOD_PROFILING_START_STEP_DEFAULT,
     PROFILING_NUM_STEPS_DEFAULT,
@@ -298,6 +298,9 @@ class PythonProfilingConfig(MetricsConfigBase):
             start_step = PYTHON_PROFILING_START_STEP_DEFAULT
             num_steps = PYTHON_PROFILING_NUM_STEPS_DEFAULT
 
+        if profile_default_steps:
+            cprofile_timer = cProfileTimer.DEFAULT
+
         super().__init__(
             PYTHON_PROFILING_CONFIG_NAME, start_step, num_steps, start_unix_time, duration
         )
@@ -367,8 +370,8 @@ class HorovodProfilingConfig(MetricsConfigBase):
         )
 
 
-class HerringProfilingConfig(MetricsConfigBase):
-    """Configuration for metrics collected by herring when using herring for distributed training.
+class SMDataParallelProfilingConfig(MetricsConfigBase):
+    """Configuration for metrics collected by SageMaker Distributed training.
 
     By default, profile step 15 of training.
     """
@@ -381,9 +384,9 @@ class HerringProfilingConfig(MetricsConfigBase):
         duration=None,
         profile_default_steps=False,
     ):
-        """If profile_default_steps is set to True or none of the range fields are specified,
-        use the default config for herring profiling. Otherwise, profile according to the
-        specified range fields.
+        """If profile_default_steps is set to True or none of the range fields are specified, use
+        the default profiling config for SageMaker Distributed training. Otherwise, profile
+        according to the specified range fields.
 
         Args:
             start_step (int): The step at which to start profiling.
@@ -396,9 +399,9 @@ class HerringProfilingConfig(MetricsConfigBase):
             profile_default_steps, bool
         ), ErrorMessages.INVALID_PROFILE_DEFAULT_STEPS.value
         if profile_default_steps or start_step is num_steps is start_unix_time is duration is None:
-            start_step = HERRING_PROFILING_START_STEP_DEFAULT
+            start_step = SMDATAPARALLEL_PROFILING_START_STEP_DEFAULT
             num_steps = PROFILING_NUM_STEPS_DEFAULT
 
         super().__init__(
-            HERRING_PROFILING_CONFIG_NAME, start_step, num_steps, start_unix_time, duration
+            SMDATAPARALLEL_PROFILING_CONFIG_NAME, start_step, num_steps, start_unix_time, duration
         )
