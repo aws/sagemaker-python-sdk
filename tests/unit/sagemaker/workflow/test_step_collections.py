@@ -23,12 +23,14 @@ from mock import (
 )
 
 from sagemaker.estimator import Estimator
+from sagemaker.inputs import CreateModelInput, TransformInput
 from sagemaker.workflow.properties import Properties
 from sagemaker.workflow.steps import (
     Step,
     StepTypeEnum,
 )
 from sagemaker.workflow.step_collections import (
+    EstimatorTransformer,
     StepCollection,
     RegisterModel,
 )
@@ -101,7 +103,7 @@ def estimator(sagemaker_session):
         image_uri=IMAGE_URI,
         role=ROLE,
         instance_count=1,
-        instance_type="c4.4xlarge",
+        instance_type="ml.c4.4xlarge",
         sagemaker_session=sagemaker_session,
     )
 
@@ -145,3 +147,56 @@ def test_register_model(estimator):
             },
         ]
     )
+
+
+def test_estimator_transformer(estimator):
+    model_data = f"s3://{BUCKET}/model.tar.gz"
+    model_inputs = CreateModelInput(
+        instance_type="c4.4xlarge",
+        accelerator_type="ml.eia1.medium",
+    )
+    transform_inputs = TransformInput(data=f"s3://{BUCKET}/transform_manifest")
+    estimator_transformer = EstimatorTransformer(
+        name="EstimatorTransformerStep",
+        estimator=estimator,
+        model_data=model_data,
+        model_inputs=model_inputs,
+        instance_count=1,
+        instance_type="ml.c4.4xlarge",
+        transform_inputs=transform_inputs,
+    )
+    request_dicts = estimator_transformer.request_dicts()
+    assert len(request_dicts) == 2
+    for request_dict in request_dicts:
+        if request_dict["Type"] == "CreateModel":
+            assert request_dict == {
+                "Name": "EstimatorTransformerStepCreateModelStep",
+                "Type": "CreateModel",
+                "Arguments": {
+                    "ExecutionRoleArn": "DummyRole",
+                    "PrimaryContainer": {
+                        "Environment": {},
+                        "Image": "fakeimage",
+                        "ModelDataUrl": "s3://my-bucket/model.tar.gz",
+                    },
+                },
+            }
+        elif request_dict["Type"] == "Transform":
+            assert request_dict["Name"] == "EstimatorTransformerStepTransformStep"
+            arguments = request_dict["Arguments"]
+            assert isinstance(arguments["ModelName"], Properties)
+            arguments.pop("ModelName")
+            assert arguments == {
+                "TransformInput": {
+                    "DataSource": {
+                        "S3DataSource": {
+                            "S3DataType": "S3Prefix",
+                            "S3Uri": f"s3://{BUCKET}/transform_manifest",
+                        }
+                    }
+                },
+                "TransformOutput": {"S3OutputPath": None},
+                "TransformResources": {"InstanceCount": 1, "InstanceType": "ml.c4.4xlarge"},
+            }
+        else:
+            raise Exception("A step exists in the collection of an invalid type.")

@@ -63,7 +63,7 @@ from sagemaker import vpc_utils
 logger = logging.getLogger(__name__)
 
 
-class EstimatorBase(with_metaclass(ABCMeta, object)):
+class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-many-public-methods
     """Handle end-to-end Amazon SageMaker training and deployment tasks.
 
     For introduction to model training and deployment, see

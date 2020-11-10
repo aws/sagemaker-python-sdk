@@ -98,6 +98,7 @@ class _RepackModelStep(TrainingStep):
                 "model_archive": self._model_archive,
             },
         )
+        repacker.disable_profiler = True
         inputs = TrainingInput(self._model_prefix)
 
         # super!
