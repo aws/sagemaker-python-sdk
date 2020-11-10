@@ -118,3 +118,4 @@ class cProfileTimer(Enum):
     TOTAL_TIME = "total_time"
     CPU_TIME = "cpu_time"
     OFF_CPU_TIME = "off_cpu_time"
+    DEFAULT = "default"

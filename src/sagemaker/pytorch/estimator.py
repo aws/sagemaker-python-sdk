@@ -17,12 +17,14 @@ import logging
 
 from packaging.version import Version
 
+from sagemaker.deprecations import renamed_kwargs
 from sagemaker.estimator import Framework
 from sagemaker.fw_utils import (
     framework_name_from_image,
     framework_version_from_tag,
     python_deprecation_warning,
     validate_version_or_image_args,
+    validate_smdistributed,
 )
 from sagemaker.pytorch import defaults
 from sagemaker.pytorch.model import PyTorchModel
@@ -44,6 +46,7 @@ class PyTorch(Framework):
         source_dir=None,
         hyperparameters=None,
         image_uri=None,
+        distribution=None,
         **kwargs
     ):
         """This ``Estimator`` executes an PyTorch script in a managed PyTorch
@@ -98,6 +101,22 @@ class PyTorch(Framework):
                 If ``framework_version`` or ``py_version`` are ``None``, then
                 ``image_uri`` is required. If also ``None``, then a ``ValueError``
                 will be raised.
+            distribution (dict): A dictionary with information on how to run distributed training
+                (default: None). Currently we support distributed training with SMDistributed
+                Data Parallel strategy.
+
+                To enable SMDistributed Data Parallel:
+
+                .. code:: python
+
+                    {
+                        "smdistributed": {
+                            "dataparallel": {
+                                "enabled": True
+                            }
+                        }
+                    }
+
             **kwargs: Additional kwargs passed to the :class:`~sagemaker.estimator.Framework`
                 constructor.
 
@@ -115,6 +134,20 @@ class PyTorch(Framework):
         self.framework_version = framework_version
         self.py_version = py_version
 
+        if distribution is not None:
+            instance_type = renamed_kwargs(
+                "train_instance_type", "instance_type", kwargs.get("instance_type"), kwargs
+            )
+
+            validate_smdistributed(
+                instance_type=instance_type,
+                framework_name=self._framework_name,
+                framework_version=framework_version,
+                py_version=py_version,
+                distribution=distribution,
+                image_uri=image_uri,
+            )
+
         if "enable_sagemaker_metrics" not in kwargs:
             # enable sagemaker metrics for PT v1.3 or greater:
             if self.framework_version and Version(self.framework_version) >= Version("1.3"):
@@ -123,6 +156,22 @@ class PyTorch(Framework):
         super(PyTorch, self).__init__(
             entry_point, source_dir, hyperparameters, image_uri=image_uri, **kwargs
         )
+        self.distribution = distribution or {}
+
+    def hyperparameters(self):
+        """Return hyperparameters used by your custom PyTorch code during model training."""
+        hyperparameters = super(PyTorch, self).hyperparameters()
+        additional_hyperparameters = {}
+
+        if "smdistributed" in self.distribution:
+            # smdistributed strategy selected
+            smdistributed = self.distribution["smdistributed"]
+            smdataparallel_enabled = smdistributed.get("dataparallel", {}).get("enabled", False)
+            additional_hyperparameters[self.LAUNCH_SM_DDP_ENV_NAME] = smdataparallel_enabled
+            additional_hyperparameters[self.INSTANCE_TYPE] = self.instance_type
+
+        hyperparameters.update(Framework._json_encode_hyperparameters(additional_hyperparameters))
+        return hyperparameters
 
     def create_model(
         self,
