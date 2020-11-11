@@ -10,3 +10,8 @@ Processing
     :members:
     :undoc-members:
     :show-inheritance:
+
+.. automodule:: sagemaker.clarify
+    :members:
+    :undoc-members:
+    :show-inheritance:

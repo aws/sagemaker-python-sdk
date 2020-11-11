@@ -24,6 +24,16 @@ from sagemaker.model_monitor.model_monitoring import BaseliningJob  # noqa: F401
 from sagemaker.model_monitor.model_monitoring import MonitoringExecution  # noqa: F401
 from sagemaker.model_monitor.model_monitoring import EndpointInput  # noqa: F401
 from sagemaker.model_monitor.model_monitoring import MonitoringOutput  # noqa: F401
+from sagemaker.model_monitor.model_monitoring import ModelQualityMonitor  # noqa: F401
+
+from sagemaker.model_monitor.clarify_model_monitoring import BiasAnalysisConfig  # noqa: F401
+from sagemaker.model_monitor.clarify_model_monitoring import (  # noqa: F401
+    ExplainabilityAnalysisConfig,
+)
+from sagemaker.model_monitor.clarify_model_monitoring import ModelBiasMonitor  # noqa: F401
+from sagemaker.model_monitor.clarify_model_monitoring import (  # noqa: F401
+    ModelExplainabilityMonitor,
+)
 
 from sagemaker.model_monitor.cron_expression_generator import CronExpressionGenerator  # noqa: F401
 from sagemaker.model_monitor.monitoring_files import Statistics  # noqa: F401
