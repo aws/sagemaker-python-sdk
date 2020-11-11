@@ -14,7 +14,11 @@
 from __future__ import absolute_import
 
 from sagemaker.apiutils import _base_types
-from sagemaker.lineage import _api_types, _utils, association
+from sagemaker.lineage import (
+    _api_types,
+    _utils,
+    association,
+)
 
 
 class Context(_base_types.Record):
