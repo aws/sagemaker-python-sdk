@@ -38,18 +38,18 @@ from sagemaker.workflow.utilities import list_to_request
 
 @attr.s
 class Pipeline(Entity):
-    """Pipeline class for workflow.
+    """Pipeline for workflow.
 
     Attributes:
         name (str): The name of the pipeline.
         parameters (Sequence[Parameters]): The list of the parameters.
         steps (Sequence[Steps]): The list of the non-conditional steps associated with the pipeline.
-            Of particular note, the workflow service will reject any pipeline definitions that
-            specify a step in the list of steps of a pipeline and that step in the `if_steps` or
-            `else_steps` of any `ConditionStep`. In particular, any steps that are within the
+            Any steps that are within the
             `if_steps` or `else_steps` of a `ConditionStep` cannot be listed in the steps of a
-            pipeline.
-        sagemaker_session (sagemaker.session.Session): Session object which manages interactions
+            pipeline. Of particular note, the workflow service rejects any pipeline definitions that
+            specify a step in the list of steps of a pipeline and that step in the `if_steps` or
+            `else_steps` of any `ConditionStep`.
+        sagemaker_session (sagemaker.session.Session): Session object that manages interactions
             with Amazon SageMaker APIs and any other AWS services needed. If not specified, the
             pipeline creates one using the default AWS configuration chain.
     """
@@ -81,13 +81,14 @@ class Pipeline(Entity):
         """Creates a Pipeline in the Pipelines service.
 
         Args:
-            role_arn (str): Role arn that is assumed by workflow to create step artifacts.
-            pipeline_description (str): Description of the pipeline.
-            experiment_name (str): Name of the experiment.
-            tags (List[Dict[str, str]]): List of {"Key": "string", "Value": "string"} dicts as tags
+            role_arn (str): The role arn that is assumed by the pipeline to create step artifacts.
+            pipeline_description (str): A description of the pipeline.
+            experiment_name (str): The name of the experiment.
+            tags (List[Dict[str, str]]): A list of {"Key": "string", "Value": "string"} dicts as
+                tags.
 
         Returns:
-            response dict from service
+            A response dict from the service.
         """
         kwargs = self._create_args(role_arn, description)
         update_args(
@@ -101,11 +102,11 @@ class Pipeline(Entity):
         """Constructs the keyword argument dict for a create_pipeline call.
 
         Args:
-            role_arn (str): Role arn that is assumed by pipelines to create step artifacts.
-            pipeline_description (str): Description of the pipeline.
+            role_arn (str): The role arn that is assumed by pipelines to create step artifacts.
+            pipeline_description (str): A description of the pipeline.
 
         Returns:
-            keyword argument dict for calling create_pipeline.
+            A keyword argument dict for calling create_pipeline.
         """
         kwargs = dict(
             PipelineName=self.name,
@@ -122,7 +123,7 @@ class Pipeline(Entity):
         """Describes a Pipeline in the Workflow service.
 
         Returns:
-            Response dict from service.
+            Response dict from the service.
         """
         return self.sagemaker_session.sagemaker_client.describe_pipeline(PipelineName=self.name)
 
@@ -130,11 +131,11 @@ class Pipeline(Entity):
         """Updates a Pipeline in the Workflow service.
 
         Args:
-            role_arn (str): Role arn that is assumed by workflow to create step artifacts.
-            description (str): Description of the pipeline.
+            role_arn (str): The role arn that is assumed by pipelines to create step artifacts.
+            description (str): A description of the pipeline.
 
         Returns:
-            Response dict from service.
+            A response dict from the service.
         """
         kwargs = self._create_args(role_arn, description)
         return self.sagemaker_session.sagemaker_client.update_pipeline(**kwargs)
@@ -146,13 +147,14 @@ class Pipeline(Entity):
         experiment_name: str = None,
         tags: List[Dict[str, str]] = None,
     ) -> Dict[str, Any]:
-        """Creates a pipeline or updates it, if it exists.
+        """Creates a pipeline or updates it, if it already exists.
 
         Args:
-            role_arn (str): Role arn that is assumed by workflow to create step artifacts.
-            pipeline_description (str): Description of the pipeline.
-            experiment_name (str): Name of the experiment.
-            tags (List[Dict[str, str]]): List of {"Key": "string", "Value": "string"} dicts as tags
+            role_arn (str): The role arn that is assumed by workflow to create step artifacts.
+            pipeline_description (str): A description of the pipeline.
+            experiment_name (str): The name of the experiment.
+            tags (List[Dict[str, str]]): A list of {"Key": "string", "Value": "string"} dicts as
+                tags.
 
         Returns:
             response dict from service
@@ -174,7 +176,7 @@ class Pipeline(Entity):
         """Deletes a Pipeline in the Workflow service.
 
         Returns:
-            Response dict from service.
+            A response dict from the service.
         """
         return self.sagemaker_session.sagemaker_client.delete_pipeline(PipelineName=self.name)
 
@@ -186,9 +188,9 @@ class Pipeline(Entity):
         """Starts a Pipeline execution in the Workflow service.
 
         Args:
-            parameters (List[Dict[str, str]]): List of parameter dicts of the form
-                {"Name": "string", "Value": "string"} dicts.
-            execution_description (str): Description of the execution.
+            parameters (List[Dict[str, str]]): A list of parameter dicts of the form
+                {"Name": "string", "Value": "string"}.
+            execution_description (str): A description of the execution.
 
         Returns:
             A `_PipelineExecution` instance, if successful.
@@ -217,7 +219,7 @@ class Pipeline(Entity):
         )
 
     def definition(self) -> str:
-        """Converts request structure to string representation for workflow service calls."""
+        """Converts a request structure to string representation for workflow service calls."""
         request_dict = self.to_request()
         request_dict["Steps"] = interpolate(request_dict["Steps"])
 
@@ -232,7 +234,7 @@ def format_start_parameters(parameters: Dict[str, Any]) -> List[Dict[str, Any]]:
         `{"Name": "MyParameterName", "Value": "MyValue"}`
 
     Args:
-        parameters (Dict[str, Any]): dict of named values where the keys are
+        parameters (Dict[str, Any]): A dict of named values where the keys are
             the names of the parameters to pass values into.
     """
     if parameters is None:
@@ -241,7 +243,7 @@ def format_start_parameters(parameters: Dict[str, Any]) -> List[Dict[str, Any]]:
 
 
 def interpolate(request_obj: RequestType) -> RequestType:
-    """Replaces Parameter values in list of nested Dict[str, Any] with their workflow expression.
+    """Replaces Parameter values in a list of nested Dict[str, Any] with their workflow expression.
 
     Args:
         request_obj (RequestType): The request dict.
@@ -273,13 +275,13 @@ def _interpolate(obj: Union[RequestType, Any]):
 
 
 def update_args(args: Dict[str, Any], **kwargs):
-    """Updates the request arguments dict with the value if populated
+    """Updates the request arguments dict with a value, if populated.
 
-    This is to handle the case that the service API doesn't like NoneTypes for argument values.
+    This handles the case when the service API doesn't like NoneTypes for argument values.
 
     Args:
-        request_args (Dict[str, Any]): the request arguments dict
-        kwargs: key, value pairs to update the args dict
+        request_args (Dict[str, Any]): The request arguments dict.
+        kwargs: key, value pairs to update the args dict with.
     """
     for key, value in kwargs.items():
         if value is not None:
@@ -291,7 +293,7 @@ class _PipelineExecution:
     """Internal class for encapsulating pipeline execution instances.
 
     Attributes:
-        arn (str): The arn of the pipeline exeuction.
+        arn (str): The arn of the pipeline execution.
         sagemaker_session (sagemaker.session.Session): Session object which manages interactions
             with Amazon SageMaker APIs and any other AWS services needed. If not specified, the
             pipeline creates one using the default AWS configuration chain.
@@ -324,7 +326,7 @@ class _PipelineExecution:
 
         Args:
             delay (int): The polling interval. (Defaults to 30 seconds)
-            max_attempts (int) The maximum number of polling attempts.
+            max_attempts (int): The maximum number of polling attempts.
                 (Defaults to 60 polling attempts)
         """
         waiter_id = "PipelineExecutionComplete"

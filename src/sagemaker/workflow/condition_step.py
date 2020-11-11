@@ -35,12 +35,12 @@ from sagemaker.workflow.utilities import list_to_request
 
 
 class ConditionStep(Step):
-    """Conditional step for workflow to support branches in execution of steps.
+    """Conditional step for pipelines to support conditional branching in the execution of steps.
 
     Attributes:
         name (str): The name of the condition step.
         step_type (StepTypeEnum): The type of the step with value `StepTypeEnum.CONDITION`.
-        conditions (List[Condition]): A list of `sagemaker.workflow.conditions.Condition`.
+        conditions (List[Condition]): A list of `sagemaker.workflow.conditions.Condition` instances.
         if_steps (List[Union[Step, StepCollection]]): A list of `sagemaker.workflow.steps.Step`
             and `sagemaker.workflow.step_collections.StepCollection` instances.
         else_steps (List[Union[Step, StepCollection]]): A list of `sagemaker.workflow.steps.Step`
@@ -54,9 +54,9 @@ class ConditionStep(Step):
         if_steps: List[Union[Step, StepCollection]] = None,
         else_steps: List[Union[Step, StepCollection]] = None,
     ):
-        """Constructs a ConditionStep for branch execution.
+        """Constructs a ConditionStep for conditional execution branching.
 
-        If all the conditions in the condition list evaluate to True, the `if_steps` are
+        If all of the conditions in the condition list evaluate to True, the `if_steps` are
         marked as ready for execution. Otherwise, the `else_steps` are marked as ready for
         execution.
 
@@ -65,11 +65,11 @@ class ConditionStep(Step):
             conditions (List[Condition]): A list of `sagemaker.workflow.conditions.Condition`
                 instances.
             if_steps (List[Union[Step, StepCollection]]): A list of `sagemaker.workflow.steps.Step`
-                and `sagemaker.workflow.step_collections.StepCollection` instances that will be
-                marked ready for execution if the list of conditions evaluates to True.
+                and `sagemaker.workflow.step_collections.StepCollection` instances that are
+                marked as ready for execution if the list of conditions evaluates to True.
             else_steps (List[Union[Step, StepCollection]]): A list of `sagemaker.workflow.steps.Step`
-                and `sagemaker.workflow.step_collections.StepCollection` instances that will be
-                marked ready for execution if the list of conditions evaluates to True.
+                and `sagemaker.workflow.step_collections.StepCollection` instances that are
+                marked as ready for execution if the list of conditions evaluates to True.
         """
         super(ConditionStep, self).__init__(name, StepTypeEnum.CONDITION)
         self.conditions = conditions or []
@@ -83,7 +83,7 @@ class ConditionStep(Step):
 
     @property
     def arguments(self) -> RequestType:
-        """The arguments dict that are used to define the condition branching in the pipeline."""
+        """The arguments dict that is used to define the conditional branching in the pipeline."""
         return dict(
             Conditions=[condition.to_request() for condition in self.conditions],
             IfSteps=list_to_request(self.if_steps),
@@ -98,13 +98,13 @@ class ConditionStep(Step):
 
 @attr.s
 class JsonGet(Expression):
-    """A function to get json properties from PropertyFiles.
+    """A function to get JSON properties from PropertyFiles.
 
     Attributes:
-        step (Step): The step from which to get the property file
+        step (Step): The step from which to get the property file.
         property_file (Union[PropertyFile, str]): Either a PropertyFile instance
-            or a name of a property file.
-        json_path (str): The json path expression to the value of interest.
+            or the name of a property file.
+        json_path (str): The JSON path expression to the requested value.
     """
 
     step: Step = attr.ib()

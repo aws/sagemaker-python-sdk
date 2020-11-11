@@ -37,7 +37,7 @@ class ParameterTypeEnum(Enum, metaclass=DefaultEnumMeta):
 
     @property
     def python_type(self) -> Type:
-        """Provides the python type of the enum value."""
+        """Provides the Python type of the enum value."""
         mapping = {
             ParameterTypeEnum.STRING: str,
             ParameterTypeEnum.INTEGER: int,
@@ -49,12 +49,12 @@ class ParameterTypeEnum(Enum, metaclass=DefaultEnumMeta):
 
 @attr.s
 class Parameter(Entity):
-    """Pipeline parameters for workflow.
+    """Pipeline parameter for workflow.
 
     Attributes:
         name (str): The name of the parameter.
         parameter_type (ParameterTypeEnum): The type of the parameter.
-        default_value (PrimitiveType): The default python value of the parameter.
+        default_value (PrimitiveType): The default Python value of the parameter.
     """
 
     name: str = attr.ib(factory=str)
@@ -66,11 +66,11 @@ class Parameter(Entity):
         """Checks whether the default value is compatible with the parameter type.
 
         Args:
-            _: unused argument required by attrs validator decorator
-            value: the value to check type for
+            _: unused argument required by attrs validator decorator.
+            value: The value to check the type for.
 
         Raises:
-            `TypeError` if the value is not compatible with the instance's python type.
+            `TypeError` if the value is not compatible with the instance's Python type.
         """
         self._check_default_value_type(value, self.parameter_type.python_type)
 
@@ -106,7 +106,7 @@ class Parameter(Entity):
 
         Args:
             value: The default implicit value.
-            python_type: The python type the implicit value should be.
+            python_type: The Python type the implicit value should be.
             args: The list of positional arguments.
             kwargs: The dict of keyword arguments.
 
@@ -126,14 +126,14 @@ class Parameter(Entity):
         """Checks whether the default value is compatible with the parameter type.
 
         Args:
-            value: the value to check type for.
-            python_type: the type to check the value against.
+            value: The value to check the type for.
+            python_type: The type to check the value against.
 
         Raises:
-            `TypeError` if the value is not compatible with the instance's python type.
+            `TypeError` if the value is not compatible with the instance's Python type.
         """
         if value and not isinstance(value, python_type):
-            raise TypeError("The default value specified does not match the Parameter python type.")
+            raise TypeError("The default value specified does not match the Parameter Python type.")
 
 
 # NOTE: partials do not handle metadata well, but make for at least "partial" syntactic sugar :-P
@@ -148,7 +148,7 @@ class ParameterString(Parameter, str):
     Attributes:
         name (str): The name of the parameter.
         parameter_type (ParameterTypeEnum): The type of the parameter.
-        default_value (str): The default python value of the parameter.
+        default_value (str): The default Python value of the parameter.
             Defaults to None.
         enum_values (List[str]): An list of allowed string values for the
             parameter. Defaults to None.
@@ -160,11 +160,11 @@ class ParameterString(Parameter, str):
         return str.__new__(cls, val)
 
     def __init__(self, name: str, default_value: str = None, enum_values: List[str] = None):
-        """Create a pipeline string parameter.
+        """Creates a pipeline string parameter.
 
         Args:
             name (str): The name of the parameter.
-            default_value (str): The default python value of the parameter.
+            default_value (str): The default Python value of the parameter.
         """
         super(ParameterString, self).__init__(
             name=name, parameter_type=ParameterTypeEnum.STRING, default_value=default_value
@@ -189,7 +189,7 @@ class ParameterInteger(Parameter, int):
     Attributes:
         name (str): The name of the parameter.
         parameter_type (ParameterTypeEnum): The type of the parameter.
-        default_value (int): The default python value of the parameter.
+        default_value (int): The default Python value of the parameter.
     """
 
     def __new__(cls, *args, **kwargs):
@@ -198,11 +198,11 @@ class ParameterInteger(Parameter, int):
         return int.__new__(cls, val)
 
     def __init__(self, name: str, default_value: int = None):
-        """Create a pipeline string parameter.
+        """Creates a pipeline string parameter.
 
         Args:
             name (str): The name of the parameter.
-            default_value (int): The default python value of the parameter.
+            default_value (int): The default Python value of the parameter.
         """
         super(ParameterInteger, self).__init__(
             name=name, parameter_type=ParameterTypeEnum.INTEGER, default_value=default_value
@@ -215,7 +215,7 @@ class ParameterFloat(Parameter, float):
     Attributes:
         name (str): The name of the parameter.
         parameter_type (ParameterTypeEnum): The type of the parameter.
-        default_value (float): The default python value of the parameter.
+        default_value (float): The default Python value of the parameter.
     """
 
     def __new__(cls, *args, **kwargs):
@@ -224,11 +224,11 @@ class ParameterFloat(Parameter, float):
         return float.__new__(cls, val)
 
     def __init__(self, name: str, default_value: float = None):
-        """Create a pipeline string parameter.
+        """Creates a pipeline string parameter.
 
         Args:
             name (str): The name of the parameter.
-            default_value (float): The default python value of the parameter.
+            default_value (float): The default Python value of the parameter.
         """
         super(ParameterFloat, self).__init__(
             name=name, parameter_type=ParameterTypeEnum.FLOAT, default_value=default_value

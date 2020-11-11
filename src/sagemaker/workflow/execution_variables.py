@@ -38,7 +38,7 @@ class ExecutionVariable(Entity, str):
         return str.__new__(cls, ExecutionVariable._expr(value))
 
     def __init__(self, name: str):
-        """Create a pipeline execution variable.
+        """Creates a pipeline execution variable.
 
         Args:
             name (str): The name of the execution variable.

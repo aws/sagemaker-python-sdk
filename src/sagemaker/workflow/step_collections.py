@@ -74,20 +74,20 @@ class RegisterModel(StepCollection):
         Args:
             name (str): The name of the training step.
             estimator: The estimator instance.
-            model_data: the S3 URI to the model data from training.
+            model_data: The S3 uri to the model data from training.
             content_types (list): The supported MIME types for the input data (default: None).
             response_types (list): The supported MIME types for the output data (default: None).
             inference_instances (list): A list of the instance types that are used to
                 generate inferences in real-time (default: None).
             transform_instances (list): A list of the instance types on which a transformation
                 job can be run or on which an endpoint can be deployed (default: None).
-            model_package_group_name (str): Model Package Group name, exclusive to
+            model_package_group_name (str): The Model Package Group name, exclusive to
                 `model_package_name`, using `model_package_group_name` makes the Model Package
                 versioned (default: None).
             image_uri (str): The container image uri for Model Package, if not specified,
-                Estimator's training container image will be used (default: None).
-            compile_model_family (str): Instance family for compiled model, if specified, a compiled
-                model will be used (default: None).
+                Estimator's training container image is used (default: None).
+            compile_model_family (str): The instance family for the compiled model. If
+                specified, a compiled model is used (default: None).
             **kwargs: additional arguments to `create_model`.
         """
         steps: List[Step] = []
@@ -157,11 +157,14 @@ class EstimatorTransformer(StepCollection):
     ):
         """Constructs steps required for transformation:
 
-        An estimator-centric step collection, it models what occurs in current workflows
-        with invoking the `transform()` method on an estimator instance: first, if custom
-        model artifacts are required, a `_RepackModelStep` is included; second, a
+        An estimator-centric step collection. It models what happens in workflows
+        when invoking the `transform()` method on an estimator instance:
+        First, if custom
+        model artifacts are required, a `_RepackModelStep` is included.
+        Second, a
         `CreateModelStep` with the model data passed in from a training step or other
-        training job output; finally, a `TransformerStep`.
+        training job output.
+        Finally, a `TransformerStep`.
 
         If repacking
         the model artifacts is not necessary, only the CreateModelStep and TransformerStep
@@ -169,22 +172,21 @@ class EstimatorTransformer(StepCollection):
         Args:
             name (str): The name of the Transform Step.
             estimator: The estimator instance.
-            instance_count (int): Number of EC2 instances to use.
-            instance_type (str): Type of EC2 instance to use, for example,
-                'ml.c4.xlarge'.
+            instance_count (int): The number of EC2 instances to use.
+            instance_type (str): The type of EC2 instance to use.
             strategy (str): The strategy used to decide how to batch records in
                 a single request (default: None). Valid values: 'MultiRecord'
                 and 'SingleRecord'.
             assemble_with (str): How the output is assembled (default: None).
                 Valid values: 'Line' or 'None'.
-            output_path (str): S3 location for saving the transform result. If
+            output_path (str): The S3 location for saving the transform result. If
                 not specified, results are stored to a default bucket.
-            output_kms_key (str): Optional. KMS key ID for encrypting the
+            output_kms_key (str): Optional. A KMS key ID for encrypting the
                 transform output (default: None).
             accept (str): The accept header passed by the client to
                 the inference endpoint. If it is supported by the endpoint,
                 it will be the format of the batch transform output.
-            env (dict): Environment variables to be set for use during the
+            env (dict): The Environment variables to be set for use during the
                 transform job (default: None).
         """
         steps = []

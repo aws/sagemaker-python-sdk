@@ -68,9 +68,9 @@ class ConditionComparison(Condition):
     Attributes:
         condition_type (ConditionTypeEnum): The type of condition.
         left (ConditionValueType): The execution variable, parameter, or
-            property to use in comparison.
+            property to use in the comparison.
         right (Union[ConditionValueType, PrimitiveType]): The execution variable,
-            parameter, property, or python primitive value to compare to.
+            parameter, property, or Python primitive value to compare to.
     """
 
     left: ConditionValueType = attr.ib(default=None)
@@ -91,9 +91,9 @@ class ConditionEquals(ConditionComparison):
     Attributes:
         condition_type (ConditionTypeEnum): A `ConditionTypeEnum.EQ` type of condition.
         left (ConditionValueType): The execution variable, parameter, or
-            property to use in comparison.
+            property to use in the comparison.
         right (Union[ConditionValueType, PrimitiveType]): The execution variable,
-            parameter, property, or python primitive value to compare to.
+            parameter, property, or Python primitive value to compare to.
     """
 
     def __init__(self, left: ConditionValueType, right: Union[ConditionValueType, PrimitiveType]):
@@ -101,9 +101,9 @@ class ConditionEquals(ConditionComparison):
 
         Args:
             left (ConditionValueType): The execution variable, parameter,
-                or property to use in comparison.
+                or property to use in the comparison.
             right (Union[ConditionValueType, PrimitiveType]): The execution
-                variable, parameter, property, or python primitive value to compare to.
+                variable, parameter, property, or Python primitive value to compare to.
         """
 
         super(ConditionEquals, self).__init__(ConditionTypeEnum.EQ, left, right)
@@ -115,9 +115,9 @@ class ConditionGreaterThan(ConditionComparison):
     Attributes:
         condition_type (ConditionTypeEnum): A `ConditionTypeEnum.GT` type of condition.
         left (ConditionValueType): The execution variable, parameter, or
-            property to use in comparison.
+            property to use in the comparison.
         right (Union[ConditionValueType, PrimitiveType]): The execution variable,
-            parameter, property, or python primitive value to compare to.
+            parameter, property, or Python primitive value to compare to.
     """
 
     def __init__(self, left: ConditionValueType, right: Union[ConditionValueType, PrimitiveType]):
@@ -125,9 +125,9 @@ class ConditionGreaterThan(ConditionComparison):
 
         Args:
             left (ConditionValueType): The execution variable, parameter,
-                or property to use in comparison.
+                or property to use in the comparison.
             right (Union[ConditionValueType, PrimitiveType]): The execution
-                variable, parameter, property, or python primitive value to compare to.
+                variable, parameter, property, or Python primitive value to compare to.
         """
 
         super(ConditionGreaterThan, self).__init__(ConditionTypeEnum.GT, left, right)
@@ -139,9 +139,9 @@ class ConditionGreaterThanOrEqualTo(ConditionComparison):
     Attributes:
         condition_type (ConditionTypeEnum): A `ConditionTypeEnum.GTE` type of condition.
         left (ConditionValueType): The execution variable, parameter, or
-            property to use in comparison.
+            property to use in the comparison.
         right (Union[ConditionValueType, PrimitiveType]): The execution variable,
-            parameter, property, or python primitive value to compare to.
+            parameter, property, or Python primitive value to compare to.
     """
 
     def __init__(self, left: ConditionValueType, right: Union[ConditionValueType, PrimitiveType]):
@@ -149,9 +149,9 @@ class ConditionGreaterThanOrEqualTo(ConditionComparison):
 
         Args:
             left (ConditionValueType): The execution variable, parameter,
-                or property to use in comparison.
+                or property to use in the comparison.
             right (Union[ConditionValueType, PrimitiveType]): The execution
-                variable, parameter, property, or python primitive value to compare to.
+                variable, parameter, property, or Python primitive value to compare to.
         """
 
         super(ConditionGreaterThanOrEqualTo, self).__init__(ConditionTypeEnum.GTE, left, right)
@@ -163,9 +163,9 @@ class ConditionLessThan(ConditionComparison):
     Attributes:
         condition_type (ConditionTypeEnum): A `ConditionTypeEnum.LT` type of condition.
         left (ConditionValueType): The execution variable, parameter, or
-            property to use in comparison.
+            property to use in the comparison.
         right (Union[ConditionValueType, PrimitiveType]): The execution variable,
-            parameter, property, or python primitive value to compare to.
+            parameter, property, or Python primitive value to compare to.
     """
 
     def __init__(self, left: ConditionValueType, right: Union[ConditionValueType, PrimitiveType]):
@@ -173,9 +173,9 @@ class ConditionLessThan(ConditionComparison):
 
         Args:
             left (ConditionValueType): The execution variable, parameter,
-                or property to use in comparison.
+                or property to use in the comparison.
             right (Union[ConditionValueType, PrimitiveType]): The execution
-                variable, parameter, property, or python primitive value to compare to.
+                variable, parameter, property, or Python primitive value to compare to.
         """
 
         super(ConditionLessThan, self).__init__(ConditionTypeEnum.LT, left, right)
@@ -187,9 +187,9 @@ class ConditionLessThanOrEqualTo(ConditionComparison):
     Attributes:
         condition_type (ConditionTypeEnum): A `ConditionTypeEnum.LTE` type of condition.
         left (ConditionValueType): The execution variable, parameter, or
-            property to use in comparison.
+            property to use in the comparison.
         right (Union[ConditionValueType, PrimitiveType]): The execution variable,
-            parameter, property, or python primitive value to compare to.
+            parameter, property, or Python primitive value to compare to.
     """
 
     def __init__(self, left: ConditionValueType, right: Union[ConditionValueType, PrimitiveType]):
@@ -197,16 +197,16 @@ class ConditionLessThanOrEqualTo(ConditionComparison):
 
         Args:
             left (ConditionValueType): The execution variable, parameter,
-                or property to use in comparison.
+                or property to use in the comparison.
             right (Union[ConditionValueType, PrimitiveType]): The execution
-                variable, parameter, property, or python primitive value to compare to.
+                variable, parameter, property, or Python primitive value to compare to.
         """
 
         super(ConditionLessThanOrEqualTo, self).__init__(ConditionTypeEnum.LTE, left, right)
 
 
 class ConditionIn(Condition):
-    """An In condition for negating another `Condition`.
+    """A condition to check membership.
 
     Attributes:
         condition_type (ConditionTypeEnum): A `ConditionTypeEnum.IN` type of condition.
@@ -224,7 +224,7 @@ class ConditionIn(Condition):
             value (ConditionValueType): The execution variable,
                 parameter, or property to use for the in comparison.
             in_values (List[Union[ConditionValueType, PrimitiveType]]): The list
-                of values to check the in comparison of.
+                of values to check for membership in.
         """
         super(ConditionIn, self).__init__(ConditionTypeEnum.IN)
         self.value = value
@@ -240,7 +240,7 @@ class ConditionIn(Condition):
 
 
 class ConditionNot(Condition):
-    """A Not condition for negating another `Condition`.
+    """A condition for negating another `Condition`.
 
     Attributes:
         condition_type (ConditionTypeEnum): A `ConditionTypeEnum.NOT` type of condition.
@@ -262,11 +262,11 @@ class ConditionNot(Condition):
 
 
 class ConditionOr(Condition):
-    """An Or condition for logical OR of a list of `Condition` instances.
+    """A condition for taking the logical OR of a list of `Condition` instances.
 
     Attributes:
         condition_type (ConditionTypeEnum): A `ConditionTypeEnum.OR` type of condition.
-        conditions (List[Condition]): A list of `Condition` to logically OR.
+        conditions (List[Condition]): A list of `Condition` instances to logically OR.
     """
 
     def __init__(self, conditions: List[Condition] = None):
@@ -292,8 +292,7 @@ def primitive_or_expr(
     """Provides the expression of the value or leaves the primitive value alone.
 
     Args:
-        value (Union[ConditionValueType, PrimitiveType]): If it is a
-            PrimitiveType, leave it be. Otherwise, get the expr of the instance.
+        value (Union[ConditionValueType, PrimitiveType]): The value to evaluate..
 
     Returns:
         Either the expression of the value or the primitive value.

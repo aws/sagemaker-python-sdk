@@ -23,7 +23,7 @@ from sagemaker.workflow.entities import Expression
 
 
 class PropertiesMeta(type):
-    """Loads once internal shapes attribute from the botocore sagemaker service model."""
+    """Loads an internal shapes attribute from the botocore sagemaker service model."""
 
     _shapes = None
     _primitive_types = {"string", "boolean", "integer", "float"}
@@ -38,14 +38,14 @@ class PropertiesMeta(type):
 
 
 class Properties(metaclass=PropertiesMeta):
-    """Provides class for clean interpolation into workflow expressions."""
+    """Properties for use in workflow expressions."""
 
     def __init__(self, path: str, shape_name: str = None):
         """Creates a Properties instance representing the given shape.
 
         Args:
-            path (str): parent path of the Properties instance.
-            shape_name (str): botocore sagemaker service model shape name.
+            path (str): The parent path of the Properties instance.
+            shape_name (str): The botocore sagemaker service model shape name.
         """
         self._path = path
         self._shape_name = shape_name
@@ -69,23 +69,23 @@ class Properties(metaclass=PropertiesMeta):
 
 
 class PropertiesList(Properties):
-    """Provides class for clean interpolation into workflow expressions."""
+    """PropertiesList for use in workflow expressions."""
 
     def __init__(self, path: str, shape_name: str = None):
-        """Creates a Properties instance representing the given shape.
+        """Creates a PropertiesList instance representing the given shape.
 
         Args:
-            path (str): parent path of the Properties instance.
-            shape_name (str): botocore sagemaker service model shape name.
+            path (str): The parent path of the PropertiesList instance.
+            shape_name (str): The botocore sagemaker service model shape name.
         """
         super(PropertiesList, self).__init__(path, shape_name)
         self._items: Dict[Union[int, str], Properties] = dict()
 
     def __getitem__(self, item: Union[int, str]):
-        """Populate the indexing item with a Property, working for both list and dictionary.
+        """Populates the indexing item with a Property, for both lists and dictionaries.
 
         Args:
-            item (Union[int, str]): the index of the item in sequence.
+            item (Union[int, str]): The index of the item in sequence.
         """
         if item not in self._items.keys():
             shape = Properties._shapes.get(self._shape_name)
@@ -104,7 +104,7 @@ class PropertyFile(Expression):
     """Provides a property file struct.
 
     Attributes:
-        name: The name of the property file for reference by `JsonGet` functions.
+        name: The name of the property file for reference with `JsonGet` functions.
         output_name: The name of the processing job output channel.
         path: The path to the file at the output channel location.
     """

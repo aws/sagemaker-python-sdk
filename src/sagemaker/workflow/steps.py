@@ -129,10 +129,10 @@ class TrainingStep(Step):
 
     @property
     def arguments(self) -> RequestType:
-        """The arguments dict that are used to call `create_training_job`.
+        """The arguments dict that is used to call `create_training_job`.
 
         NOTE: The CreateTrainingJob request is not quite the args list that workflow needs.
-        What cannot be included in the args are the TrainingJobName and ExperimentConfig attrs.
+        The TrainingJobName and ExperimentConfig attributes cannot be included.
         """
         self.estimator.disable_profiler = True
         self.estimator.profiler_config = None
@@ -159,7 +159,7 @@ class CreateModelStep(Step):
     Attributes:
         name (str): The name of the CreateModel step.
         step_type (StepTypeEnum): The type of the step with value `StepTypeEnum.CREATE_MODEL`.
-        model (Model): A `sagemaker.model.Model` instance
+        model (Model): A `sagemaker.model.Model` instance.
     """
 
     def __init__(
@@ -187,10 +187,10 @@ class CreateModelStep(Step):
 
     @property
     def arguments(self) -> RequestType:
-        """The arguments dict that are used to call `create_model`.
+        """The arguments dict that is used to call `create_model`.
 
         NOTE: The CreateModelRequest is not quite the args list that workflow needs.
-        What cannot be included in the args is the ModelName.
+        ModelName cannot be included in the arguments.
         """
 
         request_dict = self.model.sagemaker_session._create_model_request(
@@ -248,10 +248,10 @@ class TransformStep(Step):
 
     @property
     def arguments(self) -> RequestType:
-        """The arguments dict that are used to call `create_transform_job`.
+        """The arguments dict that is used to call `create_transform_job`.
 
         NOTE: The CreateTransformJob request is not quite the args list that workflow needs.
-        What cannot be included in the args are the TransformJobName and ExperimentConfig attrs.
+        TransformJobName and ExperimentConfig cannot be included in the arguments.
         """
         transform_args = _TransformJob._get_transform_args(
             transformer=self.transformer,
@@ -285,10 +285,11 @@ class ProcessingStep(Step):
         name (str): The name of the training step.
         step_type (StepTypeEnum): The type of the step with value `StepTypeEnum.Processing`.
         processor (Processor): A `sagemaker.processor.Processor` instance.
-        inputs (List[ProcessingInput]): List of `sagemaker.processing.ProcessorInput` instances.
-        outputs (List[ProcessingOutput]): List of `sagemaker.processing.ProcessorOutput` instances.
-        job_arguments (List[str]): List of strings to be passed into the processing job.
-        code (str): This can be an S3 URI or a local path to a file the framework script will run.
+        inputs (List[ProcessingInput]): A list of `sagemaker.processing.ProcessorInput` instances.
+        outputs (List[ProcessingOutput]): A list of `sagemaker.processing.ProcessorOutput`
+            instances.
+        job_arguments (List[str]): A list of strings to be passed into the processing job.
+        code (str): This can be an S3 URI or a local path to a file that the framework script runs.
     """
 
     def __init__(
@@ -301,7 +302,7 @@ class ProcessingStep(Step):
         code: str = None,
         property_files: List[PropertyFile] = None,
     ):
-        """Constructs a ProcessingStep, given an `Processor` instance.
+        """Constructs a ProcessingStep, given a `Processor` instance.
 
         In addition to the processor instance, the other arguments are those that are supplied to
         the `process` method of the `sagemaker.processing.Processor`.
@@ -317,7 +318,7 @@ class ProcessingStep(Step):
                 Defaults to `None`.
             code (str): This can be an S3 URI or a local path to a file with the framework
                 script to run. Defaults to `None`.
-            property_files (List[PropertyFile]): a list of property files that workflow looks
+            property_files (List[PropertyFile]): A list of property files that workflow looks
                 for and resolves from the configured processing output list.
         """
         super(ProcessingStep, self).__init__(name, StepTypeEnum.PROCESSING)
@@ -338,10 +339,10 @@ class ProcessingStep(Step):
 
     @property
     def arguments(self) -> RequestType:
-        """The arguments dict that are used to call `create_processing_job`.
+        """The arguments dict that is used to call `create_processing_job`.
 
         NOTE: The CreateProcessingJob request is not quite the args list that workflow needs.
-        What cannot be included in the args are the ProcessingJobName and ExperimentConfig attrs.
+        ProcessingJobName and ExperimentConfig cannot be included in the arguments.
         """
         normalized_inputs, normalized_outputs = self.processor._normalize_args(
             arguments=self.job_arguments,
