@@ -81,8 +81,9 @@ class TensorFlow(Framework):
                 ``image_uri`` is required. If also ``None``, then a ``ValueError``
                 will be raised.
             distribution (dict): A dictionary with information on how to run distributed training
-                (default: None). Currently we support distributed training with parameter servers
-                and MPI.
+                (default: None). Currently we support distributed training with parameter servers,
+                Model Parallelism, Data Parallelism, and MPI. Model Parallelism can only be used
+                with MPI.
                 To enable parameter server use the following setup:
 
                 .. code:: python
@@ -103,7 +104,7 @@ class TensorFlow(Framework):
                         }
                     }
 
-                To enable SMDistributed Data Parallel:
+                To enable SMDistributed Data Parallel or Model Parallel:
 
                 .. code:: python
 
@@ -111,6 +112,10 @@ class TensorFlow(Framework):
                         "smdistributed": {
                             "dataparallel": {
                                 "enabled": True
+                            },
+                            "modelparallel": {
+                                "enabled": True,
+                                "parameters": {}
                             }
                         }
                     }
@@ -334,6 +339,14 @@ class TensorFlow(Framework):
             additional_hyperparameters[self.MPI_CUSTOM_MPI_OPTIONS] = mpi_dict.get(
                 "custom_mpi_options", ""
             )
+
+            if fw.get_mp_parameters(self.distribution):
+                additional_hyperparameters["mp_parameters"] = fw.get_mp_parameters(
+                    self.distribution
+                )
+
+        elif "modelparallel" in self.distribution.get("smdistributed", {}):
+            raise ValueError("Cannot use Model Parallelism without MPI enabled!")
 
         if "smdistributed" in self.distribution:
             # smdistributed strategy selected

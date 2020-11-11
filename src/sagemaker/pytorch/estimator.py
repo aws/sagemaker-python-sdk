@@ -24,7 +24,9 @@ from sagemaker.fw_utils import (
     framework_version_from_tag,
     python_deprecation_warning,
     validate_version_or_image_args,
+    warn_if_parameter_server_with_multi_gpu,
     validate_smdistributed,
+    get_mp_parameters,
 )
 from sagemaker.pytorch import defaults
 from sagemaker.pytorch.model import PyTorchModel
@@ -93,7 +95,6 @@ class PyTorch(Framework):
                 for training and hosting, instead of selecting the appropriate
                 SageMaker official image based on framework_version and
                 py_version. It can be an ECR url or dockerhub image and tag.
-
                 Examples:
                     * ``123412341234.dkr.ecr.us-west-2.amazonaws.com/my-custom-image:1.0``
                     * ``custom-image:latest``
@@ -102,10 +103,30 @@ class PyTorch(Framework):
                 ``image_uri`` is required. If also ``None``, then a ``ValueError``
                 will be raised.
             distribution (dict): A dictionary with information on how to run distributed training
-                (default: None). Currently we support distributed training with SMDistributed
-                Data Parallel strategy.
+                (default: None). Currently we support distributed training with parameter servers,
+                Model Parallelism, Data Parallelism, and MPI. Model Parallelism can only be used
+                with MPI.
+                To enable parameter server use the following setup:
 
-                To enable SMDistributed Data Parallel:
+                .. code:: python
+
+                    {
+                        "parameter_server": {
+                            "enabled": True
+                        }
+                    }
+
+                To enable MPI:
+
+                .. code:: python
+
+                    {
+                        "mpi": {
+                            "enabled": True
+                        }
+                    }
+
+                To enable SMDistributed Data Parallel or Model Parallel:
 
                 .. code:: python
 
@@ -113,6 +134,10 @@ class PyTorch(Framework):
                         "smdistributed": {
                             "dataparallel": {
                                 "enabled": True
+                            },
+                            "modelparallel": {
+                                "enabled": True,
+                                "parameters": {}
                             }
                         }
                     }
@@ -148,6 +173,10 @@ class PyTorch(Framework):
                 image_uri=image_uri,
             )
 
+            warn_if_parameter_server_with_multi_gpu(
+                training_instance_type=instance_type, distribution=distribution
+            )
+
         if "enable_sagemaker_metrics" not in kwargs:
             # enable sagemaker metrics for PT v1.3 or greater:
             if self.framework_version and Version(self.framework_version) >= Version("1.3"):
@@ -162,6 +191,30 @@ class PyTorch(Framework):
         """Return hyperparameters used by your custom PyTorch code during model training."""
         hyperparameters = super(PyTorch, self).hyperparameters()
         additional_hyperparameters = {}
+
+        if "parameter_server" in self.distribution:
+            ps_enabled = self.distribution.get("parameter_server").get("enabled", False)
+            additional_hyperparameters[self.LAUNCH_PS_ENV_NAME] = ps_enabled
+
+        if "mpi" in self.distribution:
+            mpi_dict = self.distribution["mpi"]
+            mpi_enabled = mpi_dict.get("enabled", False)
+            additional_hyperparameters[self.LAUNCH_MPI_ENV_NAME] = mpi_enabled
+
+            if mpi_dict.get("processes_per_host"):
+                additional_hyperparameters[self.MPI_NUM_PROCESSES_PER_HOST] = mpi_dict.get(
+                    "processes_per_host"
+                )
+
+            additional_hyperparameters[self.MPI_CUSTOM_MPI_OPTIONS] = mpi_dict.get(
+                "custom_mpi_options", ""
+            )
+
+            if get_mp_parameters(self.distribution):
+                additional_hyperparameters["mp_parameters"] = get_mp_parameters(self.distribution)
+
+        elif "modelparallel" in self.distribution.get("smdistributed", {}):
+            raise ValueError("Cannot use Model Parallelism without MPI enabled!")
 
         if "smdistributed" in self.distribution:
             # smdistributed strategy selected
