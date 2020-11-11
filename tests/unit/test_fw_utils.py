@@ -19,6 +19,7 @@ from contextlib import contextmanager
 from itertools import product
 
 import pytest
+
 from mock import Mock, patch
 
 from sagemaker import fw_utils
@@ -90,6 +91,46 @@ def test_tar_and_upload_dir_s3_with_kms(utils, sagemaker_session):
     extra_args = {"ServerSideEncryption": "aws:kms", "SSEKMSKeyId": kms_key}
     obj = sagemaker_session.resource("s3").Object("", "")
     obj.upload_file.assert_called_with(utils.create_tar_file(), ExtraArgs=extra_args)
+
+
+def test_mp_config_partition_exists():
+    mp_parameters = {}
+    with pytest.raises(ValueError):
+        fw_utils.validate_mp_config(mp_parameters)
+
+
+@pytest.mark.parametrize(
+    "pipeline, placement_strategy, optimize, trace_device",
+    [
+        ("simple", "spread", "speed", "cpu"),
+        ("interleaved", "cluster", "memory", "gpu"),
+        ("_only_forward", "spread", "speed", "gpu"),
+    ],
+)
+def test_mp_config_string_names(pipeline, placement_strategy, optimize, trace_device):
+    mp_parameters = {
+        "partitions": 2,
+        "pipeline": pipeline,
+        "placement_strategy": placement_strategy,
+        "optimize": optimize,
+        "trace_device": trace_device,
+    }
+    fw_utils.validate_mp_config(mp_parameters)
+
+
+def test_mp_config_auto_partition_arg():
+    mp_parameters = {}
+    mp_parameters["partitions"] = 2
+    mp_parameters["auto_partition"] = False
+    with pytest.raises(ValueError):
+        fw_utils.validate_mp_config(mp_parameters)
+
+    mp_parameters["default_partition"] = 1
+    fw_utils.validate_mp_config(mp_parameters)
+
+    mp_parameters["default_partition"] = 4
+    with pytest.raises(ValueError):
+        fw_utils.validate_mp_config(mp_parameters)
 
 
 def test_validate_source_dir_does_not_exits(sagemaker_session):
