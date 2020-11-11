@@ -29,7 +29,14 @@ from sagemaker.deserializers import (  # noqa: F401 # pylint: disable=unused-imp
     StreamDeserializer,
     StringDeserializer,
 )
-from sagemaker.model_monitor import DataCaptureConfig
+from sagemaker.model_monitor import (
+    DataCaptureConfig,
+    DefaultModelMonitor,
+    ModelBiasMonitor,
+    ModelExplainabilityMonitor,
+    ModelMonitor,
+    ModelQualityMonitor,
+)
 from sagemaker.serializers import (
     CSVSerializer,
     IdentitySerializer,
@@ -39,11 +46,7 @@ from sagemaker.serializers import (
 from sagemaker.session import production_variant, Session
 from sagemaker.utils import name_from_base
 
-from sagemaker.model_monitor.model_monitoring import (
-    DEFAULT_REPOSITORY_NAME,
-    ModelMonitor,
-    DefaultModelMonitor,
-)
+from sagemaker.model_monitor.model_monitoring import DEFAULT_REPOSITORY_NAME
 
 from sagemaker.lineage.context import EndpointContext
 
@@ -367,28 +370,54 @@ class Predictor(object):
         monitors = []
         for schedule_dict in monitoring_schedules_dict["MonitoringScheduleSummaries"]:
             schedule_name = schedule_dict["MonitoringScheduleName"]
+            monitoring_type = schedule_dict.get("MonitoringType")
+            clazz = self._get_model_monitor_class(schedule_name, monitoring_type)
+            monitors.append(
+                clazz.attach(
+                    monitor_schedule_name=schedule_name,
+                    sagemaker_session=self.sagemaker_session,
+                )
+            )
+
+        return monitors
+
+    def _get_model_monitor_class(self, schedule_name, monitoring_type):
+        """Decide which ModelMonitor class the given schedule should attach to
+
+        Args:
+            schedule_name (str): The schedule to be attached.
+            monitoring_type (str): The monitoring type of the schedule
+
+        Returns:
+            sagemaker.model_monitor.ModelMonitor: ModelMonitor or a subclass of ModelMonitor.
+
+        Raises:
+            TypeError: If the class could not be decided (due to unknown monitoring type).
+        """
+        if monitoring_type == "ModelBias":
+            clazz = ModelBiasMonitor
+        elif monitoring_type == "ModelExplainability":
+            clazz = ModelExplainabilityMonitor
+        else:
             schedule = self.sagemaker_session.describe_monitoring_schedule(
                 monitoring_schedule_name=schedule_name
             )
-            image_uri = schedule["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-                "MonitoringAppSpecification"
-            ]["ImageUri"]
-            if image_uri.endswith(DEFAULT_REPOSITORY_NAME):
-                monitors.append(
-                    DefaultModelMonitor.attach(
-                        monitor_schedule_name=schedule_name,
-                        sagemaker_session=self.sagemaker_session,
-                    )
-                )
+            embedded_job_definition = schedule["MonitoringScheduleConfig"].get(
+                "MonitoringJobDefinition"
+            )
+            if embedded_job_definition is not None:  # legacy v1 schedule
+                image_uri = embedded_job_definition["MonitoringAppSpecification"]["ImageUri"]
+                if image_uri.endswith(DEFAULT_REPOSITORY_NAME):
+                    clazz = DefaultModelMonitor
+                else:
+                    clazz = ModelMonitor
+            elif monitoring_type == "DataQuality":
+                clazz = DefaultModelMonitor
+            elif monitoring_type == "ModelQuality":
+                clazz = ModelQualityMonitor
             else:
-                monitors.append(
-                    ModelMonitor.attach(
-                        monitor_schedule_name=schedule_name,
-                        sagemaker_session=self.sagemaker_session,
-                    )
-                )
-
-        return monitors
+                raise TypeError("Unknown monitoring type: {}".format(monitoring_type))
+        return clazz
 
     def endpoint_context(self):
         """Retrieves the lineage context object representing the endpoint.

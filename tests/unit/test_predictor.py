@@ -19,6 +19,7 @@ import pytest
 from mock import Mock, call, patch
 
 from sagemaker.deserializers import CSVDeserializer, PandasDeserializer
+from sagemaker.model_monitor.model_monitoring import DEFAULT_REPOSITORY_NAME
 from sagemaker.predictor import Predictor
 from sagemaker.serializers import JSONSerializer, CSVSerializer
 
@@ -464,3 +465,106 @@ def test_endpoint_context_fail():
     context = pdctr.endpoint_context()
 
     assert not context
+
+
+@patch("sagemaker.predictor.ModelExplainabilityMonitor.attach")
+@patch("sagemaker.predictor.ModelBiasMonitor.attach")
+@patch("sagemaker.predictor.ModelQualityMonitor.attach")
+@patch("sagemaker.predictor.ModelMonitor.attach")
+@patch("sagemaker.predictor.DefaultModelMonitor.attach")
+def test_list_monitors(default_model_monitor_attach, *attach_methods):
+    sagemaker_session = empty_sagemaker_session()
+    sagemaker_session.list_monitoring_schedules = Mock(
+        return_value={
+            "MonitoringScheduleSummaries": [
+                {
+                    "MonitoringScheduleName": "default-monitor",
+                },
+                {
+                    "MonitoringScheduleName": "byoc-monitor",
+                },
+                {
+                    "MonitoringScheduleName": "data-quality-monitor",
+                    "MonitoringType": "DataQuality",
+                },
+                {
+                    "MonitoringScheduleName": "model-quality-monitor",
+                    "MonitoringType": "ModelQuality",
+                },
+                {
+                    "MonitoringScheduleName": "model-bias-monitor",
+                    "MonitoringType": "ModelBias",
+                },
+                {
+                    "MonitoringScheduleName": "model-explainability-monitor",
+                    "MonitoringType": "ModelExplainability",
+                },
+            ]
+        }
+    )
+    sagemaker_session.describe_monitoring_schedule = Mock(
+        side_effect=[
+            {
+                "MonitoringScheduleConfig": {
+                    "MonitoringJobDefinition": {
+                        "MonitoringAppSpecification": {
+                            "ImageUri": DEFAULT_REPOSITORY_NAME,
+                        }
+                    }
+                }
+            },
+            {
+                "MonitoringScheduleConfig": {
+                    "MonitoringJobDefinition": {
+                        "MonitoringAppSpecification": {
+                            "ImageUri": "byoc-image",
+                        }
+                    }
+                }
+            },
+            {
+                "MonitoringScheduleConfig": {
+                    "MonitoringType": "DataQuality",
+                    "MonitoringJobDefinitionName": "data-quality-job-definition",
+                }
+            },
+            {
+                "MonitoringScheduleConfig": {
+                    "MonitoringType": "ModelQuality",
+                    "MonitoringJobDefinitionName": "model-quality-job-definition",
+                }
+            },
+        ]
+    )
+    predictor = Predictor(ENDPOINT, sagemaker_session=sagemaker_session)
+    predictor.list_monitors()
+    for attach_method in attach_methods:
+        attach_method.assert_called_once()
+    assert default_model_monitor_attach.call_count == 2
+
+
+def test_list_monitors_unknown_monitoring_type():
+    sagemaker_session = empty_sagemaker_session()
+    sagemaker_session.list_monitoring_schedules = Mock(
+        return_value={
+            "MonitoringScheduleSummaries": [
+                {
+                    "MonitoringScheduleName": "model-explainability-monitor",
+                    "MonitoringType": "UnknownType",
+                },
+            ]
+        }
+    )
+    sagemaker_session.describe_monitoring_schedule = Mock(
+        side_effect=[
+            {
+                "MonitoringScheduleConfig": {
+                    "MonitoringType": "UnknownType",
+                    "MonitoringJobDefinitionName": "unknown-job-definition",
+                }
+            },
+        ]
+    )
+    predictor = Predictor(ENDPOINT, sagemaker_session=sagemaker_session)
+    with pytest.raises(TypeError):
+        predictor.list_monitors()
