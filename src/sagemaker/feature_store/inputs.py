@@ -10,7 +10,22 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""The input configs for FeatureStore."""
+"""The input configs for FeatureStore.
+
+A feature store serves as the single source of truth to store, retrieve,
+remove, track, share, discover, and control access to features.
+
+You can configure two types of feature stores, an online features store
+and an offline feature store.
+
+The online features store is a low latency, high availability cache for a
+feature group that enables real-time lookup of records. Only the latest record is stored.
+
+The offline feature store use when low (sub-second) latency reads are not needed.
+This is the case when you want to store and serve features for exploration, model training,
+and batch inference. The offline store uses your Amazon Simple Storage Service (Amazon S3)
+bucket for storage. A prefixing scheme based on event time is used to store your data in Amazon S3.
+"""
 from __future__ import absolute_import
 
 import abc
@@ -27,7 +42,7 @@ class Config(abc.ABC):
 
     @abc.abstractmethod
     def to_dict(self) -> Dict[str, Any]:
-        """Gets the dictionary from attributes.
+        """Get the dictionary from attributes.
 
         Returns:
             dict contains the attributes.
@@ -64,7 +79,7 @@ class OnlineStoreSecurityConfig(Config):
     kms_key_id: str = attr.ib(factory=str)
 
     def to_dict(self) -> Dict[str, Any]:
-        """Constructs a dictionary based on the attributes"""
+        """Construct a dictionary based on the attributes."""
         return Config.construct_dict(KmsKeyId=self.kms_key_id)
 
 
@@ -81,7 +96,7 @@ class OnlineStoreConfig(Config):
     online_store_security_config: OnlineStoreSecurityConfig = attr.ib(default=None)
 
     def to_dict(self) -> Dict[str, Any]:
-        """Constructs a dictionary based on the attributes.
+        """Construct a dictionary based on the attributes.
 
         Returns:
             dict represents the attributes.
@@ -105,7 +120,7 @@ class S3StorageConfig(Config):
     kms_key_id: str = attr.ib(default=None)
 
     def to_dict(self) -> Dict[str, Any]:
-        """Constructs a dictionary based on the attributes.
+        """Construct a dictionary based on the attributes provided.
 
         Returns:
             dict represents the attributes.
@@ -131,7 +146,7 @@ class DataCatalogConfig(Config):
     database: str = attr.ib(factory=str)
 
     def to_dict(self) -> Dict[str, Any]:
-        """Constructs a dictionary based on the attributes.
+        """Construct a dictionary based on the attributes provided.
 
         Returns:
             dict represents the attributes.
@@ -158,7 +173,7 @@ class OfflineStoreConfig(Config):
     data_catalog_config: DataCatalogConfig = attr.ib(default=None)
 
     def to_dict(self) -> Dict[str, Any]:
-        """Constructs a dictionary based on the attributes.
+        """Construct a dictionary based on the attributes.
 
         Returns:
             dict represents the attributes.
@@ -172,7 +187,7 @@ class OfflineStoreConfig(Config):
 
 @attr.s
 class FeatureValue(Config):
-    """FeatureValue for FeatureStore
+    """FeatureValue for FeatureStore.
 
     Attributes:
         feature_name (str): name of the Feature.
@@ -183,7 +198,7 @@ class FeatureValue(Config):
     value_as_string: str = attr.ib(default=None)
 
     def to_dict(self) -> Dict[str, Any]:
-        """Constructs a dictionary based on the attributes.
+        """Construct a dictionary based on the attributes provided.
 
         Returns:
             dict represents the attributes.

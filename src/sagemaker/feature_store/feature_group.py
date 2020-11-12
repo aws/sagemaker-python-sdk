@@ -10,7 +10,15 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""The FeatureGroup entity for FeatureStore."""
+"""The FeatureGroup entity for FeatureStore.
+
+A feature group is a logical grouping of features, defined in the Feature Store,
+to describe records. A feature group definition is composed of a list of feature definitions,
+a record identifier name, and configurations for its online and offline store.
+Create feature group, describe feature group, update feature groups, delete feature group and
+list feature groups APIs can be used to manage feature groups.
+"""
+
 from __future__ import absolute_import
 
 import logging
@@ -45,7 +53,10 @@ logger = logging.getLogger(__name__)
 
 @attr.s
 class AthenaQuery:
-    """Class to manager querying of feature store data with AWS Athena
+    """Class to manage querying of feature store data with AWS Athena.
+
+    This class instantiates a AthenaQuery object that is used to retrieve data from feature store
+    via standard SQL queries.
 
     Attributes:
         catalog (str): name of the data catalog.
@@ -63,12 +74,15 @@ class AthenaQuery:
     _result_file_prefix: str = attr.ib(init=False, default=None)
 
     def run(self, query_string: str, output_location: str, kms_key: str = None) -> str:
-        """Run athena query with the given query_string
+        """Execute a SQL query given a query string, output location and kms key.
+
+        This method executes the SQL query using Athena and outputs the results to output_location
+        and returns the execution id of the query.
 
         Args:
             query_string: SQL query string.
-            output_location: s3 uri of the query result.
-            kms_key: KMS key id, if set will be used to encrypt the query result file.
+            output_location: S3 URI of the query result.
+            kms_key: KMS key id. If set, will be used to encrypt the query result file.
 
         Returns:
             Execution id of the query.
@@ -103,7 +117,7 @@ class AthenaQuery:
         )
 
     def as_dataframe(self) -> DataFrame:
-        """Download the result of the current query and load it into a DataFrame
+        """Download the result of the current query and load it into a DataFrame.
 
         Returns:
             A pandas DataFrame contains the query result.
@@ -132,10 +146,12 @@ class AthenaQuery:
 class IngestionManagerPandas:
     """Class to manage the multi-threaded data ingestion process.
 
+    This class will manage the data ingestion process which is multi-threaded.
+
     Attributes:
         feature_group_name (str): name of the Feature Group.
         sagemaker_session (Session): instance of the Session class to perform boto calls.
-        data_frame (DataFrame): pandas data_frame to be ingested to the given feature group.
+        data_frame (DataFrame): pandas DataFrame to be ingested to the given feature group.
         max_works (int): number of threads to create.
     """
 
@@ -201,9 +217,8 @@ class IngestionManagerPandas:
         Args:
             wait (bool): whether to wait for the ingestion to finish or not.
             timeout (Union[int, float]): ``concurrent.futures.TimeoutError`` will be raised
-                if timeout is reached.
+            if timeout is reached.
         """
-
         executor = ThreadPoolExecutor(max_workers=self.max_workers)
         batch_size = math.ceil(self.data_frame.shape[0] / self.max_workers)
 
@@ -230,7 +245,10 @@ class IngestionManagerPandas:
 
 @attr.s
 class FeatureGroup:
-    """FeatureGroup for FeatureStore
+    """FeatureGroup definition.
+
+    This class instantiates a FeatureGroup object that comprises of a name for the FeatureGroup,
+    session instance, and a list of feature definition objects i.e., FeatureDefinition.
 
     Attributes:
         name (str): name of the FeatureGroup instance.
@@ -282,7 +300,7 @@ class FeatureGroup:
         description: str = None,
         tags: List[Dict[str, str]] = None,
     ) -> Dict[str, Any]:
-        """Creates a SageMaker FeatureStore FeatureGroup
+        """Create a SageMaker FeatureStore FeatureGroup.
 
         Args:
             s3_uri (str): S3 URI of the offline store.
@@ -300,7 +318,6 @@ class FeatureGroup:
         Returns:
             Response dict from service.
         """
-
         create_feature_store_args = dict(
             feature_group_name=self.name,
             record_identifier_name=record_identifier_name,
@@ -336,7 +353,7 @@ class FeatureGroup:
         return self.sagemaker_session.create_feature_group(**create_feature_store_args)
 
     def delete(self):
-        """Deletes a FeatureGroup"""
+        """Delete a FeatureGroup."""
         self.sagemaker_session.delete_feature_group(feature_group_name=self.name)
 
     def describe(self, next_token: str = None) -> Dict[str, Any]:
@@ -354,7 +371,7 @@ class FeatureGroup:
         self,
         data_frame: DataFrame,
     ) -> Sequence[FeatureDefinition]:
-        """Loads feature definitions from a Pandas DataFrame
+        """Load feature definitions from a Pandas DataFrame.
 
         Column name is used as feature name. Feature type is inferred from the dtype
         of the column. Dtype int_, int8, int16, int32, int64, uint8, uint16, uint32
@@ -389,7 +406,7 @@ class FeatureGroup:
         return self.feature_definitions
 
     def put_record(self, record: Sequence[FeatureValue]):
-        """Puts a single record in the FeatureGroup
+        """Put a single record in the FeatureGroup.
 
         Args:
             record (Sequence[FeatureValue]): a list contains feature values.
@@ -430,7 +447,7 @@ class FeatureGroup:
         return manager
 
     def athena_query(self) -> AthenaQuery:
-        """Creates an AthenaQuery instance
+        """Create an AthenaQuery instance.
 
         Returns:
             An instance of AthenaQuery initialized with data catalog configurations.
@@ -449,10 +466,11 @@ class FeatureGroup:
         raise RuntimeError("No metastore is configured with this feature group.")
 
     def as_hive_ddl(self, database: str = "sagemaker_featurestore", table_name: str = None) -> str:
-        """Generate DDL can be used to create Hive table
+        """Generate Hive DDL commands that can be used to define or change structure of tables or
+        databases in Hive.
 
         Schema of the table is generated based on the feature definitions. Columns are named
-        after feature name and data-type are infered based on feature type. Integral feature
+        after feature name and data-type are inferred based on feature type. Integral feature
         type is mapped to INT data-type. Fractional feature type is mapped to FLOAT data-type.
         String feature type is mapped to STRING data-type.
 
@@ -464,7 +482,6 @@ class FeatureGroup:
         Returns:
             Generated create table DDL string.
         """
-
         if not table_name:
             table_name = self.name
 
