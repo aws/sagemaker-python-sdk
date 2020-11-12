@@ -24,6 +24,10 @@ from mock import (
 
 from sagemaker.estimator import Estimator
 from sagemaker.inputs import CreateModelInput, TransformInput
+from sagemaker.model_metrics import (
+    MetricsSource,
+    ModelMetrics,
+)
 from sagemaker.workflow.properties import Properties
 from sagemaker.workflow.steps import (
     Step,
@@ -108,6 +112,16 @@ def estimator(sagemaker_session):
     )
 
 
+@pytest.fixture
+def model_metrics():
+    return ModelMetrics(
+        model_statistics=MetricsSource(
+            s3_uri=f"s3://{BUCKET}/metrics.csv",
+            content_type="text/csv",
+        )
+    )
+
+
 def test_step_collection():
     step_collection = StepCollection(steps=[CustomStep("MyStep1"), CustomStep("MyStep2")])
     assert step_collection.request_dicts() == [
@@ -116,7 +130,7 @@ def test_step_collection():
     ]
 
 
-def test_register_model(estimator):
+def test_register_model(estimator, model_metrics):
     model_data = f"s3://{BUCKET}/model.tar.gz"
     register_model = RegisterModel(
         name="RegisterModelStep",
@@ -126,6 +140,9 @@ def test_register_model(estimator):
         response_types=["response_type"],
         inference_instances=["inference_instance"],
         transform_instances=["transform_instance"],
+        model_package_group_name="mpg",
+        model_metrics=model_metrics,
+        approval_status="Approved",
     )
     assert ordered(register_model.request_dicts()) == ordered(
         [
@@ -135,14 +152,23 @@ def test_register_model(estimator):
                 "Arguments": {
                     "InferenceSpecification": {
                         "Containers": [
-                            {"Image": "fakeimage", "ModelDataUrl": "s3://my-bucket/model.tar.gz"}
+                            {"Image": "fakeimage", "ModelDataUrl": f"s3://{BUCKET}/model.tar.gz"}
                         ],
                         "SupportedContentTypes": ["content_type"],
                         "SupportedRealtimeInferenceInstanceTypes": ["inference_instance"],
                         "SupportedResponseMIMETypes": ["response_type"],
                         "SupportedTransformInstanceTypes": ["transform_instance"],
                     },
-                    "ModelApprovalStatus": "PendingManualApproval",
+                    "ModelApprovalStatus": "Approved",
+                    "ModelMetrics": {
+                        "ModelQuality": {
+                            "Statistics": {
+                                "ContentType": "text/csv",
+                                "S3Uri": f"s3://{BUCKET}/metrics.csv",
+                            },
+                        },
+                    },
+                    "ModelPackageGroupName": "mpg",
                 },
             },
         ]

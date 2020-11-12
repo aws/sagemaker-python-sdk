@@ -215,9 +215,9 @@ class _RegisterModelStep(Step):
         inference_instances,
         transform_instances,
         model_package_group_name=None,
-        image_uri=None,
         model_metrics=None,
         approval_status="PendingManualApproval",
+        image_uri=None,
         compile_model_family=None,
         **kwargs,
     ):
@@ -237,11 +237,11 @@ class _RegisterModelStep(Step):
             model_package_group_name (str): Model Package Group name, exclusive to
                 `model_package_name`, using `model_package_group_name` makes the Model Package
                 versioned (default: None).
-            image_uri (str): The container image uri for Model Package, if not specified,
-                Estimator's training container image will be used (default: None).
             model_metrics (ModelMetrics): ModelMetrics object (default: None).
             approval_status (str): Model Approval Status, values can be "Approved", "Rejected",
                 or "PendingManualApproval" (default: "PendingManualApproval").
+            image_uri (str): The container image uri for Model Package, if not specified,
+                Estimator's training container image will be used (default: None).
             compile_model_family (str): Instance family for compiled model, if specified, a compiled
                 model will be used (default: None).
             **kwargs: additional arguments to `create_model`.
@@ -254,9 +254,9 @@ class _RegisterModelStep(Step):
         self.inference_instances = inference_instances
         self.transform_instances = transform_instances
         self.model_package_group_name = model_package_group_name
-        self.image_uri = image_uri
         self.model_metrics = model_metrics
         self.approval_status = approval_status
+        self.image_uri = image_uri
         self.compile_model_family = compile_model_family
         self.kwargs = kwargs
 
@@ -314,7 +314,7 @@ class _RegisterModelStep(Step):
         request_dict = model.sagemaker_session._get_create_model_package_request(
             **model_package_args
         )
-        # these are not available in the workflow service
+        # these are not available in the workflow service and will cause rejection
         if "CertifyForMarketplace" in request_dict:
             request_dict.pop("CertifyForMarketplace")
         if "Description" in request_dict:

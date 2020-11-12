@@ -65,6 +65,8 @@ class RegisterModel(StepCollection):
         inference_instances,
         transform_instances,
         model_package_group_name=None,
+        model_metrics=None,
+        approval_status=None,
         image_uri=None,
         compile_model_family=None,
         **kwargs,
@@ -84,6 +86,9 @@ class RegisterModel(StepCollection):
             model_package_group_name (str): The Model Package Group name, exclusive to
                 `model_package_name`, using `model_package_group_name` makes the Model Package
                 versioned (default: None).
+            model_metrics (ModelMetrics): ModelMetrics object (default: None).
+            approval_status (str): Model Approval Status, values can be "Approved", "Rejected",
+                or "PendingManualApproval" (default: "PendingManualApproval").
             image_uri (str): The container image uri for Model Package, if not specified,
                 Estimator's training container image is used (default: None).
             compile_model_family (str): The instance family for the compiled model. If
@@ -115,6 +120,8 @@ class RegisterModel(StepCollection):
             inference_instances=inference_instances,
             transform_instances=transform_instances,
             model_package_group_name=model_package_group_name,
+            model_metrics=model_metrics,
+            approval_status=approval_status,
             image_uri=image_uri,
             compile_model_family=compile_model_family,
             **kwargs,
