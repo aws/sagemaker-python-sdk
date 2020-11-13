@@ -42,6 +42,7 @@ INSTANCE_TYPE = "ml.c4.4xlarge"
 ACCELERATOR_TYPE = "ml.eia.medium"
 IMAGE = "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet:1.4.0-cpu-py3"
 COMPILATION_JOB_NAME = "{}-{}".format("compilation-sagemaker-mxnet", TIMESTAMP)
+EDGE_PACKAGING_JOB_NAME = "{}-{}".format("compilation-sagemaker-mxnet", TIMESTAMP)
 FRAMEWORK = "mxnet"
 ROLE = "Dummy"
 REGION = "us-west-2"
