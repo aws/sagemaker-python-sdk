@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.16.3 (2020-11-11)
+
+### Bug Fixes and Other Changes
+
+ * fix failures for multiple spark run() invocations
+
 ## v2.16.2 (2020-11-09)
 
 ### Bug Fixes and Other Changes
