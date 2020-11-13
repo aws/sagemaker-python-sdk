@@ -703,8 +703,9 @@ class HyperparameterTuner(object):
         data_capture_config=None,
         **kwargs
     ):
-        """Deploy the best trained or user specified model to an Amazon
-        SageMaker endpoint and return a ``sagemaker.Predictor`` object.
+        """Deploy the best trained or user specified model to an Amazon SageMaker endpoint.
+
+        And also return a ``sagemaker.Predictor`` object.
 
         For more information:
         http://docs.aws.amazon.com/sagemaker/latest/dg/how-it-works-training.html
@@ -784,9 +785,10 @@ class HyperparameterTuner(object):
         self.latest_tuning_job.wait()
 
     def best_estimator(self, best_training_job=None):
-        """Return the estimator that has best training job attached. The trained model can then
-        be deployed to an Amazon SageMaker endpoint and return a ``sagemaker.Predictor``
-        object.
+        """Return the estimator that has best training job attached.
+
+        The trained model can then be deployed to an Amazon SageMaker endpoint and return a
+        ``sagemaker.Predictor`` object.
 
         Args:
             best_training_job (dict): Dictionary containing "TrainingJobName" and
@@ -823,8 +825,7 @@ class HyperparameterTuner(object):
         )
 
     def best_training_job(self):
-        """Return name of the best training job for the latest hyperparameter
-        tuning job.
+        """Return name of the best training job for the latest hyperparameter tuning job.
 
         Raises:
             Exception: If there is no best training job available for the
@@ -833,8 +834,7 @@ class HyperparameterTuner(object):
         return self._get_best_training_job()["TrainingJobName"]
 
     def _get_best_training_job(self):
-        """Return the best training job for the latest hyperparameter
-        tuning job.
+        """Return the best training job for the latest hyperparameter tuning job.
 
         Raises:
             Exception: If there is no best training job available for the
@@ -873,11 +873,7 @@ class HyperparameterTuner(object):
     @classmethod
     def _prepare_estimator_cls(cls, estimator_cls, training_details):
         # Check for customer-specified estimator first
-        """
-        Args:
-            estimator_cls:
-            training_details:
-        """
+        """Placeholder docstring"""
         if estimator_cls is not None:
             module, cls_name = estimator_cls.rsplit(".", 1)
             return getattr(importlib.import_module(module), cls_name)
@@ -908,12 +904,7 @@ class HyperparameterTuner(object):
     def _prepare_estimator_from_job_description(
         cls, estimator_cls, training_details, parameter_ranges, sagemaker_session
     ):
-        """
-        Args:
-            estimator_cls:
-            job_details:
-            sagemaker_session:
-        """
+        """Placeholder docstring"""
         # Swap name for static hyperparameters to what an estimator would expect
         training_details["HyperParameters"] = training_details["StaticHyperParameters"]
         del training_details["StaticHyperParameters"]
@@ -941,10 +932,7 @@ class HyperparameterTuner(object):
 
     @classmethod
     def _prepare_init_params_from_job_description(cls, job_details):
-        """
-        Args:
-            job_details:
-        """
+        """Placeholder docstring"""
         tuning_config = job_details["HyperParameterTuningJobConfig"]
 
         params = {
@@ -983,10 +971,7 @@ class HyperparameterTuner(object):
 
     @classmethod
     def _prepare_parameter_ranges_from_job_description(cls, parameter_ranges):
-        """
-        Args:
-            parameter_ranges:
-        """
+        """Placeholder docstring"""
         ranges = {}
 
         for parameter in parameter_ranges["CategoricalParameterRanges"]:
@@ -1006,10 +991,7 @@ class HyperparameterTuner(object):
 
     @classmethod
     def _extract_hyperparameters_from_parameter_ranges(cls, parameter_ranges):
-        """
-        Args:
-            parameter_ranges:
-        """
+        """Placeholder docstring"""
         hyperparameters = {}
 
         for parameter in parameter_ranges["CategoricalParameterRanges"]:
@@ -1024,8 +1006,9 @@ class HyperparameterTuner(object):
         return hyperparameters
 
     def hyperparameter_ranges(self):
-        """Return the hyperparameter ranges in a dictionary to be used as part
-        of a request for creating a hyperparameter tuning job.
+        """Return the hyperparameter ranges in a dictionary.
+
+        Dictionary to be used as part of a request for creating a hyperparameter tuning job.
         """
         if self._hyperparameter_ranges is None:
             return None
@@ -1069,8 +1052,9 @@ class HyperparameterTuner(object):
 
     @property
     def sagemaker_session(self):
-        """Convenience method for accessing the
-        :class:`~sagemaker.session.Session` object associated with the estimator
+        """Convenience method for accessing the SageMaker session.
+
+        It access :class:`~sagemaker.session.Session` object associated with the estimator
         for the ``HyperparameterTuner``.
         """
         estimator = self.estimator
@@ -1080,9 +1064,9 @@ class HyperparameterTuner(object):
         return estimator.sagemaker_session
 
     def analytics(self):
-        """An instance of HyperparameterTuningJobAnalytics for this latest
-        tuning job of this tuner. Analytics olbject gives you access to tuning
-        results summarized into a pandas dataframe.
+        """An instance of HyperparameterTuningJobAnalytics for this latest tuning job of this tuner.
+
+        Analytics olbject gives you access to tuning results summarized into a pandas dataframe.
         """
         return HyperparameterTuningJobAnalytics(self.latest_tuning_job.name, self.sagemaker_session)
 
@@ -1104,11 +1088,7 @@ class HyperparameterTuner(object):
                         pass
 
     def _validate_parameter_range(self, value_hp, parameter_range):
-        """
-        Args:
-            value_hp:
-            parameter_range:
-        """
+        """Placeholder docstring"""
         for (parameter_range_key, parameter_range_value) in parameter_range.__dict__.items():
             if parameter_range_key == "scaling_type":
                 continue
@@ -1122,8 +1102,10 @@ class HyperparameterTuner(object):
                 value_hp.validate(parameter_range_value)
 
     def transfer_learning_tuner(self, additional_parents=None, estimator=None):
-        """Creates a new ``HyperparameterTuner`` by copying the request fields
-        from the provided parent to the new instance of ``HyperparameterTuner``.
+        """Creates a new ``HyperparameterTuner``.
+
+        Creation is done by copying the request fields from the provided parent
+        to the new instance of ``HyperparameterTuner``.
         Followed by addition of warm start configuration with the type as
         "TransferLearning" and parents as the union of provided list of
         ``additional_parents`` and the ``self``. Also, training image in the new
@@ -1156,8 +1138,11 @@ class HyperparameterTuner(object):
         )
 
     def identical_dataset_and_algorithm_tuner(self, additional_parents=None):
-        """Creates a new ``HyperparameterTuner`` by copying the request fields
-        from the provided parent to the new instance of ``HyperparameterTuner``.
+        """Creates a new ``HyperparameterTuner``.
+
+        Creation is done by copying the request fields from the provided parent to the new instance
+        of ``HyperparameterTuner``.
+
         Followed by addition of warm start configuration with the type as
         "IdenticalDataAndAlgorithm" and parents as the union of provided list of
         ``additional_parents`` and the ``self``
@@ -1185,8 +1170,9 @@ class HyperparameterTuner(object):
         )
 
     def _create_warm_start_tuner(self, additional_parents, warm_start_type, estimator=None):
-        """Creates a new ``HyperparameterTuner`` with ``WarmStartConfig``, where
-        type will be equal to ``warm_start_type`` and``parents`` would be equal
+        """Creates a new ``HyperparameterTuner`` with ``WarmStartConfig``.
+
+        Where type will be equal to ``warm_start_type`` and``parents`` would be equal
         to union of ``additional_parents`` and self.
 
         Args:
@@ -1259,9 +1245,10 @@ class HyperparameterTuner(object):
         warm_start_config=None,
         early_stopping_type="Off",
     ):
-        """Factory method to create a ``HyperparameterTuner`` instance. It takes one or more
-        estimators to obtain configuration information for training jobs that are created as the
-        result of a hyperparameter tuning job. The estimators are provided through a dictionary
+        """Factory method to create a ``HyperparameterTuner`` instance.
+
+        It takes one or more estimators to obtain configuration information for training jobs that are
+        created as the result of a hyperparameter tuning job. The estimators are provided through a dictionary
         (i.e. ``estimator_dict``) with unique estimator names as the keys. For individual
         estimators separate objective metric names and hyperparameter ranges should be provided in
         two dictionaries, i.e. ``objective_metric_name_dict`` and ``hyperparameter_ranges_dict``,

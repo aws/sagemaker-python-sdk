@@ -466,8 +466,7 @@ class FeatureGroup:
         raise RuntimeError("No metastore is configured with this feature group.")
 
     def as_hive_ddl(self, database: str = "sagemaker_featurestore", table_name: str = None) -> str:
-        """Generate Hive DDL commands that can be used to define or change structure of tables or
-        databases in Hive.
+        """Generate Hive DDL commands to define or change structure of tables or databases in Hive.
 
         Schema of the table is generated based on the feature definitions. Columns are named
         after feature name and data-type are inferred based on feature type. Integral feature

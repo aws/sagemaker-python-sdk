@@ -1225,6 +1225,7 @@ class ModelMonitor(object):
 
     def _upload_and_convert_to_processing_input(self, source, destination, name):
         """Generates a ProcessingInput object from a source.
+
         Source can be a local path or an S3 uri.
 
         Args:
@@ -2319,6 +2320,7 @@ class DefaultModelMonitor(ModelMonitor):
 
 class ModelQualityMonitor(ModelMonitor):
     """Amazon SageMaker model monitor to monitor quality metrics for an endpoint.
+
     Please see the __init__ method of its base class for how to instantiate it.
     """
 
@@ -2657,6 +2659,7 @@ class ModelQualityMonitor(ModelMonitor):
         network_config=None,
     ):
         """Updates the existing monitoring schedule.
+
         If more options than schedule_cron_expression are to be updated, a new job definition will
         be created to hold them. The old job definition will not be deleted.
 

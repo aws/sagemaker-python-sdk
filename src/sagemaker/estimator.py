@@ -438,8 +438,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self._prepare_profiler_for_training()
 
     def _prepare_rules(self):
-        """Rules list includes both debugger and profiler rules. Customer can explicitly
-        disable any rule by setting rules to an empty list.
+        """Rules list includes both debugger and profiler rules.
+
+        Customer can explicitly disable any rule by setting rules to an empty list.
         """
         self.debugger_rules = []
         self.profiler_rules = []
@@ -476,9 +477,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         return debugger_rule_configs
 
     def _prepare_collection_configs(self):
-        """De-duplicate any collection configurations and save them
-        in the debugger hook configuration.
-        """
+        """De-duplicate configurations and save them in the debugger hook configuration."""
         # Create a set to de-duplicate CollectionConfigs.
         self.collection_configs = set()
         # Iterate through the debugger rules and add their respective CollectionConfigs to the set.
@@ -1571,8 +1570,9 @@ class _TrainingJob(_Job):
 
     def wait(self, logs="All"):
         """
-        Args:
+        Placeholder docstring.
 
+        Args:
             logs ([str]): A list of strings specifying which logs to print. Acceptable
                 strings are "All", "None", "Training", or "Rules". To maintain backwards
                 compatibility, boolean values are also accepted and converted to strings.
@@ -1592,8 +1592,7 @@ class _TrainingJob(_Job):
         return self.sagemaker_session.describe_training_job(self.job_name)
 
     def rule_job_summary(self):
-        """Calls describe_training_job and returns the
-        DebugRuleEvaluationStatuses and ProfilerRuleEvaluationStatuses dictionary.
+        """Calls describe_training_job and returns two dictionaries.
 
         Returns:
             list[dict]: A list of DebugRuleEvaluationStatuses and ProfilerRuleEvaluationStatuses

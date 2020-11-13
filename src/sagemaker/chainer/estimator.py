@@ -54,10 +54,10 @@ class Chainer(Framework):
         image_uri=None,
         **kwargs
     ):
-        """This ``Estimator`` executes an Chainer script in a managed Chainer
-        execution environment, within a SageMaker Training Job. The managed
-        Chainer environment is an Amazon-built Docker container that executes
-        functions defined in the supplied ``entry_point`` Python script.
+        """This ``Estimator`` executes an Chainer script in a managed execution environment.
+
+        The managed Chainer environment is an Amazon-built Docker container that executes functions
+        defined in the supplied ``entry_point`` Python script within a SageMaker Training Job.
 
         Training is started by calling
         :meth:`~sagemaker.amazon.estimator.Framework.fit` on this Estimator.
@@ -146,9 +146,7 @@ class Chainer(Framework):
         self.additional_mpi_options = additional_mpi_options
 
     def hyperparameters(self):
-        """Return hyperparameters used by your custom Chainer code during
-        training.
-        """
+        """Return hyperparameters used by your custom Chainer code during training."""
         hyperparameters = super(Chainer, self).hyperparameters()
 
         additional_hyperparameters = {
@@ -173,8 +171,7 @@ class Chainer(Framework):
         dependencies=None,
         **kwargs
     ):
-        """Create a SageMaker ``ChainerModel`` object that can be deployed to an
-        ``Endpoint``.
+        """Create a SageMaker ``ChainerModel`` object that can be deployed to an ``Endpoint``.
 
         Args:
             model_server_workers (int): Optional. The number of worker processes
@@ -229,8 +226,7 @@ class Chainer(Framework):
 
     @classmethod
     def _prepare_init_params_from_job_description(cls, job_details, model_channel_name=None):
-        """Convert the job description to init params that can be handled by the
-        class constructor
+        """Convert the job description to init params that can be handled by the class constructor.
 
         Args:
             job_details: the returned job details from a describe_training_job

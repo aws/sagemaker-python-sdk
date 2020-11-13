@@ -22,8 +22,9 @@ _EXT_TO_UPDATER_CLS = {".py": files.PyFileUpdater, ".ipynb": files.JupyterNotebo
 
 
 def _update_file(input_file, output_file):
-    """Updates a file to be compatible with version 2.0 and later of the SageMaker Python SDK,
-    and write the updated source to the output file.
+    """Updates a file to be compatible with version 2.0 and later of the SageMaker Python SDK.
+
+    It also writes the updated source to the output file.
 
     Args:
         input_file (str): The path to the file to be updated.

@@ -50,10 +50,7 @@ def determine_prefix(user_agent=""):
 
 
 def prepend_user_agent(client):
-    """
-    Args:
-        client:
-    """
+    """Placeholder docstring"""
     prefix = determine_prefix(client._client_config.user_agent)
 
     if client._client_config.user_agent is None:

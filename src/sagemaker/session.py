@@ -389,6 +389,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
     def _create_s3_bucket_if_it_does_not_exist(self, bucket_name, region):
         """Creates an S3 Bucket if it does not exist.
+
         Also swallows a few common exceptions that indicate that the bucket already exists or
         that it is being created.
 
@@ -1352,8 +1353,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         )
 
     def describe_monitoring_schedule(self, monitoring_schedule_name):
-        """Calls the DescribeMonitoringSchedule API for the given monitoring schedule name
-        and returns the response.
+        """Calls the DescribeMonitoringSchedule API for given monitoring schedule name and returns the response.
 
         Args:
             monitoring_schedule_name (str): The name of the processing job to describe.
@@ -1427,8 +1427,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         return response
 
     def was_processing_job_successful(self, job_name):
-        """Calls the DescribeProcessingJob API for the given job name
-        and returns the True if the job was successful. False otherwise.
+        """Calls the DescribeProcessingJob API for the given job name and returns True if job was successful.
 
         Args:
             job_name (str): The name of the processing job to describe.
@@ -1440,8 +1439,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         return job_desc["ProcessingJobStatus"] == "Completed"
 
     def describe_processing_job(self, job_name):
-        """Calls the DescribeProcessingJob API for the given job name
-        and returns the response.
+        """Calls the DescribeProcessingJob API for the given job name and returns the response.
 
         Args:
             job_name (str): The name of the processing job to describe.
@@ -1469,8 +1467,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         self.sagemaker_client.stop_training_job(TrainingJobName=job_name)
 
     def describe_training_job(self, job_name):
-        """Calls the DescribeTrainingJob API for the given job name
-        and returns the response.
+        """Calls the DescribeTrainingJob API for the given job name and returns the response.
 
         Args:
             job_name (str): The name of the training job to describe.
@@ -1541,8 +1538,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         self.sagemaker_client.create_auto_ml_job(**auto_ml_job_request)
 
     def describe_auto_ml_job(self, job_name):
-        """Calls the DescribeAutoMLJob API for the given job name
-        and returns the response.
+        """Calls the DescribeAutoMLJob API for the given job name and returns the response.
+
         Args:
             job_name (str): The name of the AutoML job to describe.
         Returns:
@@ -1617,8 +1614,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
     def logs_for_auto_ml_job(  # noqa: C901 - suppress complexity warning for this method
         self, job_name, wait=False, poll=10
     ):
-        """Display the logs for a given AutoML job, optionally tailing them until the
-        job is complete. If the output is a tty or a Jupyter cell, it will be color-coded
+        """Display the logs for a given AutoML job, optionally tailing them until the job is complete.
+
+        If the output is a tty or a Jupyter cell, it will be color-coded
         based on which instance the log entry is from.
 
         Args:
@@ -1892,7 +1890,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
         warm_start_config=None,
         tags=None,
     ):
-        """Create an Amazon SageMaker hyperparameter tuning job. This method supports creating
+        """Create an Amazon SageMaker hyperparameter tuning job.
+
+        This method supports creating
         tuning jobs with single or multiple training algorithms (estimators), while the ``tune()``
         method above only supports creating tuning jobs with single training algorithm.
 
@@ -1942,14 +1942,14 @@ class Session(object):  # pylint: disable=too-many-public-methods
         self.sagemaker_client.create_hyper_parameter_tuning_job(**tune_request)
 
     def describe_tuning_job(self, job_name):
-        """Calls the DescribeHyperParameterTuningJob API for the given job name
-        and returns the response.
+        """
+        Calls the DescribeHyperParameterTuningJob API for the given job name and returns the response.
 
-            Args:
-                job_name (str): The name of the hyperparameter tuning job to describe.
+        Args:
+            job_name (str): The name of the hyperparameter tuning job to describe.
 
-            Returns:
-                dict: A dictionary response with the hyperparameter tuning job description.
+        Returns:
+            dict: A dictionary response with the hyperparameter tuning job description.
         """
         return self.sagemaker_client.describe_hyper_parameter_tuning_job(
             HyperParameterTuningJobName=job_name
@@ -2401,6 +2401,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         tags=None,
     ):
         """Create an Amazon SageMaker ``Model``.
+
         Specify the S3 location of the model artifacts and Docker image containing
         the inference code. Amazon SageMaker uses this information to deploy the
         model in Amazon SageMaker. This method can also be used to create a Model for an Inference
@@ -2794,8 +2795,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
         new_data_capture_config_dict=None,
         new_production_variants=None,
     ):
-        """Create an Amazon SageMaker endpoint configuration from an existing one. Updating any
-        values that were passed in.
+        """Create an Amazon SageMaker endpoint configuration from an existing one.
+
+        Updating any values that were passed in.
 
         The endpoint configuration identifies the Amazon SageMaker model (created using the
         ``CreateModel`` API) and the hardware configuration on which to deploy the model. Provide
@@ -2859,8 +2861,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         self.sagemaker_client.create_endpoint_config(**request)
 
     def create_endpoint(self, endpoint_name, config_name, tags=None, wait=True):
-        """Create an Amazon SageMaker ``Endpoint`` according to the endpoint configuration
-        specified in the request.
+        """Create an Amazon SageMaker ``Endpoint`` according to the endpoint configuration in the request.
 
         Once the ``Endpoint`` is created, client applications can send requests to obtain
         inferences. The endpoint configuration is created using the ``CreateEndpointConfig`` API.
@@ -2887,8 +2888,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         return endpoint_name
 
     def update_endpoint(self, endpoint_name, endpoint_config_name, wait=True):
-        """Update an Amazon SageMaker ``Endpoint`` according to the endpoint configuration
-        specified in the request
+        """Update an Amazon SageMaker ``Endpoint`` according to the endpoint configuration in the request.
 
         Raise an error if endpoint with endpoint_name does not exist.
 
@@ -3056,8 +3056,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         return desc
 
     def describe_transform_job(self, job_name):
-        """Calls the DescribeTransformJob API for the given job name
-        and returns the response.
+        """Calls the DescribeTransformJob API for the given job name and returns the response.
 
         Args:
             job_name (str): The name of the transform job to describe.
@@ -3106,8 +3105,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 raise
 
     def _check_job_status(self, job, desc, status_key_name):
-        """Check to see if the job completed successfully and, if not, construct and
-        raise a exceptions.UnexpectedStatusException.
+        """Check to see if the job completed successfully.
+
+        If not, construct and raise a exceptions. (UnexpectedStatusException)
 
         Args:
             job (str): The name of the job to check.
@@ -3436,8 +3436,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
     def logs_for_job(  # noqa: C901 - suppress complexity warning for this method
         self, job_name, wait=False, poll=10, log_type="All"
     ):
-        """Display the logs for a given training job, optionally tailing them until the
-        job is complete. If the output is a tty or a Jupyter cell, it will be color-coded
+        """Display the logs for a given training job, optionally tailing them until the job is complete.
+
+        If the output is a tty or a Jupyter cell, it will be color-coded
         based on which instance the log entry is from.
 
         Args:
@@ -3554,8 +3555,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                     print("Managed Spot Training savings: {:.1f}%".format(saving))
 
     def logs_for_processing_job(self, job_name, wait=False, poll=10):
-        """Display the logs for a given processing job, optionally tailing them until the
-        job is complete.
+        """Display the logs for a given processing job, optionally tailing them until the job is complete.
 
         Args:
             job_name (str): Name of the processing job to display the logs for.
@@ -3633,8 +3633,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 print()
 
     def logs_for_transform_job(self, job_name, wait=False, poll=10):
-        """Display the logs for a given transform job, optionally tailing them until the
-        job is complete. If the output is a tty or a Jupyter cell, it will be color-coded
+        """Display the logs for a given transform job, optionally tailing them until the job is complete.
+
+        If the output is a tty or a Jupyter cell, it will be color-coded
         based on which instance the log entry is from.
 
         Args:
@@ -3973,8 +3974,9 @@ def production_variant(
     initial_weight=1,
     accelerator_type=None,
 ):
-    """Create a production variant description suitable for use in a ``ProductionVariant`` list as
-    part of a ``CreateEndpointConfig`` request.
+    """Create a production variant description suitable for use in a ``ProductionVariant`` list.
+
+    This is also part of a ``CreateEndpointConfig`` request.
 
     Args:
         model_name (str): The name of the SageMaker model this production variant references.
@@ -4009,6 +4011,7 @@ def production_variant(
 
 def get_execution_role(sagemaker_session=None):
     """Return the role ARN whose credentials are used to call the API.
+
     Throws an exception if
     Args:
         sagemaker_session(Session): Current sagemaker session
@@ -4066,6 +4069,7 @@ def _train_done(sagemaker_client, job_name, last_desc):
 
 def _processing_job_status(sagemaker_client, job_name):
     """Prints the job status for the given processing job name.
+
     Returns the job description.
 
     Args:
