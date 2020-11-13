@@ -2297,6 +2297,10 @@ class Framework(EstimatorBase):
         """
         if self.image_uri:
             return self.image_uri
+        if hasattr(self, "distribution"):
+            distribution = self.distribution  # pylint: disable=no-member
+        else:
+            distribution = None
         return image_uris.retrieve(
             self._framework_name,
             self.sagemaker_session.boto_region_name,
@@ -2304,6 +2308,7 @@ class Framework(EstimatorBase):
             version=self.framework_version,  # pylint: disable=no-member
             py_version=self.py_version,  # pylint: disable=no-member
             image_scope="training",
+            distribution=distribution,
         )
 
     @classmethod

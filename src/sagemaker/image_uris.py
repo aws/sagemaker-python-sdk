@@ -35,6 +35,7 @@ def retrieve(
     accelerator_type=None,
     image_scope=None,
     container_version=None,
+    distribution=None,
 ):
     """Retrieves the ECR URI for the Docker image matching the given arguments.
 
@@ -54,6 +55,8 @@ def retrieve(
             Valid values: "training", "inference", "eia". If ``accelerator_type`` is set,
             ``image_scope`` is ignored.
         container_version (str): the version of docker image
+        distribution (dict): A dictionary with information on how to run distributed training
+            (default: None).
 
     Returns:
         str: the ECR URI for the corresponding SageMaker Docker image.
@@ -77,9 +80,24 @@ def retrieve(
     processor = _processor(
         instance_type, config.get("processors") or version_config.get("processors")
     )
+
     tag = _format_tag(
-        version_config.get("tag_prefix", version), processor, py_version, container_version
+        version_config.get("tag_prefix", version),
+        processor,
+        py_version,
+        container_version,
     )
+
+    if _should_auto_select_container_version(instance_type, distribution):
+        container_versions = {
+            "tensorflow-2.3-gpu-py37": "cu110-ubuntu18.04-v3",
+            "tensorflow-1.15-gpu-py37": "cu110-ubuntu18.04-v8",
+            "mxnet-1.8-gpu-py37": "cu110-ubuntu16.04-v1",
+            "pytorch-1.6-gpu-py36": "cu110-ubuntu18.04-v3",
+        }
+        key = "-".join([framework, tag])
+        if key in container_versions:
+            tag = "-".join([tag, container_versions[key]])
 
     if tag:
         repo += ":{}".format(tag)
@@ -215,6 +233,23 @@ def _processor(instance_type, available_processors):
 
     _validate_arg(processor, available_processors, "processor")
     return processor
+
+
+def _should_auto_select_container_version(instance_type, distribution):
+    """Returns a boolean that indicates whether to use an auto-selected container version."""
+    p4d = False
+    if instance_type:
+        # looks for either "ml.<family>.<size>" or "ml_<family>"
+        match = re.match(r"^ml[\._]([a-z\d]+)\.?\w*$", instance_type)
+        if match:
+            family = match[1]
+            p4d = family == "p4d"
+
+    smdistributed = False
+    if distribution:
+        smdistributed = "smdistributed" in distribution
+
+    return p4d or smdistributed
 
 
 def _validate_py_version_and_set_if_needed(py_version, version_config, framework):
