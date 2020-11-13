@@ -1776,6 +1776,48 @@ class Session(object):  # pylint: disable=too-many-public-methods
         LOGGER.info("Creating compilation-job with name: %s", job_name)
         self.sagemaker_client.create_compilation_job(**compilation_job_request)
 
+    def package_model_for_edge(
+        self,
+        output_model_config,
+        role,
+        job_name,
+        compilation_job_name,
+        model_name,
+        model_version,
+        resource_key,
+        tags,
+    ):
+        """Create an Amazon SageMaker Edge packaging job.
+
+        Args:
+            output_model_config (dict): Identifies the Amazon S3 location where you want Amazon
+                SageMaker Edge to save the results of edge packaging job
+            role (str): An AWS IAM role (either name or full ARN). The Amazon SageMaker Edge
+                edge packaging jobs use this role to access model artifacts. You must grant
+                sufficient permissions to this role.
+            job_name (str): Name of the edge packaging job being created.
+            compilation_job_name (str): Name of the compilation job being created.
+            resource_key (str): KMS key to encrypt the disk used to package the job
+            tags (list[dict]): List of tags for labeling a compile model job. For more, see
+                https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
+        """
+        edge_packaging_job_request = {
+            "OutputConfig": output_model_config,
+            "RoleArn": role,
+            "ModelName": model_name,
+            "ModelVersion": model_version,
+            "EdgePackagingJobName": job_name,
+            "CompilationJobName": compilation_job_name,
+        }
+
+        if tags is not None:
+            edge_packaging_job_request["Tags"] = tags
+        if resource_key is not None:
+            edge_packaging_job_request["ResourceKey"] = (resource_key,)
+
+        LOGGER.info("Creating edge-packaging-job with name: %s", job_name)
+        self.sagemaker_client.create_edge_packaging_job(**edge_packaging_job_request)
+
     def tune(  # noqa: C901
         self,
         job_name,
@@ -2939,6 +2981,23 @@ class Session(object):  # pylint: disable=too-many-public-methods
         self._check_job_status(job, desc, "CompilationJobStatus")
         return desc
 
+    def wait_for_edge_packaging_job(self, job, poll=5):
+        """Wait for an Amazon SageMaker Edge packaging job to complete.
+
+        Args:
+            job (str): Name of the edge packaging job to wait for.
+            poll (int): Polling interval in seconds (default: 5).
+
+        Returns:
+            (dict): Return value from the ``DescribeEdgePackagingJob`` API.
+
+        Raises:
+            exceptions.UnexpectedStatusException: If the compilation job fails.
+        """
+        desc = _wait_until(lambda: _edge_packaging_job_status(self.sagemaker_client, job), poll)
+        self._check_job_status(job, desc, "EdgePackagingJobStatus")
+        return desc
+
     def wait_for_tuning_job(self, job, poll=5):
         """Wait for an Amazon SageMaker hyperparameter tuning job to complete.
 
@@ -3807,6 +3866,38 @@ def _processing_job_status(sagemaker_client, job_name):
 
     status = _STATUS_CODE_TABLE.get(status, status)
     print(compile_status_codes.get(status, "?"), end="")
+    sys.stdout.flush()
+
+    if status in in_progress_statuses:
+        return None
+
+    return desc
+
+
+def _edge_packaging_job_status(sagemaker_client, job_name):
+    """Process the current status of a packaging job
+
+    Args:
+        sagemaker_client (boto3.client.sagemaker): a sagemaker client
+        job_name (str): the name of the job to inspec
+
+    Returns:
+        Dict: the status of the edge packaging job
+    """
+    package_status_codes = {
+        "Completed": "!",
+        "InProgress": ".",
+        "Failed": "*",
+        "Stopped": "s",
+        "Stopping": "_",
+    }
+    in_progress_statuses = ["InProgress", "Stopping", "Starting"]
+
+    desc = sagemaker_client.describe_edge_packaging_job(EdgePackagingJobName=job_name)
+    status = desc["EdgePackagingJobStatus"]
+
+    status = _STATUS_CODE_TABLE.get(status, status)
+    print(package_status_codes.get(status, "?"), end="")
     sys.stdout.flush()
 
     if status in in_progress_statuses:
