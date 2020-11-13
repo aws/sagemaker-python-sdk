@@ -23,6 +23,7 @@ import botocore
 
 from botocore.exceptions import ClientError
 
+from sagemaker._studio import _append_project_tags
 from sagemaker.session import Session
 from sagemaker.workflow.entities import (
     Entity,
@@ -90,6 +91,8 @@ class Pipeline(Entity):
         Returns:
             A response dict from the service.
         """
+        tags = _append_project_tags(tags)
+
         kwargs = self._create_args(role_arn, description)
         update_args(
             kwargs,
