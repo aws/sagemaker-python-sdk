@@ -132,8 +132,7 @@ class MXNetModel(FrameworkModel):
         self.model_server_workers = model_server_workers
 
     def prepare_container_def(self, instance_type=None, accelerator_type=None):
-        """Return a container definition with framework configuration set in
-        model environment variables.
+        """Return a container definition with framework configuration set in model environment variables.
 
         Args:
             instance_type (str): The EC2 instance type to deploy this Model to.
@@ -195,8 +194,9 @@ class MXNetModel(FrameworkModel):
         )
 
     def _is_mms_version(self):
-        """Whether the framework version corresponds to an inference image using
-        the Multi-Model Server (https://github.com/awslabs/multi-model-server).
+        """Whether the framework version corresponds to an inference image using the Multi-Model Server.
+
+        MMS Server: (https://github.com/awslabs/multi-model-server).
 
         Returns:
             bool: If the framework version corresponds to an image using MMS.

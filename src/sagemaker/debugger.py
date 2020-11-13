@@ -10,8 +10,8 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Amazon SageMaker Debugger provides a full visibility
-into training jobs of state-of-the-art machine learning models.
+"""Amazon SageMaker Debugger provides a full visibility into training jobs of machine learning models.
+
 This module provides SageMaker Debugger high-level methods
 to set up Debugger objects, such as Debugger built-in rules, tensor collections,
 and hook configuration. Use the Debugger objects for parameters when constructing
@@ -29,6 +29,7 @@ framework_name = "debugger"
 def get_rule_container_image_uri(region):
     """
     Returns the Debugger rule image URI for the given AWS region.
+
     For a full list of rule image URIs,
     see `Use Debugger Docker Images for Built-in or Custom Rules
     <https://docs.aws.amazon.com/sagemaker/latest/dg/debugger-docker-images-rules.html>`_.
@@ -44,6 +45,7 @@ def get_rule_container_image_uri(region):
 
 class Rule(object):
     """Debugger rules analyze tensors emitted while training jobs are running.
+
     The rules monitor conditions that are critical for success of your training job.
     """
 
@@ -59,8 +61,10 @@ class Rule(object):
         collections_to_save,
     ):
         """
-        Use the following ``Rule.sagemaker`` class method for built-in rules
-        or the ``Rule.custom`` class method for custom rules.
+        Use the following ``Rule.sagemaker`` class method for built-in rules.
+
+        Or use the ``Rule.custom`` class method for custom rules.
+
         Do not directly use the `Rule` initialization method.
         """
         self.name = name
@@ -83,8 +87,9 @@ class Rule(object):
         rule_parameters=None,
         collections_to_save=None,
     ):
-        """Initialize a ``Rule`` processing job for a *built-in* SageMaker Debugging
-        Rule. The built-in rule analyzes tensors emitted during the training of a model
+        """Initialize a ``Rule`` processing job for a *built-in* SageMaker Debugging Rule.
+
+        The built-in rule analyzes tensors emitted during the training of a model
         and monitors conditions that are critical for the success of the training
         job.
 
@@ -211,8 +216,9 @@ class Rule(object):
         rule_parameters=None,
         collections_to_save=None,
     ):
-        """Initialize a ``Rule`` processing job for a *custom* SageMaker Debugging
-        Rule. The custom rule analyzes tensors emitted during the training of a model
+        """Initialize a ``Rule`` processing job for a *custom* SageMaker Debugging Rule.
+
+        The custom rule analyzes tensors emitted during the training of a model
         and monitors conditions that are critical for the success of a training
         job. For more information, see `Create Debugger Custom Rules for Training Job
         Analysis
@@ -274,8 +280,7 @@ class Rule(object):
         )
 
     def to_debugger_rule_config_dict(self):
-        """Generates a request dictionary using the parameters provided
-        when initializing the object.
+        """Generates a request dictionary using the parameters provided when initializing the object.
 
         Returns:
             dict: An portion of an API request as a dictionary.
@@ -306,6 +311,7 @@ class Rule(object):
 class DebuggerHookConfig(object):
     """
     Initialize an instance of ``DebuggerHookConfig``.
+
     DebuggerHookConfig provides options to customize how debugging
     information is emitted and saved. This high-level DebuggerHookConfig class
     runs based on the `smdebug.SaveConfig
@@ -322,6 +328,8 @@ class DebuggerHookConfig(object):
         collection_configs=None,
     ):
         """
+        Function to initialize Debugger hook configuration.
+
         Args:
             s3_output_path (str): Optional. The location in S3 to store the output tensors.
                 The default Debugger output path is created under the
@@ -356,8 +364,7 @@ class DebuggerHookConfig(object):
         self.collection_configs = collection_configs
 
     def _to_request_dict(self):
-        """Generates a request dictionary using the parameters provided
-        when initializing the object.
+        """Generates a request dictionary using the parameters provided when initializing the object.
 
         Returns:
             dict: An portion of an API request as a dictionary.
@@ -380,12 +387,15 @@ class DebuggerHookConfig(object):
 
 
 class TensorBoardOutputConfig(object):
-    """A TensorBoard ouput configuration object to provide options
-    to customize debugging visualizations using TensorBoard.
+    """A TensorBoard ouput configuration object.
+
+    It provides options to customize debugging visualizations using TensorBoard.
     """
 
     def __init__(self, s3_output_path, container_local_output_path=None):
         """
+        Function to initialize TensorBoard output configuration.
+
         Args:
             s3_output_path (str): Optional. The location in S3 to store the output.
             container_local_output_path (str): Optional. The local path in the container.
@@ -579,8 +589,7 @@ class CollectionConfig(object):
         return hash((self.name, tuple(sorted((self.parameters or {}).items()))))
 
     def _to_request_dict(self):
-        """Generates a request dictionary using the parameters provided
-        when initializing the object.
+        """Generates a request dictionary using the parameters provided when initializing the object.
 
         Returns:
             dict: An portion of an API request as a dictionary.

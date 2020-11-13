@@ -51,9 +51,7 @@ class SKLearnPredictor(Predictor):
 
 
 class SKLearnModel(FrameworkModel):
-    """An Scikit-learn SageMaker ``Model`` that can be deployed to a SageMaker
-    ``Endpoint``.
-    """
+    """An Scikit-learn SageMaker ``Model`` that can be deployed to a SageMaker ``Endpoint``."""
 
     _framework_name = defaults.SKLEARN_NAME
 
@@ -127,8 +125,7 @@ class SKLearnModel(FrameworkModel):
         self.model_server_workers = model_server_workers
 
     def prepare_container_def(self, instance_type=None, accelerator_type=None):
-        """Return a container definition with framework configuration set in
-        model environment variables.
+        """Container definition with framework configuration set in model environment variables.
 
         Args:
             instance_type (str): The EC2 instance type to deploy this Model to.

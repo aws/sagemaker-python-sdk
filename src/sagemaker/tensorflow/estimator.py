@@ -240,9 +240,11 @@ class TensorFlow(Framework):
         dependencies=None,
         **kwargs
     ):
-        """Create a ``TensorFlowModel`` object that can be used for creating
-        SageMaker model entities, deploying to a SageMaker endpoint, or
-        starting SageMaker Batch Transform jobs.
+        """
+        Create a ``TensorFlowModel`` object that can be used for creating SageMaker model entities.
+
+        This can be done by deploying it to a SageMaker endpoint,
+        or starting SageMaker Batch Transform jobs.
 
         Args:
             role (str): The ``TensorFlowModel``, which is also used during transform jobs.
@@ -334,8 +336,7 @@ class TensorFlow(Framework):
         return None
 
     def _validate_and_set_debugger_configs(self):
-        """Disable Debugger Hook Config for ParameterServer (PS) as it is not
-        supported in smdebug.
+        """Disable Debugger Hook Config for ParameterServer (PS) as it is not supported in smdebug.
 
         Else, set default HookConfig
         """
@@ -376,8 +377,9 @@ class TensorFlow(Framework):
         enable_network_isolation=None,
         model_name=None,
     ):
-        """Return a ``Transformer`` that uses a SageMaker Model based on the training job. It
-        reuses the SageMaker Session and base job name used by the Estimator.
+        """Return a ``Transformer`` that uses a SageMaker Model based on the training job.
+
+        It reuses the SageMaker Session and base job name used by the Estimator.
 
         Args:
             instance_count (int): Number of EC2 instances to use.

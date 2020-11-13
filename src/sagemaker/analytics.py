@@ -36,8 +36,9 @@ METRICS_PERIOD_DEFAULT = 60  # seconds
 
 
 class AnalyticsMetricsBase(with_metaclass(ABCMeta, object)):
-    """Base class for tuning job or training job analytics classes. Understands
-    common functionality like persistence and caching.
+    """Base class for tuning job or training job analytics classes.
+
+    Understands common functionality like persistence and caching.
     """
 
     def __init__(self):
@@ -52,9 +53,9 @@ class AnalyticsMetricsBase(with_metaclass(ABCMeta, object)):
         self.dataframe().to_csv(filename)
 
     def dataframe(self, force_refresh=False):
-        """A pandas dataframe with lots of interesting results about this
-        object. Created by calling SageMaker List and Describe APIs and
-        converting them into a convenient tabular summary.
+        """A pandas dataframe with lots of interesting results about this object.
+
+        Created by calling SageMaker List and Describe APIs and converting them into a convenient tabular summary.
 
         Args:
             force_refresh (bool): Set to True to fetch the latest data from
@@ -71,17 +72,15 @@ class AnalyticsMetricsBase(with_metaclass(ABCMeta, object)):
         """Sub-class must calculate the dataframe and return it."""
 
     def clear_cache(self):
-        """Clear the object of all local caches of API methods, so that the next
-        time any properties are accessed they will be refreshed from the
-        service.
+        """Clear the object of all local caches of API methods.
+
+        So that the next time any properties are accessed they will be refreshed from the service.
         """
         self._dataframe = None
 
 
 class HyperparameterTuningJobAnalytics(AnalyticsMetricsBase):
-    """Fetch results about a hyperparameter tuning job and make them accessible
-    for analytics.
-    """
+    """Fetch results about a hyperparameter tuning job and make them accessible for analytics."""
 
     def __init__(self, hyperparameter_tuning_job_name, sagemaker_session=None):
         """Initialize a ``HyperparameterTuningJobAnalytics`` instance.
@@ -156,8 +155,9 @@ class HyperparameterTuningJobAnalytics(AnalyticsMetricsBase):
 
     @property
     def tuning_ranges(self):
-        """A dictionary describing the ranges of all tuned hyperparameters. The
-        keys are the names of the hyperparameter, and the values are the ranges.
+        """A dictionary describing the ranges of all tuned hyperparameters.
+
+        The keys are the names of the hyperparameter, and the values are the ranges.
 
         The output can take one of two forms:
 
@@ -216,8 +216,7 @@ class HyperparameterTuningJobAnalytics(AnalyticsMetricsBase):
         return out
 
     def description(self, force_refresh=False):
-        """Call ``DescribeHyperParameterTuningJob`` for the hyperparameter
-        tuning job.
+        """Call ``DescribeHyperParameterTuningJob`` for the hyperparameter tuning job.
 
         Args:
             force_refresh (bool): Set to True to fetch the latest data from
@@ -236,8 +235,7 @@ class HyperparameterTuningJobAnalytics(AnalyticsMetricsBase):
         return self._tuning_job_describe_result
 
     def training_job_summaries(self, force_refresh=False):
-        """A (paginated) list of everything from
-        ``ListTrainingJobsForTuningJob``.
+        """A (paginated) list of everything from ``ListTrainingJobsForTuningJob``.
 
         Args:
             force_refresh (bool): Set to True to fetch the latest data from
@@ -270,9 +268,7 @@ class HyperparameterTuningJobAnalytics(AnalyticsMetricsBase):
 
 
 class TrainingJobAnalytics(AnalyticsMetricsBase):
-    """Fetch training curve data from CloudWatch Metrics for a specific training
-    job.
-    """
+    """Fetch training curve data from CloudWatch Metrics for a specific training job."""
 
     CLOUDWATCH_NAMESPACE = "/aws/sagemaker/TrainingJobs"
 
@@ -499,7 +495,8 @@ class ExperimentAnalytics(AnalyticsMetricsBase):
         self._trial_components = None
 
     def _reshape_parameters(self, parameters):
-        """Reshape trial component parameters to a pandas column
+        """Reshape trial component parameters to a pandas column.
+
         Args:
             parameters: trial component parameters
         Returns:
@@ -513,7 +510,8 @@ class ExperimentAnalytics(AnalyticsMetricsBase):
         return out
 
     def _reshape_metrics(self, metrics):
-        """Reshape trial component metrics to a pandas column
+        """Reshape trial component metrics to a pandas column.
+
         Args:
             metrics: trial component metrics
         Returns:
@@ -533,7 +531,8 @@ class ExperimentAnalytics(AnalyticsMetricsBase):
         return out
 
     def _reshape_artifacts(self, artifacts, _artifact_names):
-        """Reshape trial component input/output artifacts to a pandas column
+        """Reshape trial component input/output artifacts to a pandas column.
+
         Args:
             artifacts: trial component input/output artifacts
         Returns:
@@ -548,7 +547,8 @@ class ExperimentAnalytics(AnalyticsMetricsBase):
         return out
 
     def _reshape_parents(self, parents):
-        """Reshape trial component parents to a pandas column
+        """Reshape trial component parents to a pandas column.
+
         Args:
             parents: trial component parents (trials and experiments)
         Returns:
@@ -565,7 +565,8 @@ class ExperimentAnalytics(AnalyticsMetricsBase):
         return out
 
     def _reshape(self, trial_component):
-        """Reshape trial component data to pandas columns
+        """Reshape trial component data to pandas columns.
+
         Args:
             trial_component: dict representing a trial component
         Returns:
@@ -595,9 +596,7 @@ class ExperimentAnalytics(AnalyticsMetricsBase):
         return out
 
     def _fetch_dataframe(self):
-        """Return a pandas dataframe with all the trial_components,
-        along with their parameters and metrics.
-        """
+        """Return a pandas dataframe with all the trial_components, along with their parameters and metrics."""
         df = pd.DataFrame([self._reshape(component) for component in self._get_trial_components()])
         return df
 

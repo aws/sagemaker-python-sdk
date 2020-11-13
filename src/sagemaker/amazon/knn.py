@@ -83,8 +83,9 @@ class KNN(AmazonAlgorithmEstimatorBase):
         faiss_index_pq_m=None,
         **kwargs
     ):
-        """k-nearest neighbors (KNN) is :class:`Estimator` used for
-        classification and regression. This Estimator may be fit via calls to
+        """k-nearest neighbors (KNN) is :class:`Estimator` used for classification and regression.
+
+        This Estimator may be fit via calls to
         :meth:`~sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase.fit`.
         It requires Amazon :class:`~sagemaker.amazon.record_pb2.Record` protobuf
         serialized data to be stored in S3. There is an utility
@@ -159,8 +160,9 @@ class KNN(AmazonAlgorithmEstimatorBase):
             )
 
     def create_model(self, vpc_config_override=VPC_CONFIG_DEFAULT, **kwargs):
-        """Return a :class:`~sagemaker.amazon.KNNModel` referencing the latest
-        s3 model data produced by this Estimator.
+        """Return a :class:`~sagemaker.amazon.KNNModel`.
+
+        It references the latest s3 model data produced by this Estimator.
 
         Args:
             vpc_config_override (dict[str, list[str]]): Optional override for VpcConfig set on
@@ -178,12 +180,7 @@ class KNN(AmazonAlgorithmEstimatorBase):
         )
 
     def _prepare_for_training(self, records, mini_batch_size=None, job_name=None):
-        """
-        Args:
-            records:
-            mini_batch_size:
-            job_name:
-        """
+        """Placeholder docstring"""
         super(KNN, self)._prepare_for_training(
             records, mini_batch_size=mini_batch_size, job_name=job_name
         )
@@ -206,6 +203,8 @@ class KNNPredictor(Predictor):
 
     def __init__(self, endpoint_name, sagemaker_session=None):
         """
+        Function to initialize KNNPredictor.
+
         Args:
             endpoint_name (str): Name of the Amazon SageMaker endpoint to which
                 requests are sent.
@@ -223,13 +222,15 @@ class KNNPredictor(Predictor):
 
 
 class KNNModel(Model):
-    """Reference S3 model data created by KNN estimator. Calling
-    :meth:`~sagemaker.model.Model.deploy` creates an Endpoint and returns
-    :class:`KNNPredictor`.
+    """Reference S3 model data created by KNN estimator.
+
+    Calling :meth:`~sagemaker.model.Model.deploy` creates an Endpoint and returns :class:`KNNPredictor`.
     """
 
     def __init__(self, model_data, role, sagemaker_session=None, **kwargs):
         """
+        Function to initialize KNNModel.
+
         Args:
             model_data (str): The S3 location of a SageMaker model data
                 ``.tar.gz`` file.

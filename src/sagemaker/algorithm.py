@@ -25,8 +25,9 @@ from sagemaker.predictor import Predictor
 
 
 class AlgorithmEstimator(EstimatorBase):
-    """A generic Estimator to train using any algorithm object (with an
-    ``algorithm_arn``). The Algorithm can be your own, or any Algorithm from AWS
+    """A generic Estimator to train using any algorithm object (with an ``algorithm_arn``).
+
+    The Algorithm can be your own, or any Algorithm from AWS
     Marketplace that you have a valid subscription for. This class will perform
     client-side validation on all the inputs.
     """
@@ -212,10 +213,7 @@ class AlgorithmEstimator(EstimatorBase):
             )
 
     def set_hyperparameters(self, **kwargs):
-        """
-        Args:
-            **kwargs:
-        """
+        """Placeholder docstring"""
         for k, v in kwargs.items():
             value = self._validate_and_cast_hyperparameter(k, v)
             self.hyperparam_dict[k] = value
@@ -330,9 +328,9 @@ class AlgorithmEstimator(EstimatorBase):
         role=None,
         volume_kms_key=None,
     ):
-        """Return a ``Transformer`` that uses a SageMaker Model based on the
-        training job. It reuses the SageMaker Session and base job name used by
-        the Estimator.
+        """Return a ``Transformer`` that uses a SageMaker Model based on the  training job.
+
+        It reuses the SageMaker Session and base job name used by the Estimator.
 
         Args:
             instance_count (int): Number of EC2 instances to use.
@@ -413,32 +411,18 @@ class AlgorithmEstimator(EstimatorBase):
         # Validate hyperparameters
         # an explicit call to set_hyperparameters() will also validate the hyperparameters
         # but it is possible that the user never called it.
-        """
-        Args:
-            job_name:
-        """
         self._validate_and_set_default_hyperparameters()
 
         super(AlgorithmEstimator, self)._prepare_for_training(job_name)
 
     def fit(self, inputs=None, wait=True, logs=True, job_name=None):
-        """
-        Args:
-            inputs:
-            wait:
-            logs:
-            job_name:
-        """
+        """Placeholder docstring"""
         if inputs:
             self._validate_input_channels(inputs)
 
         super(AlgorithmEstimator, self).fit(inputs, wait, logs, job_name)
 
     def _validate_input_channels(self, channels):
-        """
-        Args:
-            channels:
-        """
         train_spec = self.algorithm_spec["TrainingSpecification"]
         algorithm_name = self.algorithm_spec["AlgorithmName"]
         training_channels = {c["Name"]: c for c in train_spec["TrainingChannels"]}
@@ -456,11 +440,6 @@ class AlgorithmEstimator(EstimatorBase):
                 raise ValueError("Required input channel: %s Was not provided." % (name))
 
     def _validate_and_cast_hyperparameter(self, name, v):
-        """
-        Args:
-            name:
-            v:
-        """
         algorithm_name = self.algorithm_spec["AlgorithmName"]
 
         if name not in self.hyperparameter_definitions:
@@ -514,11 +493,6 @@ class AlgorithmEstimator(EstimatorBase):
         return definitions
 
     def _hyperparameter_range_and_class(self, parameter_type, hyperparameter):
-        """
-        Args:
-            parameter_type:
-            hyperparameter:
-        """
         if parameter_type in self._hyperpameters_with_range:
             range_name = parameter_type + "ParameterRangeSpecification"
 
@@ -559,10 +533,6 @@ class AlgorithmEstimator(EstimatorBase):
         return parameter_class, parameter_range
 
     def _algorithm_training_input_modes(self, training_channels):
-        """
-        Args:
-            training_channels:
-        """
         current_input_modes = {"File", "Pipe"}
         for channel in training_channels:
             supported_input_modes = set(channel["SupportedInputModes"])
@@ -572,8 +542,7 @@ class AlgorithmEstimator(EstimatorBase):
 
     @classmethod
     def _prepare_init_params_from_job_description(cls, job_details, model_channel_name=None):
-        """Convert the job description to init params that can be handled by the
-        class constructor
+        """Convert the job description to init params that can be handled by the class constructor.
 
         Args:
             job_details (dict): the returned job details from a DescribeTrainingJob

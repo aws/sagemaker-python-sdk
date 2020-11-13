@@ -32,8 +32,9 @@ class SparkMLPredictor(Predictor):
     """
 
     def __init__(self, endpoint_name, sagemaker_session=None, **kwargs):
-        """Initializes a SparkMLPredictor which should be used with SparkMLModel
-        to perform predictions against SparkML models serialized via MLeap. The
+        """Initializes a SparkMLPredictor which should be used with SparkMLModel.
+
+        It is used to perform predictions against SparkML models serialized via MLeap. The
         response is returned in text/csv format which is the default response
         format for SparkML Serving container.
 
@@ -55,6 +56,7 @@ class SparkMLPredictor(Predictor):
 
 class SparkMLModel(Model):
     """Model data and S3 location holder for MLeap serialized SparkML model.
+
     Calling :meth:`~sagemaker.model.Model.deploy` creates an Endpoint and return
     a Predictor to performs predictions against an MLeap serialized SparkML
     model .

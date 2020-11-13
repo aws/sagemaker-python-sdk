@@ -56,9 +56,7 @@ class PyTorchPredictor(Predictor):
 
 
 class PyTorchModel(FrameworkModel):
-    """An PyTorch SageMaker ``Model`` that can be deployed to a SageMaker
-    ``Endpoint``.
-    """
+    """An PyTorch SageMaker ``Model`` that can be deployed to a SageMaker ``Endpoint``."""
 
     _framework_name = "pytorch"
     _LOWEST_MMS_VERSION = "1.2"
@@ -131,8 +129,7 @@ class PyTorchModel(FrameworkModel):
         self.model_server_workers = model_server_workers
 
     def prepare_container_def(self, instance_type=None, accelerator_type=None):
-        """Return a container definition with framework configuration set in
-        model environment variables.
+        """A container definition with framework configuration set in model environment variables.
 
         Args:
             instance_type (str): The EC2 instance type to deploy this Model to.
@@ -194,7 +191,10 @@ class PyTorchModel(FrameworkModel):
         )
 
     def _is_mms_version(self):
-        """Whether the framework version corresponds to an inference image using
+        """
+        Determines if the framework corresponds to an and using MMS.
+
+        Whether the framework version corresponds to an inference image using
         the Multi-Model Server (https://github.com/awslabs/multi-model-server).
 
         Returns:

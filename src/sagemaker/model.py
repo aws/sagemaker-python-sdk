@@ -105,9 +105,9 @@ class Model(object):
         self.model_kms_key = model_kms_key
 
     def _init_sagemaker_session_if_does_not_exist(self, instance_type):
-        """Set ``self.sagemaker_session`` to be a ``LocalSession`` or
-        ``Session`` if it is not already. The type of session object is
-        determined by the instance type.
+        """Set ``self.sagemaker_session`` to be a ``LocalSession`` or ``Session`` if it is not already.
+
+        The type of session object is determined by the instance type.
         """
         if self.sagemaker_session:
             return
@@ -120,8 +120,9 @@ class Model(object):
     def prepare_container_def(
         self, instance_type=None, accelerator_type=None
     ):  # pylint: disable=unused-argument
-        """Return a dict created by ``sagemaker.container_def()`` for deploying
-        this model to a specified instance type.
+        """Return a dict created by ``sagemaker.container_def()``.
+
+        It is used for deploying this model to a specified instance type.
 
         Subclasses can override this to provide custom container definitions
         for deployment to a specific instance type. Called by ``deploy()``.
@@ -213,21 +214,7 @@ class Model(object):
         target_platform_accelerator=None,
         compiler_options=None,
     ):
-        """
-        Args:
-            target_instance_type:
-            input_shape:
-            output_path:
-            role:
-            compile_max_run:
-            job_name:
-            framework:
-            tags:
-            target_platform_os:
-            target_platform_arch:
-            target_platform_accelerator:
-            compiler_options:
-        """
+        """Placeholder Docstring"""
         input_model_config = {
             "S3Uri": self.model_data,
             "DataInputConfig": json.dumps(input_shape)
@@ -435,8 +422,7 @@ class Model(object):
         data_capture_config=None,
         **kwargs,
     ):
-        """Deploy this ``Model`` to an ``Endpoint`` and optionally return a
-        ``Predictor``.
+        """Deploy this ``Model`` to an ``Endpoint`` and optionally return a ``Predictor``.
 
         Create a SageMaker ``Model`` and ``EndpointConfig``, and deploy an
         ``Endpoint`` from this ``Model``. If ``self.predictor_cls`` is not None,
@@ -829,8 +815,7 @@ class FrameworkModel(Model):
         self.repacked_model_data = None
 
     def prepare_container_def(self, instance_type=None, accelerator_type=None):
-        """Return a container definition with framework configuration set in
-        model environment variables.
+        """Return a container definition with framework configuration set in model environment variables.
 
         This also uploads user-supplied code to S3.
 
@@ -854,11 +839,7 @@ class FrameworkModel(Model):
         return sagemaker.container_def(self.image_uri, self.model_data, deploy_env)
 
     def _upload_code(self, key_prefix, repack=False):
-        """
-        Args:
-            key_prefix:
-            repack:
-        """
+        """Placeholder Docstring"""
         local_code = utils.get_config_value("local.local_code", self.sagemaker_session.config)
         if self.sagemaker_session.local_mode and local_code:
             self.uploaded_code = None
@@ -975,8 +956,7 @@ class ModelPackage(Model):
         return name
 
     def enable_network_isolation(self):
-        """Whether to enable network isolation when creating a model out of this
-        ModelPackage
+        """Whether to enable network isolation when creating a model out of this ModelPackage
 
         Returns:
             bool: If network isolation should be enabled or not.

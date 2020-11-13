@@ -39,6 +39,7 @@ class TrainingInput(object):
         shuffle_config=None,
     ):
         """Create a definition for input data used by an SageMaker training job.
+
         See AWS documentation on the ``CreateTrainingJob`` API for more details on the parameters.
 
         Args:

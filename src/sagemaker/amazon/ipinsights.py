@@ -73,8 +73,9 @@ class IPInsights(AmazonAlgorithmEstimatorBase):
         weight_decay=None,
         **kwargs
     ):
-        """This estimator is for IP Insights, an unsupervised algorithm that
-        learns usage patterns of IP addresses.
+        """This estimator is for IP Insights.
+
+        An unsupervised algorithm that learns usage patterns of IP addresses.
 
         This Estimator may be fit via calls to
         :meth:`~sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase.fit`.
@@ -167,12 +168,7 @@ class IPInsights(AmazonAlgorithmEstimatorBase):
         )
 
     def _prepare_for_training(self, records, mini_batch_size=None, job_name=None):
-        """
-        Args:
-            records:
-            mini_batch_size:
-            job_name:
-        """
+        """Placeholder docstring"""
         if mini_batch_size is not None and (mini_batch_size < 1 or mini_batch_size > 500000):
             raise ValueError("mini_batch_size must be in [1, 500000]")
         super(IPInsights, self)._prepare_for_training(
@@ -181,8 +177,7 @@ class IPInsights(AmazonAlgorithmEstimatorBase):
 
 
 class IPInsightsPredictor(Predictor):
-    """Returns dot product of entity and IP address embeddings as a score for
-    compatibility.
+    """Returns dot product of entity and IP address embeddings as a score for compatibility.
 
     The implementation of
     :meth:`~sagemaker.predictor.Predictor.predict` in this
@@ -194,6 +189,7 @@ class IPInsightsPredictor(Predictor):
     def __init__(self, endpoint_name, sagemaker_session=None):
         """
         Args:
+
             endpoint_name (str): Name of the Amazon SageMaker endpoint to which
                 requests are sent.
             sagemaker_session (sagemaker.session.Session): A SageMaker Session
@@ -210,14 +206,16 @@ class IPInsightsPredictor(Predictor):
 
 
 class IPInsightsModel(Model):
-    """Reference IPInsights s3 model data. Calling
-    :meth:`~sagemaker.model.Model.deploy` creates an Endpoint and returns a
+    """Reference IPInsights s3 model data.
+
+    Calling :meth:`~sagemaker.model.Model.deploy` creates an Endpoint and returns a
     Predictor that calculates anomaly scores for data points.
     """
 
     def __init__(self, model_data, role, sagemaker_session=None, **kwargs):
         """
         Args:
+
             model_data (str): The S3 location of a SageMaker model data
                 ``.tar.gz`` file.
             role (str): An AWS IAM role (either name or full ARN). The Amazon

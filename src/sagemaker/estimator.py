@@ -437,9 +437,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                 self.debugger_rule_configs.append(rule.to_debugger_rule_config_dict())
 
     def _prepare_collection_configs(self):
-        """De-duplicate any collection configurations and save them
-        in the debugger hook configuration.
-        """
+        """De-duplicate any collection configurations and save them in the debugger hook configuration."""
         # Create a set to de-duplicate CollectionConfigs.
         self.collection_configs = set()
         # Iterate through the rules and add their respective CollectionConfigs to the set.
@@ -709,8 +707,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         tags=None,
         **kwargs,
     ):
-        """Deploy the trained model to an Amazon SageMaker endpoint and return a
-        ``sagemaker.Predictor`` object.
+        """Deploy the trained model to an Amazon SageMaker endpoint and return ``sagemaker.Predictor`` object.
 
         More information:
         http://docs.aws.amazon.com/sagemaker/latest/dg/how-it-works-training.html
@@ -805,9 +802,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
 
     @property
     def model_data(self):
-        """str: The model location in S3. Only set if Estimator has been
-        ``fit()``.
-        """
+        """str: The model location in S3. Only set if Estimator has been ``fit()``."""
         if self.latest_training_job is not None:
             model_uri = self.sagemaker_session.sagemaker_client.describe_training_job(
                 TrainingJobName=self.latest_training_job.name
@@ -825,8 +820,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
 
     @abstractmethod
     def create_model(self, **kwargs):
-        """Create a SageMaker ``Model`` object that can be deployed to an
-        ``Endpoint``.
+        """Create a SageMaker ``Model`` object that can be deployed to an ``Endpoint``.
 
         Args:
             **kwargs: Keyword arguments used by the implemented method for
@@ -839,8 +833,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
 
     @classmethod
     def _prepare_init_params_from_job_description(cls, job_details, model_channel_name=None):
-        """Convert the job description to init params that can be handled by the
-        class constructor
+        """Convert the job description to init params that can be handled by the class constructor.
 
         Args:
             job_details: the returned job details from a describe_training_job
@@ -928,8 +921,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         enable_network_isolation=None,
         model_name=None,
     ):
-        """Return a ``Transformer`` that uses a SageMaker Model based on the
-        training job. It reuses the SageMaker Session and base job name used by
+        """Return a ``Transformer`` that uses a SageMaker Model based on the training job.
+
+        It reuses the SageMaker Session and base job name used by
         the Estimator.
 
         Args:
@@ -1026,9 +1020,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
 
     @property
     def training_job_analytics(self):
-        """Return a ``TrainingJobAnalytics`` object for the current training
-        job.
-        """
+        """Return a ``TrainingJobAnalytics`` object for the current training job."""
         if self._current_job_name is None:
             raise ValueError("Estimator is not associated with a TrainingJob")
         return TrainingJobAnalytics(
@@ -1036,8 +1028,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         )
 
     def get_vpc_config(self, vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT):
-        """Returns VpcConfig dict either from this Estimator's subnets and
-        security groups, or else validate and return an optional override value.
+        """Returns VpcConfig dict either from this Estimator's subnets and security groups.
+
+        Or else validate and return an optional override value.
 
         Args:
             vpc_config_override:
@@ -1049,10 +1042,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
     def _ensure_latest_training_job(
         self, error_message="Estimator is not associated with a training job"
     ):
-        """
-        Args:
-            error_message:
-        """
+        """Placeholder docstring"""
         if self.latest_training_job is None:
             raise ValueError(error_message)
 
@@ -1165,12 +1155,7 @@ class _TrainingJob(_Job):
 
     @classmethod
     def _add_spot_checkpoint_args(cls, local_mode, estimator, train_args):
-        """
-        Args:
-            local_mode:
-            estimator:
-            train_args:
-        """
+        """Placeholder docstring"""
         if estimator.use_spot_instances:
             if local_mode:
                 raise ValueError("Spot training is not supported in local mode.")
@@ -1188,15 +1173,13 @@ class _TrainingJob(_Job):
 
     @classmethod
     def _is_local_channel(cls, input_uri):
-        """
-        Args:
-            input_uri:
-        """
+        """Placeholder docstring"""
         return isinstance(input_uri, string_types) and input_uri.startswith("file://")
 
     def wait(self, logs="All"):
         """
         Args:
+
             logs ([str]): A list of strings specifying which logs to print. Acceptable
                 strings are "All", "None", "Training", or "Rules". To maintain backwards
                 compatibility, boolean values are also accepted and converted to strings.
@@ -1216,9 +1199,7 @@ class _TrainingJob(_Job):
         return self.sagemaker_session.describe_training_job(self.job_name)
 
     def rule_job_summary(self):
-        """Calls describe_training_job and returns the
-        DebugRuleEvaluationStatuses dictionary.
-        """
+        """Calls describe_training_job and returns the DebugRuleEvaluationStatuses dictionary."""
         return self.describe()["DebugRuleEvaluationStatuses"]
 
     def stop(self):
@@ -1227,8 +1208,9 @@ class _TrainingJob(_Job):
 
 
 class Estimator(EstimatorBase):
-    """A generic Estimator to train using any supplied algorithm. This class is
-    designed for use with algorithms that don't have their own, custom class.
+    """A generic Estimator to train using any supplied algorithm.
+
+    This class is designed for use with algorithms that don't have their own, custom class.
     """
 
     def __init__(
@@ -1418,10 +1400,7 @@ class Estimator(EstimatorBase):
         return self.image_uri
 
     def set_hyperparameters(self, **kwargs):
-        """
-        Args:
-            **kwargs:
-        """
+        """Placeholder docstring"""
         for k, v in kwargs.items():
             self.hyperparam_dict[k] = v
 
@@ -1716,8 +1695,7 @@ class Framework(EstimatorBase):
         self.enable_sagemaker_metrics = enable_sagemaker_metrics
 
     def _prepare_for_training(self, job_name=None):
-        """Set hyperparameters needed for training. This method will also
-        validate ``source_dir``.
+        """Set hyperparameters needed for training. This method will also validate ``source_dir``.
 
         Args:
            * job_name (str): Name of the training job to be created. If not
@@ -1851,8 +1829,7 @@ class Framework(EstimatorBase):
 
     @classmethod
     def _prepare_init_params_from_job_description(cls, job_details, model_channel_name=None):
-        """Convert the job description to init params that can be handled by the
-        class constructor
+        """Convert the job description to init params that can be handled by the class constructor.
 
         Args:
             job_details: the returned job details from a describe_training_job
@@ -1962,19 +1939,12 @@ class Framework(EstimatorBase):
 
     @staticmethod
     def _json_encode_hyperparameters(hyperparameters):
-        """
-        Args:
-            hyperparameters:
-        """
+        """Placeholder docstring"""
         return {str(k): json.dumps(v) for (k, v) in hyperparameters.items()}
 
     @classmethod
     def _update_init_params(cls, hp, tf_arguments):
-        """
-        Args:
-            hp:
-            tf_arguments:
-        """
+        """Placeholder docstring"""
         updated_params = {}
         for argument in tf_arguments:
             value = hp.pop(argument, None)
@@ -2004,8 +1974,9 @@ class Framework(EstimatorBase):
         enable_network_isolation=None,
         model_name=None,
     ):
-        """Return a ``Transformer`` that uses a SageMaker Model based on the
-        training job. It reuses the SageMaker Session and base job name used by
+        """Return a ``Transformer`` that uses a SageMaker Model based on the training job.
+
+        It reuses the SageMaker Session and base job name used by
         the Estimator.
 
         Args:
@@ -2117,11 +2088,7 @@ class Framework(EstimatorBase):
 
 
 def _s3_uri_prefix(channel_name, s3_data):
-    """
-    Args:
-        channel_name:
-        s3_data:
-    """
+    """Placeholder docstring"""
     if isinstance(s3_data, TrainingInput):
         s3_uri = s3_data.config["DataSource"]["S3DataSource"]["S3Uri"]
     else:
@@ -2135,10 +2102,7 @@ def _s3_uri_prefix(channel_name, s3_data):
 # Also accepts other valid input types, e.g. dict and TrainingInput.
 def _s3_uri_without_prefix_from_input(input_data):
     # Unpack an input_config object from a dict if a dict was passed in.
-    """
-    Args:
-        input_data:
-    """
+    """Placeholder docstring"""
     if isinstance(input_data, dict):
         response = {}
         for channel_name, channel_s3_uri in input_data.items():
