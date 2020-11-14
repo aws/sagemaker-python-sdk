@@ -77,14 +77,14 @@ def validate_source_dir(script, directory):
 
 
 def get_mp_parameters(distribution):
-    """Get the model parallelism parameters provided by the user
+    """Get the model parallelism parameters provided by the user.
 
     Args:
-        distribution: distribution dictionary defined by the user
+        distribution: distribution dictionary defined by the user.
 
     Returns:
         params: dictionary containing model parallelism parameters
-        to be used for training
+        used for training.
     """
     try:
         mp_dict = distribution["smdistributed"]["modelparallel"]

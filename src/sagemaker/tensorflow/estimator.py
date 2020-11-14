@@ -81,9 +81,9 @@ class TensorFlow(Framework):
                 ``image_uri`` is required. If also ``None``, then a ``ValueError``
                 will be raised.
             distribution (dict): A dictionary with information on how to run distributed training
-                (default: None). Currently we support distributed training with parameter servers,
-                Model Parallelism, Data Parallelism, and MPI. Model Parallelism can only be used
-                with MPI.
+                (default: None). Currently, the following are supported:
+                distributed training with parameter servers, SageMaker Distributed (SMD) Data
+                and Model Parallelism, and MPI. SMD Model Parallelism can only be used with MPI.
                 To enable parameter server use the following setup:
 
                 .. code:: python
