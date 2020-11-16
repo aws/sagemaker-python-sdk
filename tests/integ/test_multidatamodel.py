@@ -54,7 +54,7 @@ def container_image(sagemaker_session):
     docker_client = docker.from_env()
 
     # Base image pull
-    base_image = "142577830533.dkr.ecr.us-west-2.amazonaws.com/ubuntu:16.04"
+    base_image = "142577830533.dkr.ecr.us-east-2.amazonaws.com/ubuntu:16.04"
     docker_client.images.pull(base_image, auth_config={"username": username, "password": password})
 
     # Build and tag docker image locally
