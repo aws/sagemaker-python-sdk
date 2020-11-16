@@ -423,6 +423,7 @@ class AlgorithmEstimator(EstimatorBase):
         super(AlgorithmEstimator, self).fit(inputs, wait, logs, job_name)
 
     def _validate_input_channels(self, channels):
+        """Placeholder docstring"""
         train_spec = self.algorithm_spec["TrainingSpecification"]
         algorithm_name = self.algorithm_spec["AlgorithmName"]
         training_channels = {c["Name"]: c for c in train_spec["TrainingChannels"]}
@@ -440,6 +441,7 @@ class AlgorithmEstimator(EstimatorBase):
                 raise ValueError("Required input channel: %s Was not provided." % (name))
 
     def _validate_and_cast_hyperparameter(self, name, v):
+        """Placeholder docstring"""
         algorithm_name = self.algorithm_spec["AlgorithmName"]
 
         if name not in self.hyperparameter_definitions:
@@ -533,6 +535,7 @@ class AlgorithmEstimator(EstimatorBase):
         return parameter_class, parameter_range
 
     def _algorithm_training_input_modes(self, training_channels):
+        """Placeholder docstring"""
         current_input_modes = {"File", "Pipe"}
         for channel in training_channels:
             supported_input_modes = set(channel["SupportedInputModes"])

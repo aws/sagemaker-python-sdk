@@ -10,7 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Amazon SageMaker Debugger provides a full visibility into training jobs of machine learning models.
+"""Amazon SageMaker Debugger provides a full visibility of training jobs of machine learning model.
 
 This module provides SageMaker Debugger high-level methods
 to set up Debugger objects, such as Debugger built-in rules, tensor collections,
@@ -280,7 +280,7 @@ class Rule(object):
         )
 
     def to_debugger_rule_config_dict(self):
-        """Generates a request dictionary using the parameters provided when initializing the object.
+        """Generates request dictionary using the parameters provided when initializing the object.
 
         Returns:
             dict: An portion of an API request as a dictionary.
@@ -364,7 +364,7 @@ class DebuggerHookConfig(object):
         self.collection_configs = collection_configs
 
     def _to_request_dict(self):
-        """Generates a request dictionary using the parameters provided when initializing the object.
+        """Generates request dictionary using the parameters provided when initializing the object.
 
         Returns:
             dict: An portion of an API request as a dictionary.
@@ -589,7 +589,7 @@ class CollectionConfig(object):
         return hash((self.name, tuple(sorted((self.parameters or {}).items()))))
 
     def _to_request_dict(self):
-        """Generates a request dictionary using the parameters provided when initializing the object.
+        """Generates request dictionary using the parameters provided when initializing the object.
 
         Returns:
             dict: An portion of an API request as a dictionary.

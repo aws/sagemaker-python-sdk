@@ -301,7 +301,9 @@ class Transformer(object):
 
     @classmethod
     def _prepare_init_params_from_job_description(cls, job_details):
-        """Convert the transform job description to init params that can be handled by the class constructor.
+        """Convert the transform job description to init params.
+
+        It can be handled by the class constructor.
 
         Args:
             job_details (dict): the returned job details from a
