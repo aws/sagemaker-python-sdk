@@ -22,6 +22,8 @@ import numpy
 import pytest
 from botocore.exceptions import ClientError
 
+import tests
+
 from sagemaker import utils
 from sagemaker.amazon.randomcutforest import RandomCutForest
 from sagemaker.deserializers import StringDeserializer
@@ -132,6 +134,10 @@ def _ecr_login(ecr_client):
     return username, password
 
 
+@pytest.mark.skipif(
+    tests.integ.test_region() != "us-east-2",
+    reason="Pulling the base image is currently limited to us-east-2.",
+)
 def test_multi_data_model_deploy_pretrained_models(
     container_image, sagemaker_session, cpu_instance_type
 ):
@@ -192,6 +198,10 @@ def test_multi_data_model_deploy_pretrained_models(
 
 
 @pytest.mark.local_mode
+@pytest.mark.skipif(
+    tests.integ.test_region() != "us-east-2",
+    reason="Pulling the base image is currently limited to us-east-2.",
+)
 def test_multi_data_model_deploy_pretrained_models_local_mode(container_image, sagemaker_session):
     timestamp = sagemaker_timestamp()
     endpoint_name = "test-multimodel-endpoint-{}".format(timestamp)
@@ -252,6 +262,10 @@ def test_multi_data_model_deploy_pretrained_models_local_mode(container_image, s
         assert "Could not find endpoint" in str(exception.value)
 
 
+@pytest.mark.skipif(
+    tests.integ.test_region() != "us-east-2",
+    reason="Pulling the base image is currently limited to us-east-2.",
+)
 def test_multi_data_model_deploy_trained_model_from_framework_estimator(
     container_image,
     sagemaker_session,
@@ -366,6 +380,10 @@ def _mxnet_training_job(
         return mx.create_model(image_uri=container_image)
 
 
+@pytest.mark.skipif(
+    tests.integ.test_region() != "us-east-2",
+    reason="Pulling the base image is currently limited to us-east-2.",
+)
 def test_multi_data_model_deploy_train_model_from_amazon_first_party_estimator(
     container_image, sagemaker_session, cpu_instance_type
 ):
@@ -463,6 +481,10 @@ def __rcf_training_job(
         return rcf_model
 
 
+@pytest.mark.skipif(
+    tests.integ.test_region() != "us-east-2",
+    reason="Pulling the base image is currently limited to us-east-2.",
+)
 def test_multi_data_model_deploy_pretrained_models_update_endpoint(
     container_image, sagemaker_session, cpu_instance_type, alternative_cpu_instance_type
 ):
