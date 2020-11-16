@@ -265,7 +265,7 @@ def test_one_step_sklearn_processing_pipeline(
         assert response["PipelineArn"] == create_arn
 
         try:
-            execution.wait(delay=5, max_attempts=6)
+            execution.wait(delay=30, max_attempts=3)
         except WaiterError:
             pass
         execution_steps = execution.list_steps()
