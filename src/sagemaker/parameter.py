@@ -57,7 +57,7 @@ class ParameterRange(object):
     def as_tuning_range(self, name):
         """Represent the parameter range as a dictionary.
 
-        Dictionary is suitable for a request to create an Amazon SageMaker hyperparameter tuning job.
+        It is suitable for a request to create an Amazon SageMaker hyperparameter tuning job.
 
         Args:
             name (str): The name of the hyperparameter.
@@ -110,7 +110,7 @@ class CategoricalParameter(ParameterRange):
     def as_tuning_range(self, name):
         """Represent the parameter range as a dictionary.
 
-        Dictionary is suitable for a request to create an Amazon SageMaker hyperparameter tuning job.
+        It is suitable for a request to create an Amazon SageMaker hyperparameter tuning job.
 
         Args:
             name (str): The name of the hyperparameter.

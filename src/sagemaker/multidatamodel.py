@@ -27,7 +27,7 @@ MULTI_MODEL_CONTAINER_MODE = "MultiModel"
 
 
 class MultiDataModel(Model):
-    """A SageMaker ``MultiDataModel`` that can be used to deploy multiple models to the same ``Endpoint``.
+    """SageMaker ``MultiDataModel`` can be used to deploy multiple models to the same ``Endpoint``.
 
     And also deploy additional models to an existing SageMaker multi-model ``Endpoint``
     """
@@ -44,7 +44,7 @@ class MultiDataModel(Model):
     ):
         """Initialize a ``MultiDataModel``.
 
-        In addition to these arguments, it supports all arguments supported by ``Model`` constructor.
+        Addition to these arguments, it supports all arguments supported by ``Model`` constructor.
 
         Args:
             name (str): The model name.

@@ -126,11 +126,13 @@ class Predictor(object):
         return self._handle_response(response)
 
     def _handle_response(self, response):
+        "Placeholder docstring"
         response_body = response["Body"]
         content_type = response.get("ContentType", "application/octet-stream")
         return self.deserializer.deserialize(response_body, content_type)
 
     def _create_request_args(self, data, initial_args=None, target_model=None, target_variant=None):
+        "Placeholder docstring"
         args = dict(initial_args) if initial_args else {}
 
         if "EndpointName" not in args:
