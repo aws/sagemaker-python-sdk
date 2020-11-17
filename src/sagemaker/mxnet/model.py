@@ -140,6 +140,7 @@ class MXNetModel(FrameworkModel):
         model_package_group_name=None,
         image_uri=None,
         model_metrics=None,
+        metadata_properties=None,
         marketplace_cert=False,
         approval_status=None,
         description=None,
@@ -161,6 +162,7 @@ class MXNetModel(FrameworkModel):
             image_uri (str): Inference image uri for the container. Model class' self.image will
                 be used if it is None (default: None).
             model_metrics (ModelMetrics): ModelMetrics object (default: None).
+            metadata_properties (MetadataProperties): MetadataProperties (default: None).
             marketplace_cert (bool): A boolean value indicating if the Model Package is certified
                 for AWS Marketplace (default: False).
             approval_status (str): Model Approval Status, values can be "Approved", "Rejected",
@@ -189,6 +191,7 @@ class MXNetModel(FrameworkModel):
             model_package_group_name,
             image_uri,
             model_metrics,
+            metadata_properties,
             marketplace_cert,
             approval_status,
             description,

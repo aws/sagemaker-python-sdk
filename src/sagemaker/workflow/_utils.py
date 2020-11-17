@@ -216,6 +216,7 @@ class _RegisterModelStep(Step):
         transform_instances,
         model_package_group_name=None,
         model_metrics=None,
+        metadata_properties=None,
         approval_status="PendingManualApproval",
         image_uri=None,
         compile_model_family=None,
@@ -238,6 +239,7 @@ class _RegisterModelStep(Step):
                 `model_package_name`, using `model_package_group_name` makes the Model Package
                 versioned (default: None).
             model_metrics (ModelMetrics): ModelMetrics object (default: None).
+            metadata_properties (MetadataProperties): MetadataProperties object (default: None).
             approval_status (str): Model Approval Status, values can be "Approved", "Rejected",
                 or "PendingManualApproval" (default: "PendingManualApproval").
             image_uri (str): The container image uri for Model Package, if not specified,
@@ -255,6 +257,7 @@ class _RegisterModelStep(Step):
         self.transform_instances = transform_instances
         self.model_package_group_name = model_package_group_name
         self.model_metrics = model_metrics
+        self.metadata_properties = metadata_properties
         self.approval_status = approval_status
         self.image_uri = image_uri
         self.compile_model_family = compile_model_family
@@ -309,6 +312,7 @@ class _RegisterModelStep(Step):
             transform_instances=self.transform_instances,
             model_package_group_name=self.model_package_group_name,
             model_metrics=self.model_metrics,
+            metadata_properties=self.metadata_properties,
             approval_status=self.approval_status,
         )
         request_dict = model.sagemaker_session._get_create_model_package_request(

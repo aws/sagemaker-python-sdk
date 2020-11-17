@@ -813,6 +813,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         model_package_name=None,
         model_package_group_name=None,
         model_metrics=None,
+        metadata_properties=None,
         marketplace_cert=False,
         approval_status=None,
         description=None,
@@ -837,6 +838,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 `model_package_name`, using `model_package_group_name` makes the Model Package
                 versioned (default: None).
             model_metrics (ModelMetrics): ModelMetrics object (default: None).
+            metadata_properties (MetadataProperties): MetadataProperties (default: None).
             marketplace_cert (bool): A boolean value indicating if the Model Package is certified
                 for AWS Marketplace (default: False).
             approval_status (str): Model Approval Status, values can be "Approved", "Rejected",
@@ -868,6 +870,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             model_package_group_name,
             image_uri,
             model_metrics,
+            metadata_properties,
             marketplace_cert,
             approval_status,
             description,

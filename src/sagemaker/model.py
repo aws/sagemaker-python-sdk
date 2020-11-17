@@ -114,6 +114,7 @@ class Model(object):
         model_package_group_name=None,
         image_uri=None,
         model_metrics=None,
+        metadata_properties=None,
         marketplace_cert=False,
         approval_status=None,
         description=None,
@@ -135,6 +136,7 @@ class Model(object):
             image_uri (str): Inference image uri for the container. Model class' self.image will
                 be used if it is None (default: None).
             model_metrics (ModelMetrics): ModelMetrics object (default: None).
+            metadata_properties (MetadataProperties): MetadataProperties object (default: None).
             marketplace_cert (bool): A boolean value indicating if the Model Package is certified
                 for AWS Marketplace (default: False).
             approval_status (str): Model Approval Status, values can be "Approved", "Rejected",
@@ -156,6 +158,7 @@ class Model(object):
             model_package_group_name,
             image_uri,
             model_metrics,
+            metadata_properties,
             marketplace_cert,
             approval_status,
             description,
@@ -179,6 +182,7 @@ class Model(object):
         model_package_group_name=None,
         image_uri=None,
         model_metrics=None,
+        metadata_properties=None,
         marketplace_cert=False,
         approval_status=None,
         description=None,
@@ -199,6 +203,7 @@ class Model(object):
             image_uri (str): Inference image uri for the container. Model class' self.image will
                 be used if it is None (default: None).
             model_metrics (ModelMetrics): ModelMetrics object (default: None).
+            metadata_properties (MetadataProperties): MetadataProperties object (default: None).
             marketplace_cert (bool): A boolean value indicating if the Model Package is certified
                 for AWS Marketplace (default: False).
             approval_status (str): Model Approval Status, values can be "Approved", "Rejected",
@@ -229,6 +234,8 @@ class Model(object):
             model_package_args["model_package_group_name"] = model_package_group_name
         if model_metrics is not None:
             model_package_args["model_metrics"] = model_metrics._to_request_dict()
+        if metadata_properties is not None:
+            model_package_args["metadata_properties"] = metadata_properties._to_request_dict()
         if approval_status is not None:
             model_package_args["approval_status"] = approval_status
         if description is not None:

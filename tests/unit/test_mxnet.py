@@ -22,6 +22,7 @@ from mock import patch
 from pkg_resources import parse_version
 
 from sagemaker.fw_utils import UploadedCode
+from sagemaker.metadata_properties import MetadataProperties
 from sagemaker.model_metrics import MetricsSource, ModelMetrics
 from sagemaker.mxnet import defaults
 from sagemaker.mxnet import MXNet
@@ -544,6 +545,12 @@ def test_model_register_all_args(
         bias=dummy_metrics_source,
         explainability=dummy_metrics_source,
     )
+    metadata_properties = MetadataProperties(
+        commit_id="test-commit-id",
+        repository="test-repository",
+        generated_by="sagemaker-python-sdk-test",
+        project_id="test-project-id",
+    )
     model.register(
         content_types,
         response_types,
@@ -551,6 +558,7 @@ def test_model_register_all_args(
         transform_instances,
         model_package_name=model_package_name,
         model_metrics=model_metrics,
+        metadata_properties=metadata_properties,
         marketplace_cert=True,
         approval_status="Approved",
         description="description",
@@ -563,6 +571,7 @@ def test_model_register_all_args(
         "transform_instances": transform_instances,
         "model_package_name": model_package_name,
         "model_metrics": model_metrics._to_request_dict(),
+        "metadata_properties": metadata_properties._to_request_dict(),
         "marketplace_cert": True,
         "approval_status": "Approved",
         "description": "description",
