@@ -23,7 +23,7 @@ STUDIO_PROJECT_CONFIG = ".sagemaker-code-config"
 logger = logging.getLogger(__name__)
 
 
-def _append_project_tags(working_dir=None, tags=None):
+def _append_project_tags(tags=None, working_dir=None):
     """Appends the project tag to the list of tags, if it exists.
 
     Args:

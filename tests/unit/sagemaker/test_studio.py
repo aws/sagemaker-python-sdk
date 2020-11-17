@@ -82,13 +82,13 @@ def test_append_project_tags(tmpdir):
     config.write('{"sagemakerProjectId": "proj-1234", "sagemakerProjectName": "proj-name"}')
     working_dir = tmpdir.mkdir("sub")
 
-    tags = _append_project_tags(working_dir, None)
+    tags = _append_project_tags(None, working_dir)
     assert tags == [
         {"Key": "sagemaker:project-id", "Value": "proj-1234"},
         {"Key": "sagemaker:project-name", "Value": "proj-name"},
     ]
 
-    tags = _append_project_tags(working_dir, [{"Key": "a", "Value": "b"}])
+    tags = _append_project_tags([{"Key": "a", "Value": "b"}], working_dir)
     assert tags == [
         {"Key": "a", "Value": "b"},
         {"Key": "sagemaker:project-id", "Value": "proj-1234"},

@@ -31,6 +31,7 @@ import six
 import sagemaker.logs
 from sagemaker import vpc_utils
 
+from sagemaker._studio import _append_project_tags
 from sagemaker.deprecations import deprecated_class
 from sagemaker.inputs import ShuffleConfig, TrainingInput
 from sagemaker.user_agent import prepend_user_agent
@@ -534,6 +535,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Returns:
             str: ARN of the training job, if it is created.
         """
+        tags = _append_project_tags(tags)
         train_request = self._get_train_request(
             input_mode=input_mode,
             input_config=input_config,
@@ -779,6 +781,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 three optional keys, 'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
                 (default: ``None``)
         """
+        tags = _append_project_tags(tags)
         process_request = self._get_process_request(
             inputs=inputs,
             output_config=output_config,
@@ -1019,6 +1022,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 "NetworkConfig"
             ] = network_config
 
+        tags = _append_project_tags(tags)
         if tags is not None:
             monitoring_schedule_request["Tags"] = tags
 
@@ -1527,6 +1531,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             auto_ml_job_request["AutoMLJobObjective"] = job_objective
         if problem_type is not None:
             auto_ml_job_request["ProblemType"] = problem_type
+
+        tags = _append_project_tags(tags)
         if tags is not None:
             auto_ml_job_request["Tags"] = tags
 
@@ -1719,6 +1725,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             "CompilationJobName": job_name,
         }
 
+        tags = _append_project_tags(tags)
         if tags is not None:
             compilation_job_request["Tags"] = tags
 
@@ -1868,6 +1875,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if warm_start_config is not None:
             tune_request["WarmStartConfig"] = warm_start_config
 
+        tags = _append_project_tags(tags)
         if tags is not None:
             tune_request["Tags"] = tags
 
@@ -1925,6 +1933,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if warm_start_config is not None:
             tune_request["WarmStartConfig"] = warm_start_config
 
+        tags = _append_project_tags(tags)
         if tags is not None:
             tune_request["Tags"] = tags
 
@@ -2315,6 +2324,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 job. Dictionary contains two optional keys,
                 'InvocationsTimeoutInSeconds', and 'InvocationsMaxRetries'.
         """
+        tags = _append_project_tags(tags)
         transform_request = self._get_transform_request(
             job_name=job_name,
             model_name=model_name,
@@ -2430,6 +2440,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Returns:
             str: Name of the Amazon SageMaker ``Model`` created.
         """
+        tags = _append_project_tags(tags)
         create_model_request = self._create_model_request(
             name=name,
             role=role,
@@ -2754,6 +2765,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             ],
         }
 
+        tags = _append_project_tags(tags)
         if tags is not None:
             request["Tags"] = tags
 
@@ -2823,6 +2835,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         request_tags = new_tags or self.list_tags(
             existing_endpoint_config_desc["EndpointConfigArn"]
         )
+        request_tags = _append_project_tags(request_tags)
         if request_tags:
             request["Tags"] = request_tags
 
@@ -2857,6 +2870,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         LOGGER.info("Creating endpoint with name %s", endpoint_name)
 
         tags = tags or []
+        tags = _append_project_tags(tags)
 
         self.sagemaker_client.create_endpoint(
             EndpointName=endpoint_name, EndpointConfigName=config_name, Tags=tags
@@ -3336,6 +3350,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             lambda: self.sagemaker_client.describe_endpoint_config(EndpointConfigName=name)
         ):
             config_options = {"EndpointConfigName": name, "ProductionVariants": production_variants}
+            tags = _append_project_tags(tags)
             if tags:
                 config_options["Tags"] = tags
             if kms_key:
@@ -3728,6 +3743,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Returns:
             Response dict from service.
         """
+        tags = _append_project_tags(tags)
         kwargs = dict(
             FeatureGroupName=feature_group_name,
             RecordIdentifierFeatureName=record_identifier_name,
