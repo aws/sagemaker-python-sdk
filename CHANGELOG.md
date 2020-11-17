@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.16.3.post0 (2020-11-17)
+
+### Testing and Release Infrastructure
+
+ * use ECR-hosted image for ubuntu:16.04
+
 ## v2.16.3 (2020-11-11)
 
 ### Bug Fixes and Other Changes
