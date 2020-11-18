@@ -1113,8 +1113,9 @@ class _TrainingJob(_Job):
 
         config = _Job._load_config(inputs, estimator)
 
-        if estimator.hyperparameters() is not None:
-            hyperparameters = {str(k): str(v) for (k, v) in estimator.hyperparameters().items()}
+        current_hyperparameters = estimator.hyperparameters()
+        if current_hyperparameters is not None:
+            hyperparameters = {str(k): str(v) for (k, v) in current_hyperparameters.items()}
 
         train_args = config.copy()
         train_args["input_mode"] = estimator.input_mode

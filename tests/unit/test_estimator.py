@@ -119,6 +119,7 @@ class DummyFramework(Framework):
         entry_point=None,
         vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT,
         enable_network_isolation=None,
+        model_dir=None,
         **kwargs
     ):
         if enable_network_isolation is None:

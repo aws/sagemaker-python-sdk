@@ -31,7 +31,8 @@ Removals
 Python 2 Support
 ----------------
 
-This library is no longer supported for Python 2.
+This library is no longer compatible with Python 2.
+Python 2 has been EOL since January 1, 2020.
 Please upgrade to Python 3 if you haven't already.
 
 Remove Legacy TensorFlow
@@ -45,116 +46,43 @@ To use those versions of TensorFlow, you must specify the Docker image URI expli
 and configure settings via hyperparameters or environment variables rather than using SDK parameters.
 For more information, see `Upgrade from Legacy TensorFlow Support <frameworks/tensorflow/upgrade_from_legacy.html>`_.
 
-``delete_endpoint()`` for Estimators and ``HyperparameterTuner``
-----------------------------------------------------------------
-
-The ``delete_endpoint()`` method for estimators and ``HyperparameterTuner`` has been removed.
-Please use :func:`sagemaker.predictor.Predictor.delete_endpoint` instead.
-
-Pre-instantiated Serializer and Deserializer Objects
-----------------------------------------------------
-
-The ``csv_serializer``, ``json_serializer``, ``npy_serializer``, ``csv_deserializer``,
-``json_deserializer``, and ``numpy_deserializer`` objects have been removed.
-
-Please instantiate the objects instead.
-
-+--------------------------------------------+------------------------------------------------+
-| v1.x                                       | v2.0 and later                                 |
-+============================================+================================================+
-| ``sagemaker.predictor.csv_serializer``     | ``sagemaker.serializers.CSVSerializer()``      |
-+--------------------------------------------+------------------------------------------------+
-| ``sagemaker.predictor.json_serializer``    | ``sagemaker.serializers.JSONSerializer()``     |
-+--------------------------------------------+------------------------------------------------+
-| ``sagemaker.predictor.npy_serializer``     | ``sagemaker.serializers.NumpySerializer()``    |
-+--------------------------------------------+------------------------------------------------+
-| ``sagemaker.predictor.csv_deserializer``   | ``sagemaker.deserializers.CSVDeserializer()``  |
-+--------------------------------------------+------------------------------------------------+
-| ``sagemaker.predictor.json_deserializer``  | ``sagemaker.deserializers.JSONDeserializer()`` |
-+--------------------------------------------+------------------------------------------------+
-| ``sagemaker.predictor.numpy_deserializer`` | ``sagemaker.deserializers.NumpyDeserializer()``|
-+--------------------------------------------+------------------------------------------------+
-
-``update_endpoint`` in ``deploy()``
------------------------------------
-
-The ``update_endpoint`` argument in ``deploy()`` methods for estimators and models has been removed.
-Please use :func:`sagemaker.predictor.Predictor.update_endpoint` instead.
-
-``serializer`` and ``deserializer`` in ``create_model()``
----------------------------------------------------------
-
-The ``serializer`` and ``deserializer`` arguments in
-:func:`sagemaker.estimator.Estimator.create_model` have been removed. Please
-specify serializers and deserializers in ``deploy()`` methods instead.
-
-``content_type`` and ``accept`` in the Predictor Constructor
-------------------------------------------------------------
-
-The ``content_type`` and ``accept`` parameters have been removed from the
-following classes and methods:
-- ``sagemaker.predictor.Predictor``
-- ``sagemaker.estimator.Estimator.create_model``
-- ``sagemaker.algorithms.AlgorithmEstimator.create_model``
-- ``sagemaker.tensorflow.model.TensorFlowPredictor``
-
-Please specify content types in a serializer or deserializer class instead.
-
-``sagemaker.content_types``
----------------------------
-
-The ``sagemaker.content_types`` module is removed in v2.0 and later of the
-SageMaker Python SDK.
-
-Instead of importing constants from ``sagemaker.content_types``, explicitly
-write MIME types as a string,
-
-+-------------------------------+--------------------------------+
-| v1.x                          | v2.0 and later                 |
-+===============================+================================+
-| ``CONTENT_TYPE_JSON``         | ``"application/json"``         |
-+-------------------------------+--------------------------------+
-| ``CONTENT_TYPE_CSV``          | ``"text/csv"``                 |
-+-------------------------------+--------------------------------+
-| ``CONTENT_TYPE_OCTET_STREAM`` | ``"application/octet-stream"`` |
-+-------------------------------+--------------------------------+
-| ``CONTENT_TYPE_NPY``          | ``"application/x-npy"``        |
-+-------------------------------+--------------------------------+
-
-Image URI Functions (e.g. ``get_image_uri``)
---------------------------------------------
-
-The following functions have been removed in favor of :func:`sagemaker.image_uris.retrieve`:
-
-- ``sagemaker.amazon_estimator.get_image_uri()``
-- ``sagemaker.fw_utils.create_image_uri()``
-- ``sagemaker.fw_registry.registry()``
-- ``sagemaker.utils.get_ecr_image_uri_prefix()``
-
-For more information about usage, see :func:`sagemaker.image_uris.retrieve`.
-
 SageMaker Python SDK CLI
 ------------------------
 
 The SageMaker Python SDK CLI has been removed.
 (This is different from the AWS CLI.)
 
-``enable_cloudwatch_metrics`` for Estimators and Models
--------------------------------------------------------
+``delete_endpoint()`` for Estimators and ``HyperparameterTuner``
+----------------------------------------------------------------
 
-The parameter ``enable_cloudwatch_metrics`` has been removed.
-CloudWatch metrics are already emitted for all Training Jobs, etc.
+The ``delete_endpoint()`` method for estimators and ``HyperparameterTuner`` is now a no-op.
+Please use :func:`sagemaker.predictor.Predictor.delete_endpoint` instead.
 
-``sagemaker.fw_utils.parse_s3_url``
+``update_endpoint`` in ``deploy()``
 -----------------------------------
 
-The ``sagemaker.fw_utils.parse_s3_url`` function has been removed.
-Please use :func:`sagemaker.s3.parse_s3_url` instead.
+The ``update_endpoint`` argument in ``deploy()`` methods for estimators and models is now a no-op.
+Please use :func:`sagemaker.predictor.Predictor.update_endpoint` instead.
 
-``sagemaker.session.ModelContainer``
-------------------------------------
+``serializer`` and ``deserializer`` in ``create_model()``
+---------------------------------------------------------
 
-The class ``sagemaker.session.ModelContainer`` has been removed, as it is not needed for creating inference pipelines.
+The ``serializer`` and ``deserializer`` arguments in
+:func:`sagemaker.estimator.Estimator.create_model` are now no-ops.
+Please specify serializers and deserializers in ``deploy()`` methods instead.
+
+``content_type`` and ``accept`` in the Predictor Constructor
+------------------------------------------------------------
+
+The ``content_type`` and ``accept`` parameters are now no-ops in the
+following classes and methods:
+
+- ``sagemaker.predictor.Predictor``
+- ``sagemaker.estimator.Estimator.create_model``
+- ``sagemaker.algorithms.AlgorithmEstimator.create_model``
+- ``sagemaker.tensorflow.model.TensorFlowPredictor``
+
+Please specify content types in a serializer or deserializer class instead.
 
 Changes in Default Behavior
 ===========================
@@ -208,6 +136,134 @@ XGBoost Predictor
 
 The default serializer of ``sagemaker.xgboost.model.XGBoostPredictor`` has been changed from ``NumpySerializer`` to ``LibSVMSerializer``.
 
+
+Parameter Order Changes
+=======================
+
+``sagemaker.model.Model`` Parameter Order
+-----------------------------------------
+
+The parameter order for :class:`sagemaker.model.Model` changed: instead of ``model_data`` being first, ``image_uri`` (formerly ``image``) is first.
+As a result, ``model_data`` has been made into an optional parameter.
+
+If you are using the :class:`sagemaker.model.Model` class, your code should be changed as follows:
+
+.. code:: python
+
+    # v1.x
+    Model("s3://bucket/path/model.tar.gz", "my-image:latest")
+
+    # v2.0 and later
+    Model("my-image:latest", model_data="s3://bucket/path/model.tar.gz")
+
+Airflow Parameter Order
+-----------------------
+
+For :func:`sagemaker.workflow.airflow.model_config` and :func:`sagemaker.workflow.airflow.model_config_from_estimator`,
+``instance_type`` is no longer the first positional argument and is now an optional keyword argument.
+
+Dependency Changes
+==================
+
+SciPy
+-----
+
+SciPy is no longer a required dependency of the SageMaker Python SDK.
+
+If you use :func:`sagemaker.amazon.common.write_spmatrix_to_sparse_tensor` and
+don't already install SciPy in your environment, you can use our ``scipy`` installation target:
+
+.. code:: bash
+
+    pip install sagemaker[scipy]
+
+TensorFlow
+----------
+
+The ``tensorflow`` installation target has been removed, as it is no longer needed for any SageMaker Python SDK functionality.
+
+If you want to install TensorFlow, see `the TensorFlow documentation <https://www.tensorflow.org/install>`_.
+
+********************
+Non-Breaking Changes
+********************
+
+Deprecations
+============
+
+Pre-instantiated Serializer and Deserializer Objects
+----------------------------------------------------
+
+The ``csv_serializer``, ``json_serializer``, ``npy_serializer``, ``csv_deserializer``,
+``json_deserializer``, and ``numpy_deserializer`` objects have been deprecated.
+
+Please instantiate the objects instead.
+
++--------------------------------------------+------------------------------------------------+
+| v1.x                                       | v2.0 and later                                 |
++============================================+================================================+
+| ``sagemaker.predictor.csv_serializer``     | ``sagemaker.serializers.CSVSerializer()``      |
++--------------------------------------------+------------------------------------------------+
+| ``sagemaker.predictor.json_serializer``    | ``sagemaker.serializers.JSONSerializer()``     |
++--------------------------------------------+------------------------------------------------+
+| ``sagemaker.predictor.npy_serializer``     | ``sagemaker.serializers.NumpySerializer()``    |
++--------------------------------------------+------------------------------------------------+
+| ``sagemaker.predictor.csv_deserializer``   | ``sagemaker.deserializers.CSVDeserializer()``  |
++--------------------------------------------+------------------------------------------------+
+| ``sagemaker.predictor.json_deserializer``  | ``sagemaker.deserializers.JSONDeserializer()`` |
++--------------------------------------------+------------------------------------------------+
+| ``sagemaker.predictor.numpy_deserializer`` | ``sagemaker.deserializers.NumpyDeserializer()``|
++--------------------------------------------+------------------------------------------------+
+
+``sagemaker.content_types``
+---------------------------
+
+The ``sagemaker.content_types`` module is deprecated in v2.0 and later of the
+SageMaker Python SDK.
+
+Instead of importing constants from ``sagemaker.content_types``, explicitly
+write MIME types as a string.
+
++-------------------------------+--------------------------------+
+| v1.x                          | v2.0 and later                 |
++===============================+================================+
+| ``CONTENT_TYPE_JSON``         | ``"application/json"``         |
++-------------------------------+--------------------------------+
+| ``CONTENT_TYPE_CSV``          | ``"text/csv"``                 |
++-------------------------------+--------------------------------+
+| ``CONTENT_TYPE_OCTET_STREAM`` | ``"application/octet-stream"`` |
++-------------------------------+--------------------------------+
+| ``CONTENT_TYPE_NPY``          | ``"application/x-npy"``        |
++-------------------------------+--------------------------------+
+
+Image URI Functions (e.g. ``get_image_uri``)
+--------------------------------------------
+
+The following functions have been deprecated in favor of :func:`sagemaker.image_uris.retrieve`:
+
+- ``sagemaker.amazon_estimator.get_image_uri()``
+- ``sagemaker.fw_utils.create_image_uri()``
+- ``sagemaker.fw_registry.registry()``
+- ``sagemaker.utils.get_ecr_image_uri_prefix()``
+
+For more information about usage, see :func:`sagemaker.image_uris.retrieve`.
+
+``enable_cloudwatch_metrics`` for Estimators and Models
+-------------------------------------------------------
+
+The parameter ``enable_cloudwatch_metrics`` has been deprecated.
+CloudWatch metrics are already emitted for all Training Jobs, etc.
+
+``sagemaker.fw_utils.parse_s3_url``
+-----------------------------------
+
+The ``sagemaker.fw_utils.parse_s3_url`` function has been deprecated.
+Please use :func:`sagemaker.s3.parse_s3_url` instead.
+
+``sagemaker.session.ModelContainer``
+------------------------------------
+
+The class ``sagemaker.session.ModelContainer`` has been deprecated, as it is not needed for creating inference pipelines.
 
 Parameter and Class Name Changes
 ================================
@@ -285,22 +341,6 @@ The ``image_name`` parameter has been renamed to ``image_uri`` for specifying a 
 Models
 ------
 
-``sagemaker.model.Model`` Parameter Order
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-The parameter order for :class:`sagemaker.model.Model` changed: instead of ``model_data`` being first, ``image_uri`` (formerly ``image``) is first.
-As a result, ``model_data`` has been made into an optional parameter.
-
-If you are using the :class:`sagemaker.model.Model` class, your code should be changed as follows:
-
-.. code:: python
-
-    # v1.x
-    Model("s3://bucket/path/model.tar.gz", "my-image:latest")
-
-    # v2.0 and later
-    Model("my-image:latest", model_data="s3://bucket/path/model.tar.gz")
-
 Specify Custom Serving Image
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -350,33 +390,8 @@ Inputs
 Airflow
 -------
 
-For :func:`sagemaker.workflow.airflow.model_config` and :func:`sagemaker.workflow.airflow.model_config_from_estimator`,
-``instance_type`` is no longer the first positional argument and is now an optional keyword argument.
-
 For :func:`sagemaker.workflow.airflow.model_config`, :func:`sagemaker.workflow.airflow.model_config_from_estimator`, and
 :func:`sagemaker.workflow.airflow.transform_config_from_estimator`, the ``image`` argument has been renamed to ``image_uri``.
-
-Dependency Changes
-==================
-
-SciPy
------
-
-SciPy is no longer a required dependency of the SageMaker Python SDK.
-
-If you use :func:`sagemaker.amazon.common.write_spmatrix_to_sparse_tensor` and
-don't already install SciPy in your environment, you can use our ``scipy`` installation target:
-
-.. code:: bash
-
-    pip install sagemaker[scipy]
-
-TensorFlow
-----------
-
-The ``tensorflow`` installation target has been removed, as it is no longer needed for any SageMaker Python SDK functionality.
-
-If you want to install TensorFlow, see `the TensorFlow documentation <https://www.tensorflow.org/install>`_.
 
 *******************************
 Automatically Upgrade Your Code

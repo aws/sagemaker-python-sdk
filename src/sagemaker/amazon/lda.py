@@ -45,8 +45,8 @@ class LDA(AmazonAlgorithmEstimatorBase):
     def __init__(
         self,
         role,
-        instance_type,
-        num_topics,
+        instance_type=None,
+        num_topics=None,
         alpha0=None,
         max_restarts=None,
         max_iterations=None,

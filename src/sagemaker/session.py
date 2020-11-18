@@ -2171,6 +2171,86 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 )
                 raise
 
+    def _get_transform_request(
+        self,
+        job_name,
+        model_name,
+        strategy,
+        max_concurrent_transforms,
+        max_payload,
+        env,
+        input_config,
+        output_config,
+        resource_config,
+        experiment_config,
+        tags,
+        data_processing,
+        model_client_config=None,
+    ):
+        """Construct an dict can be used to create an Amazon SageMaker transform job.
+
+        Args:
+            job_name (str): Name of the transform job being created.
+            model_name (str): Name of the SageMaker model being used for the transform job.
+            strategy (str): The strategy used to decide how to batch records in a single request.
+                Possible values are 'MultiRecord' and 'SingleRecord'.
+            max_concurrent_transforms (int): The maximum number of HTTP requests to be made to
+                each individual transform container at one time.
+            max_payload (int): Maximum size of the payload in a single HTTP request to the
+                container in MB.
+            env (dict): Environment variables to be set for use during the transform job.
+            input_config (dict): A dictionary describing the input data (and its location) for the
+                job.
+            output_config (dict): A dictionary describing the output location for the job.
+            resource_config (dict): A dictionary describing the resources to complete the job.
+            experiment_config (dict): A dictionary describing the experiment configuration for the
+                job. Dictionary contains three optional keys,
+                'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+            tags (list[dict]): List of tags for labeling a transform job.
+            data_processing(dict): A dictionary describing config for combining the input data and
+                transformed data. For more, see
+                https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
+            model_client_config (dict): A dictionary describing the model configuration for the
+                job. Dictionary contains two optional keys,
+                'InvocationsTimeoutInSeconds', and 'InvocationsMaxRetries'.
+
+        Returns:
+            Dict: a create transform job request dict
+        """
+        transform_request = {
+            "TransformJobName": job_name,
+            "ModelName": model_name,
+            "TransformInput": input_config,
+            "TransformOutput": output_config,
+            "TransformResources": resource_config,
+        }
+
+        if strategy is not None:
+            transform_request["BatchStrategy"] = strategy
+
+        if max_concurrent_transforms is not None:
+            transform_request["MaxConcurrentTransforms"] = max_concurrent_transforms
+
+        if max_payload is not None:
+            transform_request["MaxPayloadInMB"] = max_payload
+
+        if env is not None:
+            transform_request["Environment"] = env
+
+        if tags is not None:
+            transform_request["Tags"] = tags
+
+        if data_processing is not None:
+            transform_request["DataProcessing"] = data_processing
+
+        if experiment_config and len(experiment_config) > 0:
+            transform_request["ExperimentConfig"] = experiment_config
+
+        if model_client_config and len(model_client_config) > 0:
+            transform_request["ModelClientConfig"] = model_client_config
+
+        return transform_request
+
     def transform(
         self,
         job_name,
@@ -2214,41 +2294,70 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 job. Dictionary contains two optional keys,
                 'InvocationsTimeoutInSeconds', and 'InvocationsMaxRetries'.
         """
-        transform_request = {
-            "TransformJobName": job_name,
-            "ModelName": model_name,
-            "TransformInput": input_config,
-            "TransformOutput": output_config,
-            "TransformResources": resource_config,
-        }
-
-        if strategy is not None:
-            transform_request["BatchStrategy"] = strategy
-
-        if max_concurrent_transforms is not None:
-            transform_request["MaxConcurrentTransforms"] = max_concurrent_transforms
-
-        if max_payload is not None:
-            transform_request["MaxPayloadInMB"] = max_payload
-
-        if env is not None:
-            transform_request["Environment"] = env
-
-        if tags is not None:
-            transform_request["Tags"] = tags
-
-        if data_processing is not None:
-            transform_request["DataProcessing"] = data_processing
-
-        if experiment_config and len(experiment_config) > 0:
-            transform_request["ExperimentConfig"] = experiment_config
-
-        if model_client_config and len(model_client_config) > 0:
-            transform_request["ModelClientConfig"] = model_client_config
+        transform_request = self._get_transform_request(
+            job_name=job_name,
+            model_name=model_name,
+            strategy=strategy,
+            max_concurrent_transforms=max_concurrent_transforms,
+            max_payload=max_payload,
+            env=env,
+            input_config=input_config,
+            output_config=output_config,
+            resource_config=resource_config,
+            experiment_config=experiment_config,
+            tags=tags,
+            data_processing=data_processing,
+            model_client_config=model_client_config,
+        )
 
         LOGGER.info("Creating transform job with name: %s", job_name)
         LOGGER.debug("Transform request: %s", json.dumps(transform_request, indent=4))
         self.sagemaker_client.create_transform_job(**transform_request)
+
+    def _create_model_request(
+        self,
+        name,
+        role,
+        container_defs,
+        vpc_config=None,
+        enable_network_isolation=False,
+        primary_container=None,
+        tags=None,
+    ):  # pylint: disable=redefined-outer-name
+        """Placeholder docstring"""
+        if container_defs and primary_container:
+            raise ValueError("Both container_defs and primary_container can not be passed as input")
+
+        if primary_container:
+            msg = (
+                "primary_container is going to be deprecated in a future release. Please use "
+                "container_defs instead."
+            )
+            warnings.warn(msg, DeprecationWarning)
+            container_defs = primary_container
+
+        role = self.expand_role(role)
+
+        if isinstance(container_defs, list):
+            container_definition = container_defs
+        else:
+            container_definition = _expand_container_def(container_defs)
+
+        request = {"ModelName": name, "ExecutionRoleArn": role}
+        if isinstance(container_definition, list):
+            request["Containers"] = container_definition
+        else:
+            request["PrimaryContainer"] = container_definition
+        if tags:
+            request["Tags"] = tags
+
+        if vpc_config:
+            request["VpcConfig"] = vpc_config
+
+        if enable_network_isolation:
+            request["EnableNetworkIsolation"] = True
+
+        return request
 
     def create_model(
         self,
@@ -2300,34 +2409,15 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Returns:
             str: Name of the Amazon SageMaker ``Model`` created.
         """
-        if container_defs and primary_container:
-            raise ValueError("Both container_defs and primary_container can not be passed as input")
-
-        if primary_container:
-            msg = (
-                "primary_container is going to be deprecated in a future release. Please use "
-                "container_defs instead."
-            )
-            warnings.warn(msg, DeprecationWarning)
-            container_defs = primary_container
-
-        role = self.expand_role(role)
-
-        if isinstance(container_defs, list):
-            container_definition = container_defs
-        else:
-            container_definition = _expand_container_def(container_defs)
-
-        create_model_request = _create_model_request(
-            name=name, role=role, container_def=container_definition, tags=tags
+        create_model_request = self._create_model_request(
+            name=name,
+            role=role,
+            container_defs=container_defs,
+            vpc_config=vpc_config,
+            enable_network_isolation=enable_network_isolation,
+            primary_container=primary_container,
+            tags=tags,
         )
-
-        if vpc_config:
-            create_model_request["VpcConfig"] = vpc_config
-
-        if enable_network_isolation:
-            create_model_request["EnableNetworkIsolation"] = True
-
         LOGGER.info("Creating model with name: %s", name)
         LOGGER.debug("CreateModel request: %s", json.dumps(create_model_request, indent=4))
 
@@ -3558,23 +3648,6 @@ def get_execution_role(sagemaker_session=None):
         "SageMaker execution role"
     )
     raise ValueError(message.format(arn))
-
-
-def _create_model_request(
-    name, role, container_def=None, tags=None
-):  # pylint: disable=redefined-outer-name
-    """Placeholder docstring"""
-    request = {"ModelName": name, "ExecutionRoleArn": role}
-
-    if isinstance(container_def, list):
-        request["Containers"] = container_def
-    else:
-        request["PrimaryContainer"] = container_def
-
-    if tags:
-        request["Tags"] = tags
-
-    return request
 
 
 def _deployment_entity_exists(describe_fn):

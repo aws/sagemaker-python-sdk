@@ -13,7 +13,7 @@
 from __future__ import absolute_import
 
 import pytest
-from mock import Mock
+from mock import Mock, ANY
 from sagemaker.tensorflow import TensorFlow
 
 
@@ -24,13 +24,15 @@ BUCKET_NAME = "mybucket"
 INSTANCE_COUNT = 1
 INSTANCE_TYPE_GPU = "ml.p2.xlarge"
 INSTANCE_TYPE_CPU = "ml.m4.xlarge"
-CPU_IMAGE_NAME = "sagemaker-tensorflow-py2-cpu"
-GPU_IMAGE_NAME = "sagemaker-tensorflow-py2-gpu"
+REPOSITORY = "tensorflow-inference"
+PROCESSOR = "cpu"
 REGION = "us-west-2"
-IMAGE_URI_FORMAT_STRING = "520713654638.dkr.ecr.{}.amazonaws.com/{}:{}-{}-{}"
+IMAGE_URI_FORMAT_STRING = "763104351884.dkr.ecr.{}.amazonaws.com/{}:{}-{}"
 REGION = "us-west-2"
 ROLE = "SagemakerRole"
 SOURCE_DIR = "s3://fefergerger"
+ENDPOINT_DESC = {"EndpointConfigName": "test-endpoint"}
+ENDPOINT_CONFIG_DESC = {"ProductionVariants": [{"ModelName": "model-1"}, {"ModelName": "model-2"}]}
 
 
 @pytest.fixture()
@@ -39,48 +41,64 @@ def sagemaker_session():
     ims = Mock(
         name="sagemaker_session",
         boto_session=boto_mock,
+        boto_region_name=REGION,
         config=None,
         local_mode=False,
-        region_name=REGION,
+        s3_resource=None,
+        s3_client=None,
     )
     ims.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
     ims.expand_role = Mock(name="expand_role", return_value=ROLE)
     ims.sagemaker_client.describe_training_job = Mock(
         return_value={"ModelArtifacts": {"S3ModelArtifacts": "s3://m/m.tar.gz"}}
     )
+    ims.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)
+    ims.sagemaker_client.describe_endpoint_config = Mock(return_value=ENDPOINT_CONFIG_DESC)
     return ims
 
 
-# Test that we pass all necessary fields from estimator to the session when we call deploy
-def test_deploy(sagemaker_session, tf_version):
+def test_model_dir_false(sagemaker_session):
     estimator = TensorFlow(
         entry_point=SCRIPT,
         source_dir=SOURCE_DIR,
         role=ROLE,
-        framework_version=tf_version,
-        train_instance_count=2,
-        train_instance_type=INSTANCE_TYPE_CPU,
+        framework_version="2.3.0",
+        py_version="py37",
+        instance_type="ml.m4.xlarge",
+        instance_count=1,
+        model_dir=False,
+    )
+    estimator.hyperparameters()
+    assert estimator.model_dir is False
+
+
+# Test that we pass all necessary fields from estimator to the session when we call deploy
+def test_deploy(sagemaker_session):
+    estimator = TensorFlow(
+        entry_point=SCRIPT,
+        source_dir=SOURCE_DIR,
+        role=ROLE,
+        framework_version="2.3.0",
+        py_version="py37",
+        instance_count=2,
+        instance_type=INSTANCE_TYPE_CPU,
         sagemaker_session=sagemaker_session,
         base_job_name="test-cifar",
     )
 
     estimator.fit("s3://mybucket/train")
-    print("job succeeded: {}".format(estimator.latest_training_job.name))
 
     estimator.deploy(initial_instance_count=1, instance_type=INSTANCE_TYPE_CPU)
-    image = IMAGE_URI_FORMAT_STRING.format(REGION, CPU_IMAGE_NAME, tf_version, "cpu", "py2")
+    image = IMAGE_URI_FORMAT_STRING.format(REGION, REPOSITORY, "2.3.0", PROCESSOR)
     sagemaker_session.create_model.assert_called_with(
-        estimator._current_job_name,
+        ANY,
         ROLE,
         {
-            "Environment": {
-                "SAGEMAKER_CONTAINER_LOG_LEVEL": "20",
-                "SAGEMAKER_SUBMIT_DIRECTORY": SOURCE_DIR,
-                "SAGEMAKER_REQUIREMENTS": "",
-                "SAGEMAKER_REGION": REGION,
-                "SAGEMAKER_PROGRAM": SCRIPT,
-            },
             "Image": image,
+            "Environment": {"SAGEMAKER_TFS_NGINX_LOGLEVEL": "info"},
             "ModelDataUrl": "s3://m/m.tar.gz",
         },
+        vpc_config=None,
+        enable_network_isolation=False,
+        tags=None,
     )

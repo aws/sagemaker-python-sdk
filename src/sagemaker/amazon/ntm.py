@@ -65,9 +65,9 @@ class NTM(AmazonAlgorithmEstimatorBase):
     def __init__(
         self,
         role,
-        instance_count,
-        instance_type,
-        num_topics,
+        instance_count=None,
+        instance_type=None,
+        num_topics=None,
         encoder_layers=None,
         epochs=None,
         encoder_layers_activation=None,

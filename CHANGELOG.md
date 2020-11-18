@@ -1,5 +1,72 @@
 # Changelog
 
+## v2.16.3.post0 (2020-11-17)
+
+### Testing and Release Infrastructure
+
+ * use ECR-hosted image for ubuntu:16.04
+
+## v2.16.3 (2020-11-11)
+
+### Bug Fixes and Other Changes
+
+ * fix failures for multiple spark run() invocations
+
+## v2.16.2 (2020-11-09)
+
+### Bug Fixes and Other Changes
+
+ * create default bucket only if needed
+
+## v2.16.1 (2020-10-28)
+
+### Bug Fixes and Other Changes
+
+ * ensure 1p algos are compatible with forward-port
+
+## v2.16.0.post0 (2020-10-28)
+
+### Documentation Changes
+
+ * clarify non-breaking changes after v1 forward port
+
+## v2.16.0 (2020-10-27)
+
+### Features
+
+ * update image uri for neo tensorflow
+
+## v2.15.4 (2020-10-26)
+
+### Bug Fixes and Other Changes
+
+ * add kms_key optional arg to Pipeline.deploy()
+
+### Documentation Changes
+
+ * Debugger API - improve docstrings and add examples
+
+## v2.15.3 (2020-10-20)
+
+### Bug Fixes and Other Changes
+
+ * refactor _create_model_request
+
+## v2.15.2 (2020-10-19)
+
+### Bug Fixes and Other Changes
+
+ * preserve model_dir bool value
+ * refactor out batch transform job input generation
+
+## v2.15.1 (2020-10-15)
+
+### Bug Fixes and Other Changes
+
+ * include more notebook tests, logger to warn
+ * include managed spot training notebook test
+ * add missing account IDs for af-south-1 and eu-south-1
+
 ## v2.15.0 (2020-10-07)
 
 ### Features

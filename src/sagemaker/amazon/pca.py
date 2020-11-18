@@ -55,9 +55,9 @@ class PCA(AmazonAlgorithmEstimatorBase):
     def __init__(
         self,
         role,
-        instance_count,
-        instance_type,
-        num_components,
+        instance_count=None,
+        instance_type=None,
+        num_components=None,
         algorithm_mode=None,
         subtract_mean=None,
         extra_components=None,
