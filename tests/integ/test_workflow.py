@@ -22,7 +22,8 @@ import pytest
 
 from botocore.config import Config
 from botocore.exceptions import WaiterError
-from sagemaker.inputs import TrainingInput
+from sagemaker.inputs import CreateModelInput, TrainingInput
+from sagemaker.model import Model
 from sagemaker.processing import ProcessingInput, ProcessingOutput
 from sagemaker.pytorch.estimator import PyTorch
 from sagemaker.session import get_execution_role, Session
@@ -35,6 +36,7 @@ from sagemaker.workflow.parameters import (
     ParameterString,
 )
 from sagemaker.workflow.steps import (
+    CreateModelStep,
     ProcessingStep,
     TrainingStep,
 )
@@ -95,7 +97,7 @@ def pipeline_name():
     return f"my-pipeline-{int(time.time() * 10**7)}"
 
 
-def test_two_step_definition(
+def test_three_step_definition(
     sagemaker_session, workflow_session, region_name, role, script_dir, pipeline_name
 ):
     framework_version = "0.20.0"
@@ -140,10 +142,26 @@ def test_two_step_definition(
         ),
     )
 
+    model = Model(
+        image_uri=sklearn_train.image_uri,
+        model_data=step_train.properties.ModelArtifacts.S3ModelArtifacts,
+        sagemaker_session=sagemaker_session,
+        role=role,
+    )
+    model_inputs = CreateModelInput(
+        instance_type="ml.m5.large",
+        accelerator_type="ml.eia1.medium",
+    )
+    step_model = CreateModelStep(
+        name="my-model",
+        model=model,
+        inputs=model_inputs,
+    )
+
     pipeline = Pipeline(
         name=pipeline_name,
         parameters=[instance_type, instance_count],
-        steps=[step_process, step_train],
+        steps=[step_process, step_train, step_model],
         sagemaker_session=workflow_session,
     )
 
@@ -160,7 +178,7 @@ def test_two_step_definition(
     )
 
     steps = definition["Steps"]
-    assert len(steps) == 2
+    assert len(steps) == 3
 
     names_and_types = []
     processing_args = {}
@@ -171,11 +189,14 @@ def test_two_step_definition(
             processing_args = step["Arguments"]
         if step["Type"] == "Training":
             training_args = step["Arguments"]
+        if step["Type"] == "Model":
+            model_args = step["Arguments"]
 
     assert set(names_and_types) == set(
         [
             ("my-process", "Processing"),
             ("my-train", "Training"),
+            ("my-model", "Model"),
         ]
     )
 
@@ -192,6 +213,9 @@ def test_two_step_definition(
     }
     assert training_args["InputDataConfig"][0]["DataSource"]["S3DataSource"]["S3Uri"] == {
         "Get": "Steps.my-process.ProcessingOutputConfig.Outputs['train_data'].S3Output.S3Uri"
+    }
+    assert model_args["PrimaryContainer"]["ModelDataUrl"] == {
+        "Get": "Steps.my-train.ModelArtifacts.S3ModelArtifacts"
     }
 
 
@@ -324,11 +348,27 @@ def test_conditional_pytorch_training_model_registration(
         transform_instances=["*"],
     )
 
+    model = Model(
+        image_uri=pytorch_estimator.training_image_uri(),
+        model_data=step_train.properties.ModelArtifacts.S3ModelArtifacts,
+        sagemaker_session=sagemaker_session,
+        role=role,
+    )
+    model_inputs = CreateModelInput(
+        instance_type="ml.m5.large",
+        accelerator_type="ml.eia1.medium",
+    )
+    step_model = CreateModelStep(
+        name="pytorch-model",
+        model=model,
+        inputs=model_inputs,
+    )
+
     step_cond = ConditionStep(
         name="cond-good-enough",
         conditions=[ConditionGreaterThanOrEqualTo(left=good_enough_input, right=1)],
         if_steps=[step_train, step_register],
-        else_steps=[],
+        else_steps=[step_model],
     )
 
     pipeline = Pipeline(

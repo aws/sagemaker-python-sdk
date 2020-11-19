@@ -49,7 +49,7 @@ class StepTypeEnum(Enum, metaclass=DefaultEnumMeta):
     """Enum of step types."""
 
     CONDITION = "Condition"
-    CREATE_MODEL = "CreateModel"
+    CREATE_MODEL = "Model"
     FAIL = "Fail"
     PROCESSING = "Processing"
     REGISTER_MODEL = "RegisterModel"

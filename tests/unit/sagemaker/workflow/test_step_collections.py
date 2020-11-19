@@ -194,10 +194,10 @@ def test_estimator_transformer(estimator):
     request_dicts = estimator_transformer.request_dicts()
     assert len(request_dicts) == 2
     for request_dict in request_dicts:
-        if request_dict["Type"] == "CreateModel":
+        if request_dict["Type"] == "Model":
             assert request_dict == {
                 "Name": "EstimatorTransformerStepCreateModelStep",
-                "Type": "CreateModel",
+                "Type": "Model",
                 "Arguments": {
                     "ExecutionRoleArn": "DummyRole",
                     "PrimaryContainer": {

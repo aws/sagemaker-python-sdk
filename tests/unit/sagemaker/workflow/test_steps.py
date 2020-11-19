@@ -220,7 +220,7 @@ def test_create_model_step(sagemaker_session):
 
     assert step.to_request() == {
         "Name": "MyCreateModelStep",
-        "Type": "CreateModel",
+        "Type": "Model",
         "Arguments": {
             "ExecutionRoleArn": "DummyRole",
             "PrimaryContainer": {"Environment": {}, "Image": "fakeimage"},
