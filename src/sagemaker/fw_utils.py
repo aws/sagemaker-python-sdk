@@ -50,7 +50,12 @@ PARAMETER_SERVER_MULTI_GPU_WARNING = (
 
 DEBUGGER_UNSUPPORTED_REGIONS = ("us-iso-east-1",)
 SINGLE_GPU_INSTANCE_TYPES = ("ml.p2.xlarge", "ml.p3.2xlarge")
-SM_DATAPARALLEL_SUPPORTED_INSTANCE_TYPES = ("ml.p3.16xlarge", "ml.p3dn.24xlarge", "local_gpu")
+SM_DATAPARALLEL_SUPPORTED_INSTANCE_TYPES = (
+    "ml.p3.16xlarge",
+    "ml.p3dn.24xlarge",
+    "ml.p4d.24xlarge",
+    "local_gpu",
+)
 SM_DATAPARALLEL_SUPPORTED_FRAMEWORK_VERSIONS = {
     "tensorflow": ["2.3.0", "2.3.1"],
     "pytorch": ["1.6.0"],
