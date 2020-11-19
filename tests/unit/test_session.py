@@ -2205,6 +2205,12 @@ def test_create_model_package_from_containers_all_args(sagemaker_session):
             "S3Uri": "s3://...",
         }
     }
+    metadata_properties = {
+        "CommitId": "test-commit-id",
+        "Repository": "test-repository",
+        "GeneratedBy": "sagemaker-python-sdk",
+        "ProjectId": "unit-test",
+    }
     marketplace_cert = (True,)
     approval_status = ("Approved",)
     description = "description"
@@ -2216,6 +2222,7 @@ def test_create_model_package_from_containers_all_args(sagemaker_session):
         transform_instances=transform_instances,
         model_package_name=model_package_name,
         model_metrics=model_metrics,
+        metadata_properties=metadata_properties,
         marketplace_cert=marketplace_cert,
         approval_status=approval_status,
         description=description,
@@ -2231,6 +2238,7 @@ def test_create_model_package_from_containers_all_args(sagemaker_session):
         },
         "ModelPackageDescription": description,
         "ModelMetrics": model_metrics,
+        "MetadataProperties": metadata_properties,
         "CertifyForMarketplace": marketplace_cert,
         "ModelApprovalStatus": approval_status,
     }

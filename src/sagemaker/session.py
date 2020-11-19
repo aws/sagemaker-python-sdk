@@ -2557,6 +2557,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         model_package_name=None,
         model_package_group_name=None,
         model_metrics=None,
+        metadata_properties=None,
         marketplace_cert=False,
         approval_status="PendingManualApproval",
         description=None,
@@ -2578,6 +2579,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 `model_package_name`, using `model_package_group_name` makes the Model Package
                 versioned (default: None).
             model_metrics (ModelMetrics): ModelMetrics object (default: None).
+            metadata_properties (MetadataProperties): MetadataProperties object (default: None)
             marketplace_cert (bool): A boolean value indicating if the Model Package is certified
                 for AWS Marketplace (default: False).
             approval_status (str): Model Approval Status, values can be "Approved", "Rejected",
@@ -2594,6 +2596,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             inference_instances,
             transform_instances,
             model_metrics,
+            metadata_properties,
             marketplace_cert,
             approval_status,
             description,
@@ -2610,6 +2613,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         inference_instances=None,
         transform_instances=None,
         model_metrics=None,
+        metadata_properties=None,
         marketplace_cert=False,
         approval_status="PendingManualApproval",
         description=None,
@@ -2631,6 +2635,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             transform_instances (list): A list of the instance types on which a transformation
                 job can be run or on which an endpoint can be deployed (default: None).
             model_metrics (ModelMetrics): ModelMetrics object (default: None).
+            metadata_properties (MetadataProperties): MetadataProperties object (default: None).
             marketplace_cert (bool): A boolean value indicating if the Model Package is certified
                 for AWS Marketplace (default: False).
             approval_status (str): Model Approval Status, values can be "Approved", "Rejected",
@@ -2651,6 +2656,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             request_dict["ModelPackageDescription"] = description
         if model_metrics:
             request_dict["ModelMetrics"] = model_metrics
+        if metadata_properties:
+            request_dict["MetadataProperties"] = metadata_properties
         if containers is not None:
             if not all([content_types, response_types, inference_instances, transform_instances]):
                 raise ValueError(
