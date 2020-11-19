@@ -552,7 +552,7 @@ def test_validate_version_or_image_args_raises():
 def test_validate_smdistributed_not_raises():
     smdataparallel_enabled = {"smdistributed": {"dataparallel": {"enabled": True}}}
     smdataparallel_disabled = {"smdistributed": {"dataparallel": {"enabled": False}}}
-    instance_types = ["ml.p3.16xlarge", "ml.p3dn.24xlarge"]
+    instance_types = list(fw_utils.SM_DATAPARALLEL_SUPPORTED_INSTANCE_TYPES)
 
     good_args = [
         (smdataparallel_enabled, "custom-container"),
