@@ -39,7 +39,13 @@ class PyTorchPredictor(Predictor):
     multidimensional tensors for PyTorch inference.
     """
 
-    def __init__(self, endpoint_name, sagemaker_session=None):
+    def __init__(
+        self,
+        endpoint_name,
+        sagemaker_session=None,
+        serializer=NumpySerializer(),
+        deserializer=NumpyDeserializer(),
+    ):
         """Initialize an ``PyTorchPredictor``.
 
         Args:
@@ -49,9 +55,17 @@ class PyTorchPredictor(Predictor):
                 manages interactions with Amazon SageMaker APIs and any other
                 AWS services needed. If not specified, the estimator creates one
                 using the default AWS configuration chain.
+            serializer (sagemaker.serializers.BaseSerializer): Optional. Default
+                serializes input data to .npy format. Handles lists and numpy
+                arrays.
+            deserializer (sagemaker.deserializers.BaseDeserializer): Optional.
+                Default parses the response from .npy format to numpy array.
         """
         super(PyTorchPredictor, self).__init__(
-            endpoint_name, sagemaker_session, NumpySerializer(), NumpyDeserializer()
+            endpoint_name,
+            sagemaker_session,
+            serializer=serializer,
+            deserializer=deserializer,
         )
 
 
