@@ -664,9 +664,16 @@ def test_model_prepare_container_def_no_instance_type_or_image(
 
 
 def test_attach(sagemaker_session, mxnet_training_version, mxnet_training_py_version):
-    training_image = "1.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet-{0}-cpu:{1}-cpu-{0}".format(
-        mxnet_training_py_version, mxnet_training_version
-    )
+    if mxnet_training_py_version == "py37":
+        training_image = "1.dkr.ecr.us-west-2.amazonaws.com/mxnet-training:{1}-cpu-{0}".format(
+            mxnet_training_py_version, mxnet_training_version
+        )
+    else:
+        training_image = (
+            "1.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet-{0}-cpu:{1}-cpu-{0}".format(
+                mxnet_training_py_version, mxnet_training_version
+            )
+        )
     returned_job_description = {
         "AlgorithmSpecification": {"TrainingInputMode": "File", "TrainingImage": training_image},
         "HyperParameters": {
