@@ -427,6 +427,31 @@ def test_model(
     assert isinstance(predictor, MXNetPredictor)
 
 
+@patch("sagemaker.utils.create_tar_file", MagicMock())
+def test_model_custom_serialization(
+    sagemaker_session, mxnet_inference_version, mxnet_inference_py_version, skip_if_mms_version
+):
+    model = MXNetModel(
+        MODEL_DATA,
+        role=ROLE,
+        entry_point=SCRIPT_PATH,
+        framework_version=mxnet_inference_version,
+        py_version=mxnet_inference_py_version,
+        sagemaker_session=sagemaker_session,
+    )
+    custom_serializer = Mock()
+    custom_deserializer = Mock()
+    predictor = model.deploy(
+        1,
+        CPU,
+        serializer=custom_serializer,
+        deserializer=custom_deserializer,
+    )
+    assert isinstance(predictor, MXNetPredictor)
+    assert predictor.serializer is custom_serializer
+    assert predictor.deserializer is custom_deserializer
+
+
 @patch("sagemaker.utils.repack_model")
 def test_model_mms_version(
     repack_model,

@@ -429,6 +429,27 @@ def test_model(sagemaker_session, xgboost_framework_version):
     assert isinstance(predictor, XGBoostPredictor)
 
 
+def test_model_custom_serialization(sagemaker_session, xgboost_framework_version):
+    model = XGBoostModel(
+        "s3://some/data.tar.gz",
+        role=ROLE,
+        framework_version=xgboost_framework_version,
+        entry_point=SCRIPT_PATH,
+        sagemaker_session=sagemaker_session,
+    )
+    custom_serializer = Mock()
+    custom_deserializer = Mock()
+    predictor = model.deploy(
+        1,
+        CPU,
+        serializer=custom_serializer,
+        deserializer=custom_deserializer,
+    )
+    assert isinstance(predictor, XGBoostPredictor)
+    assert predictor.serializer is custom_serializer
+    assert predictor.deserializer is custom_deserializer
+
+
 def test_training_image_uri(sagemaker_session, xgboost_framework_version):
     xgboost = XGBoost(
         entry_point=SCRIPT_PATH,
