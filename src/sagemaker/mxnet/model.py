@@ -40,13 +40,7 @@ class MXNetPredictor(Predictor):
     multidimensional tensors for MXNet inference.
     """
 
-    def __init__(
-        self,
-        endpoint_name,
-        sagemaker_session=None,
-        serializer=JSONSerializer(),
-        deserializer=JSONDeserializer(),
-    ):
+    def __init__(self, endpoint_name, sagemaker_session=None):
         """Initialize an ``MXNetPredictor``.
 
         Args:
@@ -56,16 +50,9 @@ class MXNetPredictor(Predictor):
                 manages interactions with Amazon SageMaker APIs and any other
                 AWS services needed. If not specified, the estimator creates one
                 using the default AWS configuration chain.
-            serializer (callable): Optional. Default serializes input data to
-                json. Handles dicts, lists, and numpy arrays.
-            deserializer (callable): Optional. Default parses the response using
-                ``json.load(...)``.
         """
         super(MXNetPredictor, self).__init__(
-            endpoint_name,
-            sagemaker_session,
-            serializer=serializer,
-            deserializer=deserializer,
+            endpoint_name, sagemaker_session, JSONSerializer(), JSONDeserializer()
         )
 
 
