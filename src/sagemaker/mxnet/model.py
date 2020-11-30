@@ -40,13 +40,7 @@ class MXNetPredictor(Predictor):
     multidimensional tensors for MXNet inference.
     """
 
-    def __init__(
-        self,
-        endpoint_name,
-        sagemaker_session=None,
-        serializer=JSONSerializer(),
-        deserializer=JSONDeserializer(),
-    ):
+    def __init__(self, endpoint_name, sagemaker_session=None):
         """Initialize an ``MXNetPredictor``.
 
         Args:
@@ -56,16 +50,9 @@ class MXNetPredictor(Predictor):
                 manages interactions with Amazon SageMaker APIs and any other
                 AWS services needed. If not specified, the estimator creates one
                 using the default AWS configuration chain.
-            serializer (callable): Optional. Default serializes input data to
-                json. Handles dicts, lists, and numpy arrays.
-            deserializer (callable): Optional. Default parses the response using
-                ``json.load(...)``.
         """
         super(MXNetPredictor, self).__init__(
-            endpoint_name,
-            sagemaker_session,
-            serializer=serializer,
-            deserializer=deserializer,
+            endpoint_name, sagemaker_session, JSONSerializer(), JSONDeserializer()
         )
 
 
@@ -141,74 +128,8 @@ class MXNetModel(FrameworkModel):
         super(MXNetModel, self).__init__(
             model_data, image_uri, role, entry_point, predictor_cls=predictor_cls, **kwargs
         )
+
         self.model_server_workers = model_server_workers
-
-    def register(
-        self,
-        content_types,
-        response_types,
-        inference_instances,
-        transform_instances,
-        model_package_name=None,
-        model_package_group_name=None,
-        image_uri=None,
-        model_metrics=None,
-        metadata_properties=None,
-        marketplace_cert=False,
-        approval_status=None,
-        description=None,
-    ):
-        """Creates a model package for creating SageMaker models or listing on Marketplace.
-
-        Args:
-            content_types (list): The supported MIME types for the input data.
-            response_types (list): The supported MIME types for the output data.
-            inference_instances (list): A list of the instance types that are used to
-                generate inferences in real-time.
-            transform_instances (list): A list of the instance types on which a transformation
-                job can be run or on which an endpoint can be deployed.
-            model_package_name (str): Model Package name, exclusive to `model_package_group_name`,
-                using `model_package_name` makes the Model Package un-versioned (default: None).
-            model_package_group_name (str): Model Package Group name, exclusive to
-                `model_package_name`, using `model_package_group_name` makes the Model Package
-                versioned (default: None).
-            image_uri (str): Inference image uri for the container. Model class' self.image will
-                be used if it is None (default: None).
-            model_metrics (ModelMetrics): ModelMetrics object (default: None).
-            metadata_properties (MetadataProperties): MetadataProperties (default: None).
-            marketplace_cert (bool): A boolean value indicating if the Model Package is certified
-                for AWS Marketplace (default: False).
-            approval_status (str): Model Approval Status, values can be "Approved", "Rejected",
-                or "PendingManualApproval" (default: "PendingManualApproval").
-            description (str): Model Package description (default: None).
-
-        Returns:
-            str: A string of SageMaker Model Package ARN.
-        """
-        instance_type = inference_instances[0]
-        self._init_sagemaker_session_if_does_not_exist(instance_type)
-
-        if image_uri:
-            self.image_uri = image_uri
-        if not self.image_uri:
-            self.image_uri = self.serving_image_uri(
-                region_name=self.sagemaker_session.boto_session.region_name,
-                instance_type=instance_type,
-            )
-        return super(MXNetModel, self).register(
-            content_types,
-            response_types,
-            inference_instances,
-            transform_instances,
-            model_package_name,
-            model_package_group_name,
-            image_uri,
-            model_metrics,
-            metadata_properties,
-            marketplace_cert,
-            approval_status,
-            description,
-        )
 
     def prepare_container_def(self, instance_type=None, accelerator_type=None):
         """Return a container definition with framework configuration.
