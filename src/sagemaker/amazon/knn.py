@@ -224,7 +224,8 @@ class KNNPredictor(Predictor):
 class KNNModel(Model):
     """Reference S3 model data created by KNN estimator.
 
-    Calling :meth:`~sagemaker.model.Model.deploy` creates an Endpoint and returns :class:`KNNPredictor`.
+    Calling :meth:`~sagemaker.model.Model.deploy` creates an Endpoint and
+    returns :class:`KNNPredictor`.
     """
 
     def __init__(self, model_data, role, sagemaker_session=None, **kwargs):

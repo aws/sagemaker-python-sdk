@@ -260,7 +260,7 @@ class SKLearn(Framework):
 
 
 def _validate_not_gpu_instance_type(training_instance_type):
-
+    """Placeholder docstring"""
     gpu_instance_types = [
         "ml.p2.xlarge",
         "ml.p2.8xlarge",

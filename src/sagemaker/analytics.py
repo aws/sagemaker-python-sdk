@@ -55,7 +55,8 @@ class AnalyticsMetricsBase(with_metaclass(ABCMeta, object)):
     def dataframe(self, force_refresh=False):
         """A pandas dataframe with lots of interesting results about this object.
 
-        Created by calling SageMaker List and Describe APIs and converting them into a convenient tabular summary.
+        Created by calling SageMaker List and Describe APIs and converting them into a
+        convenient tabular summary.
 
         Args:
             force_refresh (bool): Set to True to fetch the latest data from
@@ -596,7 +597,10 @@ class ExperimentAnalytics(AnalyticsMetricsBase):
         return out
 
     def _fetch_dataframe(self):
-        """Return a pandas dataframe with all the trial_components, along with their parameters and metrics."""
+        """Return a pandas dataframe."""
+
+        """It includes all the trial_components with their parameters and metrics."""
+
         df = pd.DataFrame([self._reshape(component) for component in self._get_trial_components()])
         return df
 

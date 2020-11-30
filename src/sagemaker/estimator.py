@@ -437,7 +437,10 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                 self.debugger_rule_configs.append(rule.to_debugger_rule_config_dict())
 
     def _prepare_collection_configs(self):
-        """De-duplicate any collection configurations and save them in the debugger hook configuration."""
+        """De-duplicate any collection configurations."""
+
+        """It also saves them in the debugger hook configuration."""
+
         # Create a set to de-duplicate CollectionConfigs.
         self.collection_configs = set()
         # Iterate through the rules and add their respective CollectionConfigs to the set.
@@ -707,7 +710,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
         tags=None,
         **kwargs,
     ):
-        """Deploy the trained model to an Amazon SageMaker endpoint and return ``sagemaker.Predictor`` object.
+        """Deploy the trained model to an Amazon SageMaker endpoint.
+
+         And then return ``sagemaker.Predictor`` object.
 
         More information:
         http://docs.aws.amazon.com/sagemaker/latest/dg/how-it-works-training.html

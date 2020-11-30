@@ -323,7 +323,10 @@ class RecordSet(object):
         return str((RecordSet, self.__dict__))
 
     def data_channel(self):
-        """Return a dictionary to represent the training data in a channel for use with ``fit()``."""
+        """Return a dictionary to represent the training data in a channel."""
+
+        """Dictionary to be used with ``fit()``."""
+
         return {self.channel: self.records_s3_input()}
 
     def records_s3_input(self):
@@ -334,7 +337,7 @@ class RecordSet(object):
 
 
 class FileSystemRecordSet(object):
-    """Amazon SageMaker channel configuration for a file system data source for Amazon algorithms."""
+    """Amazon SageMaker channel configuration for file system data source for Amazon algorithms."""
 
     def __init__(
         self,

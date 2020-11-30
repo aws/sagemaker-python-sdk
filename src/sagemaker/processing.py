@@ -51,7 +51,7 @@ class Processor(object):
         tags=None,
         network_config=None,
     ):
-        """Initializes a ``Processor`` instance. The ``Processor`` handles Amazon SageMaker Processing tasks.
+        """Initializes a ``Processor`` instance to handle Amazon SageMaker Processing tasks.
 
         Args:
             role (str): An AWS IAM role name or ARN. Amazon SageMaker Processing
@@ -359,8 +359,9 @@ class ScriptProcessor(Processor):
     ):
         """Initializes a ``ScriptProcessor`` instance.
 
-        The ``ScriptProcessor`` handles Amazon SageMaker Processing tasks for jobs using a machine
-        learning framework, which allows for providing a script to be run as part of the Processing Job.
+        The ``ScriptProcessor`` handles Amazon SageMaker Processing tasks for jobs
+        using a machine learning framework, which allows for providing a script
+        to be run as part of the Processing Job.
 
         Args:
             role (str): An AWS IAM role name or ARN. Amazon SageMaker Processing

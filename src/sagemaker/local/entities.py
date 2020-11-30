@@ -54,6 +54,7 @@ class _LocalTrainingJob(object):
         self.end_time = None
 
     def start(self, input_data_config, output_data_config, hyperparameters, job_name):
+        """Placeholder docstring."""
         for channel in input_data_config:
             if channel["DataSource"] and "S3DataSource" in channel["DataSource"]:
                 data_distribution = channel["DataSource"]["S3DataSource"]["S3DataDistributionType"]
@@ -466,6 +467,7 @@ class _LocalEndpoint(object):
 
 
 def _wait_for_serving_container(serving_port):
+    """Placeholder docstring."""
     i = 0
     http = urllib3.PoolManager()
 
@@ -486,6 +488,7 @@ def _wait_for_serving_container(serving_port):
 
 
 def _perform_request(endpoint_url, pool_manager=None):
+    """Placeholder docstring."""
     http = pool_manager or urllib3.PoolManager()
     try:
         r = http.request("GET", endpoint_url)

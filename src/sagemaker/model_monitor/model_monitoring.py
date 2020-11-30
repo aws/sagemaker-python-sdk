@@ -633,7 +633,7 @@ class ModelMonitor(object):
 
     @classmethod
     def attach(cls, monitor_schedule_name, sagemaker_session=None):
-        """Set this object's schedule name to point to the Amazon Sagemaker Monitoring Schedule name provided.
+        """Set this object's schedule name point to the Amazon Sagemaker Monitoring Schedule name.
 
         This allows subsequent describe_schedule or list_executions calls to point
         to the given schedule.
@@ -928,7 +928,9 @@ class ModelMonitor(object):
         return path
 
     def _wait_for_schedule_changes_to_apply(self):
-        """Waits for the schedule associated with this monitor to no longer be in the 'Pending' state."""
+        """Waits for the schedule associated with this monitor."""
+
+        """It checks if this monitor to no longer be in the 'Pending' state."""
         for _ in retries(
             max_retry_count=36,  # 36*5 = 3min
             exception_message_prefix="Waiting for schedule to leave 'Pending' status",
@@ -1744,7 +1746,9 @@ class DefaultModelMonitor(ModelMonitor):
         return env
 
     def _upload_and_convert_to_processing_input(self, source, destination, name):
-        """Generates a ProcessingInput object from a source. Source can be a local path or an S3 uri.
+        """Generates a ProcessingInput object from a source.
+
+        Source can be a local path or an S3 uri.
 
         Args:
             source (str): The source of the data. This can be a local path or an S3 uri.
@@ -1794,7 +1798,9 @@ class BaseliningJob(ProcessingJob):
     """Provides functionality to retrieve baseline-specific files output from baselining job."""
 
     def __init__(self, sagemaker_session, job_name, inputs, outputs, output_kms_key=None):
-        """Initializes a Baselining job that tracks a baselining job kicked off by the suggest workflow.
+        """Initializes a Baselining job.
+
+        It tracks a baselining job kicked off by the suggest workflow.
 
         Args:
             sagemaker_session (sagemaker.session.Session): Session object which
@@ -1919,7 +1925,7 @@ class BaseliningJob(ProcessingJob):
 
 
 class MonitoringExecution(ProcessingJob):
-    """Provides functionality to retrieve monitoring-specific files output from monitoring executions."""
+    """Provides functionality to retrieve monitoring-specific files from monitoring executions."""
 
     def __init__(self, sagemaker_session, job_name, inputs, output, output_kms_key=None):
         """Initializes a MonitoringExecution job that tracks a monitoring execution.

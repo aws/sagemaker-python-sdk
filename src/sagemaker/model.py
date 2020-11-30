@@ -105,7 +105,9 @@ class Model(object):
         self.model_kms_key = model_kms_key
 
     def _init_sagemaker_session_if_does_not_exist(self, instance_type):
-        """Set ``self.sagemaker_session`` to be a ``LocalSession`` or ``Session`` if it is not already.
+        """Set ``self.sagemaker_session`` to be a ``LocalSession``.
+
+        Or set it to``Session`` if it is not already.
 
         The type of session object is determined by the instance type.
         """
@@ -148,7 +150,7 @@ class Model(object):
         return self._enable_network_isolation
 
     def _create_sagemaker_model(self, instance_type=None, accelerator_type=None, tags=None):
-        """Create a SageMaker Model Entity
+        """Create a SageMaker Model Entity.
 
         Args:
             instance_type (str): The EC2 instance type that this Model will be
@@ -815,9 +817,10 @@ class FrameworkModel(Model):
         self.repacked_model_data = None
 
     def prepare_container_def(self, instance_type=None, accelerator_type=None):
-        """Return a container definition with framework configuration set in model environment variables.
+        """Return a container definition with framework configuration.
 
-        This also uploads user-supplied code to S3.
+        Framework configuration set in model environment variables. This also uploads
+        user-supplied code to S3.
 
         Args:
             instance_type (str): The EC2 instance type to deploy this Model to.

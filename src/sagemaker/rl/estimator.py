@@ -344,6 +344,7 @@ class RLEstimator(Framework):
 
     @classmethod
     def _toolkit_and_version_from_tag(cls, image_tag):
+        """Placeholder docstring"""
         tag_pattern = re.compile(
             "^([A-Z]*|[a-z]*)(\d.*)-(cpu|gpu)-(py2|py3)$"  # noqa: W605,E501 pylint: disable=anomalous-backslash-in-string
         )
@@ -354,6 +355,7 @@ class RLEstimator(Framework):
 
     @classmethod
     def _validate_framework_format(cls, framework):
+        """Placeholder docstring"""
         if framework and framework not in list(RLFramework):
             raise ValueError(
                 "Invalid type: {}, valid RL frameworks types are: {}".format(
@@ -363,6 +365,7 @@ class RLEstimator(Framework):
 
     @classmethod
     def _validate_toolkit_format(cls, toolkit):
+        """Placeholder docstring"""
         if toolkit and toolkit not in list(RLToolkit):
             raise ValueError(
                 "Invalid type: {}, valid RL toolkits types are: {}".format(toolkit, list(RLToolkit))
@@ -370,6 +373,7 @@ class RLEstimator(Framework):
 
     @classmethod
     def _validate_images_args(cls, toolkit, toolkit_version, framework, image_uri):
+        """Placeholder docstring"""
         cls._validate_toolkit_format(toolkit)
         cls._validate_framework_format(framework)
 
@@ -404,6 +408,7 @@ class RLEstimator(Framework):
 
     @classmethod
     def _is_combination_supported(cls, toolkit, toolkit_version, framework):
+        """Placeholder docstring"""
         supported_versions = TOOLKIT_FRAMEWORK_VERSION_MAP.get(toolkit, None)
         if supported_versions:
             supported_frameworks = supported_versions.get(toolkit_version, None)
@@ -413,6 +418,7 @@ class RLEstimator(Framework):
 
     @classmethod
     def _validate_toolkit_support(cls, toolkit, toolkit_version, framework):
+        """Placeholder docstring"""
         if not cls._is_combination_supported(toolkit, toolkit_version, framework):
             raise AttributeError(
                 "Provided `{}-{}` and `{}` combination is not supported.".format(
