@@ -23,7 +23,7 @@ from sagemaker.workflow.entities import Expression
 
 
 class PropertiesMeta(type):
-    """Loads an internal shapes attribute from the botocore sagemaker service model."""
+    """Load an internal shapes attribute from the botocore sagemaker service model."""
 
     _shapes = None
     _primitive_types = {"string", "boolean", "integer", "float"}
@@ -41,7 +41,7 @@ class Properties(metaclass=PropertiesMeta):
     """Properties for use in workflow expressions."""
 
     def __init__(self, path: str, shape_name: str = None):
-        """Creates a Properties instance representing the given shape.
+        """Create a Properties instance representing the given shape.
 
         Args:
             path (str): The parent path of the Properties instance.
@@ -72,7 +72,7 @@ class PropertiesList(Properties):
     """PropertiesList for use in workflow expressions."""
 
     def __init__(self, path: str, shape_name: str = None):
-        """Creates a PropertiesList instance representing the given shape.
+        """Create a PropertiesList instance representing the given shape.
 
         Args:
             path (str): The parent path of the PropertiesList instance.
@@ -82,7 +82,7 @@ class PropertiesList(Properties):
         self._items: Dict[Union[int, str], Properties] = dict()
 
     def __getitem__(self, item: Union[int, str]):
-        """Populates the indexing item with a Property, for both lists and dictionaries.
+        """Populate the indexing item with a Property, for both lists and dictionaries.
 
         Args:
             item (Union[int, str]): The index of the item in sequence.

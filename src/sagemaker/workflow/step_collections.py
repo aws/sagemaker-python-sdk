@@ -44,16 +44,12 @@ class StepCollection:
     steps: List[Step] = attr.ib(factory=list)
 
     def request_dicts(self) -> List[RequestType]:
-        """Gets the request structure for workflow service calls."""
+        """Get the request structure for workflow service calls."""
         return [step.to_request() for step in self.steps]
 
 
 class RegisterModel(StepCollection):
-    """Register Model step collection for workflow.
-
-    Attributes:
-        steps (List[Step]): A list of steps.
-    """
+    """Register Model step collection for workflow."""
 
     def __init__(
         self,
@@ -71,7 +67,7 @@ class RegisterModel(StepCollection):
         compile_model_family=None,
         **kwargs,
     ):
-        """Constructs steps `_RepackModelStep` and `_RegisterModelStep` based on the estimator.
+        """Construct steps `_RepackModelStep` and `_RegisterModelStep` based on the estimator.
 
         Args:
             name (str): The name of the training step.
@@ -131,11 +127,7 @@ class RegisterModel(StepCollection):
 
 
 class EstimatorTransformer(StepCollection):
-    """Creates a Transformer step collection for workflow.
-
-    Attributes:
-        steps (List[Step]): A list of steps.
-    """
+    """Creates a Transformer step collection for workflow."""
 
     def __init__(
         self,
@@ -162,7 +154,7 @@ class EstimatorTransformer(StepCollection):
         volume_kms_key=None,
         **kwargs,
     ):
-        """Constructs steps required for transformation:
+        """Construct steps required for a Transformer step collection:
 
         An estimator-centric step collection. It models what happens in workflows
         when invoking the `transform()` method on an estimator instance:
@@ -176,6 +168,7 @@ class EstimatorTransformer(StepCollection):
         If repacking
         the model artifacts is not necessary, only the CreateModelStep and TransformerStep
         are in the step collection.
+
         Args:
             name (str): The name of the Transform Step.
             estimator: The estimator instance.

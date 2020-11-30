@@ -37,7 +37,7 @@ class ParameterTypeEnum(Enum, metaclass=DefaultEnumMeta):
 
     @property
     def python_type(self) -> Type:
-        """Provides the Python type of the enum value."""
+        """Provide the Python type of the enum value."""
         mapping = {
             ParameterTypeEnum.STRING: str,
             ParameterTypeEnum.INTEGER: int,
@@ -63,7 +63,7 @@ class Parameter(Entity):
 
     @default_value.validator
     def _check_default_value(self, _, value):
-        """Checks whether the default value is compatible with the parameter type.
+        """Check whether the default value is compatible with the parameter type.
 
         Args:
             _: unused argument required by attrs validator decorator.
@@ -75,7 +75,7 @@ class Parameter(Entity):
         self._check_default_value_type(value, self.parameter_type.python_type)
 
     def to_request(self) -> RequestType:
-        """Gets the request structure for workflow service calls."""
+        """Get the request structure for workflow service calls."""
         value = {
             "Name": self.name,
             "Type": self.parameter_type.value,
@@ -100,7 +100,7 @@ class Parameter(Entity):
 
     @classmethod
     def _implicit_value(cls, value, python_type, args, kwargs):
-        """Determines the implicit value from the arguments.
+        """Determine the implicit value from the arguments.
 
         The implicit value of the instance should be the default_value if present.
 
@@ -123,7 +123,7 @@ class Parameter(Entity):
 
     @classmethod
     def _check_default_value_type(cls, value, python_type):
-        """Checks whether the default value is compatible with the parameter type.
+        """Check whether the default value is compatible with the parameter type.
 
         Args:
             value: The value to check the type for.
@@ -143,16 +143,7 @@ ParameterBoolean = partial(Parameter, parameter_type=ParameterTypeEnum.BOOLEAN)
 
 
 class ParameterString(Parameter, str):
-    """Pipeline string parameter for workflow.
-
-    Attributes:
-        name (str): The name of the parameter.
-        parameter_type (ParameterTypeEnum): The type of the parameter.
-        default_value (str): The default Python value of the parameter.
-            Defaults to None.
-        enum_values (List[str]): An list of allowed string values for the
-            parameter. Defaults to None.
-    """
+    """Pipeline string parameter for workflow."""
 
     def __new__(cls, *args, **kwargs):  # pylint: disable=unused-argument
         """Subclass str"""
@@ -160,11 +151,11 @@ class ParameterString(Parameter, str):
         return str.__new__(cls, val)
 
     def __init__(self, name: str, default_value: str = None, enum_values: List[str] = None):
-        """Creates a pipeline string parameter.
+        """Create a pipeline string parameter.
 
         Args:
             name (str): The name of the parameter.
-            default_value (str): The default Python value of the parameter.
+            default_value (str): The default Python value of the parameter. Defaults to None.
         """
         super(ParameterString, self).__init__(
             name=name, parameter_type=ParameterTypeEnum.STRING, default_value=default_value
@@ -176,7 +167,7 @@ class ParameterString(Parameter, str):
         return hash(tuple(self.to_request()))
 
     def to_request(self) -> RequestType:
-        """Gets the request structure for workflow service calls."""
+        """Get the request structure for workflow service calls."""
         request_dict = super(ParameterString, self).to_request()
         if self.enum_values:
             request_dict["EnumValues"] = self.enum_values
@@ -184,13 +175,7 @@ class ParameterString(Parameter, str):
 
 
 class ParameterInteger(Parameter, int):
-    """Pipeline int parameter for workflow.
-
-    Attributes:
-        name (str): The name of the parameter.
-        parameter_type (ParameterTypeEnum): The type of the parameter.
-        default_value (int): The default Python value of the parameter.
-    """
+    """Pipeline string parameter for workflow."""
 
     def __new__(cls, *args, **kwargs):
         """Subclass int"""
@@ -198,7 +183,7 @@ class ParameterInteger(Parameter, int):
         return int.__new__(cls, val)
 
     def __init__(self, name: str, default_value: int = None):
-        """Creates a pipeline string parameter.
+        """Create a pipeline integer parameter.
 
         Args:
             name (str): The name of the parameter.
@@ -210,13 +195,7 @@ class ParameterInteger(Parameter, int):
 
 
 class ParameterFloat(Parameter, float):
-    """Pipeline float parameter for workflow.
-
-    Attributes:
-        name (str): The name of the parameter.
-        parameter_type (ParameterTypeEnum): The type of the parameter.
-        default_value (float): The default Python value of the parameter.
-    """
+    """Pipeline float parameter for workflow."""
 
     def __new__(cls, *args, **kwargs):
         """Subclass float"""
@@ -224,7 +203,7 @@ class ParameterFloat(Parameter, float):
         return float.__new__(cls, val)
 
     def __init__(self, name: str, default_value: float = None):
-        """Creates a pipeline string parameter.
+        """Create a pipeline float parameter.
 
         Args:
             name (str): The name of the parameter.

@@ -30,7 +30,7 @@ class Entity(abc.ABC):
 
     @abc.abstractmethod
     def to_request(self) -> RequestType:
-        """Gets the request structure for workflow service calls."""
+        """Get the request structure for workflow service calls."""
 
 
 class DefaultEnumMeta(EnumMeta):
@@ -56,4 +56,4 @@ class Expression(abc.ABC):
     @property
     @abc.abstractmethod
     def expr(self) -> RequestType:
-        """Gets the expression structure for workflow service calls."""
+        """Get the expression structure for workflow service calls."""

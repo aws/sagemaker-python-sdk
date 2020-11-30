@@ -23,7 +23,7 @@ from sagemaker.workflow.step_collections import StepCollection
 
 
 def list_to_request(entities: Sequence[Union[Entity, StepCollection]]) -> List[RequestType]:
-    """Gets the request structure for list of entities.
+    """Get the request structure for list of entities.
 
     Args:
         entities (Sequence[Entity]): A list of entities.

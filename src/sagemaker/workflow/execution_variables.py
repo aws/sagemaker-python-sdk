@@ -22,11 +22,7 @@ from sagemaker.workflow.entities import (
 
 
 class ExecutionVariable(Entity, str):
-    """Pipeline execution variables for workflow.
-
-    Attributes:
-        name (str): The name of the parameter.
-    """
+    """Pipeline execution variables for workflow."""
 
     def __new__(cls, *args, **kwargs):  # pylint: disable=unused-argument
         """Subclass str"""
@@ -38,7 +34,7 @@ class ExecutionVariable(Entity, str):
         return str.__new__(cls, ExecutionVariable._expr(value))
 
     def __init__(self, name: str):
-        """Creates a pipeline execution variable.
+        """Create a pipeline execution variable.
 
         Args:
             name (str): The name of the execution variable.
@@ -51,7 +47,7 @@ class ExecutionVariable(Entity, str):
         return hash(tuple(self.to_request()))
 
     def to_request(self) -> RequestType:
-        """Gets the request structure for workflow service calls."""
+        """Get the request structure for workflow service calls."""
         return self.expr
 
     @property

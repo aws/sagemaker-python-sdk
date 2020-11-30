@@ -94,14 +94,7 @@ class Step(Entity):
 
 
 class TrainingStep(Step):
-    """Training step for workflow.
-
-    Attributes:
-        name (str): The name of the training step.
-        step_type (StepTypeEnum): The type of the step with value `StepTypeEnum.Training`.
-        estimator (EstimatorBase): A `sagemaker.estimator.EstimatorBase` instance.
-        inputs (TrainingInput): A `sagemaker.inputs.TrainingInput` instance. Defaults to `None`.
-    """
+    """Training step for workflow."""
 
     def __init__(
         self,
@@ -109,7 +102,7 @@ class TrainingStep(Step):
         estimator: EstimatorBase,
         inputs: TrainingInput = None,
     ):
-        """Constructs a TrainingStep, given an `EstimatorBase` instance.
+        """Construct a TrainingStep, given an `EstimatorBase` instance.
 
         In addition to the estimator instance, the other arguments are those that are supplied to
         the `fit` method of the `sagemaker.estimator.Estimator`.
@@ -154,13 +147,7 @@ class TrainingStep(Step):
 
 
 class CreateModelStep(Step):
-    """CreateModel step for workflow.
-
-    Attributes:
-        name (str): The name of the CreateModel step.
-        step_type (StepTypeEnum): The type of the step with value `StepTypeEnum.CREATE_MODEL`.
-        model (Model): A `sagemaker.model.Model` instance.
-    """
+    """CreateModel step for workflow."""
 
     def __init__(
         self,
@@ -168,7 +155,7 @@ class CreateModelStep(Step):
         model: Model,
         inputs: CreateModelInput,
     ):
-        """Constructs a CreateModelStep, given an `sagemaker.model.Model` instance.
+        """Construct a CreateModelStep, given an `sagemaker.model.Model` instance.
 
         In addition to the Model instance, the other arguments are those that are supplied to
         the `_create_sagemaker_model` method of the `sagemaker.model.Model._create_sagemaker_model`.
@@ -214,13 +201,7 @@ class CreateModelStep(Step):
 
 
 class TransformStep(Step):
-    """Transform step for workflow.
-
-    Attributes:
-        name (str): The name of the transform step.
-        step_type (StepTypeEnum): The type of the step with value `StepTypeEnum.Transform`.
-        transformer (Transformer): A `sagemaker.transformer.Transformer` instance.
-    """
+    """Transform step for workflow."""
 
     def __init__(
         self,
@@ -228,7 +209,7 @@ class TransformStep(Step):
         transformer: Transformer,
         inputs: TransformInput,
     ):
-        """Constructs a TrainingStep, given an `Transformer` instance.
+        """Constructs a TransformStep, given an `Transformer` instance.
 
         In addition to the transformer instance, the other arguments are those that are supplied to
         the `transform` method of the `sagemaker.transformer.Transformer`.
@@ -279,18 +260,7 @@ class TransformStep(Step):
 
 
 class ProcessingStep(Step):
-    """Processing step for workflow.
-
-    Attributes:
-        name (str): The name of the training step.
-        step_type (StepTypeEnum): The type of the step with value `StepTypeEnum.Processing`.
-        processor (Processor): A `sagemaker.processor.Processor` instance.
-        inputs (List[ProcessingInput]): A list of `sagemaker.processing.ProcessorInput` instances.
-        outputs (List[ProcessingOutput]): A list of `sagemaker.processing.ProcessorOutput`
-            instances.
-        job_arguments (List[str]): A list of strings to be passed into the processing job.
-        code (str): This can be an S3 URI or a local path to a file that the framework script runs.
-    """
+    """Processing step for workflow."""
 
     def __init__(
         self,
@@ -302,7 +272,7 @@ class ProcessingStep(Step):
         code: str = None,
         property_files: List[PropertyFile] = None,
     ):
-        """Constructs a ProcessingStep, given a `Processor` instance.
+        """Construct a ProcessingStep, given a `Processor` instance.
 
         In addition to the processor instance, the other arguments are those that are supplied to
         the `process` method of the `sagemaker.processing.Processor`.
@@ -364,7 +334,7 @@ class ProcessingStep(Step):
         return self._properties
 
     def to_request(self) -> RequestType:
-        """Gets the request structure for workflow service calls."""
+        """Get the request structure for workflow service calls."""
         request_dict = super(ProcessingStep, self).to_request()
         if self.property_files:
             request_dict["PropertyFiles"] = [
@@ -374,18 +344,15 @@ class ProcessingStep(Step):
 
 
 class FailStep(Step):
-    """Pipeline step to indicate failure.
-
-    Attributes:
-        name (str): The name of the step.
-        step_type (StepTypeEnum): The type of the step.
-    """
+    """Pipeline step to indicate failure."""
 
     def __init__(self, name: str = "Fail"):
-        """Constructs a FailStep, which causes pipeline execution to terminate in failed state.
+        """Construct a FailStep.
+
+        Causes the pipeline execution to terminate in a failed state.
 
         Args:
-            name (str): The name of the training step.
+            name (str): The name of the step.
         """
         super(FailStep, self).__init__(name, StepTypeEnum.FAIL)
         root_path = f"Steps.{name}"
@@ -404,7 +371,7 @@ class FailStep(Step):
         return self._properties
 
     def to_request(self) -> RequestType:
-        """Gets the request structure for workflow service calls."""
+        """Get the request structure for workflow service calls."""
         return {
             "Name": self.name,
             "Type": self.step_type.value,
@@ -413,5 +380,5 @@ class FailStep(Step):
 
     @property
     def ref(self) -> Dict[str, str]:
-        """Gets a reference dict for steps"""
+        """Get a reference dict for steps"""
         return {"Name": self.name}

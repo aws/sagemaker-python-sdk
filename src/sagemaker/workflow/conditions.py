@@ -66,7 +66,6 @@ class ConditionComparison(Condition):
     """Generic comparison condition that can be used to derive specific condition comparisons.
 
     Attributes:
-        condition_type (ConditionTypeEnum): The type of condition.
         left (ConditionValueType): The execution variable, parameter, or
             property to use in the comparison.
         right (Union[ConditionValueType, PrimitiveType]): The execution variable,
@@ -77,7 +76,7 @@ class ConditionComparison(Condition):
     right: Union[ConditionValueType, PrimitiveType] = attr.ib(default=None)
 
     def to_request(self) -> RequestType:
-        """Gets the request structure for workflow service calls."""
+        """Get the request structure for workflow service calls."""
         return {
             "Type": self.condition_type.value,
             "LeftValue": self.left.expr,
@@ -86,18 +85,10 @@ class ConditionComparison(Condition):
 
 
 class ConditionEquals(ConditionComparison):
-    """A condition for equality comparisons.
-
-    Attributes:
-        condition_type (ConditionTypeEnum): A `ConditionTypeEnum.EQ` type of condition.
-        left (ConditionValueType): The execution variable, parameter, or
-            property to use in the comparison.
-        right (Union[ConditionValueType, PrimitiveType]): The execution variable,
-            parameter, property, or Python primitive value to compare to.
-    """
+    """A condition for equality comparisons."""
 
     def __init__(self, left: ConditionValueType, right: Union[ConditionValueType, PrimitiveType]):
-        """Constructs an instance of ConditionEquals.
+        """Construct A condition for equality comparisons.
 
         Args:
             left (ConditionValueType): The execution variable, parameter,
@@ -110,18 +101,10 @@ class ConditionEquals(ConditionComparison):
 
 
 class ConditionGreaterThan(ConditionComparison):
-    """A condition for greater than comparisons.
-
-    Attributes:
-        condition_type (ConditionTypeEnum): A `ConditionTypeEnum.GT` type of condition.
-        left (ConditionValueType): The execution variable, parameter, or
-            property to use in the comparison.
-        right (Union[ConditionValueType, PrimitiveType]): The execution variable,
-            parameter, property, or Python primitive value to compare to.
-    """
+    """A condition for greater than comparisons."""
 
     def __init__(self, left: ConditionValueType, right: Union[ConditionValueType, PrimitiveType]):
-        """Constructs an instance of ConditionGreaterThan.
+        """Construct an instance of ConditionGreaterThan for greater than comparisons.
 
         Args:
             left (ConditionValueType): The execution variable, parameter,
@@ -134,18 +117,10 @@ class ConditionGreaterThan(ConditionComparison):
 
 
 class ConditionGreaterThanOrEqualTo(ConditionComparison):
-    """A condition for greater than or equal to comparisons.
-
-    Attributes:
-        condition_type (ConditionTypeEnum): A `ConditionTypeEnum.GTE` type of condition.
-        left (ConditionValueType): The execution variable, parameter, or
-            property to use in the comparison.
-        right (Union[ConditionValueType, PrimitiveType]): The execution variable,
-            parameter, property, or Python primitive value to compare to.
-    """
+    """A condition for greater than or equal to comparisons."""
 
     def __init__(self, left: ConditionValueType, right: Union[ConditionValueType, PrimitiveType]):
-        """Constructs an instance of ConditionGreaterThanOrEqualTo.
+        """Construct of ConditionGreaterThanOrEqualTo for greater than or equal to comparisons.
 
         Args:
             left (ConditionValueType): The execution variable, parameter,
@@ -158,18 +133,10 @@ class ConditionGreaterThanOrEqualTo(ConditionComparison):
 
 
 class ConditionLessThan(ConditionComparison):
-    """A condition for less than comparisons.
-
-    Attributes:
-        condition_type (ConditionTypeEnum): A `ConditionTypeEnum.LT` type of condition.
-        left (ConditionValueType): The execution variable, parameter, or
-            property to use in the comparison.
-        right (Union[ConditionValueType, PrimitiveType]): The execution variable,
-            parameter, property, or Python primitive value to compare to.
-    """
+    """A condition for less than comparisons."""
 
     def __init__(self, left: ConditionValueType, right: Union[ConditionValueType, PrimitiveType]):
-        """Constructs an instance of ConditionLessThan.
+        """Construct an instance of ConditionLessThan for less than comparisons.
 
         Args:
             left (ConditionValueType): The execution variable, parameter,
@@ -182,18 +149,10 @@ class ConditionLessThan(ConditionComparison):
 
 
 class ConditionLessThanOrEqualTo(ConditionComparison):
-    """A condition for less than or equal to comparisons.
-
-    Attributes:
-        condition_type (ConditionTypeEnum): A `ConditionTypeEnum.LTE` type of condition.
-        left (ConditionValueType): The execution variable, parameter, or
-            property to use in the comparison.
-        right (Union[ConditionValueType, PrimitiveType]): The execution variable,
-            parameter, property, or Python primitive value to compare to.
-    """
+    """A condition for less than or equal to comparisons."""
 
     def __init__(self, left: ConditionValueType, right: Union[ConditionValueType, PrimitiveType]):
-        """Constructs an instance of ConditionLessThanOrEqualTo.
+        """Construct ConditionLessThanOrEqualTo for less than or equal to comparisons.
 
         Args:
             left (ConditionValueType): The execution variable, parameter,
@@ -206,19 +165,12 @@ class ConditionLessThanOrEqualTo(ConditionComparison):
 
 
 class ConditionIn(Condition):
-    """A condition to check membership.
-
-    Attributes:
-        condition_type (ConditionTypeEnum): A `ConditionTypeEnum.IN` type of condition.
-        value (ConditionValueType): The value to check membership of.
-        in_values (List[Union[ConditionValueType, PrimitiveType]]): A list of values to check
-            membership in.
-    """
+    """A condition to check membership."""
 
     def __init__(
         self, value: ConditionValueType, in_values: List[Union[ConditionValueType, PrimitiveType]]
     ):
-        """Constructs a `ConditionIn` condition.
+        """Construct a `ConditionIn` condition to check membership.
 
         Args:
             value (ConditionValueType): The execution variable,
@@ -231,7 +183,7 @@ class ConditionIn(Condition):
         self.in_values = in_values
 
     def to_request(self) -> RequestType:
-        """Gets the request structure for workflow service calls."""
+        """Get the request structure for workflow service calls."""
         return {
             "Type": self.condition_type.value,
             "Value": self.value.expr,
@@ -240,15 +192,10 @@ class ConditionIn(Condition):
 
 
 class ConditionNot(Condition):
-    """A condition for negating another `Condition`.
-
-    Attributes:
-        condition_type (ConditionTypeEnum): A `ConditionTypeEnum.NOT` type of condition.
-        expression (Condition): A `Condition` to take the negation of.
-    """
+    """A condition for negating another `Condition`."""
 
     def __init__(self, expression: Condition):
-        """Constructs a `ConditionNot` condition.
+        """Construct a `ConditionNot` condition for negating another `Condition`.
 
         Attributes:
             expression (Condition): A `Condition` to take the negation of.
@@ -257,29 +204,24 @@ class ConditionNot(Condition):
         self.expression = expression
 
     def to_request(self) -> RequestType:
-        """Gets the request structure for workflow service calls."""
+        """Get the request structure for workflow service calls."""
         return {"Type": self.condition_type.value, "Expression": self.expression.to_request()}
 
 
 class ConditionOr(Condition):
-    """A condition for taking the logical OR of a list of `Condition` instances.
-
-    Attributes:
-        condition_type (ConditionTypeEnum): A `ConditionTypeEnum.OR` type of condition.
-        conditions (List[Condition]): A list of `Condition` instances to logically OR.
-    """
+    """A condition for taking the logical OR of a list of `Condition` instances."""
 
     def __init__(self, conditions: List[Condition] = None):
-        """Constructs a `ConditionOr` condition.
+        """Construct a `ConditionOr` condition.
 
         Attributes:
-            conditions (List[Condition]): A list of `Condition` instances.
+            conditions (List[Condition]): A list of `Condition` instances to logically OR.
         """
         super(ConditionOr, self).__init__(ConditionTypeEnum.OR)
         self.conditions = conditions or []
 
     def to_request(self) -> RequestType:
-        """Gets the request structure for workflow service calls."""
+        """Get the request structure for workflow service calls."""
         return {
             "Type": self.condition_type.value,
             "Conditions": [condition.to_request() for condition in self.conditions],
@@ -289,10 +231,10 @@ class ConditionOr(Condition):
 def primitive_or_expr(
     value: Union[ExecutionVariable, Expression, PrimitiveType, Parameter, Properties]
 ) -> Union[Dict[str, str], PrimitiveType]:
-    """Provides the expression of the value or leaves the primitive value alone.
+    """Provide the expression of the value or return value if it is a primitive.
 
     Args:
-        value (Union[ConditionValueType, PrimitiveType]): The value to evaluate..
+        value (Union[ConditionValueType, PrimitiveType]): The value to evaluate.
 
     Returns:
         Either the expression of the value or the primitive value.
