@@ -1,5 +1,23 @@
 # Changelog
 
+## v2.16.3.post0 (2020-11-17)
+
+### Testing and Release Infrastructure
+
+ * use ECR-hosted image for ubuntu:16.04
+
+## v2.16.3 (2020-11-11)
+
+### Bug Fixes and Other Changes
+
+ * fix failures for multiple spark run() invocations
+
+## v2.16.2 (2020-11-09)
+
+### Bug Fixes and Other Changes
+
+ * create default bucket only if needed
+
 ## v2.16.1 (2020-10-28)
 
 ### Bug Fixes and Other Changes
