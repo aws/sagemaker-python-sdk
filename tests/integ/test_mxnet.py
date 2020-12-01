@@ -312,7 +312,7 @@ def test_deploy_model_with_accelerator(
     mxnet_training_job,
     sagemaker_session,
     mxnet_eia_latest_version,
-    mxnet_inference_latest_py_version,
+    mxnet_eia_py_version,
     cpu_instance_type,
 ):
     endpoint_name = "test-mxnet-deploy-model-ei-{}".format(sagemaker_timestamp())
@@ -328,7 +328,7 @@ def test_deploy_model_with_accelerator(
             "SageMakerRole",
             entry_point=script_path,
             framework_version=mxnet_eia_latest_version,
-            py_version=mxnet_inference_latest_py_version,
+            py_version=mxnet_eia_py_version,
             sagemaker_session=sagemaker_session,
         )
         predictor = model.deploy(
