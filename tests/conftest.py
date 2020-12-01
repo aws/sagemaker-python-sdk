@@ -17,12 +17,13 @@ import os
 
 import boto3
 import pytest
+import tests.integ
+
 from botocore.config import Config
 from packaging.version import Version
 
 from sagemaker import Session, image_uris, utils
 from sagemaker.local import LocalSession
-import tests.integ
 
 DEFAULT_REGION = "us-west-2"
 CUSTOM_BUCKET_NAME_PREFIX = "sagemaker-custom-bucket"
@@ -139,6 +140,8 @@ def chainer_py_version(request):
 def mxnet_inference_py_version(mxnet_inference_version, request):
     if Version(mxnet_inference_version) < Version("1.7.0"):
         return request.param
+    elif Version(mxnet_inference_version) == Version("1.8.0"):
+        return "py37"
     else:
         return "py3"
 
@@ -147,6 +150,8 @@ def mxnet_inference_py_version(mxnet_inference_version, request):
 def mxnet_training_py_version(mxnet_training_version, request):
     if Version(mxnet_training_version) < Version("1.7.0"):
         return request.param
+    elif Version(mxnet_training_version) == Version("1.8.0"):
+        return "py37"
     else:
         return "py3"
 
