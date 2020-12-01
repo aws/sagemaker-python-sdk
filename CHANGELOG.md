@@ -1,5 +1,17 @@
 # Changelog
 
+## v2.16.4 (2020-12-01)
+
+### Bug Fixes and Other Changes
+
+ * Add re:Invent 2020 features
+ * use eia python version fixture in integration tests
+ * bump version to 2.17.0 for re:Invent-2020
+
+### Documentation Changes
+
+ * add feature store documentation
+
 ## v2.16.3.post0 (2020-11-17)
 
 ### Testing and Release Infrastructure
