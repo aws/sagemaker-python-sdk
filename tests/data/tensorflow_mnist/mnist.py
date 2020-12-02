@@ -159,7 +159,7 @@ if __name__ == "__main__":
 
     # Train the model
     train_input_fn = tf.compat.v1.estimator.inputs.numpy_input_fn(
-        x={"x": train_data}, y=train_labels, batch_size=50, num_epochs=None, shuffle=True
+        x={"x": train_data}, y=train_labels, batch_size=50, num_epochs=None, shuffle=False
     )
 
     # Evaluate the model and print results
