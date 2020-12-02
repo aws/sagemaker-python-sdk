@@ -81,6 +81,9 @@ class Artifact(_base_types.Record):
     def save(self):
         """Save the state of this Artifact to SageMaker.
 
+        Note that this method must be run from a SageMaker context such as studio or training job
+        due to restrictions on the CreateArtifact API.
+
         Returns:
             Artifact: A SageMaker `Artifact` object.
         """
