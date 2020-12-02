@@ -2,9 +2,12 @@
 
 ## v2.16.4 (2020-12-01)
 
-### Bug Fixes and Other Changes
+### Features
 
  * Add re:Invent 2020 features
+
+### Bug Fixes and Other Changes
+
  * use eia python version fixture in integration tests
  * bump version to 2.17.0 for re:Invent-2020
 
