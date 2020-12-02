@@ -13,6 +13,8 @@
 """Amazon SageMaker channel configurations for S3 data sources and file system data sources"""
 from __future__ import absolute_import, print_function
 
+import attr
+
 FILE_SYSTEM_TYPES = ["FSxLustre", "EFS"]
 FILE_SYSTEM_ACCESS_MODES = ["ro", "rw"]
 
@@ -116,6 +118,36 @@ class ShuffleConfig(object):
             seed (long): the long value used to seed the shuffled sequence.
         """
         self.seed = seed
+
+
+@attr.s
+class CreateModelInput(object):
+    """A class containing parameters which can be used to create a SageMaker Model
+
+    Attributes:
+        instance_type (str): type or EC2 instance will be used for model deployment.
+        accelerator_type (str): elastic inference accelerator type.
+    """
+
+    instance_type: str = attr.ib(default=None)
+    accelerator_type: str = attr.ib(default=None)
+
+
+@attr.s
+class TransformInput(object):
+    """Create a class containing all the parameters which can be used when calling
+    ``sagemaker.transformer.Transformer.transform()``
+    """
+
+    data: str = attr.ib()
+    data_type: str = attr.ib(default="S3Prefix")
+    content_type: str = attr.ib(default=None)
+    compression_type: str = attr.ib(default=None)
+    split_type: str = attr.ib(default=None)
+    input_filter: str = attr.ib(default=None)
+    output_filter: str = attr.ib(default=None)
+    join_source: str = attr.ib(default=None)
+    model_client_config: dict = attr.ib(default=None)
 
 
 class FileSystemInput(object):
