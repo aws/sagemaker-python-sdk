@@ -75,26 +75,26 @@ def build_jar():
 
 
 @pytest.fixture(scope="module")
-def spark_py_processor(sagemaker_session, cpu_instance_type, spark_processing_latest_version):
+def spark_py_processor(sagemaker_session, cpu_instance_type):
     spark_py_processor = PySparkProcessor(
         role="SageMakerRole",
         instance_count=2,
         instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
-        framework_version=spark_processing_latest_version,
+        framework_version="2.4",
     )
 
     return spark_py_processor
 
 
 @pytest.fixture(scope="module")
-def spark_jar_processor(sagemaker_session, cpu_instance_type, spark_processing_latest_version):
+def spark_jar_processor(sagemaker_session, cpu_instance_type):
     spark_jar_processor = SparkJarProcessor(
         role="SageMakerRole",
         instance_count=2,
         instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
-        framework_version=spark_processing_latest_version,
+        framework_version="2.4",
     )
 
     return spark_jar_processor

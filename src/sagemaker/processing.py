@@ -28,6 +28,7 @@ from sagemaker.job import _Job
 from sagemaker.utils import base_name_from_image, name_from_base
 from sagemaker.session import Session
 from sagemaker.network import NetworkConfig  # noqa: F401 # pylint: disable=unused-import
+from sagemaker.workflow.properties import Properties
 
 
 class Processor(object):
@@ -277,6 +278,11 @@ class Processor(object):
                 # Generate a name for the ProcessingInput if it doesn't have one.
                 if file_input.input_name is None:
                     file_input.input_name = "input-{}".format(count)
+
+                if isinstance(file_input.source, Properties):
+                    normalized_inputs.append(file_input)
+                    continue
+
                 # If the source is a local path, upload it to S3
                 # and save the S3 uri in the ProcessingInput source.
                 parse_result = urlparse(file_input.source)
