@@ -51,8 +51,8 @@ class RandomCutForest(AmazonAlgorithmEstimatorBase):
     def __init__(
         self,
         role,
-        instance_count,
-        instance_type,
+        instance_count=None,
+        instance_type=None,
         num_samples_per_tree=None,
         num_trees=None,
         eval_metrics=None,

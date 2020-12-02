@@ -1,5 +1,56 @@
 # Changelog
 
+## v2.16.4 (2020-12-01)
+
+### Features
+
+ * Add re:Invent 2020 features
+
+### Bug Fixes and Other Changes
+
+ * use eia python version fixture in integration tests
+ * bump version to 2.17.0 for re:Invent-2020
+
+### Documentation Changes
+
+ * add feature store documentation
+
+## v2.16.3.post0 (2020-11-17)
+
+### Testing and Release Infrastructure
+
+ * use ECR-hosted image for ubuntu:16.04
+
+## v2.16.3 (2020-11-11)
+
+### Bug Fixes and Other Changes
+
+ * fix failures for multiple spark run() invocations
+
+## v2.16.2 (2020-11-09)
+
+### Bug Fixes and Other Changes
+
+ * create default bucket only if needed
+
+## v2.16.1 (2020-10-28)
+
+### Bug Fixes and Other Changes
+
+ * ensure 1p algos are compatible with forward-port
+
+## v2.16.0.post0 (2020-10-28)
+
+### Documentation Changes
+
+ * clarify non-breaking changes after v1 forward port
+
+## v2.16.0 (2020-10-27)
+
+### Features
+
+ * update image uri for neo tensorflow
+
 ## v2.15.4 (2020-10-26)
 
 ### Bug Fixes and Other Changes

@@ -140,11 +140,11 @@ class Object2Vec(AmazonAlgorithmEstimatorBase):
     def __init__(
         self,
         role,
-        instance_count,
-        instance_type,
-        epochs,
-        enc0_max_seq_len,
-        enc0_vocab_size,
+        instance_count=None,
+        instance_type=None,
+        epochs=None,
+        enc0_max_seq_len=None,
+        enc0_vocab_size=None,
         enc_dim=None,
         mini_batch_size=None,
         early_stopping_patience=None,
@@ -271,7 +271,6 @@ class Object2Vec(AmazonAlgorithmEstimatorBase):
         """
 
         super(Object2Vec, self).__init__(role, instance_count, instance_type, **kwargs)
-
         self.enc_dim = enc_dim
         self.mini_batch_size = mini_batch_size
         self.epochs = epochs

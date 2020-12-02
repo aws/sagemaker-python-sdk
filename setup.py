@@ -33,7 +33,8 @@ def read_version():
 
 # Declare minimal set for installation
 required_packages = [
-    "boto3>=1.14.12",
+    "attrs",
+    "boto3>=1.16.27",
     "google-pasta",
     "numpy>=1.9.0",
     "protobuf>=3.1",
@@ -46,6 +47,7 @@ required_packages = [
 # Specific use case dependencies
 extras = {
     "analytics": ["pandas"],
+    "feature-store": ["pandas"],
     "local": [
         "urllib3>=1.21.1,<1.26,!=1.25.0,!=1.25.1",
         "docker-compose>=1.25.2",
@@ -73,6 +75,7 @@ extras["test"] = (
         "apache-airflow==1.10.11",
         "fabric>=2.0",
         "requests>=2.20.0, <3",
+        "sagemaker-experiments",
     ],
 )
 

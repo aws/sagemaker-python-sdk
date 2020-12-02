@@ -1,4 +1,4 @@
-FROM ubuntu:16.04
+FROM 142577830533.dkr.ecr.us-east-2.amazonaws.com/ubuntu:16.04
 
 # Set a docker label to advertise multi-model support on the container
 LABEL com.amazonaws.sagemaker.capabilities.multi-models=true

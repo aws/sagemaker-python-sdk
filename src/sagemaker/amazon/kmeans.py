@@ -57,9 +57,9 @@ class KMeans(AmazonAlgorithmEstimatorBase):
     def __init__(
         self,
         role,
-        instance_count,
-        instance_type,
-        k,
+        instance_count=None,
+        instance_type=None,
+        k=None,
         init_method=None,
         max_iterations=None,
         tol=None,
