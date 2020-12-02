@@ -37,7 +37,7 @@
  * warn on 'Stopped' (non-Completed) jobs
  * all predictors support serializer/deserializer overrides
 
-### Bug Fixes and Other Changes
+### Features
 
  * v2 upgrade tool should ignore cell starting with '%'
  * use iterrows to iterate pandas dataframe
