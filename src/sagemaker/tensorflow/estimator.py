@@ -113,6 +113,7 @@ class TensorFlow(Framework):
             :class:`~sagemaker.estimator.Framework` and
             :class:`~sagemaker.estimator.EstimatorBase`.
         """
+        distribution = renamed_kwargs("distributions", "distribution", distribution, kwargs)
         instance_type = renamed_kwargs(
             "train_instance_type", "instance_type", kwargs.get("instance_type"), kwargs
         )
