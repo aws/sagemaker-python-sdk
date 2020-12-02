@@ -420,7 +420,7 @@ def test_transform_tf_kms_network_isolation(
         with open(os.path.join(tmpdir, "tf-batch-output", "data.csv.out")) as f:
             result = json.load(f)
             assert len(result["predictions"][0]["probabilities"]) == 10
-            assert result["predictions"][0]["classes"] == 1
+            assert result["predictions"][0]["classes"] >= 1
 
 
 def _create_transformer_and_transform_job(
