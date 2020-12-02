@@ -206,7 +206,6 @@ class _SparkProcessorBase(ScriptProcessor):
                 user code file (default: None).
         """
         self._current_job_name = self._generate_current_job_name(job_name=job_name)
-        self.command = []
 
         super().run(
             submit_app,
