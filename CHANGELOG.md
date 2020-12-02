@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.17.0 (2020-12-02)
+
+### Features
+
+ * bump minor version for re:Invent 2020 features
+
 ## v2.16.4 (2020-12-01)
 
 ### Features
