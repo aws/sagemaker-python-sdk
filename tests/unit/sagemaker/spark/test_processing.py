@@ -68,7 +68,7 @@ def spark_processor_base(sagemaker_session) -> _SparkProcessorBase:
     spark_processor_base = _SparkProcessorBase(
         base_job_name="sm-spark",
         role="AmazonSageMaker-ExecutionRole",
-        framework_version="0.1.0",
+        framework_version="2.4",
         instance_count=1,
         instance_type="ml.c5.xlarge",
         image_uri="790336243319.dkr.ecr.us-west-2.amazonaws.com/sagemaker-spark:0.1",
@@ -83,7 +83,7 @@ def py_spark_processor(sagemaker_session) -> PySparkProcessor:
     spark = PySparkProcessor(
         base_job_name="sm-spark",
         role="AmazonSageMaker-ExecutionRole",
-        framework_version="0.1.0",
+        framework_version="2.4",
         instance_count=1,
         instance_type="ml.c5.xlarge",
         image_uri="790336243319.dkr.ecr.us-west-2.amazonaws.com/sagemaker-spark:0.1",
@@ -125,7 +125,7 @@ def test_pyspark_processor_instantiation(sagemaker_session):
     PySparkProcessor(
         base_job_name="sm-spark",
         role="AmazonSageMaker-ExecutionRole",
-        framework_version="0.1.0",
+        framework_version="2.4",
         instance_count=1,
         instance_type="ml.c5.xlarge",
         sagemaker_session=sagemaker_session,
@@ -183,7 +183,7 @@ def test_configuration_validation(config, expected, sagemaker_session) -> None:
     spark = PySparkProcessor(
         base_job_name="sm-spark",
         role="AmazonSageMaker-ExecutionRole",
-        framework_version="0.1.0",
+        framework_version="2.4",
         instance_count=1,
         instance_type="ml.c5.xlarge",
         sagemaker_session=sagemaker_session,
@@ -364,6 +364,16 @@ def test_stage_submit_deps(mock_s3_uploader, py_spark_processor, jar_file, confi
         ),
         (
             {
+                "image_uri": None,
+                "framework_version": "3.0",
+                "py_version": None,
+                "container_version": None,
+                "instance_type": "ml.c5.xlarge",
+            },
+            "153931337802.dkr.ecr.us-west-2.amazonaws.com/sagemaker-spark-processing:3.0-cpu",
+        ),
+        (
+            {
                 "image_uri": "image_uri",
                 "framework_version": "2.4",
                 "py_version": None,
@@ -371,6 +381,16 @@ def test_stage_submit_deps(mock_s3_uploader, py_spark_processor, jar_file, confi
                 "instance_type": "ml.c5.xlarge",
             },
             "image_uri",
+        ),
+        (
+            {
+                "image_uri": None,
+                "framework_version": "invalidFrameworkVersion",
+                "py_version": None,
+                "container_version": None,
+                "instance_type": "ml.c5.xlarge",
+            },
+            ValueError,
         ),
         (
             {
@@ -848,7 +868,7 @@ def test_spark_jar_processor_run(
     spark_jar_processor = SparkJarProcessor(
         base_job_name="sm-spark",
         role="AmazonSageMaker-ExecutionRole",
-        framework_version="0.1.0",
+        framework_version="2.4",
         instance_count=1,
         instance_type="ml.c5.xlarge",
         image_uri="790336243319.dkr.ecr.us-west-2.amazonaws.com/sagemaker-spark:0.1",

@@ -63,7 +63,7 @@ from sagemaker import vpc_utils
 logger = logging.getLogger(__name__)
 
 
-class EstimatorBase(with_metaclass(ABCMeta, object)):
+class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-many-public-methods
     """Handle end-to-end Amazon SageMaker training and deployment tasks.
 
     For introduction to model training and deployment, see
@@ -801,6 +801,79 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
             wait=wait,
             kms_key=kms_key,
             data_capture_config=data_capture_config,
+        )
+
+    def register(
+        self,
+        content_types,
+        response_types,
+        inference_instances,
+        transform_instances,
+        image_uri=None,
+        model_package_name=None,
+        model_package_group_name=None,
+        model_metrics=None,
+        metadata_properties=None,
+        marketplace_cert=False,
+        approval_status=None,
+        description=None,
+        compile_model_family=None,
+        model_name=None,
+        **kwargs,
+    ):
+        """Creates a model package for creating SageMaker models or listing on Marketplace.
+
+        Args:
+            content_types (list): The supported MIME types for the input data.
+            response_types (list): The supported MIME types for the output data.
+            inference_instances (list): A list of the instance types that are used to
+                generate inferences in real-time.
+            transform_instances (list): A list of the instance types on which a transformation
+                job can be run or on which an endpoint can be deployed.
+            image_uri (str): The container image uri for Model Package, if not specified,
+                Estimator's training container image will be used (default: None).
+            model_package_name (str): Model Package name, exclusive to `model_package_group_name`,
+                using `model_package_name` makes the Model Package un-versioned (default: None).
+            model_package_group_name (str): Model Package Group name, exclusive to
+                `model_package_name`, using `model_package_group_name` makes the Model Package
+                versioned (default: None).
+            model_metrics (ModelMetrics): ModelMetrics object (default: None).
+            metadata_properties (MetadataProperties): MetadataProperties (default: None).
+            marketplace_cert (bool): A boolean value indicating if the Model Package is certified
+                for AWS Marketplace (default: False).
+            approval_status (str): Model Approval Status, values can be "Approved", "Rejected",
+                or "PendingManualApproval" (default: "PendingManualApproval").
+            description (str): Model Package description (default: None).
+            compile_model_family (str): Instance family for compiled model, if specified, a compiled
+                model will be used (default: None).
+            model_name (str): User defined model name (default: None).
+            **kwargs: Passed to invocation of ``create_model()``. Implementations may customize
+                ``create_model()`` to accept ``**kwargs`` to customize model creation during
+                deploy. For more, see the implementation docs.
+
+        Returns:
+            str: A string of SageMaker Model Package ARN.
+        """
+        default_name = name_from_base(self.base_job_name)
+        model_name = model_name or default_name
+        if compile_model_family is not None:
+            model = self._compiled_models[compile_model_family]
+        else:
+            model = self.create_model(image_uri=image_uri, **kwargs)
+        model.name = model_name
+        return model.register(
+            content_types,
+            response_types,
+            inference_instances,
+            transform_instances,
+            model_package_name,
+            model_package_group_name,
+            image_uri,
+            model_metrics,
+            metadata_properties,
+            marketplace_cert,
+            approval_status,
+            description,
         )
 
     @property

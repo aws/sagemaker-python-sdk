@@ -66,9 +66,20 @@ Amazon SageMaker Debugger
 You can use Amazon SageMaker Debugger to automatically detect anomalies while training your machine learning models.
 
 .. toctree::
-    :maxdepth: 2
+   :maxdepth: 2
 
-    amazon_sagemaker_debugger
+   amazon_sagemaker_debugger
+
+
+******************************
+Amazon SageMaker Feature Store
+******************************
+You can use Feature Store to store features and associated metadata, so features can be discovered and reused.
+
+.. toctree::
+   :maxdepth: 2
+
+   amazon_sagemaker_featurestore
 
 
 *********************************

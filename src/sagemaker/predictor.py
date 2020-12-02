@@ -45,6 +45,8 @@ from sagemaker.model_monitor.model_monitoring import (
     DefaultModelMonitor,
 )
 
+from sagemaker.lineage.context import EndpointContext
+
 
 class Predictor(object):
     """Make prediction requests to an Amazon SageMaker endpoint."""
@@ -88,6 +90,7 @@ class Predictor(object):
         self.deserializer = deserializer
         self._endpoint_config_name = self._get_endpoint_config_name()
         self._model_names = self._get_model_names()
+        self._context = None
 
     def predict(self, data, initial_args=None, target_model=None, target_variant=None):
         """Return the inference from the specified endpoint.
@@ -386,6 +389,42 @@ class Predictor(object):
                 )
 
         return monitors
+
+    def endpoint_context(self):
+        """Retrieves the lineage context object representing the endpoint.
+
+        Examples:
+            .. code-block:: python
+
+            predictor = Predictor()
+            ...
+            context = predictor.endpoint_context()
+            models = context.models()
+
+        Returns:
+            ContextEndpoint: The context for the endpoint.
+        """
+        if self._context:
+            return self._context
+
+        # retrieve endpoint by name to get arn
+        response = self.sagemaker_session.sagemaker_client.describe_endpoint(
+            EndpointName=self.endpoint_name
+        )
+        endpoint_arn = response["EndpointArn"]
+
+        # list context by source uri using arn
+        contexts = list(
+            EndpointContext.list(sagemaker_session=self.sagemaker_session, source_uri=endpoint_arn)
+        )
+
+        if len(contexts) != 0:
+            # create endpoint context object
+            self._context = EndpointContext.load(
+                sagemaker_session=self.sagemaker_session, context_name=contexts[0].context_name
+            )
+
+        return self._context
 
     def _get_endpoint_config_name(self):
         """Placeholder docstring"""
