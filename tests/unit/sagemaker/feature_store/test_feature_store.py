@@ -146,7 +146,7 @@ def test_load_feature_definition_unsupported_types(sagemaker_session_mock):
 @patch("sagemaker.feature_store.feature_group.IngestionManagerPandas")
 def test_ingest(ingestion_manager_init, sagemaker_session_mock):
     feature_group = FeatureGroup(name="MyGroup", sagemaker_session=sagemaker_session_mock)
-    df = pd.DataFrame({"float": pd.Series([2.0], dtype="float64")})
+    df = pd.DataFrame(dict((f"float{i}", pd.Series([2.0], dtype="float64")) for i in range(300)))
 
     mock_ingestion_manager_instance = Mock()
     ingestion_manager_init.return_value = mock_ingestion_manager_instance
