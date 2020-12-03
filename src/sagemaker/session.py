@@ -20,8 +20,10 @@ import re
 import sys
 import time
 import warnings
+from typing import List, Dict, Any, Sequence
 
 import boto3
+import botocore
 import botocore.config
 from botocore.exceptions import ClientError
 import six
@@ -29,6 +31,7 @@ import six
 import sagemaker.logs
 from sagemaker import vpc_utils
 
+from sagemaker._studio import _append_project_tags
 from sagemaker.deprecations import deprecated_class
 from sagemaker.inputs import ShuffleConfig, TrainingInput
 from sagemaker.user_agent import prepend_user_agent
@@ -81,6 +84,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         boto_session=None,
         sagemaker_client=None,
         sagemaker_runtime_client=None,
+        sagemaker_featurestore_runtime_client=None,
         default_bucket=None,
     ):
         """Initialize a SageMaker ``Session``.
@@ -96,6 +100,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
             sagemaker_runtime_client (boto3.SageMakerRuntime.Client): Client which makes
                 ``InvokeEndpoint`` calls to Amazon SageMaker (default: None). Predictors created
                 using this ``Session`` use this client. If not provided, one will be created using
+                this instance's ``boto_session``.
+            sagemaker_featurestore_runtime_client (boto3.SageMakerFeatureStoreRuntime.Client):
+                Client which makes SageMaker FeatureStore record related calls to Amazon SageMaker
+                (default: None). If not provided, one will be created using
                 this instance's ``boto_session``.
             default_bucket (str): The default Amazon S3 bucket to be used by this session.
                 This will be created the next time an Amazon S3 bucket is needed (by calling
@@ -115,9 +123,16 @@ class Session(object):  # pylint: disable=too-many-public-methods
             boto_session=boto_session,
             sagemaker_client=sagemaker_client,
             sagemaker_runtime_client=sagemaker_runtime_client,
+            sagemaker_featurestore_runtime_client=sagemaker_featurestore_runtime_client,
         )
 
-    def _initialize(self, boto_session, sagemaker_client, sagemaker_runtime_client):
+    def _initialize(
+        self,
+        boto_session,
+        sagemaker_client,
+        sagemaker_runtime_client,
+        sagemaker_featurestore_runtime_client,
+    ):
         """Initialize this SageMaker Session.
 
         Creates or uses a boto_session, sagemaker_client and sagemaker_runtime_client.
@@ -143,6 +158,13 @@ class Session(object):  # pylint: disable=too-many-public-methods
             )
 
         prepend_user_agent(self.sagemaker_runtime_client)
+
+        if sagemaker_featurestore_runtime_client:
+            self.sagemaker_featurestore_runtime_client = sagemaker_featurestore_runtime_client
+        else:
+            self.sagemaker_featurestore_runtime_client = self.boto_session.client(
+                "sagemaker-featurestore-runtime"
+            )
 
         self.local_mode = False
 
@@ -513,6 +535,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Returns:
             str: ARN of the training job, if it is created.
         """
+        tags = _append_project_tags(tags)
         train_request = self._get_train_request(
             input_mode=input_mode,
             input_config=input_config,
@@ -758,6 +781,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 three optional keys, 'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
                 (default: ``None``)
         """
+        tags = _append_project_tags(tags)
         process_request = self._get_process_request(
             inputs=inputs,
             output_config=output_config,
@@ -998,6 +1022,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 "NetworkConfig"
             ] = network_config
 
+        tags = _append_project_tags(tags)
         if tags is not None:
             monitoring_schedule_request["Tags"] = tags
 
@@ -1506,6 +1531,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             auto_ml_job_request["AutoMLJobObjective"] = job_objective
         if problem_type is not None:
             auto_ml_job_request["ProblemType"] = problem_type
+
+        tags = _append_project_tags(tags)
         if tags is not None:
             auto_ml_job_request["Tags"] = tags
 
@@ -1698,6 +1725,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             "CompilationJobName": job_name,
         }
 
+        tags = _append_project_tags(tags)
         if tags is not None:
             compilation_job_request["Tags"] = tags
 
@@ -1847,6 +1875,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if warm_start_config is not None:
             tune_request["WarmStartConfig"] = warm_start_config
 
+        tags = _append_project_tags(tags)
         if tags is not None:
             tune_request["Tags"] = tags
 
@@ -1904,6 +1933,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if warm_start_config is not None:
             tune_request["WarmStartConfig"] = warm_start_config
 
+        tags = _append_project_tags(tags)
         if tags is not None:
             tune_request["Tags"] = tags
 
@@ -2294,6 +2324,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 job. Dictionary contains two optional keys,
                 'InvocationsTimeoutInSeconds', and 'InvocationsMaxRetries'.
         """
+        tags = _append_project_tags(tags)
         transform_request = self._get_transform_request(
             job_name=job_name,
             model_name=model_name,
@@ -2392,7 +2423,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             vpc_config (dict[str, list[str]]): The VpcConfig set on the model (default: None)
                 * 'Subnets' (list[str]): List of subnet ids.
                 * 'SecurityGroupIds' (list[str]): List of security group ids.
-            enable_network_isolation (bool): Wether the model requires network isolation or not.
+            enable_network_isolation (bool): Whether the model requires network isolation or not.
             primary_container (str or dict[str, str]): Docker image which defines the inference
                 code. You can also specify the return value of ``sagemaker.container_def()``,
                 which is used to create more advanced container configurations, including model
@@ -2409,6 +2440,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Returns:
             str: Name of the Amazon SageMaker ``Model`` created.
         """
+        tags = _append_project_tags(tags)
         create_model_request = self._create_model_request(
             name=name,
             role=role,
@@ -2515,6 +2547,135 @@ class Session(object):  # pylint: disable=too-many-public-methods
             else:
                 raise
 
+    def create_model_package_from_containers(
+        self,
+        containers=None,
+        content_types=None,
+        response_types=None,
+        inference_instances=None,
+        transform_instances=None,
+        model_package_name=None,
+        model_package_group_name=None,
+        model_metrics=None,
+        metadata_properties=None,
+        marketplace_cert=False,
+        approval_status="PendingManualApproval",
+        description=None,
+    ):
+        """Get request dictionary for CreateModelPackage API.
+
+        Args:
+            containers (list): A list of inference containers that can be used for inference
+                specifications of Model Package (default: None).
+            content_types (list): The supported MIME types for the input data (default: None).
+            response_types (list): The supported MIME types for the output data (default: None).
+            inference_instances (list): A list of the instance types that are used to
+                generate inferences in real-time (default: None).
+            transform_instances (list): A list of the instance types on which a transformation
+                job can be run or on which an endpoint can be deployed (default: None).
+            model_package_name (str): Model Package name, exclusive to `model_package_group_name`,
+                using `model_package_name` makes the Model Package un-versioned (default: None).
+            model_package_group_name (str): Model Package Group name, exclusive to
+                `model_package_name`, using `model_package_group_name` makes the Model Package
+                versioned (default: None).
+            model_metrics (ModelMetrics): ModelMetrics object (default: None).
+            metadata_properties (MetadataProperties): MetadataProperties object (default: None)
+            marketplace_cert (bool): A boolean value indicating if the Model Package is certified
+                for AWS Marketplace (default: False).
+            approval_status (str): Model Approval Status, values can be "Approved", "Rejected",
+                or "PendingManualApproval" (default: "PendingManualApproval").
+            description (str): Model Package description (default: None).
+        """
+
+        request = self._get_create_model_package_request(
+            model_package_name,
+            model_package_group_name,
+            containers,
+            content_types,
+            response_types,
+            inference_instances,
+            transform_instances,
+            model_metrics,
+            metadata_properties,
+            marketplace_cert,
+            approval_status,
+            description,
+        )
+        return self.sagemaker_client.create_model_package(**request)
+
+    def _get_create_model_package_request(
+        self,
+        model_package_name=None,
+        model_package_group_name=None,
+        containers=None,
+        content_types=None,
+        response_types=None,
+        inference_instances=None,
+        transform_instances=None,
+        model_metrics=None,
+        metadata_properties=None,
+        marketplace_cert=False,
+        approval_status="PendingManualApproval",
+        description=None,
+    ):
+        """Get request dictionary for CreateModelPackage API.
+
+        Args:
+            model_package_name (str): Model Package name, exclusive to `model_package_group_name`,
+                using `model_package_name` makes the Model Package un-versioned (default: None).
+            model_package_group_name (str): Model Package Group name, exclusive to
+                `model_package_name`, using `model_package_group_name` makes the Model Package
+                versioned (default: None).
+            containers (list): A list of inference containers that can be used for inference
+                specifications of Model Package (default: None).
+            content_types (list): The supported MIME types for the input data (default: None).
+            response_types (list): The supported MIME types for the output data (default: None).
+            inference_instances (list): A list of the instance types that are used to
+                generate inferences in real-time (default: None).
+            transform_instances (list): A list of the instance types on which a transformation
+                job can be run or on which an endpoint can be deployed (default: None).
+            model_metrics (ModelMetrics): ModelMetrics object (default: None).
+            metadata_properties (MetadataProperties): MetadataProperties object (default: None).
+            marketplace_cert (bool): A boolean value indicating if the Model Package is certified
+                for AWS Marketplace (default: False).
+            approval_status (str): Model Approval Status, values can be "Approved", "Rejected",
+                or "PendingManualApproval" (default: "PendingManualApproval").
+            description (str): Model Package description (default: None).
+        """
+        if all([model_package_name, model_package_group_name]):
+            raise ValueError(
+                "model_package_name and model_package_group_name cannot be present at the "
+                "same time."
+            )
+        request_dict = {}
+        if model_package_name is not None:
+            request_dict["ModelPackageName"] = model_package_name
+        if model_package_group_name is not None:
+            request_dict["ModelPackageGroupName"] = model_package_group_name
+        if description is not None:
+            request_dict["ModelPackageDescription"] = description
+        if model_metrics:
+            request_dict["ModelMetrics"] = model_metrics
+        if metadata_properties:
+            request_dict["MetadataProperties"] = metadata_properties
+        if containers is not None:
+            if not all([content_types, response_types, inference_instances, transform_instances]):
+                raise ValueError(
+                    "content_types, response_types, inference_inferences and transform_instances "
+                    "must be provided if containers is present."
+                )
+            inference_specification = {
+                "Containers": containers,
+                "SupportedContentTypes": content_types,
+                "SupportedResponseMIMETypes": response_types,
+                "SupportedRealtimeInferenceInstanceTypes": inference_instances,
+                "SupportedTransformInstanceTypes": transform_instances,
+            }
+            request_dict["InferenceSpecification"] = inference_specification
+        request_dict["CertifyForMarketplace"] = marketplace_cert
+        request_dict["ModelApprovalStatus"] = approval_status
+        return request_dict
+
     def wait_for_model_package(self, model_package_name, poll=5):
         """Wait for an Amazon SageMaker endpoint deployment to complete.
 
@@ -2540,6 +2701,17 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 actual_status=status,
             )
         return desc
+
+    def describe_model(self, name):
+        """Calls the DescribeModel API for the given model name.
+
+        Args:
+            name (str): The name of the SageMaker model.
+
+        Returns:
+            dict: A dictionary response with the model description.
+        """
+        return self.sagemaker_client.describe_model(ModelName=name)
 
     def create_endpoint_config(
         self,
@@ -2600,6 +2772,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             ],
         }
 
+        tags = _append_project_tags(tags)
         if tags is not None:
             request["Tags"] = tags
 
@@ -2669,6 +2842,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         request_tags = new_tags or self.list_tags(
             existing_endpoint_config_desc["EndpointConfigArn"]
         )
+        request_tags = _append_project_tags(request_tags)
         if request_tags:
             request["Tags"] = request_tags
 
@@ -2703,6 +2877,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         LOGGER.info("Creating endpoint with name %s", endpoint_name)
 
         tags = tags or []
+        tags = _append_project_tags(tags)
 
         self.sagemaker_client.create_endpoint(
             EndpointName=endpoint_name, EndpointConfigName=config_name, Tags=tags
@@ -3188,6 +3363,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             lambda: self.sagemaker_client.describe_endpoint_config(EndpointConfigName=name)
         ):
             config_options = {"EndpointConfigName": name, "ProductionVariants": production_variants}
+            tags = _append_project_tags(tags)
             if tags:
                 config_options["Tags"] = tags
             if kms_key:
@@ -3541,6 +3717,213 @@ class Session(object):  # pylint: disable=too-many-public-methods
             self._check_job_status(job_name, description, "TransformJobStatus")
             if dot:
                 print()
+
+    def delete_feature_group(self, feature_group_name: str):
+        """Deletes a FeatureGroup in the FeatureStore service
+
+        Args:
+            feature_group_name (str): name of the feature group to be deleted.
+        """
+        self.sagemaker_client.delete_feature_group(FeatureGroupName=feature_group_name)
+
+    def create_feature_group(
+        self,
+        feature_group_name: str,
+        record_identifier_name: str,
+        event_time_feature_name: str,
+        feature_definitions: Sequence[Dict[str, str]],
+        role_arn: str,
+        online_store_config: Dict[str, str] = None,
+        offline_store_config: Dict[str, str] = None,
+        description: str = None,
+        tags: List[Dict[str, str]] = None,
+    ) -> Dict[str, Any]:
+        """Creates a FeatureGroup in the FeatureStore service
+
+        Args:
+            feature_group_name (str): name of the FeatureGroup.
+            record_identifier_name (str): name of the record identifier feature.
+            event_time_feature_name (str): name of the event time feature.
+            feature_definitions (Sequence[Dict[str, str]]): list of feature definitions.
+            role_arn (str): ARN of the role will be used to execute the api.
+            online_store_config (Dict[str, str]): dict contains configuration of the
+                feature online store.
+            offline_store_config (Dict[str, str]): dict contains configuration of the
+                feature offline store.
+            description (str): description of the FeatureGroup.
+            tags (List[Dict[str, str]]): list of tags for labeling a FeatureGroup.
+
+        Returns:
+            Response dict from service.
+        """
+        tags = _append_project_tags(tags)
+        kwargs = dict(
+            FeatureGroupName=feature_group_name,
+            RecordIdentifierFeatureName=record_identifier_name,
+            EventTimeFeatureName=event_time_feature_name,
+            FeatureDefinitions=feature_definitions,
+            RoleArn=role_arn,
+        )
+        update_args(
+            kwargs,
+            OnlineStoreConfig=online_store_config,
+            OfflineStoreConfig=offline_store_config,
+            Description=description,
+            Tags=tags,
+        )
+        return self.sagemaker_client.create_feature_group(**kwargs)
+
+    def describe_feature_group(
+        self,
+        feature_group_name: str,
+        next_token: str = None,
+    ) -> Dict[str, Any]:
+        """Describe a FeatureGroup by name in FeatureStore service.
+
+        Args:
+            feature_group_name (str): name of the FeatureGroup to descibe.
+            next_token (str): next_token to get next page of features.
+
+        Returns:
+            Response dict from service.
+        """
+
+        kwargs = dict(FeatureGroupName=feature_group_name)
+        update_args(kwargs, NextToken=next_token)
+        return self.sagemaker_client.describe_feature_group(**kwargs)
+
+    def put_record(
+        self,
+        feature_group_name: str,
+        record: Sequence[Dict[str, str]],
+    ):
+        """Puts a single record in the FeatureGroup
+
+        Args:
+            feature_group_name (str): name of the FeatureGroup.
+            record (Sequence[Dict[str, str]]): list of FeatureValue dicts to be ingested
+                into FeatureStore.
+        """
+        return self.sagemaker_featurestore_runtime_client.put_record(
+            FeatureGroupName=feature_group_name,
+            Record=record,
+        )
+
+    def start_query_execution(
+        self,
+        catalog: str,
+        database: str,
+        query_string: str,
+        output_location: str,
+        kms_key: str = None,
+    ) -> Dict[str, str]:
+        """Start Athena query execution.
+
+        Args:
+            catalog (str): name of the data catalog.
+            database (str): name of the data catalog database.
+            query_string (str): SQL expression.
+            output_location (str): S3 location of the output file.
+            kms_key (str): KMS key id will be used to encrypt the result if given.
+
+        Returns:
+            Response dict from the service.
+        """
+        kwargs = dict(
+            QueryString=query_string, QueryExecutionContext=dict(Catalog=catalog, Database=database)
+        )
+        result_config = dict(OutputLocation=output_location)
+        if kms_key:
+            result_config.update(
+                EncryptionConfiguration=dict(EncryptionOption="SSE_KMS", KmsKey=kms_key)
+            )
+        kwargs.update(ResultConfiguration=result_config)
+
+        athena_client = self.boto_session.client("athena", region_name=self.boto_region_name)
+        return athena_client.start_query_execution(**kwargs)
+
+    def get_query_execution(self, query_execution_id: str) -> Dict[str, Any]:
+        """Get execution status of the Athena query.
+
+        Args:
+            query_execution_id (str): execution ID of the Athena query.
+        """
+        athena_client = self.boto_session.client("athena", region_name=self.boto_region_name)
+        return athena_client.get_query_execution(QueryExecutionId=query_execution_id)
+
+    def wait_for_athena_query(self, query_execution_id: str, poll: int = 5):
+        """Wait for Athena query to finish.
+
+        Args:
+             query_execution_id (str): execution ID of the Athena query.
+             poll (int): time interval to poll get_query_execution API.
+        """
+        query_state = (
+            self.get_query_execution(query_execution_id=query_execution_id)
+            .get("QueryExecution")
+            .get("Status")
+            .get("State")
+        )
+        while query_state not in ("SUCCEEDED", "FAILED"):
+            LOGGER.info("Query %s is being executed.", query_execution_id)
+            time.sleep(poll)
+            query_state = (
+                self.get_query_execution(query_execution_id=query_execution_id)
+                .get("QueryExecution")
+                .get("Status")
+                .get("State")
+            )
+        if query_state == "SUCCEEDED":
+            LOGGER.info("Query %s successfully executed.", query_execution_id)
+        else:
+            LOGGER.error("Failed to execute query %s.", query_execution_id)
+
+    def download_athena_query_result(
+        self,
+        bucket: str,
+        prefix: str,
+        query_execution_id: str,
+        filename: str,
+    ):
+        """Download query result file from S3.
+
+        Args:
+            bucket (str): name of the S3 bucket where the result file is stored.
+            prefix (str): S3 prefix of the result file.
+            query_execution_id (str): execution ID of the Athena query.
+            filename (str): name of the downloaded file.
+        """
+        if self.s3_client is None:
+            s3 = self.boto_session.client("s3", region_name=self.boto_region_name)
+        else:
+            s3 = self.s3_client
+        s3.download_file(Bucket=bucket, Key=f"{prefix}/{query_execution_id}.csv", Filename=filename)
+
+    def account_id(self) -> str:
+        """Get the AWS account id of the caller.
+
+        Returns:
+            AWS account ID.
+        """
+        region = self.boto_session.region_name
+        sts_client = self.boto_session.client(
+            "sts", region_name=region, endpoint_url=sts_regional_endpoint(region)
+        )
+        return sts_client.get_caller_identity()["Account"]
+
+
+def update_args(args: Dict[str, Any], **kwargs):
+    """Updates the request arguments dict with the value if populated.
+
+    This is to handle the case that the service API doesn't like NoneTypes for argument values.
+
+    Args:
+        request_args (Dict[str, Any]): the request arguments dict
+        kwargs: key, value pairs to update the args dict
+    """
+    for key, value in kwargs.items():
+        if value is not None:
+            args.update({key: value})
 
 
 def container_def(image_uri, model_data_url=None, env=None, container_mode=None):

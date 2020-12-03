@@ -408,6 +408,34 @@ def test_model_image_accelerator(sagemaker_session):
     assert "Unsupported Python version: py2." in str(error)
 
 
+@patch("sagemaker.utils.create_tar_file", MagicMock())
+@patch("sagemaker.utils.repack_model", MagicMock())
+def test_model_custom_serialization(
+    sagemaker_session,
+    pytorch_inference_version,
+    pytorch_inference_py_version,
+):
+    model = PyTorchModel(
+        MODEL_DATA,
+        role=ROLE,
+        entry_point=SCRIPT_PATH,
+        framework_version=pytorch_inference_version,
+        py_version=pytorch_inference_py_version,
+        sagemaker_session=sagemaker_session,
+    )
+    custom_serializer = Mock()
+    custom_deserializer = Mock()
+    predictor = model.deploy(
+        1,
+        GPU,
+        serializer=custom_serializer,
+        deserializer=custom_deserializer,
+    )
+    assert isinstance(predictor, PyTorchPredictor)
+    assert predictor.serializer is custom_serializer
+    assert predictor.deserializer is custom_deserializer
+
+
 def test_model_prepare_container_def_no_instance_type_or_image():
     model = PyTorchModel(
         MODEL_DATA,

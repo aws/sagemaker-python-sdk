@@ -2134,9 +2134,197 @@ def test_list_candidates_for_auto_ml_job_with_optional_args(sagemaker_session):
     )
 
 
-def test_describe_tuning_Job(sagemaker_session):
+def test_describe_tuning_job(sagemaker_session):
     job_name = "hyper-parameter-tuning"
     sagemaker_session.describe_tuning_job(job_name=job_name)
     sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job.assert_called_with(
         HyperParameterTuningJobName=job_name
     )
+
+
+@pytest.fixture
+def pipeline_empty_definition():
+    return '{"Version": "2020-12-01", ' '"Metadata": {}, ' '"Parameters": [], ' '"Steps": []}'
+
+
+@pytest.fixture
+def pipeline_role_arn():
+    return "my:pipeline:role:arn"
+
+
+def test_describe_model(sagemaker_session):
+    model_name = "sagemaker-model-name"
+    sagemaker_session.describe_model(name=model_name)
+    sagemaker_session.sagemaker_client.describe_model.assert_called_with(ModelName=model_name)
+
+
+def test_create_model_package_from_containers(sagemaker_session):
+    model_package_name = "sagemaker-model-package"
+    sagemaker_session.create_model_package_from_containers(model_package_name=model_package_name)
+    sagemaker_session.sagemaker_client.create_model_package.assert_called_once()
+
+
+def test_create_model_package_from_containers_name_conflict(sagemaker_session):
+    model_package_name = "sagemaker-model-package"
+    model_package_group_name = "sagemaker-model-package-group"
+    with pytest.raises(ValueError) as error:
+        sagemaker_session.create_model_package_from_containers(
+            model_package_name=model_package_name,
+            model_package_group_name=model_package_group_name,
+        )
+        assert (
+            "model_package_name and model_package_group_name cannot be present at the same "
+            "time." == str(error)
+        )
+
+
+def test_create_model_package_from_containers_incomplete_args(sagemaker_session):
+    model_package_name = "sagemaker-model-package"
+    containers = ["dummy-container"]
+    with pytest.raises(ValueError) as error:
+        sagemaker_session.create_model_package_from_containers(
+            model_package_name=model_package_name,
+            containers=containers,
+        )
+        assert (
+            "content_types, response_types, inference_inferences and transform_instances "
+            "must be provided if containers is present." == str(error)
+        )
+
+
+def test_create_model_package_from_containers_all_args(sagemaker_session):
+    model_package_name = "sagemaker-model-package"
+    containers = ["dummy-container"]
+    content_types = ["application/json"]
+    response_types = ["application/json"]
+    inference_instances = ["ml.m4.xlarge"]
+    transform_instances = ["ml.m4.xlarget"]
+    model_metrics = {
+        "Bias": {
+            "ContentType": "content-type",
+            "S3Uri": "s3://...",
+        }
+    }
+    metadata_properties = {
+        "CommitId": "test-commit-id",
+        "Repository": "test-repository",
+        "GeneratedBy": "sagemaker-python-sdk",
+        "ProjectId": "unit-test",
+    }
+    marketplace_cert = (True,)
+    approval_status = ("Approved",)
+    description = "description"
+    sagemaker_session.create_model_package_from_containers(
+        containers=containers,
+        content_types=content_types,
+        response_types=response_types,
+        inference_instances=inference_instances,
+        transform_instances=transform_instances,
+        model_package_name=model_package_name,
+        model_metrics=model_metrics,
+        metadata_properties=metadata_properties,
+        marketplace_cert=marketplace_cert,
+        approval_status=approval_status,
+        description=description,
+    )
+    expected_args = {
+        "ModelPackageName": model_package_name,
+        "InferenceSpecification": {
+            "Containers": containers,
+            "SupportedContentTypes": content_types,
+            "SupportedResponseMIMETypes": response_types,
+            "SupportedRealtimeInferenceInstanceTypes": inference_instances,
+            "SupportedTransformInstanceTypes": transform_instances,
+        },
+        "ModelPackageDescription": description,
+        "ModelMetrics": model_metrics,
+        "MetadataProperties": metadata_properties,
+        "CertifyForMarketplace": marketplace_cert,
+        "ModelApprovalStatus": approval_status,
+    }
+    sagemaker_session.sagemaker_client.create_model_package.assert_called_with(**expected_args)
+
+
+@pytest.fixture
+def feature_group_dummy_definitions():
+    return [{"FeatureName": "feature1", "FeatureType": "String"}]
+
+
+def test_feature_group_create(sagemaker_session, feature_group_dummy_definitions):
+    sagemaker_session.create_feature_group(
+        feature_group_name="MyFeatureGroup",
+        record_identifier_name="feature1",
+        event_time_feature_name="feature2",
+        feature_definitions=feature_group_dummy_definitions,
+        role_arn="dummy_role",
+    )
+    assert sagemaker_session.sagemaker_client.create_feature_group.called_with(
+        FeatureGroupName="MyFeatureGroup",
+        RecordIdentifierFeatureName="feature1",
+        EventTimeFeatureName="feature2",
+        FeatureDefinitions=feature_group_dummy_definitions,
+        RoleArn="dummy_role",
+    )
+
+
+def test_feature_group_delete(sagemaker_session):
+    sagemaker_session.delete_feature_group(feature_group_name="MyFeatureGroup")
+    assert sagemaker_session.sagemaker_client.delete_feature_group.called_with(
+        FeatureGroupName="MyFeatureGroup",
+    )
+
+
+def test_feature_group_describe(sagemaker_session):
+    sagemaker_session.describe_feature_group(feature_group_name="MyFeatureGroup")
+    assert sagemaker_session.sagemaker_client.describe_feature_group.called_with(
+        FeatureGroupName="MyFeatureGroup",
+    )
+
+
+def test_start_query_execution(sagemaker_session):
+    athena_mock = Mock()
+    sagemaker_session.boto_session.client(
+        "athena", region_name=sagemaker_session.boto_region_name
+    ).return_value = athena_mock
+    sagemaker_session.start_query_execution(
+        catalog="catalog",
+        database="database",
+        query_string="query",
+        output_location="s3://results",
+    )
+    assert athena_mock.start_query_execution.called_once_with(
+        QueryString="query",
+        QueryExecutionContext={"Catalog": "catalog", "Database": "database"},
+        OutputLocation="s3://results",
+    )
+
+
+def test_get_query_execution(sagemaker_session):
+    athena_mock = Mock()
+    sagemaker_session.boto_session.client(
+        "athena", region_name=sagemaker_session.boto_region_name
+    ).return_value = athena_mock
+    sagemaker_session.get_query_execution(query_execution_id="query_id")
+    assert athena_mock.get_query_execution.called_with(QueryExecutionId="query_id")
+
+
+def test_download_athena_query_result(sagemaker_session):
+    sagemaker_session.s3_client = Mock()
+    sagemaker_session.download_athena_query_result(
+        bucket="bucket",
+        prefix="prefix",
+        query_execution_id="query_id",
+        filename="filename",
+    )
+    assert sagemaker_session.s3_client.download_file.called_with(
+        Bucket="bucket",
+        Key="prefix/query_id.csv",
+        Filename="filename",
+    )
+
+
+@patch("sagemaker.session.Session.get_query_execution")
+def test_wait_for_athena_query(query_execution, sagemaker_session):
+    query_execution.return_value = {"QueryExecution": {"Status": {"State": "SUCCEEDED"}}}
+    sagemaker_session.wait_for_athena_query(query_execution_id="query_id")
+    assert query_execution.called_with(query_execution_id="query_id")

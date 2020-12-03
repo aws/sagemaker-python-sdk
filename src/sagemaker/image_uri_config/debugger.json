@@ -24,7 +24,9 @@
                 "us-east-1": "503895931360",
                 "us-east-2": "915447279597",
                 "us-west-1": "685455198987",
-                "us-west-2": "895741380848"
+                "us-west-2": "895741380848",
+                "af-south-1": "314341159256",
+                "eu-south-1": "563282790590"
             },
             "repository": "sagemaker-debugger-rules"
         }
