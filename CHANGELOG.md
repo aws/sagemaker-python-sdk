@@ -1,5 +1,29 @@
 # Changelog
 
+## v2.18.0 (2020-12-03)
+
+### Features
+
+ * all de/serializers support content type
+ * warn on 'Stopped' (non-Completed) jobs
+ * all predictors support serializer/deserializer overrides
+
+### Bug Fixes and Other Changes
+
+ * v2 upgrade tool should ignore cell starting with '%'
+ * use iterrows to iterate pandas dataframe
+ * check for distributions in TF estimator
+
+### Documentation Changes
+
+ * Update link to Sagemaker PyTorch Docker Containers
+ * create artifact restricted to SM context note
+
+### Testing and Release Infrastructure
+
+ * remove flaky assertion in test_integ_history_server
+ * adjust assertion of TensorFlow MNIST test
+
 ## v2.17.0 (2020-12-02)
 
 ### Features
