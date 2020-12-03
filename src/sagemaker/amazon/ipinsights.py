@@ -191,7 +191,13 @@ class IPInsightsPredictor(Predictor):
     second column should contain the IPv4 address in dot notation.
     """
 
-    def __init__(self, endpoint_name, sagemaker_session=None):
+    def __init__(
+        self,
+        endpoint_name,
+        sagemaker_session=None,
+        serializer=CSVSerializer(),
+        deserializer=JSONDeserializer(),
+    ):
         """
         Args:
             endpoint_name (str): Name of the Amazon SageMaker endpoint to which
@@ -200,12 +206,16 @@ class IPInsightsPredictor(Predictor):
                 object, used for SageMaker interactions (default: None). If not
                 specified, one is created using the default AWS configuration
                 chain.
+            serializer (sagemaker.serializers.BaseSerializer): Optional. Default
+                serializes input data to text/csv.
+            deserializer (callable): Optional. Default parses JSON responses
+                using ``json.load(...)``.
         """
         super(IPInsightsPredictor, self).__init__(
             endpoint_name,
             sagemaker_session,
-            serializer=CSVSerializer(),
-            deserializer=JSONDeserializer(),
+            serializer=serializer,
+            deserializer=deserializer,
         )
 
 
