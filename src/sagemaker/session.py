@@ -2952,7 +2952,13 @@ class Session(object):  # pylint: disable=too-many-public-methods
         # If the status is capital case, then convert it to Camel case
         status = _STATUS_CODE_TABLE.get(status, status)
 
-        if status not in ("Completed", "Stopped"):
+        if status == "Stopped":
+            LOGGER.warning(
+                "Job ended with status 'Stopped' rather than 'Completed'. "
+                "This could mean the job timed out or stopped early for some other reason: "
+                "Consider checking whether it completed as you expect."
+            )
+        elif status != "Completed":
             reason = desc.get("FailureReason", "(No reason provided)")
             job_type = status_key_name.replace("JobStatus", " job")
             raise exceptions.UnexpectedStatusException(
