@@ -20,8 +20,8 @@ import pytest
 from mock import Mock
 from mock import patch
 
-from sagemaker.sklearn import SKLearn, SKLearnModel, SKLearnPredictor
 from sagemaker.fw_utils import UploadedCode
+from sagemaker.sklearn import SKLearn, SKLearnModel, SKLearnPredictor
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 SCRIPT_PATH = os.path.join(DATA_DIR, "dummy_script.py")
@@ -406,6 +406,27 @@ def test_model(sagemaker_session, sklearn_version):
     )
     predictor = model.deploy(1, CPU)
     assert isinstance(predictor, SKLearnPredictor)
+
+
+def test_model_custom_serialization(sagemaker_session, sklearn_version):
+    model = SKLearnModel(
+        "s3://some/data.tar.gz",
+        role=ROLE,
+        entry_point=SCRIPT_PATH,
+        framework_version=sklearn_version,
+        sagemaker_session=sagemaker_session,
+    )
+    custom_serializer = Mock()
+    custom_deserializer = Mock()
+    predictor = model.deploy(
+        1,
+        CPU,
+        serializer=custom_serializer,
+        deserializer=custom_deserializer,
+    )
+    assert isinstance(predictor, SKLearnPredictor)
+    assert predictor.serializer is custom_serializer
+    assert predictor.deserializer is custom_deserializer
 
 
 def test_attach(sagemaker_session, sklearn_version):

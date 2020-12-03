@@ -383,6 +383,29 @@ def test_model(sagemaker_session, chainer_version, chainer_py_version):
     assert isinstance(predictor, ChainerPredictor)
 
 
+@patch("sagemaker.utils.create_tar_file", MagicMock())
+def test_model_custom_serialization(sagemaker_session, chainer_version, chainer_py_version):
+    model = ChainerModel(
+        "s3://some/data.tar.gz",
+        role=ROLE,
+        entry_point=SCRIPT_PATH,
+        sagemaker_session=sagemaker_session,
+        framework_version=chainer_version,
+        py_version=chainer_py_version,
+    )
+    custom_serializer = Mock()
+    custom_deserializer = Mock()
+    predictor = model.deploy(
+        1,
+        CPU,
+        serializer=custom_serializer,
+        deserializer=custom_deserializer,
+    )
+    assert isinstance(predictor, ChainerPredictor)
+    assert predictor.serializer is custom_serializer
+    assert predictor.deserializer is custom_deserializer
+
+
 @patch("sagemaker.fw_utils.tar_and_upload_dir", MagicMock())
 def test_model_prepare_container_def_accelerator_error(
     sagemaker_session, chainer_version, chainer_py_version
