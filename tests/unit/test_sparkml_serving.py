@@ -57,3 +57,12 @@ def test_predictor_type(sagemaker_session):
     predictor = sparkml.deploy(1, TRAIN_INSTANCE_TYPE)
 
     assert isinstance(predictor, SparkMLPredictor)
+
+
+def test_predictor_custom_serialization(sagemaker_session):
+    sparkml = SparkMLModel(sagemaker_session=sagemaker_session, model_data=MODEL_DATA, role=ROLE)
+    custom_serializer = Mock()
+    predictor = sparkml.deploy(1, TRAIN_INSTANCE_TYPE, serializer=custom_serializer)
+
+    assert isinstance(predictor, SparkMLPredictor)
+    assert predictor.serializer is custom_serializer
