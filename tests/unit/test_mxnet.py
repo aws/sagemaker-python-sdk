@@ -17,11 +17,13 @@ import logging
 import json
 import os
 import pytest
-from mock import MagicMock, Mock
+from mock import MagicMock, Mock, ANY
 from mock import patch
 from pkg_resources import parse_version
 
 from sagemaker.fw_utils import UploadedCode
+from sagemaker.metadata_properties import MetadataProperties
+from sagemaker.model_metrics import MetricsSource, ModelMetrics
 from sagemaker.mxnet import defaults
 from sagemaker.mxnet import MXNet
 from sagemaker.mxnet import MXNetPredictor, MXNetModel
@@ -60,6 +62,8 @@ EXPERIMENT_CONFIG = {
     "TrialComponentDisplayName": "tc",
 }
 
+MODEL_PKG_RESPONSE = {"ModelPackageArn": "arn:model-pkg-arn"}
+
 
 @pytest.fixture()
 def sagemaker_session():
@@ -76,6 +80,7 @@ def sagemaker_session():
 
     describe = {"ModelArtifacts": {"S3ModelArtifacts": "s3://m/m.tar.gz"}}
     describe_compilation = {"ModelArtifacts": {"S3ModelArtifacts": "s3://m/model_c5.tar.gz"}}
+    session.sagemaker_client.create_model_package.side_effect = MODEL_PKG_RESPONSE
     session.sagemaker_client.describe_training_job = Mock(return_value=describe)
     session.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)
     session.sagemaker_client.describe_endpoint_config = Mock(return_value=ENDPOINT_CONFIG_DESC)
@@ -426,6 +431,155 @@ def test_model(
     predictor = model.deploy(1, GPU)
     assert isinstance(predictor, MXNetPredictor)
 
+    model_package_name = "test-mxnet-register-model"
+    content_types = ["application/json"]
+    response_types = ["application/json"]
+    inference_instances = ["ml.m4.xlarge"]
+    transform_instances = ["ml.m4.xlarget"]
+
+    dummy_metrics_source = MetricsSource(
+        content_type="a",
+        s3_uri="s3://b/c",
+        content_digest="d",
+    )
+    model_metrics = ModelMetrics(
+        model_statistics=dummy_metrics_source,
+        model_constraints=dummy_metrics_source,
+        model_data_statistics=dummy_metrics_source,
+        model_data_constraints=dummy_metrics_source,
+        bias=dummy_metrics_source,
+        explainability=dummy_metrics_source,
+    )
+    model.register(
+        content_types,
+        response_types,
+        inference_instances,
+        transform_instances,
+        model_package_name=model_package_name,
+        model_metrics=model_metrics,
+        marketplace_cert=True,
+        approval_status="Approved",
+        description="description",
+    )
+    expected_create_model_package_request = {
+        "containers": ANY,
+        "content_types": content_types,
+        "response_types": response_types,
+        "inference_instances": inference_instances,
+        "transform_instances": transform_instances,
+        "model_package_name": model_package_name,
+        "model_metrics": model_metrics._to_request_dict(),
+        "marketplace_cert": True,
+        "approval_status": "Approved",
+        "description": "description",
+    }
+    sagemaker_session.create_model_package_from_containers.assert_called_with(
+        **expected_create_model_package_request
+    )
+
+
+@patch("sagemaker.utils.create_tar_file", MagicMock())
+def test_model_register(
+    sagemaker_session, mxnet_inference_version, mxnet_inference_py_version, skip_if_mms_version
+):
+    model = MXNetModel(
+        MODEL_DATA,
+        role=ROLE,
+        entry_point=SCRIPT_PATH,
+        framework_version=mxnet_inference_version,
+        py_version=mxnet_inference_py_version,
+        sagemaker_session=sagemaker_session,
+    )
+    predictor = model.deploy(1, GPU)
+    assert isinstance(predictor, MXNetPredictor)
+
+    model_package_name = "test-mxnet-register-model"
+    content_types = ["application/json"]
+    response_types = ["application/json"]
+    inference_instances = ["ml.m4.xlarge"]
+    transform_instances = ["ml.m4.xlarget"]
+    model.register(
+        content_types,
+        response_types,
+        inference_instances,
+        transform_instances,
+        model_package_name=model_package_name,
+    )
+    sagemaker_session.create_model_package_from_containers.assert_called()
+
+
+@patch("sagemaker.utils.create_tar_file", MagicMock())
+def test_model_register_all_args(
+    sagemaker_session,
+    mxnet_inference_version,
+    mxnet_inference_py_version,
+    skip_if_mms_version,
+):
+    model = MXNetModel(
+        MODEL_DATA,
+        role=ROLE,
+        entry_point=SCRIPT_PATH,
+        framework_version=mxnet_inference_version,
+        py_version=mxnet_inference_py_version,
+        sagemaker_session=sagemaker_session,
+    )
+    predictor = model.deploy(1, GPU)
+    assert isinstance(predictor, MXNetPredictor)
+
+    model_package_name = "test-mxnet-register-model"
+    content_types = ["application/json"]
+    response_types = ["application/json"]
+    inference_instances = ["ml.m4.xlarge"]
+    transform_instances = ["ml.m4.xlarget"]
+
+    dummy_metrics_source = MetricsSource(
+        content_type="a",
+        s3_uri="s3://b/c",
+        content_digest="d",
+    )
+    model_metrics = ModelMetrics(
+        model_statistics=dummy_metrics_source,
+        model_constraints=dummy_metrics_source,
+        model_data_statistics=dummy_metrics_source,
+        model_data_constraints=dummy_metrics_source,
+        bias=dummy_metrics_source,
+        explainability=dummy_metrics_source,
+    )
+    metadata_properties = MetadataProperties(
+        commit_id="test-commit-id",
+        repository="test-repository",
+        generated_by="sagemaker-python-sdk-test",
+        project_id="test-project-id",
+    )
+    model.register(
+        content_types,
+        response_types,
+        inference_instances,
+        transform_instances,
+        model_package_name=model_package_name,
+        model_metrics=model_metrics,
+        metadata_properties=metadata_properties,
+        marketplace_cert=True,
+        approval_status="Approved",
+        description="description",
+    )
+    expected_create_model_package_request = {
+        "containers": ANY,
+        "content_types": content_types,
+        "response_types": response_types,
+        "inference_instances": inference_instances,
+        "transform_instances": transform_instances,
+        "model_package_name": model_package_name,
+        "model_metrics": model_metrics._to_request_dict(),
+        "metadata_properties": metadata_properties._to_request_dict(),
+        "marketplace_cert": True,
+        "approval_status": "Approved",
+        "description": "description",
+    }
+    sagemaker_session.create_model_package_from_containers.assert_called_with(
+        **expected_create_model_package_request
+    )
+
 
 @patch("sagemaker.utils.create_tar_file", MagicMock())
 def test_model_custom_serialization(
@@ -535,9 +689,16 @@ def test_model_prepare_container_def_no_instance_type_or_image(
 
 
 def test_attach(sagemaker_session, mxnet_training_version, mxnet_training_py_version):
-    training_image = "1.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet-{0}-cpu:{1}-cpu-{0}".format(
-        mxnet_training_py_version, mxnet_training_version
-    )
+    if mxnet_training_py_version == "py37":
+        training_image = "1.dkr.ecr.us-west-2.amazonaws.com/mxnet-training:{1}-cpu-{0}".format(
+            mxnet_training_py_version, mxnet_training_version
+        )
+    else:
+        training_image = (
+            "1.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet-{0}-cpu:{1}-cpu-{0}".format(
+                mxnet_training_py_version, mxnet_training_version
+            )
+        )
     returned_job_description = {
         "AlgorithmSpecification": {"TrainingInputMode": "File", "TrainingImage": training_image},
         "HyperParameters": {

@@ -42,7 +42,7 @@ class LocalNoS3Session(LocalSession):
     def __init__(self):
         super(LocalSession, self).__init__()
 
-    def _initialize(self, boto_session, sagemaker_client, sagemaker_runtime_client):
+    def _initialize(self, boto_session, sagemaker_client, sagemaker_runtime_client, **kwargs):
         self.boto_session = boto3.Session(region_name=DEFAULT_REGION)
         if self.config is None:
             self.config = {"local": {"local_code": True, "region_name": DEFAULT_REGION}}

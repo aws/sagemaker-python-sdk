@@ -2169,6 +2169,100 @@ def test_deploy_with_no_model_name(sagemaker_session):
     assert args[0].startswith(IMAGE_URI)
 
 
+def test_register_default_image(sagemaker_session):
+    estimator = Estimator(
+        IMAGE_URI,
+        ROLE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        output_path=OUTPUT_PATH,
+        sagemaker_session=sagemaker_session,
+    )
+    estimator.set_hyperparameters(**HYPERPARAMS)
+    estimator.fit({"train": "s3://bucket/training-prefix"})
+
+    model_package_name = "test-estimator-register-model"
+    content_types = ["application/json"]
+    response_types = ["application/json"]
+    inference_instances = ["ml.m4.xlarge"]
+    transform_instances = ["ml.m4.xlarget"]
+
+    estimator.register(
+        content_types=content_types,
+        response_types=response_types,
+        inference_instances=inference_instances,
+        transform_instances=transform_instances,
+        model_package_name=model_package_name,
+    )
+    sagemaker_session.create_model.assert_not_called()
+
+    expected_create_model_package_request = {
+        "containers": [
+            {
+                "Image": estimator.image_uri,
+                "ModelDataUrl": estimator.model_data,
+            }
+        ],
+        "content_types": content_types,
+        "response_types": response_types,
+        "inference_instances": inference_instances,
+        "transform_instances": transform_instances,
+        "model_package_name": model_package_name,
+        "marketplace_cert": False,
+    }
+    sagemaker_session.create_model_package_from_containers.assert_called_with(
+        **expected_create_model_package_request
+    )
+
+
+def test_register_inference_image(sagemaker_session):
+    estimator = Estimator(
+        IMAGE_URI,
+        ROLE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        output_path=OUTPUT_PATH,
+        sagemaker_session=sagemaker_session,
+    )
+    estimator.set_hyperparameters(**HYPERPARAMS)
+    estimator.fit({"train": "s3://bucket/training-prefix"})
+
+    model_package_name = "test-estimator-register-model"
+    content_types = ["application/json"]
+    response_types = ["application/json"]
+    inference_instances = ["ml.m4.xlarge"]
+    transform_instances = ["ml.m4.xlarget"]
+    inference_image = "fake-inference-image"
+
+    estimator.register(
+        content_types=content_types,
+        response_types=response_types,
+        inference_instances=inference_instances,
+        transform_instances=transform_instances,
+        model_package_name=model_package_name,
+        image_uri=inference_image,
+    )
+    sagemaker_session.create_model.assert_not_called()
+
+    expected_create_model_package_request = {
+        "containers": [
+            {
+                "Image": inference_image,
+                "ModelDataUrl": estimator.model_data,
+            }
+        ],
+        "content_types": content_types,
+        "response_types": response_types,
+        "inference_instances": inference_instances,
+        "transform_instances": transform_instances,
+        "model_package_name": model_package_name,
+        "marketplace_cert": False,
+    }
+    sagemaker_session.create_model_package_from_containers.assert_called_with(
+        **expected_create_model_package_request
+    )
+
+
 @patch("sagemaker.estimator.LocalSession")
 @patch("sagemaker.estimator.Session")
 def test_local_mode(session_class, local_session_class):
