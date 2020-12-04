@@ -20,6 +20,7 @@ import numpy as np
 import os
 import pandas as pd
 import pytest
+import statistics
 import tempfile
 
 from sagemaker import s3
@@ -32,7 +33,7 @@ from sagemaker.clarify import (
     SHAPConfig,
 )
 
-from sagemaker.amazon.linear_learner import LinearLearner
+from sagemaker.amazon.linear_learner import LinearLearner, LinearLearnerPredictor
 from sagemaker import utils
 from tests import integ
 from tests.integ import timeout
@@ -80,11 +81,13 @@ def model_name(sagemaker_session, cpu_instance_type, training_set):
             cpu_instance_type,
             predictor_type="binary_classifier",
             sagemaker_session=sagemaker_session,
+            disable_profiler=True,
         )
         ll.binary_classifier_model_selection_criteria = "accuracy"
         ll.early_stopping_tolerance = 0.0001
         ll.early_stopping_patience = 3
         ll.num_models = 1
+        ll.epochs = 1
         ll.num_calibration_samples = 1
 
         features, label = training_set
@@ -106,8 +109,6 @@ def clarify_processor(sagemaker_session, cpu_instance_type):
         instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
     )
-    # TODO: remove once container ready.
-    processor.image_uri = "678264136642.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xai-analyzer:1.0"
     return processor
 
 
@@ -146,8 +147,15 @@ def model_config(model_name):
 
 
 @pytest.fixture(scope="module")
-def model_predicted_label_config():
-    return ModelPredictedLabelConfig(label="predicted_label")
+def model_predicted_label_config(sagemaker_session, model_name, training_set):
+    predictor = LinearLearnerPredictor(
+        model_name,
+        sagemaker_session=sagemaker_session,
+    )
+    result = predictor.predict(training_set[0].astype(np.float32))
+    predictions = [float(record.label["score"].float32_tensor.values[0]) for record in result]
+    probability_threshold = statistics.median(predictions)
+    return ModelPredictedLabelConfig(label="score", probability_threshold=probability_threshold)
 
 
 @pytest.fixture(scope="module")
@@ -166,11 +174,7 @@ def shap_config():
     )
 
 
-@pytest.mark.skipif(
-    integ.test_region() != "us-west-2",
-    reason="Image is not yet available in certain regions.",
-)
-def test_pre_training_bias(clarify_processor, data_config, data_bias_config):
+def test_pre_training_bias(clarify_processor, data_config, data_bias_config, sagemaker_session):
     with timeout.timeout(minutes=CLARIFY_DEFAULT_TIMEOUT_MINUTES):
         clarify_processor.run_pre_training_bias(
             data_config,
@@ -179,7 +183,8 @@ def test_pre_training_bias(clarify_processor, data_config, data_bias_config):
             wait=True,
         )
         analysis_result_json = s3.S3Downloader.read_file(
-            data_config.s3_output_path + "/analysis.json"
+            data_config.s3_output_path + "/analysis.json",
+            sagemaker_session,
         )
         analysis_result = json.loads(analysis_result_json)
         assert (
@@ -192,12 +197,13 @@ def test_pre_training_bias(clarify_processor, data_config, data_bias_config):
         )
 
 
-@pytest.mark.skipif(
-    integ.test_region() != "us-west-2",
-    reason="Image is not yet available in certain regions.",
-)
 def test_post_training_bias(
-    clarify_processor, data_config, data_bias_config, model_config, model_predicted_label_config
+    clarify_processor,
+    data_config,
+    data_bias_config,
+    model_config,
+    model_predicted_label_config,
+    sagemaker_session,
 ):
     with timeout.timeout(minutes=CLARIFY_DEFAULT_TIMEOUT_MINUTES):
         clarify_processor.run_post_training_bias(
@@ -209,7 +215,8 @@ def test_post_training_bias(
             wait=True,
         )
         analysis_result_json = s3.S3Downloader.read_file(
-            data_config.s3_output_path + "/analysis.json"
+            data_config.s3_output_path + "/analysis.json",
+            sagemaker_session,
         )
         analysis_result = json.loads(analysis_result_json)
         assert (
@@ -222,11 +229,7 @@ def test_post_training_bias(
         )
 
 
-@pytest.mark.skipif(
-    integ.test_region() != "us-west-2",
-    reason="Image is not yet available in certain regions.",
-)
-def test_shap(clarify_processor, data_config, model_config, shap_config):
+def test_shap(clarify_processor, data_config, model_config, shap_config, sagemaker_session):
     with timeout.timeout(minutes=CLARIFY_DEFAULT_TIMEOUT_MINUTES):
         clarify_processor.run_explainability(
             data_config,
@@ -237,7 +240,8 @@ def test_shap(clarify_processor, data_config, model_config, shap_config):
             wait=True,
         )
         analysis_result_json = s3.S3Downloader.read_file(
-            data_config.s3_output_path + "/analysis.json"
+            data_config.s3_output_path + "/analysis.json",
+            sagemaker_session,
         )
         analysis_result = json.loads(analysis_result_json)
         assert (

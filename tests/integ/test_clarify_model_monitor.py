@@ -66,8 +66,8 @@ SHAP_AGG_METHOD = "mean_abs"
 
 CRON = "cron(*/5 * * * ? *)"
 UPDATED_CRON = CronExpressionGenerator.daily()
-MAX_RUNTIME_IN_SECONDS = 45 * 60
-UPDATED_MAX_RUNTIME_IN_SECONDS = 60 * 60
+MAX_RUNTIME_IN_SECONDS = 30 * 60
+UPDATED_MAX_RUNTIME_IN_SECONDS = 25 * 60
 ROLE = "SageMakerRole"
 INSTANCE_COUNT = 1
 INSTANCE_TYPE = "ml.c5.xlarge"
@@ -75,15 +75,6 @@ VOLUME_SIZE_IN_GB = 100
 START_TIME_OFFSET = "-PT1H"
 END_TIME_OFFSET = "-PT0H"
 TEST_TAGS = [{"Key": "integration", "Value": "test"}]
-TEST_ENV = {"CLOUDWATCH_METRICS_DIRECTORY": "/tmp"}
-
-# TODO: Use the same skipit mark as in test_model_monitor.py
-TEST_REGSION = "us-west-2"
-# TODO: Remove test image override once once 1p-registration went through.
-# NOTE: The test account only has the image in us-west-2 and us-east-2
-TEST_IMAGE_URI = "678264136642.dkr.ecr.{}.amazonaws.com/sagemaker-xai-analyzer:1.0".format(
-    TEST_REGSION
-)
 
 
 @pytest.yield_fixture(scope="module")
@@ -203,10 +194,8 @@ def bias_monitor(sagemaker_session):
         volume_size_in_gb=VOLUME_SIZE_IN_GB,
         max_runtime_in_seconds=MAX_RUNTIME_IN_SECONDS,
         sagemaker_session=sagemaker_session,
-        env=TEST_ENV,
         tags=TEST_TAGS,
     )
-    monitor.image_uri = TEST_IMAGE_URI
     return monitor
 
 
@@ -245,8 +234,8 @@ def scheduled_bias_monitor(
 
 
 @pytest.mark.skipif(
-    tests.integ.test_region() != TEST_REGSION,
-    reason="Image is not yet available in certain regions.",
+    tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
+    reason="ModelMonitoring is not yet supported in this region.",
 )
 def test_bias_monitor(sagemaker_session, scheduled_bias_monitor, endpoint_name, ground_truth_input):
     monitor = scheduled_bias_monitor
@@ -297,8 +286,8 @@ def test_bias_monitor(sagemaker_session, scheduled_bias_monitor, endpoint_name, 
 
 
 @pytest.mark.skipif(
-    tests.integ.test_region() != TEST_REGSION,
-    reason="Image is not yet available in certain regions.",
+    tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
+    reason="ModelMonitoring is not yet supported in this region.",
 )
 def test_run_bias_monitor(
     scheduled_bias_monitor, sagemaker_session, endpoint_name, ground_truth_input, upload_actual_data
@@ -316,8 +305,8 @@ def test_run_bias_monitor(
 
 
 @pytest.mark.skipif(
-    tests.integ.test_region() != TEST_REGSION,
-    reason="Image is not yet available in certain regions.",
+    tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
+    reason="ModelMonitoring is not yet supported in this region.",
 )
 def test_run_bias_monitor_baseline(
     sagemaker_session,
@@ -336,10 +325,8 @@ def test_run_bias_monitor_baseline(
         volume_size_in_gb=VOLUME_SIZE_IN_GB,
         max_runtime_in_seconds=MAX_RUNTIME_IN_SECONDS,
         sagemaker_session=sagemaker_session,
-        env=TEST_ENV,
         tags=TEST_TAGS,
     )
-    monitor.image_uri = TEST_IMAGE_URI
 
     baselining_job_name = utils.unique_name_from_base("bias-baselining-job")
     print("Creating baselining job: {}".format(baselining_job_name))
@@ -396,10 +383,8 @@ def explainability_monitor(sagemaker_session):
         volume_size_in_gb=VOLUME_SIZE_IN_GB,
         max_runtime_in_seconds=MAX_RUNTIME_IN_SECONDS,
         sagemaker_session=sagemaker_session,
-        env=TEST_ENV,
         tags=TEST_TAGS,
     )
-    monitor.image_uri = TEST_IMAGE_URI
     return monitor
 
 
@@ -429,8 +414,8 @@ def scheduled_explainability_monitor(
 
 
 @pytest.mark.skipif(
-    tests.integ.test_region() != TEST_REGSION,
-    reason="Image is not yet available in certain regions.",
+    tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
+    reason="ModelMonitoring is not yet supported in this region.",
 )
 def test_explainability_monitor(sagemaker_session, scheduled_explainability_monitor, endpoint_name):
     monitor = scheduled_explainability_monitor
@@ -479,8 +464,8 @@ def test_explainability_monitor(sagemaker_session, scheduled_explainability_moni
 
 
 @pytest.mark.skipif(
-    tests.integ.test_region() != TEST_REGSION,
-    reason="Image is not yet available in certain regions.",
+    tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
+    reason="ModelMonitoring is not yet supported in this region.",
 )
 def test_run_explainability_monitor(
     scheduled_explainability_monitor,
@@ -501,8 +486,8 @@ def test_run_explainability_monitor(
 
 
 @pytest.mark.skipif(
-    tests.integ.test_region() != TEST_REGSION,
-    reason="Image is not yet available in certain regions.",
+    tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
+    reason="ModelMonitoring is not yet supported in this region.",
 )
 def test_run_explainability_monitor_baseline(
     sagemaker_session, shap_config, data_config, model_config, endpoint_name, upload_actual_data
@@ -514,10 +499,8 @@ def test_run_explainability_monitor_baseline(
         volume_size_in_gb=VOLUME_SIZE_IN_GB,
         max_runtime_in_seconds=MAX_RUNTIME_IN_SECONDS,
         sagemaker_session=sagemaker_session,
-        env=TEST_ENV,
         tags=TEST_TAGS,
     )
-    monitor.image_uri = TEST_IMAGE_URI
 
     baselining_job_name = utils.unique_name_from_base("explainability-baselining-job")
     print("Creating baselining job: {}".format(baselining_job_name))
