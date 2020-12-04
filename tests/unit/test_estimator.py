@@ -625,8 +625,8 @@ def test_framework_with_enabling_default_profiling_when_profiler_is_already_enab
         training_job_description["ProfilingStatus"] = "Enabled"
         f.enable_default_profiling()
     assert (
-        "Profiler is already enabled. To update profiler config or profiler rule, "
-        "please use update_profiler function." in str(error)
+        "Debugger monitoring is already enabled. To update the profiler_config parameter "
+        "and the Debugger profiling rules, please use the update_profiler function." in str(error)
     )
 
 

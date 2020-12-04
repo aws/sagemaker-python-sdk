@@ -38,9 +38,87 @@ ALL_METRIC_CONFIGS = [
 
 
 class FrameworkProfile:
-    """Configuration for the collection of framework metrics in the profiler.
+    """
+    Sets up the profiling configuration for framework metrics.
 
-    Validates user input and fills in default values wherever necessary.
+    Validates user inputs and fills in default values if no input is provided.
+    There are three main profiling options to choose from:
+    :class:`~sagemaker.debugger.metrics_config.DetailedProfilingConfig`,
+    :class:`~sagemaker.debugger.metrics_config.DataloaderProfilingConfig`, and
+    :class:`~sagemaker.debugger.metrics_config.PythonProfilingConfig`.
+
+    The following list shows available scenarios of configuring the profiling options.
+
+    1. None of the profiling configuration, step range, or time range is specified.
+    SageMaker Debugger activates framework profiling based on the default settings
+    of each profiling option.
+
+    .. code-block:: python
+
+        from sagemaker.debugger import ProfilerConfig, FrameworkProfile
+
+        profiler_config=ProfilerConfig(
+            framework_profile_params=FrameworkProfile()
+        )
+
+    2. Target step or time range is specified to
+    this :class:`~sagemaker.debugger.metrics_config.FrameworkProfile` class.
+    The requested target step or time range setting propagates to all of
+    the framework profiling options.
+    For example, if you configure this class as following, all of the profiling options
+    profiles the 6th step:
+
+    .. code-block:: python
+
+        from sagemaker.debugger import ProfilerConfig, FrameworkProfile
+
+        profiler_config=ProfilerConfig(
+            framework_profile_params=FrameworkProfile(start_step=6, num_steps=1)
+        )
+
+    3. Individual profiling configurations are specified through
+    the ``*_profiling_config`` parameters.
+    SageMaker Debugger profiles framework metrics only for the specified profiling configurations.
+    For example, if the :class:`~sagemaker.debugger.metrics_config.DetailedProfilingConfig` class
+    is configured but not the other profiling options, Debugger only profiles based on the settings
+    specified to the
+    :class:`~sagemaker.debugger.metrics_config.DetailedProfilingConfig` class.
+    For example, the following example shows a profiling configuration to perform
+    detailed profiling at step 10, data loader profiling at step 9 and 10,
+    and Python profiling at step 12.
+
+    .. code-block:: python
+
+        from sagemaker.debugger import ProfilerConfig, FrameworkProfile
+
+        profiler_config=ProfilerConfig(
+            framework_profile_params=FrameworkProfile(
+                detailed_profiling_config=DetailedProfilingConfig(start_step=10, num_steps=1),
+                dataloader_profiling_config=DataloaderProfilingConfig(start_step=9, num_steps=2),
+                python_profiling_config=PythonProfilingConfig(start_step=12, num_steps=1),
+            )
+        )
+
+    If the individual profiling configurations are specified in addition to
+    the step or time range,
+    SageMaker Debugger prioritizes the individual profiling configurations and ignores
+    the step or time range. For example, in the following code,
+    the ``start_step=1`` and ``num_steps=10`` will be ignored.
+
+    .. code-block:: python
+
+        from sagemaker.debugger import ProfilerConfig, FrameworkProfile
+
+        profiler_config=ProfilerConfig(
+            framework_profile_params=FrameworkProfile(
+                start_step=1,
+                num_steps=10,
+                detailed_profiling_config=DetailedProfilingConfig(start_step=10, num_steps=1),
+                dataloader_profiling_config=DataloaderProfilingConfig(start_step=9, num_steps=2),
+                python_profiling_config=PythonProfilingConfig(start_step=12, num_steps=1)
+            )
+        )
+
     """
 
     def __init__(
@@ -59,41 +137,34 @@ class FrameworkProfile:
         start_unix_time=None,
         duration=None,
     ):
-        """Set up the profiling configuration for framework metrics based on user input.
-
-        There are three main options for the user to choose from.
-        1. No custom metrics configs or step range or time range specified. Default profiling is
-        done for each set of framework metrics.
-        2. Custom metrics configs are specified. Do profiling for the metrics whose configs are
-        specified and no profiling for the rest of the metrics.
-        3. Custom step range or time range is specified. Profiling for all of the metrics will
-        occur with the provided step/time range. Configs with additional parameters beyond
-        step/time range will use defaults for those additional parameters.
-
-        If custom metrics configs are specified in addition to step or time range being specified,
-        then we ignore the step/time range and default to using custom metrics configs.
+        """Initialize the FrameworkProfile class object.
 
         Args:
-            local_path (str): The path where profiler events have to be saved.
-            file_max_size (int): Max size a trace file can be, before being rotated.
-            file_close_interval (float): Interval in seconds from the last close, before being
-                rotated.
-            file_open_fail_threshold (int): Number of times to attempt to open a trace fail before
-                marking the writer as unhealthy.
             detailed_profiling_config (DetailedProfilingConfig): The configuration for detailed
-                profiling done by the framework.
-            dataloader_profiling_config (DataloaderProfilingConfig): The configuration for metrics
-                collected in the data loader.
+                profiling. Configure it using the
+                :class:`~sagemaker.debugger.metrics_config.DetailedProfilingConfig` class.
+                Pass ``DetailedProfilingConfig()`` to use the default configuration.
+            dataloader_profiling_config (DataloaderProfilingConfig): The configuration for
+                dataloader metrics profiling. Configure it using the
+                :class:`~sagemaker.debugger.metrics_config.DataloaderProfilingConfig` class.
+                Pass ``DataloaderProfilingConfig()`` to use the default configuration.
             python_profiling_config (PythonProfilingConfig): The configuration for stats
                 collected by the Python profiler (cProfile or Pyinstrument).
-            horovod_profiling_config (HorovodProfilingConfig): The configuration for metrics
-                collected by horovod when using horovod for distributed training.
-            smdataparallel_profiling_config (SMDataParallelProfilingConfig): The configuration for
-                metrics collected by SageMaker Distributed training.
+                Configure it using the
+                :class:`~sagemaker.debugger.metrics_config.PythonProfilingConfig` class.
+                Pass ``PythonProfilingConfig()`` to use the default configuration.
             start_step (int): The step at which to start profiling.
             num_steps (int): The number of steps to profile.
-            start_unix_time (int): The UNIX time at which to start profiling.
-            duration (float): The duration in seconds to profile for.
+            start_unix_time (int): The Unix time at which to start profiling.
+            duration (float): The duration in seconds to profile.
+
+        .. tip::
+            Available profiling range parameter pairs are
+            (**start_step** and **num_steps**) and (**start_unix_time** and **duration**).
+            The two parameter pairs are mutually exclusive, and this class validates
+            if one of the two pairs is used. If both pairs are specified, a
+            conflict error occurs.
+
         """
         self.profiling_parameters = {}
         self._use_default_metrics_configs = False
@@ -132,6 +203,7 @@ class FrameworkProfile:
                 rotated.
             file_open_fail_threshold (int): Number of times to attempt to open a trace fail before
                 marking the writer as unhealthy.
+
         """
         assert isinstance(local_path, str), ErrorMessages.INVALID_LOCAL_PATH.value
         assert (
@@ -152,13 +224,17 @@ class FrameworkProfile:
     def _process_metrics_configs(self, *metrics_configs):
         """Helper function to validate and set the provided metrics_configs.
 
-        In this case, the user specifies configs for the metrics they want profiled.
-        Profiling does not occur for metrics if configs are not specified for them.
+        In this case,
+        the user specifies configurations for the metrics they want to profile.
+        Profiling does not occur
+        for metrics if the configurations are not specified for them.
 
         Args:
             metrics_configs: The list of metrics configs specified by the user.
+
         Returns:
-            bool: Whether custom metrics configs will be used for profiling.
+            bool: Indicates whether custom metrics configs will be used for profiling.
+
         """
         metrics_configs = [config for config in metrics_configs if config is not None]
         if len(metrics_configs) == 0:
@@ -173,16 +249,19 @@ class FrameworkProfile:
     def _process_range_fields(self, start_step, num_steps, start_unix_time, duration):
         """Helper function to validate and set the provided range fields.
 
-        Profiling will occur for all of the metrics using these fields as the specified
-        range and default parameters for the rest of the config fields (if necessary).
+        Profiling occurs
+        for all of the metrics using these fields as the specified range and default parameters
+        for the rest of the configuration fields (if necessary).
 
         Args:
             start_step (int): The step at which to start profiling.
             num_steps (int): The number of steps to profile.
             start_unix_time (int): The UNIX time at which to start profiling.
-            duration (float): The duration in seconds to profile for.
+            duration (float): The duration in seconds to profile.
+
         Returns:
-            bool: Whether custom step or time range will be used for profiling.
+            bool: Indicates whether a custom step or time range will be used for profiling.
+
         """
         if start_step is num_steps is start_unix_time is duration is None:
             return False

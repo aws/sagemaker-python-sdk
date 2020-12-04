@@ -86,7 +86,7 @@ def test_mxnet_with_default_profiler_config_and_profiler_rule(
 
         with pytest.raises(ValueError) as error:
             mx.enable_default_profiling()
-        assert "Profiler is already enabled." in str(error)
+        assert "Debugger monitoring is already enabled." in str(error)
 
 
 def test_mxnet_with_custom_profiler_config_then_update_rule_and_config(

@@ -10,7 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""The various types of metrics configs that can be specified in FrameworkProfile"""
+"""The various types of metrics configurations that can be specified in FrameworkProfile."""
 from __future__ import absolute_import
 
 from sagemaker.debugger.profiler_constants import (
@@ -39,17 +39,24 @@ from sagemaker.debugger.utils import (
 
 
 class StepRange:
-    """Configuration for what range of steps to profile."""
+    """Configuration for the range of steps to profile.
+
+    It returns the target steps in dictionary format that you can pass to the
+    :class:`~sagemaker.debugger.FrameworkProfile` class.
+
+    """
 
     def __init__(self, start_step, num_steps):
         """Set the start step and num steps.
 
-        If the start step is not specified, profile starting
+        If the start step is not specified,
+        Debugger starts profiling
         at step 0. If num steps is not specified, profile for 1 step.
 
         Args:
-            start_step (int): The step at which to start profiling.
+            start_step (int): The step to start profiling.
             num_steps (int): The number of steps to profile.
+
         """
         if start_step is None:
             start_step = START_STEP_DEFAULT
@@ -64,22 +71,29 @@ class StepRange:
 
         Returns:
             dict: The step range as a dictionary.
+
         """
         return {"StartStep": self.start_step, "NumSteps": self.num_steps}
 
 
 class TimeRange:
-    """Configuration for what range of time to profile."""
+    """Configuration for the range of Unix time to profile.
+
+    It returns the target time duration in dictionary format that you can pass to the
+    :class:`~sagemaker.debugger.FrameworkProfile` class.
+
+    """
 
     def __init__(self, start_unix_time, duration):
-        """Set the start unix time and duration.
+        """Set the start Unix time and duration.
 
-        If the start unix time is not specified, profile starting at step 0.
-        If the duration is not specified, profile for 1 step.
+        If the start Unix time is not specified,
+        profile starting at step 0. If the duration is not specified, profile for 1 step.
 
         Args:
-            start_unix_time (int): The UNIX time at which to start profiling.
-            duration (float): The duration in seconds to profile for.
+            start_unix_time (int): The Unix time to start profiling.
+            duration (float): The duration in seconds to profile.
+
         """
         self.start_unix_time = start_unix_time
         self.duration = duration
@@ -89,6 +103,7 @@ class TimeRange:
 
         Returns:
             dict: The time range as a dictionary.
+
         """
         time_range_json = {}
         if self.start_unix_time is not None:
@@ -99,10 +114,15 @@ class TimeRange:
 
 
 class MetricsConfigBase:
-    """The base class for a metrics config.
+    """The base class for the metrics configuration.
 
-    It determines what step or time range will be profiled.
-    Validates the provided fields and that both step and time fields are not specified.
+    It determines the step or time range that needs to be
+    profiled and validates the input value pairs. Available profiling range parameter pairs are
+    (**start_step** and **num_steps**) and (**start_unix_time** and **duration**).
+    The two parameter pairs are mutually exclusive, and this class validates
+    if one of the two pairs is used. If both pairs are specified, a
+    FOUND_BOTH_STEP_AND_TIME_FIELDS error occurs.
+
     """
 
     def __init__(self, name, start_step, num_steps, start_unix_time, duration):
@@ -110,10 +130,11 @@ class MetricsConfigBase:
 
         Args:
             name (str): The name of the metrics config.
-            start_step (int): The step at which to start profiling.
+            start_step (int): The step to start profiling.
             num_steps (int): The number of steps to profile.
-            start_unix_time (int): The UNIX time at which to start profiling.
-            duration (float): The duration in seconds to profile for.
+            start_unix_time (int): The Unix time to start profiling.
+            duration (float): The duration in seconds to profile.
+
         """
         self.name = name
 
@@ -145,31 +166,32 @@ class MetricsConfigBase:
         )
 
     def _to_json(self):
-        """Convert this metrics config to a dictionary.
+        """Convert the metrics configuration to a dictionary.
 
-        It is done by converting the range object into a dictionary.
+        Convert the range object into a
+        dictionary.
 
         Returns:
             dict: This metrics config as a dictionary.
+
         """
         return self.range.to_json()
 
     def to_json_string(self):
-        """Converts this metrics config to dictionary formatted as a string.
+        """Convert this metrics configuration to dictionary formatted as a string.
 
-        Calling eval on the return value is the same as calling _to_json directly.
+        Calling eval on the
+        return value is the same as calling _to_json directly.
 
         Returns:
-            str: This metrics config as a dictionary formatted as a string.
+            str: This metrics configuration as a dictionary and formatted as a string.
+
         """
         return convert_json_config_to_string(self._to_json())
 
 
 class DetailedProfilingConfig(MetricsConfigBase):
-    """The configuration for detailed profiling done by the framework.
-
-    By default, profile step 5 of training.
-    """
+    """The configuration for framework metrics to be collected for detailed profiling."""
 
     def __init__(
         self,
@@ -179,16 +201,29 @@ class DetailedProfilingConfig(MetricsConfigBase):
         duration=None,
         profile_default_steps=False,
     ):
-        """If profile_default_steps is set to True or none of the range fields are specified,
-        use the default config for detailed profiling. Otherwise, profile according to the
-        specified range fields.
+        """Specify target steps or a target duration to profile.
+
+        By default, it profiles step 5
+        of training.
+
+        If **profile_default_steps** is set to `True` and none of the other
+        range parameters is specified,
+        the class uses the default configuration for detailed profiling.
 
         Args:
-            start_step (int): The step at which to start profiling.
-            num_steps (int): The number of steps to profile.
-            start_unix_time (int): The UNIX time at which to start profiling.
-            duration (float): The duration in seconds to profile for.
-            profile_default_steps (bool): Whether the default config should be used.
+            start_step (int): The step to start profiling. The default is step 5.
+            num_steps (int): The number of steps to profile. The default is for 1 step.
+            start_unix_time (int): The Unix time to start profiling.
+            duration (float): The duration in seconds to profile.
+            profile_default_steps (bool): Indicates whether the default config should be used.
+
+        .. tip::
+            Available profiling range parameter pairs are
+            (**start_step** and **num_steps**) and (**start_unix_time** and **duration**).
+            The two parameter pairs are mutually exclusive, and this class validates
+            if one of the two pairs is used. If both pairs are specified, a
+            conflict error occurs.
+
         """
         assert isinstance(
             profile_default_steps, bool
@@ -203,10 +238,7 @@ class DetailedProfilingConfig(MetricsConfigBase):
 
 
 class DataloaderProfilingConfig(MetricsConfigBase):
-    """The configuration for metrics collected in the data loader.
-
-    By default, profile step 7 of training.
-    """
+    """The configuration for framework metrics to be collected for data loader profiling."""
 
     def __init__(
         self,
@@ -217,19 +249,20 @@ class DataloaderProfilingConfig(MetricsConfigBase):
         profile_default_steps=False,
         metrics_regex=".*",
     ):
-        """If profile_default_steps is set to True or none of the range fields are specified,
-        use the default config for dataloader profiling. Otherwise, profile according to the
-        specified range fields.
+        """Specify target steps or a target duration to profile.
+
+        By default, it profiles step 7 of
+        training. If **profile_default_steps** is set to `True` and none of the other
+        range parameters is specified,
+        the class uses the default config for dataloader profiling.
 
         Args:
-            start_step (int): The step at which to start profiling.
-            num_steps (int): The number of steps to profile.
-            start_unix_time (int): The UNIX time at which to start profiling.
-            duration (float): The duration in seconds to profile for.
-            profile_default_steps (bool): Whether the default config should be used.
-            metrics_regex (str): The regex used for collecting metrics. Metrics will be collected
-                for data loader events that this this regex matches. By default, collect metrics
-                for all events.
+            start_step (int): The step to start profiling. The default is step 7.
+            num_steps (int): The number of steps to profile. The default is for 1 step.
+            start_unix_time (int): The Unix time to start profiling. The default is for 1 step.
+            duration (float): The duration in seconds to profile.
+            profile_default_steps (bool): Indicates whether the default config should be used.
+
         """
         assert isinstance(
             profile_default_steps, bool
@@ -248,10 +281,12 @@ class DataloaderProfilingConfig(MetricsConfigBase):
     def _to_json(self):
         """Convert the dataloader profiling config to a dictionary.
 
-        Build off the base metrics config dictionary to add the metrics regex.
+        Build off of the base metrics
+        configuration dictionary to add the metrics regex.
 
         Returns:
-            dict: The dataloader profiling config as a dictionary.
+            dict: The dataloader that profiles the configuration as a dictionary.
+
         """
         dataloader_profiling_config = super()._to_json()
         dataloader_profiling_config["MetricsRegex"] = self.metrics_regex
@@ -259,11 +294,7 @@ class DataloaderProfilingConfig(MetricsConfigBase):
 
 
 class PythonProfilingConfig(MetricsConfigBase):
-    """The configuration for stats collected by the Python profiler (cProfile or Pyinstrument).
-
-    By default, profile steps 9, 10 and 11 of training using cProfile and collecting metrics
-    based on total time, cpy time and off cpu time for these three steps respectively.
-    """
+    """The configuration for framework metrics to be collected for Python profiling."""
 
     def __init__(
         self,
@@ -275,21 +306,42 @@ class PythonProfilingConfig(MetricsConfigBase):
         python_profiler=PythonProfiler.CPROFILE,
         cprofile_timer=cProfileTimer.TOTAL_TIME,
     ):
-        """If profile_default_steps is set to True or none of the range fields are specified,
-        use the default config for Python profiling. Otherwise, profile according to the
-        specified range fields.
+        """Choose a Python profiler: cProfile or Pyinstrument.
+
+        Specify target steps or a target duration to profile.
+        If no parameter is specified,
+        it profiles based on profiling configurations
+        preset by the **profile_default_steps** parameter,
+        which is set to `True` by default.
+        If you specify the following parameters,
+        then the **profile_default_steps** parameter
+        will be ignored.
 
         Args:
-            start_step (int): The step at which to start profiling.
-            num_steps (int): The number of steps to profile.
-            start_unix_time (int): The UNIX time at which to start profiling.
-            duration (float): The duration in seconds to profile for.
-            profile_default_steps (bool): Whether the default config should be used.
-            python_profiler (PythonProfiler): The Python profiler to be used for collecting
-                python profiling stats. By default, use cProfile.
+            start_step (int): The step to start profiling. The default is step 9.
+            num_steps (int): The number of steps to profile. The default is for 3 steps.
+            start_unix_time (int): The Unix time to start profiling.
+            duration (float): The duration in seconds to profile.
+            profile_default_steps (bool): Indicates whether the default configuration
+                should be used. If set to `True`, Python profiling will be done
+                at step 9, 10, and 11 of training, using cProfiler
+                and collecting metrics based on the total time, cpu time,
+                and off cpu time for these three steps respectively.
+                The default is ``True``.
+            python_profiler (PythonProfiler): The Python profiler to use to collect
+                python profiling stats. Available options are ``"cProfile"``
+                and ``"Pyinstrument"``. The default is ``"cProfile"``.
+                Instead of passing the string values, you can also use the enumerator util,
+                :class:`~sagemaker.debugger.utils.PythonProfiler`,
+                to choose one of the available options.
             cprofile_timer (cProfileTimer): The timer to be used by cProfile when collecting
-                python profiling stats. By default, use total time. If Pyinstrument is used as
-                the Python profiler, this field is ignored.
+                python profiling stats. Available options are ``"total_time"``, ``"cpu_time"``,
+                and ``"off_cpu_time"``. The default is ``"total_time"``.
+                If you choose Pyinstrument, this parameter is ignored.
+                Instead of passing the string values, you can also use the enumerator util,
+                :class:`~sagemaker.debugger.utils.cProfileTimer`,
+                to choose one of the available options.
+
         """
         assert isinstance(
             profile_default_steps, bool
@@ -321,10 +373,12 @@ class PythonProfilingConfig(MetricsConfigBase):
     def _to_json(self):
         """Convert the Python profiling config to a dictionary.
 
-        Build off the base metrics config dictionary to add the Python profiler and cProfile timer.
+        Build off of the base metrics configuration
+        dictionary to add the Python profiler and cProfile timer.
 
         Returns:
             dict: The python profiling config as a dictionary.
+
         """
         python_profiling_config = super()._to_json()
         python_profiling_config["ProfilerName"] = self.python_profiler.value
@@ -334,10 +388,7 @@ class PythonProfilingConfig(MetricsConfigBase):
 
 
 class HorovodProfilingConfig(MetricsConfigBase):
-    """Configuration for metrics collected by horovod when using horovod for distributed training.
-
-    By default, profile step 13 of training.
-    """
+    """The configuration for framework metrics from Horovod distributed training."""
 
     def __init__(
         self,
@@ -347,16 +398,20 @@ class HorovodProfilingConfig(MetricsConfigBase):
         duration=None,
         profile_default_steps=False,
     ):
-        """If profile_default_steps is set to True or none of the range fields are specified,
-        use the default config for horovod profiling. Otherwise, profile according to the
-        specified range fields.
+        """Specify target steps or a target duration to profile.
+
+        By default, it profiles step 13 of training.
+        If **profile_default_steps** is set to `True` and none of the other range
+        parameters is specified,
+        the class uses the default config for horovod profiling.
 
         Args:
-            start_step (int): The step at which to start profiling.
-            num_steps (int): The number of steps to profile.
-            start_unix_time (int): The UNIX time at which to start profiling.
-            duration (float): The duration in seconds to profile for.
-            profile_default_steps (bool): Whether the default config should be used.
+            start_step (int): The step to start profiling. The default is step 13.
+            num_steps (int): The number of steps to profile. The default is for 1 steps.
+            start_unix_time (int): The Unix time to start profiling.
+            duration (float): The duration in seconds to profile.
+            profile_default_steps (bool): Indicates whether the default config should be used.
+
         """
         assert isinstance(
             profile_default_steps, bool
@@ -371,10 +426,7 @@ class HorovodProfilingConfig(MetricsConfigBase):
 
 
 class SMDataParallelProfilingConfig(MetricsConfigBase):
-    """Configuration for metrics collected by SageMaker Distributed training.
-
-    By default, profile step 15 of training.
-    """
+    """Configuration for framework metrics collected from a SageMaker Distributed training job."""
 
     def __init__(
         self,
@@ -384,16 +436,21 @@ class SMDataParallelProfilingConfig(MetricsConfigBase):
         duration=None,
         profile_default_steps=False,
     ):
-        """If profile_default_steps is set to True or none of the range fields are specified, use
-        the default profiling config for SageMaker Distributed training. Otherwise, profile
-        according to the specified range fields.
+        """Specify target steps or a target duration to profile.
+
+        By default, it profiles step 15 of training.
+        If **profile_default_steps** is set to `True` and none of the other
+        range parameters is specified,
+        the class uses the default configuration for SageMaker Distributed profiling.
 
         Args:
-            start_step (int): The step at which to start profiling.
-            num_steps (int): The number of steps to profile.
-            start_unix_time (int): The UNIX time at which to start profiling.
-            duration (float): The duration in seconds to profile for.
-            profile_default_steps (bool): Whether the default config should be used.
+            start_step (int): The step to start profiling. The default is step 15.
+            num_steps (int): The number of steps to profile. The default is for 1 steps.
+            start_unix_time (int): The Unix time to start profiling.
+            duration (float): The duration in seconds to profile.
+            profile_default_steps (bool): Indicates whether the default configuration
+                should be used.
+
         """
         assert isinstance(
             profile_default_steps, bool
