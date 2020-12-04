@@ -220,26 +220,31 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 (default: ``None``).
             rules (list[:class:`~sagemaker.debugger.RuleBase`]): A list of
                 :class:`~sagemaker.debugger.RuleBase` objects used to define
-                rules for continuous analysis with SageMaker Debugger and Profiler
-                (default: ``None``). For more, see
-                https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_debugger.html#
-                continuous-analyses-through-rules
+                SageMaker Debugger rules for real-time analysis
+                (default: ``None``). For more information,
+                see `Continuous analyses through rules
+                <https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_debugger.html
+                #continuous-analyses-through-rules)>`_.
             debugger_hook_config (:class:`~sagemaker.debugger.DebuggerHookConfig` or bool):
                 Configuration for how debugging information is emitted with
                 SageMaker Debugger. If not specified, a default one is created using
                 the estimator's ``output_path``, unless the region does not
                 support SageMaker Debugger. To disable SageMaker Debugger,
-                set this parameter to ``False``. For more, see
-                https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_debugger.html
+                set this parameter to ``False``. For more information, see
+                `Capture real-time debugging data during model training in Amazon SageMaker
+                <https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_debugger.html#
+                capture-real-time-debugging-data-during-model-training-in-amazon-sagemaker>`_.
             tensorboard_output_config (:class:`~sagemaker.debugger.TensorBoardOutputConfig`):
                 Configuration for customizing debugging visualization using TensorBoard
-                (default: ``None``). For more, see
-                https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_debugger.html#
-                capture-real-time-tensorboard-data-from-the-debugging-hook
-            enable_sagemaker_metrics (bool): Enables SageMaker Metrics Time
-                Series. For more information see:
-                https://docs.aws.amazon.com/sagemaker/latest/dg/API_AlgorithmSpecification.html#
-                SageMaker-Type-AlgorithmSpecification-EnableSageMakerMetricsTimeSeries
+                (default: ``None``). For more information,
+                see `Capture real time tensorboard data
+                <https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_debugger.html#
+                capture-real-time-tensorboard-data-from-the-debugging-hook>`_.
+            enable_sagemaker_metrics (bool): enable SageMaker Metrics Time
+                Series. For more information, see `AlgorithmSpecification API
+                <https://docs.aws.amazon.com/sagemaker/latest/dg/
+                API_AlgorithmSpecification.html#SageMaker-Type-AlgorithmSpecification-
+                EnableSageMakerMetricsTimeSeries>`_.
                 (default: ``None``).
             enable_network_isolation (bool): Specifies whether container will
                 run in network isolation mode (default: ``False``). Network
@@ -247,13 +252,16 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 (such as the Internet). The container does not make any inbound or
                 outbound network calls. Also known as Internet-free mode.
             profiler_config (:class:`~sagemaker.debugger.ProfilerConfig`):
-                Configuration for how profiling information is emitted with
-                SageMaker Profiler. If not specified, a default one is created using
+                Configuration for how SageMaker Debugger collects
+                monitoring and profiling information from your training job.
+                If not specified, a default configuration is created using
                 the estimator's ``output_path``, unless the region does not
-                support SageMaker Profiler. To disable SageMaker Profiler, set
-                disable_profiler parameter to ``True``.
-            disable_profiler (bool): Specifies whether profiler will be
-                disabled (default: ``False``).
+                support SageMaker Debugger. To disable SageMaker Debugger
+                monitoring and profiling, set the
+                ``disable_profiler`` parameter to ``True``.
+            disable_profiler (bool): Specifies whether Debugger monitoring and profiling
+                will be disabled (default: ``False``).
+
         """
         instance_count = renamed_kwargs(
             "train_instance_count", "instance_count", instance_count, kwargs
@@ -1248,13 +1256,18 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
     delete_endpoint = removed_function("delete_endpoint")
 
     def enable_default_profiling(self):
-        """Update training job to enable profiler with default profiler config to emit system
-        metrics and enable default built-in profiler_report rule. Framework metrics won't be
-        emitted. To update training job to emit framework metrics, you can use update_profiler
+        """Update training job to enable Debugger monitoring.
+
+        This method enables Debugger monitoring with
+        the default ``profiler_config`` parameter to collect system
+        metrics and the default built-in ``profiler_report`` rule.
+        Framework metrics won't be saved.
+        To update training job to emit framework metrics, you can use
+        :class:`~sagemaker.estimator.Estimator.update_profiler`
         method and specify the framework metrics you want to enable.
 
-        This method can only be called when the training job is in progress and profiler
-        is currently disabled.
+        This method is callable when the training job is in progress while
+        Debugger monitoring is disabled.
         """
         self._ensure_latest_training_job()
 
@@ -1262,8 +1275,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
 
         if training_job_details.get("ProfilingStatus") == "Enabled":
             raise ValueError(
-                "Profiler is already enabled. To update profiler config or "
-                "profiler rule, please use update_profiler function."
+                "Debugger monitoring is already enabled. To update the profiler_config parameter "
+                "and the Debugger profiling rules, please use the update_profiler function."
             )
 
         if "ProfilerConfig" in training_job_details and training_job_details["ProfilerConfig"].get(
@@ -1283,8 +1296,11 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         )
 
     def disable_profiling(self):
-        """Update training job to disable profiler, both system and framework metrics will be
-        disabled, all the running profiler rules will also be disabled.
+        """Update the current training job in progress to disable profiling.
+
+        Debugger stops collecting the system and framework metrics
+        and turns off the Debugger built-in monitoring and profiling rules.
+
         """
         self._ensure_latest_training_job()
 
@@ -1305,22 +1321,39 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         framework_profile_params=None,
         disable_framework_metrics=False,
     ):
-        """Update training job to update profiler config or profiler rules.
+        """Update training jobs to enable profiling.
+
+        This method updates the ``profiler_config`` parameter
+        and initiates Debugger built-in rules for profiling.
 
         Args:
             rules (list[:class:`~sagemaker.debugger.ProfilerRule`]): A list of
-                :class:`~sagemaker.debugger.ProfilerRule` objects used to define
-                rules for continuous analysis with SageMaker Profiler. Currently, you can
+                :class:`~sagemaker.debugger.ProfilerRule` objects to define
+                rules for continuous analysis with SageMaker Debugger. Currently, you can
                 only add new profiler rules during the training job. (default: ``None``)
             s3_output_path (str): The location in S3 to store the output. If profiler is enabled
                 once, s3_output_path cannot be changed. (default: ``None``)
             system_monitor_interval_millis (int): How often profiling system metrics are
                 collected; Unit: Milliseconds (default: ``None``)
-            framework_profile_params (dict): A dictionary of parameters for
-                the profiler. (default: ``None``)
+            framework_profile_params (:class:`~sagemaker.debugger.FrameworkProfile`):
+                A parameter object for framework metrics profiling. Configure it using
+                the :class:`~sagemaker.debugger.FrameworkProfile` class.
+                To use the default framework profile parameters, pass ``FrameworkProfile()``.
+                For more information about the default values,
+                see :class:`~sagemaker.debugger.FrameworkProfile`. (default: ``None``)
             disable_framework_metrics (bool): Specify whether to disable all the framework metrics.
-                This won't update system metrics and profiler rules. To disable the whole profiler,
-                you can use disable_profiling method. (default: ``False``)
+                This won't update system metrics and the Debugger built-in rules for monitoring.
+                To stop both monitoring and profiling,
+                use the :class:`~sagemaker.estimator.Estimator.desable_profiling`
+                method. (default: ``False``)
+
+        .. attention::
+
+            Updating the profiling configuration for TensorFlow dataloader profiling
+            is currently not available. If you started a TensorFlow training job only with
+            monitoring and want to enable profiling while the training job is running,
+            the dataloader profiling cannot be updated.
+
         """
         self._ensure_latest_training_job()
 
@@ -1506,6 +1539,7 @@ class _TrainingJob(_Job):
         """
         Args:
             input_uri:
+
         """
         return isinstance(input_uri, string_types) and input_uri.startswith("file://")
 
@@ -1518,7 +1552,7 @@ class _TrainingJob(_Job):
             profiler_rule_configs (list): List of profiler rule configurations to be
                 updated in the training job. (default: ``None``).
             profiler_config (dict): Configuration for how profiling information is emitted with
-                SageMaker Profiler. (default: ``None``).
+                SageMaker Debugger. (default: ``None``).
 
         Returns:
             sagemaker.estimator._TrainingJob: Constructed object that captures
@@ -1539,7 +1573,7 @@ class _TrainingJob(_Job):
             profiler_rule_configs (list): List of profiler rule configurations to be
                 updated in the training job. (default: ``None``).
             profiler_config (dict): Configuration for how profiling information is emitted with
-                SageMaker Profiler. (default: ``None``).
+                SageMaker Debugger. (default: ``None``).
 
         Returns:
             Dict: dict for `sagemaker.session.Session.update_training_job` method
@@ -1739,34 +1773,48 @@ class Estimator(EstimatorBase):
                 outbound network calls. Also known as Internet-free mode.
             rules (list[:class:`~sagemaker.debugger.RuleBase`]): A list of
                 :class:`~sagemaker.debugger.RuleBase` objects used to define
-                rules for continuous analysis with SageMaker Debugger
-                (default: ``None``). For more, see
-                https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_debugger.html#
-                continuous-analyses-through-rules
+                SageMaker Debugger rules for real-time analysis
+                (default: ``None``). For more information,
+                see `Continuous analyses through rules
+                <https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_debugger.html
+                #continuous-analyses-through-rules)>`_.
             debugger_hook_config (:class:`~sagemaker.debugger.DebuggerHookConfig` or bool):
                 Configuration for how debugging information is emitted with
                 SageMaker Debugger. If not specified, a default one is created using
                 the estimator's ``output_path``, unless the region does not
                 support SageMaker Debugger. To disable SageMaker Debugger,
-                set this parameter to ``False``. For more, see
-                https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_debugger.html
+                set this parameter to ``False``. For more information, see
+                `Capture real-time debugging data during model training in Amazon SageMaker
+                <https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_debugger.html#
+                capture-real-time-debugging-data-during-model-training-in-amazon-sagemaker>`_.
             tensorboard_output_config (:class:`~sagemaker.debugger.TensorBoardOutputConfig`):
                 Configuration for customizing debugging visualization using TensorBoard
-                (default: ``None``). For more, see
-                https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_debugger.html#
-                capture-real-time-tensorboard-data-from-the-debugging-hook
+                (default: ``None``). For more information,
+                see `Capture real time tensorboard data
+                <https://sagemaker.readthedocs.io/en/stable/amazon_sagemaker_debugger.html#
+                capture-real-time-tensorboard-data-from-the-debugging-hook>`_.
             enable_sagemaker_metrics (bool): enable SageMaker Metrics Time
-                Series. For more information see:
-                https://docs.aws.amazon.com/sagemaker/latest/dg/API_AlgorithmSpecification.html#SageMaker-Type-AlgorithmSpecification-EnableSageMakerMetricsTimeSeries
+                Series. For more information, see `AlgorithmSpecification API
+                <https://docs.aws.amazon.com/sagemaker/latest/dg/
+                API_AlgorithmSpecification.html#SageMaker-Type-AlgorithmSpecification-
+                EnableSageMakerMetricsTimeSeries>`_.
                 (default: ``None``).
+            enable_network_isolation (bool): Specifies whether container will
+                run in network isolation mode (default: ``False``). Network
+                isolation mode restricts the container access to outside networks
+                (such as the Internet). The container does not make any inbound or
+                outbound network calls. Also known as Internet-free mode.
             profiler_config (:class:`~sagemaker.debugger.ProfilerConfig`):
-                Configuration for how profiling information is emitted with
-                SageMaker Profiler. If not specified, a default one is created using
-                the estimator's ``output_path``, unless the region does not
-                support SageMaker Profiler. To disable SageMaker Profiler, set
-                disable_profiler parameter to ``True``.
-            disable_profiler (bool): Specifies whether profiler will be
-                disabled (default: ``False``).
+                Configuration for how SageMaker Debugger collects
+                monitoring and profiling information from your training job.
+                If not specified, Debugger will be configured with
+                a default configuration and will save system and framework metrics
+                the estimator's default ``output_path`` in Amazon S3.
+                Use :class:`~sagemaker.debugger.ProfilerConfig` to configure this parameter.
+                To disable SageMaker Debugger monitoring and profiling, set the
+                ``disable_profiler`` parameter to ``True``.
+            disable_profiler (bool): Specifies whether Debugger monitoring and profiling
+                will be disabled (default: ``False``).
         """
         self.image_uri = image_uri
         self.hyperparam_dict = hyperparameters.copy() if hyperparameters else {}
@@ -1897,6 +1945,7 @@ class Framework(EstimatorBase):
 
     Subclasses define functionality pertaining to specific ML frameworks,
     such as training/deployment images and predictor instances.
+
     """
 
     _framework_name = None

@@ -10,7 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Utils file that contains util functions for the profiler"""
+"""Utils file that contains util functions for the profiler."""
 from __future__ import absolute_import
 
 import re
@@ -27,6 +27,7 @@ def _convert_key_and_value(key, value):
 
     Returns:
         str: The provided key value pair as a string.
+
     """
     updated_key = f'"{key}"' if isinstance(key, str) else key
     updated_value = f'"{value}"' if isinstance(value, str) else value
@@ -43,6 +44,7 @@ def convert_json_config_to_string(config):
 
     Returns:
         str: The config dictionary formatted as a string.
+
     """
     json_string = "{"
     for key, value in config.items():
@@ -58,7 +60,8 @@ def is_valid_unix_time(unix_time):
         unix_time (int): The user provided UNIX time.
 
     Returns:
-        bool: Whether the provided UNIX time was valid or not.
+        bool: Indicates whether the provided UNIX time was valid or not.
+
     """
     try:
         datetime.fromtimestamp(unix_time)
@@ -74,7 +77,8 @@ def is_valid_regex(regex):
         regex (str): The user provided regex.
 
     Returns:
-        bool: Whether the provided regex was valid or not.
+        bool: Indicates whether the provided regex was valid or not.
+
     """
     try:
         re.compile(regex)
@@ -104,15 +108,37 @@ class ErrorMessages(Enum):
 
 
 class PythonProfiler(Enum):
-    """Enum to list the possible Python profilers that can be used for Python profiling."""
+    """Enum to list the Python profiler options for Python profiling.
+
+    .. py:attribute:: CPROFILE
+
+        Use to choose ``"cProfile"``.
+
+    .. py:attribute:: PYINSTRUMENT
+
+        Use to choose ``"Pyinstrument"``.
+
+    """
 
     CPROFILE = "cprofile"
     PYINSTRUMENT = "pyinstrument"
 
 
 class cProfileTimer(Enum):
-    """Enum to list the possible cProfile timers that can be used by cProfile in Python
-    profiling.
+    """Enum to list the possible cProfile timers for Python profiling.
+
+    .. py:attribute:: TOTAL_TIME
+
+        Use to choose ``"total_time"``.
+
+    .. py:attribute:: CPU_TIME
+
+        Use to choose ``"cpu_time"``.
+
+    .. py:attribute:: OFF_CPU_TIME
+
+        Use to choose ``"off_cpu_time"``.
+
     """
 
     TOTAL_TIME = "total_time"
