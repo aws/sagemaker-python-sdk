@@ -10,7 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Utils file that contains constants for the profiler"""
+"""Utils file that contains constants for the profiler."""
 from __future__ import absolute_import  # noqa: F401
 
 BASE_FOLDER_DEFAULT = "/opt/ml/output/profiler"
