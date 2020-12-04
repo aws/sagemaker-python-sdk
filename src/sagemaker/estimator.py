@@ -437,9 +437,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):
                 self.debugger_rule_configs.append(rule.to_debugger_rule_config_dict())
 
     def _prepare_collection_configs(self):
-        """De-duplicate any collection configurations."""
+        """De-duplicate any collection configurations.
 
-        """It also saves them in the debugger hook configuration."""
+        Also saves collection configurations in the debugger hook configuration."""
 
         # Create a set to de-duplicate CollectionConfigs.
         self.collection_configs = set()

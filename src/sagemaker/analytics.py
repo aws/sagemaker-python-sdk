@@ -597,9 +597,7 @@ class ExperimentAnalytics(AnalyticsMetricsBase):
         return out
 
     def _fetch_dataframe(self):
-        """Return a pandas dataframe."""
-
-        """It includes all the trial_components with their parameters and metrics."""
+        """Return a pandas dataframe includes all the trial_components."""
 
         df = pd.DataFrame([self._reshape(component) for component in self._get_trial_components()])
         return df

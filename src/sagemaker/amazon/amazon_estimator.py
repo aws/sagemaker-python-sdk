@@ -323,9 +323,7 @@ class RecordSet(object):
         return str((RecordSet, self.__dict__))
 
     def data_channel(self):
-        """Return a dictionary to represent the training data in a channel."""
-
-        """Dictionary to be used with ``fit()``."""
+        """Returns dictionary to represent the training data in a channel to use with ``fit()``."""
 
         return {self.channel: self.records_s3_input()}
 
