@@ -288,7 +288,8 @@
             },
             "1.6.0": {
                 "py_versions": [
-                    "py3"
+                    "py3",
+                    "py36"
                 ],
                 "registries": {
                     "af-south-1": "626614931356",
@@ -568,7 +569,8 @@
             },
             "1.6.0": {
                 "py_versions": [
-                    "py3"
+                    "py3",
+                    "py36"
                 ],
                 "registries": {
                     "af-south-1": "626614931356",
