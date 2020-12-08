@@ -14,7 +14,6 @@ from __future__ import absolute_import
 
 import os
 
-import pytest
 import sagemaker.utils
 import tests.integ as integ
 
@@ -27,19 +26,21 @@ smdataparallel_dir = os.path.join(
 )
 
 
-@pytest.mark.skip(
-    reason="SMDistributedDataParallel-enabled DLC isn't publicly released hence not accessible for this test"
-)
-def test_smdataparallel_pt_mnist(sagemaker_session):
+def test_smdataparallel_pt_mnist(
+    sagemaker_session,
+    pytorch_training_latest_version,
+    pytorch_training_latest_py_version,
+):
     job_name = sagemaker.utils.unique_name_from_base("pt-sm-distributed-dataparallel")
     estimator = PyTorch(
         entry_point="mnist_pt.py",
         role="SageMakerRole",
-        image_uri="redacted",
         source_dir=smdataparallel_dir,
         instance_count=2,
         instance_type="ml.p3.16xlarge",
         sagemaker_session=sagemaker_session,
+        framework_version=pytorch_training_latest_version,
+        py_version=pytorch_training_latest_py_version,
         distribution={"smdistributed": {"dataparallel": {"enabled": True}}},
     )
 
