@@ -130,11 +130,11 @@ def _expected_tf_training_uri(tf_training_version, py_version, processor="cpu", 
     )
 
 
-def test_tensorflow_inference(tensorflow_inference_version):
+def test_tensorflow_inference(tensorflow_inference_version, tensorflow_inference_py_version):
     _test_image_uris(
         "tensorflow",
         tensorflow_inference_version,
-        "py2",
+        tensorflow_inference_py_version,
         "inference",
         _expected_tf_inference_uri,
         {"tf_inference_version": tensorflow_inference_version},

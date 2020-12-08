@@ -205,11 +205,16 @@ def tensorflow_training_py_version(tensorflow_training_version, request):
 
 @pytest.fixture(scope="module", params=["py2", "py3"])
 def tensorflow_inference_py_version(tensorflow_inference_version, request):
+    version = Version(tensorflow_inference_version)
+    if version == Version("1.15.4"):
+        return "py36"
     return _tf_py_version(tensorflow_inference_version, request)
 
 
 def _tf_py_version(tf_version, request):
     version = Version(tf_version)
+    if Version("1.15") <= version <= Version("1.15.4"):
+        return "py3"
     if version < Version("1.11"):
         return "py2"
     if version < Version("2.2"):
