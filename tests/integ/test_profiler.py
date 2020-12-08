@@ -14,6 +14,7 @@ from __future__ import absolute_import
 
 import os
 import re
+import time
 import uuid
 
 import pytest
@@ -32,6 +33,29 @@ from sagemaker.mxnet.estimator import MXNet
 from sagemaker.utils import unique_name_from_base
 from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.timeout import timeout
+
+
+TRAINING_STATUS = "Training"
+ALGO_PULL_FINISHED_MESSAGE = "Training image download completed. Training in progress."
+
+
+def _wait_until_training_can_be_updated(sagemaker_client, job_name, poll=5):
+    ready_for_updating = _check_secondary_status(sagemaker_client, job_name)
+    while not ready_for_updating:
+        time.sleep(poll)
+        ready_for_updating = _check_secondary_status(sagemaker_client, job_name)
+
+
+def _check_secondary_status(sagemaker_client, job_name):
+    desc = sagemaker_client.describe_training_job(TrainingJobName=job_name)
+    secondary_status_transitions = desc.get("SecondaryStatusTransitions")
+    if not secondary_status_transitions:
+        return False
+
+    latest_secondary_status_transition = secondary_status_transitions[-1]
+    secondary_status = latest_secondary_status_transition.get("Status")
+    status_message = latest_secondary_status_transition.get("StatusMessage")
+    return TRAINING_STATUS == secondary_status and ALGO_PULL_FINISHED_MESSAGE == status_message
 
 
 def test_mxnet_with_default_profiler_config_and_profiler_rule(
@@ -138,6 +162,8 @@ def test_mxnet_with_custom_profiler_config_then_update_rule_and_config(
             mx.sagemaker_session.boto_region_name
         )
         assert profiler_rule_configuration["RuleParameters"] == {"rule_to_invoke": "ProfilerReport"}
+
+        _wait_until_training_can_be_updated(sagemaker_session.sagemaker_client, training_job_name)
 
         mx.update_profiler(
             rules=[ProfilerRule.sagemaker(rule_configs.CPUBottleneck())],
@@ -287,6 +313,8 @@ def test_mxnet_with_profiler_and_debugger_then_disable_framework_metrics(
                 == rule.image_uri
             )
 
+        _wait_until_training_can_be_updated(sagemaker_session.sagemaker_client, training_job_name)
+
         mx.update_profiler(disable_framework_metrics=True)
         job_description = mx.latest_training_job.describe()
         assert job_description["ProfilerConfig"]["ProfilingParameters"] == {}
@@ -337,6 +365,8 @@ def test_mxnet_with_enable_framework_metrics_then_update_framework_metrics(
             == profiler_config._to_request_dict()["ProfilingParameters"]
         )
         assert job_description.get("ProfilingStatus") == "Enabled"
+
+        _wait_until_training_can_be_updated(sagemaker_session.sagemaker_client, training_job_name)
 
         updated_framework_profile = FrameworkProfile(
             detailed_profiling_config=DetailedProfilingConfig(profile_default_steps=True)
@@ -396,6 +426,8 @@ def test_mxnet_with_disable_profiler_then_enable_default_profiling(
         assert job_description.get("ProfilerConfig") is None
         assert job_description.get("ProfilerRuleConfigurations") is None
         assert job_description.get("ProfilingStatus") == "Disabled"
+
+        _wait_until_training_can_be_updated(sagemaker_session.sagemaker_client, training_job_name)
 
         mx.enable_default_profiling()
 
