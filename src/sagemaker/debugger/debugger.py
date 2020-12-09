@@ -10,25 +10,33 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Amazon SageMaker Debugger provides a full visibility
-into training jobs of state-of-the-art machine learning models.
+"""Amazon SageMaker Debugger provides full visibility into ML training jobs.
+
 This module provides SageMaker Debugger high-level methods
 to set up Debugger objects, such as Debugger built-in rules, tensor collections,
 and hook configuration. Use the Debugger objects for parameters when constructing
 a SageMaker estimator to initiate a training job.
+
 """
 from __future__ import absolute_import
 
-import smdebug_rulesconfig as rule_configs  # noqa: F401 # pylint: disable=unused-import
+import time
+
+from abc import ABC
+
+import attr
+
+import smdebug_rulesconfig as rule_configs
 
 from sagemaker import image_uris
+from sagemaker.utils import build_dict
 
 framework_name = "debugger"
 
 
 def get_rule_container_image_uri(region):
-    """
-    Returns the Debugger rule image URI for the given AWS region.
+    """Return the Debugger rule image URI for the given AWS Region.
+
     For a full list of rule image URIs,
     see `Use Debugger Docker Images for Built-in or Custom Rules
     <https://docs.aws.amazon.com/sagemaker/latest/dg/debugger-docker-images-rules.html>`_.
@@ -37,14 +45,99 @@ def get_rule_container_image_uri(region):
         region (str): A string of AWS Region. For example, ``'us-east-1'``.
 
     Returns:
-        str: Formatted image URI for the given region and the rule container type.
+        str: Formatted image URI for the given AWS Region and the rule container type.
+
     """
     return image_uris.retrieve(framework_name, region)
 
 
-class Rule(object):
-    """Debugger rules analyze tensors emitted while training jobs are running.
-    The rules monitor conditions that are critical for success of your training job.
+def get_default_profiler_rule():
+    """Return the default built-in profiler rule with a unique name.
+
+    Returns:
+        sagemaker.debugger.ProfilerRule: The instance of the built-in ProfilerRule.
+
+    """
+    default_rule = rule_configs.ProfilerReport()
+    custom_name = f"{default_rule.rule_name}-{int(time.time())}"
+    return ProfilerRule.sagemaker(default_rule, name=custom_name)
+
+
+@attr.s
+class RuleBase(ABC):
+    """The SageMaker Debugger rule base class that cannot be instantiated directly.
+
+    .. tip::
+
+        Debugger rule classes inheriting this RuleBase class are
+        :class:`~sagemaker.debugger.Rule` and :class:`~sagemaker.debugger.ProfilerRule`.
+        Do not directly use the rule base class to instantiate a SageMaker Debugger rule.
+        Use the :class:`~sagemaker.debugger.Rule` classmethods for debugging
+        and the :class:`~sagemaker.debugger.ProfilerRule` classmethods for profiling.
+
+    Attributes:
+        name (str): The name of the rule.
+        image_uri (str): The image URI to use the rule.
+        instance_type (str): Type of EC2 instance to use. For example, 'ml.c4.xlarge'.
+        container_local_output_path (str): The local path to store the Rule output.
+        s3_output_path (str): The location in S3 to store the output.
+        volume_size_in_gb (int): Size in GB of the EBS volume to use for storing data.
+        rule_parameters (dict): A dictionary of parameters for the rule.
+
+    """
+
+    name = attr.ib()
+    image_uri = attr.ib()
+    instance_type = attr.ib()
+    container_local_output_path = attr.ib()
+    s3_output_path = attr.ib()
+    volume_size_in_gb = attr.ib()
+    rule_parameters = attr.ib()
+
+    @staticmethod
+    def _set_rule_parameters(source, rule_to_invoke, rule_parameters):
+        """Create a dictionary of rule parameters.
+
+        Args:
+            source (str): Optional. A source file containing a rule to invoke. If provided,
+                you must also provide rule_to_invoke. This can either be an S3 uri or
+                a local path.
+            rule_to_invoke (str): Optional. The name of the rule to invoke within the source.
+                If provided, you must also provide source.
+            rule_parameters (dict): Optional. A dictionary of parameters for the rule.
+
+        Returns:
+            dict: A dictionary of rule parameters.
+
+        """
+        if bool(source) ^ bool(rule_to_invoke):
+            raise ValueError(
+                "If you provide a source, you must also provide a rule to invoke (and vice versa)."
+            )
+
+        merged_rule_params = {}
+        merged_rule_params.update(build_dict("source_s3_uri", source))
+        merged_rule_params.update(build_dict("rule_to_invoke", rule_to_invoke))
+        merged_rule_params.update(rule_parameters or {})
+
+        return merged_rule_params
+
+
+class Rule(RuleBase):
+    """The SageMaker Debugger Rule class configures *debugging* rules to debug your training job.
+
+    The debugging rules analyze tensor outputs from your training job
+    and monitor conditions that are critical for the success of the training
+    job.
+
+    SageMaker Debugger comes pre-packaged with built-in *debugging* rules.
+    For example, the debugging rules can detect whether gradients are getting too large or
+    too small, or if a model is overfitting.
+    For a full list of built-in rules for debugging, see
+    `List of Debugger Built-in Rules
+    <https://docs.aws.amazon.com/sagemaker/latest/dg/debugger-built-in-rules.html>`_.
+    You can also write your own rules using the custom rule classmethod.
+
     """
 
     def __init__(
@@ -58,19 +151,25 @@ class Rule(object):
         rule_parameters,
         collections_to_save,
     ):
+        """Configure the debugging rules using the following classmethods.
+
+        .. tip::
+            Use the following ``Rule.sagemaker`` class method for built-in debugging rules
+            or the ``Rule.custom`` class method for custom debugging rules.
+            Do not directly use the :class:`~sagemaker.debugger.Rule`
+            initialization method.
+
         """
-        Use the following ``Rule.sagemaker`` class method for built-in rules
-        or the ``Rule.custom`` class method for custom rules.
-        Do not directly use the `Rule` initialization method.
-        """
-        self.name = name
-        self.instance_type = instance_type
-        self.container_local_output_path = container_local_output_path
-        self.s3_output_path = s3_output_path
-        self.volume_size_in_gb = volume_size_in_gb
-        self.rule_parameters = rule_parameters
+        super(Rule, self).__init__(
+            name,
+            image_uri,
+            instance_type,
+            container_local_output_path,
+            s3_output_path,
+            volume_size_in_gb,
+            rule_parameters,
+        )
         self.collection_configs = collections_to_save
-        self.image_uri = image_uri
 
     @classmethod
     def sagemaker(
@@ -83,31 +182,35 @@ class Rule(object):
         rule_parameters=None,
         collections_to_save=None,
     ):
-        """Initialize a ``Rule`` processing job for a *built-in* SageMaker Debugging
-        Rule. The built-in rule analyzes tensors emitted during the training of a model
-        and monitors conditions that are critical for the success of the training
-        job.
+        """Initialize a ``Rule`` object for a *built-in* debugging rule.
 
         Args:
             base_config (dict): Required. This is the base rule config dictionary returned from the
-                ``rule_configs`` method. For example, ``rule_configs.dead_relu()``.
+                :class:`~sagemaker.debugger.rule_configs` method.
+                For example, ``rule_configs.dead_relu()``.
+                For a full list of built-in rules for debugging, see
+                `List of Debugger Built-in Rules
+                <https://docs.aws.amazon.com/sagemaker/latest/dg/debugger-built-in-rules.html>`_.
             name (str): Optional. The name of the debugger rule. If one is not provided,
                 the name of the base_config will be used.
             container_local_output_path (str): Optional. The local path in the rule processing
                 container.
-            s3_output_path (str): Optional. The location in S3 to store the output tensors.
-                The default Debugger output path is created under the
+            s3_output_path (str): Optional. The location in Amazon S3 to store the output tensors.
+                The default Debugger output path for debugging data is created under the
                 default output path of the :class:`~sagemaker.estimator.Estimator` class.
-                For example, s3://sagemaker-<region>-111122223333/<training-job-name>/debug-output/.
-            other_trials_s3_input_paths ([str]): Optional. S3 input paths for other trials.
+                For example,
+                s3://sagemaker-<region>-<12digit_account_id>/<training-job-name>/debug-output/.
+            other_trials_s3_input_paths ([str]): Optional. The Amazon S3 input paths
+                of other trials to use the SimilarAcrossRuns rule.
             rule_parameters (dict): Optional. A dictionary of parameters for the rule.
-            collections_to_save ([sagemaker.debugger.CollectionConfig]): Optional. A list
+            collections_to_save (:class:`~sagemaker.debugger.CollectionConfig`):
+                Optional. A list
                 of :class:`~sagemaker.debugger.CollectionConfig` objects to be saved.
 
         Returns:
-            sagemaker.debugger.Rule: The instance of the built-in rule.
+            :class:`~sagemaker.debugger.Rule`: An instance of the built-in rule.
 
-        **Example of creating a built-in rule instance:**
+        **Example of how to create a built-in rule instance:**
 
         .. code-block:: python
 
@@ -160,7 +263,8 @@ class Rule(object):
         if rule_parameters is not None and rule_parameters.get("rule_to_invoke") is not None:
             raise RuntimeError(
                 """You cannot provide a 'rule_to_invoke' for SageMaker rules.
-                Please either remove the rule_to_invoke or use a custom rule.
+                Either remove the rule_to_invoke or use a custom rule.
+
                 """
             )
 
@@ -211,12 +315,14 @@ class Rule(object):
         rule_parameters=None,
         collections_to_save=None,
     ):
-        """Initialize a ``Rule`` processing job for a *custom* SageMaker Debugging
-        Rule. The custom rule analyzes tensors emitted during the training of a model
+        """Initialize a ``Rule`` object for a *custom* debugging rule.
+
+        You can create a custom rule that analyzes tensors emitted
+        during the training of a model
         and monitors conditions that are critical for the success of a training
         job. For more information, see `Create Debugger Custom Rules for Training Job
         Analysis
-        <https://docs.aws.amazon.com/sagemaker/latest/dg/debugger-custom-rules.html>`_
+        <https://docs.aws.amazon.com/sagemaker/latest/dg/debugger-custom-rules.html>`_.
 
         Args:
             name (str): Required. The name of the debugger rule.
@@ -231,36 +337,24 @@ class Rule(object):
             rule_to_invoke (str): Optional. The name of the rule to invoke within the source.
                 If provided, you must also provide source.
             container_local_output_path (str): Optional. The local path in the container.
-            s3_output_path (str): Optional. The location in S3 to store the output tensors.
-                The default Debugger output path is created under the
+            s3_output_path (str): Optional. The location in Amazon S3 to store the output tensors.
+                The default Debugger output path for debugging data is created under the
                 default output path of the :class:`~sagemaker.estimator.Estimator` class.
-                For example, s3://sagemaker-<region>-111122223333/<training-job-name>/debug-output/.
-            other_trials_s3_input_paths ([str]): Optional. S3 input paths for other trials.
+                For example,
+                s3://sagemaker-<region>-<12digit_account_id>/<training-job-name>/debug-output/.
+            other_trials_s3_input_paths ([str]): Optional. The Amazon S3 input paths
+                of other trials to use the SimilarAcrossRuns rule.
             rule_parameters (dict): Optional. A dictionary of parameters for the rule.
             collections_to_save ([sagemaker.debugger.CollectionConfig]): Optional. A list
                 of :class:`~sagemaker.debugger.CollectionConfig` objects to be saved.
 
         Returns:
-            sagemaker.debugger.Rule: The instance of the custom Rule.
+            :class:`~sagemaker.debugger.Rule`: The instance of the custom rule.
+
         """
-        if bool(source) ^ bool(rule_to_invoke):
-            raise ValueError(
-                "If you provide a source, you must also provide a rule to invoke (and vice versa)."
-            )
-
-        merged_rule_params = {}
-
-        if source is not None and rule_to_invoke is not None:
-            merged_rule_params["source_s3_uri"] = source
-            merged_rule_params["rule_to_invoke"] = rule_to_invoke
-
-        other_trials_params = {}
-        if other_trials_s3_input_paths is not None:
-            for index, s3_input_path in enumerate(other_trials_s3_input_paths):
-                other_trials_params["other_trial_{}".format(str(index))] = s3_input_path
-
-        merged_rule_params.update(other_trials_params)
-        merged_rule_params.update(rule_parameters or {})
+        merged_rule_params = cls._set_rule_parameters(
+            source, rule_to_invoke, other_trials_s3_input_paths, rule_parameters
+        )
 
         return cls(
             name=name,
@@ -273,45 +367,216 @@ class Rule(object):
             collections_to_save=collections_to_save or [],
         )
 
+    @staticmethod
+    def _set_rule_parameters(source, rule_to_invoke, other_trials_s3_input_paths, rule_parameters):
+        """Set rule parameters for Debugger Rule.
+
+        Args:
+            source (str): Optional. A source file containing a rule to invoke. If provided,
+                you must also provide rule_to_invoke. This can either be an S3 uri or
+                a local path.
+            rule_to_invoke (str): Optional. The name of the rule to invoke within the source.
+                If provided, you must also provide source.
+            other_trials_s3_input_paths ([str]): Optional. S3 input paths for other trials.
+            rule_parameters (dict): Optional. A dictionary of parameters for the rule.
+
+        Returns:
+            dict: A dictionary of rule parameters.
+
+        """
+        merged_rule_params = {}
+        if other_trials_s3_input_paths is not None:
+            for index, s3_input_path in enumerate(other_trials_s3_input_paths):
+                merged_rule_params["other_trial_{}".format(str(index))] = s3_input_path
+
+        merged_rule_params.update(
+            super(Rule, Rule)._set_rule_parameters(source, rule_to_invoke, rule_parameters)
+        )
+        return merged_rule_params
+
     def to_debugger_rule_config_dict(self):
-        """Generates a request dictionary using the parameters provided
-        when initializing the object.
+        """Generates a request dictionary using the parameters provided when initializing object.
 
         Returns:
             dict: An portion of an API request as a dictionary.
+
         """
         debugger_rule_config_request = {
             "RuleConfigurationName": self.name,
             "RuleEvaluatorImage": self.image_uri,
         }
 
-        if self.instance_type is not None:
-            debugger_rule_config_request["InstanceType"] = self.instance_type
-
-        if self.volume_size_in_gb is not None:
-            debugger_rule_config_request["VolumeSizeInGB"] = self.volume_size_in_gb
-
-        if self.container_local_output_path is not None:
-            debugger_rule_config_request["LocalPath"] = self.container_local_output_path
-
-        if self.s3_output_path is not None:
-            debugger_rule_config_request["S3OutputPath"] = self.s3_output_path
-
-        if self.rule_parameters:
-            debugger_rule_config_request["RuleParameters"] = self.rule_parameters
+        debugger_rule_config_request.update(build_dict("InstanceType", self.instance_type))
+        debugger_rule_config_request.update(build_dict("VolumeSizeInGB", self.volume_size_in_gb))
+        debugger_rule_config_request.update(
+            build_dict("LocalPath", self.container_local_output_path)
+        )
+        debugger_rule_config_request.update(build_dict("S3OutputPath", self.s3_output_path))
+        debugger_rule_config_request.update(build_dict("RuleParameters", self.rule_parameters))
 
         return debugger_rule_config_request
 
 
-class DebuggerHookConfig(object):
+class ProfilerRule(RuleBase):
+    """The SageMaker Debugger ProfilerRule class configures *profiling* rules.
+
+    SageMaker Debugger profiling rules automatically analyze
+    hardware system resource utilization and framework metrics of a
+    training job to identify performance bottlenecks.
+
+    SageMaker Debugger comes pre-packaged with built-in *profiling* rules.
+    For example, the profiling rules can detect if GPUs are underutilized due to CPU bottlenecks or
+    IO bottlenecks.
+    For a full list of built-in rules for debugging, see
+    `List of Debugger Built-in Rules <https://docs.aws.amazon.com/sagemaker/latest/dg/debugger-built-in-rules.html>`_.
+    You can also write your own profiling rules using the Amazon SageMaker
+    Debugger APIs.
+
+    .. tip::
+        Use the following ``ProfilerRule.sagemaker`` class method for built-in profiling rules
+        or the ``ProfilerRule.custom`` class method for custom profiling rules.
+        Do not directly use the `Rule` initialization method.
+
     """
-    Initialize an instance of ``DebuggerHookConfig``.
+
+    @classmethod
+    def sagemaker(
+        cls,
+        base_config,
+        name=None,
+        container_local_output_path=None,
+        s3_output_path=None,
+    ):
+        """Initialize a ``ProfilerRule`` object for a *built-in* profiling rule.
+
+        The rule analyzes system and framework metrics of a given
+        training job to identify performance bottlenecks.
+
+        Args:
+            base_config (rule_configs.ProfilerRule): The base rule configuration object
+                returned from the ``rule_configs`` method.
+                For example, 'rule_configs.ProfilerReport()'.
+                For a full list of built-in rules for debugging, see
+                `List of Debugger Built-in Rules
+                <https://docs.aws.amazon.com/sagemaker/latest/dg/debugger-built-in-rules.html>`_.
+
+            name (str): The name of the profiler rule. If one is not provided,
+                the name of the base_config will be used.
+            container_local_output_path (str): The path in the container.
+            s3_output_path (str): The location in Amazon S3 to store the profiling output data.
+                The default Debugger output path for profiling data is created under the
+                default output path of the :class:`~sagemaker.estimator.Estimator` class.
+                For example,
+                s3://sagemaker-<region>-<12digit_account_id>/<training-job-name>/profiler-output/.
+
+        Returns:
+            :class:`~sagemaker.debugger.ProfilerRule`:
+            The instance of the built-in ProfilerRule.
+
+        """
+        return cls(
+            name=name or base_config.rule_name,
+            image_uri="DEFAULT_RULE_EVALUATOR_IMAGE",
+            instance_type=None,
+            container_local_output_path=container_local_output_path,
+            s3_output_path=s3_output_path,
+            volume_size_in_gb=None,
+            rule_parameters=base_config.rule_parameters,
+        )
+
+    @classmethod
+    def custom(
+        cls,
+        name,
+        image_uri,
+        instance_type,
+        volume_size_in_gb,
+        source=None,
+        rule_to_invoke=None,
+        container_local_output_path=None,
+        s3_output_path=None,
+        rule_parameters=None,
+    ):
+        """Initialize a ``ProfilerRule`` object for a *custom* profiling rule.
+
+        You can create a rule that
+        analyzes system and framework metrics emitted during the training of a model and
+        monitors conditions that are critical for the success of a
+        training job.
+
+        Args:
+            name (str): The name of the profiler rule.
+            image_uri (str): The URI of the image to be used by the proflier rule.
+            instance_type (str): Type of EC2 instance to use, for example,
+                'ml.c4.xlarge'.
+            volume_size_in_gb (int): Size in GB of the EBS volume
+                to use for storing data.
+            source (str): A source file containing a rule to invoke. If provided,
+                you must also provide rule_to_invoke. This can either be an S3 uri or
+                a local path.
+            rule_to_invoke (str): The name of the rule to invoke within the source.
+                If provided, you must also provide the source.
+            container_local_output_path (str): The path in the container.
+            s3_output_path (str): The location in Amazon S3 to store the output.
+                The default Debugger output path for profiling data is created under the
+                default output path of the :class:`~sagemaker.estimator.Estimator` class.
+                For example,
+                s3://sagemaker-<region>-<12digit_account_id>/<training-job-name>/profiler-output/.
+            rule_parameters (dict): A dictionary of parameters for the rule.
+
+        Returns:
+            :class:`~sagemaker.debugger.ProfilerRule`:
+            The instance of the custom ProfilerRule.
+
+        """
+        merged_rule_params = super()._set_rule_parameters(source, rule_to_invoke, rule_parameters)
+
+        return cls(
+            name=name,
+            image_uri=image_uri,
+            instance_type=instance_type,
+            container_local_output_path=container_local_output_path,
+            s3_output_path=s3_output_path,
+            volume_size_in_gb=volume_size_in_gb,
+            rule_parameters=merged_rule_params,
+        )
+
+    def to_profiler_rule_config_dict(self):
+        """Generates a request dictionary using the parameters provided when initializing object.
+
+        Returns:
+            dict: An portion of an API request as a dictionary.
+
+        """
+        profiler_rule_config_request = {
+            "RuleConfigurationName": self.name,
+            "RuleEvaluatorImage": self.image_uri,
+        }
+
+        profiler_rule_config_request.update(build_dict("InstanceType", self.instance_type))
+        profiler_rule_config_request.update(build_dict("VolumeSizeInGB", self.volume_size_in_gb))
+        profiler_rule_config_request.update(
+            build_dict("LocalPath", self.container_local_output_path)
+        )
+        profiler_rule_config_request.update(build_dict("S3OutputPath", self.s3_output_path))
+
+        if self.rule_parameters:
+            profiler_rule_config_request["RuleParameters"] = self.rule_parameters
+            for k, v in profiler_rule_config_request["RuleParameters"].items():
+                profiler_rule_config_request["RuleParameters"][k] = str(v)
+
+        return profiler_rule_config_request
+
+
+class DebuggerHookConfig(object):
+    """Create a Debugger hook configuration object to save the tensor for debugging.
+
     DebuggerHookConfig provides options to customize how debugging
     information is emitted and saved. This high-level DebuggerHookConfig class
     runs based on the `smdebug.SaveConfig
     <https://github.com/awslabs/sagemaker-debugger/blob/master/docs/
-    api.md#saveconfig>`_
-    class.
+    api.md#saveconfig>`_ class.
+
     """
 
     def __init__(
@@ -321,12 +586,14 @@ class DebuggerHookConfig(object):
         hook_parameters=None,
         collection_configs=None,
     ):
-        """
+        """Initialize the DebuggerHookConfig instance.
+
         Args:
-            s3_output_path (str): Optional. The location in S3 to store the output tensors.
+            s3_output_path (str): Optional. The location in Amazon S3 to store the output tensors.
                 The default Debugger output path is created under the
                 default output path of the :class:`~sagemaker.estimator.Estimator` class.
-                For example, s3://sagemaker-<region>-111122223333/<training-job-name>/debug-output/.
+                For example,
+                s3://sagemaker-<region>-<12digit_account_id>/<training-job-name>/debug-output/.
             container_local_output_path (str): Optional. The local path in the container.
             hook_parameters (dict): Optional. A dictionary of parameters.
             collection_configs ([sagemaker.debugger.CollectionConfig]): Required. A list
@@ -349,6 +616,7 @@ class DebuggerHookConfig(object):
             hook_config = DebuggerHookConfig(
                 collection_configs=collection_configs
             )
+
         """
         self.s3_output_path = s3_output_path
         self.container_local_output_path = container_local_output_path
@@ -356,11 +624,11 @@ class DebuggerHookConfig(object):
         self.collection_configs = collection_configs
 
     def _to_request_dict(self):
-        """Generates a request dictionary using the parameters provided
-        when initializing the object.
+        """Generate a request dictionary using the parameters when initializing the object.
 
         Returns:
             dict: An portion of an API request as a dictionary.
+
         """
         debugger_hook_config_request = {"S3OutputPath": self.s3_output_path}
 
@@ -380,24 +648,25 @@ class DebuggerHookConfig(object):
 
 
 class TensorBoardOutputConfig(object):
-    """A TensorBoard ouput configuration object to provide options
-    to customize debugging visualizations using TensorBoard.
-    """
+    """Create a tensor ouput configuration object for debugging visualizations on TensorBoard."""
 
     def __init__(self, s3_output_path, container_local_output_path=None):
-        """
+        """Initialize the TensorBoardOutputConfig instance.
+
         Args:
-            s3_output_path (str): Optional. The location in S3 to store the output.
+            s3_output_path (str): Optional. The location in Amazon S3 to store the output.
             container_local_output_path (str): Optional. The local path in the container.
+
         """
         self.s3_output_path = s3_output_path
         self.container_local_output_path = container_local_output_path
 
     def _to_request_dict(self):
-        """Generates a request dictionary using the instances attributes.
+        """Generate a request dictionary using the instances attributes.
 
         Returns:
             dict: An portion of an API request as a dictionary.
+
         """
         tensorboard_output_config_request = {"S3OutputPath": self.s3_output_path}
 
@@ -528,8 +797,10 @@ class CollectionConfig(object):
         |``global.end_step``       |                                                         |
         +--------------------------+---------------------------------------------------------+
 
-        For example, the following code shows how to control the save interval parameters
-        of the built-in ``losses`` tensor collection.
+        For example, the following code shows how to control the save_interval parameters
+        of the built-in ``losses`` tensor collection. With the following collection configuration,
+        Debugger collects loss values every 100 steps from training loops and every 10 steps
+        from evaluation loops.
 
         .. code-block:: python
 
@@ -543,16 +814,16 @@ class CollectionConfig(object):
                 )
             ]
 
-
         """
         self.name = name
         self.parameters = parameters
 
     def __eq__(self, other):
-        """Equals method override.
+        """Equal method override.
 
         Args:
             other: Object to test equality against.
+
         """
         if not isinstance(other, CollectionConfig):
             raise TypeError(
@@ -562,10 +833,11 @@ class CollectionConfig(object):
         return self.name == other.name and self.parameters == other.parameters
 
     def __ne__(self, other):
-        """Not-equals method override.
+        """Not-equal method override.
 
         Args:
             other: Object to test equality against.
+
         """
         if not isinstance(other, CollectionConfig):
             raise TypeError(
@@ -579,11 +851,11 @@ class CollectionConfig(object):
         return hash((self.name, tuple(sorted((self.parameters or {}).items()))))
 
     def _to_request_dict(self):
-        """Generates a request dictionary using the parameters provided
-        when initializing the object.
+        """Generate a request dictionary using the parameters initializing the object.
 
         Returns:
-            dict: An portion of an API request as a dictionary.
+            dict: A portion of an API request as a dictionary.
+
         """
         collection_config_request = {"CollectionName": self.name}
 

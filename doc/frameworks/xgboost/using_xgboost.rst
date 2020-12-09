@@ -192,8 +192,7 @@ inference against your model.
 
 .. code::
 
-    serializer = StringSerializer()
-    serializer.CONTENT_TYPE = "text/libsvm"
+    serializer = StringSerializer(content_type="text/libsvm")
 
     predictor = estimator.deploy(
         initial_instance_count=1,

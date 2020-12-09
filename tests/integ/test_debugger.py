@@ -17,12 +17,16 @@ import uuid
 
 import pytest
 
-from sagemaker.debugger import DebuggerHookConfig, Rule, rule_configs, TensorBoardOutputConfig
+from sagemaker.debugger.debugger import (
+    DebuggerHookConfig,
+    Rule,
+    rule_configs,
+    TensorBoardOutputConfig,
+)
 from sagemaker.mxnet.estimator import MXNet
 from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.retry import retries
 from tests.integ.timeout import timeout
-
 
 _NON_ERROR_TERMINAL_RULE_JOB_STATUSES = ["NoIssuesFound", "IssuesFound", "Stopped"]
 
@@ -112,8 +116,9 @@ def test_mxnet_with_rules(
                 ]
                 == rule.rule_parameters["rule_to_invoke"]
             )
+
         assert (
-            job_description["DebugRuleEvaluationStatuses"]
+            _get_rule_evaluation_statuses(job_description)
             == mx.latest_training_job.rule_job_summary()
         )
 
@@ -164,8 +169,9 @@ def test_mxnet_with_custom_rule(
                 == rule.image_uri
             )
             assert job_description["DebugRuleConfigurations"][index]["VolumeSizeInGB"] == 30
+
         assert (
-            job_description["DebugRuleEvaluationStatuses"]
+            _get_rule_evaluation_statuses(job_description)
             == mx.latest_training_job.rule_job_summary()
         )
 
@@ -277,8 +283,9 @@ def test_mxnet_with_rules_and_debugger_hook_config(
                 == rule.rule_parameters["rule_to_invoke"]
             )
         assert job_description["DebugHookConfig"] == debugger_hook_config._to_request_dict()
+
         assert (
-            job_description["DebugRuleEvaluationStatuses"]
+            _get_rule_evaluation_statuses(job_description)
             == mx.latest_training_job.rule_job_summary()
         )
 
@@ -336,8 +343,9 @@ def test_mxnet_with_custom_rule_and_debugger_hook_config(
             )
             assert job_description["DebugRuleConfigurations"][index]["VolumeSizeInGB"] == 30
         assert job_description["DebugHookConfig"] == debugger_hook_config._to_request_dict()
+
         assert (
-            job_description["DebugRuleEvaluationStatuses"]
+            _get_rule_evaluation_statuses(job_description)
             == mx.latest_training_job.rule_job_summary()
         )
 
@@ -458,7 +466,7 @@ def test_mxnet_with_all_rules_and_configs(
             == tensorboard_output_config._to_request_dict()
         )
         assert (
-            job_description["DebugRuleEvaluationStatuses"]
+            _get_rule_evaluation_statuses(job_description)
             == mx.latest_training_job.rule_job_summary()
         )
 
@@ -498,6 +506,12 @@ def test_mxnet_with_debugger_hook_config_disabled(
         job_description = mx.latest_training_job.describe()
 
         assert job_description.get("DebugHookConfig") is None
+
+
+def _get_rule_evaluation_statuses(job_description):
+    debug_rule_eval_statuses = job_description.get("DebugRuleEvaluationStatuses") or []
+    profiler_rule_eval_statuses = job_description.get("ProfilerRuleEvaluationStatuses") or []
+    return debug_rule_eval_statuses + profiler_rule_eval_statuses
 
 
 def _get_custom_rule(session):
