@@ -20,7 +20,6 @@ from mock import patch, Mock, MagicMock
 from packaging import version
 import pytest
 
-from sagemaker.debugger import ProfilerConfig, FrameworkProfile
 from sagemaker.estimator import _TrainingJob
 from sagemaker.tensorflow import TensorFlow
 from tests.unit import DATA_DIR
@@ -537,26 +536,3 @@ def test_custom_image(sagemaker_session):
     custom_image = "tensorflow:latest"
     tf = _build_tf(sagemaker_session, image_uri=custom_image)
     assert custom_image == tf.training_image_uri()
-
-
-def test_default_profiling_image_uri(sagemaker_session):
-    tf = _build_tf(
-        sagemaker_session,
-        framework_version="2.3.1",
-        py_version="py37",
-        instance_type="ml.p3.8xlarge",
-    )
-
-    assert tf.has_custom_profiler_config is False and "cu110" not in tf.training_image_uri()
-
-
-def test_custom_profiling_image_uri(sagemaker_session):
-    tf = _build_tf(
-        sagemaker_session,
-        framework_version="2.3.1",
-        py_version="py37",
-        instance_type="ml.p3.8xlarge",
-        profiler_config=ProfilerConfig(framework_profile_params=FrameworkProfile()),
-    )
-
-    assert tf.has_custom_profiler_config is True and "cu110" in tf.training_image_uri()
