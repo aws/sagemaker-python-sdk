@@ -17,7 +17,12 @@ import os
 import pytest
 
 from sagemaker.mxnet.estimator import MXNet
-from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
+from tests.integ import (
+    DATA_DIR,
+    TRAINING_DEFAULT_TIMEOUT_MINUTES,
+    EDGE_PACKAGING_SUPPORTED_REGIONS,
+    test_region,
+)
 from tests.integ.timeout import timeout
 
 
@@ -53,6 +58,10 @@ def mxnet_training_job(
         return mx.latest_training_job.name
 
 
+@pytest.mark.skipif(
+    test_region() not in EDGE_PACKAGING_SUPPORTED_REGIONS,
+    reason="Edge packaging isn't supported in that specific region.",
+)
 def test_edge_packaging_job(mxnet_training_job, sagemaker_session):
     estimator = MXNet.attach(mxnet_training_job, sagemaker_session=sagemaker_session)
     model = estimator.compile_model(
