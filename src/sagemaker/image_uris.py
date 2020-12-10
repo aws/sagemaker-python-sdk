@@ -105,7 +105,6 @@ def retrieve(
             "pytorch-1.6.0-gpu-py36": "cu110-ubuntu18.04",
         }
         key = "-".join([framework, tag])
-        print("key", key)
         if key in container_versions:
             tag = "-".join([tag, container_versions[key]])
 
