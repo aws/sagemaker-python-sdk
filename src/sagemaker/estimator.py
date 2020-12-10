@@ -345,7 +345,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self._enable_network_isolation = enable_network_isolation
 
         self.profiler_config = profiler_config
-        self.has_custom_profiler_config_specified = profiler_config is not None
+        self.has_custom_profiler_config = profiler_config is not None
         self.disable_profiler = disable_profiler
 
         self.profiler_rule_configs = None
@@ -2359,7 +2359,7 @@ class Framework(EstimatorBase):
             py_version=self.py_version,  # pylint: disable=no-member
             image_scope="training",
             distribution=distribution,
-            has_custom_profiler_config=self.has_custom_profiler_config_specified,
+            has_custom_profiler_config=self.has_custom_profiler_config,
         )
 
     @classmethod

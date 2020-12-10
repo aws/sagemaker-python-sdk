@@ -88,7 +88,7 @@ def test_default_profiling_image_uri(sagemaker_session):
     )
 
     assert (
-        pt.has_custom_profiler_config_specified is False and "cu110" not in pt.training_image_uri()
+            pt.has_custom_profiler_config is False and "cu110" not in pt.training_image_uri()
     )
 
 
@@ -101,4 +101,4 @@ def test_custom_profiling_image_uri(sagemaker_session):
         profiler_config=ProfilerConfig(framework_profile_params=FrameworkProfile()),
     )
 
-    assert pt.has_custom_profiler_config_specified is True and "cu110" in pt.training_image_uri()
+    assert pt.has_custom_profiler_config is True and "cu110" in pt.training_image_uri()
