@@ -12,6 +12,8 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import pytest
+
 from sagemaker import image_uris
 from tests.unit.sagemaker.image_uris import expected_uris, regions
 
@@ -50,3 +52,55 @@ def test_debugger():
                 "sagemaker-debugger-rules", ACCOUNTS[region], region, version="latest"
             )
             assert expected == uri
+
+
+@pytest.mark.parametrize("region", regions.regions())
+def test_default_profiling(region):
+    tf_uri = image_uris.retrieve(
+        framework="tensorflow",
+        region=region,
+        instance_type="ml.p3.8xlarge",
+        version="2.3.1",
+        py_version="py37",
+        image_scope="training",
+    )
+
+    assert "cu110" not in tf_uri
+
+    pt_uri = image_uris.retrieve(
+        framework="pytorch",
+        region=region,
+        instance_type="ml.p3.8xlarge",
+        version="1.6.0",
+        py_version="py36",
+        image_scope="training",
+    )
+
+    assert "cu110" not in pt_uri
+
+
+@pytest.mark.parametrize("region", regions.regions())
+def test_custom_profiling(region):
+    tf_uri = image_uris.retrieve(
+        framework="tensorflow",
+        region=region,
+        instance_type="ml.p3.8xlarge",
+        version="2.3.1",
+        py_version="py37",
+        image_scope="training",
+        has_custom_profiler_config=True,
+    )
+
+    assert "cu110" in tf_uri
+
+    pt_uri = image_uris.retrieve(
+        framework="pytorch",
+        region=region,
+        instance_type="ml.p3.8xlarge",
+        version="1.6.0",
+        py_version="py36",
+        image_scope="training",
+        has_custom_profiler_config=True,
+    )
+
+    assert "cu110" in pt_uri

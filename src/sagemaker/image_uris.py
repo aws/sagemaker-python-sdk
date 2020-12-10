@@ -36,6 +36,7 @@ def retrieve(
     image_scope=None,
     container_version=None,
     distribution=None,
+    has_custom_profiler_config=False,
 ):
     """Retrieves the ECR URI for the Docker image matching the given arguments.
 
@@ -57,6 +58,8 @@ def retrieve(
         container_version (str): the version of docker image
         distribution (dict): A dictionary with information on how to run distributed training
             (default: None).
+        has_custom_profiler_config (bool): Boolean for whether a custom profiler config was
+            specified by the user.
 
     Returns:
         str: the ECR URI for the corresponding SageMaker Docker image.
@@ -88,7 +91,9 @@ def retrieve(
         container_version,
     )
 
-    if _should_auto_select_container_version(instance_type, distribution):
+    if _should_auto_select_container_version(
+        instance_type, distribution, has_custom_profiler_config
+    ):
         container_versions = {
             "tensorflow-2.3-gpu-py37": "cu110-ubuntu18.04-v3",
             "tensorflow-2.3.1-gpu-py37": "cu110-ubuntu18.04",
@@ -100,6 +105,7 @@ def retrieve(
             "pytorch-1.6.0-gpu-py36": "cu110-ubuntu18.04",
         }
         key = "-".join([framework, tag])
+        print("key", key)
         if key in container_versions:
             tag = "-".join([tag, container_versions[key]])
 
@@ -239,7 +245,7 @@ def _processor(instance_type, available_processors):
     return processor
 
 
-def _should_auto_select_container_version(instance_type, distribution):
+def _should_auto_select_container_version(instance_type, distribution, has_custom_profiler_config):
     """Returns a boolean that indicates whether to use an auto-selected container version."""
     p4d = False
     if instance_type:
@@ -253,7 +259,7 @@ def _should_auto_select_container_version(instance_type, distribution):
     if distribution:
         smdistributed = "smdistributed" in distribution
 
-    return p4d or smdistributed
+    return p4d or smdistributed or has_custom_profiler_config
 
 
 def _validate_py_version_and_set_if_needed(py_version, version_config, framework):
