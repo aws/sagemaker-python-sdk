@@ -423,10 +423,7 @@ def test_training_job_with_debugger(
         Rule.sagemaker(rule_configs.loss_not_decreasing()),
     ]
     debugger_hook_config = DebuggerHookConfig(
-        s3_output_path=os.path.join(
-            "s3://", sagemaker_session.default_bucket(), str(uuid.uuid4()), "tensors"
-        )
-    )
+        s3_output_path=f"s3://{sagemaker_session.default_bucket()}/{uuid.uuid4()}/tensors"
 
     base_dir = os.path.join(DATA_DIR, "pytorch_mnist")
     script_path = os.path.join(base_dir, "mnist.py")
