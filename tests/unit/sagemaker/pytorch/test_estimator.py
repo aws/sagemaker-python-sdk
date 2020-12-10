@@ -87,9 +87,7 @@ def test_default_profiling_image_uri(sagemaker_session):
         instance_type="ml.p3.8xlarge",
     )
 
-    assert (
-            pt.has_custom_profiler_config is False and "cu110" not in pt.training_image_uri()
-    )
+    assert pt.has_custom_profiler_config is False and "cu110" not in pt.training_image_uri()
 
 
 def test_custom_profiling_image_uri(sagemaker_session):
