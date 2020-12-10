@@ -21,7 +21,7 @@ from sagemaker import image_uris, utils
 from sagemaker.analytics import HyperparameterTuningJobAnalytics
 from sagemaker.deserializers import JSONDeserializer
 from sagemaker.estimator import Estimator
-from sagemaker.serializers import BaseSerializer
+from sagemaker.serializers import SimpleBaseSerializer
 from sagemaker.tuner import ContinuousParameter, IntegerParameter, HyperparameterTuner
 from tests.integ import datasets, DATA_DIR, TUNING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
@@ -219,9 +219,8 @@ def _create_training_inputs(sagemaker_session):
     return {"train": s3_train_data, "test": s3_train_data}
 
 
-class PredictionDataSerializer(BaseSerializer):
-
-    CONTENT_TYPE = "application/json"
+class PredictionDataSerializer(SimpleBaseSerializer):
+    # SimpleBaseSerializer already uses "application/json" CONTENT_TYPE by default
 
     def serialize(self, data):
         js = {"instances": []}

@@ -31,7 +31,13 @@ class SparkMLPredictor(Predictor):
     list.
     """
 
-    def __init__(self, endpoint_name, sagemaker_session=None, **kwargs):
+    def __init__(
+        self,
+        endpoint_name,
+        sagemaker_session=None,
+        serializer=CSVSerializer(),
+        **kwargs,
+    ):
         """Initializes a SparkMLPredictor which should be used with SparkMLModel
         to perform predictions against SparkML models serialized via MLeap. The
         response is returned in text/csv format which is the default response
@@ -43,12 +49,14 @@ class SparkMLPredictor(Predictor):
                 manages interactions with Amazon SageMaker APIs and any other
                 AWS services needed. If not specified, the estimator creates one
                 using the default AWS configuration chain.
+            serializer (sagemaker.serializers.BaseSerializer): Optional. Default
+                serializes input data to text/csv.
         """
         sagemaker_session = sagemaker_session or Session()
         super(SparkMLPredictor, self).__init__(
             endpoint_name=endpoint_name,
             sagemaker_session=sagemaker_session,
-            serializer=CSVSerializer(),
+            serializer=serializer,
             **kwargs,
         )
 

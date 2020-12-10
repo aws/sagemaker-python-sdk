@@ -296,3 +296,27 @@ def test_predictor_type(sagemaker_session):
     predictor = model.deploy(1, INSTANCE_TYPE)
 
     assert isinstance(predictor, KNNPredictor)
+
+
+def test_predictor_custom_serialization(sagemaker_session):
+    knn = KNN(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
+    data = RecordSet(
+        "s3://{}/{}".format(BUCKET_NAME, PREFIX),
+        num_records=1,
+        feature_dim=FEATURE_DIM,
+        channel="train",
+    )
+    knn.fit(data, MINI_BATCH_SIZE)
+    model = knn.create_model()
+    custom_serializer = Mock()
+    custom_deserializer = Mock()
+    predictor = model.deploy(
+        1,
+        INSTANCE_TYPE,
+        serializer=custom_serializer,
+        deserializer=custom_deserializer,
+    )
+
+    assert isinstance(predictor, KNNPredictor)
+    assert predictor.serializer is custom_serializer
+    assert predictor.deserializer is custom_deserializer

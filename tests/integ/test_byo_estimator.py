@@ -20,7 +20,7 @@ import pytest
 import sagemaker
 from sagemaker import image_uris
 from sagemaker.estimator import Estimator
-from sagemaker.serializers import BaseSerializer
+from sagemaker.serializers import SimpleBaseSerializer
 from sagemaker.utils import unique_name_from_base
 from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES, datasets
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
@@ -36,9 +36,8 @@ def training_set():
     return datasets.one_p_mnist()
 
 
-class _FactorizationMachineSerializer(BaseSerializer):
-
-    CONTENT_TYPE = "application/json"
+class _FactorizationMachineSerializer(SimpleBaseSerializer):
+    # SimpleBaseSerializer already uses "application/json" CONTENT_TYPE by default
 
     def serialize(self, data):
         js = {"instances": []}

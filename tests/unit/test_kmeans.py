@@ -272,3 +272,27 @@ def test_predictor_type(sagemaker_session):
     predictor = model.deploy(1, INSTANCE_TYPE)
 
     assert isinstance(predictor, KMeansPredictor)
+
+
+def test_predictor_custom_serialization(sagemaker_session):
+    kmeans = KMeans(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
+    data = RecordSet(
+        "s3://{}/{}".format(BUCKET_NAME, PREFIX),
+        num_records=1,
+        feature_dim=FEATURE_DIM,
+        channel="train",
+    )
+    kmeans.fit(data, MINI_BATCH_SIZE)
+    model = kmeans.create_model()
+    custom_serializer = Mock()
+    custom_deserializer = Mock()
+    predictor = model.deploy(
+        1,
+        INSTANCE_TYPE,
+        serializer=custom_serializer,
+        deserializer=custom_deserializer,
+    )
+
+    assert isinstance(predictor, KMeansPredictor)
+    assert predictor.serializer is custom_serializer
+    assert predictor.deserializer is custom_deserializer

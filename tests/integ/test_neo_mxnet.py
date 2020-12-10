@@ -75,8 +75,7 @@ def test_attach_deploy(
             output_path=estimator.output_path,
         )
 
-        serializer = JSONSerializer()
-        serializer.CONTENT_TYPE = "application/vnd+python.numpy+binary"
+        serializer = JSONSerializer(content_type="application/vnd+python.numpy+binary")
 
         predictor = estimator.deploy(
             1,
@@ -118,8 +117,7 @@ def test_deploy_model(
             sagemaker_session=sagemaker_session,
         )
 
-        serializer = JSONSerializer()
-        serializer.CONTENT_TYPE = "application/vnd+python.numpy+binary"
+        serializer = JSONSerializer(content_type="application/vnd+python.numpy+binary")
 
         model.compile(
             target_instance_family=cpu_instance_family,
@@ -171,8 +169,7 @@ def test_inferentia_deploy_model(
             output_path="/".join(model_data.split("/")[:-1]),
         )
 
-        serializer = JSONSerializer()
-        serializer.CONTENT_TYPE = "application/vnd+python.numpy+binary"
+        serializer = JSONSerializer(content_type="application/vnd+python.numpy+binary")
 
         predictor = model.deploy(
             1, inf_instance_type, serializer=serializer, endpoint_name=endpoint_name
