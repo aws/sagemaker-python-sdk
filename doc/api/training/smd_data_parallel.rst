@@ -20,7 +20,6 @@ with multiple GPUs. As the cluster size increases, so does the significant drop
 in performance. This drop in performance is primarily caused the communications
 overhead between nodes in a cluster.
 
-
 .. rubric:: Customize your training script
 
 To customize your own training script, you will need the following:
