@@ -42,20 +42,21 @@ class ApiObject(object):
         return ["ResponseMetadata"]
 
     @classmethod
-    def from_boto(cls, boto_dict, **kwargs):
+    def from_boto(cls, boto_dict, **kwargs):  # pylint: disable=R1710
         """Construct an instance of this ApiObject from a boto response.
 
         Args:
             boto_dict (dict): A dictionary of a boto response.
             **kwargs: Arbitrary keyword arguments
         """
-        boto_dict = {k: v for k, v in boto_dict.items() if k not in cls._boto_ignore()}
-        custom_boto_names_to_member_names = {a: b for b, a in cls._custom_boto_names.items()}
-        cls_kwargs = _boto_functions.from_boto(
-            boto_dict, custom_boto_names_to_member_names, cls._custom_boto_types
-        )
-        cls_kwargs.update(kwargs)
-        return cls(**cls_kwargs)
+        if boto_dict:
+            boto_dict = {k: v for k, v in boto_dict.items() if k not in cls._boto_ignore()}
+            custom_boto_names_to_member_names = {a: b for b, a in cls._custom_boto_names.items()}
+            cls_kwargs = _boto_functions.from_boto(
+                boto_dict, custom_boto_names_to_member_names, cls._custom_boto_types
+            )
+            cls_kwargs.update(kwargs)
+            return cls(**cls_kwargs)
 
     @classmethod
     def to_boto(cls, obj):

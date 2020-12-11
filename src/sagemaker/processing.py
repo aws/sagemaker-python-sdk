@@ -29,6 +29,8 @@ from sagemaker.utils import base_name_from_image, name_from_base
 from sagemaker.session import Session
 from sagemaker.network import NetworkConfig  # noqa: F401 # pylint: disable=unused-import
 from sagemaker.workflow.properties import Properties
+from sagemaker.dataset_definition.inputs import S3Input, DatasetDefinition
+from sagemaker.apiutils._base_types import ApiObject
 
 
 class Processor(object):
@@ -277,13 +279,15 @@ class Processor(object):
                 if file_input.input_name is None:
                     file_input.input_name = "input-{}".format(count)
 
-                if isinstance(file_input.source, Properties):
+                if isinstance(file_input.source, Properties) or isinstance(
+                    file_input.dataset_definition, DatasetDefinition
+                ):
                     normalized_inputs.append(file_input)
                     continue
 
                 # If the source is a local path, upload it to S3
                 # and save the S3 uri in the ProcessingInput source.
-                parse_result = urlparse(file_input.source)
+                parse_result = urlparse(file_input.s3_input.s3_uri)
                 if parse_result.scheme != "s3":
                     desired_s3_uri = s3.s3_path_join(
                         "s3://",
@@ -293,12 +297,12 @@ class Processor(object):
                         file_input.input_name,
                     )
                     s3_uri = s3.S3Uploader.upload(
-                        local_path=file_input.source,
+                        local_path=file_input.s3_input.s3_uri,
                         desired_s3_uri=desired_s3_uri,
                         sagemaker_session=self.sagemaker_session,
                         kms_key=kms_key,
                     )
-                    file_input.source = s3_uri
+                    file_input.s3_input.s3_uri = s3_uri
                 normalized_inputs.append(file_input)
         return normalized_inputs
 
@@ -505,7 +509,6 @@ class ScriptProcessor(Processor):
         inputs_with_code = self._convert_code_and_add_to_inputs(inputs, user_code_s3_uri)
 
         self._set_entrypoint(self.command, user_script_name)
-
         return inputs_with_code
 
     def _get_user_code_name(self, code):
@@ -601,6 +604,7 @@ class ScriptProcessor(Processor):
                 with the ``ProcessingInput`` object created from ``s3_uri`` appended to the list.
 
         """
+
         code_file_input = ProcessingInput(
             source=s3_uri,
             destination=str(
@@ -778,34 +782,39 @@ class ProcessingJob(_Job):
 
         inputs = None
         if job_desc.get("ProcessingInputs"):
-            inputs = [
-                ProcessingInput(
-                    source=processing_input["S3Input"]["S3Uri"],
-                    destination=processing_input["S3Input"]["LocalPath"],
-                    input_name=processing_input["InputName"],
-                    s3_data_type=processing_input["S3Input"].get("S3DataType"),
-                    s3_input_mode=processing_input["S3Input"].get("S3InputMode"),
-                    s3_data_distribution_type=processing_input["S3Input"].get(
-                        "S3DataDistributionType"
+            inputs = []
+            for processing_input_dict in job_desc["ProcessingInputs"]:
+                processing_input = ProcessingInput(
+                    input_name=processing_input_dict["InputName"],
+                    s3_input=S3Input.from_boto(processing_input_dict.get("S3Input")),
+                    dataset_definition=DatasetDefinition.from_boto(
+                        processing_input_dict.get("DatasetDefinition")
                     ),
-                    s3_compression_type=processing_input["S3Input"].get("S3CompressionType"),
                 )
-                for processing_input in job_desc["ProcessingInputs"]
-            ]
+                if "AppManaged" in processing_input_dict:
+                    processing_input.app_managed = processing_input_dict["AppManaged"]
+
+                inputs.append(processing_input)
 
         outputs = None
         if job_desc.get("ProcessingOutputConfig") and job_desc["ProcessingOutputConfig"].get(
             "Outputs"
         ):
-            outputs = [
-                ProcessingOutput(
-                    source=processing_output["S3Output"]["LocalPath"],
-                    destination=processing_output["S3Output"]["S3Uri"],
-                    output_name=processing_output["OutputName"],
+            outputs = []
+            for processing_output_dict in job_desc["ProcessingOutputConfig"]["Outputs"]:
+                processing_output = ProcessingOutput(
+                    output_name=processing_output_dict["OutputName"],
                 )
-                for processing_output in job_desc["ProcessingOutputConfig"]["Outputs"]
-            ]
-
+                if "S3Output" in processing_output_dict:
+                    processing_output.source = processing_output_dict["S3Output"]["LocalPath"]
+                    processing_output.destination = processing_output_dict["S3Output"]["S3Uri"]
+                if "FeatureStoreOutput" in processing_output_dict:
+                    processing_output.feature_store_output = FeatureStoreOutput.from_boto(
+                        processing_output_dict["FeatureStoreOutput"]
+                    )
+                if "AppManaged" in processing_output_dict:
+                    processing_output.app_managed = processing_output_dict["AppManaged"]
+                outputs.append(processing_output)
         output_kms_key = None
         if job_desc.get("ProcessingOutputConfig"):
             output_kms_key = job_desc["ProcessingOutputConfig"].get("KmsKeyId")
@@ -967,13 +976,16 @@ class ProcessingInput(object):
 
     def __init__(
         self,
-        source,
-        destination,
+        source=None,
+        destination=None,
         input_name=None,
         s3_data_type="S3Prefix",
         s3_input_mode="File",
         s3_data_distribution_type="FullyReplicated",
         s3_compression_type="None",
+        s3_input=None,
+        dataset_definition=None,
+        app_managed=False,
     ):
         """Initializes a ``ProcessingInput`` instance. ``ProcessingInput`` accepts parameters
         that specify an Amazon S3 input for a processing job and provides a method
@@ -991,6 +1003,11 @@ class ProcessingInput(object):
             s3_data_distribution_type (str): Valid options are "FullyReplicated"
                 or "ShardedByS3Key".
             s3_compression_type (str): Valid options are "None" or "Gzip".
+            s3_input (:class:`~sagemaker.dataset_definition.S3Input`)
+                Metadata of data objects stored in S3
+            dataset_definition (:class:`~sagemaker.dataset_definition.DatasetDefinition`)
+                DatasetDefinition input
+            app_managed (bool): Whether the input are managed by SageMaker or application
         """
         self.source = source
         self.destination = destination
@@ -999,29 +1016,63 @@ class ProcessingInput(object):
         self.s3_input_mode = s3_input_mode
         self.s3_data_distribution_type = s3_data_distribution_type
         self.s3_compression_type = s3_compression_type
+        self.s3_input = s3_input
+        self.dataset_definition = dataset_definition
+        self.app_managed = app_managed
+        self._create_s3_input()
 
     def _to_request_dict(self):
         """Generates a request dictionary using the parameters provided to the class."""
-        # Create the request dictionary.
-        s3_input_request = {
-            "InputName": self.input_name,
-            "S3Input": {
-                "S3Uri": self.source,
-                "LocalPath": self.destination,
-                "S3DataType": self.s3_data_type,
-                "S3InputMode": self.s3_input_mode,
-                "S3DataDistributionType": self.s3_data_distribution_type,
-            },
-        }
 
-        # Check the compression type, then add it to the dictionary.
-        if self.s3_compression_type == "Gzip" and self.s3_input_mode != "Pipe":
-            raise ValueError("Data can only be gzipped when the input mode is Pipe.")
-        if self.s3_compression_type is not None:
-            s3_input_request["S3Input"]["S3CompressionType"] = self.s3_compression_type
+        # self._create_s3_input()
+
+        # Create the request dictionary.
+        s3_input_request = {"InputName": self.input_name, "AppManaged": self.app_managed}
+
+        if self.s3_input:
+            # Check the compression type, then add it to the dictionary.
+            if (
+                self.s3_input.s3_compression_type == "Gzip"
+                and self.s3_input.s3_input_mode != "Pipe"
+            ):
+                raise ValueError("Data can only be gzipped when the input mode is Pipe.")
+
+            s3_input_request["S3Input"] = S3Input.to_boto(self.s3_input)
+
+        if self.dataset_definition is not None:
+            s3_input_request["DatasetDefinition"] = DatasetDefinition.to_boto(
+                self.dataset_definition
+            )
 
         # Return the request dictionary.
         return s3_input_request
+
+    def _create_s3_input(self):
+        """Create and initialize S3Input.
+
+        When client provides S3Input, backfill other class memebers because they are used
+        in other places. When client provides other S3Input class memebers, create and
+        init S3Input.
+        """
+
+        if self.s3_input is not None:
+            # backfill other class members
+            self.source = self.s3_input.s3_uri
+            self.destination = self.s3_input.local_path
+            self.s3_data_type = self.s3_input.s3_data_type
+            self.s3_input_mode = self.s3_input.s3_input_mode
+            self.s3_data_distribution_type = self.s3_input.s3_data_distribution_type
+            return
+
+        if self.source and self.destination:
+            self.s3_input = S3Input(
+                s3_uri=self.source,
+                local_path=self.destination,
+                s3_data_type=self.s3_data_type,
+                s3_input_mode=self.s3_input_mode,
+                s3_data_distribution_type=self.s3_data_distribution_type,
+                s3_compression_type=self.s3_compression_type,
+            )
 
 
 class ProcessingOutput(object):
@@ -1030,7 +1081,15 @@ class ProcessingOutput(object):
     It also provides a method to turn those parameters into a dictionary.
     """
 
-    def __init__(self, source, destination=None, output_name=None, s3_upload_mode="EndOfJob"):
+    def __init__(
+        self,
+        source=None,
+        destination=None,
+        output_name=None,
+        s3_upload_mode="EndOfJob",
+        app_managed=False,
+        feature_store_output=None,
+    ):
         """Initializes a ``ProcessingOutput`` instance. ``ProcessingOutput`` accepts parameters that
         specify an Amazon S3 output for a processing job and provides a method to turn
         those parameters into a dictionary.
@@ -1043,23 +1102,42 @@ class ProcessingOutput(object):
             output_name (str): The name of the output. If a name
                 is not provided, one will be generated (eg. "output-1").
             s3_upload_mode (str): Valid options are "EndOfJob" or "Continuous".
+            app_managed (bool): Whether the input are managed by SageMaker or application
+            feature_store_output (:class:`~sagemaker.processing.FeatureStoreOutput`)
+                Configuration for processing job outputs of FeatureStore.
         """
         self.source = source
         self.destination = destination
         self.output_name = output_name
         self.s3_upload_mode = s3_upload_mode
+        self.app_managed = app_managed
+        self.feature_store_output = feature_store_output
 
     def _to_request_dict(self):
         """Generates a request dictionary using the parameters provided to the class."""
         # Create the request dictionary.
         s3_output_request = {
             "OutputName": self.output_name,
-            "S3Output": {
+            "AppManaged": self.app_managed,
+        }
+
+        if self.source is not None:
+            s3_output_request["S3Output"] = {
                 "S3Uri": self.destination,
                 "LocalPath": self.source,
                 "S3UploadMode": self.s3_upload_mode,
-            },
-        }
+            }
+
+        if self.feature_store_output is not None:
+            s3_output_request["FeatureStoreOutput"] = FeatureStoreOutput.to_boto(
+                self.feature_store_output
+            )
 
         # Return the request dictionary.
         return s3_output_request
+
+
+class FeatureStoreOutput(ApiObject):
+    """Configuration for processing job outputs in Amazon SageMaker Feature Store."""
+
+    feature_group_name = None
