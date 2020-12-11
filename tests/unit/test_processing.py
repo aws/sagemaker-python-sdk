@@ -21,6 +21,7 @@ from sagemaker.processing import (
     Processor,
     ScriptProcessor,
     ProcessingJob,
+    FeatureStoreOutput,
 )
 from sagemaker.sklearn.processing import SKLearnProcessor
 from sagemaker.network import NetworkConfig
@@ -167,6 +168,8 @@ def test_sklearn_with_all_parameters(
         ],
         outputs=[
             ProcessingOutput(
+                app_managed=True,
+                feature_store_output=FeatureStoreOutput("Foo"),
                 source="/container/path/",
                 destination="s3://uri/",
                 output_name="my_output",
@@ -342,6 +345,8 @@ def test_script_processor_with_all_parameters(exists_mock, isfile_mock, sagemake
         ],
         outputs=[
             ProcessingOutput(
+                app_managed=True,
+                feature_store_output=FeatureStoreOutput("Foo"),
                 source="/container/path/",
                 destination="s3://uri/",
                 output_name="my_output",
@@ -459,6 +464,8 @@ def test_processor_with_all_parameters(sagemaker_session):
         ],
         outputs=[
             ProcessingOutput(
+                app_managed=True,
+                feature_store_output=FeatureStoreOutput("Foo"),
                 source="/container/path/",
                 destination="s3://uri/",
                 output_name="my_output",
@@ -609,6 +616,8 @@ def _get_expected_args_all_parameters(job_name):
             "Outputs": [
                 {
                     "OutputName": "my_output",
+                    "FeatureStoreOutput": {"FeatureGroupName": "Foo"},
+                    "AppManaged": True,
                     "S3Output": {
                         "S3Uri": "s3://uri/",
                         "LocalPath": "/container/path/",

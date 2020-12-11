@@ -802,6 +802,12 @@ class ProcessingJob(_Job):
                     source=processing_output["S3Output"]["LocalPath"],
                     destination=processing_output["S3Output"]["S3Uri"],
                     output_name=processing_output["OutputName"],
+                    app_managed=processing_output.get("AppManaged"),
+                    feature_store_output=FeatureStoreOutput(
+                        processing_output["FeatureStoreOutput"]["FeatureGroupName"]
+                    )
+                    if processing_output.get("FeatureStoreOutput")
+                    else None,
                 )
                 for processing_output in job_desc["ProcessingOutputConfig"]["Outputs"]
             ]
@@ -1024,13 +1030,33 @@ class ProcessingInput(object):
         return s3_input_request
 
 
+class FeatureStoreOutput(object):
+    """A Feature Store FeatureGroup output name."""
+
+    def __init__(self, feature_group_name):
+        """Initializes a ``FeatureStoreOutput`` instance."""
+        self.feature_group_name = feature_group_name
+
+    def _to_request_dict(self):
+        """Generates a request dictionary using the parameters provided to the class."""
+        return {"FeatureGroupName": self.feature_group_name}
+
+
 class ProcessingOutput(object):
     """Accepts parameters that specify an Amazon S3 output for a processing job.
 
     It also provides a method to turn those parameters into a dictionary.
     """
 
-    def __init__(self, source, destination=None, output_name=None, s3_upload_mode="EndOfJob"):
+    def __init__(
+        self,
+        source,
+        destination=None,
+        output_name=None,
+        s3_upload_mode="EndOfJob",
+        app_managed=None,
+        feature_store_output=None,
+    ):
         """Initializes a ``ProcessingOutput`` instance. ``ProcessingOutput`` accepts parameters that
         specify an Amazon S3 output for a processing job and provides a method to turn
         those parameters into a dictionary.
@@ -1043,11 +1069,16 @@ class ProcessingOutput(object):
             output_name (str): The name of the output. If a name
                 is not provided, one will be generated (eg. "output-1").
             s3_upload_mode (str): Valid options are "EndOfJob" or "Continuous".
+            app_managed (bool): Whether this output is app managed (true) or self managed.
+            feature_store_output (:class:`~sagemaker.processing.FeatureStoreOutput`): The FeatureStoreOutput for 
+                this output 
         """
         self.source = source
         self.destination = destination
         self.output_name = output_name
         self.s3_upload_mode = s3_upload_mode
+        self.app_managed = app_managed
+        self.feature_store_output = feature_store_output
 
     def _to_request_dict(self):
         """Generates a request dictionary using the parameters provided to the class."""
@@ -1060,6 +1091,11 @@ class ProcessingOutput(object):
                 "S3UploadMode": self.s3_upload_mode,
             },
         }
+
+        if self.app_managed is not None:
+            s3_output_request["AppManaged"] = self.app_managed
+        if self.feature_store_output is not None:
+            s3_output_request["FeatureStoreOutput"] = self.feature_store_output._to_request_dict()
 
         # Return the request dictionary.
         return s3_output_request
