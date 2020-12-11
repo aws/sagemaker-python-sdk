@@ -413,6 +413,8 @@ def test_training_job_with_debugger(
     sagemaker_session,
     pipeline_name,
     role,
+    pytorch_training_latest_version,
+    pytorch_training_latest_py_version,
 ):
     instance_count = ParameterInteger(name="InstanceCount", default_value=1)
     instance_type = ParameterString(name="InstanceType", default_value="ml.m5.xlarge")
@@ -424,6 +426,7 @@ def test_training_job_with_debugger(
     ]
     debugger_hook_config = DebuggerHookConfig(
         s3_output_path=f"s3://{sagemaker_session.default_bucket()}/{uuid.uuid4()}/tensors"
+    )
 
     base_dir = os.path.join(DATA_DIR, "pytorch_mnist")
     script_path = os.path.join(base_dir, "mnist.py")
@@ -436,8 +439,8 @@ def test_training_job_with_debugger(
     pytorch_estimator = PyTorch(
         entry_point=script_path,
         role="SageMakerRole",
-        framework_version="1.5.0",
-        py_version="py3",
+        framework_version=pytorch_training_latest_version,
+        py_version=pytorch_training_latest_py_version,
         instance_count=instance_count,
         instance_type=instance_type,
         sagemaker_session=sagemaker_session,
@@ -462,7 +465,7 @@ def test_training_job_with_debugger(
         response = pipeline.create(role)
         create_arn = response["PipelineArn"]
 
-        execution = pipeline.start(parameters={})
+        execution = pipeline.start()
         response = execution.describe()
         assert response["PipelineArn"] == create_arn
 
