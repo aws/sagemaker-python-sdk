@@ -1070,8 +1070,8 @@ class ProcessingOutput(object):
                 is not provided, one will be generated (eg. "output-1").
             s3_upload_mode (str): Valid options are "EndOfJob" or "Continuous".
             app_managed (bool): Whether this output is app managed (true) or self managed.
-            feature_store_output (:class:`~sagemaker.processing.FeatureStoreOutput`): The FeatureStoreOutput for 
-                this output 
+            feature_store_output (:class:`~sagemaker.processing.FeatureStoreOutput`):
+                The FeatureStoreOutput for this output
         """
         self.source = source
         self.destination = destination
