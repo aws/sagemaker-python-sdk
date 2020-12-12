@@ -11,6 +11,15 @@ across multiple GPUs with minimal code changes. The SMP API can be accessed thro
 
 Use the following sections to learn more about the model parallelism and the SMP library.
 
+.. important::
+   SMP only supports training jobs using CUDA 11. When you define a PyTorch or TensorFlow
+   ``Estimator`` with ``smdistributed`` ``enabled``,
+   it uses CUDA 11. When you extend or customize your own training image
+   you must use a CUDA 11 base image. See
+   `Extend or Adapt A Docker Container that Contains SMP
+   <https://integ-docs-aws.amazon.com/sagemaker/latest/dg/model-parallel-use-api.html#model-parallel-customize-container>`__
+   for more information.
+
 It is recommended to use this documentation alongside `SageMaker Distributed Model Parallel
 <http://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel.html>`__ in the Amazon SageMaker
 developer guide. This developer guide documentation includes:
