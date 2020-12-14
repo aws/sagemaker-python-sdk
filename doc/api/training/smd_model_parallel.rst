@@ -13,7 +13,7 @@ Use the following sections to learn more about the model parallelism and the SMP
 
 .. important::
    SMP only supports training jobs using CUDA 11. When you define a PyTorch or TensorFlow
-   ``Estimator`` with ``smdistributed`` ``enabled``,
+   ``Estimator`` with ``modelparallel`` parameter ``enabled`` set to ``True``,
    it uses CUDA 11. When you extend or customize your own training image
    you must use a CUDA 11 base image. See
    `Extend or Adapt A Docker Container that Contains SMP
