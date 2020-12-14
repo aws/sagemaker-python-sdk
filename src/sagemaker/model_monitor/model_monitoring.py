@@ -12,8 +12,8 @@
 # language governing permissions and limitations under the License.
 """This module contains code related to Amazon SageMaker Model Monitoring.
 
-These classes assist with suggesting baselines and creating monitoring schedules for
-data captured by SageMaker Endpoints.
+These classes assist with suggesting baselines and creating monitoring schedules for data captured
+by SageMaker Endpoints.
 """
 from __future__ import print_function, absolute_import
 
@@ -65,6 +65,12 @@ _OUTPUT_PATH_ENV_NAME = "output_path"
 _RECORD_PREPROCESSOR_SCRIPT_ENV_NAME = "record_preprocessor_script"
 _POST_ANALYTICS_PROCESSOR_SCRIPT_ENV_NAME = "post_analytics_processor_script"
 _PUBLISH_CLOUDWATCH_METRICS_ENV_NAME = "publish_cloudwatch_metrics"
+_ANALYSIS_TYPE_ENV_NAME = "analysis_type"
+_PROBLEM_TYPE_ENV_NAME = "problem_type"
+_GROUND_TRUTH_ATTRIBUTE_ENV_NAME = "ground_truth_attribute"
+_INFERENCE_ATTRIBUTE_ENV_NAME = "inference_attribute"
+_PROBABILITY_ATTRIBUTE_ENV_NAME = "probability_attribute"
+_PROBABILITY_THRESHOLD_ATTRIBUTE_ENV_NAME = "probability_threshold_attribute"
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -74,9 +80,10 @@ framework_name = "model-monitor"
 class ModelMonitor(object):
     """Sets up Amazon SageMaker Monitoring Schedules and baseline suggestions.
 
-    Use this class when you want to provide your own container image containing the code
-    you'd like to run, in order to produce your own statistics and constraint validation files.
-    For a more guided experience, consider using the DefaultModelMonitor class instead.
+    Use this class when you want to provide your own container image containing
+    the code you'd like to run, in order to produce your own statistics and
+    constraint validation files. For a more guided experience,
+    consider using the DefaultModelMonitor class instead.
     """
 
     def __init__(
@@ -98,8 +105,8 @@ class ModelMonitor(object):
     ):
         """Initializes a ``Monitor`` instance.
 
-        The Monitor handles baselining datasets and creating Amazon SageMaker Monitoring Schedules
-        to monitor SageMaker endpoints.
+        The Monitor handles baselining datasets and creating Amazon SageMaker
+        Monitoring Schedules to monitor SageMaker endpoints.
 
         Args:
             role (str): An AWS IAM role. The Amazon SageMaker jobs use this role.
@@ -151,6 +158,7 @@ class ModelMonitor(object):
         self.arguments = None
         self.latest_baselining_job_name = None
         self.monitoring_schedule_name = None
+        self.job_definition_name = None
 
     def run_baseline(
         self, baseline_inputs, output, arguments=None, wait=True, logs=True, job_name=None
@@ -259,7 +267,7 @@ class ModelMonitor(object):
 
         normalized_endpoint_input = self._normalize_endpoint_input(endpoint_input=endpoint_input)
 
-        normalized_monitoring_output = self._normalize_monitoring_output(output=output)
+        normalized_monitoring_output = self._normalize_monitoring_output_fields(output=output)
 
         statistics_object, constraints_object = self._get_baseline_files(
             statistics=statistics, constraints=constraints, sagemaker_session=self.sagemaker_session
@@ -335,6 +343,9 @@ class ModelMonitor(object):
     ):
         """Updates the existing monitoring schedule.
 
+        If more options than schedule_cron_expression are to be updated, a new job definition will
+        be created to hold them. The old job definition will not be deleted.
+
         Args:
             endpoint_input (str or sagemaker.model_monitor.EndpointInput): The endpoint to monitor.
                 This can either be the endpoint name or an EndpointInput.
@@ -381,7 +392,7 @@ class ModelMonitor(object):
 
         monitoring_output_config = None
         if output is not None:
-            normalized_monitoring_output = self._normalize_monitoring_output(output=output)
+            normalized_monitoring_output = self._normalize_monitoring_output_fields(output=output)
             monitoring_output_config = {
                 "MonitoringOutputs": [normalized_monitoring_output._to_request_dict()]
             }
@@ -479,14 +490,22 @@ class ModelMonitor(object):
         self._wait_for_schedule_changes_to_apply()
 
     def delete_monitoring_schedule(self):
-        """Deletes the monitoring schedule."""
+        """Deletes the monitoring schedule (subclass is responsible for deleting job definition)"""
+        # DO NOT call super which erases schedule name and makes wait impossible.
         self.sagemaker_session.delete_monitoring_schedule(
             monitoring_schedule_name=self.monitoring_schedule_name
         )
+        if self.job_definition_name is not None:
+            # Job definition is locked by schedule so need to wait for the schedule to be deleted
+            try:
+                self._wait_for_schedule_changes_to_apply()
+            except self.sagemaker_session.sagemaker_client.exceptions.ResourceNotFound:
+                # OK the schedule is gone
+                pass
         self.monitoring_schedule_name = None
 
     def baseline_statistics(self, file_name=STATISTICS_JSON_DEFAULT_FILE_NAME):
-        """Returns a Statistics object representing the statistics json file
+        """Returns a Statistics object representing the statistics json file.
 
         Object is generated by the latest baselining job.
 
@@ -520,9 +539,9 @@ class ModelMonitor(object):
         )
 
     def latest_monitoring_statistics(self, file_name=STATISTICS_JSON_DEFAULT_FILE_NAME):
-        """Returns the sagemaker.model_monitor.
+        """Returns the sagemaker.model_monitor.Statistics.
 
-        Statistics generated by the latest monitoring execution.
+        It was generated by the latest monitoring execution.
 
         Args:
             file_name (str): The name of the statistics file to be retrieved. Only override if
@@ -548,9 +567,9 @@ class ModelMonitor(object):
     def latest_monitoring_constraint_violations(
         self, file_name=CONSTRAINT_VIOLATIONS_JSON_DEFAULT_FILE_NAME
     ):
-        """Returns the sagemaker.model_monitor.
+        """Returns the sagemaker.model_monitor.ConstraintViolations.
 
-        ConstraintViolations generated by the latest monitoring execution.
+        It was generated by the latest monitoring execution.
 
         Args:
             file_name (str): The name of the constraint violdations file to be retrieved. Only
@@ -633,7 +652,7 @@ class ModelMonitor(object):
 
     @classmethod
     def attach(cls, monitor_schedule_name, sagemaker_session=None):
-        """Set this object's schedule name point to the Amazon Sagemaker Monitoring Schedule name.
+        """Sets this object's schedule name to point to the Monitoring Schedule name provided.
 
         This allows subsequent describe_schedule or list_executions calls to point
         to the given schedule.
@@ -679,11 +698,11 @@ class ModelMonitor(object):
             vpc_config = network_config_dict.get("VpcConfig")
 
         security_group_ids = None
-        if vpc_config is not None:
+        if vpc_config:
             security_group_ids = vpc_config["SecurityGroupIds"]
 
         subnets = None
-        if vpc_config is not None:
+        if vpc_config:
             subnets = vpc_config["Subnets"]
 
         network_config = None
@@ -712,6 +731,79 @@ class ModelMonitor(object):
             network_config=network_config,
         )
         attached_monitor.monitoring_schedule_name = monitor_schedule_name
+        return attached_monitor
+
+    @staticmethod
+    def _attach(clazz, sagemaker_session, schedule_desc, job_desc, tags):
+        """Attach a model monitor object to an existing monitoring schedule.
+
+        Args:
+            clazz: a subclass of this class
+            sagemaker_session (sagemaker.session.Session): Session object which
+                manages interactions with Amazon SageMaker APIs and any other
+                AWS services needed. If not specified, one is created using
+                the default AWS configuration chain.
+            schedule_desc (dict): output of describe monitoring schedule API.
+            job_desc (dict): output of describe job definition API.
+
+        Returns:
+            Object of a subclass of this class.
+        """
+
+        monitoring_schedule_name = schedule_desc["MonitoringScheduleName"]
+        job_definition_name = schedule_desc["MonitoringScheduleConfig"][
+            "MonitoringJobDefinitionName"
+        ]
+        monitoring_type = schedule_desc["MonitoringScheduleConfig"]["MonitoringType"]
+        role = job_desc["RoleArn"]
+        cluster_config = job_desc["JobResources"]["ClusterConfig"]
+        instance_count = cluster_config.get("InstanceCount")
+        instance_type = cluster_config["InstanceType"]
+        volume_size_in_gb = cluster_config["VolumeSizeInGB"]
+        volume_kms_key = cluster_config.get("VolumeKmsKeyId")
+        output_kms_key = job_desc["{}JobOutputConfig".format(monitoring_type)].get("KmsKeyId")
+        network_config_dict = job_desc.get("NetworkConfig", {})
+
+        max_runtime_in_seconds = None
+        stopping_condition = job_desc.get("StoppingCondition")
+        if stopping_condition:
+            max_runtime_in_seconds = stopping_condition.get("MaxRuntimeInSeconds")
+
+        env = job_desc["{}AppSpecification".format(monitoring_type)].get("Environment", None)
+
+        vpc_config = network_config_dict.get("VpcConfig")
+
+        security_group_ids = None
+        if vpc_config:
+            security_group_ids = vpc_config["SecurityGroupIds"]
+
+        subnets = None
+        if vpc_config:
+            subnets = vpc_config["Subnets"]
+
+        network_config = None
+        if network_config_dict:
+            network_config = NetworkConfig(
+                enable_network_isolation=network_config_dict["EnableNetworkIsolation"],
+                security_group_ids=security_group_ids,
+                subnets=subnets,
+            )
+
+        attached_monitor = clazz(
+            role=role,
+            instance_count=instance_count,
+            instance_type=instance_type,
+            volume_size_in_gb=volume_size_in_gb,
+            volume_kms_key=volume_kms_key,
+            output_kms_key=output_kms_key,
+            max_runtime_in_seconds=max_runtime_in_seconds,
+            sagemaker_session=sagemaker_session,
+            env=env,
+            tags=tags,
+            network_config=network_config,
+        )
+        attached_monitor.monitoring_schedule_name = monitoring_schedule_name
+        attached_monitor.job_definition_name = job_definition_name
         return attached_monitor
 
     def _generate_baselining_job_name(self, job_name=None):
@@ -759,6 +851,92 @@ class ModelMonitor(object):
         return name_from_base(base=base_name)
 
     @staticmethod
+    def _generate_env_map(
+        env,
+        output_path=None,
+        enable_cloudwatch_metrics=None,
+        record_preprocessor_script_container_path=None,
+        post_processor_script_container_path=None,
+        dataset_format=None,
+        dataset_source_container_path=None,
+        analysis_type=None,
+        problem_type=None,
+        inference_attribute=None,
+        probability_attribute=None,
+        ground_truth_attribute=None,
+        probability_threshold_attribute=None,
+    ):
+        """Generate a list of environment variables from first-class parameters.
+
+        Args:
+            output_path (str): Local path to the output.
+            enable_cloudwatch_metrics (bool): Whether to publish cloudwatch metrics as part of
+                the baselining or monitoring jobs.
+            record_preprocessor_script_container_path (str): The path to the record preprocessor
+                script.
+            post_processor_script_container_path (str): The path to the post analytics processor
+                script.
+            dataset_format (dict): The format of the baseline_dataset.
+            dataset_source_container_path (str): The path to the dataset source.
+            inference_attribute (str): Index or JSONpath to locate predicted label(s).
+                Only used for ModelQualityMonitor, ModelBiasMonitor, and ModelExplainabilityMonitor
+            probability_attribute (str or int): Index or JSONpath to locate probabilities.
+                Only used for ModelQualityMonitor, ModelBiasMonitor and ModelExplainabilityMonitor
+            ground_truth_attribute (str): Index or JSONpath to locate actual label(s).
+            probability_threshold_attribute (float): threshold to convert probabilities to binaries
+                Only used for ModelQualityMonitor, ModelBiasMonitor and ModelExplainabilityMonitor
+
+        Returns:
+            dict: Dictionary of environment keys and values.
+
+        """
+        cloudwatch_env_map = {True: "Enabled", False: "Disabled"}
+
+        if env is not None:
+            env = copy.deepcopy(env)
+        env = env or {}
+
+        if output_path is not None:
+            env[_OUTPUT_PATH_ENV_NAME] = output_path
+
+        if enable_cloudwatch_metrics is not None:
+            env[_PUBLISH_CLOUDWATCH_METRICS_ENV_NAME] = cloudwatch_env_map[
+                enable_cloudwatch_metrics
+            ]
+
+        if dataset_format is not None:
+            env[_DATASET_FORMAT_ENV_NAME] = json.dumps(dataset_format)
+
+        if record_preprocessor_script_container_path is not None:
+            env[_RECORD_PREPROCESSOR_SCRIPT_ENV_NAME] = record_preprocessor_script_container_path
+
+        if post_processor_script_container_path is not None:
+            env[_POST_ANALYTICS_PROCESSOR_SCRIPT_ENV_NAME] = post_processor_script_container_path
+
+        if dataset_source_container_path is not None:
+            env[_DATASET_SOURCE_PATH_ENV_NAME] = dataset_source_container_path
+
+        if analysis_type is not None:
+            env[_ANALYSIS_TYPE_ENV_NAME] = analysis_type
+
+        if problem_type is not None:
+            env[_PROBLEM_TYPE_ENV_NAME] = problem_type
+
+        if inference_attribute is not None:
+            env[_INFERENCE_ATTRIBUTE_ENV_NAME] = inference_attribute
+
+        if probability_attribute is not None:
+            env[_PROBABILITY_ATTRIBUTE_ENV_NAME] = probability_attribute
+
+        if ground_truth_attribute is not None:
+            env[_GROUND_TRUTH_ATTRIBUTE_ENV_NAME] = ground_truth_attribute
+
+        if probability_threshold_attribute is not None:
+            env[_PROBABILITY_THRESHOLD_ATTRIBUTE_ENV_NAME] = probability_threshold_attribute
+
+        return env
+
+    @staticmethod
     def _get_baseline_files(statistics, constraints, sagemaker_session=None):
         """Populates baseline values if possible.
 
@@ -794,11 +972,11 @@ class ModelMonitor(object):
         """Ensure that the input is an EndpointInput object.
 
         Args:
-            endpoint_input ([str or sagemaker.processing.EndpointInput]): An endpoint input
+            endpoint_input ([str or sagemaker.model_monitor.EndpointInput]): An endpoint input
                 to be normalized. Can be either a string or a EndpointInput object.
 
         Returns:
-            sagemaker.processing.EndpointInput: The normalized EndpointInput object.
+            sagemaker.model_monitor.EndpointInput: The normalized EndpointInput object.
 
         """
         # If the input is a string, turn it into an EndpointInput object.
@@ -855,6 +1033,30 @@ class ModelMonitor(object):
                 normalized_inputs.append(file_input)
         return normalized_inputs
 
+    def _normalize_baseline_output(self, output_s3_uri=None):
+        """Ensure that the output is a ProcessingOutput object.
+
+        Args:
+            output_s3_uri (str): The output S3 uri to deposit the baseline files in.
+
+        Returns:
+            sagemaker.processing.ProcessingOutput: The normalized ProcessingOutput object.
+
+        """
+        s3_uri = output_s3_uri or s3.s3_path_join(
+            "s3://",
+            self.sagemaker_session.default_bucket(),
+            _MODEL_MONITOR_S3_PATH,
+            _BASELINING_S3_PATH,
+            self.latest_baselining_job_name,
+            _RESULTS_S3_PATH,
+        )
+        return ProcessingOutput(
+            source=str(pathlib.PurePosixPath(_CONTAINER_BASE_PATH, _CONTAINER_OUTPUT_PATH)),
+            destination=s3_uri,
+            output_name=_DEFAULT_OUTPUT_NAME,
+        )
+
     def _normalize_processing_output(self, output=None):
         """Ensure that the output is a ProcessingOutput object.
 
@@ -879,17 +1081,42 @@ class ModelMonitor(object):
 
         return output
 
-    def _normalize_monitoring_output(self, output=None):
+    def _normalize_monitoring_output(self, monitoring_schedule_name, output_s3_uri=None):
+        """Ensure that the output is a MonitoringOutput object.
+
+        Args:
+            monitoring_schedule_name (str): Monitoring schedule name
+            output_s3_uri (str): The output S3 uri to deposit the monitoring evaluation files in.
+
+        Returns:
+            sagemaker.model_monitor.MonitoringOutput: The normalized MonitoringOutput object.
+
+        """
+        s3_uri = output_s3_uri or s3.s3_path_join(
+            "s3://",
+            self.sagemaker_session.default_bucket(),
+            _MODEL_MONITOR_S3_PATH,
+            _MONITORING_S3_PATH,
+            monitoring_schedule_name,
+            _RESULTS_S3_PATH,
+        )
+        output = MonitoringOutput(
+            source=str(pathlib.PurePosixPath(_CONTAINER_BASE_PATH, _CONTAINER_OUTPUT_PATH)),
+            destination=s3_uri,
+        )
+        return output
+
+    def _normalize_monitoring_output_fields(self, output=None):
         """Ensure that output has the correct fields.
 
         Args:
-            output (sagemaker.processing.MonitoringOutput): An output to be normalized.
+            output (sagemaker.model_monitor.MonitoringOutput): An output to be normalized.
 
         Returns:
-            sagemaker.processing.MonitoringOutput: The normalized MonitoringOutput object.
+            sagemaker.model_monitor.MonitoringOutput: The normalized MonitoringOutput object.
 
         """
-        # If the output is a string, turn it into a ProcessingOutput object.
+        # If the output destination is missing, assign a default destination to it.
         if output.destination is None:
             output.destination = s3.s3_path_join(
                 "s3://",
@@ -928,7 +1155,7 @@ class ModelMonitor(object):
         return path
 
     def _wait_for_schedule_changes_to_apply(self):
-        """Waits for the schedule of this monitor to no longer be in the 'Pending' state."""
+        """Waits for the schedule to no longer be in the 'Pending' state."""
         for _ in retries(
             max_retry_count=36,  # 36*5 = 3min
             exception_message_prefix="Waiting for schedule to leave 'Pending' status",
@@ -939,9 +1166,9 @@ class ModelMonitor(object):
                 break
 
     def _validate_network_config(self, network_config_dict):
-        """Function to validate EnableInterContainerTrafficEncryption.
+        """Validates EnableInterContainerTrafficEncryption.
 
-        It validates EnableInterContainerTrafficEncryption is not set in the provided
+        Validates that EnableInterContainerTrafficEncryption is not set in the provided
         NetworkConfig request dictionary.
 
         Args:
@@ -963,14 +1190,115 @@ class ModelMonitor(object):
             _LOGGER.info(message)
             raise ValueError(message)
 
+    @classmethod
+    def monitoring_type(cls):
+        """Type of the monitoring job."""
+        raise TypeError("Subclass of {} shall define this property".format(__class__.__name__))
+
+    def _create_monitoring_schedule_from_job_definition(
+        self, monitor_schedule_name, job_definition_name, schedule_cron_expression=None
+    ):
+        """Creates a monitoring schedule.
+
+        Args:
+            monitor_schedule_name (str): Monitoring schedule name.
+            job_definition_name (str): Job definition name.
+            schedule_cron_expression (str): The cron expression that dictates the frequency that
+                this job run. See sagemaker.model_monitor.CronExpressionGenerator for valid
+                expressions. Default: Daily.
+        """
+        message = "Creating Monitoring Schedule with name: {}".format(monitor_schedule_name)
+        _LOGGER.info(message)
+
+        monitoring_schedule_config = {
+            "MonitoringJobDefinitionName": job_definition_name,
+            "MonitoringType": self.monitoring_type(),
+        }
+        if schedule_cron_expression is not None:
+            monitoring_schedule_config["ScheduleConfig"] = {
+                "ScheduleExpression": schedule_cron_expression
+            }
+        self.sagemaker_session.sagemaker_client.create_monitoring_schedule(
+            MonitoringScheduleName=monitor_schedule_name,
+            MonitoringScheduleConfig=monitoring_schedule_config,
+            Tags=self.tags or [],
+        )
+
+    def _upload_and_convert_to_processing_input(self, source, destination, name):
+        """Generates a ProcessingInput object from a source.
+
+        Source can be a local path or an S3 uri.
+
+        Args:
+            source (str): The source of the data. This can be a local path or an S3 uri.
+            destination (str): The desired container path for the data to be downloaded to.
+            name (str): The name of the ProcessingInput.
+
+        Returns:
+            sagemaker.processing.ProcessingInput: The ProcessingInput object.
+
+        """
+        if source is None:
+            return None
+
+        parse_result = urlparse(url=source)
+
+        if parse_result.scheme != "s3":
+            s3_uri = s3.s3_path_join(
+                "s3://",
+                self.sagemaker_session.default_bucket(),
+                _MODEL_MONITOR_S3_PATH,
+                _BASELINING_S3_PATH,
+                self.latest_baselining_job_name,
+                _INPUT_S3_PATH,
+                name,
+            )
+            s3.S3Uploader.upload(
+                local_path=source, desired_s3_uri=s3_uri, sagemaker_session=self.sagemaker_session
+            )
+            source = s3_uri
+
+        return ProcessingInput(source=source, destination=destination, input_name=name)
+
+    # noinspection PyMethodOverriding
+    def _update_monitoring_schedule(self, job_definition_name, schedule_cron_expression=None):
+        """Updates existing monitoring schedule with new job definition and/or schedule expression.
+
+        Args:
+            job_definition_name (str): Job definition name.
+            schedule_cron_expression (str or None): The cron expression that dictates the frequency
+                that this job run. See sagemaker.model_monitor.CronExpressionGenerator for valid
+                expressions.
+        """
+        if self.job_definition_name is None or self.monitoring_schedule_name is None:
+            message = "Nothing to update, please create a schedule first."
+            _LOGGER.error(message)
+            raise ValueError(message)
+
+        monitoring_schedule_config = {
+            "MonitoringJobDefinitionName": job_definition_name,
+            "MonitoringType": self.monitoring_type(),
+        }
+        if schedule_cron_expression is not None:
+            monitoring_schedule_config["ScheduleConfig"] = {
+                "ScheduleExpression": schedule_cron_expression
+            }
+        self.sagemaker_session.sagemaker_client.update_monitoring_schedule(
+            MonitoringScheduleName=self.monitoring_schedule_name,
+            MonitoringScheduleConfig=monitoring_schedule_config,
+        )
+        self._wait_for_schedule_changes_to_apply()
+
 
 class DefaultModelMonitor(ModelMonitor):
     """Sets up Amazon SageMaker Monitoring Schedules and baseline suggestions.
 
     Use this class when you want to utilize Amazon SageMaker Monitoring's plug-and-play
-    solution that only requires your dataset and optional pre/postprocessing scripts.
-    For a more customized experience, consider using the ModelMonitor class instead.
+    solution to monitor data quality metric for an endpoint that only requires your
+    dataset and optional pre/postprocessing scripts.
     """
+
+    JOB_DEFINITION_BASE_NAME = "data-quality-job-definition"
 
     def __init__(
         self,
@@ -989,8 +1317,8 @@ class DefaultModelMonitor(ModelMonitor):
     ):
         """Initializes a ``Monitor`` instance.
 
-        The Monitor handles baselining datasets and creating Amazon SageMaker Monitoring
-        Schedules to monitor SageMaker endpoints.
+        The Monitor handles baselining datasets and creating Amazon SageMaker
+        Monitoring Schedules to monitor SageMaker endpoints.
 
         Args:
             role (str): An AWS IAM role name or ARN. The Amazon SageMaker jobs use this role.
@@ -1035,6 +1363,13 @@ class DefaultModelMonitor(ModelMonitor):
             network_config=network_config,
         )
 
+    @classmethod
+    def monitoring_type(cls):
+        """Type of the monitoring job."""
+        return "DataQuality"
+
+    # ToDo: either support record_preprocessor_script or remove it from here. It has
+    #  not been removed due to backward compatibility issues
     def suggest_baseline(
         self,
         baseline_dataset,
@@ -1227,92 +1562,68 @@ class DefaultModelMonitor(ModelMonitor):
                 expressions. Default: Daily.
             enable_cloudwatch_metrics (bool): Whether to publish cloudwatch metrics as part of
                 the baselining or monitoring jobs.
-
         """
-        if self.monitoring_schedule_name is not None:
+        if self.job_definition_name is not None or self.monitoring_schedule_name is not None:
             message = (
                 "It seems that this object was already used to create an Amazon Model "
                 "Monitoring Schedule. To create another, first delete the existing one "
                 "using my_monitor.delete_monitoring_schedule()."
             )
-            print(message)
+            _LOGGER.error(message)
             raise ValueError(message)
 
-        self.monitoring_schedule_name = self._generate_monitoring_schedule_name(
+        # create job definition
+        monitor_schedule_name = self._generate_monitoring_schedule_name(
             schedule_name=monitor_schedule_name
         )
-
-        print()
-        print("Creating Monitoring Schedule with name: {}".format(self.monitoring_schedule_name))
-
-        normalized_endpoint_input = self._normalize_endpoint_input(endpoint_input=endpoint_input)
-
-        record_preprocessor_script_s3_uri = None
-        if record_preprocessor_script is not None:
-            record_preprocessor_script_s3_uri = self._s3_uri_from_local_path(
-                path=record_preprocessor_script
-            )
-
-        post_analytics_processor_script_s3_uri = None
-        if post_analytics_processor_script is not None:
-            post_analytics_processor_script_s3_uri = self._s3_uri_from_local_path(
-                path=post_analytics_processor_script
-            )
-
-        normalized_monitoring_output = self._normalize_monitoring_output(
-            output_s3_uri=output_s3_uri
-        )
-
-        statistics_object, constraints_object = self._get_baseline_files(
-            statistics=statistics, constraints=constraints, sagemaker_session=self.sagemaker_session
-        )
-
-        constraints_s3_uri = None
-        if constraints_object is not None:
-            constraints_s3_uri = constraints_object.file_s3_uri
-
-        statistics_s3_uri = None
-        if statistics_object is not None:
-            statistics_s3_uri = statistics_object.file_s3_uri
-
-        normalized_env = self._generate_env_map(
-            env=self.env, enable_cloudwatch_metrics=enable_cloudwatch_metrics
-        )
-
-        monitoring_output_config = {
-            "MonitoringOutputs": [normalized_monitoring_output._to_request_dict()]
-        }
-
-        if self.output_kms_key is not None:
-            monitoring_output_config["KmsKeyId"] = self.output_kms_key
-
-        network_config_dict = None
-        if self.network_config is not None:
-            network_config_dict = self.network_config._to_request_dict()
-            super(DefaultModelMonitor, self)._validate_network_config(network_config_dict)
-
-        self.sagemaker_session.create_monitoring_schedule(
-            monitoring_schedule_name=self.monitoring_schedule_name,
-            schedule_expression=schedule_cron_expression,
-            constraints_s3_uri=constraints_s3_uri,
-            statistics_s3_uri=statistics_s3_uri,
-            monitoring_inputs=[normalized_endpoint_input._to_request_dict()],
-            monitoring_output_config=monitoring_output_config,
+        new_job_definition_name = name_from_base(self.JOB_DEFINITION_BASE_NAME)
+        request_dict = self._build_create_data_quality_job_definition_request(
+            monitoring_schedule_name=monitor_schedule_name,
+            job_definition_name=new_job_definition_name,
+            image_uri=self.image_uri,
+            latest_baselining_job_name=self.latest_baselining_job_name,
+            endpoint_input=endpoint_input,
+            record_preprocessor_script=record_preprocessor_script,
+            post_analytics_processor_script=post_analytics_processor_script,
+            output_s3_uri=self._normalize_monitoring_output(
+                monitor_schedule_name, output_s3_uri
+            ).destination,
+            constraints=constraints,
+            statistics=statistics,
+            enable_cloudwatch_metrics=enable_cloudwatch_metrics,
+            role=self.role,
             instance_count=self.instance_count,
             instance_type=self.instance_type,
             volume_size_in_gb=self.volume_size_in_gb,
             volume_kms_key=self.volume_kms_key,
-            image_uri=self.image_uri,
-            entrypoint=self.entrypoint,
-            arguments=self.arguments,
-            record_preprocessor_source_uri=record_preprocessor_script_s3_uri,
-            post_analytics_processor_source_uri=post_analytics_processor_script_s3_uri,
+            output_kms_key=self.output_kms_key,
             max_runtime_in_seconds=self.max_runtime_in_seconds,
-            environment=normalized_env,
-            network_config=network_config_dict,
-            role_arn=self.sagemaker_session.expand_role(self.role),
+            env=self.env,
             tags=self.tags,
+            network_config=self.network_config,
         )
+        self.sagemaker_session.sagemaker_client.create_data_quality_job_definition(**request_dict)
+
+        # create schedule
+        try:
+            self._create_monitoring_schedule_from_job_definition(
+                monitor_schedule_name=monitor_schedule_name,
+                job_definition_name=new_job_definition_name,
+                schedule_cron_expression=schedule_cron_expression,
+            )
+            self.job_definition_name = new_job_definition_name
+            self.monitoring_schedule_name = monitor_schedule_name
+        except Exception:
+            _LOGGER.exception("Failed to create monitoring schedule.")
+            # noinspection PyBroadException
+            try:
+                self.sagemaker_session.sagemaker_client.delete_data_quality_job_definition(
+                    JobDefinitionName=new_job_definition_name
+                )
+            except Exception:  # pylint: disable=W0703
+                message = "Failed to delete job definition {}.".format(new_job_definition_name)
+                _LOGGER.exception(message)
+            raise
 
     def update_monitoring_schedule(
         self,
@@ -1376,6 +1687,29 @@ class DefaultModelMonitor(ModelMonitor):
             role (str): An AWS IAM role name or ARN. The Amazon SageMaker jobs use this role.
 
         """
+        # check if this schedule is in v2 format and update as per v2 format if it is
+        if self.job_definition_name is not None:
+            self._update_data_quality_monitoring_schedule(
+                endpoint_input=endpoint_input,
+                record_preprocessor_script=record_preprocessor_script,
+                post_analytics_processor_script=post_analytics_processor_script,
+                output_s3_uri=output_s3_uri,
+                statistics=statistics,
+                constraints=constraints,
+                schedule_cron_expression=schedule_cron_expression,
+                instance_count=instance_count,
+                instance_type=instance_type,
+                volume_size_in_gb=volume_size_in_gb,
+                volume_kms_key=volume_kms_key,
+                output_kms_key=output_kms_key,
+                max_runtime_in_seconds=max_runtime_in_seconds,
+                env=env,
+                network_config=network_config,
+                enable_cloudwatch_metrics=enable_cloudwatch_metrics,
+                role=role,
+            )
+            return
+
         monitoring_inputs = None
         if endpoint_input is not None:
             monitoring_inputs = [self._normalize_endpoint_input(endpoint_input)._to_request_dict()]
@@ -1396,7 +1730,8 @@ class DefaultModelMonitor(ModelMonitor):
         output_path = None
         if output_s3_uri is not None:
             normalized_monitoring_output = self._normalize_monitoring_output(
-                output_s3_uri=output_s3_uri
+                monitoring_schedule_name=self.monitoring_schedule_name,
+                output_s3_uri=output_s3_uri,
             )
             monitoring_output_config = {
                 "MonitoringOutputs": [normalized_monitoring_output._to_request_dict()]
@@ -1473,6 +1808,155 @@ class DefaultModelMonitor(ModelMonitor):
 
         self._wait_for_schedule_changes_to_apply()
 
+    def _update_data_quality_monitoring_schedule(
+        self,
+        endpoint_input=None,
+        record_preprocessor_script=None,
+        post_analytics_processor_script=None,
+        output_s3_uri=None,
+        constraints=None,
+        statistics=None,
+        schedule_cron_expression=None,
+        enable_cloudwatch_metrics=None,
+        role=None,
+        instance_count=None,
+        instance_type=None,
+        volume_size_in_gb=None,
+        volume_kms_key=None,
+        output_kms_key=None,
+        max_runtime_in_seconds=None,
+        env=None,
+        network_config=None,
+    ):
+        """Updates the existing monitoring schedule.
+
+        Args:
+            endpoint_input (str or sagemaker.model_monitor.EndpointInput): The endpoint to monitor.
+                This can either be the endpoint name or an EndpointInput.
+            record_preprocessor_script (str): The path to the record preprocessor script. This can
+                be a local path or an S3 uri.
+            post_analytics_processor_script (str): The path to the record post-analytics processor
+                script. This can be a local path or an S3 uri.
+            output_s3_uri (str): S3 destination of the constraint_violations and analysis result.
+                Default: "s3://<default_session_bucket>/<job_name>/output"
+            constraints (sagemaker.model_monitor.Constraints or str): If provided it will be used
+                for monitoring the endpoint. It can be a Constraints object or an S3 uri pointing
+                to a constraints JSON file.
+            statistics (sagemaker.model_monitor.Statistic or str): If provided alongside
+                constraints, these will be used for monitoring the endpoint. This can be a
+                sagemaker.model_monitor.Constraints object or an S3 uri pointing to a constraints
+                JSON file.
+            schedule_cron_expression (str): The cron expression that dictates the frequency that
+                this job run. See sagemaker.model_monitor.CronExpressionGenerator for valid
+                expressions. Default: Daily.
+            enable_cloudwatch_metrics (bool): Whether to publish cloudwatch metrics as part of
+                the baselining or monitoring jobs.
+            role (str): An AWS IAM role. The Amazon SageMaker jobs use this role.
+            instance_count (int): The number of instances to run
+                the jobs with.
+            instance_type (str): Type of EC2 instance to use for
+                the job, for example, 'ml.m5.xlarge'.
+            volume_size_in_gb (int): Size in GB of the EBS volume
+                to use for storing data during processing (default: 30).
+            volume_kms_key (str): A KMS key for the job's volume.
+            output_kms_key (str): The KMS key id for the job's outputs.
+            max_runtime_in_seconds (int): Timeout in seconds. After this amount of
+                time, Amazon SageMaker terminates the job regardless of its current status.
+                Default: 3600
+            env (dict): Environment variables to be passed to the job.
+            network_config (sagemaker.network.NetworkConfig): A NetworkConfig
+                object that configures network isolation, encryption of
+                inter-container traffic, security group IDs, and subnets.
+        """
+        valid_args = {
+            arg: value for arg, value in locals().items() if arg != "self" and value is not None
+        }
+
+        # Nothing to update
+        if len(valid_args) <= 0:
+            return
+
+        # Only need to update schedule expression
+        if len(valid_args) == 1 and schedule_cron_expression is not None:
+            self._update_monitoring_schedule(self.job_definition_name, schedule_cron_expression)
+            return
+
+        # Need to update schedule with a new job definition
+        job_desc = self.sagemaker_session.sagemaker_client.describe_data_quality_job_definition(
+            JobDefinitionName=self.job_definition_name
+        )
+        new_job_definition_name = name_from_base(self.JOB_DEFINITION_BASE_NAME)
+        request_dict = self._build_create_data_quality_job_definition_request(
+            monitoring_schedule_name=self.monitoring_schedule_name,
+            job_definition_name=new_job_definition_name,
+            image_uri=self.image_uri,
+            existing_job_desc=job_desc,
+            endpoint_input=endpoint_input,
+            record_preprocessor_script=record_preprocessor_script,
+            post_analytics_processor_script=post_analytics_processor_script,
+            output_s3_uri=output_s3_uri,
+            statistics=statistics,
+            constraints=constraints,
+            enable_cloudwatch_metrics=enable_cloudwatch_metrics,
+            role=role,
+            instance_count=instance_count,
+            instance_type=instance_type,
+            volume_size_in_gb=volume_size_in_gb,
+            volume_kms_key=volume_kms_key,
+            output_kms_key=output_kms_key,
+            max_runtime_in_seconds=max_runtime_in_seconds,
+            env=env,
+            tags=self.tags,
+            network_config=network_config,
+        )
+        self.sagemaker_session.sagemaker_client.create_data_quality_job_definition(**request_dict)
+        try:
+            self._update_monitoring_schedule(new_job_definition_name, schedule_cron_expression)
+            self.job_definition_name = new_job_definition_name
+            if role is not None:
+                self.role = role
+            if instance_count is not None:
+                self.instance_count = instance_count
+            if instance_type is not None:
+                self.instance_type = instance_type
+            if volume_size_in_gb is not None:
+                self.volume_size_in_gb = volume_size_in_gb
+            if volume_kms_key is not None:
+                self.volume_kms_key = volume_kms_key
+            if output_kms_key is not None:
+                self.output_kms_key = output_kms_key
+            if max_runtime_in_seconds is not None:
+                self.max_runtime_in_seconds = max_runtime_in_seconds
+            if env is not None:
+                self.env = env
+            if network_config is not None:
+                self.network_config = network_config
+        except Exception:
+            _LOGGER.exception("Failed to update monitoring schedule.")
+            # noinspection PyBroadException
+            try:
+                self.sagemaker_session.sagemaker_client.delete_data_quality_job_definition(
+                    JobDefinitionName=new_job_definition_name
+                )
+            except Exception:  # pylint: disable=W0703
+                message = "Failed to delete job definition {}.".format(new_job_definition_name)
+                _LOGGER.exception(message)
+            raise
+
+    def delete_monitoring_schedule(self):
+        """Deletes the monitoring schedule and its job definition."""
+        super(DefaultModelMonitor, self).delete_monitoring_schedule()
+        if self.job_definition_name is not None:
+            # Delete job definition.
+            message = "Deleting Data Quality Job Definition with name: {}".format(
+                self.job_definition_name
+            )
+            _LOGGER.info(message)
+            self.sagemaker_session.sagemaker_client.delete_data_quality_job_definition(
+                JobDefinitionName=self.job_definition_name
+            )
+            self.job_definition_name = None
+
     def run_baseline(self):
         """Not implemented.
 
@@ -1506,58 +1990,49 @@ class DefaultModelMonitor(ModelMonitor):
             monitoring_schedule_name=monitor_schedule_name
         )
 
-        role = schedule_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["RoleArn"]
-        instance_count = schedule_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-            "MonitoringResources"
-        ]["ClusterConfig"]["InstanceCount"]
-        instance_type = schedule_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-            "MonitoringResources"
-        ]["ClusterConfig"]["InstanceType"]
-        volume_size_in_gb = schedule_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-            "MonitoringResources"
-        ]["ClusterConfig"]["VolumeSizeInGB"]
-        volume_kms_key = schedule_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-            "MonitoringResources"
-        ]["ClusterConfig"].get("VolumeKmsKeyId")
-        output_kms_key = schedule_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-            "MonitoringOutputConfig"
-        ].get("KmsKeyId")
-
-        max_runtime_in_seconds = None
-        if schedule_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"].get(
-            "StoppingCondition"
-        ):
-            max_runtime_in_seconds = schedule_desc["MonitoringScheduleConfig"][
-                "MonitoringJobDefinition"
-            ]["StoppingCondition"].get("MaxRuntimeInSeconds")
-
-        env = schedule_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["Environment"]
-
-        network_config_dict = schedule_desc["MonitoringScheduleConfig"][
-            "MonitoringJobDefinition"
-        ].get("NetworkConfig")
-
-        vpc_config = None
-        if (
-            schedule_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"].get(
-                "NetworkConfig"
+        job_definition_name = schedule_desc["MonitoringScheduleConfig"].get(
+            "MonitoringJobDefinitionName"
+        )
+        if job_definition_name:
+            monitoring_type = schedule_desc["MonitoringScheduleConfig"].get("MonitoringType")
+            if monitoring_type != cls.monitoring_type():
+                raise TypeError(
+                    "{} can only attach to Data quality monitoring schedule.".format(
+                        __class__.__name__
+                    )
+                )
+            job_desc = sagemaker_session.sagemaker_client.describe_data_quality_job_definition(
+                JobDefinitionName=job_definition_name
             )
-            is not None
-        ):
-            vpc_config = schedule_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-                "NetworkConfig"
-            ].get("VpcConfig")
+            tags = sagemaker_session.list_tags(resource_arn=schedule_desc["MonitoringScheduleArn"])
 
-        security_group_ids = None
-        if vpc_config is not None:
-            security_group_ids = vpc_config["SecurityGroupIds"]
+            return ModelMonitor._attach(
+                clazz=cls,
+                sagemaker_session=sagemaker_session,
+                schedule_desc=schedule_desc,
+                job_desc=job_desc,
+                tags=tags,
+            )
 
-        subnets = None
-        if vpc_config is not None:
-            subnets = vpc_config["Subnets"]
+        job_definition = schedule_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"]
+        role = job_definition["RoleArn"]
+        cluster_config = job_definition["MonitoringResources"]["ClusterConfig"]
+        instance_count = cluster_config["InstanceCount"]
+        instance_type = cluster_config["InstanceType"]
+        volume_size_in_gb = cluster_config["VolumeSizeInGB"]
+        volume_kms_key = cluster_config.get("VolumeKmsKeyId")
+        output_kms_key = job_definition["MonitoringOutputConfig"].get("KmsKeyId")
+        max_runtime_in_seconds = job_definition.get("StoppingCondition", {}).get(
+            "MaxRuntimeInSeconds"
+        )
+        env = job_definition["Environment"]
 
+        network_config_dict = job_definition.get("NetworkConfig", {})
         network_config = None
         if network_config_dict:
+            vpc_config = network_config_dict.get("VpcConfig", {})
+            security_group_ids = vpc_config.get("SecurityGroupIds")
+            subnets = vpc_config.get("Subnets")
             network_config = NetworkConfig(
                 enable_network_isolation=network_config_dict["EnableNetworkIsolation"],
                 security_group_ids=security_group_ids,
@@ -1613,9 +2088,9 @@ class DefaultModelMonitor(ModelMonitor):
             )
 
     def latest_monitoring_constraint_violations(self):
-        """Returns the sagemaker.model_monitor.
+        """Returns the sagemaker.model_monitor.ConstraintViolations
 
-        ConstraintViolations generated by the latest monitoring execution.
+        It was generated by the latest monitoring execution.
 
         Returns:
             sagemaker.model_monitoring.ConstraintViolations: The ConstraintViolations object
@@ -1641,143 +2116,910 @@ class DefaultModelMonitor(ModelMonitor):
                 "violations only available for completed executions.".format(status)
             )
 
-    def _normalize_baseline_output(self, output_s3_uri=None):
-        """Ensure that the output is a ProcessingOutput object.
-
-        Args:
-            output_s3_uri (str): The output S3 uri to deposit the baseline files in.
-
-        Returns:
-            sagemaker.processing.ProcessingOutput: The normalized ProcessingOutput object.
-
-        """
-        s3_uri = output_s3_uri or s3.s3_path_join(
-            "s3://",
-            self.sagemaker_session.default_bucket(),
-            _MODEL_MONITOR_S3_PATH,
-            _BASELINING_S3_PATH,
-            self.latest_baselining_job_name,
-            _RESULTS_S3_PATH,
-        )
-        return ProcessingOutput(
-            source=str(pathlib.PurePosixPath(_CONTAINER_BASE_PATH, _CONTAINER_OUTPUT_PATH)),
-            destination=s3_uri,
-            output_name=_DEFAULT_OUTPUT_NAME,
-        )
-
-    def _normalize_monitoring_output(self, output_s3_uri=None):
-        """Ensure that the output is a MonitoringOutput object.
-
-        Args:
-            output_s3_uri (str): The output S3 uri to deposit the monitoring evaluation files in.
-
-        Returns:
-            sagemaker.model_monitor.MonitoringOutput: The normalized MonitoringOutput object.
-
-        """
-        s3_uri = output_s3_uri or s3.s3_path_join(
-            "s3://",
-            self.sagemaker_session.default_bucket(),
-            _MODEL_MONITOR_S3_PATH,
-            _MONITORING_S3_PATH,
-            self.monitoring_schedule_name,
-            _RESULTS_S3_PATH,
-        )
-        output = MonitoringOutput(
-            source=str(pathlib.PurePosixPath(_CONTAINER_BASE_PATH, _CONTAINER_OUTPUT_PATH)),
-            destination=s3_uri,
-        )
-
-        return output
-
     @staticmethod
-    def _generate_env_map(
-        env,
-        output_path=None,
+    def _get_default_image_uri(region):
+        """Returns the Default Model Monitoring image uri based on the region.
+
+        Args:
+            region (str): The AWS region.
+
+        Returns:
+            str: The Default Model Monitoring image uri based on the region.
+        """
+        return image_uris.retrieve(framework=framework_name, region=region)
+
+    def _build_create_data_quality_job_definition_request(
+        self,
+        monitoring_schedule_name,
+        job_definition_name,
+        image_uri,
+        latest_baselining_job_name=None,
+        existing_job_desc=None,
+        endpoint_input=None,
+        record_preprocessor_script=None,
+        post_analytics_processor_script=None,
+        output_s3_uri=None,
+        statistics=None,
+        constraints=None,
         enable_cloudwatch_metrics=None,
-        record_preprocessor_script_container_path=None,
-        post_processor_script_container_path=None,
-        dataset_format=None,
-        dataset_source_container_path=None,
+        role=None,
+        instance_count=None,
+        instance_type=None,
+        volume_size_in_gb=None,
+        volume_kms_key=None,
+        output_kms_key=None,
+        max_runtime_in_seconds=None,
+        env=None,
+        tags=None,
+        network_config=None,
     ):
-        """Generate a list of environment variables from first-class parameters.
+        """Build the request for job definition creation API
 
         Args:
-            dataset_format (dict): The format of the baseline_dataset.
-            output_path (str): Local path to the output.
-            record_preprocessor_script_container_path (str): The path to the record preprocessor
-                script.
-            post_processor_script_container_path (str): The path to the post analytics processor
-                script.
-            dataset_source_container_path (str): The path to the dataset source.
+            monitoring_schedule_name (str): Monitoring schedule name.
+            job_definition_name (str): Job definition name.
+                If not specified then a default one will be generated.
+            image_uri (str): The uri of the image to use for the jobs started by the Monitor.
+            latest_baselining_job_name (str): name of the last baselining job.
+            existing_job_desc (dict): description of existing job definition. It will be updated by
+                 values that were passed in, and then used to create the new job definition.
+            endpoint_input (str or sagemaker.model_monitor.EndpointInput): The endpoint to monitor.
+                This can either be the endpoint name or an EndpointInput.
+            output_s3_uri (str): S3 destination of the constraint_violations and analysis result.
+                Default: "s3://<default_session_bucket>/<job_name>/output"
+            constraints (sagemaker.model_monitor.Constraints or str): If provided it will be used
+                for monitoring the endpoint. It can be a Constraints object or an S3 uri pointing
+                to a constraints JSON file.
+            enable_cloudwatch_metrics (bool): Whether to publish cloudwatch metrics as part of
+                the baselining or monitoring jobs.
+            role (str): An AWS IAM role. The Amazon SageMaker jobs use this role.
+            instance_count (int): The number of instances to run
+                the jobs with.
+            instance_type (str): Type of EC2 instance to use for
+                the job, for example, 'ml.m5.xlarge'.
+            volume_size_in_gb (int): Size in GB of the EBS volume
+                to use for storing data during processing (default: 30).
+            volume_kms_key (str): A KMS key for the job's volume.
+            output_kms_key (str): KMS key id for output.
+            max_runtime_in_seconds (int): Timeout in seconds. After this amount of
+                time, Amazon SageMaker terminates the job regardless of its current status.
+                Default: 3600
+            env (dict): Environment variables to be passed to the job.
+            tags ([dict]): List of tags to be passed to the job.
+            network_config (sagemaker.network.NetworkConfig): A NetworkConfig
+                object that configures network isolation, encryption of
+                inter-container traffic, security group IDs, and subnets.
 
         Returns:
-            dict: Dictionary of environment keys and values.
-
+            dict: request parameters to create job definition.
         """
-        cloudwatch_env_map = {True: "Enabled", False: "Disabled"}
-
-        if env is not None:
-            env = copy.deepcopy(env)
-        env = env or {}
-
-        if output_path is not None:
-            env[_OUTPUT_PATH_ENV_NAME] = output_path
-
-        if enable_cloudwatch_metrics is not None:
-            env[_PUBLISH_CLOUDWATCH_METRICS_ENV_NAME] = cloudwatch_env_map[
-                enable_cloudwatch_metrics
+        if existing_job_desc is not None:
+            app_specification = existing_job_desc[
+                "{}AppSpecification".format(self.monitoring_type())
             ]
+            baseline_config = existing_job_desc.get(
+                "{}BaselineConfig".format(self.monitoring_type()), {}
+            )
+            job_input = existing_job_desc["{}JobInput".format(self.monitoring_type())]
+            job_output = existing_job_desc["{}JobOutputConfig".format(self.monitoring_type())]
+            cluster_config = existing_job_desc["JobResources"]["ClusterConfig"]
+            if role is None:
+                role = existing_job_desc["RoleArn"]
+            existing_network_config = existing_job_desc.get("NetworkConfig")
+            stop_condition = existing_job_desc.get("StoppingCondition", {})
+        else:
+            app_specification = {}
+            baseline_config = {}
+            job_input = {}
+            job_output = {}
+            cluster_config = {}
+            existing_network_config = None
+            stop_condition = {}
 
-        if dataset_format is not None:
-            env[_DATASET_FORMAT_ENV_NAME] = json.dumps(dataset_format)
+        # app specification
+        record_preprocessor_script_s3_uri = None
+        if record_preprocessor_script is not None:
+            record_preprocessor_script_s3_uri = self._s3_uri_from_local_path(
+                path=record_preprocessor_script
+            )
 
-        if record_preprocessor_script_container_path is not None:
-            env[_RECORD_PREPROCESSOR_SCRIPT_ENV_NAME] = record_preprocessor_script_container_path
+        post_analytics_processor_script_s3_uri = None
+        if post_analytics_processor_script is not None:
+            post_analytics_processor_script_s3_uri = self._s3_uri_from_local_path(
+                path=post_analytics_processor_script
+            )
 
-        if post_processor_script_container_path is not None:
-            env[_POST_ANALYTICS_PROCESSOR_SCRIPT_ENV_NAME] = post_processor_script_container_path
+        app_specification["ImageUri"] = image_uri
+        if post_analytics_processor_script_s3_uri:
+            app_specification[
+                "PostAnalyticsProcessorSourceUri"
+            ] = post_analytics_processor_script_s3_uri
+        if record_preprocessor_script_s3_uri:
+            app_specification["RecordPreprocessorSourceUri"] = record_preprocessor_script_s3_uri
 
-        if dataset_source_container_path is not None:
-            env[_DATASET_SOURCE_PATH_ENV_NAME] = dataset_source_container_path
+        normalized_env = self._generate_env_map(
+            env=env,
+            enable_cloudwatch_metrics=enable_cloudwatch_metrics,
+        )
+        if normalized_env:
+            app_specification["Environment"] = normalized_env
 
-        return env
+        # baseline config
+        # noinspection PyTypeChecker
+        statistics_object, constraints_object = self._get_baseline_files(
+            statistics=statistics,
+            constraints=constraints,
+            sagemaker_session=self.sagemaker_session,
+        )
+        if constraints_object is not None:
+            constraints_s3_uri = constraints_object.file_s3_uri
+            baseline_config["ConstraintsResource"] = dict(S3Uri=constraints_s3_uri)
+        if statistics_object is not None:
+            statistics_s3_uri = statistics_object.file_s3_uri
+            baseline_config["StatisticsResource"] = dict(S3Uri=statistics_s3_uri)
+        # ConstraintsResource and BaseliningJobName can co-exist in BYOC case
+        if latest_baselining_job_name:
+            baseline_config["BaseliningJobName"] = latest_baselining_job_name
 
-    def _upload_and_convert_to_processing_input(self, source, destination, name):
-        """Generates a ProcessingInput object from a source.
+        # job input
+        if endpoint_input is not None:
+            normalized_endpoint_input = self._normalize_endpoint_input(
+                endpoint_input=endpoint_input
+            )
+            job_input = normalized_endpoint_input._to_request_dict()
 
-        Source can be a local path or an S3 uri.
+        # job output
+        if output_s3_uri is not None:
+            normalized_monitoring_output = self._normalize_monitoring_output(
+                monitoring_schedule_name, output_s3_uri
+            )
+            job_output["MonitoringOutputs"] = [normalized_monitoring_output._to_request_dict()]
+        if output_kms_key is not None:
+            job_output["KmsKeyId"] = output_kms_key
+
+        # cluster config
+        if instance_count is not None:
+            cluster_config["InstanceCount"] = instance_count
+        if instance_type is not None:
+            cluster_config["InstanceType"] = instance_type
+        if volume_size_in_gb is not None:
+            cluster_config["VolumeSizeInGB"] = volume_size_in_gb
+        if volume_kms_key is not None:
+            cluster_config["VolumeKmsKeyId"] = volume_kms_key
+
+        # stop condition
+        if max_runtime_in_seconds is not None:
+            stop_condition["MaxRuntimeInSeconds"] = max_runtime_in_seconds
+
+        request_dict = {
+            "JobDefinitionName": job_definition_name,
+            "{}AppSpecification".format(self.monitoring_type()): app_specification,
+            "{}JobInput".format(self.monitoring_type()): job_input,
+            "{}JobOutputConfig".format(self.monitoring_type()): job_output,
+            "JobResources": dict(ClusterConfig=cluster_config),
+            "RoleArn": self.sagemaker_session.expand_role(role),
+        }
+
+        if baseline_config:
+            request_dict["{}BaselineConfig".format(self.monitoring_type())] = baseline_config
+
+        if network_config is not None:
+            network_config_dict = network_config._to_request_dict()
+            self._validate_network_config(network_config_dict)
+            request_dict["NetworkConfig"] = network_config_dict
+        elif existing_network_config is not None:
+            request_dict["NetworkConfig"] = existing_network_config
+
+        if stop_condition:
+            request_dict["StoppingCondition"] = stop_condition
+
+        if tags is not None:
+            request_dict["Tags"] = tags
+
+        return request_dict
+
+
+class ModelQualityMonitor(ModelMonitor):
+    """Amazon SageMaker model monitor to monitor quality metrics for an endpoint.
+
+    Please see the __init__ method of its base class for how to instantiate it.
+    """
+
+    JOB_DEFINITION_BASE_NAME = "model-quality-job-definition"
+
+    def __init__(
+        self,
+        role,
+        instance_count=1,
+        instance_type="ml.m5.xlarge",
+        volume_size_in_gb=30,
+        volume_kms_key=None,
+        output_kms_key=None,
+        max_runtime_in_seconds=None,
+        base_job_name=None,
+        sagemaker_session=None,
+        env=None,
+        tags=None,
+        network_config=None,
+    ):
+        """Initializes a monitor instance.
+
+        The monitor handles baselining datasets and creating Amazon SageMaker
+        Monitoring Schedules to monitor SageMaker endpoints.
 
         Args:
-            source (str): The source of the data. This can be a local path or an S3 uri.
-            destination (str): The desired container path for the data to be downloaded to.
-            name (str): The name of the ProcessingInput.
+            role (str): An AWS IAM role. The Amazon SageMaker jobs use this role.
+            instance_count (int): The number of instances to run
+                the jobs with.
+            instance_type (str): Type of EC2 instance to use for
+                the job, for example, 'ml.m5.xlarge'.
+            volume_size_in_gb (int): Size in GB of the EBS volume
+                to use for storing data during processing (default: 30).
+            volume_kms_key (str): A KMS key for the job's volume.
+            output_kms_key (str): The KMS key id for the job's outputs.
+            max_runtime_in_seconds (int): Timeout in seconds. After this amount of
+                time, Amazon SageMaker terminates the job regardless of its current status.
+                Default: 3600
+            base_job_name (str): Prefix for the job name. If not specified,
+                a default name is generated based on the training image name and
+                current timestamp.
+            sagemaker_session (sagemaker.session.Session): Session object which
+                manages interactions with Amazon SageMaker APIs and any other
+                AWS services needed. If not specified, one is created using
+                the default AWS configuration chain.
+            env (dict): Environment variables to be passed to the job.
+            tags ([dict]): List of tags to be passed to the job.
+            network_config (sagemaker.network.NetworkConfig): A NetworkConfig
+                object that configures network isolation, encryption of
+                inter-container traffic, security group IDs, and subnets.
+        """
+
+        session = sagemaker_session or Session()
+        super(ModelQualityMonitor, self).__init__(
+            role=role,
+            image_uri=ModelQualityMonitor._get_default_image_uri(session.boto_session.region_name),
+            instance_count=instance_count,
+            instance_type=instance_type,
+            volume_size_in_gb=volume_size_in_gb,
+            volume_kms_key=volume_kms_key,
+            output_kms_key=output_kms_key,
+            max_runtime_in_seconds=max_runtime_in_seconds,
+            base_job_name=base_job_name,
+            sagemaker_session=session,
+            env=env,
+            tags=tags,
+            network_config=network_config,
+        )
+
+    @classmethod
+    def monitoring_type(cls):
+        """Type of the monitoring job."""
+        return "ModelQuality"
+
+    def suggest_baseline(
+        self,
+        baseline_dataset,
+        dataset_format,
+        problem_type,
+        inference_attribute=None,
+        probability_attribute=None,
+        ground_truth_attribute=None,
+        probability_threshold_attribute=None,
+        post_analytics_processor_script=None,
+        output_s3_uri=None,
+        wait=False,
+        logs=False,
+        job_name=None,
+    ):
+        """Suggest baselines for use with Amazon SageMaker Model Monitoring Schedules.
+
+        Args:
+            baseline_dataset (str): The path to the baseline_dataset file. This can be a local
+                path or an S3 uri.
+            dataset_format (dict): The format of the baseline_dataset.
+            problem_type (str): The type of problem of this model quality monitoring. Valid
+                values are "Regression", "BinaryClassification", "MulticlassClassification".
+            inference_attribute (str): Index or JSONpath to locate predicted label(s).
+            probability_attribute (str or int): Index or JSONpath to locate probabilities.
+            ground_truth_attribute (str): Index or JSONpath to locate actual label(s).
+            probability_threshold_attribute (float): threshold to convert probabilities to binaries
+                Only used for ModelQualityMonitor, ModelBiasMonitor and ModelExplainabilityMonitor
+            post_analytics_processor_script (str): The path to the record post-analytics processor
+                script. This can be a local path or an S3 uri.
+            output_s3_uri (str): Desired S3 destination Destination of the constraint_violations
+                and statistics json files.
+                Default: "s3://<default_session_bucket>/<job_name>/output"
+            wait (bool): Whether the call should wait until the job completes (default: False).
+            logs (bool): Whether to show the logs produced by the job.
+                Only meaningful when wait is True (default: False).
+            job_name (str): Processing job name. If not specified, the processor generates
+                a default job name, based on the image name and current timestamp.
 
         Returns:
-            sagemaker.processing.ProcessingInput: The ProcessingInput object.
+            sagemaker.processing.ProcessingJob: The ProcessingJob object representing the
+                baselining job.
 
         """
-        if source is None:
-            return None
+        self.latest_baselining_job_name = self._generate_baselining_job_name(job_name=job_name)
 
-        parse_result = urlparse(url=source)
+        normalized_baseline_dataset_input = self._upload_and_convert_to_processing_input(
+            source=baseline_dataset,
+            destination=str(
+                pathlib.PurePosixPath(
+                    _CONTAINER_BASE_PATH, _CONTAINER_INPUT_PATH, _BASELINE_DATASET_INPUT_NAME
+                )
+            ),
+            name=_BASELINE_DATASET_INPUT_NAME,
+        )
 
-        if parse_result.scheme != "s3":
-            s3_uri = s3.s3_path_join(
-                "s3://",
-                self.sagemaker_session.default_bucket(),
-                _MODEL_MONITOR_S3_PATH,
-                _BASELINING_S3_PATH,
-                self.latest_baselining_job_name,
-                _INPUT_S3_PATH,
-                name,
+        # Unlike other input, dataset must be a directory for the Monitoring image.
+        baseline_dataset_container_path = normalized_baseline_dataset_input.destination
+
+        normalized_post_processor_script_input = self._upload_and_convert_to_processing_input(
+            source=post_analytics_processor_script,
+            destination=str(
+                pathlib.PurePosixPath(
+                    _CONTAINER_BASE_PATH,
+                    _CONTAINER_INPUT_PATH,
+                    _POST_ANALYTICS_PROCESSOR_SCRIPT_INPUT_NAME,
+                )
+            ),
+            name=_POST_ANALYTICS_PROCESSOR_SCRIPT_INPUT_NAME,
+        )
+
+        post_processor_script_container_path = None
+        if normalized_post_processor_script_input is not None:
+            post_processor_script_container_path = str(
+                pathlib.PurePosixPath(
+                    normalized_post_processor_script_input.destination,
+                    os.path.basename(post_analytics_processor_script),
+                )
             )
-            s3.S3Uploader.upload(
-                local_path=source, desired_s3_uri=s3_uri, sagemaker_session=self.sagemaker_session
-            )
-            source = s3_uri
 
-        return ProcessingInput(source=source, destination=destination, input_name=name)
+        normalized_baseline_output = self._normalize_baseline_output(output_s3_uri=output_s3_uri)
+
+        normalized_env = self._generate_env_map(
+            env=self.env,
+            dataset_format=dataset_format,
+            output_path=normalized_baseline_output.source,
+            enable_cloudwatch_metrics=False,  # Only supported for monitoring schedules
+            dataset_source_container_path=baseline_dataset_container_path,
+            post_processor_script_container_path=post_processor_script_container_path,
+            analysis_type="MODEL_QUALITY",
+            problem_type=problem_type,
+            inference_attribute=inference_attribute,
+            probability_attribute=probability_attribute,
+            ground_truth_attribute=ground_truth_attribute,
+            probability_threshold_attribute=probability_threshold_attribute,
+        )
+
+        baselining_processor = Processor(
+            role=self.role,
+            image_uri=self.image_uri,
+            instance_count=self.instance_count,
+            instance_type=self.instance_type,
+            entrypoint=self.entrypoint,
+            volume_size_in_gb=self.volume_size_in_gb,
+            volume_kms_key=self.volume_kms_key,
+            output_kms_key=self.output_kms_key,
+            max_runtime_in_seconds=self.max_runtime_in_seconds,
+            base_job_name=self.base_job_name,
+            sagemaker_session=self.sagemaker_session,
+            env=normalized_env,
+            tags=self.tags,
+            network_config=self.network_config,
+        )
+
+        baseline_job_inputs_with_nones = [
+            normalized_baseline_dataset_input,
+            normalized_post_processor_script_input,
+        ]
+
+        baseline_job_inputs = [
+            baseline_job_input
+            for baseline_job_input in baseline_job_inputs_with_nones
+            if baseline_job_input is not None
+        ]
+
+        baselining_processor.run(
+            inputs=baseline_job_inputs,
+            outputs=[normalized_baseline_output],
+            arguments=self.arguments,
+            wait=wait,
+            logs=logs,
+            job_name=self.latest_baselining_job_name,
+        )
+
+        self.latest_baselining_job = BaseliningJob.from_processing_job(
+            processing_job=baselining_processor.latest_job
+        )
+        self.baselining_jobs.append(self.latest_baselining_job)
+        return baselining_processor.latest_job
+
+    # noinspection PyMethodOverriding
+    def create_monitoring_schedule(
+        self,
+        endpoint_input,
+        ground_truth_input,
+        problem_type,
+        record_preprocessor_script=None,
+        post_analytics_processor_script=None,
+        output_s3_uri=None,
+        constraints=None,
+        monitor_schedule_name=None,
+        schedule_cron_expression=None,
+        enable_cloudwatch_metrics=True,
+    ):
+        """Creates a monitoring schedule.
+
+        Args:
+            endpoint_input (str or sagemaker.model_monitor.EndpointInput): The endpoint to
+                monitor. This can either be the endpoint name or an EndpointInput.
+            ground_truth_input (str): S3 URI to ground truth dataset.
+            problem_type (str): The type of problem of this model quality monitoring. Valid
+                values are "Regression", "BinaryClassification", "MulticlassClassification".
+            record_preprocessor_script (str): The path to the record preprocessor script. This can
+                be a local path or an S3 uri.
+            post_analytics_processor_script (str): The path to the record post-analytics processor
+                script. This can be a local path or an S3 uri.
+            output_s3_uri (str): S3 destination of the constraint_violations and analysis result.
+                Default: "s3://<default_session_bucket>/<job_name>/output"
+            constraints (sagemaker.model_monitor.Constraints or str): If provided it will be used
+                for monitoring the endpoint. It can be a Constraints object or an S3 uri pointing
+                to a constraints JSON file.
+            monitor_schedule_name (str): Schedule name. If not specified, the processor generates
+                a default job name, based on the image name and current timestamp.
+            schedule_cron_expression (str): The cron expression that dictates the frequency that
+                this job run. See sagemaker.model_monitor.CronExpressionGenerator for valid
+                expressions. Default: Daily.
+            enable_cloudwatch_metrics (bool): Whether to publish cloudwatch metrics as part of
+                the baselining or monitoring jobs.
+        """
+        if self.job_definition_name is not None or self.monitoring_schedule_name is not None:
+            message = (
+                "It seems that this object was already used to create an Amazon Model "
+                "Monitoring Schedule. To create another, first delete the existing one "
+                "using my_monitor.delete_monitoring_schedule()."
+            )
+            _LOGGER.error(message)
+            raise ValueError(message)
+
+        # create job definition
+        monitor_schedule_name = self._generate_monitoring_schedule_name(
+            schedule_name=monitor_schedule_name
+        )
+        new_job_definition_name = name_from_base(self.JOB_DEFINITION_BASE_NAME)
+        request_dict = self._build_create_model_quality_job_definition_request(
+            monitoring_schedule_name=monitor_schedule_name,
+            job_definition_name=new_job_definition_name,
+            image_uri=self.image_uri,
+            latest_baselining_job_name=self.latest_baselining_job_name,
+            endpoint_input=endpoint_input,
+            ground_truth_input=ground_truth_input,
+            problem_type=problem_type,
+            record_preprocessor_script=record_preprocessor_script,
+            post_analytics_processor_script=post_analytics_processor_script,
+            output_s3_uri=self._normalize_monitoring_output(
+                monitor_schedule_name, output_s3_uri
+            ).destination,
+            constraints=constraints,
+            enable_cloudwatch_metrics=enable_cloudwatch_metrics,
+            role=self.role,
+            instance_count=self.instance_count,
+            instance_type=self.instance_type,
+            volume_size_in_gb=self.volume_size_in_gb,
+            volume_kms_key=self.volume_kms_key,
+            output_kms_key=self.output_kms_key,
+            max_runtime_in_seconds=self.max_runtime_in_seconds,
+            env=self.env,
+            tags=self.tags,
+            network_config=self.network_config,
+        )
+        self.sagemaker_session.sagemaker_client.create_model_quality_job_definition(**request_dict)
+
+        # create schedule
+        try:
+            self._create_monitoring_schedule_from_job_definition(
+                monitor_schedule_name=monitor_schedule_name,
+                job_definition_name=new_job_definition_name,
+                schedule_cron_expression=schedule_cron_expression,
+            )
+            self.job_definition_name = new_job_definition_name
+            self.monitoring_schedule_name = monitor_schedule_name
+        except Exception:
+            _LOGGER.exception("Failed to create monitoring schedule.")
+            # noinspection PyBroadException
+            try:
+                self.sagemaker_session.sagemaker_client.delete_model_quality_job_definition(
+                    JobDefinitionName=new_job_definition_name
+                )
+            except Exception:  # pylint: disable=W0703
+                message = "Failed to delete job definition {}.".format(new_job_definition_name)
+                _LOGGER.exception(message)
+            raise
+
+    def update_monitoring_schedule(
+        self,
+        endpoint_input=None,
+        ground_truth_input=None,
+        problem_type=None,
+        record_preprocessor_script=None,
+        post_analytics_processor_script=None,
+        output_s3_uri=None,
+        constraints=None,
+        schedule_cron_expression=None,
+        enable_cloudwatch_metrics=None,
+        role=None,
+        instance_count=None,
+        instance_type=None,
+        volume_size_in_gb=None,
+        volume_kms_key=None,
+        output_kms_key=None,
+        max_runtime_in_seconds=None,
+        env=None,
+        network_config=None,
+    ):
+        """Updates the existing monitoring schedule.
+
+        If more options than schedule_cron_expression are to be updated, a new job definition will
+        be created to hold them. The old job definition will not be deleted.
+
+        Args:
+            endpoint_input (str or sagemaker.model_monitor.EndpointInput): The endpoint
+                to monitor. This can either be the endpoint name or an EndpointInput.
+            ground_truth_input (str): S3 URI to ground truth dataset.
+            problem_type (str): The type of problem of this model quality monitoring. Valid values
+                are "Regression", "BinaryClassification", "MulticlassClassification".
+            record_preprocessor_script (str): The path to the record preprocessor script. This can
+                be a local path or an S3 uri.
+            post_analytics_processor_script (str): The path to the record post-analytics processor
+                script. This can be a local path or an S3 uri.
+            output_s3_uri (str): S3 destination of the constraint_violations and analysis result.
+                Default: "s3://<default_session_bucket>/<job_name>/output"
+            constraints (sagemaker.model_monitor.Constraints or str): If provided it will be used
+                for monitoring the endpoint. It can be a Constraints object or an S3 uri pointing
+                to a constraints JSON file.
+            schedule_cron_expression (str): The cron expression that dictates the frequency that
+                this job run. See sagemaker.model_monitor.CronExpressionGenerator for valid
+                expressions. Default: Daily.
+            enable_cloudwatch_metrics (bool): Whether to publish cloudwatch metrics as part of
+                the baselining or monitoring jobs.
+            role (str): An AWS IAM role. The Amazon SageMaker jobs use this role.
+            instance_count (int): The number of instances to run
+                the jobs with.
+            instance_type (str): Type of EC2 instance to use for
+                the job, for example, 'ml.m5.xlarge'.
+            volume_size_in_gb (int): Size in GB of the EBS volume
+                to use for storing data during processing (default: 30).
+            volume_kms_key (str): A KMS key for the job's volume.
+            output_kms_key (str): The KMS key id for the job's outputs.
+            max_runtime_in_seconds (int): Timeout in seconds. After this amount of
+                time, Amazon SageMaker terminates the job regardless of its current status.
+                Default: 3600
+            env (dict): Environment variables to be passed to the job.
+            network_config (sagemaker.network.NetworkConfig): A NetworkConfig
+                object that configures network isolation, encryption of
+                inter-container traffic, security group IDs, and subnets.
+        """
+        valid_args = {
+            arg: value for arg, value in locals().items() if arg != "self" and value is not None
+        }
+
+        # Nothing to update
+        if len(valid_args) <= 0:
+            return
+
+        # Only need to update schedule expression
+        if len(valid_args) == 1 and schedule_cron_expression is not None:
+            self._update_monitoring_schedule(self.job_definition_name, schedule_cron_expression)
+            return
+
+        # Need to update schedule with a new job definition
+        job_desc = self.sagemaker_session.sagemaker_client.describe_model_quality_job_definition(
+            JobDefinitionName=self.job_definition_name
+        )
+        new_job_definition_name = name_from_base(self.JOB_DEFINITION_BASE_NAME)
+        request_dict = self._build_create_model_quality_job_definition_request(
+            monitoring_schedule_name=self.monitoring_schedule_name,
+            job_definition_name=new_job_definition_name,
+            image_uri=self.image_uri,
+            existing_job_desc=job_desc,
+            endpoint_input=endpoint_input,
+            ground_truth_input=ground_truth_input,
+            problem_type=problem_type,
+            record_preprocessor_script=record_preprocessor_script,
+            post_analytics_processor_script=post_analytics_processor_script,
+            output_s3_uri=output_s3_uri,
+            constraints=constraints,
+            enable_cloudwatch_metrics=enable_cloudwatch_metrics,
+            role=role,
+            instance_count=instance_count,
+            instance_type=instance_type,
+            volume_size_in_gb=volume_size_in_gb,
+            volume_kms_key=volume_kms_key,
+            output_kms_key=output_kms_key,
+            max_runtime_in_seconds=max_runtime_in_seconds,
+            env=env,
+            tags=self.tags,
+            network_config=network_config,
+        )
+        self.sagemaker_session.sagemaker_client.create_model_quality_job_definition(**request_dict)
+        try:
+            self._update_monitoring_schedule(new_job_definition_name, schedule_cron_expression)
+            self.job_definition_name = new_job_definition_name
+            if role is not None:
+                self.role = role
+            if instance_count is not None:
+                self.instance_count = instance_count
+            if instance_type is not None:
+                self.instance_type = instance_type
+            if volume_size_in_gb is not None:
+                self.volume_size_in_gb = volume_size_in_gb
+            if volume_kms_key is not None:
+                self.volume_kms_key = volume_kms_key
+            if output_kms_key is not None:
+                self.output_kms_key = output_kms_key
+            if max_runtime_in_seconds is not None:
+                self.max_runtime_in_seconds = max_runtime_in_seconds
+            if env is not None:
+                self.env = env
+            if network_config is not None:
+                self.network_config = network_config
+        except Exception:
+            _LOGGER.exception("Failed to update monitoring schedule.")
+            # noinspection PyBroadException
+            try:
+                self.sagemaker_session.sagemaker_client.delete_model_quality_job_definition(
+                    JobDefinitionName=new_job_definition_name
+                )
+            except Exception:  # pylint: disable=W0703
+                message = "Failed to delete job definition {}.".format(new_job_definition_name)
+                _LOGGER.exception(message)
+            raise
+
+    def delete_monitoring_schedule(self):
+        """Deletes the monitoring schedule and its job definition."""
+        super(ModelQualityMonitor, self).delete_monitoring_schedule()
+        # Delete job definition.
+        message = "Deleting Model Quality Job Definition with name: {}".format(
+            self.job_definition_name
+        )
+        _LOGGER.info(message)
+        self.sagemaker_session.sagemaker_client.delete_model_quality_job_definition(
+            JobDefinitionName=self.job_definition_name
+        )
+        self.job_definition_name = None
+
+    @classmethod
+    def attach(cls, monitor_schedule_name, sagemaker_session=None):
+        """Sets this object's schedule name to the name provided.
+
+        This allows subsequent describe_schedule or list_executions calls to point
+        to the given schedule.
+
+        Args:
+            monitor_schedule_name (str): The name of the schedule to attach to.
+            sagemaker_session (sagemaker.session.Session): Session object which
+                manages interactions with Amazon SageMaker APIs and any other
+                AWS services needed. If not specified, one is created using
+                the default AWS configuration chain.
+        """
+        sagemaker_session = sagemaker_session or Session()
+        schedule_desc = sagemaker_session.describe_monitoring_schedule(
+            monitoring_schedule_name=monitor_schedule_name
+        )
+        monitoring_type = schedule_desc["MonitoringScheduleConfig"].get("MonitoringType")
+        if monitoring_type != cls.monitoring_type():
+            raise TypeError(
+                "{} can only attach to ModelQuality monitoring schedule.".format(__class__.__name__)
+            )
+        job_definition_name = schedule_desc["MonitoringScheduleConfig"][
+            "MonitoringJobDefinitionName"
+        ]
+        job_desc = sagemaker_session.sagemaker_client.describe_model_quality_job_definition(
+            JobDefinitionName=job_definition_name
+        )
+        tags = sagemaker_session.list_tags(resource_arn=schedule_desc["MonitoringScheduleArn"])
+        return ModelMonitor._attach(
+            clazz=cls,
+            sagemaker_session=sagemaker_session,
+            schedule_desc=schedule_desc,
+            job_desc=job_desc,
+            tags=tags,
+        )
+
+    def _build_create_model_quality_job_definition_request(
+        self,
+        monitoring_schedule_name,
+        job_definition_name,
+        image_uri,
+        latest_baselining_job_name=None,
+        existing_job_desc=None,
+        endpoint_input=None,
+        ground_truth_input=None,
+        problem_type=None,
+        record_preprocessor_script=None,
+        post_analytics_processor_script=None,
+        output_s3_uri=None,
+        constraints=None,
+        enable_cloudwatch_metrics=None,
+        role=None,
+        instance_count=None,
+        instance_type=None,
+        volume_size_in_gb=None,
+        volume_kms_key=None,
+        output_kms_key=None,
+        max_runtime_in_seconds=None,
+        env=None,
+        tags=None,
+        network_config=None,
+    ):
+        """Build the request for job definition creation API
+
+        Args:
+            monitoring_schedule_name (str): Monitoring schedule name.
+            job_definition_name (str): Job definition name.
+                If not specified then a default one will be generated.
+            image_uri (str): The uri of the image to use for the jobs started by the Monitor.
+            latest_baselining_job_name (str): name of the last baselining job.
+            existing_job_desc (dict): description of existing job definition. It will be updated by
+                 values that were passed in, and then used to create the new job definition.
+            endpoint_input (str or sagemaker.model_monitor.EndpointInput): The endpoint to monitor.
+                This can either be the endpoint name or an EndpointInput.
+            ground_truth_input (str): S3 URI to ground truth dataset.
+            problem_type (str): The type of problem of this model quality monitoring. Valid
+                values are "Regression", "BinaryClassification", "MulticlassClassification".
+            output_s3_uri (str): S3 destination of the constraint_violations and analysis result.
+                Default: "s3://<default_session_bucket>/<job_name>/output"
+            constraints (sagemaker.model_monitor.Constraints or str): If provided it will be used
+                for monitoring the endpoint. It can be a Constraints object or an S3 uri pointing
+                to a constraints JSON file.
+            enable_cloudwatch_metrics (bool): Whether to publish cloudwatch metrics as part of
+                the baselining or monitoring jobs.
+            role (str): An AWS IAM role. The Amazon SageMaker jobs use this role.
+            instance_count (int): The number of instances to run
+                the jobs with.
+            instance_type (str): Type of EC2 instance to use for
+                the job, for example, 'ml.m5.xlarge'.
+            volume_size_in_gb (int): Size in GB of the EBS volume
+                to use for storing data during processing (default: 30).
+            volume_kms_key (str): A KMS key for the job's volume.
+            output_kms_key (str): KMS key id for output.
+            max_runtime_in_seconds (int): Timeout in seconds. After this amount of
+                time, Amazon SageMaker terminates the job regardless of its current status.
+                Default: 3600
+            env (dict): Environment variables to be passed to the job.
+            tags ([dict]): List of tags to be passed to the job.
+            network_config (sagemaker.network.NetworkConfig): A NetworkConfig
+                object that configures network isolation, encryption of
+                inter-container traffic, security group IDs, and subnets.
+
+        Returns:
+            dict: request parameters to create job definition.
+        """
+        if existing_job_desc is not None:
+            app_specification = existing_job_desc[
+                "{}AppSpecification".format(self.monitoring_type())
+            ]
+            baseline_config = existing_job_desc.get(
+                "{}BaselineConfig".format(self.monitoring_type()), {}
+            )
+            job_input = existing_job_desc["{}JobInput".format(self.monitoring_type())]
+            job_output = existing_job_desc["{}JobOutputConfig".format(self.monitoring_type())]
+            cluster_config = existing_job_desc["JobResources"]["ClusterConfig"]
+            if role is None:
+                role = existing_job_desc["RoleArn"]
+            existing_network_config = existing_job_desc.get("NetworkConfig")
+            stop_condition = existing_job_desc.get("StoppingCondition", {})
+        else:
+            app_specification = {}
+            baseline_config = {}
+            job_input = {}
+            job_output = {}
+            cluster_config = {}
+            existing_network_config = None
+            stop_condition = {}
+
+        # app specification
+        app_specification["ImageUri"] = image_uri
+        if problem_type is not None:
+            app_specification["ProblemType"] = problem_type
+        record_preprocessor_script_s3_uri = None
+        if record_preprocessor_script is not None:
+            record_preprocessor_script_s3_uri = self._s3_uri_from_local_path(
+                path=record_preprocessor_script
+            )
+
+        post_analytics_processor_script_s3_uri = None
+        if post_analytics_processor_script is not None:
+            post_analytics_processor_script_s3_uri = self._s3_uri_from_local_path(
+                path=post_analytics_processor_script
+            )
+
+        if post_analytics_processor_script_s3_uri:
+            app_specification[
+                "PostAnalyticsProcessorSourceUri"
+            ] = post_analytics_processor_script_s3_uri
+        if record_preprocessor_script_s3_uri:
+            app_specification["RecordPreprocessorSourceUri"] = record_preprocessor_script_s3_uri
+
+        normalized_env = self._generate_env_map(
+            env=env, enable_cloudwatch_metrics=enable_cloudwatch_metrics
+        )
+        if normalized_env:
+            app_specification["Environment"] = normalized_env
+
+        # baseline config
+        if constraints:
+            # noinspection PyTypeChecker
+            _, constraints_object = self._get_baseline_files(
+                statistics=None, constraints=constraints, sagemaker_session=self.sagemaker_session
+            )
+            constraints_s3_uri = None
+            if constraints_object is not None:
+                constraints_s3_uri = constraints_object.file_s3_uri
+            baseline_config["ConstraintsResource"] = dict(S3Uri=constraints_s3_uri)
+        if latest_baselining_job_name:
+            baseline_config["BaseliningJobName"] = latest_baselining_job_name
+
+        # job input
+        if endpoint_input is not None:
+            normalized_endpoint_input = self._normalize_endpoint_input(
+                endpoint_input=endpoint_input
+            )
+            job_input = normalized_endpoint_input._to_request_dict()
+        if ground_truth_input is not None:
+            job_input["GroundTruthS3Input"] = dict(S3Uri=ground_truth_input)
+
+        # job output
+        if output_s3_uri is not None:
+            normalized_monitoring_output = self._normalize_monitoring_output(
+                monitoring_schedule_name, output_s3_uri
+            )
+            job_output["MonitoringOutputs"] = [normalized_monitoring_output._to_request_dict()]
+        if output_kms_key is not None:
+            job_output["KmsKeyId"] = output_kms_key
+
+        # cluster config
+        if instance_count is not None:
+            cluster_config["InstanceCount"] = instance_count
+        if instance_type is not None:
+            cluster_config["InstanceType"] = instance_type
+        if volume_size_in_gb is not None:
+            cluster_config["VolumeSizeInGB"] = volume_size_in_gb
+        if volume_kms_key is not None:
+            cluster_config["VolumeKmsKeyId"] = volume_kms_key
+
+        # stop condition
+        if max_runtime_in_seconds is not None:
+            stop_condition["MaxRuntimeInSeconds"] = max_runtime_in_seconds
+
+        request_dict = {
+            "JobDefinitionName": job_definition_name,
+            "{}AppSpecification".format(self.monitoring_type()): app_specification,
+            "{}JobInput".format(self.monitoring_type()): job_input,
+            "{}JobOutputConfig".format(self.monitoring_type()): job_output,
+            "JobResources": dict(ClusterConfig=cluster_config),
+            "RoleArn": self.sagemaker_session.expand_role(role),
+        }
+
+        if baseline_config:
+            request_dict["{}BaselineConfig".format(self.monitoring_type())] = baseline_config
+
+        if network_config is not None:
+            network_config_dict = network_config._to_request_dict()
+            self._validate_network_config(network_config_dict)
+            request_dict["NetworkConfig"] = network_config_dict
+        elif existing_network_config is not None:
+            request_dict["NetworkConfig"] = existing_network_config
+
+        if stop_condition:
+            request_dict["StoppingCondition"] = stop_condition
+
+        if tags is not None:
+            request_dict["Tags"] = tags
+
+        return request_dict
 
     @staticmethod
     def _get_default_image_uri(region):
@@ -1796,9 +3038,7 @@ class BaseliningJob(ProcessingJob):
     """Provides functionality to retrieve baseline-specific files output from baselining job."""
 
     def __init__(self, sagemaker_session, job_name, inputs, outputs, output_kms_key=None):
-        """Initializes a Baselining job.
-
-        It tracks a baselining job kicked off by the suggest workflow.
+        """Initializes a Baselining job that tracks a the job kicked off by the suggest workflow.
 
         Args:
             sagemaker_session (sagemaker.session.Session): Session object which
@@ -1844,9 +3084,10 @@ class BaseliningJob(ProcessingJob):
         )
 
     def baseline_statistics(self, file_name=STATISTICS_JSON_DEFAULT_FILE_NAME, kms_key=None):
-        """Returns a sagemaker.model_monitor.
+        """Returns a sagemaker.model_monitor.Statistics object.
 
-        Statistics object representing the statistics JSON file generated by this baselining job.
+        It represents the statistics
+        JSON file generated by this baselining job.
 
         Args:
             file_name (str): The name of the json-formatted statistics file
@@ -1883,9 +3124,10 @@ class BaseliningJob(ProcessingJob):
                 raise client_error
 
     def suggested_constraints(self, file_name=CONSTRAINTS_JSON_DEFAULT_FILE_NAME, kms_key=None):
-        """Returns a sagemaker.model_monitor.
+        """Returns a sagemaker.model_monitor.Constraints object.
 
-        Constraints object representing the constraints JSON file generated by this baselining job.
+        It represents the constraints
+        JSON file generated by this baselining job.
 
         Args:
             file_name (str): The name of the json-formatted constraints file
@@ -1923,12 +3165,12 @@ class BaseliningJob(ProcessingJob):
 
 
 class MonitoringExecution(ProcessingJob):
-    """Provides functionality to retrieve monitoring-specific files from monitoring executions."""
+    """Provides functionality to retrieve monitoring-specific files output."""
 
     def __init__(self, sagemaker_session, job_name, inputs, output, output_kms_key=None):
-        """Initializes a MonitoringExecution job that tracks a monitoring execution.
+        """Initializes a MonitoringExecution job.
 
-        Its kicked off by an Amazon SageMaker Model Monitoring Schedule.
+        It tracks a monitoring execution kicked off by Amazon SageMaker Model Monitoring Schedule.
 
         Args:
             sagemaker_session (sagemaker.session.Session): Session object which
@@ -1973,6 +3215,7 @@ class MonitoringExecution(ProcessingJob):
         ]  # This is necessary while the API only vends an arn.
         job_desc = sagemaker_session.describe_processing_job(job_name=processing_job_name)
 
+        output_config = job_desc["ProcessingOutputConfig"]["Outputs"][0]
         return cls(
             sagemaker_session=sagemaker_session,
             job_name=processing_job_name,
@@ -1991,18 +3234,17 @@ class MonitoringExecution(ProcessingJob):
                 for processing_input in job_desc["ProcessingInputs"]
             ],
             output=ProcessingOutput(
-                source=job_desc["ProcessingOutputConfig"]["Outputs"][0]["S3Output"]["LocalPath"],
-                destination=job_desc["ProcessingOutputConfig"]["Outputs"][0]["S3Output"]["S3Uri"],
-                output_name=job_desc["ProcessingOutputConfig"]["Outputs"][0]["OutputName"],
+                source=output_config["S3Output"]["LocalPath"],
+                destination=output_config["S3Output"]["S3Uri"],
+                output_name=output_config["OutputName"],
             ),
             output_kms_key=job_desc["ProcessingOutputConfig"].get("KmsKeyId"),
         )
 
     def statistics(self, file_name=STATISTICS_JSON_DEFAULT_FILE_NAME, kms_key=None):
-        """Returns a sagemaker.model_monitor.
+        """Returns a sagemaker.model_monitor.Statistics object.
 
-        Statistics object representing the statistics
-        JSON file generated by this monitoring execution.
+        It represents the statistics JSON file generated by this monitoring execution.
 
         Args:
             file_name (str): The name of the json-formatted statistics file
@@ -2041,10 +3283,9 @@ class MonitoringExecution(ProcessingJob):
     def constraint_violations(
         self, file_name=CONSTRAINT_VIOLATIONS_JSON_DEFAULT_FILE_NAME, kms_key=None
     ):
-        """Returns a sagemaker.model_monitor.
+        """Returns a sagemaker.model_monitor.ConstraintViolations object.
 
-        ConstraintViolations object representing the constraint violations
-        JSON file generated by this monitoring execution.
+        It represents the constraint violations JSON file generated by this monitoring execution.
 
         Args:
             file_name (str): The name of the json-formatted constraint violations file.
@@ -2095,11 +3336,17 @@ class EndpointInput(object):
         destination,
         s3_input_mode="File",
         s3_data_distribution_type="FullyReplicated",
+        start_time_offset=None,
+        end_time_offset=None,
+        features_attribute=None,
+        inference_attribute=None,
+        probability_attribute=None,
+        probability_threshold_attribute=None,
     ):
         """Initialize an ``EndpointInput`` instance.
 
-        EndpointInput accepts parameters that specify an endpoint input for a monitoring
-        job and provides a method to turn those parameters into a dictionary.
+        EndpointInput accepts parameters that specify an endpoint input for a monitoring job
+        and provides a method to turn those parameters into a dictionary.
 
         Args:
             endpoint_name (str): The name of the endpoint.
@@ -2107,24 +3354,51 @@ class EndpointInput(object):
             s3_input_mode (str): The S3 input mode. Can be one of: "File", "Pipe. Default: "File".
             s3_data_distribution_type (str): The S3 Data Distribution Type. Can be one of:
                 "FullyReplicated", "ShardedByS3Key"
-
+            start_time_offset (str): Monitoring start time offset, e.g. "-PT1H"
+            end_time_offset (str): Monitoring end time offset, e.g. "-PT0H".
+            features_attribute (str): JSONpath to locate features in JSONlines dataset.
+                Only used for ModelBiasMonitor and ModelExplainabilityMonitor
+            inference_attribute (str): Index or JSONpath to locate predicted label(s).
+                Only used for ModelQualityMonitor, ModelBiasMonitor, and ModelExplainabilityMonitor
+            probability_attribute (str or int): Index or JSONpath to locate probabilities.
+                Only used for ModelQualityMonitor, ModelBiasMonitor and ModelExplainabilityMonitor
+            probability_threshold_attribute (float): threshold to convert probabilities to binaries
+                Only used for ModelQualityMonitor, ModelBiasMonitor and ModelExplainabilityMonitor
         """
         self.endpoint_name = endpoint_name
         self.destination = destination
         self.s3_input_mode = s3_input_mode
         self.s3_data_distribution_type = s3_data_distribution_type
+        self.start_time_offset = start_time_offset
+        self.end_time_offset = end_time_offset
+        self.features_attribute = features_attribute
+        self.inference_attribute = inference_attribute
+        self.probability_attribute = probability_attribute
+        self.probability_threshold_attribute = probability_threshold_attribute
 
     def _to_request_dict(self):
         """Generates a request dictionary using the parameters provided to the class."""
-        endpoint_input_request = {
-            "EndpointInput": {
-                "EndpointName": self.endpoint_name,
-                "LocalPath": self.destination,
-                "S3InputMode": self.s3_input_mode,
-                "S3DataDistributionType": self.s3_data_distribution_type,
-            }
+        endpoint_input = {
+            "EndpointName": self.endpoint_name,
+            "LocalPath": self.destination,
+            "S3InputMode": self.s3_input_mode,
+            "S3DataDistributionType": self.s3_data_distribution_type,
         }
 
+        if self.start_time_offset is not None:
+            endpoint_input["StartTimeOffset"] = self.start_time_offset
+        if self.end_time_offset is not None:
+            endpoint_input["EndTimeOffset"] = self.end_time_offset
+        if self.features_attribute is not None:
+            endpoint_input["FeaturesAttribute"] = self.features_attribute
+        if self.inference_attribute is not None:
+            endpoint_input["InferenceAttribute"] = self.inference_attribute
+        if self.probability_attribute is not None:
+            endpoint_input["ProbabilityAttribute"] = self.probability_attribute
+        if self.probability_threshold_attribute is not None:
+            endpoint_input["ProbabilityThresholdAttribute"] = self.probability_threshold_attribute
+
+        endpoint_input_request = {"EndpointInput": endpoint_input}
         return endpoint_input_request
 
 
@@ -2137,8 +3411,8 @@ class MonitoringOutput(object):
     def __init__(self, source, destination=None, s3_upload_mode="Continuous"):
         """Initialize a ``MonitoringOutput`` instance.
 
-        MonitoringOutput accepts parameters that specify an S3 output for a monitoring
-        job and provides a method to turn those parameters into a dictionary.
+        MonitoringOutput accepts parameters that specify an S3 output for a monitoring job and
+        provides a method to turn those parameters into a dictionary.
 
         Args:
             source (str): The source for the output.

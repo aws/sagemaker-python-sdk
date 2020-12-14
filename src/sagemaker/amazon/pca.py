@@ -195,12 +195,19 @@ class PCAPredictor(Predictor):
     to fit the model this Predictor performs inference on.
 
     :meth:`predict()` returns a list of
-    :class:`~sagemaker.amazon.record_pb2.Record` objects, one for each row in
+    :class:`~sagemaker.amazon.record_pb2.Record` objects (assuming the default
+    recordio-protobuf ``deserializer`` is used), one for each row in
     the input ``ndarray``. The lower dimension vector result is stored in the
     ``projection`` key of the ``Record.label`` field.
     """
 
-    def __init__(self, endpoint_name, sagemaker_session=None):
+    def __init__(
+        self,
+        endpoint_name,
+        sagemaker_session=None,
+        serializer=RecordSerializer(),
+        deserializer=RecordDeserializer(),
+    ):
         """
         Initialization for PCAPredictor.
 
@@ -211,12 +218,16 @@ class PCAPredictor(Predictor):
                 object, used for SageMaker interactions (default: None). If not
                 specified, one is created using the default AWS configuration
                 chain.
+            serializer (sagemaker.serializers.BaseSerializer): Optional. Default
+                serializes input data to x-recordio-protobuf format.
+            deserializer (sagemaker.deserializers.BaseDeserializer): Optional.
+                Default parses responses from x-recordio-protobuf format.
         """
         super(PCAPredictor, self).__init__(
             endpoint_name,
             sagemaker_session,
-            serializer=RecordSerializer(),
-            deserializer=RecordDeserializer(),
+            serializer=serializer,
+            deserializer=deserializer,
         )
 
 

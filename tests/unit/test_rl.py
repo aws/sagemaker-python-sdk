@@ -27,7 +27,7 @@ from sagemaker.tensorflow import TensorFlowModel, TensorFlowPredictor
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 SCRIPT_PATH = os.path.join(DATA_DIR, "dummy_script.py")
 TIMESTAMP = "2017-11-06-14:14:15.672"
-TIME = 1507167947
+TIME = 1510006209.073025
 BUCKET_NAME = "notmybucket"
 INSTANCE_COUNT = 1
 INSTANCE_TYPE = "ml.c4.4xlarge"
@@ -149,6 +149,16 @@ def _create_train_job(toolkit, toolkit_version, framework):
         "experiment_config": None,
         "debugger_hook_config": {
             "CollectionConfigurations": [],
+            "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
+        },
+        "profiler_rule_configs": [
+            {
+                "RuleConfigurationName": "ProfilerReport-1510006209",
+                "RuleEvaluatorImage": "895741380848.dkr.ecr.us-west-2.amazonaws.com/sagemaker-debugger-rules:latest",
+                "RuleParameters": {"rule_to_invoke": "ProfilerReport"},
+            }
+        ],
+        "profiler_config": {
             "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
         },
     }
@@ -301,7 +311,8 @@ def test_create_model_with_custom_image(name_from_base, sagemaker_session):
 
 @patch("sagemaker.utils.create_tar_file", MagicMock())
 @patch("time.strftime", return_value=TIMESTAMP)
-def test_rl(strftime, sagemaker_session, coach_mxnet_version):
+@patch("time.time", return_value=TIME)
+def test_rl(time, strftime, sagemaker_session, coach_mxnet_version):
     rl = RLEstimator(
         entry_point=SCRIPT_PATH,
         role=ROLE,

@@ -115,6 +115,16 @@ def test_update(ast_transformer, pasta_parse, pasta_dump, json_dump):
           "metadata": {},
           "outputs": [],
           "source": [
+           "%%cd\\n",
+           "echo ignore this too"
+          ]
+         },
+         {
+          "cell_type": "code",
+          "execution_count": 4,
+          "metadata": {},
+          "outputs": [],
+          "source": [
            "# code to be modified\\n",
            "%s"
           ]

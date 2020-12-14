@@ -101,8 +101,149 @@ class Model(object):
         self.sagemaker_session = sagemaker_session
         self.endpoint_name = None
         self._is_compiled_model = False
+        self._compilation_job_name = None
+        self._is_edge_packaged_model = False
         self._enable_network_isolation = enable_network_isolation
         self.model_kms_key = model_kms_key
+
+    def register(
+        self,
+        content_types,
+        response_types,
+        inference_instances,
+        transform_instances,
+        model_package_name=None,
+        model_package_group_name=None,
+        image_uri=None,
+        model_metrics=None,
+        metadata_properties=None,
+        marketplace_cert=False,
+        approval_status=None,
+        description=None,
+    ):
+        """Creates a model package for creating SageMaker models or listing on Marketplace.
+
+        Args:
+            content_types (list): The supported MIME types for the input data (default: None).
+            response_types (list): The supported MIME types for the output data (default: None).
+            inference_instances (list): A list of the instance types that are used to
+                generate inferences in real-time (default: None).
+            transform_instances (list): A list of the instance types on which a transformation
+                job can be run or on which an endpoint can be deployed (default: None).
+            model_package_name (str): Model Package name, exclusive to `model_package_group_name`,
+                using `model_package_name` makes the Model Package un-versioned (default: None).
+            model_package_group_name (str): Model Package Group name, exclusive to
+                `model_package_name`, using `model_package_group_name` makes the Model Package
+                versioned (default: None).
+            image_uri (str): Inference image uri for the container. Model class' self.image will
+                be used if it is None (default: None).
+            model_metrics (ModelMetrics): ModelMetrics object (default: None).
+            metadata_properties (MetadataProperties): MetadataProperties object (default: None).
+            marketplace_cert (bool): A boolean value indicating if the Model Package is certified
+                for AWS Marketplace (default: False).
+            approval_status (str): Model Approval Status, values can be "Approved", "Rejected",
+                or "PendingManualApproval" (default: "PendingManualApproval").
+            description (str): Model Package description (default: None).
+
+        Returns:
+            str: A string of SageMaker Model Package ARN.
+        """
+        if self.model_data is None:
+            raise ValueError("SageMaker Model Package cannot be created without model data.")
+
+        model_pkg_args = self._get_model_package_args(
+            content_types,
+            response_types,
+            inference_instances,
+            transform_instances,
+            model_package_name,
+            model_package_group_name,
+            image_uri,
+            model_metrics,
+            metadata_properties,
+            marketplace_cert,
+            approval_status,
+            description,
+        )
+        model_package = self.sagemaker_session.create_model_package_from_containers(
+            **model_pkg_args
+        )
+        return ModelPackage(
+            role=self.role,
+            model_data=self.model_data,
+            model_package_arn=model_package.get("ModelPackageArn"),
+        )
+
+    def _get_model_package_args(
+        self,
+        content_types,
+        response_types,
+        inference_instances,
+        transform_instances,
+        model_package_name=None,
+        model_package_group_name=None,
+        image_uri=None,
+        model_metrics=None,
+        metadata_properties=None,
+        marketplace_cert=False,
+        approval_status=None,
+        description=None,
+    ):
+        """Get arguments for session.create_model_package method.
+
+        Args:
+            content_types (list): The supported MIME types for the input data.
+            response_types (list): The supported MIME types for the output data.
+            inference_instances (list): A list of the instance types that are used to
+                generate inferences in real-time.
+            transform_instances (list): A list of the instance types on which a transformation
+                job can be run or on which an endpoint can be deployed.
+            model_package_name (str): Model Package name, exclusive to `model_package_group_name`,
+                using `model_package_name` makes the Model Package un-versioned (default: None).
+            model_package_group_name (str): Model Package Group name, exclusive to
+                `model_package_name`, using `model_package_group_name` makes the Model Package
+                versioned (default: None).
+            image_uri (str): Inference image uri for the container. Model class' self.image will
+                be used if it is None (default: None).
+            model_metrics (ModelMetrics): ModelMetrics object (default: None).
+            metadata_properties (MetadataProperties): MetadataProperties object (default: None).
+            marketplace_cert (bool): A boolean value indicating if the Model Package is certified
+                for AWS Marketplace (default: False).
+            approval_status (str): Model Approval Status, values can be "Approved", "Rejected",
+                or "PendingManualApproval" (default: "PendingManualApproval").
+            description (str): Model Package description (default: None).
+        Returns:
+            dict: A dictionary of method argument names and values.
+        """
+        if image_uri:
+            self.image_uri = image_uri
+        container = {
+            "Image": self.image_uri,
+            "ModelDataUrl": self.model_data,
+        }
+
+        model_package_args = {
+            "containers": [container],
+            "content_types": content_types,
+            "response_types": response_types,
+            "inference_instances": inference_instances,
+            "transform_instances": transform_instances,
+            "marketplace_cert": marketplace_cert,
+        }
+
+        if model_package_name is not None:
+            model_package_args["model_package_name"] = model_package_name
+        if model_package_group_name is not None:
+            model_package_args["model_package_group_name"] = model_package_group_name
+        if model_metrics is not None:
+            model_package_args["model_metrics"] = model_metrics._to_request_dict()
+        if metadata_properties is not None:
+            model_package_args["metadata_properties"] = metadata_properties._to_request_dict()
+        if approval_status is not None:
+            model_package_args["approval_status"] = approval_status
+        if description is not None:
+            model_package_args["description"] = description
+        return model_package_args
 
     def _init_sagemaker_session_if_does_not_exist(self, instance_type):
         """Set ``self.sagemaker_session`` to be a ``LocalSession``.
@@ -201,6 +342,50 @@ class Model(object):
         """Placeholder docstring"""
         return getattr(self, "framework_version", None)
 
+    def _edge_packaging_job_config(
+        self,
+        output_path,
+        role,
+        model_name,
+        model_version,
+        packaging_job_name,
+        compilation_job_name,
+        resource_key,
+        s3_kms_key,
+        tags,
+    ):
+        """Creates a request object for a packaging job.
+
+        Args:
+            output_path (str): where in S3 to store the output of the job
+            role (str): what role to use when executing the job
+            packaging_job_name (str): what to name the packaging job
+            compilation_job_name (str): what compilation job to source the model from
+            resource_key (str): the kms key to encrypt the disk with
+            s3_kms_key (str): the kms key to encrypt the output with
+            tags (list[dict]): List of tags for labeling an edge packaging job. For
+                more, see
+                https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
+        Returns:
+            dict: the request object to use when creating a packaging job
+        """
+        output_model_config = {
+            "S3OutputLocation": output_path,
+        }
+        if s3_kms_key is not None:
+            output_model_config["KmsKeyId"] = s3_kms_key
+
+        return {
+            "output_model_config": output_model_config,
+            "role": role,
+            "tags": tags,
+            "model_name": model_name,
+            "model_version": model_version,
+            "job_name": packaging_job_name,
+            "compilation_job_name": compilation_job_name,
+            "resource_key": resource_key,
+        }
+
     def _compilation_job_config(
         self,
         target_instance_type,
@@ -288,6 +473,64 @@ class Model(object):
             instance_type=target_instance_type,
             version=framework_version,
         )
+
+    def package_for_edge(
+        self,
+        output_path,
+        model_name,
+        model_version,
+        role=None,
+        job_name=None,
+        resource_key=None,
+        s3_kms_key=None,
+        tags=None,
+    ):
+        """Package this ``Model`` with SageMaker Edge.
+
+        Creates a new EdgePackagingJob and wait for it to finish.
+        model_data will now point to the packaged artifacts.
+
+        Args:
+            output_path (str): Specifies where to store the packaged model
+            role (str): Execution role
+            model_name (str): the name to attach to the model metadata
+            model_version (str): the version to attach to the model metadata
+            job_name (str): The name of the edge packaging job
+            resource_key (str): the kms key to encrypt the disk with
+            s3_kms_key (str): the kms key to encrypt the output with
+            tags (list[dict]): List of tags for labeling an edge packaging job. For
+                more, see
+                https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
+
+        Returns:
+            sagemaker.model.Model: A SageMaker ``Model`` object. See
+            :func:`~sagemaker.model.Model` for full details.
+        """
+        if self._compilation_job_name is None:
+            raise ValueError("You must first compile this model")
+        if job_name is None:
+            job_name = f"packaging{self._compilation_job_name[11:]}"
+        if role is None:
+            role = self.sagemaker_session.expand_role(role)
+
+        self._init_sagemaker_session_if_does_not_exist(None)
+        config = self._edge_packaging_job_config(
+            output_path,
+            role,
+            model_name,
+            model_version,
+            job_name,
+            self._compilation_job_name,
+            resource_key,
+            s3_kms_key,
+            tags,
+        )
+        self.sagemaker_session.package_model_for_edge(**config)
+        job_status = self.sagemaker_session.wait_for_edge_packaging_job(job_name)
+        self.model_data = job_status["ModelArtifact"]
+        self._is_edge_packaged_model = True
+
+        return self
 
     def compile(
         self,
@@ -407,6 +650,8 @@ class Model(object):
                 "Devices described by Target Platform OS, Architecture and Accelerator are not"
                 "supported for deployment via SageMaker. Please deploy the model manually."
             )
+
+        self._compilation_job_name = job_name
 
         return self
 

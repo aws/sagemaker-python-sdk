@@ -29,7 +29,14 @@ from sagemaker.deserializers import (  # noqa: F401 # pylint: disable=unused-imp
     StreamDeserializer,
     StringDeserializer,
 )
-from sagemaker.model_monitor import DataCaptureConfig
+from sagemaker.model_monitor import (
+    DataCaptureConfig,
+    DefaultModelMonitor,
+    ModelBiasMonitor,
+    ModelExplainabilityMonitor,
+    ModelMonitor,
+    ModelQualityMonitor,
+)
 from sagemaker.serializers import (
     CSVSerializer,
     IdentitySerializer,
@@ -39,11 +46,9 @@ from sagemaker.serializers import (
 from sagemaker.session import production_variant, Session
 from sagemaker.utils import name_from_base
 
-from sagemaker.model_monitor.model_monitoring import (
-    DEFAULT_REPOSITORY_NAME,
-    ModelMonitor,
-    DefaultModelMonitor,
-)
+from sagemaker.model_monitor.model_monitoring import DEFAULT_REPOSITORY_NAME
+
+from sagemaker.lineage.context import EndpointContext
 
 
 class Predictor(object):
@@ -88,6 +93,7 @@ class Predictor(object):
         self.deserializer = deserializer
         self._endpoint_config_name = self._get_endpoint_config_name()
         self._model_names = self._get_model_names()
+        self._context = None
 
     def predict(self, data, initial_args=None, target_model=None, target_variant=None):
         """Return the inference from the specified endpoint.
@@ -363,28 +369,90 @@ class Predictor(object):
         monitors = []
         for schedule_dict in monitoring_schedules_dict["MonitoringScheduleSummaries"]:
             schedule_name = schedule_dict["MonitoringScheduleName"]
+            monitoring_type = schedule_dict.get("MonitoringType")
+            clazz = self._get_model_monitor_class(schedule_name, monitoring_type)
+            monitors.append(
+                clazz.attach(
+                    monitor_schedule_name=schedule_name,
+                    sagemaker_session=self.sagemaker_session,
+                )
+            )
+
+        return monitors
+
+    def _get_model_monitor_class(self, schedule_name, monitoring_type):
+        """Decide which ModelMonitor class the given schedule should attach to
+
+        Args:
+            schedule_name (str): The schedule to be attached.
+            monitoring_type (str): The monitoring type of the schedule
+
+        Returns:
+            sagemaker.model_monitor.ModelMonitor: ModelMonitor or a subclass of ModelMonitor.
+
+        Raises:
+            TypeError: If the class could not be decided (due to unknown monitoring type).
+        """
+        if monitoring_type == "ModelBias":
+            clazz = ModelBiasMonitor
+        elif monitoring_type == "ModelExplainability":
+            clazz = ModelExplainabilityMonitor
+        else:
             schedule = self.sagemaker_session.describe_monitoring_schedule(
                 monitoring_schedule_name=schedule_name
             )
-            image_uri = schedule["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-                "MonitoringAppSpecification"
-            ]["ImageUri"]
-            if image_uri.endswith(DEFAULT_REPOSITORY_NAME):
-                monitors.append(
-                    DefaultModelMonitor.attach(
-                        monitor_schedule_name=schedule_name,
-                        sagemaker_session=self.sagemaker_session,
-                    )
-                )
+            embedded_job_definition = schedule["MonitoringScheduleConfig"].get(
+                "MonitoringJobDefinition"
+            )
+            if embedded_job_definition is not None:  # legacy v1 schedule
+                image_uri = embedded_job_definition["MonitoringAppSpecification"]["ImageUri"]
+                if image_uri.endswith(DEFAULT_REPOSITORY_NAME):
+                    clazz = DefaultModelMonitor
+                else:
+                    clazz = ModelMonitor
+            elif monitoring_type == "DataQuality":
+                clazz = DefaultModelMonitor
+            elif monitoring_type == "ModelQuality":
+                clazz = ModelQualityMonitor
             else:
-                monitors.append(
-                    ModelMonitor.attach(
-                        monitor_schedule_name=schedule_name,
-                        sagemaker_session=self.sagemaker_session,
-                    )
-                )
+                raise TypeError("Unknown monitoring type: {}".format(monitoring_type))
+        return clazz
 
-        return monitors
+    def endpoint_context(self):
+        """Retrieves the lineage context object representing the endpoint.
+
+        Examples:
+            .. code-block:: python
+
+            predictor = Predictor()
+            ...
+            context = predictor.endpoint_context()
+            models = context.models()
+
+        Returns:
+            ContextEndpoint: The context for the endpoint.
+        """
+        if self._context:
+            return self._context
+
+        # retrieve endpoint by name to get arn
+        response = self.sagemaker_session.sagemaker_client.describe_endpoint(
+            EndpointName=self.endpoint_name
+        )
+        endpoint_arn = response["EndpointArn"]
+
+        # list context by source uri using arn
+        contexts = list(
+            EndpointContext.list(sagemaker_session=self.sagemaker_session, source_uri=endpoint_arn)
+        )
+
+        if len(contexts) != 0:
+            # create endpoint context object
+            self._context = EndpointContext.load(
+                sagemaker_session=self.sagemaker_session, context_name=contexts[0].context_name
+            )
+
+        return self._context
 
     def _get_endpoint_config_name(self):
         """Placeholder docstring"""
