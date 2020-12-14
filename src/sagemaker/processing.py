@@ -1024,8 +1024,6 @@ class ProcessingInput(object):
     def _to_request_dict(self):
         """Generates a request dictionary using the parameters provided to the class."""
 
-        # self._create_s3_input()
-
         # Create the request dictionary.
         s3_input_request = {"InputName": self.input_name, "AppManaged": self.app_managed}
 
@@ -1062,9 +1060,7 @@ class ProcessingInput(object):
             self.s3_data_type = self.s3_input.s3_data_type
             self.s3_input_mode = self.s3_input.s3_input_mode
             self.s3_data_distribution_type = self.s3_input.s3_data_distribution_type
-            return
-
-        if self.source and self.destination:
+        elif self.source and self.destination:
             self.s3_input = S3Input(
                 s3_uri=self.source,
                 local_path=self.destination,
