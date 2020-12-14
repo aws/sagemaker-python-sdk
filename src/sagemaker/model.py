@@ -588,15 +588,18 @@ class Model(object):
             target_platform_os (str): Target Platform OS, for example: 'LINUX'.
                 For allowed strings see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_OutputConfig.html.
-                It can be used instead of target_instance_family.
+                It can be used instead of target_instance_family by setting target_instance
+                family to None.
             target_platform_arch (str): Target Platform Architecture, for example: 'X86_64'.
                 For allowed strings see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_OutputConfig.html.
-                It can be used instead of target_instance_family.
+                It can be used instead of target_instance_family by setting target_instance
+                family to None.
             target_platform_accelerator (str, optional): Target Platform Accelerator,
                 for example: 'NVIDIA'. For allowed strings see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_OutputConfig.html.
-                It can be used instead of target_instance_family.
+                It can be used instead of target_instance_family by setting target_instance
+                family to None.
             compiler_options (dict, optional): Additional parameters for compiler.
                 Compiler Options are TargetPlatform / target_instance_family specific. See
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_OutputConfig.html for details.
