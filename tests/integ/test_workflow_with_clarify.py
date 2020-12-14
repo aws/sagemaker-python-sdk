@@ -182,7 +182,6 @@ def test_workflow_with_clarify(
         predictor_config,
     ) = model_predicted_label_config.get_predictor_config()
     predictor_config.update(model_config.get_predictor_config())
-    analysis_config["methods"] = {"pre_training_bias": {"methods": "all"}}
     analysis_config["methods"] = {"post_training_bias": {"methods": "all"}}
     analysis_config["predictor"] = predictor_config
     analysis_config["probability_threshold"] = probability_threshold
