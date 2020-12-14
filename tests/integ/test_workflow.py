@@ -484,21 +484,11 @@ def test_training_job_with_debugger(
         assert execution_steps[0]["StepStatus"] == "Succeeded"
 
         for index, rule in enumerate(rules):
-            assert (
-                job_description["DebugRuleConfigurations"][index]["RuleConfigurationName"]
-                == rule.name
-            )
-            assert (
-                job_description["DebugRuleConfigurations"][index]["RuleEvaluatorImage"]
-                == rule.image_uri
-            )
-            assert job_description["DebugRuleConfigurations"][index]["VolumeSizeInGB"] == 0
-            assert (
-                job_description["DebugRuleConfigurations"][index]["RuleParameters"][
-                    "rule_to_invoke"
-                ]
-                == rule.rule_parameters["rule_to_invoke"]
-            )
+            config = job_description["DebugRuleConfigurations"][index]
+            assert config["RuleConfigurationName"] == rule.name
+            assert config["RuleEvaluatorImage"] == rule.image_uri
+            assert config["VolumeSizeInGB"] == 0
+            assert config["RuleParameters"]["rule_to_invoke"] == rule.rule_parameters["rule_to_invoke"]
         assert job_description["DebugHookConfig"] == debugger_hook_config._to_request_dict()
     finally:
         try:
