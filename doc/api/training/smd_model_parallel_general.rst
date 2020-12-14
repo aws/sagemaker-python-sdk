@@ -47,7 +47,7 @@ The following is an example of how you can launch a new PyTorch training job wit
             py_version='py3',
             instance_count=1,
             distribution={
-               "smdistributed": smp_options,
+               "smdistributed": {"modelparallel": smp_options},
                "mpi": mpi_options
             },
             base_job_name="SMD-MP-demo",

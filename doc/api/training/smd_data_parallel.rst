@@ -20,6 +20,15 @@ with multiple GPUs. As the cluster size increases, so does the significant drop
 in performance. This drop in performance is primarily caused the communications
 overhead between nodes in a cluster.
 
+.. important::
+   SDP only supports training jobs using CUDA 11. When you define a PyTorch or TensorFlow
+   ``Estimator`` with ``dataparallel`` parameter ``enabled`` set to ``True``,
+   it uses CUDA 11. When you extend or customize your own training image
+   you must use a CUDA 11 base image. See
+   `SageMaker Python SDK's SDP APIs
+   <https://docs.aws.amazon.com/sagemaker/latest/dg/data-parallel-use-api.html#data-parallel-use-python-skd-api>`__
+   for more information.
+
 .. rubric:: Customize your training script
 
 To customize your own training script, you will need the following:
