@@ -87,9 +87,7 @@ def headers():
 
 @pytest.fixture(scope="module")
 def data_config(sagemaker_session, data_path, headers):
-    output_path = "s3://{}/{}".format(
-        sagemaker_session.default_bucket(), "linear_learner_analysis_result"
-    )
+    output_path = f"s3://{sagemaker_session.default_bucket()}/linear_learner_analysis_result"
     return DataConfig(
         s3_data_input_path=data_path,
         s3_output_path=output_path,
