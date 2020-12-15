@@ -782,19 +782,17 @@ class ProcessingJob(_Job):
 
         inputs = None
         if job_desc.get("ProcessingInputs"):
-            inputs = []
-            for processing_input_dict in job_desc["ProcessingInputs"]:
-                processing_input = ProcessingInput(
-                    input_name=processing_input_dict["InputName"],
-                    s3_input=S3Input.from_boto(processing_input_dict.get("S3Input")),
+            inputs = [
+                ProcessingInput(
+                    input_name=processing_input["InputName"],
+                    s3_input=S3Input.from_boto(processing_input.get("S3Input")),
                     dataset_definition=DatasetDefinition.from_boto(
-                        processing_input_dict.get("DatasetDefinition")
+                        processing_input.get("DatasetDefinition")
                     ),
+                    app_managed=processing_input.get("AppManaged") or False,
                 )
-                if "AppManaged" in processing_input_dict:
-                    processing_input.app_managed = processing_input_dict["AppManaged"]
-
-                inputs.append(processing_input)
+                for processing_input in job_desc["ProcessingInputs"]
+            ]
 
         outputs = None
         if job_desc.get("ProcessingOutputConfig") and job_desc["ProcessingOutputConfig"].get(
@@ -804,16 +802,16 @@ class ProcessingJob(_Job):
             for processing_output_dict in job_desc["ProcessingOutputConfig"]["Outputs"]:
                 processing_output = ProcessingOutput(
                     output_name=processing_output_dict["OutputName"],
+                    app_managed=processing_output_dict.get("AppManaged") or False,
+                    feature_store_output=FeatureStoreOutput.from_boto(
+                        processing_output_dict.get("FeatureStoreOutput")
+                    ),
                 )
+
                 if "S3Output" in processing_output_dict:
                     processing_output.source = processing_output_dict["S3Output"]["LocalPath"]
                     processing_output.destination = processing_output_dict["S3Output"]["S3Uri"]
-                if "FeatureStoreOutput" in processing_output_dict:
-                    processing_output.feature_store_output = FeatureStoreOutput.from_boto(
-                        processing_output_dict["FeatureStoreOutput"]
-                    )
-                if "AppManaged" in processing_output_dict:
-                    processing_output.app_managed = processing_output_dict["AppManaged"]
+
                 outputs.append(processing_output)
         output_kms_key = None
         if job_desc.get("ProcessingOutputConfig"):
