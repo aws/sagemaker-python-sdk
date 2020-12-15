@@ -732,16 +732,10 @@ def test_processing_job_inputs_and_output_config(
     )
 
     job_description = script_processor.latest_job.describe()
-    expected_inputs_and_outputs = _get_processing_job_inputs_and_outputs()
-    print("###")
-    print(job_description["ProcessingInputs"][:-1])
-    print(expected_inputs_and_outputs["ProcessingInputs"])
+    expected_inputs_and_outputs = _get_processing_job_inputs_and_outputs(sagemaker_session.default_bucket(), output_kms_key)
     assert (
         job_description["ProcessingInputs"][:-1] == expected_inputs_and_outputs["ProcessingInputs"]
     )
-    print("###")
-    print(job_description["ProcessingOutputConfig"])
-    print(expected_inputs_and_outputs["ProcessingOutputConfig"])
     assert (
         job_description["ProcessingOutputConfig"]
         == expected_inputs_and_outputs["ProcessingOutputConfig"]
@@ -815,14 +809,14 @@ def _get_processing_outputs_with_all_parameters():
     ]
 
 
-def _get_processing_job_inputs_and_outputs():
+def _get_processing_job_inputs_and_outputs(bucket, output_kms_key):
     return {
         "ProcessingInputs": [
             {
                 "InputName": "my_dataset",
                 "AppManaged": False,
                 "S3Input": {
-                    "S3Uri": "s3://sagemaker-us-west-2-790336243319",
+                    "S3Uri": f"s3://{bucket}",
                     "LocalPath": "/opt/ml/processing/input/data/",
                     "S3DataType": "S3Prefix",
                     "S3InputMode": "File",
@@ -834,7 +828,7 @@ def _get_processing_job_inputs_and_outputs():
                 "InputName": "s3_input",
                 "AppManaged": False,
                 "S3Input": {
-                    "S3Uri": "s3://sagemaker-us-west-2-790336243319",
+                    "S3Uri": f"s3://{bucket}",
                     "LocalPath": "/opt/ml/processing/input/s3_input",
                     "S3DataType": "S3Prefix",
                     "S3InputMode": "File",
@@ -852,7 +846,7 @@ def _get_processing_job_inputs_and_outputs():
                         "DbUser": "awsuser",
                         "QueryString": "SELECT * FROM shoes",
                         "ClusterRoleArn": "arn:aws:iam::037210630505:role/RedshiftClusterRole-prod-us-west-2",
-                        "OutputS3Uri": "s3://sagemaker-us-west-2-790336243319/rdd",
+                        "OutputS3Uri": f"s3://{bucket}/rdd",
                         "OutputFormat": "CSV",
                         "OutputCompression": "None",
                     },
@@ -870,7 +864,7 @@ def _get_processing_job_inputs_and_outputs():
                         "Database": "default",
                         "QueryString": 'SELECT * FROM "default"."s3_test_table_$STAGE_$REGIONUNDERSCORED";',
                         "WorkGroup": "workgroup",
-                        "OutputS3Uri": "s3://sagemaker-us-west-2-790336243319/add",
+                        "OutputS3Uri": f"s3://{bucket}/add",
                         "OutputFormat": "JSON",
                         "OutputCompression": "GZIP",
                     },
@@ -888,6 +882,6 @@ def _get_processing_job_inputs_and_outputs():
                     "AppManaged": True,
                 }
             ],
-            "KmsKeyId": "arn:aws:kms:us-west-2:790336243319:key/e4d2e5b5-346f-42cf-a8a7-60f18054893c",
+            "KmsKeyId": output_kms_key,
         },
     }
