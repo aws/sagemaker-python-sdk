@@ -49,8 +49,8 @@ class RedshiftDatasetDefinition(ApiObject):
     cluster_role_arn = None
     output_s3_uri = None
     kms_key_id = None
-    output_format = "PARQUET"
-    output_compression = "GZIP"
+    output_format = None
+    output_compression = None
 
 
 class AthenaDatasetDefinition(ApiObject):
@@ -77,8 +77,8 @@ class AthenaDatasetDefinition(ApiObject):
     output_s3_uri = None
     work_group = None
     kms_key_id = None
-    output_format = "PARQUET"
-    output_compression = "GZIP"
+    output_format = None
+    output_compression = None
 
 
 class DatasetDefinition(ApiObject):
@@ -102,7 +102,7 @@ class DatasetDefinition(ApiObject):
     }
 
     data_distribution_type = "ShardedByS3Key"
-    input_mode = "Pipe"
+    input_mode = "File"
     local_path = None
     redshift_dataset_definition = None
     athena_dataset_definition = None

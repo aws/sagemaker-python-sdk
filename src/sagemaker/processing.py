@@ -279,9 +279,7 @@ class Processor(object):
                 if file_input.input_name is None:
                     file_input.input_name = "input-{}".format(count)
 
-                if isinstance(file_input.source, Properties) or isinstance(
-                    file_input.dataset_definition, DatasetDefinition
-                ):
+                if isinstance(file_input.source, Properties) or file_input.dataset_definition:
                     normalized_inputs.append(file_input)
                     continue
 
