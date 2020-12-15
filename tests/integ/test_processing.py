@@ -733,9 +733,15 @@ def test_processing_job_inputs_and_output_config(
 
     job_description = script_processor.latest_job.describe()
     expected_inputs_and_outputs = _get_processing_job_inputs_and_outputs()
+    print("###")
+    print(job_description["ProcessingInputs"][:-1])
+    print(expected_inputs_and_outputs["ProcessingInputs"])
     assert (
         job_description["ProcessingInputs"][:-1] == expected_inputs_and_outputs["ProcessingInputs"]
     )
+    print("###")
+    print(job_description["ProcessingOutputConfig"])
+    print(expected_inputs_and_outputs["ProcessingOutputConfig"])
     assert (
         job_description["ProcessingOutputConfig"]
         == expected_inputs_and_outputs["ProcessingOutputConfig"]
