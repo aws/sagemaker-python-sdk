@@ -24,11 +24,11 @@ import pandas as pd
 from botocore.exceptions import WaiterError
 from sagemaker.amazon.linear_learner import LinearLearner, LinearLearnerPredictor
 from sagemaker.clarify import (
-    SageMakerClarifyProcessor,
     BiasConfig,
     DataConfig,
     ModelConfig,
     ModelPredictedLabelConfig,
+    SageMakerClarifyProcessor,
 )
 from sagemaker.processing import ProcessingInput, ProcessingOutput
 from sagemaker.session import get_execution_role
