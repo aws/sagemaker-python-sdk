@@ -29,16 +29,18 @@ class RedshiftDatasetDefinition(ApiObject):
 
     Attributes:
         cluster_id (str): The Redshift cluster Identifier.
-        database (str): The Redshift database created for your cluster.
-        db_user (str): The user name of a user account that has permission to connect
-            to the database.
+        database (str): The name of the Redshift database used in Redshift query execution.
+        db_user (str): The database user name used in Redshift query execution.
         query_string (str): The SQL query statements to be executed.
-        cluster_role_arn (str): Redshift cluster role arn.
-        output_s3_uri (str): The path to a specific S3 object or a S3 prefix for output
-        kms_key_id (str): KMS key id.
-        output_format (str): the data storage format for Redshift query results.
+        cluster_role_arn (str): The IAM role attached to your Redshift cluster that
+            Amazon SageMaker uses to generate datasets.
+        output_s3_uri (str): The location in Amazon S3 where the Redshift query
+            results are stored.
+        kms_key_id (str): The AWS Key Management Service (AWS KMS) key that Amazon
+            SageMaker uses to encrypt data from a Redshift execution.
+        output_format (str): The data storage format for Redshift query results.
             Valid options are "PARQUET", "CSV"
-        output_compression (str): compression used for Redshift query results.
+        output_compression (str): The compression used for Redshift query results.
             Valid options are "None", "GZIP", "SNAPPY", "ZSTD", "BZIP2"
     """
 
@@ -59,15 +61,16 @@ class AthenaDatasetDefinition(ApiObject):
     With this input, SQL queries will be executed using Athena to generate datasets to S3.
 
     Attributes:
-        catalog (str): The name of the data catalog used in query execution.
-        database (str): The name of the database used in the query execution.
-        query_string (str): The SQL query statements to be executed.
-        output_s3_uri (str): the path to a specific S3 object or a S3 prefix for output
-        work_group (str): The name of the workgroup in which the query is being started.
-        kms_key_id (str): KMS key id.
-        output_format (str): the data storage format for Athena query results.
+        catalog (str): The name of the data catalog used in Athena query execution.
+        database (str): The name of the database used in the Athena query execution.
+        query_string (str): The SQL query statements, to be executed.
+        output_s3_uri (str): The location in Amazon S3 where Athena query results are stored.
+        work_group (str): The name of the workgroup in which the Athena query is being started.
+        kms_key_id (str): The AWS Key Management Service (AWS KMS) key that Amazon
+            SageMaker uses to encrypt data generated from an Athena query execution.
+        output_format (str): The data storage format for Athena query results.
             Valid options are "PARQUET", "ORC", "AVRO", "JSON", "TEXTFILE"
-        output_compression (str): compression used for Athena query results.
+        output_compression (str): The compression used for Athena query results.
             Valid options are "GZIP", "SNAPPY", "ZLIB"
     """
 
@@ -85,15 +88,21 @@ class DatasetDefinition(ApiObject):
     """DatasetDefinition input.
 
     Attributes:
-        data_distribution_type (str): Valid options are "FullyReplicated" or "ShardedByS3Key".
-        input_mode (str): Valid options are "Pipe" or "File".
-        local_path (str): the path to a local directory. If not provided, skips data download by
-            SageMaker platform.
+        data_distribution_type (str): Whether the generated dataset is FullyReplicated or
+            ShardedByS3Key (default).
+        input_mode (str): Whether to use File or Pipe input mode. In File (default) mode, Amazon
+            SageMaker copies the data from the input source onto the local Amazon Elastic Block
+            Store (Amazon EBS) volumes before starting your training algorithm. This is the most
+            commonly used input mode. In Pipe mode, Amazon SageMaker streams input data from the
+            source directly to your algorithm without using the EBS volume.
+        local_path (str): The local path where you want Amazon SageMaker to download the Dataset
+            Definition inputs to run a processing job. LocalPath is an absolute path to the input
+            data. This is a required parameter when `AppManaged` is False (default).
         redshift_dataset_definition
             (:class:`~sagemaker.dataset_definition.RedshiftDatasetDefinition`): Redshift
             dataset definition.
         athena_dataset_definition (:class:`~sagemaker.dataset_definition.AthenaDatasetDefinition`):
-            Athena dataset definition.
+            Configuration for Athena Dataset Definition input.
     """
 
     _custom_boto_types = {
