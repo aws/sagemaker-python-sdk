@@ -49,7 +49,7 @@ class ApiObject(object):
             boto_dict (dict): A dictionary of a boto response.
             **kwargs: Arbitrary keyword arguments
         """
-        if not boto_dict:
+        if boto_dict is None:
             return None
 
         boto_dict = {k: v for k, v in boto_dict.items() if k not in cls._boto_ignore()}
