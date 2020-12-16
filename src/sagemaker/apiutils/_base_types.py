@@ -49,6 +49,9 @@ class ApiObject(object):
             boto_dict (dict): A dictionary of a boto response.
             **kwargs: Arbitrary keyword arguments
         """
+        if boto_dict is None:
+            return None
+
         boto_dict = {k: v for k, v in boto_dict.items() if k not in cls._boto_ignore()}
         custom_boto_names_to_member_names = {a: b for b, a in cls._custom_boto_names.items()}
         cls_kwargs = _boto_functions.from_boto(

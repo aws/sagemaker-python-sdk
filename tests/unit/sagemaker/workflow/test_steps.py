@@ -177,6 +177,7 @@ def test_processing_step(sagemaker_session):
             "ProcessingInputs": [
                 {
                     "InputName": "input-1",
+                    "AppManaged": False,
                     "S3Input": {
                         "LocalPath": "processing_manifest",
                         "S3CompressionType": "None",

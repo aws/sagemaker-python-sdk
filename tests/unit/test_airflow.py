@@ -1647,6 +1647,7 @@ def test_processing_config(sagemaker_session):
         "ProcessingInputs": [
             {
                 "InputName": "AnalyticsInputName",
+                "AppManaged": False,
                 "S3Input": {
                     "LocalPath": "{{ Local Path }}",
                     "S3CompressionType": "None",
@@ -1663,6 +1664,7 @@ def test_processing_config(sagemaker_session):
             "Outputs": [
                 {
                     "OutputName": "AnalyticsOutputName",
+                    "AppManaged": False,
                     "S3Output": {
                         "LocalPath": "{{ Local Path }}",
                         "S3UploadMode": "EndOfJob",

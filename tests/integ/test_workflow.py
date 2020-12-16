@@ -37,6 +37,7 @@ from sagemaker.sklearn.estimator import SKLearn
 from sagemaker.sklearn.processing import SKLearnProcessor
 from sagemaker.workflow.conditions import ConditionGreaterThanOrEqualTo
 from sagemaker.workflow.condition_step import ConditionStep
+from sagemaker.dataset_definition.inputs import DatasetDefinition, AthenaDatasetDefinition
 from sagemaker.workflow.parameters import (
     ParameterInteger,
     ParameterString,
@@ -103,8 +104,32 @@ def pipeline_name():
     return f"my-pipeline-{int(time.time() * 10**7)}"
 
 
+@pytest.fixture
+def athena_dataset_definition(sagemaker_session):
+    return DatasetDefinition(
+        local_path="/opt/ml/processing/input/add",
+        data_distribution_type="FullyReplicated",
+        input_mode="File",
+        athena_dataset_definition=AthenaDatasetDefinition(
+            catalog="AwsDataCatalog",
+            database="default",
+            work_group="workgroup",
+            query_string='SELECT * FROM "default"."s3_test_table_$STAGE_$REGIONUNDERSCORED";',
+            output_s3_uri=f"s3://{sagemaker_session.default_bucket()}/add",
+            output_format="JSON",
+            output_compression="GZIP",
+        ),
+    )
+
+
 def test_three_step_definition(
-    sagemaker_session, workflow_session, region_name, role, script_dir, pipeline_name
+    sagemaker_session,
+    workflow_session,
+    region_name,
+    role,
+    script_dir,
+    pipeline_name,
+    athena_dataset_definition,
 ):
     framework_version = "0.20.0"
     instance_type = ParameterString(name="InstanceType", default_value="ml.m5.xlarge")
@@ -123,7 +148,10 @@ def test_three_step_definition(
     step_process = ProcessingStep(
         name="my-process",
         processor=sklearn_processor,
-        inputs=[ProcessingInput(source=input_data, destination="/opt/ml/processing/input")],
+        inputs=[
+            ProcessingInput(source=input_data, destination="/opt/ml/processing/input"),
+            ProcessingInput(dataset_definition=athena_dataset_definition),
+        ],
         outputs=[
             ProcessingOutput(output_name="train_data", source="/opt/ml/processing/train"),
             ProcessingOutput(output_name="test_data", source="/opt/ml/processing/test"),
@@ -234,11 +262,15 @@ def test_one_step_sklearn_processing_pipeline(
     cpu_instance_type,
     pipeline_name,
     region,
+    athena_dataset_definition,
 ):
     instance_count = ParameterInteger(name="InstanceCount", default_value=2)
     script_path = os.path.join(DATA_DIR, "dummy_script.py")
     input_file_path = os.path.join(DATA_DIR, "dummy_input.txt")
-    inputs = [ProcessingInput(source=input_file_path, destination="/opt/ml/processing/inputs/")]
+    inputs = [
+        ProcessingInput(source=input_file_path, destination="/opt/ml/processing/inputs/"),
+        ProcessingInput(dataset_definition=athena_dataset_definition),
+    ]
 
     sklearn_processor = SKLearnProcessor(
         framework_version=sklearn_latest_version,
