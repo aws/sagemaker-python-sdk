@@ -27,6 +27,10 @@ from sagemaker import TrainingInput, utils, vpc_utils
 from sagemaker.algorithm import AlgorithmEstimator
 from sagemaker.debugger import (
     rule_configs,
+    ActionList,
+    StopTraining,
+    Email,
+    SMS,
     CollectionConfig,
     DebuggerHookConfig,
     FrameworkProfile,
@@ -378,6 +382,52 @@ def test_framework_with_only_debugger_rule(sagemaker_session):
     _, args = sagemaker_session.train.call_args
     assert args["debugger_rule_configs"][0]["RuleParameters"] == {
         "rule_to_invoke": "StalledTrainingRule"
+    }
+    assert args["debugger_hook_config"] == {
+        "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
+        "CollectionConfigurations": [],
+    }
+
+
+def test_framework_with_debugger_rule_and_single_action(sagemaker_session):
+    stop_training_action = StopTraining()
+    f = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        rules=[Rule.sagemaker(rule_configs.stalled_training_rule(), actions=stop_training_action)],
+    )
+    f.fit("s3://mydata")
+    sagemaker_session.train.assert_called_once()
+    _, args = sagemaker_session.train.call_args
+    assert args["debugger_rule_configs"][0]["RuleParameters"] == {
+        "rule_to_invoke": "StalledTrainingRule",
+        "action_json": stop_training_action.serialize(),
+    }
+    assert args["debugger_hook_config"] == {
+        "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
+        "CollectionConfigurations": [],
+    }
+
+
+def test_framework_with_debugger_rule_and_multiple_actions(sagemaker_session):
+    action_list = ActionList(StopTraining(), Email("abc@abc.com"), SMS("+1234567890"))
+    f = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        rules=[Rule.sagemaker(rule_configs.stalled_training_rule(), actions=action_list)],
+    )
+    f.fit("s3://mydata")
+    sagemaker_session.train.assert_called_once()
+    _, args = sagemaker_session.train.call_args
+    assert args["debugger_rule_configs"][0]["RuleParameters"] == {
+        "rule_to_invoke": "StalledTrainingRule",
+        "action_json": action_list.serialize(),
     }
     assert args["debugger_hook_config"] == {
         "S3OutputPath": "s3://{}/".format(BUCKET_NAME),

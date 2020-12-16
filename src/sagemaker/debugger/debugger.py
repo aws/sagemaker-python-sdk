@@ -150,6 +150,7 @@ class Rule(RuleBase):
         volume_size_in_gb,
         rule_parameters,
         collections_to_save,
+        actions
     ):
         """Configure the debugging rules using the following classmethods.
 
@@ -170,6 +171,7 @@ class Rule(RuleBase):
             rule_parameters,
         )
         self.collection_configs = collections_to_save
+        self.actions = actions
 
     @classmethod
     def sagemaker(
@@ -181,6 +183,7 @@ class Rule(RuleBase):
         other_trials_s3_input_paths=None,
         rule_parameters=None,
         collections_to_save=None,
+        actions=None,
     ):
         """Initialize a ``Rule`` object for a *built-in* debugging rule.
 
@@ -268,6 +271,12 @@ class Rule(RuleBase):
                 """
             )
 
+        if actions is not None and not rule_configs.validate_actions(actions):
+            raise RuntimeError(
+                """`actions` must be of type `Action` or `ActionList`!
+                """
+            )
+
         if other_trials_s3_input_paths is not None:
             for index, s3_input_path in enumerate(other_trials_s3_input_paths):
                 merged_rule_params["other_trial_{}".format(str(index))] = s3_input_path
@@ -298,6 +307,7 @@ class Rule(RuleBase):
             volume_size_in_gb=None,
             rule_parameters=merged_rule_params,
             collections_to_save=collections_to_save or base_config_collections,
+            actions=actions,
         )
 
     @classmethod
@@ -314,6 +324,7 @@ class Rule(RuleBase):
         other_trials_s3_input_paths=None,
         rule_parameters=None,
         collections_to_save=None,
+        actions=None,
     ):
         """Initialize a ``Rule`` object for a *custom* debugging rule.
 
@@ -352,6 +363,12 @@ class Rule(RuleBase):
             :class:`~sagemaker.debugger.Rule`: The instance of the custom rule.
 
         """
+        if actions is not None and not rule_configs.validate_actions(actions):
+            raise RuntimeError(
+                """`actions` must be of type `Action` or `ActionList`!
+                """
+            )
+
         merged_rule_params = cls._set_rule_parameters(
             source, rule_to_invoke, other_trials_s3_input_paths, rule_parameters
         )
@@ -365,7 +382,21 @@ class Rule(RuleBase):
             volume_size_in_gb=volume_size_in_gb,
             rule_parameters=merged_rule_params,
             collections_to_save=collections_to_save or [],
+            actions=actions,
         )
+
+    def prepare_actions(self, training_job_name):
+        """Prepare actions for Debugger Rule.
+        Args:
+            training_job_name (str): The training job name. To be set as the default training job
+                prefix for the StopTraining action if it is specified.
+        """
+        if self.actions is None:
+            return
+
+        self.actions.update_training_job_prefix_if_not_specified(training_job_name)
+        action_params = {"action_json": self.actions.serialize()}
+        self.rule_parameters.update(action_params)
 
     @staticmethod
     def _set_rule_parameters(source, rule_to_invoke, other_trials_s3_input_paths, rule_parameters):
