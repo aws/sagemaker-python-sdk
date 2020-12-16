@@ -787,7 +787,7 @@ class ProcessingJob(_Job):
                     dataset_definition=DatasetDefinition.from_boto(
                         processing_input.get("DatasetDefinition")
                     ),
-                    app_managed=processing_input.get("AppManaged") or False,
+                    app_managed=processing_input.get("AppManaged", False),
                 )
                 for processing_input in job_desc["ProcessingInputs"]
             ]
@@ -800,7 +800,7 @@ class ProcessingJob(_Job):
             for processing_output_dict in job_desc["ProcessingOutputConfig"]["Outputs"]:
                 processing_output = ProcessingOutput(
                     output_name=processing_output_dict["OutputName"],
-                    app_managed=processing_output_dict.get("AppManaged") or False,
+                    app_managed=processing_output_dict.get("AppManaged", False),
                     feature_store_output=FeatureStoreOutput.from_boto(
                         processing_output_dict.get("FeatureStoreOutput")
                     ),
