@@ -16,12 +16,18 @@ import json
 import os
 import re
 import time
+import uuid
 
 import boto3
 import pytest
 
 from botocore.config import Config
 from botocore.exceptions import WaiterError
+from sagemaker.debugger import (
+    DebuggerHookConfig,
+    Rule,
+    rule_configs,
+)
 from sagemaker.inputs import CreateModelInput, TrainingInput
 from sagemaker.model import Model
 from sagemaker.processing import ProcessingInput, ProcessingOutput
@@ -428,6 +434,96 @@ def test_conditional_pytorch_training_model_registration(
             fr"arn:aws:sagemaker:{region}:\d{{12}}:pipeline/{pipeline_name}/execution/",
             execution.arn,
         )
+    finally:
+        try:
+            pipeline.delete()
+        except Exception:
+            pass
+
+
+def test_training_job_with_debugger(
+    sagemaker_session,
+    pipeline_name,
+    role,
+    pytorch_training_latest_version,
+    pytorch_training_latest_py_version,
+):
+    instance_count = ParameterInteger(name="InstanceCount", default_value=1)
+    instance_type = ParameterString(name="InstanceType", default_value="ml.m5.xlarge")
+
+    rules = [
+        Rule.sagemaker(rule_configs.vanishing_gradient()),
+        Rule.sagemaker(base_config=rule_configs.all_zero(), rule_parameters={"tensor_regex": ".*"}),
+        Rule.sagemaker(rule_configs.loss_not_decreasing()),
+    ]
+    debugger_hook_config = DebuggerHookConfig(
+        s3_output_path=f"s3://{sagemaker_session.default_bucket()}/{uuid.uuid4()}/tensors"
+    )
+
+    base_dir = os.path.join(DATA_DIR, "pytorch_mnist")
+    script_path = os.path.join(base_dir, "mnist.py")
+    input_path = sagemaker_session.upload_data(
+        path=os.path.join(base_dir, "training"),
+        key_prefix="integ-test-data/pytorch_mnist/training",
+    )
+    inputs = TrainingInput(s3_data=input_path)
+
+    pytorch_estimator = PyTorch(
+        entry_point=script_path,
+        role="SageMakerRole",
+        framework_version=pytorch_training_latest_version,
+        py_version=pytorch_training_latest_py_version,
+        instance_count=instance_count,
+        instance_type=instance_type,
+        sagemaker_session=sagemaker_session,
+        rules=rules,
+        debugger_hook_config=debugger_hook_config,
+    )
+
+    step_train = TrainingStep(
+        name="pytorch-train",
+        estimator=pytorch_estimator,
+        inputs=inputs,
+    )
+
+    pipeline = Pipeline(
+        name=pipeline_name,
+        parameters=[instance_count, instance_type],
+        steps=[step_train],
+        sagemaker_session=sagemaker_session,
+    )
+
+    try:
+        response = pipeline.create(role)
+        create_arn = response["PipelineArn"]
+
+        execution = pipeline.start()
+        response = execution.describe()
+        assert response["PipelineArn"] == create_arn
+
+        try:
+            execution.wait(delay=10, max_attempts=60)
+        except WaiterError:
+            pass
+        execution_steps = execution.list_steps()
+        training_job_arn = execution_steps[0]["Metadata"]["TrainingJob"]["Arn"]
+        job_description = sagemaker_session.sagemaker_client.describe_training_job(
+            TrainingJobName=training_job_arn.split("/")[1]
+        )
+
+        assert len(execution_steps) == 1
+        assert execution_steps[0]["StepName"] == "pytorch-train"
+        assert execution_steps[0]["StepStatus"] == "Succeeded"
+
+        for index, rule in enumerate(rules):
+            config = job_description["DebugRuleConfigurations"][index]
+            assert config["RuleConfigurationName"] == rule.name
+            assert config["RuleEvaluatorImage"] == rule.image_uri
+            assert config["VolumeSizeInGB"] == 0
+            assert (
+                config["RuleParameters"]["rule_to_invoke"] == rule.rule_parameters["rule_to_invoke"]
+            )
+        assert job_description["DebugHookConfig"] == debugger_hook_config._to_request_dict()
     finally:
         try:
             pipeline.delete()
