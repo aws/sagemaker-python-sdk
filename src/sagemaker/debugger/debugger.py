@@ -392,6 +392,8 @@ class Rule(RuleBase):
                 prefix for the StopTraining action if it is specified.
         """
         if self.actions is None:
+            # user cannot manually specify action_json in rule_parameters for actions.
+            self.rule_parameters.pop("action_json", None)
             return
 
         self.actions.update_training_job_prefix_if_not_specified(training_job_name)
