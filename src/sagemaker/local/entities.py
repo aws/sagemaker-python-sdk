@@ -39,7 +39,7 @@ HEALTH_CHECK_TIMEOUT_LIMIT = 120
 
 
 class _LocalProcessingJob(object):
-    """Placeholder docstring"""
+    """Defines and starts a local processing job."""
 
     _STARTING = "Starting"
     _PROCESSING = "Processing"
@@ -49,7 +49,7 @@ class _LocalProcessingJob(object):
     def __init__(self, container):
         """
         Args:
-            container:
+            container: the local container object.
         """
         self.container = container
         self.state = "Created"
@@ -63,10 +63,10 @@ class _LocalProcessingJob(object):
     def start(self, processing_inputs, processing_output_config, environment, processing_job_name):
         """
         Args:
-            processing_inputs:
-            processing_output_config:
-            environment:
-            processing_job_name:
+            processing_inputs: The processing input configuration.
+            processing_output_config: The processing input configuration.
+            environment: The collection of environment variables passed to the job.
+            processing_job_name: The processing job name.
         """
 
         for item in processing_inputs:
@@ -132,11 +132,12 @@ class _LocalProcessingJob(object):
         self.container.process(
             processing_inputs, processing_output_config, environment, processing_job_name
         )
+
         self.end_time = datetime.datetime.now()
         self.state = self._COMPLETED
 
     def describe(self):
-        """Placeholder docstring"""
+        """Describes a local processing job."""
 
         response = {
             "ProcessingJobArn": self.processing_job_name,

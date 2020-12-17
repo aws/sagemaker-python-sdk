@@ -143,9 +143,6 @@ class _SageMakerContainer(object):
                 host, environment, processing_inputs, processing_output_config, processing_job_name
             )
 
-        # Adding region name environment variable.
-        environment[REGION_ENV_NAME] = self.sagemaker_session.boto_region_name
-
         self._generate_compose_file(
             "process", additional_volumes=volumes, additional_env_vars=environment
         )
@@ -728,7 +725,7 @@ class _SageMakerContainer(object):
             if self.container_entrypoint:
                 host_config["entrypoint"] = self.container_entrypoint
             if self.container_arguments:
-                host_config["entrypoint"] += self.container_arguments
+                host_config["entrypoint"] = host_config["entrypoint"] + self.container_arguments
 
         # for GPU support pass in nvidia as the runtime, this is equivalent
         # to setting --runtime=nvidia in the docker commandline.

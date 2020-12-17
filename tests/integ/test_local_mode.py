@@ -25,6 +25,11 @@ import stopit
 import tests.integ.lock as lock
 from tests.integ import DATA_DIR
 
+from sagemaker import image_uris
+
+from sagemaker.processing import ProcessingInput, ProcessingOutput, ScriptProcessor
+from sagemaker.sklearn.processing import SKLearnProcessor
+
 from sagemaker.local import LocalSession, LocalSagemakerRuntimeClient, LocalSagemakerClient
 from sagemaker.mxnet import MXNet
 
@@ -51,6 +56,22 @@ class LocalNoS3Session(LocalSession):
         self.sagemaker_client = LocalSagemakerClient(self)
         self.sagemaker_runtime_client = LocalSagemakerRuntimeClient(self.config)
         self.local_mode = True
+
+
+@pytest.fixture(scope="module")
+def image_uri(
+    sklearn_latest_version,
+    sklearn_latest_py_version,
+    cpu_instance_type,
+    sagemaker_session,
+):
+    return image_uris.retrieve(
+        "sklearn",
+        sagemaker_session.boto_region_name,
+        version=sklearn_latest_version,
+        py_version=sklearn_latest_py_version,
+        instance_type=cpu_instance_type,
+    )
 
 
 @pytest.fixture(scope="module")
@@ -298,3 +319,106 @@ def test_local_transform_mxnet(
         transformer.wait()
 
     assert os.path.exists(os.path.join(str(tmpdir), "data.csv.out"))
+
+
+@pytest.mark.local_mode
+def test_local_processing_sklearn(sagemaker_local_session, sklearn_latest_version):
+    script_path = os.path.join(DATA_DIR, "dummy_script.py")
+    input_file_path = os.path.join(DATA_DIR, "dummy_input.txt")
+
+    sklearn_processor = SKLearnProcessor(
+        framework_version=sklearn_latest_version,
+        role="SageMakerRole",
+        instance_type="local",
+        instance_count=1,
+        command=["python3"],
+        sagemaker_session=sagemaker_local_session,
+    )
+
+    sklearn_processor.run(
+        code=script_path,
+        inputs=[ProcessingInput(source=input_file_path, destination="/opt/ml/processing/inputs/")],
+        wait=False,
+        logs=False,
+    )
+
+    job_description = sklearn_processor.latest_job.describe()
+
+    assert len(job_description["ProcessingInputs"]) == 2
+    assert job_description["ProcessingResources"]["ClusterConfig"]["InstanceCount"] == 1
+    assert job_description["ProcessingResources"]["ClusterConfig"]["InstanceType"] == "local"
+    assert job_description["AppSpecification"]["ContainerEntrypoint"] == [
+        "python3",
+        "/opt/ml/processing/input/code/dummy_script.py",
+    ]
+    assert job_description["RoleArn"] == "<no_role>"
+
+
+@pytest.mark.local_mode
+def test_local_processing_script_processor(sagemaker_local_session, image_uri):
+    input_file_path = os.path.join(DATA_DIR, "dummy_input.txt")
+
+    script_processor = ScriptProcessor(
+        role="SageMakerRole",
+        image_uri=image_uri,
+        command=["python3"],
+        instance_count=1,
+        instance_type="local",
+        volume_size_in_gb=30,
+        volume_kms_key=None,
+        max_runtime_in_seconds=3600,
+        base_job_name="test-script-processor",
+        env={"DUMMY_ENVIRONMENT_VARIABLE": "dummy-value"},
+        tags=[{"Key": "dummy-tag", "Value": "dummy-tag-value"}],
+        sagemaker_session=sagemaker_local_session,
+    )
+
+    script_processor.run(
+        code=os.path.join(DATA_DIR, "dummy_script.py"),
+        inputs=[
+            ProcessingInput(
+                source=input_file_path,
+                destination="/opt/ml/processing/input/container/path/",
+                input_name="dummy_input",
+                s3_data_type="S3Prefix",
+                s3_input_mode="File",
+                s3_data_distribution_type="FullyReplicated",
+                s3_compression_type="None",
+            )
+        ],
+        outputs=[
+            ProcessingOutput(
+                source="/opt/ml/processing/output/container/path/",
+                output_name="dummy_output",
+                s3_upload_mode="EndOfJob",
+            )
+        ],
+        arguments=["-v"],
+        wait=True,
+        logs=True,
+    )
+
+    job_description = script_processor.latest_job.describe()
+
+    assert job_description["ProcessingInputs"][0]["InputName"] == "dummy_input"
+
+    assert job_description["ProcessingInputs"][1]["InputName"] == "code"
+
+    assert job_description["ProcessingJobName"].startswith("test-script-processor")
+
+    assert job_description["ProcessingJobStatus"] == "Completed"
+
+    assert job_description["ProcessingOutputConfig"]["Outputs"][0]["OutputName"] == "dummy_output"
+
+    assert job_description["ProcessingResources"]["ClusterConfig"]["InstanceCount"] == 1
+    assert job_description["ProcessingResources"]["ClusterConfig"]["InstanceType"] == "local"
+    assert job_description["ProcessingResources"]["ClusterConfig"]["VolumeSizeInGB"] == 30
+
+    assert job_description["AppSpecification"]["ContainerArguments"] == ["-v"]
+    assert job_description["AppSpecification"]["ContainerEntrypoint"] == [
+        "python3",
+        "/opt/ml/processing/input/code/dummy_script.py",
+    ]
+    assert job_description["AppSpecification"]["ImageUri"] == image_uri
+
+    assert job_description["Environment"] == {"DUMMY_ENVIRONMENT_VARIABLE": "dummy-value"}
