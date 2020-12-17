@@ -1,5 +1,154 @@
 # Changelog
 
+## v2.20.0 (2020-12-16)
+
+### Features
+
+ * add dataset definition support for processing jobs
+
+### Bug Fixes and Other Changes
+
+ * include workflow integ tests with clarify and debugger enabled
+ * only run DataParallel and EdgePackaging tests in supported regions
+
+### Documentation Changes
+
+ * fix smp code example, add note for CUDA 11 to sdp
+ * adding note about CUDA 11 to SMP. Small title update PyTorch
+
+## v2.19.0 (2020-12-08)
+
+### Features
+
+ * add tensorflow 1.15.4 and 2.3.1 as valid versions
+ * add py36 as valid python version for pytorch 1.6.0
+ * auto-select container version for p4d and smdistributed
+ * add edge packaging job support
+ * Add Clarify Processor, Model Bias, Explainability, and Quality Monitors support. (#494)
+ * add model parallelism support
+ * add data parallelism support (#454) (#511)
+ * support creating and updating profiler in training job (#444) (#526)
+
+### Bug Fixes and Other Changes
+
+ * bump boto3 and smdebug_rulesconfig versions for reinvent and enable data parallel integ tests
+ * run UpdateTrainingJob tests only during allowed secondary status
+ * Remove workarounds and apply fixes to Clarify and MM integ tests
+ * add p4d to smdataparallel supported instances
+ * Mount metadata directory when starting local mode docker container
+ * add integ test for profiler
+ * Re-enable model monitor integration tests.
+
+### Documentation Changes
+
+ * add SageMaker distributed libraries documentation
+ * update documentation for the new SageMaker Debugger APIs
+ * minor updates to doc strings
+
+## v2.18.0 (2020-12-03)
+
+### Features
+
+ * all de/serializers support content type
+ * warn on 'Stopped' (non-Completed) jobs
+ * all predictors support serializer/deserializer overrides
+
+### Bug Fixes and Other Changes
+
+ * v2 upgrade tool should ignore cell starting with '%'
+ * use iterrows to iterate pandas dataframe
+ * check for distributions in TF estimator
+
+### Documentation Changes
+
+ * Update link to Sagemaker PyTorch Docker Containers
+ * create artifact restricted to SM context note
+
+### Testing and Release Infrastructure
+
+ * remove flaky assertion in test_integ_history_server
+ * adjust assertion of TensorFlow MNIST test
+
+## v2.17.0 (2020-12-02)
+
+### Features
+
+ * bump minor version for re:Invent 2020 features
+
+## v2.16.4 (2020-12-01)
+
+### Features
+
+ * Add re:Invent 2020 features
+
+### Bug Fixes and Other Changes
+
+ * use eia python version fixture in integration tests
+ * bump version to 2.17.0 for re:Invent-2020
+
+### Documentation Changes
+
+ * add feature store documentation
+
+## v2.16.3.post0 (2020-11-17)
+
+### Testing and Release Infrastructure
+
+ * use ECR-hosted image for ubuntu:16.04
+
+## v2.16.3 (2020-11-11)
+
+### Bug Fixes and Other Changes
+
+ * fix failures for multiple spark run() invocations
+
+## v2.16.2 (2020-11-09)
+
+### Bug Fixes and Other Changes
+
+ * create default bucket only if needed
+
+## v2.16.1 (2020-10-28)
+
+### Bug Fixes and Other Changes
+
+ * ensure 1p algos are compatible with forward-port
+
+## v2.16.0.post0 (2020-10-28)
+
+### Documentation Changes
+
+ * clarify non-breaking changes after v1 forward port
+
+## v2.16.0 (2020-10-27)
+
+### Features
+
+ * update image uri for neo tensorflow
+
+## v2.15.4 (2020-10-26)
+
+### Bug Fixes and Other Changes
+
+ * add kms_key optional arg to Pipeline.deploy()
+
+### Documentation Changes
+
+ * Debugger API - improve docstrings and add examples
+
+## v2.15.3 (2020-10-20)
+
+### Bug Fixes and Other Changes
+
+ * refactor _create_model_request
+
+## v2.15.2 (2020-10-19)
+
+### Bug Fixes and Other Changes
+
+ * preserve model_dir bool value
+ * refactor out batch transform job input generation
+
 ## v2.15.1 (2020-10-15)
 
 ### Bug Fixes and Other Changes

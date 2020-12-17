@@ -538,6 +538,21 @@ def test_retrieve_default_processor_type_if_possible(config_for_framework):
     assert "123412341234.dkr.ecr.us-west-2.amazonaws.com/dummy:1.0.0-cpu-py3" == uri
 
 
+def test_retrieve_auto_selected_container_version():
+    uri = image_uris.retrieve(
+        framework="tensorflow",
+        region="us-west-2",
+        version="2.3",
+        py_version="py37",
+        instance_type="ml.p4d.24xlarge",
+        image_scope="training",
+    )
+    assert (
+        "763104351884.dkr.ecr.us-west-2.amazonaws.com/tensorflow-training:2.3-gpu-py37-cu110-ubuntu18.04-v3"
+        == uri
+    )
+
+
 @patch("sagemaker.image_uris.config_for_framework", return_value=BASE_CONFIG)
 def test_retrieve_unsupported_processor_type(config_for_framework):
     with pytest.raises(ValueError) as e:

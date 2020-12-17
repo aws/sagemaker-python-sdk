@@ -75,26 +75,26 @@ def build_jar():
 
 
 @pytest.fixture(scope="module")
-def spark_py_processor(sagemaker_session, cpu_instance_type, spark_processing_latest_version):
+def spark_py_processor(sagemaker_session, cpu_instance_type):
     spark_py_processor = PySparkProcessor(
         role="SageMakerRole",
         instance_count=2,
         instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
-        framework_version=spark_processing_latest_version,
+        framework_version="2.4",
     )
 
     return spark_py_processor
 
 
 @pytest.fixture(scope="module")
-def spark_jar_processor(sagemaker_session, cpu_instance_type, spark_processing_latest_version):
+def spark_jar_processor(sagemaker_session, cpu_instance_type):
     spark_jar_processor = SparkJarProcessor(
         role="SageMakerRole",
         instance_count=2,
         instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
-        framework_version=spark_processing_latest_version,
+        framework_version="2.4",
     )
 
     return spark_jar_processor
@@ -302,19 +302,13 @@ def test_integ_history_server(spark_py_processor, sagemaker_session):
             sagemaker_session=sagemaker_session,
         )
 
+    # sleep 3 seconds to avoid s3 eventual consistency issue
+    time.sleep(3)
     spark_py_processor.start_history_server(spark_event_logs_s3_uri=spark_event_logs_s3_uri)
 
     try:
         response = _request_with_retry(HISTORY_SERVER_ENDPOINT)
         assert response.status == 200
-
-        # spark has redirect behavior, this request verify that page navigation works with redirect
-        response = _request_with_retry(f"{HISTORY_SERVER_ENDPOINT}{SPARK_APPLICATION_URL_SUFFIX}")
-        assert response.status == 200
-
-        html_content = response.data.decode("utf-8")
-        assert "Completed Jobs (4)" in html_content
-        assert "collect at /opt/ml/processing/input/code/test_long_duration.py:32" in html_content
     finally:
         spark_py_processor.terminate_history_server()
 

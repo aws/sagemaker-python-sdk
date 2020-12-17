@@ -472,13 +472,16 @@ class LocalSession(Session):
         if platform.system() == "Windows":
             logger.warning("Windows Support for Local Mode is Experimental")
 
-    def _initialize(self, boto_session, sagemaker_client, sagemaker_runtime_client):
+    def _initialize(
+        self, boto_session, sagemaker_client, sagemaker_runtime_client, **kwargs
+    ):  # pylint: disable=unused-argument
         """Initialize this Local SageMaker Session.
 
         Args:
           boto_session:
           sagemaker_client:
           sagemaker_runtime_client:
+          kwargs:
 
         Returns:
 

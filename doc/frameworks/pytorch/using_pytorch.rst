@@ -1,6 +1,6 @@
-###########################################
-Using PyTorch with the SageMaker Python SDK
-###########################################
+#########################################
+Use PyTorch with the SageMaker Python SDK
+#########################################
 
 With PyTorch Estimators and Models, you can train and host PyTorch models on Amazon SageMaker.
 
@@ -132,7 +132,7 @@ Using third-party libraries
 ---------------------------
 
 When running your training script on SageMaker, it will have access to some pre-installed third-party libraries including ``torch``, ``torchvision``, and ``numpy``.
-For more information on the runtime environment, including specific package versions, see `SageMaker PyTorch Docker containers <https://github.com/aws/sagemaker-python-sdk/tree/master/src/sagemaker/pytorch#sagemaker-pytorch-docker-containers>`_.
+For more information on the runtime environment, including specific package versions, see `SageMaker PyTorch Docker containers <https://github.com/aws/deep-learning-containers/tree/master/pytorch>`_.
 
 If there are other packages you want to use with your script, you can include a ``requirements.txt`` file in the same directory as your training script to install other dependencies at runtime. Both ``requirements.txt`` and your training script should be put in the same folder. You must specify this folder in ``source_dir`` argument when creating PyTorch estimator.
 

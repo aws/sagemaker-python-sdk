@@ -1,0 +1,311 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"). You
+# may not use this file except in compliance with the License. A copy of
+# the License is located at
+#
+#     http://aws.amazon.com/apache2.0/
+#
+# or in the "license" file accompanying this file. This file is
+# distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
+# ANY KIND, either express or implied. See the License for the specific
+# language governing permissions and limitations under the License.
+"""This module contains functionality to display lineage data."""
+from __future__ import absolute_import
+import logging
+import os
+from urllib.parse import urlparse
+import pandas as pd
+
+from sagemaker.lineage.association import Association
+
+
+class LineageTableVisualizer(object):
+    """Creates a dataframe containing the lineage assoociations of a SageMaker object."""
+
+    def __init__(self, sagemaker_session):
+        """Init for LineageTableVisualizer.
+
+        Args:
+            sagemaker_session (obj): The sagemaker session used for API requests.
+        """
+        self._session = sagemaker_session
+
+    def show(
+        self,
+        trial_component_name=None,
+        training_job_name=None,
+        processing_job_name=None,
+        pipeline_execution_step=None,
+        model_package_arn=None,
+        endpoint_arn=None,
+    ):
+        """Generate a dataframe containing all incoming and outgoing lineage entities.
+
+          Examples:
+          .. code-block:: python
+
+              viz = LineageTableVisualizer(sagemaker_session)
+              df = viz.show(training_job_name=training_job_name)
+              # in a notebook
+              display(df.to_html())
+
+        Args:
+            trial_component_name (str, optional): Name of  a trial component. Defaults to None.
+            training_job_name (str, optional): Name of a training job. Defaults to None.
+            processing_job_name (str, optional): Name of a processing job. Defaults to None.
+            pipeline_execution_step (obj, optional): Pipeline execution step. Defaults to None.
+            model_package_arn (str, optional): Model package arn. Defaults to None.
+            endpoint_arn (str, optional): Endpoint arn. Defaults to None.
+
+        Returns:
+            DataFrame: Pandas dataframe containing lineage associations.
+        """
+        start_arn = None
+
+        if trial_component_name:
+            start_arn = self._get_start_arn_from_trial_component_name(trial_component_name)
+        elif training_job_name:
+            trial_component_name = training_job_name + "-aws-training-job"
+            start_arn = self._get_start_arn_from_trial_component_name(trial_component_name)
+        elif processing_job_name:
+            trial_component_name = processing_job_name + "-aws-processing-job"
+            start_arn = self._get_start_arn_from_trial_component_name(trial_component_name)
+        elif pipeline_execution_step:
+            start_arn = self._get_start_arn_from_pipeline_execution_step(pipeline_execution_step)
+        elif model_package_arn:
+            start_arn = self._get_start_arn_from_model_package_arn(model_package_arn)
+        elif endpoint_arn:
+            start_arn = self._get_start_arn_from_endpoint_arn(endpoint_arn)
+
+        return self._get_associations_dataframe(start_arn)
+
+    def _get_start_arn_from_pipeline_execution_step(self, pipeline_execution_step):
+        """Given a pipeline exection step retrieve the arn of the lineage entity that represents it.
+
+        Args:
+            pipeline_execution_step (obj): Pipeline execution step.
+
+        Returns:
+            str: The arn of the lineage entity
+        """
+        start_arn = None
+
+        if not pipeline_execution_step["Metadata"]:
+            return None
+
+        metadata = pipeline_execution_step["Metadata"]
+        jobs = ["TrainingJob", "ProccessingJob", "TransformJob"]
+        for job in jobs:
+            if job in metadata and metadata[job]:
+                job_arn = metadata[job]["Arn"]
+                start_arn = self._get_start_arn_from_job_arn(job_arn)
+                break
+
+        if "RegisterModel" in metadata:
+            start_arn = self._get_start_arn_from_model_package_arn(metadata["RegisterModel"]["Arn"])
+
+        return start_arn
+
+    def _get_start_arn_from_job_arn(self, job_arn):
+        """Given a job arn return the lineage entity.
+
+        Args:
+            job_arn (str): Arn of a training, processing, or transform job.
+
+        Returns:
+          str: The arn of the job's lineage entity.
+        """
+        start_arn = None
+        response = self._session.sagemaker_client.list_trial_components(SourceArn=job_arn)
+        trial_components = response["TrialComponentSummaries"]
+        if trial_components:
+            start_arn = trial_components[0]["TrialComponentArn"]
+        else:
+            logging.warning("No trial components found for %s", job_arn)
+        return start_arn
+
+    def _get_associations_dataframe(self, arn):
+        """Create a data frame containing lineage association information.
+
+        Args:
+            arn (str): The arn of the lineage entity of interest.
+
+        Returns:
+            DataFrame: A dataframe with association information.
+        """
+        if arn is None:
+            # no associations
+            return None
+
+        upstream_associations = self._get_associations(dest_arn=arn)
+        downstream_associations = self._get_associations(src_arn=arn)
+        inputs = list(map(self._convert_input_association_to_df_row, upstream_associations))
+        outputs = list(map(self._convert_output_association_to_df_row, downstream_associations))
+        df = pd.DataFrame(
+            inputs + outputs,
+            columns=["Name/Source", "Direction", "Type", "Association Type", "Lineage Type"],
+        )
+        return df
+
+    def _get_start_arn_from_trial_component_name(self, tc_name):
+        """Given a trial component name retrieve a start arn.
+
+        Args:
+            tc_name (str): Name of the trial compoonent.
+
+        Returns:
+          str: The arn of the trial component.
+        """
+        response = self._session.sagemaker_client.describe_trial_component(
+            TrialComponentName=tc_name
+        )
+        tc_arn = response["TrialComponentArn"]
+        return tc_arn
+
+    def _get_start_arn_from_model_package_arn(self, model_package_arn):
+        """Given a model package arn retrieve the arn lineage entity.
+
+        Args:
+            model_package_arn (str): The arn of a model package.
+
+        Returns:
+            str: The arn of the lineage entity that represents the model package.
+        """
+        response = self._session.sagemaker_client.list_artifacts(SourceUri=model_package_arn)
+        artifacts = response["ArtifactSummaries"]
+        artifact_arn = None
+        if artifacts:
+            artifact_arn = artifacts[0]["ArtifactArn"]
+        else:
+            logging.debug("No artifacts found for %s.", model_package_arn)
+        return artifact_arn
+
+    def _get_start_arn_from_endpoint_arn(self, endpoint_arn):
+        """Given an endpoint arn retrieve the arn of the lineage entity.
+
+        Args:
+            endpoint_arn (str): The arn of an endpoint
+
+        Returns:
+            str: The arn of the lineage entity that represents the model package.
+        """
+        response = self._session.sagemaker_client.list_contexts(SourceUri=endpoint_arn)
+        contexts = response["ContextSummaries"]
+        context_arn = None
+        if contexts:
+            context_arn = contexts[0]["ContextArn"]
+        else:
+            logging.debug("No contexts found for %s.", endpoint_arn)
+        return context_arn
+
+    def _get_associations(self, src_arn=None, dest_arn=None):
+        """Given an arn retrieve all associated lineage entities.
+
+        The arn must be one of: experiment, trial, trial component, artifact, action, or context.
+
+        Args:
+            src_arn (str, optional): The arn of the source. Defaults to None.
+            dest_arn (str, optional): The arn of the destination. Defaults to None.
+
+        Returns:
+            array: An array of associations that are either incoming or outgoing from the lineage
+            entity of interest.
+        """
+        if src_arn:
+            associations = Association.list(source_arn=src_arn, sagemaker_session=self._session)
+        else:
+            associations = Association.list(
+                destination_arn=dest_arn, sagemaker_session=self._session
+            )
+        return associations
+
+    def _convert_input_association_to_df_row(self, association):
+        """Convert an input association to a data frame row.
+
+        Args:
+            association (obj): ``Association``
+
+        Returns:
+            array: Array of column values for the association data frame.
+        """
+        return self._convert_association_to_df_row(
+            association.source_arn,
+            association.source_name,
+            "Input",
+            association.source_type,
+            association.association_type,
+        )
+
+    def _convert_output_association_to_df_row(self, association):
+        """Convert an output association to a data frame row.
+
+        Args:
+            association (obj): ``Association``
+
+        Returns:
+            array: Array of column values for the association data frame.
+        """
+        return self._convert_association_to_df_row(
+            association.destination_arn,
+            association.destination_name,
+            "Output",
+            association.destination_type,
+            association.association_type,
+        )
+
+    def _convert_association_to_df_row(self, arn, name, direction, src_dest_type, association_type):
+        """Convert association data into a data frame row.
+
+        Args:
+            arn (str): The arn of the associated entity.
+            name (str): The name of the associated entity.
+            direction (str): The direction the association is with the entity of interest. Values
+            are 'Input' or 'Output'.
+            src_dest_type (str): The type of the entity that is associated with the entity of
+            interest.
+            association_type ([type]): The type of the association.
+
+        Returns:
+            [type]: [description]
+        """
+        arn_name = arn.split(":")[5]
+        entity_type = arn_name.split("/")[0]
+        name = self._get_friendly_name(name, arn, entity_type)
+        return [name, direction, src_dest_type, association_type, entity_type]
+
+    def _get_friendly_name(self, name, arn, entity_type):
+        """Get a human readable name from the association.
+
+        Args:
+            name (str): The name of the associated entity
+            arn (str): The arn of the associated entity
+            entity_type (str): The type of the associated entity (artifact, action, etc...)
+
+        Returns:
+            str: The name for the association that will be displayed in the data frame.
+        """
+        if name:
+            return name
+
+        if entity_type == "artifact":
+            artifact = self._session.sagemaker_client.describe_artifact(ArtifactArn=arn)
+            uri = artifact["Source"]["SourceUri"]
+            # try to get file name from url
+            uri_parsed = urlparse(uri)
+            name = os.path.basename(uri_parsed.path)
+
+            # directory?
+            ext = os.path.splitext(name)[1]
+            if not ext or len(ext) > 3:
+                name = uri[:5] + "..." + uri[len(uri) - 40 :]
+
+            # if not then use the full uri
+            if not name:
+                name = uri
+
+        # if still don't have name derive from arn
+        if not name:
+            name = arn.split(":")[5].split("/")[1]
+
+        return name

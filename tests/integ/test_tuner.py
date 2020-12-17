@@ -28,7 +28,7 @@ from sagemaker.deserializers import JSONDeserializer
 from sagemaker.estimator import Estimator
 from sagemaker.mxnet.estimator import MXNet
 from sagemaker.pytorch import PyTorch
-from sagemaker.serializers import BaseSerializer
+from sagemaker.serializers import SimpleBaseSerializer
 from sagemaker.tensorflow import TensorFlow
 from sagemaker.tuner import (
     IntegerParameter,
@@ -884,9 +884,8 @@ def test_tuning_byo_estimator(sagemaker_session, cpu_instance_type):
 
 
 # Serializer for the Factorization Machines predictor (for BYO example)
-class _FactorizationMachineSerializer(BaseSerializer):
-
-    CONTENT_TYPE = "application/json"
+class _FactorizationMachineSerializer(SimpleBaseSerializer):
+    # SimpleBaseSerializer already uses "application/json" CONTENT_TYPE by default
 
     def serialize(self, data):
         js = {"instances": []}

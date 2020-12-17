@@ -15,11 +15,13 @@ from __future__ import absolute_import
 import inspect
 import os
 import tarfile
+from contextlib import contextmanager
+from itertools import product
 
 import pytest
+
 from mock import Mock, patch
 
-from contextlib import contextmanager
 from sagemaker import fw_utils
 from sagemaker.utils import name_from_image
 
@@ -89,6 +91,46 @@ def test_tar_and_upload_dir_s3_with_kms(utils, sagemaker_session):
     extra_args = {"ServerSideEncryption": "aws:kms", "SSEKMSKeyId": kms_key}
     obj = sagemaker_session.resource("s3").Object("", "")
     obj.upload_file.assert_called_with(utils.create_tar_file(), ExtraArgs=extra_args)
+
+
+def test_mp_config_partition_exists():
+    mp_parameters = {}
+    with pytest.raises(ValueError):
+        fw_utils.validate_mp_config(mp_parameters)
+
+
+@pytest.mark.parametrize(
+    "pipeline, placement_strategy, optimize, trace_device",
+    [
+        ("simple", "spread", "speed", "cpu"),
+        ("interleaved", "cluster", "memory", "gpu"),
+        ("_only_forward", "spread", "speed", "gpu"),
+    ],
+)
+def test_mp_config_string_names(pipeline, placement_strategy, optimize, trace_device):
+    mp_parameters = {
+        "partitions": 2,
+        "pipeline": pipeline,
+        "placement_strategy": placement_strategy,
+        "optimize": optimize,
+        "trace_device": trace_device,
+    }
+    fw_utils.validate_mp_config(mp_parameters)
+
+
+def test_mp_config_auto_partition_arg():
+    mp_parameters = {}
+    mp_parameters["partitions"] = 2
+    mp_parameters["auto_partition"] = False
+    with pytest.raises(ValueError):
+        fw_utils.validate_mp_config(mp_parameters)
+
+    mp_parameters["default_partition"] = 1
+    fw_utils.validate_mp_config(mp_parameters)
+
+    mp_parameters["default_partition"] = 4
+    with pytest.raises(ValueError):
+        fw_utils.validate_mp_config(mp_parameters)
 
 
 def test_validate_source_dir_does_not_exits(sagemaker_session):
@@ -471,7 +513,6 @@ def test_region_supports_debugger_feature_returns_true_for_supported_regions():
 
 
 def test_region_supports_debugger_feature_returns_false_for_unsupported_regions():
-    assert fw_utils._region_supports_debugger("us-gov-west-1") is False
     assert fw_utils._region_supports_debugger("us-iso-east-1") is False
 
 
@@ -506,3 +547,93 @@ def test_validate_version_or_image_args_raises():
     for framework_version, py_version, image_uri in bad_args:
         with pytest.raises(ValueError):
             fw_utils.validate_version_or_image_args(framework_version, py_version, image_uri)
+
+
+def test_validate_smdistributed_not_raises():
+    smdataparallel_enabled = {"smdistributed": {"dataparallel": {"enabled": True}}}
+    smdataparallel_disabled = {"smdistributed": {"dataparallel": {"enabled": False}}}
+    instance_types = list(fw_utils.SM_DATAPARALLEL_SUPPORTED_INSTANCE_TYPES)
+
+    good_args = [
+        (smdataparallel_enabled, "custom-container"),
+        (smdataparallel_disabled, "custom-container"),
+    ]
+    frameworks = ["tensorflow", "pytorch"]
+
+    for framework, instance_type in product(frameworks, instance_types):
+        for distribution, image_uri in good_args:
+            fw_utils.validate_smdistributed(
+                instance_type=instance_type,
+                framework_name=framework,
+                framework_version=None,
+                py_version=None,
+                distribution=distribution,
+                image_uri=image_uri,
+            )
+
+
+def test_validate_smdistributed_raises():
+    bad_args = [
+        {"smdistributed": {"dataparallel": {"enabled": True}}},
+        {"smdistributed": "dummy"},
+        {"smdistributed": {"dummy"}},
+        {"smdistributed": {"dummy": "val"}},
+        {"smdistributed": {"dummy": {"enabled": True}}},
+    ]
+    frameworks = ["tensorflow", "pytorch"]
+    for framework, distribution in product(frameworks, bad_args):
+        with pytest.raises(ValueError):
+            fw_utils.validate_smdistributed(
+                instance_type=None,
+                framework_name=framework,
+                framework_version=None,
+                py_version=None,
+                distribution=distribution,
+                image_uri="custom-container",
+            )
+
+
+def test_validate_smdataparallel_args_raises():
+    # TODO: add validation for dataparallel in mxnet
+    smdataparallel_enabled = {"smdistributed": {"dataparallel": {"enabled": True}}}
+
+    # Cases {PT|TF2}
+    # 1. None instance type
+    # 2. incorrect instance type
+    # 3. incorrect python version
+    # 4. incorrect framework version
+
+    bad_args = [
+        (None, "tensorflow", "2.3.1", "py3", smdataparallel_enabled),
+        ("ml.p3.2xlarge", "tensorflow", "2.3.1", "py3", smdataparallel_enabled),
+        ("ml.p3dn.24xlarge", "tensorflow", "2.3.1", "py2", smdataparallel_enabled),
+        ("ml.p3.16xlarge", "tensorflow", "1.3.1", "py3", smdataparallel_enabled),
+        (None, "pytorch", "1.6.0", "py3", smdataparallel_enabled),
+        ("ml.p3.2xlarge", "pytorch", "1.6.0", "py3", smdataparallel_enabled),
+        ("ml.p3dn.24xlarge", "pytorch", "1.6.0", "py2", smdataparallel_enabled),
+        ("ml.p3.16xlarge", "pytorch", "1.5.0", "py3", smdataparallel_enabled),
+    ]
+    for instance_type, framework_name, framework_version, py_version, distribution in bad_args:
+        with pytest.raises(ValueError):
+            fw_utils._validate_smdataparallel_args(
+                instance_type, framework_name, framework_version, py_version, distribution
+            )
+
+
+def test_validate_smdataparallel_args_not_raises():
+    smdataparallel_enabled = {"smdistributed": {"dataparallel": {"enabled": True}}}
+    smdataparallel_disabled = {"smdistributed": {"dataparallel": {"enabled": False}}}
+
+    # Cases {PT|TF2}
+    # 1. SM Distributed dataparallel disabled
+    # 2. SM Distributed dataparallel enabled with supported args
+
+    good_args = [
+        (None, None, None, None, smdataparallel_disabled),
+        ("ml.p3.16xlarge", "tensorflow", "2.3.1", "py3", smdataparallel_enabled),
+        ("ml.p3.16xlarge", "pytorch", "1.6.0", "py3", smdataparallel_enabled),
+    ]
+    for instance_type, framework_name, framework_version, py_version, distribution in good_args:
+        fw_utils._validate_smdataparallel_args(
+            instance_type, framework_name, framework_version, py_version, distribution
+        )

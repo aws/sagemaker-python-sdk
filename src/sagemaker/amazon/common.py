@@ -22,15 +22,22 @@ import numpy as np
 
 from sagemaker.amazon.record_pb2 import Record
 from sagemaker.deprecations import deprecated_class
-from sagemaker.deserializers import BaseDeserializer
-from sagemaker.serializers import BaseSerializer
+from sagemaker.deserializers import SimpleBaseDeserializer
+from sagemaker.serializers import SimpleBaseSerializer
 from sagemaker.utils import DeferredError
 
 
-class RecordSerializer(BaseSerializer):
+class RecordSerializer(SimpleBaseSerializer):
     """Serialize a NumPy array for an inference request."""
 
-    CONTENT_TYPE = "application/x-recordio-protobuf"
+    def __init__(self, content_type="application/x-recordio-protobuf"):
+        """Initialize a ``RecordSerializer`` instance.
+
+        Args:
+            content_type (str): The MIME type to signal to the inference endpoint when sending
+                request data (default: "application/x-recordio-protobuf").
+        """
+        super(RecordSerializer, self).__init__(content_type=content_type)
 
     def serialize(self, data):
         """Serialize a NumPy array into a buffer containing RecordIO records.
@@ -56,10 +63,18 @@ class RecordSerializer(BaseSerializer):
         return buffer
 
 
-class RecordDeserializer(BaseDeserializer):
+class RecordDeserializer(SimpleBaseDeserializer):
     """Deserialize RecordIO Protobuf data from an inference endpoint."""
 
-    ACCEPT = ("application/x-recordio-protobuf",)
+    def __init__(self, accept="application/x-recordio-protobuf"):
+        """Initialize a ``RecordDeserializer`` instance.
+
+        Args:
+            accept (union[str, tuple[str]]): The MIME type (or tuple of allowable MIME types) that
+                is expected from the inference endpoint (default:
+                "application/x-recordio-protobuf").
+        """
+        super(RecordDeserializer, self).__init__(accept=accept)
 
     def deserialize(self, data, content_type):
         """Deserialize RecordIO Protobuf data from an inference endpoint.

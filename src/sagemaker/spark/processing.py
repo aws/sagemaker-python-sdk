@@ -748,6 +748,7 @@ class PySparkProcessor(_SparkProcessorBase):
                 user code file (default: None).
         """
         self._current_job_name = self._generate_current_job_name(job_name=job_name)
+        self.command = [_SparkProcessorBase._default_command]
 
         if not submit_app:
             raise ValueError("submit_app is required")
@@ -928,6 +929,7 @@ class SparkJarProcessor(_SparkProcessorBase):
                 user code file (default: None).
         """
         self._current_job_name = self._generate_current_job_name(job_name=job_name)
+        self.command = [_SparkProcessorBase._default_command]
 
         if not submit_app:
             raise ValueError("submit_app is required")
