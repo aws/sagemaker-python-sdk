@@ -128,6 +128,11 @@ This API document assumes you use the following import statements in your traini
       computation. \ ``bucket_cap_mb``\ controls the bucket size in MegaBytes
       (MB).
 
+    - ``trace_memory_usage`` (default: False): When set to True, SMP attempts
+      to measure memory usage per module during tracing. If this is disabled,
+      memory usage will be estimated through the sizes of tensors returned from
+      the module.
+
    **Properties**
 
    -  ``partitioned``: Is ``True`` if the model is partitioned, ``False``
@@ -214,6 +219,11 @@ This API document assumes you use the following import statements in your traini
       the first call to ``smp.step``, but before the actual execution of the
       first forward pass. Returns a ``RemovableHandle`` object ``handle``,
       which can be used to remove the hook by calling ``handle.remove()``.
+
+    .. function:: cpu( )
+
+      Allgathers parameters and buffers across all ``mp_rank``\ s and moves them
+      to the CPU.
 
 .. class:: smp.DistributedOptimizer
 
