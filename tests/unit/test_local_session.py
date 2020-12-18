@@ -244,6 +244,107 @@ def test_create_processing_job_invalid_upload_mode(process, LocalSession):
         )
 
 
+@patch("sagemaker.local.image._SageMakerContainer.process")
+@patch("sagemaker.local.local_session.LocalSession")
+def test_create_processing_job_invalid_processing_input(process, LocalSession):
+    local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
+
+    instance_count = 2
+    image = "my-docker-image:1.0"
+
+    app_spec = {"ImageUri": image}
+    resource_config = {"ClusterConfig": {"InstanceCount": instance_count, "InstanceType": "local"}}
+    environment = {"Var1": "Value1"}
+    processing_inputs = [
+        {
+            "InputName": "input1",
+            "DatasetDefinition": {
+                "AthenaDatasetDefinition": {
+                    "Catalog": "cat1",
+                    "Database": "db1",
+                    "OutputS3Uri": "s3://bucket_name/prefix/",
+                    "QueryString": "SELECT * FROM SOMETHING",
+                },
+                "DataDistributionType": "FullyReplicated",
+                "InputMode": "File",
+                "LocalPath": "/opt/ml/processing/input/athena",
+            },
+        }
+    ]
+    processing_output_config = {
+        "Outputs": [
+            {
+                "OutputName": "output1",
+                "S3Output": {
+                    "LocalPath": "/opt/ml/processing/output/output1",
+                    "S3Uri": "s3://some-bucket/some-path/output1",
+                    "S3UploadMode": "Continuous",
+                },
+            }
+        ]
+    }
+    with pytest.raises(RuntimeError):
+        local_sagemaker_client.create_processing_job(
+            "my-processing-job",
+            app_spec,
+            resource_config,
+            environment,
+            processing_inputs,
+            processing_output_config,
+        )
+
+
+@patch("sagemaker.local.image._SageMakerContainer.process")
+@patch("sagemaker.local.local_session.LocalSession")
+def test_create_processing_job_invalid_processing_output(process, LocalSession):
+    local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()
+
+    instance_count = 2
+    image = "my-docker-image:1.0"
+
+    app_spec = {"ImageUri": image}
+    resource_config = {"ClusterConfig": {"InstanceCount": instance_count, "InstanceType": "local"}}
+    environment = {"Var1": "Value1"}
+    processing_inputs = [
+        {
+            "InputName": "input1",
+            "S3Input": {
+                "LocalPath": "/opt/ml/processing/input/input1",
+                "S3Uri": "s3://some-bucket/some-path/input1",
+                "S3DataDistributionType": "FullyReplicated",
+                "S3InputMode": "File",
+            },
+        },
+        {
+            "InputName": "input2",
+            "S3Input": {
+                "LocalPath": "/opt/ml/processing/input/input2",
+                "S3Uri": "s3://some-bucket/some-path/input2",
+                "S3DataDistributionType": "FullyReplicated",
+                "S3CompressionType": "None",
+                "S3InputMode": "File",
+            },
+        },
+    ]
+    processing_output_config = {
+        "Outputs": [
+            {
+                "OutputName": "output1",
+                "FeatureStoreOutput": {"FeatureGroupName": "Group1"},
+            }
+        ]
+    }
+    with pytest.raises(RuntimeError):
+        local_sagemaker_client.create_processing_job(
+            "my-processing-job",
+            app_spec,
+            resource_config,
+            environment,
+            processing_inputs,
+            processing_output_config,
+        )
+
+
 @patch("sagemaker.local.local_session.LocalSession")
 def test_describe_invalid_processing_job(*args):
     local_sagemaker_client = sagemaker.local.local_session.LocalSagemakerClient()

@@ -38,16 +38,16 @@ _UNUSED_ARN = "local:arn-does-not-matter"
 HEALTH_CHECK_TIMEOUT_LIMIT = 120
 
 
-class _LocalProcessingJob(object):
+class _LocalProcessingJob:
     """Defines and starts a local processing job."""
 
     _STARTING = "Starting"
     _PROCESSING = "Processing"
     _COMPLETED = "Completed"
-    _states = ["Starting", "Processing", "Completed"]
 
     def __init__(self, container):
-        """
+        """Creates a local processing job.
+
         Args:
             container: the local container object.
         """
@@ -61,16 +61,21 @@ class _LocalProcessingJob(object):
         self.environment = None
 
     def start(self, processing_inputs, processing_output_config, environment, processing_job_name):
-        """
+        """Starts a local processing job.
+
         Args:
             processing_inputs: The processing input configuration.
             processing_output_config: The processing input configuration.
             environment: The collection of environment variables passed to the job.
             processing_job_name: The processing job name.
         """
+        self.state = self._STARTING
 
         for item in processing_inputs:
-            if item["S3Input"]:
+            if "DatasetDefinition" in item:
+                raise RuntimeError("DatasetDefinition is not currently supported in Local Mode")
+
+            if "S3Input" in item and item["S3Input"]:
                 data_uri = item["S3Input"]["S3Uri"]
             else:
                 raise ValueError("Processing input must have a valid ['S3Input']")
@@ -111,10 +116,15 @@ class _LocalProcessingJob(object):
             processing_outputs = processing_output_config["Outputs"]
 
             for item in processing_outputs:
-                if item["S3Output"]:
+                if "FeatureStoreOutput" in item:
+                    raise RuntimeError(
+                        "FeatureStoreOutput is not currently supported in Local Mode"
+                    )
+
+                if "S3Output" in item and item["S3Output"]:
                     upload_mode = item["S3Output"]["S3UploadMode"]
                 else:
-                    raise ValueError("Processing output must have a valid ['S3Output']")
+                    raise ValueError("Please specify a valid ['S3Output'] when using Local Mode.")
 
                 if upload_mode != "EndOfJob":
                     raise RuntimeError(
@@ -137,7 +147,10 @@ class _LocalProcessingJob(object):
         self.state = self._COMPLETED
 
     def describe(self):
-        """Describes a local processing job."""
+        """Describes a local processing job.
+
+        Returns: An object describing the processing job.
+        """
 
         response = {
             "ProcessingJobArn": self.processing_job_name,

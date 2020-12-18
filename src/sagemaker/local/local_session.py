@@ -75,7 +75,7 @@ class LocalSagemakerClient(object):
         ProcessingOutputConfig=None,
         **kwargs
     ):
-        """Create a processing job in Local Mode
+        """Creates a processing job in Local Mode
 
         Args:
           ProcessingJobName(str): local processing job name.
@@ -128,7 +128,7 @@ class LocalSagemakerClient(object):
         LocalSagemakerClient._processing_jobs[ProcessingJobName] = processing_job
 
     def describe_processing_job(self, ProcessingJobName):
-        """Describe a local processing job.
+        """Describes a local processing job.
 
         Args:
           ProcessingJobName(str): Processing job name to describe.

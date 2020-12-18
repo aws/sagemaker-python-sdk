@@ -120,8 +120,6 @@ class _SageMakerContainer(object):
             processing_output_config: The processing output configuration specification.
             environment (dict): The environment collection for the processing job.
             processing_job_name (str): Name of the local processing job being run.
-
-        Returns:
         """
 
         self.container_root = self._create_tmp_folder()
@@ -383,8 +381,6 @@ class _SageMakerContainer(object):
         This method writes the hyperparameters, resources and input data
         configuration files.
 
-        Returns: None
-
         Args:
             host (str): Host to write the configuration for
             environment (dict): Environment variable collection.
@@ -509,11 +505,15 @@ class _SageMakerContainer(object):
         return volumes
 
     def _prepare_processing_volumes(self, data_dir, processing_inputs, processing_output_config):
-        """
+        """Prepares local container volumes for the processing job.
+
         Args:
-            data_dir:
-            processing_inputs:
-            processing_output_config:
+            data_dir: The local data directory.
+            processing_inputs: The configuration of processing inputs.
+            processing_output_config: The configuration of processing outputs.
+
+        Returns:
+            The volumes configuration.
         """
         shared_dir = os.path.join(self.container_root, "shared")
         volumes = []
@@ -523,9 +523,6 @@ class _SageMakerContainer(object):
         for item in processing_inputs:
             uri = item["DataUri"]
             input_container_dir = item["S3Input"]["LocalPath"]
-
-            # input_dir = os.path.join(data_dir, "input", input_name)
-            # os.makedirs(input_dir)
 
             data_source = sagemaker.local.data.get_data_source_instance(uri, self.sagemaker_session)
             volumes.append(_Volume(data_source.get_root_dir(), input_container_dir))
@@ -545,10 +542,11 @@ class _SageMakerContainer(object):
         return volumes
 
     def _upload_processing_outputs(self, data_dir, processing_output_config):
-        """
+        """Uploads processing outputs to Amazon S3.
+
         Args:
-            data_dir:
-            processing_output_config:
+            data_dir: The local data directory.
+            processing_output_config: The processing output configuration.
         """
         if processing_output_config and "Outputs" in processing_output_config:
             for item in processing_output_config["Outputs"]:
@@ -711,7 +709,7 @@ class _SageMakerContainer(object):
 
         host_config = {
             "image": self.image,
-            "container_name": container_name_prefix + "-" + host,
+            "container_name": f"{container_name_prefix}-{host}",
             "stdin_open": True,
             "tty": True,
             "volumes": [v.map for v in optml_volumes],
