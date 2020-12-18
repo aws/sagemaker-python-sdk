@@ -117,7 +117,7 @@ class _SageMakerContainer(object):
 
         Args:
             processing_inputs (dict): The processing input specification.
-            processing_output_config: The processing output configuration specification.
+            processing_output_config (dict): The processing output configuration specification.
             environment (dict): The environment collection for the processing job.
             processing_job_name (str): Name of the local processing job being run.
         """
@@ -158,15 +158,18 @@ class _SageMakerContainer(object):
         except RuntimeError as e:
             # _stream_output() doesn't have the command line. We will handle the exception
             # which contains the exit code and append the command line to it.
-            msg = "Failed to run: %s, %s" % (compose_command, str(e))
-            raise RuntimeError(msg)
+            msg = f"Failed to run: {compose_command}"
+            raise RuntimeError(msg) from e
         finally:
             # Uploading processing outputs back to Amazon S3.
             self._upload_processing_outputs(data_dir, processing_output_config)
 
-            # Deleting temporary directories.
-            dirs_to_delete = [shared_dir, data_dir]
-            self._cleanup(dirs_to_delete)
+            try:
+                # Deleting temporary directories.
+                dirs_to_delete = [shared_dir, data_dir]
+                self._cleanup(dirs_to_delete)
+            except OSError:
+                pass
 
         # Print our Job Complete line to have a similar experience to training on SageMaker where
         # you see this line at the end.
@@ -910,10 +913,11 @@ def _check_output(cmd, *popenargs, **kwargs):
 
 
 def _create_processing_config_file_directories(root, host):
-    """
+    """Creates the directory for the processing config files.
+
     Args:
-        root:
-        host:
+        root: The root path.
+        host: The current host.
     """
     for d in ["config"]:
         os.makedirs(os.path.join(root, host, d))

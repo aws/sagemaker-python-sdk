@@ -75,41 +75,30 @@ class _LocalProcessingJob:
             if "DatasetDefinition" in item:
                 raise RuntimeError("DatasetDefinition is not currently supported in Local Mode")
 
-            if "S3Input" in item and item["S3Input"]:
-                data_uri = item["S3Input"]["S3Uri"]
-            else:
+            try:
+                s3_input = item["S3Input"]
+            except KeyError:
                 raise ValueError("Processing input must have a valid ['S3Input']")
 
-            if item["S3Input"]["S3InputMode"]:
-                input_mode = item["S3Input"]["S3InputMode"]
-            else:
-                raise ValueError("Processing input must have a valid ['S3InputMode']")
+            item["DataUri"] = s3_input["S3Uri"]
 
-            item["DataUri"] = data_uri
+            if "S3InputMode" in s3_input and s3_input["S3InputMode"] != "File":
+                raise RuntimeError(
+                    "S3InputMode: %s is not currently supported in Local Mode"
+                    % s3_input["S3InputMode"]
+                )
 
-            if (
-                "S3DataDistributionType" in item["S3Input"]
-                and item["S3Input"]["S3DataDistributionType"] != "FullyReplicated"
-            ):
-
+            if ("S3DataDistributionType" in s3_input
+                and s3_input["S3DataDistributionType"] != "FullyReplicated"):
                 raise RuntimeError(
                     "DataDistribution: %s is not currently supported in Local Mode"
-                    % item["S3Input"]["S3DataDistributionType"]
+                    % s3_input["S3DataDistributionType"]
                 )
 
-            if input_mode != "File":
-                raise RuntimeError(
-                    "S3InputMode: %s is not currently supported in Local Mode" % input_mode
-                )
-
-            if (
-                "S3CompressionType" in item["S3Input"]
-                and item["S3Input"]["S3CompressionType"] != "None"
-            ):
-
+            if "S3CompressionType" in s3_input and s3_input["S3CompressionType"] != "None":
                 raise RuntimeError(
                     "CompressionType: %s is not currently supported in Local Mode"
-                    % item["S3Input"]["S3CompressionType"]
+                    % s3_input["S3CompressionType"]
                 )
 
         if processing_output_config and "Outputs" in processing_output_config:
@@ -121,14 +110,15 @@ class _LocalProcessingJob:
                         "FeatureStoreOutput is not currently supported in Local Mode"
                     )
 
-                if "S3Output" in item and item["S3Output"]:
-                    upload_mode = item["S3Output"]["S3UploadMode"]
-                else:
-                    raise ValueError("Please specify a valid ['S3Output'] when using Local Mode.")
+                try:
+                    s3_output = item["S3Output"]
+                except KeyError:
+                    raise ValueError("Processing output must have a valid ['S3Output']")
 
-                if upload_mode != "EndOfJob":
+                if s3_output["S3UploadMode"] != "EndOfJob":
                     raise RuntimeError(
-                        "UploadMode: %s is not currently supported in Local Mode." % upload_mode
+                        "UploadMode: %s is not currently supported in Local Mode."
+                        % s3_output["S3UploadMode"]
                     )
 
         self.start_time = datetime.datetime.now()
@@ -149,7 +139,8 @@ class _LocalProcessingJob:
     def describe(self):
         """Describes a local processing job.
 
-        Returns: An object describing the processing job.
+        Returns:
+            An object describing the processing job.
         """
 
         response = {

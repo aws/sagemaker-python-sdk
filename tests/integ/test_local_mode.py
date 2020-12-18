@@ -59,7 +59,7 @@ class LocalNoS3Session(LocalSession):
 
 
 @pytest.fixture(scope="module")
-def image_uri(
+def sklearn_image_uri(
     sklearn_latest_version,
     sklearn_latest_py_version,
     cpu_instance_type,
@@ -355,12 +355,12 @@ def test_local_processing_sklearn(sagemaker_local_session, sklearn_latest_versio
 
 
 @pytest.mark.local_mode
-def test_local_processing_script_processor(sagemaker_local_session, image_uri):
+def test_local_processing_script_processor(sagemaker_local_session, sklearn_image_uri):
     input_file_path = os.path.join(DATA_DIR, "dummy_input.txt")
 
     script_processor = ScriptProcessor(
         role="SageMakerRole",
-        image_uri=image_uri,
+        image_uri=sklearn_image_uri,
         command=["python3"],
         instance_count=1,
         instance_type="local",
@@ -419,6 +419,6 @@ def test_local_processing_script_processor(sagemaker_local_session, image_uri):
         "python3",
         "/opt/ml/processing/input/code/dummy_script.py",
     ]
-    assert job_description["AppSpecification"]["ImageUri"] == image_uri
+    assert job_description["AppSpecification"]["ImageUri"] == sklearn_image_uri
 
     assert job_description["Environment"] == {"DUMMY_ENVIRONMENT_VARIABLE": "dummy-value"}

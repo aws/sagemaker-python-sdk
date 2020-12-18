@@ -115,14 +115,10 @@ class Processor(object):
         self.arguments = None
 
         if self.instance_type in ("local", "local_gpu"):
-            self.sagemaker_session = sagemaker_session or LocalSession()
-            if not isinstance(self.sagemaker_session, LocalSession):
-                raise RuntimeError(
-                    "instance_type local or local_gpu is only supported with an"
-                    "instance of LocalSession"
-                )
-        else:
-            self.sagemaker_session = sagemaker_session or Session()
+            if not isinstance(sagemaker_session, LocalSession):
+                sagemaker_session = LocalSession()
+
+        self.sagemaker_session = sagemaker_session or Session()
 
     def run(
         self,
