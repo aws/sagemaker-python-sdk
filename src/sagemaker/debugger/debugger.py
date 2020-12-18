@@ -271,7 +271,7 @@ class Rule(RuleBase):
                 """
             )
 
-        if actions is not None and not rule_configs.validate_actions(actions):
+        if actions is not None and not rule_configs.is_valid_action_object(actions):
             raise RuntimeError(
                 """`actions` must be of type `Action` or `ActionList`!
                 """
@@ -363,7 +363,7 @@ class Rule(RuleBase):
             :class:`~sagemaker.debugger.Rule`: The instance of the custom rule.
 
         """
-        if actions is not None and not rule_configs.validate_actions(actions):
+        if actions is not None and not rule_configs.is_valid_action_object(actions):
             raise RuntimeError(
                 """`actions` must be of type `Action` or `ActionList`!
                 """
