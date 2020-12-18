@@ -88,8 +88,10 @@ class _LocalProcessingJob:
                     % s3_input["S3InputMode"]
                 )
 
-            if ("S3DataDistributionType" in s3_input 
-                    and s3_input["S3DataDistributionType"] != "FullyReplicated"):
+            if (
+                "S3DataDistributionType" in s3_input
+                and s3_input["S3DataDistributionType"] != "FullyReplicated"
+            ):
                 raise RuntimeError(
                     "DataDistribution: %s is not currently supported in Local Mode"
                     % s3_input["S3DataDistributionType"]
