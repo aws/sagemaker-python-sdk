@@ -47,10 +47,6 @@ class _LocalTrainingJob(object):
     _states = ["Starting", "Training", "Completed"]
 
     def __init__(self, container):
-        """
-        Args:
-            container:
-        """
         self.container = container
         self.model_artifacts = None
         self.state = "created"
@@ -58,13 +54,7 @@ class _LocalTrainingJob(object):
         self.end_time = None
 
     def start(self, input_data_config, output_data_config, hyperparameters, job_name):
-        """
-        Args:
-            input_data_config:
-            output_data_config:
-            hyperparameters:
-            job_name:
-        """
+        """Placeholder docstring."""
         for channel in input_data_config:
             if channel["DataSource"] and "S3DataSource" in channel["DataSource"]:
                 data_distribution = channel["DataSource"]["S3DataSource"]["S3DataDistributionType"]
@@ -116,12 +106,6 @@ class _LocalTransformJob(object):
     _COMPLETED = "Completed"
 
     def __init__(self, transform_job_name, model_name, local_session=None):
-        """
-        Args:
-            transform_job_name:
-            model_name:
-            local_session:
-        """
         from sagemaker.local import LocalSession
 
         self.local_session = local_session or LocalSession()
@@ -230,8 +214,7 @@ class _LocalTransformJob(object):
         return response
 
     def _get_container_environment(self, **kwargs):
-        """Get all the Environment variables that will be passed to the
-        container
+        """Get all the Environment variables that will be passed to the container.
 
         Certain input fields such as BatchStrategy have different values for
         the API vs the Environment variables, such as SingleRecord vs
@@ -274,8 +257,9 @@ class _LocalTransformJob(object):
         return environment
 
     def _get_required_defaults(self, **kwargs):
-        """Return the default values for anything that was not provided by
-        either the user or the container
+        """Return the default values.
+
+         The values might be anything that was not provided by either the user or the container
 
         Args:
             **kwargs: current transform arguments
@@ -375,11 +359,6 @@ class _LocalModel(object):
     """Placeholder docstring"""
 
     def __init__(self, model_name, primary_container):
-        """
-        Args:
-            model_name:
-            primary_container:
-        """
         self.model_name = model_name
         self.primary_container = primary_container
         self.creation_time = datetime.datetime.now()
@@ -400,12 +379,6 @@ class _LocalEndpointConfig(object):
     """Placeholder docstring"""
 
     def __init__(self, config_name, production_variants, tags=None):
-        """
-        Args:
-            config_name:
-            production_variants:
-            tags:
-        """
         self.name = config_name
         self.production_variants = production_variants
         self.tags = tags
@@ -432,13 +405,6 @@ class _LocalEndpoint(object):
 
     def __init__(self, endpoint_name, endpoint_config_name, tags=None, local_session=None):
         # runtime import since there is a cyclic dependency between entities and local_session
-        """
-        Args:
-            endpoint_name:
-            endpoint_config_name:
-            tags:
-            local_session:
-        """
         from sagemaker.local import LocalSession
 
         self.local_session = local_session or LocalSession()
@@ -501,10 +467,7 @@ class _LocalEndpoint(object):
 
 
 def _wait_for_serving_container(serving_port):
-    """
-    Args:
-        serving_port:
-    """
+    """Placeholder docstring."""
     i = 0
     http = urllib3.PoolManager()
 
@@ -525,11 +488,7 @@ def _wait_for_serving_container(serving_port):
 
 
 def _perform_request(endpoint_url, pool_manager=None):
-    """
-    Args:
-        endpoint_url:
-        pool_manager:
-    """
+    """Placeholder docstring."""
     http = pool_manager or urllib3.PoolManager()
     try:
         r = http.request("GET", endpoint_url)

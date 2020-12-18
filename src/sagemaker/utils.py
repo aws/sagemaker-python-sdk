@@ -77,11 +77,7 @@ def name_from_base(base, max_length=63, short=False):
 
 
 def unique_name_from_base(base, max_length=63):
-    """
-    Args:
-        base:
-        max_length:
-    """
+    """Placeholder Docstring"""
     unique = "%04x" % random.randrange(16 ** 4)  # 4-digit hex
     ts = str(int(time.time()))
     available_length = max_length - 2 - len(ts) - len(unique)
@@ -90,8 +86,7 @@ def unique_name_from_base(base, max_length=63):
 
 
 def base_name_from_image(image):
-    """Extract the base name of the image to use as the 'algorithm name' for the
-    job.
+    """Extract the base name of the image to use as the 'algorithm name' for the job.
 
     Args:
         image (str): Image name.
@@ -148,11 +143,7 @@ def build_dict(key, value):
 
 
 def get_config_value(key_path, config):
-    """
-    Args:
-        key_path:
-        config:
-    """
+    """Placeholder Docstring"""
     if config is None:
         return None
 
@@ -215,8 +206,7 @@ def secondary_training_status_changed(current_job_description, prev_job_descript
 
 
 def secondary_training_status_message(job_description, prev_description):
-    """Returns a string contains last modified time and the secondary training
-    job status message.
+    """Returns a string contains last modified time and the secondary training job status message.
 
     Args:
         job_description: Returned response from DescribeTrainingJob call
@@ -350,9 +340,9 @@ def create_tar_file(source_files, target=None):
 
 @contextlib.contextmanager
 def _tmpdir(suffix="", prefix="tmp"):
-    """Create a temporary directory with a context manager. The file is deleted
-    when the context exits.
+    """Create a temporary directory with a context manager.
 
+    The file is deleted when the context exits.
     The prefix, suffix, and dir arguments are the same as for mkstemp().
 
     Args:
@@ -378,8 +368,7 @@ def repack_model(
     sagemaker_session,
     kms_key=None,
 ):
-    """Unpack model tarball and creates a new model tarball with the provided
-    code script.
+    """Unpack model tarball and creates a new model tarball with the provided code script.
 
     This function does the following: - uncompresses model tarball from S3 or
     local system into a temp folder - replaces the inference code from the model
@@ -434,12 +423,7 @@ def repack_model(
 
 
 def _save_model(repacked_model_uri, tmp_model_path, sagemaker_session, kms_key):
-    """
-    Args:
-        repacked_model_uri:
-        tmp_model_path:
-        sagemaker_session:
-    """
+    """Placeholder docstring"""
     if repacked_model_uri.lower().startswith("s3://"):
         url = parse.urlparse(repacked_model_uri)
         bucket, key = url.netloc, url.path.lstrip("/")
@@ -459,15 +443,7 @@ def _save_model(repacked_model_uri, tmp_model_path, sagemaker_session, kms_key):
 def _create_or_update_code_dir(
     model_dir, inference_script, source_directory, dependencies, sagemaker_session, tmp
 ):
-    """
-    Args:
-        model_dir:
-        inference_script:
-        source_directory:
-        dependencies:
-        sagemaker_session:
-        tmp:
-    """
+    """Placeholder docstring"""
     code_dir = os.path.join(model_dir, "code")
     if source_directory and source_directory.lower().startswith("s3://"):
         local_code_path = os.path.join(tmp, "local_code.tar.gz")
@@ -502,12 +478,7 @@ def _create_or_update_code_dir(
 
 
 def _extract_model(model_uri, sagemaker_session, tmp):
-    """
-    Args:
-        model_uri:
-        sagemaker_session:
-        tmp:
-    """
+    """Placeholder docstring"""
     tmp_model_dir = os.path.join(tmp, "model")
     os.mkdir(tmp_model_dir)
     if model_uri.lower().startswith("s3://"):
@@ -521,12 +492,7 @@ def _extract_model(model_uri, sagemaker_session, tmp):
 
 
 def download_file_from_url(url, dst, sagemaker_session):
-    """
-    Args:
-        url:
-        dst:
-        sagemaker_session:
-    """
+    """Placeholder docstring"""
     url = parse.urlparse(url)
     bucket, key = url.netloc, url.path.lstrip("/")
 
@@ -619,10 +585,10 @@ def _aws_partition(region):
 
 
 class DeferredError(object):
-    """Stores an exception and raises it at a later time if this object is
-    accessed in any way. Useful to allow soft-dependencies on imports, so that
-    the ImportError can be raised again later if code actually relies on the
-    missing library.
+    """Stores an exception and raises it at a later time if this object is accessed in any way.
+
+    Useful to allow soft-dependencies on imports, so that the ImportError can be raised again
+    later if code actually relies on the missing library.
 
     Example::
 
@@ -634,16 +600,13 @@ class DeferredError(object):
     """
 
     def __init__(self, exception):
-        """
-        Args:
-            exception:
-        """
+        """Placeholder docstring"""
         self.exc = exception
 
     def __getattr__(self, name):
-        """Called by Python interpreter before using any method or property on
-        the object. So this will short-circuit essentially any access to this
-        object.
+        """Called by Python interpreter before using any method or property on the object.
+
+        So this will short-circuit essentially any access to this object.
 
         Args:
             name:
@@ -652,8 +615,7 @@ class DeferredError(object):
 
 
 def _module_import_error(py_module, feature, extras):
-    """Return error message for module import errors, provide
-    installation details.
+    """Return error message for module import errors, provide installation details.
 
     Args:
         py_module (str): Module that failed to be imported
