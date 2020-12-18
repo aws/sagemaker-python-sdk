@@ -38,8 +38,7 @@ class XGBoost(Framework):
     It can also handle training using customer provided XGBoost entry point script.
     """
 
-    # _framework_name = defaults.XGBOOST_NAME
-    _framework_name: str = defaults.XGBOOST_NAME
+    _framework_name = defaults.XGBOOST_NAME
 
     def __init__(
         self,
