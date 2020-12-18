@@ -1,5 +1,21 @@
 # Changelog
 
+## v2.20.0 (2020-12-16)
+
+### Features
+
+ * add dataset definition support for processing jobs
+
+### Bug Fixes and Other Changes
+
+ * include workflow integ tests with clarify and debugger enabled
+ * only run DataParallel and EdgePackaging tests in supported regions
+
+### Documentation Changes
+
+ * fix smp code example, add note for CUDA 11 to sdp
+ * adding note about CUDA 11 to SMP. Small title update PyTorch
+
 ## v2.19.0 (2020-12-08)
 
 ### Features

@@ -179,10 +179,12 @@ class IngestionManagerPandas:
             end_index (int): ending position to ingest in this batch.
         """
         logger.info("Started ingesting index %d to %d", start_index, end_index)
-        for _, row in data_frame[start_index:end_index].iterrows():
+        for row in data_frame[start_index:end_index].itertuples(index=False):
             record = [
-                FeatureValue(feature_name=name, value_as_string=str(value))
-                for name, value in row.items()
+                FeatureValue(
+                    feature_name=data_frame.columns[index], value_as_string=str(row[index])
+                )
+                for index in range(len(row))
             ]
             sagemaker_session.put_record(
                 feature_group_name=feature_group_name, record=[value.to_dict() for value in record]
