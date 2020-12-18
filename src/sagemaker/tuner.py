@@ -1247,13 +1247,14 @@ class HyperparameterTuner(object):
     ):
         """Factory method to create a ``HyperparameterTuner`` instance.
 
-        It takes one or more estimators to obtain configuration information for training jobs that are
-        created as the result of a hyperparameter tuning job. The estimators are provided through a dictionary
-        (i.e. ``estimator_dict``) with unique estimator names as the keys. For individual
-        estimators separate objective metric names and hyperparameter ranges should be provided in
-        two dictionaries, i.e. ``objective_metric_name_dict`` and ``hyperparameter_ranges_dict``,
-        with the same estimator names as the keys. Optional metrics definitions could also be
-        provided for individual estimators via another dictionary ``metric_definitions_dict``.
+        It takes one or more estimators to obtain configuration information for training jobs
+        that are created as the result of a hyperparameter tuning job. The estimators are provided
+        through a  dictionary (i.e. ``estimator_dict``) with unique estimator names as the keys.
+        For  individual estimators separate objective metric names and hyperparameter ranges
+        should be provided in two dictionaries, i.e. ``objective_metric_name_dict`` and
+        ``hyperparameter_ranges_dict``, with the same estimator names as the keys. Optional
+        metrics definitions could also be provided for individual estimators via another dictionary
+        ``metric_definitions_dict``.
 
         Args:
             estimator_dict (dict[str, sagemaker.estimator.EstimatorBase]): Dictionary of estimator

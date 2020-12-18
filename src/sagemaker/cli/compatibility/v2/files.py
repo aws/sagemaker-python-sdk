@@ -29,7 +29,7 @@ class FileUpdater(object):
     """An abstract class for updating files."""
 
     def __init__(self, input_path, output_path):
-        """Creates a ``FileUpdater`` for updating a file to be compatible with version 2.0 and later.
+        """Creates ``FileUpdater`` for updating a file to be compatible with version 2.0 and later.
 
         Args:
             input_path (str): Location of the input file.

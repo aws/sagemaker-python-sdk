@@ -1353,7 +1353,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         )
 
     def describe_monitoring_schedule(self, monitoring_schedule_name):
-        """Calls the DescribeMonitoringSchedule API for given monitoring schedule name and returns the response.
+        """Calls the DescribeMonitoringSchedule API for given name and returns the response.
 
         Args:
             monitoring_schedule_name (str): The name of the processing job to describe.
@@ -1427,7 +1427,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
         return response
 
     def was_processing_job_successful(self, job_name):
-        """Calls the DescribeProcessingJob API for the given job name and returns True if job was successful.
+        """Calls the DescribeProcessingJob API for the given job name.
+
+        It returns True if job was successful.
 
         Args:
             job_name (str): The name of the processing job to describe.
@@ -1614,7 +1616,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
     def logs_for_auto_ml_job(  # noqa: C901 - suppress complexity warning for this method
         self, job_name, wait=False, poll=10
     ):
-        """Display the logs for a given AutoML job, optionally tailing them until the job is complete.
+        """Display logs for a given AutoML job, optionally tailing them until job is complete.
 
         If the output is a tty or a Jupyter cell, it will be color-coded
         based on which instance the log entry is from.
@@ -1943,7 +1945,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
     def describe_tuning_job(self, job_name):
         """
-        Calls the DescribeHyperParameterTuningJob API for the given job name and returns the response.
+        Calls the DescribeHyperParameterTuningJob API for the given job name, returns the response.
 
         Args:
             job_name (str): The name of the hyperparameter tuning job to describe.
@@ -2861,7 +2863,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         self.sagemaker_client.create_endpoint_config(**request)
 
     def create_endpoint(self, endpoint_name, config_name, tags=None, wait=True):
-        """Create an Amazon SageMaker ``Endpoint`` according to the endpoint configuration in the request.
+        """Create an Amazon SageMaker ``Endpoint`` according to the configuration in the request.
 
         Once the ``Endpoint`` is created, client applications can send requests to obtain
         inferences. The endpoint configuration is created using the ``CreateEndpointConfig`` API.
@@ -2888,9 +2890,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
         return endpoint_name
 
     def update_endpoint(self, endpoint_name, endpoint_config_name, wait=True):
-        """Update an Amazon SageMaker ``Endpoint`` according to the endpoint configuration in the request.
+        """Update an Amazon SageMaker ``Endpoint`` , Raise an error endpoint_name does not exist.
 
-        Raise an error if endpoint with endpoint_name does not exist.
+        Update happens according to the endpoint configuration in the request.
 
         Args:
             endpoint_name (str): Name of the Amazon SageMaker ``Endpoint`` to update.
@@ -3436,7 +3438,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
     def logs_for_job(  # noqa: C901 - suppress complexity warning for this method
         self, job_name, wait=False, poll=10, log_type="All"
     ):
-        """Display the logs for a given training job, optionally tailing them until the job is complete.
+        """Display the for a given training job, optionally tailing them until job is complete.
 
         If the output is a tty or a Jupyter cell, it will be color-coded
         based on which instance the log entry is from.
@@ -3555,7 +3557,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                     print("Managed Spot Training savings: {:.1f}%".format(saving))
 
     def logs_for_processing_job(self, job_name, wait=False, poll=10):
-        """Display the logs for a given processing job, optionally tailing them until the job is complete.
+        """Display logs for a given processing job, optionally tailing them until the is complete.
 
         Args:
             job_name (str): Name of the processing job to display the logs for.
@@ -3633,7 +3635,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 print()
 
     def logs_for_transform_job(self, job_name, wait=False, poll=10):
-        """Display the logs for a given transform job, optionally tailing them until the job is complete.
+        """Display logs for a given transform job, optionally tailing them until job is complete.
 
         If the output is a tty or a Jupyter cell, it will be color-coded
         based on which instance the log entry is from.

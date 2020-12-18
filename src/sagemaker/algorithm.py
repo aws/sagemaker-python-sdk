@@ -495,6 +495,7 @@ class AlgorithmEstimator(EstimatorBase):
         return definitions
 
     def _hyperparameter_range_and_class(self, parameter_type, hyperparameter):
+        """Placeholder docstring."""
         if parameter_type in self._hyperpameters_with_range:
             range_name = parameter_type + "ParameterRangeSpecification"
 

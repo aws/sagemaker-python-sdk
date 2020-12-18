@@ -19,7 +19,7 @@ from __future__ import print_function, absolute_import
 
 
 class CronExpressionGenerator(object):
-    """Generates cron expression strings for use with the SageMaker Model Monitoring Schedule API."""
+    """Generates cron expression strings for the SageMaker Model Monitoring Schedule API."""
 
     @staticmethod
     def hourly():

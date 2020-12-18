@@ -340,8 +340,9 @@ def create_tar_file(source_files, target=None):
 
 @contextlib.contextmanager
 def _tmpdir(suffix="", prefix="tmp"):
-    """Create a temporary directory with a context manager. The file is deleted when the context exits.
+    """Create a temporary directory with a context manager.
 
+    The file is deleted when the context exits.
     The prefix, suffix, and dir arguments are the same as for mkstemp().
 
     Args:

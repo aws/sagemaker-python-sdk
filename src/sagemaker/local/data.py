@@ -379,6 +379,7 @@ class SingleRecordStrategy(BatchStrategy):
 
 
 def _payload_size_within_limit(payload, size):
+    """Placeholder docstring."""
     size_in_bytes = size * 1024 * 1024
     if size == 0:
         return True

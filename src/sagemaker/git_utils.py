@@ -307,7 +307,7 @@ def _insert_token_to_repo_url(url, token):
 
 
 def _insert_username_and_password_to_repo_url(url, username, password):
-    """Insert username and password to the Git repo url, to make a component of the git clone command.
+    """Insert username and password to the Git repo url to make a component of git clone command.
 
     This method can only be called when repo_url is an https url.
 

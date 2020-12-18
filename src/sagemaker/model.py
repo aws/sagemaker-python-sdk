@@ -246,7 +246,7 @@ class Model(object):
         return model_package_args
 
     def _init_sagemaker_session_if_does_not_exist(self, instance_type):
-        """Set ``self.sagemaker_session`` to be a ``LocalSession`` or ``Session`` if it is not already.
+        """Set ``self.sagemaker_session`` to ``LocalSession`` or ``Session`` if it's not already.
 
         The type of session object is determined by the instance type.
         """
@@ -1060,8 +1060,9 @@ class FrameworkModel(Model):
         self.repacked_model_data = None
 
     def prepare_container_def(self, instance_type=None, accelerator_type=None):
-        """Return a container definition with framework configuration set in model environment variables.
+        """Return a container definition with framework configuration.
 
+        Framework configuration is set in model environment variables.
         This also uploads user-supplied code to S3.
 
         Args:

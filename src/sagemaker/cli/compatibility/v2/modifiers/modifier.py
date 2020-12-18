@@ -17,7 +17,7 @@ from abc import abstractmethod
 
 
 class Modifier(object):
-    """Abstract class to check if an AST node needs modification, and potentially modify the node."""
+    """Abstract class to check if an AST node needs modification, potentially modify the node."""
 
     def check_and_modify_node(self, node):
         """Check an AST node, and modify, replace, or remove it if applicable."""
