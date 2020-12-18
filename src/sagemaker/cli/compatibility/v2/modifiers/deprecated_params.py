@@ -23,10 +23,9 @@ class TensorFlowScriptModeParameterRemover(Modifier):
     """A class to remove ``script_mode`` from TensorFlow estimators (because it's the only mode)."""
 
     def node_should_be_modified(self, node):
-        """Checks if the ``ast.Call`` node instantiates a TensorFlow estimator with
-        ``script_mode`` set.
+        """Checks if the ``ast.Call`` node instantiates a TensorFlow estimator.
 
-        This looks for the following formats:
+        TensorFlow estimator would use``script_mode`` set. This looks for the following formats:
 
         - ``TensorFlow``
         - ``sagemaker.tensorflow.TensorFlow``

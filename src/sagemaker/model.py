@@ -101,6 +101,8 @@ class Model(object):
         self.sagemaker_session = sagemaker_session
         self.endpoint_name = None
         self._is_compiled_model = False
+        self._compilation_job_name = None
+        self._is_edge_packaged_model = False
         self._enable_network_isolation = enable_network_isolation
         self.model_kms_key = model_kms_key
 
@@ -188,6 +190,7 @@ class Model(object):
         description=None,
     ):
         """Get arguments for session.create_model_package method.
+
         Args:
             content_types (list): The supported MIME types for the input data.
             response_types (list): The supported MIME types for the output data.
@@ -243,9 +246,9 @@ class Model(object):
         return model_package_args
 
     def _init_sagemaker_session_if_does_not_exist(self, instance_type):
-        """Set ``self.sagemaker_session`` to be a ``LocalSession`` or
-        ``Session`` if it is not already. The type of session object is
-        determined by the instance type.
+        """Set ``self.sagemaker_session`` to ``LocalSession`` or ``Session`` if it's not already.
+
+        The type of session object is determined by the instance type.
         """
         if self.sagemaker_session:
             return
@@ -258,8 +261,9 @@ class Model(object):
     def prepare_container_def(
         self, instance_type=None, accelerator_type=None
     ):  # pylint: disable=unused-argument
-        """Return a dict created by ``sagemaker.container_def()`` for deploying
-        this model to a specified instance type.
+        """Return a dict created by ``sagemaker.container_def()``.
+
+        It is used for deploying this model to a specified instance type.
 
         Subclasses can override this to provide custom container definitions
         for deployment to a specific instance type. Called by ``deploy()``.
@@ -336,6 +340,50 @@ class Model(object):
         """Placeholder docstring"""
         return getattr(self, "framework_version", None)
 
+    def _edge_packaging_job_config(
+        self,
+        output_path,
+        role,
+        model_name,
+        model_version,
+        packaging_job_name,
+        compilation_job_name,
+        resource_key,
+        s3_kms_key,
+        tags,
+    ):
+        """Creates a request object for a packaging job.
+
+        Args:
+            output_path (str): where in S3 to store the output of the job
+            role (str): what role to use when executing the job
+            packaging_job_name (str): what to name the packaging job
+            compilation_job_name (str): what compilation job to source the model from
+            resource_key (str): the kms key to encrypt the disk with
+            s3_kms_key (str): the kms key to encrypt the output with
+            tags (list[dict]): List of tags for labeling an edge packaging job. For
+                more, see
+                https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
+        Returns:
+            dict: the request object to use when creating a packaging job
+        """
+        output_model_config = {
+            "S3OutputLocation": output_path,
+        }
+        if s3_kms_key is not None:
+            output_model_config["KmsKeyId"] = s3_kms_key
+
+        return {
+            "output_model_config": output_model_config,
+            "role": role,
+            "tags": tags,
+            "model_name": model_name,
+            "model_version": model_version,
+            "job_name": packaging_job_name,
+            "compilation_job_name": compilation_job_name,
+            "resource_key": resource_key,
+        }
+
     def _compilation_job_config(
         self,
         target_instance_type,
@@ -351,21 +399,7 @@ class Model(object):
         target_platform_accelerator=None,
         compiler_options=None,
     ):
-        """
-        Args:
-            target_instance_type:
-            input_shape:
-            output_path:
-            role:
-            compile_max_run:
-            job_name:
-            framework:
-            tags:
-            target_platform_os:
-            target_platform_arch:
-            target_platform_accelerator:
-            compiler_options:
-        """
+        """Placeholder Docstring"""
         input_model_config = {
             "S3Uri": self.model_data,
             "DataInputConfig": json.dumps(input_shape)
@@ -437,6 +471,64 @@ class Model(object):
             instance_type=target_instance_type,
             version=framework_version,
         )
+
+    def package_for_edge(
+        self,
+        output_path,
+        model_name,
+        model_version,
+        role=None,
+        job_name=None,
+        resource_key=None,
+        s3_kms_key=None,
+        tags=None,
+    ):
+        """Package this ``Model`` with SageMaker Edge.
+
+        Creates a new EdgePackagingJob and wait for it to finish.
+        model_data will now point to the packaged artifacts.
+
+        Args:
+            output_path (str): Specifies where to store the packaged model
+            role (str): Execution role
+            model_name (str): the name to attach to the model metadata
+            model_version (str): the version to attach to the model metadata
+            job_name (str): The name of the edge packaging job
+            resource_key (str): the kms key to encrypt the disk with
+            s3_kms_key (str): the kms key to encrypt the output with
+            tags (list[dict]): List of tags for labeling an edge packaging job. For
+                more, see
+                https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
+
+        Returns:
+            sagemaker.model.Model: A SageMaker ``Model`` object. See
+            :func:`~sagemaker.model.Model` for full details.
+        """
+        if self._compilation_job_name is None:
+            raise ValueError("You must first compile this model")
+        if job_name is None:
+            job_name = f"packaging{self._compilation_job_name[11:]}"
+        if role is None:
+            role = self.sagemaker_session.expand_role(role)
+
+        self._init_sagemaker_session_if_does_not_exist(None)
+        config = self._edge_packaging_job_config(
+            output_path,
+            role,
+            model_name,
+            model_version,
+            job_name,
+            self._compilation_job_name,
+            resource_key,
+            s3_kms_key,
+            tags,
+        )
+        self.sagemaker_session.package_model_for_edge(**config)
+        job_status = self.sagemaker_session.wait_for_edge_packaging_job(job_name)
+        self.model_data = job_status["ModelArtifact"]
+        self._is_edge_packaged_model = True
+
+        return self
 
     def compile(
         self,
@@ -557,6 +649,8 @@ class Model(object):
                 "supported for deployment via SageMaker. Please deploy the model manually."
             )
 
+        self._compilation_job_name = job_name
+
         return self
 
     def deploy(
@@ -573,8 +667,7 @@ class Model(object):
         data_capture_config=None,
         **kwargs,
     ):
-        """Deploy this ``Model`` to an ``Endpoint`` and optionally return a
-        ``Predictor``.
+        """Deploy this ``Model`` to an ``Endpoint`` and optionally return a ``Predictor``.
 
         Create a SageMaker ``Model`` and ``EndpointConfig``, and deploy an
         ``Endpoint`` from this ``Model``. If ``self.predictor_cls`` is not None,
@@ -967,9 +1060,9 @@ class FrameworkModel(Model):
         self.repacked_model_data = None
 
     def prepare_container_def(self, instance_type=None, accelerator_type=None):
-        """Return a container definition with framework configuration set in
-        model environment variables.
+        """Return a container definition with framework configuration.
 
+        Framework configuration is set in model environment variables.
         This also uploads user-supplied code to S3.
 
         Args:
@@ -992,11 +1085,7 @@ class FrameworkModel(Model):
         return sagemaker.container_def(self.image_uri, self.model_data, deploy_env)
 
     def _upload_code(self, key_prefix, repack=False):
-        """
-        Args:
-            key_prefix:
-            repack:
-        """
+        """Placeholder Docstring"""
         local_code = utils.get_config_value("local.local_code", self.sagemaker_session.config)
         if self.sagemaker_session.local_mode and local_code:
             self.uploaded_code = None
@@ -1113,8 +1202,7 @@ class ModelPackage(Model):
         return name
 
     def enable_network_isolation(self):
-        """Whether to enable network isolation when creating a model out of this
-        ModelPackage
+        """Whether to enable network isolation when creating a model out of this ModelPackage
 
         Returns:
             bool: If network isolation should be enabled or not.

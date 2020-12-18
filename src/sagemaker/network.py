@@ -10,8 +10,9 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""This file contains code related to network configuration, including
-encryption, network isolation, and VPC configurations.
+"""This file contains code related to network configuration.
+
+It also includes encryption, network isolation, and VPC configurations.
 """
 from __future__ import absolute_import
 
@@ -29,8 +30,10 @@ class NetworkConfig(object):
         subnets=None,
         encrypt_inter_container_traffic=None,
     ):
-        """Initialize a ``NetworkConfig`` instance. NetworkConfig accepts network configuration
-        parameters and provides a method to turn these parameters into a dictionary.
+        """Initialize a ``NetworkConfig`` instance.
+
+        NetworkConfig accepts network configuration parameters and provides a method to turn
+        these parameters into a dictionary.
 
         Args:
             enable_network_isolation (bool): Boolean that determines whether to enable

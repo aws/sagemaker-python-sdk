@@ -23,8 +23,9 @@ from sagemaker.tensorflow import TensorFlow
 
 
 def prepare_framework(estimator, s3_operations):
-    """Prepare S3 operations (specify where to upload `source_dir` ) and
-    environment variables related to framework.
+    """Prepare S3 operations and environment variables related to framework.
+
+    S3 operations specify where to upload `source_dir`.
 
     Args:
         estimator (sagemaker.estimator.Estimator): The framework estimator to
@@ -69,8 +70,9 @@ def prepare_framework(estimator, s3_operations):
 
 
 def prepare_amazon_algorithm_estimator(estimator, inputs, mini_batch_size=None):
-    """Set up amazon algorithm estimator, adding the required `feature_dim`
-    hyperparameter from training data.
+    """Sets up amazon algorithm estimator.
+
+    This is done by adding the required `feature_dim` hyperparameter from training data.
 
     Args:
         estimator (sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase): An estimator
@@ -387,8 +389,9 @@ def _extract_training_config_list_from_estimator_dict(
     tuner, inputs, include_cls_metadata, mini_batch_size
 ):
     """
-    Extract a list of training job configs from a HyperparameterTuner that uses the
-    ``estimator_dict`` field
+    Extracts a list of training job configs from a Hyperparameter Tuner.
+
+    It uses the ``estimator_dict`` field.
     """
     estimator_names = sorted(tuner.estimator_dict.keys())
     tuner._validate_dict_argument(name="inputs", value=inputs, allowed_keys=estimator_names)
@@ -508,7 +511,10 @@ def update_estimator_from_task(estimator, task_id, task_type):
 
 
 def prepare_framework_container_def(model, instance_type, s3_operations):
-    """Prepare the framework model container information. Specify related S3
+    """
+    This prepares the framework model container information and specifies related S3 operations.
+
+    Prepare the framework model container information. Specify related S3
     operations for Airflow to perform. (Upload `source_dir` )
 
     Args:

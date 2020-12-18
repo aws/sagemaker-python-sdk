@@ -34,12 +34,12 @@ def read_version():
 # Declare minimal set for installation
 required_packages = [
     "attrs",
-    "boto3>=1.16.27",
+    "boto3>=1.16.32",
     "google-pasta",
     "numpy>=1.9.0",
     "protobuf>=3.1",
     "protobuf3-to-dict>=0.1.5",
-    "smdebug-rulesconfig==0.1.5",
+    "smdebug_rulesconfig==1.0.0",
     "importlib-metadata>=1.4.0",
     "packaging>=20.0",
 ]

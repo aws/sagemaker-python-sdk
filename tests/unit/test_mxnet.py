@@ -35,13 +35,14 @@ SERVING_SCRIPT_FILE = "another_dummy_script.py"
 MODEL_DATA = "s3://mybucket/model"
 ENV = {"DUMMY_ENV_VAR": "dummy_value"}
 TIMESTAMP = "2017-11-06-14:14:15.672"
-TIME = 1507167947
+TIME = 1510006209.073025
 BUCKET_NAME = "mybucket"
 INSTANCE_COUNT = 1
 INSTANCE_TYPE = "ml.c4.4xlarge"
 ACCELERATOR_TYPE = "ml.eia.medium"
 IMAGE = "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet:1.4.0-cpu-py3"
 COMPILATION_JOB_NAME = "{}-{}".format("compilation-sagemaker-mxnet", TIMESTAMP)
+EDGE_PACKAGING_JOB_NAME = "{}-{}".format("compilation-sagemaker-mxnet", TIMESTAMP)
 FRAMEWORK = "mxnet"
 ROLE = "Dummy"
 REGION = "us-west-2"
@@ -146,6 +147,16 @@ def _get_train_args(job_name):
         "experiment_config": None,
         "debugger_hook_config": {
             "CollectionConfigurations": [],
+            "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
+        },
+        "profiler_rule_configs": [
+            {
+                "RuleConfigurationName": "ProfilerReport-1510006209",
+                "RuleEvaluatorImage": "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet:1.4.0-cpu-py3",
+                "RuleParameters": {"rule_to_invoke": "ProfilerReport"},
+            }
+        ],
+        "profiler_config": {
             "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
         },
     }
@@ -309,9 +320,11 @@ def test_create_model_with_custom_image(name_from_base, sagemaker_session):
 @patch("sagemaker.utils.create_tar_file")
 @patch("sagemaker.utils.repack_model")
 @patch("time.strftime", return_value=TIMESTAMP)
+@patch("time.time", return_value=TIME)
 @patch("sagemaker.image_uris.retrieve", return_value=IMAGE)
 def test_mxnet(
     retrieve_image_uri,
+    time,
     strftime,
     repack_model,
     create_tar_file,
@@ -366,7 +379,8 @@ def test_mxnet(
 @patch("sagemaker.utils.repack_model", MagicMock())
 @patch("sagemaker.fw_utils.tar_and_upload_dir", MagicMock())
 @patch("time.strftime", return_value=TIMESTAMP)
-def test_mxnet_neo(strftime, sagemaker_session, neo_mxnet_version):
+@patch("time.time", return_value=TIME)
+def test_mxnet_neo(time, strftime, sagemaker_session, neo_mxnet_version):
     mx = MXNet(
         entry_point=SCRIPT_PATH,
         framework_version="1.6",

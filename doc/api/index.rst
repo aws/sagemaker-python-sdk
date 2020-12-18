@@ -9,5 +9,6 @@ The SageMaker Python SDK consists of a variety classes for preparing data, train
 
     prep_data/feature_store
     training/index
+    training/distributed
     inference/index
     utility/index
