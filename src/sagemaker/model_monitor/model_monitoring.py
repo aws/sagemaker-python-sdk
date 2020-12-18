@@ -1154,9 +1154,7 @@ class ModelMonitor(object):
         return path
 
     def _wait_for_schedule_changes_to_apply(self):
-        """Waits for the schedule associated with this monitor."""
-
-        """It checks if this monitor to no longer be in the 'Pending' state."""
+        """Waits for the schedule to no longer be in the 'Pending' state."""
         for _ in retries(
             max_retry_count=36,  # 36*5 = 3min
             exception_message_prefix="Waiting for schedule to leave 'Pending' status",

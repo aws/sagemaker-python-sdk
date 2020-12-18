@@ -348,7 +348,7 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
         return sagemaker.container_def(image_uri, model_data, env)
 
     def _get_container_env(self):
-
+        """Placeholder docstring."""
         if not self._container_log_level:
             return self.env
 
@@ -361,11 +361,7 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
         return env
 
     def _get_image_uri(self, instance_type, accelerator_type=None):
-        """
-        Args:
-            instance_type:
-            accelerator_type:
-        """
+        """Placeholder docstring."""
         if self.image_uri:
             return self.image_uri
 
