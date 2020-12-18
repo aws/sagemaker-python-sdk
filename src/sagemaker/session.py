@@ -275,8 +275,6 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 download operation. Please refer to the ExtraArgs parameter in the boto3
                 documentation here:
                 https://boto3.amazonaws.com/v1/documentation/api/latest/guide/s3-example-download-file.html
-
-        Returns:
         """
         # Initialize the S3 client.
         if self.s3_client is None:
@@ -1563,8 +1561,6 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 definitions. If True, AutoML.list_candidates() cannot be called. Default: False.
             tags ([dict[str,str]]): A list of dictionaries containing key-value
                 pairs.
-
-        Returns:
         """
         auto_ml_job_request = {
             "AutoMLJobName": job_name,
@@ -2791,6 +2787,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         Args:
             name (str): The name of the SageMaker model.
+
         Returns:
             dict: A dictionary response with the model description.
         """
@@ -2878,11 +2875,12 @@ class Session(object):  # pylint: disable=too-many-public-methods
     ):
         """Create an Amazon SageMaker endpoint configuration from an existing one.
 
-        IT also updates any values that were passed in.
+        It also updates any values that were passed in.
         The endpoint configuration identifies the Amazon SageMaker model (created using the
         ``CreateModel`` API) and the hardware configuration on which to deploy the model. Provide
         this endpoint configuration to the ``CreateEndpoint`` API, which then launches the
         hardware and deploys the model.
+
         Args:
             new_config_name (str): Name of the Amazon SageMaker endpoint configuration to create.
             existing_config_name (str): Name of the existing Amazon SageMaker endpoint
