@@ -62,8 +62,9 @@ IMPORT_FROM_MODIFIERS = [
 
 
 class ASTTransformer(ast.NodeTransformer):
-    """An ``ast.NodeTransformer`` subclass that walks the abstract syntax tree and
-    modifies nodes to upgrade the given SageMaker Python SDK code.
+    """An ``ast.NodeTransformer`` subclass that walks the abstract syntax tree.
+
+    It modifies nodes to upgrade the given SageMaker Python SDK code.
     """
 
     def visit_Call(self, node):

@@ -27,10 +27,10 @@ class ModelConfigArgModifier(Modifier):
     """A class to handle argument changes for Airflow model config functions."""
 
     def node_should_be_modified(self, node):
-        """Checks if the ``ast.Call`` node creates an Airflow model config and
-        contains positional arguments.
+        """Function to check Airflow model config and if it contains positional arguments.
 
-        This looks for the following formats:
+        Checks if the ``ast.Call`` node creates an Airflow model config and
+        contains positional arguments. This looks for the following formats:
 
         - ``model_config``
         - ``airflow.model_config``

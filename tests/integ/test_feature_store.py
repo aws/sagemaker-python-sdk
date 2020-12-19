@@ -106,6 +106,17 @@ def pandas_data_frame():
 
 
 @pytest.fixture
+def pandas_data_frame_without_string():
+    df = pd.DataFrame(
+        {
+            "feature1": pd.Series(np.arange(10), dtype="int64"),
+            "feature2": pd.Series([time.time()] * 10, dtype="float64"),
+        }
+    )
+    return df
+
+
+@pytest.fixture
 def record():
     return [
         FeatureValue(feature_name="feature1", value_as_string="10.0"),
@@ -185,6 +196,34 @@ def test_create_feature_store(
             )
             == feature_group.as_hive_ddl()
         )
+    assert output["FeatureGroupArn"].endswith(f"feature-group/{feature_group_name}")
+
+
+def test_ingest_without_string_feature(
+    feature_store_session,
+    role,
+    feature_group_name,
+    offline_store_s3_uri,
+    pandas_data_frame_without_string,
+):
+    feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
+    feature_group.load_feature_definitions(data_frame=pandas_data_frame_without_string)
+
+    with cleanup_feature_group(feature_group):
+        output = feature_group.create(
+            s3_uri=offline_store_s3_uri,
+            record_identifier_name="feature1",
+            event_time_feature_name="feature2",
+            role_arn=role,
+            enable_online_store=True,
+        )
+        _wait_for_feature_group_create(feature_group)
+
+        ingestion_manager = feature_group.ingest(
+            data_frame=pandas_data_frame_without_string, max_workers=3, wait=False
+        )
+        ingestion_manager.wait()
+
     assert output["FeatureGroupArn"].endswith(f"feature-group/{feature_group_name}")
 
 
