@@ -150,7 +150,7 @@ class Rule(RuleBase):
         volume_size_in_gb,
         rule_parameters,
         collections_to_save,
-        actions,
+        actions=None,
     ):
         """Configure the debugging rules using the following classmethods.
 
