@@ -166,7 +166,9 @@ def add_version(
     py_versions,
     tag_prefix,
 ):
-    """Read framework image uri information from json file to a dictionary, update it with new
+    """Read, update and write framework image uri.
+
+    Read framework image uri information from json file to a dictionary, update it with new
     framework version information, then write the dictionary back to json file.
 
     Args:

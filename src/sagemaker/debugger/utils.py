@@ -36,8 +36,9 @@ def _convert_key_and_value(key, value):
 
 
 def convert_json_config_to_string(config):
-    """Helper function to convert the dictionary config to a string. Calling eval on this string
-    should result in the original dictionary.
+    """Helper function to convert the dictionary config to a string.
+
+    Calling eval on this string should result in the original dictionary.
 
     Args:
         config (dict): The config to be converted to a string.
