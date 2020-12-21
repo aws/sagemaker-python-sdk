@@ -110,7 +110,7 @@ def pandas_data_frame_without_string():
     df = pd.DataFrame(
         {
             "feature1": pd.Series(np.arange(10), dtype="int64"),
-            "feature2": pd.Series([time.time()] * 10, dtype="float64"),
+            "feature2": pd.Series([3141592.6535897] * 10, dtype="float64"),
         }
     )
     return df
