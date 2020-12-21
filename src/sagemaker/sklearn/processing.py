@@ -10,10 +10,10 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""This module contains code related to SKLearn Processors, which are used
-for Processing jobs. These jobs let customers perform data pre-processing,
-post-processing, feature engineering, data validation, and model evaluation
-and interpretation on SageMaker.
+"""This module contains code related to SKLearn Processors which are used for Processing jobs.
+
+These jobs let customers perform data pre-processing, post-processing, feature engineering,
+data validation, and model evaluation and interpretation on SageMaker.
 """
 from __future__ import absolute_import
 
@@ -42,8 +42,9 @@ class SKLearnProcessor(ScriptProcessor):
         tags=None,
         network_config=None,
     ):
-        """Initialize an ``SKLearnProcessor`` instance. The SKLearnProcessor
-        handles Amazon SageMaker processing tasks for jobs using scikit-learn.
+        """Initialize an ``SKLearnProcessor`` instance.
+
+        The SKLearnProcessor handles Amazon SageMaker processing tasks for jobs using scikit-learn.
 
         Args:
             framework_version (str): The version of scikit-learn.

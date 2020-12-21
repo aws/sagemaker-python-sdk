@@ -1,5 +1,16 @@
 # Changelog
 
+## v2.21.0 (2020-12-21)
+
+### Features
+
+ * remove D205 to enable PEP257 Docstring Conventions
+
+### Bug Fixes and Other Changes
+
+ * Pin smdebug-rulesconfig to 1.0.0
+ * use itertuples to ingest pandas dataframe to FeatureStore
+
 ## v2.20.0 (2020-12-16)
 
 ### Features

@@ -51,10 +51,11 @@ class PyTorch(Framework):
         distribution=None,
         **kwargs
     ):
-        """This ``Estimator`` executes an PyTorch script in a managed PyTorch
-        execution environment, within a SageMaker Training Job. The managed
-        PyTorch environment is an Amazon-built Docker container that executes
-        functions defined in the supplied ``entry_point`` Python script.
+        """
+        This ``Estimator`` executes an PyTorch script in a managed PyTorch execution environment.
+
+        The managed PyTorch environment is an Amazon-built Docker container that executes functions
+        defined in the supplied ``entry_point`` Python script within a SageMaker Training Job.
 
         Training is started by calling
         :meth:`~sagemaker.amazon.estimator.Framework.fit` on this Estimator.
@@ -236,8 +237,7 @@ class PyTorch(Framework):
         dependencies=None,
         **kwargs
     ):
-        """Create a SageMaker ``PyTorchModel`` object that can be deployed to an
-        ``Endpoint``.
+        """Create a SageMaker ``PyTorchModel`` object that can be deployed to an ``Endpoint``.
 
         Args:
             model_server_workers (int): Optional. The number of worker processes
@@ -291,8 +291,7 @@ class PyTorch(Framework):
 
     @classmethod
     def _prepare_init_params_from_job_description(cls, job_details, model_channel_name=None):
-        """Convert the job description to init params that can be handled by the
-        class constructor
+        """Convert the job description to init params that can be handled by the class constructor.
 
         Args:
             job_details: the returned job details from a describe_training_job

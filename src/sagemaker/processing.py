@@ -10,9 +10,10 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""This module contains code related to the ``Processor`` class, which is used
-for Amazon SageMaker Processing Jobs. These jobs let users perform data pre-processing,
-post-processing, feature engineering, data validation, and model evaluation,
+"""This module contains code related to the ``Processor`` class.
+
+which is used for Amazon SageMaker Processing Jobs. These jobs let users perform
+data pre-processing, post-processing, feature engineering, data validation, and model evaluation,
 and interpretation on Amazon SageMaker.
 """
 from __future__ import print_function, absolute_import
@@ -54,8 +55,9 @@ class Processor(object):
         tags=None,
         network_config=None,
     ):
-        """Initializes a ``Processor`` instance. The ``Processor`` handles Amazon
-        SageMaker Processing tasks.
+        """Initializes a ``Processor`` instance.
+
+        The ``Processor`` handles Amazon SageMaker Processing tasks.
 
         Args:
             role (str): An AWS IAM role name or ARN. Amazon SageMaker Processing
@@ -311,8 +313,7 @@ class Processor(object):
         return normalized_inputs
 
     def _normalize_outputs(self, outputs=None):
-        """Ensures that all the outputs are ``ProcessingOutput`` objects with
-        names and S3 URIs.
+        """Ensures that all the outputs are ``ProcessingOutput`` objects with names and S3 URIs.
 
         Args:
             outputs (list[sagemaker.processing.ProcessingOutput]): A list
@@ -372,9 +373,11 @@ class ScriptProcessor(Processor):
         tags=None,
         network_config=None,
     ):
-        """Initializes a ``ScriptProcessor`` instance. The ``ScriptProcessor``
-        handles Amazon SageMaker Processing tasks for jobs using a machine learning framework,
-        which allows for providing a script to be run as part of the Processing Job.
+        """Initializes a ``ScriptProcessor`` instance.
+
+        The ``ScriptProcessor`` handles Amazon SageMaker Processing tasks for jobs
+        using a machine learning framework, which allows for providing a script to be
+        run as part of the Processing Job.
 
         Args:
             role (str): An AWS IAM role name or ARN. Amazon SageMaker Processing
@@ -574,8 +577,7 @@ class ScriptProcessor(Processor):
         return user_code_s3_uri
 
     def _upload_code(self, code):
-        """Uploads a code file or directory specified as a string
-        and returns the S3 URI.
+        """Uploads a code file or directory specified as a string and returns the S3 URI.
 
         Args:
             code (str): A file or directory to be uploaded to S3.
@@ -989,9 +991,10 @@ class ProcessingInput(object):
         dataset_definition=None,
         app_managed=False,
     ):
-        """Initializes a ``ProcessingInput`` instance. ``ProcessingInput`` accepts parameters
-        that specify an Amazon S3 input for a processing job and provides a method
-        to turn those parameters into a dictionary.
+        """Initializes a ``ProcessingInput`` instance.
+
+        ``ProcessingInput`` accepts parameters that specify an Amazon S3 input
+        for a processing job and provides a method to turn those parameters into a dictionary.
 
         Args:
             source (str): The source for the input. If a local path is provided, it will
@@ -1088,9 +1091,10 @@ class ProcessingOutput(object):
         app_managed=False,
         feature_store_output=None,
     ):
-        """Initializes a ``ProcessingOutput`` instance. ``ProcessingOutput`` accepts parameters that
-        specify an Amazon S3 output for a processing job and provides a method to turn
-        those parameters into a dictionary.
+        """Initializes a ``ProcessingOutput`` instance.
+
+        ``ProcessingOutput`` accepts parameters that specify an Amazon S3 output for a
+        processing job and provides a method to turn those parameters into a dictionary.
 
         Args:
             source (str): The source for the output.
