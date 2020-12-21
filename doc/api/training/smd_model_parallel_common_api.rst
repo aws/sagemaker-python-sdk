@@ -60,7 +60,7 @@ The following API is common across all frameworks.
    The argument to ``smp.step`` decorated function should either be a tensor
    or an instance of list, tuple, dict or set for it to be split across
    microbatches. If your object doesn't fall into this category, you can make
-   SMP split your object, by implementing ``smp_slice`` method.
+   the library split your object, by implementing ``smp_slice`` method.
 
    Below is an example of how to use it with PyTorch.
 
