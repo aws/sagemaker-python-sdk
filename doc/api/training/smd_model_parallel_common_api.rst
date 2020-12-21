@@ -70,7 +70,7 @@ The following API is common across all frameworks.
           def __init__(self, tensor):
               self.data = tensor
 
-          # SMP will call this to invoke slicing on the object passing in total microbatches (num_mb)
+          # The library will call this to invoke slicing on the object passing in total microbatches (num_mb)
           # and the current microbatch index (mb).
           def smp_slice(self, num_mb, mb, axis):
               dim_size = list(self.data.size())[axis]
