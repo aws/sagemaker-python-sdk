@@ -273,8 +273,7 @@ class Rule(RuleBase):
 
         if actions is not None and not rule_configs.is_valid_action_object(actions):
             raise RuntimeError(
-                """`actions` must be of type `Action` or `ActionList`!
-                """
+                """`actions` must be of type `Action` or `ActionList`!"""
             )
 
         if other_trials_s3_input_paths is not None:
@@ -365,8 +364,7 @@ class Rule(RuleBase):
         """
         if actions is not None and not rule_configs.is_valid_action_object(actions):
             raise RuntimeError(
-                """`actions` must be of type `Action` or `ActionList`!
-                """
+                """`actions` must be of type `Action` or `ActionList`!"""
             )
 
         merged_rule_params = cls._set_rule_parameters(
