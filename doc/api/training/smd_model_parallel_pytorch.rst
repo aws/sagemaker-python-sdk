@@ -128,7 +128,7 @@ This API document assumes you use the following import statements in your traini
       computation. \ ``bucket_cap_mb``\ controls the bucket size in MegaBytes
       (MB).
 
-    - ``trace_memory_usage`` (default: False): When set to True, SMP attempts
+    - ``trace_memory_usage`` (default: False): When set to True, the library attempts
       to measure memory usage per module during tracing. If this is disabled,
       memory usage will be estimated through the sizes of tensors returned from
       the module.
