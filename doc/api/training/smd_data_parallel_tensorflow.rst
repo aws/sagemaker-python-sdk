@@ -1,6 +1,6 @@
-#######################
-TensorFlow Guide to SDP
-#######################
+#################################################################
+TensorFlow Guide to SageMaker's distributed data parallel library
+#################################################################
 
 .. admonition:: Contents
 
@@ -13,13 +13,13 @@ Modify a TensorFlow 2.x training script to use SageMaker data parallel
 ======================================================================
 
 The following steps show you how to convert a TensorFlow 2.x training
-script to utilize SDP.
+script to utilize the distributed data parallel library.
 
-The SDP APIs are designed to be close to Horovod APIs. Please see the
-SDP TensorFlow API specification for additional details on each API that
-SDP offers for TensorFlow.
+The distributed data parallel library APIs are designed to be close to Horovod APIs.
+See `SageMaker distributed data parallel TensorFlow examples <https://sagemaker-examples.readthedocs.io/en/latest/training/distributed_training/index.html#tensorflow-distributed>`__ for additional details on how to implement the data parallel library
+API offered for TensorFlow.
 
--  First import SDP’s TensorFlow client and initialize it:
+-  First import the distributed data parallel library’s TensorFlow client and initialize it:
 
    .. code:: python
 
@@ -54,7 +54,7 @@ SDP offers for TensorFlow.
       learning_rate = learning_rate * sdp.size()
 
 
--  Use SDP’s ``DistributedGradientTape`` to optimize AllReduce
+-  Use the library’s ``DistributedGradientTape`` to optimize AllReduce
    operations during training. This wraps ``tf.GradientTape``.
 
    .. code:: python
@@ -63,7 +63,7 @@ SDP offers for TensorFlow.
             output = model(input)
             loss_value = loss(label, output)
 
-      # SDP: Wrap tf.GradientTape with SDP's DistributedGradientTape
+      # Wrap tf.GradientTape with the library's DistributedGradientTape
       tape = sdp.DistributedGradientTape(tape)
 
 
@@ -92,23 +92,23 @@ SDP offers for TensorFlow.
 
 
 All put together, the following is an example TensorFlow2 training
-script you will have for distributed training with SDP.
+script you will have for distributed training with the library.
 
 .. code:: python
 
    import tensorflow as tf
 
-   # SDP: Import SDP TF API
+   # Import the library's TF API
    import smdistributed.dataparallel.tensorflow as sdp
 
-   # SDP: Initialize SDP
+   # Initialize the library
    sdp.init()
 
    gpus = tf.config.experimental.list_physical_devices('GPU')
    for gpu in gpus:
        tf.config.experimental.set_memory_growth(gpu, True)
    if gpus:
-       # SDP: Pin GPUs to a single SDP process
+       # Pin GPUs to a single process
        tf.config.experimental.set_visible_devices(gpus[sdp.local_rank()], 'GPU')
 
    # Prepare Dataset
@@ -118,7 +118,7 @@ script you will have for distributed training with SDP.
    mnist_model = tf.keras.Sequential(...)
    loss = tf.losses.SparseCategoricalCrossentropy()
 
-   # SDP: Scale Learning Rate
+   # Scale Learning Rate
    # LR for 8 node run : 0.000125
    # LR for single node run : 0.001
    opt = tf.optimizers.Adam(0.000125 * sdp.size())
@@ -129,14 +129,14 @@ script you will have for distributed training with SDP.
            probs = mnist_model(images, training=True)
            loss_value = loss(labels, probs)
 
-       # SDP: Wrap tf.GradientTape with SDP's DistributedGradientTape
+       # Wrap tf.GradientTape with the library's DistributedGradientTape
        tape = sdp.DistributedGradientTape(tape)
 
        grads = tape.gradient(loss_value, mnist_model.trainable_variables)
        opt.apply_gradients(zip(grads, mnist_model.trainable_variables))
 
        if first_batch:
-          # SDP: Broadcast model and optimizer variables
+          # Broadcast model and optimizer variables
           sdp.broadcast_variables(mnist_model.variables, root_rank=0)
           sdp.broadcast_variables(opt.variables(), root_rank=0)
 
@@ -144,7 +144,7 @@ script you will have for distributed training with SDP.
 
    ...
 
-   # SDP: Save checkpoints only from master node.
+   # Save checkpoints only from master node.
    if sdp.rank() == 0:
        checkpoint.save(checkpoint_dir)
 
