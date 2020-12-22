@@ -416,6 +416,7 @@ The SageMaker PyTorch model server provides default implementations of these fun
 You can provide your own implementations for these functions in your hosting script.
 If you omit any definition then the SageMaker PyTorch model server will use its default implementation for that
 function.
+If you use torch version >= 1.5.1 for inference with Elastic Inference, remember to implement ``predict_fn`` yourself.
 
 The ``Predictor`` used by PyTorch in the SageMaker Python SDK serializes NumPy arrays to the `NPY <https://docs.scipy.org/doc/numpy/neps/npy-format.html>`_ format
 by default, with Content-Type ``application/x-npy``. The SageMaker PyTorch model server can deserialize NPY-formatted
@@ -546,6 +547,26 @@ block, for example:
         model.eval()
         with torch.jit.optimized_execution(True, {"target_device": "eia:0"}):
             output = model(input_data)
+
+If you use Elastic Inference with torch version >= 1.5.1, please implement your own ``predict_fn`` like below.
+
+.. code:: python
+
+    import torch
+    import numpy as np
+
+    def predict_fn(input_data, model):
+        device = torch.device("cpu")
+        model = model.to(device)
+        input_data = data.to(device)
+        model.eval()
+        # we need to set the profiling executor for EIA
+        torch._C._jit_set_profiling_executor(False)
+        # Here want to use the first attached accelerator, so we specify ordinal 0.
+        model = torcheia.jit.attach_eia(model, 0)
+        with torch.jit.optimized_execution(True):
+            output = model.forward(input_data)
+
 
 Process Model Output
 ^^^^^^^^^^^^^^^^^^^^
