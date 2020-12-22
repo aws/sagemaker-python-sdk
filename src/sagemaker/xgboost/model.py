@@ -125,8 +125,9 @@ class XGBoostModel(FrameworkModel):
         validate_framework_version(framework_version)
 
     def prepare_container_def(self, instance_type=None, accelerator_type=None):
-        """Return a container definition with framework configuration
-        set in model environment variables.
+        """Return a container definition with framework configuration.
+
+        The framework configuration is set in model environment variables.
 
         Args:
             instance_type (str): The EC2 instance type to deploy this Model to.

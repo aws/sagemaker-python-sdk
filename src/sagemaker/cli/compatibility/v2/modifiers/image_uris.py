@@ -53,7 +53,8 @@ class ImageURIRetrieveRefactor(Modifier):
 
     def modify_node(self, node):
         """Modifies the ``ast.Call`` node to call ``image_uris.retrieve`` instead.
-        And switch the first two parameters from (region, repo) to (framework, region)
+
+        And also switch the first two parameters from (region, repo) to (framework, region).
 
         Args:
             node (ast.Call): a node that represents a *image_uris.retrieve call.

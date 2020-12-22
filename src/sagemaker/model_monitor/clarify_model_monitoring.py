@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """This module contains code related to Amazon SageMaker Explainability AI Model Monitoring.
+
 These classes assist with suggesting baselines and creating monitoring schedules for monitoring
 bias metrics and feature attribution of SageMaker Endpoints.
 """
@@ -608,6 +609,7 @@ class ModelBiasMonitor(ClarifyModelMonitor):
         network_config=None,
     ):
         """Updates the existing monitoring schedule.
+
         If more options than schedule_cron_expression are to be updated, a new job definition will
         be created to hold them. The old job definition will not be deleted.
 
@@ -988,6 +990,7 @@ class ModelExplainabilityMonitor(ClarifyModelMonitor):
         network_config=None,
     ):
         """Updates the existing monitoring schedule.
+
         If more options than schedule_cron_expression are to be updated, a new job definition will
         be created to hold them. The old job definition will not be deleted.
 

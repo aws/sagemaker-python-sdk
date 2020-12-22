@@ -1,5 +1,32 @@
 # Changelog
 
+## v2.21.0 (2020-12-21)
+
+### Features
+
+ * remove D205 to enable PEP257 Docstring Conventions
+
+### Bug Fixes and Other Changes
+
+ * Pin smdebug-rulesconfig to 1.0.0
+ * use itertuples to ingest pandas dataframe to FeatureStore
+
+## v2.20.0 (2020-12-16)
+
+### Features
+
+ * add dataset definition support for processing jobs
+
+### Bug Fixes and Other Changes
+
+ * include workflow integ tests with clarify and debugger enabled
+ * only run DataParallel and EdgePackaging tests in supported regions
+
+### Documentation Changes
+
+ * fix smp code example, add note for CUDA 11 to sdp
+ * adding note about CUDA 11 to SMP. Small title update PyTorch
+
 ## v2.19.0 (2020-12-08)
 
 ### Features

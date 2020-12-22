@@ -10,7 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Classes for updating code in files."""
+"""Classes for updating code in files for version 2.0 or later of the SageMaker Python SDK."""
 from __future__ import absolute_import
 
 from abc import abstractmethod
@@ -29,8 +29,7 @@ class FileUpdater(object):
     """An abstract class for updating files."""
 
     def __init__(self, input_path, output_path):
-        """Creates a ``FileUpdater`` for updating a file so that
-        it is compatible with version 2.0 and later of the SageMaker Python SDK.
+        """Creates ``FileUpdater`` for updating a file to be compatible with version 2.0 and later.
 
         Args:
             input_path (str): Location of the input file.
@@ -43,15 +42,17 @@ class FileUpdater(object):
 
     @abstractmethod
     def update(self):
-        """Reads the input file, updates the code so that it is
+        """Reads, updates and writes the code for version 2.0 and later of the SageMaker Python SDK.
+
+        Reads the input file, updates the code so that it is
         compatible with version 2.0 and later of the SageMaker Python SDK,
         and writes the updated code to an output file.
         """
 
     def _make_output_dirs_if_needed(self):
-        """Checks if the directory path for ``self.output_path`` exists,
-        and creates the directories if not. This function also logs a warning if
-        ``self.output_path`` already exists.
+        """Checks if the directory path for ``self.output_path`` exists, and creates it if not.
+
+        This function also logs a warning if ``self.output_path`` already exists.
         """
         output_dir = os.path.dirname(self.output_path)
         if output_dir and not os.path.exists(output_dir):
@@ -65,7 +66,9 @@ class PyFileUpdater(FileUpdater):
     """A class for updating Python (``*.py``) files."""
 
     def update(self):
-        """Reads the input Python file, updates the code so that it is
+        """Reads, updates and writes the code for version 2.0 and later of the SageMaker Python SDK.
+
+        Reads the input Python file, updates the code so that it is
         compatible with version 2.0 and later of the SageMaker Python SDK,
         and writes the updated code to an output file.
         """
@@ -73,8 +76,9 @@ class PyFileUpdater(FileUpdater):
         self._write_output_file(output)
 
     def _update_ast(self, input_ast):
-        """Updates an abstract syntax tree (AST) so that it is compatible
-        with version 2.0 and later of the SageMaker Python SDK.
+        """Updates an abstract syntax tree (AST).
+
+        So that it is compatible with version 2.0 and later of the SageMaker Python SDK.
 
         Args:
             input_ast (ast.Module): AST to be updated for use with
@@ -96,6 +100,7 @@ class PyFileUpdater(FileUpdater):
 
     def _write_output_file(self, output):
         """Writes abstract syntax tree (AST) to output file.
+
         Creates the directories for the output path, if needed.
 
         Args:
@@ -115,7 +120,9 @@ class JupyterNotebookFileUpdater(FileUpdater):
     """
 
     def update(self):
-        """Reads the input Jupyter notebook file, updates the code so that it is
+        """Reads, updates and writes the code for version 2.0 and later of the SageMaker Python SDK.
+
+        Reads the input Jupyter notebook file, updates the code so that it is
         compatible with version 2.0 and later of the SageMaker Python SDK, and writes the
         updated code to an output file.
         """
@@ -146,8 +153,9 @@ class JupyterNotebookFileUpdater(FileUpdater):
         return any(line.startswith("!") for line in source)
 
     def _update_code_from_cell(self, cell):
-        """Updates the code from a code cell so that it is
-        compatible with version 2.0 and later of the SageMaker Python SDK.
+        """Updates the code from a code cell.
+
+        So that it is compatible with version 2.0 and later of the SageMaker Python SDK.
 
         Args:
             cell (dict): A dictionary representation of a code cell from
