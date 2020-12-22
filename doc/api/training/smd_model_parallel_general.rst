@@ -10,10 +10,10 @@ SageMaker Python SDK ``modelparallel`` parameters
 
 The TensorFlow and PyTorch ``Estimator`` objects contains a ``distribution`` parameter,
 which is used to enable and specify parameters for the
-initialization of the SMP library. SMP internally uses MPI,
+initialization of the SageMaker distributed model parallel library. The library internally uses MPI,
 so in order to use model parallelism, MPI must be enabled using the ``distribution`` parameter.
 
-The following is an example of how you can launch a new PyTorch training job with SMP.
+The following is an example of how you can launch a new PyTorch training job with the library.
 
 .. code-block:: python3
 
@@ -55,7 +55,7 @@ The following is an example of how you can launch a new PyTorch training job wit
 
    smd_mp_estimator.fit('s3://my_bucket/my_training_data/')
 
-You can use the following parameters to initialize SMP using the ``parameters``
+You can use the following parameters to initialize the library using the ``parameters``
 in the ``smdistributed`` of ``distribution``.
 
 Note: ``partitions`` is required in ``parameters`` of ``smp_options``. All other parameters in the following
@@ -88,7 +88,7 @@ table are optional.
    |                           | or ``"simple"``         |                   | schedule.             |
    |                           |                         |                   |                       |
    +---------------------------+-------------------------+-------------------+-----------------------+
-   | ``optimize``              | ``"memory"`` or         | ``"memory"``      | Whether SMP           |
+   | ``optimize``              | ``"memory"`` or         | ``"memory"``      | Whether the library   |
    |                           | ``"speed"``             |                   | should optimize       |
    |                           |                         |                   | for speed or          |
    |                           |                         |                   | memory during         |
@@ -99,7 +99,7 @@ table are optional.
    |                           |                         |                   |                       |
    |                           |                         |                   |                       |
    |                           |                         |                   | **speed**             |
-   |                           |                         |                   | When SMP is           |
+   |                           |                         |                   | When the library is   |
    |                           |                         |                   | configured to         |
    |                           |                         |                   | optimize speed,       |
    |                           |                         |                   | it attempts to        |
@@ -124,7 +124,7 @@ table are optional.
    |                           |                         |                   |                       |
    |                           |                         |                   |                       |
    |                           |                         |                   | **memory**            |
-   |                           |                         |                   | When SMP              |
+   |                           |                         |                   | When the library      |
    |                           |                         |                   | optimizes             |
    |                           |                         |                   | memory, it            |
    |                           |                         |                   | attempts to           |
@@ -273,10 +273,10 @@ table are optional.
    |                   |                         |                 | balancing                         |
    |                   |                         |                 | computational                     |
    |                   |                         |                 | load. If 0.0,                     |
-   |                   |                         |                 | SMP only tries                    |
+   |                   |                         |                 | the library only tries            |
    |                   |                         |                 | to balance                        |
    |                   |                         |                 | computation; if                   |
-   |                   |                         |                 | 1.0 SMP only                      |
+   |                   |                         |                 | 1.0 the library only              |
    |                   |                         |                 | tries to                          |
    |                   |                         |                 | balance the                       |
    |                   |                         |                 | memory use. Any                   |
@@ -308,23 +308,23 @@ table are optional.
 Ranking Basics
 --------------
 
-SMP maintains a one-to-one mapping between processes and available GPUs:
+The library maintains a one-to-one mapping between processes and available GPUs:
 for each GPU, there is a corresponding CPU process. Each CPU process
 maintains a “rank” assigned by MPI, which is a 0-based unique index for
 the process. For instance, if a training job is launched with 4
-P3dn.24xlarge instances using all its GPUs, there are 32 processes
+``p3dn.24xlarge`` instances using all its GPUs, there are 32 processes
 across all instances, and the ranks of these processes range from 0 to
 31.
 
 The ``local_rank`` of a process is the rank of the process among the
 processes in the same instance. This can range from 0 up to the number
-of GPUs in the instance, but can be lower if fewer processes are
-launched than GPUs in the instance. For instance, in the preceding
+of GPUs in the instance, but can be lower if fewer processes than GPUs are
+launched in the instance. For instance, in the preceding
 example, ``local_rank``\ s of the processes will range from 0 to 7,
-since there are 8 GPUs in a P3dn.24xlarge instance.
+since there are 8 GPUs in a ``p3dn.24xlarge`` instance.
 
-When SMP is used together with data parallelism (Horovod for TensorFlow
-and DDP for PyTorch), SMP partitions the set of processes into
+When the library is used together with data parallelism (Horovod for TensorFlow
+and DDP for PyTorch), the library partitions the set of processes into
 disjoint \ ``mp_group``\ s. An ``mp_group`` is a subset of all processes
 that together hold a single, partitioned model replica. For instance, if
 a single node job is launched with 8 local processes, and
@@ -337,7 +337,7 @@ this example, if ``placement_strategy`` is ``spread``, then the four
 previous example, the ``mp_rank`` of process 1 is 0, and ``mp_rank`` of
 process 6 is 1.
 
-Analogously, SMP defines ``dp_group``\ s as the sets of processes that
+Analogously, the library defines ``dp_group``\ s as the sets of processes that
 all hold the same model partition, and perform data parallelism among
 each other. In the example above, there are two ``dp_group``\ s,
 ``[0, 1, 2, 3]`` and ``[4, 5, 6, 7]``,
