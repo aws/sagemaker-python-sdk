@@ -1,5 +1,21 @@
 # Changelog
 
+## v2.22.0 (2020-12-22)
+
+### Features
+
+ * Support local mode for Amazon SageMaker Processing jobs
+
+### Bug Fixes and Other Changes
+
+ * Add API enhancements for SMP
+ * adjust naming convention; fix links
+ * lower value used in featurestore test
+
+### Documentation Changes
+
+ * Update GTDD instructions
+
 ## v2.21.0 (2020-12-21)
 
 ### Features
