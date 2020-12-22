@@ -86,6 +86,7 @@ class SKLearnProcessor(ScriptProcessor):
 
         session = sagemaker_session or Session()
         region = session.boto_region_name
+
         image_uri = image_uris.retrieve(
             defaults.SKLEARN_NAME, region, version=framework_version, instance_type=instance_type
         )

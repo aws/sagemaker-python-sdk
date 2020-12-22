@@ -58,8 +58,16 @@ class _SageMakerContainer(object):
     files that the docker containers will use for either training or serving.
     """
 
-    def __init__(self, instance_type, instance_count, image, sagemaker_session=None):
-        """Initialize a SageMakerContainer instance.
+    def __init__(
+        self,
+        instance_type,
+        instance_count,
+        image,
+        sagemaker_session=None,
+        container_entrypoint=None,
+        container_arguments=None,
+    ):
+        """Initialize a SageMakerContainer instance
 
         It uses a :class:`sagemaker.session.Session` for general interaction
         with user configuration such as getting the default sagemaker S3 bucket.
@@ -72,6 +80,8 @@ class _SageMakerContainer(object):
             image (str): docker image to use.
             sagemaker_session (sagemaker.session.Session): a sagemaker session
                 to use when interacting with SageMaker.
+            container_entrypoint (str): the container entrypoint to execute
+            container_arguments (str): the container entrypoint arguments
         """
         from sagemaker.local.local_session import LocalSession
 
@@ -88,6 +98,8 @@ class _SageMakerContainer(object):
         self.instance_type = instance_type
         self.instance_count = instance_count
         self.image = image
+        self.container_entrypoint = container_entrypoint
+        self.container_arguments = container_arguments
         # Since we are using a single docker network, Generate a random suffix to attach to the
         # container names. This way multiple jobs can run in parallel.
         suffix = "".join(random.choice(string.ascii_lowercase + string.digits) for _ in range(5))
@@ -97,6 +109,71 @@ class _SageMakerContainer(object):
         ]
         self.container_root = None
         self.container = None
+
+    def process(
+        self, processing_inputs, processing_output_config, environment, processing_job_name
+    ):
+        """Run a processing job locally using docker-compose.
+
+        Args:
+            processing_inputs (dict): The processing input specification.
+            processing_output_config (dict): The processing output configuration specification.
+            environment (dict): The environment collection for the processing job.
+            processing_job_name (str): Name of the local processing job being run.
+        """
+
+        self.container_root = self._create_tmp_folder()
+
+        # A shared directory for all the containers;
+        # it is only mounted if the processing script is Local.
+        shared_dir = os.path.join(self.container_root, "shared")
+        os.mkdir(shared_dir)
+
+        data_dir = self._create_tmp_folder()
+        volumes = self._prepare_processing_volumes(
+            data_dir, processing_inputs, processing_output_config
+        )
+
+        # Create the configuration files for each container that we will create.
+        for host in self.hosts:
+            _create_processing_config_file_directories(self.container_root, host)
+            self.write_processing_config_files(
+                host, environment, processing_inputs, processing_output_config, processing_job_name
+            )
+
+        self._generate_compose_file(
+            "process", additional_volumes=volumes, additional_env_vars=environment
+        )
+        compose_command = self._compose()
+
+        if _ecr_login_if_needed(self.sagemaker_session.boto_session, self.image):
+            _pull_image(self.image)
+
+        process = subprocess.Popen(
+            compose_command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+        )
+
+        try:
+            _stream_output(process)
+        except RuntimeError as e:
+            # _stream_output() doesn't have the command line. We will handle the exception
+            # which contains the exit code and append the command line to it.
+            msg = f"Failed to run: {compose_command}"
+            raise RuntimeError(msg) from e
+        finally:
+            # Uploading processing outputs back to Amazon S3.
+            self._upload_processing_outputs(data_dir, processing_output_config)
+
+            try:
+                # Deleting temporary directories.
+                dirs_to_delete = [shared_dir, data_dir]
+                self._cleanup(dirs_to_delete)
+            except OSError:
+                pass
+
+        # Print our Job Complete line to have a similar experience to training on SageMaker where
+        # you see this line at the end.
+        print("===== Job Complete =====")
 
     def train(self, input_data_config, output_data_config, hyperparameters, job_name):
         """Run a training job locally using docker-compose.
@@ -299,6 +376,53 @@ class _SageMakerContainer(object):
 
         return os.path.join(output_data, "model.tar.gz")
 
+    def write_processing_config_files(
+        self, host, environment, processing_inputs, processing_output_config, processing_job_name
+    ):
+        """Write the config files for the processing containers.
+
+        This method writes the hyperparameters, resources and input data
+        configuration files.
+
+        Args:
+            host (str): Host to write the configuration for
+            environment (dict): Environment variable collection.
+            processing_inputs (dict): Processing inputs.
+            processing_output_config (dict): Processing output configuration.
+            processing_job_name (str): Processing job name.
+        """
+        config_path = os.path.join(self.container_root, host, "config")
+
+        resource_config = {"current_host": host, "hosts": self.hosts}
+        _write_json_file(os.path.join(config_path, "resourceconfig.json"), resource_config)
+
+        processing_job_config = {
+            "ProcessingJobArn": processing_job_name,
+            "ProcessingJobName": processing_job_name,
+            "AppSpecification": {
+                "ImageUri": self.image,
+                "ContainerEntrypoint": self.container_entrypoint,
+                "ContainerArguments": self.container_arguments,
+            },
+            "Environment": environment,
+            "ProcessingInputs": processing_inputs,
+            "ProcessingOutputConfig": processing_output_config,
+            "ProcessingResources": {
+                "ClusterConfig": {
+                    "InstanceCount": self.instance_count,
+                    "InstanceType": self.instance_type,
+                    "VolumeSizeInGB": 30,
+                    "VolumeKmsKeyId": None,
+                }
+            },
+            "RoleArn": "<no_role>",
+            "StoppingCondition": {"MaxRuntimeInSeconds": 86400},
+        }
+
+        _write_json_file(
+            os.path.join(config_path, "processingjobconfig.json"), processing_job_config
+        )
+
     def write_config_files(self, host, hyperparameters, input_data_config):
         """Write the config files for the training containers.
 
@@ -383,6 +507,60 @@ class _SageMakerContainer(object):
 
         return volumes
 
+    def _prepare_processing_volumes(self, data_dir, processing_inputs, processing_output_config):
+        """Prepares local container volumes for the processing job.
+
+        Args:
+            data_dir: The local data directory.
+            processing_inputs: The configuration of processing inputs.
+            processing_output_config: The configuration of processing outputs.
+
+        Returns:
+            The volumes configuration.
+        """
+        shared_dir = os.path.join(self.container_root, "shared")
+        volumes = []
+
+        # Set up the input/outputs for the container.
+
+        for item in processing_inputs:
+            uri = item["DataUri"]
+            input_container_dir = item["S3Input"]["LocalPath"]
+
+            data_source = sagemaker.local.data.get_data_source_instance(uri, self.sagemaker_session)
+            volumes.append(_Volume(data_source.get_root_dir(), input_container_dir))
+
+        if processing_output_config and "Outputs" in processing_output_config:
+            for item in processing_output_config["Outputs"]:
+                output_name = item["OutputName"]
+                output_container_dir = item["S3Output"]["LocalPath"]
+
+                output_dir = os.path.join(data_dir, "output", output_name)
+                os.makedirs(output_dir)
+
+                volumes.append(_Volume(output_dir, output_container_dir))
+
+        volumes.append(_Volume(shared_dir, "/opt/ml/shared"))
+
+        return volumes
+
+    def _upload_processing_outputs(self, data_dir, processing_output_config):
+        """Uploads processing outputs to Amazon S3.
+
+        Args:
+            data_dir: The local data directory.
+            processing_output_config: The processing output configuration.
+        """
+        if processing_output_config and "Outputs" in processing_output_config:
+            for item in processing_output_config["Outputs"]:
+                output_name = item["OutputName"]
+                output_s3_uri = item["S3Output"]["S3Uri"]
+                output_dir = os.path.join(data_dir, "output", output_name)
+
+                sagemaker.local.utils.move_to_destination(
+                    output_dir, output_s3_uri, "", self.sagemaker_session
+                )
+
     def _update_local_src_path(self, params, key):
         """Updates the local path of source code.
 
@@ -465,6 +643,8 @@ class _SageMakerContainer(object):
 
         if command == "train":
             optml_dirs = {"output", "output/data", "input"}
+        elif command == "process":
+            optml_dirs = {"output", "config"}
 
         services = {
             h: self._create_docker_host(h, environment, optml_dirs, command, additional_volumes)
@@ -526,15 +706,27 @@ class _SageMakerContainer(object):
         optml_volumes = self._build_optml_volumes(host, optml_subdirs)
         optml_volumes.extend(volumes)
 
+        container_name_prefix = "".join(
+            random.choice(string.ascii_lowercase + string.digits) for _ in range(10)
+        )
+
         host_config = {
             "image": self.image,
+            "container_name": f"{container_name_prefix}-{host}",
             "stdin_open": True,
             "tty": True,
             "volumes": [v.map for v in optml_volumes],
             "environment": environment,
-            "command": command,
             "networks": {"sagemaker-local": {"aliases": [host]}},
         }
+
+        if command != "process":
+            host_config["command"] = command
+        else:
+            if self.container_entrypoint:
+                host_config["entrypoint"] = self.container_entrypoint
+            if self.container_arguments:
+                host_config["entrypoint"] = host_config["entrypoint"] + self.container_arguments
 
         # for GPU support pass in nvidia as the runtime, this is equivalent
         # to setting --runtime=nvidia in the docker commandline.
@@ -718,6 +910,17 @@ def _check_output(cmd, *popenargs, **kwargs):
         raise Exception("Failed to run %s" % ",".join(cmd))
 
     return output
+
+
+def _create_processing_config_file_directories(root, host):
+    """Creates the directory for the processing config files.
+
+    Args:
+        root: The root path.
+        host: The current host.
+    """
+    for d in ["config"]:
+        os.makedirs(os.path.join(root, host, d))
 
 
 def _create_config_file_directories(root, host):
