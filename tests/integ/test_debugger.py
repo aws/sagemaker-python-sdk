@@ -645,7 +645,7 @@ def _get_rule_evaluation_statuses(job_description):
     return debug_rule_eval_statuses + profiler_rule_eval_statuses
 
 
-def _get_custom_rule(session, actions):
+def _get_custom_rule(session, actions=None):
     script_path = os.path.join(DATA_DIR, "mxnet_mnist", "my_custom_rule.py")
 
     return Rule.custom(
