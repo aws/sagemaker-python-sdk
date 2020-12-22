@@ -2,12 +2,12 @@
 Distributed data parallel
 ###################################
 
-SageMaker distributed data parallel (SDP) extends SageMaker’s training
+SageMaker's distributed data parallel library extends SageMaker’s training
 capabilities on deep learning models with near-linear scaling efficiency,
 achieving fast time-to-train with minimal code changes.
 
-- SDP optimizes your training job for AWS network infrastructure and EC2 instance topology.
-- SDP takes advantage of gradient update to communicate between nodes with a custom AllReduce algorithm.
+- optimizes your training job for AWS network infrastructure and EC2 instance topology.
+- takes advantage of gradient update to communicate between nodes with a custom AllReduce algorithm.
 
 When training a model on a large amount of data, machine learning practitioners
 will often turn to distributed training to reduce the time to train.
@@ -21,11 +21,11 @@ in performance. This drop in performance is primarily caused the communications
 overhead between nodes in a cluster.
 
 .. important::
-   SDP only supports training jobs using CUDA 11. When you define a PyTorch or TensorFlow
+   The distributed data parallel library only supports training jobs using CUDA 11. When you define a PyTorch or TensorFlow
    ``Estimator`` with ``dataparallel`` parameter ``enabled`` set to ``True``,
    it uses CUDA 11. When you extend or customize your own training image
    you must use a CUDA 11 base image. See
-   `SageMaker Python SDK's SDP APIs
+   `SageMaker Python SDK's distributed data parallel library APIs
    <https://docs.aws.amazon.com/sagemaker/latest/dg/data-parallel-use-api.html#data-parallel-use-python-skd-api>`__
    for more information.
 
@@ -38,7 +38,7 @@ To customize your own training script, you will need the following:
    <div data-section-style="5" style="">
 
 -  You must provide TensorFlow / PyTorch training scripts that are
-   adapted to use SDP.
+   adapted to use the distributed data parallel library.
 -  Your input data must be in an S3 bucket or in FSx in the AWS region
    that you will use to launch your training job. If you use the Jupyter
    notebooks provided, create a SageMaker notebook instance in the same
@@ -53,7 +53,7 @@ To customize your own training script, you will need the following:
 
 Use the API guides for each framework to see
 examples of training scripts that can be used to convert your training scripts.
-Then, use one of the example notebooks as your template to launch a training job.
+Then use one of the example notebooks as your template to launch a training job.
 You’ll need to swap your training script with the one that came with the
 notebook and modify any input functions as necessary.
 Once you have launched a training job, you can monitor it using CloudWatch.
