@@ -57,6 +57,37 @@ The following APIs are common across all frameworks.
    versions of the tensor across different microbatches
    (see ``StepOutput`` entry for more information).
 
+   The argument to ``smp.step`` decorated function should either be a tensor
+   or an instance of list, tuple, dict or set for it to be split across
+   microbatches. If your object doesn't fall into this category, you can make
+   the library split your object, by implementing ``smp_slice`` method.
+
+   Below is an example of how to use it with PyTorch.
+
+   .. code:: python
+
+      class CustomType:
+          def __init__(self, tensor):
+              self.data = tensor
+
+          # The library will call this to invoke slicing on the object passing in total microbatches (num_mb)
+          # and the current microbatch index (mb).
+          def smp_slice(self, num_mb, mb, axis):
+              dim_size = list(self.data.size())[axis]
+
+              split_size = dim_size // num_mb
+              sliced_tensor = self.data.narrow(axis, mb * split_size, split_size)
+              return CustomType(sliced_tensor, self.other)
+
+      custom_obj = CustomType(torch.ones(4,))
+
+      @smp.step()
+      def step(custom_obj):
+          loss = model(custom_obj)
+          model.backward(loss)
+          return loss
+
+
    **Important:** ``smp.step`` splits the batch into microbatches, and
    executes everything inside the decorated function once per microbatch.
    This might affect the behavior of batch normalization, any operation
