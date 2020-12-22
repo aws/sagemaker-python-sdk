@@ -143,6 +143,7 @@ class _SparkProcessorBase(ScriptProcessor):
         """
         self.history_server = None
         self._spark_event_logs_s3_uri = None
+
         session = sagemaker_session or Session()
         region = session.boto_region_name
 
