@@ -419,6 +419,7 @@ class Model(object):
             if isinstance(input_shape, dict)
             else input_shape,
             "Framework": framework.upper(),
+            "FrameworkVersion" : framework_version,
         }
         role = self.sagemaker_session.expand_role(role)
         output_model_config = {
