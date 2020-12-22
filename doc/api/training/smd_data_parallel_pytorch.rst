@@ -1,6 +1,6 @@
-####################
-PyTorch Guide to SDP
-####################
+##############################################################
+PyTorch Guide to SageMaker's distributed data parallel library
+##############################################################
 
 .. admonition:: Contents
 
@@ -13,16 +13,16 @@ Modify a PyTorch training script to use SageMaker data parallel
 ======================================================================
 
 The following steps show you how to convert a PyTorch training script to
-utilize SageMaker Distributed Data Parallel (SDP).
+utilize SageMaker's distributed data parallel library.
 
-The SDP APIs are designed to be close to PyTorch Distributed Data
-Parallel (DDP) APIs. Please see `SageMaker Distributed Data Parallel
-PyTorch API documentation <http://#>`__ for additional details on each
-API SDP offers for PyTorch.
+The distributed data parallel library APIs are designed to be close to PyTorch Distributed Data
+Parallel (DDP) APIs.
+See `SageMaker distributed data parallel PyTorch examples <https://sagemaker-examples.readthedocs.io/en/latest/training/distributed_training/index.html#pytorch-distributed>`__ for additional details on how to implement the data parallel library
+API offered for PyTorch.
 
 
--  First import SDP’s PyTorch client and initialize it. You also import
-   the SDP module for distributed training.
+-  First import the distributed data parallel library’s PyTorch client and initialize it. You also import
+   the distributed data parallel library module for distributed training.
 
    .. code:: python
 
@@ -33,7 +33,7 @@ API SDP offers for PyTorch.
       dist.init_process_group()
 
 
--  Pin each GPU to a single SDP process with ``local_rank`` - this
+-  Pin each GPU to a single distributed data parallel library process with ``local_rank`` - this
    refers to the relative rank of the process within a given node.
    ``smdistributed.dataparallel.torch.get_local_rank()`` API provides
    you the local rank of the device. The leader node will be rank 0, and
@@ -45,12 +45,12 @@ API SDP offers for PyTorch.
       torch.cuda.set_device(dist.get_local_rank())
 
 
--  Then wrap the PyTorch model with SDP’s DDP.
+-  Then wrap the PyTorch model with the distributed data parallel library’s DDP.
 
    .. code:: python
 
       model = ...
-      # Wrap model with SDP DistributedDataParallel
+      # Wrap model with SageMaker's DistributedDataParallel
       model = DDP(model)
 
 
@@ -82,17 +82,17 @@ API SDP offers for PyTorch.
 
 
 All put together, the following is an example PyTorch training script
-you will have for distributed training with SDP:
+you will have for distributed training with the distributed data parallel library:
 
 .. code:: python
 
-   # SDP: Import SDP PyTorch API
+   # Import distributed data parallel library PyTorch API
    import smdistributed.dataparallel.torch.distributed as dist
 
-   # SDP: Import SDP PyTorch DDP
+   # Import distributed data parallel library PyTorch DDP
    from smdistributed.dataparallel.torch.parallel.distributed import DistributedDataParallel as DDP
 
-   # SDP: Initialize SDP
+   # Initialize distributed data parallel library
    dist.init_process_group()
 
    class Net(nn.Module):
@@ -109,14 +109,14 @@ you will have for distributed training with SDP:
 
    def main():
 
-       # SDP: Scale batch size by world size
+       # Scale batch size by world size
        batch_size //= dist.get_world_size() // 8
        batch_size = max(batch_size, 1)
 
        # Prepare dataset
        train_dataset = torchvision.datasets.MNIST(...)
 
-       # SDP: Set num_replicas and rank in DistributedSampler
+       # Set num_replicas and rank in DistributedSampler
        train_sampler = torch.utils.data.distributed.DistributedSampler(
                train_dataset,
                num_replicas=dist.get_world_size(),
@@ -124,10 +124,10 @@ you will have for distributed training with SDP:
 
        train_loader = torch.utils.data.DataLoader(..)
 
-       # SDP: Wrap the PyTorch model with SDP’s DDP
+       # Wrap the PyTorch model with distributed data parallel library’s DDP
        model = DDP(Net().to(device))
 
-       # SDP: Pin each GPU to a single SDP process.
+       # Pin each GPU to a single distributed data parallel library process.
        torch.cuda.set_device(local_rank)
        model.cuda(local_rank)
 
@@ -140,7 +140,7 @@ you will have for distributed training with SDP:
                test(...)
            scheduler.step()
 
-       # SDP: Save model on master node.
+       # Save model on master node.
        if dist.get_rank() == 0:
            torch.save(...)
 
