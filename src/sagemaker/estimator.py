@@ -473,6 +473,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             for rule in self.debugger_rules:
                 self._set_default_rule_config(rule)
                 self._set_source_s3_uri(rule)
+                rule.prepare_actions(self._current_job_name)
                 debugger_rule_configs.append(rule.to_debugger_rule_config_dict())
         return debugger_rule_configs
 
