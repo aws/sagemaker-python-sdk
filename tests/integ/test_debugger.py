@@ -60,6 +60,15 @@ CUSTOM_RULE_CONTAINERS_ACCOUNTS_MAP = {
 # TODO-reinvent-2019: test get_debugger_artifacts_path and get_tensorboard_artifacts_path
 
 
+@pytest.fixture
+def actions():
+    return rule_configs.ActionList(
+        rule_configs.StopTraining(),
+        rule_configs.Email("abc@abc.com"),
+        rule_configs.SMS("+01234567890"),
+    )
+
+
 def test_mxnet_with_rules(
     sagemaker_session,
     mxnet_training_latest_version,
@@ -125,6 +134,74 @@ def test_mxnet_with_rules(
         _wait_and_assert_that_no_rule_jobs_errored(training_job=mx.latest_training_job)
 
 
+def test_mxnet_with_rules_and_actions(
+    sagemaker_session,
+    mxnet_training_latest_version,
+    mxnet_training_latest_py_version,
+    cpu_instance_type,
+    actions,
+):
+    with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
+        rules = [
+            Rule.sagemaker(rule_configs.vanishing_gradient(), actions=actions),
+            Rule.sagemaker(
+                base_config=rule_configs.all_zero(),
+                rule_parameters={"tensor_regex": ".*"},
+                actions=actions,
+            ),
+            Rule.sagemaker(rule_configs.loss_not_decreasing(), actions=actions),
+        ]
+
+        script_path = os.path.join(DATA_DIR, "mxnet_mnist", "mnist_gluon.py")
+        data_path = os.path.join(DATA_DIR, "mxnet_mnist")
+
+        mx = MXNet(
+            entry_point=script_path,
+            role="SageMakerRole",
+            framework_version=mxnet_training_latest_version,
+            py_version=mxnet_training_latest_py_version,
+            instance_count=1,
+            instance_type=cpu_instance_type,
+            sagemaker_session=sagemaker_session,
+            rules=rules,
+        )
+
+        train_input = mx.sagemaker_session.upload_data(
+            path=os.path.join(data_path, "train"), key_prefix="integ-test-data/mxnet_mnist/train"
+        )
+        test_input = mx.sagemaker_session.upload_data(
+            path=os.path.join(data_path, "test"), key_prefix="integ-test-data/mxnet_mnist/test"
+        )
+
+        mx.fit({"train": train_input, "test": test_input})
+
+        job_description = mx.latest_training_job.describe()
+
+        for index, rule in enumerate(rules):
+            assert (
+                job_description["DebugRuleConfigurations"][index]["RuleConfigurationName"]
+                == rule.name
+            )
+            assert (
+                job_description["DebugRuleConfigurations"][index]["RuleEvaluatorImage"]
+                == rule.image_uri
+            )
+            assert job_description["DebugRuleConfigurations"][index]["VolumeSizeInGB"] == 0
+            assert (
+                job_description["DebugRuleConfigurations"][index]["RuleParameters"][
+                    "rule_to_invoke"
+                ]
+                == rule.rule_parameters["rule_to_invoke"]
+            )
+
+        assert (
+            _get_rule_evaluation_statuses(job_description)
+            == mx.latest_training_job.rule_job_summary()
+        )
+
+        _wait_and_assert_that_no_rule_jobs_errored(training_job=mx.latest_training_job)
+
+
 def test_mxnet_with_custom_rule(
     sagemaker_session,
     mxnet_training_latest_version,
@@ -133,6 +210,60 @@ def test_mxnet_with_custom_rule(
 ):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         rules = [_get_custom_rule(sagemaker_session)]
+
+        script_path = os.path.join(DATA_DIR, "mxnet_mnist", "mnist_gluon.py")
+        data_path = os.path.join(DATA_DIR, "mxnet_mnist")
+
+        mx = MXNet(
+            entry_point=script_path,
+            role="SageMakerRole",
+            framework_version=mxnet_training_latest_version,
+            py_version=mxnet_training_latest_py_version,
+            instance_count=1,
+            instance_type=cpu_instance_type,
+            sagemaker_session=sagemaker_session,
+            rules=rules,
+        )
+
+        train_input = mx.sagemaker_session.upload_data(
+            path=os.path.join(data_path, "train"), key_prefix="integ-test-data/mxnet_mnist/train"
+        )
+        test_input = mx.sagemaker_session.upload_data(
+            path=os.path.join(data_path, "test"), key_prefix="integ-test-data/mxnet_mnist/test"
+        )
+
+        mx.fit({"train": train_input, "test": test_input})
+
+        job_description = mx.latest_training_job.describe()
+
+        for index, rule in enumerate(rules):
+            assert (
+                job_description["DebugRuleConfigurations"][index]["RuleConfigurationName"]
+                == rule.name
+            )
+            assert (
+                job_description["DebugRuleConfigurations"][index]["RuleEvaluatorImage"]
+                == rule.image_uri
+            )
+            assert job_description["DebugRuleConfigurations"][index]["VolumeSizeInGB"] == 30
+
+        assert (
+            _get_rule_evaluation_statuses(job_description)
+            == mx.latest_training_job.rule_job_summary()
+        )
+
+        _wait_and_assert_that_no_rule_jobs_errored(training_job=mx.latest_training_job)
+
+
+def test_mxnet_with_custom_rule_and_actions(
+    sagemaker_session,
+    mxnet_training_latest_version,
+    mxnet_training_latest_py_version,
+    cpu_instance_type,
+    actions,
+):
+    with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
+        rules = [_get_custom_rule(sagemaker_session, actions)]
 
         script_path = os.path.join(DATA_DIR, "mxnet_mnist", "mnist_gluon.py")
         data_path = os.path.join(DATA_DIR, "mxnet_mnist")
@@ -514,7 +645,7 @@ def _get_rule_evaluation_statuses(job_description):
     return debug_rule_eval_statuses + profiler_rule_eval_statuses
 
 
-def _get_custom_rule(session):
+def _get_custom_rule(session, actions=None):
     script_path = os.path.join(DATA_DIR, "mxnet_mnist", "my_custom_rule.py")
 
     return Rule.custom(
@@ -526,6 +657,7 @@ def _get_custom_rule(session):
         image_uri=CUSTOM_RULE_REPO_WITH_PLACEHOLDERS.format(
             CUSTOM_RULE_CONTAINERS_ACCOUNTS_MAP[session.boto_region_name], session.boto_region_name
         ),
+        actions=actions,
     )
 
 

@@ -385,6 +385,58 @@ def test_framework_with_only_debugger_rule(sagemaker_session):
     }
 
 
+def test_framework_with_debugger_rule_and_single_action(sagemaker_session):
+    stop_training_action = rule_configs.StopTraining()
+    f = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        rules=[Rule.sagemaker(rule_configs.stalled_training_rule(), actions=stop_training_action)],
+    )
+    f.fit("s3://mydata")
+    sagemaker_session.train.assert_called_once()
+    _, args = sagemaker_session.train.call_args
+    assert args["debugger_rule_configs"][0]["RuleParameters"] == {
+        "rule_to_invoke": "StalledTrainingRule",
+        "action_json": stop_training_action.serialize(),
+    }
+    assert stop_training_action.action_parameters["training_job_prefix"] == f._current_job_name
+    assert args["debugger_hook_config"] == {
+        "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
+        "CollectionConfigurations": [],
+    }
+
+
+def test_framework_with_debugger_rule_and_multiple_actions(sagemaker_session):
+    action_list = rule_configs.ActionList(
+        rule_configs.StopTraining(),
+        rule_configs.Email("abc@abc.com"),
+        rule_configs.SMS("+1234567890"),
+    )
+    f = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        rules=[Rule.sagemaker(rule_configs.stalled_training_rule(), actions=action_list)],
+    )
+    f.fit("s3://mydata")
+    sagemaker_session.train.assert_called_once()
+    _, args = sagemaker_session.train.call_args
+    assert args["debugger_rule_configs"][0]["RuleParameters"] == {
+        "rule_to_invoke": "StalledTrainingRule",
+        "action_json": action_list.serialize(),
+    }
+    assert action_list.actions[0].action_parameters["training_job_prefix"] == f._current_job_name
+    assert args["debugger_hook_config"] == {
+        "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
+        "CollectionConfigurations": [],
+    }
+
+
 def test_framework_with_only_debugger_hook_config(sagemaker_session):
     hook_config = DebuggerHookConfig(
         s3_output_path="s3://output", collection_configs=[CollectionConfig(name="weights")]
