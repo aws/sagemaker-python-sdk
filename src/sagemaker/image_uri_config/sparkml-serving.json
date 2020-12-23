@@ -29,8 +29,7 @@
                 "us-west-2": "246618743249"
             },
             "repository": "sagemaker-sparkml-serving"
-        }
-    },
+        },
         "2.4": {
             "registries": {
                 "af-south-1": "510948584623",
@@ -60,4 +59,5 @@
             },
             "repository": "sagemaker-sparkml-serving"
         }
+    }
 }
