@@ -20,6 +20,21 @@ Use the following sections to learn more about the model parallelism and the lib
    <https://integ-docs-aws.amazon.com/sagemaker/latest/dg/model-parallel-use-api.html#model-parallel-customize-container>`__
    for more information.
 
+How to Use this Guide
+=====================
+
+The library contains a Common API that is shared across frameworks, as well as APIs
+that are specific to supported frameworks, TensorFlow and PyTroch. To use the library, reference the
+**Common API** documentation alongside framework specific API documentation.
+
+.. toctree::
+   :maxdepth: 1
+
+   smd_model_parallel_general
+   smd_model_parallel_common_api
+   smd_model_parallel_pytorch
+   smd_model_parallel_tensorflow
+
 It is recommended to use this documentation alongside `SageMaker Distributed Model Parallel
 <http://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel.html>`__ in the Amazon SageMaker
 developer guide. This developer guide documentation includes:
@@ -34,17 +49,11 @@ developer guide. This developer guide documentation includes:
    -  `Configuration tips and pitfalls
       <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-customize-tips-pitfalls.html>`__
 
-**How to Use this Guide**
+Latest Updates
+==============
 
-The library contains a Common API that is shared across frameworks, as well as APIs
-that are specific to supported frameworks, TensorFlow and PyTroch. To use the library, reference the
-**Common API** documentation alongside framework specific API documentation.
+New features, bug fixes, and improvements are regularly made to the SageMaker distributed model parallel library.
 
-
-.. toctree::
-   :maxdepth: 1
-
-   smd_model_parallel_general
-   smd_model_parallel_common_api
-   smd_model_parallel_pytorch
-   smd_model_parallel_tensorflow
+To see the the latest changes made to the library, refer to the library
+`Release Notes
+<https://github.com/aws/sagemaker-python-sdk/blob/master/doc/api/training/smd_model_parallel_release_notes/>`_.
