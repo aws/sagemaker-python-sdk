@@ -57,3 +57,4 @@ New features, bug fixes, and improvements are regularly made to the SageMaker di
 To see the the latest changes made to the library, refer to the library
 `Release Notes
 <https://github.com/aws/sagemaker-python-sdk/blob/master/doc/api/training/smd_model_parallel_release_notes/>`_.
+
