@@ -469,9 +469,12 @@ class _SageMakerContainer(object):
 
         volumes.append(_Volume(model_dir, "/opt/ml/model"))
 
-        # Mount the metadata directory on the notebook instance,
-        # this is used by some DeepEngine libraries
-        volumes.append(_Volume("/opt/ml/metadata", "/opt/ml/metadata"))
+        # Mount the metadata directory if present.
+        # Only expected to be present on SM notebook instances.
+        # This is used by some DeepEngine libraries
+        metadata_dir = "/opt/ml/metadata"
+        if os.path.isdir(metadata_dir):
+            volumes.append(_Volume(metadata_dir, metadata_dir))
 
         # Set up the channels for the containers. For local data we will
         # mount the local directory to the container. For S3 Data we will download the S3 data
