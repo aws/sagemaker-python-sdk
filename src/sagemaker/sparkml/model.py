@@ -70,7 +70,9 @@ class SparkMLModel(Model):
     model .
     """
 
-    def __init__(self, model_data, role=None, spark_version=2.4, sagemaker_session=None, **kwargs):
+    def __init__(
+        self, model_data, role=None, spark_version="2.4", sagemaker_session=None, **kwargs
+    ):
         """Initialize a SparkMLModel.
 
         Args:

@@ -1,5 +1,33 @@
 # Changelog
 
+## v2.23.0 (2020-12-23)
+
+### Features
+
+ * Add support for actions in debugger rules.
+
+### Bug Fixes and Other Changes
+
+ * include sparkml 2.4 in image uri config properly
+ * Mount metadata dir only if it exists
+ * allow urllib3 1.26
+
+## v2.22.0 (2020-12-22)
+
+### Features
+
+ * Support local mode for Amazon SageMaker Processing jobs
+
+### Bug Fixes and Other Changes
+
+ * Add API enhancements for SMP
+ * adjust naming convention; fix links
+ * lower value used in featurestore test
+
+### Documentation Changes
+
+ * Update GTDD instructions
+
 ## v2.21.0 (2020-12-21)
 
 ### Features
