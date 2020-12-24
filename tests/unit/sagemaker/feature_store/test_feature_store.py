@@ -79,20 +79,50 @@ def test_feature_store_create(
         role_arn=role_arn,
         enable_online_store=True,
     )
-    assert sagemaker_session_mock.create_feature_group.called_with(
+    sagemaker_session_mock.create_feature_group.assert_called_with(
         feature_group_name="MyFeatureGroup",
         record_identifier_name="feature1",
         event_time_feature_name="feature2",
-        role_arn=role_arn,
-        online_store_config={"EnableOnlineStore": True},
         feature_definitions=[fd.to_dict() for fd in feature_group_dummy_definitions],
+        role_arn=role_arn,
+        description=None,
+        tags=None,
+        online_store_config={"EnableOnlineStore": True},
+        offline_store_config={
+            "DisableGlueTableCreation": False,
+            "S3StorageConfig": {"S3Uri": s3_uri},
+        },
+    )
+
+
+def test_feature_store_create_online_only(
+    sagemaker_session_mock, role_arn, feature_group_dummy_definitions
+):
+    feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock)
+    feature_group.feature_definitions = feature_group_dummy_definitions
+    feature_group.create(
+        s3_uri=False,
+        record_identifier_name="feature1",
+        event_time_feature_name="feature2",
+        role_arn=role_arn,
+        enable_online_store=True,
+    )
+    sagemaker_session_mock.create_feature_group.assert_called_with(
+        feature_group_name="MyFeatureGroup",
+        record_identifier_name="feature1",
+        event_time_feature_name="feature2",
+        feature_definitions=[fd.to_dict() for fd in feature_group_dummy_definitions],
+        role_arn=role_arn,
+        description=None,
+        tags=None,
+        online_store_config={"EnableOnlineStore": True},
     )
 
 
 def test_feature_store_delete(sagemaker_session_mock):
     feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock)
     feature_group.delete()
-    assert sagemaker_session_mock.delete_feature_group.called_with(
+    sagemaker_session_mock.delete_feature_group.assert_called_with(
         feature_group_name="MyFeatureGroup"
     )
 
@@ -100,15 +130,15 @@ def test_feature_store_delete(sagemaker_session_mock):
 def test_feature_store_describe(sagemaker_session_mock):
     feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock)
     feature_group.describe()
-    assert sagemaker_session_mock.describe_feature_group.called_with(
-        feature_group_name="MyFeatureGroup"
+    sagemaker_session_mock.describe_feature_group.assert_called_with(
+        feature_group_name="MyFeatureGroup", next_token=None
     )
 
 
 def test_put_record(sagemaker_session_mock):
     feature_group = FeatureGroup(name="MyFeatureGroup", sagemaker_session=sagemaker_session_mock)
     feature_group.put_record(record=[])
-    assert sagemaker_session_mock.put_record.called_with(
+    sagemaker_session_mock.put_record.assert_called_with(
         feature_group_name="MyFeatureGroup", record=[]
     )
 
@@ -268,7 +298,7 @@ def query(sagemaker_session_mock):
 def test_athena_query_run(sagemaker_session_mock, query):
     sagemaker_session_mock.start_query_execution.return_value = {"QueryExecutionId": "query_id"}
     query.run(query_string="query", output_location="s3://some-bucket/some-path")
-    assert sagemaker_session_mock.start_query_execution.called_with(
+    sagemaker_session_mock.start_query_execution.assert_called_with(
         catalog="catalog",
         database="database",
         query_string="query",
@@ -283,13 +313,13 @@ def test_athena_query_run(sagemaker_session_mock, query):
 def test_athena_query_wait(sagemaker_session_mock, query):
     query._current_query_execution_id = "query_id"
     query.wait()
-    assert sagemaker_session_mock.wait_for_athena_query.called_with(query_execution_id="query_id")
+    sagemaker_session_mock.wait_for_athena_query.assert_called_with(query_execution_id="query_id")
 
 
 def test_athena_query_get_query_execution(sagemaker_session_mock, query):
     query._current_query_execution_id = "query_id"
     query.get_query_execution()
-    assert sagemaker_session_mock.wait_for_athena_query.called_with(query_execution_id="query_id")
+    sagemaker_session_mock.get_query_execution.assert_called_with(query_execution_id="query_id")
 
 
 @patch("tempfile.gettempdir", Mock(return_value="tmp"))
@@ -302,13 +332,13 @@ def test_athena_query_as_dataframe(read_csv, sagemaker_session_mock, query):
     query._result_bucket = "bucket"
     query._result_file_prefix = "prefix"
     query.as_dataframe()
-    assert sagemaker_session_mock.download_athena_query_result.called_with(
+    sagemaker_session_mock.download_athena_query_result.assert_called_with(
         bucket="bucket",
         prefix="prefix",
         query_execution_id="query_id",
         filename="tmp/query_id.csv",
     )
-    assert read_csv.called_with("tmp/query_id.csv", delimiter=",")
+    read_csv.assert_called_with("tmp/query_id.csv", delimiter=",")
 
 
 @patch("tempfile.gettempdir", Mock(return_value="tmp"))

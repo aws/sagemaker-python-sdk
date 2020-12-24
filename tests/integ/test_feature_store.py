@@ -141,6 +141,28 @@ def create_table_ddl():
     )
 
 
+def test_create_feature_store_online_only(
+    feature_store_session,
+    role,
+    feature_group_name,
+    pandas_data_frame,
+):
+    feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
+    feature_group.load_feature_definitions(data_frame=pandas_data_frame)
+
+    with cleanup_feature_group(feature_group):
+        output = feature_group.create(
+            s3_uri=False,
+            record_identifier_name="feature1",
+            event_time_feature_name="feature3",
+            role_arn=role,
+            enable_online_store=True,
+        )
+        _wait_for_feature_group_create(feature_group)
+
+    assert output["FeatureGroupArn"].endswith(f"feature-group/{feature_group_name}")
+
+
 def test_create_feature_store(
     feature_store_session,
     role,
