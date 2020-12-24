@@ -24,8 +24,8 @@ How to Use this Guide
 =====================
 
 The library contains a Common API that is shared across frameworks, as well as APIs
-that are specific to supported frameworks, TensorFlow and PyTroch. To use the library, reference the
-**Common API** documentation alongside framework specific API documentation.
+that are specific to supported frameworks, TensorFlow and PyTorch. To use the library, reference the
+**Common API** documentation alongside the framework specific API documentation.
 
 .. toctree::
    :maxdepth: 1

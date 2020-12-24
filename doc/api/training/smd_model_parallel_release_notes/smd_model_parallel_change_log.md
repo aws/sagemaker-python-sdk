@@ -12,7 +12,7 @@ The following sections describe new feature releases that are common across fram
 
 ### Common across frameworks
 
-#### Custom slicing support (smp_slice method) for objects passed to smp.step decorated functions
+#### Custom slicing support (`smp_slice` method) for objects passed to `smp.step` decorated functions
 
 To pass an object to `smp.step` that contains tensors that needs to be split across
 microbatches and is not an instance of list, dict, tuple or set, you should implement `smp_slice` method for the object.
@@ -46,12 +46,14 @@ def step(custom_obj):
 
 #### Add support for smp.DistributedModel.cpu()
 
-`smp.DistributedModel.cpu()` allgathers parameters and buffers across all `mp_ranks` and moves them to the CPU.
+`smp.DistributedModel.cpu()`
+[allgather](https://sagemaker.readthedocs.io/en/stable/api/training/smd_model_parallel_common_api.html#smp.allgather)s
+parameters and buffers across all `mp_ranks` and moves them to the CPU.
 
 #### Add `trace_memory_usage` option to `smp.DistributedModel` to measure memory usage per module
 
 Adds `trace_memory_usage` option to `smp.DistributedModel`. This attempts to measure memory usage per module during
-tracing. If this is disabled, memory usage will be estimated through the sizes of tensors returned from the module.
+tracing. If this is disabled, memory usage is estimated through the sizes of tensors returned from the module.
 This option is disabled by default.
 
 ## Bug Fixes
@@ -60,9 +62,9 @@ This option is disabled by default.
 
 - `torch.nn.Sequential`: Fix a bug with `torch.nn.Sequential` which causes a failure with the error message : `shouldnt go less than 0, there is a bug` when the inputs to the first module don't require grads.
 
-- `smp.DistributedModel` - Fix a bug with `DistributedModel` execution when a module has multiple parents. The bug surfaces with the error message: `actual_parent should be different than module_execution_stack parent only for torch.nn.ModuleList`
+- `smp.DistributedModel`: Fix a bug with `DistributedModel` execution when a module has multiple parents. The bug surfaces with the error message: `actual_parent should be different than module_execution_stack parent only for torch.nn.ModuleList`
 
-- `apex.optimizers.FusedNovoGrad` - Fix a bug with `apex.optimizers.FusedNovoGrad` which surfaces with the error message: `KeyError: 'exp_avg_sq'`
+- `apex.optimizers.FusedNovoGrad`: Fix a bug with `apex.optimizers.FusedNovoGrad` which surfaces with the error message: `KeyError: 'exp_avg_sq'`
 
 ## Improvements
 
