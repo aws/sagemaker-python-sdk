@@ -282,8 +282,7 @@ def _run_clone_command(repo_url, dest_dir):
             write_pipe = open(sshnoprompt.name, "w")
             write_pipe.write("ssh -oBatchMode=yes $@")
             write_pipe.close()
-            # 511 in decimal is same as 777 in octal
-            os.chmod(sshnoprompt.name, 511)
+            os.chmod(sshnoprompt.name, 0o511)
             my_env["GIT_SSH"] = sshnoprompt.name
             subprocess.check_call(["git", "clone", repo_url, dest_dir], env=my_env)
 
