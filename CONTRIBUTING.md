@@ -111,6 +111,7 @@ If you are writing or modifying a test that creates a SageMaker job (training, t
 1. Run all the unit tests as per [Run the Unit Tests](#run-the-unit-tests), and verify that all checks and tests pass.
    1. Note that this also runs tools that may be necessary for the automated build to pass (ex: code reformatting by 'black').
 1. If your changes include documentation changes, please see the [Documentation Guidelines](#documentation-guidelines).
+1. If you include integration tests, do not mark them as canaries if they will not run in all regions.
 
 
 ### Commit Your Change
