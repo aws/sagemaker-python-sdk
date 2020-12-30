@@ -554,7 +554,7 @@ If you use Elastic Inference with torch version >= 1.5.1, please implement your 
 
     import numpy as np
     import torch
-    
+
 
     def predict_fn(input_data, model):
         device = torch.device("cpu")
