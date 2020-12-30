@@ -53,7 +53,9 @@ LAUNCH_PS_DISTRIBUTION_DICT = {"parameter_server": {"enabled": True}}
 
 ENDPOINT_DESC = {"EndpointConfigName": "test-endpoint"}
 
-ENDPOINT_CONFIG_DESC = {"ProductionVariants": [{"ModelName": "model-1"}, {"ModelName": "model-2"}]}
+ENDPOINT_CONFIG_DESC = {
+    "ProductionVariants": [{"ModelName": "model-1"}, {"ModelName": "model-2"}]
+}
 
 LIST_TAGS_RESULT = {"Tags": [{"Key": "TagtestKey", "Value": "TagtestValue"}]}
 
@@ -80,11 +82,15 @@ def sagemaker_session():
     )
 
     describe = {"ModelArtifacts": {"S3ModelArtifacts": "s3://m/m.tar.gz"}}
-    describe_compilation = {"ModelArtifacts": {"S3ModelArtifacts": "s3://m/model_c5.tar.gz"}}
+    describe_compilation = {
+        "ModelArtifacts": {"S3ModelArtifacts": "s3://m/model_c5.tar.gz"}
+    }
     session.sagemaker_client.create_model_package.side_effect = MODEL_PKG_RESPONSE
     session.sagemaker_client.describe_training_job = Mock(return_value=describe)
     session.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)
-    session.sagemaker_client.describe_endpoint_config = Mock(return_value=ENDPOINT_CONFIG_DESC)
+    session.sagemaker_client.describe_endpoint_config = Mock(
+        return_value=ENDPOINT_CONFIG_DESC
+    )
     session.sagemaker_client.list_tags = Mock(return_value=LIST_TAGS_RESULT)
     session.wait_for_compilation_job = Mock(return_value=describe_compilation)
     session.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
@@ -184,7 +190,10 @@ def _create_compilation_job(input_shape, output_location, framework_version):
             "FrameworkVersion": framework_version,
         },
         "job_name": COMPILATION_JOB_NAME,
-        "output_model_config": {"S3OutputLocation": output_location, "TargetDevice": "ml_c4"},
+        "output_model_config": {
+            "S3OutputLocation": output_location,
+            "TargetDevice": "ml_c4",
+        },
         "role": ROLE,
         "stop_condition": {"MaxRuntimeInSeconds": 900},
         "tags": None,
@@ -200,7 +209,10 @@ def _neo_inference_image(mxnet_version):
 @patch("sagemaker.estimator.name_from_base")
 @patch("sagemaker.utils.create_tar_file", MagicMock())
 def test_create_model(
-    name_from_base, sagemaker_session, mxnet_inference_version, mxnet_inference_py_version
+    name_from_base,
+    sagemaker_session,
+    mxnet_inference_version,
+    mxnet_inference_py_version,
 ):
     container_log_level = '"logging.INFO"'
     source_dir = "s3://mybucket/source"
@@ -355,7 +367,9 @@ def test_mxnet(
     actual_train_args = sagemaker_session.method_calls[0][2]
     job_name = actual_train_args["job_name"]
     expected_train_args = _get_train_args(job_name)
-    expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
+    expected_train_args["input_config"][0]["DataSource"]["S3DataSource"][
+        "S3Uri"
+    ] = inputs
     expected_train_args["experiment_config"] = EXPERIMENT_CONFIG
     expected_train_args["enable_sagemaker_metrics"] = False
 
@@ -414,7 +428,9 @@ def test_mxnet_neo(time, strftime, sagemaker_session, neo_mxnet_version):
         "wait_for_compilation_job",
     ]
 
-    expected_compile_model_args = _create_compilation_job(json.dumps(input_shape), output_location, neo_mxnet_version)
+    expected_compile_model_args = _create_compilation_job(
+        json.dumps(input_shape), output_location, neo_mxnet_version
+    )
     actual_compile_model_args = sagemaker_session.method_calls[3][2]
     assert expected_compile_model_args == actual_compile_model_args
 
@@ -433,7 +449,10 @@ def test_mxnet_neo(time, strftime, sagemaker_session, neo_mxnet_version):
 
 @patch("sagemaker.utils.create_tar_file", MagicMock())
 def test_model(
-    sagemaker_session, mxnet_inference_version, mxnet_inference_py_version, skip_if_mms_version
+    sagemaker_session,
+    mxnet_inference_version,
+    mxnet_inference_py_version,
+    skip_if_mms_version,
 ):
     model = MXNetModel(
         MODEL_DATA,
@@ -495,7 +514,10 @@ def test_model(
 
 @patch("sagemaker.utils.create_tar_file", MagicMock())
 def test_model_register(
-    sagemaker_session, mxnet_inference_version, mxnet_inference_py_version, skip_if_mms_version
+    sagemaker_session,
+    mxnet_inference_version,
+    mxnet_inference_py_version,
+    skip_if_mms_version,
 ):
     model = MXNetModel(
         MODEL_DATA,
@@ -598,7 +620,10 @@ def test_model_register_all_args(
 
 @patch("sagemaker.utils.create_tar_file", MagicMock())
 def test_model_custom_serialization(
-    sagemaker_session, mxnet_inference_version, mxnet_inference_py_version, skip_if_mms_version
+    sagemaker_session,
+    mxnet_inference_version,
+    mxnet_inference_py_version,
+    skip_if_mms_version,
 ):
     model = MXNetModel(
         MODEL_DATA,
@@ -680,9 +705,13 @@ def test_model_image_accelerator(
         py_version=mxnet_eia_py_version,
         sagemaker_session=sagemaker_session,
     )
-    container_def = model.prepare_container_def(INSTANCE_TYPE, accelerator_type=ACCELERATOR_TYPE)
+    container_def = model.prepare_container_def(
+        INSTANCE_TYPE, accelerator_type=ACCELERATOR_TYPE
+    )
     assert container_def["Image"] == IMAGE
-    assert _is_mms_version(mxnet_eia_version) ^ (tar_and_upload.called and not repack_model.called)
+    assert _is_mms_version(mxnet_eia_version) ^ (
+        tar_and_upload.called and not repack_model.called
+    )
 
 
 def test_model_prepare_container_def_no_instance_type_or_image(
@@ -699,23 +728,28 @@ def test_model_prepare_container_def_no_instance_type_or_image(
     with pytest.raises(ValueError) as e:
         model.prepare_container_def()
 
-    expected_msg = "Must supply either an instance type (for choosing CPU vs GPU) or an image URI."
+    expected_msg = (
+        "Must supply either an instance type (for choosing CPU vs GPU) or an image URI."
+    )
     assert expected_msg in str(e)
 
 
 def test_attach(sagemaker_session, mxnet_training_version, mxnet_training_py_version):
     if mxnet_training_py_version == "py37":
-        training_image = "1.dkr.ecr.us-west-2.amazonaws.com/mxnet-training:{1}-cpu-{0}".format(
-            mxnet_training_py_version, mxnet_training_version
-        )
-    else:
         training_image = (
-            "1.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet-{0}-cpu:{1}-cpu-{0}".format(
+            "1.dkr.ecr.us-west-2.amazonaws.com/mxnet-training:{1}-cpu-{0}".format(
                 mxnet_training_py_version, mxnet_training_version
             )
         )
+    else:
+        training_image = "1.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet-{0}-cpu:{1}-cpu-{0}".format(
+            mxnet_training_py_version, mxnet_training_version
+        )
     returned_job_description = {
-        "AlgorithmSpecification": {"TrainingInputMode": "File", "TrainingImage": training_image},
+        "AlgorithmSpecification": {
+            "TrainingInputMode": "File",
+            "TrainingImage": training_image,
+        },
         "HyperParameters": {
             "sagemaker_submit_directory": '"s3://some/sourcedir.tar.gz"',
             "sagemaker_program": '"iris-dnn-classifier.py"',
@@ -742,7 +776,9 @@ def test_attach(sagemaker_session, mxnet_training_version, mxnet_training_py_ver
         name="describe_training_job", return_value=returned_job_description
     )
 
-    estimator = MXNet.attach(training_job_name="neo", sagemaker_session=sagemaker_session)
+    estimator = MXNet.attach(
+        training_job_name="neo", sagemaker_session=sagemaker_session
+    )
     assert estimator.latest_training_job.job_name == "neo"
     assert estimator.py_version == mxnet_training_py_version
     assert estimator.framework_version == mxnet_training_version
@@ -791,7 +827,9 @@ def test_attach_old_container(sagemaker_session):
         name="describe_training_job", return_value=returned_job_description
     )
 
-    estimator = MXNet.attach(training_job_name="neo", sagemaker_session=sagemaker_session)
+    estimator = MXNet.attach(
+        training_job_name="neo", sagemaker_session=sagemaker_session
+    )
     assert estimator.latest_training_job.job_name == "neo"
     assert estimator.py_version == "py2"
     assert estimator.framework_version == "0.12"
@@ -846,7 +884,10 @@ def test_attach_wrong_framework(sagemaker_session):
 def test_attach_custom_image(sagemaker_session):
     training_image = "ubuntu:latest"
     returned_job_description = {
-        "AlgorithmSpecification": {"TrainingInputMode": "File", "TrainingImage": training_image},
+        "AlgorithmSpecification": {
+            "TrainingInputMode": "File",
+            "TrainingImage": training_image,
+        },
         "HyperParameters": {
             "sagemaker_submit_directory": '"s3://some/sourcedir.tar.gz"',
             "sagemaker_program": '"iris-dnn-classifier.py"',
@@ -873,7 +914,9 @@ def test_attach_custom_image(sagemaker_session):
         name="describe_training_job", return_value=returned_job_description
     )
 
-    estimator = MXNet.attach(training_job_name="neo", sagemaker_session=sagemaker_session)
+    estimator = MXNet.attach(
+        training_job_name="neo", sagemaker_session=sagemaker_session
+    )
     assert estimator.image_uri == training_image
     assert estimator.training_image_uri() == training_image
 
@@ -960,7 +1003,9 @@ def test_create_model_with_custom_hosting_image(sagemaker_session):
     assert model.image_uri == custom_hosting_image
 
 
-def test_mx_enable_sm_metrics(sagemaker_session, mxnet_training_version, mxnet_training_py_version):
+def test_mx_enable_sm_metrics(
+    sagemaker_session, mxnet_training_version, mxnet_training_py_version
+):
     mx = MXNet(
         entry_point=SCRIPT_PATH,
         framework_version=mxnet_training_version,
