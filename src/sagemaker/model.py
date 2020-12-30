@@ -422,7 +422,7 @@ class Model(object):
         }
         if framework_version is not None:
             input_model_config["FrameworkVersion"] = framework_version
- 
+
         role = self.sagemaker_session.expand_role(role)
         output_model_config = {
             "S3OutputLocation": output_path,
@@ -588,7 +588,8 @@ class Model(object):
             framework (str): The framework that is used to train the original
                 model. Allowed values: 'mxnet', 'tensorflow', 'keras', 'pytorch',
                 'onnx', 'xgboost'
-            framework_version (str):
+            framework_version (str): The version of framework, for example:
+               '1.6' for PyTorch
             target_platform_os (str): Target Platform OS, for example: 'LINUX'.
                 For allowed strings see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_OutputConfig.html.
