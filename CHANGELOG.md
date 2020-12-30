@@ -1,5 +1,17 @@
 # Changelog
 
+## v2.23.1 (2020-12-29)
+
+### Bug Fixes and Other Changes
+
+ * update git utils temp file
+ * Allow online store only FeatureGroups
+
+### Documentation Changes
+
+ * inform contributors when not to mark integration tests as canaries
+ * adding change log for smd model parallel
+
 ## v2.23.0 (2020-12-23)
 
 ### Features
