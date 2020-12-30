@@ -391,12 +391,12 @@ class Model(object):
         compile_max_run,
         job_name,
         framework,
-        framework_version,
         tags,
         target_platform_os=None,
         target_platform_arch=None,
         target_platform_accelerator=None,
         compiler_options=None,
+        framework_version=None,
     ):
         """
         Args:
@@ -419,8 +419,10 @@ class Model(object):
             if isinstance(input_shape, dict)
             else input_shape,
             "Framework": framework.upper(),
-            "FrameworkVersion" : framework_version,
         }
+        if framework_version is not None:
+            input_model_config["FrameworkVersion"] = framework_version
+ 
         role = self.sagemaker_session.expand_role(role)
         output_model_config = {
             "S3OutputLocation": output_path,
