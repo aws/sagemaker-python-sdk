@@ -175,13 +175,12 @@ def _get_environment(submit_directory, model_url, image_uri):
     }
 
 
-def _create_compilation_job(input_shape, output_location, framework_version):
+def _create_compilation_job(input_shape, output_location):
     return {
         "input_model_config": {
             "DataInputConfig": input_shape,
             "Framework": FRAMEWORK.upper(),
             "S3Uri": "s3://m/m.tar.gz",
-            "FrameworkVersion": framework_version,
         },
         "job_name": COMPILATION_JOB_NAME,
         "output_model_config": {"S3OutputLocation": output_location, "TargetDevice": "ml_c4"},
@@ -414,9 +413,7 @@ def test_mxnet_neo(time, strftime, sagemaker_session, neo_mxnet_version):
         "wait_for_compilation_job",
     ]
 
-    expected_compile_model_args = _create_compilation_job(
-        json.dumps(input_shape), output_location, neo_mxnet_version
-    )
+    expected_compile_model_args = _create_compilation_job(json.dumps(input_shape), output_location)
     actual_compile_model_args = sagemaker_session.method_calls[3][2]
     assert expected_compile_model_args == actual_compile_model_args
 
