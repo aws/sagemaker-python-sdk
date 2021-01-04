@@ -388,8 +388,7 @@ def _extract_training_config_from_estimator(tuner, inputs, include_cls_metadata,
 def _extract_training_config_list_from_estimator_dict(
     tuner, inputs, include_cls_metadata, mini_batch_size
 ):
-    """
-    Extracts a list of training job configs from a Hyperparameter Tuner.
+    """Extracts a list of training job configs from a Hyperparameter Tuner.
 
     It uses the ``estimator_dict`` field.
     """
@@ -511,8 +510,7 @@ def update_estimator_from_task(estimator, task_id, task_type):
 
 
 def prepare_framework_container_def(model, instance_type, s3_operations):
-    """
-    This prepares the framework model container information and specifies related S3 operations.
+    """This prepares the framework model container information and specifies related S3 operations.
 
     Prepare the framework model container information. Specify related S3
     operations for Airflow to perform. (Upload `source_dir` )
