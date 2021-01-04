@@ -209,8 +209,7 @@ class KNNPredictor(Predictor):
         serializer=RecordSerializer(),
         deserializer=RecordDeserializer(),
     ):
-        """
-        Function to initialize KNNPredictor.
+        """Function to initialize KNNPredictor.
 
         Args:
             endpoint_name (str): Name of the Amazon SageMaker endpoint to which
@@ -240,8 +239,7 @@ class KNNModel(Model):
     """
 
     def __init__(self, model_data, role, sagemaker_session=None, **kwargs):
-        """
-        Function to initialize KNNModel.
+        """Function to initialize KNNModel.
 
         Args:
             model_data (str): The S3 location of a SageMaker model data

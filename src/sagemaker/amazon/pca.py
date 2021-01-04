@@ -208,8 +208,7 @@ class PCAPredictor(Predictor):
         serializer=RecordSerializer(),
         deserializer=RecordDeserializer(),
     ):
-        """
-        Initialization for PCAPredictor.
+        """Initialization for PCAPredictor.
 
         Args:
             endpoint_name (str): Name of the Amazon SageMaker endpoint to which
@@ -239,8 +238,7 @@ class PCAModel(Model):
     """
 
     def __init__(self, model_data, role, sagemaker_session=None, **kwargs):
-        """
-        Initialization for PCAModel.
+        """Initialization for PCAModel.
 
         Args:
             model_data (str): The S3 location of a SageMaker model data

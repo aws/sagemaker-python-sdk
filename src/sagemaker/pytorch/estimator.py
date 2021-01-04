@@ -51,8 +51,7 @@ class PyTorch(Framework):
         distribution=None,
         **kwargs
     ):
-        """
-        This ``Estimator`` executes an PyTorch script in a managed PyTorch execution environment.
+        """This ``Estimator`` executes a PyTorch script in a managed PyTorch execution environment.
 
         The managed PyTorch environment is an Amazon-built Docker container that executes functions
         defined in the supplied ``entry_point`` Python script within a SageMaker Training Job.
