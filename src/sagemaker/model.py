@@ -635,12 +635,12 @@ class Model(object):
             compile_max_run,
             job_name,
             framework,
-            framework_version,
             tags,
             target_platform_os,
             target_platform_arch,
             target_platform_accelerator,
             compiler_options,
+            framework_version,
         )
         self.sagemaker_session.compile_model(**config)
         job_status = self.sagemaker_session.wait_for_compilation_job(job_name)
