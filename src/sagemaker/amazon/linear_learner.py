@@ -452,8 +452,7 @@ class LinearLearnerPredictor(Predictor):
         serializer=RecordSerializer(),
         deserializer=RecordDeserializer(),
     ):
-        """
-        Initialization for LinearLearnerPredictor.
+        """Initialization for LinearLearnerPredictor.
 
         Args:
             endpoint_name (str): Name of the Amazon SageMaker endpoint to which
@@ -483,8 +482,7 @@ class LinearLearnerModel(Model):
     """
 
     def __init__(self, model_data, role, sagemaker_session=None, **kwargs):
-        """
-        Initialization for LinearLearnerModel.
+        """Initialization for LinearLearnerModel.
 
         Args:
             model_data (str): The S3 location of a SageMaker model data

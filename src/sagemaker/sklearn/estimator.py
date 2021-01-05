@@ -45,8 +45,7 @@ class SKLearn(Framework):
         image_uri=None,
         **kwargs
     ):
-        """
-        Creates a SKLearn Estimator for Scikit-learn environment.
+        """Creates a SKLearn Estimator for Scikit-learn environment.
 
         It will execute an Scikit-learn script within a SageMaker Training Job. The managed
         Scikit-learn environment is an Amazon-built Docker container that executes functions

@@ -272,8 +272,7 @@ class PyTorchModel(FrameworkModel):
         )
 
     def _is_mms_version(self):
-        """
-        Determines if the framework corresponds to an and using MMS.
+        """Determines if the framework corresponds to an and using MMS.
 
         Whether the framework version corresponds to an inference image using
         the Multi-Model Server (https://github.com/awslabs/multi-model-server).

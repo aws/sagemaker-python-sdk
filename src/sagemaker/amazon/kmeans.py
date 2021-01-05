@@ -217,8 +217,7 @@ class KMeansPredictor(Predictor):
         serializer=RecordSerializer(),
         deserializer=RecordDeserializer(),
     ):
-        """
-        Initialization for KMeansPredictor class.
+        """Initialization for KMeansPredictor class.
 
         Args:
             endpoint_name (str): Name of the Amazon SageMaker endpoint to which
@@ -248,8 +247,7 @@ class KMeansModel(Model):
     """
 
     def __init__(self, model_data, role, sagemaker_session=None, **kwargs):
-        """
-        Initialization for KMeansModel class.
+        """Initialization for KMeansModel class.
 
         Args:
             model_data (str): The S3 location of a SageMaker model data
