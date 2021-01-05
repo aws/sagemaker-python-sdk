@@ -53,8 +53,7 @@ class LDA(AmazonAlgorithmEstimatorBase):
         tol=None,
         **kwargs
     ):
-        """
-        Latent Dirichlet Allocation (LDA) is :class:`Estimator` used for unsupervised learning.
+        """Latent Dirichlet Allocation (LDA) is :class:`Estimator` used for unsupervised learning.
 
         Amazon SageMaker Latent Dirichlet Allocation is an unsupervised
         learning algorithm that attempts to describe a set of observations as a
@@ -192,9 +191,9 @@ class LDAPredictor(Predictor):
         serializer=RecordSerializer(),
         deserializer=RecordDeserializer(),
     ):
-        """
-        Args:
+        """Creates "LDAPredictor" object to be used for transforming input vectors.
 
+        Args:
             endpoint_name (str): Name of the Amazon SageMaker endpoint to which
                 requests are sent.
             sagemaker_session (sagemaker.session.Session): A SageMaker Session
@@ -222,8 +221,7 @@ class LDAModel(Model):
     """
 
     def __init__(self, model_data, role, sagemaker_session=None, **kwargs):
-        """
-        Initialization for LDAModel class.
+        """Initialization for LDAModel class.
 
         Args:
             model_data (str): The S3 location of a SageMaker model data

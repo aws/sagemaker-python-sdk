@@ -570,8 +570,7 @@ def _botocore_resolver():
 
 
 def _aws_partition(region):
-    """
-    Given a region name (ex: "cn-north-1"), return the corresponding aws partition ("aws-cn").
+    """Given a region name (ex: "cn-north-1"), return the corresponding aws partition ("aws-cn").
 
     Args:
         region (str): The region name for which to return the corresponding partition.
