@@ -103,7 +103,7 @@ class OnlineStoreConfig(Config):
         """
         return Config.construct_dict(
             EnableOnlineStore=self.enable_online_store,
-            OnlineStoreSecurityConfig=self.online_store_security_config,
+            SecurityConfig=self.online_store_security_config,
         )
 
 
