@@ -48,7 +48,7 @@ def test_online_store_config():
     assert ordered(config_with_kms.to_dict()) == ordered(
         {
             "EnableOnlineStore": True,
-            "OnlineStoreSecurityConfig": {
+            "SecurityConfig": {
                 "KmsKeyId": "kms",
             },
         }
