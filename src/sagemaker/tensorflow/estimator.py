@@ -265,8 +265,7 @@ class TensorFlow(Framework):
         dependencies=None,
         **kwargs
     ):
-        """
-        Create a ``TensorFlowModel`` object that can be used for creating SageMaker model entities.
+        """Creates ``TensorFlowModel`` object to be used for creating SageMaker model entities.
 
         This can be done by deploying it to a SageMaker endpoint,
         or starting SageMaker Batch Transform jobs.

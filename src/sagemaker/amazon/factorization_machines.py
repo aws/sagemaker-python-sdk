@@ -290,8 +290,7 @@ class FactorizationMachinesPredictor(Predictor):
         serializer=RecordSerializer(),
         deserializer=RecordDeserializer(),
     ):
-        """
-        Initialization for FactorizationMachinesPredictor class.
+        """Initialization for FactorizationMachinesPredictor class.
 
         Args:
             endpoint_name (str): Name of the Amazon SageMaker endpoint to which
@@ -321,8 +320,7 @@ class FactorizationMachinesModel(Model):
     """
 
     def __init__(self, model_data, role, sagemaker_session=None, **kwargs):
-        """
-        Initialization for FactorizationMachinesModel class.
+        """Initialization for FactorizationMachinesModel class.
 
         Args:
             model_data (str): The S3 location of a SageMaker model data

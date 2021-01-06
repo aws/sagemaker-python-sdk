@@ -345,8 +345,7 @@ class Object2VecModel(Model):
     """
 
     def __init__(self, model_data, role, sagemaker_session=None, **kwargs):
-        """
-        Initialization for Object2VecModel class.
+        """Initialization for Object2VecModel class.
 
         Args:
             model_data (str): The S3 location of a SageMaker model data

@@ -2029,14 +2029,13 @@ class Session(object):  # pylint: disable=too-many-public-methods
         self.sagemaker_client.create_hyper_parameter_tuning_job(**tune_request)
 
     def describe_tuning_job(self, job_name):
-        """
-        Calls the DescribeHyperParameterTuningJob API for the given job name, returns the response.
+        """Calls DescribeHyperParameterTuningJob API for the given job name, returns the response.
 
-            Args:
-                job_name (str): The name of the hyperparameter tuning job to describe.
+        Args:
+            job_name (str): The name of the hyperparameter tuning job to describe.
 
-            Returns:
-                dict: A dictionary response with the hyperparameter tuning job description.
+        Returns:
+            dict: A dictionary response with the hyperparameter tuning job description.
         """
         return self.sagemaker_client.describe_hyper_parameter_tuning_job(
             HyperParameterTuningJobName=job_name
@@ -2053,8 +2052,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         objective_metric_name=None,
         parameter_ranges=None,
     ):
-        """
-        Construct tuning job configuration dictionary.
+        """Construct tuning job configuration dictionary.
 
         Args:
             strategy (str): Strategy to be used for hyperparameter estimations.
@@ -2097,8 +2095,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
     @classmethod
     def _map_tuning_objective(cls, objective_type, objective_metric_name):
-        """
-        Construct a dictionary of tuning objective from the arguments.
+        """Construct a dictionary of tuning objective from the arguments.
 
         Args:
             objective_type (str): The type of the objective metric for evaluating training jobs.
@@ -2148,8 +2145,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         checkpoint_s3_uri=None,
         checkpoint_local_path=None,
     ):
-        """
-        Construct a dictionary of training job configuration from the arguments.
+        """Construct a dictionary of training job configuration from the arguments.
 
         Args:
             static_hyperparameters (dict): Hyperparameters for model training. These

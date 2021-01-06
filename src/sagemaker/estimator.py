@@ -1570,8 +1570,7 @@ class _TrainingJob(_Job):
         return update_args
 
     def wait(self, logs="All"):
-        """
-        Placeholder docstring.
+        """Placeholder docstring.
 
         Args:
             logs ([str]): A list of strings specifying which logs to print. Acceptable
