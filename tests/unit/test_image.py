@@ -765,7 +765,7 @@ def test_ecr_login_needed(check_output):
         "docker login -u AWS -p %s https://520713654638.dkr.ecr.us-east-1.amazonaws.com" % token
     )
 
-    check_output.assert_called_with(expected_command, shell=True)
+    check_output.assert_called_with(expected_command.split())
     session_mock.client("ecr").get_authorization_token.assert_called_with(
         registryIds=["520713654638"]
     )
@@ -781,7 +781,7 @@ def test_pull_image(check_output):
 
     expected_command = "docker pull %s" % image
 
-    check_output.assert_called_once_with(expected_command, shell=True)
+    check_output.assert_called_once_with(expected_command.split())
 
 
 def test__aws_credentials_with_long_lived_credentials():
