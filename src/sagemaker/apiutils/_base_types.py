@@ -12,7 +12,7 @@
 # language governing permissions and limitations under the License.
 """Provides utilities for custom boto type objects."""
 from __future__ import absolute_import
-
+import time
 from sagemaker.apiutils import _boto_functions, _utils
 
 
@@ -143,6 +143,7 @@ class Record(ApiObject):
                     yield list_item_factory(item)
                 if not next_token:
                     break
+                time.sleep(1)
         except StopIteration:
             return
 
