@@ -152,7 +152,7 @@ class IngestionManagerPandas:
         feature_group_name (str): name of the Feature Group.
         sagemaker_session (Session): instance of the Session class to perform boto calls.
         data_frame (DataFrame): pandas DataFrame to be ingested to the given feature group.
-        max_works (int): number of threads to create.
+        max_workers (int): number of threads to create.
     """
 
     feature_group_name: str = attr.ib()
