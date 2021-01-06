@@ -1,5 +1,16 @@
 # Changelog
 
+## v2.23.2 (2021-01-06)
+
+### Bug Fixes and Other Changes
+
+ * remove shell=True in subprocess.check_output
+ * use SecurityConfig dict key
+
+### Documentation Changes
+
+ * remove D212 from ignore to comply with PEP257 standards
+
 ## v2.23.1 (2020-12-29)
 
 ### Bug Fixes and Other Changes
