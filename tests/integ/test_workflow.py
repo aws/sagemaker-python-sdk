@@ -508,7 +508,7 @@ def test_training_job_with_debugger(
         execution_steps = execution.list_steps()
 
         assert len(execution_steps) == 1
-        assert execution_steps[0]["FailureReason"] == ""
+        assert execution_steps[0].get("FailureReason", "") == ""
         assert execution_steps[0]["StepName"] == "pytorch-train"
         assert execution_steps[0]["StepStatus"] == "Succeeded"
 
