@@ -506,14 +506,16 @@ def test_training_job_with_debugger(
         except WaiterError:
             pass
         execution_steps = execution.list_steps()
+
+        assert len(execution_steps) == 1
+        assert execution_steps[0].get("FailureReason", "") == ""
+        assert execution_steps[0]["StepName"] == "pytorch-train"
+        assert execution_steps[0]["StepStatus"] == "Succeeded"
+
         training_job_arn = execution_steps[0]["Metadata"]["TrainingJob"]["Arn"]
         job_description = sagemaker_session.sagemaker_client.describe_training_job(
             TrainingJobName=training_job_arn.split("/")[1]
         )
-
-        assert len(execution_steps) == 1
-        assert execution_steps[0]["StepName"] == "pytorch-train"
-        assert execution_steps[0]["StepStatus"] == "Succeeded"
 
         for index, rule in enumerate(rules):
             config = job_description["DebugRuleConfigurations"][index]
