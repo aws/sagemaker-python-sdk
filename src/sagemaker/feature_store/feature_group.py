@@ -508,6 +508,9 @@ class FeatureGroup:
                 f"  {definition.feature_name} "
                 f"{self._FEATURE_TYPE_TO_DDL_DATA_TYPE_MAP.get(definition.feature_type.value)}\n"
             )
+        ddl += "  write_time TIMESTAMP\n"
+        ddl += "  event_time TIMESTAMP\n"
+        ddl += "  is_deleted BOOLEAN\n"
         ddl += ")\n"
         ddl += (
             "ROW FORMAT SERDE 'org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe'\n"
