@@ -114,7 +114,7 @@ class TrainingStep(Step):
             inputs (TrainingInput): A `sagemaker.inputs.TrainingInput` instance. Defaults to `None`.
             experiment_config (Dict[str, str]): A dictionary describing the experiment configuration
                 for the training job. Dictionary contains three optional keys,
-                'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'. Default: to `None`.
+                'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'. Defaults to `None`.
         """
         super(TrainingStep, self).__init__(name, StepTypeEnum.TRAINING)
         self.estimator = estimator
@@ -226,7 +226,7 @@ class TransformStep(Step):
             inputs (TransformInput): A `sagemaker.inputs.TransformInput` instance.
             experiment_config (Dict[str, str]): A dictionary describing the experiment configuration
                 for the transform job. Dictionary contains three optional keys,
-                'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'. Default: to `None`.
+                'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'. Defaults to `None`.
         """
         super(TransformStep, self).__init__(name, StepTypeEnum.TRANSFORM)
         self.transformer = transformer
@@ -303,7 +303,7 @@ class ProcessingStep(Step):
                 for and resolves from the configured processing output list.
             experiment_config (Dict[str, str]): A dictionary describing the experiment configuration
                 for the training job. Dictionary contains three optional keys,
-                'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'. Default: to `None`.
+                'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'. Defaults to `None`.
         """
         super(ProcessingStep, self).__init__(name, StepTypeEnum.PROCESSING)
         self.processor = processor
