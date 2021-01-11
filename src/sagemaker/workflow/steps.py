@@ -101,6 +101,7 @@ class TrainingStep(Step):
         name: str,
         estimator: EstimatorBase,
         inputs: TrainingInput = None,
+        experiment_config: Dict[str, str] = None,
     ):
         """Construct a TrainingStep, given an `EstimatorBase` instance.
 
@@ -111,10 +112,14 @@ class TrainingStep(Step):
             name (str): The name of the training step.
             estimator (EstimatorBase): A `sagemaker.estimator.EstimatorBase` instance.
             inputs (TrainingInput): A `sagemaker.inputs.TrainingInput` instance. Defaults to `None`.
+            experiment_config (Dict[str, str]): A dictionary describing the experiment configuration
+                for the training job. Dictionary contains three optional keys,
+                'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'. Default: to `None`.
         """
         super(TrainingStep, self).__init__(name, StepTypeEnum.TRAINING)
         self.estimator = estimator
         self.inputs = inputs
+        self.experiment_config = experiment_config or dict()
 
         self._properties = Properties(
             path=f"Steps.{name}", shape_name="DescribeTrainingJobResponse"
@@ -133,7 +138,7 @@ class TrainingStep(Step):
 
         self.estimator._prepare_for_training()
         train_args = _TrainingJob._get_train_args(
-            self.estimator, self.inputs, experiment_config=dict()
+            self.estimator, self.inputs, experiment_config=self.experiment_config
         )
         request_dict = self.estimator.sagemaker_session._get_train_request(**train_args)
         request_dict.pop("TrainingJobName")
@@ -208,6 +213,7 @@ class TransformStep(Step):
         name: str,
         transformer: Transformer,
         inputs: TransformInput,
+        experiment_config: Dict[str, str] = None,
     ):
         """Constructs a TransformStep, given an `Transformer` instance.
 
@@ -218,10 +224,14 @@ class TransformStep(Step):
             name (str): The name of the transform step.
             transformer (Transformer): A `sagemaker.transformer.Transformer` instance.
             inputs (TransformInput): A `sagemaker.inputs.TransformInput` instance.
+            experiment_config (Dict[str, str]): A dictionary describing the experiment configuration
+                for the transform job. Dictionary contains three optional keys,
+                'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'. Default: to `None`.
         """
         super(TransformStep, self).__init__(name, StepTypeEnum.TRANSFORM)
         self.transformer = transformer
         self.inputs = inputs
+        self.experiment_config = experiment_config or dict()
 
         self._properties = Properties(
             path=f"Steps.{name}", shape_name="DescribeTransformJobResponse"
@@ -245,7 +255,7 @@ class TransformStep(Step):
             output_filter=self.inputs.output_filter,
             join_source=self.inputs.join_source,
             model_client_config=self.inputs.model_client_config,
-            experiment_config=dict(),
+            experiment_config=self.experiment_config,
         )
 
         request_dict = self.transformer.sagemaker_session._get_transform_request(**transform_args)
@@ -271,6 +281,7 @@ class ProcessingStep(Step):
         job_arguments: List[str] = None,
         code: str = None,
         property_files: List[PropertyFile] = None,
+        experiment_config: Dict[str, str] = None,
     ):
         """Construct a ProcessingStep, given a `Processor` instance.
 
@@ -290,6 +301,9 @@ class ProcessingStep(Step):
                 script to run. Defaults to `None`.
             property_files (List[PropertyFile]): A list of property files that workflow looks
                 for and resolves from the configured processing output list.
+            experiment_config (Dict[str, str]): A dictionary describing the experiment configuration
+                for the training job. Dictionary contains three optional keys,
+                'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'. Default: to `None`.
         """
         super(ProcessingStep, self).__init__(name, StepTypeEnum.PROCESSING)
         self.processor = processor
@@ -298,6 +312,7 @@ class ProcessingStep(Step):
         self.job_arguments = job_arguments
         self.code = code
         self.property_files = property_files
+        self.experiment_config = experiment_config or dict()
 
         # Examine why run method in sagemaker.processing.Processor mutates the processor instance
         # by setting the instance's arguments attribute. Refactor Processor.run, if possible.
@@ -321,7 +336,10 @@ class ProcessingStep(Step):
             code=self.code,
         )
         process_args = ProcessingJob._get_process_args(
-            self.processor, normalized_inputs, normalized_outputs, experiment_config=dict()
+            self.processor,
+            normalized_inputs,
+            normalized_outputs,
+            experiment_config=self.experiment_config,
         )
         request_dict = self.processor.sagemaker_session._get_process_request(**process_args)
         request_dict.pop("ProcessingJobName")

@@ -44,6 +44,12 @@ BUCKET = "my-bucket"
 IMAGE_URI = "fakeimage"
 ROLE = "DummyRole"
 MODEL_NAME = "gisele"
+LIST_TAGS = [{"Key": "TagtestKey", "Value": "TagtestValue"}]
+EXPERIMENT_CONFIG = {
+    "ExperimentName": "exp",
+    "TrialName": "trial",
+    "TrialComponentDisplayName": "tc",
+}
 
 
 class CustomStep(Step):
@@ -112,18 +118,21 @@ def test_training_step(sagemaker_session):
         instance_count=1,
         instance_type="c4.4xlarge",
         sagemaker_session=sagemaker_session,
+        tags=LIST_TAGS,
     )
     inputs = TrainingInput(f"s3://{BUCKET}/train_manifest")
     step = TrainingStep(
         name="MyTrainingStep",
         estimator=estimator,
         inputs=inputs,
+        experiment_config=EXPERIMENT_CONFIG,
     )
     assert step.to_request() == {
         "Name": "MyTrainingStep",
         "Type": "Training",
         "Arguments": {
             "AlgorithmSpecification": {"TrainingImage": IMAGE_URI, "TrainingInputMode": "File"},
+            "ExperimentConfig": EXPERIMENT_CONFIG,
             "InputDataConfig": [
                 {
                     "ChannelName": "training",
@@ -144,6 +153,7 @@ def test_training_step(sagemaker_session):
             },
             "RoleArn": ROLE,
             "StoppingCondition": {"MaxRuntimeInSeconds": 86400},
+            "Tags": LIST_TAGS,
         },
     }
     assert step.properties.TrainingJobName.expr == {"Get": "Steps.MyTrainingStep.TrainingJobName"}
@@ -156,6 +166,7 @@ def test_processing_step(sagemaker_session):
         instance_count=1,
         instance_type="ml.m4.4xlarge",
         sagemaker_session=sagemaker_session,
+        tags=LIST_TAGS,
     )
     inputs = [
         ProcessingInput(
@@ -168,12 +179,14 @@ def test_processing_step(sagemaker_session):
         processor=processor,
         inputs=inputs,
         outputs=[],
+        experiment_config=EXPERIMENT_CONFIG,
     )
     assert step.to_request() == {
         "Name": "MyProcessingStep",
         "Type": "Processing",
         "Arguments": {
             "AppSpecification": {"ImageUri": "fakeimage"},
+            "ExperimentConfig": EXPERIMENT_CONFIG,
             "ProcessingInputs": [
                 {
                     "InputName": "input-1",
@@ -196,6 +209,7 @@ def test_processing_step(sagemaker_session):
                 }
             },
             "RoleArn": "DummyRole",
+            "Tags": LIST_TAGS,
         },
     }
     assert step.properties.ProcessingJobName.expr == {
@@ -236,18 +250,22 @@ def test_transform_step(sagemaker_session):
         instance_count=1,
         instance_type="c4.4xlarge",
         sagemaker_session=sagemaker_session,
+        tags=LIST_TAGS,
     )
     inputs = TransformInput(data=f"s3://{BUCKET}/transform_manifest")
     step = TransformStep(
         name="MyTransformStep",
         transformer=transformer,
         inputs=inputs,
+        experiment_config=EXPERIMENT_CONFIG,
     )
     assert step.to_request() == {
         "Name": "MyTransformStep",
         "Type": "Transform",
         "Arguments": {
+            "ExperimentConfig": EXPERIMENT_CONFIG,
             "ModelName": "gisele",
+            "Tags": LIST_TAGS,
             "TransformInput": {
                 "DataSource": {
                     "S3DataSource": {
