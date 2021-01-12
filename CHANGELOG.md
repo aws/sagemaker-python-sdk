@@ -1,5 +1,20 @@
 # Changelog
 
+## v2.23.3 (2021-01-12)
+
+### Bug Fixes and Other Changes
+
+ * improve optional dependency error message
+ * add debugger rule container account in PDT
+ * assert step execution first in pipeline test
+ * add service inserted fields to generated Hive DDL
+
+### Documentation Changes
+
+ * fix description for max_wait
+ * use correct classpath in V2 alias documentation.
+ * Bad arg name in feat-store ingestion manager
+
 ## v2.23.2 (2021-01-06)
 
 ### Bug Fixes and Other Changes
