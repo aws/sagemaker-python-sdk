@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.23.4 (2021-01-13)
+
+### Bug Fixes and Other Changes
+
+ * remove captureWarninig setting
+
 ## v2.23.3 (2021-01-12)
 
 ### Bug Fixes and Other Changes
