@@ -295,9 +295,11 @@ class LineageTableVisualizer(object):
             uri_parsed = urlparse(uri)
             name = os.path.basename(uri_parsed.path)
 
-            # directory?
-            ext = os.path.splitext(name)[1]
-            if not ext or len(ext) > 3:
+            # shorten the uri if the length is more than 40,
+            # e.g s3://flintstone-end-to-end-tests-gamma-us-west-2-069083975568/results/
+            # canary-auto-1608761252626/preprocessed-data/tuning_data/train.txt
+            # become s3://.../preprocessed-data/tuning_data/train.txt
+            if len(uri) > 48:
                 name = uri[:5] + "..." + uri[len(uri) - 40 :]
 
             # if not then use the full uri
