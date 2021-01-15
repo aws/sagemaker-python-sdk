@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.23.4.post0 (2021-01-14)
+
+### Documentation Changes
+
+ * update predict_fn implementation for PyTorch EIA 1.5.1
+
 ## v2.23.4 (2021-01-13)
 
 ### Bug Fixes and Other Changes
