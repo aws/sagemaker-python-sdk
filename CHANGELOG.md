@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.23.5 (2021-01-18)
+
+### Bug Fixes and Other Changes
+
+ * increase time allowed for trial components to index
+
 ## v2.23.4.post0 (2021-01-14)
 
 ### Documentation Changes
