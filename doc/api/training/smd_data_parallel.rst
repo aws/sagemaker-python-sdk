@@ -66,7 +66,7 @@ model.
 
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
 
    smd_data_parallel_pytorch
    smd_data_parallel_tensorflow

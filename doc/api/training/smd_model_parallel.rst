@@ -28,12 +28,12 @@ that are specific to supported frameworks, TensorFlow and PyTorch. To use the li
 **Common API** documentation alongside the framework specific API documentation.
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
 
    smd_model_parallel_general
-   smd_model_parallel_common_api
-   smd_model_parallel_pytorch
-   smd_model_parallel_tensorflow
+   smp_versions/smd_model_parallel_common_api
+   smp_versions/smd_model_parallel_pytorch
+   smp_versions/smd_model_parallel_tensorflow
 
 It is recommended to use this documentation alongside `SageMaker Distributed Model Parallel
 <http://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel.html>`__ in the Amazon SageMaker
