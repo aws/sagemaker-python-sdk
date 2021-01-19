@@ -258,7 +258,7 @@ class Artifact(_base_types.Record):
         return super(Artifact, cls)._construct(
             cls._boto_create_method,
             artifact_name=artifact_name,
-            source=_api_types.ContextSource(source_uri=source_uri, source_types=source_types),
+            source=_api_types.ArtifactSource(source_uri=source_uri, source_types=source_types),
             artifact_type=artifact_type,
             properties=properties,
             tags=tags,
