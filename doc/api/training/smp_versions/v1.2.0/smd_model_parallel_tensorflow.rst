@@ -1,7 +1,7 @@
 TensorFlow API
 ==============
 
-**Supported version: 2.4**
+**Supported version: 2.4, 2.3**
 
 **Important**: This API document assumes you use the following import statement in your training scripts.
 
