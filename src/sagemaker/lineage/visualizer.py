@@ -13,8 +13,6 @@
 """This module contains functionality to display lineage data."""
 from __future__ import absolute_import
 import logging
-import os
-from urllib.parse import urlparse
 import pandas as pd
 
 from sagemaker.lineage.association import Association
@@ -291,9 +289,6 @@ class LineageTableVisualizer(object):
         if entity_type == "artifact":
             artifact = self._session.sagemaker_client.describe_artifact(ArtifactArn=arn)
             uri = artifact["Source"]["SourceUri"]
-            # try to get file name from url
-            uri_parsed = urlparse(uri)
-            name = os.path.basename(uri_parsed.path)
 
             # shorten the uri if the length is more than 40,
             # e.g s3://flintstone-end-to-end-tests-gamma-us-west-2-069083975568/results/
