@@ -1,7 +1,12 @@
-Common SageMaker distributed model parallel library APIs
---------------------------------------------------------
+.. admonition:: Contents
 
-The following APIs are common across all frameworks.
+   - :ref:`communication_api`
+   - :ref:`mpi_basics`
+
+Common API
+==========
+
+The following SageMaker distribute model parallel APIs are common across all frameworks.
 
 **Important**: This API document assumes you use the following import statement in your training scripts.
 
@@ -243,6 +248,7 @@ The following APIs are common across all frameworks.
          variable. If ``method`` is not ``"variable"``, this argument is
          ignored.
 
+.. _mpi_basics:
 
 MPI Basics
 ^^^^^^^^^^
@@ -265,8 +271,10 @@ The library exposes the following basic MPI primitives to its Python API:
 -  ``smp.get_dp_group()``: The list of ranks that hold different
    replicas of the same model partition.
 
+   .. _communication_api:
+
 Communication API
-=================
+^^^^^^^^^^^^^^^^^
 
 The library provides a few communication primitives which can be helpful while
 developing the training script. These primitives use the following
