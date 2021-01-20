@@ -6,7 +6,7 @@
 .. _sm-sdk-modelparallel-params:
 
 SageMaker Python SDK ``modelparallel`` parameters
--------------------------------------------------
+=================================================
 
 The TensorFlow and PyTorch ``Estimator`` objects contains a ``distribution`` parameter,
 which is used to enable and specify parameters for the
@@ -306,7 +306,7 @@ table are optional.
 .. _ranking-basics:
 
 Ranking Basics
---------------
+==============
 
 The library maintains a one-to-one mapping between processes and available GPUs:
 for each GPU, there is a corresponding CPU process. Each CPU process
