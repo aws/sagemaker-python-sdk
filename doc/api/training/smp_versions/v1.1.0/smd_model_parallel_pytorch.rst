@@ -1,3 +1,8 @@
+.. admonition:: Contents
+
+   - :ref:`pytorch_saving_loading`
+   - :ref:`pytorch_saving_loading_instructions`
+
 PyTorch API
 ===========
 
@@ -9,6 +14,13 @@ This API document assumes you use the following import statements in your traini
 
    import smdistributed.modelparallel.torch as smp
 
+
+.. tip::
+
+   Refer to
+   `Modify a PyTorch Training Script
+   <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-customize-training-script.html#model-parallel-customize-training-script-pt>`_
+   to learn how to use the following API in your PyTorch training script.
 
 .. class:: smp.DistributedModel
 
@@ -354,6 +366,7 @@ This API document assumes you use the following import statements in your traini
    currently doesn’t work with the library. ``smp.amp.GradScaler`` replaces
    ``torch.amp.GradScaler`` and provides the same functionality.
 
+.. _pytorch_saving_loading:
 
 APIs for Saving and Loading
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -403,6 +416,8 @@ APIs for Saving and Loading
    -  ``partial`` (bool, default= ``True``): When set to ``True``, each
       ``mp_rank`` loads the checkpoint corresponding to the ``mp_rank``.
       Should be used when loading a model trained with the library.
+
+.. _pytorch_saving_loading_instructions:
 
 General Instruction For Saving and Loading
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

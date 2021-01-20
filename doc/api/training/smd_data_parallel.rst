@@ -1,6 +1,6 @@
-###################################
+##########################
 Distributed data parallel
-###################################
+##########################
 
 SageMaker's distributed data parallel library extends SageMaker’s training
 capabilities on deep learning models with near-linear scaling efficiency,
@@ -66,7 +66,7 @@ model.
 
 
 .. toctree::
-   :maxdepth: 3
+   :maxdepth: 5
 
-   smd_data_parallel_pytorch
-   smd_data_parallel_tensorflow
+   sdp_versions/smd_data_parallel_pytorch
+   sdp_versions/smd_data_parallel_tensorflow

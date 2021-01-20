@@ -9,6 +9,12 @@ TensorFlow API
 
    import smdistributed.modelparallel.tensorflow as smp
 
+.. tip::
+
+   Refer to
+   `Modify a TensorFlow Training Script
+   <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-customize-training-script.html#model-parallel-customize-training-script-tf>`_
+   to learn how to use the following API in your TensorFlow training script.
 
 .. class:: smp.DistributedModel
    :noindex:
