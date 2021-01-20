@@ -24,10 +24,12 @@ The following SageMaker distribute model parallel APIs are common across all fra
 
 
 .. function:: smp.init( )
+   :noindex:
 
    Initialize the library. Must be called at the beginning of training script.
 
 .. function:: @smp.step(non_split_inputs, input_split_axes, [*args, **kwargs])
+   :noindex:
 
    A decorator that must be placed over a function that represents a single
    forward and backward pass (for training use cases), or a single forward
@@ -159,6 +161,7 @@ The following SageMaker distribute model parallel APIs are common across all fra
 
 
 .. class:: StepOutput
+   :noindex:
 
 
    A class that encapsulates all versions of a ``tf.Tensor``
@@ -188,27 +191,32 @@ The following SageMaker distribute model parallel APIs are common across all fra
    post-processing operations on tensors.
 
    .. data:: StepOutput.outputs
+      :noindex:
 
       Returns a list of the underlying tensors, indexed by microbatch.
 
    .. function:: StepOutput.reduce_mean( )
+      :noindex:
 
       Returns a ``tf.Tensor``, ``torch.Tensor`` that averages the constituent ``tf.Tensor`` s
       ``torch.Tensor`` s. This is commonly used for averaging loss and gradients across microbatches.
 
    .. function:: StepOutput.reduce_sum( )
+      :noindex:
 
       Returns a ``tf.Tensor`` /
       ``torch.Tensor`` that sums the constituent
       ``tf.Tensor``\ s/\ ``torch.Tensor``\ s.
 
    .. function:: StepOutput.concat( )
+      :noindex:
 
       Returns a
       ``tf.Tensor``/``torch.Tensor`` that concatenates tensors along the
       batch dimension using ``tf.concat`` / ``torch.cat``.
 
    .. function:: StepOutput.stack( )
+      :noindex:
 
       Applies ``tf.stack`` / ``torch.stack``
       operation to the list of constituent ``tf.Tensor``\ s /
@@ -217,6 +225,7 @@ The following SageMaker distribute model parallel APIs are common across all fra
    **TensorFlow-only methods**
 
    .. function:: StepOutput.merge( )
+      :noindex:
 
       Returns a ``tf.Tensor`` that
       concatenates the constituent ``tf.Tensor``\ s along the batch
@@ -224,6 +233,7 @@ The following SageMaker distribute model parallel APIs are common across all fra
       across microbatches.
 
    .. function:: StepOutput.accumulate(method="variable", var=None)
+      :noindex:
 
       Functionally the same as ``StepOutput.reduce_mean()``. However, it is
       more memory-efficient, especially for large numbers of microbatches,
@@ -249,6 +259,7 @@ The following SageMaker distribute model parallel APIs are common across all fra
          ignored.
 
 .. _mpi_basics:
+   :noindex:
 
 MPI Basics
 ^^^^^^^^^^
@@ -271,7 +282,8 @@ The library exposes the following basic MPI primitives to its Python API:
 -  ``smp.get_dp_group()``: The list of ranks that hold different
    replicas of the same model partition.
 
-   .. _communication_api:
+.. _communication_api:
+   :noindex:
 
 Communication API
 ^^^^^^^^^^^^^^^^^
@@ -285,6 +297,7 @@ should involve.
 **Helper structures**
 
 .. data:: smp.CommGroup
+   :noindex:
 
    An ``enum`` that takes the values
    ``CommGroup.WORLD``, ``CommGroup.MP_GROUP``, and ``CommGroup.DP_GROUP``.
@@ -303,6 +316,7 @@ should involve.
       themselves.
 
 .. data:: smp.RankType
+   :noindex:
 
    An ``enum`` that takes the values
    ``RankType.WORLD_RANK``, ``RankType.MP_RANK``, and ``RankType.DP_RANK``.
@@ -318,6 +332,7 @@ should involve.
 **Communication primitives:**
 
 .. function:: smp.broadcast(obj, group)
+   :noindex:
 
    Sends the object to all processes in the
    group. The receiving process must call ``smp.recv_from`` to receive the
@@ -350,6 +365,7 @@ should involve.
           smp.recv_from(0, rank_type=smp.RankType.WORLD_RANK)
 
 .. function:: smp.send(obj, dest_rank, rank_type)
+   :noindex:
 
    Sends the object ``obj`` to
    ``dest_rank``, which is of a type specified by ``rank_type``.
@@ -373,6 +389,7 @@ should involve.
       ``recv_from`` call.
 
 .. function:: smp.recv_from(src_rank, rank_type)
+   :noindex:
 
    Receive an object from a peer process. Can be used with a matching
    ``smp.send`` or a ``smp.broadcast`` call.
@@ -398,6 +415,7 @@ should involve.
       ``broadcast`` call, and the object is received.
 
 .. function:: smp.allgather(obj, group)
+   :noindex:
 
    A collective call that gathers all the
    submitted objects across all ranks in the specified ``group``. Returns a
@@ -431,6 +449,7 @@ should involve.
           out = smp.allgather(obj2, smp.CommGroup.MP_GROUP)  # returns [obj1, obj2]
 
 .. function:: smp.barrier(group=smp.WORLD)
+   :noindex:
 
    A statement that hangs until all
    processes in the specified group reach the barrier statement, similar to
@@ -452,12 +471,14 @@ should involve.
       processes outside that ``mp_group``.
 
 .. function:: smp.dp_barrier()
+   :noindex:
 
    Same as passing ``smp.DP_GROUP``\ to ``smp.barrier()``.
    Waits for the processes in the same \ ``dp_group`` as
    the current process to reach the same point in execution.
 
 .. function:: smp.mp_barrier()
+   :noindex:
 
    Same as passing ``smp.MP_GROUP`` to
    ``smp.barrier()``. Waits for the processes in the same ``mp_group`` as

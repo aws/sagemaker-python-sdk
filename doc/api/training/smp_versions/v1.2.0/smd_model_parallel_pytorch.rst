@@ -240,12 +240,12 @@ This API document assumes you use the following import statements in your traini
       first forward pass. Returns a ``RemovableHandle`` object ``handle``,
       which can be used to remove the hook by calling ``handle.remove()``.
 
-    .. function:: cpu( )
+   .. function:: cpu( )
 
       Allgathers parameters and buffers across all ``mp_rank``\ s and moves them
       to the CPU.
 
-    .. functin:: join( )
+   .. function:: join( )
 
       **Available for PyTorch 1.7 only**
       A context manager to be used in conjunction with an instance of
