@@ -37,6 +37,9 @@ class LineageTableVisualizer(object):
         pipeline_execution_step=None,
         model_package_arn=None,
         endpoint_arn=None,
+        artifact_arn=None,
+        context_arn=None,
+        actions_arn=None,
     ):
         """Generate a dataframe containing all incoming and outgoing lineage entities.
 
@@ -55,6 +58,9 @@ class LineageTableVisualizer(object):
             pipeline_execution_step (obj, optional): Pipeline execution step. Defaults to None.
             model_package_arn (str, optional): Model package arn. Defaults to None.
             endpoint_arn (str, optional): Endpoint arn. Defaults to None.
+            artifact_arn (str, optional): Artifact arn. Defaults to None.
+            context_arn (str, optional): Context arn. Defaults to None.
+            actions_arn (str, optional): Action arn. Defaults to None.
 
         Returns:
             DataFrame: Pandas dataframe containing lineage associations.
@@ -75,6 +81,12 @@ class LineageTableVisualizer(object):
             start_arn = self._get_start_arn_from_model_package_arn(model_package_arn)
         elif endpoint_arn:
             start_arn = self._get_start_arn_from_endpoint_arn(endpoint_arn)
+        elif artifact_arn:
+            start_arn = artifact_arn
+        elif context_arn:
+            start_arn = context_arn
+        elif actions_arn:
+            start_arn = actions_arn
 
         return self._get_associations_dataframe(start_arn)
 
