@@ -8,7 +8,7 @@
 
 ### PyTorch
 
-#### Add support for PyTorch (PT) 1.7
+#### Add support for PyTorch 1.7
 
 - Adds support for `gradient_as_bucket_view` (PyTorch 1.7 only), `find_unused_parameters` (PyTorch 1.7 only) and `broadcast_buffers` options to `smp.DistributedModel`. These options behave the same as the corresponding options (with the same names) in
 `torch.DistributedDataParallel` API. Please refer to the [SageMaker distributed model parallel API documentation](https://sagemaker.readthedocs.io/en/stable/api/training/smd_model_parallel_pytorch.html#smp.DistributedModel) for more information.
