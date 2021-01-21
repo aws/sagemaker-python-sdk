@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.23.6 (2021-01-20)
+
+### Bug Fixes and Other Changes
+
+ * add artifact, action, context to virsualizer
+
 ## v2.23.5 (2021-01-18)
 
 ### Bug Fixes and Other Changes

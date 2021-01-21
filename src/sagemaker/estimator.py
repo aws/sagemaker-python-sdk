@@ -49,6 +49,7 @@ from sagemaker.fw_utils import (
     UploadedCode,
     validate_source_dir,
     _region_supports_debugger,
+    get_mp_parameters,
 )
 from sagemaker.inputs import TrainingInput
 from sagemaker.job import _Job
@@ -2121,9 +2122,7 @@ class Framework(EstimatorBase):
             :class:`~sagemaker.estimator.EstimatorBase`.
         """
         super(Framework, self).__init__(enable_network_isolation=enable_network_isolation, **kwargs)
-        image_uri = renamed_kwargs(
-            "image_name", "image_uri", image_uri, kwargs
-        )
+        image_uri = renamed_kwargs("image_name", "image_uri", image_uri, kwargs)
         if entry_point.startswith("s3://"):
             raise ValueError(
                 "Invalid entry point script: {}. Must be a path to a local file.".format(
@@ -2541,6 +2540,50 @@ class Framework(EstimatorBase):
             volume_kms_key=volume_kms_key,
             sagemaker_session=self.sagemaker_session,
         )
+
+    def _distribution_configuration(self, distribution):
+        """Returns a dict of distribution configurations.
+
+        Args:
+            distribution (dict): A dictionary with information on how to run distributed training.
+
+        Returns:
+            dict that
+        """
+        distribution_config = {}
+
+        if "parameter_server" in distribution:
+            ps_enabled = distribution.get("parameter_server").get("enabled", False)
+            distribution_config[self.LAUNCH_PS_ENV_NAME] = ps_enabled
+
+        if "mpi" in distribution:
+            mpi_dict = distribution["mpi"]
+            mpi_enabled = mpi_dict.get("enabled", False)
+            distribution_config[self.LAUNCH_MPI_ENV_NAME] = mpi_enabled
+
+            if mpi_dict.get("processes_per_host"):
+                distribution_config[self.MPI_NUM_PROCESSES_PER_HOST] = mpi_dict.get(
+                    "processes_per_host"
+                )
+
+            distribution_config[self.MPI_CUSTOM_MPI_OPTIONS] = mpi_dict.get(
+                "custom_mpi_options", ""
+            )
+
+            if get_mp_parameters(distribution):
+                distribution_config["mp_parameters"] = get_mp_parameters(distribution)
+
+        elif "modelparallel" in distribution.get("smdistributed", {}):
+            raise ValueError("Cannot use Model Parallelism without MPI enabled!")
+
+        if "smdistributed" in distribution:
+            # smdistributed strategy selected
+            smdistributed = distribution["smdistributed"]
+            smdataparallel_enabled = smdistributed.get("dataparallel", {}).get("enabled", False)
+            distribution_config[self.LAUNCH_SM_DDP_ENV_NAME] = smdataparallel_enabled
+            distribution_config[self.INSTANCE_TYPE] = self.instance_type
+
+        return distribution_config
 
 
 def _s3_uri_prefix(channel_name, s3_data):
