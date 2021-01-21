@@ -288,9 +288,10 @@ def framework_name_from_image(image_uri):
     # We must support both the legacy and current image name format.
     name_pattern = re.compile(
         r"""^(?:sagemaker(?:-rl)?-)?
-        (tensorflow|mxnet|chainer|pytorch|scikit-learn|xgboost)(?:-)?
+        (tensorflow|mxnet|chainer|pytorch|scikit-learn|xgboost
+        |huggingface-tensorflow|huggingface-pytorch)(?:-)?
         (scriptmode|training)?
-        :(.*)-(.*?)-(py2|py3[67]?)$""",
+        :(.*)-(.*?)-(py2|py3[67]?)(?:.*)$""",
         re.VERBOSE,
     )
     name_match = name_pattern.match(sagemaker_match.group(9))
