@@ -3250,6 +3250,7 @@ def test_image_name_map(sagemaker_session):
         "my_script.py",
         image_name=IMAGE_URI,
         role=ROLE,
+        sagemaker_session=sagemaker_session,
         instance_count=INSTANCE_COUNT,
         instance_type=INSTANCE_TYPE,
     )
