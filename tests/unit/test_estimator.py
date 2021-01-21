@@ -3209,3 +3209,15 @@ def test_estimator_local_mode_ok(sagemaker_local_session):
         sagemaker_session=sagemaker_local_session,
         base_job_name="base_job_name",
     )
+
+
+def test_image_name_map(sagemaker_session):
+    e = DummyFramework(
+        "my_script.py",
+        image_name=IMAGE_URI,
+        role=ROLE,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+    )
+
+    assert e.image_uri == IMAGE_URI
