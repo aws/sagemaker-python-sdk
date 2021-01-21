@@ -115,6 +115,12 @@ ENDPOINT_CONFIG_DESC = {"ProductionVariants": [{"ModelName": "model-1"}, {"Model
 
 LIST_TAGS_RESULT = {"Tags": [{"Key": "TagtestKey", "Value": "TagtestValue"}]}
 
+DISTRIBUTION_PS_ENABLED = {"parameter_server": {"enabled": True}}
+DISTRIBUTION_MPI_ENABLED = {
+    "mpi": {"enabled": True, "custom_mpi_options": "options", "processes_per_host": 2}
+}
+DISTRIBUTION_SM_DDP_ENABLED = {"smdistributed": {"dataparallel": {"enabled": True}}}
+
 
 class DummyFramework(Framework):
     _framework_name = "dummy"
@@ -3209,3 +3215,31 @@ def test_estimator_local_mode_ok(sagemaker_local_session):
         sagemaker_session=sagemaker_local_session,
         base_job_name="base_job_name",
     )
+
+
+def test_framework_distribution_configuration(sagemaker_session):
+    framework = DummyFramework(
+        entry_point="script",
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+    )
+    actual_ps = framework._distribution_configuration(distribution=DISTRIBUTION_PS_ENABLED)
+    expected_ps = {"sagemaker_parameter_server_enabled": True}
+    assert actual_ps == expected_ps
+
+    actual_mpi = framework._distribution_configuration(distribution=DISTRIBUTION_MPI_ENABLED)
+    expected_mpi = {
+        "sagemaker_mpi_enabled": True,
+        "sagemaker_mpi_num_of_processes_per_host": 2,
+        "sagemaker_mpi_custom_mpi_options": "options",
+    }
+    assert actual_mpi == expected_mpi
+
+    actual_ddp = framework._distribution_configuration(distribution=DISTRIBUTION_SM_DDP_ENABLED)
+    expected_ddp = {
+        "sagemaker_distributed_dataparallel_enabled": True,
+        "sagemaker_instance_type": INSTANCE_TYPE,
+    }
+    assert actual_ddp == expected_ddp
