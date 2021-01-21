@@ -30,6 +30,30 @@ def vizualizer(sagemaker_session):
     return visualizer.LineageTableVisualizer(sagemaker_session)
 
 
+def test_friendly_name_short_uri(vizualizer, sagemaker_session):
+    uri = "s3://f-069083975568/train.txt"
+    arn = "test_arn"
+    sagemaker_session.sagemaker_client.describe_artifact.return_value = {
+        "Source": {"SourceUri": uri, "SourceTypes": ""}
+    }
+    actual_name = vizualizer._get_friendly_name(name=None, arn=arn, entity_type="artifact")
+    assert uri == actual_name
+
+
+def test_friendly_name_long_uri(vizualizer, sagemaker_session):
+    uri = (
+        "s3://flintstone-end-to-end-tests-gamma-us-west-2-069083975568/results/canary-auto-1608761252626/"
+        "preprocessed-data/tuning_data/train.txt"
+    )
+    arn = "test_arn"
+    sagemaker_session.sagemaker_client.describe_artifact.return_value = {
+        "Source": {"SourceUri": uri, "SourceTypes": ""}
+    }
+    actual_name = vizualizer._get_friendly_name(name=None, arn=arn, entity_type="artifact")
+    expected_name = "s3://.../preprocessed-data/tuning_data/train.txt"
+    assert expected_name == actual_name
+
+
 def test_trial_component_name(sagemaker_session, vizualizer):
     name = "tc-name"
 

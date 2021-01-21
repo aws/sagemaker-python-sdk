@@ -320,44 +320,12 @@ class TensorFlow(Framework):
     def hyperparameters(self):
         """Return hyperparameters used by your custom TensorFlow code during model training."""
         hyperparameters = super(TensorFlow, self).hyperparameters()
-        additional_hyperparameters = {}
-
-        if "parameter_server" in self.distribution:
-            ps_enabled = self.distribution["parameter_server"].get("enabled", False)
-            additional_hyperparameters[self.LAUNCH_PS_ENV_NAME] = ps_enabled
-
-        mpi_enabled = False
-        if "mpi" in self.distribution:
-            mpi_dict = self.distribution["mpi"]
-            mpi_enabled = mpi_dict.get("enabled", False)
-            additional_hyperparameters[self.LAUNCH_MPI_ENV_NAME] = mpi_enabled
-
-            if mpi_dict.get("processes_per_host"):
-                additional_hyperparameters[self.MPI_NUM_PROCESSES_PER_HOST] = mpi_dict.get(
-                    "processes_per_host"
-                )
-
-            additional_hyperparameters[self.MPI_CUSTOM_MPI_OPTIONS] = mpi_dict.get(
-                "custom_mpi_options", ""
-            )
-
-            if fw.get_mp_parameters(self.distribution):
-                additional_hyperparameters["mp_parameters"] = fw.get_mp_parameters(
-                    self.distribution
-                )
-
-        elif "modelparallel" in self.distribution.get("smdistributed", {}):
-            raise ValueError("Cannot use Model Parallelism without MPI enabled!")
-
-        if "smdistributed" in self.distribution:
-            # smdistributed strategy selected
-            smdistributed = self.distribution["smdistributed"]
-            smdataparallel_enabled = smdistributed.get("dataparallel", {}).get("enabled", False)
-            additional_hyperparameters[self.LAUNCH_SM_DDP_ENV_NAME] = smdataparallel_enabled
-            additional_hyperparameters[self.INSTANCE_TYPE] = self.instance_type
+        additional_hyperparameters = self._distribution_configuration(self.distribution)
 
         if self.model_dir is not False:
-            self.model_dir = self.model_dir or self._default_s3_path("model", mpi=mpi_enabled)
+            self.model_dir = self.model_dir or self._default_s3_path(
+                "model", mpi=additional_hyperparameters.get(self.LAUNCH_MPI_ENV_NAME, False)
+            )
             additional_hyperparameters["model_dir"] = self.model_dir
 
         hyperparameters.update(Framework._json_encode_hyperparameters(additional_hyperparameters))
