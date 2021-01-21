@@ -37,6 +37,7 @@ from sagemaker.workflow.steps import (
     TrainingStep,
     TransformStep,
     CreateModelStep,
+    CacheConfig,
 )
 
 REGION = "us-west-2"
@@ -114,10 +115,9 @@ def test_training_step(sagemaker_session):
         sagemaker_session=sagemaker_session,
     )
     inputs = TrainingInput(f"s3://{BUCKET}/train_manifest")
+    cache_config = CacheConfig(enable_caching=False, expire_after="PT1H")
     step = TrainingStep(
-        name="MyTrainingStep",
-        estimator=estimator,
-        inputs=inputs,
+        name="MyTrainingStep", estimator=estimator, inputs=inputs, cache_config=cache_config
     )
     assert step.to_request() == {
         "Name": "MyTrainingStep",
@@ -145,6 +145,7 @@ def test_training_step(sagemaker_session):
             "RoleArn": ROLE,
             "StoppingCondition": {"MaxRuntimeInSeconds": 86400},
         },
+        "CacheConfig": {"Enabled": False, "ExpireAfter": "PT1H"},
     }
     assert step.properties.TrainingJobName.expr == {"Get": "Steps.MyTrainingStep.TrainingJobName"}
 
@@ -163,11 +164,13 @@ def test_processing_step(sagemaker_session):
             destination="processing_manifest",
         )
     ]
+    cache_config = CacheConfig(enable_caching=False, expire_after="PT1H")
     step = ProcessingStep(
         name="MyProcessingStep",
         processor=processor,
         inputs=inputs,
         outputs=[],
+        cache_config=cache_config,
     )
     assert step.to_request() == {
         "Name": "MyProcessingStep",
@@ -197,6 +200,7 @@ def test_processing_step(sagemaker_session):
             },
             "RoleArn": "DummyRole",
         },
+        "CacheConfig": {"Enabled": False, "ExpireAfter": "PT1H"},
     }
     assert step.properties.ProcessingJobName.expr == {
         "Get": "Steps.MyProcessingStep.ProcessingJobName"
@@ -238,10 +242,9 @@ def test_transform_step(sagemaker_session):
         sagemaker_session=sagemaker_session,
     )
     inputs = TransformInput(data=f"s3://{BUCKET}/transform_manifest")
+    cache_config = CacheConfig(enable_caching=False, expire_after="PT1H")
     step = TransformStep(
-        name="MyTransformStep",
-        transformer=transformer,
-        inputs=inputs,
+        name="MyTransformStep", transformer=transformer, inputs=inputs, cache_config=cache_config
     )
     assert step.to_request() == {
         "Name": "MyTransformStep",
@@ -262,6 +265,7 @@ def test_transform_step(sagemaker_session):
                 "InstanceType": "c4.4xlarge",
             },
         },
+        "CacheConfig": {"Enabled": False, "ExpireAfter": "PT1H"},
     }
     assert step.properties.TransformJobName.expr == {
         "Get": "Steps.MyTransformStep.TransformJobName"

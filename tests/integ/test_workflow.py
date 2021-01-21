@@ -48,6 +48,7 @@ from sagemaker.workflow.steps import (
     CreateModelStep,
     ProcessingStep,
     TrainingStep,
+    CacheConfig
 )
 from sagemaker.workflow.step_collections import RegisterModel
 from sagemaker.workflow.pipeline import Pipeline
@@ -546,6 +547,83 @@ def test_training_job_with_debugger(
                 config["RuleParameters"]["rule_to_invoke"] == rule.rule_parameters["rule_to_invoke"]
             )
         assert job_description["DebugHookConfig"] == debugger_hook_config._to_request_dict()
+    finally:
+        try:
+            pipeline.delete()
+        except Exception:
+            pass
+
+
+def test_cache_hit_expired_entry(
+        sagemaker_session,
+        workflow_session,
+        region_name,
+        role,
+        script_dir,
+        pipeline_name,
+):
+
+    instance_type = ParameterString(name="InstanceType", default_value="ml.m5.xlarge")
+    instance_count = ParameterInteger(name="InstanceCount", default_value=1)
+
+
+    estimator =
+
+    step_train = TrainingStep(
+        name="my-train",
+        estimator=sklearn_train,
+        inputs=TrainingInput(
+            s3_data=step_process.properties.ProcessingOutputConfig.Outputs[
+                "train_data"
+            ].S3Output.S3Uri
+        ),
+        cache_config=
+    )
+    pipeline = Pipeline(
+        name=pipeline_name,
+        parameters=[instance_type, instance_count],
+        steps=[step_train],
+        sagemaker_session=workflow_session,
+    )
+
+    try:
+        # NOTE: We should exercise the case when role used in the pipeline execution is
+        # different than that required of the steps in the pipeline itself. The role in
+        # the pipeline definition needs to create training and processing jobs and other
+        # sagemaker entities. However, the jobs created in the steps themselves execute
+        # under a potentially different role, often requiring access to S3 and other
+        # artifacts not required to during creation of the jobs in the pipeline steps.
+        response = pipeline.create(role)
+        create_arn = response["PipelineArn"]
+        assert re.match(
+            fr"arn:aws:sagemaker:{region}:\d{{12}}:pipeline/{pipeline_name}",
+            create_arn,
+        )
+
+        pipeline.parameters = [ParameterInteger(name="InstanceCount", default_value=1)]
+        response = pipeline.update(role)
+        update_arn = response["PipelineArn"]
+        assert re.match(
+            fr"arn:aws:sagemaker:{region}:\d{{12}}:pipeline/{pipeline_name}",
+            update_arn,
+        )
+
+        execution = pipeline.start(parameters={})
+        assert re.match(
+            fr"arn:aws:sagemaker:{region}:\d{{12}}:pipeline/{pipeline_name}/execution/",
+            execution.arn,
+        )
+
+        response = execution.describe()
+        assert response["PipelineArn"] == create_arn
+
+        try:
+            execution.wait(delay=30, max_attempts=3)
+        except WaiterError:
+            pass
+        execution_steps = execution.list_steps()
+        assert len(execution_steps) == 1
+        assert execution_steps[0]["StepName"] == "sklearn-process"
     finally:
         try:
             pipeline.delete()

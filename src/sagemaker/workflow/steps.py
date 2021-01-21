@@ -64,6 +64,7 @@ class Step(Entity):
     Attributes:
         name (str): The name of the step.
         step_type (StepTypeEnum): The type of the step.
+
     """
 
     name: str = attr.ib(factory=str)
@@ -93,6 +94,26 @@ class Step(Entity):
         return {"Name": self.name}
 
 
+@attr.s
+class CacheConfig:
+    """Step to cache pipeline workflow.
+
+    Attributes:
+        enable_caching (bool): To enable step caching. Off by default.
+        expire_after (str): If step caching is enabled, a timeout also needs to defined.
+            It defines how old a previous execution can be to be considered for reuse.
+            Needs to be ISO 8601 duration string.
+    """
+
+    enable_caching: bool = attr.ib(default=False)
+    expire_after: str = attr.ib(factory=str)
+
+    @property
+    def config(self):
+        """Enables caching in pipeline steps."""
+        return {"CacheConfig": {"Enabled": self.enable_caching, "ExpireAfter": self.expire_after}}
+
+
 class TrainingStep(Step):
     """Training step for workflow."""
 
@@ -101,6 +122,7 @@ class TrainingStep(Step):
         name: str,
         estimator: EstimatorBase,
         inputs: TrainingInput = None,
+        cache_config: CacheConfig = None,
     ):
         """Construct a TrainingStep, given an `EstimatorBase` instance.
 
@@ -111,14 +133,15 @@ class TrainingStep(Step):
             name (str): The name of the training step.
             estimator (EstimatorBase): A `sagemaker.estimator.EstimatorBase` instance.
             inputs (TrainingInput): A `sagemaker.inputs.TrainingInput` instance. Defaults to `None`.
+            cache_config (CacheConfig):  An instance to enable caching.
         """
         super(TrainingStep, self).__init__(name, StepTypeEnum.TRAINING)
         self.estimator = estimator
         self.inputs = inputs
-
         self._properties = Properties(
             path=f"Steps.{name}", shape_name="DescribeTrainingJobResponse"
         )
+        self.cache_config = cache_config
 
     @property
     def arguments(self) -> RequestType:
@@ -144,6 +167,13 @@ class TrainingStep(Step):
     def properties(self):
         """A Properties object representing the DescribeTrainingJobResponse data model."""
         return self._properties
+
+    def to_request(self) -> RequestType:
+        """Updates the dictionary with cache configuration."""
+        request_dict = super().to_request()
+        request_dict.update(self.cache_config.config)
+
+        return request_dict
 
 
 class CreateModelStep(Step):
@@ -208,6 +238,7 @@ class TransformStep(Step):
         name: str,
         transformer: Transformer,
         inputs: TransformInput,
+        cache_config: CacheConfig = None,
     ):
         """Constructs a TransformStep, given an `Transformer` instance.
 
@@ -218,11 +249,12 @@ class TransformStep(Step):
             name (str): The name of the transform step.
             transformer (Transformer): A `sagemaker.transformer.Transformer` instance.
             inputs (TransformInput): A `sagemaker.inputs.TransformInput` instance.
+            cache_config (CacheConfig):  An instance to enable caching.
         """
         super(TransformStep, self).__init__(name, StepTypeEnum.TRANSFORM)
         self.transformer = transformer
         self.inputs = inputs
-
+        self.cache_config = cache_config
         self._properties = Properties(
             path=f"Steps.{name}", shape_name="DescribeTransformJobResponse"
         )
@@ -258,6 +290,13 @@ class TransformStep(Step):
         """A Properties object representing the DescribeTransformJobResponse data model."""
         return self._properties
 
+    def to_request(self) -> RequestType:
+        """Updates the dictionary with cache configuration."""
+        request_dict = super().to_request()
+        request_dict.update(self.cache_config.config)
+
+        return request_dict
+
 
 class ProcessingStep(Step):
     """Processing step for workflow."""
@@ -271,6 +310,7 @@ class ProcessingStep(Step):
         job_arguments: List[str] = None,
         code: str = None,
         property_files: List[PropertyFile] = None,
+        cache_config: CacheConfig = None,
     ):
         """Construct a ProcessingStep, given a `Processor` instance.
 
@@ -290,6 +330,7 @@ class ProcessingStep(Step):
                 script to run. Defaults to `None`.
             property_files (List[PropertyFile]): A list of property files that workflow looks
                 for and resolves from the configured processing output list.
+            cache_config (CacheConfig):  An instance to enable caching.
         """
         super(ProcessingStep, self).__init__(name, StepTypeEnum.PROCESSING)
         self.processor = processor
@@ -306,6 +347,7 @@ class ProcessingStep(Step):
         self._properties = Properties(
             path=f"Steps.{name}", shape_name="DescribeProcessingJobResponse"
         )
+        self.cache_config = cache_config
 
     @property
     def arguments(self) -> RequestType:
@@ -336,6 +378,7 @@ class ProcessingStep(Step):
     def to_request(self) -> RequestType:
         """Get the request structure for workflow service calls."""
         request_dict = super(ProcessingStep, self).to_request()
+        request_dict.update(self.cache_config.config)
         if self.property_files:
             request_dict["PropertyFiles"] = [
                 property_file.expr for property_file in self.property_files
