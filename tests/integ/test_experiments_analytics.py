@@ -38,6 +38,17 @@ def experiment(sagemaker_session):
 
         time.sleep(15)  # wait for search to get updated
 
+        # allow search time thrice
+        for _ in range(3):
+            analytics = ExperimentAnalytics(
+                experiment_name=experiment_name, sagemaker_session=sagemaker_session
+            )
+
+            if len(analytics.dataframe().columns) > 0:
+                break
+
+            time.sleep(15)
+
         yield experiment_name
     finally:
         _delete_resources(sm, experiment_name, trials)
@@ -78,6 +89,17 @@ def experiment_with_artifacts(sagemaker_session):
             )
 
         time.sleep(15)  # wait for search to get updated
+
+        # allow search time thrice
+        for _ in range(3):
+            analytics = ExperimentAnalytics(
+                experiment_name=experiment_name, sagemaker_session=sagemaker_session
+            )
+
+            if len(analytics.dataframe().columns) > 0:
+                break
+
+            time.sleep(15)
 
         yield experiment_name
     finally:
