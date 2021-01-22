@@ -36,7 +36,15 @@ def experiment(sagemaker_session):
                 TrialComponentName=trial_component_name, TrialName=trial_name
             )
 
-        time.sleep(15)  # wait for search to get updated
+        for _ in range(3):
+            analytics = ExperimentAnalytics(
+                experiment_name=experiment_name, sagemaker_session=sagemaker_session
+            )
+
+            if len(analytics.dataframe().columns) > 0:
+                break
+
+            time.sleep(15)  # wait for search to get updated
 
         yield experiment_name
     finally:
@@ -77,7 +85,15 @@ def experiment_with_artifacts(sagemaker_session):
                 TrialComponentName=trial_component_name, TrialName=trial_name
             )
 
-        time.sleep(15)  # wait for search to get updated
+        for _ in range(3):
+            analytics = ExperimentAnalytics(
+                experiment_name=experiment_name, sagemaker_session=sagemaker_session
+            )
+
+            if len(analytics.dataframe().columns) > 0:
+                break
+
+            time.sleep(15)  # wait for search to get updated
 
         yield experiment_name
     finally:
