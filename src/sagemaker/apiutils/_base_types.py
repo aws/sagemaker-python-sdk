@@ -12,7 +12,9 @@
 # language governing permissions and limitations under the License.
 """Provides utilities for custom boto type objects."""
 from __future__ import absolute_import
+import logging
 import time
+import botocore
 from sagemaker.apiutils import _boto_functions, _utils
 
 
@@ -130,20 +132,28 @@ class Record(ApiObject):
         next_token = None
         try:
             while True:
-                list_request_kwargs = _boto_functions.to_boto(
-                    kwargs, cls._custom_boto_names, cls._custom_boto_types
-                )
-                if next_token:
-                    list_request_kwargs[boto_next_token_name] = next_token
-                list_method = getattr(sagemaker_client, boto_list_method)
-                list_method_response = list_method(**list_request_kwargs)
-                list_items = list_method_response.get(boto_list_items_name, [])
-                next_token = list_method_response.get(boto_next_token_name)
-                for item in list_items:
-                    yield list_item_factory(item)
-                if not next_token:
-                    break
-                time.sleep(1)
+                try:
+                    list_request_kwargs = _boto_functions.to_boto(
+                        kwargs, cls._custom_boto_names, cls._custom_boto_types
+                    )
+                    if next_token:
+                        list_request_kwargs[boto_next_token_name] = next_token
+                    list_method = getattr(sagemaker_client, boto_list_method)
+                    list_method_response = list_method(**list_request_kwargs)
+                    list_items = list_method_response.get(boto_list_items_name, [])
+                    next_token = list_method_response.get(boto_next_token_name)
+                    for item in list_items:
+                        yield list_item_factory(item)
+                    if not next_token:
+                        break
+                except botocore.exceptions.ClientError as error:
+                    if error.response["Error"]["Code"] == "LimitExceededException":
+                        logging.getLogger().warning(
+                            "API call limit exceeded; backing off and retrying..."
+                        )
+                        time.sleep(1)
+                    else:
+                        raise error
         except StopIteration:
             return
 
