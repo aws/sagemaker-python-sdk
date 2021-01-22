@@ -75,8 +75,8 @@ def role(sagemaker_session):
 
 
 @pytest.fixture(scope="module")
-def workflow_session():
-    boto_session = boto3.Session()
+def workflow_session(region_name):
+    boto_session = boto3.Session(region_name=region_name)
 
     sagemaker_client_config = dict()
     sagemaker_client_config.setdefault("config", Config(retries=dict(max_attempts=2)))
