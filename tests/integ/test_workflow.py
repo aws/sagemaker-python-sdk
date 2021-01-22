@@ -38,6 +38,8 @@ from sagemaker.sklearn.processing import SKLearnProcessor
 from sagemaker.workflow.conditions import ConditionGreaterThanOrEqualTo
 from sagemaker.workflow.condition_step import ConditionStep
 from sagemaker.dataset_definition.inputs import DatasetDefinition, AthenaDatasetDefinition
+from sagemaker.workflow.execution_variables import ExecutionVariables
+from sagemaker.workflow.functions import Join
 from sagemaker.workflow.parameters import (
     ParameterInteger,
     ParameterString,
@@ -72,16 +74,9 @@ def role(sagemaker_session):
     return get_execution_role(sagemaker_session)
 
 
-# TODO-reinvent-2020: remove use of specific region and this session
 @pytest.fixture(scope="module")
-def region():
-    return "us-east-2"
-
-
-# TODO-reinvent-2020: remove use of specific region and this session
-@pytest.fixture(scope="module")
-def workflow_session(region):
-    boto_session = boto3.Session(region_name=region)
+def workflow_session(region_name):
+    boto_session = boto3.Session(region_name=region_name)
 
     sagemaker_client_config = dict()
     sagemaker_client_config.setdefault("config", Config(retries=dict(max_attempts=2)))
@@ -134,6 +129,7 @@ def test_three_step_definition(
     framework_version = "0.20.0"
     instance_type = ParameterString(name="InstanceType", default_value="ml.m5.xlarge")
     instance_count = ParameterInteger(name="InstanceCount", default_value=1)
+    output_prefix = ParameterString(name="OutputPrefix", default_value="output")
 
     input_data = f"s3://sagemaker-sample-data-{region_name}/processing/census/census-income.csv"
 
@@ -154,7 +150,20 @@ def test_three_step_definition(
         ],
         outputs=[
             ProcessingOutput(output_name="train_data", source="/opt/ml/processing/train"),
-            ProcessingOutput(output_name="test_data", source="/opt/ml/processing/test"),
+            ProcessingOutput(
+                output_name="test_data",
+                source="/opt/ml/processing/test",
+                destination=Join(
+                    on="/",
+                    values=[
+                        "s3:/",
+                        sagemaker_session.default_bucket(),
+                        "test-sklearn",
+                        output_prefix,
+                        ExecutionVariables.PIPELINE_EXECUTION_ID,
+                    ],
+                ),
+            ),
         ],
         code=os.path.join(script_dir, "preprocessing.py"),
     )
@@ -194,7 +203,7 @@ def test_three_step_definition(
 
     pipeline = Pipeline(
         name=pipeline_name,
-        parameters=[instance_type, instance_count],
+        parameters=[instance_type, instance_count, output_prefix],
         steps=[step_process, step_train, step_model],
         sagemaker_session=workflow_session,
     )
@@ -208,6 +217,7 @@ def test_three_step_definition(
                 {"Name": "InstanceType", "Type": "String", "DefaultValue": "ml.m5.xlarge"}.items()
             ),
             tuple({"Name": "InstanceCount", "Type": "Integer", "DefaultValue": 1}.items()),
+            tuple({"Name": "OutputPrefix", "Type": "String", "DefaultValue": "output"}.items()),
         ]
     )
 
@@ -251,9 +261,20 @@ def test_three_step_definition(
     assert model_args["PrimaryContainer"]["ModelDataUrl"] == {
         "Get": "Steps.my-train.ModelArtifacts.S3ModelArtifacts"
     }
+    try:
+        response = pipeline.create(role)
+        create_arn = response["PipelineArn"]
+        assert re.match(
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            create_arn,
+        )
+    finally:
+        try:
+            pipeline.delete()
+        except Exception:
+            pass
 
 
-# TODO-reinvent-2020: Modify use of the workflow client
 def test_one_step_sklearn_processing_pipeline(
     sagemaker_session,
     workflow_session,
@@ -261,7 +282,7 @@ def test_one_step_sklearn_processing_pipeline(
     sklearn_latest_version,
     cpu_instance_type,
     pipeline_name,
-    region,
+    region_name,
     athena_dataset_definition,
 ):
     instance_count = ParameterInteger(name="InstanceCount", default_value=2)
@@ -305,7 +326,7 @@ def test_one_step_sklearn_processing_pipeline(
         response = pipeline.create(role)
         create_arn = response["PipelineArn"]
         assert re.match(
-            fr"arn:aws:sagemaker:{region}:\d{{12}}:pipeline/{pipeline_name}",
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
             create_arn,
         )
 
@@ -313,13 +334,13 @@ def test_one_step_sklearn_processing_pipeline(
         response = pipeline.update(role)
         update_arn = response["PipelineArn"]
         assert re.match(
-            fr"arn:aws:sagemaker:{region}:\d{{12}}:pipeline/{pipeline_name}",
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
             update_arn,
         )
 
         execution = pipeline.start(parameters={})
         assert re.match(
-            fr"arn:aws:sagemaker:{region}:\d{{12}}:pipeline/{pipeline_name}/execution/",
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
             execution.arn,
         )
 
@@ -340,14 +361,13 @@ def test_one_step_sklearn_processing_pipeline(
             pass
 
 
-# TODO-reinvent-2020: Modify use of the workflow client
 def test_conditional_pytorch_training_model_registration(
     sagemaker_session,
     workflow_session,
     role,
     cpu_instance_type,
     pipeline_name,
-    region,
+    region_name,
 ):
     base_dir = os.path.join(DATA_DIR, "pytorch_mnist")
     entry_point = os.path.join(base_dir, "mnist.py")
@@ -420,18 +440,18 @@ def test_conditional_pytorch_training_model_registration(
         response = pipeline.create(role)
         create_arn = response["PipelineArn"]
         assert re.match(
-            fr"arn:aws:sagemaker:{region}:\d{{12}}:pipeline/{pipeline_name}", create_arn
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}", create_arn
         )
 
         execution = pipeline.start(parameters={})
         assert re.match(
-            fr"arn:aws:sagemaker:{region}:\d{{12}}:pipeline/{pipeline_name}/execution/",
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
             execution.arn,
         )
 
         execution = pipeline.start(parameters={"GoodEnoughInput": 0})
         assert re.match(
-            fr"arn:aws:sagemaker:{region}:\d{{12}}:pipeline/{pipeline_name}/execution/",
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
             execution.arn,
         )
     finally:
