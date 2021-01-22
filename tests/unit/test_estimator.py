@@ -3270,3 +3270,16 @@ def test_framework_distribution_configuration(sagemaker_session):
         "sagemaker_instance_type": INSTANCE_TYPE,
     }
     assert actual_ddp == expected_ddp
+
+
+def test_image_name_map(sagemaker_session):
+    e = DummyFramework(
+        "my_script.py",
+        image_name=IMAGE_URI,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+    )
+
+    assert e.image_uri == IMAGE_URI

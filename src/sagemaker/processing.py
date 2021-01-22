@@ -31,6 +31,7 @@ from sagemaker.utils import base_name_from_image, name_from_base
 from sagemaker.session import Session
 from sagemaker.network import NetworkConfig  # noqa: F401 # pylint: disable=unused-import
 from sagemaker.workflow.properties import Properties
+from sagemaker.workflow.entities import Expression
 from sagemaker.dataset_definition.inputs import S3Input, DatasetDefinition
 from sagemaker.apiutils._base_types import ApiObject
 
@@ -338,6 +339,10 @@ class Processor(object):
                 # Generate a name for the ProcessingOutput if it doesn't have one.
                 if output.output_name is None:
                     output.output_name = "output-{}".format(count)
+                # if the output's destination is a workflow expression, do no normalization
+                if isinstance(output.destination, Expression):
+                    normalized_outputs.append(output)
+                    continue
                 # If the output's destination is not an s3_uri, create one.
                 parse_result = urlparse(output.destination)
                 if parse_result.scheme != "s3":
