@@ -49,6 +49,8 @@ PARAMETER_SERVER_MULTI_GPU_WARNING = (
 )
 
 DEBUGGER_UNSUPPORTED_REGIONS = ("us-iso-east-1",)
+PROFILER_UNSUPPORTED_REGIONS = ("us-iso-east-1", "cn-north-1", "cn-northwest-1")
+
 SINGLE_GPU_INSTANCE_TYPES = ("ml.p2.xlarge", "ml.p3.2xlarge")
 SM_DATAPARALLEL_SUPPORTED_INSTANCE_TYPES = (
     "ml.p3.16xlarge",
@@ -548,6 +550,19 @@ def _region_supports_debugger(region_name):
 
     """
     return region_name.lower() not in DEBUGGER_UNSUPPORTED_REGIONS
+
+
+def _region_supports_profiler(region_name):
+    """Returns bool indicating whether region supports Amazon SageMaker Debugger profiling feature.
+
+    Args:
+        region_name (str): Name of the region to check against.
+
+    Returns:
+        bool: Whether or not the region supports Amazon SageMaker Debugger profiling feature.
+
+    """
+    return region_name.lower() not in PROFILER_UNSUPPORTED_REGIONS
 
 
 def validate_version_or_image_args(framework_version, py_version, image_uri):
