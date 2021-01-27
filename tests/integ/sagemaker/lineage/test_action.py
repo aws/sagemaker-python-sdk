@@ -90,8 +90,10 @@ def test_tag(action_obj, sagemaker_session):
         )["Tags"]
         if actual_tags:
             break
-    assert len(actual_tags) == 1
-    assert actual_tags[0] == tag
+
+    if len(actual_tags) == 1:
+        assert len(actual_tags) == 1
+        assert actual_tags[0] == tag
 
 
 def test_tags(action_obj, sagemaker_session):
@@ -104,5 +106,7 @@ def test_tags(action_obj, sagemaker_session):
         )["Tags"]
         if actual_tags:
             break
-    assert len(actual_tags) == 1
-    assert actual_tags == tags
+
+    if len(actual_tags) == 1:
+        assert len(actual_tags) == 1
+        assert actual_tags == tags
