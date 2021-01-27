@@ -25,7 +25,7 @@ from sagemaker.lineage import (
     association,
     artifact,
 )
-from sagemaker.session import Session
+
 from smexperiments import trial_component, trial, experiment
 
 from tests.integ.sagemaker.lineage.helpers import name, names
