@@ -302,6 +302,16 @@ def artifact_objs(sagemaker_session):
         )
         time.sleep(SLEEP_TIME_SECONDS)
 
+    artifact_objs.append(
+        artifact.Artifact.create(
+            artifact_name=name(),
+            artifact_type="SDKIntegrationTestType2",
+            source_uri=name(),
+            properties={"k1": "v1"},
+            sagemaker_session=sagemaker_session,
+        )
+    )
+
     yield artifact_objs
 
     for artifact_obj in artifact_objs:
