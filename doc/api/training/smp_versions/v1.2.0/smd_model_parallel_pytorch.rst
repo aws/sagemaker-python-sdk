@@ -140,16 +140,16 @@ This API document assumes you use the following import statements in your traini
       computation. \ ``bucket_cap_mb``\ controls the bucket size in MegaBytes
       (MB).
 
-    - ``trace_memory_usage`` (default: False): When set to True, the library attempts
+   -  ``trace_memory_usage`` (default: False): When set to True, the library attempts
       to measure memory usage per module during tracing. If this is disabled,
       memory usage will be estimated through the sizes of tensors returned from
       the module.
 
-    - ``broadcast_buffers`` (default: True): Flag to be used with ``ddp=True``.
+   -  ``broadcast_buffers`` (default: True): Flag to be used with ``ddp=True``.
       This parameter is forwarded to the underlying ``DistributedDataParallel`` wrapper.
       Please see: `broadcast_buffer <https://pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html#torch.nn.parallel.DistributedDataParallel>`__.
 
-    - ``gradient_as_bucket_view (PyTorch 1.7 only)`` (default: False): To be
+   -  ``gradient_as_bucket_view (PyTorch 1.7 only)`` (default: False): To be
       used with ``ddp=True``. This parameter is forwarded to the underlying
       ``DistributedDataParallel`` wrapper. Please see `gradient_as_bucket_view <https://pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html#torch.nn.parallel.DistributedDataParallel>`__.
 

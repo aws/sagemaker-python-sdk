@@ -1,5 +1,30 @@
 # Changelog
 
+## v2.24.1 (2021-01-28)
+
+### Bug Fixes and Other Changes
+
+ * fix collect-tests tox env
+ * create profiler specific unsupported regions
+ * Update smd_model_parallel_pytorch.rst
+
+## v2.24.0 (2021-01-22)
+
+### Features
+
+ * add support for Std:Join for pipelines
+ * Map image name to image uri
+ * friendly names for short URIs
+
+### Bug Fixes and Other Changes
+
+ * increase allowed time for search to get updated
+ * refactor distribution config construction
+
+### Documentation Changes
+
+ * Add SMP 1.2.0 API docs
+
 ## v2.23.6 (2021-01-20)
 
 ### Bug Fixes and Other Changes
