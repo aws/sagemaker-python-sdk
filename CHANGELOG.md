@@ -1,5 +1,13 @@
 # Changelog
 
+## v2.24.1 (2021-01-28)
+
+### Bug Fixes and Other Changes
+
+ * fix collect-tests tox env
+ * create profiler specific unsupported regions
+ * Update smd_model_parallel_pytorch.rst
+
 ## v2.24.0 (2021-01-22)
 
 ### Features
