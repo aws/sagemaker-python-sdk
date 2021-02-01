@@ -69,7 +69,7 @@ model.
    :maxdepth: 2
 
    sdp_versions/smd_data_parallel_pytorch
-   sdp_versions/smd_data_parallel_pytorch
+   sdp_versions/smd_data_parallel_tensorflow
 
 Latest Updates
 ==============
