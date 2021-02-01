@@ -11,15 +11,6 @@ across multiple GPUs with minimal code changes. The library's API can be accesse
 
 Use the following sections to learn more about the model parallelism and the library.
 
-.. important::
-   The model parallel library only supports training jobs using CUDA 11. When you define a PyTorch or TensorFlow
-   ``Estimator`` with ``modelparallel`` parameter ``enabled`` set to ``True``,
-   it uses CUDA 11. When you extend or customize your own training image
-   you must use a CUDA 11 base image. See
-   `Extend or Adapt A Docker Container that Contains the Model Parallel Library
-   <https://integ-docs-aws.amazon.com/sagemaker/latest/dg/model-parallel-use-api.html#model-parallel-customize-container>`__
-   for more information.
-
 Use with the SageMaker Python SDK
 =================================
 
@@ -60,6 +51,15 @@ developer guide. This developer guide documentation includes:
    -  `Configuration tips and pitfalls
       <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-customize-tips-pitfalls.html>`__
 
+
+.. important::
+   The model parallel library only supports training jobs using CUDA 11. When you define a PyTorch or TensorFlow
+   ``Estimator`` with ``modelparallel`` parameter ``enabled`` set to ``True``,
+   it uses CUDA 11. When you extend or customize your own training image
+   you must use a CUDA 11 base image. See
+   `Extend or Adapt A Docker Container that Contains the Model Parallel Library
+   <https://integ-docs-aws.amazon.com/sagemaker/latest/dg/model-parallel-use-api.html#model-parallel-customize-container>`__
+   for more information.
 
 Release Notes
 =============
