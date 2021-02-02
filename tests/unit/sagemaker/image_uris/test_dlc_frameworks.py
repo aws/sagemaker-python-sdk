@@ -42,6 +42,14 @@ SAGEMAKER_ALTERNATE_REGION_ACCOUNTS = {
     "us-gov-west-1": "246785580436",
     "us-iso-east-1": "744548109606",
 }
+ELASTIC_INFERENCE_REGIONS = [
+    "ap-northeast-1",
+    "ap-northeast-2",
+    "eu-west-1",
+    "us-east-1",
+    "us-east-2",
+    "us-west-2",
+]
 
 
 def _test_image_uris(framework, fw_version, py_version, scope, expected_fn, expected_fn_args):
@@ -377,13 +385,13 @@ def test_pytorch_eia(pytorch_eia_version, pytorch_eia_py_version):
     )
     assert expected == uri
 
-    for region, account in DLC_ALTERNATE_REGION_ACCOUNTS.items():
+    for region in ELASTIC_INFERENCE_REGIONS:
         uri = image_uris.retrieve(region=region, **base_args)
 
         expected = expected_uris.framework_uri(
             "pytorch-inference-eia",
             pytorch_eia_version,
-            account,
+            DLC_ACCOUNT,
             py_version=pytorch_eia_py_version,
             region=region,
         )
