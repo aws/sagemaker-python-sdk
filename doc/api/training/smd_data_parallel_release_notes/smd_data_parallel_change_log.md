@@ -7,7 +7,7 @@
 SageMaker's distributed data parallel library extends SageMaker’s training
 capabilities on deep learning models with near-linear scaling efficiency,
 achieving fast time-to-train with minimal code changes.
-SageMaker Distributed Data Parallel :
+SageMaker Distributed Data Parallel:
 
 - optimizes your training job for AWS network infrastructure and EC2 instance topology.
 - takes advantage of gradient update to communicate between nodes with a custom AllReduce algorithm.
