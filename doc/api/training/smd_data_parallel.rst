@@ -70,3 +70,12 @@ model.
 
    sdp_versions/smd_data_parallel_pytorch
    sdp_versions/smd_data_parallel_tensorflow
+
+Latest Updates
+==============
+
+New features, bug fixes, and improvements are regularly made to the SageMaker distributed data parallel library.
+
+To see the the latest changes made to the library, refer to the library
+`Release Notes
+<https://github.com/aws/sagemaker-python-sdk/blob/master/doc/api/training/smd_data_parallel_release_notes/>`_.
