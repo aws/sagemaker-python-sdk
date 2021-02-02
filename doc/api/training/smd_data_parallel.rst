@@ -84,7 +84,7 @@ Select a version to see the API documentation for version.
 .. toctree::
    :maxdepth: 1
 
-   sdp_versions/v1_1_0.rst
+   sdp_versions/v1_0_0.rst
 
 .. important::
    The distributed data parallel library only supports training jobs using CUDA 11. When you define a PyTorch or TensorFlow
@@ -94,3 +94,13 @@ Select a version to see the API documentation for version.
    `SageMaker Python SDK's distributed data parallel library APIs
    <https://docs.aws.amazon.com/sagemaker/latest/dg/data-parallel-use-api.html#data-parallel-use-python-skd-api>`_
    for more information.
+
+
+Release Notes
+=============
+
+New features, bug fixes, and improvements are regularly made to the SageMaker distributed data parallel library.
+
+To see the the latest changes made to the library, refer to the library
+`Release Notes
+<https://github.com/aws/sagemaker-python-sdk/blob/master/doc/api/training/smd_data_parallel_release_notes/>`_.
