@@ -1,5 +1,16 @@
 # Changelog
 
+## v2.24.2 (2021-02-03)
+
+### Bug Fixes and Other Changes
+
+ * use 3.5 version of get-pip.py
+ * SM DDP release notes/changelog files
+
+### Documentation Changes
+
+ * adding versioning to sm distributed data parallel docs
+
 ## v2.24.1 (2021-01-28)
 
 ### Bug Fixes and Other Changes
