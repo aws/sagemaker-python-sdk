@@ -44,12 +44,7 @@ from sagemaker.workflow.parameters import (
     ParameterInteger,
     ParameterString,
 )
-from sagemaker.workflow.steps import (
-    CreateModelStep,
-    ProcessingStep,
-    TrainingStep,
-    CacheConfig
-)
+from sagemaker.workflow.steps import CreateModelStep, ProcessingStep, TrainingStep, CacheConfig
 from sagemaker.workflow.step_collections import RegisterModel
 from sagemaker.workflow.pipeline import Pipeline
 from tests.integ import DATA_DIR
@@ -554,76 +549,209 @@ def test_training_job_with_debugger(
             pass
 
 
-def test_cache_hit_expired_entry(
-        sagemaker_session,
-        workflow_session,
-        region_name,
-        role,
-        script_dir,
-        pipeline_name,
+def test_cache_hit(
+    sagemaker_session,
+    workflow_session,
+    region_name,
+    role,
+    script_dir,
+    pipeline_name,
+    athena_dataset_definition,
 ):
 
+    cache_config = CacheConfig(enable_caching=True, expire_after="T30m")
+
+    framework_version = "0.20.0"
     instance_type = ParameterString(name="InstanceType", default_value="ml.m5.xlarge")
     instance_count = ParameterInteger(name="InstanceCount", default_value=1)
 
+    input_data = f"s3://sagemaker-sample-data-{region_name}/processing/census/census-income.csv"
 
-    estimator =
-
-    step_train = TrainingStep(
-        name="my-train",
-        estimator=sklearn_train,
-        inputs=TrainingInput(
-            s3_data=step_process.properties.ProcessingOutputConfig.Outputs[
-                "train_data"
-            ].S3Output.S3Uri
-        ),
-        cache_config=
+    sklearn_processor = SKLearnProcessor(
+        framework_version=framework_version,
+        instance_type=instance_type,
+        instance_count=instance_count,
+        base_job_name="test-sklearn",
+        sagemaker_session=sagemaker_session,
+        role=role,
     )
+
+    step_process = ProcessingStep(
+        name="my-cache-test",
+        processor=sklearn_processor,
+        inputs=[
+            ProcessingInput(source=input_data, destination="/opt/ml/processing/input"),
+            ProcessingInput(dataset_definition=athena_dataset_definition),
+        ],
+        outputs=[
+            ProcessingOutput(output_name="train_data", source="/opt/ml/processing/train"),
+            ProcessingOutput(output_name="test_data", source="/opt/ml/processing/test"),
+        ],
+        code=os.path.join(script_dir, "preprocessing.py"),
+        cache_config=cache_config,
+    )
+
     pipeline = Pipeline(
         name=pipeline_name,
-        parameters=[instance_type, instance_count],
-        steps=[step_train],
+        parameters=[instance_count, instance_type],
+        steps=[step_process],
         sagemaker_session=workflow_session,
     )
 
     try:
-        # NOTE: We should exercise the case when role used in the pipeline execution is
-        # different than that required of the steps in the pipeline itself. The role in
-        # the pipeline definition needs to create training and processing jobs and other
-        # sagemaker entities. However, the jobs created in the steps themselves execute
-        # under a potentially different role, often requiring access to S3 and other
-        # artifacts not required to during creation of the jobs in the pipeline steps.
         response = pipeline.create(role)
         create_arn = response["PipelineArn"]
+        pytest.set_trace()
+
         assert re.match(
-            fr"arn:aws:sagemaker:{region}:\d{{12}}:pipeline/{pipeline_name}",
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
             create_arn,
         )
 
-        pipeline.parameters = [ParameterInteger(name="InstanceCount", default_value=1)]
-        response = pipeline.update(role)
-        update_arn = response["PipelineArn"]
+        # Run pipeline for the first time to get an entry in the cache
+        execution1 = pipeline.start(parameters={})
         assert re.match(
-            fr"arn:aws:sagemaker:{region}:\d{{12}}:pipeline/{pipeline_name}",
-            update_arn,
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
+            execution1.arn,
         )
 
-        execution = pipeline.start(parameters={})
-        assert re.match(
-            fr"arn:aws:sagemaker:{region}:\d{{12}}:pipeline/{pipeline_name}/execution/",
-            execution.arn,
-        )
-
-        response = execution.describe()
+        response = execution1.describe()
         assert response["PipelineArn"] == create_arn
 
         try:
-            execution.wait(delay=30, max_attempts=3)
+            execution1.wait(delay=30, max_attempts=10)
         except WaiterError:
             pass
-        execution_steps = execution.list_steps()
-        assert len(execution_steps) == 1
-        assert execution_steps[0]["StepName"] == "sklearn-process"
+        execution1_steps = execution1.list_steps()
+        assert len(execution1_steps) == 1
+        assert execution1_steps[0]["StepName"] == "my-cache-test"
+
+        # Run pipeline for the second time and expect cache hit
+        execution2 = pipeline.start(parameters={})
+        assert re.match(
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
+            execution2.arn,
+        )
+
+        response = execution2.describe()
+        assert response["PipelineArn"] == create_arn
+
+        try:
+            execution2.wait(delay=30, max_attempts=10)
+        except WaiterError:
+            pass
+        execution2_steps = execution2.list_steps()
+        assert len(execution2_steps) == 1
+        assert execution2_steps[0]["StepName"] == "my-cache-test"
+
+        assert execution1_steps[0] == execution2_steps[0]
+
+    finally:
+        try:
+            pipeline.delete()
+        except Exception:
+            pass
+
+
+def test_cache_expiry(
+    sagemaker_session,
+    workflow_session,
+    region_name,
+    role,
+    script_dir,
+    pipeline_name,
+    athena_dataset_definition,
+):
+
+    cache_config = CacheConfig(enable_caching=True, expire_after="T1m")
+
+    framework_version = "0.20.0"
+    instance_type = ParameterString(name="InstanceType", default_value="ml.m5.xlarge")
+    instance_count = ParameterInteger(name="InstanceCount", default_value=1)
+
+    input_data = f"s3://sagemaker-sample-data-{region_name}/processing/census/census-income.csv"
+
+    sklearn_processor = SKLearnProcessor(
+        framework_version=framework_version,
+        instance_type=instance_type,
+        instance_count=instance_count,
+        base_job_name="test-sklearn",
+        sagemaker_session=sagemaker_session,
+        role=role,
+    )
+
+    step_process = ProcessingStep(
+        name="my-cache-test-expiry",
+        processor=sklearn_processor,
+        inputs=[
+            ProcessingInput(source=input_data, destination="/opt/ml/processing/input"),
+            ProcessingInput(dataset_definition=athena_dataset_definition),
+        ],
+        outputs=[
+            ProcessingOutput(output_name="train_data", source="/opt/ml/processing/train"),
+            ProcessingOutput(output_name="test_data", source="/opt/ml/processing/test"),
+        ],
+        code=os.path.join(script_dir, "preprocessing.py"),
+        cache_config=cache_config,
+    )
+
+    pipeline = Pipeline(
+        name=pipeline_name,
+        parameters=[instance_count, instance_type],
+        steps=[step_process],
+        sagemaker_session=workflow_session,
+    )
+
+    try:
+        response = pipeline.create(role)
+        create_arn = response["PipelineArn"]
+
+        assert re.match(
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            create_arn,
+        )
+
+        # Run pipeline for the first time to get an entry in the cache
+        execution1 = pipeline.start(parameters={})
+        assert re.match(
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
+            execution1.arn,
+        )
+
+        response = execution1.describe()
+        assert response["PipelineArn"] == create_arn
+
+        try:
+            execution1.wait(delay=30, max_attempts=3)
+        except WaiterError:
+            pass
+        execution1_steps = execution1.list_steps()
+        assert len(execution1_steps) == 1
+        assert execution1_steps[0]["StepName"] == "my-cache-test-expiry"
+
+        # wait 1 minute for cache to expire
+        time.sleep(60)
+
+        # Run pipeline for the second time and expect cache miss
+        execution2 = pipeline.start(parameters={})
+        assert re.match(
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
+            execution2.arn,
+        )
+
+        response = execution2.describe()
+        assert response["PipelineArn"] == create_arn
+
+        try:
+            execution2.wait(delay=30, max_attempts=3)
+        except WaiterError:
+            pass
+        execution2_steps = execution2.list_steps()
+        assert len(execution2_steps) == 1
+        assert execution2_steps[0]["StepName"] == "my-cache-test-expiry"
+
+        assert execution1_steps[0] != execution2_steps[0]
+
     finally:
         try:
             pipeline.delete()
