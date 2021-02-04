@@ -25,17 +25,12 @@ from sagemaker.lineage import (
     association,
     artifact,
 )
-from sagemaker.session import Session
+
 from smexperiments import trial_component, trial, experiment
 
 from tests.integ.sagemaker.lineage.helpers import name, names
 
 SLEEP_TIME_SECONDS = 1
-
-
-@pytest.fixture()
-def sagemaker_session(boto_session):
-    return Session(boto_session=boto_session)
 
 
 @pytest.fixture
