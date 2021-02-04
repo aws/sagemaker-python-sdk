@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.24.3 (2021-02-04)
+
+### Bug Fixes and Other Changes
+
+ * Remove pytest fixture and fix test_tag/s method
+
 ## v2.24.2 (2021-02-03)
 
 ### Bug Fixes and Other Changes
