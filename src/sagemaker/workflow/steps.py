@@ -64,7 +64,6 @@ class Step(Entity):
     Attributes:
         name (str): The name of the step.
         step_type (StepTypeEnum): The type of the step.
-
     """
 
     name: str = attr.ib(factory=str)
@@ -133,7 +132,7 @@ class TrainingStep(Step):
             name (str): The name of the training step.
             estimator (EstimatorBase): A `sagemaker.estimator.EstimatorBase` instance.
             inputs (TrainingInput): A `sagemaker.inputs.TrainingInput` instance. Defaults to `None`.
-            cache_config (CacheConfig):  An instance to enable caching.
+            cache_config (CacheConfig):  A `sagemaker.steps.CacheConfig` instance to enable caching.
         """
         super(TrainingStep, self).__init__(name, StepTypeEnum.TRAINING)
         self.estimator = estimator
@@ -171,7 +170,8 @@ class TrainingStep(Step):
     def to_request(self) -> RequestType:
         """Updates the dictionary with cache configuration."""
         request_dict = super().to_request()
-        request_dict.update(self.cache_config.config)
+        if self.cache_config:
+            request_dict.update(self.cache_config.config)
 
         return request_dict
 
@@ -293,7 +293,8 @@ class TransformStep(Step):
     def to_request(self) -> RequestType:
         """Updates the dictionary with cache configuration."""
         request_dict = super().to_request()
-        request_dict.update(self.cache_config.config)
+        if self.cache_config:
+            request_dict.update(self.cache_config.config)
 
         return request_dict
 
@@ -378,7 +379,8 @@ class ProcessingStep(Step):
     def to_request(self) -> RequestType:
         """Get the request structure for workflow service calls."""
         request_dict = super(ProcessingStep, self).to_request()
-        request_dict.update(self.cache_config.config)
+        if self.cache_config:
+            request_dict.update(self.cache_config.config)
         if self.property_files:
             request_dict["PropertyFiles"] = [
                 property_file.expr for property_file in self.property_files
