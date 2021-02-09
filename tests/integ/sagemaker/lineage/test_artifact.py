@@ -77,6 +77,28 @@ def test_list(artifact_objs, sagemaker_session):
     assert artifact_names
 
 
+def test_list_by_type(artifact_objs, sagemaker_session):
+    slack = datetime.timedelta(minutes=1)
+    now = datetime.datetime.now(datetime.timezone.utc)
+    expected_name = list(
+        filter(lambda x: x.artifact_type == "SDKIntegrationTestType2", artifact_objs)
+    )[0].artifact_name
+    artifact_names = [art.artifact_name for art in artifact_objs]
+
+    artifact_names_listed = [
+        artifact_listed.artifact_name
+        for artifact_listed in artifact.Artifact.list(
+            created_after=now - slack,
+            artifact_type="SDKIntegrationTestType2",
+            sagemaker_session=sagemaker_session,
+        )
+        if artifact_listed.artifact_name in artifact_names
+    ]
+
+    assert len(artifact_names_listed) == 1
+    assert artifact_names_listed[0] == expected_name
+
+
 def test_downstream_trials(trial_associated_artifact, trial_obj, sagemaker_session):
     # allow trial components to index, 30 seconds max
     for i in range(3):
