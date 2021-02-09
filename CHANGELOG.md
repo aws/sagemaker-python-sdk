@@ -1,5 +1,12 @@
 # Changelog
 
+## v2.24.4 (2021-02-09)
+
+### Bug Fixes and Other Changes
+
+ * add integration test for listing artifacts by type
+ * List Associations integ tests
+
 ## v2.24.3 (2021-02-04)
 
 ### Bug Fixes and Other Changes
