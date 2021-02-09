@@ -49,6 +49,7 @@ from sagemaker.fw_utils import (
     UploadedCode,
     validate_source_dir,
     _region_supports_debugger,
+    _region_supports_profiler,
     get_mp_parameters,
 )
 from sagemaker.inputs import TrainingInput
@@ -494,7 +495,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         """Set necessary values and do basic validations in profiler config and profiler rules.
 
         When user explicitly set rules to an empty list, default profiler rule won't be enabled.
-        Default profiler rule will be enabled when either:
+        Default profiler rule will be enabled in supported regions when either:
         1. user doesn't specify any rules, i.e., rules=None; or
         2. user only specify debugger rules, i.e., rules=[Rule.sagemaker(...)]
         """
@@ -503,7 +504,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 raise RuntimeError("profiler_config cannot be set when disable_profiler is True.")
             if self.profiler_rules:
                 raise RuntimeError("ProfilerRule cannot be set when disable_profiler is True.")
-        elif _region_supports_debugger(self.sagemaker_session.boto_region_name):
+        elif _region_supports_profiler(self.sagemaker_session.boto_region_name):
             if self.profiler_config is None:
                 self.profiler_config = ProfilerConfig(s3_output_path=self.output_path)
             if self.rules is None or (self.rules and not self.profiler_rules):
@@ -2122,6 +2123,7 @@ class Framework(EstimatorBase):
             :class:`~sagemaker.estimator.EstimatorBase`.
         """
         super(Framework, self).__init__(enable_network_isolation=enable_network_isolation, **kwargs)
+        image_uri = renamed_kwargs("image_name", "image_uri", image_uri, kwargs)
         if entry_point.startswith("s3://"):
             raise ValueError(
                 "Invalid entry point script: {}. Must be a path to a local file.".format(

@@ -99,7 +99,9 @@ def test_tag(artifact_obj, sagemaker_session):
         )["Tags"]
         if actual_tags:
             break
-    assert len(actual_tags) == 1
+    # When sagemaker-client-config endpoint-url is passed as argument to hit beta,
+    # length of actual tags will be 2
+    assert len(actual_tags) > 0
     assert actual_tags[0] == tag
 
 
@@ -113,5 +115,7 @@ def test_tags(artifact_obj, sagemaker_session):
         )["Tags"]
         if actual_tags:
             break
-    assert len(actual_tags) == 1
-    assert actual_tags == tags
+    # When sagemaker-client-config endpoint-url is passed as argument to hit beta,
+    # length of actual tags will be 2
+    assert len(actual_tags) > 0
+    assert [actual_tags[-1]] == tags

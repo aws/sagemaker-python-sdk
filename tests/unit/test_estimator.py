@@ -35,6 +35,7 @@ from sagemaker.debugger import (
     Rule,
 )
 from sagemaker.estimator import Estimator, EstimatorBase, Framework, _TrainingJob
+from sagemaker.fw_utils import PROFILER_UNSUPPORTED_REGIONS
 from sagemaker.inputs import ShuffleConfig
 from sagemaker.model import FrameworkModel
 from sagemaker.predictor import Predictor
@@ -630,6 +631,32 @@ def test_framework_with_profiler_config_without_s3_output_path(time, sagemaker_s
             "RuleParameters": {"rule_to_invoke": "ProfilerReport"},
         }
     ]
+
+
+@pytest.mark.parametrize("region", PROFILER_UNSUPPORTED_REGIONS)
+def test_framework_with_no_default_profiler_in_unsupported_region(region):
+    boto_mock = Mock(name="boto_session", region_name=region)
+    sms = MagicMock(
+        name="sagemaker_session",
+        boto_session=boto_mock,
+        boto_region_name=region,
+        config=None,
+        local_mode=False,
+        s3_client=None,
+        s3_resource=None,
+    )
+    f = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sms,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+    )
+    f.fit("s3://mydata")
+    sms.train.assert_called_once()
+    _, args = sms.train.call_args
+    assert args.get("profiler_config") is None
+    assert args.get("profiler_rule_configs") is None
 
 
 def test_framework_with_profiler_config_and_profiler_disabled(sagemaker_session):
@@ -3243,3 +3270,16 @@ def test_framework_distribution_configuration(sagemaker_session):
         "sagemaker_instance_type": INSTANCE_TYPE,
     }
     assert actual_ddp == expected_ddp
+
+
+def test_image_name_map(sagemaker_session):
+    e = DummyFramework(
+        "my_script.py",
+        image_name=IMAGE_URI,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+    )
+
+    assert e.image_uri == IMAGE_URI

@@ -15,7 +15,10 @@ from __future__ import absolute_import
 
 
 def test_trained_models(
-    sagemaker_session, dataset_artifact_associated_models, trial_component_obj, model_artifact_obj1
+    sagemaker_session,
+    dataset_artifact_associated_models,
+    trial_component_obj,
+    model_artifact_obj1,
 ):
 
     model_list = dataset_artifact_associated_models.trained_models()
