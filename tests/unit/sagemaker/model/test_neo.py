@@ -272,7 +272,7 @@ def test_deploy_add_compiled_model_suffix_to_endpoint_name_from_model_name(sagem
 
 
 @patch("sagemaker.session.Session")
-def test_compile_with_framework_version_151(session):
+def test_compile_with_framework_version_15(session):
     session.return_value.boto_region_name = REGION
 
     model = _create_model()
@@ -290,7 +290,7 @@ def test_compile_with_framework_version_151(session):
 
 
 @patch("sagemaker.session.Session")
-def test_compile_with_framework_version_160(session):
+def test_compile_with_framework_version_16(session):
     session.return_value.boto_region_name = REGION
 
     model = _create_model()
