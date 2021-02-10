@@ -398,6 +398,7 @@ class Model(object):
         target_platform_arch=None,
         target_platform_accelerator=None,
         compiler_options=None,
+        framework_version=None,
     ):
         """Placeholder Docstring"""
         input_model_config = {
@@ -407,6 +408,9 @@ class Model(object):
             else input_shape,
             "Framework": framework.upper(),
         }
+        if framework.upper() == "PYTORCH" and framework_version is not None:
+            input_model_config["FrameworkVersion"] = utils.get_short_version(framework_version)
+
         role = self.sagemaker_session.expand_role(role)
         output_model_config = {
             "S3OutputLocation": output_path,
@@ -572,7 +576,8 @@ class Model(object):
             framework (str): The framework that is used to train the original
                 model. Allowed values: 'mxnet', 'tensorflow', 'keras', 'pytorch',
                 'onnx', 'xgboost'
-            framework_version (str):
+            framework_version (str):The version of framework, for example:
+                '1.5' for PyTorch
             target_platform_os (str): Target Platform OS, for example: 'LINUX'.
                 For allowed strings see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_OutputConfig.html.
@@ -613,6 +618,7 @@ class Model(object):
         framework_version = framework_version or self._get_framework_version()
 
         self._init_sagemaker_session_if_does_not_exist(target_instance_family)
+
         config = self._compilation_job_config(
             target_instance_family,
             input_shape,
@@ -626,6 +632,7 @@ class Model(object):
             target_platform_arch,
             target_platform_accelerator,
             compiler_options,
+            framework_version,
         )
         self.sagemaker_session.compile_model(**config)
         job_status = self.sagemaker_session.wait_for_compilation_job(job_name)

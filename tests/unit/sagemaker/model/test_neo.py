@@ -269,3 +269,58 @@ def test_deploy_add_compiled_model_suffix_to_endpoint_name_from_model_name(sagem
 
     model.deploy(1, "ml.c4.xlarge")
     assert model.endpoint_name.startswith("{}-ml-c4".format(model_name))
+
+
+@patch("sagemaker.session.Session")
+def test_compile_with_framework_version_151(session):
+    session.return_value.boto_region_name = REGION
+
+    model = _create_model()
+    model.compile(
+        target_instance_family="ml_c4",
+        input_shape={"data": [1, 3, 1024, 1024]},
+        output_path="s3://output",
+        role="role",
+        framework="pytorch",
+        framework_version="1.5",
+        job_name="compile-model",
+    )
+
+    assert "1.5" in model.image_uri
+
+
+@patch("sagemaker.session.Session")
+def test_compile_with_framework_version_160(session):
+    session.return_value.boto_region_name = REGION
+
+    model = _create_model()
+    model.compile(
+        target_instance_family="ml_c4",
+        input_shape={"data": [1, 3, 1024, 1024]},
+        output_path="s3://output",
+        role="role",
+        framework="pytorch",
+        framework_version="1.6",
+        job_name="compile-model",
+    )
+
+    assert "1.6" in model.image_uri
+
+
+@patch("sagemaker.session.Session")
+def test_compile_validates_framework_version(session):
+    session.return_value.boto_region_name = REGION
+
+    model = _create_model()
+    with pytest.raises(ValueError) as e:
+        model.compile(
+            target_instance_family="ml_c4",
+            input_shape={"data": [1, 3, 1024, 1024]},
+            output_path="s3://output",
+            role="role",
+            framework="pytorch",
+            framework_version="1.6.1",
+            job_name="compile-model",
+        )
+
+    assert "Unsupported neo-pytorch version: 1.6.1." in str(e)
