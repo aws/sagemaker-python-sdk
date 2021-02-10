@@ -95,21 +95,33 @@ class Step(Entity):
 
 @attr.s
 class CacheConfig:
-    """Step to cache pipeline workflow.
+    """Configure steps to enable cache in pipeline workflow.
+
+    If caching is enabled, the pipeline attempts to find a previous execution of a step.
+    If a successful previous execution is found, the pipeline propagates the values
+    from previous execution rather than recomputing the step.
+
 
     Attributes:
-        enable_caching (bool): To enable step caching. Off by default.
+        enable_caching (bool): To enable step caching. Defaults to `False`.
         expire_after (str): If step caching is enabled, a timeout also needs to defined.
             It defines how old a previous execution can be to be considered for reuse.
-            Needs to be ISO 8601 duration string.
+            Value should be an ISO 8601 duration string.
+            If step caching is disabled, it defaults to an empty string.
     """
 
     enable_caching: bool = attr.ib(default=False)
-    expire_after: str = attr.ib(factory=str)
+    expire_after = attr.ib(default="")
+
+    @expire_after.validator
+    def validate_expire_after(self, enable_caching, expire_after):
+        """Validates ISO 8601 duration string."""
+        if enable_caching and expire_after == "":
+            raise ValueError("expire_after must be an ISO 8601 duration string")
 
     @property
     def config(self):
-        """Enables caching in pipeline steps."""
+        """Configures caching in pipeline steps."""
         return {"CacheConfig": {"Enabled": self.enable_caching, "ExpireAfter": self.expire_after}}
 
 
@@ -132,7 +144,7 @@ class TrainingStep(Step):
             name (str): The name of the training step.
             estimator (EstimatorBase): A `sagemaker.estimator.EstimatorBase` instance.
             inputs (TrainingInput): A `sagemaker.inputs.TrainingInput` instance. Defaults to `None`.
-            cache_config (CacheConfig):  A `sagemaker.steps.CacheConfig` instance to enable caching.
+            cache_config (CacheConfig):  A `sagemaker.workflow.steps.CacheConfig` instance.
         """
         super(TrainingStep, self).__init__(name, StepTypeEnum.TRAINING)
         self.estimator = estimator
@@ -249,7 +261,7 @@ class TransformStep(Step):
             name (str): The name of the transform step.
             transformer (Transformer): A `sagemaker.transformer.Transformer` instance.
             inputs (TransformInput): A `sagemaker.inputs.TransformInput` instance.
-            cache_config (CacheConfig):  An instance to enable caching.
+            cache_config (CacheConfig):  A `sagemaker.workflow.steps.CacheConfig` instance.
         """
         super(TransformStep, self).__init__(name, StepTypeEnum.TRANSFORM)
         self.transformer = transformer
@@ -331,7 +343,7 @@ class ProcessingStep(Step):
                 script to run. Defaults to `None`.
             property_files (List[PropertyFile]): A list of property files that workflow looks
                 for and resolves from the configured processing output list.
-            cache_config (CacheConfig):  An instance to enable caching.
+            cache_config (CacheConfig):  A `sagemaker.workflow.steps.CacheConfig` instance.
         """
         super(ProcessingStep, self).__init__(name, StepTypeEnum.PROCESSING)
         self.processor = processor

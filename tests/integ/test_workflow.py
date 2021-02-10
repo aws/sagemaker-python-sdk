@@ -44,7 +44,12 @@ from sagemaker.workflow.parameters import (
     ParameterInteger,
     ParameterString,
 )
-from sagemaker.workflow.steps import CreateModelStep, ProcessingStep, TrainingStep, CacheConfig
+from sagemaker.workflow.steps import (
+    CreateModelStep,
+    ProcessingStep,
+    TrainingStep,
+    CacheConfig,
+)
 from sagemaker.workflow.step_collections import RegisterModel
 from sagemaker.workflow.pipeline import Pipeline
 from tests.integ import DATA_DIR
