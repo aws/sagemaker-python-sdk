@@ -312,7 +312,7 @@ For the ``"mpi"`` key, a dict must be passed which contains:
 * ``"enabled"``: Set to ``True`` to launch the training job with MPI.
 
 * ``"processes_per_host"``: Specifies the number of processes MPI should launch on each host.
-  In SageMaker a host is a single Amazon EC2 ml instance. The SageMaker Python SDK maintains
+  In SageMaker a host is a single Amazon EC2 ml instance. The SageMaker distributed model parallel library maintains
   a one-to-one mapping between processes and GPUs across model and data parallelism.
   This means that SageMaker schedules each process on a single, separate GPU and no GPU contains more than one process.
   If you are using PyTorch, you must restrict each process to its own device using
@@ -321,7 +321,7 @@ For the ``"mpi"`` key, a dict must be passed which contains:
   <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-customize-training-script.html#model-parallel-customize-training-script-pt-16>`_.
 
   .. important::
-   ``process_per_host`` must be less than the number of GPUs per instance, and typically will be equal to
+   ``process_per_host`` must be less than or equal to the number of GPUs per instance, and typically will be equal to
    the number of GPUs per instance.
 
   For example, if you use one instance with 4-way model parallelism and 2-way data parallelism,
@@ -329,7 +329,7 @@ For the ``"mpi"`` key, a dict must be passed which contains:
   such as an ml.p3.16xlarge.
 
   The following image illustrates how 2-way data parallelism and 4-way model parallelism is distributed across 8 GPUs:
-  the models is partitioned across 4 GPUs, and each partition is added to 2 GPUs.
+  the model is partitioned across 4 GPUs, and each partition is added to 2 GPUs.
 
   .. image:: smp_versions/model-data-parallel.png
       :width: 650

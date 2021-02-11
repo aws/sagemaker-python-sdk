@@ -97,7 +97,7 @@ This API document assumes you use the following import statements in your traini
    Unlike the original DDP wrapper, when you use ``DistributedModel``,
    model parameters and buffers are not immediately broadcast across
    processes when the wrapper is called. Instead, the broadcast is deferred to the first call of the
-   ``smp.step-decorated`` function when the partition is done.
+   ``smp.step``-decorated function when the partition is done.
 
    **Parameters**
 
