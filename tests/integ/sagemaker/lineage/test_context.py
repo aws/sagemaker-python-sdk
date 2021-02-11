@@ -15,6 +15,7 @@ from __future__ import absolute_import
 
 import datetime
 import logging
+import time
 
 from sagemaker.lineage import context
 
@@ -88,6 +89,7 @@ def test_tag(context_obj, sagemaker_session):
         )["Tags"]
         if actual_tags:
             break
+        time.sleep(1)
     # When sagemaker-client-config endpoint-url is passed as argument to hit some endpoints,
     # length of actual tags will be greater than 1
     assert len(actual_tags) > 0
@@ -104,6 +106,7 @@ def test_tags(context_obj, sagemaker_session):
         )["Tags"]
         if actual_tags:
             break
+        time.sleep(1)
     # When sagemaker-client-config endpoint-url is passed as argument to hit some endpoints,
     # length of actual tags will be greater than 1
     assert len(actual_tags) > 0

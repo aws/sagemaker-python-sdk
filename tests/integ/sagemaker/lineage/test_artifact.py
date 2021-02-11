@@ -121,6 +121,7 @@ def test_tag(artifact_obj, sagemaker_session):
         )["Tags"]
         if actual_tags:
             break
+        time.sleep(1)
     # When sagemaker-client-config endpoint-url is passed as argument to hit some endpoints,
     # length of actual tags will be greater than 1
     assert len(actual_tags) > 0
@@ -137,6 +138,7 @@ def test_tags(artifact_obj, sagemaker_session):
         )["Tags"]
         if actual_tags:
             break
+        time.sleep(1)
     # When sagemaker-client-config endpoint-url is passed as argument to hit some endpoints,
     # length of actual tags will be greater than 1
     assert len(actual_tags) > 0
