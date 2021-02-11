@@ -17,10 +17,6 @@
 
 - Adds support for `_register_comm_hook` (PyTorch 1.7 only) which will register the callable as a communication hook for DDP. NOTE: Like in DDP, this is an experimental API and subject to change.
 
-### Tensorflow
-
-- Adds support for Tensorflow 2.4
-
 ## Bug Fixes
 
 ### PyTorch
