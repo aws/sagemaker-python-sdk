@@ -118,6 +118,9 @@ The following SageMaker distribute model parallel APIs are common across all fra
    -  https://www.tensorflow.org/api_docs/python/tf/function\
    -  https://www.tensorflow.org/guide/function\
 
+   Each ``smp.step`` decorated function must have a return value that depends on the
+   output of ``smp.DistributedModel``.
+
    **Common parameters**
 
    -  ``non_split_inputs`` (``list``): The list of arguments to the decorated function
