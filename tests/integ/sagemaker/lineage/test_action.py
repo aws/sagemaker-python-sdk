@@ -90,7 +90,9 @@ def test_tag(action_obj, sagemaker_session):
         )["Tags"]
         if actual_tags:
             break
-    assert len(actual_tags) == 1
+    # When sagemaker-client-config endpoint-url is passed as argument to hit some endpoints,
+    # length of actual tags will be greater than 1
+    assert len(actual_tags) > 0
     assert actual_tags[0] == tag
 
 
@@ -104,5 +106,7 @@ def test_tags(action_obj, sagemaker_session):
         )["Tags"]
         if actual_tags:
             break
-    assert len(actual_tags) == 1
-    assert actual_tags == tags
+    # When sagemaker-client-config endpoint-url is passed as argument to hit some endpoints,
+    # length of actual tags will be greater than 1
+    assert len(actual_tags) > 0
+    assert [actual_tags[-1]] == tags

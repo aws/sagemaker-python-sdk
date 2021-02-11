@@ -1,7 +1,12 @@
+.. admonition:: Contents
+
+   - :ref:`pytorch_saving_loading`
+   - :ref:`pytorch_saving_loading_instructions`
+
 PyTorch API
 ===========
 
-**Supported versions: 1.6.0**
+**Supported versions: 1.7.1, 1.6**
 
 This API document assumes you use the following import statements in your training scripts.
 
@@ -9,6 +14,13 @@ This API document assumes you use the following import statements in your traini
 
    import smdistributed.modelparallel.torch as smp
 
+
+.. tip::
+
+   Refer to
+   `Modify a PyTorch Training Script
+   <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-customize-training-script.html#model-parallel-customize-training-script-pt>`_
+   to learn how to use the following API in your PyTorch training script.
 
 .. class:: smp.DistributedModel
 
@@ -18,7 +30,6 @@ This API document assumes you use the following import statements in your traini
    internally manages model parallelism and data parallelism. Only one
    model in the training script can be wrapped with
    ``smp.DistributedModel``.
-
 
    **Example:**
 
@@ -77,6 +88,17 @@ This API document assumes you use the following import statements in your traini
    the model objects (``model(inputs)`` and ``model.backward(loss)``) must be made inside
    a ``smp.step``-decorated function.
 
+   **Using DDP**
+
+   If DDP is enabled, do not not place a PyTorch
+   ``DistributedDataParallel`` wrapper around the ``DistributedModel`` because
+   the ``DistributedModel`` wrapper will also handle data parallelism.
+
+   Unlike the original DDP wrapper, when you use ``DistributedModel``,
+   model parameters and buffers are not immediately broadcast across
+   processes when the wrapper is called. Instead, the broadcast is deferred to the first call of the
+   ``smp.step``-decorated function when the partition is done.
+
    **Parameters**
 
    -  ``module`` (``torch.nn.Module``): Module to be distributed (data parallelism and model parallelism).
@@ -128,10 +150,18 @@ This API document assumes you use the following import statements in your traini
       computation. \ ``bucket_cap_mb``\ controls the bucket size in MegaBytes
       (MB).
 
-    - ``trace_memory_usage`` (default: False): When set to True, the library attempts
+   -  ``trace_memory_usage`` (default: False): When set to True, the library attempts
       to measure memory usage per module during tracing. If this is disabled,
       memory usage will be estimated through the sizes of tensors returned from
       the module.
+
+   -  ``broadcast_buffers`` (default: True): Flag to be used with ``ddp=True``.
+      This parameter is forwarded to the underlying ``DistributedDataParallel`` wrapper.
+      Please see: `broadcast_buffer <https://pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html#torch.nn.parallel.DistributedDataParallel>`__.
+
+   -  ``gradient_as_bucket_view (PyTorch 1.7 only)`` (default: False): To be
+      used with ``ddp=True``. This parameter is forwarded to the underlying
+      ``DistributedDataParallel`` wrapper. Please see `gradient_as_bucket_view <https://pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html#torch.nn.parallel.DistributedDataParallel>`__.
 
    **Properties**
 
@@ -220,10 +250,23 @@ This API document assumes you use the following import statements in your traini
       first forward pass. Returns a ``RemovableHandle`` object ``handle``,
       which can be used to remove the hook by calling ``handle.remove()``.
 
-    .. function:: cpu( )
+   .. function:: cpu( )
 
       Allgathers parameters and buffers across all ``mp_rank``\ s and moves them
       to the CPU.
+
+   .. function:: join( )
+
+      **Available for PyTorch 1.7 only**
+
+      A context manager to be used in conjunction with an instance of
+      ``smp.DistributedModel`` to be able to train with uneven inputs across
+      participating processes. This is only supported when ``ddp=True`` for
+      ``smp.DistributedModel``. This will use the join with the wrapped
+      ``DistributedDataParallel`` instance. For more information, see:
+      `join <https://pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html#torch.nn.parallel.DistributedDataParallel.join>`__
+      in the PyTorch documentation.
+
 
 .. class:: smp.DistributedOptimizer
 
@@ -354,6 +397,7 @@ This API document assumes you use the following import statements in your traini
    currently doesn’t work with the library. ``smp.amp.GradScaler`` replaces
    ``torch.amp.GradScaler`` and provides the same functionality.
 
+.. _pytorch_saving_loading:
 
 APIs for Saving and Loading
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -403,6 +447,8 @@ APIs for Saving and Loading
    -  ``partial`` (bool, default= ``True``): When set to ``True``, each
       ``mp_rank`` loads the checkpoint corresponding to the ``mp_rank``.
       Should be used when loading a model trained with the library.
+
+.. _pytorch_saving_loading_instructions:
 
 General Instruction For Saving and Loading
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

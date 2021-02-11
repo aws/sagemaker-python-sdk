@@ -1,5 +1,93 @@
 # Changelog
 
+## v2.24.4 (2021-02-09)
+
+### Bug Fixes and Other Changes
+
+ * add integration test for listing artifacts by type
+ * List Associations integ tests
+
+## v2.24.3 (2021-02-04)
+
+### Bug Fixes and Other Changes
+
+ * Remove pytest fixture and fix test_tag/s method
+
+## v2.24.2 (2021-02-03)
+
+### Bug Fixes and Other Changes
+
+ * use 3.5 version of get-pip.py
+ * SM DDP release notes/changelog files
+
+### Documentation Changes
+
+ * adding versioning to sm distributed data parallel docs
+
+## v2.24.1 (2021-01-28)
+
+### Bug Fixes and Other Changes
+
+ * fix collect-tests tox env
+ * create profiler specific unsupported regions
+ * Update smd_model_parallel_pytorch.rst
+
+## v2.24.0 (2021-01-22)
+
+### Features
+
+ * add support for Std:Join for pipelines
+ * Map image name to image uri
+ * friendly names for short URIs
+
+### Bug Fixes and Other Changes
+
+ * increase allowed time for search to get updated
+ * refactor distribution config construction
+
+### Documentation Changes
+
+ * Add SMP 1.2.0 API docs
+
+## v2.23.6 (2021-01-20)
+
+### Bug Fixes and Other Changes
+
+ * add artifact, action, context to virsualizer
+
+## v2.23.5 (2021-01-18)
+
+### Bug Fixes and Other Changes
+
+ * increase time allowed for trial components to index
+
+## v2.23.4.post0 (2021-01-14)
+
+### Documentation Changes
+
+ * update predict_fn implementation for PyTorch EIA 1.5.1
+
+## v2.23.4 (2021-01-13)
+
+### Bug Fixes and Other Changes
+
+ * remove captureWarninig setting
+
+## v2.23.3 (2021-01-12)
+
+### Bug Fixes and Other Changes
+
+ * improve optional dependency error message
+ * add debugger rule container account in PDT
+ * assert step execution first in pipeline test
+ * add service inserted fields to generated Hive DDL
+
+### Documentation Changes
+
+ * fix description for max_wait
+ * use correct classpath in V2 alias documentation.
+ * Bad arg name in feat-store ingestion manager
+
 ## v2.23.2 (2021-01-06)
 
 ### Bug Fixes and Other Changes
