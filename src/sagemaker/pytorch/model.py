@@ -182,7 +182,7 @@ class PyTorchModel(FrameworkModel):
             description (str): Model Package description (default: None).
 
         Returns:
-            str: A string of SageMaker Model Package ARN.
+            A `sagemaker.model.ModelPackage` instance.
         """
         instance_type = inference_instances[0]
         self._init_sagemaker_session_if_does_not_exist(instance_type)
