@@ -97,27 +97,24 @@ class Step(Entity):
 class CacheConfig:
     """Configure steps to enable cache in pipeline workflow.
 
-    If caching is enabled, the pipeline attempts to find a previous execution of a step.
+    If caching is enabled, the pipeline attempts to find a previous execution of a step
+    that was called with the same arguments. Step caching only considers successful execution.
     If a successful previous execution is found, the pipeline propagates the values
-    from previous execution rather than recomputing the step.
+    from previous execution rather than recomputing the step. When multiple successful executions
+    exist within the timeout period, it uses the result for the most recent successful execution.
 
 
     Attributes:
         enable_caching (bool): To enable step caching. Defaults to `False`.
         expire_after (str): If step caching is enabled, a timeout also needs to defined.
             It defines how old a previous execution can be to be considered for reuse.
-            Value should be an ISO 8601 duration string.
-            If step caching is disabled, it defaults to an empty string.
+            Value should be an ISO 8601 duration string. Defaults to `None`.
     """
 
     enable_caching: bool = attr.ib(default=False)
-    expire_after = attr.ib(default="")
-
-    @expire_after.validator
-    def validate_expire_after(self, enable_caching, expire_after):
-        """Validates ISO 8601 duration string."""
-        if enable_caching and expire_after == "":
-            raise ValueError("expire_after must be an ISO 8601 duration string")
+    expire_after = attr.ib(
+        default=None, validator=attr.validators.optional(attr.validators.instance_of(str))
+    )
 
     @property
     def config(self):
