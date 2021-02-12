@@ -47,6 +47,7 @@ ACCOUNTS = {
 
 INFERENTIA_REGIONS = ACCOUNTS.keys()
 
+
 @pytest.mark.parametrize("algo", NEO_ALGOS)
 def test_algo_uris(algo):
     for region in regions.regions():
