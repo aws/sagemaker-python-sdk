@@ -119,7 +119,10 @@ class CacheConfig:
     @property
     def config(self):
         """Configures caching in pipeline steps."""
-        return {"CacheConfig": {"Enabled": self.enable_caching, "ExpireAfter": self.expire_after}}
+        config = {'Enabled': self.enable_caching}
+        if self.expire_after is not None:
+            config['ExpireAfter'] = self.expire_after
+        return {'CacheConfig': config}
 
 
 class TrainingStep(Step):
