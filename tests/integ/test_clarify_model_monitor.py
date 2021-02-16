@@ -285,6 +285,7 @@ def test_bias_monitor(sagemaker_session, scheduled_bias_monitor, endpoint_name, 
     monitor.delete_monitoring_schedule()
 
 
+@pytest.mark.slow_test
 @pytest.mark.skipif(
     tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
     reason="ModelMonitoring is not yet supported in this region.",
@@ -393,6 +394,7 @@ def test_explainability_monitor(sagemaker_session, scheduled_explainability_moni
     monitor.delete_monitoring_schedule()
 
 
+@pytest.mark.slow_test
 @pytest.mark.skipif(
     tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
     reason="ModelMonitoring is not yet supported in this region.",
