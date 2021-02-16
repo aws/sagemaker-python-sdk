@@ -149,6 +149,7 @@ def test_inference_pipeline_model_deploy(sagemaker_session, cpu_instance_type):
         assert "Could not find model" in str(exception.value)
 
 
+@pytest.mark.slow_test
 def test_inference_pipeline_model_deploy_and_update_endpoint(
     sagemaker_session, cpu_instance_type, alternative_cpu_instance_type
 ):
