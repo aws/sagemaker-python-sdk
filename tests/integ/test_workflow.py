@@ -18,10 +18,8 @@ import re
 import time
 import uuid
 
-import boto3
 import pytest
 
-from botocore.config import Config
 from botocore.exceptions import WaiterError
 from sagemaker.debugger import (
     DebuggerHookConfig,
@@ -32,7 +30,7 @@ from sagemaker.inputs import CreateModelInput, TrainingInput
 from sagemaker.model import Model
 from sagemaker.processing import ProcessingInput, ProcessingOutput
 from sagemaker.pytorch.estimator import PyTorch
-from sagemaker.session import get_execution_role, Session
+from sagemaker.session import get_execution_role
 from sagemaker.sklearn.estimator import SKLearn
 from sagemaker.sklearn.processing import SKLearnProcessor
 from sagemaker.workflow.conditions import ConditionGreaterThanOrEqualTo
