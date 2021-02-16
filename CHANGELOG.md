@@ -1,5 +1,23 @@
 # Changelog
 
+## v2.24.5 (2021-02-12)
+
+### Bug Fixes and Other Changes
+
+ * test_tag/test_tags method assert fix in association tests
+
+### Documentation Changes
+
+ * removing mention of TF 2.4 from SM distributed model parallel docs
+ * adding details about mpi options, other small updates
+
+## v2.24.4 (2021-02-09)
+
+### Bug Fixes and Other Changes
+
+ * add integration test for listing artifacts by type
+ * List Associations integ tests
+
 ## v2.24.3 (2021-02-04)
 
 ### Bug Fixes and Other Changes

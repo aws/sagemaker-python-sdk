@@ -35,6 +35,7 @@ def experiment(sagemaker_session):
             sm.associate_trial_component(
                 TrialComponentName=trial_component_name, TrialName=trial_name
             )
+            time.sleep(1)
 
         time.sleep(15)  # wait for search to get updated
 
@@ -87,6 +88,7 @@ def experiment_with_artifacts(sagemaker_session):
             sm.associate_trial_component(
                 TrialComponentName=trial_component_name, TrialName=trial_name
             )
+            time.sleep(1)
 
         time.sleep(15)  # wait for search to get updated
 
