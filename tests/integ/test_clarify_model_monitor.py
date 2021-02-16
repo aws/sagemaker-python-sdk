@@ -304,76 +304,6 @@ def test_run_bias_monitor(
     scheduled_bias_monitor.delete_monitoring_schedule()
 
 
-@pytest.mark.skipif(
-    tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
-    reason="ModelMonitoring is not yet supported in this region.",
-)
-def test_run_bias_monitor_baseline(
-    sagemaker_session,
-    data_config,
-    model_config,
-    bias_config,
-    model_predicted_label_config,
-    endpoint_name,
-    ground_truth_input,
-    upload_actual_data,
-):
-    monitor = ModelBiasMonitor(
-        role=ROLE,
-        instance_count=INSTANCE_COUNT,
-        instance_type=INSTANCE_TYPE,
-        volume_size_in_gb=VOLUME_SIZE_IN_GB,
-        max_runtime_in_seconds=MAX_RUNTIME_IN_SECONDS,
-        sagemaker_session=sagemaker_session,
-        tags=TEST_TAGS,
-    )
-
-    baselining_job_name = utils.unique_name_from_base("bias-baselining-job")
-    print("Creating baselining job: {}".format(baselining_job_name))
-    monitor.suggest_baseline(
-        data_config=data_config,
-        bias_config=bias_config,
-        model_config=model_config,
-        model_predicted_label_config=model_predicted_label_config,
-        job_name=baselining_job_name,
-    )
-    assert (
-        monitor.latest_baselining_job_config.probability_threshold_attribute
-        == BIAS_PROBABILITY_THRESHOLD
-    )
-    monitoring_schedule_name = utils.unique_name_from_base("bias-suggest-baseline")
-    s3_uri_monitoring_output = os.path.join(
-        "s3://",
-        sagemaker_session.default_bucket(),
-        endpoint_name,
-        monitoring_schedule_name,
-        "monitor_output",
-    )
-    # Let's test if the schedule can pick up analysis_config from baselining job
-    monitor.create_monitoring_schedule(
-        output_s3_uri=s3_uri_monitoring_output,
-        monitor_schedule_name=monitoring_schedule_name,
-        endpoint_input=EndpointInput(
-            endpoint_name=endpoint_name,
-            destination=ENDPOINT_INPUT_LOCAL_PATH,
-            start_time_offset=START_TIME_OFFSET,
-            end_time_offset=END_TIME_OFFSET,
-        ),
-        ground_truth_input=ground_truth_input,
-        schedule_cron_expression=CRON,
-    )
-    _verify_execution_status(monitor)
-
-    _verify_bias_job_description(
-        sagemaker_session=sagemaker_session,
-        monitor=monitor,
-        endpoint_name=endpoint_name,
-        ground_truth_input=ground_truth_input,
-    )
-
-    monitor.delete_monitoring_schedule()
-
-
 @pytest.fixture
 def explainability_monitor(sagemaker_session):
     monitor = ModelExplainabilityMonitor(
@@ -483,58 +413,6 @@ def test_run_explainability_monitor(
     )
 
     scheduled_explainability_monitor.delete_monitoring_schedule()
-
-
-@pytest.mark.skipif(
-    tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
-    reason="ModelMonitoring is not yet supported in this region.",
-)
-def test_run_explainability_monitor_baseline(
-    sagemaker_session, shap_config, data_config, model_config, endpoint_name, upload_actual_data
-):
-    monitor = ModelExplainabilityMonitor(
-        role=ROLE,
-        instance_count=INSTANCE_COUNT,
-        instance_type=INSTANCE_TYPE,
-        volume_size_in_gb=VOLUME_SIZE_IN_GB,
-        max_runtime_in_seconds=MAX_RUNTIME_IN_SECONDS,
-        sagemaker_session=sagemaker_session,
-        tags=TEST_TAGS,
-    )
-
-    baselining_job_name = utils.unique_name_from_base("explainability-baselining-job")
-    print("Creating baselining job: {}".format(baselining_job_name))
-    monitor.suggest_baseline(
-        data_config=data_config,
-        explainability_config=shap_config,
-        model_config=model_config,
-        job_name=baselining_job_name,
-    )
-    monitoring_schedule_name = utils.unique_name_from_base("explainability-suggest-baseline")
-    s3_uri_monitoring_output = os.path.join(
-        "s3://",
-        sagemaker_session.default_bucket(),
-        endpoint_name,
-        monitoring_schedule_name,
-        "monitor_output",
-    )
-    # Let's test if the schedule can pick up analysis_config from baselining job
-    monitor.create_monitoring_schedule(
-        output_s3_uri=s3_uri_monitoring_output,
-        monitor_schedule_name=monitoring_schedule_name,
-        endpoint_input=endpoint_name,
-        schedule_cron_expression=CRON,
-    )
-
-    _verify_execution_status(monitor)
-
-    _verify_explainability_job_description(
-        sagemaker_session=sagemaker_session,
-        monitor=monitor,
-        endpoint_name=endpoint_name,
-    )
-
-    monitor.delete_monitoring_schedule()
 
 
 def _verify_monitoring_schedule(monitor, schedule_status, schedule_cron_expression=CRON):
