@@ -83,6 +83,7 @@ def test_attach_deploy(mxnet_training_job, sagemaker_session, cpu_instance_type)
         assert result is not None
 
 
+@pytest.mark.slow_test
 def test_deploy_estimator_with_different_instance_types(
     mxnet_training_job,
     sagemaker_session,
@@ -258,6 +259,7 @@ def test_deploy_model_with_tags_and_kms(
         assert endpoint_config["KmsKeyId"] == kms_key_arn
 
 
+@pytest.mark.slow_test
 def test_deploy_model_and_update_endpoint(
     mxnet_training_job,
     sagemaker_session,

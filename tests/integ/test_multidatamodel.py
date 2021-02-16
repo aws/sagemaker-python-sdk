@@ -262,6 +262,7 @@ def test_multi_data_model_deploy_pretrained_models_local_mode(container_image, s
         assert "Could not find endpoint" in str(exception.value)
 
 
+@pytest.mark.slow_test
 @pytest.mark.skipif(
     tests.integ.test_region() != "us-east-2",
     reason="Pulling the base image is currently limited to us-east-2.",
@@ -481,6 +482,7 @@ def __rcf_training_job(
         return rcf_model
 
 
+@pytest.mark.slow_test
 @pytest.mark.skipif(
     tests.integ.test_region() != "us-east-2",
     reason="Pulling the base image is currently limited to us-east-2.",
