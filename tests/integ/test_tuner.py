@@ -523,6 +523,7 @@ def test_stop_tuning_job(sagemaker_session, cpu_instance_type):
     assert desc["HyperParameterTuningJobStatus"] == "Stopping"
 
 
+@pytest.mark.slow_test
 @pytest.mark.canary_quick
 def test_tuning_mxnet(
     sagemaker_session,
