@@ -155,7 +155,8 @@ def artifact_obj_with_association(sagemaker_session, artifact_obj):
 @pytest.fixture
 def trial_component_obj(sagemaker_session):
     trial_component_obj = trial_component.TrialComponent.create(
-        trial_component_name=name(), sagemaker_boto_client=sagemaker_session.sagemaker_client
+        trial_component_name=name(),
+        sagemaker_boto_client=sagemaker_session.sagemaker_client,
     )
     yield trial_component_obj
     time.sleep(0.5)
