@@ -15,6 +15,9 @@ from __future__ import absolute_import
 
 import datetime
 import logging
+import time
+
+import pytest
 
 from sagemaker.lineage import action
 
@@ -80,6 +83,7 @@ def test_list(action_objs, sagemaker_session):
     assert action_names
 
 
+@pytest.mark.timeout(30)
 def test_tag(action_obj, sagemaker_session):
     tag = {"Key": "foo", "Value": "bar"}
     action_obj.set_tag(tag)
@@ -90,12 +94,14 @@ def test_tag(action_obj, sagemaker_session):
         )["Tags"]
         if actual_tags:
             break
+        time.sleep(5)
     # When sagemaker-client-config endpoint-url is passed as argument to hit some endpoints,
     # length of actual tags will be greater than 1
     assert len(actual_tags) > 0
     assert actual_tags[0] == tag
 
 
+@pytest.mark.timeout(30)
 def test_tags(action_obj, sagemaker_session):
     tags = [{"Key": "foo1", "Value": "bar1"}]
     action_obj.set_tags(tags)
@@ -106,6 +112,7 @@ def test_tags(action_obj, sagemaker_session):
         )["Tags"]
         if actual_tags:
             break
+        time.sleep(5)
     # When sagemaker-client-config endpoint-url is passed as argument to hit some endpoints,
     # length of actual tags will be greater than 1
     assert len(actual_tags) > 0
