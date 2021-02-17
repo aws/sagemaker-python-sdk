@@ -230,6 +230,7 @@ def test_model_quality_monitor(
     monitor.delete_monitoring_schedule()
 
 
+@pytest.mark.slow_test
 @pytest.mark.skipif(
     tests.integ.test_region() in tests.integ.NO_MODEL_MONITORING_REGIONS,
     reason="ModelMonitoring is not yet supported in this region.",
