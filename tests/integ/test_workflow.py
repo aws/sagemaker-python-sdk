@@ -18,10 +18,8 @@ import re
 import time
 import uuid
 
-import boto3
 import pytest
 
-from botocore.config import Config
 from botocore.exceptions import WaiterError
 from sagemaker.debugger import (
     DebuggerHookConfig,
@@ -32,7 +30,7 @@ from sagemaker.inputs import CreateModelInput, TrainingInput
 from sagemaker.model import Model
 from sagemaker.processing import ProcessingInput, ProcessingOutput
 from sagemaker.pytorch.estimator import PyTorch
-from sagemaker.session import get_execution_role, Session
+from sagemaker.session import get_execution_role
 from sagemaker.sklearn.estimator import SKLearn
 from sagemaker.sklearn.processing import SKLearnProcessor
 from sagemaker.workflow.conditions import ConditionGreaterThanOrEqualTo
@@ -76,21 +74,6 @@ def role(sagemaker_session):
 
 
 @pytest.fixture(scope="module")
-def workflow_session(region_name):
-    boto_session = boto3.Session(region_name=region_name)
-
-    sagemaker_client_config = dict()
-    sagemaker_client_config.setdefault("config", Config(retries=dict(max_attempts=2)))
-    sagemaker_client = boto_session.client("sagemaker", **sagemaker_client_config)
-
-    return Session(
-        boto_session=boto_session,
-        sagemaker_client=sagemaker_client,
-        sagemaker_runtime_client=None,
-    )
-
-
-@pytest.fixture(scope="module")
 def script_dir():
     return os.path.join(DATA_DIR, "sklearn_processing")
 
@@ -120,7 +103,6 @@ def athena_dataset_definition(sagemaker_session):
 
 def test_three_step_definition(
     sagemaker_session,
-    workflow_session,
     region_name,
     role,
     script_dir,
@@ -206,7 +188,7 @@ def test_three_step_definition(
         name=pipeline_name,
         parameters=[instance_type, instance_count, output_prefix],
         steps=[step_process, step_train, step_model],
-        sagemaker_session=workflow_session,
+        sagemaker_session=sagemaker_session,
     )
 
     definition = json.loads(pipeline.definition())
@@ -278,7 +260,6 @@ def test_three_step_definition(
 
 def test_one_step_sklearn_processing_pipeline(
     sagemaker_session,
-    workflow_session,
     role,
     sklearn_latest_version,
     cpu_instance_type,
@@ -317,7 +298,7 @@ def test_one_step_sklearn_processing_pipeline(
         name=pipeline_name,
         parameters=[instance_count],
         steps=[step_sklearn],
-        sagemaker_session=workflow_session,
+        sagemaker_session=sagemaker_session,
     )
 
     try:
@@ -372,7 +353,6 @@ def test_one_step_sklearn_processing_pipeline(
 
 def test_conditional_pytorch_training_model_registration(
     sagemaker_session,
-    workflow_session,
     role,
     cpu_instance_type,
     pipeline_name,
@@ -442,7 +422,7 @@ def test_conditional_pytorch_training_model_registration(
         name=pipeline_name,
         parameters=[good_enough_input, instance_count, instance_type],
         steps=[step_cond],
-        sagemaker_session=workflow_session,
+        sagemaker_session=sagemaker_session,
     )
 
     try:
