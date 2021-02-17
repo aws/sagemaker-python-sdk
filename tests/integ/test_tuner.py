@@ -402,6 +402,7 @@ def test_tuning_kmeans_identical_dataset_algorithm_tuner_from_non_terminal_paren
         )
 
 
+@pytest.mark.slow_test
 @pytest.mark.skipif(
     tests.integ.test_region() in tests.integ.NO_LDA_REGIONS,
     reason="LDA image is not supported in certain regions",
