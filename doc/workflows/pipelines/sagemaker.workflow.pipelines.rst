@@ -110,8 +110,6 @@ Steps
 
 .. autoclass:: sagemaker.workflow.steps.ProcessingStep
 
-.. autoclass:: sagemaker.workflow.steps.FailStep
-
 Utilities
 ---------
 
