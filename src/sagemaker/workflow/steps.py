@@ -95,7 +95,7 @@ class Step(Entity):
 
 @attr.s
 class CacheConfig:
-    """Configure steps to enable cache in pipeline workflow.
+    """Configuration class to enable caching in pipeline workflow.
 
     If caching is enabled, the pipeline attempts to find a previous execution of a step
     that was called with the same arguments. Step caching only considers successful execution.
