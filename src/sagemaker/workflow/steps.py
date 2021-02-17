@@ -50,7 +50,6 @@ class StepTypeEnum(Enum, metaclass=DefaultEnumMeta):
 
     CONDITION = "Condition"
     CREATE_MODEL = "Model"
-    FAIL = "Fail"
     PROCESSING = "Processing"
     REGISTER_MODEL = "RegisterModel"
     TRAINING = "Training"
@@ -398,44 +397,3 @@ class ProcessingStep(Step):
                 property_file.expr for property_file in self.property_files
             ]
         return request_dict
-
-
-class FailStep(Step):
-    """Pipeline step to indicate failure."""
-
-    def __init__(self, name: str = "Fail"):
-        """Construct a FailStep.
-
-        Causes the pipeline execution to terminate in a failed state.
-
-        Args:
-            name (str): The name of the step.
-        """
-        super(FailStep, self).__init__(name, StepTypeEnum.FAIL)
-        root_path = f"Steps.{name}"
-        root_prop = Properties(path=root_path)
-        root_prop.__dict__["Fail"] = Properties(f"{root_path}.Fail")
-        self._properties = root_prop
-
-    @property
-    def arguments(self) -> RequestType:
-        """The arguments to the particular step service call."""
-        return {}
-
-    @property
-    def properties(self):
-        """The properties of the particular step."""
-        return self._properties
-
-    def to_request(self) -> RequestType:
-        """Get the request structure for workflow service calls."""
-        return {
-            "Name": self.name,
-            "Type": self.step_type.value,
-            "Arguments": self.arguments,
-        }
-
-    @property
-    def ref(self) -> Dict[str, str]:
-        """Get a reference dict for steps"""
-        return {"Name": self.name}
