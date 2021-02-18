@@ -365,10 +365,28 @@ It loads the model parameters from a ``model.pth`` file in the SageMaker model d
             model.load_state_dict(torch.load(f))
         return model
 
-However, if you are using PyTorch Elastic Inference, you do not have to provide a ``model_fn`` since the PyTorch serving
+However, if you are using PyTorch Elastic Inference 1.3.1, you do not have to provide a ``model_fn`` since the PyTorch serving
 container has a default one for you. But please note that if you are utilizing the default ``model_fn``, please save
 your ScriptModule as ``model.pt``. If you are implementing your own ``model_fn``, please use TorchScript and ``torch.jit.save``
 to save your ScriptModule, then load it in your ``model_fn`` with ``torch.jit.load(..., map_location=torch.device('cpu'))``.
+
+If you are using PyTorch Elastic Inference 1.5.1, you should provide ``model_fn`` like below in your script to use new api ``attach_eia``. Reference can be find in `Elastic Inference documentation <https://docs.aws.amazon.com/elastic-inference/latest/developerguide/ei-pytorch-using.html>`_.
+
+
+.. code:: python
+
+    import torch
+
+
+    def model_fn(model_dir):
+        model = torch.jit.load('model.pth', map_location=torch.device('cpu'))
+        if torch.__version__ == '1.5.1':
+            import torcheia
+            model = model.eval()
+            # attach_eia() is introduced in PyTorch Elastic Inference 1.5.1,
+            model = torcheia.jit.attach_eia(model, 0)
+        return model
+
 
 The client-side Elastic Inference framework is CPU-only, even though inference still happens in a CUDA context on the server. Thus, the default ``model_fn`` for Elastic Inference loads the model to CPU. Tracing models may lead to tensor creation on a specific device, which may cause device-related errors when loading a model onto a different device. Providing an explicit ``map_location=torch.device('cpu')`` argument forces all tensors to CPU.
 
@@ -416,6 +434,7 @@ The SageMaker PyTorch model server provides default implementations of these fun
 You can provide your own implementations for these functions in your hosting script.
 If you omit any definition then the SageMaker PyTorch model server will use its default implementation for that
 function.
+If you use PyTorch Elastic Inference 1.5.1, remember to implement ``predict_fn`` yourself.
 
 The ``Predictor`` used by PyTorch in the SageMaker Python SDK serializes NumPy arrays to the `NPY <https://docs.scipy.org/doc/numpy/neps/npy-format.html>`_ format
 by default, with Content-Type ``application/x-npy``. The SageMaker PyTorch model server can deserialize NPY-formatted
@@ -546,6 +565,25 @@ block, for example:
         model.eval()
         with torch.jit.optimized_execution(True, {"target_device": "eia:0"}):
             output = model(input_data)
+
+If you use PyTorch Elastic Inference 1.5.1, please implement your own ``predict_fn`` like below.
+
+.. code:: python
+
+    import numpy as np
+    import torch
+
+
+    def predict_fn(input_data, model):
+        device = torch.device("cpu")
+        input_data = data.to(device)
+        # make sure torcheia is imported so that Elastic Inference api call will be invoked
+        import torcheia
+        # we need to set the profiling executor for EIA
+        torch._C._jit_set_profiling_executor(False)
+        with torch.jit.optimized_execution(True):
+            output = model.forward(input_data)
+
 
 Process Model Output
 ^^^^^^^^^^^^^^^^^^^^

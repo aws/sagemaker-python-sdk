@@ -309,8 +309,9 @@ class PipelineModel(object):
         )
 
     def delete_model(self):
-        """Delete the SageMaker model backing this pipeline model. This does not
-        delete the list of SageMaker models used in multiple containers to build
+        """Delete the SageMaker model backing this pipeline model.
+
+        This does not delete the list of SageMaker models used in multiple containers to build
         the inference pipeline.
         """
 

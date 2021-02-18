@@ -124,8 +124,9 @@ class RandomCutForest(AmazonAlgorithmEstimatorBase):
         self.eval_metrics = eval_metrics
 
     def create_model(self, vpc_config_override=VPC_CONFIG_DEFAULT, **kwargs):
-        """Return a :class:`~sagemaker.amazon.RandomCutForestModel` referencing
-        the latest s3 model data produced by this Estimator.
+        """Return a :class:`~sagemaker.amazon.RandomCutForestModel`.
+
+        It references the latest s3 model data produced by this Estimator.
 
         Args:
             vpc_config_override (dict[str, list[str]]): Optional override for VpcConfig set on
@@ -143,12 +144,7 @@ class RandomCutForest(AmazonAlgorithmEstimatorBase):
         )
 
     def _prepare_for_training(self, records, mini_batch_size=None, job_name=None):
-        """
-        Args:
-            records:
-            mini_batch_size:
-            job_name:
-        """
+        """Placeholder docstring"""
         if mini_batch_size is None:
             mini_batch_size = self.MINI_BATCH_SIZE
         elif mini_batch_size != self.MINI_BATCH_SIZE:
@@ -184,7 +180,8 @@ class RandomCutForestPredictor(Predictor):
         serializer=RecordSerializer(),
         deserializer=RecordDeserializer(),
     ):
-        """
+        """Initialization for RandomCutForestPredictor class.
+
         Args:
             endpoint_name (str): Name of the Amazon SageMaker endpoint to which
                 requests are sent.
@@ -206,13 +203,15 @@ class RandomCutForestPredictor(Predictor):
 
 
 class RandomCutForestModel(Model):
-    """Reference RandomCutForest s3 model data. Calling
-    :meth:`~sagemaker.model.Model.deploy` creates an Endpoint and returns a
+    """Reference RandomCutForest s3 model data.
+
+    Calling :meth:`~sagemaker.model.Model.deploy` creates an Endpoint and returns a
     Predictor that calculates anomaly scores for datapoints.
     """
 
     def __init__(self, model_data, role, sagemaker_session=None, **kwargs):
-        """
+        """Initialization for RandomCutForestModel class.
+
         Args:
             model_data (str): The S3 location of a SageMaker model data
                 ``.tar.gz`` file.

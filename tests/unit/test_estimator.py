@@ -35,6 +35,7 @@ from sagemaker.debugger import (
     Rule,
 )
 from sagemaker.estimator import Estimator, EstimatorBase, Framework, _TrainingJob
+from sagemaker.fw_utils import PROFILER_UNSUPPORTED_REGIONS
 from sagemaker.inputs import ShuffleConfig
 from sagemaker.model import FrameworkModel
 from sagemaker.predictor import Predictor
@@ -114,6 +115,12 @@ ENDPOINT_DESC = {"EndpointConfigName": "test-endpoint"}
 ENDPOINT_CONFIG_DESC = {"ProductionVariants": [{"ModelName": "model-1"}, {"ModelName": "model-2"}]}
 
 LIST_TAGS_RESULT = {"Tags": [{"Key": "TagtestKey", "Value": "TagtestValue"}]}
+
+DISTRIBUTION_PS_ENABLED = {"parameter_server": {"enabled": True}}
+DISTRIBUTION_MPI_ENABLED = {
+    "mpi": {"enabled": True, "custom_mpi_options": "options", "processes_per_host": 2}
+}
+DISTRIBUTION_SM_DDP_ENABLED = {"smdistributed": {"dataparallel": {"enabled": True}}}
 
 
 class DummyFramework(Framework):
@@ -385,6 +392,58 @@ def test_framework_with_only_debugger_rule(sagemaker_session):
     }
 
 
+def test_framework_with_debugger_rule_and_single_action(sagemaker_session):
+    stop_training_action = rule_configs.StopTraining()
+    f = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        rules=[Rule.sagemaker(rule_configs.stalled_training_rule(), actions=stop_training_action)],
+    )
+    f.fit("s3://mydata")
+    sagemaker_session.train.assert_called_once()
+    _, args = sagemaker_session.train.call_args
+    assert args["debugger_rule_configs"][0]["RuleParameters"] == {
+        "rule_to_invoke": "StalledTrainingRule",
+        "action_json": stop_training_action.serialize(),
+    }
+    assert stop_training_action.action_parameters["training_job_prefix"] == f._current_job_name
+    assert args["debugger_hook_config"] == {
+        "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
+        "CollectionConfigurations": [],
+    }
+
+
+def test_framework_with_debugger_rule_and_multiple_actions(sagemaker_session):
+    action_list = rule_configs.ActionList(
+        rule_configs.StopTraining(),
+        rule_configs.Email("abc@abc.com"),
+        rule_configs.SMS("+1234567890"),
+    )
+    f = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        rules=[Rule.sagemaker(rule_configs.stalled_training_rule(), actions=action_list)],
+    )
+    f.fit("s3://mydata")
+    sagemaker_session.train.assert_called_once()
+    _, args = sagemaker_session.train.call_args
+    assert args["debugger_rule_configs"][0]["RuleParameters"] == {
+        "rule_to_invoke": "StalledTrainingRule",
+        "action_json": action_list.serialize(),
+    }
+    assert action_list.actions[0].action_parameters["training_job_prefix"] == f._current_job_name
+    assert args["debugger_hook_config"] == {
+        "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
+        "CollectionConfigurations": [],
+    }
+
+
 def test_framework_with_only_debugger_hook_config(sagemaker_session):
     hook_config = DebuggerHookConfig(
         s3_output_path="s3://output", collection_configs=[CollectionConfig(name="weights")]
@@ -572,6 +631,32 @@ def test_framework_with_profiler_config_without_s3_output_path(time, sagemaker_s
             "RuleParameters": {"rule_to_invoke": "ProfilerReport"},
         }
     ]
+
+
+@pytest.mark.parametrize("region", PROFILER_UNSUPPORTED_REGIONS)
+def test_framework_with_no_default_profiler_in_unsupported_region(region):
+    boto_mock = Mock(name="boto_session", region_name=region)
+    sms = MagicMock(
+        name="sagemaker_session",
+        boto_session=boto_mock,
+        boto_region_name=region,
+        config=None,
+        local_mode=False,
+        s3_client=None,
+        s3_resource=None,
+    )
+    f = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sms,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+    )
+    f.fit("s3://mydata")
+    sms.train.assert_called_once()
+    _, args = sms.train.call_args
+    assert args.get("profiler_config") is None
+    assert args.get("profiler_rule_configs") is None
 
 
 def test_framework_with_profiler_config_and_profiler_disabled(sagemaker_session):
@@ -3157,3 +3242,44 @@ def test_estimator_local_mode_ok(sagemaker_local_session):
         sagemaker_session=sagemaker_local_session,
         base_job_name="base_job_name",
     )
+
+
+def test_framework_distribution_configuration(sagemaker_session):
+    framework = DummyFramework(
+        entry_point="script",
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+    )
+    actual_ps = framework._distribution_configuration(distribution=DISTRIBUTION_PS_ENABLED)
+    expected_ps = {"sagemaker_parameter_server_enabled": True}
+    assert actual_ps == expected_ps
+
+    actual_mpi = framework._distribution_configuration(distribution=DISTRIBUTION_MPI_ENABLED)
+    expected_mpi = {
+        "sagemaker_mpi_enabled": True,
+        "sagemaker_mpi_num_of_processes_per_host": 2,
+        "sagemaker_mpi_custom_mpi_options": "options",
+    }
+    assert actual_mpi == expected_mpi
+
+    actual_ddp = framework._distribution_configuration(distribution=DISTRIBUTION_SM_DDP_ENABLED)
+    expected_ddp = {
+        "sagemaker_distributed_dataparallel_enabled": True,
+        "sagemaker_instance_type": INSTANCE_TYPE,
+    }
+    assert actual_ddp == expected_ddp
+
+
+def test_image_name_map(sagemaker_session):
+    e = DummyFramework(
+        "my_script.py",
+        image_name=IMAGE_URI,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+    )
+
+    assert e.image_uri == IMAGE_URI

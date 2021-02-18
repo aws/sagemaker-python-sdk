@@ -45,11 +45,11 @@ class SKLearn(Framework):
         image_uri=None,
         **kwargs
     ):
-        """This ``Estimator`` executes an Scikit-learn script in a managed
-        Scikit-learn execution environment, within a SageMaker Training Job. The
-        managed Scikit-learn environment is an Amazon-built Docker container
-        that executes functions defined in the supplied ``entry_point`` Python
-        script.
+        """Creates a SKLearn Estimator for Scikit-learn environment.
+
+        It will execute an Scikit-learn script within a SageMaker Training Job. The managed
+        Scikit-learn environment is an Amazon-built Docker container that executes functions
+        defined in the supplied ``entry_point`` Python script.
 
         Training is started by calling
         :meth:`~sagemaker.amazon.estimator.Framework.fit` on this Estimator.
@@ -160,8 +160,7 @@ class SKLearn(Framework):
         dependencies=None,
         **kwargs
     ):
-        """Create a SageMaker ``SKLearnModel`` object that can be deployed to an
-        ``Endpoint``.
+        """Create a SageMaker ``SKLearnModel`` object that can be deployed to an ``Endpoint``.
 
         Args:
             model_server_workers (int): Optional. The number of worker processes
@@ -219,8 +218,7 @@ class SKLearn(Framework):
 
     @classmethod
     def _prepare_init_params_from_job_description(cls, job_details, model_channel_name=None):
-        """Convert the job description to init params that can be handled by the
-        class constructor
+        """Convert the job description to init params that can be handled by the class constructor.
 
         Args:
             job_details: the returned job details from a describe_training_job
@@ -261,10 +259,7 @@ class SKLearn(Framework):
 
 
 def _validate_not_gpu_instance_type(training_instance_type):
-    """
-    Args:
-        training_instance_type:
-    """
+    """Placeholder docstring."""
     gpu_instance_types = [
         "ml.p2.xlarge",
         "ml.p2.8xlarge",

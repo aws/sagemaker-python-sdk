@@ -1,5 +1,182 @@
 # Changelog
 
+## v2.24.5 (2021-02-12)
+
+### Bug Fixes and Other Changes
+
+ * test_tag/test_tags method assert fix in association tests
+
+### Documentation Changes
+
+ * removing mention of TF 2.4 from SM distributed model parallel docs
+ * adding details about mpi options, other small updates
+
+## v2.24.4 (2021-02-09)
+
+### Bug Fixes and Other Changes
+
+ * add integration test for listing artifacts by type
+ * List Associations integ tests
+
+## v2.24.3 (2021-02-04)
+
+### Bug Fixes and Other Changes
+
+ * Remove pytest fixture and fix test_tag/s method
+
+## v2.24.2 (2021-02-03)
+
+### Bug Fixes and Other Changes
+
+ * use 3.5 version of get-pip.py
+ * SM DDP release notes/changelog files
+
+### Documentation Changes
+
+ * adding versioning to sm distributed data parallel docs
+
+## v2.24.1 (2021-01-28)
+
+### Bug Fixes and Other Changes
+
+ * fix collect-tests tox env
+ * create profiler specific unsupported regions
+ * Update smd_model_parallel_pytorch.rst
+
+## v2.24.0 (2021-01-22)
+
+### Features
+
+ * add support for Std:Join for pipelines
+ * Map image name to image uri
+ * friendly names for short URIs
+
+### Bug Fixes and Other Changes
+
+ * increase allowed time for search to get updated
+ * refactor distribution config construction
+
+### Documentation Changes
+
+ * Add SMP 1.2.0 API docs
+
+## v2.23.6 (2021-01-20)
+
+### Bug Fixes and Other Changes
+
+ * add artifact, action, context to virsualizer
+
+## v2.23.5 (2021-01-18)
+
+### Bug Fixes and Other Changes
+
+ * increase time allowed for trial components to index
+
+## v2.23.4.post0 (2021-01-14)
+
+### Documentation Changes
+
+ * update predict_fn implementation for PyTorch EIA 1.5.1
+
+## v2.23.4 (2021-01-13)
+
+### Bug Fixes and Other Changes
+
+ * remove captureWarninig setting
+
+## v2.23.3 (2021-01-12)
+
+### Bug Fixes and Other Changes
+
+ * improve optional dependency error message
+ * add debugger rule container account in PDT
+ * assert step execution first in pipeline test
+ * add service inserted fields to generated Hive DDL
+
+### Documentation Changes
+
+ * fix description for max_wait
+ * use correct classpath in V2 alias documentation.
+ * Bad arg name in feat-store ingestion manager
+
+## v2.23.2 (2021-01-06)
+
+### Bug Fixes and Other Changes
+
+ * remove shell=True in subprocess.check_output
+ * use SecurityConfig dict key
+
+### Documentation Changes
+
+ * remove D212 from ignore to comply with PEP257 standards
+
+## v2.23.1 (2020-12-29)
+
+### Bug Fixes and Other Changes
+
+ * update git utils temp file
+ * Allow online store only FeatureGroups
+
+### Documentation Changes
+
+ * inform contributors when not to mark integration tests as canaries
+ * adding change log for smd model parallel
+
+## v2.23.0 (2020-12-23)
+
+### Features
+
+ * Add support for actions in debugger rules.
+
+### Bug Fixes and Other Changes
+
+ * include sparkml 2.4 in image uri config properly
+ * Mount metadata dir only if it exists
+ * allow urllib3 1.26
+
+## v2.22.0 (2020-12-22)
+
+### Features
+
+ * Support local mode for Amazon SageMaker Processing jobs
+
+### Bug Fixes and Other Changes
+
+ * Add API enhancements for SMP
+ * adjust naming convention; fix links
+ * lower value used in featurestore test
+
+### Documentation Changes
+
+ * Update GTDD instructions
+
+## v2.21.0 (2020-12-21)
+
+### Features
+
+ * remove D205 to enable PEP257 Docstring Conventions
+
+### Bug Fixes and Other Changes
+
+ * Pin smdebug-rulesconfig to 1.0.0
+ * use itertuples to ingest pandas dataframe to FeatureStore
+
+## v2.20.0 (2020-12-16)
+
+### Features
+
+ * add dataset definition support for processing jobs
+
+### Bug Fixes and Other Changes
+
+ * include workflow integ tests with clarify and debugger enabled
+ * only run DataParallel and EdgePackaging tests in supported regions
+
+### Documentation Changes
+
+ * fix smp code example, add note for CUDA 11 to sdp
+ * adding note about CUDA 11 to SMP. Small title update PyTorch
+
 ## v2.19.0 (2020-12-08)
 
 ### Features

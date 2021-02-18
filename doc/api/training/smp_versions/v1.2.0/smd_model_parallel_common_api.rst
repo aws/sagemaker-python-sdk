@@ -1,7 +1,12 @@
-Common SMP API
---------------
+.. admonition:: Contents
 
-The following API is common across all frameworks.
+   - :ref:`communication_api`
+   - :ref:`mpi_basics`
+
+Common API
+==========
+
+The following SageMaker distribute model parallel APIs are common across all frameworks.
 
 **Important**: This API document assumes you use the following import statement in your training scripts.
 
@@ -20,7 +25,7 @@ The following API is common across all frameworks.
 
 .. function:: smp.init( )
 
-   Initialize SMP. Must be called at the beginning of training script.
+   Initialize the library. Must be called at the beginning of training script.
 
 .. function:: @smp.step(non_split_inputs, input_split_axes, [*args, **kwargs])
 
@@ -32,7 +37,7 @@ The following API is common across all frameworks.
    By default, every tensor input to the function is split across its batch
    dimension into a number of microbatches specified while launching the
    training job. This behavior can be customized through the arguments to
-   ``smp.step``, described below. SMP then orchestrates the execution of
+   ``smp.step``, described below. The library then orchestrates the execution of
    each microbatch across all partitions, based on the chosen pipeline
    type.
 
@@ -56,6 +61,37 @@ The following API is common across all frameworks.
    ``StepOutput`` objects. A ``StepOutput`` object encapsulates all
    versions of the tensor across different microbatches
    (see ``StepOutput`` entry for more information).
+
+   The argument to ``smp.step`` decorated function should either be a tensor
+   or an instance of list, tuple, dict or set for it to be split across
+   microbatches. If your object doesn't fall into this category, you can make
+   the library split your object, by implementing ``smp_slice`` method.
+
+   Below is an example of how to use it with PyTorch.
+
+   .. code:: python
+
+      class CustomType:
+          def __init__(self, tensor):
+              self.data = tensor
+
+          # The library will call this to invoke slicing on the object passing in total microbatches (num_mb)
+          # and the current microbatch index (mb).
+          def smp_slice(self, num_mb, mb, axis):
+              dim_size = list(self.data.size())[axis]
+
+              split_size = dim_size // num_mb
+              sliced_tensor = self.data.narrow(axis, mb * split_size, split_size)
+              return CustomType(sliced_tensor, self.other)
+
+      custom_obj = CustomType(torch.ones(4,))
+
+      @smp.step()
+      def step(custom_obj):
+          loss = model(custom_obj)
+          model.backward(loss)
+          return loss
+
 
    **Important:** ``smp.step`` splits the batch into microbatches, and
    executes everything inside the decorated function once per microbatch.
@@ -82,6 +118,9 @@ The following API is common across all frameworks.
    -  https://www.tensorflow.org/api_docs/python/tf/function\
    -  https://www.tensorflow.org/guide/function\
 
+   Each ``smp.step`` decorated function must have a return value that depends on the
+   output of ``smp.DistributedModel``.
+
    **Common parameters**
 
    -  ``non_split_inputs`` (``list``): The list of arguments to the decorated function
@@ -101,7 +140,7 @@ The following API is common across all frameworks.
    -  All arguments of ``tf.function``. Note:
       The \ ``experimental_compile`` argument of ``tf.function`` may not
       work as expected with ``smp.step``, since it interferes with
-      pipelining and model partitioning. To enable XLA with SMP, you can
+      pipelining and model partitioning. To enable XLA with the library, you can
       instead use \ ``tf.config.optimizer.set_jit(True)``.
 
    **PyTorch-only parameters**
@@ -200,23 +239,24 @@ The following API is common across all frameworks.
       **Parameters**
 
       -  ``method`` (``"add_n"`` or ``"accumulate_n"`` or ``"variable"``):
-         If ``"add_n"`` or ``"accumulate_n"``, SMP uses
+         If ``"add_n"`` or ``"accumulate_n"``, the library uses
          ``tf.add_n`` and ``tf.accumulate_n``, respectively, to implement
-         accumulation. If ``"variable"``, SMP uses an internal ``tf.Variable``
+         accumulation. If ``"variable"``, the library uses an internal ``tf.Variable``
          into which to accumulate the tensors. Default is \ ``"variable"``.
          Note: Memory usage behavior of these choices can depend on the model
          and implementation.
 
-      -  ``var``: A ``tf.Variable`` into which, if provided, SMP uses to
-         accumulate the tensors. If \ ``None``, SMP internally creates a
+      -  ``var``: A ``tf.Variable`` into which, if provided, the library uses to
+         accumulate the tensors. If \ ``None``, the library internally creates a
          variable. If ``method`` is not ``"variable"``, this argument is
          ignored.
 
+.. _mpi_basics:
 
 MPI Basics
 ^^^^^^^^^^
 
-SMP exposes the following basic MPI primitives to its Python API:
+The library exposes the following basic MPI primitives to its Python API:
 
 -  ``smp.rank()``: The rank of the current process.
 -  ``smp.size()``: The total number of processes.
@@ -234,10 +274,12 @@ SMP exposes the following basic MPI primitives to its Python API:
 -  ``smp.get_dp_group()``: The list of ranks that hold different
    replicas of the same model partition.
 
-Communication API
-=================
+   .. _communication_api:
 
-SMP provides a few communication primitives which can be helpful while
+Communication API
+^^^^^^^^^^^^^^^^^
+
+The library provides a few communication primitives which can be helpful while
 developing the training script. These primitives use the following
 ``enum`` s as arguments to specify which processes the communication
 should involve.

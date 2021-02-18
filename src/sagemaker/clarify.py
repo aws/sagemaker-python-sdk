@@ -262,8 +262,7 @@ class SHAPConfig(ExplainabilityConfig):
         use_logit=False,
         save_local_shap_values=True,
     ):
-        """
-        Initializes config for SHAP.
+        """Initializes config for SHAP.
 
         Args:
             baseline (str or list): A list of rows (at least one) or S3 object URI to be used as

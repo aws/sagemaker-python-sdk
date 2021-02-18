@@ -1,7 +1,12 @@
+.. admonition:: Contents
+
+   - :ref:`pytorch_saving_loading`
+   - :ref:`pytorch_saving_loading_instructions`
+
 PyTorch API
 ===========
 
-**Supported versions: 1.6.0**
+**Supported versions: 1.7.1, 1.6**
 
 This API document assumes you use the following import statements in your training scripts.
 
@@ -9,6 +14,13 @@ This API document assumes you use the following import statements in your traini
 
    import smdistributed.modelparallel.torch as smp
 
+
+.. tip::
+
+   Refer to
+   `Modify a PyTorch Training Script
+   <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-customize-training-script.html#model-parallel-customize-training-script-pt>`_
+   to learn how to use the following API in your PyTorch training script.
 
 .. class:: smp.DistributedModel
 
@@ -18,7 +30,6 @@ This API document assumes you use the following import statements in your traini
    internally manages model parallelism and data parallelism. Only one
    model in the training script can be wrapped with
    ``smp.DistributedModel``.
-
 
    **Example:**
 
@@ -77,6 +88,17 @@ This API document assumes you use the following import statements in your traini
    the model objects (``model(inputs)`` and ``model.backward(loss)``) must be made inside
    a ``smp.step``-decorated function.
 
+   **Using DDP**
+
+   If DDP is enabled, do not not place a PyTorch
+   ``DistributedDataParallel`` wrapper around the ``DistributedModel`` because
+   the ``DistributedModel`` wrapper will also handle data parallelism.
+
+   Unlike the original DDP wrapper, when you use ``DistributedModel``,
+   model parameters and buffers are not immediately broadcast across
+   processes when the wrapper is called. Instead, the broadcast is deferred to the first call of the
+   ``smp.step``-decorated function when the partition is done.
+
    **Parameters**
 
    -  ``module`` (``torch.nn.Module``): Module to be distributed (data parallelism and model parallelism).
@@ -91,7 +113,7 @@ This API document assumes you use the following import statements in your traini
       fit in a single GPU, then ``trace_device`` should be set to CPU.
 
    -  ``trace_execution_times`` (``bool``) (default: ``False``): If ``True``,
-      SMP profiles the execution time of each module during tracing, and uses
+      the library profiles the execution time of each module during tracing, and uses
       it in the partitioning decision. This improves the partitioning
       decision, but it might make the tracing slower. It may also introduce
       some degree of non-determinism in partitioning results, because of the
@@ -100,7 +122,7 @@ This API document assumes you use the following import statements in your traini
 
    -  ``overlapping_allreduce`` (``bool``) (default: ``True``): This is only
       applicable for hybrid data parallelism/model parallelism use cases (when
-      ``ddp`` is set to ``True`` while launching training). SMP uses this flag
+      ``ddp`` is set to ``True`` while launching training). The library uses this flag
       to decide whether to do overlapping allreduce whenever a parameter
       gradients are ready. This leads to overlapping of communication and
       computation and can improve performance. If this is set to ``False`` ,
@@ -127,6 +149,19 @@ This API document assumes you use the following import statements in your traini
       bucket can potentially overlap with backward
       computation. \ ``bucket_cap_mb``\ controls the bucket size in MegaBytes
       (MB).
+
+   -  ``trace_memory_usage`` (default: False): When set to True, the library attempts
+      to measure memory usage per module during tracing. If this is disabled,
+      memory usage will be estimated through the sizes of tensors returned from
+      the module.
+
+   -  ``broadcast_buffers`` (default: True): Flag to be used with ``ddp=True``.
+      This parameter is forwarded to the underlying ``DistributedDataParallel`` wrapper.
+      Please see: `broadcast_buffer <https://pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html#torch.nn.parallel.DistributedDataParallel>`__.
+
+   -  ``gradient_as_bucket_view (PyTorch 1.7 only)`` (default: False): To be
+      used with ``ddp=True``. This parameter is forwarded to the underlying
+      ``DistributedDataParallel`` wrapper. Please see `gradient_as_bucket_view <https://pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html#torch.nn.parallel.DistributedDataParallel>`__.
 
    **Properties**
 
@@ -214,6 +249,24 @@ This API document assumes you use the following import statements in your traini
       the first call to ``smp.step``, but before the actual execution of the
       first forward pass. Returns a ``RemovableHandle`` object ``handle``,
       which can be used to remove the hook by calling ``handle.remove()``.
+
+   .. function:: cpu( )
+
+      Allgathers parameters and buffers across all ``mp_rank``\ s and moves them
+      to the CPU.
+
+   .. function:: join( )
+
+      **Available for PyTorch 1.7 only**
+
+      A context manager to be used in conjunction with an instance of
+      ``smp.DistributedModel`` to be able to train with uneven inputs across
+      participating processes. This is only supported when ``ddp=True`` for
+      ``smp.DistributedModel``. This will use the join with the wrapped
+      ``DistributedDataParallel`` instance. For more information, see:
+      `join <https://pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html#torch.nn.parallel.DistributedDataParallel.join>`__
+      in the PyTorch documentation.
+
 
 .. class:: smp.DistributedOptimizer
 
@@ -318,7 +371,7 @@ This API document assumes you use the following import statements in your traini
 .. data:: smp.nn.FusedLayerNorm
 
    `Apex Fused Layer Norm <https://nvidia.github.io/apex/layernorm.html>`__ is currently not
-   supported by SMP. ``smp.nn.FusedLayerNorm`` replaces ``apex``
+   supported by the library. ``smp.nn.FusedLayerNorm`` replaces ``apex``
    ``FusedLayerNorm`` and provides the same functionality. This requires
    ``apex`` to be installed on the system.
 
@@ -326,7 +379,7 @@ This API document assumes you use the following import statements in your traini
 
 
    `Fused Novo Grad optimizer <https://nvidia.github.io/apex/optimizers.html#apex.optimizers.FusedNovoGrad>`__ is
-   currently not supported by SMP. ``smp.optimizers.FusedNovoGrad`` replaces ``apex`` ``FusedNovoGrad``
+   currently not supported by the library. ``smp.optimizers.FusedNovoGrad`` replaces ``apex`` ``FusedNovoGrad``
    optimizer and provides the same functionality. This requires ``apex`` to
    be installed on the system.
 
@@ -334,16 +387,17 @@ This API document assumes you use the following import statements in your traini
 
 
    `FusedLamb optimizer <https://nvidia.github.io/apex/optimizers.html#apex.optimizers.FusedLAMB>`__
-   currently doesn’t work with SMP. ``smp.optimizers.FusedLamb`` replaces
+   currently doesn’t work with the library. ``smp.optimizers.FusedLamb`` replaces
    ``apex`` ``FusedLamb`` optimizer and provides the same functionality.
    This requires ``apex`` to be installed on the system.
 
 .. data:: smp.amp.GradScaler
 
    `Torch AMP Gradscaler <https://pytorch.org/docs/stable/amp.html#torch.cuda.amp.GradScaler>`__
-   currently doesn’t work with SMP. ``smp.amp.GradScaler`` replaces
+   currently doesn’t work with the library. ``smp.amp.GradScaler`` replaces
    ``torch.amp.GradScaler`` and provides the same functionality.
 
+.. _pytorch_saving_loading:
 
 APIs for Saving and Loading
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -353,7 +407,7 @@ APIs for Saving and Loading
    Saves an object. This operation is similar to ``torch.save()``, except
    it has an additional keyword argument, ``partial``, and accepts only
    string type for the argument ``f`` (file). If ``partial=True``, each
-   ``mp_rank`` saves a separate checkpoint file and SMP adds an ``mp_rank``
+   ``mp_rank`` saves a separate checkpoint file and the library adds an ``mp_rank``
    index to your saved file.
 
    **Parameters**
@@ -361,7 +415,7 @@ APIs for Saving and Loading
    -  ``obj`` (dict): A saved object.
    -  ``f`` (str): A string containing a file name.
    -  ``partial`` (bool, default= ``True``):  When set to ``True``, each
-      ``mp_rank`` saves a separate checkpoint file and SMP adds an
+      ``mp_rank`` saves a separate checkpoint file and the library adds an
       ``mp_rank`` index to the saved file. If you want to be able to load
       and further train a model that you save with ``smp.save()``, you must
       set ``partial=True``.
@@ -392,16 +446,18 @@ APIs for Saving and Loading
       passed to ``pickle_module.load()`` and ``pickle_module.Unpickler()``.
    -  ``partial`` (bool, default= ``True``): When set to ``True``, each
       ``mp_rank`` loads the checkpoint corresponding to the ``mp_rank``.
-      Should be used when loading a model trained with SMP.
+      Should be used when loading a model trained with the library.
+
+.. _pytorch_saving_loading_instructions:
 
 General Instruction For Saving and Loading
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-SMP can save partial or full checkpoints.
+The library can save partial or full checkpoints.
 
 -  For partial checkpoints, each ``mp_rank`` saves its own checkpoint
    file with only the parameters that belong to that rank.
--  For full checkpoints, SMP saves a single checkpoint that contains
+-  For full checkpoints, the library saves a single checkpoint that contains
    entire model parameters.
 
 When **saving** using ``smp.save()``, each rank only holds its own
@@ -410,9 +466,9 @@ communication between the ranks to create the full model. If you save
 checkpoints often, you should save partial checkpoints for best
 performance.
 
-When **loading** using ``smp.load()``, SMP can load either partial or |
-full checkpoints or full checkpoints saved by a non-SMP model. If you
-want to resume training with a non-SMP model or do inference, you need
+When **loading** using ``smp.load()``, the library can load either partial or |
+full checkpoints or full checkpoints saved by a non-model-parallel model. If you
+want to resume training with a non-model-parallel model or do inference, you need
 a full checkpoint.
 
 The following is an example of how you can save and load a checkpoint:
@@ -423,14 +479,14 @@ The following is an example of how you can save and load a checkpoint:
    model = MyModel(...)
    optimizer = MyOpt(...)
 
-   # SMP wrapper
+   # model parallel wrapper
    model = smp.DistributedModel(model)
    optimizer = smp.DistributedOptimizer(optimizer)
 
    # To save, always save on dp_rank 0 to avoid data racing
    if partial:
        # To save the partial model on each mp rank
-       # SMP will create `checkpoint.pt_{mprank}` for each mp rank
+       # the library will create `checkpoint.pt_{mprank}` for each mp rank
        if save_partial_model:
            if smp.dp_rank() == 0:
                model_dict = model.local_state_dict() # save the partial model

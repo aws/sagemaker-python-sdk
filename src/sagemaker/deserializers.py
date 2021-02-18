@@ -270,8 +270,7 @@ class PandasDeserializer(SimpleBaseDeserializer):
         super(PandasDeserializer, self).__init__(accept=accept)
 
     def deserialize(self, stream, content_type):
-        """Deserialize CSV or JSON data from an inference endpoint into a pandas
-        dataframe.
+        """Deserialize CSV or JSON data from an inference endpoint into a pandas dataframe.
 
         If the data is JSON, the data should be formatted in the 'columns' orient.
         See https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.read_json.html

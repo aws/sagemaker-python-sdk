@@ -71,9 +71,9 @@ class KMeans(AmazonAlgorithmEstimatorBase):
         eval_metrics=None,
         **kwargs
     ):
-        """A k-means clustering
-        :class:`~sagemaker.amazon.AmazonAlgorithmEstimatorBase`. Finds k
-        clusters of data in an unlabeled dataset.
+        """A k-means clustering class :class:`~sagemaker.amazon.AmazonAlgorithmEstimatorBase`.
+
+        Finds k clusters of data in an unlabeled dataset.
 
         This Estimator may be fit via calls to
         :meth:`~sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase.fit_ndarray`
@@ -161,8 +161,9 @@ class KMeans(AmazonAlgorithmEstimatorBase):
         self.eval_metrics = eval_metrics
 
     def create_model(self, vpc_config_override=VPC_CONFIG_DEFAULT, **kwargs):
-        """Return a :class:`~sagemaker.amazon.kmeans.KMeansModel` referencing
-        the latest s3 model data produced by this Estimator.
+        """Return a :class:`~sagemaker.amazon.kmeans.KMeansModel`.
+
+        It references the latest s3 model data produced by this Estimator.
 
         Args:
             vpc_config_override (dict[str, list[str]]): Optional override for
@@ -181,20 +182,13 @@ class KMeans(AmazonAlgorithmEstimatorBase):
         )
 
     def _prepare_for_training(self, records, mini_batch_size=5000, job_name=None):
-        """
-        Args:
-            records:
-            mini_batch_size:
-            job_name:
-        """
+        """Placeholder docstring"""
         super(KMeans, self)._prepare_for_training(
             records, mini_batch_size=mini_batch_size, job_name=job_name
         )
 
     def hyperparameters(self):
-        """Return the SageMaker hyperparameters for training this KMeans
-        Estimator
-        """
+        """Return the SageMaker hyperparameters for training this KMeans Estimator."""
         hp_dict = dict(force_dense="True")  # KMeans requires this hp to fit on Record objects
         hp_dict.update(super(KMeans, self).hyperparameters())
         return hp_dict
@@ -223,7 +217,8 @@ class KMeansPredictor(Predictor):
         serializer=RecordSerializer(),
         deserializer=RecordDeserializer(),
     ):
-        """
+        """Initialization for KMeansPredictor class.
+
         Args:
             endpoint_name (str): Name of the Amazon SageMaker endpoint to which
                 requests are sent.
@@ -245,13 +240,15 @@ class KMeansPredictor(Predictor):
 
 
 class KMeansModel(Model):
-    """Reference KMeans s3 model data. Calling
-    :meth:`~sagemaker.model.Model.deploy` creates an Endpoint and return a
+    """Reference KMeans s3 model data.
+
+    Calling :meth:`~sagemaker.model.Model.deploy` creates an Endpoint and return a
     Predictor to performs k-means cluster assignment.
     """
 
     def __init__(self, model_data, role, sagemaker_session=None, **kwargs):
-        """
+        """Initialization for KMeansModel class.
+
         Args:
             model_data (str): The S3 location of a SageMaker model data
                 ``.tar.gz`` file.

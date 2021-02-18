@@ -387,8 +387,9 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
             )
 
     def create_model(self, vpc_config_override=VPC_CONFIG_DEFAULT, **kwargs):
-        """Return a :class:`~sagemaker.amazon.LinearLearnerModel` referencing
-        the latest s3 model data produced by this Estimator.
+        """Return a :class:`~sagemaker.amazon.LinearLearnerModel`.
+
+        It references the latest s3 model data produced by this Estimator.
 
         Args:
             vpc_config_override (dict[str, list[str]]): Optional override for VpcConfig set on
@@ -406,12 +407,7 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
         )
 
     def _prepare_for_training(self, records, mini_batch_size=None, job_name=None):
-        """
-        Args:
-            records:
-            mini_batch_size:
-            job_name:
-        """
+        """Placeholder docstring"""
         num_records = None
         if isinstance(records, list):
             for record in records:
@@ -434,8 +430,7 @@ class LinearLearner(AmazonAlgorithmEstimatorBase):
 
 
 class LinearLearnerPredictor(Predictor):
-    """Performs binary-classification or regression prediction from input
-    vectors.
+    """Performs binary-classification or regression prediction from input vectors.
 
     The implementation of
     :meth:`~sagemaker.predictor.Predictor.predict` in this
@@ -457,7 +452,8 @@ class LinearLearnerPredictor(Predictor):
         serializer=RecordSerializer(),
         deserializer=RecordDeserializer(),
     ):
-        """
+        """Initialization for LinearLearnerPredictor.
+
         Args:
             endpoint_name (str): Name of the Amazon SageMaker endpoint to which
                 requests are sent.
@@ -479,13 +475,15 @@ class LinearLearnerPredictor(Predictor):
 
 
 class LinearLearnerModel(Model):
-    """Reference LinearLearner s3 model data. Calling
-    :meth:`~sagemaker.model.Model.deploy` creates an Endpoint and returns a
+    """Reference LinearLearner s3 model data.
+
+    Calling :meth:`~sagemaker.model.Model.deploy` creates an Endpoint and returns a
     :class:`LinearLearnerPredictor`
     """
 
     def __init__(self, model_data, role, sagemaker_session=None, **kwargs):
-        """
+        """Initialization for LinearLearnerModel.
+
         Args:
             model_data (str): The S3 location of a SageMaker model data
                 ``.tar.gz`` file.
