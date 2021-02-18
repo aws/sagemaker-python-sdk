@@ -17,8 +17,6 @@ import pytest
 from sagemaker import image_uris
 from tests.unit.sagemaker.image_uris import expected_uris, regions
 
-
-INFERENTIA_REGIONS = ("us-east-1", "us-west-2")
 NEO_ALGOS = ("image-classification-neo", "xgboost-neo")
 
 ACCOUNTS = {
@@ -46,6 +44,8 @@ ACCOUNTS = {
     "us-west-1": "710691900526",
     "us-west-2": "301217895009",
 }
+
+INFERENTIA_REGIONS = ACCOUNTS.keys()
 
 
 @pytest.mark.parametrize("algo", NEO_ALGOS)

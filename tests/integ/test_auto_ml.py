@@ -47,6 +47,7 @@ EXPECTED_DEFAULT_JOB_CONFIG = {
 }
 
 
+@pytest.mark.slow_test
 @pytest.mark.skipif(
     tests.integ.test_region() in tests.integ.NO_AUTO_ML_REGIONS,
     reason="AutoML is not supported in the region yet.",

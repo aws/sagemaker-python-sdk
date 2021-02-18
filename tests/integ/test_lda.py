@@ -26,6 +26,7 @@ from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 from tests.integ.record_set import prepare_record_set_from_local_files
 
 
+@pytest.mark.slow_test
 @pytest.mark.skipif(
     tests.integ.test_region() in tests.integ.NO_LDA_REGIONS,
     reason="LDA image is not supported in certain regions",

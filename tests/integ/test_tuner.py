@@ -402,6 +402,7 @@ def test_tuning_kmeans_identical_dataset_algorithm_tuner_from_non_terminal_paren
         )
 
 
+@pytest.mark.slow_test
 @pytest.mark.skipif(
     tests.integ.test_region() in tests.integ.NO_LDA_REGIONS,
     reason="LDA image is not supported in certain regions",
@@ -523,6 +524,7 @@ def test_stop_tuning_job(sagemaker_session, cpu_instance_type):
     assert desc["HyperParameterTuningJobStatus"] == "Stopping"
 
 
+@pytest.mark.slow_test
 @pytest.mark.canary_quick
 def test_tuning_mxnet(
     sagemaker_session,

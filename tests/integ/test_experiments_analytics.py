@@ -35,6 +35,7 @@ def experiment(sagemaker_session):
             sm.associate_trial_component(
                 TrialComponentName=trial_component_name, TrialName=trial_name
             )
+            time.sleep(1)
 
         time.sleep(15)  # wait for search to get updated
 
@@ -87,6 +88,7 @@ def experiment_with_artifacts(sagemaker_session):
             sm.associate_trial_component(
                 TrialComponentName=trial_component_name, TrialName=trial_name
             )
+            time.sleep(1)
 
         time.sleep(15)  # wait for search to get updated
 
@@ -121,22 +123,6 @@ def test_experiment_analytics_artifacts(sagemaker_session):
             "inputArtifacts1 - Value",
             "outputArtifacts1 - MediaType",
             "outputArtifacts1 - Value",
-            "Trials",
-            "Experiments",
-        ]
-
-
-@pytest.mark.canary_quick
-def test_experiment_analytics(sagemaker_session):
-    with experiment(sagemaker_session) as experiment_name:
-        analytics = ExperimentAnalytics(
-            experiment_name=experiment_name, sagemaker_session=sagemaker_session
-        )
-
-        assert list(analytics.dataframe().columns) == [
-            "TrialComponentName",
-            "DisplayName",
-            "hp1",
             "Trials",
             "Experiments",
         ]
