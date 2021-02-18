@@ -305,7 +305,6 @@ def test_deploy_model_and_update_endpoint(
         assert new_config["ProductionVariants"][0]["InitialInstanceCount"] == 1
 
 
-@pytest.mark.canary_quick
 @pytest.mark.skipif(
     tests.integ.test_region() not in tests.integ.EI_SUPPORTED_REGIONS,
     reason="EI isn't supported in that specific region.",

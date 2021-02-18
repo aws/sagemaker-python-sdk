@@ -528,7 +528,6 @@ def test_mxnet_with_tensorboard_output_config(
         _wait_and_assert_that_no_rule_jobs_errored(training_job=mx.latest_training_job)
 
 
-@pytest.mark.canary_quick
 def test_mxnet_with_all_rules_and_configs(
     sagemaker_session,
     mxnet_training_latest_version,
