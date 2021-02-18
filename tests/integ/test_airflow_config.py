@@ -402,7 +402,6 @@ def test_rcf_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_ins
         )
 
 
-@pytest.mark.canary_quick
 def test_chainer_airflow_config_uploads_data_source_to_s3(
     sagemaker_local_session, cpu_instance_type, chainer_latest_version, chainer_latest_py_version
 ):
@@ -476,7 +475,6 @@ def test_mxnet_airflow_config_uploads_data_source_to_s3(
         )
 
 
-@pytest.mark.canary_quick
 def test_sklearn_airflow_config_uploads_data_source_to_s3(
     sagemaker_session,
     cpu_instance_type,
