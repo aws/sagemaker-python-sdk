@@ -18,4 +18,4 @@ phases:
         tox -e py36,py37,py38 -- tests/unit
 
       # run a subset of the integration tests
-      - IGNORE_COVERAGE=- tox -e py36 -- tests/integ -m canary_quick -n 64 --boxed --reruns 2
+      - IGNORE_COVERAGE=- tox -e py36 -- tests/integ -m "not (local_mode or slow_test)" -n 32 --boxed --reruns 2

@@ -128,22 +128,6 @@ def test_experiment_analytics_artifacts(sagemaker_session):
         ]
 
 
-@pytest.mark.canary_quick
-def test_experiment_analytics(sagemaker_session):
-    with experiment(sagemaker_session) as experiment_name:
-        analytics = ExperimentAnalytics(
-            experiment_name=experiment_name, sagemaker_session=sagemaker_session
-        )
-
-        assert list(analytics.dataframe().columns) == [
-            "TrialComponentName",
-            "DisplayName",
-            "hp1",
-            "Trials",
-            "Experiments",
-        ]
-
-
 def test_experiment_analytics_pagination(sagemaker_session):
     with experiment(sagemaker_session) as experiment_name:
         analytics = ExperimentAnalytics(
