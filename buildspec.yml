@@ -11,7 +11,7 @@ phases:
 
       # run integration tests
       - start_time=`date +%s`
-      - execute-command-if-has-matching-changes "python3.8 -u ci-scripts/queue_build.py" "tests/integ" "tests/scripts" "tests/data" "tests/conftest.py" "tests/__init__.py" "src/*.py" "setup.py" "setup.cfg" "buildspec.yml"
+      - execute-command-if-has-matching-changes "python3.7 -u ci-scripts/queue_build.py" "tests/integ" "tests/scripts" "tests/data" "tests/conftest.py" "tests/__init__.py" "src/*.py" "setup.py" "setup.cfg" "buildspec.yml"
       - ./ci-scripts/displaytime.sh 'build queue' $start_time
 
       - start_time=`date +%s`
