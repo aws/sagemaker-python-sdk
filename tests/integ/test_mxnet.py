@@ -65,7 +65,7 @@ def mxnet_training_job(
         return mx.latest_training_job.name
 
 
-@pytest.mark.canary_quick
+@pytest.mark.release
 def test_attach_deploy(mxnet_training_job, sagemaker_session, cpu_instance_type):
     endpoint_name = "test-mxnet-attach-deploy-{}".format(sagemaker_timestamp())
 
