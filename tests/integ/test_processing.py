@@ -153,7 +153,7 @@ def test_sklearn(sagemaker_session, sklearn_latest_version, cpu_instance_type):
     assert ROLE in job_description["RoleArn"]
 
 
-@pytest.mark.canary_quick
+@pytest.mark.release
 def test_sklearn_with_customizations(
     sagemaker_session, image_uri, sklearn_latest_version, cpu_instance_type, output_kms_key
 ):
@@ -369,7 +369,7 @@ def test_sklearn_with_no_inputs_or_outputs(
     assert job_description["StoppingCondition"] == {"MaxRuntimeInSeconds": 3600}
 
 
-@pytest.mark.canary_quick
+@pytest.mark.release
 def test_script_processor(sagemaker_session, image_uri, cpu_instance_type, output_kms_key):
     input_file_path = os.path.join(DATA_DIR, "dummy_input.txt")
 
@@ -528,7 +528,7 @@ def test_script_processor_with_no_inputs_or_outputs(
     assert job_description["StoppingCondition"] == {"MaxRuntimeInSeconds": 3600}
 
 
-@pytest.mark.canary_quick
+@pytest.mark.release
 def test_processor(sagemaker_session, image_uri, cpu_instance_type, output_kms_key):
     script_path = os.path.join(DATA_DIR, "dummy_script.py")
 

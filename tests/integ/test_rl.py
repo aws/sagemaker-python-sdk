@@ -23,7 +23,7 @@ from tests.integ import DATA_DIR, RL_SUPPORTED_REGIONS, test_region
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 
-@pytest.mark.canary_quick
+@pytest.mark.release
 def test_coach_mxnet(sagemaker_session, coach_mxnet_latest_version, cpu_instance_type):
     estimator = _test_coach(
         sagemaker_session, RLFramework.MXNET, coach_mxnet_latest_version, cpu_instance_type
@@ -106,7 +106,7 @@ def _test_coach(sagemaker_session, rl_framework, rl_coach_version, cpu_instance_
     test_region() not in RL_SUPPORTED_REGIONS,
     reason="Updated RL images aren't in {}".format(test_region()),
 )
-@pytest.mark.canary_quick
+@pytest.mark.release
 def test_ray_tf(sagemaker_session, ray_tensorflow_latest_version, cpu_instance_type):
     source_dir = os.path.join(DATA_DIR, "ray_cartpole")
     cartpole = "train_ray.py"
