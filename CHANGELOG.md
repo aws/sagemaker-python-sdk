@@ -1,5 +1,35 @@
 # Changelog
 
+## v2.25.0 (2021-02-19)
+
+### Features
+
+ * Enable step caching
+ * Add other Neo supported regions for Inferentia inference images
+
+### Bug Fixes and Other Changes
+
+ * remove FailStep from pipelines
+ * use sagemaker_session in workflow tests
+ * use ECR public for multidatamodel tests
+ * add the mapping from py3 to cuda11 images
+ * Add 30s cap time for tag tests
+ * add build spec for slow tests
+ * mark top 10 slow tests
+ * remove slow test_run_xxx_monitor_baseline tests
+ * pin astroid to 2.4.2
+
+### Testing and Release Infrastructure
+
+ * unmark more flaky integ tests
+ * remove canary_quick pytest mark from flaky/unnecessary tests
+ * remove python3.8 from buildspec
+ * remove py38 tox env
+ * fix release buildspec typo
+ * unblock regional release builds
+ * lower test TPS for experiment analytics
+ * move package preparation and publishing to the deploy step
+
 ## v2.24.5 (2021-02-12)
 
 ### Bug Fixes and Other Changes
