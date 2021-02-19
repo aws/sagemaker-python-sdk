@@ -146,7 +146,7 @@ class Model(object):
             description (str): Model Package description (default: None).
 
         Returns:
-            str: A string of SageMaker Model Package ARN.
+            A `sagemaker.model.ModelPackage` instance.
         """
         if self.model_data is None:
             raise ValueError("SageMaker Model Package cannot be created without model data.")
