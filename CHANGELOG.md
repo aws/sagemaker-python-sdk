@@ -1,5 +1,19 @@
 # Changelog
 
+## v2.25.1 (2021-02-20)
+
+### Bug Fixes and Other Changes
+
+ * Add tests for visualizer to improve test coverage
+
+### Documentation Changes
+
+ * specify correct return type
+
+### Testing and Release Infrastructure
+
+ * rename canary_quick pytest mark to release
+
 ## v2.25.0 (2021-02-19)
 
 ### Features
