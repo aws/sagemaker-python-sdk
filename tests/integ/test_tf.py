@@ -125,7 +125,7 @@ def test_server_side_encryption(sagemaker_session, tf_full_version, tf_full_py_v
             )
 
 
-@pytest.mark.canary_quick
+@pytest.mark.release
 def test_mnist_distributed(
     sagemaker_session,
     instance_type,
