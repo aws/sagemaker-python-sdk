@@ -70,7 +70,6 @@ def test_training_with_additional_hyperparameters(
     chainer.fit({"train": train_input, "test": test_input})
 
 
-@pytest.mark.canary_quick
 def test_attach_deploy(
     sagemaker_session, chainer_latest_version, chainer_latest_py_version, cpu_instance_type
 ):
