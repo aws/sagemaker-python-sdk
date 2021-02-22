@@ -105,7 +105,7 @@ class LineageTableVisualizer(object):
             return None
 
         metadata = pipeline_execution_step["Metadata"]
-        jobs = ["TrainingJob", "ProccessingJob", "TransformJob"]
+        jobs = ["TrainingJob", "ProcessingJob", "TransformJob"]
         for job in jobs:
             if job in metadata and metadata[job]:
                 job_arn = metadata[job]["Arn"]
