@@ -14,13 +14,7 @@ from __future__ import absolute_import
 
 import unittest.mock
 
-import pytest
 from sagemaker.lineage import artifact, _api_types
-
-
-@pytest.fixture
-def sagemaker_session():
-    return unittest.mock.Mock()
 
 
 def test_trained_models(sagemaker_session):

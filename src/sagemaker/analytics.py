@@ -43,6 +43,7 @@ class AnalyticsMetricsBase(with_metaclass(ABCMeta, object)):
     """
 
     def __init__(self):
+        """Initializes ``AnalyticsMetricsBase`` instance."""
         self._dataframe = None
 
     def export_csv(self, filename):

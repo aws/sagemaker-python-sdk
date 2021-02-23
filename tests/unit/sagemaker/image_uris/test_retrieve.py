@@ -553,6 +553,21 @@ def test_retrieve_auto_selected_container_version():
     )
 
 
+def test_retrieve_pytorch_container_version():
+    uri = image_uris.retrieve(
+        framework="pytorch",
+        region="us-west-2",
+        version="1.6",
+        py_version="py3",
+        instance_type="ml.p4d.24xlarge",
+        image_scope="training",
+    )
+    assert (
+        "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:1.6-gpu-py3-cu110-ubuntu18.04-v3"
+        == uri
+    )
+
+
 @patch("sagemaker.image_uris.config_for_framework", return_value=BASE_CONFIG)
 def test_retrieve_unsupported_processor_type(config_for_framework):
     with pytest.raises(ValueError) as e:

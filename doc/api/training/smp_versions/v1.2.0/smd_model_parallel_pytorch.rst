@@ -31,7 +31,6 @@ This API document assumes you use the following import statements in your traini
    model in the training script can be wrapped with
    ``smp.DistributedModel``.
 
-
    **Example:**
 
    .. code:: python
@@ -88,6 +87,17 @@ This API document assumes you use the following import statements in your traini
    In these examples, all ``__call__``  and ``backward`` method calls on
    the model objects (``model(inputs)`` and ``model.backward(loss)``) must be made inside
    a ``smp.step``-decorated function.
+
+   **Using DDP**
+
+   If DDP is enabled, do not not place a PyTorch
+   ``DistributedDataParallel`` wrapper around the ``DistributedModel`` because
+   the ``DistributedModel`` wrapper will also handle data parallelism.
+
+   Unlike the original DDP wrapper, when you use ``DistributedModel``,
+   model parameters and buffers are not immediately broadcast across
+   processes when the wrapper is called. Instead, the broadcast is deferred to the first call of the
+   ``smp.step``-decorated function when the partition is done.
 
    **Parameters**
 
@@ -248,11 +258,14 @@ This API document assumes you use the following import statements in your traini
    .. function:: join( )
 
       **Available for PyTorch 1.7 only**
+
       A context manager to be used in conjunction with an instance of
-      ``smp.DistributedModel``to be able to train with uneven inputs across
+      ``smp.DistributedModel`` to be able to train with uneven inputs across
       participating processes. This is only supported when ``ddp=True`` for
       ``smp.DistributedModel``. This will use the join with the wrapped
-      ``DistributedDataParallel`` instance. Please see: `join <https://pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html#torch.nn.parallel.DistributedDataParallel.join>`__.
+      ``DistributedDataParallel`` instance. For more information, see:
+      `join <https://pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html#torch.nn.parallel.DistributedDataParallel.join>`__
+      in the PyTorch documentation.
 
 
 .. class:: smp.DistributedOptimizer

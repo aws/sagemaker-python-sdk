@@ -18,10 +18,8 @@ import re
 import time
 import uuid
 
-import boto3
 import pytest
 
-from botocore.config import Config
 from botocore.exceptions import WaiterError
 from sagemaker.debugger import (
     DebuggerHookConfig,
@@ -32,7 +30,7 @@ from sagemaker.inputs import CreateModelInput, TrainingInput
 from sagemaker.model import Model
 from sagemaker.processing import ProcessingInput, ProcessingOutput
 from sagemaker.pytorch.estimator import PyTorch
-from sagemaker.session import get_execution_role, Session
+from sagemaker.session import get_execution_role
 from sagemaker.sklearn.estimator import SKLearn
 from sagemaker.sklearn.processing import SKLearnProcessor
 from sagemaker.workflow.conditions import ConditionGreaterThanOrEqualTo
@@ -48,6 +46,7 @@ from sagemaker.workflow.steps import (
     CreateModelStep,
     ProcessingStep,
     TrainingStep,
+    CacheConfig,
 )
 from sagemaker.workflow.step_collections import RegisterModel
 from sagemaker.workflow.pipeline import Pipeline
@@ -72,21 +71,6 @@ def region_name(sagemaker_session):
 @pytest.fixture(scope="module")
 def role(sagemaker_session):
     return get_execution_role(sagemaker_session)
-
-
-@pytest.fixture(scope="module")
-def workflow_session(region_name):
-    boto_session = boto3.Session(region_name=region_name)
-
-    sagemaker_client_config = dict()
-    sagemaker_client_config.setdefault("config", Config(retries=dict(max_attempts=2)))
-    sagemaker_client = boto_session.client("sagemaker", **sagemaker_client_config)
-
-    return Session(
-        boto_session=boto_session,
-        sagemaker_client=sagemaker_client,
-        sagemaker_runtime_client=None,
-    )
 
 
 @pytest.fixture(scope="module")
@@ -119,7 +103,6 @@ def athena_dataset_definition(sagemaker_session):
 
 def test_three_step_definition(
     sagemaker_session,
-    workflow_session,
     region_name,
     role,
     script_dir,
@@ -205,7 +188,7 @@ def test_three_step_definition(
         name=pipeline_name,
         parameters=[instance_type, instance_count, output_prefix],
         steps=[step_process, step_train, step_model],
-        sagemaker_session=workflow_session,
+        sagemaker_session=sagemaker_session,
     )
 
     definition = json.loads(pipeline.definition())
@@ -277,7 +260,6 @@ def test_three_step_definition(
 
 def test_one_step_sklearn_processing_pipeline(
     sagemaker_session,
-    workflow_session,
     role,
     sklearn_latest_version,
     cpu_instance_type,
@@ -292,6 +274,8 @@ def test_one_step_sklearn_processing_pipeline(
         ProcessingInput(source=input_file_path, destination="/opt/ml/processing/inputs/"),
         ProcessingInput(dataset_definition=athena_dataset_definition),
     ]
+
+    cache_config = CacheConfig(enable_caching=True, expire_after="T30m")
 
     sklearn_processor = SKLearnProcessor(
         framework_version=sklearn_latest_version,
@@ -308,12 +292,13 @@ def test_one_step_sklearn_processing_pipeline(
         processor=sklearn_processor,
         inputs=inputs,
         code=script_path,
+        cache_config=cache_config,
     )
     pipeline = Pipeline(
         name=pipeline_name,
         parameters=[instance_count],
         steps=[step_sklearn],
-        sagemaker_session=workflow_session,
+        sagemaker_session=sagemaker_session,
     )
 
     try:
@@ -347,6 +332,11 @@ def test_one_step_sklearn_processing_pipeline(
         response = execution.describe()
         assert response["PipelineArn"] == create_arn
 
+        # Check CacheConfig
+        response = json.loads(pipeline.describe()["PipelineDefinition"])["Steps"][0]["CacheConfig"]
+        assert response["Enabled"] == cache_config.enable_caching
+        assert response["ExpireAfter"] == cache_config.expire_after
+
         try:
             execution.wait(delay=30, max_attempts=3)
         except WaiterError:
@@ -363,7 +353,6 @@ def test_one_step_sklearn_processing_pipeline(
 
 def test_conditional_pytorch_training_model_registration(
     sagemaker_session,
-    workflow_session,
     role,
     cpu_instance_type,
     pipeline_name,
@@ -433,7 +422,7 @@ def test_conditional_pytorch_training_model_registration(
         name=pipeline_name,
         parameters=[good_enough_input, instance_count, instance_type],
         steps=[step_cond],
-        sagemaker_session=workflow_session,
+        sagemaker_session=sagemaker_session,
     )
 
     try:

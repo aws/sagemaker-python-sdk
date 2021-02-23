@@ -51,7 +51,7 @@ MODEL_PACKAGE_ARN = (
 )
 
 
-@pytest.mark.canary_quick
+@pytest.mark.release
 @pytest.mark.skipif(
     tests.integ.test_region() in tests.integ.NO_MARKET_PLACE_REGIONS,
     reason="Marketplace is not available in {}".format(tests.integ.test_region()),
@@ -150,7 +150,7 @@ def test_marketplace_attach(sagemaker_session, cpu_instance_type):
         print(predictor.predict(test_x.values).decode("utf-8"))
 
 
-@pytest.mark.canary_quick
+@pytest.mark.release
 @pytest.mark.skipif(
     tests.integ.test_region() in tests.integ.NO_MARKET_PLACE_REGIONS,
     reason="Marketplace is not available in {}".format(tests.integ.test_region()),

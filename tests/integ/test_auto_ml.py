@@ -47,11 +47,12 @@ EXPECTED_DEFAULT_JOB_CONFIG = {
 }
 
 
+@pytest.mark.slow_test
 @pytest.mark.skipif(
     tests.integ.test_region() in tests.integ.NO_AUTO_ML_REGIONS,
     reason="AutoML is not supported in the region yet.",
 )
-@pytest.mark.canary_quick
+@pytest.mark.release
 def test_auto_ml_fit(sagemaker_session):
     auto_ml = AutoML(
         role=ROLE,
@@ -259,7 +260,7 @@ def test_best_candidate(sagemaker_session):
     tests.integ.test_region() in tests.integ.NO_AUTO_ML_REGIONS,
     reason="AutoML is not supported in the region yet.",
 )
-@pytest.mark.canary_quick
+@pytest.mark.release
 def test_deploy_best_candidate(sagemaker_session, cpu_instance_type):
     auto_ml_utils.create_auto_ml_job_if_not_exist(sagemaker_session)
 
