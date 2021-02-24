@@ -161,7 +161,7 @@ def mxnet_eia_py_version(mxnet_eia_version, request):
     if Version(mxnet_eia_version) < Version("1.7.0"):
         return request.param
     else:
-        return "py3"
+        return "py36"
 
 
 @pytest.fixture(scope="module", params=["py2", "py3"])
