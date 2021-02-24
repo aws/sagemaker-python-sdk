@@ -44,7 +44,7 @@ def generate_artifacts(sagemaker_session):
         _delete_resources(artifacts)
 
 
-@pytest.mark.canary_quick
+@pytest.mark.release
 @pytest.mark.skip("Failing as restricted to the SageMaker/Pipeline runtimes")
 def test_artifact_analytics(sagemaker_session):
     with generate_artifacts(sagemaker_session):

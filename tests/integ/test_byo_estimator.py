@@ -46,7 +46,7 @@ class _FactorizationMachineSerializer(SimpleBaseSerializer):
         return json.dumps(js)
 
 
-@pytest.mark.canary_quick
+@pytest.mark.release
 def test_byo_estimator(sagemaker_session, region, cpu_instance_type, training_set):
     """Use Factorization Machines algorithm as an example here.
 

@@ -65,7 +65,7 @@ def mxnet_training_job(
         return mx.latest_training_job.name
 
 
-@pytest.mark.canary_quick
+@pytest.mark.release
 def test_attach_deploy(mxnet_training_job, sagemaker_session, cpu_instance_type):
     endpoint_name = "test-mxnet-attach-deploy-{}".format(sagemaker_timestamp())
 
@@ -83,6 +83,7 @@ def test_attach_deploy(mxnet_training_job, sagemaker_session, cpu_instance_type)
         assert result is not None
 
 
+@pytest.mark.slow_test
 def test_deploy_estimator_with_different_instance_types(
     mxnet_training_job,
     sagemaker_session,
@@ -258,6 +259,7 @@ def test_deploy_model_with_tags_and_kms(
         assert endpoint_config["KmsKeyId"] == kms_key_arn
 
 
+@pytest.mark.slow_test
 def test_deploy_model_and_update_endpoint(
     mxnet_training_job,
     sagemaker_session,
@@ -303,7 +305,6 @@ def test_deploy_model_and_update_endpoint(
         assert new_config["ProductionVariants"][0]["InitialInstanceCount"] == 1
 
 
-@pytest.mark.canary_quick
 @pytest.mark.skipif(
     tests.integ.test_region() not in tests.integ.EI_SUPPORTED_REGIONS,
     reason="EI isn't supported in that specific region.",
