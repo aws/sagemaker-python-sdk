@@ -185,6 +185,7 @@ class IngestionManagerPandas:
                     feature_name=data_frame.columns[index], value_as_string=str(row[index])
                 )
                 for index in range(len(row))
+                if pd.notna(row[index])
             ]
             sagemaker_session.put_record(
                 feature_group_name=feature_group_name, record=[value.to_dict() for value in record]
