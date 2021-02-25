@@ -183,6 +183,26 @@ def pytorch_eia_py_version():
 
 
 @pytest.fixture(scope="module")
+def neo_pytorch_latest_py_version():
+    return "py3"
+
+
+@pytest.fixture(scope="module")
+def neo_pytorch_compilation_job_name():
+    return utils.name_from_base("pytorch-neo-model")
+
+
+@pytest.fixture(scope="module")
+def neo_pytorch_target_device():
+    return "ml_c5"
+
+
+@pytest.fixture(scope="module")
+def neo_pytorch_cpu_instance_type():
+    return "ml.c5.xlarge"
+
+
+@pytest.fixture(scope="module")
 def xgboost_framework_version(xgboost_version):
     if xgboost_version in ("1", "latest"):
         pytest.skip("Skipping XGBoost algorithm version.")
