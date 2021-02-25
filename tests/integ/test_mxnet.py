@@ -323,7 +323,7 @@ def test_deploy_model_with_accelerator(
             TrainingJobName=mxnet_training_job
         )
         model_data = desc["ModelArtifacts"]["S3ModelArtifacts"]
-        script_path = os.path.join(DATA_DIR, "mxnet_mnist", "mnist.py")
+        script_path = os.path.join(DATA_DIR, "mxnet_mnist", "mnist_ei.py")
         model = MXNetModel(
             model_data,
             "SageMakerRole",
