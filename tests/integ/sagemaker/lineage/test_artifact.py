@@ -17,6 +17,8 @@ import datetime
 import logging
 import time
 
+import pytest
+
 from sagemaker.lineage import artifact
 
 
@@ -111,6 +113,7 @@ def test_downstream_trials(trial_associated_artifact, trial_obj, sagemaker_sessi
     assert trial_obj.trial_name in trials
 
 
+@pytest.mark.timeout(30)
 def test_tag(artifact_obj, sagemaker_session):
     tag = {"Key": "foo", "Value": "bar"}
     artifact_obj.set_tag(tag)
@@ -121,12 +124,14 @@ def test_tag(artifact_obj, sagemaker_session):
         )["Tags"]
         if actual_tags:
             break
+        time.sleep(5)
     # When sagemaker-client-config endpoint-url is passed as argument to hit some endpoints,
     # length of actual tags will be greater than 1
     assert len(actual_tags) > 0
     assert actual_tags[0] == tag
 
 
+@pytest.mark.timeout(30)
 def test_tags(artifact_obj, sagemaker_session):
     tags = [{"Key": "foo1", "Value": "bar1"}]
     artifact_obj.set_tags(tags)
@@ -137,6 +142,7 @@ def test_tags(artifact_obj, sagemaker_session):
         )["Tags"]
         if actual_tags:
             break
+        time.sleep(5)
     # When sagemaker-client-config endpoint-url is passed as argument to hit some endpoints,
     # length of actual tags will be greater than 1
     assert len(actual_tags) > 0

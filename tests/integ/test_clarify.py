@@ -112,10 +112,11 @@ def clarify_processor(sagemaker_session, cpu_instance_type):
     return processor
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def data_config(sagemaker_session, data_path, headers):
-    output_path = "s3://{}/{}".format(
-        sagemaker_session.default_bucket(), "linear_learner_analysis_result"
+    test_run = utils.unique_name_from_base("test_run")
+    output_path = "s3://{}/{}/{}".format(
+        sagemaker_session.default_bucket(), "linear_learner_analysis_result", test_run
     )
     return DataConfig(
         s3_data_input_path=data_path,
@@ -195,6 +196,7 @@ def test_pre_training_bias(clarify_processor, data_config, data_bias_config, sag
             )
             <= 1.0
         )
+        check_analysis_config(data_config, sagemaker_session, "pre_training_bias")
 
 
 def test_post_training_bias(
@@ -227,6 +229,7 @@ def test_post_training_bias(
             )
             <= 1.0
         )
+        check_analysis_config(data_config, sagemaker_session, "post_training_bias")
 
 
 def test_shap(clarify_processor, data_config, model_config, shap_config, sagemaker_session):
@@ -250,3 +253,13 @@ def test_shap(clarify_processor, data_config, model_config, shap_config, sagemak
             )
             <= 1
         )
+        check_analysis_config(data_config, sagemaker_session, "shap")
+
+
+def check_analysis_config(data_config, sagemaker_session, method):
+    analysis_config_json = s3.S3Downloader.read_file(
+        data_config.s3_output_path + "/analysis_config.json",
+        sagemaker_session,
+    )
+    analysis_config = json.loads(analysis_config_json)
+    assert method in analysis_config["methods"]

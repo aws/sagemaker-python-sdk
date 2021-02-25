@@ -57,7 +57,7 @@ def mxnet_training_job(
         return mx.latest_training_job.name
 
 
-@pytest.mark.canary_quick
+@pytest.mark.release
 @pytest.mark.skip(
     reason="This test is failing because the image uri and the training script format has changed."
 )
