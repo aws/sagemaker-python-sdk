@@ -163,9 +163,11 @@ def mxnet_eia_py_version(mxnet_eia_version, request):
     else:
         return "py3"
 
+
 @pytest.fixture(scope="module")
 def mxnet_eia_latest_py_version():
     return "py3"
+
 
 @pytest.fixture(scope="module", params=["py2", "py3"])
 def pytorch_training_py_version(pytorch_training_version, request):
