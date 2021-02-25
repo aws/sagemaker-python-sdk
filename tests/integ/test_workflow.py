@@ -46,6 +46,7 @@ from sagemaker.workflow.steps import (
     CreateModelStep,
     ProcessingStep,
     TrainingStep,
+    CacheConfig,
 )
 from sagemaker.workflow.step_collections import RegisterModel
 from sagemaker.workflow.pipeline import Pipeline
@@ -274,6 +275,8 @@ def test_one_step_sklearn_processing_pipeline(
         ProcessingInput(dataset_definition=athena_dataset_definition),
     ]
 
+    cache_config = CacheConfig(enable_caching=True, expire_after="T30m")
+
     sklearn_processor = SKLearnProcessor(
         framework_version=sklearn_latest_version,
         role=role,
@@ -289,6 +292,7 @@ def test_one_step_sklearn_processing_pipeline(
         processor=sklearn_processor,
         inputs=inputs,
         code=script_path,
+        cache_config=cache_config,
     )
     pipeline = Pipeline(
         name=pipeline_name,
@@ -327,6 +331,11 @@ def test_one_step_sklearn_processing_pipeline(
 
         response = execution.describe()
         assert response["PipelineArn"] == create_arn
+
+        # Check CacheConfig
+        response = json.loads(pipeline.describe()["PipelineDefinition"])["Steps"][0]["CacheConfig"]
+        assert response["Enabled"] == cache_config.enable_caching
+        assert response["ExpireAfter"] == cache_config.expire_after
 
         try:
             execution.wait(delay=30, max_attempts=3)

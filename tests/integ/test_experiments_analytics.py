@@ -108,7 +108,7 @@ def experiment_with_artifacts(sagemaker_session):
         _delete_resources(sm, experiment_name, trials)
 
 
-@pytest.mark.canary_quick
+@pytest.mark.release
 def test_experiment_analytics_artifacts(sagemaker_session):
     with experiment_with_artifacts(sagemaker_session) as experiment_name:
         analytics = ExperimentAnalytics(

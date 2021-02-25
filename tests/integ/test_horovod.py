@@ -28,7 +28,7 @@ from tests.integ import timeout
 horovod_dir = os.path.join(os.path.dirname(__file__), "..", "data", "horovod")
 
 
-@pytest.mark.canary_quick
+@pytest.mark.release
 def test_hvd_cpu(
     sagemaker_session,
     tensorflow_training_latest_version,
@@ -45,7 +45,7 @@ def test_hvd_cpu(
     )
 
 
-@pytest.mark.canary_quick
+@pytest.mark.release
 @pytest.mark.skipif(
     integ.test_region() in integ.TRAINING_NO_P2_REGIONS, reason="no ml.p2 instances in this region"
 )

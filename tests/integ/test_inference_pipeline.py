@@ -90,7 +90,7 @@ def test_inference_pipeline_batch_transform(sagemaker_session, cpu_instance_type
         transformer.wait()
 
 
-@pytest.mark.canary_quick
+@pytest.mark.release
 @pytest.mark.skip(
     reason="This test has always failed, but the failure was masked by a bug. "
     "This test should be fixed. Details in https://github.com/aws/sagemaker-python-sdk/pull/968"
