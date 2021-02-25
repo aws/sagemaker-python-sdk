@@ -846,7 +846,7 @@
                     "us-west-2": "763104351884"
                 },
                 "repository": "mxnet-inference-eia",
-                "py_versions": ["py36"]
+                "py_versions": ["py3"]
             }
         }
     }
