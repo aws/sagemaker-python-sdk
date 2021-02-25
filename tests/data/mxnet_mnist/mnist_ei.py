@@ -23,19 +23,19 @@ import numpy as np
 
 def model_fn(model_dir):
     import eimx
-    
+
     def read_data_shapes(path, preferred_batch_size=1):
-        with open(path, 'r') as f:
+        with open(path, "r") as f:
             signatures = json.load(f)
 
         data_names = []
         data_shapes = []
 
         for s in signatures:
-            name = s['name']
+            name = s["name"]
             data_names.append(name)
 
-            shape = s['shape']
+            shape = s["shape"]
 
             if preferred_batch_size:
                 shape[0] = preferred_batch_size
@@ -44,12 +44,12 @@ def model_fn(model_dir):
 
         return data_names, data_shapes
 
-    shapes_file = os.path.join(model_dir, 'model-shapes.json')
+    shapes_file = os.path.join(model_dir, "model-shapes.json")
     data_names, data_shapes = read_data_shapes(shapes_file)
 
     ctx = mx.cpu()
-    sym, args, aux = mx.model.load_checkpoint(os.path.join(model_dir, 'model'), 0)
-    sym = sym.optimize_for('EIA')
+    sym, args, aux = mx.model.load_checkpoint(os.path.join(model_dir, "model"), 0)
+    sym = sym.optimize_for("EIA")
 
     mod = mx.mod.Module(symbol=sym, context=ctx, data_names=data_names, label_names=None)
     mod.bind(for_training=False, data_shapes=data_shapes)
