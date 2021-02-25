@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2017-2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -269,3 +269,81 @@ def test_deploy_add_compiled_model_suffix_to_endpoint_name_from_model_name(sagem
 
     model.deploy(1, "ml.c4.xlarge")
     assert model.endpoint_name.startswith("{}-ml-c4".format(model_name))
+
+
+@patch("sagemaker.session.Session")
+def test_compile_with_framework_version_15(session):
+    session.return_value.boto_region_name = REGION
+
+    model = _create_model()
+    model.compile(
+        target_instance_family="ml_c4",
+        input_shape={"data": [1, 3, 1024, 1024]},
+        output_path="s3://output",
+        role="role",
+        framework="pytorch",
+        framework_version="1.5",
+        job_name="compile-model",
+    )
+
+    assert "1.5" in model.image_uri
+
+
+@patch("sagemaker.session.Session")
+def test_compile_with_framework_version_16(session):
+    session.return_value.boto_region_name = REGION
+
+    model = _create_model()
+    model.compile(
+        target_instance_family="ml_c4",
+        input_shape={"data": [1, 3, 1024, 1024]},
+        output_path="s3://output",
+        role="role",
+        framework="pytorch",
+        framework_version="1.6",
+        job_name="compile-model",
+    )
+
+    assert "1.6" in model.image_uri
+
+
+@patch("sagemaker.session.Session")
+def test_compile_validates_framework_version(session):
+    session.return_value.boto_region_name = REGION
+
+    model = _create_model()
+    with pytest.raises(ValueError) as e:
+        model.compile(
+            target_instance_family="ml_c4",
+            input_shape={"data": [1, 3, 1024, 1024]},
+            output_path="s3://output",
+            role="role",
+            framework="pytorch",
+            framework_version="1.6.1",
+            job_name="compile-model",
+        )
+
+    assert "Unsupported neo-pytorch version: 1.6.1." in str(e)
+
+
+@patch("sagemaker.session.Session")
+def test_compile_with_pytorch_neo_in_ml_inf(session):
+    session.return_value.boto_region_name = REGION
+
+    model = _create_model()
+    model.compile(
+        target_instance_family="ml_inf",
+        input_shape={"data": [1, 3, 1024, 1024]},
+        output_path="s3://output",
+        role="role",
+        framework="pytorch",
+        framework_version="1.6",
+        job_name="compile-model",
+    )
+
+    assert (
+        "{}.dkr.ecr.{}.amazonaws.com/sagemaker-inference-pytorch:1.6-cpu-py3".format(
+            NEO_REGION_ACCOUNT, REGION
+        )
+        != model.image_uri
+    )
