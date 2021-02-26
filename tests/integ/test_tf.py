@@ -125,7 +125,7 @@ def test_server_side_encryption(sagemaker_session, tf_full_version, tf_full_py_v
             )
 
 
-@pytest.mark.canary_quick
+@pytest.mark.release
 def test_mnist_distributed(
     sagemaker_session,
     instance_type,
@@ -155,6 +155,7 @@ def test_mnist_distributed(
     )
 
 
+@pytest.mark.slow_test
 def test_mnist_async(sagemaker_session, cpu_instance_type, tf_full_version, tf_full_py_version):
     estimator = TensorFlow(
         entry_point=SCRIPT,

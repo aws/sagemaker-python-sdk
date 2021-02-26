@@ -28,7 +28,7 @@ def training_set():
     return datasets.one_p_mnist()
 
 
-@pytest.mark.canary_quick
+@pytest.mark.release
 def test_linear_learner(sagemaker_session, cpu_instance_type, training_set):
     job_name = unique_name_from_base("linear-learner")
 

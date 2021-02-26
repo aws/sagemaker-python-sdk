@@ -95,7 +95,7 @@ def fixture_training_job_with_latest_inference_version(
         return pytorch.latest_training_job.name
 
 
-@pytest.mark.canary_quick
+@pytest.mark.release
 def test_fit_deploy(
     pytorch_training_job_with_latest_infernce_version, sagemaker_session, cpu_instance_type
 ):

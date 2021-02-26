@@ -1,5 +1,74 @@
 # Changelog
 
+## v2.25.2 (2021-02-25)
+
+### Bug Fixes and Other Changes
+
+ * Use the output path to store the Clarify config file
+ * feature group should ignore nan values
+ * ignore failing smdataparallel test
+ * Add tests for Training job & Transform job in visualizer
+ * visualizer for pipeline processing job steps
+
+### Documentation Changes
+
+ * update doc for Elastic Inference MXNet 1.7.0
+
+## v2.25.1 (2021-02-20)
+
+### Bug Fixes and Other Changes
+
+ * Add tests for visualizer to improve test coverage
+
+### Documentation Changes
+
+ * specify correct return type
+
+### Testing and Release Infrastructure
+
+ * rename canary_quick pytest mark to release
+
+## v2.25.0 (2021-02-19)
+
+### Features
+
+ * Enable step caching
+ * Add other Neo supported regions for Inferentia inference images
+
+### Bug Fixes and Other Changes
+
+ * remove FailStep from pipelines
+ * use sagemaker_session in workflow tests
+ * use ECR public for multidatamodel tests
+ * add the mapping from py3 to cuda11 images
+ * Add 30s cap time for tag tests
+ * add build spec for slow tests
+ * mark top 10 slow tests
+ * remove slow test_run_xxx_monitor_baseline tests
+ * pin astroid to 2.4.2
+
+### Testing and Release Infrastructure
+
+ * unmark more flaky integ tests
+ * remove canary_quick pytest mark from flaky/unnecessary tests
+ * remove python3.8 from buildspec
+ * remove py38 tox env
+ * fix release buildspec typo
+ * unblock regional release builds
+ * lower test TPS for experiment analytics
+ * move package preparation and publishing to the deploy step
+
+## v2.24.5 (2021-02-12)
+
+### Bug Fixes and Other Changes
+
+ * test_tag/test_tags method assert fix in association tests
+
+### Documentation Changes
+
+ * removing mention of TF 2.4 from SM distributed model parallel docs
+ * adding details about mpi options, other small updates
+
 ## v2.24.4 (2021-02-09)
 
 ### Bug Fixes and Other Changes

@@ -90,7 +90,7 @@ def test_inference_pipeline_batch_transform(sagemaker_session, cpu_instance_type
         transformer.wait()
 
 
-@pytest.mark.canary_quick
+@pytest.mark.release
 @pytest.mark.skip(
     reason="This test has always failed, but the failure was masked by a bug. "
     "This test should be fixed. Details in https://github.com/aws/sagemaker-python-sdk/pull/968"
@@ -149,6 +149,7 @@ def test_inference_pipeline_model_deploy(sagemaker_session, cpu_instance_type):
         assert "Could not find model" in str(exception.value)
 
 
+@pytest.mark.slow_test
 def test_inference_pipeline_model_deploy_and_update_endpoint(
     sagemaker_session, cpu_instance_type, alternative_cpu_instance_type
 ):

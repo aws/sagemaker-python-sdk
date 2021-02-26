@@ -186,7 +186,7 @@ class Action(_base_types.Record):
         return super(Action, cls)._construct(
             cls._boto_create_method,
             action_name=action_name,
-            source=_api_types.ContextSource(source_uri=source_uri, source_type=source_type),
+            source=_api_types.ActionSource(source_uri=source_uri, source_type=source_type),
             action_type=action_type,
             description=description,
             status=status,

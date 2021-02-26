@@ -98,6 +98,8 @@ def retrieve(
             "mxnet-1.8.0-gpu-py37": "cu110-ubuntu16.04",
             "pytorch-1.6-gpu-py36": "cu110-ubuntu18.04-v3",
             "pytorch-1.6.0-gpu-py36": "cu110-ubuntu18.04",
+            "pytorch-1.6-gpu-py3": "cu110-ubuntu18.04-v3",
+            "pytorch-1.6.0-gpu-py3": "cu110-ubuntu18.04",
         }
         key = "-".join([framework, tag])
         if key in container_versions:
