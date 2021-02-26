@@ -238,7 +238,7 @@ class ModelMonitor(object):
                 schedule.
             statistics (sagemaker.model_monitor.Statistic or str): If provided alongside
                 constraints, these will be used for monitoring the endpoint. This can be a
-                sagemaker.model_monitor.Constraints object or an S3 uri pointing to a constraints
+                sagemaker.model_monitor.Statistic object or an S3 uri pointing to a statistic
                 JSON file.
             constraints (sagemaker.model_monitor.Constraints or str): If provided alongside
                 statistics, these will be used for monitoring the endpoint. This can be a
@@ -352,7 +352,7 @@ class ModelMonitor(object):
                 schedule.
             statistics (sagemaker.model_monitor.Statistic or str): If provided alongside
                 constraints, these will be used for monitoring the endpoint. This can be a
-                sagemaker.model_monitor.Constraints object or an S3 uri pointing to a constraints
+                sagemaker.model_monitor.Statistics object or an S3 uri pointing to a statistics
                 JSON file.
             constraints (sagemaker.model_monitor.Constraints or str): If provided alongside
                 statistics, these will be used for monitoring the endpoint. This can be a
@@ -1552,7 +1552,7 @@ class DefaultModelMonitor(ModelMonitor):
                 JSON file.
             statistics (sagemaker.model_monitor.Statistic or str): If provided alongside
                 constraints, these will be used for monitoring the endpoint. This can be a
-                sagemaker.model_monitor.Constraints object or an s3_uri pointing to a constraints
+                sagemaker.model_monitor.Statistics object or an s3_uri pointing to a statistics
                 JSON file.
             monitor_schedule_name (str): Schedule name. If not specified, the processor generates
                 a default job name, based on the image name and current timestamp.
@@ -1657,7 +1657,7 @@ class DefaultModelMonitor(ModelMonitor):
                 statistics json files.
             statistics (sagemaker.model_monitor.Statistic or str): If provided alongside
                 constraints, these will be used for monitoring the endpoint. This can be a
-                sagemaker.model_monitor.Constraints object or an S3 uri pointing to a constraints
+                sagemaker.model_monitor.Statistics object or an S3 uri pointing to a statistics
                 JSON file.
             constraints (sagemaker.model_monitor.Constraints or str): If provided alongside
                 statistics, these will be used for monitoring the endpoint. This can be a
@@ -1843,7 +1843,7 @@ class DefaultModelMonitor(ModelMonitor):
                 to a constraints JSON file.
             statistics (sagemaker.model_monitor.Statistic or str): If provided alongside
                 constraints, these will be used for monitoring the endpoint. This can be a
-                sagemaker.model_monitor.Constraints object or an S3 uri pointing to a constraints
+                sagemaker.model_monitor.Statistics object or an S3 uri pointing to a statistics
                 JSON file.
             schedule_cron_expression (str): The cron expression that dictates the frequency that
                 this job run. See sagemaker.model_monitor.CronExpressionGenerator for valid
