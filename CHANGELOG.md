@@ -1,5 +1,34 @@
 # Changelog
 
+## v2.26.0 (2021-02-26)
+
+### Features
+
+ * Add Framework Version support for PyTorch compilation (Neo)
+
+### Bug Fixes and Other Changes
+
+ * add mxnet 1.7.0 eia configuration
+ * update source constructor for lineage action and artifact
+
+### Documentation Changes
+
+ * fix typo in create_monitoring_schedule method
+
+## v2.25.2 (2021-02-25)
+
+### Bug Fixes and Other Changes
+
+ * Use the output path to store the Clarify config file
+ * feature group should ignore nan values
+ * ignore failing smdataparallel test
+ * Add tests for Training job & Transform job in visualizer
+ * visualizer for pipeline processing job steps
+
+### Documentation Changes
+
+ * update doc for Elastic Inference MXNet 1.7.0
+
 ## v2.25.1 (2021-02-20)
 
 ### Bug Fixes and Other Changes
