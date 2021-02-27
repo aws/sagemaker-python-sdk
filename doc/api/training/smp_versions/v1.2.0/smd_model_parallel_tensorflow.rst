@@ -79,7 +79,7 @@ TensorFlow API
       [...]
       x = tf.constant(1.2)                     # placed in partition 0
       with smp.partition(1):
-          y = tf.add(x, tf.constant(2.3.1))      # placed in partition 1
+          y = tf.add(x, tf.constant(2.3))      # placed in partition 1
           with smp.partition(3):
               z = tf.reduce_sum(y)             # placed in partition 3
 
