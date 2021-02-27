@@ -10,12 +10,12 @@
 
 #### Add support for PyTorch 1.7.1
 
-- Adds support for `gradient_as_bucket_view` (PyTorch 1.7 only), `find_unused_parameters` (PyTorch 1.7 only) and `broadcast_buffers` options to `smp.DistributedModel`. These options behave the same as the corresponding options (with the same names) in
+- Adds support for `gradient_as_bucket_view` (PyTorch 1.7.1 only), `find_unused_parameters` (PyTorch 1.7.1 only) and `broadcast_buffers` options to `smp.DistributedModel`. These options behave the same as the corresponding options (with the same names) in
 `torch.DistributedDataParallel` API. Please refer to the [SageMaker distributed model parallel API documentation](https://sagemaker.readthedocs.io/en/stable/api/training/smd_model_parallel_pytorch.html#smp.DistributedModel) for more information.
 
-- Adds support for `join` (PyTorch 1.7 only) context manager, which is to be used in conjunction with an instance of `smp.DistributedModel` to be able to train with uneven inputs across participating processes.
+- Adds support for `join` (PyTorch 1.7.1 only) context manager, which is to be used in conjunction with an instance of `smp.DistributedModel` to be able to train with uneven inputs across participating processes.
 
-- Adds support for `_register_comm_hook` (PyTorch 1.7 only) which will register the callable as a communication hook for DDP. NOTE: Like in DDP, this is an experimental API and subject to change.
+- Adds support for `_register_comm_hook` (PyTorch 1.7.1 only) which will register the callable as a communication hook for DDP. NOTE: Like in DDP, this is an experimental API and subject to change.
 
 ### Tensorflow
 

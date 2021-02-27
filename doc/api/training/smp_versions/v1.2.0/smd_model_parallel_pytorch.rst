@@ -159,7 +159,7 @@ This API document assumes you use the following import statements in your traini
       This parameter is forwarded to the underlying ``DistributedDataParallel`` wrapper.
       Please see: `broadcast_buffer <https://pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html#torch.nn.parallel.DistributedDataParallel>`__.
 
-   -  ``gradient_as_bucket_view (PyTorch 1.7 only)`` (default: False): To be
+   -  ``gradient_as_bucket_view (PyTorch 1.7.1 only)`` (default: False): To be
       used with ``ddp=True``. This parameter is forwarded to the underlying
       ``DistributedDataParallel`` wrapper. Please see `gradient_as_bucket_view <https://pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html#torch.nn.parallel.DistributedDataParallel>`__.
 
@@ -257,7 +257,7 @@ This API document assumes you use the following import statements in your traini
 
    .. function:: join( )
 
-      **Available for PyTorch 1.7 only**
+      **Available for PyTorch 1.7.1 only**
 
       A context manager to be used in conjunction with an instance of
       ``smp.DistributedModel`` to be able to train with uneven inputs across
