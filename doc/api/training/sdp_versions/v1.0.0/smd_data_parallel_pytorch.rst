@@ -155,7 +155,7 @@ PyTorch API
 
 **Supported versions:**
 
--  PyTorch 1.6
+-  PyTorch 1.6.0
 
 
 .. function:: smdistributed.dataparallel.torch.distributed.is_available()

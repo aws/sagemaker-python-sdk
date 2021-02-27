@@ -95,7 +95,9 @@ class Predictor(object):
         self._model_names = self._get_model_names()
         self._context = None
 
-    def predict(self, data, initial_args=None, target_model=None, target_variant=None):
+    def predict(
+        self, data, initial_args=None, target_model=None, target_variant=None, inference_id=None
+    ):
         """Return the inference from the specified endpoint.
 
         Args:
@@ -111,8 +113,10 @@ class Predictor(object):
                 in case of a multi model endpoint. Does not apply to endpoints hosting
                 single model (Default: None)
             target_variant (str): The name of the production variant to run an inference
-            request on (Default: None). Note that the ProductionVariant identifies the model
-            you want to host and the resources you want to deploy for hosting it.
+                request on (Default: None). Note that the ProductionVariant identifies the
+                model you want to host and the resources you want to deploy for hosting it.
+            inference_id (str): If you provide a value, it is added to the captured data
+                when you enable data capture on the endpoint (Default: None).
 
         Returns:
             object: Inference for the given input. If a deserializer was specified when creating
@@ -121,7 +125,9 @@ class Predictor(object):
                 as is.
         """
 
-        request_args = self._create_request_args(data, initial_args, target_model, target_variant)
+        request_args = self._create_request_args(
+            data, initial_args, target_model, target_variant, inference_id
+        )
         response = self.sagemaker_session.sagemaker_runtime_client.invoke_endpoint(**request_args)
         return self._handle_response(response)
 
@@ -131,7 +137,9 @@ class Predictor(object):
         content_type = response.get("ContentType", "application/octet-stream")
         return self.deserializer.deserialize(response_body, content_type)
 
-    def _create_request_args(self, data, initial_args=None, target_model=None, target_variant=None):
+    def _create_request_args(
+        self, data, initial_args=None, target_model=None, target_variant=None, inference_id=None
+    ):
         """Placeholder docstring"""
         args = dict(initial_args) if initial_args else {}
 
@@ -149,6 +157,9 @@ class Predictor(object):
 
         if target_variant:
             args["TargetVariant"] = target_variant
+
+        if inference_id:
+            args["InferenceId"] = inference_id
 
         data = self.serializer.serialize(data)
 

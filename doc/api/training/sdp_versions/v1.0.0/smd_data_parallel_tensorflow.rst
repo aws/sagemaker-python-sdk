@@ -414,7 +414,7 @@ TensorFlow API
 
 .. function:: smdistributed.dataparallel.tensorflow.DistributedOptimizer
 
-   Applicable if you use the ``tf.estimator`` API in TensorFlow 2.x (2.3).
+   Applicable if you use the ``tf.estimator`` API in TensorFlow 2.x (2.3.1).
    ​
    Construct a new ``DistributedOptimizer`` , which uses TensorFlow
    optimizer under the hood for computing single-process gradient values
@@ -489,7 +489,7 @@ TensorFlow API
 
 .. function:: smdistributed.dataparallel.tensorflow.BroadcastGlobalVariablesHook
 
-   Applicable if you use the ``tf.estimator`` API in TensorFlow 2.x (2.3).
+   Applicable if you use the ``tf.estimator`` API in TensorFlow 2.x (2.3.1).
 
 
    ``SessionRunHook`` that will broadcast all global variables from root

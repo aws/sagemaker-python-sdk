@@ -349,6 +349,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self.profiler_config = profiler_config
         self.disable_profiler = disable_profiler
 
+        if not _region_supports_profiler(self.sagemaker_session.boto_region_name):
+            self.disable_profiler = True
+
         self.profiler_rule_configs = None
         self.profiler_rules = None
         self.debugger_rules = None
