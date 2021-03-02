@@ -1,5 +1,202 @@
 # Changelog
 
+## v2.27.0 (2021-03-01)
+
+### Features
+
+ * add inference_id to predict
+
+### Bug Fixes and Other Changes
+
+ * disable profiler by default for regions not support it
+
+### Documentation Changes
+
+ * add TF 2.4.1 support to sm distributed data parallel docs and other updates
+
+## v2.26.0 (2021-02-26)
+
+### Features
+
+ * Add Framework Version support for PyTorch compilation (Neo)
+
+### Bug Fixes and Other Changes
+
+ * add mxnet 1.7.0 eia configuration
+ * update source constructor for lineage action and artifact
+
+### Documentation Changes
+
+ * fix typo in create_monitoring_schedule method
+
+## v2.25.2 (2021-02-25)
+
+### Bug Fixes and Other Changes
+
+ * Use the output path to store the Clarify config file
+ * feature group should ignore nan values
+ * ignore failing smdataparallel test
+ * Add tests for Training job & Transform job in visualizer
+ * visualizer for pipeline processing job steps
+
+### Documentation Changes
+
+ * update doc for Elastic Inference MXNet 1.7.0
+
+## v2.25.1 (2021-02-20)
+
+### Bug Fixes and Other Changes
+
+ * Add tests for visualizer to improve test coverage
+
+### Documentation Changes
+
+ * specify correct return type
+
+### Testing and Release Infrastructure
+
+ * rename canary_quick pytest mark to release
+
+## v2.25.0 (2021-02-19)
+
+### Features
+
+ * Enable step caching
+ * Add other Neo supported regions for Inferentia inference images
+
+### Bug Fixes and Other Changes
+
+ * remove FailStep from pipelines
+ * use sagemaker_session in workflow tests
+ * use ECR public for multidatamodel tests
+ * add the mapping from py3 to cuda11 images
+ * Add 30s cap time for tag tests
+ * add build spec for slow tests
+ * mark top 10 slow tests
+ * remove slow test_run_xxx_monitor_baseline tests
+ * pin astroid to 2.4.2
+
+### Testing and Release Infrastructure
+
+ * unmark more flaky integ tests
+ * remove canary_quick pytest mark from flaky/unnecessary tests
+ * remove python3.8 from buildspec
+ * remove py38 tox env
+ * fix release buildspec typo
+ * unblock regional release builds
+ * lower test TPS for experiment analytics
+ * move package preparation and publishing to the deploy step
+
+## v2.24.5 (2021-02-12)
+
+### Bug Fixes and Other Changes
+
+ * test_tag/test_tags method assert fix in association tests
+
+### Documentation Changes
+
+ * removing mention of TF 2.4 from SM distributed model parallel docs
+ * adding details about mpi options, other small updates
+
+## v2.24.4 (2021-02-09)
+
+### Bug Fixes and Other Changes
+
+ * add integration test for listing artifacts by type
+ * List Associations integ tests
+
+## v2.24.3 (2021-02-04)
+
+### Bug Fixes and Other Changes
+
+ * Remove pytest fixture and fix test_tag/s method
+
+## v2.24.2 (2021-02-03)
+
+### Bug Fixes and Other Changes
+
+ * use 3.5 version of get-pip.py
+ * SM DDP release notes/changelog files
+
+### Documentation Changes
+
+ * adding versioning to sm distributed data parallel docs
+
+## v2.24.1 (2021-01-28)
+
+### Bug Fixes and Other Changes
+
+ * fix collect-tests tox env
+ * create profiler specific unsupported regions
+ * Update smd_model_parallel_pytorch.rst
+
+## v2.24.0 (2021-01-22)
+
+### Features
+
+ * add support for Std:Join for pipelines
+ * Map image name to image uri
+ * friendly names for short URIs
+
+### Bug Fixes and Other Changes
+
+ * increase allowed time for search to get updated
+ * refactor distribution config construction
+
+### Documentation Changes
+
+ * Add SMP 1.2.0 API docs
+
+## v2.23.6 (2021-01-20)
+
+### Bug Fixes and Other Changes
+
+ * add artifact, action, context to virsualizer
+
+## v2.23.5 (2021-01-18)
+
+### Bug Fixes and Other Changes
+
+ * increase time allowed for trial components to index
+
+## v2.23.4.post0 (2021-01-14)
+
+### Documentation Changes
+
+ * update predict_fn implementation for PyTorch EIA 1.5.1
+
+## v2.23.4 (2021-01-13)
+
+### Bug Fixes and Other Changes
+
+ * remove captureWarninig setting
+
+## v2.23.3 (2021-01-12)
+
+### Bug Fixes and Other Changes
+
+ * improve optional dependency error message
+ * add debugger rule container account in PDT
+ * assert step execution first in pipeline test
+ * add service inserted fields to generated Hive DDL
+
+### Documentation Changes
+
+ * fix description for max_wait
+ * use correct classpath in V2 alias documentation.
+ * Bad arg name in feat-store ingestion manager
+
+## v2.23.2 (2021-01-06)
+
+### Bug Fixes and Other Changes
+
+ * remove shell=True in subprocess.check_output
+ * use SecurityConfig dict key
+
+### Documentation Changes
+
+ * remove D212 from ignore to comply with PEP257 standards
+
 ## v2.23.1 (2020-12-29)
 
 ### Bug Fixes and Other Changes

@@ -100,6 +100,7 @@ def pandas_data_frame():
             "feature1": pd.Series(np.arange(10.0), dtype="float64"),
             "feature2": pd.Series(np.arange(10), dtype="int64"),
             "feature3": pd.Series(["2020-10-30T03:43:21Z"] * 10, dtype="string"),
+            "feature4": pd.Series(np.arange(5.0), dtype="float64"),  # contains nan
         }
     )
     return df
@@ -131,7 +132,12 @@ def create_table_ddl():
         "CREATE EXTERNAL TABLE IF NOT EXISTS sagemaker_featurestore.{feature_group_name} (\n"
         "  feature1 FLOAT\n"
         "  feature2 INT\n"
-        "  feature3 STRING\n)\n"
+        "  feature3 STRING\n"
+        "  feature4 FLOAT\n"
+        "  write_time TIMESTAMP\n"
+        "  event_time TIMESTAMP\n"
+        "  is_deleted BOOLEAN\n"
+        ")\n"
         "ROW FORMAT SERDE 'org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe'\n"
         "  STORED AS\n"
         "  INPUTFORMAT 'parquet.hive.DeprecatedParquetInputFormat'\n"
@@ -210,6 +216,9 @@ def test_create_feature_store(
                 time.sleep(60)
 
         assert df.shape[0] == 11
+        nans = pd.isna(df.loc[df["feature1"].isin([5, 6, 7, 8, 9])]["feature4"])
+        for is_na in nans.items():
+            assert is_na
         assert (
             create_table_ddl.format(
                 feature_group_name=feature_group_name,

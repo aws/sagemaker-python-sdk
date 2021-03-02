@@ -11,29 +11,31 @@ across multiple GPUs with minimal code changes. The library's API can be accesse
 
 Use the following sections to learn more about the model parallelism and the library.
 
-.. important::
-   The model parallel library only supports training jobs using CUDA 11. When you define a PyTorch or TensorFlow
-   ``Estimator`` with ``modelparallel`` parameter ``enabled`` set to ``True``,
-   it uses CUDA 11. When you extend or customize your own training image
-   you must use a CUDA 11 base image. See
-   `Extend or Adapt A Docker Container that Contains the Model Parallel Library
-   <https://integ-docs-aws.amazon.com/sagemaker/latest/dg/model-parallel-use-api.html#model-parallel-customize-container>`__
-   for more information.
+Use with the SageMaker Python SDK
+=================================
 
-How to Use this Guide
-=====================
-
-The library contains a Common API that is shared across frameworks, as well as APIs
-that are specific to supported frameworks, TensorFlow and PyTorch. To use the library, reference the
-**Common API** documentation alongside the framework specific API documentation.
+Use the following page to learn how to configure and enable distributed model parallel
+when you configure an Amazon SageMaker Python SDK `Estimator`.
 
 .. toctree::
    :maxdepth: 1
 
    smd_model_parallel_general
-   smd_model_parallel_common_api
-   smd_model_parallel_pytorch
-   smd_model_parallel_tensorflow
+
+API Documentation
+=================
+
+The library contains a Common API that is shared across frameworks, as well as APIs
+that are specific to supported frameworks, TensorFlow and PyTorch.
+
+Select a version to see the API documentation for version. To use the library, reference the
+**Common API** documentation alongside the framework specific API documentation.
+
+.. toctree::
+   :maxdepth: 1
+
+   smp_versions/v1_2_0.rst
+   smp_versions/v1_1_0.rst
 
 It is recommended to use this documentation alongside `SageMaker Distributed Model Parallel
 <http://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel.html>`__ in the Amazon SageMaker
@@ -49,11 +51,20 @@ developer guide. This developer guide documentation includes:
    -  `Configuration tips and pitfalls
       <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-customize-tips-pitfalls.html>`__
 
-Latest Updates
-==============
+
+.. important::
+   The model parallel library only supports training jobs using CUDA 11. When you define a PyTorch or TensorFlow
+   ``Estimator`` with ``modelparallel`` parameter ``enabled`` set to ``True``,
+   it uses CUDA 11. When you extend or customize your own training image
+   you must use a CUDA 11 base image. See
+   `Extend or Adapt A Docker Container that Contains the Model Parallel Library
+   <https://integ-docs-aws.amazon.com/sagemaker/latest/dg/model-parallel-use-api.html#model-parallel-customize-container>`__
+   for more information.
+
+Release Notes
+=============
 
 New features, bug fixes, and improvements are regularly made to the SageMaker distributed model parallel library.
-
 To see the the latest changes made to the library, refer to the library
 `Release Notes
 <https://github.com/aws/sagemaker-python-sdk/blob/master/doc/api/training/smd_model_parallel_release_notes/>`_.

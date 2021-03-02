@@ -14,6 +14,7 @@
 from __future__ import absolute_import
 
 import base64
+import copy
 import errno
 import json
 import logging
@@ -670,7 +671,13 @@ class _SageMakerContainer(object):
             raise e
 
         yaml_content = yaml.dump(content, default_flow_style=False)
-        logger.info("docker compose file: \n%s", yaml_content)
+        # Mask all environment vars for logging, could contain secrects.
+        masked_content = copy.deepcopy(content)
+        for _, service_data in masked_content["services"].items():
+            service_data["environment"] = ["[Masked]" for _ in service_data["environment"]]
+
+        masked_content_for_logging = yaml.dump(masked_content, default_flow_style=False)
+        logger.info("docker compose file: \n%s", masked_content_for_logging)
         with open(docker_compose_path, "w") as f:
             f.write(yaml_content)
 
@@ -1067,7 +1074,7 @@ def _ecr_login_if_needed(boto_session, image):
     ecr_url = auth["authorizationData"][0]["proxyEndpoint"]
 
     cmd = "docker login -u AWS -p %s %s" % (token, ecr_url)
-    subprocess.check_output(cmd, shell=True)
+    subprocess.check_output(cmd.split())
 
     return True
 
@@ -1081,5 +1088,5 @@ def _pull_image(image):
     pull_image_command = ("docker pull %s" % image).strip()
     logger.info("docker command: %s", pull_image_command)
 
-    subprocess.check_output(pull_image_command, shell=True)
+    subprocess.check_output(pull_image_command.split())
     logger.info("image pulled: %s", image)

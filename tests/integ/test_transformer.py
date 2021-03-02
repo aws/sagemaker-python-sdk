@@ -78,7 +78,7 @@ def mxnet_transform_input(sagemaker_session):
     )
 
 
-@pytest.mark.canary_quick
+@pytest.mark.release
 def test_transform_mxnet(
     mxnet_estimator, mxnet_transform_input, sagemaker_session, cpu_instance_type
 ):
@@ -108,7 +108,7 @@ def test_transform_mxnet(
     assert input_filter == job_desc["DataProcessing"]["InputFilter"]
 
 
-@pytest.mark.canary_quick
+@pytest.mark.release
 def test_attach_transform_kmeans(sagemaker_session, cpu_instance_type):
     kmeans = KMeans(
         role="SageMakerRole",

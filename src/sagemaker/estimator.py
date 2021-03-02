@@ -49,6 +49,8 @@ from sagemaker.fw_utils import (
     UploadedCode,
     validate_source_dir,
     _region_supports_debugger,
+    _region_supports_profiler,
+    get_mp_parameters,
 )
 from sagemaker.inputs import TrainingInput
 from sagemaker.job import _Job
@@ -204,9 +206,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 https://docs.aws.amazon.com/sagemaker/latest/dg/model-managed-spot-training.html
                 (default: ``False``).
             max_wait (int): Timeout in seconds waiting for spot training
-                instances (default: None). After this amount of time Amazon
-                SageMaker will stop waiting for Spot instances to become
-                available (default: ``None``).
+                job (default: None). After this amount of time Amazon
+                SageMaker will stop waiting for managed spot training job to
+                complete (default: ``None``).
             checkpoint_s3_uri (str): The S3 URI in which to persist checkpoints
                 that the algorithm persists (if any) during training. (default:
                 ``None``).
@@ -346,6 +348,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
 
         self.profiler_config = profiler_config
         self.disable_profiler = disable_profiler
+
+        if not _region_supports_profiler(self.sagemaker_session.boto_region_name):
+            self.disable_profiler = True
 
         self.profiler_rule_configs = None
         self.profiler_rules = None
@@ -493,7 +498,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         """Set necessary values and do basic validations in profiler config and profiler rules.
 
         When user explicitly set rules to an empty list, default profiler rule won't be enabled.
-        Default profiler rule will be enabled when either:
+        Default profiler rule will be enabled in supported regions when either:
         1. user doesn't specify any rules, i.e., rules=None; or
         2. user only specify debugger rules, i.e., rules=[Rule.sagemaker(...)]
         """
@@ -502,7 +507,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 raise RuntimeError("profiler_config cannot be set when disable_profiler is True.")
             if self.profiler_rules:
                 raise RuntimeError("ProfilerRule cannot be set when disable_profiler is True.")
-        elif _region_supports_debugger(self.sagemaker_session.boto_region_name):
+        elif _region_supports_profiler(self.sagemaker_session.boto_region_name):
             if self.profiler_config is None:
                 self.profiler_config = ProfilerConfig(s3_output_path=self.output_path)
             if self.rules is None or (self.rules and not self.profiler_rules):
@@ -1785,11 +1790,6 @@ class Estimator(EstimatorBase):
                 API_AlgorithmSpecification.html#SageMaker-Type-AlgorithmSpecification-
                 EnableSageMakerMetricsTimeSeries>`_.
                 (default: ``None``).
-            enable_network_isolation (bool): Specifies whether container will
-                run in network isolation mode (default: ``False``). Network
-                isolation mode restricts the container access to outside networks
-                (such as the Internet). The container does not make any inbound or
-                outbound network calls. Also known as Internet-free mode.
             profiler_config (:class:`~sagemaker.debugger.ProfilerConfig`):
                 Configuration for how SageMaker Debugger collects
                 monitoring and profiling information from your training job.
@@ -2121,6 +2121,7 @@ class Framework(EstimatorBase):
             :class:`~sagemaker.estimator.EstimatorBase`.
         """
         super(Framework, self).__init__(enable_network_isolation=enable_network_isolation, **kwargs)
+        image_uri = renamed_kwargs("image_name", "image_uri", image_uri, kwargs)
         if entry_point.startswith("s3://"):
             raise ValueError(
                 "Invalid entry point script: {}. Must be a path to a local file.".format(
@@ -2538,6 +2539,50 @@ class Framework(EstimatorBase):
             volume_kms_key=volume_kms_key,
             sagemaker_session=self.sagemaker_session,
         )
+
+    def _distribution_configuration(self, distribution):
+        """Returns a dict of distribution configurations.
+
+        Args:
+            distribution (dict): A dictionary with information on how to run distributed training.
+
+        Returns:
+            dict that
+        """
+        distribution_config = {}
+
+        if "parameter_server" in distribution:
+            ps_enabled = distribution.get("parameter_server").get("enabled", False)
+            distribution_config[self.LAUNCH_PS_ENV_NAME] = ps_enabled
+
+        if "mpi" in distribution:
+            mpi_dict = distribution["mpi"]
+            mpi_enabled = mpi_dict.get("enabled", False)
+            distribution_config[self.LAUNCH_MPI_ENV_NAME] = mpi_enabled
+
+            if mpi_dict.get("processes_per_host"):
+                distribution_config[self.MPI_NUM_PROCESSES_PER_HOST] = mpi_dict.get(
+                    "processes_per_host"
+                )
+
+            distribution_config[self.MPI_CUSTOM_MPI_OPTIONS] = mpi_dict.get(
+                "custom_mpi_options", ""
+            )
+
+            if get_mp_parameters(distribution):
+                distribution_config["mp_parameters"] = get_mp_parameters(distribution)
+
+        elif "modelparallel" in distribution.get("smdistributed", {}):
+            raise ValueError("Cannot use Model Parallelism without MPI enabled!")
+
+        if "smdistributed" in distribution:
+            # smdistributed strategy selected
+            smdistributed = distribution["smdistributed"]
+            smdataparallel_enabled = smdistributed.get("dataparallel", {}).get("enabled", False)
+            distribution_config[self.LAUNCH_SM_DDP_ENV_NAME] = smdataparallel_enabled
+            distribution_config[self.INSTANCE_TYPE] = self.instance_type
+
+        return distribution_config
 
 
 def _s3_uri_prefix(channel_name, s3_data):

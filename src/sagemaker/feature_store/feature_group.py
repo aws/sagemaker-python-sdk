@@ -152,7 +152,7 @@ class IngestionManagerPandas:
         feature_group_name (str): name of the Feature Group.
         sagemaker_session (Session): instance of the Session class to perform boto calls.
         data_frame (DataFrame): pandas DataFrame to be ingested to the given feature group.
-        max_works (int): number of threads to create.
+        max_workers (int): number of threads to create.
     """
 
     feature_group_name: str = attr.ib()
@@ -185,6 +185,7 @@ class IngestionManagerPandas:
                     feature_name=data_frame.columns[index], value_as_string=str(row[index])
                 )
                 for index in range(len(row))
+                if pd.notna(row[index])
             ]
             sagemaker_session.put_record(
                 feature_group_name=feature_group_name, record=[value.to_dict() for value in record]
@@ -508,6 +509,9 @@ class FeatureGroup:
                 f"  {definition.feature_name} "
                 f"{self._FEATURE_TYPE_TO_DDL_DATA_TYPE_MAP.get(definition.feature_type.value)}\n"
             )
+        ddl += "  write_time TIMESTAMP\n"
+        ddl += "  event_time TIMESTAMP\n"
+        ddl += "  is_deleted BOOLEAN\n"
         ddl += ")\n"
         ddl += (
             "ROW FORMAT SERDE 'org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe'\n"

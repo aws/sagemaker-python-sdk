@@ -18,10 +18,8 @@ import re
 import time
 import uuid
 
-import boto3
 import pytest
 
-from botocore.config import Config
 from botocore.exceptions import WaiterError
 from sagemaker.debugger import (
     DebuggerHookConfig,
@@ -32,12 +30,14 @@ from sagemaker.inputs import CreateModelInput, TrainingInput
 from sagemaker.model import Model
 from sagemaker.processing import ProcessingInput, ProcessingOutput
 from sagemaker.pytorch.estimator import PyTorch
-from sagemaker.session import get_execution_role, Session
+from sagemaker.session import get_execution_role
 from sagemaker.sklearn.estimator import SKLearn
 from sagemaker.sklearn.processing import SKLearnProcessor
 from sagemaker.workflow.conditions import ConditionGreaterThanOrEqualTo
 from sagemaker.workflow.condition_step import ConditionStep
 from sagemaker.dataset_definition.inputs import DatasetDefinition, AthenaDatasetDefinition
+from sagemaker.workflow.execution_variables import ExecutionVariables
+from sagemaker.workflow.functions import Join
 from sagemaker.workflow.parameters import (
     ParameterInteger,
     ParameterString,
@@ -46,6 +46,7 @@ from sagemaker.workflow.steps import (
     CreateModelStep,
     ProcessingStep,
     TrainingStep,
+    CacheConfig,
 )
 from sagemaker.workflow.step_collections import RegisterModel
 from sagemaker.workflow.pipeline import Pipeline
@@ -70,28 +71,6 @@ def region_name(sagemaker_session):
 @pytest.fixture(scope="module")
 def role(sagemaker_session):
     return get_execution_role(sagemaker_session)
-
-
-# TODO-reinvent-2020: remove use of specific region and this session
-@pytest.fixture(scope="module")
-def region():
-    return "us-east-2"
-
-
-# TODO-reinvent-2020: remove use of specific region and this session
-@pytest.fixture(scope="module")
-def workflow_session(region):
-    boto_session = boto3.Session(region_name=region)
-
-    sagemaker_client_config = dict()
-    sagemaker_client_config.setdefault("config", Config(retries=dict(max_attempts=2)))
-    sagemaker_client = boto_session.client("sagemaker", **sagemaker_client_config)
-
-    return Session(
-        boto_session=boto_session,
-        sagemaker_client=sagemaker_client,
-        sagemaker_runtime_client=None,
-    )
 
 
 @pytest.fixture(scope="module")
@@ -124,7 +103,6 @@ def athena_dataset_definition(sagemaker_session):
 
 def test_three_step_definition(
     sagemaker_session,
-    workflow_session,
     region_name,
     role,
     script_dir,
@@ -134,6 +112,7 @@ def test_three_step_definition(
     framework_version = "0.20.0"
     instance_type = ParameterString(name="InstanceType", default_value="ml.m5.xlarge")
     instance_count = ParameterInteger(name="InstanceCount", default_value=1)
+    output_prefix = ParameterString(name="OutputPrefix", default_value="output")
 
     input_data = f"s3://sagemaker-sample-data-{region_name}/processing/census/census-income.csv"
 
@@ -154,7 +133,20 @@ def test_three_step_definition(
         ],
         outputs=[
             ProcessingOutput(output_name="train_data", source="/opt/ml/processing/train"),
-            ProcessingOutput(output_name="test_data", source="/opt/ml/processing/test"),
+            ProcessingOutput(
+                output_name="test_data",
+                source="/opt/ml/processing/test",
+                destination=Join(
+                    on="/",
+                    values=[
+                        "s3:/",
+                        sagemaker_session.default_bucket(),
+                        "test-sklearn",
+                        output_prefix,
+                        ExecutionVariables.PIPELINE_EXECUTION_ID,
+                    ],
+                ),
+            ),
         ],
         code=os.path.join(script_dir, "preprocessing.py"),
     )
@@ -194,9 +186,9 @@ def test_three_step_definition(
 
     pipeline = Pipeline(
         name=pipeline_name,
-        parameters=[instance_type, instance_count],
+        parameters=[instance_type, instance_count, output_prefix],
         steps=[step_process, step_train, step_model],
-        sagemaker_session=workflow_session,
+        sagemaker_session=sagemaker_session,
     )
 
     definition = json.loads(pipeline.definition())
@@ -208,6 +200,7 @@ def test_three_step_definition(
                 {"Name": "InstanceType", "Type": "String", "DefaultValue": "ml.m5.xlarge"}.items()
             ),
             tuple({"Name": "InstanceCount", "Type": "Integer", "DefaultValue": 1}.items()),
+            tuple({"Name": "OutputPrefix", "Type": "String", "DefaultValue": "output"}.items()),
         ]
     )
 
@@ -251,17 +244,27 @@ def test_three_step_definition(
     assert model_args["PrimaryContainer"]["ModelDataUrl"] == {
         "Get": "Steps.my-train.ModelArtifacts.S3ModelArtifacts"
     }
+    try:
+        response = pipeline.create(role)
+        create_arn = response["PipelineArn"]
+        assert re.match(
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            create_arn,
+        )
+    finally:
+        try:
+            pipeline.delete()
+        except Exception:
+            pass
 
 
-# TODO-reinvent-2020: Modify use of the workflow client
 def test_one_step_sklearn_processing_pipeline(
     sagemaker_session,
-    workflow_session,
     role,
     sklearn_latest_version,
     cpu_instance_type,
     pipeline_name,
-    region,
+    region_name,
     athena_dataset_definition,
 ):
     instance_count = ParameterInteger(name="InstanceCount", default_value=2)
@@ -271,6 +274,8 @@ def test_one_step_sklearn_processing_pipeline(
         ProcessingInput(source=input_file_path, destination="/opt/ml/processing/inputs/"),
         ProcessingInput(dataset_definition=athena_dataset_definition),
     ]
+
+    cache_config = CacheConfig(enable_caching=True, expire_after="T30m")
 
     sklearn_processor = SKLearnProcessor(
         framework_version=sklearn_latest_version,
@@ -287,12 +292,13 @@ def test_one_step_sklearn_processing_pipeline(
         processor=sklearn_processor,
         inputs=inputs,
         code=script_path,
+        cache_config=cache_config,
     )
     pipeline = Pipeline(
         name=pipeline_name,
         parameters=[instance_count],
         steps=[step_sklearn],
-        sagemaker_session=workflow_session,
+        sagemaker_session=sagemaker_session,
     )
 
     try:
@@ -305,7 +311,7 @@ def test_one_step_sklearn_processing_pipeline(
         response = pipeline.create(role)
         create_arn = response["PipelineArn"]
         assert re.match(
-            fr"arn:aws:sagemaker:{region}:\d{{12}}:pipeline/{pipeline_name}",
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
             create_arn,
         )
 
@@ -313,18 +319,23 @@ def test_one_step_sklearn_processing_pipeline(
         response = pipeline.update(role)
         update_arn = response["PipelineArn"]
         assert re.match(
-            fr"arn:aws:sagemaker:{region}:\d{{12}}:pipeline/{pipeline_name}",
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
             update_arn,
         )
 
         execution = pipeline.start(parameters={})
         assert re.match(
-            fr"arn:aws:sagemaker:{region}:\d{{12}}:pipeline/{pipeline_name}/execution/",
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
             execution.arn,
         )
 
         response = execution.describe()
         assert response["PipelineArn"] == create_arn
+
+        # Check CacheConfig
+        response = json.loads(pipeline.describe()["PipelineDefinition"])["Steps"][0]["CacheConfig"]
+        assert response["Enabled"] == cache_config.enable_caching
+        assert response["ExpireAfter"] == cache_config.expire_after
 
         try:
             execution.wait(delay=30, max_attempts=3)
@@ -340,14 +351,12 @@ def test_one_step_sklearn_processing_pipeline(
             pass
 
 
-# TODO-reinvent-2020: Modify use of the workflow client
 def test_conditional_pytorch_training_model_registration(
     sagemaker_session,
-    workflow_session,
     role,
     cpu_instance_type,
     pipeline_name,
-    region,
+    region_name,
 ):
     base_dir = os.path.join(DATA_DIR, "pytorch_mnist")
     entry_point = os.path.join(base_dir, "mnist.py")
@@ -413,25 +422,25 @@ def test_conditional_pytorch_training_model_registration(
         name=pipeline_name,
         parameters=[good_enough_input, instance_count, instance_type],
         steps=[step_cond],
-        sagemaker_session=workflow_session,
+        sagemaker_session=sagemaker_session,
     )
 
     try:
         response = pipeline.create(role)
         create_arn = response["PipelineArn"]
         assert re.match(
-            fr"arn:aws:sagemaker:{region}:\d{{12}}:pipeline/{pipeline_name}", create_arn
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}", create_arn
         )
 
         execution = pipeline.start(parameters={})
         assert re.match(
-            fr"arn:aws:sagemaker:{region}:\d{{12}}:pipeline/{pipeline_name}/execution/",
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
             execution.arn,
         )
 
         execution = pipeline.start(parameters={"GoodEnoughInput": 0})
         assert re.match(
-            fr"arn:aws:sagemaker:{region}:\d{{12}}:pipeline/{pipeline_name}/execution/",
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
             execution.arn,
         )
     finally:
@@ -506,14 +515,16 @@ def test_training_job_with_debugger(
         except WaiterError:
             pass
         execution_steps = execution.list_steps()
+
+        assert len(execution_steps) == 1
+        assert execution_steps[0].get("FailureReason", "") == ""
+        assert execution_steps[0]["StepName"] == "pytorch-train"
+        assert execution_steps[0]["StepStatus"] == "Succeeded"
+
         training_job_arn = execution_steps[0]["Metadata"]["TrainingJob"]["Arn"]
         job_description = sagemaker_session.sagemaker_client.describe_training_job(
             TrainingJobName=training_job_arn.split("/")[1]
         )
-
-        assert len(execution_steps) == 1
-        assert execution_steps[0]["StepName"] == "pytorch-train"
-        assert execution_steps[0]["StepStatus"] == "Succeeded"
 
         for index, rule in enumerate(rules):
             config = job_description["DebugRuleConfigurations"][index]

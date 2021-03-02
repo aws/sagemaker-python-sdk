@@ -15,7 +15,10 @@ from __future__ import absolute_import
 
 
 def test_model(
-    endpoint_context_associate_with_model, model_obj, endpoint_action_obj, sagemaker_session
+    endpoint_context_associate_with_model,
+    model_obj,
+    endpoint_action_obj,
+    sagemaker_session,
 ):
     model_list = endpoint_context_associate_with_model.models()
     for model in model_list:

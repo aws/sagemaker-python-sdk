@@ -35,8 +35,20 @@ def experiment(sagemaker_session):
             sm.associate_trial_component(
                 TrialComponentName=trial_component_name, TrialName=trial_name
             )
+            time.sleep(1)
 
         time.sleep(15)  # wait for search to get updated
+
+        # allow search time thrice
+        for _ in range(3):
+            analytics = ExperimentAnalytics(
+                experiment_name=experiment_name, sagemaker_session=sagemaker_session
+            )
+
+            if len(analytics.dataframe().columns) > 0:
+                break
+
+            time.sleep(15)
 
         yield experiment_name
     finally:
@@ -76,15 +88,27 @@ def experiment_with_artifacts(sagemaker_session):
             sm.associate_trial_component(
                 TrialComponentName=trial_component_name, TrialName=trial_name
             )
+            time.sleep(1)
 
         time.sleep(15)  # wait for search to get updated
+
+        # allow search time thrice
+        for _ in range(3):
+            analytics = ExperimentAnalytics(
+                experiment_name=experiment_name, sagemaker_session=sagemaker_session
+            )
+
+            if len(analytics.dataframe().columns) > 0:
+                break
+
+            time.sleep(15)
 
         yield experiment_name
     finally:
         _delete_resources(sm, experiment_name, trials)
 
 
-@pytest.mark.canary_quick
+@pytest.mark.release
 def test_experiment_analytics_artifacts(sagemaker_session):
     with experiment_with_artifacts(sagemaker_session) as experiment_name:
         analytics = ExperimentAnalytics(
@@ -99,22 +123,6 @@ def test_experiment_analytics_artifacts(sagemaker_session):
             "inputArtifacts1 - Value",
             "outputArtifacts1 - MediaType",
             "outputArtifacts1 - Value",
-            "Trials",
-            "Experiments",
-        ]
-
-
-@pytest.mark.canary_quick
-def test_experiment_analytics(sagemaker_session):
-    with experiment(sagemaker_session) as experiment_name:
-        analytics = ExperimentAnalytics(
-            experiment_name=experiment_name, sagemaker_session=sagemaker_session
-        )
-
-        assert list(analytics.dataframe().columns) == [
-            "TrialComponentName",
-            "DisplayName",
-            "hp1",
             "Trials",
             "Experiments",
         ]
