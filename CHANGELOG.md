@@ -1,5 +1,19 @@
 # Changelog
 
+## v2.27.0 (2021-03-01)
+
+### Features
+
+ * add inference_id to predict
+
+### Bug Fixes and Other Changes
+
+ * disable profiler by default for regions not support it
+
+### Documentation Changes
+
+ * add TF 2.4.1 support to sm distributed data parallel docs and other updates
+
 ## v2.26.0 (2021-02-26)
 
 ### Features
