@@ -771,7 +771,7 @@ def test_ecr_login_needed(check_output):
         "docker login -u AWS -p %s https://520713654638.dkr.ecr.us-east-1.amazonaws.com" % token
     )
 
-    check_output.assert_called_with(expected_command.split(), stderr=subprocess.DEVNULL)
+    check_output.assert_called_with(expected_command.split())
     session_mock.client("ecr").get_authorization_token.assert_called_with(
         registryIds=["520713654638"]
     )

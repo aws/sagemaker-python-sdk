@@ -1074,7 +1074,7 @@ def _ecr_login_if_needed(boto_session, image):
     ecr_url = auth["authorizationData"][0]["proxyEndpoint"]
 
     cmd = "docker login -u AWS -p %s %s" % (token, ecr_url)
-    subprocess.check_output(cmd.split(), stderr=subprocess.DEVNULL)
+    subprocess.check_output(cmd.split())
 
     return True
 
