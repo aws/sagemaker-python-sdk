@@ -21,7 +21,7 @@ from mock import (
     PropertyMock,
 )
 
-from sagemaker.debugger import ProfilerConfig, ProfilerRule
+from sagemaker.debugger import ProfilerConfig
 from sagemaker.estimator import Estimator
 from sagemaker.inputs import TrainingInput, TransformInput, CreateModelInput
 from sagemaker.model import Model
@@ -150,7 +150,7 @@ def test_training_step(sagemaker_session):
             "ProfilerConfig": {
                 "ProfilingIntervalInMilliseconds": 500,
                 "S3OutputPath": f"s3://{BUCKET}/",
-            }
+            },
         },
         "CacheConfig": {"Enabled": True, "ExpireAfter": "PT1H"},
     }
