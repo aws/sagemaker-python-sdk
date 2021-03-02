@@ -21,6 +21,7 @@ from mock import (
     PropertyMock,
 )
 
+from sagemaker.debugger import ProfilerConfig, ProfilerRule
 from sagemaker.estimator import Estimator
 from sagemaker.inputs import TrainingInput, TransformInput, CreateModelInput
 from sagemaker.model import Model
@@ -112,6 +113,8 @@ def test_training_step(sagemaker_session):
         role=ROLE,
         instance_count=1,
         instance_type="c4.4xlarge",
+        profiler_config=ProfilerConfig(system_monitor_interval_millis=500),
+        rules=[],
         sagemaker_session=sagemaker_session,
     )
     inputs = TrainingInput(f"s3://{BUCKET}/train_manifest")
@@ -144,6 +147,10 @@ def test_training_step(sagemaker_session):
             },
             "RoleArn": ROLE,
             "StoppingCondition": {"MaxRuntimeInSeconds": 86400},
+            "ProfilerConfig": {
+                "ProfilingIntervalInMilliseconds": 500,
+                "S3OutputPath": f"s3://{BUCKET}/",
+            }
         },
         "CacheConfig": {"Enabled": True, "ExpireAfter": "PT1H"},
     }

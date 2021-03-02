@@ -160,9 +160,6 @@ class TrainingStep(Step):
         NOTE: The CreateTrainingJob request is not quite the args list that workflow needs.
         The TrainingJobName and ExperimentConfig attributes cannot be included.
         """
-        self.estimator.disable_profiler = True
-        self.estimator.profiler_config = None
-        self.estimator.profiler_rules = None
 
         self.estimator._prepare_for_training()
         train_args = _TrainingJob._get_train_args(
