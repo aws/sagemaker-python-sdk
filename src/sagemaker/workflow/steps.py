@@ -330,7 +330,7 @@ class ProcessingStep(Step):
         the `process` method of the `sagemaker.processing.Processor`.
 
         Args:
-            name (str): The name of the training step.
+            name (str): The name of the processing step.
             processor (Processor): A `sagemaker.processing.Processor` instance.
             inputs (List[ProcessingInput]): A list of `sagemaker.processing.ProcessorInput`
                 instances. Defaults to `None`.
