@@ -820,7 +820,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         If the output is a tty or a Jupyter cell, it will be color-coded based
         on which instance the log entry is from.
         """
-        self.sagemaker_session.logs_for_job(self.latest_training_job, wait=True)
+        self.sagemaker_session.logs_for_job(self.latest_training_job.name, wait=True)
 
     def deploy(
         self,
@@ -1790,11 +1790,6 @@ class Estimator(EstimatorBase):
                 API_AlgorithmSpecification.html#SageMaker-Type-AlgorithmSpecification-
                 EnableSageMakerMetricsTimeSeries>`_.
                 (default: ``None``).
-            enable_network_isolation (bool): Specifies whether container will
-                run in network isolation mode (default: ``False``). Network
-                isolation mode restricts the container access to outside networks
-                (such as the Internet). The container does not make any inbound or
-                outbound network calls. Also known as Internet-free mode.
             profiler_config (:class:`~sagemaker.debugger.ProfilerConfig`):
                 Configuration for how SageMaker Debugger collects
                 monitoring and profiling information from your training job.

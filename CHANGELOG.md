@@ -1,5 +1,23 @@
 # Changelog
 
+## v2.28.0 (2021-03-03)
+
+### Features
+
+ * support creating endpoints with model images from private registries
+
+## v2.27.1 (2021-03-03)
+
+### Bug Fixes and Other Changes
+
+ * Change Estimator.logs() to use latest_training_job.name
+ * mask creds from docker commands in local mode. Closes #2118
+
+### Documentation Changes
+
+ * fix pipelines processing step typo
+ * remove double 'enable-network-isolation' description
+
 ## v2.27.0 (2021-03-01)
 
 ### Features
