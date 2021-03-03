@@ -5,15 +5,15 @@
 
 .. _sm-sdk-modelparallel-params:
 
-SageMaker Python SDK ``modelparallel`` parameters
--------------------------------------------------
+Required SageMaker Python SDK parameters
+========================================
 
 The TensorFlow and PyTorch ``Estimator`` objects contains a ``distribution`` parameter,
 which is used to enable and specify parameters for the
-initialization of the SMP library. SMP internally uses MPI,
-so in order to use model parallelism, MPI must be enabled using the ``distribution`` parameter.
+initialization of the SageMaker distributed model parallel library. The library internally uses MPI,
+so in order to use model parallelism, MPI must also be enabled using the ``distribution`` parameter.
 
-The following is an example of how you can launch a new PyTorch training job with SMP.
+The following is an example of how you can launch a new PyTorch training job with the library.
 
 .. code-block:: python3
 
@@ -47,7 +47,7 @@ The following is an example of how you can launch a new PyTorch training job wit
             py_version='py3',
             instance_count=1,
             distribution={
-               "smdistributed": smp_options,
+               "smdistributed": {"modelparallel": smp_options},
                "mpi": mpi_options
             },
             base_job_name="SMD-MP-demo",
@@ -55,7 +55,10 @@ The following is an example of how you can launch a new PyTorch training job wit
 
    smd_mp_estimator.fit('s3://my_bucket/my_training_data/')
 
-You can use the following parameters to initialize SMP using the ``parameters``
+``smdistributed`` Parameters
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+You can use the following parameters to initialize the library using the ``parameters``
 in the ``smdistributed`` of ``distribution``.
 
 Note: ``partitions`` is required in ``parameters`` of ``smp_options``. All other parameters in the following
@@ -88,7 +91,7 @@ table are optional.
    |                           | or ``"simple"``         |                   | schedule.             |
    |                           |                         |                   |                       |
    +---------------------------+-------------------------+-------------------+-----------------------+
-   | ``optimize``              | ``"memory"`` or         | ``"memory"``      | Whether SMP           |
+   | ``optimize``              | ``"memory"`` or         | ``"memory"``      | Whether the library   |
    |                           | ``"speed"``             |                   | should optimize       |
    |                           |                         |                   | for speed or          |
    |                           |                         |                   | memory during         |
@@ -99,7 +102,7 @@ table are optional.
    |                           |                         |                   |                       |
    |                           |                         |                   |                       |
    |                           |                         |                   | **speed**             |
-   |                           |                         |                   | When SMP is           |
+   |                           |                         |                   | When the library is   |
    |                           |                         |                   | configured to         |
    |                           |                         |                   | optimize speed,       |
    |                           |                         |                   | it attempts to        |
@@ -124,7 +127,7 @@ table are optional.
    |                           |                         |                   |                       |
    |                           |                         |                   |                       |
    |                           |                         |                   | **memory**            |
-   |                           |                         |                   | When SMP              |
+   |                           |                         |                   | When the library      |
    |                           |                         |                   | optimizes             |
    |                           |                         |                   | memory, it            |
    |                           |                         |                   | attempts to           |
@@ -273,10 +276,10 @@ table are optional.
    |                   |                         |                 | balancing                         |
    |                   |                         |                 | computational                     |
    |                   |                         |                 | load. If 0.0,                     |
-   |                   |                         |                 | SMP only tries                    |
+   |                   |                         |                 | the library only tries            |
    |                   |                         |                 | to balance                        |
    |                   |                         |                 | computation; if                   |
-   |                   |                         |                 | 1.0 SMP only                      |
+   |                   |                         |                 | 1.0 the library only              |
    |                   |                         |                 | tries to                          |
    |                   |                         |                 | balance the                       |
    |                   |                         |                 | memory use. Any                   |
@@ -302,29 +305,64 @@ table are optional.
    |                   |                         |                 | SageMaker.                        |
    +-------------------+-------------------------+-----------------+-----------------------------------+
 
+``mpi`` Parameters
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+For the ``"mpi"`` key, a dict must be passed which contains:
+
+* ``"enabled"``: Set to ``True`` to launch the training job with MPI.
+
+* ``"processes_per_host"``: Specifies the number of processes MPI should launch on each host.
+  In SageMaker a host is a single Amazon EC2 ml instance. The SageMaker distributed model parallel library maintains
+  a one-to-one mapping between processes and GPUs across model and data parallelism.
+  This means that SageMaker schedules each process on a single, separate GPU and no GPU contains more than one process.
+  If you are using PyTorch, you must restrict each process to its own device using
+  ``torch.cuda.set_device(smp.local_rank())``. To learn more, see
+  `Modify a PyTorch Training Script
+  <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-customize-training-script.html#model-parallel-customize-training-script-pt-16>`_.
+
+  .. important::
+   ``process_per_host`` must be less than or equal to the number of GPUs per instance, and typically will be equal to
+   the number of GPUs per instance.
+
+  For example, if you use one instance with 4-way model parallelism and 2-way data parallelism,
+  then processes_per_host should be 2 x 4 = 8. Therefore, you must choose an instance that has at least 8 GPUs,
+  such as an ml.p3.16xlarge.
+
+  The following image illustrates how 2-way data parallelism and 4-way model parallelism is distributed across 8 GPUs:
+  the model is partitioned across 4 GPUs, and each partition is added to 2 GPUs.
+
+  .. image:: smp_versions/model-data-parallel.png
+      :width: 650
+      :alt: 2-way data parallelism and 4-way model parallelism distributed across 8 GPUs
+
+
+* ``"custom_mpi_options"``: Use this key to pass any custom MPI options you might need.
+  To avoid Docker warnings from contaminating your training logs, we recommend the following flag.
+  ```--mca btl_vader_single_copy_mechanism none```
+
 
 .. _ranking-basics:
 
 Ranking Basics
---------------
+==============
 
-SMP maintains a one-to-one mapping between processes and available GPUs:
+The library maintains a one-to-one mapping between processes and available GPUs:
 for each GPU, there is a corresponding CPU process. Each CPU process
 maintains a “rank” assigned by MPI, which is a 0-based unique index for
 the process. For instance, if a training job is launched with 4
-P3dn.24xlarge instances using all its GPUs, there are 32 processes
+``p3dn.24xlarge`` instances using all its GPUs, there are 32 processes
 across all instances, and the ranks of these processes range from 0 to
 31.
 
 The ``local_rank`` of a process is the rank of the process among the
 processes in the same instance. This can range from 0 up to the number
-of GPUs in the instance, but can be lower if fewer processes are
-launched than GPUs in the instance. For instance, in the preceding
+of GPUs in the instance, but can be lower if fewer processes than GPUs are
+launched in the instance. For instance, in the preceding
 example, ``local_rank``\ s of the processes will range from 0 to 7,
-since there are 8 GPUs in a P3dn.24xlarge instance.
+since there are 8 GPUs in a ``p3dn.24xlarge`` instance.
 
-When SMP is used together with data parallelism (Horovod for TensorFlow
-and DDP for PyTorch), SMP partitions the set of processes into
+When the library is used together with data parallelism (Horovod for TensorFlow
+and DDP for PyTorch), the library partitions the set of processes into
 disjoint \ ``mp_group``\ s. An ``mp_group`` is a subset of all processes
 that together hold a single, partitioned model replica. For instance, if
 a single node job is launched with 8 local processes, and
@@ -337,7 +375,7 @@ this example, if ``placement_strategy`` is ``spread``, then the four
 previous example, the ``mp_rank`` of process 1 is 0, and ``mp_rank`` of
 process 6 is 1.
 
-Analogously, SMP defines ``dp_group``\ s as the sets of processes that
+Analogously, the library defines ``dp_group``\ s as the sets of processes that
 all hold the same model partition, and perform data parallelism among
 each other. In the example above, there are two ``dp_group``\ s,
 ``[0, 1, 2, 3]`` and ``[4, 5, 6, 7]``,

@@ -157,8 +157,16 @@ def mxnet_training_py_version(mxnet_training_version, request):
 
 
 @pytest.fixture(scope="module", params=["py2", "py3"])
-def mxnet_eia_py_version(request):
-    return request.param
+def mxnet_eia_py_version(mxnet_eia_version, request):
+    if Version(mxnet_eia_version) < Version("1.7.0"):
+        return request.param
+    else:
+        return "py3"
+
+
+@pytest.fixture(scope="module")
+def mxnet_eia_latest_py_version():
+    return "py3"
 
 
 @pytest.fixture(scope="module", params=["py2", "py3"])
@@ -180,6 +188,26 @@ def pytorch_inference_py_version(pytorch_inference_version, request):
 @pytest.fixture(scope="module")
 def pytorch_eia_py_version():
     return "py3"
+
+
+@pytest.fixture(scope="module")
+def neo_pytorch_latest_py_version():
+    return "py3"
+
+
+@pytest.fixture(scope="module")
+def neo_pytorch_compilation_job_name():
+    return utils.name_from_base("pytorch-neo-model")
+
+
+@pytest.fixture(scope="module")
+def neo_pytorch_target_device():
+    return "ml_c5"
+
+
+@pytest.fixture(scope="module")
+def neo_pytorch_cpu_instance_type():
+    return "ml.c5.xlarge"
 
 
 @pytest.fixture(scope="module")

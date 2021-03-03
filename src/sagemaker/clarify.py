@@ -21,7 +21,7 @@ import os
 import tempfile
 
 from sagemaker.processing import ProcessingInput, ProcessingOutput, Processor
-from sagemaker import image_uris, utils
+from sagemaker import image_uris, s3, utils
 
 
 class DataConfig:
@@ -262,8 +262,7 @@ class SHAPConfig(ExplainabilityConfig):
         use_logit=False,
         save_local_shap_values=True,
     ):
-        """
-        Initializes config for SHAP.
+        """Initializes config for SHAP.
 
         Args:
             baseline (str or list): A list of rows (at least one) or S3 object URI to be used as
@@ -406,9 +405,15 @@ class SageMakerClarifyProcessor(Processor):
             analysis_config_file = os.path.join(tmpdirname, "analysis_config.json")
             with open(analysis_config_file, "w") as f:
                 json.dump(analysis_config, f)
+            s3_analysis_config_file = _upload_analysis_config(
+                analysis_config_file,
+                data_config.s3_output_path,
+                self.sagemaker_session,
+                kms_key,
+            )
             config_input = ProcessingInput(
                 input_name="analysis_config",
-                source=analysis_config_file,
+                source=s3_analysis_config_file,
                 destination=self._CLARIFY_CONFIG_INPUT,
                 s3_data_type="S3Prefix",
                 s3_input_mode="File",
@@ -637,6 +642,30 @@ class SageMakerClarifyProcessor(Processor):
         if job_name is None:
             job_name = utils.name_from_base("Clarify-Explainability")
         self._run(data_config, analysis_config, wait, logs, job_name, kms_key)
+
+
+def _upload_analysis_config(analysis_config_file, s3_output_path, sagemaker_session, kms_key):
+    """Uploads the local analysis_config_file to the s3_output_path.
+
+    Args:
+        analysis_config_file (str): File path to the local analysis config file.
+        s3_output_path (str): S3 prefix to store the analysis config file.
+        sagemaker_session (:class:`~sagemaker.session.Session`):
+            Session object which manages interactions with Amazon SageMaker and
+            any other AWS services needed. If not specified, the processor creates
+            one using the default AWS configuration chain.
+        kms_key (str): The ARN of the KMS key that is used to encrypt the
+            user code file (default: None).
+
+    Returns:
+        The S3 uri of the uploaded file.
+    """
+    return s3.S3Uploader.upload(
+        local_path=analysis_config_file,
+        desired_s3_uri=s3_output_path,
+        sagemaker_session=sagemaker_session,
+        kms_key=kms_key,
+    )
 
 
 def _set(value, key, dictionary):

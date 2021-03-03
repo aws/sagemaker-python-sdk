@@ -49,6 +49,8 @@ PARAMETER_SERVER_MULTI_GPU_WARNING = (
 )
 
 DEBUGGER_UNSUPPORTED_REGIONS = ("us-iso-east-1",)
+PROFILER_UNSUPPORTED_REGIONS = ("us-iso-east-1", "cn-north-1", "cn-northwest-1")
+
 SINGLE_GPU_INSTANCE_TYPES = ("ml.p2.xlarge", "ml.p3.2xlarge")
 SM_DATAPARALLEL_SUPPORTED_INSTANCE_TYPES = (
     "ml.p3.16xlarge",
@@ -64,7 +66,8 @@ SMDISTRIBUTED_SUPPORTED_STRATEGIES = ["dataparallel", "modelparallel"]
 
 
 def validate_source_dir(script, directory):
-    """Validate that the source directory exists and it contains the user script
+    """Validate that the source directory exists and it contains the user script.
+
     Args:
         script (str): Script filename.
         directory (str): Directory containing the source file.
@@ -181,16 +184,17 @@ def tar_and_upload_dir(
     kms_key=None,
     s3_resource=None,
 ):
-    """Package source files and upload a compress tar file to S3. The S3
-    location will be ``s3://<bucket>/s3_key_prefix/sourcedir.tar.gz``.
+    """Package source files and upload a compress tar file to S3.
+
+    The S3 location will be ``s3://<bucket>/s3_key_prefix/sourcedir.tar.gz``.
     If directory is an S3 URI, an UploadedCode object will be returned, but
     nothing will be uploaded to S3 (this allow reuse of code already in S3).
     If directory is None, the script will be added to the archive at
-    ``./<basename of script>``.
-    If directory is not None, the (recursive) contents of the directory will
-    be added to the archive. directory is treated as the base path of the
-    archive, and the script name is assumed to be a filename or relative path
+    ``./<basename of script>``. If directory is not None, the (recursive) contents
+    of the directory will be added to the archive. directory is treated as the base
+    path of the archive, and the script name is assumed to be a filename or relative path
     inside the directory.
+
     Args:
         session (boto3.Session): Boto session used to access S3.
         bucket (str): S3 bucket to which the compressed file is uploaded.
@@ -242,11 +246,7 @@ def tar_and_upload_dir(
 
 
 def _list_files_to_compress(script, directory):
-    """
-    Args:
-        script:
-        directory:
-    """
+    """Placeholder docstring"""
     if directory is None:
         return [script]
 
@@ -327,14 +327,17 @@ def framework_version_from_tag(image_tag):
 
 
 def model_code_key_prefix(code_location_key_prefix, model_name, image):
-    """Returns the s3 key prefix for uploading code during model deployment
+    """Returns the s3 key prefix for uploading code during model deployment.
+
     The location returned is a potential concatenation of 2 parts
         1. code_location_key_prefix if it exists
         2. model_name or a name derived from the image
+
     Args:
         code_location_key_prefix (str): the s3 key prefix from code_location
         model_name (str): the name of the model
         image (str): the image from which a default name can be extracted
+
     Returns:
         str: the key prefix to be used in uploading code
     """
@@ -343,7 +346,9 @@ def model_code_key_prefix(code_location_key_prefix, model_name, image):
 
 
 def warn_if_parameter_server_with_multi_gpu(training_instance_type, distribution):
-    """Warn the user that training will not fully leverage all the GPU
+    """Warn the user about training when it doesn't leverage all the GPU cores.
+
+    Warn the user that training will not fully leverage all the GPU
     cores if parameter server is enabled and a multi-GPU instance is selected.
     Distributed training with the default parameter server setup doesn't
     support multi-GPU instances.
@@ -528,11 +533,7 @@ def _validate_smdataparallel_args(
 
 
 def python_deprecation_warning(framework, latest_supported_version):
-    """
-    Args:
-        framework:
-        latest_supported_version:
-    """
+    """Placeholder docstring"""
     return PYTHON_2_DEPRECATION_WARNING.format(
         framework=framework, latest_supported_version=latest_supported_version
     )
@@ -549,6 +550,19 @@ def _region_supports_debugger(region_name):
 
     """
     return region_name.lower() not in DEBUGGER_UNSUPPORTED_REGIONS
+
+
+def _region_supports_profiler(region_name):
+    """Returns bool indicating whether region supports Amazon SageMaker Debugger profiling feature.
+
+    Args:
+        region_name (str): Name of the region to check against.
+
+    Returns:
+        bool: Whether or not the region supports Amazon SageMaker Debugger profiling feature.
+
+    """
+    return region_name.lower() not in PROFILER_UNSUPPORTED_REGIONS
 
 
 def validate_version_or_image_args(framework_version, py_version, image_uri):

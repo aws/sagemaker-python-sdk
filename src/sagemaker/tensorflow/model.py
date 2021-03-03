@@ -24,9 +24,7 @@ from sagemaker.serializers import JSONSerializer
 
 
 class TensorFlowPredictor(Predictor):
-    """A ``Predictor`` implementation for inference against TensorFlow
-    Serving endpoints.
-    """
+    """A ``Predictor`` implementation for inference against TensorFlow Serving endpoints."""
 
     def __init__(
         self,
@@ -77,25 +75,15 @@ class TensorFlowPredictor(Predictor):
         self._model_attributes = ",".join(attributes) if attributes else None
 
     def classify(self, data):
-        """
-        Args:
-            data:
-        """
+        """Placeholder docstring."""
         return self._classify_or_regress(data, "classify")
 
     def regress(self, data):
-        """
-        Args:
-            data:
-        """
+        """Placeholder docstring."""
         return self._classify_or_regress(data, "regress")
 
     def _classify_or_regress(self, data, method):
-        """
-        Args:
-            data:
-            method:
-        """
+        """Placeholder docstring."""
         if method not in ["classify", "regress"]:
             raise ValueError("invalid TensorFlow Serving method: {}".format(method))
 
@@ -107,11 +95,7 @@ class TensorFlowPredictor(Predictor):
         return self.predict(data, args)
 
     def predict(self, data, initial_args=None):
-        """
-        Args:
-            data:
-            initial_args:
-        """
+        """Placeholder docstring."""
         args = dict(initial_args) if initial_args else {}
         if self._model_attributes:
             if "CustomAttributes" in args:
@@ -242,7 +226,7 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
             description (str): Model Package description (default: None).
 
         Returns:
-            str: A string of SageMaker Model Package ARN.
+            A `sagemaker.model.ModelPackage` instance.
         """
         instance_type = inference_instances[0]
         self._init_sagemaker_session_if_does_not_exist(instance_type)
@@ -348,7 +332,7 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
         return sagemaker.container_def(image_uri, model_data, env)
 
     def _get_container_env(self):
-        """Placeholder docstring"""
+        """Placeholder docstring."""
         if not self._container_log_level:
             return self.env
 
@@ -361,11 +345,7 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
         return env
 
     def _get_image_uri(self, instance_type, accelerator_type=None):
-        """
-        Args:
-            instance_type:
-            accelerator_type:
-        """
+        """Placeholder docstring."""
         if self.image_uri:
             return self.image_uri
 

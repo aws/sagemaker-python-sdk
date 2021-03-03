@@ -16,9 +16,10 @@ import json
 
 
 class ParameterRange(object):
-    """Base class for representing parameter ranges. This is used to define what
-    hyperparameters to tune for an Amazon SageMaker hyperparameter tuning job
-    and to verify hyperparameters for Marketplace Algorithms.
+    """Base class for representing parameter ranges.
+
+    This is used to define what hyperparameters to tune for an Amazon SageMaker
+    hyperparameter tuning job and to verify hyperparameters for Marketplace Algorithms.
     """
 
     __all_types__ = ("Continuous", "Categorical", "Integer")
@@ -50,15 +51,13 @@ class ParameterRange(object):
 
     @classmethod
     def cast_to_type(cls, value):
-        """
-        Args:
-            value:
-        """
+        """Placeholder docstring"""
         return float(value)
 
     def as_tuning_range(self, name):
-        """Represent the parameter range as a dicionary suitable for a request
-        to create an Amazon SageMaker hyperparameter tuning job.
+        """Represent the parameter range as a dictionary.
+
+        It is suitable for a request to create an Amazon SageMaker hyperparameter tuning job.
 
         Args:
             name (str): The name of the hyperparameter.
@@ -87,17 +86,12 @@ class ContinuousParameter(ParameterRange):
 
     @classmethod
     def cast_to_type(cls, value):
-        """
-        Args:
-            value:
-        """
+        """Placeholder docstring"""
         return float(value)
 
 
 class CategoricalParameter(ParameterRange):
-    """A class for representing hyperparameters that have a discrete list of
-    possible values.
-    """
+    """A class for representing hyperparameters that have a discrete list of possible values."""
 
     __name__ = "Categorical"
 
@@ -114,8 +108,9 @@ class CategoricalParameter(ParameterRange):
             self.values = [str(values)]
 
     def as_tuning_range(self, name):
-        """Represent the parameter range as a dicionary suitable for a request
-        to create an Amazon SageMaker hyperparameter tuning job.
+        """Represent the parameter range as a dictionary.
+
+        It is suitable for a request to create an Amazon SageMaker hyperparameter tuning job.
 
         Args:
             name (str): The name of the hyperparameter.
@@ -127,9 +122,10 @@ class CategoricalParameter(ParameterRange):
         return {"Name": name, "Values": self.values}
 
     def as_json_range(self, name):
-        """Represent the parameter range as a dictionary suitable for a request
-        to create an Amazon SageMaker hyperparameter tuning job using one of the
-        deep learning frameworks.
+        """Represent the parameter range as a dictionary.
+
+        Dictionary is suitable for a request to create an Amazon SageMaker hyperparameter tuning job
+        using one of the deep learning frameworks.
 
         The deep learning framework images require that hyperparameters be
         serialized as JSON.
@@ -144,23 +140,18 @@ class CategoricalParameter(ParameterRange):
         return {"Name": name, "Values": [json.dumps(v) for v in self.values]}
 
     def is_valid(self, value):
-        """
-        Args:
-            value:
-        """
+        """Placeholder docstring"""
         return value in self.values
 
     @classmethod
     def cast_to_type(cls, value):
-        """
-        Args:
-            value:
-        """
+        """Placeholder docstring"""
         return str(value)
 
 
 class IntegerParameter(ParameterRange):
     """A class for representing hyperparameters that have an integer range of possible values.
+
     Args:
         min_value (int): The minimum value for the range.
         max_value (int): The maximum value for the range.
@@ -170,8 +161,5 @@ class IntegerParameter(ParameterRange):
 
     @classmethod
     def cast_to_type(cls, value):
-        """
-        Args:
-            value:
-        """
+        """Placeholder docstring"""
         return int(value)

@@ -25,6 +25,7 @@ from sagemaker.local.entities import (
     _LocalEndpointConfig,
     _LocalEndpoint,
     _LocalModel,
+    _LocalProcessingJob,
     _LocalTrainingJob,
     _LocalTransformJob,
 )
@@ -48,6 +49,7 @@ class LocalSagemakerClient(object):
 
     """
 
+    _processing_jobs = {}
     _training_jobs = {}
     _transform_jobs = {}
     _models = {}
@@ -62,6 +64,88 @@ class LocalSagemakerClient(object):
                 from, and use its boto client.
         """
         self.sagemaker_session = sagemaker_session or LocalSession()
+
+    def create_processing_job(
+        self,
+        ProcessingJobName,
+        AppSpecification,
+        ProcessingResources,
+        Environment=None,
+        ProcessingInputs=None,
+        ProcessingOutputConfig=None,
+        **kwargs
+    ):
+        """Creates a processing job in Local Mode
+
+        Args:
+          ProcessingJobName(str): local processing job name.
+          AppSpecification(dict): Identifies the container and application to run.
+          ProcessingResources(dict): Identifies the resources to use for local processing.
+          Environment(dict, optional): Describes the environment variables to pass
+            to the container. (Default value = None)
+          ProcessingInputs(dict, optional): Describes the processing input data.
+            (Default value = None)
+          ProcessingOutputConfig(dict, optional): Describes the processing output
+            configuration. (Default value = None)
+          **kwargs: Keyword arguments
+
+        Returns:
+
+        """
+        Environment = Environment or {}
+        ProcessingInputs = ProcessingInputs or []
+        ProcessingOutputConfig = ProcessingOutputConfig or {}
+
+        container_entrypoint = None
+        if "ContainerEntrypoint" in AppSpecification:
+            container_entrypoint = AppSpecification["ContainerEntrypoint"]
+
+        container_arguments = None
+        if "ContainerArguments" in AppSpecification:
+            container_arguments = AppSpecification["ContainerArguments"]
+
+        if "ExperimentConfig" in kwargs:
+            logger.warning("Experiment configuration is not supported in local mode.")
+        if "NetworkConfig" in kwargs:
+            logger.warning("Network configuration is not supported in local mode.")
+        if "StoppingCondition" in kwargs:
+            logger.warning("Stopping condition is not supported in local mode.")
+
+        container = _SageMakerContainer(
+            ProcessingResources["ClusterConfig"]["InstanceType"],
+            ProcessingResources["ClusterConfig"]["InstanceCount"],
+            AppSpecification["ImageUri"],
+            sagemaker_session=self.sagemaker_session,
+            container_entrypoint=container_entrypoint,
+            container_arguments=container_arguments,
+        )
+        processing_job = _LocalProcessingJob(container)
+        logger.info("Starting processing job")
+        processing_job.start(
+            ProcessingInputs, ProcessingOutputConfig, Environment, ProcessingJobName
+        )
+
+        LocalSagemakerClient._processing_jobs[ProcessingJobName] = processing_job
+
+    def describe_processing_job(self, ProcessingJobName):
+        """Describes a local processing job.
+
+        Args:
+          ProcessingJobName(str): Processing job name to describe.
+        Returns: (dict) DescribeProcessingJob Response.
+
+        Returns:
+
+        """
+        if ProcessingJobName not in LocalSagemakerClient._processing_jobs:
+            error_response = {
+                "Error": {
+                    "Code": "ValidationException",
+                    "Message": "Could not find local processing job",
+                }
+            }
+            raise ClientError(error_response, "describe_processing_job")
+        return LocalSagemakerClient._processing_jobs[ProcessingJobName].describe()
 
     def create_training_job(
         self,
@@ -94,7 +178,7 @@ class LocalSagemakerClient(object):
             ResourceConfig["InstanceType"],
             ResourceConfig["InstanceCount"],
             AlgorithmSpecification["TrainingImage"],
-            self.sagemaker_session,
+            sagemaker_session=self.sagemaker_session,
         )
         training_job = _LocalTrainingJob(container)
         hyperparameters = kwargs["HyperParameters"] if "HyperParameters" in kwargs else {}
@@ -342,17 +426,27 @@ class LocalSagemakerRuntimeClient(object):
         CustomAttributes=None,
         TargetModel=None,
         TargetVariant=None,
+        InferenceId=None,
     ):
         """Invoke the endpoint.
 
         Args:
-          Body:
-          EndpointName:
-          Accept:  (Default value = None)
-          CustomAttributes:  (Default value = None)
+            Body: Input data for which you want the model to provide inference.
+            EndpointName: The name of the endpoint that you specified when you
+                created the endpoint using the CreateEndpoint API.
+            ContentType: The MIME type of the input data in the request body (Default value = None)
+            Accept: The desired MIME type of the inference in the response (Default value = None)
+            CustomAttributes: Provides additional information about a request for an inference
+                submitted to a model hosted at an Amazon SageMaker endpoint (Default value = None)
+            TargetModel: The model to request for inference when invoking a multi-model endpoint
+                (Default value = None)
+            TargetVariant: Specify the production variant to send the inference request to when
+                invoking an endpoint that is running two or more variants (Default value = None)
+            InferenceId: If you provide a value, it is added to the captured data when you enable
+               data capture on the endpoint (Default value = None)
 
         Returns:
-
+            object: Inference for the given input.
         """
         url = "http://localhost:%s/invocations" % self.serving_port
         headers = {}
@@ -371,6 +465,9 @@ class LocalSagemakerRuntimeClient(object):
 
         if TargetVariant is not None:
             headers["X-Amzn-SageMaker-Target-Variant"] = TargetVariant
+
+        if InferenceId is not None:
+            headers["X-Amzn-SageMaker-Inference-Id"] = InferenceId
 
         r = self.http.request("POST", url, body=Body, preload_content=False, headers=headers)
 
@@ -403,7 +500,12 @@ class LocalSession(Session):
 
         """
 
-        self.boto_session = boto_session or boto3.Session()
+        if boto_session is None:
+            self.boto_session = boto3.Session()
+        else:
+            self.boto_session = boto_session
+
+        # self.boto_session = boto_session or boto3.Session()
         self._region_name = self.boto_session.region_name
 
         if self._region_name is None:

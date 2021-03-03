@@ -49,6 +49,8 @@ from sagemaker.fw_utils import (
     UploadedCode,
     validate_source_dir,
     _region_supports_debugger,
+    _region_supports_profiler,
+    get_mp_parameters,
 )
 from sagemaker.inputs import TrainingInput
 from sagemaker.job import _Job
@@ -204,9 +206,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 https://docs.aws.amazon.com/sagemaker/latest/dg/model-managed-spot-training.html
                 (default: ``False``).
             max_wait (int): Timeout in seconds waiting for spot training
-                instances (default: None). After this amount of time Amazon
-                SageMaker will stop waiting for Spot instances to become
-                available (default: ``None``).
+                job (default: None). After this amount of time Amazon
+                SageMaker will stop waiting for managed spot training job to
+                complete (default: ``None``).
             checkpoint_s3_uri (str): The S3 URI in which to persist checkpoints
                 that the algorithm persists (if any) during training. (default:
                 ``None``).
@@ -347,6 +349,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self.profiler_config = profiler_config
         self.disable_profiler = disable_profiler
 
+        if not _region_supports_profiler(self.sagemaker_session.boto_region_name):
+            self.disable_profiler = True
+
         self.profiler_rule_configs = None
         self.profiler_rules = None
         self.debugger_rules = None
@@ -438,8 +443,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self._prepare_profiler_for_training()
 
     def _prepare_rules(self):
-        """Rules list includes both debugger and profiler rules. Customer can explicitly
-        disable any rule by setting rules to an empty list.
+        """Rules list includes both debugger and profiler rules.
+
+        Customer can explicitly disable any rule by setting rules to an empty list.
         """
         self.debugger_rules = []
         self.profiler_rules = []
@@ -472,13 +478,12 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             for rule in self.debugger_rules:
                 self._set_default_rule_config(rule)
                 self._set_source_s3_uri(rule)
+                rule.prepare_actions(self._current_job_name)
                 debugger_rule_configs.append(rule.to_debugger_rule_config_dict())
         return debugger_rule_configs
 
     def _prepare_collection_configs(self):
-        """De-duplicate any collection configurations and save them
-        in the debugger hook configuration.
-        """
+        """De-duplicate configurations and save them in the debugger hook configuration."""
         # Create a set to de-duplicate CollectionConfigs.
         self.collection_configs = set()
         # Iterate through the debugger rules and add their respective CollectionConfigs to the set.
@@ -493,7 +498,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         """Set necessary values and do basic validations in profiler config and profiler rules.
 
         When user explicitly set rules to an empty list, default profiler rule won't be enabled.
-        Default profiler rule will be enabled when either:
+        Default profiler rule will be enabled in supported regions when either:
         1. user doesn't specify any rules, i.e., rules=None; or
         2. user only specify debugger rules, i.e., rules=[Rule.sagemaker(...)]
         """
@@ -502,7 +507,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 raise RuntimeError("profiler_config cannot be set when disable_profiler is True.")
             if self.profiler_rules:
                 raise RuntimeError("ProfilerRule cannot be set when disable_profiler is True.")
-        elif _region_supports_debugger(self.sagemaker_session.boto_region_name):
+        elif _region_supports_profiler(self.sagemaker_session.boto_region_name):
             if self.profiler_config is None:
                 self.profiler_config = ProfilerConfig(s3_output_path=self.output_path)
             if self.rules is None or (self.rules and not self.profiler_rules):
@@ -815,7 +820,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         If the output is a tty or a Jupyter cell, it will be color-coded based
         on which instance the log entry is from.
         """
-        self.sagemaker_session.logs_for_job(self.latest_training_job, wait=True)
+        self.sagemaker_session.logs_for_job(self.latest_training_job.name, wait=True)
 
     def deploy(
         self,
@@ -833,8 +838,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         tags=None,
         **kwargs,
     ):
-        """Deploy the trained model to an Amazon SageMaker endpoint and return a
-        ``sagemaker.Predictor`` object.
+        """Deploy the trained model to an Amazon SageMaker endpoint.
+
+         And then return ``sagemaker.Predictor`` object.
 
         More information:
         http://docs.aws.amazon.com/sagemaker/latest/dg/how-it-works-training.html
@@ -1002,9 +1008,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
 
     @property
     def model_data(self):
-        """str: The model location in S3. Only set if Estimator has been
-        ``fit()``.
-        """
+        """str: The model location in S3. Only set if Estimator has been ``fit()``."""
         if self.latest_training_job is not None:
             model_uri = self.sagemaker_session.sagemaker_client.describe_training_job(
                 TrainingJobName=self.latest_training_job.name
@@ -1022,8 +1026,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
 
     @abstractmethod
     def create_model(self, **kwargs):
-        """Create a SageMaker ``Model`` object that can be deployed to an
-        ``Endpoint``.
+        """Create a SageMaker ``Model`` object that can be deployed to an ``Endpoint``.
 
         Args:
             **kwargs: Keyword arguments used by the implemented method for
@@ -1036,8 +1039,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
 
     @classmethod
     def _prepare_init_params_from_job_description(cls, job_details, model_channel_name=None):
-        """Convert the job description to init params that can be handled by the
-        class constructor
+        """Convert the job description to init params that can be handled by the class constructor.
 
         Args:
             job_details: the returned job details from a describe_training_job
@@ -1125,8 +1127,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         enable_network_isolation=None,
         model_name=None,
     ):
-        """Return a ``Transformer`` that uses a SageMaker Model based on the
-        training job. It reuses the SageMaker Session and base job name used by
+        """Return a ``Transformer`` that uses a SageMaker Model based on the training job.
+
+        It reuses the SageMaker Session and base job name used by
         the Estimator.
 
         Args:
@@ -1223,9 +1226,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
 
     @property
     def training_job_analytics(self):
-        """Return a ``TrainingJobAnalytics`` object for the current training
-        job.
-        """
+        """Return a ``TrainingJobAnalytics`` object for the current training job."""
         if self._current_job_name is None:
             raise ValueError("Estimator is not associated with a TrainingJob")
         return TrainingJobAnalytics(
@@ -1233,8 +1234,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         )
 
     def get_vpc_config(self, vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT):
-        """Returns VpcConfig dict either from this Estimator's subnets and
-        security groups, or else validate and return an optional override value.
+        """Returns VpcConfig dict either from this Estimator's subnets and security groups.
+
+        Or else validate and return an optional override value.
 
         Args:
             vpc_config_override:
@@ -1246,10 +1248,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
     def _ensure_latest_training_job(
         self, error_message="Estimator is not associated with a training job"
     ):
-        """
-        Args:
-            error_message:
-        """
+        """Placeholder docstring"""
         if self.latest_training_job is None:
             raise ValueError(error_message)
 
@@ -1513,12 +1512,7 @@ class _TrainingJob(_Job):
 
     @classmethod
     def _add_spot_checkpoint_args(cls, local_mode, estimator, train_args):
-        """
-        Args:
-            local_mode:
-            estimator:
-            train_args:
-        """
+        """Placeholder docstring"""
         if estimator.use_spot_instances:
             if local_mode:
                 raise ValueError("Spot training is not supported in local mode.")
@@ -1536,11 +1530,7 @@ class _TrainingJob(_Job):
 
     @classmethod
     def _is_local_channel(cls, input_uri):
-        """
-        Args:
-            input_uri:
-
-        """
+        """Placeholder docstring"""
         return isinstance(input_uri, string_types) and input_uri.startswith("file://")
 
     @classmethod
@@ -1585,7 +1575,8 @@ class _TrainingJob(_Job):
         return update_args
 
     def wait(self, logs="All"):
-        """
+        """Placeholder docstring.
+
         Args:
             logs ([str]): A list of strings specifying which logs to print. Acceptable
                 strings are "All", "None", "Training", or "Rules". To maintain backwards
@@ -1606,8 +1597,7 @@ class _TrainingJob(_Job):
         return self.sagemaker_session.describe_training_job(self.job_name)
 
     def rule_job_summary(self):
-        """Calls describe_training_job and returns the
-        DebugRuleEvaluationStatuses and ProfilerRuleEvaluationStatuses dictionary.
+        """Calls describe_training_job and returns two dictionaries.
 
         Returns:
             list[dict]: A list of DebugRuleEvaluationStatuses and ProfilerRuleEvaluationStatuses
@@ -1625,8 +1615,9 @@ class _TrainingJob(_Job):
 
 
 class Estimator(EstimatorBase):
-    """A generic Estimator to train using any supplied algorithm. This class is
-    designed for use with algorithms that don't have their own, custom class.
+    """A generic Estimator to train using any supplied algorithm.
+
+    This class is designed for use with algorithms that don't have their own, custom class.
     """
 
     def __init__(
@@ -1799,11 +1790,6 @@ class Estimator(EstimatorBase):
                 API_AlgorithmSpecification.html#SageMaker-Type-AlgorithmSpecification-
                 EnableSageMakerMetricsTimeSeries>`_.
                 (default: ``None``).
-            enable_network_isolation (bool): Specifies whether container will
-                run in network isolation mode (default: ``False``). Network
-                isolation mode restricts the container access to outside networks
-                (such as the Internet). The container does not make any inbound or
-                outbound network calls. Also known as Internet-free mode.
             profiler_config (:class:`~sagemaker.debugger.ProfilerConfig`):
                 Configuration for how SageMaker Debugger collects
                 monitoring and profiling information from your training job.
@@ -1860,10 +1846,7 @@ class Estimator(EstimatorBase):
         return self.image_uri
 
     def set_hyperparameters(self, **kwargs):
-        """
-        Args:
-            **kwargs:
-        """
+        """Placeholder docstring"""
         for k, v in kwargs.items():
             self.hyperparam_dict[k] = v
 
@@ -1945,7 +1928,6 @@ class Framework(EstimatorBase):
 
     Subclasses define functionality pertaining to specific ML frameworks,
     such as training/deployment images and predictor instances.
-
     """
 
     _framework_name = None
@@ -2139,6 +2121,7 @@ class Framework(EstimatorBase):
             :class:`~sagemaker.estimator.EstimatorBase`.
         """
         super(Framework, self).__init__(enable_network_isolation=enable_network_isolation, **kwargs)
+        image_uri = renamed_kwargs("image_name", "image_uri", image_uri, kwargs)
         if entry_point.startswith("s3://"):
             raise ValueError(
                 "Invalid entry point script: {}. Must be a path to a local file.".format(
@@ -2161,8 +2144,7 @@ class Framework(EstimatorBase):
         self.enable_sagemaker_metrics = enable_sagemaker_metrics
 
     def _prepare_for_training(self, job_name=None):
-        """Set hyperparameters needed for training. This method will also
-        validate ``source_dir``.
+        """Set hyperparameters needed for training. This method will also validate ``source_dir``.
 
         Args:
            * job_name (str): Name of the training job to be created. If not
@@ -2296,8 +2278,7 @@ class Framework(EstimatorBase):
 
     @classmethod
     def _prepare_init_params_from_job_description(cls, job_details, model_channel_name=None):
-        """Convert the job description to init params that can be handled by the
-        class constructor
+        """Convert the job description to init params that can be handled by the class constructor.
 
         Args:
             job_details: the returned job details from a describe_training_job
@@ -2412,19 +2393,12 @@ class Framework(EstimatorBase):
 
     @staticmethod
     def _json_encode_hyperparameters(hyperparameters):
-        """
-        Args:
-            hyperparameters:
-        """
+        """Placeholder docstring"""
         return {str(k): json.dumps(v) for (k, v) in hyperparameters.items()}
 
     @classmethod
     def _update_init_params(cls, hp, tf_arguments):
-        """
-        Args:
-            hp:
-            tf_arguments:
-        """
+        """Placeholder docstring"""
         updated_params = {}
         for argument in tf_arguments:
             value = hp.pop(argument, None)
@@ -2454,8 +2428,9 @@ class Framework(EstimatorBase):
         enable_network_isolation=None,
         model_name=None,
     ):
-        """Return a ``Transformer`` that uses a SageMaker Model based on the
-        training job. It reuses the SageMaker Session and base job name used by
+        """Return a ``Transformer`` that uses a SageMaker Model based on the training job.
+
+        It reuses the SageMaker Session and base job name used by
         the Estimator.
 
         Args:
@@ -2565,13 +2540,53 @@ class Framework(EstimatorBase):
             sagemaker_session=self.sagemaker_session,
         )
 
+    def _distribution_configuration(self, distribution):
+        """Returns a dict of distribution configurations.
+
+        Args:
+            distribution (dict): A dictionary with information on how to run distributed training.
+
+        Returns:
+            dict that
+        """
+        distribution_config = {}
+
+        if "parameter_server" in distribution:
+            ps_enabled = distribution.get("parameter_server").get("enabled", False)
+            distribution_config[self.LAUNCH_PS_ENV_NAME] = ps_enabled
+
+        if "mpi" in distribution:
+            mpi_dict = distribution["mpi"]
+            mpi_enabled = mpi_dict.get("enabled", False)
+            distribution_config[self.LAUNCH_MPI_ENV_NAME] = mpi_enabled
+
+            if mpi_dict.get("processes_per_host"):
+                distribution_config[self.MPI_NUM_PROCESSES_PER_HOST] = mpi_dict.get(
+                    "processes_per_host"
+                )
+
+            distribution_config[self.MPI_CUSTOM_MPI_OPTIONS] = mpi_dict.get(
+                "custom_mpi_options", ""
+            )
+
+            if get_mp_parameters(distribution):
+                distribution_config["mp_parameters"] = get_mp_parameters(distribution)
+
+        elif "modelparallel" in distribution.get("smdistributed", {}):
+            raise ValueError("Cannot use Model Parallelism without MPI enabled!")
+
+        if "smdistributed" in distribution:
+            # smdistributed strategy selected
+            smdistributed = distribution["smdistributed"]
+            smdataparallel_enabled = smdistributed.get("dataparallel", {}).get("enabled", False)
+            distribution_config[self.LAUNCH_SM_DDP_ENV_NAME] = smdataparallel_enabled
+            distribution_config[self.INSTANCE_TYPE] = self.instance_type
+
+        return distribution_config
+
 
 def _s3_uri_prefix(channel_name, s3_data):
-    """
-    Args:
-        channel_name:
-        s3_data:
-    """
+    """Placeholder docstring"""
     if isinstance(s3_data, TrainingInput):
         s3_uri = s3_data.config["DataSource"]["S3DataSource"]["S3Uri"]
     else:
@@ -2585,10 +2600,7 @@ def _s3_uri_prefix(channel_name, s3_data):
 # Also accepts other valid input types, e.g. dict and TrainingInput.
 def _s3_uri_without_prefix_from_input(input_data):
     # Unpack an input_config object from a dict if a dict was passed in.
-    """
-    Args:
-        input_data:
-    """
+    """Placeholder docstring"""
     if isinstance(input_data, dict):
         response = {}
         for channel_name, channel_s3_uri in input_data.items():

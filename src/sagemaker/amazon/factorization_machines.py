@@ -112,8 +112,7 @@ class FactorizationMachines(AmazonAlgorithmEstimatorBase):
         factors_init_value=None,
         **kwargs
     ):
-        """Factorization Machines is :class:`Estimator` for general-purpose
-        supervised learning.
+        """Factorization Machines is :class:`Estimator` for general-purpose supervised learning.
 
         Amazon SageMaker Factorization Machines is a general-purpose
         supervised learning algorithm that you can use for both classification
@@ -247,8 +246,9 @@ class FactorizationMachines(AmazonAlgorithmEstimatorBase):
         self.factors_init_value = factors_init_value
 
     def create_model(self, vpc_config_override=VPC_CONFIG_DEFAULT, **kwargs):
-        """Return a :class:`~sagemaker.amazon.FactorizationMachinesModel`
-        referencing the latest s3 model data produced by this Estimator.
+        """Return a :class:`~sagemaker.amazon.FactorizationMachinesModel`.
+
+        It references the latest s3 model data produced by this Estimator.
 
         Args:
             vpc_config_override (dict[str, list[str]]): Optional override for VpcConfig set on
@@ -267,8 +267,7 @@ class FactorizationMachines(AmazonAlgorithmEstimatorBase):
 
 
 class FactorizationMachinesPredictor(Predictor):
-    """Performs binary-classification or regression prediction from input
-    vectors.
+    """Performs binary-classification or regression prediction from input vectors.
 
     The implementation of
     :meth:`~sagemaker.predictor.Predictor.predict` in this
@@ -291,7 +290,8 @@ class FactorizationMachinesPredictor(Predictor):
         serializer=RecordSerializer(),
         deserializer=RecordDeserializer(),
     ):
-        """
+        """Initialization for FactorizationMachinesPredictor class.
+
         Args:
             endpoint_name (str): Name of the Amazon SageMaker endpoint to which
                 requests are sent.
@@ -314,12 +314,14 @@ class FactorizationMachinesPredictor(Predictor):
 
 class FactorizationMachinesModel(Model):
     """Reference S3 model data created by FactorizationMachines estimator.
+
     Calling :meth:`~sagemaker.model.Model.deploy` creates an Endpoint and
     returns :class:`FactorizationMachinesPredictor`.
     """
 
     def __init__(self, model_data, role, sagemaker_session=None, **kwargs):
-        """
+        """Initialization for FactorizationMachinesModel class.
+
         Args:
             model_data (str): The S3 location of a SageMaker model data
                 ``.tar.gz`` file.

@@ -14,6 +14,8 @@ from __future__ import absolute_import
 
 import os
 
+import pytest
+
 import sagemaker.utils
 import tests.integ as integ
 
@@ -25,6 +27,11 @@ smdataparallel_dir = os.path.join(
 )
 
 
+@pytest.mark.skipif(
+    integ.test_region() not in integ.DATA_PARALLEL_TESTING_REGIONS,
+    reason="Only allow this test to run in IAD and CMH to limit usage of p3.16xlarge",
+)
+@pytest.mark.skip("Failing due to bad DLC image release. Disable temporarily.")
 def test_smdataparallel_tf_mnist(
     sagemaker_session,
     tensorflow_training_latest_version,

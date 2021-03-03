@@ -97,7 +97,6 @@ def estimator_knn(sagemaker_session, cpu_instance_type):
     return estimator
 
 
-@pytest.mark.canary_quick
 def test_multi_estimator_tuning(
     sagemaker_session, estimator_fm, estimator_knn, data_set, cpu_instance_type
 ):

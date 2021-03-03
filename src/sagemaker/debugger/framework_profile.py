@@ -38,8 +38,7 @@ ALL_METRIC_CONFIGS = [
 
 
 class FrameworkProfile:
-    """
-    Sets up the profiling configuration for framework metrics.
+    """Sets up the profiling configuration for framework metrics.
 
     Validates user inputs and fills in default values if no input is provided.
     There are three main profiling options to choose from:

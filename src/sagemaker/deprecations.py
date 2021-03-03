@@ -16,7 +16,6 @@ from __future__ import absolute_import
 import logging
 import warnings
 
-logging.captureWarnings(True)
 logger = logging.getLogger(__name__)
 
 V2_URL = "https://sagemaker.readthedocs.io/en/stable/v2.html"

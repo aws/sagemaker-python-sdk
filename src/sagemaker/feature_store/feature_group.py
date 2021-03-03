@@ -152,7 +152,7 @@ class IngestionManagerPandas:
         feature_group_name (str): name of the Feature Group.
         sagemaker_session (Session): instance of the Session class to perform boto calls.
         data_frame (DataFrame): pandas DataFrame to be ingested to the given feature group.
-        max_works (int): number of threads to create.
+        max_workers (int): number of threads to create.
     """
 
     feature_group_name: str = attr.ib()
@@ -179,10 +179,13 @@ class IngestionManagerPandas:
             end_index (int): ending position to ingest in this batch.
         """
         logger.info("Started ingesting index %d to %d", start_index, end_index)
-        for _, row in data_frame[start_index:end_index].iterrows():
+        for row in data_frame[start_index:end_index].itertuples(index=False):
             record = [
-                FeatureValue(feature_name=name, value_as_string=str(value))
-                for name, value in row.items()
+                FeatureValue(
+                    feature_name=data_frame.columns[index], value_as_string=str(row[index])
+                )
+                for index in range(len(row))
+                if pd.notna(row[index])
             ]
             sagemaker_session.put_record(
                 feature_group_name=feature_group_name, record=[value.to_dict() for value in record]
@@ -288,7 +291,7 @@ class FeatureGroup:
 
     def create(
         self,
-        s3_uri: str,
+        s3_uri: Union[str, bool],
         record_identifier_name: str,
         event_time_feature_name: str,
         role_arn: str,
@@ -303,7 +306,8 @@ class FeatureGroup:
         """Create a SageMaker FeatureStore FeatureGroup.
 
         Args:
-            s3_uri (str): S3 URI of the offline store.
+            s3_uri (Union[str, bool]): S3 URI of the offline store, set to
+                ``False`` to disable offline store.
             record_identifier_name (str): name of the record identifier feature.
             event_time_feature_name (str): name of the event time feature.
             role_arn (str): ARN of the role used to call CreateFeatureGroup.
@@ -340,15 +344,18 @@ class FeatureGroup:
             create_feature_store_args.update({"online_store_config": online_store_config.to_dict()})
 
         # offline store configuration
-        s3_storage_config = S3StorageConfig(s3_uri=s3_uri)
-        if offline_store_kms_key_id:
-            s3_storage_config.kms_key_id = offline_store_kms_key_id
-        offline_store_config = OfflineStoreConfig(
-            s3_storage_config=s3_storage_config,
-            disable_glue_table_creation=disable_glue_table_creation,
-            data_catalog_config=data_catalog_config,
-        )
-        create_feature_store_args.update({"offline_store_config": offline_store_config.to_dict()})
+        if s3_uri:
+            s3_storage_config = S3StorageConfig(s3_uri=s3_uri)
+            if offline_store_kms_key_id:
+                s3_storage_config.kms_key_id = offline_store_kms_key_id
+            offline_store_config = OfflineStoreConfig(
+                s3_storage_config=s3_storage_config,
+                disable_glue_table_creation=disable_glue_table_creation,
+                data_catalog_config=data_catalog_config,
+            )
+            create_feature_store_args.update(
+                {"offline_store_config": offline_store_config.to_dict()}
+            )
 
         return self.sagemaker_session.create_feature_group(**create_feature_store_args)
 
@@ -365,7 +372,9 @@ class FeatureGroup:
         Returns:
             Response dict from the service.
         """
-        return self.sagemaker_session.describe_feature_group(self.name, next_token)
+        return self.sagemaker_session.describe_feature_group(
+            feature_group_name=self.name, next_token=next_token
+        )
 
     def load_feature_definitions(
         self,
@@ -466,8 +475,7 @@ class FeatureGroup:
         raise RuntimeError("No metastore is configured with this feature group.")
 
     def as_hive_ddl(self, database: str = "sagemaker_featurestore", table_name: str = None) -> str:
-        """Generate Hive DDL commands that can be used to define or change structure of tables or
-        databases in Hive.
+        """Generate Hive DDL commands to define or change structure of tables or databases in Hive.
 
         Schema of the table is generated based on the feature definitions. Columns are named
         after feature name and data-type are inferred based on feature type. Integral feature
@@ -501,6 +509,9 @@ class FeatureGroup:
                 f"  {definition.feature_name} "
                 f"{self._FEATURE_TYPE_TO_DDL_DATA_TYPE_MAP.get(definition.feature_type.value)}\n"
             )
+        ddl += "  write_time TIMESTAMP\n"
+        ddl += "  event_time TIMESTAMP\n"
+        ddl += "  is_deleted BOOLEAN\n"
         ddl += ")\n"
         ddl += (
             "ROW FORMAT SERDE 'org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe'\n"

@@ -26,7 +26,6 @@ from sagemaker.fw_utils import (
     validate_version_or_image_args,
     warn_if_parameter_server_with_multi_gpu,
     validate_smdistributed,
-    get_mp_parameters,
 )
 from sagemaker.pytorch import defaults
 from sagemaker.pytorch.model import PyTorchModel
@@ -51,10 +50,10 @@ class PyTorch(Framework):
         distribution=None,
         **kwargs
     ):
-        """This ``Estimator`` executes an PyTorch script in a managed PyTorch
-        execution environment, within a SageMaker Training Job. The managed
-        PyTorch environment is an Amazon-built Docker container that executes
-        functions defined in the supplied ``entry_point`` Python script.
+        """This ``Estimator`` executes a PyTorch script in a managed PyTorch execution environment.
+
+        The managed PyTorch environment is an Amazon-built Docker container that executes functions
+        defined in the supplied ``entry_point`` Python script within a SageMaker Training Job.
 
         Training is started by calling
         :meth:`~sagemaker.amazon.estimator.Framework.fit` on this Estimator.
@@ -190,39 +189,9 @@ class PyTorch(Framework):
     def hyperparameters(self):
         """Return hyperparameters used by your custom PyTorch code during model training."""
         hyperparameters = super(PyTorch, self).hyperparameters()
-        additional_hyperparameters = {}
-
-        if "parameter_server" in self.distribution:
-            ps_enabled = self.distribution.get("parameter_server").get("enabled", False)
-            additional_hyperparameters[self.LAUNCH_PS_ENV_NAME] = ps_enabled
-
-        if "mpi" in self.distribution:
-            mpi_dict = self.distribution["mpi"]
-            mpi_enabled = mpi_dict.get("enabled", False)
-            additional_hyperparameters[self.LAUNCH_MPI_ENV_NAME] = mpi_enabled
-
-            if mpi_dict.get("processes_per_host"):
-                additional_hyperparameters[self.MPI_NUM_PROCESSES_PER_HOST] = mpi_dict.get(
-                    "processes_per_host"
-                )
-
-            additional_hyperparameters[self.MPI_CUSTOM_MPI_OPTIONS] = mpi_dict.get(
-                "custom_mpi_options", ""
-            )
-
-            if get_mp_parameters(self.distribution):
-                additional_hyperparameters["mp_parameters"] = get_mp_parameters(self.distribution)
-
-        elif "modelparallel" in self.distribution.get("smdistributed", {}):
-            raise ValueError("Cannot use Model Parallelism without MPI enabled!")
-
-        if "smdistributed" in self.distribution:
-            # smdistributed strategy selected
-            smdistributed = self.distribution["smdistributed"]
-            smdataparallel_enabled = smdistributed.get("dataparallel", {}).get("enabled", False)
-            additional_hyperparameters[self.LAUNCH_SM_DDP_ENV_NAME] = smdataparallel_enabled
-            additional_hyperparameters[self.INSTANCE_TYPE] = self.instance_type
-
+        additional_hyperparameters = self._distribution_configuration(
+            distribution=self.distribution
+        )
         hyperparameters.update(Framework._json_encode_hyperparameters(additional_hyperparameters))
         return hyperparameters
 
@@ -236,8 +205,7 @@ class PyTorch(Framework):
         dependencies=None,
         **kwargs
     ):
-        """Create a SageMaker ``PyTorchModel`` object that can be deployed to an
-        ``Endpoint``.
+        """Create a SageMaker ``PyTorchModel`` object that can be deployed to an ``Endpoint``.
 
         Args:
             model_server_workers (int): Optional. The number of worker processes
@@ -291,8 +259,7 @@ class PyTorch(Framework):
 
     @classmethod
     def _prepare_init_params_from_job_description(cls, job_details, model_channel_name=None):
-        """Convert the job description to init params that can be handled by the
-        class constructor
+        """Convert the job description to init params that can be handled by the class constructor.
 
         Args:
             job_details: the returned job details from a describe_training_job

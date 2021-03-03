@@ -16,6 +16,7 @@ from __future__ import absolute_import
 import json
 import logging
 import os
+import re
 
 import sagemaker
 from sagemaker import (
@@ -152,7 +153,7 @@ class Model(object):
             description (str): Model Package description (default: None).
 
         Returns:
-            str: A string of SageMaker Model Package ARN.
+            A `sagemaker.model.ModelPackage` instance.
         """
         if self.model_data is None:
             raise ValueError("SageMaker Model Package cannot be created without model data.")
@@ -196,6 +197,7 @@ class Model(object):
         description=None,
     ):
         """Get arguments for session.create_model_package method.
+
         Args:
             content_types (list): The supported MIME types for the input data.
             response_types (list): The supported MIME types for the output data.
@@ -251,9 +253,9 @@ class Model(object):
         return model_package_args
 
     def _init_sagemaker_session_if_does_not_exist(self, instance_type):
-        """Set ``self.sagemaker_session`` to be a ``LocalSession`` or
-        ``Session`` if it is not already. The type of session object is
-        determined by the instance type.
+        """Set ``self.sagemaker_session`` to ``LocalSession`` or ``Session`` if it's not already.
+
+        The type of session object is determined by the instance type.
         """
         if self.sagemaker_session:
             return
@@ -266,8 +268,9 @@ class Model(object):
     def prepare_container_def(
         self, instance_type=None, accelerator_type=None
     ):  # pylint: disable=unused-argument
-        """Return a dict created by ``sagemaker.container_def()`` for deploying
-        this model to a specified instance type.
+        """Return a dict created by ``sagemaker.container_def()``.
+
+        It is used for deploying this model to a specified instance type.
 
         Subclasses can override this to provide custom container definitions
         for deployment to a specific instance type. Called by ``deploy()``.
@@ -404,22 +407,9 @@ class Model(object):
         target_platform_arch=None,
         target_platform_accelerator=None,
         compiler_options=None,
+        framework_version=None,
     ):
-        """
-        Args:
-            target_instance_type:
-            input_shape:
-            output_path:
-            role:
-            compile_max_run:
-            job_name:
-            framework:
-            tags:
-            target_platform_os:
-            target_platform_arch:
-            target_platform_accelerator:
-            compiler_options:
-        """
+        """Placeholder Docstring"""
         input_model_config = {
             "S3Uri": self.model_data,
             "DataInputConfig": json.dumps(input_shape)
@@ -427,6 +417,14 @@ class Model(object):
             else input_shape,
             "Framework": framework.upper(),
         }
+
+        if (
+            framework.lower() == "pytorch"
+            and re.match("(?=^ml_)(?!ml_inf)", target_instance_type) is not None
+            and framework_version is not None
+        ):
+            input_model_config["FrameworkVersion"] = utils.get_short_version(framework_version)
+
         role = self.sagemaker_session.expand_role(role)
         output_model_config = {
             "S3OutputLocation": output_path,
@@ -592,19 +590,23 @@ class Model(object):
             framework (str): The framework that is used to train the original
                 model. Allowed values: 'mxnet', 'tensorflow', 'keras', 'pytorch',
                 'onnx', 'xgboost'
-            framework_version (str):
+            framework_version (str): The version of framework, for example:
+                '1.5' for PyTorch
             target_platform_os (str): Target Platform OS, for example: 'LINUX'.
                 For allowed strings see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_OutputConfig.html.
-                It can be used instead of target_instance_family.
+                It can be used instead of target_instance_family by setting target_instance
+                family to None.
             target_platform_arch (str): Target Platform Architecture, for example: 'X86_64'.
                 For allowed strings see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_OutputConfig.html.
-                It can be used instead of target_instance_family.
+                It can be used instead of target_instance_family by setting target_instance
+                family to None.
             target_platform_accelerator (str, optional): Target Platform Accelerator,
                 for example: 'NVIDIA'. For allowed strings see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_OutputConfig.html.
-                It can be used instead of target_instance_family.
+                It can be used instead of target_instance_family by setting target_instance
+                family to None.
             compiler_options (dict, optional): Additional parameters for compiler.
                 Compiler Options are TargetPlatform / target_instance_family specific. See
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_OutputConfig.html for details.
@@ -643,11 +645,11 @@ class Model(object):
             target_platform_arch,
             target_platform_accelerator,
             compiler_options,
+            framework_version,
         )
         self.sagemaker_session.compile_model(**config)
         job_status = self.sagemaker_session.wait_for_compilation_job(job_name)
         self.model_data = job_status["ModelArtifacts"]["S3ModelArtifacts"]
-
         if target_instance_family is not None:
             if target_instance_family.startswith("ml_"):
                 self.image_uri = self._compilation_image_uri(
@@ -687,8 +689,7 @@ class Model(object):
         data_capture_config=None,
         **kwargs,
     ):
-        """Deploy this ``Model`` to an ``Endpoint`` and optionally return a
-        ``Predictor``.
+        """Deploy this ``Model`` to an ``Endpoint`` and optionally return a ``Predictor``.
 
         Create a SageMaker ``Model`` and ``EndpointConfig``, and deploy an
         ``Endpoint`` from this ``Model``. If ``self.predictor_cls`` is not None,
@@ -1081,9 +1082,9 @@ class FrameworkModel(Model):
         self.repacked_model_data = None
 
     def prepare_container_def(self, instance_type=None, accelerator_type=None):
-        """Return a container definition with framework configuration set in
-        model environment variables.
+        """Return a container definition with framework configuration.
 
+        Framework configuration is set in model environment variables.
         This also uploads user-supplied code to S3.
 
         Args:
@@ -1106,11 +1107,7 @@ class FrameworkModel(Model):
         return sagemaker.container_def(self.image_uri, self.model_data, deploy_env)
 
     def _upload_code(self, key_prefix, repack=False):
-        """
-        Args:
-            key_prefix:
-            repack:
-        """
+        """Placeholder Docstring"""
         local_code = utils.get_config_value("local.local_code", self.sagemaker_session.config)
         if self.sagemaker_session.local_mode and local_code:
             self.uploaded_code = None
@@ -1227,8 +1224,7 @@ class ModelPackage(Model):
         return name
 
     def enable_network_isolation(self):
-        """Whether to enable network isolation when creating a model out of this
-        ModelPackage
+        """Whether to enable network isolation when creating a model out of this ModelPackage
 
         Returns:
             bool: If network isolation should be enabled or not.

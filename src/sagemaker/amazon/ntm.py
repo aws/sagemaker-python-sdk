@@ -81,8 +81,7 @@ class NTM(AmazonAlgorithmEstimatorBase):
         learning_rate=None,
         **kwargs
     ):
-        """Neural Topic Model (NTM) is :class:`Estimator` used for unsupervised
-        learning.
+        """Neural Topic Model (NTM) is :class:`Estimator` used for unsupervised learning.
 
         This Estimator may be fit via calls to
         :meth:`~sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase.fit`.
@@ -168,8 +167,9 @@ class NTM(AmazonAlgorithmEstimatorBase):
         self.learning_rate = learning_rate
 
     def create_model(self, vpc_config_override=VPC_CONFIG_DEFAULT, **kwargs):
-        """Return a :class:`~sagemaker.amazon.NTMModel` referencing the latest
-        s3 model data produced by this Estimator.
+        """Return a :class:`~sagemaker.amazon.NTMModel`.
+
+        It references the latest s3 model data produced by this Estimator.
 
         Args:
             vpc_config_override (dict[str, list[str]]): Optional override for VpcConfig set on
@@ -189,12 +189,7 @@ class NTM(AmazonAlgorithmEstimatorBase):
     def _prepare_for_training(  # pylint: disable=signature-differs
         self, records, mini_batch_size, job_name=None
     ):
-        """
-        Args:
-            records:
-            mini_batch_size:
-            job_name:
-        """
+        """Placeholder docstring"""
         if mini_batch_size is not None and (mini_batch_size < 1 or mini_batch_size > 10000):
             raise ValueError("mini_batch_size must be in [1, 10000]")
         super(NTM, self)._prepare_for_training(
@@ -225,7 +220,8 @@ class NTMPredictor(Predictor):
         serializer=RecordSerializer(),
         deserializer=RecordDeserializer(),
     ):
-        """
+        """Initialization for NTMPredictor class.
+
         Args:
             endpoint_name (str): Name of the Amazon SageMaker endpoint to which
                 requests are sent.
@@ -247,13 +243,15 @@ class NTMPredictor(Predictor):
 
 
 class NTMModel(Model):
-    """Reference NTM s3 model data. Calling
-    :meth:`~sagemaker.model.Model.deploy` creates an Endpoint and return a
+    """Reference NTM s3 model data.
+
+    Calling :meth:`~sagemaker.model.Model.deploy` creates an Endpoint and return a
     Predictor that transforms vectors to a lower-dimensional representation.
     """
 
     def __init__(self, model_data, role, sagemaker_session=None, **kwargs):
-        """
+        """Initialization for NTMModel class.
+
         Args:
             model_data (str): The S3 location of a SageMaker model data
                 ``.tar.gz`` file.

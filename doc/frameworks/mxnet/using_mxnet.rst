@@ -377,7 +377,7 @@ It loads the model parameters from a ``model.params`` file in the SageMaker mode
         return net
 
 MXNet on Amazon SageMaker has support for `Elastic Inference <https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html>`__, which allows for inference acceleration to a hosted endpoint for a fraction of the cost of using a full GPU instance.
-In order to load and serve your MXNet model through Amazon Elastic Inference, the MXNet context passed to your MXNet Symbol or Module object within your ``model_fn`` needs to be set to ``eia``, as shown `here <https://docs.aws.amazon.com/dlami/latest/devguide/tutorial-mxnet-elastic-inference.html#ei-mxnet>`__.
+In order to load and serve your MXNet model through Amazon Elastic Inference, import the ``eimx`` Python package and make one change in the code to partition your model and optimize it for the ``EIA`` back end, as shown `here <https://docs.aws.amazon.com/dlami/latest/devguide/tutorial-mxnet-elastic-inference.html#ei-mxnet>`__.
 
 Based on the example above, the following code-snippet shows an example custom ``model_fn`` implementation, which enables loading and serving our MXNet model through Amazon Elastic Inference.
 
@@ -392,11 +392,12 @@ Based on the example above, the following code-snippet shows an example custom `
         Returns:
             mxnet.gluon.nn.Block: a Gluon network (for this example)
         """
-        net = models.get_model('resnet34_v2', ctx=mx.eia(), pretrained=False, classes=10)
-        net.load_params('%s/model.params' % model_dir, ctx=mx.eia())
+        net = models.get_model('resnet34_v2', ctx=mx.cpu(), pretrained=False, classes=10)
+        net.load_params('%s/model.params' % model_dir, ctx=mx.cpu())
+        net.hybridize(backend='EIA', static_alloc=True, static_shape=True)
         return net
 
-The `default_model_fn <https://github.com/aws/sagemaker-mxnet-container/pull/55/files#diff-aabf018d906ed282a3c738377d19a8deR71>`__ loads and serve your model through Elastic Inference, if applicable, within the Amazon SageMaker MXNet containers.
+If you are using MXNet 1.5.1 and earlier, the `default_model_fn <https://github.com/aws/sagemaker-mxnet-container/pull/55/files#diff-aabf018d906ed282a3c738377d19a8deR71>`__ loads and serve your model through Elastic Inference, if applicable, within the Amazon SageMaker MXNet containers.
 
 For more information on how to enable MXNet to interact with Amazon Elastic Inference, see `Use Elastic Inference with MXNet <https://docs.aws.amazon.com/dlami/latest/devguide/tutorial-mxnet-elastic-inference.html>`__.
 

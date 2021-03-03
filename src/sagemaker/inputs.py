@@ -41,6 +41,7 @@ class TrainingInput(object):
         shuffle_config=None,
     ):
         """Create a definition for input data used by an SageMaker training job.
+
         See AWS documentation on the ``CreateTrainingJob`` API for more details on the parameters.
 
         Args:
@@ -135,8 +136,9 @@ class CreateModelInput(object):
 
 @attr.s
 class TransformInput(object):
-    """Create a class containing all the parameters which can be used when calling
-    ``sagemaker.transformer.Transformer.transform()``
+    """Create a class containing all the parameters.
+
+    It can be used when calling ``sagemaker.transformer.Transformer.transform()``
     """
 
     data: str = attr.ib()
