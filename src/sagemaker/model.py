@@ -53,6 +53,7 @@ class Model(object):
         sagemaker_session=None,
         enable_network_isolation=False,
         model_kms_key=None,
+        image_config=None,
     ):
         """Initialize an SageMaker ``Model``.
 
@@ -90,6 +91,10 @@ class Model(object):
                 or from the model container.
             model_kms_key (str): KMS key ARN used to encrypt the repacked
                 model archive file if the model is repacked
+            image_config (dict[str, str]): Specifies whether the image of
+                model container is pulled from ECR, or private registry in your
+                VPC. By default it is set to pull model container image from
+                ECR. (default: None).
         """
         self.model_data = model_data
         self.image_uri = image_uri
@@ -106,6 +111,7 @@ class Model(object):
         self._is_edge_packaged_model = False
         self._enable_network_isolation = enable_network_isolation
         self.model_kms_key = model_kms_key
+        self.image_config = image_config
 
     def register(
         self,
@@ -279,7 +285,9 @@ class Model(object):
         Returns:
             dict: A container definition object usable with the CreateModel API.
         """
-        return sagemaker.container_def(self.image_uri, self.model_data, self.env)
+        return sagemaker.container_def(
+            self.image_uri, self.model_data, self.env, image_config=self.image_config
+        )
 
     def enable_network_isolation(self):
         """Whether to enable network isolation when creating this Model
