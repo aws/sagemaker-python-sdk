@@ -632,6 +632,7 @@ def test_validate_smdataparallel_args_not_raises():
         (None, None, None, None, smdataparallel_disabled),
         ("ml.p3.16xlarge", "tensorflow", "2.3.1", "py3", smdataparallel_enabled),
         ("ml.p3.16xlarge", "pytorch", "1.6.0", "py3", smdataparallel_enabled),
+        ("ml.p3.16xlarge", "pytorch", "1.7.1", "py3", smdataparallel_enabled),
     ]
     for instance_type, framework_name, framework_version, py_version, distribution in good_args:
         fw_utils._validate_smdataparallel_args(

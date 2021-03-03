@@ -21,7 +21,7 @@ import tests.integ as integ
 
 from sagemaker.pytorch import PyTorch
 from tests.integ import timeout
-
+from tests.integ.test_pytorch import _upload_training_data
 
 smdataparallel_dir = os.path.join(
     os.path.dirname(__file__), "..", "data", "smdistributed_dataparallel"
@@ -51,4 +51,4 @@ def test_smdataparallel_pt_mnist(
     )
 
     with timeout.timeout(minutes=integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
-        estimator.fit(job_name=job_name)
+        estimator.fit({"training": _upload_training_data(estimator)}, job_name=job_name)
