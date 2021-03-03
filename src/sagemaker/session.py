@@ -4030,9 +4030,9 @@ def container_def(image_uri, model_data_url=None, env=None, container_mode=None,
                 * MultiModel: Indicates that model container can support hosting multiple models
                 * SingleModel: Indicates that model container can support hosting a single model
                 This is the default model container mode when container_mode = None
-        image_config (dict[str, str]): Specifies whether the image of model container is pulled from ECR,
-            or private registry in your VPC. By default it is set to pull model container image
-            from ECR. (default: None).
+        image_config (dict[str, str]): Specifies whether the image of model container is pulled
+            from ECR, or private registry in your VPC. By default it is set to pull model
+            container image from ECR. (default: None).
 
     Returns:
         dict[str, str]: A complete container definition object usable with the CreateModel API if

@@ -91,7 +91,7 @@ class Model(object):
                 or from the model container.
             model_kms_key (str): KMS key ARN used to encrypt the repacked
                 model archive file if the model is repacked
-            image_config (dict[str, object]): Specifies whether the image of
+            image_config (dict[str, str]): Specifies whether the image of
                 model container is pulled from ECR, or private registry in your
                 VPC. By default it is set to pull model container image from
                 ECR. (default: None).
