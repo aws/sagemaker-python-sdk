@@ -450,7 +450,7 @@ def test_conditional_pytorch_training_model_registration(
             pass
 
 
-def test_training_job_with_debugger(
+def test_training_job_with_debugger_and_profiler(
     sagemaker_session,
     pipeline_name,
     role,
@@ -535,6 +535,9 @@ def test_training_job_with_debugger(
                 config["RuleParameters"]["rule_to_invoke"] == rule.rule_parameters["rule_to_invoke"]
             )
         assert job_description["DebugHookConfig"] == debugger_hook_config._to_request_dict()
+
+        assert job_description["ProfilingStatus"] == "Enabled"
+        assert job_description["ProfilerConfig"]["ProfilingIntervalInMilliseconds"] == 500
     finally:
         try:
             pipeline.delete()
