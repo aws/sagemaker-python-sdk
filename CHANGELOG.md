@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.28.0 (2021-03-03)
+
+### Features
+
+ * support creating endpoints with model images from private registries
+
 ## v2.27.1 (2021-03-03)
 
 ### Bug Fixes and Other Changes
