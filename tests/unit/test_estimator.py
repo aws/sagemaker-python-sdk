@@ -1434,7 +1434,7 @@ def test_attach_no_logs(sagemaker_session, training_job_description):
 def test_logs(sagemaker_session, training_job_description):
     estimator = Estimator.attach(training_job_name="job", sagemaker_session=sagemaker_session)
     estimator.logs()
-    sagemaker_session.logs_for_job.assert_called_with(estimator.latest_training_job, wait=True)
+    sagemaker_session.logs_for_job.assert_called_with(estimator.latest_training_job.name, wait=True)
 
 
 def test_attach_without_hyperparameters(sagemaker_session, training_job_description):

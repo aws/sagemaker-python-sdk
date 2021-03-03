@@ -820,7 +820,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         If the output is a tty or a Jupyter cell, it will be color-coded based
         on which instance the log entry is from.
         """
-        self.sagemaker_session.logs_for_job(self.latest_training_job, wait=True)
+        self.sagemaker_session.logs_for_job(self.latest_training_job.name, wait=True)
 
     def deploy(
         self,
