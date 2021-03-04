@@ -1,5 +1,13 @@
 # Changelog
 
+## v2.29.0 (2021-03-04)
+
+### Features
+
+ * add support for TensorFlow 2.4.1 for training, inference and…
+ * Support profiler config in the pipeline training job step
+ * support PyTorch 1.7.1 training, inference and data parallel
+
 ## v2.28.0 (2021-03-03)
 
 ### Features
