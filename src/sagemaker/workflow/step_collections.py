@@ -65,6 +65,7 @@ class RegisterModel(StepCollection):
         approval_status=None,
         image_uri=None,
         compile_model_family=None,
+        description=None,
         **kwargs,
     ):
         """Construct steps `_RepackModelStep` and `_RegisterModelStep` based on the estimator.
@@ -89,6 +90,7 @@ class RegisterModel(StepCollection):
                 Estimator's training container image is used (default: None).
             compile_model_family (str): The instance family for the compiled model. If
                 specified, a compiled model is used (default: None).
+            description (str): Model Package description (default: None).
             **kwargs: additional arguments to `create_model`.
         """
         steps: List[Step] = []
@@ -120,6 +122,7 @@ class RegisterModel(StepCollection):
             approval_status=approval_status,
             image_uri=image_uri,
             compile_model_family=compile_model_family,
+            description=description,
             **kwargs,
         )
         steps.append(register_model_step)
