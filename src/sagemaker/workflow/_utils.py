@@ -220,6 +220,7 @@ class _RegisterModelStep(Step):
         approval_status="PendingManualApproval",
         image_uri=None,
         compile_model_family=None,
+        description=None,
         **kwargs,
     ):
         """Constructor of a register model step.
@@ -246,6 +247,7 @@ class _RegisterModelStep(Step):
                 Estimator's training container image will be used (default: None).
             compile_model_family (str): Instance family for compiled model, if specified, a compiled
                 model will be used (default: None).
+            description (str): Model Package description (default: None).
             **kwargs: additional arguments to `create_model`.
         """
         super(_RegisterModelStep, self).__init__(name, StepTypeEnum.REGISTER_MODEL)
@@ -261,6 +263,7 @@ class _RegisterModelStep(Step):
         self.approval_status = approval_status
         self.image_uri = image_uri
         self.compile_model_family = compile_model_family
+        self.description = description
         self.kwargs = kwargs
 
         self._properties = Properties(
@@ -314,6 +317,7 @@ class _RegisterModelStep(Step):
             model_metrics=self.model_metrics,
             metadata_properties=self.metadata_properties,
             approval_status=self.approval_status,
+            description=self.description,
         )
         request_dict = model.sagemaker_session._get_create_model_package_request(
             **model_package_args

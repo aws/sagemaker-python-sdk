@@ -393,6 +393,7 @@ def test_conditional_pytorch_training_model_registration(
         response_types=["*"],
         inference_instances=["*"],
         transform_instances=["*"],
+        description="test-description",
     )
 
     model = Model(
