@@ -3498,14 +3498,6 @@ class Session(object):  # pylint: disable=too-many-public-methods
             endpoint_url=sts_regional_endpoint(self.boto_region_name),
         ).get_caller_identity()["Arn"]
 
-        if "AmazonSageMaker-ExecutionRole" in assumed_role:
-            role = re.sub(
-                r"^(.+)sts::(\d+):assumed-role/(.+?)/.*$",
-                r"\1iam::\2:role/service-role/\3",
-                assumed_role,
-            )
-            return role
-
         role = re.sub(r"^(.+)sts::(\d+):assumed-role/(.+?)/.*$", r"\1iam::\2:role/\3", assumed_role)
 
         # Call IAM to get the role's path
@@ -3517,6 +3509,22 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 "Couldn't call 'get_role' to get Role ARN from role name %s to get Role path.",
                 role_name,
             )
+
+            # This conditional has been present since the inception of SageMaker
+            # Guessing this conditional's purpose was to handle lack of IAM permissions
+            # https://github.com/aws/sagemaker-python-sdk/issues/2089#issuecomment-791802713
+            if "AmazonSageMaker-ExecutionRole" in assumed_role:
+                LOGGER.warning('Assuming role was created in SageMaker AWS console, '
+                               'as the name contains `AmazonSageMaker-ExecutionRole`. '
+                               'Defaulting to Role ARN with service-role in path. '
+                               'If this Role ARN is incorrect, please add '
+                               'IAM read permissions to your role or supply the '
+                               'Role Arn directly.')
+                role = re.sub(
+                    r"^(.+)sts::(\d+):assumed-role/(.+?)/.*$",
+                    r"\1iam::\2:role/service-role/\3",
+                    assumed_role,
+                )
 
         return role
 
