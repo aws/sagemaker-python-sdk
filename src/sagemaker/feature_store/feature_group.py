@@ -168,7 +168,7 @@ class IngestionManagerPandas:
         sagemaker_session: Session,
         start_index: int,
         end_index: int,
-    ):
+    ) -> List[int]:
         """Ingest a single batch of DataFrame rows into FeatureStore.
 
         Args:
@@ -177,50 +177,62 @@ class IngestionManagerPandas:
             sagemaker_session (Session): session instance to perform boto calls.
             start_index (int): starting position to ingest in this batch.
             end_index (int): ending position to ingest in this batch.
+
+        Returns:
+            List of row indices that failed to be ingested.
         """
         logger.info("Started ingesting index %d to %d", start_index, end_index)
-        for row in data_frame[start_index:end_index].itertuples(index=False):
+        failed_rows = list()
+        for row in data_frame[start_index:end_index].itertuples():
             record = [
                 FeatureValue(
-                    feature_name=data_frame.columns[index], value_as_string=str(row[index])
+                    feature_name=data_frame.columns[index - 1], value_as_string=str(row[index])
                 )
-                for index in range(len(row))
+                for index in range(1, len(row))
                 if pd.notna(row[index])
             ]
-            sagemaker_session.put_record(
-                feature_group_name=feature_group_name, record=[value.to_dict() for value in record]
-            )
+            try:
+                sagemaker_session.put_record(
+                    feature_group_name=feature_group_name,
+                    record=[value.to_dict() for value in record],
+                )
+            except Exception as e:  # pylint: disable=broad-except
+                logger.error("Failed to ingest row %d: %s", row[0], e)
+                failed_rows.append(row[0])
+        return failed_rows
 
-    def wait(self, timeout=None):
+    def wait(self, timeout=None) -> List[int]:
         """Wait for the ingestion process to finish.
 
         Args:
             timeout (Union[int, float]): ``concurrent.futures.TimeoutError`` will be raised
                 if timeout is reached.
+
+        Returns:
+            List of row indices that failed to be ingested.
         """
-        failed = False
+        failed = []
         for future in as_completed(self._futures, timeout=timeout):
             start, end = self._futures[future]
-            try:
-                future.result()
-            except Exception as e:  # pylint: disable=broad-except
-                failed = True
-                logger.error("Failed to ingest row %d to %d: %s", start, end, e)
+            result = future.result()
+            if result:
+                logger.error("Failed to ingest row %d to %d", start, end)
             else:
                 logger.info("Successfully ingested row %d to %d", start, end)
+            failed += result
 
-        if failed:
-            raise RuntimeError(
-                f"Failed to ingest some data into FeatureGroup {self.feature_group_name}"
-            )
+        return failed
 
-    def run(self, wait=True, timeout=None):
+    def run(self, wait=True, timeout=None) -> List[int]:
         """Start the ingestion process.
 
         Args:
             wait (bool): whether to wait for the ingestion to finish or not.
             timeout (Union[int, float]): ``concurrent.futures.TimeoutError`` will be raised
             if timeout is reached.
+
+        Returns:
+            List of row indices that failed to be ingested.
         """
         executor = ThreadPoolExecutor(max_workers=self.max_workers)
         batch_size = math.ceil(self.data_frame.shape[0] / self.max_workers)
@@ -241,9 +253,11 @@ class IngestionManagerPandas:
             ] = (start_index, end_index)
 
         self._futures = futures
+        failed = []
         if wait:
-            self.wait(timeout=timeout)
+            failed = self.wait(timeout=timeout)
         executor.shutdown(wait=False)
+        return failed
 
 
 @attr.s
