@@ -3514,12 +3514,14 @@ class Session(object):  # pylint: disable=too-many-public-methods
             # Guessing this conditional's purpose was to handle lack of IAM permissions
             # https://github.com/aws/sagemaker-python-sdk/issues/2089#issuecomment-791802713
             if "AmazonSageMaker-ExecutionRole" in assumed_role:
-                LOGGER.warning('Assuming role was created in SageMaker AWS console, '
-                               'as the name contains `AmazonSageMaker-ExecutionRole`. '
-                               'Defaulting to Role ARN with service-role in path. '
-                               'If this Role ARN is incorrect, please add '
-                               'IAM read permissions to your role or supply the '
-                               'Role Arn directly.')
+                LOGGER.warning(
+                    "Assuming role was created in SageMaker AWS console, "
+                    "as the name contains `AmazonSageMaker-ExecutionRole`. "
+                    "Defaulting to Role ARN with service-role in path. "
+                    "If this Role ARN is incorrect, please add "
+                    "IAM read permissions to your role or supply the "
+                    "Role Arn directly."
+                )
                 role = re.sub(
                     r"^(.+)sts::(\d+):assumed-role/(.+?)/.*$",
                     r"\1iam::\2:role/service-role/\3",
