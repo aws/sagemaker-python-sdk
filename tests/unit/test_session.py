@@ -399,14 +399,15 @@ def test_get_caller_identity_arn_from_a_role(sts_regional_endpoint, boto_session
 @patch("sagemaker.session.sts_regional_endpoint", return_value=STS_ENDPOINT)
 def test_get_caller_identity_arn_from_an_execution_role(sts_regional_endpoint, boto_session):
     sess = Session(boto_session)
-    arn = "arn:aws:sts::369233609183:assumed-role/AmazonSageMaker-ExecutionRole-20171129T072388/SageMaker"
+    sts_arn = "arn:aws:sts::369233609183:assumed-role/AmazonSageMaker-ExecutionRole-20171129T072388/SageMaker"
     sess.boto_session.client("sts", endpoint_url=STS_ENDPOINT).get_caller_identity.return_value = {
-        "Arn": arn
+        "Arn": sts_arn
     }
-    sess.boto_session.client("iam").get_role.return_value = {"Role": {"Arn": arn}}
+    iam_arn = "arn:aws:iam::369233609183:role/AmazonSageMaker-ExecutionRole-20171129T072388"
+    sess.boto_session.client("iam").get_role.return_value = {"Role": {"Arn": iam_arn}}
 
     actual = sess.get_caller_identity_arn()
-    assert actual == "arn:aws:iam::369233609183:role/AmazonSageMaker-ExecutionRole-20171129T072388"
+    assert actual == iam_arn
 
 
 @patch("os.path.exists", side_effect=mock_exists(NOTEBOOK_METADATA_FILE, False))
