@@ -160,6 +160,7 @@ class IngestionManagerPandas:
     data_frame: DataFrame = attr.ib()
     max_workers: int = attr.ib(default=1)
     _futures: Dict[Any, Any] = attr.ib(init=False, factory=dict)
+    _failed_indices: List[int] = attr.ib(factory=list)
 
     @staticmethod
     def _ingest_single_batch(
@@ -201,17 +202,23 @@ class IngestionManagerPandas:
                 failed_rows.append(row[0])
         return failed_rows
 
-    def wait(self, timeout=None) -> List[int]:
+    @property
+    def failed_rows(self) -> List[int]:
+        """Get rows that failed to ingest
+
+        Returns:
+            List of row indices that failed to be ingested.
+        """
+        return self._failed_indices
+
+    def wait(self, timeout=None):
         """Wait for the ingestion process to finish.
 
         Args:
             timeout (Union[int, float]): ``concurrent.futures.TimeoutError`` will be raised
                 if timeout is reached.
-
-        Returns:
-            List of row indices that failed to be ingested.
         """
-        failed = []
+        self._failed_indices = list()
         for future in as_completed(self._futures, timeout=timeout):
             start, end = self._futures[future]
             result = future.result()
@@ -219,20 +226,20 @@ class IngestionManagerPandas:
                 logger.error("Failed to ingest row %d to %d", start, end)
             else:
                 logger.info("Successfully ingested row %d to %d", start, end)
-            failed += result
+            self._failed_indices += result
 
-        return failed
+        if len(self._failed_indices) > 0:
+            raise RuntimeError(
+                f"Failed to ingest some data into FeatureGroup {self.feature_group_name}"
+            )
 
-    def run(self, wait=True, timeout=None) -> List[int]:
+    def run(self, wait=True, timeout=None):
         """Start the ingestion process.
 
         Args:
             wait (bool): whether to wait for the ingestion to finish or not.
             timeout (Union[int, float]): ``concurrent.futures.TimeoutError`` will be raised
             if timeout is reached.
-
-        Returns:
-            List of row indices that failed to be ingested.
         """
         executor = ThreadPoolExecutor(max_workers=self.max_workers)
         batch_size = math.ceil(self.data_frame.shape[0] / self.max_workers)
@@ -253,11 +260,9 @@ class IngestionManagerPandas:
             ] = (start_index, end_index)
 
         self._futures = futures
-        failed = []
         if wait:
-            failed = self.wait(timeout=timeout)
+            self.wait(timeout=timeout)
         executor.shutdown(wait=False)
-        return failed
 
 
 @attr.s
