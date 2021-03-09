@@ -23,10 +23,12 @@ from __future__ import absolute_import
 import time
 
 from abc import ABC
+from enum import Enum
 
 import attr
 
 import smdebug_rulesconfig as rule_configs
+import smdebug_rulesconfig.debugger_rules._utils as debugger_rules_utils # noqa: F401 # pylint: disable=unused-import
 
 from sagemaker import image_uris
 from sagemaker.utils import build_dict
@@ -63,6 +65,13 @@ def get_default_profiler_rule():
     return ProfilerRule.sagemaker(default_rule, name=custom_name)
 
 
+class RuleType(Enum):
+    DEBUGGER_BUILTIN = 0
+    DEBUGGER_CUSTOM = 1
+    PROFILER_BUILTIN = 2
+    PROFILER_CUSTOM = 3
+
+
 @attr.s
 class RuleBase(ABC):
     """The SageMaker Debugger rule base class that cannot be instantiated directly.
@@ -83,6 +92,7 @@ class RuleBase(ABC):
         s3_output_path (str): The location in S3 to store the output.
         volume_size_in_gb (int): Size in GB of the EBS volume to use for storing data.
         rule_parameters (dict): A dictionary of parameters for the rule.
+        rule_type (RuleType): Type of rule. Enums of type RuleType
 
     """
 
@@ -93,6 +103,7 @@ class RuleBase(ABC):
     s3_output_path = attr.ib()
     volume_size_in_gb = attr.ib()
     rule_parameters = attr.ib()
+    rule_type = attr.ib()
 
     @staticmethod
     def _set_rule_parameters(source, rule_to_invoke, rule_parameters):
@@ -151,6 +162,7 @@ class Rule(RuleBase):
         rule_parameters,
         collections_to_save,
         actions=None,
+        rule_type=None
     ):
         """Configure the debugging rules using the following classmethods.
 
@@ -169,6 +181,7 @@ class Rule(RuleBase):
             s3_output_path,
             volume_size_in_gb,
             rule_parameters,
+            rule_type
         )
         self.collection_configs = collections_to_save
         self.actions = actions
@@ -305,6 +318,7 @@ class Rule(RuleBase):
             rule_parameters=merged_rule_params,
             collections_to_save=collections_to_save or base_config_collections,
             actions=actions,
+            rule_type=RuleType.DEBUGGER_BUILTIN
         )
 
     @classmethod
@@ -377,6 +391,7 @@ class Rule(RuleBase):
             rule_parameters=merged_rule_params,
             collections_to_save=collections_to_save or [],
             actions=actions,
+            rule_type=RuleType.DEBUGGER_CUSTOM
         )
 
     def prepare_actions(self, training_job_name):
@@ -510,6 +525,7 @@ class ProfilerRule(RuleBase):
             s3_output_path=s3_output_path,
             volume_size_in_gb=None,
             rule_parameters=base_config.rule_parameters,
+            rule_type=RuleType.PROFILER_BUILTIN
         )
 
     @classmethod
@@ -567,6 +583,7 @@ class ProfilerRule(RuleBase):
             s3_output_path=s3_output_path,
             volume_size_in_gb=volume_size_in_gb,
             rule_parameters=merged_rule_params,
+            rule_type=RuleType.PROFILER_CUSTOM
         )
 
     def to_profiler_rule_config_dict(self):

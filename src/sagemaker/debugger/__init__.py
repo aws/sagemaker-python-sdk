@@ -14,6 +14,7 @@
 from __future__ import absolute_import
 
 from sagemaker.debugger.debugger import (  # noqa: F401
+    debugger_rules_utils,
     CollectionConfig,
     DebuggerHookConfig,
     framework_name,
@@ -22,6 +23,7 @@ from sagemaker.debugger.debugger import (  # noqa: F401
     ProfilerRule,
     Rule,
     RuleBase,
+    RuleType,
     rule_configs,
     TensorBoardOutputConfig,
 )

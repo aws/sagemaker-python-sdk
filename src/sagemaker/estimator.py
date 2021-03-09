@@ -29,6 +29,7 @@ from sagemaker import git_utils, image_uris
 from sagemaker.analytics import TrainingJobAnalytics
 from sagemaker.debugger import TensorBoardOutputConfig  # noqa: F401 # pylint: disable=unused-import
 from sagemaker.debugger import (
+    debugger_rules_utils,
     DebuggerHookConfig,
     FrameworkProfile,
     get_default_profiler_rule,
@@ -36,6 +37,7 @@ from sagemaker.debugger import (
     ProfilerConfig,
     ProfilerRule,
     Rule,
+    RuleType,
 )
 from sagemaker.deprecations import (
     removed_kwargs,
@@ -442,6 +444,21 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self._prepare_debugger_for_training()
         self._prepare_profiler_for_training()
 
+    def _validate_framework_rule_compatibility(self, rule):
+        if rule.rule_type != RuleType.DEBUGGER_BUILTIN:
+            # We only validate DEBUGGER BUILTIN RULES for framework compatibility
+            # Since, profiler rules are framework agnostic
+            return True
+        compatible_rules = \
+            set(debugger_rules_utils._get_rule_list(self._framework_name))
+        if rule.name not in compatible_rules:
+            raise RuntimeError(
+                f"The rule {rule.name} is not compatible with {self._framework_name}.\n "
+                + "See "
+                  + "https://docs.aws.amazon.com/sagemaker/latest/dg/debugger-built-in-rules.html " +
+                "for a list of supported rules"
+            )
+
     def _prepare_rules(self):
         """Rules list includes both debugger and profiler rules.
 
@@ -452,6 +469,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         if self.rules is not None:
             for rule in self.rules:
                 if isinstance(rule, Rule):
+                    self._validate_framework_rule_compatibility(rule)
                     self.debugger_rules.append(rule)
                 elif isinstance(rule, ProfilerRule):
                     self.profiler_rules.append(rule)
