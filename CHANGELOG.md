@@ -4,7 +4,7 @@
 
 ### Features
 
- * add support for TensorFlow 2.4.1 for training, inference and…
+ * add support for TensorFlow 2.4.1 for training, inference and data parallel
  * Support profiler config in the pipeline training job step
  * support PyTorch 1.7.1 training, inference and data parallel
 
