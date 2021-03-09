@@ -274,7 +274,7 @@ def test_ingestion_manager_run_success():
 
 @patch(
     "sagemaker.feature_store.feature_group.IngestionManagerPandas._ingest_single_batch",
-    MagicMock(side_effect=Exception("Failed!")),
+    MagicMock(return_value=[1]),
 )
 def test_ingestion_manager_run_failure():
     df = pd.DataFrame({"float": pd.Series([2.0], dtype="float64")})
@@ -282,11 +282,12 @@ def test_ingestion_manager_run_failure():
         feature_group_name="MyGroup",
         sagemaker_session=sagemaker_session_mock,
         data_frame=df,
-        max_workers=10,
+        max_workers=1,
     )
     with pytest.raises(RuntimeError) as error:
         manager.run()
     assert "Failed to ingest some data into FeatureGroup MyGroup" in str(error)
+    assert manager.failed_rows == [1]
 
 
 @pytest.fixture
