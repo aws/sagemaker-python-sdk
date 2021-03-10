@@ -42,6 +42,7 @@ required_packages = [
     "smdebug_rulesconfig==1.0.1",
     "importlib-metadata>=1.4.0",
     "packaging>=20.0",
+    "pandas",
 ]
 
 # Specific use case dependencies
@@ -75,7 +76,6 @@ extras["test"] = (
         "fabric>=2.0",
         "requests>=2.20.0, <3",
         "sagemaker-experiments",
-        "pandas",
     ],
 )
 
@@ -85,7 +85,9 @@ setup(
     description="Open source library for training and deploying models on Amazon SageMaker.",
     packages=find_packages("src"),
     package_dir={"": "src"},
-    py_modules=[os.path.splitext(os.path.basename(path))[0] for path in glob("src/*.py")],
+    py_modules=[
+        os.path.splitext(os.path.basename(path))[0] for path in glob("src/*.py")
+    ],
     include_package_data=True,
     long_description=read("README.rst"),
     author="Amazon Web Services",
