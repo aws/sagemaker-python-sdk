@@ -42,12 +42,11 @@ required_packages = [
     "smdebug_rulesconfig==1.0.1",
     "importlib-metadata>=1.4.0",
     "packaging>=20.0",
+    "pandas",
 ]
 
 # Specific use case dependencies
 extras = {
-    "analytics": ["pandas"],
-    "feature-store": ["pandas"],
     "local": [
         "urllib3>=1.21.1,!=1.25,!=1.25.1",
         "docker-compose>=1.25.2",
