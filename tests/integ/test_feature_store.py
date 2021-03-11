@@ -197,6 +197,7 @@ def test_create_feature_store(
             data_frame=pandas_data_frame, max_workers=3, wait=False
         )
         ingestion_manager.wait()
+        assert 0 == len(ingestion_manager.failed_rows)
 
         # Query the integrated Glue table.
         athena_query = feature_group.athena_query()

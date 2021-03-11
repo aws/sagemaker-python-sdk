@@ -1,10 +1,23 @@
 # Changelog
 
+## v2.29.1 (2021-03-09)
+
+### Bug Fixes and Other Changes
+
+ * return all failed row indices in feature_group.ingest
+ * move service-role path parsing for AmazonSageMaker-ExecutionRole for get_execution_role() into except block of IAM get_role() call and add warning message
+ * add description parameter for RegisterModelStep
+ * add type annotations for Lineage
+
+### Documentation Changes
+
+ * remove ellipsis from CHANGELOG.md
+
 ## v2.29.0 (2021-03-04)
 
 ### Features
 
- * add support for TensorFlow 2.4.1 for training, inference and…
+ * add support for TensorFlow 2.4.1 for training, inference and data parallel
  * Support profiler config in the pipeline training job step
  * support PyTorch 1.7.1 training, inference and data parallel
 
