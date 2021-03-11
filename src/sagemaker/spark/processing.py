@@ -33,7 +33,7 @@ from urllib.parse import urlparse
 
 from sagemaker import image_uris
 from sagemaker.local.image import _ecr_login_if_needed, _pull_image
-from sagemaker.processing import ProcessingInput, ProcessingOutput, ScriptProcessor
+from sagemaker.processing import ProcessingInput, ProcessingOutput, ScriptProcessor, RunArgs
 from sagemaker.s3 import S3Uploader
 from sagemaker.session import Session
 from sagemaker.spark import defaults
@@ -169,6 +169,25 @@ class _SparkProcessorBase(ScriptProcessor):
             env=env,
             tags=tags,
             network_config=network_config,
+        )
+
+    def get_run_args(
+        self,
+        submit_app,
+        inputs=None,
+        outputs=None,
+        arguments=None,
+        job_name=None,
+        kms_key=None,
+    ):
+        # TODO: description
+        return super().get_run_args(
+            code=submit_app,
+            inputs=inputs,
+            outputs=outputs,
+            arguments=arguments,
+            job_name=job_name,
+            kms_key=kms_key,
         )
 
     def run(
@@ -685,6 +704,46 @@ class PySparkProcessor(_SparkProcessorBase):
             network_config=network_config,
         )
 
+    def get_run_args(
+        self,
+        submit_app,
+        submit_py_files=None,
+        submit_jars=None,
+        submit_files=None,
+        inputs=None,
+        outputs=None,
+        arguments=None,
+        job_name=None,
+        configuration=None,
+        spark_event_logs_s3_uri=None,
+        kms_key=None,
+    ):
+        self._current_job_name = self._generate_current_job_name(job_name=job_name)
+        self.command = [_SparkProcessorBase._default_command]
+
+        if not submit_app:
+            raise ValueError("submit_app is required")
+
+        extended_inputs, extended_outputs = self._extend_processing_args(
+            inputs,
+            outputs,
+            submit_py_files=submit_py_files,
+            submit_jars=submit_jars,
+            submit_files=submit_files,
+            configuration=configuration,
+            spark_event_logs_s3_uri=spark_event_logs_s3_uri,
+        )
+
+        # TODO: description
+        return super().get_run_args(
+            submit_app=submit_app,
+            inputs=extended_inputs,
+            outputs=extended_outputs,
+            arguments=arguments,
+            job_name=self._current_job_name,
+            kms_key=kms_key,
+        )
+
     def run(
         self,
         submit_app,
@@ -864,6 +923,46 @@ class SparkJarProcessor(_SparkProcessorBase):
             env=env,
             tags=tags,
             network_config=network_config,
+        )
+
+    def get_run_args(
+        self,
+        submit_app,
+        submit_class=None,
+        submit_jars=None,
+        submit_files=None,
+        inputs=None,
+        outputs=None,
+        arguments=None,
+        job_name=None,
+        configuration=None,
+        spark_event_logs_s3_uri=None,
+        kms_key=None,
+    ):
+        self._current_job_name = self._generate_current_job_name(job_name=job_name)
+        self.command = [_SparkProcessorBase._default_command]
+
+        if not submit_app:
+            raise ValueError("submit_app is required")
+
+        extended_inputs, extended_outputs = self._extend_processing_args(
+            inputs,
+            outputs,
+            submit_class=submit_class,
+            submit_jars=submit_jars,
+            submit_files=submit_files,
+            configuration=configuration,
+            spark_event_logs_s3_uri=spark_event_logs_s3_uri,
+        )
+
+        # TODO: description
+        return super().get_run_args(
+            submit_app=submit_app,
+            inputs=extended_inputs,
+            outputs=extended_outputs,
+            arguments=arguments,
+            job_name=self._current_job_name,
+            kms_key=kms_key,
         )
 
     def run(

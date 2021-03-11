@@ -123,6 +123,25 @@ class Processor(object):
 
         self.sagemaker_session = sagemaker_session or Session()
 
+    def get_run_args(
+        self,
+        inputs=None,
+        outputs=None,
+        arguments=None,
+        job_name=None,
+        kms_key=None,
+    ):
+        # TODO: description
+        normalized_inputs, normalized_outputs = self._normalize_args(
+            job_name=job_name,
+            arguments=arguments,
+            inputs=inputs,
+            kms_key=kms_key,
+            outputs=outputs,
+        )
+
+        return RunArgs(inputs=normalized_inputs, outputs=normalized_outputs, code=None)
+
     def run(
         self,
         inputs=None,
@@ -441,6 +460,27 @@ class ScriptProcessor(Processor):
             tags=tags,
             network_config=network_config,
         )
+
+    def get_run_args(
+        self,
+        code,
+        inputs=None,
+        outputs=None,
+        arguments=None,
+        job_name=None,
+        kms_key=None,
+    ):
+        # TODO: description
+        normalized_inputs, normalized_outputs = self._normalize_args(
+            job_name=job_name,
+            arguments=arguments,
+            inputs=inputs,
+            outputs=outputs,
+            code=code,
+            kms_key=kms_key,
+        )
+
+        return RunArgs(inputs=normalized_inputs, outputs=normalized_outputs, code=code)
 
     def run(
         self,
@@ -1142,6 +1182,40 @@ class ProcessingOutput(object):
 
         # Return the request dictionary.
         return s3_output_request
+
+
+class RunArgs(object):
+    """Accepts parameters that specify an Amazon S3 output for a processing job.
+
+    It also provides a method to turn those parameters into a dictionary.
+    """
+
+    def __init__(
+        self,
+        inputs=None,
+        outputs=None,
+        code=None,
+    ):
+        """Initializes a ``ProcessingOutput`` instance.
+
+        ``ProcessingOutput`` accepts parameters that specify an Amazon S3 output for a
+        processing job and provides a method to turn those parameters into a dictionary.
+
+        Args:
+            source (str): The source for the output.
+            destination (str): The destination of the output. If a destination
+                is not provided, one will be generated:
+                "s3://<default-bucket-name>/<job-name>/output/<output-name>".
+            output_name (str): The name of the output. If a name
+                is not provided, one will be generated (eg. "output-1").
+            s3_upload_mode (str): Valid options are "EndOfJob" or "Continuous".
+            app_managed (bool): Whether the input are managed by SageMaker or application
+            feature_store_output (:class:`~sagemaker.processing.FeatureStoreOutput`)
+                Configuration for processing job outputs of FeatureStore.
+        """
+        self.inputs = inputs
+        self.outputs = outputs
+        self.code = code
 
 
 class FeatureStoreOutput(ApiObject):
