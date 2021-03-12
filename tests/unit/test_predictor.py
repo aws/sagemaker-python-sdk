@@ -62,8 +62,8 @@ def test_predict_call_pass_through():
     result = predictor.predict(data)
 
     assert sagemaker_session.sagemaker_runtime_client.invoke_endpoint.called
-    sagemaker_session.describe_endpoint.assert_not_called()
-    sagemaker_session.describe_endpoint_config.assert_not_called()
+    assert sagemaker_session.sagemaker_client.describe_endpoint.not_called
+    assert sagemaker_session.sagemaker_client.describe_endpoint_config.not_called
 
     expected_request_args = {
         "Accept": DEFAULT_ACCEPT,
