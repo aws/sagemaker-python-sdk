@@ -91,8 +91,8 @@ class Predictor(object):
         self.sagemaker_session = sagemaker_session or Session()
         self.serializer = serializer
         self.deserializer = deserializer
-        self._endpoint_config_name = self._get_endpoint_config_name()
-        self._model_names = self._get_model_names()
+        self._endpoint_config_name = None
+        self._model_names = None
         self._context = None
 
     def predict(
@@ -223,6 +223,7 @@ class Predictor(object):
                   associated with the endpoint.
         """
         production_variants = None
+        current_model_names = self._get_model_names()
 
         if initial_instance_count or instance_type or accelerator_type or model_name:
             if instance_type is None or initial_instance_count is None:
@@ -235,12 +236,12 @@ class Predictor(object):
                 )
 
             if model_name is None:
-                if len(self._model_names) > 1:
+                if len(current_model_names) > 1:
                     raise ValueError(
                         "Unable to choose a default model for a new EndpointConfig because "
-                        "the endpoint has multiple models: {}".format(", ".join(self._model_names))
+                        "the endpoint has multiple models: {}".format(", ".join(current_model_names))
                     )
-                model_name = self._model_names[0]
+                model_name = current_model_names[0]
             else:
                 self._model_names = [model_name]
 
@@ -252,9 +253,10 @@ class Predictor(object):
             )
             production_variants = [production_variant_config]
 
-        new_endpoint_config_name = name_from_base(self._endpoint_config_name)
+        current_endpoint_config_name = self._get_endpoint_config_name()
+        new_endpoint_config_name = name_from_base(current_endpoint_config_name)
         self.sagemaker_session.create_endpoint_config_from_existing(
-            self._endpoint_config_name,
+            current_endpoint_config_name,
             new_endpoint_config_name,
             new_tags=tags,
             new_kms_key=kms_key,
@@ -268,7 +270,8 @@ class Predictor(object):
 
     def _delete_endpoint_config(self):
         """Delete the Amazon SageMaker endpoint configuration"""
-        self.sagemaker_session.delete_endpoint_config(self._endpoint_config_name)
+        current_endpoint_config_name = self._get_endpoint_config_name()
+        self.sagemaker_session.delete_endpoint_config(current_endpoint_config_name)
 
     def delete_endpoint(self, delete_endpoint_config=True):
         """Delete the Amazon SageMaker endpoint backing this predictor.
@@ -291,7 +294,8 @@ class Predictor(object):
         """Deletes the Amazon SageMaker models backing this predictor."""
         request_failed = False
         failed_models = []
-        for model_name in self._model_names:
+        current_model_names = self._get_model_names()
+        for model_name in current_model_names:
             try:
                 self.sagemaker_session.delete_model(model_name)
             except Exception:  # pylint: disable=broad-except
@@ -467,19 +471,25 @@ class Predictor(object):
 
     def _get_endpoint_config_name(self):
         """Placeholder docstring"""
+        if self._endpoint_config_name is not None:
+            return self._endpoint_config_name
         endpoint_desc = self.sagemaker_session.sagemaker_client.describe_endpoint(
             EndpointName=self.endpoint_name
         )
-        endpoint_config_name = endpoint_desc["EndpointConfigName"]
-        return endpoint_config_name
+        self._endpoint_config_name = endpoint_desc["EndpointConfigName"]
+        return self._endpoint_config_name
 
     def _get_model_names(self):
         """Placeholder docstring"""
+        if self._model_names is not None:
+            return self._model_names
+        current_endpoint_config_name = self._get_endpoint_config_name()
         endpoint_config = self.sagemaker_session.sagemaker_client.describe_endpoint_config(
-            EndpointConfigName=self._endpoint_config_name
+            EndpointConfigName=current_endpoint_config_name
         )
         production_variants = endpoint_config["ProductionVariants"]
-        return [d["ModelName"] for d in production_variants]
+        self._model_names = [d["ModelName"] for d in production_variants]
+        return self._model_names
 
     @property
     def content_type(self):
