@@ -33,7 +33,7 @@ from urllib.parse import urlparse
 
 from sagemaker import image_uris
 from sagemaker.local.image import _ecr_login_if_needed, _pull_image
-from sagemaker.processing import ProcessingInput, ProcessingOutput, ScriptProcessor, RunArgs
+from sagemaker.processing import ProcessingInput, ProcessingOutput, ScriptProcessor
 from sagemaker.s3 import S3Uploader
 from sagemaker.session import Session
 from sagemaker.spark import defaults
