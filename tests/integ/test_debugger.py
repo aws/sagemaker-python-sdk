@@ -134,6 +134,51 @@ def test_mxnet_with_rules(
         _wait_and_assert_that_no_rule_jobs_errored(training_job=mx.latest_training_job)
 
 
+def test_mxnet_with_invalid_rules(
+    sagemaker_session,
+    mxnet_training_latest_version,
+    mxnet_training_latest_py_version,
+    cpu_instance_type,
+):
+    with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
+        rules = [
+            # only compatible with xgboost; the inclusion of this rule should raise an exception
+            Rule.sagemaker(rule_configs.tree_depth()),
+            Rule.sagemaker(
+                base_config=rule_configs.all_zero(), rule_parameters={"tensor_regex": ".*"}
+            ),  # compatible with all frameworks
+            Rule.sagemaker(rule_configs.loss_not_decreasing()),  # compatible with all frameworks
+        ]
+
+        script_path = os.path.join(DATA_DIR, "mxnet_mnist", "mnist_gluon.py")
+        data_path = os.path.join(DATA_DIR, "mxnet_mnist")
+
+        mx = MXNet(
+            entry_point=script_path,
+            role="SageMakerRole",
+            framework_version=mxnet_training_latest_version,
+            py_version=mxnet_training_latest_py_version,
+            instance_count=1,
+            instance_type=cpu_instance_type,
+            sagemaker_session=sagemaker_session,
+            rules=rules,
+        )
+
+        train_input = mx.sagemaker_session.upload_data(
+            path=os.path.join(data_path, "train"), key_prefix="integ-test-data/mxnet_mnist/train"
+        )
+        test_input = mx.sagemaker_session.upload_data(
+            path=os.path.join(data_path, "test"), key_prefix="integ-test-data/mxnet_mnist/test"
+        )
+
+        try:
+            mx.fit({"train": train_input, "test": test_input})
+        except RuntimeError:
+            pass  # Expected RuntimeError due to the inclusion of an xgboost rule
+        else:
+            assert False, "The inclusion of the TreeDepth should have raised an Error"
+
+
 def test_mxnet_with_rules_and_actions(
     sagemaker_session,
     mxnet_training_latest_version,

@@ -444,11 +444,11 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self._prepare_debugger_for_training()
         self._prepare_profiler_for_training()
 
-    def _validate_framework_rule_compatibility(self, rule):
+    def _validate_framework_debugger_rule_compatibility(self, rule):
         if rule.rule_type != RuleType.DEBUGGER_BUILTIN:
             # We only validate DEBUGGER BUILTIN RULES for framework compatibility
             # Since, profiler rules are framework agnostic
-            return True
+            return
         compatible_rules = \
             set(debugger_rules_utils._get_rule_list(self._framework_name))
         if rule.name not in compatible_rules:
@@ -469,7 +469,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         if self.rules is not None:
             for rule in self.rules:
                 if isinstance(rule, Rule):
-                    self._validate_framework_rule_compatibility(rule)
+                    self._validate_framework_debugger_rule_compatibility(rule)
                     self.debugger_rules.append(rule)
                 elif isinstance(rule, ProfilerRule):
                     self.profiler_rules.append(rule)
