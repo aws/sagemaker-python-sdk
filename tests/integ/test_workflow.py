@@ -104,6 +104,7 @@ def athena_dataset_definition(sagemaker_session):
         ),
     )
 
+
 @pytest.fixture
 def configuration() -> list:
     configuration = [
@@ -183,6 +184,7 @@ def configuration() -> list:
     ]
     return configuration
 
+
 @pytest.fixture(scope="module")
 def build_jar():
     spark_path = os.path.join(DATA_DIR, "spark")
@@ -223,6 +225,7 @@ def build_jar():
     yield
     subprocess.run(["rm", os.path.join(jar_file_path, "hello-spark-java.jar")])
     subprocess.run(["rm", os.path.join(jar_file_path, java_file_path, "HelloJavaSparkApp.class")])
+
 
 def test_three_step_definition(
     sagemaker_session,
@@ -473,6 +476,7 @@ def test_one_step_sklearn_processing_pipeline(
         except Exception:
             pass
 
+
 def test_one_step_pyspark_processing_pipeline(
     sagemaker_session,
     role,
@@ -496,12 +500,18 @@ def test_one_step_pyspark_processing_pipeline(
     )
 
     spark_run_args = pyspark_processor.get_run_args(
-       submit_app=script_path,
-       arguments=["--s3_input_bucket", sagemaker_session.default_bucket(),
-                  "--s3_input_key_prefix", "spark-input",
-                  "--s3_output_bucket", sagemaker_session.default_bucket(),
-                  "--s3_output_key_prefix", "spark-output"],
-)
+        submit_app=script_path,
+        arguments=[
+            "--s3_input_bucket",
+            sagemaker_session.default_bucket(),
+            "--s3_input_key_prefix",
+            "spark-input",
+            "--s3_output_bucket",
+            sagemaker_session.default_bucket(),
+            "--s3_output_key_prefix",
+            "spark-output",
+        ],
+    )
 
     step_pyspark = ProcessingStep(
         name="pyspark-process",
@@ -520,12 +530,12 @@ def test_one_step_pyspark_processing_pipeline(
     )
 
     try:
-    # NOTE: We should exercise the case when role used in the pipeline execution is
-    # different than that required of the steps in the pipeline itself. The role in
-    # the pipeline definition needs to create training and processing jobs and other
-    # sagemaker entities. However, the jobs created in the steps themselves execute
-    # under a potentially different role, often requiring access to S3 and other
-    # artifacts not required to during creation of the jobs in the pipeline steps.
+        # NOTE: We should exercise the case when role used in the pipeline execution is
+        # different than that required of the steps in the pipeline itself. The role in
+        # the pipeline definition needs to create training and processing jobs and other
+        # sagemaker entities. However, the jobs created in the steps themselves execute
+        # under a potentially different role, often requiring access to S3 and other
+        # artifacts not required to during creation of the jobs in the pipeline steps.
         response = pipeline.create(role)
         create_arn = response["PipelineArn"]
         assert re.match(
@@ -568,14 +578,9 @@ def test_one_step_pyspark_processing_pipeline(
         except Exception:
             pass
 
+
 def test_one_step_sparkjar_processing_pipeline(
-    sagemaker_session,
-    role,
-    cpu_instance_type,
-    pipeline_name,
-    region_name,
-    configuration,
-    build_jar
+    sagemaker_session, role, cpu_instance_type, pipeline_name, region_name, configuration, build_jar
 ):
     instance_count = ParameterInteger(name="InstanceCount", default_value=2)
     cache_config = CacheConfig(enable_caching=True, expire_after="T30m")
@@ -669,6 +674,7 @@ def test_one_step_sparkjar_processing_pipeline(
             pipeline.delete()
         except Exception:
             pass
+
 
 def test_conditional_pytorch_training_model_registration(
     sagemaker_session,

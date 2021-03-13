@@ -123,25 +123,6 @@ class Processor(object):
 
         self.sagemaker_session = sagemaker_session or Session()
 
-    def get_run_args(
-        self,
-        inputs=None,
-        outputs=None,
-        arguments=None,
-        job_name=None,
-        kms_key=None,
-    ):
-        # TODO: description
-        normalized_inputs, normalized_outputs = self._normalize_args(
-            job_name=job_name,
-            arguments=arguments,
-            inputs=inputs,
-            kms_key=kms_key,
-            outputs=outputs,
-        )
-
-        return RunArgs(inputs=normalized_inputs, outputs=normalized_outputs, code=None)
-
     def run(
         self,
         inputs=None,
@@ -1190,34 +1171,34 @@ class ProcessingOutput(object):
 
 
 class RunArgs(object):
-    """Accepts parameters that specify an Amazon S3 output for a processing job.
+    """Provides an object containing the standard run arguments needed by
+        :class:`~sagemaker.processing.ScriptProcessor`.
 
-    It also provides a method to turn those parameters into a dictionary.
+    An instance of this class is returned from the ``get_run_args()`` method on processors,
+        and is used for normalizing the arguments so that they can be passed to
+        :class:`~sagemaker.workflow.steps.ProcessingStep`
     """
 
     def __init__(
         self,
+        code=None,
         inputs=None,
         outputs=None,
-        code=None,
         arguments=None,
     ):
-        """Initializes a ``ProcessingOutput`` instance.
-
-        ``ProcessingOutput`` accepts parameters that specify an Amazon S3 output for a
-        processing job and provides a method to turn those parameters into a dictionary.
+        """Initializes a ``RunArgs`` instance.
 
         Args:
-            source (str): The source for the output.
-            destination (str): The destination of the output. If a destination
-                is not provided, one will be generated:
-                "s3://<default-bucket-name>/<job-name>/output/<output-name>".
-            output_name (str): The name of the output. If a name
-                is not provided, one will be generated (eg. "output-1").
-            s3_upload_mode (str): Valid options are "EndOfJob" or "Continuous".
-            app_managed (bool): Whether the input are managed by SageMaker or application
-            feature_store_output (:class:`~sagemaker.processing.FeatureStoreOutput`)
-                Configuration for processing job outputs of FeatureStore.
+            code (str): This can be an S3 URI or a local path to a file with the framework
+                script to run.
+            inputs (list[:class:`~sagemaker.processing.ProcessingInput`]): Input files for
+                the processing job. These must be provided as
+                :class:`~sagemaker.processing.ProcessingInput` objects (default: None).
+            outputs (list[:class:`~sagemaker.processing.ProcessingOutput`]): Outputs for
+                the processing job. These can be specified as either path strings or
+                :class:`~sagemaker.processing.ProcessingOutput` objects (default: None).
+            arguments (list[str]): A list of string arguments to be passed to a
+                processing job (default: None).
         """
         self.inputs = inputs
         self.outputs = outputs

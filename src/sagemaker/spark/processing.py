@@ -730,7 +730,7 @@ class PySparkProcessor(_SparkProcessorBase):
         spark_event_logs_s3_uri=None,
     ):
         """Returns a RunArgs object. This object contains the normalized inputs, outputs
-            and arguments needed when creating using a ``PySparkProcessor`` in a :class:`~sagemaker.workflow.steps.ProcessingStep`.
+            and arguments needed when using a ``PySparkProcessor`` in a :class:`~sagemaker.workflow.steps.ProcessingStep`.
 
         Args:
             submit_app (str): Path (local or S3) to Python file to submit to Spark
@@ -758,7 +758,6 @@ class PySparkProcessor(_SparkProcessorBase):
                 be published to.
         """
         self._current_job_name = self._generate_current_job_name(job_name=job_name)
-        self.command = [_SparkProcessorBase._default_command]
 
         if not submit_app:
             raise ValueError("submit_app is required")
@@ -833,7 +832,6 @@ class PySparkProcessor(_SparkProcessorBase):
                 user code file (default: None).
         """
         self._current_job_name = self._generate_current_job_name(job_name=job_name)
-        self.command = [_SparkProcessorBase._default_command]
 
         if not submit_app:
             raise ValueError("submit_app is required")
@@ -868,6 +866,7 @@ class PySparkProcessor(_SparkProcessorBase):
             outputs: Processing outputs.
             kwargs: Additional keyword arguments passed to `super()`.
         """
+        self.command = [_SparkProcessorBase._default_command]
         extended_inputs = self._handle_script_dependencies(
             inputs, kwargs.get("submit_py_files"), FileType.PYTHON
         )
@@ -976,7 +975,7 @@ class SparkJarProcessor(_SparkProcessorBase):
         spark_event_logs_s3_uri=None,
     ):
         """Returns a RunArgs object. This object contains the normalized inputs, outputs
-            and arguments needed when creating using a ``SparkJarProcessor`` in a :class:`~sagemaker.workflow.steps.ProcessingStep`.
+            and arguments needed when using a ``SparkJarProcessor`` in a :class:`~sagemaker.workflow.steps.ProcessingStep`.
 
         Args:
             submit_app (str): Path (local or S3) to Python file to submit to Spark
@@ -1004,7 +1003,6 @@ class SparkJarProcessor(_SparkProcessorBase):
                 be published to.
         """
         self._current_job_name = self._generate_current_job_name(job_name=job_name)
-        self.command = [_SparkProcessorBase._default_command]
 
         if not submit_app:
             raise ValueError("submit_app is required")
@@ -1079,7 +1077,6 @@ class SparkJarProcessor(_SparkProcessorBase):
                 user code file (default: None).
         """
         self._current_job_name = self._generate_current_job_name(job_name=job_name)
-        self.command = [_SparkProcessorBase._default_command]
 
         if not submit_app:
             raise ValueError("submit_app is required")
@@ -1107,6 +1104,7 @@ class SparkJarProcessor(_SparkProcessorBase):
         )
 
     def _extend_processing_args(self, inputs, outputs, **kwargs):
+        self.command = [_SparkProcessorBase._default_command]
         if kwargs.get("submit_class"):
             self.command.extend(["--class", kwargs.get("submit_class")])
         else:

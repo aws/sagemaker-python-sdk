@@ -174,7 +174,6 @@ def test_sklearn_with_all_parameters_via_run_args(
         inputs=_get_data_inputs_all_parameters(),
         outputs=_get_data_outputs_all_parameters(),
         arguments=["--drop-columns", "'SelfEmployed'"],
-        job_name="my_job_name",
     )
 
     processor.run(
@@ -230,7 +229,6 @@ def test_sklearn_with_all_parameters_via_run_args_called_twice(
         inputs=_get_data_inputs_all_parameters(),
         outputs=_get_data_outputs_all_parameters(),
         arguments=["--drop-columns", "'SelfEmployed'"],
-        job_name="my_job_name",
     )
 
     run_args = processor.get_run_args(
@@ -238,7 +236,6 @@ def test_sklearn_with_all_parameters_via_run_args_called_twice(
         inputs=_get_data_inputs_all_parameters(),
         outputs=_get_data_outputs_all_parameters(),
         arguments=["--drop-columns", "'SelfEmployed'"],
-        job_name="my_job_name",
     )
 
     processor.run(
@@ -447,7 +444,6 @@ def test_script_processor_with_all_parameters_via_run_args(
         inputs=_get_data_inputs_all_parameters(),
         outputs=_get_data_outputs_all_parameters(),
         arguments=["--drop-columns", "'SelfEmployed'"],
-        job_name="my_job_name",
     )
 
     processor.run(
@@ -604,43 +600,6 @@ def test_extend_processing_args(sagemaker_session):
 
     assert extended_inputs == inputs
     assert extended_outputs == outputs
-
-
-@patch("os.path.exists", return_value=True)
-@patch("os.path.isfile", return_value=True)
-def test_get_run_args(exists_mock, isfile_mock, sagemaker_session):
-    processor = ScriptProcessor(
-        role=ROLE,
-        image_uri=CUSTOM_IMAGE_URI,
-        command=["python3"],
-        instance_type="ml.m4.xlarge",
-        instance_count=1,
-        sagemaker_session=sagemaker_session,
-    )
-
-    job_arguments = ["--drop-columns", "'SelfEmployed'"]
-    inputs = _get_data_inputs_all_parameters()
-    outputs = _get_data_outputs_all_parameters()
-    run_args = processor.get_run_args(
-        code="/local/path/to/processing_code.py",
-        inputs=inputs,
-        outputs=outputs,
-        arguments=job_arguments,
-        job_name="my_job_name",
-    )
-
-    inputs_with_code = processor._include_code_in_inputs(
-        inputs, "/local/path/to/processing_code.py"
-    )
-    normalized_inputs = processor._normalize_inputs(inputs_with_code, None)
-    for input in normalized_inputs:
-        print(f"Normalized Input is {input.__dict__}")
-    for input in run_args.inputs:
-        print(f"Run Arg Input is {input.__dict__}")
-    assert run_args.outputs == outputs
-    assert run_args.code == None
-    assert run_args.arguments == job_arguments
-    assert list(map(vars, run_args.inputs)) == list(map(vars, normalized_inputs))
 
 
 def _get_script_processor(sagemaker_session):

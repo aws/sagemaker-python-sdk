@@ -183,7 +183,6 @@ def test_processing_step(sagemaker_session):
         outputs=[],
         cache_config=cache_config,
     )
-    print(f"StepToRequest is {step.to_request()}")
     assert step.to_request() == {
         "Name": "MyProcessingStep",
         "Type": "Processing",

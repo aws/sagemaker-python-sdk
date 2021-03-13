@@ -776,7 +776,6 @@ def test_py_spark_processor_run(
                 "inputs": [],
                 "opt": None,
                 "arguments": ["arg1"],
-                "kms_key": "test_kms_key",
             },
             ValueError,
         ),
@@ -787,7 +786,6 @@ def test_py_spark_processor_run(
                 "inputs": [processing_input],
                 "opt": None,
                 "arguments": ["arg1"],
-                "kms_key": "test_kms_key",
             },
             [processing_input],
         ),
@@ -798,7 +796,6 @@ def test_py_spark_processor_run(
                 "inputs": [processing_input],
                 "opt": None,
                 "arguments": ["arg1"],
-                "kms_key": "test_kms_key",
             },
             [processing_input, processing_input, processing_input, processing_input],
         ),
@@ -809,7 +806,6 @@ def test_py_spark_processor_run(
                 "inputs": None,
                 "opt": None,
                 "arguments": ["arg1"],
-                "kms_key": "test_kms_key",
             },
             [processing_input, processing_input, processing_input],
         ),
@@ -820,7 +816,6 @@ def test_py_spark_processor_run(
                 "inputs": None,
                 "opt": "opt",
                 "arguments": ["arg1"],
-                "kms_key": "test_kms_key",
             },
             [processing_input, processing_input, processing_input],
         ),
@@ -878,7 +873,6 @@ def test_py_spark_processor_get_run_args(
                 "inputs": [],
                 "opt": None,
                 "arguments": ["arg1"],
-                "kms_key": "test_kms_key",
             },
             ValueError,
         ),
@@ -889,7 +883,6 @@ def test_py_spark_processor_get_run_args(
                 "inputs": [processing_input],
                 "opt": None,
                 "arguments": ["arg1"],
-                "kms_key": "test_kms_key",
             },
             [processing_input],
         ),
@@ -900,7 +893,6 @@ def test_py_spark_processor_get_run_args(
                 "inputs": [processing_input],
                 "opt": None,
                 "arguments": ["arg1"],
-                "kms_key": "test_kms_key",
             },
             [processing_input, processing_input, processing_input, processing_input],
         ),
@@ -911,7 +903,6 @@ def test_py_spark_processor_get_run_args(
                 "inputs": None,
                 "opt": None,
                 "arguments": ["arg1"],
-                "kms_key": "test_kms_key",
             },
             [processing_input, processing_input, processing_input],
         ),
@@ -922,7 +913,6 @@ def test_py_spark_processor_get_run_args(
                 "inputs": None,
                 "opt": "opt",
                 "arguments": ["arg1"],
-                "kms_key": "test_kms_key",
             },
             [processing_input, processing_input, processing_input],
         ),
@@ -951,7 +941,6 @@ def test_py_spark_processor_get_run_args(
                 submit_files=config["files"],
                 inputs=config["inputs"],
                 arguments=config["arguments"],
-                kms_key=config["kms_key"],
             )
     else:
         py_spark_processor.get_run_args(
@@ -961,16 +950,13 @@ def test_py_spark_processor_get_run_args(
             submit_files=config["files"],
             inputs=config["inputs"],
             arguments=config["arguments"],
-            kms_key=config["kms_key"],
         )
 
         mock_super_get_run_args.assert_called_with(
-            submit_app=config["submit_app"],
+            code=config["submit_app"],
             inputs=expected,
             outputs=None,
             arguments=config["arguments"],
-            job_name="jobName",
-            kms_key=config["kms_key"],
         )
 
 
