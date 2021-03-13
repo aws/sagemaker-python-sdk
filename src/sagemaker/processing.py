@@ -463,24 +463,29 @@ class ScriptProcessor(Processor):
 
     def get_run_args(
         self,
-        code,
+        code=None,
         inputs=None,
         outputs=None,
         arguments=None,
-        job_name=None,
-        kms_key=None,
     ):
-        # TODO: description
-        normalized_inputs, normalized_outputs = self._normalize_args(
-            job_name=job_name,
-            arguments=arguments,
-            inputs=inputs,
-            outputs=outputs,
-            code=code,
-            kms_key=kms_key,
-        )
+        """Returns a RunArgs object. For processors (:class:`~sagemaker.spark.processing.PySparkProcessor`,
+            :class:`~sagemaker.spark.processing.SparkJar`) that have special
+            run() arguments, this object contains the normalized arguments for passing to
+            :class:`~sagemaker.workflow.steps.ProcessingStep`.
 
-        return RunArgs(inputs=normalized_inputs, outputs=normalized_outputs, code=code)
+        Args:
+            code (str): This can be an S3 URI or a local path to a file with the framework
+                script to run.
+            inputs (list[:class:`~sagemaker.processing.ProcessingInput`]): Input files for
+                the processing job. These must be provided as
+                :class:`~sagemaker.processing.ProcessingInput` objects (default: None).
+            outputs (list[:class:`~sagemaker.processing.ProcessingOutput`]): Outputs for
+                the processing job. These can be specified as either path strings or
+                :class:`~sagemaker.processing.ProcessingOutput` objects (default: None).
+            arguments (list[str]): A list of string arguments to be passed to a
+                processing job (default: None).
+        """
+        return RunArgs(code=code, inputs=inputs, outputs=outputs, arguments=arguments)
 
     def run(
         self,
@@ -1195,6 +1200,7 @@ class RunArgs(object):
         inputs=None,
         outputs=None,
         code=None,
+        arguments=None,
     ):
         """Initializes a ``ProcessingOutput`` instance.
 
@@ -1216,6 +1222,7 @@ class RunArgs(object):
         self.inputs = inputs
         self.outputs = outputs
         self.code = code
+        self.arguments = arguments
 
 
 class FeatureStoreOutput(ApiObject):

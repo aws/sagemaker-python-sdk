@@ -15,6 +15,7 @@ from __future__ import absolute_import
 import json
 import os
 import re
+import subprocess
 import time
 import uuid
 
@@ -26,13 +27,16 @@ from sagemaker.debugger import (
     Rule,
     rule_configs,
 )
+from datetime import datetime
 from sagemaker.inputs import CreateModelInput, TrainingInput
 from sagemaker.model import Model
 from sagemaker.processing import ProcessingInput, ProcessingOutput
 from sagemaker.pytorch.estimator import PyTorch
+from sagemaker.s3 import S3Uploader
 from sagemaker.session import get_execution_role
 from sagemaker.sklearn.estimator import SKLearn
 from sagemaker.sklearn.processing import SKLearnProcessor
+from sagemaker.spark.processing import PySparkProcessor, SparkJarProcessor
 from sagemaker.workflow.conditions import ConditionGreaterThanOrEqualTo
 from sagemaker.workflow.condition_step import ConditionStep
 from sagemaker.dataset_definition.inputs import DatasetDefinition, AthenaDatasetDefinition
@@ -100,6 +104,125 @@ def athena_dataset_definition(sagemaker_session):
         ),
     )
 
+@pytest.fixture
+def configuration() -> list:
+    configuration = [
+        {
+            "Classification": "spark-defaults",
+            "Properties": {"spark.executor.memory": "2g", "spark.executor.cores": "1"},
+        },
+        {
+            "Classification": "hadoop-env",
+            "Properties": {},
+            "Configurations": [
+                {
+                    "Classification": "export",
+                    "Properties": {
+                        "HADOOP_DATANODE_HEAPSIZE": "2048",
+                        "HADOOP_NAMENODE_OPTS": "-XX:GCTimeRatio=19",
+                    },
+                    "Configurations": [],
+                }
+            ],
+        },
+        {
+            "Classification": "core-site",
+            "Properties": {"spark.executor.memory": "2g", "spark.executor.cores": "1"},
+        },
+        {"Classification": "hadoop-log4j", "Properties": {"key": "value"}},
+        {
+            "Classification": "hive-env",
+            "Properties": {},
+            "Configurations": [
+                {
+                    "Classification": "export",
+                    "Properties": {
+                        "HADOOP_DATANODE_HEAPSIZE": "2048",
+                        "HADOOP_NAMENODE_OPTS": "-XX:GCTimeRatio=19",
+                    },
+                    "Configurations": [],
+                }
+            ],
+        },
+        {"Classification": "hive-log4j", "Properties": {"key": "value"}},
+        {"Classification": "hive-exec-log4j", "Properties": {"key": "value"}},
+        {"Classification": "hive-site", "Properties": {"key": "value"}},
+        {"Classification": "spark-defaults", "Properties": {"key": "value"}},
+        {
+            "Classification": "spark-env",
+            "Properties": {},
+            "Configurations": [
+                {
+                    "Classification": "export",
+                    "Properties": {
+                        "HADOOP_DATANODE_HEAPSIZE": "2048",
+                        "HADOOP_NAMENODE_OPTS": "-XX:GCTimeRatio=19",
+                    },
+                    "Configurations": [],
+                }
+            ],
+        },
+        {"Classification": "spark-log4j", "Properties": {"key": "value"}},
+        {"Classification": "spark-hive-site", "Properties": {"key": "value"}},
+        {"Classification": "spark-metrics", "Properties": {"key": "value"}},
+        {"Classification": "yarn-site", "Properties": {"key": "value"}},
+        {
+            "Classification": "yarn-env",
+            "Properties": {},
+            "Configurations": [
+                {
+                    "Classification": "export",
+                    "Properties": {
+                        "HADOOP_DATANODE_HEAPSIZE": "2048",
+                        "HADOOP_NAMENODE_OPTS": "-XX:GCTimeRatio=19",
+                    },
+                    "Configurations": [],
+                }
+            ],
+        },
+    ]
+    return configuration
+
+@pytest.fixture(scope="module")
+def build_jar():
+    spark_path = os.path.join(DATA_DIR, "spark")
+    java_file_path = os.path.join("com", "amazonaws", "sagemaker", "spark", "test")
+    java_version_pattern = r"(\d+\.\d+).*"
+    jar_file_path = os.path.join(spark_path, "code", "java", "hello-java-spark")
+    # compile java file
+    java_version = subprocess.check_output(["java", "-version"], stderr=subprocess.STDOUT).decode(
+        "utf-8"
+    )
+    java_version = re.search(java_version_pattern, java_version).groups()[0]
+
+    if float(java_version) > 1.8:
+        subprocess.run(
+            [
+                "javac",
+                "--release",
+                "8",
+                os.path.join(jar_file_path, java_file_path, "HelloJavaSparkApp.java"),
+            ]
+        )
+    else:
+        subprocess.run(
+            ["javac", os.path.join(jar_file_path, java_file_path, "HelloJavaSparkApp.java")]
+        )
+
+    subprocess.run(
+        [
+            "jar",
+            "cfm",
+            os.path.join(jar_file_path, "hello-spark-java.jar"),
+            os.path.join(jar_file_path, "manifest.txt"),
+            "-C",
+            jar_file_path,
+            ".",
+        ]
+    )
+    yield
+    subprocess.run(["rm", os.path.join(jar_file_path, "hello-spark-java.jar")])
+    subprocess.run(["rm", os.path.join(jar_file_path, java_file_path, "HelloJavaSparkApp.class")])
 
 def test_three_step_definition(
     sagemaker_session,
@@ -350,6 +473,202 @@ def test_one_step_sklearn_processing_pipeline(
         except Exception:
             pass
 
+def test_one_step_pyspark_processing_pipeline(
+    sagemaker_session,
+    role,
+    cpu_instance_type,
+    pipeline_name,
+    region_name,
+):
+    instance_count = ParameterInteger(name="InstanceCount", default_value=2)
+    script_path = os.path.join(DATA_DIR, "dummy_script.py")
+
+    cache_config = CacheConfig(enable_caching=True, expire_after="T30m")
+
+    pyspark_processor = PySparkProcessor(
+        base_job_name="sm-spark",
+        framework_version="2.4",
+        role=role,
+        instance_count=instance_count,
+        instance_type=cpu_instance_type,
+        max_runtime_in_seconds=1200,
+        sagemaker_session=sagemaker_session,
+    )
+
+    spark_run_args = pyspark_processor.get_run_args(
+       submit_app=script_path,
+       arguments=["--s3_input_bucket", sagemaker_session.default_bucket(),
+                  "--s3_input_key_prefix", "spark-input",
+                  "--s3_output_bucket", sagemaker_session.default_bucket(),
+                  "--s3_output_key_prefix", "spark-output"],
+)
+
+    step_pyspark = ProcessingStep(
+        name="pyspark-process",
+        processor=pyspark_processor,
+        inputs=spark_run_args.inputs,
+        outputs=spark_run_args.outputs,
+        job_arguments=spark_run_args.arguments,
+        code=spark_run_args.code,
+        cache_config=cache_config,
+    )
+    pipeline = Pipeline(
+        name=pipeline_name,
+        parameters=[instance_count],
+        steps=[step_pyspark],
+        sagemaker_session=sagemaker_session,
+    )
+
+    try:
+    # NOTE: We should exercise the case when role used in the pipeline execution is
+    # different than that required of the steps in the pipeline itself. The role in
+    # the pipeline definition needs to create training and processing jobs and other
+    # sagemaker entities. However, the jobs created in the steps themselves execute
+    # under a potentially different role, often requiring access to S3 and other
+    # artifacts not required to during creation of the jobs in the pipeline steps.
+        response = pipeline.create(role)
+        create_arn = response["PipelineArn"]
+        assert re.match(
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            create_arn,
+        )
+
+        pipeline.parameters = [ParameterInteger(name="InstanceCount", default_value=1)]
+        response = pipeline.update(role)
+        update_arn = response["PipelineArn"]
+        assert re.match(
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            update_arn,
+        )
+
+        execution = pipeline.start(parameters={})
+        assert re.match(
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
+            execution.arn,
+        )
+
+        response = execution.describe()
+        assert response["PipelineArn"] == create_arn
+
+        # Check CacheConfig
+        response = json.loads(pipeline.describe()["PipelineDefinition"])["Steps"][0]["CacheConfig"]
+        assert response["Enabled"] == cache_config.enable_caching
+        assert response["ExpireAfter"] == cache_config.expire_after
+
+        try:
+            execution.wait(delay=30, max_attempts=3)
+        except WaiterError:
+            pass
+        execution_steps = execution.list_steps()
+        assert len(execution_steps) == 1
+        assert execution_steps[0]["StepName"] == "pyspark-process"
+    finally:
+        try:
+            pipeline.delete()
+        except Exception:
+            pass
+
+def test_one_step_sparkjar_processing_pipeline(
+    sagemaker_session,
+    role,
+    cpu_instance_type,
+    pipeline_name,
+    region_name,
+    configuration,
+    build_jar
+):
+    instance_count = ParameterInteger(name="InstanceCount", default_value=2)
+    cache_config = CacheConfig(enable_caching=True, expire_after="T30m")
+    spark_path = os.path.join(DATA_DIR, "spark")
+
+    spark_jar_processor = SparkJarProcessor(
+        role=role,
+        instance_count=2,
+        instance_type=cpu_instance_type,
+        sagemaker_session=sagemaker_session,
+        framework_version="2.4",
+    )
+    bucket = spark_jar_processor.sagemaker_session.default_bucket()
+    with open(os.path.join(spark_path, "files", "data.jsonl")) as data:
+        body = data.read()
+        input_data_uri = f"s3://{bucket}/spark/input/data.jsonl"
+        S3Uploader.upload_string_as_file_body(
+            body=body, desired_s3_uri=input_data_uri, sagemaker_session=sagemaker_session
+        )
+    output_data_uri = f"s3://{bucket}/spark/output/sales/{datetime.now().isoformat()}"
+
+    java_project_dir = os.path.join(spark_path, "code", "java", "hello-java-spark")
+    spark_run_args = spark_jar_processor.get_run_args(
+        submit_app=f"{java_project_dir}/hello-spark-java.jar",
+        submit_class="com.amazonaws.sagemaker.spark.test.HelloJavaSparkApp",
+        arguments=["--input", input_data_uri, "--output", output_data_uri],
+        configuration=configuration,
+    )
+
+    step_pyspark = ProcessingStep(
+        name="sparkjar-process",
+        processor=spark_jar_processor,
+        inputs=spark_run_args.inputs,
+        outputs=spark_run_args.outputs,
+        job_arguments=spark_run_args.arguments,
+        code=spark_run_args.code,
+        cache_config=cache_config,
+    )
+    pipeline = Pipeline(
+        name=pipeline_name,
+        parameters=[instance_count],
+        steps=[step_pyspark],
+        sagemaker_session=sagemaker_session,
+    )
+
+    try:
+        # NOTE: We should exercise the case when role used in the pipeline execution is
+        # different than that required of the steps in the pipeline itself. The role in
+        # the pipeline definition needs to create training and processing jobs and other
+        # sagemaker entities. However, the jobs created in the steps themselves execute
+        # under a potentially different role, often requiring access to S3 and other
+        # artifacts not required to during creation of the jobs in the pipeline steps.
+        response = pipeline.create(role)
+        create_arn = response["PipelineArn"]
+        assert re.match(
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            create_arn,
+        )
+
+        pipeline.parameters = [ParameterInteger(name="InstanceCount", default_value=1)]
+        response = pipeline.update(role)
+        update_arn = response["PipelineArn"]
+        assert re.match(
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            update_arn,
+        )
+
+        execution = pipeline.start(parameters={})
+        assert re.match(
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
+            execution.arn,
+        )
+
+        response = execution.describe()
+        assert response["PipelineArn"] == create_arn
+
+        # Check CacheConfig
+        response = json.loads(pipeline.describe()["PipelineDefinition"])["Steps"][0]["CacheConfig"]
+        assert response["Enabled"] == cache_config.enable_caching
+        assert response["ExpireAfter"] == cache_config.expire_after
+
+        try:
+            execution.wait(delay=30, max_attempts=3)
+        except WaiterError:
+            pass
+        execution_steps = execution.list_steps()
+        assert len(execution_steps) == 1
+        assert execution_steps[0]["StepName"] == "sparkjar-process"
+    finally:
+        try:
+            pipeline.delete()
+        except Exception:
+            pass
 
 def test_conditional_pytorch_training_model_registration(
     sagemaker_session,

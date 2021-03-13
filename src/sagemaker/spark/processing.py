@@ -173,21 +173,33 @@ class _SparkProcessorBase(ScriptProcessor):
 
     def get_run_args(
         self,
-        submit_app,
+        code=None,
         inputs=None,
         outputs=None,
         arguments=None,
-        job_name=None,
-        kms_key=None,
     ):
-        # TODO: description
+        """Returns a RunArgs object. For processors (:class:`~sagemaker.spark.processing.PySparkProcessor`,
+            :class:`~sagemaker.spark.processing.SparkJar`) that have special
+            run() arguments, this object contains the normalized arguments for passing to
+            :class:`~sagemaker.workflow.steps.ProcessingStep`.
+
+        Args:
+            code (str): This can be an S3 URI or a local path to a file with the framework
+                script to run.
+            inputs (list[:class:`~sagemaker.processing.ProcessingInput`]): Input files for
+                the processing job. These must be provided as
+                :class:`~sagemaker.processing.ProcessingInput` objects (default: None).
+            outputs (list[:class:`~sagemaker.processing.ProcessingOutput`]): Outputs for
+                the processing job. These can be specified as either path strings or
+                :class:`~sagemaker.processing.ProcessingOutput` objects (default: None).
+            arguments (list[str]): A list of string arguments to be passed to a
+                processing job (default: None).
+        """
         return super().get_run_args(
-            code=submit_app,
+            code=code,
             inputs=inputs,
             outputs=outputs,
             arguments=arguments,
-            job_name=job_name,
-            kms_key=kms_key,
         )
 
     def run(
@@ -716,8 +728,35 @@ class PySparkProcessor(_SparkProcessorBase):
         job_name=None,
         configuration=None,
         spark_event_logs_s3_uri=None,
-        kms_key=None,
     ):
+        """Returns a RunArgs object. This object contains the normalized inputs, outputs
+            and arguments needed when creating using a ``PySparkProcessor`` in a :class:`~sagemaker.workflow.steps.ProcessingStep`.
+
+        Args:
+            submit_app (str): Path (local or S3) to Python file to submit to Spark
+                as the primary application
+            submit_py_files (list[str]): List of paths (local or S3) to provide for
+                `spark-submit --py-files` option
+            submit_jars (list[str]): List of paths (local or S3) to provide for
+                `spark-submit --jars` option
+            submit_files (list[str]): List of paths (local or S3) to provide for
+                `spark-submit --files` option
+            inputs (list[:class:`~sagemaker.processing.ProcessingInput`]): Input files for
+                the processing job. These must be provided as
+                :class:`~sagemaker.processing.ProcessingInput` objects (default: None).
+            outputs (list[:class:`~sagemaker.processing.ProcessingOutput`]): Outputs for
+                the processing job. These can be specified as either path strings or
+                :class:`~sagemaker.processing.ProcessingOutput` objects (default: None).
+            arguments (list[str]): A list of string arguments to be passed to a
+                processing job (default: None).
+            job_name (str): Processing job name. If not specified, the processor generates
+                a default job name, based on the base job name and current timestamp.
+            configuration (list[dict] or dict): Configuration for Hadoop, Spark, or Hive.
+                List or dictionary of EMR-style classifications.
+                https://docs.aws.amazon.com/emr/latest/ReleaseGuide/emr-configure-apps.html
+            spark_event_logs_s3_uri (str): S3 path where spark application events will
+                be published to.
+        """
         self._current_job_name = self._generate_current_job_name(job_name=job_name)
         self.command = [_SparkProcessorBase._default_command]
 
@@ -734,14 +773,11 @@ class PySparkProcessor(_SparkProcessorBase):
             spark_event_logs_s3_uri=spark_event_logs_s3_uri,
         )
 
-        # TODO: description
         return super().get_run_args(
-            submit_app=submit_app,
+            code=submit_app,
             inputs=extended_inputs,
             outputs=extended_outputs,
             arguments=arguments,
-            job_name=self._current_job_name,
-            kms_key=kms_key,
         )
 
     def run(
@@ -821,6 +857,7 @@ class PySparkProcessor(_SparkProcessorBase):
             logs=logs,
             job_name=self._current_job_name,
             experiment_config=experiment_config,
+            kms_key=kms_key,
         )
 
     def _extend_processing_args(self, inputs, outputs, **kwargs):
@@ -937,8 +974,35 @@ class SparkJarProcessor(_SparkProcessorBase):
         job_name=None,
         configuration=None,
         spark_event_logs_s3_uri=None,
-        kms_key=None,
     ):
+        """Returns a RunArgs object. This object contains the normalized inputs, outputs
+            and arguments needed when creating using a ``SparkJarProcessor`` in a :class:`~sagemaker.workflow.steps.ProcessingStep`.
+
+        Args:
+            submit_app (str): Path (local or S3) to Python file to submit to Spark
+                as the primary application
+            submit_class (str): Java class reference to submit to Spark as the primary
+                application
+            submit_jars (list[str]): List of paths (local or S3) to provide for
+                `spark-submit --jars` option
+            submit_files (list[str]): List of paths (local or S3) to provide for
+                `spark-submit --files` option
+            inputs (list[:class:`~sagemaker.processing.ProcessingInput`]): Input files for
+                the processing job. These must be provided as
+                :class:`~sagemaker.processing.ProcessingInput` objects (default: None).
+            outputs (list[:class:`~sagemaker.processing.ProcessingOutput`]): Outputs for
+                the processing job. These can be specified as either path strings or
+                :class:`~sagemaker.processing.ProcessingOutput` objects (default: None).
+            arguments (list[str]): A list of string arguments to be passed to a
+                processing job (default: None).
+            job_name (str): Processing job name. If not specified, the processor generates
+                a default job name, based on the base job name and current timestamp.
+            configuration (list[dict] or dict): Configuration for Hadoop, Spark, or Hive.
+                List or dictionary of EMR-style classifications.
+                https://docs.aws.amazon.com/emr/latest/ReleaseGuide/emr-configure-apps.html
+            spark_event_logs_s3_uri (str): S3 path where spark application events will
+                be published to.
+        """
         self._current_job_name = self._generate_current_job_name(job_name=job_name)
         self.command = [_SparkProcessorBase._default_command]
 
@@ -955,14 +1019,11 @@ class SparkJarProcessor(_SparkProcessorBase):
             spark_event_logs_s3_uri=spark_event_logs_s3_uri,
         )
 
-        # TODO: description
         return super().get_run_args(
-            submit_app=submit_app,
+            code=submit_app,
             inputs=extended_inputs,
             outputs=extended_outputs,
             arguments=arguments,
-            job_name=self._current_job_name,
-            kms_key=kms_key,
         )
 
     def run(

@@ -19,6 +19,7 @@ import sagemaker
 from mock import (
     Mock,
     PropertyMock,
+    patch,
 )
 
 from sagemaker.debugger import ProfilerConfig
@@ -28,7 +29,10 @@ from sagemaker.model import Model
 from sagemaker.processing import (
     Processor,
     ProcessingInput,
+    ProcessingOutput,
+    ScriptProcessor,
 )
+from sagemaker.network import NetworkConfig
 from sagemaker.transformer import Transformer
 from sagemaker.workflow.properties import Properties
 from sagemaker.workflow.steps import (
@@ -179,6 +183,7 @@ def test_processing_step(sagemaker_session):
         outputs=[],
         cache_config=cache_config,
     )
+    print(f"StepToRequest is {step.to_request()}")
     assert step.to_request() == {
         "Name": "MyProcessingStep",
         "Type": "Processing",
@@ -212,6 +217,63 @@ def test_processing_step(sagemaker_session):
     assert step.properties.ProcessingJobName.expr == {
         "Get": "Steps.MyProcessingStep.ProcessingJobName"
     }
+
+
+@patch("sagemaker.processing.ScriptProcessor._normalize_args")
+def test_processing_step_normalizes_args(mock_normalize_args, sagemaker_session):
+    processor = ScriptProcessor(
+        role=ROLE,
+        image_uri="012345678901.dkr.ecr.us-west-2.amazonaws.com/my-custom-image-uri",
+        command=["python3"],
+        instance_type="ml.m4.xlarge",
+        instance_count=1,
+        volume_size_in_gb=100,
+        volume_kms_key="arn:aws:kms:us-west-2:012345678901:key/volume-kms-key",
+        output_kms_key="arn:aws:kms:us-west-2:012345678901:key/output-kms-key",
+        max_runtime_in_seconds=3600,
+        base_job_name="my_sklearn_processor",
+        env={"my_env_variable": "my_env_variable_value"},
+        tags=[{"Key": "my-tag", "Value": "my-tag-value"}],
+        network_config=NetworkConfig(
+            subnets=["my_subnet_id"],
+            security_group_ids=["my_security_group_id"],
+            enable_network_isolation=True,
+            encrypt_inter_container_traffic=True,
+        ),
+        sagemaker_session=sagemaker_session,
+    )
+    cache_config = CacheConfig(enable_caching=True, expire_after="PT1H")
+    inputs = [
+        ProcessingInput(
+            source=f"s3://{BUCKET}/processing_manifest",
+            destination="processing_manifest",
+        )
+    ]
+    outputs = [
+        ProcessingOutput(
+            source=f"s3://{BUCKET}/processing_manifest",
+            destination="processing_manifest",
+        )
+    ]
+    step = ProcessingStep(
+        name="MyProcessingStep",
+        processor=processor,
+        code="foo.py",
+        inputs=inputs,
+        outputs=outputs,
+        job_arguments=["arg1", "arg2"],
+        cache_config=cache_config,
+        kms_key="key",
+    )
+    mock_normalize_args.return_value = [step.inputs, step.outputs]
+    step.to_request()
+    mock_normalize_args.assert_called_with(
+        arguments=step.job_arguments,
+        inputs=step.inputs,
+        outputs=step.outputs,
+        code=step.code,
+        kms_key=step.kms_key,
+    )
 
 
 def test_create_model_step(sagemaker_session):

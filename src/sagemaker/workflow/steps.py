@@ -320,6 +320,7 @@ class ProcessingStep(Step):
         code: str = None,
         property_files: List[PropertyFile] = None,
         cache_config: CacheConfig = None,
+        kms_key=None,
     ):
         """Construct a ProcessingStep, given a `Processor` instance.
 
@@ -340,6 +341,8 @@ class ProcessingStep(Step):
             property_files (List[PropertyFile]): A list of property files that workflow looks
                 for and resolves from the configured processing output list.
             cache_config (CacheConfig):  A `sagemaker.workflow.steps.CacheConfig` instance.
+            kms_key (str): The ARN of the KMS key that is used to encrypt the
+                user code file (default: None)
         """
         super(ProcessingStep, self).__init__(name, StepTypeEnum.PROCESSING)
         self.processor = processor
@@ -348,6 +351,7 @@ class ProcessingStep(Step):
         self.job_arguments = job_arguments
         self.code = code
         self.property_files = property_files
+        self.kms_key = kms_key
 
         # Examine why run method in sagemaker.processing.Processor mutates the processor instance
         # by setting the instance's arguments attribute. Refactor Processor.run, if possible.
@@ -370,7 +374,9 @@ class ProcessingStep(Step):
             inputs=self.inputs,
             outputs=self.outputs,
             code=self.code,
+            kms_key=self.kms_key,
         )
+
         process_args = ProcessingJob._get_process_args(
             self.processor, normalized_inputs, normalized_outputs, experiment_config=dict()
         )

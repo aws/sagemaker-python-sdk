@@ -27,6 +27,7 @@ from sagemaker.processing import (
     Processor,
     ScriptProcessor,
     ProcessingJob,
+    RunArgs,
 )
 from sagemaker.sklearn.processing import SKLearnProcessor
 from sagemaker.network import NetworkConfig
@@ -127,6 +128,126 @@ def test_sklearn_with_all_parameters(
         wait=True,
         logs=False,
         job_name="my_job_name",
+        experiment_config={"ExperimentName": "AnExperiment"},
+    )
+
+    expected_args = _get_expected_args_all_parameters(processor._current_job_name)
+    sklearn_image_uri = (
+        "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:{}-cpu-py3"
+    ).format(sklearn_version)
+    expected_args["app_specification"]["ImageUri"] = sklearn_image_uri
+
+    sagemaker_session.process.assert_called_with(**expected_args)
+
+
+@patch("sagemaker.utils._botocore_resolver")
+@patch("os.path.exists", return_value=True)
+@patch("os.path.isfile", return_value=True)
+def test_sklearn_with_all_parameters_via_run_args(
+    exists_mock, isfile_mock, botocore_resolver, sklearn_version, sagemaker_session
+):
+    botocore_resolver.return_value.construct_endpoint.return_value = {"hostname": ECR_HOSTNAME}
+
+    processor = SKLearnProcessor(
+        role=ROLE,
+        framework_version=sklearn_version,
+        instance_type="ml.m4.xlarge",
+        instance_count=1,
+        volume_size_in_gb=100,
+        volume_kms_key="arn:aws:kms:us-west-2:012345678901:key/volume-kms-key",
+        output_kms_key="arn:aws:kms:us-west-2:012345678901:key/output-kms-key",
+        max_runtime_in_seconds=3600,
+        base_job_name="my_sklearn_processor",
+        env={"my_env_variable": "my_env_variable_value"},
+        tags=[{"Key": "my-tag", "Value": "my-tag-value"}],
+        network_config=NetworkConfig(
+            subnets=["my_subnet_id"],
+            security_group_ids=["my_security_group_id"],
+            enable_network_isolation=True,
+            encrypt_inter_container_traffic=True,
+        ),
+        sagemaker_session=sagemaker_session,
+    )
+
+    run_args = processor.get_run_args(
+        code="/local/path/to/processing_code.py",
+        inputs=_get_data_inputs_all_parameters(),
+        outputs=_get_data_outputs_all_parameters(),
+        arguments=["--drop-columns", "'SelfEmployed'"],
+        job_name="my_job_name",
+    )
+
+    processor.run(
+        code=run_args.code,
+        inputs=run_args.inputs,
+        outputs=run_args.outputs,
+        arguments=run_args.arguments,
+        wait=True,
+        logs=False,
+        experiment_config={"ExperimentName": "AnExperiment"},
+    )
+
+    expected_args = _get_expected_args_all_parameters(processor._current_job_name)
+    sklearn_image_uri = (
+        "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:{}-cpu-py3"
+    ).format(sklearn_version)
+    expected_args["app_specification"]["ImageUri"] = sklearn_image_uri
+
+    sagemaker_session.process.assert_called_with(**expected_args)
+
+
+@patch("sagemaker.utils._botocore_resolver")
+@patch("os.path.exists", return_value=True)
+@patch("os.path.isfile", return_value=True)
+def test_sklearn_with_all_parameters_via_run_args_called_twice(
+    exists_mock, isfile_mock, botocore_resolver, sklearn_version, sagemaker_session
+):
+    botocore_resolver.return_value.construct_endpoint.return_value = {"hostname": ECR_HOSTNAME}
+
+    processor = SKLearnProcessor(
+        role=ROLE,
+        framework_version=sklearn_version,
+        instance_type="ml.m4.xlarge",
+        instance_count=1,
+        volume_size_in_gb=100,
+        volume_kms_key="arn:aws:kms:us-west-2:012345678901:key/volume-kms-key",
+        output_kms_key="arn:aws:kms:us-west-2:012345678901:key/output-kms-key",
+        max_runtime_in_seconds=3600,
+        base_job_name="my_sklearn_processor",
+        env={"my_env_variable": "my_env_variable_value"},
+        tags=[{"Key": "my-tag", "Value": "my-tag-value"}],
+        network_config=NetworkConfig(
+            subnets=["my_subnet_id"],
+            security_group_ids=["my_security_group_id"],
+            enable_network_isolation=True,
+            encrypt_inter_container_traffic=True,
+        ),
+        sagemaker_session=sagemaker_session,
+    )
+
+    run_args = processor.get_run_args(
+        code="/local/path/to/processing_code.py",
+        inputs=_get_data_inputs_all_parameters(),
+        outputs=_get_data_outputs_all_parameters(),
+        arguments=["--drop-columns", "'SelfEmployed'"],
+        job_name="my_job_name",
+    )
+
+    run_args = processor.get_run_args(
+        code="/local/path/to/processing_code.py",
+        inputs=_get_data_inputs_all_parameters(),
+        outputs=_get_data_outputs_all_parameters(),
+        arguments=["--drop-columns", "'SelfEmployed'"],
+        job_name="my_job_name",
+    )
+
+    processor.run(
+        code=run_args.code,
+        inputs=run_args.inputs,
+        outputs=run_args.outputs,
+        arguments=run_args.arguments,
+        wait=True,
+        logs=False,
         experiment_config={"ExperimentName": "AnExperiment"},
     )
 
@@ -294,6 +415,58 @@ def test_script_processor_with_all_parameters(exists_mock, isfile_mock, sagemake
     assert "my_job_name" in processor._current_job_name
 
 
+@patch("os.path.exists", return_value=True)
+@patch("os.path.isfile", return_value=True)
+def test_script_processor_with_all_parameters_via_run_args(
+    exists_mock, isfile_mock, sagemaker_session
+):
+    processor = ScriptProcessor(
+        role=ROLE,
+        image_uri=CUSTOM_IMAGE_URI,
+        command=["python3"],
+        instance_type="ml.m4.xlarge",
+        instance_count=1,
+        volume_size_in_gb=100,
+        volume_kms_key="arn:aws:kms:us-west-2:012345678901:key/volume-kms-key",
+        output_kms_key="arn:aws:kms:us-west-2:012345678901:key/output-kms-key",
+        max_runtime_in_seconds=3600,
+        base_job_name="my_sklearn_processor",
+        env={"my_env_variable": "my_env_variable_value"},
+        tags=[{"Key": "my-tag", "Value": "my-tag-value"}],
+        network_config=NetworkConfig(
+            subnets=["my_subnet_id"],
+            security_group_ids=["my_security_group_id"],
+            enable_network_isolation=True,
+            encrypt_inter_container_traffic=True,
+        ),
+        sagemaker_session=sagemaker_session,
+    )
+
+    run_args = processor.get_run_args(
+        code="/local/path/to/processing_code.py",
+        inputs=_get_data_inputs_all_parameters(),
+        outputs=_get_data_outputs_all_parameters(),
+        arguments=["--drop-columns", "'SelfEmployed'"],
+        job_name="my_job_name",
+    )
+
+    processor.run(
+        code=run_args.code,
+        inputs=run_args.inputs,
+        outputs=run_args.outputs,
+        arguments=run_args.arguments,
+        wait=True,
+        logs=False,
+        job_name="my_job_name",
+        experiment_config={"ExperimentName": "AnExperiment"},
+    )
+
+    expected_args = _get_expected_args_all_parameters(processor._current_job_name)
+
+    sagemaker_session.process.assert_called_with(**expected_args)
+    assert "my_job_name" in processor._current_job_name
+
+
 def test_processor_with_required_parameters(sagemaker_session):
     processor = Processor(
         role=ROLE,
@@ -431,6 +604,43 @@ def test_extend_processing_args(sagemaker_session):
 
     assert extended_inputs == inputs
     assert extended_outputs == outputs
+
+
+@patch("os.path.exists", return_value=True)
+@patch("os.path.isfile", return_value=True)
+def test_get_run_args(exists_mock, isfile_mock, sagemaker_session):
+    processor = ScriptProcessor(
+        role=ROLE,
+        image_uri=CUSTOM_IMAGE_URI,
+        command=["python3"],
+        instance_type="ml.m4.xlarge",
+        instance_count=1,
+        sagemaker_session=sagemaker_session,
+    )
+
+    job_arguments = ["--drop-columns", "'SelfEmployed'"]
+    inputs = _get_data_inputs_all_parameters()
+    outputs = _get_data_outputs_all_parameters()
+    run_args = processor.get_run_args(
+        code="/local/path/to/processing_code.py",
+        inputs=inputs,
+        outputs=outputs,
+        arguments=job_arguments,
+        job_name="my_job_name",
+    )
+
+    inputs_with_code = processor._include_code_in_inputs(
+        inputs, "/local/path/to/processing_code.py"
+    )
+    normalized_inputs = processor._normalize_inputs(inputs_with_code, None)
+    for input in normalized_inputs:
+        print(f"Normalized Input is {input.__dict__}")
+    for input in run_args.inputs:
+        print(f"Run Arg Input is {input.__dict__}")
+    assert run_args.outputs == outputs
+    assert run_args.code == None
+    assert run_args.arguments == job_arguments
+    assert list(map(vars, run_args.inputs)) == list(map(vars, normalized_inputs))
 
 
 def _get_script_processor(sagemaker_session):
