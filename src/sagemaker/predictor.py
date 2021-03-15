@@ -86,7 +86,9 @@ class Predictor(object):
         """
         removed_kwargs("content_type", kwargs)
         removed_kwargs("accept", kwargs)
-        endpoint_name = renamed_kwargs("endpoint", "endpoint_name", endpoint_name, kwargs)
+        endpoint_name = renamed_kwargs(
+            "endpoint", "endpoint_name", endpoint_name, kwargs
+        )
         self.endpoint_name = endpoint_name
         self.sagemaker_session = sagemaker_session or Session()
         self.serializer = serializer
@@ -96,7 +98,12 @@ class Predictor(object):
         self._context = None
 
     def predict(
-        self, data, initial_args=None, target_model=None, target_variant=None, inference_id=None
+        self,
+        data,
+        initial_args=None,
+        target_model=None,
+        target_variant=None,
+        inference_id=None,
     ):
         """Return the inference from the specified endpoint.
 
@@ -128,7 +135,9 @@ class Predictor(object):
         request_args = self._create_request_args(
             data, initial_args, target_model, target_variant, inference_id
         )
-        response = self.sagemaker_session.sagemaker_runtime_client.invoke_endpoint(**request_args)
+        response = self.sagemaker_session.sagemaker_runtime_client.invoke_endpoint(
+            **request_args
+        )
         return self._handle_response(response)
 
     def _handle_response(self, response):
@@ -138,7 +147,12 @@ class Predictor(object):
         return self.deserializer.deserialize(response_body, content_type)
 
     def _create_request_args(
-        self, data, initial_args=None, target_model=None, target_variant=None, inference_id=None
+        self,
+        data,
+        initial_args=None,
+        target_model=None,
+        target_variant=None,
+        inference_id=None,
     ):
         """Placeholder docstring"""
         args = dict(initial_args) if initial_args else {}
@@ -231,7 +245,10 @@ class Predictor(object):
                     "Missing initial_instance_count and/or instance_type. Provided values: "
                     "initial_instance_count={}, instance_type={}, accelerator_type={}, "
                     "model_name={}.".format(
-                        initial_instance_count, instance_type, accelerator_type, model_name
+                        initial_instance_count,
+                        instance_type,
+                        accelerator_type,
+                        model_name,
                     )
                 )
 
@@ -239,7 +256,9 @@ class Predictor(object):
                 if len(current_model_names) > 1:
                     raise ValueError(
                         "Unable to choose a default model for a new EndpointConfig because "
-                        "the endpoint has multiple models: {}".format(", ".join(current_model_names))
+                        "the endpoint has multiple models: {}".format(
+                            ", ".join(current_model_names)
+                        )
                     )
                 model_name = current_model_names[0]
             else:
@@ -378,7 +397,11 @@ class Predictor(object):
             endpoint_name=self.endpoint_name
         )
         if len(monitoring_schedules_dict["MonitoringScheduleSummaries"]) == 0:
-            print("No monitors found for endpoint. endpoint: {}".format(self.endpoint_name))
+            print(
+                "No monitors found for endpoint. endpoint: {}".format(
+                    self.endpoint_name
+                )
+            )
             return []
 
         monitors = []
@@ -420,7 +443,9 @@ class Predictor(object):
                 "MonitoringJobDefinition"
             )
             if embedded_job_definition is not None:  # legacy v1 schedule
-                image_uri = embedded_job_definition["MonitoringAppSpecification"]["ImageUri"]
+                image_uri = embedded_job_definition["MonitoringAppSpecification"][
+                    "ImageUri"
+                ]
                 if image_uri.endswith(DEFAULT_REPOSITORY_NAME):
                     clazz = DefaultModelMonitor
                 else:
@@ -458,13 +483,16 @@ class Predictor(object):
 
         # list context by source uri using arn
         contexts = list(
-            EndpointContext.list(sagemaker_session=self.sagemaker_session, source_uri=endpoint_arn)
+            EndpointContext.list(
+                sagemaker_session=self.sagemaker_session, source_uri=endpoint_arn
+            )
         )
 
         if len(contexts) != 0:
             # create endpoint context object
             self._context = EndpointContext.load(
-                sagemaker_session=self.sagemaker_session, context_name=contexts[0].context_name
+                sagemaker_session=self.sagemaker_session,
+                context_name=contexts[0].context_name,
             )
 
         return self._context
@@ -484,8 +512,10 @@ class Predictor(object):
         if self._model_names is not None:
             return self._model_names
         current_endpoint_config_name = self._get_endpoint_config_name()
-        endpoint_config = self.sagemaker_session.sagemaker_client.describe_endpoint_config(
-            EndpointConfigName=current_endpoint_config_name
+        endpoint_config = (
+            self.sagemaker_session.sagemaker_client.describe_endpoint_config(
+                EndpointConfigName=current_endpoint_config_name
+            )
         )
         production_variants = endpoint_config["ProductionVariants"]
         self._model_names = [d["ModelName"] for d in production_variants]
