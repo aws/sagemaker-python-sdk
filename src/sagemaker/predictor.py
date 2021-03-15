@@ -86,9 +86,7 @@ class Predictor(object):
         """
         removed_kwargs("content_type", kwargs)
         removed_kwargs("accept", kwargs)
-        endpoint_name = renamed_kwargs(
-            "endpoint", "endpoint_name", endpoint_name, kwargs
-        )
+        endpoint_name = renamed_kwargs("endpoint", "endpoint_name", endpoint_name, kwargs)
         self.endpoint_name = endpoint_name
         self.sagemaker_session = sagemaker_session or Session()
         self.serializer = serializer
@@ -135,9 +133,7 @@ class Predictor(object):
         request_args = self._create_request_args(
             data, initial_args, target_model, target_variant, inference_id
         )
-        response = self.sagemaker_session.sagemaker_runtime_client.invoke_endpoint(
-            **request_args
-        )
+        response = self.sagemaker_session.sagemaker_runtime_client.invoke_endpoint(**request_args)
         return self._handle_response(response)
 
     def _handle_response(self, response):
@@ -397,11 +393,7 @@ class Predictor(object):
             endpoint_name=self.endpoint_name
         )
         if len(monitoring_schedules_dict["MonitoringScheduleSummaries"]) == 0:
-            print(
-                "No monitors found for endpoint. endpoint: {}".format(
-                    self.endpoint_name
-                )
-            )
+            print("No monitors found for endpoint. endpoint: {}".format(self.endpoint_name))
             return []
 
         monitors = []
@@ -443,9 +435,7 @@ class Predictor(object):
                 "MonitoringJobDefinition"
             )
             if embedded_job_definition is not None:  # legacy v1 schedule
-                image_uri = embedded_job_definition["MonitoringAppSpecification"][
-                    "ImageUri"
-                ]
+                image_uri = embedded_job_definition["MonitoringAppSpecification"]["ImageUri"]
                 if image_uri.endswith(DEFAULT_REPOSITORY_NAME):
                     clazz = DefaultModelMonitor
                 else:
@@ -483,9 +473,7 @@ class Predictor(object):
 
         # list context by source uri using arn
         contexts = list(
-            EndpointContext.list(
-                sagemaker_session=self.sagemaker_session, source_uri=endpoint_arn
-            )
+            EndpointContext.list(sagemaker_session=self.sagemaker_session, source_uri=endpoint_arn)
         )
 
         if len(contexts) != 0:
@@ -512,10 +500,8 @@ class Predictor(object):
         if self._model_names is not None:
             return self._model_names
         current_endpoint_config_name = self._get_endpoint_config_name()
-        endpoint_config = (
-            self.sagemaker_session.sagemaker_client.describe_endpoint_config(
-                EndpointConfigName=current_endpoint_config_name
-            )
+        endpoint_config = self.sagemaker_session.sagemaker_client.describe_endpoint_config(
+            EndpointConfigName=current_endpoint_config_name
         )
         production_variants = endpoint_config["ProductionVariants"]
         self._model_names = [d["ModelName"] for d in production_variants]
