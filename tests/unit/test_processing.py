@@ -27,7 +27,6 @@ from sagemaker.processing import (
     Processor,
     ScriptProcessor,
     ProcessingJob,
-    RunArgs,
 )
 from sagemaker.sklearn.processing import SKLearnProcessor
 from sagemaker.network import NetworkConfig

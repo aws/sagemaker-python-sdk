@@ -449,10 +449,12 @@ class ScriptProcessor(Processor):
         outputs=None,
         arguments=None,
     ):
-        """Returns a RunArgs object. For processors (:class:`~sagemaker.spark.processing.PySparkProcessor`,
-            :class:`~sagemaker.spark.processing.SparkJar`) that have special
-            run() arguments, this object contains the normalized arguments for passing to
-            :class:`~sagemaker.workflow.steps.ProcessingStep`.
+        """Returns a RunArgs object.
+
+        For processors (:class:`~sagemaker.spark.processing.PySparkProcessor`,
+        :class:`~sagemaker.spark.processing.SparkJar`) that have special
+        run() arguments, this object contains the normalized arguments for passing to
+        :class:`~sagemaker.workflow.steps.ProcessingStep`.
 
         Args:
             code (str): This can be an S3 URI or a local path to a file with the framework
@@ -1171,12 +1173,11 @@ class ProcessingOutput(object):
 
 
 class RunArgs(object):
-    """Provides an object containing the standard run arguments needed by
-        :class:`~sagemaker.processing.ScriptProcessor`.
+    """Accepts parameters that correspond to ScriptProcessors.
 
     An instance of this class is returned from the ``get_run_args()`` method on processors,
-        and is used for normalizing the arguments so that they can be passed to
-        :class:`~sagemaker.workflow.steps.ProcessingStep`
+    and is used for normalizing the arguments so that they can be passed to
+    :class:`~sagemaker.workflow.steps.ProcessingStep`
     """
 
     def __init__(
