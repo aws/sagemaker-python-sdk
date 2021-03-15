@@ -247,7 +247,6 @@ def test_spark_processor_base_run(mock_super_run, spark_processor_base):
 @patch("sagemaker.spark.processing.ProcessingOutput")
 @patch("sagemaker.spark.processing._SparkProcessorBase._stage_configuration")
 def test_spark_processor_base_extend_processing_args(
-    mock_super_run,
     mock_stage_configuration,
     mock_processing_output,
     spark_processor_base,
