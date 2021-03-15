@@ -122,6 +122,7 @@ class ModelConfig:
         accept_type=None,
         content_type=None,
         content_template=None,
+        custom_attributes=None,
     ):
         """Initializes a configuration of a model and the endpoint to be created for it.
 
@@ -141,6 +142,15 @@ class ModelConfig:
                 "application/jsonlines". The template should have one and only one placeholder
                 $features which will be replaced by a features list for to form the model inference
                 input.
+            custom_attributes (str): Provides additional information about a request for an
+                inference submitted to a model hosted at an Amazon SageMaker endpoint. The
+                information is an opaque value that is forwarded verbatim. You could use this
+                value, for example, to provide an ID that you can use to track a request or to
+                provide other metadata that a service endpoint was programmed to process. The value
+                must consist of no more than 1024 visible US-ASCII characters as specified in
+                Section 3.3.6. Field Value Components (
+                https://tools.ietf.org/html/rfc7230#section-3.2.6) of the Hypertext Transfer
+                Protocol (HTTP/1.1).
         """
         self.predictor_config = {
             "model_name": model_name,
@@ -168,6 +178,9 @@ class ModelConfig:
                     f" Please include a placeholder $features."
                 )
             self.predictor_config["content_template"] = content_template
+
+        if custom_attributes is not None:
+            self.predictor_config["custom_attributes"] = custom_attributes
 
     def get_predictor_config(self):
         """Returns part of the predictor dictionary of the analysis config."""
