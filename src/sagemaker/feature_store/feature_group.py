@@ -511,16 +511,8 @@ class FeatureGroup:
         """
         if not table_name:
             table_name = self.name
-
-        s3_uri = self.describe().get("OfflineStoreConfig").get("S3StorageConfig").get("S3Uri")
-        offline_store_s3_uri = os.path.join(
-            s3_uri,
-            self.sagemaker_session.account_id(),
-            "sagemaker",
-            self.sagemaker_session.boto_session.region_name,
-            "offline-store",
-            self.name,
-        )
+            
+        resolved_output_s3_uri = self.describe().get("OfflineStoreConfig").get("S3StorageConfig").get("ResolvedOutputS3Uri")
 
         ddl = f"CREATE EXTERNAL TABLE IF NOT EXISTS {database}.{table_name} (\n"
         for definition in self.feature_definitions:
@@ -537,6 +529,6 @@ class FeatureGroup:
             "  STORED AS\n"
             "  INPUTFORMAT 'parquet.hive.DeprecatedParquetInputFormat'\n"
             "  OUTPUTFORMAT 'parquet.hive.DeprecatedParquetOutputFormat'\n"
-            f"LOCATION '{offline_store_s3_uri}'"
+            f"LOCATION '{resolved_output_s3_uri}'"
         )
         return ddl
