@@ -91,12 +91,14 @@ def test_model_config():
     instance_count = 1
     accept_type = "text/csv"
     content_type = "application/jsonlines"
+    custom_attributes = "c000b4f9-df62-4c85-a0bf-7c525f9104a4"
     model_config = ModelConfig(
         model_name=model_name,
         instance_type=instance_type,
         instance_count=instance_count,
         accept_type=accept_type,
         content_type=content_type,
+        custom_attributes=custom_attributes,
     )
     expected_config = {
         "model_name": model_name,
@@ -104,6 +106,7 @@ def test_model_config():
         "initial_instance_count": instance_count,
         "accept_type": accept_type,
         "content_type": content_type,
+        "custom_attributes": custom_attributes,
     }
     assert expected_config == model_config.get_predictor_config()
 

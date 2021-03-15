@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.29.2 (2021-03-11)
+
+### Bug Fixes and Other Changes
+
+ * move pandas to required dependency from specific use cases
+
 ## v2.29.1 (2021-03-09)
 
 ### Bug Fixes and Other Changes
