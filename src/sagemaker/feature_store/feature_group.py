@@ -511,8 +511,13 @@ class FeatureGroup:
         """
         if not table_name:
             table_name = self.name
-            
-        resolved_output_s3_uri = self.describe().get("OfflineStoreConfig").get("S3StorageConfig").get("ResolvedOutputS3Uri")
+
+        resolved_output_s3_uri = (
+            self.describe()
+            .get("OfflineStoreConfig")
+            .get("S3StorageConfig")
+            .get("ResolvedOutputS3Uri")
+        )
 
         ddl = f"CREATE EXTERNAL TABLE IF NOT EXISTS {database}.{table_name} (\n"
         for definition in self.feature_definitions:

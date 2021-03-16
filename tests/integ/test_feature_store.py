@@ -179,8 +179,7 @@ def test_create_feature_store(
 ):
     feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
     feature_group.load_feature_definitions(data_frame=pandas_data_frame)
-    resolved_output_s3_uri = feature_group.describe().get("OfflineStoreConfig").get("S3StorageConfig").get("ResolvedOutputS3Uri")
-    
+
     with cleanup_feature_group(feature_group):
         output = feature_group.create(
             s3_uri=offline_store_s3_uri,
@@ -191,6 +190,12 @@ def test_create_feature_store(
         )
         _wait_for_feature_group_create(feature_group)
 
+        resolved_output_s3_uri = (
+            feature_group.describe()
+            .get("OfflineStoreConfig")
+            .get("S3StorageConfig")
+            .get("ResolvedOutputS3Uri")
+        )
         # Ingest data
         feature_group.put_record(record=record)
         ingestion_manager = feature_group.ingest(
@@ -225,7 +230,7 @@ def test_create_feature_store(
                 feature_group_name=feature_group_name,
                 region=feature_store_session.boto_session.region_name,
                 account=feature_store_session.account_id(),
-                resolved_output_s3_uri=resolved_output_s3_uri
+                resolved_output_s3_uri=resolved_output_s3_uri,
             )
             == feature_group.as_hive_ddl()
         )
