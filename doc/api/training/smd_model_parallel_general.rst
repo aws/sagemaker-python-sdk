@@ -218,7 +218,6 @@ table are optional.
    |                           |                         |                   | contexts.             |
    +---------------------------+-------------------------+-------------------+-----------------------+
 
-
 .. rubric:: TensorFlow-specific parameters
 
 .. table::
@@ -290,6 +289,45 @@ table are optional.
    |                   |                         |                 | extremes.                         |
    +-------------------+-------------------------+-----------------+-----------------------------------+
    | ``ddp``           | bool                    | ``False``       | Must be set to                    |
+   |                   |                         |                 | ``True`` if                       |
+   |                   |                         |                 | hybrid                            |
+   |                   |                         |                 | model/data                        |
+   |                   |                         |                 | parallelism is                    |
+   |                   |                         |                 | used                              |
+   |                   |                         |                 | with ``DistributedDataParallel``. |
+   |                   |                         |                 | ``DistributedDataParallel``       |
+   |                   |                         |                 | is used with                      |
+   |                   |                         |                 | NCCL backend,                     |
+   |                   |                         |                 | and uses the                      |
+   |                   |                         |                 | ``MASTER_PORT``                   |
+   |                   |                         |                 | provided by                       |
+   |                   |                         |                 | SageMaker.                        |
+   +-------------------+-------------------------+-----------------+-----------------------------------+
+   | ``active_microbatches`` | int          |  ``partitions`` + 2          | The number of                      |
+   |                   |             | ``optimize`` is | memory                            |
+   |                   |                         | ``"speed"``,    | balancing in                      |
+   |                   |                         | else 0.8        | the                               |
+   |                   |                         |                 | auto-partitioni                   |
+   |                   |                         |                 | ng                                |
+   |                   |                         |                 | objective, as                     |
+   |                   |                         |                 | opposed to                        |
+   |                   |                         |                 | balancing                         |
+   |                   |                         |                 | computational                     |
+   |                   |                         |                 | load. If 0.0,                     |
+   |                   |                         |                 | the library only tries            |
+   |                   |                         |                 | to balance                        |
+   |                   |                         |                 | computation; if                   |
+   |                   |                         |                 | 1.0 the library only              |
+   |                   |                         |                 | tries to                          |
+   |                   |                         |                 | balance the                       |
+   |                   |                         |                 | memory use. Any                   |
+   |                   |                         |                 | value in                          |
+   |                   |                         |                 | between                           |
+   |                   |                         |                 | interpolates                      |
+   |                   |                         |                 | between these                     |
+   |                   |                         |                 | extremes.                         |
+   +-------------------+-------------------------+-----------------+-----------------------------------+
+   | ``determinstic_server``           | bool                    | ``False``       | Must be set to                    |
    |                   |                         |                 | ``True`` if                       |
    |                   |                         |                 | hybrid                            |
    |                   |                         |                 | model/data                        |
