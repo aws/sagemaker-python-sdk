@@ -173,7 +173,7 @@ class _SparkProcessorBase(ScriptProcessor):
 
     def get_run_args(
         self,
-        code=None,
+        code,
         inputs=None,
         outputs=None,
         arguments=None,
@@ -768,8 +768,8 @@ class PySparkProcessor(_SparkProcessorBase):
             raise ValueError("submit_app is required")
 
         extended_inputs, extended_outputs = self._extend_processing_args(
-            inputs,
-            outputs,
+            inputs=inputs,
+            outputs=outputs,
             submit_py_files=submit_py_files,
             submit_jars=submit_jars,
             submit_files=submit_files,
@@ -842,8 +842,8 @@ class PySparkProcessor(_SparkProcessorBase):
             raise ValueError("submit_app is required")
 
         extended_inputs, extended_outputs = self._extend_processing_args(
-            inputs,
-            outputs,
+            inputs=inputs,
+            outputs=outputs,
             submit_py_files=submit_py_files,
             submit_jars=submit_jars,
             submit_files=submit_files,
@@ -1016,8 +1016,8 @@ class SparkJarProcessor(_SparkProcessorBase):
             raise ValueError("submit_app is required")
 
         extended_inputs, extended_outputs = self._extend_processing_args(
-            inputs,
-            outputs,
+            inputs=inputs,
+            outputs=outputs,
             submit_class=submit_class,
             submit_jars=submit_jars,
             submit_files=submit_files,
@@ -1090,8 +1090,8 @@ class SparkJarProcessor(_SparkProcessorBase):
             raise ValueError("submit_app is required")
 
         extended_inputs, extended_outputs = self._extend_processing_args(
-            inputs,
-            outputs,
+            inputs=inputs,
+            outputs=outputs,
             submit_class=submit_class,
             submit_jars=submit_jars,
             submit_files=submit_files,

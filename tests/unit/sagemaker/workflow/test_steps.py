@@ -262,7 +262,6 @@ def test_processing_step_normalizes_args(mock_normalize_args, sagemaker_session)
         outputs=outputs,
         job_arguments=["arg1", "arg2"],
         cache_config=cache_config,
-        kms_key="key",
     )
     mock_normalize_args.return_value = [step.inputs, step.outputs]
     step.to_request()
@@ -271,7 +270,6 @@ def test_processing_step_normalizes_args(mock_normalize_args, sagemaker_session)
         inputs=step.inputs,
         outputs=step.outputs,
         code=step.code,
-        kms_key=step.kms_key,
     )
 
 

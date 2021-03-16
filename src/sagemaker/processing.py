@@ -20,6 +20,7 @@ from __future__ import print_function, absolute_import
 
 import os
 import pathlib
+import attr
 
 from six.moves.urllib.parse import urlparse
 from six.moves.urllib.request import url2pathname
@@ -207,13 +208,13 @@ class Processor(object):
             inputs (list[:class:`~sagemaker.processing.ProcessingInput`]): Input files for
                 the processing job. These must be provided as
                 :class:`~sagemaker.processing.ProcessingInput` objects (default: None).
-            kms_key (str): The ARN of the KMS key that is used to encrypt the
-                user code file (default: None).
             outputs (list[:class:`~sagemaker.processing.ProcessingOutput`]): Outputs for
                 the processing job. These can be specified as either path strings or
                 :class:`~sagemaker.processing.ProcessingOutput` objects (default: None).
             code (str): This can be an S3 URI or a local path to a file with the framework
                 script to run (default: None). A no op in the base class.
+            kms_key (str): The ARN of the KMS key that is used to encrypt the
+                user code file (default: None).
         """
         self._current_job_name = self._generate_current_job_name(job_name=job_name)
 
@@ -444,7 +445,7 @@ class ScriptProcessor(Processor):
 
     def get_run_args(
         self,
-        code=None,
+        code,
         inputs=None,
         outputs=None,
         arguments=None,
@@ -1172,39 +1173,31 @@ class ProcessingOutput(object):
         return s3_output_request
 
 
+@attr.s
 class RunArgs(object):
     """Accepts parameters that correspond to ScriptProcessors.
 
     An instance of this class is returned from the ``get_run_args()`` method on processors,
     and is used for normalizing the arguments so that they can be passed to
     :class:`~sagemaker.workflow.steps.ProcessingStep`
+
+    Args:
+        code (str): This can be an S3 URI or a local path to a file with the framework
+            script to run.
+        inputs (list[:class:`~sagemaker.processing.ProcessingInput`]): Input files for
+            the processing job. These must be provided as
+            :class:`~sagemaker.processing.ProcessingInput` objects (default: None).
+        outputs (list[:class:`~sagemaker.processing.ProcessingOutput`]): Outputs for
+            the processing job. These can be specified as either path strings or
+            :class:`~sagemaker.processing.ProcessingOutput` objects (default: None).
+        arguments (list[str]): A list of string arguments to be passed to a
+            processing job (default: None).
     """
 
-    def __init__(
-        self,
-        code=None,
-        inputs=None,
-        outputs=None,
-        arguments=None,
-    ):
-        """Initializes a ``RunArgs`` instance.
-
-        Args:
-            code (str): This can be an S3 URI or a local path to a file with the framework
-                script to run.
-            inputs (list[:class:`~sagemaker.processing.ProcessingInput`]): Input files for
-                the processing job. These must be provided as
-                :class:`~sagemaker.processing.ProcessingInput` objects (default: None).
-            outputs (list[:class:`~sagemaker.processing.ProcessingOutput`]): Outputs for
-                the processing job. These can be specified as either path strings or
-                :class:`~sagemaker.processing.ProcessingOutput` objects (default: None).
-            arguments (list[str]): A list of string arguments to be passed to a
-                processing job (default: None).
-        """
-        self.inputs = inputs
-        self.outputs = outputs
-        self.code = code
-        self.arguments = arguments
+    code = attr.ib()
+    inputs = attr.ib(default=None)
+    outputs = attr.ib(default=None)
+    arguments = attr.ib(default=None)
 
 
 class FeatureStoreOutput(ApiObject):
