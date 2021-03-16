@@ -97,7 +97,7 @@ def test_deploy_estimator_with_different_instance_types(
             try:
                 predictor = estimator.deploy(1, instance_type)
 
-                model_name = predictor._model_names[0]
+                model_name = predictor._get_model_names()[0]
                 config_name = sagemaker_session.sagemaker_client.describe_endpoint(
                     EndpointName=predictor.endpoint_name
                 )["EndpointConfigName"]
