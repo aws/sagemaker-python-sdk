@@ -137,6 +137,27 @@ def tfs_predictor_with_accelerator(
         )
         yield predictor
 
+@pytest.fixture(scope="module")
+def tfs_trt_predictor_with_accelerator(
+    sagemaker_session, tensorflow_eia_latest_version, cpu_instance_type
+):
+    endpoint_name = sagemaker.utils.unique_name_from_base("sagemaker-tensorflow-serving")
+    model_data = sagemaker_session.upload_data(
+        path=os.path.join(tests.integ.DATA_DIR, "tensorflow-serving-test-compiled-model.tar.gz"),
+        key_prefix="tensorflow-serving/compiledmodels",
+    )
+    with tests.integ.timeout.timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
+        model = TensorFlowModel(
+            model_data=model_data,
+            role="SageMakerRole",
+            framework_version=tensorflow_eia_latest_version,
+            sagemaker_session=sagemaker_session,
+            name=endpoint_name,
+        )
+        predictor = model.deploy(
+            1, cpu_instance_type, endpoint_name=endpoint_name, accelerator_type="ml.eia2.large"
+        )
+        yield predictor
 
 @pytest.mark.release
 def test_predict(tfs_predictor):
