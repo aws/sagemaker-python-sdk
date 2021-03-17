@@ -91,7 +91,7 @@ table are optional.
    |                           | or ``"simple"``         |                   | schedule.             |
    |                           |                         |                   |                       |
    +---------------------------+-------------------------+-------------------+-----------------------+
-   | ``optimize``              | ``"memory"`` or         | ``"memory"``      | Whether the library   |
+   | ``optimize``              | ``"memory"`` or         | ``"memory"``      | Whether the library   |
    |                           | ``"speed"``             |                   | should optimize       |
    |                           |                         |                   | for speed or          |
    |                           |                         |                   | memory during         |
@@ -218,6 +218,7 @@ table are optional.
    |                           |                         |                   | contexts.             |
    +---------------------------+-------------------------+-------------------+-----------------------+
 
+
 .. rubric:: TensorFlow-specific parameters
 
 .. table::
@@ -260,88 +261,75 @@ table are optional.
 .. table::
    :widths: 10 20 10 60
 
-   +-------------------+-------------------------+-----------------+-----------------------------------+
-   | **Parameter**     | **Type / Valid values** | **Default**     | **Description**                   |
-   |                   |                         |                 |                                   |
-   +-------------------+-------------------------+-----------------+-----------------------------------+
-   | ``memory_weight`` | float (between          | 0.2 if          | The weight of                     |
-   |                   | 0.0 and 1.0)            | ``optimize`` is | memory                            |
-   |                   |                         | ``"speed"``,    | balancing in                      |
-   |                   |                         | else 0.8        | the                               |
-   |                   |                         |                 | auto-partitioni                   |
-   |                   |                         |                 | ng                                |
-   |                   |                         |                 | objective, as                     |
-   |                   |                         |                 | opposed to                        |
-   |                   |                         |                 | balancing                         |
-   |                   |                         |                 | computational                     |
-   |                   |                         |                 | load. If 0.0,                     |
-   |                   |                         |                 | the library only tries            |
-   |                   |                         |                 | to balance                        |
-   |                   |                         |                 | computation; if                   |
-   |                   |                         |                 | 1.0 the library only              |
-   |                   |                         |                 | tries to                          |
-   |                   |                         |                 | balance the                       |
-   |                   |                         |                 | memory use. Any                   |
-   |                   |                         |                 | value in                          |
-   |                   |                         |                 | between                           |
-   |                   |                         |                 | interpolates                      |
-   |                   |                         |                 | between these                     |
-   |                   |                         |                 | extremes.                         |
-   +-------------------+-------------------------+-----------------+-----------------------------------+
-   | ``ddp``           | bool                    | ``False``       | Must be set to                    |
-   |                   |                         |                 | ``True`` if                       |
-   |                   |                         |                 | hybrid                            |
-   |                   |                         |                 | model/data                        |
-   |                   |                         |                 | parallelism is                    |
-   |                   |                         |                 | used                              |
-   |                   |                         |                 | with ``DistributedDataParallel``. |
-   |                   |                         |                 | ``DistributedDataParallel``       |
-   |                   |                         |                 | is used with                      |
-   |                   |                         |                 | NCCL backend,                     |
-   |                   |                         |                 | and uses the                      |
-   |                   |                         |                 | ``MASTER_PORT``                   |
-   |                   |                         |                 | provided by                       |
-   |                   |                         |                 | SageMaker.                        |
-   +-------------------+-------------------------+-----------------+-----------------------------------+
-   | ``active_microbatches`` | int          |  ``partitions`` + 2          | The number of                      |
-   |                   |             | ``optimize`` is | memory                            |
-   |                   |                         | ``"speed"``,    | balancing in                      |
-   |                   |                         | else 0.8        | the                               |
-   |                   |                         |                 | auto-partitioni                   |
-   |                   |                         |                 | ng                                |
-   |                   |                         |                 | objective, as                     |
-   |                   |                         |                 | opposed to                        |
-   |                   |                         |                 | balancing                         |
-   |                   |                         |                 | computational                     |
-   |                   |                         |                 | load. If 0.0,                     |
-   |                   |                         |                 | the library only tries            |
-   |                   |                         |                 | to balance                        |
-   |                   |                         |                 | computation; if                   |
-   |                   |                         |                 | 1.0 the library only              |
-   |                   |                         |                 | tries to                          |
-   |                   |                         |                 | balance the                       |
-   |                   |                         |                 | memory use. Any                   |
-   |                   |                         |                 | value in                          |
-   |                   |                         |                 | between                           |
-   |                   |                         |                 | interpolates                      |
-   |                   |                         |                 | between these                     |
-   |                   |                         |                 | extremes.                         |
-   +-------------------+-------------------------+-----------------+-----------------------------------+
-   | ``determinstic_server``           | bool                    | ``False``       | Must be set to                    |
-   |                   |                         |                 | ``True`` if                       |
-   |                   |                         |                 | hybrid                            |
-   |                   |                         |                 | model/data                        |
-   |                   |                         |                 | parallelism is                    |
-   |                   |                         |                 | used                              |
-   |                   |                         |                 | with ``DistributedDataParallel``. |
-   |                   |                         |                 | ``DistributedDataParallel``       |
-   |                   |                         |                 | is used with                      |
-   |                   |                         |                 | NCCL backend,                     |
-   |                   |                         |                 | and uses the                      |
-   |                   |                         |                 | ``MASTER_PORT``                   |
-   |                   |                         |                 | provided by                       |
-   |                   |                         |                 | SageMaker.                        |
-   +-------------------+-------------------------+-----------------+-----------------------------------+
+   +--------------------------+-------------------------+--------------------+--------------------------------------+
+   | **Parameter**            | **Type / Valid values** | **Default**        | **Description**                      |
+   |                          |                         |                    |                                      |
+   +--------------------------+-------------------------+--------------------+--------------------------------------+
+   | ``memory_weight``        | float (between          | 0.2 if             | The weight of                        |
+   |                          | 0.0 and 1.0)            | ``optimize`` is    | memory                               |
+   |                          |                         | ``"speed"``,       | balancing in                         |
+   |                          |                         | else 0.8           | the                                  |
+   |                          |                         |                    | auto-partitioni                      |
+   |                          |                         |                    | ng                                   |
+   |                          |                         |                    | objective, as                        |
+   |                          |                         |                    | opposed to                           |
+   |                          |                         |                    | balancing                            |
+   |                          |                         |                    | computational                        |
+   |                          |                         |                    | load. If 0.0,                        |
+   |                          |                         |                    | the library only tries               |
+   |                          |                         |                    | to balance                           |
+   |                          |                         |                    | computation; if                      |
+   |                          |                         |                    | 1.0 the library only                 |
+   |                          |                         |                    | tries to                             |
+   |                          |                         |                    | balance the                          |
+   |                          |                         |                    | memory use. Any                      |
+   |                          |                         |                    | value in                             |
+   |                          |                         |                    | between                              |
+   |                          |                         |                    | interpolates                         |
+   |                          |                         |                    | between these                        |
+   |                          |                         |                    | extremes.                            |
+   +--------------------------+-------------------------+--------------------+--------------------------------------+
+   | ``ddp``                  | bool                    | ``False``          | Must be set to                       |
+   |                          |                         |                    | ``True`` if                          |
+   |                          |                         |                    | hybrid                               |
+   |                          |                         |                    | model/data                           |
+   |                          |                         |                    | parallelism is                       |
+   |                          |                         |                    | used                                 |
+   |                          |                         |                    | with ``DistributedDataParallel``.    |
+   |                          |                         |                    | ``DistributedDataParallel``          |
+   |                          |                         |                    | is used with                         |
+   |                          |                         |                    | NCCL backend,                        |
+   |                          |                         |                    | and uses the                         |
+   |                          |                         |                    | ``MASTER_PORT``                      |
+   |                          |                         |                    | provided by                          |
+   |                          |                         |                    | SageMaker.                           |
+   +--------------------------+-------------------------+--------------------+--------------------------------------+
+   | ``active_microbatches``  | int                     | ``partitions`` + 2 | This is the maximum number of        |
+   | (Only >= v1.3)           |                         |                    | microbatches that are simultaneously |
+   |                          |                         |                    | in execution during pipelining.      |
+   |                          |                         |                    | Jointly scaling batch                |
+   |                          |                         |                    | size and number of microbatches      |
+   |                          |                         |                    | can often mitigate the pipeline      |
+   |                          |                         |                    | bubble overhead, but that can        |
+   |                          |                         |                    | lead to increased memory usage       |
+   |                          |                         |                    | if too many microbatches are         |
+   |                          |                         |                    | simultaneously in execution.         |
+   |                          |                         |                    | In such cases setting the            |
+   |                          |                         |                    | number of active                     |
+   |                          |                         |                    | microbatches to a lower number       |
+   |                          |                         |                    | can help control memory usage.       |
+   |                          |                         |                    | By default this is set to two        |
+   |                          |                         |                    | plus the number of                   |
+   |                          |                         |                    | partitions of the model.             |
+   +--------------------------+-------------------------+--------------------+--------------------------------------+
+   | ``deterministic_server`` | bool                    | ``False``          | Setting this to true                 |
+   | (Only >= v1.3)           |                         |                    | ensures that the execution           |
+   |                          |                         |                    | server for pipelining                |
+   |                          |                         |                    | executes requests in the             |
+   |                          |                         |                    | same order across all                |
+   |                          |                         |                    | data parallel ranks.                 |
+   +--------------------------+-------------------------+--------------------+--------------------------------------+
+
 
 ``mpi`` Parameters
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -392,7 +380,7 @@ the process. For instance, if a training job is launched with 4
 across all instances, and the ranks of these processes range from 0 to
 31.
 
-The ``local_rank`` of a process is the rank of the process among the
+The ``local_rank`` of a process is the rank of the process among the
 processes in the same instance. This can range from 0 up to the number
 of GPUs in the instance, but can be lower if fewer processes than GPUs are
 launched in the instance. For instance, in the preceding
@@ -401,25 +389,25 @@ since there are 8 GPUs in a ``p3dn.24xlarge`` instance.
 
 When the library is used together with data parallelism (Horovod for TensorFlow
 and DDP for PyTorch), the library partitions the set of processes into
-disjoint \ ``mp_group``\ s. An ``mp_group`` is a subset of all processes
+disjoint \ ``mp_group``\ s. An ``mp_group`` is a subset of all processes
 that together hold a single, partitioned model replica. For instance, if
 a single node job is launched with 8 local processes, and
-``partitions`` is 2 (meaning the model will be split into 2), there are
-four \ ``mp_group``\ s. The specific sets of processes that form the
-``mp_group``\ s can be adjusted by the ``placement_strategy`` option. In
-this example, if ``placement_strategy`` is ``spread``, then the four
+``partitions`` is 2 (meaning the model will be split into 2), there are
+four \ ``mp_group``\ s. The specific sets of processes that form the
+``mp_group``\ s can be adjusted by the ``placement_strategy`` option. In
+this example, if ``placement_strategy`` is ``spread``, then the four
 ``mp_group``\ s are ``[0, 4], [1, 5], [2, 6], [3, 7]``. An
-``mp_rank`` is the rank of a process within its own ``mp_group``. In the
-previous example, the ``mp_rank`` of process 1 is 0, and ``mp_rank`` of
+``mp_rank`` is the rank of a process within its own ``mp_group``. In the
+previous example, the ``mp_rank`` of process 1 is 0, and ``mp_rank`` of
 process 6 is 1.
 
 Analogously, the library defines ``dp_group``\ s as the sets of processes that
 all hold the same model partition, and perform data parallelism among
 each other. In the example above, there are two ``dp_group``\ s,
-``[0, 1, 2, 3]`` and ``[4, 5, 6, 7]``,
+``[0, 1, 2, 3]`` and ``[4, 5, 6, 7]``,
 
-since each process within the ``dp_group`` holds the same partition of
+since each process within the ``dp_group`` holds the same partition of
 the model, and makes allreduce calls among themselves. Allreduce for
-data parallelism does not take place *across* ``dp_group``\ s.
-``dp_rank`` is defined as the rank of a process within its ``dp_group``.
-In the preceding example, the \ ``dp_rank`` of process 6 is 2.
+data parallelism does not take place *across* ``dp_group``\ s.
+``dp_rank`` is defined as the rank of a process within its ``dp_group``.
+In the preceding example, the \ ``dp_rank`` of process 6 is 2.
