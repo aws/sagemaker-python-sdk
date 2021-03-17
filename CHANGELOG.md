@@ -1,5 +1,17 @@
 # Changelog
 
+## v2.30.0 (2021-03-17)
+
+### Features
+
+ * add support for PyTorch 1.8.0
+ * Allow users to send custom attributes to the model endpoint
+
+### Bug Fixes and Other Changes
+
+ * use ResolvedOutputS3Uir for Hive DDL LOCATION
+ * Do lazy initialization in predictor
+
 ## v2.29.2 (2021-03-11)
 
 ### Bug Fixes and Other Changes
