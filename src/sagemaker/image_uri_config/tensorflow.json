@@ -1875,7 +1875,6 @@
             },
             "2.0.3": {
                 "py_versions": [
-                    "py2",
                     "py3"
                 ],
                 "registries": {
@@ -1908,7 +1907,6 @@
             },
             "2.0.4": {
                 "py_versions": [
-                    "py2",
                     "py3"
                 ],
                 "registries": {
@@ -2007,7 +2005,6 @@
             },
             "2.1.2": {
                 "py_versions": [
-                    "py2",
                     "py3"
                 ],
                 "registries": {
@@ -2040,7 +2037,6 @@
             },
             "2.1.3": {
                 "py_versions": [
-                    "py2",
                     "py3"
                 ],
                 "registries": {
