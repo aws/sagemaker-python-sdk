@@ -51,6 +51,11 @@ Execution_variables
 
 .. autoclass:: sagemaker.workflow.execution_variables.ExecutionVariables
 
+Functions
+---------
+
+.. autoclass:: sagemaker.workflow.functions.Join
+
 Parameters
 ----------
 
