@@ -739,7 +739,8 @@ class PySparkProcessor(_SparkProcessorBase):
 
         Args:
             submit_app (str): Path (local or S3) to Python file to submit to Spark
-                as the primary application
+                as the primary application. This is translated to the `code`
+                property on the returned `RunArgs` object.
             submit_py_files (list[str]): List of paths (local or S3) to provide for
                 `spark-submit --py-files` option
             submit_jars (list[str]): List of paths (local or S3) to provide for
@@ -987,7 +988,8 @@ class SparkJarProcessor(_SparkProcessorBase):
 
         Args:
             submit_app (str): Path (local or S3) to Python file to submit to Spark
-                as the primary application
+                as the primary application. This is translated to the `code`
+                property on the returned `RunArgs` object
             submit_class (str): Java class reference to submit to Spark as the primary
                 application
             submit_jars (list[str]): List of paths (local or S3) to provide for
