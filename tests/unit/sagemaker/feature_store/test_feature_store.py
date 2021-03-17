@@ -66,8 +66,7 @@ def create_table_ddl():
         "  STORED AS\n"
         "  INPUTFORMAT 'parquet.hive.DeprecatedParquetInputFormat'\n"
         "  OUTPUTFORMAT 'parquet.hive.DeprecatedParquetOutputFormat'\n"
-        "LOCATION 's3://some-bucket"
-        "/{account}/sagemaker/{region}/offline-store/{feature_group_name}'"
+        "LOCATION 's3://resolved_output_s3_uri'"
     )
 
 
@@ -217,7 +216,12 @@ def test_as_hive_ddl_with_default_values(
     create_table_ddl, feature_group_dummy_definitions, sagemaker_session_mock
 ):
     sagemaker_session_mock.describe_feature_group.return_value = {
-        "OfflineStoreConfig": {"S3StorageConfig": {"S3Uri": "s3://some-bucket"}}
+        "OfflineStoreConfig": {
+            "S3StorageConfig": {
+                "S3Uri": "s3://some-bucket",
+                "ResolvedOutputS3Uri": "s3://resolved_output_s3_uri",
+            }
+        }
     }
     sagemaker_session_mock.account_id.return_value = "1234"
     sagemaker_session_mock.boto_session.region_name = "us-west-2"
@@ -238,7 +242,12 @@ def test_as_hive_ddl_with_default_values(
 
 def test_as_hive_ddl(create_table_ddl, feature_group_dummy_definitions, sagemaker_session_mock):
     sagemaker_session_mock.describe_feature_group.return_value = {
-        "OfflineStoreConfig": {"S3StorageConfig": {"S3Uri": "s3://some-bucket"}}
+        "OfflineStoreConfig": {
+            "S3StorageConfig": {
+                "S3Uri": "s3://some-bucket",
+                "ResolvedOutputS3Uri": "s3://resolved_output_s3_uri",
+            }
+        }
     }
     sagemaker_session_mock.account_id.return_value = "1234"
     sagemaker_session_mock.boto_session.region_name = "us-west-2"
