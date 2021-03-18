@@ -371,6 +371,7 @@ class ProcessingStep(Step):
             outputs=self.outputs,
             code=self.code,
         )
+
         process_args = ProcessingJob._get_process_args(
             self.processor, normalized_inputs, normalized_outputs, experiment_config=dict()
         )
