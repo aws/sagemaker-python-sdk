@@ -115,7 +115,7 @@ def test_mp_config_string_names(pipeline, placement_strategy, optimize, trace_de
         "optimize": optimize,
         "trace_device": trace_device,
         "active_microbatches": 8,
-        "deterministic_server": True
+        "deterministic_server": True,
     }
     fw_utils.validate_mp_config(mp_parameters)
 

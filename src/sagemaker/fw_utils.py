@@ -142,7 +142,14 @@ def validate_mp_config(config):
     for key in ["microbatches", "partitions", "active_microbatches"]:
         validate_positive(key)
 
-    for key in ["auto_partition", "contiguous", "load_partition", "horovod", "ddp", "deterministic_server"]:
+    for key in [
+        "auto_partition",
+        "contiguous",
+        "load_partition",
+        "horovod",
+        "ddp",
+        "deterministic_server",
+    ]:
         validate_bool(key)
 
     if "partition_file" in config and not isinstance(config.get("partition_file"), str):
