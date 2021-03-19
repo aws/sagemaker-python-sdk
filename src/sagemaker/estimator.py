@@ -52,6 +52,9 @@ from sagemaker.fw_utils import (
     _region_supports_profiler,
     get_mp_parameters,
 )
+from sagemaker.workflow.properties import Properties
+from sagemaker.workflow.parameters import Parameter
+from sagemaker.workflow.entities import Expression
 from sagemaker.inputs import TrainingInput
 from sagemaker.job import _Job
 from sagemaker.local import LocalSession
@@ -1456,7 +1459,10 @@ class _TrainingJob(_Job):
 
         current_hyperparameters = estimator.hyperparameters()
         if current_hyperparameters is not None:
-            hyperparameters = {str(k): str(v) for (k, v) in current_hyperparameters.items()}
+            hyperparameters = {
+                str(k): (v if isinstance(v, (Parameter, Expression, Properties)) else str(v))
+                for (k, v) in current_hyperparameters.items()
+            }
 
         train_args = config.copy()
         train_args["input_mode"] = estimator.input_mode

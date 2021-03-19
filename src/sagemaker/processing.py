@@ -31,6 +31,7 @@ from sagemaker.utils import base_name_from_image, name_from_base
 from sagemaker.session import Session
 from sagemaker.network import NetworkConfig  # noqa: F401 # pylint: disable=unused-import
 from sagemaker.workflow.properties import Properties
+from sagemaker.workflow.parameters import Parameter
 from sagemaker.workflow.entities import Expression
 from sagemaker.dataset_definition.inputs import S3Input, DatasetDefinition
 from sagemaker.apiutils._base_types import ApiObject
@@ -291,7 +292,9 @@ class Processor(object):
                 if isinstance(file_input.source, Properties) or file_input.dataset_definition:
                     normalized_inputs.append(file_input)
                     continue
-
+                if isinstance(file_input.s3_input.s3_uri, (Parameter, Expression, Properties)):
+                    normalized_inputs.append(file_input)
+                    continue
                 # If the source is a local path, upload it to S3
                 # and save the S3 uri in the ProcessingInput source.
                 parse_result = urlparse(file_input.s3_input.s3_uri)
@@ -339,8 +342,7 @@ class Processor(object):
                 # Generate a name for the ProcessingOutput if it doesn't have one.
                 if output.output_name is None:
                     output.output_name = "output-{}".format(count)
-                # if the output's destination is a workflow expression, do no normalization
-                if isinstance(output.destination, Expression):
+                if isinstance(output.destination, (Parameter, Expression, Properties)):
                     normalized_outputs.append(output)
                     continue
                 # If the output's destination is not an s3_uri, create one.
@@ -1070,7 +1072,7 @@ class ProcessingInput(object):
             self.s3_data_type = self.s3_input.s3_data_type
             self.s3_input_mode = self.s3_input.s3_input_mode
             self.s3_data_distribution_type = self.s3_input.s3_data_distribution_type
-        elif self.source and self.destination:
+        elif self.source is not None and self.destination is not None:
             self.s3_input = S3Input(
                 s3_uri=self.source,
                 local_path=self.destination,
