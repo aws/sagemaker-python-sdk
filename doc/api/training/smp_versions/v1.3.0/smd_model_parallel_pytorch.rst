@@ -233,7 +233,7 @@ This API document assumes you use the following import statements in your traini
       for the entire model. It first collects the \ ``local_state_dict``  and
       gathers and merges the \ ``local_state_dict`` from all ``mp_rank``\ s to
       create a full ``state_dict``. Please note that this needs to be called on all ranks with
-      ``dp_rank()==0`` to ensure the gather happens properly. 
+      ``dp_rank()==0`` to ensure the gather happens properly.
       If it is only called on all such ranks, it can hang.
 
    .. function:: load_state_dict( )
@@ -269,17 +269,17 @@ This API document assumes you use the following import statements in your traini
    .. function:: register_comm_hook( state, callable )
 
       **Available for PyTorch 1.8.0 only**
-      Registers a communication hook which is an enhancement that provides 
-      a flexible hook ``callable`` to users where they can specify how 
-      gradients are aggregated across multiple workers. This method will be called on the wrapped ``DistributedDataParallel`` instance. 
+      Registers a communication hook which is an enhancement that provides
+      a flexible hook ``callable`` to users where they can specify how
+      gradients are aggregated across multiple workers. This method will be called on the wrapped ``DistributedDataParallel`` instance.
 
       Please note that when you register a comm hook you have full control of how the gradients are processed.
-      When using only data parallelism with Torch DDP you are expected to average grads across data parallel replicas within the hook. 
-      Similarly, when using DistributedModel you have to averaging grads across data parallel replicas within the hook. 
-      In addition to that, you also have to average grads across microbatches within the hook unless you explicitly desire to not average based on your loss function. 
+      When using only data parallelism with Torch DDP you are expected to average grads across data parallel replicas within the hook.
+      Similarly, when using DistributedModel you have to averaging grads across data parallel replicas within the hook.
+      In addition to that, you also have to average grads across microbatches within the hook unless you explicitly desire to not average based on your loss function.
       See ``average_grads_across_microbatches`` for more information about averaging grads across microbatches.
 
-      This is only supported when ``ddp=True`` and ``overlapping_allreduce=True`` (default). 
+      This is only supported when ``ddp=True`` and ``overlapping_allreduce=True`` (default).
       For more information, see:
       `register_comm_hook <https://pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html#torch.nn.parallel.DistributedDataParallel.register_comm_hook>`__
       in the PyTorch documentation.
