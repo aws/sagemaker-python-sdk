@@ -92,8 +92,10 @@ def retrieve(
         container_versions = {
             "tensorflow-2.3-gpu-py37": "cu110-ubuntu18.04-v3",
             "tensorflow-2.3.1-gpu-py37": "cu110-ubuntu18.04",
+            "tensorflow-2.3.2-gpu-py37": "cu110-ubuntu18.04",
             "tensorflow-1.15-gpu-py37": "cu110-ubuntu18.04-v8",
             "tensorflow-1.15.4-gpu-py37": "cu110-ubuntu18.04",
+            "tensorflow-1.15.5-gpu-py37": "cu110-ubuntu18.04",
             "mxnet-1.8-gpu-py37": "cu110-ubuntu16.04-v1",
             "mxnet-1.8.0-gpu-py37": "cu110-ubuntu16.04",
             "pytorch-1.6-gpu-py36": "cu110-ubuntu18.04-v3",
