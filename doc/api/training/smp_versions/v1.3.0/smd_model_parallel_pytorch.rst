@@ -6,7 +6,7 @@
 PyTorch API
 ===========
 
-**Supported versions: 1.8.0**
+**Supported versions: 1.7.1, 1.8.0**
 
 This API document assumes you use the following import statements in your training scripts.
 
