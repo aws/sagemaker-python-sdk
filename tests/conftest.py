@@ -58,6 +58,7 @@ FRAMEWORKS_FOR_GENERATED_VERSION_FIXTURES = (
     "vw",
     "xgboost",
     "spark",
+    "huggingface",
 )
 
 
@@ -187,6 +188,14 @@ def pytorch_inference_py_version(pytorch_inference_version, request):
         return "py36"
     else:
         return "py3"
+
+
+@pytest.fixture(scope="module")
+def huggingface_pytorch_version(huggingface_training_version):
+    if Version(huggingface_training_version) <= Version("4.4.2"):
+        return "1.6.0"
+    else:
+        pytest.skip("Skipping Huggingface version.")
 
 
 @pytest.fixture(scope="module")
