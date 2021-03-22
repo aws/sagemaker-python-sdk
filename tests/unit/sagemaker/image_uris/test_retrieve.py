@@ -628,3 +628,92 @@ def test_tag_prefix(config_for_framework):
         image_scope="training",
     )
     assert "123412341234.dkr.ecr.us-west-2.amazonaws.com/dummy:{}-cpu-py3".format(tag_prefix) == uri
+
+
+@patch("sagemaker.image_uris.config_for_framework")
+def test_retrieve_huggingface(config_for_framework):
+    config = {
+        "training": {
+            "processors": ["gpu"],
+            "version_aliases": {"4.2": "4.2.1"},
+            "versions": {
+                "4.2.1": {
+                    "version_aliases": {
+                        "pytorch1.6": "pytorch1.6.0",
+                        "tensorflow2.3": "tensorflow2.3.0",
+                    },
+                    "pytorch1.6.0": {
+                        "py_versions": ["py37"],
+                        "registries": {"us-east-1": "564829616587"},
+                        "repository": "huggingface-pytorch-training",
+                    },
+                    "tensorflow2.3.0": {
+                        "py_versions": ["py36"],
+                        "registries": {"us-east-1": "564829616587"},
+                        "repository": "huggingface-tensorflow-training",
+                    },
+                }
+            },
+        }
+    }
+    config_for_framework.return_value = config
+
+    pt_uri_mv = image_uris.retrieve(
+        framework="huggingface",
+        version="4.2",
+        py_version="py37",
+        instance_type="ml.p2.xlarge",
+        region="us-east-1",
+        image_scope="training",
+        base_framework_version="pytorch1.6",
+        container_version="cu110-ubuntu18.04",
+    )
+    assert (
+        "564829616587.dkr.ecr.us-east-1.amazonaws.com/huggingface-pytorch-training:"
+        "1.6-transformers4.2-gpu-py37-cu110-ubuntu18.04" == pt_uri_mv
+    )
+
+    pt_uri = image_uris.retrieve(
+        framework="huggingface",
+        version="4.2.1",
+        py_version="py37",
+        instance_type="ml.p2.xlarge",
+        region="us-east-1",
+        image_scope="training",
+        base_framework_version="pytorch1.6.0",
+        container_version="cu110-ubuntu18.04",
+    )
+    assert (
+        "564829616587.dkr.ecr.us-east-1.amazonaws.com/huggingface-pytorch-training:"
+        "1.6.0-transformers4.2.1-gpu-py37-cu110-ubuntu18.04" == pt_uri
+    )
+
+    tf_uri = image_uris.retrieve(
+        framework="huggingface",
+        version="4.2.1",
+        py_version="py36",
+        instance_type="ml.p2.xlarge",
+        region="us-east-1",
+        image_scope="training",
+        base_framework_version="tensorflow2.3.0",
+        container_version="cu110-ubuntu18.04",
+    )
+    assert (
+        "564829616587.dkr.ecr.us-east-1.amazonaws.com/huggingface-tensorflow-training:"
+        "2.3.0-transformers4.2.1-gpu-py36-cu110-ubuntu18.04" == tf_uri
+    )
+
+    pt_new_version = image_uris.retrieve(
+        framework="huggingface",
+        version="4.3.1",
+        py_version="py37",
+        instance_type="ml.p2.xlarge",
+        region="us-east-1",
+        image_scope="training",
+        base_framework_version="pytorch1.6.0",
+        container_version="cu110-ubuntu18.04",
+    )
+    assert (
+        "564829616587.dkr.ecr.us-east-1.amazonaws.com/huggingface-pytorch-training:"
+        "1.6.0-transformers4.3.1-gpu-py37-cu110-ubuntu18.04" == pt_new_version
+    )
