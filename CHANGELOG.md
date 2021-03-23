@@ -1,5 +1,16 @@
 # Changelog
 
+## v2.31.1 (2021-03-23)
+
+### Bug Fixes and Other Changes
+
+ * added documentation for Hugging Face Estimator
+ * mark HuggingFace tests as release tests
+
+### Documentation Changes
+
+ * adding version 1.1.0 docs for smdistributed.dataparallel
+
 ## v2.31.0 (2021-03-23)
 
 ### Features
