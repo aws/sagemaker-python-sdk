@@ -1,5 +1,17 @@
 # Changelog
 
+## v2.31.0 (2021-03-23)
+
+### Features
+
+ * add HuggingFace framework estimator
+ * update TF framework version support
+ * Support all processor types in ProcessingStep
+
+### Bug Fixes and Other Changes
+
+ * Add pipelines functions.
+
 ## v2.30.0 (2021-03-17)
 
 ### Features
