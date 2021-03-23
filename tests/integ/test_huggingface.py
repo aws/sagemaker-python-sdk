@@ -14,11 +14,14 @@ from __future__ import absolute_import
 
 import os
 
+import pytest
+
 from sagemaker.huggingface import HuggingFace
 from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.timeout import timeout
 
 
+@pytest.mark.release
 def test_huggingface_training(
     sagemaker_session,
     gpu_instance_type,
