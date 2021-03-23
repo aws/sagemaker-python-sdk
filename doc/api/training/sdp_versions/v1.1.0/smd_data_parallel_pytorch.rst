@@ -8,7 +8,6 @@ PyTorch Guide to SageMaker's distributed data parallel library
    - :ref:`pytorch-sdp-api`
 
 .. _pytorch-sdp-modify:
-   :noindex:
 
 Modify a PyTorch training script to use SageMaker data parallel
 ======================================================================
@@ -150,18 +149,16 @@ you will have for distributed training with the distributed data parallel librar
 
 
 .. _pytorch-sdp-api:
-   :noindex:
 
 PyTorch API
 ===========
 
 **Supported versions:**
 
--  PyTorch 1.6.0
+-  PyTorch 1.6.0, 1.8.0
 
 
 .. function:: smdistributed.dataparallel.torch.distributed.is_available()
-   :noindex:
 
    Check if script started as a distributed job. For local runs user can
    check that is_available returns False and run the training script
@@ -177,7 +174,6 @@ PyTorch API
 
 
 .. function:: smdistributed.dataparallel.torch.distributed.init_process_group(*args, **kwargs)
-   :noindex:
 
    Initialize ``smdistributed.dataparallel``. Must be called at the
    beginning of the training script, before calling any other methods.
@@ -202,7 +198,6 @@ PyTorch API
 
 
 .. function:: smdistributed.dataparallel.torch.distributed.is_initialized()
-   :noindex:
 
    Checks if the default process group has been initialized.
 
@@ -216,7 +211,6 @@ PyTorch API
 
 
 .. function:: smdistributed.dataparallel.torch.distributed.get_world_size(group=smdistributed.dataparallel.torch.distributed.group.WORLD)
-   :noindex:
 
    The total number of GPUs across all the nodes in the cluster. For
    example, in a 8 node cluster with 8 GPU each, size will be equal to 64.
@@ -236,7 +230,6 @@ PyTorch API
 
 
 .. function:: smdistributed.dataparallel.torch.distributed.get_rank(group=smdistributed.dataparallel.torch.distributed.group.WORLD)
-   :noindex:
 
    The rank of the node in the cluster. The rank ranges from 0 to number of
    nodes - 1. This is similar to MPI's World Rank.
@@ -256,7 +249,6 @@ PyTorch API
 
 
 .. function:: smdistributed.dataparallel.torch.distributed.get_local_rank()
-   :noindex:
 
    Local rank refers to the relative rank of
    the ``smdistributed.dataparallel`` process within the node the current
@@ -275,7 +267,6 @@ PyTorch API
 
 
 .. function:: smdistributed.dataparallel.torch.distributed.all_reduce(tensor, op=smdistributed.dataparallel.torch.distributed.ReduceOp.SUM, group=smdistributed.dataparallel.torch.distributed.group.WORLD, async_op=False)
-   :noindex:
 
    Performs an all-reduce operation on a tensor (torch.tensor) across
    all ``smdistributed.dataparallel`` workers
@@ -320,7 +311,6 @@ PyTorch API
 
 
 .. function:: smdistributed.dataparallel.torch.distributed.broadcast(tensor, src=0, group=smdistributed.dataparallel.torch.distributed.group.WORLD, async_op=False)
-   :noindex:
 
    Broadcasts the tensor (torch.tensor) to the whole group.
 
@@ -345,7 +335,6 @@ PyTorch API
 
 
 .. function:: smdistributed.dataparallel.torch.distributed.all_gather(tensor_list, tensor, group=smdistributed.dataparallel.torch.distributed.group.WORLD, async_op=False)
-   :noindex:
 
    Gathers tensors from the whole group in a list.
 
@@ -372,7 +361,6 @@ PyTorch API
 
 
 .. function:: smdistributed.dataparallel.torch.distributed.all_to_all_single(output_t, input_t, output_split_sizes=None, input_split_sizes=None, group=group.WORLD, async_op=False)
-   :noindex:
 
    Each process scatters input tensor to all processes in a group and return gathered tensor in output.
 
@@ -397,7 +385,6 @@ PyTorch API
 
 
 .. function:: smdistributed.dataparallel.torch.distributed.barrier(group=smdistributed.dataparallel.torch.distributed.group.WORLD, async_op=False)
-   :noindex:
 
    Synchronizes all ``smdistributed.dataparallel`` processes.
 
@@ -423,7 +410,6 @@ PyTorch API
 
 
 .. class:: smdistributed.dataparallel.torch.parallel.DistributedDataParallel(module, device_ids=None, output_device=None, broadcast_buffers=True, process_group=None, bucket_cap_mb=None)
-   :noindex:
 
    ``smdistributed.dataparallel's`` implementation of distributed data
    parallelism for PyTorch. In most cases, wrapping your PyTorch Module
@@ -517,7 +503,6 @@ PyTorch API
 
 
 .. class:: smdistributed.dataparallel.torch.distributed.ReduceOp
-   :noindex:
 
    An enum-like class for supported reduction operations
    in ``smdistributed.dataparallel``.
