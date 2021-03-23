@@ -8,7 +8,6 @@ TensorFlow Guide to SageMaker's distributed data parallel library
    - :ref:`tensorflow-sdp-api`
 
 .. _tensorflow-sdp-modify:
-   :noindex:
 
 Modify a TensorFlow 2.x training script to use SageMaker data parallel
 ======================================================================
@@ -151,7 +150,6 @@ script you will have for distributed training with the library.
 
 
 .. _tensorflow-sdp-api:
-   :noindex:
 
 TensorFlow API
 ==============
@@ -162,7 +160,6 @@ TensorFlow API
 
 
 .. function:: smdistributed.dataparallel.tensorflow.init()
-   :noindex:
 
    Initialize ``smdistributed.dataparallel``. Must be called at the
    beginning of the training script.
@@ -186,7 +183,6 @@ TensorFlow API
 
 
 .. function:: smdistributed.dataparallel.tensorflow.size()
-   :noindex:
 
    The total number of GPUs across all the nodes in the cluster. For
    example, in a 8 node cluster with 8 GPUs each, ``size`` will be equal
@@ -204,7 +200,6 @@ TensorFlow API
 
 
 .. function:: smdistributed.dataparallel.tensorflow.local_size()
-   :noindex:
 
    The total number of GPUs on a node. For example, on a node with 8
    GPUs, ``local_size`` will be equal to 8.
@@ -219,7 +214,6 @@ TensorFlow API
 
 
 .. function:: smdistributed.dataparallel.tensorflow.rank()
-   :noindex:
 
    The rank of the node in the cluster. The rank ranges from 0 to number of
    nodes - 1. This is similar to MPI's World Rank.
@@ -234,7 +228,6 @@ TensorFlow API
 
 
 .. function:: smdistributed.dataparallel.tensorflow.local_rank()
-   :noindex:
 
    Local rank refers to the relative rank of the
    GPUs’ ``smdistributed.dataparallel`` processes within the node. For
@@ -253,7 +246,6 @@ TensorFlow API
 
 
 .. function:: smdistributed.dataparallel.tensorflow.allreduce(tensor, param_index, num_params, compression=Compression.none, op=ReduceOp.AVERAGE)
-   :noindex:
 
    Performs an all-reduce operation on a tensor (``tf.Tensor``).
 
@@ -281,7 +273,6 @@ TensorFlow API
 
 
 .. function:: smdistributed.dataparallel.tensorflow.broadcast_global_variables(root_rank)
-   :noindex:
 
    Broadcasts all global variables from root rank to all other processes.
 
@@ -296,7 +287,6 @@ TensorFlow API
 
 
 .. function:: smdistributed.dataparallel.tensorflow.broadcast_variables(variables, root_rank)
-   :noindex:
 
    Applicable for TensorFlow 2.x only.
    ​
@@ -319,7 +309,6 @@ TensorFlow API
 
 
 .. function:: smdistributed.dataparallel.tensorflow.oob_allreduce(tensor, compression=Compression.none, op=ReduceOp.AVERAGE)
-   :noindex:
 
    OutOfBand (oob) AllReduce is simplified AllReduce function for use cases
    such as calculating total loss across all the GPUs in the training.
@@ -353,7 +342,6 @@ TensorFlow API
 
 
 .. function:: smdistributed.dataparallel.tensorflow.overlap(tensor)
-   :noindex:
 
    This function is applicable only for models compiled with XLA. Use this
    function to enable ``smdistributed.dataparallel`` to efficiently
@@ -391,7 +379,6 @@ TensorFlow API
 
 
 .. function:: smdistributed.dataparallel.tensorflow.broadcast(tensor, root_rank)
-   :noindex:
 
    Broadcasts the input tensor on root rank to the same input tensor on all
    other ``smdistributed.dataparallel`` processes.
@@ -412,7 +399,6 @@ TensorFlow API
 
 
 .. function:: smdistributed.dataparallel.tensorflow.shutdown()
-   :noindex:
 
    Shuts down ``smdistributed.dataparallel``. Optional to call at the end
    of the training script.
@@ -427,7 +413,6 @@ TensorFlow API
 
 
 .. function:: smdistributed.dataparallel.tensorflow.DistributedOptimizer
-   :noindex:
 
    Applicable if you use the ``tf.estimator`` API in TensorFlow 2.x (2.3.1).
    ​
@@ -468,7 +453,6 @@ TensorFlow API
 
 
 .. function:: smdistributed.dataparallel.tensorflow.DistributedGradientTape
-   :noindex:
 
    Applicable to TensorFlow 2.x only.
 
@@ -504,7 +488,6 @@ TensorFlow API
 
 
 .. function:: smdistributed.dataparallel.tensorflow.BroadcastGlobalVariablesHook
-   :noindex:
 
    Applicable if you use the ``tf.estimator`` API in TensorFlow 2.x (2.3.1).
 
@@ -533,7 +516,6 @@ TensorFlow API
 
 
 .. function:: smdistributed.dataparallel.tensorflow.Compression
-   :noindex:
 
    Optional Gradient Compression algorithm that can be used in AllReduce
    operation.
@@ -545,7 +527,6 @@ TensorFlow API
 
 
 .. function:: smdistributed.dataparallel.tensorflow.ReduceOp
-   :noindex:
 
    Supported reduction operations in ``smdistributed.dataparallel``.
 
