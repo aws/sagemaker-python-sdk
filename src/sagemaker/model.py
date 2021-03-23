@@ -651,9 +651,9 @@ class Model(object):
         job_status = self.sagemaker_session.wait_for_compilation_job(job_name)
         self.model_data = job_status["ModelArtifacts"]["S3ModelArtifacts"]
         if target_instance_family is not None:
-            if target_instance_family is "ml_eia2":
+            if target_instance_family == "ml_eia2":
                 LOGGER.info("You are using ml_eia2 target device....")
-            elif (target_instance_family is not "ml_eia2") and target_instance_family.startswith("ml_"):
+            elif (target_instance_family != "ml_eia2") and target_instance_family.startswith("ml_"):
                 self.image_uri = self._compilation_image_uri(
                     self.sagemaker_session.boto_region_name,
                     target_instance_family,
