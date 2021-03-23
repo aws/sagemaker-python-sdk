@@ -1,6 +1,6 @@
 
-Version 1.0.0 (Latest)
-======================
+Version 1.0.0
+=============
 
 .. toctree::
    :maxdepth: 1
