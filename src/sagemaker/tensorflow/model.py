@@ -108,6 +108,7 @@ class TensorFlowPredictor(Predictor):
 
 class TensorFlowModel(sagemaker.model.FrameworkModel):
     """A ``FrameworkModel`` implementation for inference with TensorFlow Serving."""
+    """revise comment"""
 
     _framework_name = "tensorflow"
     LOG_LEVEL_PARAM_NAME = "SAGEMAKER_TFS_NGINX_LOGLEVEL"
