@@ -156,7 +156,7 @@ def tfs_trt_predictor_with_accelerator(
             sagemaker_session=sagemaker_session,
             name=endpoint_name,
         )
-        data_shape = {"input":[1,224,224,3]}
+        data_shape = {"input": [1, 224, 224, 3]}
         tfs_eia_compilation_job_name = "tfs_eia_compilation_job_name"
         compiled_model_path = "s3://{}/{}/output".format(bucket, tfs_eia_compilation_job_name)
         compiled_model = model.compile(
