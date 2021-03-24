@@ -291,8 +291,8 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
         """Return true if TF version is EIA enabled"""
         framework_version = [int(s) for s in self.framework_version.split(".")][:2]
         return (
-            framework_version != [2,1]
-            and framework_version != [2,2]
+            framework_version != [2,1] 
+            and framework_version != [2,2] 
             and framework_version <= self.LATEST_EIA_VERSION
         )
 
