@@ -118,7 +118,7 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
         logging.ERROR: "error",
         logging.CRITICAL: "crit",
     }
-    LATEST_EIA_VERSION = [2, 0]
+    LATEST_EIA_VERSION = [2, 3]
 
     def __init__(
         self,
