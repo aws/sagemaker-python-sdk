@@ -205,7 +205,7 @@ def test_trt_predict_with_accelerator(tfs_predictor_with_accelerator):
     # expected_result = {"predictions": [3.5, 4.0, 5.5]}
     import numpy as np
     import matplotlib.image as mpimg
-    path=os.path.join(tests.integ.DATA_DIR, "cuteCat.jpg")
+    path = os.path.join(tests.integ.DATA_DIR, "cuteCat.jpg")
     img = mpimg.imread(path)
     img = np.resize(img, (299, 299, 3))
     img = np.expand_dims(img, axis=0)
