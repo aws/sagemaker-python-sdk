@@ -58,6 +58,7 @@ FRAMEWORKS_FOR_GENERATED_VERSION_FIXTURES = (
     "vw",
     "xgboost",
     "spark",
+    "huggingface",
 )
 
 
@@ -190,6 +191,14 @@ def pytorch_inference_py_version(pytorch_inference_version, request):
 
 
 @pytest.fixture(scope="module")
+def huggingface_pytorch_version(huggingface_training_version):
+    if Version(huggingface_training_version) <= Version("4.4.2"):
+        return "1.6.0"
+    else:
+        pytest.skip("Skipping Huggingface version.")
+
+
+@pytest.fixture(scope="module")
 def pytorch_eia_py_version():
     return "py3"
 
@@ -238,17 +247,21 @@ def tensorflow_training_py_version(tensorflow_training_version, request):
 @pytest.fixture(scope="module", params=["py2", "py3"])
 def tensorflow_inference_py_version(tensorflow_inference_version, request):
     version = Version(tensorflow_inference_version)
-    if version == Version("1.15.4"):
+    if version == Version("1.15") or Version("1.15.4") <= version < Version("1.16"):
         return "py36"
     return _tf_py_version(tensorflow_inference_version, request)
 
 
 def _tf_py_version(tf_version, request):
     version = Version(tf_version)
-    if Version("1.15") <= version <= Version("1.15.4"):
+    if version == Version("1.15") or Version("1.15.4") <= version < Version("1.16"):
         return "py3"
     if version < Version("1.11"):
         return "py2"
+    if version == Version("2.0") or Version("2.0.3") <= version < Version("2.1"):
+        return "py3"
+    if version == Version("2.1") or Version("2.1.2") <= version < Version("2.2"):
+        return "py3"
     if version < Version("2.2"):
         return request.param
     return "py37"

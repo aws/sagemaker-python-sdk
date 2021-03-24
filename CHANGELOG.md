@@ -1,5 +1,40 @@
 # Changelog
 
+## v2.31.1 (2021-03-23)
+
+### Bug Fixes and Other Changes
+
+ * added documentation for Hugging Face Estimator
+ * mark HuggingFace tests as release tests
+
+### Documentation Changes
+
+ * adding version 1.1.0 docs for smdistributed.dataparallel
+
+## v2.31.0 (2021-03-23)
+
+### Features
+
+ * add HuggingFace framework estimator
+ * update TF framework version support
+ * Support all processor types in ProcessingStep
+
+### Bug Fixes and Other Changes
+
+ * Add pipelines functions.
+
+## v2.30.0 (2021-03-17)
+
+### Features
+
+ * add support for PyTorch 1.8.0
+ * Allow users to send custom attributes to the model endpoint
+
+### Bug Fixes and Other Changes
+
+ * use ResolvedOutputS3Uir for Hive DDL LOCATION
+ * Do lazy initialization in predictor
+
 ## v2.29.2 (2021-03-11)
 
 ### Bug Fixes and Other Changes

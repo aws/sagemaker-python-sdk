@@ -142,8 +142,7 @@ def create_table_ddl():
         "  STORED AS\n"
         "  INPUTFORMAT 'parquet.hive.DeprecatedParquetInputFormat'\n"
         "  OUTPUTFORMAT 'parquet.hive.DeprecatedParquetOutputFormat'\n"
-        "LOCATION 's3://sagemaker-test-featurestore-{region}-{account}"
-        "/{account}/sagemaker/us-east-2/offline-store/{feature_group_name}'"
+        "LOCATION '{resolved_output_s3_uri}'"
     )
 
 
@@ -191,6 +190,12 @@ def test_create_feature_store(
         )
         _wait_for_feature_group_create(feature_group)
 
+        resolved_output_s3_uri = (
+            feature_group.describe()
+            .get("OfflineStoreConfig")
+            .get("S3StorageConfig")
+            .get("ResolvedOutputS3Uri")
+        )
         # Ingest data
         feature_group.put_record(record=record)
         ingestion_manager = feature_group.ingest(
@@ -225,6 +230,7 @@ def test_create_feature_store(
                 feature_group_name=feature_group_name,
                 region=feature_store_session.boto_session.region_name,
                 account=feature_store_session.account_id(),
+                resolved_output_s3_uri=resolved_output_s3_uri,
             )
             == feature_group.as_hive_ddl()
         )
