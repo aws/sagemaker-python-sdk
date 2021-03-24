@@ -142,15 +142,6 @@ def test_tfs_model_image_accelerator_not_supported(sagemaker_session):
 
     model.deploy(instance_type="ml.c4.xlarge", initial_instance_count=1)
 
-    with pytest.raises(AttributeError) as e:
-        model.deploy(
-            instance_type="ml.c4.xlarge",
-            accelerator_type="ml.eia1.medium",
-            initial_instance_count=1,
-        )
-
-    assert str(e.value) == "The TensorFlow version 2.1 doesn't support EIA."
-
 
 def test_tfs_model_with_log_level(sagemaker_session, tensorflow_inference_version):
     model = TensorFlowModel(
