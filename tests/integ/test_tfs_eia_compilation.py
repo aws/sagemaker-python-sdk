@@ -56,7 +56,7 @@ def test_compile_and_deploy_with_accelerator(
             model_data=model_data,
             role="SageMakerRole",
             framework_version=tfs_eia_latest_version,
-            py_version=tfs_eia_latest_py_version
+            py_version=tfs_eia_latest_py_version,
             sagemaker_session=sagemaker_session,
             name=endpoint_name,
         )
