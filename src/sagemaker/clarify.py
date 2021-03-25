@@ -121,10 +121,6 @@ class BiasConfig:
         """Returns part of an analysis config dictionary."""
         return copy.deepcopy(self.analysis_config)
 
-    def get_config(self):
-        """Returns part of an analysis config dictionary."""
-        return copy.deepcopy(self.analysis_config)
-
 
 class ModelConfig:
     """Config object related to a model and its endpoint to be created."""
