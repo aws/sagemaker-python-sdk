@@ -138,6 +138,42 @@ def tfs_predictor_with_accelerator(
         yield predictor
 
 
+@pytest.fixture(scope="module")
+def tfs_trt_predictor_with_accelerator(
+    sagemaker_session, tensorflow_eia_latest_version, cpu_instance_type
+):
+    endpoint_name = sagemaker.utils.unique_name_from_base("sagemaker-tensorflow-serving")
+    model_data = sagemaker_session.upload_data(
+        path=os.path.join(tests.integ.DATA_DIR, "tensorflow-serving-test-model.tar.gz"),
+        key_prefix="tensorflow-serving/compiledmodels",
+    )
+    bucket = sagemaker_session.default_bucket()
+    with tests.integ.timeout.timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
+        model = TensorFlowModel(
+            model_data=model_data,
+            role="SageMakerRole",
+            framework_version=tensorflow_eia_latest_version,
+            sagemaker_session=sagemaker_session,
+            name=endpoint_name,
+        )
+        data_shape = {"input": [1, 224, 224, 3]}
+        tfs_eia_compilation_job_name = "tfs_eia_compilation_job_name"
+        compiled_model_path = "s3://{}/{}/output".format(bucket, tfs_eia_compilation_job_name)
+        compiled_model = model.compile(
+            target_instance_family='ml_eia2',
+            input_shape=data_shape,
+            output_path=compiled_model_path,
+            role="SageMakerRole",
+            job_name=tfs_eia_compilation_job_name,
+            framework='tensorflow',
+            framework_version='2.3'
+        )
+        predictor = compiled_model.deploy(
+            1, cpu_instance_type, endpoint_name=endpoint_name, accelerator_type="ml.eia2.large"
+        )
+        yield predictor
+
+
 @pytest.mark.release
 def test_predict(tfs_predictor):
     input_data = {"instances": [1.0, 2.0, 5.0]}
@@ -158,6 +194,23 @@ def test_predict_with_accelerator(tfs_predictor_with_accelerator):
 
     result = tfs_predictor_with_accelerator.predict(input_data)
     assert expected_result == result
+
+
+@pytest.mark.skipif(
+    tests.integ.test_region() not in tests.integ.EI_SUPPORTED_REGIONS,
+    reason="EI is not supported in region {}".format(tests.integ.test_region()),
+)
+@pytest.mark.release
+def test_trt_predict_with_accelerator(tfs_predictor_with_accelerator):
+    import numpy as np
+    import matplotlib.image as mpimg
+    path = os.path.join(tests.integ.DATA_DIR, "cuteCat.jpg")
+    img = mpimg.imread(path)
+    img = np.resize(img, (299, 299, 3))
+    img = np.expand_dims(img, axis=0)
+    input_data = {"inputs": img}
+    result = tfs_trt_predictor_with_accelerator.predict(input_data)
+    print("trt predictor result is: " + result)
 
 
 @pytest.mark.local_mode
