@@ -17,11 +17,15 @@ import os
 import pytest
 
 from sagemaker.huggingface import HuggingFace
+from tests import integ
 from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.timeout import timeout
 
 
 @pytest.mark.release
+@pytest.mark.skipif(
+    integ.test_region() in integ.TRAINING_NO_P2_REGIONS, reason="no ml.p2 instances in this region"
+)
 def test_huggingface_training(
     sagemaker_session,
     gpu_instance_type,
