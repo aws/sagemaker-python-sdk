@@ -12,12 +12,9 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-import tarfile
 
-import botocore.exceptions
 import os
 
-import pytest
 import sagemaker
 import sagemaker.predictor
 import sagemaker.utils
@@ -25,9 +22,7 @@ import tests.integ
 import tests.integ.timeout
 import numpy as np
 import matplotlib.image as mpimg
-from sagemaker.deserializers import JSONDeserializer
-from sagemaker.tensorflow.model import TensorFlowModel, TensorFlowPredictor
-from sagemaker.serializers import CSVSerializer, IdentitySerializer
+from sagemaker.tensorflow.model import TensorFlowModel
 from tests.integ import (
     DATA_DIR,
 )
@@ -39,7 +34,7 @@ INFERENCE_IMAGE = os.path.join(DATA_DIR, "cuteCat.jpg")
 
 def test_compile_and_deploy_with_accelerator(
     sagemaker_session,
-    tfs_eia_cpu_instance_type, 
+    tfs_eia_cpu_instance_type,
     tfs_eia_latest_version,
     tfs_eia_latest_py_version,
     tfs_eia_target_device,
@@ -74,10 +69,11 @@ def test_compile_and_deploy_with_accelerator(
         predictor = compiled_model.deploy(
             1, tfs_eia_cpu_instance_type, endpoint_name=endpoint_name, accelerator_type="ml.eia2.large"
         )
-   
+
         image_path = os.path.join(tests.integ.DATA_DIR, "cuteCat.jpg")
         img = mpimg.imread(image_path)
         img = np.resize(img, (224, 224, 3))
         img = np.expand_dims(img, axis=0)
         input_data = {"inputs": img}
         result = predictor.predict(input_data)
+        print("result", result)
