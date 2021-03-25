@@ -46,7 +46,7 @@ def test_compile_and_deploy_with_accelerator(
         key_prefix="tensorflow-serving/compiledmodels",
     )
     bucket = sagemaker_session.default_bucket()
-    with tests.integ.timeout.timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         model = TensorFlowModel(
             model_data=model_data,
             role="SageMakerRole",
