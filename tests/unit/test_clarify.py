@@ -92,6 +92,7 @@ def test_model_config():
     accept_type = "text/csv"
     content_type = "application/jsonlines"
     custom_attributes = "c000b4f9-df62-4c85-a0bf-7c525f9104a4"
+    accelerator_type = "ml.eia1.medium"
     model_config = ModelConfig(
         model_name=model_name,
         instance_type=instance_type,
@@ -99,6 +100,7 @@ def test_model_config():
         accept_type=accept_type,
         content_type=content_type,
         custom_attributes=custom_attributes,
+        accelerator_type=accelerator_type,
     )
     expected_config = {
         "model_name": model_name,
@@ -107,6 +109,7 @@ def test_model_config():
         "accept_type": accept_type,
         "content_type": content_type,
         "custom_attributes": custom_attributes,
+        "accelerator_type": accelerator_type,
     }
     assert expected_config == model_config.get_predictor_config()
 
