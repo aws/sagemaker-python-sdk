@@ -1495,7 +1495,7 @@ python {entry_point} "$@"
         dependencies: Optional[List[str]],
         git_config: Optional[Dict[str, str]],
         job_name: str,
-    ) -> "sagemaker.estimator.Framework":
+    ) -> "sagemaker.estimator.Framework":  # type: ignore[name-defined]   # noqa: F821
         # A new estimator instance is required, because each call to ScriptProcessor.run() can
         # use different codes.
         estimator = self.estimator_cls(
