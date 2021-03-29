@@ -1358,7 +1358,7 @@ python {entry_point} "$@"
     def run(  # type: ignore[override]
         self,
         entry_point: str,
-        source_dir: Optional[str],
+        source_dir: Optional[str] = None,
         dependencies: Optional[List[str]] = None,
         git_config: Optional[Dict[str, str]] = None,
         inputs: Optional[List[ProcessingInput]] = None,
@@ -1381,7 +1381,7 @@ python {entry_point} "$@"
                 with any other training source code dependencies aside from the entry
                 point file (default: None). If ``source_dir`` is an S3 URI, it must
                 point to a tar.gz file. Structure within this directory are preserved
-                when training on Amazon SageMaker.
+                when training on Amazon SageMaker (default: None).
             dependencies (list[str]): A list of paths to directories (absolute
                 or relative) with any additional libraries that will be exported
                 to the container (default: []). The library folders will be
