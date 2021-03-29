@@ -25,7 +25,7 @@ import logging
 
 from six.moves.urllib.parse import urlparse
 from six.moves.urllib.request import url2pathname
-from typing import Any, Dict, List, Optional, Tuple, Type
+from typing import Dict, List, Optional, Tuple
 
 from sagemaker import s3
 from sagemaker.job import _Job
@@ -1231,23 +1231,23 @@ python {entry_point} "$@"
     # Added new (kw)args for estimator. The rest are from ScriptProcessor with same defaults.
     def __init__(
         self,
-        estimator_cls: Type[Framework],  # New arg
-        framework_version: str,  # New arg
-        s3_prefix: str,  # New arg
-        role: str,
-        instance_count: int,
-        instance_type: str,
-        py_version: str = "py3",  # New kwarg
-        image_uri: Optional[str] = None,
-        volume_size_in_gb: int = 30,
-        volume_kms_key: Optional[str] = None,
-        output_kms_key: Optional[str] = None,
-        max_runtime_in_seconds: Optional[int] = None,
-        base_job_name: Optional[str] = None,
-        sagemaker_session: Optional[Session] = None,
-        env: Optional[Dict[str, str]] = None,
-        tags: Optional[List[Dict[str, Any]]] = None,
-        network_config: Optional[NetworkConfig] = None,
+        estimator_cls,  # New arg
+        framework_version,  # New arg
+        s3_prefix,  # New arg
+        role,
+        instance_count,
+        instance_type,
+        py_version="py3",  # New kwarg
+        image_uri=None,
+        volume_size_in_gb=30,
+        volume_kms_key=None,
+        output_kms_key=None,
+        max_runtime_in_seconds=None,
+        base_job_name=None,
+        sagemaker_session=None,
+        env=None,
+        tags=None,
+        network_config=None,
     ):
         """Initializes a ``FrameworkProcessor`` instance.
 
@@ -1256,7 +1256,8 @@ python {entry_point} "$@"
         to be run as part of the Processing Job.
 
         Args:
-            estimator_cls (type): A subclass of ``Framework`` estimator
+            estimator_cls (type): A subclass of the :class:`~sagemaker.network.NetworkConfig`
+                estimator
             framework_version (str): The version of the framework
             s3_prefix (str): The S3 prefix URI where custom code will be
                 uploaded - don't include a trailing slash since a string prepended
@@ -1271,7 +1272,7 @@ python {entry_point} "$@"
                 model training code. One of 'py2' or 'py3'. Defaults to 'py3'. Value
                 is ignored when ``image_uri`` is provided.
             image_uri (str): The URI of the Docker image to use for the
-                processing jobs.
+                processing jobs (default: None).
             volume_size_in_gb (int): Size in GB of the EBS volume
                 to use for storing data during processing (default: 30).
             volume_kms_key (str): A KMS key for the processing volume (default: None).
@@ -1282,11 +1283,11 @@ python {entry_point} "$@"
                 specified, the default value is 24 hours.
             base_job_name (str): Prefix for processing name. If not specified,
                 the processor generates a default job name, based on the
-                processing image name and current timestamp.
+                processing image name and current timestamp (default: None).
             sagemaker_session (:class:`~sagemaker.session.Session`):
                 Session object which manages interactions with Amazon SageMaker and
                 any other AWS services needed. If not specified, the processor creates
-                one using the default AWS configuration chain.
+                one using the default AWS configuration chain (default: None).
             env (dict[str, str]): Environment variables to be passed to
                 the processing jobs (default: None).
             tags (list[dict]): List of tags to be passed to the processing job
@@ -1295,7 +1296,7 @@ python {entry_point} "$@"
             network_config (:class:`~sagemaker.network.NetworkConfig`):
                 A :class:`~sagemaker.network.NetworkConfig`
                 object that configures network isolation, encryption of
-                inter-container traffic, security group IDs, and subnets.
+                inter-container traffic, security group IDs, and subnets (default: None).
         """
         self.estimator_cls = estimator_cls
         self.framework_version = framework_version
@@ -1357,18 +1358,18 @@ python {entry_point} "$@"
 
     def run(  # type: ignore[override]
         self,
-        entry_point: str,
-        source_dir: Optional[str] = None,
-        dependencies: Optional[List[str]] = None,
-        git_config: Optional[Dict[str, str]] = None,
-        inputs: Optional[List[ProcessingInput]] = None,
-        outputs: Optional[List[ProcessingOutput]] = None,
-        arguments: Optional[List[str]] = None,
-        wait: bool = True,
-        logs: bool = True,
-        job_name: Optional[str] = None,
-        experiment_config: Optional[Dict[str, str]] = None,
-        kms_key: Optional[str] = None,
+        entry_point,
+        source_dir=None,
+        dependencies=None,
+        git_config=None,
+        inputs=None,
+        outputs=None,
+        arguments=None,
+        wait=True,
+        logs=True,
+        job_name=None,
+        experiment_config=None,
+        kms_key=None,
     ):
         """Runs a processing job.
 
@@ -1388,7 +1389,7 @@ python {entry_point} "$@"
                 copied to SageMaker in the same folder where the entrypoint is
                 copied. If 'git_config' is provided, 'dependencies' should be a
                 list of relative locations to directories with any additional
-                libraries needed in the Git repo.
+                libraries needed in the Git repo (default: None).
             git_config (dict[str, str]): Git configurations used for cloning
                 files, including ``repo``, ``branch``, ``commit``,
                 ``2FA_enabled``, ``username``, ``password`` and ``token``. The
