@@ -17,9 +17,13 @@ data validation, and model evaluation and interpretation on SageMaker.
 """
 from __future__ import absolute_import
 
-from sagemaker import image_uris, Session
-from sagemaker.processing import ScriptProcessor
+from typing import Any, Dict, List, Optional
+
+from sagemaker import Session, image_uris
+from sagemaker.network import NetworkConfig
+from sagemaker.processing import FrameworkProcessor, ScriptProcessor
 from sagemaker.sklearn import defaults
+from sagemaker.sklearn.estimator import SKLearn
 
 
 class SKLearnProcessor(ScriptProcessor):
@@ -106,4 +110,65 @@ class SKLearnProcessor(ScriptProcessor):
             env=env,
             tags=tags,
             network_config=network_config,
+        )
+
+
+class SKLearnProcessorAlt(FrameworkProcessor):
+    """Handles Amazon SageMaker processing tasks for jobs using scikit-learn containers."""
+
+    estimator_cls = SKLearn
+
+    def __init__(
+        self,
+        framework_version: str,  # New arg
+        s3_prefix: str,  # New arg
+        role: str,
+        instance_count: int,
+        instance_type: str,
+        py_version: str = "py3",  # New kwarg
+        image_uri: Optional[str] = None,
+        volume_size_in_gb: int = 30,
+        volume_kms_key: Optional[str] = None,
+        output_kms_key: Optional[str] = None,
+        max_runtime_in_seconds: Optional[int] = None,
+        base_job_name: Optional[str] = None,
+        sagemaker_session: Optional[Session] = None,
+        env: Optional[Dict[str, str]] = None,
+        tags: Optional[List[Dict[str, Any]]] = None,
+        network_config: Optional[NetworkConfig] = None,
+    ):
+        """This processor executes a Python script in a scikit-learn execution environment.
+
+        This class has an 'Alt' suffix to denote it as an alternative to built-in
+        ``sagemaker.sklearn.processing.SKLearnProcessor``.
+
+        Unless ``image_uri`` is specified, the scikit-learn environment is an
+        Amazon-built Docker container that executes functions defined in the supplied
+        ``entry_point`` Python script.
+
+        The arguments have the exact same meaning as in ``FrameworkProcessor``.
+
+        .. tip::
+
+            You can find additional parameters for initializing this class at
+            :class:`~smallmatter.ds.FrameworkProcessor`.
+        """
+        super().__init__(
+            self.estimator_cls,
+            framework_version,
+            s3_prefix,
+            role,
+            instance_count,
+            instance_type,
+            py_version,
+            image_uri,
+            volume_size_in_gb,
+            volume_kms_key,
+            output_kms_key,
+            max_runtime_in_seconds,
+            base_job_name,
+            sagemaker_session,
+            env,
+            tags,
+            network_config,
         )
