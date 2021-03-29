@@ -38,7 +38,6 @@ from sagemaker.workflow.parameters import Parameter
 from sagemaker.workflow.entities import Expression
 from sagemaker.dataset_definition.inputs import S3Input, DatasetDefinition
 from sagemaker.apiutils._base_types import ApiObject
-from sagemaker.estimator import Framework
 from sagemaker.s3 import S3Uploader
 
 
@@ -1256,7 +1255,7 @@ python {entry_point} "$@"
         to be run as part of the Processing Job.
 
         Args:
-            estimator_cls (type): A subclass of the :class:`~sagemaker.network.NetworkConfig`
+            estimator_cls (type): A subclass of the :class:`~sagemaker.estimator.Framework`
                 estimator
             framework_version (str): The version of the framework
             s3_prefix (str): The S3 prefix URI where custom code will be
@@ -1496,7 +1495,7 @@ python {entry_point} "$@"
         dependencies: Optional[List[str]],
         git_config: Optional[Dict[str, str]],
         job_name: str,
-    ) -> Framework:
+    ) -> "sagemaker.estimator.Framework":
         # A new estimator instance is required, because each call to ScriptProcessor.run() can
         # use different codes.
         estimator = self.estimator_cls(
