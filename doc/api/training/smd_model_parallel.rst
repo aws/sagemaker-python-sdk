@@ -34,6 +34,7 @@ Select a version to see the API documentation for version. To use the library, r
 .. toctree::
    :maxdepth: 1
 
+   smp_versions/v1_3_0.rst
    smp_versions/v1_2_0.rst
    smp_versions/v1_1_0.rst
 

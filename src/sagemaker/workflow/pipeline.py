@@ -83,7 +83,7 @@ class Pipeline(Entity):
 
         Args:
             role_arn (str): The role arn that is assumed by the pipeline to create step artifacts.
-            pipeline_description (str): A description of the pipeline.
+            description (str): A description of the pipeline.
             experiment_name (str): The name of the experiment.
             tags (List[Dict[str, str]]): A list of {"Key": "string", "Value": "string"} dicts as
                 tags.

@@ -1,5 +1,21 @@
 # Changelog
 
+## v2.32.0 (2021-03-26)
+
+### Features
+
+ * upgrade neo mxnet to 1.8
+ * Enable Profiler in China Regions
+
+### Bug Fixes and Other Changes
+
+ * use workflow parameters in training hyperparameters (#2114) (#2115)
+ * skip HuggingFace tests in regions without p2 instances
+
+### Documentation Changes
+
+ * add Feature Store methods docs
+
 ## v2.31.1 (2021-03-23)
 
 ### Bug Fixes and Other Changes

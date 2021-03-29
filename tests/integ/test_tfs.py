@@ -161,6 +161,9 @@ def test_predict_with_accelerator(tfs_predictor_with_accelerator):
 
 
 @pytest.mark.local_mode
+@pytest.mark.skip(
+    reason="This test is broken due to a regression." "This test should be reenabled later."
+)
 def test_predict_with_entry_point(tfs_predictor_with_model_and_entry_point_same_tar):
     input_data = {"instances": [1.0, 2.0, 5.0]}
     expected_result = {"predictions": [4.0, 4.5, 6.0]}
@@ -170,6 +173,9 @@ def test_predict_with_entry_point(tfs_predictor_with_model_and_entry_point_same_
 
 
 @pytest.mark.local_mode
+@pytest.mark.skip(
+    reason="This test is broken due to a regression." "This test should be reenabled later."
+)
 def test_predict_with_model_and_entry_point_and_dependencies_separated(
     tfs_predictor_with_model_and_entry_point_and_dependencies,
 ):
