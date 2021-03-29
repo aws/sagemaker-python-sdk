@@ -289,7 +289,12 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
 
     def _eia_supported(self):
         """Return true if TF version is EIA enabled"""
-        return [int(s) for s in self.framework_version.split(".")][:2] <= self.LATEST_EIA_VERSION
+        framework_version = [int(s) for s in self.framework_version.split(".")][:2]
+        return (
+            framework_version != [2, 1]
+            and framework_version != [2, 2]
+            and framework_version <= self.LATEST_EIA_VERSION
+        )
 
     def prepare_container_def(self, instance_type=None, accelerator_type=None):
         """Prepare the container definition.
