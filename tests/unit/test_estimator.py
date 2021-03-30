@@ -122,12 +122,7 @@ DISTRIBUTION_MPI_ENABLED = {
     "mpi": {"enabled": True, "custom_mpi_options": "options", "processes_per_host": 2}
 }
 DISTRIBUTION_SM_DDP_ENABLED = {
-    "smdistributed": {
-        "dataparallel": {
-            "enabled": True,
-            "custom_mpi_options": "options"
-        }
-    }
+    "smdistributed": {"dataparallel": {"enabled": True, "custom_mpi_options": "options"}}
 }
 
 
