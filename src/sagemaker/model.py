@@ -653,7 +653,7 @@ class Model(object):
         if target_instance_family is not None:
             if target_instance_family == "ml_eia2":
                 pass
-            elif target_instance_family.startswith("ml_"):
+            elif target_instance_family.startswith("ml_") and target_instance_family != "ml_eia2":
                 self.image_uri = self._compilation_image_uri(
                     self.sagemaker_session.boto_region_name,
                     target_instance_family,
