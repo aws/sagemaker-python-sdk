@@ -7,6 +7,6 @@ To use the library, reference the Common API documentation alongside the framewo
 .. toctree::
    :maxdepth: 1
 
-   v1.3.0/smd_model_parallel_common_api
-   v1.3.0/smd_model_parallel_pytorch
-   v1.3.0/smd_model_parallel_tensorflow
+   latest/smd_model_parallel_common_api
+   latest/smd_model_parallel_pytorch
+   latest/smd_model_parallel_tensorflow
