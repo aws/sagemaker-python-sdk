@@ -2631,9 +2631,8 @@ class Framework(EstimatorBase):
             distribution_config[self.LAUNCH_SM_DDP_ENV_NAME] = smdataparallel_enabled
             distribution_config[self.INSTANCE_TYPE] = self.instance_type
             if smdataparallel_enabled:
-                distribution_config[self.SM_DDP_CUSTOM_MPI_OPTIONS] = smdistributed["dataparallel"].get(
-                    "custom_mpi_options", ""
-                )
+                distribution_config[self.SM_DDP_CUSTOM_MPI_OPTIONS] = \
+                    smdistributed["dataparallel"].get("custom_mpi_options", "")
 
         return distribution_config
 

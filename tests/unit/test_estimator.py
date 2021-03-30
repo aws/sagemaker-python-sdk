@@ -121,8 +121,14 @@ DISTRIBUTION_PS_ENABLED = {"parameter_server": {"enabled": True}}
 DISTRIBUTION_MPI_ENABLED = {
     "mpi": {"enabled": True, "custom_mpi_options": "options", "processes_per_host": 2}
 }
-DISTRIBUTION_SM_DDP_ENABLED = {"smdistributed": {"dataparallel": {"enabled": True,
-                                                                  "custom_mpi_options": "options"}}}
+DISTRIBUTION_SM_DDP_ENABLED = {
+    "smdistributed": {
+        "dataparallel": {
+            "enabled": True,
+            "custom_mpi_options": "options"
+        }
+    }
+}
 
 
 class DummyFramework(Framework):
