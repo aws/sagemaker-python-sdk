@@ -52,6 +52,9 @@ from sagemaker.fw_utils import (
     _region_supports_profiler,
     get_mp_parameters,
 )
+from sagemaker.workflow.properties import Properties
+from sagemaker.workflow.parameters import Parameter
+from sagemaker.workflow.entities import Expression
 from sagemaker.inputs import TrainingInput
 from sagemaker.job import _Job
 from sagemaker.local import LocalSession
@@ -1456,7 +1459,10 @@ class _TrainingJob(_Job):
 
         current_hyperparameters = estimator.hyperparameters()
         if current_hyperparameters is not None:
-            hyperparameters = {str(k): str(v) for (k, v) in current_hyperparameters.items()}
+            hyperparameters = {
+                str(k): (v if isinstance(v, (Parameter, Expression, Properties)) else str(v))
+                for (k, v) in current_hyperparameters.items()
+            }
 
         train_args = config.copy()
         train_args["input_mode"] = estimator.input_mode
@@ -2331,6 +2337,22 @@ class Framework(EstimatorBase):
             distribution = self.distribution  # pylint: disable=no-member
         else:
             distribution = None
+
+        if hasattr(self, "tensorflow_version") or hasattr(self, "pytorch_version"):
+            processor = image_uris._processor(self.instance_type, ["cpu", "gpu"])
+            container_version = "cu110-ubuntu18.04" if processor == "gpu" else None
+            if self.tensorflow_version is not None:  # pylint: disable=no-member
+                base_framework_version = (
+                    f"tensorflow{self.tensorflow_version}"  # pylint: disable=no-member
+                )
+            else:
+                base_framework_version = (
+                    f"pytorch{self.pytorch_version}"  # pylint: disable=no-member
+                )
+        else:
+            container_version = None
+            base_framework_version = None
+
         return image_uris.retrieve(
             self._framework_name,
             self.sagemaker_session.boto_region_name,
@@ -2339,6 +2361,8 @@ class Framework(EstimatorBase):
             py_version=self.py_version,  # pylint: disable=no-member
             image_scope="training",
             distribution=distribution,
+            base_framework_version=base_framework_version,
+            container_version=container_version,
         )
 
     @classmethod

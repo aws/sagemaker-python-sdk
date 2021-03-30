@@ -20,6 +20,7 @@ from __future__ import print_function, absolute_import
 
 import os
 import pathlib
+import attr
 
 from six.moves.urllib.parse import urlparse
 from six.moves.urllib.request import url2pathname
@@ -31,6 +32,7 @@ from sagemaker.utils import base_name_from_image, name_from_base
 from sagemaker.session import Session
 from sagemaker.network import NetworkConfig  # noqa: F401 # pylint: disable=unused-import
 from sagemaker.workflow.properties import Properties
+from sagemaker.workflow.parameters import Parameter
 from sagemaker.workflow.entities import Expression
 from sagemaker.dataset_definition.inputs import S3Input, DatasetDefinition
 from sagemaker.apiutils._base_types import ApiObject
@@ -207,13 +209,13 @@ class Processor(object):
             inputs (list[:class:`~sagemaker.processing.ProcessingInput`]): Input files for
                 the processing job. These must be provided as
                 :class:`~sagemaker.processing.ProcessingInput` objects (default: None).
-            kms_key (str): The ARN of the KMS key that is used to encrypt the
-                user code file (default: None).
             outputs (list[:class:`~sagemaker.processing.ProcessingOutput`]): Outputs for
                 the processing job. These can be specified as either path strings or
                 :class:`~sagemaker.processing.ProcessingOutput` objects (default: None).
             code (str): This can be an S3 URI or a local path to a file with the framework
                 script to run (default: None). A no op in the base class.
+            kms_key (str): The ARN of the KMS key that is used to encrypt the
+                user code file (default: None).
         """
         self._current_job_name = self._generate_current_job_name(job_name=job_name)
 
@@ -291,7 +293,9 @@ class Processor(object):
                 if isinstance(file_input.source, Properties) or file_input.dataset_definition:
                     normalized_inputs.append(file_input)
                     continue
-
+                if isinstance(file_input.s3_input.s3_uri, (Parameter, Expression, Properties)):
+                    normalized_inputs.append(file_input)
+                    continue
                 # If the source is a local path, upload it to S3
                 # and save the S3 uri in the ProcessingInput source.
                 parse_result = urlparse(file_input.s3_input.s3_uri)
@@ -339,8 +343,7 @@ class Processor(object):
                 # Generate a name for the ProcessingOutput if it doesn't have one.
                 if output.output_name is None:
                     output.output_name = "output-{}".format(count)
-                # if the output's destination is a workflow expression, do no normalization
-                if isinstance(output.destination, Expression):
+                if isinstance(output.destination, (Parameter, Expression, Properties)):
                     normalized_outputs.append(output)
                     continue
                 # If the output's destination is not an s3_uri, create one.
@@ -441,6 +444,34 @@ class ScriptProcessor(Processor):
             tags=tags,
             network_config=network_config,
         )
+
+    def get_run_args(
+        self,
+        code,
+        inputs=None,
+        outputs=None,
+        arguments=None,
+    ):
+        """Returns a RunArgs object.
+
+        For processors (:class:`~sagemaker.spark.processing.PySparkProcessor`,
+        :class:`~sagemaker.spark.processing.SparkJar`) that have special
+        run() arguments, this object contains the normalized arguments for passing to
+        :class:`~sagemaker.workflow.steps.ProcessingStep`.
+
+        Args:
+            code (str): This can be an S3 URI or a local path to a file with the framework
+                script to run.
+            inputs (list[:class:`~sagemaker.processing.ProcessingInput`]): Input files for
+                the processing job. These must be provided as
+                :class:`~sagemaker.processing.ProcessingInput` objects (default: None).
+            outputs (list[:class:`~sagemaker.processing.ProcessingOutput`]): Outputs for
+                the processing job. These can be specified as either path strings or
+                :class:`~sagemaker.processing.ProcessingOutput` objects (default: None).
+            arguments (list[str]): A list of string arguments to be passed to a
+                processing job (default: None).
+        """
+        return RunArgs(code=code, inputs=inputs, outputs=outputs, arguments=arguments)
 
     def run(
         self,
@@ -1070,7 +1101,7 @@ class ProcessingInput(object):
             self.s3_data_type = self.s3_input.s3_data_type
             self.s3_input_mode = self.s3_input.s3_input_mode
             self.s3_data_distribution_type = self.s3_input.s3_data_distribution_type
-        elif self.source and self.destination:
+        elif self.source is not None and self.destination is not None:
             self.s3_input = S3Input(
                 s3_uri=self.source,
                 local_path=self.destination,
@@ -1142,6 +1173,33 @@ class ProcessingOutput(object):
 
         # Return the request dictionary.
         return s3_output_request
+
+
+@attr.s
+class RunArgs(object):
+    """Accepts parameters that correspond to ScriptProcessors.
+
+    An instance of this class is returned from the ``get_run_args()`` method on processors,
+    and is used for normalizing the arguments so that they can be passed to
+    :class:`~sagemaker.workflow.steps.ProcessingStep`
+
+    Args:
+        code (str): This can be an S3 URI or a local path to a file with the framework
+            script to run.
+        inputs (list[:class:`~sagemaker.processing.ProcessingInput`]): Input files for
+            the processing job. These must be provided as
+            :class:`~sagemaker.processing.ProcessingInput` objects (default: None).
+        outputs (list[:class:`~sagemaker.processing.ProcessingOutput`]): Outputs for
+            the processing job. These can be specified as either path strings or
+            :class:`~sagemaker.processing.ProcessingOutput` objects (default: None).
+        arguments (list[str]): A list of string arguments to be passed to a
+            processing job (default: None).
+    """
+
+    code = attr.ib()
+    inputs = attr.ib(default=None)
+    outputs = attr.ib(default=None)
+    arguments = attr.ib(default=None)
 
 
 class FeatureStoreOutput(ApiObject):

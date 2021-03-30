@@ -105,7 +105,7 @@ def train(
 
 
 def model_fn(path_to_model_files):
-    import neomxnet  # noqa: F401
+    import neomx  # noqa: F401
 
     ctx = mx.cpu()
     sym, arg_params, aux_params = mx.model.load_checkpoint(
@@ -120,7 +120,7 @@ def model_fn(path_to_model_files):
 
 
 def transform_fn(mod, payload, input_content_type, requested_output_content_type):
-    import neomxnet  # noqa: F401
+    import neomx  # noqa: F401
 
     if input_content_type != "application/vnd+python.numpy+binary":
         raise RuntimeError("Input content type must be application/vnd+python.numpy+binary")
