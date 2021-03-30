@@ -20,12 +20,12 @@ from __future__ import print_function, absolute_import
 
 import os
 import pathlib
-import attr
 import logging
+from typing import Dict, List, Optional, Tuple
+import attr
 
 from six.moves.urllib.parse import urlparse
 from six.moves.urllib.request import url2pathname
-from typing import Dict, List, Optional, Tuple
 
 from sagemaker import s3
 from sagemaker.job import _Job
@@ -1331,6 +1331,7 @@ python {entry_point} "$@"
         image_uri: Optional[str] = None,
         base_job_name: Optional[str] = None,
     ) -> Tuple[str, str]:
+        """Normalize job name and container image uri."""
         # Normalize base_job_name
         if base_job_name is None:
             base_job_name = self.estimator_cls._framework_name
@@ -1473,7 +1474,7 @@ python {entry_point} "$@"
             desired_s3_uri=f"{self.s3_prefix}/{job_name}/source/runproc.sh",
             sagemaker_session=self.sagemaker_session,
         )
-        logger.info("runproc.sh uploaded to", s3_runproc_sh)
+        logger.info("runproc.sh uploaded to %s", s3_runproc_sh)
 
         # Submit a processing job.
         super().run(
@@ -1496,6 +1497,7 @@ python {entry_point} "$@"
         git_config: Optional[Dict[str, str]],
         job_name: str,
     ) -> "sagemaker.estimator.Framework":  # type: ignore[name-defined]   # noqa: F821
+        """Upload payload sourcedir.tar.gz to S3."""
         # A new estimator instance is required, because each call to ScriptProcessor.run() can
         # use different codes.
         estimator = self.estimator_cls(
@@ -1505,8 +1507,8 @@ python {entry_point} "$@"
             git_config=git_config,
             framework_version=self.framework_version,
             py_version=self.py_version,
-            code_location=self.s3_prefix,  # Estimator will use <code_location>/jobname/output/source.tar.gz
-            enable_network_isolation=False,  # If true, estimator uploads to input channel. Not what we want!
+            code_location=self.s3_prefix,  # Upload to <code_loc>/jobname/output/source.tar.gz
+            enable_network_isolation=False,  # If true, uploads to input channel. Not what we want!
             image_uri=self.image_uri,  # The image uri is already normalized by this point.
             role=self.role,
             instance_type=self.instance_type,
@@ -1526,6 +1528,10 @@ python {entry_point} "$@"
         return estimator
 
     def _patch_inputs_with_payload(self, inputs, s3_payload) -> List[ProcessingInput]:
+        """Add payload sourcedir.tar.gz to processing input.
+
+        This method follows the same mechanism in ScriptProcessor.
+        """
         # ScriptProcessor job will download only s3://..../code/runproc.sh, hence we need to also
         # inject our s3://.../sourcedir.tar.gz.
         #
@@ -1534,7 +1540,8 @@ python {entry_point} "$@"
         # /opt/ml/processing/input/code/payload/. Note that source.dir.tar.gz cannot go to
         # /opt/ml/processing/input/code because the ScriptProcessor has first-right-to-use. See:
         # - ScriptProcessor._CODE_CONTAINER_BASE_PATH, ScriptProcessor._CODE_CONTAINER_INPUT_NAME.
-        # - https://github.com/aws/sagemaker-python-sdk/blob/a7399455f5386d83ddc5cb15c0db00c04bd518ec/src/sagemaker/processing.py#L425-L426)
+        # - https://github.com/aws/sagemaker-python-sdk/blob/ \
+        #   a7399455f5386d83ddc5cb15c0db00c04bd518ec/src/sagemaker/processing.py#L425-L426
         if inputs is None:
             inputs = []
         inputs.append(
