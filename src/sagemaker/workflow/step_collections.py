@@ -109,6 +109,11 @@ class RegisterModel(StepCollection):
             steps.append(repack_model_step)
             model_data = repack_model_step.properties.ModelArtifacts.S3ModelArtifacts
 
+        # remove kwargs consumed by model repacking step
+        kwargs.pop("entry_point", None)
+        kwargs.pop("source_dir", None)
+        kwargs.pop("dependencies", None)
+
         register_model_step = _RegisterModelStep(
             name=name,
             estimator=estimator,

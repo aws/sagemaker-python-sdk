@@ -14,6 +14,7 @@
 from __future__ import absolute_import
 
 import pytest
+from tests.unit import DATA_DIR
 
 import sagemaker
 
@@ -38,6 +39,7 @@ from sagemaker.workflow.step_collections import (
     StepCollection,
     RegisterModel,
 )
+from sagemaker.workflow.pipeline import Pipeline
 from tests.unit.sagemaker.workflow.helpers import ordered
 
 REGION = "us-west-2"
@@ -45,6 +47,9 @@ BUCKET = "my-bucket"
 IMAGE_URI = "fakeimage"
 ROLE = "DummyRole"
 MODEL_NAME = "gisele"
+MODEL_REPACKING_IMAGE_URI = (
+    "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:0.23-1-cpu-py3"
+)
 
 
 class CustomStep(Step):
@@ -175,6 +180,111 @@ def test_register_model(estimator, model_metrics):
             },
         ]
     )
+
+
+def test_register_model_with_model_repack(estimator, model_metrics):
+    model_data = f"s3://{BUCKET}/model.tar.gz"
+    register_model = RegisterModel(
+        name="RegisterModelStep",
+        estimator=estimator,
+        model_data=model_data,
+        content_types=["content_type"],
+        response_types=["response_type"],
+        inference_instances=["inference_instance"],
+        transform_instances=["transform_instance"],
+        model_package_group_name="mpg",
+        model_metrics=model_metrics,
+        approval_status="Approved",
+        description="description",
+        entry_point=f"{DATA_DIR}/dummy_script.py",
+    )
+
+    request_dicts = register_model.request_dicts()
+    assert len(request_dicts) == 2
+    print(request_dicts)
+    for request_dict in request_dicts:
+        if request_dict["Type"] == "Training":
+            assert request_dict["Name"] == "RegisterModelStepRepackModel"
+            arguments = request_dict["Arguments"]
+            repacker_job_name = arguments["HyperParameters"]["sagemaker_job_name"]
+            assert ordered(arguments) == ordered(
+                {
+                    "AlgorithmSpecification": {
+                        "TrainingImage": MODEL_REPACKING_IMAGE_URI,
+                        "TrainingInputMode": "File",
+                    },
+                    "DebugHookConfig": {
+                        "CollectionConfigurations": [],
+                        "S3OutputPath": f"s3://{BUCKET}/",
+                    },
+                    "HyperParameters": {
+                        "inference_script": '"dummy_script.py"',
+                        "model_archive": '"model.tar.gz"',
+                        "sagemaker_submit_directory": '"s3://{}/{}/source/sourcedir.tar.gz"'.format(
+                            BUCKET, repacker_job_name.replace('"', "")
+                        ),
+                        "sagemaker_program": '"_repack_model.py"',
+                        "sagemaker_container_log_level": "20",
+                        "sagemaker_job_name": repacker_job_name,
+                        "sagemaker_region": f'"{REGION}"',
+                    },
+                    "InputDataConfig": [
+                        {
+                            "ChannelName": "training",
+                            "DataSource": {
+                                "S3DataSource": {
+                                    "S3DataDistributionType": "FullyReplicated",
+                                    "S3DataType": "S3Prefix",
+                                    "S3Uri": f"s3://{BUCKET}",
+                                }
+                            },
+                        }
+                    ],
+                    "OutputDataConfig": {"S3OutputPath": f"s3://{BUCKET}/"},
+                    "ResourceConfig": {
+                        "InstanceCount": 1,
+                        "InstanceType": "ml.m5.large",
+                        "VolumeSizeInGB": 30,
+                    },
+                    "RoleArn": ROLE,
+                    "StoppingCondition": {"MaxRuntimeInSeconds": 86400},
+                }
+            )
+        elif request_dict["Type"] == "RegisterModel":
+            assert request_dict["Name"] == "RegisterModelStep"
+            arguments = request_dict["Arguments"]
+            assert len(arguments["InferenceSpecification"]["Containers"]) == 1
+            assert (
+                arguments["InferenceSpecification"]["Containers"][0]["Image"]
+                == estimator.training_image_uri()
+            )
+            assert isinstance(
+                arguments["InferenceSpecification"]["Containers"][0]["ModelDataUrl"], Properties
+            )
+            del arguments["InferenceSpecification"]["Containers"]
+            assert ordered(arguments) == ordered(
+                {
+                    "InferenceSpecification": {
+                        "SupportedContentTypes": ["content_type"],
+                        "SupportedRealtimeInferenceInstanceTypes": ["inference_instance"],
+                        "SupportedResponseMIMETypes": ["response_type"],
+                        "SupportedTransformInstanceTypes": ["transform_instance"],
+                    },
+                    "ModelApprovalStatus": "Approved",
+                    "ModelMetrics": {
+                        "ModelQuality": {
+                            "Statistics": {
+                                "ContentType": "text/csv",
+                                "S3Uri": f"s3://{BUCKET}/metrics.csv",
+                            },
+                        },
+                    },
+                    "ModelPackageDescription": "description",
+                    "ModelPackageGroupName": "mpg",
+                }
+            )
+        else:
+            raise Exception("A step exists in the collection of an invalid type.")
 
 
 def test_estimator_transformer(estimator):

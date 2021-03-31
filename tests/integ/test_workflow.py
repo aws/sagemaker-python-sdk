@@ -776,6 +776,106 @@ def test_conditional_pytorch_training_model_registration(
             pass
 
 
+def test_model_registration_with_model_repack(
+    sagemaker_session,
+    role,
+    pipeline_name,
+    region_name,
+):
+    base_dir = os.path.join(DATA_DIR, "pytorch_mnist")
+    entry_point = os.path.join(base_dir, "mnist.py")
+    input_path = sagemaker_session.upload_data(
+        path=os.path.join(base_dir, "training"),
+        key_prefix="integ-test-data/pytorch_mnist/training",
+    )
+    inputs = TrainingInput(s3_data=input_path)
+
+    instance_count = ParameterInteger(name="InstanceCount", default_value=1)
+    instance_type = ParameterString(name="InstanceType", default_value="ml.m5.xlarge")
+    good_enough_input = ParameterInteger(name="GoodEnoughInput", default_value=1)
+
+    pytorch_estimator = PyTorch(
+        entry_point=entry_point,
+        role=role,
+        framework_version="1.5.0",
+        py_version="py3",
+        instance_count=instance_count,
+        instance_type=instance_type,
+        sagemaker_session=sagemaker_session,
+    )
+    step_train = TrainingStep(
+        name="pytorch-train",
+        estimator=pytorch_estimator,
+        inputs=inputs,
+    )
+
+    step_register = RegisterModel(
+        name="pytorch-register-model",
+        estimator=pytorch_estimator,
+        model_data=step_train.properties.ModelArtifacts.S3ModelArtifacts,
+        content_types=["*"],
+        response_types=["*"],
+        inference_instances=["*"],
+        transform_instances=["*"],
+        description="test-description",
+        entry_point=entry_point,
+    )
+
+    model = Model(
+        image_uri=pytorch_estimator.training_image_uri(),
+        model_data=step_train.properties.ModelArtifacts.S3ModelArtifacts,
+        sagemaker_session=sagemaker_session,
+        role=role,
+    )
+    model_inputs = CreateModelInput(
+        instance_type="ml.m5.large",
+        accelerator_type="ml.eia1.medium",
+    )
+    step_model = CreateModelStep(
+        name="pytorch-model",
+        model=model,
+        inputs=model_inputs,
+    )
+
+    step_cond = ConditionStep(
+        name="cond-good-enough",
+        conditions=[ConditionGreaterThanOrEqualTo(left=good_enough_input, right=1)],
+        if_steps=[step_train, step_register],
+        else_steps=[step_model],
+    )
+
+    pipeline = Pipeline(
+        name=pipeline_name,
+        parameters=[good_enough_input, instance_count, instance_type],
+        steps=[step_cond],
+        sagemaker_session=sagemaker_session,
+    )
+
+    try:
+        response = pipeline.create(role)
+        create_arn = response["PipelineArn"]
+        assert re.match(
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}", create_arn
+        )
+
+        execution = pipeline.start(parameters={})
+        assert re.match(
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
+            execution.arn,
+        )
+
+        execution = pipeline.start(parameters={"GoodEnoughInput": 0})
+        assert re.match(
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
+            execution.arn,
+        )
+    finally:
+        try:
+            pipeline.delete()
+        except Exception:
+            pass
+
+
 def test_training_job_with_debugger_and_profiler(
     sagemaker_session,
     pipeline_name,
