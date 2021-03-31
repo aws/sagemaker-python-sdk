@@ -366,7 +366,6 @@ def test_debug_hook_disabled_with_checkpointing(
         )
 
         script_path = os.path.join(DATA_DIR, "mxnet_mnist", "mnist_gluon.py")
-        data_path = os.path.join(DATA_DIR, "mxnet_mnist")
 
         mx = MXNet(
             entry_point=script_path,
