@@ -2148,10 +2148,6 @@ class Framework(EstimatorBase):
         self.checkpoint_s3_uri = checkpoint_s3_uri
         self.checkpoint_local_path = checkpoint_local_path
 
-        # Disable debugger if checkpointing is enabled by the customer
-        self.debugger_hook_config = \
-            self.debugger_hook_config if checkpoint_s3_uri is None \
-                                         and checkpoint_local_path is None else False
         self.enable_sagemaker_metrics = enable_sagemaker_metrics
 
     def _prepare_for_training(self, job_name=None):
@@ -2204,7 +2200,6 @@ class Framework(EstimatorBase):
         self._hyperparameters[CONTAINER_LOG_LEVEL_PARAM_NAME] = self.container_log_level
         self._hyperparameters[JOB_NAME_PARAM_NAME] = self._current_job_name
         self._hyperparameters[SAGEMAKER_REGION_PARAM_NAME] = self.sagemaker_session.boto_region_name
-
         self._validate_and_set_debugger_configs()
 
     def _validate_and_set_debugger_configs(self):
@@ -2214,7 +2209,14 @@ class Framework(EstimatorBase):
         ):
             self.debugger_hook_config = DebuggerHookConfig(s3_output_path=self.output_path)
         elif not self.debugger_hook_config:
-            self.debugger_hook_config = None
+            self.debugger_hook_config = False
+
+        # Disable debugger if checkpointing is enabled by the customer
+        if self.checkpoint_s3_uri and self.checkpoint_local_path and self.debugger_hook_config:
+            logger.info(
+                "SM Debug Does Not Currently Support Training Jobs With Checkpointing Enabled"
+            )
+            self.debugger_hook_config = False
 
     def _stage_user_code_in_s3(self):
         """Upload the user training script to s3 and return the location.
