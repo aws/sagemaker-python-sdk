@@ -2209,7 +2209,20 @@ class Framework(EstimatorBase):
         ):
             self.debugger_hook_config = DebuggerHookConfig(s3_output_path=self.output_path)
         elif not self.debugger_hook_config:
-            self.debugger_hook_config = None
+            self.debugger_hook_config = False
+
+        # Disable debugger if checkpointing is enabled by the customer
+        _should_disable_debugger = False
+        if self.checkpoint_s3_uri and self.checkpoint_local_path and self.debugger_hook_config:
+            if self.instance_count > 1:
+                _should_disable_debugger = True
+            if hasattr(self, "distribution") and self.distribution is not None:
+                _should_disable_debugger = True
+        if _should_disable_debugger:
+            logger.info(
+                "SMDebug Does Not Currently Support Distributed Training Jobs With Checkpointing Enabled"
+            )
+            self.debugger_hook_config = False
 
     def _stage_user_code_in_s3(self):
         """Upload the user training script to s3 and return the location.
