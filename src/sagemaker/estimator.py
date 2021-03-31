@@ -2147,6 +2147,11 @@ class Framework(EstimatorBase):
         self._hyperparameters = hyperparameters or {}
         self.checkpoint_s3_uri = checkpoint_s3_uri
         self.checkpoint_local_path = checkpoint_local_path
+
+        # Disable debugger if checkpointing is enabled by the customer
+        self.debugger_hook_config = \
+            self.debugger_hook_config if checkpoint_s3_uri is None \
+                                         and checkpoint_local_path is None else False
         self.enable_sagemaker_metrics = enable_sagemaker_metrics
 
     def _prepare_for_training(self, job_name=None):

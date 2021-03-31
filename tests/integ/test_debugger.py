@@ -351,6 +351,50 @@ def test_mxnet_with_debugger_hook_config(
         _wait_and_assert_that_no_rule_jobs_errored(training_job=mx.latest_training_job)
 
 
+def test_debug_hook_disabled_with_checkpointing(
+    sagemaker_session,
+    mxnet_training_latest_version,
+    mxnet_training_latest_py_version,
+    cpu_instance_type,
+):
+    with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
+        s3_output_path = os.path.join("s3://", sagemaker_session.default_bucket(), str(uuid.uuid4()))
+        debugger_hook_config = DebuggerHookConfig(
+            s3_output_path=os.path.join(
+                s3_output_path, "tensors"
+            )
+        )
+
+        script_path = os.path.join(DATA_DIR, "mxnet_mnist", "mnist_gluon.py")
+        data_path = os.path.join(DATA_DIR, "mxnet_mnist")
+
+        mx = MXNet(
+            entry_point=script_path,
+            role="SageMakerRole",
+            framework_version=mxnet_training_latest_version,
+            py_version=mxnet_training_latest_py_version,
+            instance_count=1,
+            instance_type=cpu_instance_type,
+            sagemaker_session=sagemaker_session,
+            debugger_hook_config=debugger_hook_config,
+            checkpoint_local_path="/opt/ml/checkpoints",
+            checkpoint_s3_uri=os.path.join(s3_output_path, "checkpoints")
+
+        )
+
+        train_input = mx.sagemaker_session.upload_data(
+            path=os.path.join(data_path, "train"), key_prefix="integ-test-data/mxnet_mnist/train"
+        )
+        test_input = mx.sagemaker_session.upload_data(
+            path=os.path.join(data_path, "test"), key_prefix="integ-test-data/mxnet_mnist/test"
+        )
+
+        mx.fit({"train": train_input, "test": test_input})
+
+        job_description = mx.latest_training_job.describe()
+        assert "DebugHookConfig" not in job_description
+
+
 def test_mxnet_with_rules_and_debugger_hook_config(
     sagemaker_session,
     mxnet_training_latest_version,
