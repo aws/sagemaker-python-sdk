@@ -141,6 +141,7 @@ def test_mnist_distributed(
         framework_version=tensorflow_training_latest_version,
         py_version=tensorflow_training_latest_py_version,
         distribution=PARAMETER_SERVER_DISTRIBUTION,
+        disable_profiler=True,
     )
     inputs = estimator.sagemaker_session.upload_data(
         path=os.path.join(MNIST_RESOURCE_PATH, "data"), key_prefix="scriptmode/distributed_mnist"
