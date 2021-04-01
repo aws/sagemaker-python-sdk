@@ -252,7 +252,8 @@ class _RegisterModelStep(Step):
             compile_model_family (str): Instance family for compiled model, if specified, a compiled
                 model will be used (default: None).
             description (str): Model Package description (default: None).
-            depends_on (List[str]): A list of step names this `sagemaker.workflow.steps.TrainingStep` depends on
+            depends_on (List[str]): A list of step names this `sagemaker.workflow.steps.TrainingStep`
+                depends on
             **kwargs: additional arguments to `create_model`.
         """
         super(_RegisterModelStep, self).__init__(name, StepTypeEnum.REGISTER_MODEL, depends_on)

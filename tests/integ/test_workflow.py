@@ -28,7 +28,7 @@ from sagemaker.debugger import (
     rule_configs,
 )
 from datetime import datetime
-from sagemaker.inputs import CreateModelInput, TrainingInput, TransformInput
+from sagemaker.inputs import CreateModelInput, TrainingInput
 from sagemaker.model import Model
 from sagemaker.processing import ProcessingInput, ProcessingOutput
 from sagemaker.pytorch.estimator import PyTorch

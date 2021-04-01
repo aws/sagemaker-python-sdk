@@ -158,7 +158,8 @@ class TrainingStep(Step):
             estimator (EstimatorBase): A `sagemaker.estimator.EstimatorBase` instance.
             inputs (TrainingInput): A `sagemaker.inputs.TrainingInput` instance. Defaults to `None`.
             cache_config (CacheConfig):  A `sagemaker.workflow.steps.CacheConfig` instance.
-            depends_on (List[str]): A list of step names this `sagemaker.workflow.steps.TrainingStep` depends on
+            depends_on (List[str]): A list of step names this `sagemaker.workflow.steps.TrainingStep`
+                depends on
         """
         super(TrainingStep, self).__init__(name, StepTypeEnum.TRAINING, depends_on)
         self.estimator = estimator
@@ -215,7 +216,8 @@ class CreateModelStep(Step):
             model (Model): A `sagemaker.model.Model` instance.
             inputs (CreateModelInput): A `sagemaker.inputs.CreateModelInput` instance.
                 Defaults to `None`.
-            depends_on (List[str]): A list of step names this `sagemaker.workflow.steps.CreateModelStep` depends on
+            depends_on (List[str]): A list of step names this `sagemaker.workflow.steps.CreateModelStep`
+                depends on
         """
         super(CreateModelStep, self).__init__(name, StepTypeEnum.CREATE_MODEL, depends_on)
         self.model = model
@@ -272,7 +274,8 @@ class TransformStep(Step):
             transformer (Transformer): A `sagemaker.transformer.Transformer` instance.
             inputs (TransformInput): A `sagemaker.inputs.TransformInput` instance.
             cache_config (CacheConfig):  A `sagemaker.workflow.steps.CacheConfig` instance.
-            depends_on (List[str]): A list of step names this `sagemaker.workflow.steps.TransformStep` depends on
+            depends_on (List[str]): A list of step names this `sagemaker.workflow.steps.TransformStep`
+                depends on
         """
         super(TransformStep, self).__init__(name, StepTypeEnum.TRANSFORM, depends_on)
         self.transformer = transformer
@@ -356,7 +359,8 @@ class ProcessingStep(Step):
             property_files (List[PropertyFile]): A list of property files that workflow looks
                 for and resolves from the configured processing output list.
             cache_config (CacheConfig):  A `sagemaker.workflow.steps.CacheConfig` instance.
-            depends_on (List[str]): A list of step names this `sagemaker.workflow.steps.ProcessingStep` depends on
+            depends_on (List[str]): A list of step names this `sagemaker.workflow.steps.ProcessingStep`
+                depends on
         """
         super(ProcessingStep, self).__init__(name, StepTypeEnum.PROCESSING, depends_on)
         self.processor = processor

@@ -43,7 +43,6 @@ from sagemaker.workflow.step_collections import (
     StepCollection,
     RegisterModel,
 )
-from sagemaker.workflow.pipeline import Pipeline
 from tests.unit.sagemaker.workflow.helpers import ordered
 
 REGION = "us-west-2"
