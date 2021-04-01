@@ -124,11 +124,17 @@ def test_training_step(sagemaker_session):
     inputs = TrainingInput(f"s3://{BUCKET}/train_manifest")
     cache_config = CacheConfig(enable_caching=True, expire_after="PT1H")
     step = TrainingStep(
-        name="MyTrainingStep", estimator=estimator, inputs=inputs, cache_config=cache_config
+        name="MyTrainingStep",
+        depends_on=["TestStep"],
+        estimator=estimator,
+        inputs=inputs,
+        cache_config=cache_config,
     )
+    step.add_depends_on(["AnotherTestStep"])
     assert step.to_request() == {
         "Name": "MyTrainingStep",
         "Type": "Training",
+        "DependsOn": ["TestStep", "AnotherTestStep"],
         "Arguments": {
             "AlgorithmSpecification": {"TrainingImage": IMAGE_URI, "TrainingInputMode": "File"},
             "InputDataConfig": [
@@ -178,14 +184,17 @@ def test_processing_step(sagemaker_session):
     cache_config = CacheConfig(enable_caching=True, expire_after="PT1H")
     step = ProcessingStep(
         name="MyProcessingStep",
+        depends_on=["TestStep", "SecondTestStep"],
         processor=processor,
         inputs=inputs,
         outputs=[],
         cache_config=cache_config,
     )
+    step.add_depends_on(["ThirdTestStep"])
     assert step.to_request() == {
         "Name": "MyProcessingStep",
         "Type": "Processing",
+        "DependsOn": ["TestStep", "SecondTestStep", "ThirdTestStep"],
         "Arguments": {
             "AppSpecification": {"ImageUri": "fakeimage"},
             "ProcessingInputs": [
@@ -285,13 +294,16 @@ def test_create_model_step(sagemaker_session):
     )
     step = CreateModelStep(
         name="MyCreateModelStep",
+        depends_on=["TestStep"],
         model=model,
         inputs=inputs,
     )
+    step.add_depends_on(["SecondTestStep"])
 
     assert step.to_request() == {
         "Name": "MyCreateModelStep",
         "Type": "Model",
+        "DependsOn": ["TestStep", "SecondTestStep"],
         "Arguments": {
             "ExecutionRoleArn": "DummyRole",
             "PrimaryContainer": {"Environment": {}, "Image": "fakeimage"},
@@ -310,11 +322,17 @@ def test_transform_step(sagemaker_session):
     inputs = TransformInput(data=f"s3://{BUCKET}/transform_manifest")
     cache_config = CacheConfig(enable_caching=True, expire_after="PT1H")
     step = TransformStep(
-        name="MyTransformStep", transformer=transformer, inputs=inputs, cache_config=cache_config
+        name="MyTransformStep",
+        depends_on=["TestStep"],
+        transformer=transformer,
+        inputs=inputs,
+        cache_config=cache_config,
     )
+    step.add_depends_on(["SecondTestStep"])
     assert step.to_request() == {
         "Name": "MyTransformStep",
         "Type": "Transform",
+        "DependsOn": ["TestStep", "SecondTestStep"],
         "Arguments": {
             "ModelName": "gisele",
             "TransformInput": {

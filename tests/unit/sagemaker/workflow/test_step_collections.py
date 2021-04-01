@@ -13,7 +13,11 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import os
+import tempfile
+import shutil
 import pytest
+
 from tests.unit import DATA_DIR
 
 import sagemaker
@@ -127,6 +131,21 @@ def model_metrics():
     )
 
 
+@pytest.fixture
+def source_dir(request):
+    wf = os.path.join(DATA_DIR, "workflow")
+    tmp = tempfile.mkdtemp()
+    shutil.copy2(os.path.join(wf, "inference.py"), os.path.join(tmp, "inference.py"))
+    shutil.copy2(os.path.join(wf, "foo"), os.path.join(tmp, "foo"))
+
+    def fin():
+        shutil.rmtree(tmp)
+
+    request.addfinalizer(fin)
+
+    return tmp
+
+
 def test_step_collection():
     step_collection = StepCollection(steps=[CustomStep("MyStep1"), CustomStep("MyStep2")])
     assert step_collection.request_dicts() == [
@@ -149,12 +168,14 @@ def test_register_model(estimator, model_metrics):
         model_metrics=model_metrics,
         approval_status="Approved",
         description="description",
+        depends_on=["TestStep"],
     )
     assert ordered(register_model.request_dicts()) == ordered(
         [
             {
                 "Name": "RegisterModelStep",
                 "Type": "RegisterModel",
+                "DependsOn": ["TestStep"],
                 "Arguments": {
                     "InferenceSpecification": {
                         "Containers": [
@@ -197,14 +218,17 @@ def test_register_model_with_model_repack(estimator, model_metrics):
         approval_status="Approved",
         description="description",
         entry_point=f"{DATA_DIR}/dummy_script.py",
+        depends_on=["TestStep"],
     )
 
     request_dicts = register_model.request_dicts()
     assert len(request_dicts) == 2
-    print(request_dicts)
+
     for request_dict in request_dicts:
         if request_dict["Type"] == "Training":
             assert request_dict["Name"] == "RegisterModelStepRepackModel"
+            assert len(request_dict["DependsOn"]) == 1
+            assert request_dict["DependsOn"][0] == "TestStep"
             arguments = request_dict["Arguments"]
             repacker_job_name = arguments["HyperParameters"]["sagemaker_job_name"]
             assert ordered(arguments) == ordered(
@@ -252,6 +276,7 @@ def test_register_model_with_model_repack(estimator, model_metrics):
             )
         elif request_dict["Type"] == "RegisterModel":
             assert request_dict["Name"] == "RegisterModelStep"
+            assert "DependsOn" not in request_dict
             arguments = request_dict["Arguments"]
             assert len(arguments["InferenceSpecification"]["Containers"]) == 1
             assert (
@@ -302,6 +327,7 @@ def test_estimator_transformer(estimator):
         instance_count=1,
         instance_type="ml.c4.4xlarge",
         transform_inputs=transform_inputs,
+        depends_on=["TestStep"],
     )
     request_dicts = estimator_transformer.request_dicts()
     assert len(request_dicts) == 2
@@ -310,6 +336,7 @@ def test_estimator_transformer(estimator):
             assert request_dict == {
                 "Name": "EstimatorTransformerStepCreateModelStep",
                 "Type": "Model",
+                "DependsOn": ["TestStep"],
                 "Arguments": {
                     "ExecutionRoleArn": "DummyRole",
                     "PrimaryContainer": {
@@ -324,6 +351,7 @@ def test_estimator_transformer(estimator):
             arguments = request_dict["Arguments"]
             assert isinstance(arguments["ModelName"], Properties)
             arguments.pop("ModelName")
+            assert "DependsOn" not in request_dict
             assert arguments == {
                 "TransformInput": {
                     "DataSource": {
