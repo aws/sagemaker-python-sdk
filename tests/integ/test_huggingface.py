@@ -58,6 +58,7 @@ def test_huggingface_training(
                 "repo": "https://github.com/huggingface/transformers.git",
                 "branch": f"v{huggingface_training_latest_version}",
             },
+            disable_profiler=True,
         )
 
         train_input = hf.sagemaker_session.upload_data(
