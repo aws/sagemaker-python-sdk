@@ -91,6 +91,7 @@ def _create_and_fit_estimator(sagemaker_session, tf_version, py_version, instanc
         py_version=py_version,
         framework_version=tf_version,
         distribution={"mpi": {"enabled": True}},
+        disable_profiler=True,
     )
 
     with timeout.timeout(minutes=integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):
