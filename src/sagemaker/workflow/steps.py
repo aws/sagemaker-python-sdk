@@ -92,6 +92,7 @@ class Step(Entity):
         return request_dict
 
     def add_depends_on(self, step_names: List[str]):
+        """Add step names to the current step depends on list"""
         if not step_names:
             return
         if not self.depends_on:
