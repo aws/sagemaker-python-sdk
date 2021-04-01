@@ -35,6 +35,7 @@ from sagemaker.processing import (
 from sagemaker.network import NetworkConfig
 from sagemaker.transformer import Transformer
 from sagemaker.workflow.properties import Properties
+from sagemaker.workflow.parameters import ParameterString, ParameterInteger
 from sagemaker.workflow.steps import (
     ProcessingStep,
     Step,
@@ -112,16 +113,27 @@ def test_custom_step():
 
 
 def test_training_step(sagemaker_session):
+    instance_type_parameter = ParameterString(name="InstanceType", default_value="c4.4xlarge")
+    instance_count_parameter = ParameterInteger(name="InstanceCount", default_value=1)
+    data_source_uri_parameter = ParameterString(
+        name="DataSourceS3Uri", default_value=f"s3://{BUCKET}/train_manifest"
+    )
+    training_epochs_parameter = ParameterInteger(name="TrainingEpochs", default_value=5)
+    training_batch_size_parameter = ParameterInteger(name="TrainingBatchSize", default_value=500)
     estimator = Estimator(
         image_uri=IMAGE_URI,
         role=ROLE,
-        instance_count=1,
-        instance_type="c4.4xlarge",
+        instance_count=instance_count_parameter,
+        instance_type=instance_type_parameter,
         profiler_config=ProfilerConfig(system_monitor_interval_millis=500),
+        hyperparameters={
+            "batch-size": training_batch_size_parameter,
+            "epochs": training_epochs_parameter,
+        },
         rules=[],
         sagemaker_session=sagemaker_session,
     )
-    inputs = TrainingInput(f"s3://{BUCKET}/train_manifest")
+    inputs = TrainingInput(s3_data=data_source_uri_parameter)
     cache_config = CacheConfig(enable_caching=True, expire_after="PT1H")
     step = TrainingStep(
         name="MyTrainingStep",
@@ -137,6 +149,10 @@ def test_training_step(sagemaker_session):
         "DependsOn": ["TestStep", "AnotherTestStep"],
         "Arguments": {
             "AlgorithmSpecification": {"TrainingImage": IMAGE_URI, "TrainingInputMode": "File"},
+            "HyperParameters": {
+                "batch-size": training_batch_size_parameter,
+                "epochs": training_epochs_parameter,
+            },
             "InputDataConfig": [
                 {
                     "ChannelName": "training",
@@ -144,15 +160,15 @@ def test_training_step(sagemaker_session):
                         "S3DataSource": {
                             "S3DataDistributionType": "FullyReplicated",
                             "S3DataType": "S3Prefix",
-                            "S3Uri": f"s3://{BUCKET}/train_manifest",
+                            "S3Uri": data_source_uri_parameter,
                         }
                     },
                 }
             ],
             "OutputDataConfig": {"S3OutputPath": f"s3://{BUCKET}/"},
             "ResourceConfig": {
-                "InstanceCount": 1,
-                "InstanceType": "c4.4xlarge",
+                "InstanceCount": instance_count_parameter,
+                "InstanceType": instance_type_parameter,
                 "VolumeSizeInGB": 30,
             },
             "RoleArn": ROLE,
@@ -168,16 +184,21 @@ def test_training_step(sagemaker_session):
 
 
 def test_processing_step(sagemaker_session):
+    processing_input_data_uri_parameter = ParameterString(
+        name="ProcessingInputDataUri", default_value=f"s3://{BUCKET}/processing_manifest"
+    )
+    instance_type_parameter = ParameterString(name="InstanceType", default_value="ml.m4.4xlarge")
+    instance_count_parameter = ParameterInteger(name="InstanceCount", default_value=1)
     processor = Processor(
         image_uri=IMAGE_URI,
         role=ROLE,
-        instance_count=1,
-        instance_type="ml.m4.4xlarge",
+        instance_count=instance_count_parameter,
+        instance_type=instance_type_parameter,
         sagemaker_session=sagemaker_session,
     )
     inputs = [
         ProcessingInput(
-            source=f"s3://{BUCKET}/processing_manifest",
+            source=processing_input_data_uri_parameter,
             destination="processing_manifest",
         )
     ]
@@ -207,14 +228,14 @@ def test_processing_step(sagemaker_session):
                         "S3DataDistributionType": "FullyReplicated",
                         "S3DataType": "S3Prefix",
                         "S3InputMode": "File",
-                        "S3Uri": "s3://my-bucket/processing_manifest",
+                        "S3Uri": processing_input_data_uri_parameter,
                     },
                 }
             ],
             "ProcessingResources": {
                 "ClusterConfig": {
-                    "InstanceCount": 1,
-                    "InstanceType": "ml.m4.4xlarge",
+                    "InstanceCount": instance_count_parameter,
+                    "InstanceType": instance_type_parameter,
                     "VolumeSizeInGB": 30,
                 }
             },

@@ -1,5 +1,44 @@
 # Changelog
 
+## v2.32.0 (2021-03-26)
+
+### Features
+
+ * upgrade neo mxnet to 1.8
+ * Enable Profiler in China Regions
+
+### Bug Fixes and Other Changes
+
+ * use workflow parameters in training hyperparameters (#2114) (#2115)
+ * skip HuggingFace tests in regions without p2 instances
+
+### Documentation Changes
+
+ * add Feature Store methods docs
+
+## v2.31.1 (2021-03-23)
+
+### Bug Fixes and Other Changes
+
+ * added documentation for Hugging Face Estimator
+ * mark HuggingFace tests as release tests
+
+### Documentation Changes
+
+ * adding version 1.1.0 docs for smdistributed.dataparallel
+
+## v2.31.0 (2021-03-23)
+
+### Features
+
+ * add HuggingFace framework estimator
+ * update TF framework version support
+ * Support all processor types in ProcessingStep
+
+### Bug Fixes and Other Changes
+
+ * Add pipelines functions.
+
 ## v2.30.0 (2021-03-17)
 
 ### Features
