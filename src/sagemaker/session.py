@@ -456,6 +456,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         enable_sagemaker_metrics=None,
         profiler_rule_configs=None,
         profiler_config=None,
+        environment=None,
     ):
         """Create an Amazon SageMaker training job.
 
@@ -522,9 +523,12 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 Series. For more information see:
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_AlgorithmSpecification.html#SageMaker-Type-AlgorithmSpecification-EnableSageMakerMetricsTimeSeries
                 (default: ``None``).
-            profiler_rule_configs (list[dict]): A list of profiler rule configurations.
+            profiler_rule_configs (list[dict]): A list of profiler rule
+                configurations.src/sagemaker/lineage/artifact.py:285
             profiler_config (dict): Configuration for how profiling information is emitted
                 with SageMaker Profiler. (default: ``None``).
+            environment (dict[str, str]) : Environment variables to be set for
+                use during training job (default: ``None``)
 
         Returns:
             str: ARN of the training job, if it is created.
@@ -556,6 +560,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             enable_sagemaker_metrics=enable_sagemaker_metrics,
             profiler_rule_configs=profiler_rule_configs,
             profiler_config=profiler_config,
+            environment=environment,
         )
         LOGGER.info("Creating training-job with name: %s", job_name)
         LOGGER.debug("train request: %s", json.dumps(train_request, indent=4))
@@ -588,6 +593,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         enable_sagemaker_metrics=None,
         profiler_rule_configs=None,
         profiler_config=None,
+        environment=None,
     ):
         """Constructs a request compatible for creating an Amazon SageMaker training job.
 
@@ -657,6 +663,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             profiler_rule_configs (list[dict]): A list of profiler rule configurations.
             profiler_config(dict): Configuration for how profiling information is emitted with
                 SageMaker Profiler. (default: ``None``).
+            environment (dict[str, str]) : Environment variables to be set for
+                use during training job (default: ``None``)
 
         Returns:
             Dict: a training request dict
@@ -698,6 +706,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         if hyperparameters and len(hyperparameters) > 0:
             train_request["HyperParameters"] = hyperparameters
+
+        if environment is not None:
+            train_request["Environment"] = environment
 
         if tags is not None:
             train_request["Tags"] = tags
