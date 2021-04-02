@@ -146,6 +146,7 @@ def _create_train_job(toolkit, toolkit_version, framework):
             {"Name": "reward-training", "Regex": "^Training>.*Total reward=(.*?),"},
             {"Name": "reward-testing", "Regex": "^Testing>.*Total reward=(.*?),"},
         ],
+        "environment": None,
         "experiment_config": None,
         "debugger_hook_config": {
             "CollectionConfigurations": [],

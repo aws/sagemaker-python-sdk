@@ -149,6 +149,7 @@ def _create_train_job(version, base_framework_version):
         "tags": None,
         "vpc_config": None,
         "metric_definitions": None,
+        "environment": None,
         "experiment_config": None,
         "debugger_hook_config": {
             "CollectionConfigurations": [],
