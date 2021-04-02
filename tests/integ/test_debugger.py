@@ -25,6 +25,7 @@ from sagemaker.debugger.debugger import (
 )
 from sagemaker.mxnet.estimator import MXNet
 from sagemaker.pytorch.estimator import PyTorch
+from sagemaker.xgboost.estimator import XGBoost
 from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.retry import retries
 from tests.integ.timeout import timeout
@@ -400,7 +401,7 @@ def test_debug_hook_disabled_with_checkpointing(
             checkpoint_s3_uri=os.path.join(s3_output_path, "checkpoints"),
         )
         mx._prepare_for_training()
-        # Debug Hook should be enabled
+        # Debug Hook should be disabled
         assert mx.debugger_hook_config is False
 
         # Estimator with checkpointing enabled and Model Parallel Enabled
@@ -416,11 +417,29 @@ def test_debug_hook_disabled_with_checkpointing(
             sagemaker_session=sagemaker_session,
             # Training using SMDataParallel Distributed Training Framework
             distribution={"smdistributed": {"dataparallel": {"enabled": True}}},
-            debugger_hook_config=False,
+            checkpoint_local_path="/opt/ml/checkpoints",
+            checkpoint_s3_uri=os.path.join(s3_output_path, "checkpoints"),
         )
         pt._prepare_for_training()
-        # Debug Hook should be enabled
+        # Debug Hook should be disabled
         assert pt.debugger_hook_config is False
+
+        # Estimator with checkpointing enabled with Xgboost Estimator
+        xg = XGBoost(
+            base_job_name="test_xgboost",
+            entry_point=script_path,
+            role="SageMakerRole",
+            framework_version="1.2-1",
+            py_version="py3",
+            instance_count=2,
+            # For training with p3dn instance use - ml.p3dn.24xlarge, with p4dn instance use - ml.p4d.24xlarge
+            instance_type="ml.p3.16xlarge",
+            sagemaker_session=sagemaker_session,
+            # Training using SMDataParallel Distributed Training Framework
+        )
+        xg._prepare_for_training()
+        # Debug Hook should be enabled
+        assert xg.debugger_hook_config is not None
 
 
 def test_mxnet_with_rules_and_debugger_hook_config(
