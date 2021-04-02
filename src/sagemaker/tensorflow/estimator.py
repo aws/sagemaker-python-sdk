@@ -18,7 +18,6 @@ import logging
 from packaging import version
 
 from sagemaker import image_uris, s3, utils
-from sagemaker.debugger import DebuggerHookConfig
 from sagemaker.deprecations import renamed_kwargs
 from sagemaker.estimator import Framework
 import sagemaker.fw_utils as fw
@@ -347,6 +346,7 @@ class TensorFlow(Framework):
 
         Else, set default HookConfig
         """
+        super(TensorFlow, self)._validate_and_set_debugger_configs()
         ps_enabled = "parameter_server" in self.distribution and self.distribution[
             "parameter_server"
         ].get("enabled", False)
@@ -358,11 +358,6 @@ class TensorFlow(Framework):
                 )
             self.debugger_hook_config = None
             self.debugger_rule_configs = None
-        elif self.debugger_hook_config is None and fw._region_supports_debugger(
-            self.sagemaker_session.boto_session.region_name
-        ):
-            # Set defaults for debugging.
-            self.debugger_hook_config = DebuggerHookConfig(s3_output_path=self.output_path)
 
     def transformer(
         self,

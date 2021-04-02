@@ -2219,6 +2219,7 @@ class Framework(EstimatorBase):
         ):
             self.debugger_hook_config = DebuggerHookConfig(s3_output_path=self.output_path)
         elif not self.debugger_hook_config:
+            # set hook config to False if _region_supports_debugger is False
             self.debugger_hook_config = False
 
         # Disable debugger if checkpointing is enabled by the customer
