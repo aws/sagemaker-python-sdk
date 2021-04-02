@@ -181,6 +181,36 @@ class ContextSummary(_base_types.ApiObject):
     last_modified_time = None
 
 
+class UserContext(_base_types.ApiObject):
+    """Summary model of a user context.
+
+    Attributes:
+        user_profile_arn (str): User profile ARN.
+        user_profile_name (str): User profile name.
+        domain_id (str): DomainId.
+    """
+
+    user_profile_arn = None
+    user_profile_name = None
+    domain_id = None
+
+    def __init__(self, user_profile_arn=None, user_profile_name=None, domain_id=None, **kwargs):
+        """Initialize UserContext.
+
+        Args:
+            user_profile_arn (str): User profile ARN.
+            user_profile_name (str): User profile name.
+            domain_id (str): DomainId.
+            **kwargs: Arbitrary keyword arguments.
+        """
+        super(UserContext, self).__init__(
+            user_profile_arn=user_profile_arn,
+            user_profile_name=user_profile_name,
+            domain_id=domain_id,
+            **kwargs
+        )
+
+
 class AssociationSummary(_base_types.ApiObject):
     """Summary model of an association.
 
@@ -196,6 +226,9 @@ class AssociationSummary(_base_types.ApiObject):
         created_by (obj): Context on creator.
     """
 
+    _custom_boto_types = {
+        "created_by": (UserContext, False),
+    }
     source_arn = None
     source_name = None
     destination_arn = None
@@ -204,4 +237,3 @@ class AssociationSummary(_base_types.ApiObject):
     destination_type = None
     association_type = None
     creation_time = None
-    created_by = None
