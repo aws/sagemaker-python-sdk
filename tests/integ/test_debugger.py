@@ -430,7 +430,7 @@ def test_debug_hook_disabled_with_checkpointing(
             base_job_name="tf-smdataparallel-mnist",
             entry_point=script_path,
             role="SageMakerRole",
-            framework_version="2.3.1",
+            framework_version="2.4.1",
             py_version="py36",
             instance_count=1,
             # For training with p3dn instance use - ml.p3dn.24xlarge, with p4dn instance use - ml.p4d.24xlarge
