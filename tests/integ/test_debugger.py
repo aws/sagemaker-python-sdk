@@ -404,7 +404,7 @@ def test_debug_hook_disabled_with_checkpointing(
         # Debug Hook should be disabled
         assert mx.debugger_hook_config is False
 
-        # Estimator with checkpointing enabled and Model Parallel Enabled
+        # Estimator with checkpointing enabled and SMDataParallel Enabled
         pt = PyTorch(
             base_job_name="pytorch-smdataparallel-mnist",
             entry_point=script_path,
