@@ -46,6 +46,8 @@ ENDPOINT_DESC = {"EndpointConfigName": "test-endpoint"}
 
 ENDPOINT_CONFIG_DESC = {"ProductionVariants": [{"ModelName": "model-1"}, {"ModelName": "model-2"}]}
 
+ENV_INPUT = {"env_key1": "env_val1", "env_key2": "env_val2", "env_key3": "env_val3"}
+
 LIST_TAGS_RESULT = {"Tags": [{"Key": "TagtestKey", "Value": "TagtestValue"}]}
 
 EXPERIMENT_CONFIG = {
@@ -146,6 +148,7 @@ def _create_train_job(version, py_version):
         "tags": None,
         "vpc_config": None,
         "metric_definitions": None,
+        "environment": None,
         "experiment_config": None,
         "debugger_hook_config": {
             "CollectionConfigurations": [],
@@ -635,6 +638,30 @@ def test_pt_disable_sm_metrics(
         enable_sagemaker_metrics=False,
     )
     assert not pytorch.enable_sagemaker_metrics
+
+
+def test_pt_add_environment_variables(
+    sagemaker_session, pytorch_training_version, pytorch_training_py_version
+):
+    pytorch = _pytorch_estimator(
+        sagemaker_session,
+        framework_version=pytorch_training_version,
+        py_version=pytorch_training_py_version,
+        environment=ENV_INPUT,
+    )
+    assert pytorch.environment
+
+
+def test_pt_miss_environment_variables(
+    sagemaker_session, pytorch_training_version, pytorch_training_py_version
+):
+    pytorch = _pytorch_estimator(
+        sagemaker_session,
+        framework_version=pytorch_training_version,
+        py_version=pytorch_training_py_version,
+        environment=None,
+    )
+    assert not pytorch.environment
 
 
 def test_pt_default_sm_metrics(
