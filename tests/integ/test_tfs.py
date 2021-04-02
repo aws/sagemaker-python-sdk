@@ -210,7 +210,6 @@ def test_trt_predict_with_accelerator(tfs_trt_predictor_with_accelerator):
     tfs_trt_predictor_with_accelerator.predict(input_data)
 
 
-
 @pytest.mark.local_mode
 @pytest.mark.skip(
     reason="This test is broken due to a regression." "This test should be reenabled later."
