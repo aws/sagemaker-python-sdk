@@ -146,7 +146,7 @@ def tfs_trt_predictor_with_accelerator(
 ):
     endpoint_name = sagemaker.utils.unique_name_from_base("sagemaker-tensorflow-serving")
     bucket = sagemaker_session.default_bucket()
-    compilation_job_name = "Keras-ResNet50" + datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
+    compilation_job_name = "Keras-ResNet50" + datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
 
     model_data = sagemaker_session.upload_data(
         path=os.path.join(tests.integ.DATA_DIR, "tensorflow-serving-test-compiled-model.tar.gz"),
@@ -163,12 +163,12 @@ def tfs_trt_predictor_with_accelerator(
         data_shape = {"input_1": [1, 224, 224, 3]}
         output_path = "s3://{}/{}/output".format(bucket, compilation_job_name)
         compiled_model = model.compile(
-            target_instance_family='ml_eia2',
+            target_instance_family="ml_eia2",
             input_shape=data_shape,
             output_path=output_path,
             role="SageMakerRole",
             job_name=compilation_job_name,
-            framework='tensorflow',
+            framework="tensorflow",
             framework_version=tensorflow_eia_latest_version,
         )
         predictor = compiled_model.deploy(
@@ -206,7 +206,7 @@ def test_predict_with_accelerator(tfs_predictor_with_accelerator):
 @pytest.mark.release
 def test_trt_predict_with_accelerator(tfs_trt_predictor_with_accelerator):
     random_input = np.random.rand(1, 224, 224, 3)
-    input_data = {'inputs': random_input.tolist()}
+    input_data = {"inputs": random_input.tolist()}
     tfs_trt_predictor_with_accelerator.predict(input_data)
 
 
