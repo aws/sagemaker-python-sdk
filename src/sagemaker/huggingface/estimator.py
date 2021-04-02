@@ -189,6 +189,7 @@ class HuggingFace(Framework):
         """Placeholder docstring"""
         if image_uri is not None:
             return
+
         if self.framework_version is None and image_uri is None:
             raise ValueError(
                 "transformers_version, and image_uri are both None. "
@@ -203,6 +204,17 @@ class HuggingFace(Framework):
             raise ValueError(
                 "tensorflow_version and pytorch_version are both None. "
                 "Specify either tensorflow_version or pytorch_version."
+            )
+        base_framework_version_len = (
+            len(self.tensorflow_version.split("."))
+            if self.tensorflow_version is not None
+            else len(self.pytorch_version.split("."))
+        )
+        transformers_version_len = len(self.framework_version.split("."))
+        if transformers_version_len != base_framework_version_len:
+            raise ValueError(
+                "Please use either full version or shortened version for both "
+                "transformers_version, tensorflow_version and pytorch_version."
             )
 
     def hyperparameters(self):
