@@ -193,7 +193,10 @@ def pytorch_inference_py_version(pytorch_inference_version, request):
 @pytest.fixture(scope="module")
 def huggingface_pytorch_version(huggingface_training_version):
     if Version(huggingface_training_version) <= Version("4.4.2"):
-        return "1.6.0"
+        if len(huggingface_training_version.split(".")) == 3:
+            return "1.6.0"
+        else:
+            return "1.6"
     else:
         pytest.skip("Skipping Huggingface version.")
 

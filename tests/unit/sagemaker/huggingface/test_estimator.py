@@ -168,6 +168,59 @@ def _create_train_job(version, base_framework_version):
     }
 
 
+def test_huggingface_invalid_args():
+    with pytest.raises(ValueError) as error:
+        HuggingFace(
+            py_version="py36",
+            entry_point=SCRIPT_PATH,
+            role=ROLE,
+            instance_count=INSTANCE_COUNT,
+            instance_type=INSTANCE_TYPE,
+            transformers_version="4.2.1",
+            pytorch_version="1.6",
+            enable_sagemaker_metrics=False,
+        )
+    assert "use either full version or shortened version" in str(error)
+
+    with pytest.raises(ValueError) as error:
+        HuggingFace(
+            py_version="py36",
+            entry_point=SCRIPT_PATH,
+            role=ROLE,
+            instance_count=INSTANCE_COUNT,
+            instance_type=INSTANCE_TYPE,
+            pytorch_version="1.6",
+            enable_sagemaker_metrics=False,
+        )
+    assert "transformers_version, and image_uri are both None." in str(error)
+
+    with pytest.raises(ValueError) as error:
+        HuggingFace(
+            py_version="py36",
+            entry_point=SCRIPT_PATH,
+            role=ROLE,
+            instance_count=INSTANCE_COUNT,
+            instance_type=INSTANCE_TYPE,
+            transformers_version="4.2.1",
+            enable_sagemaker_metrics=False,
+        )
+    assert "tensorflow_version and pytorch_version are both None." in str(error)
+
+    with pytest.raises(ValueError) as error:
+        HuggingFace(
+            py_version="py36",
+            entry_point=SCRIPT_PATH,
+            role=ROLE,
+            instance_count=INSTANCE_COUNT,
+            instance_type=INSTANCE_TYPE,
+            transformers_version="4.2",
+            pytorch_version="1.6",
+            tensorflow_version="2.3",
+            enable_sagemaker_metrics=False,
+        )
+    assert "tensorflow_version and pytorch_version are both not None." in str(error)
+
+
 @patch("sagemaker.utils.repack_model", MagicMock())
 @patch("sagemaker.utils.create_tar_file", MagicMock())
 @patch("sagemaker.estimator.name_from_base", return_value=JOB_NAME)
