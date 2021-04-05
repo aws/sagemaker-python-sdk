@@ -36,6 +36,8 @@ STATIC_HPs = {"feature_dim": "784"}
 
 SAMPLE_PARAM_RANGES = [{"Name": "mini_batch_size", "MinValue": "10", "MaxValue": "100"}]
 
+ENV_INPUT = {"env_key1": "env_val1", "env_key2": "env_val2", "env_key3": "env_val3"}
+
 REGION = "us-west-2"
 STS_ENDPOINT = "sts.us-west-2.amazonaws.com"
 
@@ -1226,6 +1228,7 @@ def test_train_pack_to_request_with_optional_params(sagemaker_session):
         checkpoint_s3_uri="s3://mybucket/checkpoints/",
         checkpoint_local_path="/tmp/checkpoints",
         enable_sagemaker_metrics=True,
+        environment=ENV_INPUT,
     )
 
     _, _, actual_train_args = sagemaker_session.sagemaker_client.method_calls[0]
@@ -1239,6 +1242,7 @@ def test_train_pack_to_request_with_optional_params(sagemaker_session):
     assert actual_train_args["EnableManagedSpotTraining"] is True
     assert actual_train_args["CheckpointConfig"]["S3Uri"] == "s3://mybucket/checkpoints/"
     assert actual_train_args["CheckpointConfig"]["LocalPath"] == "/tmp/checkpoints"
+    assert actual_train_args["Environment"] == ENV_INPUT
 
 
 def test_transform_pack_to_request(sagemaker_session):
