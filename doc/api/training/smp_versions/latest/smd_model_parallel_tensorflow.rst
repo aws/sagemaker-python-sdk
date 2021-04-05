@@ -83,7 +83,21 @@ TensorFlow API
           with smp.partition(3):
               z = tf.reduce_sum(y)             # placed in partition 3
 
-   ​
+
+.. function:: register_post_partition_hook(hook)
+
+    Registers a callable ``hook`` to
+    be executed after the model is partitioned. This is useful in situations
+    where an operation needs to be executed after the model partition during
+    the first call to ``smp.step``, but before the actual execution of the
+    first forward pass.
+
+    .. code:: python 
+
+        @smp.register_post_partition_hook
+        def test_eager():
+            # All statements here will be executed right after partition but before the first forward pass
+            tf.print("Entered hook through eager context")
 
 .. class:: smp.CheckpointManager
 
@@ -151,18 +165,4 @@ TensorFlow API
               ckpt_manager.restore()
           loss = train_step(inputs)
 
-.. function:: register_post_partition_hook(hook)
-
-    Registers a callable ``hook`` to
-    be executed after the model is partitioned. This is useful in situations
-    where an operation needs to be executed after the model partition during
-    the first call to ``smp.step``, but before the actual execution of the
-    first forward pass.
-
-    .. code:: python 
-
-    @smp.register_post_partition_hook
-    def test_eager():
-        # All statements here will be executed right after partition but before the first forward pass
-        tf.print("Entered hook through eager context")
 
