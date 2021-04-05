@@ -1,5 +1,21 @@
 # Changelog
 
+## v2.33.0 (2021-04-05)
+
+### Features
+
+ * Add environment variable support for SageMaker training job
+
+### Bug Fixes and Other Changes
+
+ * add version length mismatch validation for HuggingFace
+ * Disable debugger when checkpointing is enabled with distributed training
+ * map user context is list associations response
+
+### Testing and Release Infrastructure
+
+ * disable_profiler on mx-horovod test
+
 ## v2.32.1 (2021-04-01)
 
 ### Bug Fixes and Other Changes
