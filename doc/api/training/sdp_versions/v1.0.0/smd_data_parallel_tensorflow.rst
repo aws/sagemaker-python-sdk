@@ -156,7 +156,7 @@ TensorFlow API
 
 .. rubric:: Supported versions
 
-**TensorFlow 2.2.2, 2.3.2, 2.4.1**
+**TensorFlow 2.3.x - 2.4.1**
 
 
 .. function:: smdistributed.dataparallel.tensorflow.init()
