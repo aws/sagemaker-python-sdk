@@ -24,7 +24,8 @@ from tests.integ.timeout import timeout
 
 @pytest.mark.release
 @pytest.mark.skipif(
-    integ.test_region() in integ.TRAINING_NO_P2_REGIONS, reason="no ml.p2 instances in this region"
+    integ.test_region() in integ.TRAINING_NO_P2_REGIONS,
+    reason="no ml.p2 instances in this region",
 )
 def test_huggingface_training(
     sagemaker_session,
@@ -62,7 +63,8 @@ def test_huggingface_training(
         )
 
         train_input = hf.sagemaker_session.upload_data(
-            path=os.path.join(data_path, "train"), key_prefix="integ-test-data/huggingface/train"
+            path=os.path.join(data_path, "train"),
+            key_prefix="integ-test-data/huggingface/train",
         )
 
         hf.fit(train_input)
