@@ -30,7 +30,7 @@ def test_huggingface_training(
     sagemaker_session,
     gpu_instance_type,
     huggingface_training_latest_version,
-    huggingface_pytorch_version,
+    huggingface_pytorch_latest_version,
 ):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         data_path = os.path.join(DATA_DIR, "huggingface")
@@ -40,7 +40,7 @@ def test_huggingface_training(
             entry_point="examples/text-classification/run_glue.py",
             role="SageMakerRole",
             transformers_version=huggingface_training_latest_version,
-            pytorch_version=huggingface_pytorch_version,
+            pytorch_version=huggingface_pytorch_latest_version,
             instance_count=1,
             instance_type=gpu_instance_type,
             hyperparameters={
@@ -58,6 +58,7 @@ def test_huggingface_training(
                 "repo": "https://github.com/huggingface/transformers.git",
                 "branch": f"v{huggingface_training_latest_version}",
             },
+            disable_profiler=True,
         )
 
         train_input = hf.sagemaker_session.upload_data(

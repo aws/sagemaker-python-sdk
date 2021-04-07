@@ -190,12 +190,31 @@ def pytorch_inference_py_version(pytorch_inference_version, request):
         return "py3"
 
 
+def _huggingface_pytorch_version(huggingface_vesion):
+    config = image_uris.config_for_framework("huggingface")
+    training_config = config.get("training")
+    original_version = huggingface_vesion
+    if "version_aliases" in training_config:
+        huggingface_vesion = training_config.get("version_aliases").get(
+            huggingface_vesion, huggingface_vesion
+        )
+    version_config = training_config.get("versions").get(huggingface_vesion)
+    for key in list(version_config.keys()):
+        if key.startswith("pytorch"):
+            pt_version = key[7:]
+            if len(original_version.split(".")) == 2:
+                pt_version = ".".join(pt_version.split(".")[:-1])
+            return pt_version
+
+
 @pytest.fixture(scope="module")
 def huggingface_pytorch_version(huggingface_training_version):
-    if Version(huggingface_training_version) <= Version("4.4.2"):
-        return "1.6.0"
-    else:
-        pytest.skip("Skipping Huggingface version.")
+    return _huggingface_pytorch_version(huggingface_training_version)
+
+
+@pytest.fixture(scope="module")
+def huggingface_pytorch_latest_version(huggingface_training_latest_version):
+    return _huggingface_pytorch_version(huggingface_training_latest_version)
 
 
 @pytest.fixture(scope="module")

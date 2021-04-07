@@ -92,6 +92,7 @@ def _create_and_fit_estimator(mxnet_version, py_version, sagemaker_session, inst
         py_version=py_version,
         framework_version=mxnet_version,
         distribution={"mpi": {"enabled": True}},
+        disable_profiler=True,
     )
 
     with timeout.timeout(minutes=integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):

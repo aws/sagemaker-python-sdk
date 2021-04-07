@@ -123,6 +123,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         enable_network_isolation=False,
         profiler_config=None,
         disable_profiler=False,
+        environment=None,
         **kwargs,
     ):
         """Initialize an ``EstimatorBase`` instance.
@@ -266,6 +267,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 ``disable_profiler`` parameter to ``True``.
             disable_profiler (bool): Specifies whether Debugger monitoring and profiling
                 will be disabled (default: ``False``).
+            environment (dict[str, str]) : Environment variables to be set for
+                use during training job (default: ``None``)
 
         """
         instance_count = renamed_kwargs(
@@ -351,6 +354,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
 
         self.profiler_config = profiler_config
         self.disable_profiler = disable_profiler
+
+        self.environment = environment
 
         if not _region_supports_profiler(self.sagemaker_session.boto_region_name):
             self.disable_profiler = True
@@ -1471,6 +1476,7 @@ class _TrainingJob(_Job):
         train_args["tags"] = estimator.tags
         train_args["metric_definitions"] = estimator.metric_definitions
         train_args["experiment_config"] = experiment_config
+        train_args["environment"] = estimator.environment
 
         if isinstance(inputs, TrainingInput):
             if "InputMode" in inputs.config:
@@ -1659,6 +1665,7 @@ class Estimator(EstimatorBase):
         enable_sagemaker_metrics=None,
         profiler_config=None,
         disable_profiler=False,
+        environment=None,
         **kwargs,
     ):
         """Initialize an ``Estimator`` instance.
@@ -1807,6 +1814,8 @@ class Estimator(EstimatorBase):
                 ``disable_profiler`` parameter to ``True``.
             disable_profiler (bool): Specifies whether Debugger monitoring and profiling
                 will be disabled (default: ``False``).
+            environment (dict[str, str]) : Environment variables to be set for
+                use during training job (default: ``None``)
         """
         self.image_uri = image_uri
         self.hyperparam_dict = hyperparameters.copy() if hyperparameters else {}
@@ -1840,6 +1849,7 @@ class Estimator(EstimatorBase):
             enable_network_isolation=enable_network_isolation,
             profiler_config=profiler_config,
             disable_profiler=disable_profiler,
+            environment=environment,
             **kwargs,
         )
 
@@ -2209,7 +2219,21 @@ class Framework(EstimatorBase):
         ):
             self.debugger_hook_config = DebuggerHookConfig(s3_output_path=self.output_path)
         elif not self.debugger_hook_config:
-            self.debugger_hook_config = None
+            # set hook config to False if _region_supports_debugger is False
+            self.debugger_hook_config = False
+
+        # Disable debugger if checkpointing is enabled by the customer
+        if self.checkpoint_s3_uri and self.checkpoint_local_path and self.debugger_hook_config:
+            if self._framework_name in {"mxnet", "pytorch", "tensorflow"}:
+                if self.instance_count > 1 or (
+                    hasattr(self, "distribution")
+                    and self.distribution is not None  # pylint: disable=no-member
+                ):
+                    logger.info(
+                        "SMDebug Does Not Currently Support \
+                        Distributed Training Jobs With Checkpointing Enabled"
+                    )
+                    self.debugger_hook_config = False
 
     def _stage_user_code_in_s3(self):
         """Upload the user training script to s3 and return the location.

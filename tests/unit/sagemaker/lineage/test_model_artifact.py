@@ -34,7 +34,7 @@ def test_trained_models(sagemaker_session):
                     "DestinationType": "Action",
                     "AssociationType": "E1",
                     "CreationTime": None,
-                    "CreatedBy": {},
+                    "CreatedBy": None,
                 }
             ],
         },
@@ -49,7 +49,7 @@ def test_trained_models(sagemaker_session):
                     "DestinationType": "Context",
                     "AssociationType": "E2",
                     "CreationTime": None,
-                    "CreatedBy": {},
+                    "CreatedBy": None,
                 }
             ]
         },
@@ -71,7 +71,7 @@ def test_trained_models(sagemaker_session):
             destination_type="Context",
             association_type="E2",
             creation_time=None,
-            created_by={},
+            created_by=None,
         )
     ]
     assert expected_model_list == endpoint_context_list
