@@ -68,3 +68,43 @@ def test_huggingface_training(
         )
 
         hf.fit(train_input)
+
+
+@pytest.mark.release
+@pytest.mark.skipif(
+    integ.test_region() in integ.TRAINING_NO_P2_REGIONS, reason="no ml.p2 instances in this region"
+)
+def test_huggingface_training_tf(
+    sagemaker_session,
+    gpu_instance_type,
+    huggingface_training_latest_version,
+    huggingface_tensorflow_latest_version,
+):
+    with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
+        data_path = os.path.join(DATA_DIR, "huggingface")
+
+        hf = HuggingFace(
+            py_version="py37",
+            entry_point=os.path.join(data_path, "run_tf.py"),
+            role="SageMakerRole",
+            transformers_version=huggingface_training_latest_version,
+            tensorflow_version=huggingface_tensorflow_latest_version,
+            instance_count=1,
+            instance_type=gpu_instance_type,
+            hyperparameters={
+                "model_name_or_path": "distilbert-base-cased",
+                "per_device_train_batch_size": 128,
+                "per_device_eval_batch_size": 128,
+                "output_dir": "/opt/ml/model",
+                "overwrite_output_dir": True,
+                "save_steps": 5500,
+            },
+            sagemaker_session=sagemaker_session,
+            disable_profiler=True,
+        )
+
+        train_input = hf.sagemaker_session.upload_data(
+            path=os.path.join(data_path, "train"), key_prefix="integ-test-data/huggingface/train"
+        )
+
+        hf.fit(train_input)
