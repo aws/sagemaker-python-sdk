@@ -92,7 +92,7 @@ TensorFlow API
     the first call to ``smp.step``, but before the actual execution of the
     first forward pass.
 
-    .. code:: python 
+    .. code:: python
 
         @smp.register_post_partition_hook
         def test_eager():
@@ -161,7 +161,7 @@ TensorFlow API
    .. code:: python
 
       for step, inputs in enumerate(train_ds):
-          if step == 0:                    
+          if step == 0:
               ckpt_manager.restore()
           loss = train_step(inputs)
 
