@@ -123,6 +123,7 @@ class ModelConfig:
         content_type=None,
         content_template=None,
         custom_attributes=None,
+        accelerator_type=None,
     ):
         """Initializes a configuration of a model and the endpoint to be created for it.
 
@@ -151,6 +152,9 @@ class ModelConfig:
                 Section 3.3.6. Field Value Components (
                 https://tools.ietf.org/html/rfc7230#section-3.2.6) of the Hypertext Transfer
                 Protocol (HTTP/1.1).
+            accelerator_type (str): The Elastic Inference accelerator type to deploy to the model
+                endpoint instance for making inferences to the model, see
+                https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html.
         """
         self.predictor_config = {
             "model_name": model_name,
@@ -178,9 +182,8 @@ class ModelConfig:
                     f" Please include a placeholder $features."
                 )
             self.predictor_config["content_template"] = content_template
-
-        if custom_attributes is not None:
-            self.predictor_config["custom_attributes"] = custom_attributes
+        _set(custom_attributes, "custom_attributes", self.predictor_config)
+        _set(accelerator_type, "accelerator_type", self.predictor_config)
 
     def get_predictor_config(self):
         """Returns part of the predictor dictionary of the analysis config."""
