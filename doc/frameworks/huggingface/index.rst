@@ -9,3 +9,4 @@ For general information about using the SageMaker Python SDK, see :ref:`overview
     :maxdepth: 2
 
     sagemaker.huggingface
+    Use Hugging Face with the SageMaker Python SDK <https://huggingface.co/transformers/sagemaker.html>
