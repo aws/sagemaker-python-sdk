@@ -16,8 +16,9 @@ The following steps show you how to convert a TensorFlow 2.x training
 script to utilize the distributed data parallel library.
 
 The distributed data parallel library APIs are designed to be close to Horovod APIs.
-See `SageMaker distributed data parallel TensorFlow examples <https://sagemaker-examples.readthedocs.io/en/latest/training/distributed_training/index.html#tensorflow-distributed>`__ for additional details on how to implement the data parallel library
-API offered for TensorFlow.
+See `SageMaker distributed data parallel TensorFlow examples
+<https://sagemaker-examples.readthedocs.io/en/latest/training/distributed_training/index.html#tensorflow-distributed>`__
+for additional details on how to implement the data parallel library.
 
 -  First import the distributed data parallel library’s TensorFlow client and initialize it:
 
@@ -156,8 +157,10 @@ TensorFlow API
 
 .. rubric:: Supported versions
 
--  TensorFlow 2.x - 2.3.1
-
+TensorFlow is supported in version 1.0.0 of ``sagemakerdistributed.dataparallel``.
+Reference version 1.0.0 `TensorFlow API documentation
+<https://sagemaker.readthedocs.io/en/stable/api/training/sdp_versions/latest/smd_data_parallel_tensorflow.html#tensorflow-sdp-api>`_
+for supported TensorFlow versions.
 
 .. function:: smdistributed.dataparallel.tensorflow.init()
 
