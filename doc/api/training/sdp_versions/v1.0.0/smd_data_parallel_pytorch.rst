@@ -4,11 +4,10 @@ PyTorch Guide to SageMaker's distributed data parallel library
 
 .. admonition:: Contents
 
-   - :ref:`pytorch-sdp-modify`
-   - :ref:`pytorch-sdp-api`
+   - :ref:`pytorch-sdp-modify-1.0.0`
+   - :ref:`pytorch-sdp-api-1.0.0`
 
-.. _pytorch-sdp-modify:
-   :noindex:
+.. _pytorch-sdp-modify-1.0.0:
 
 Modify a PyTorch training script to use SageMaker data parallel
 ======================================================================
@@ -149,15 +148,14 @@ you will have for distributed training with the distributed data parallel librar
        main()
 
 
-.. _pytorch-sdp-api:
-   :noindex:
+.. _pytorch-sdp-api-1.0.0:
 
 PyTorch API
 ===========
 
-**Supported versions:**
+.. rubric:: Supported versions
 
--  PyTorch 1.6.0
+**PyTorch 1.6.0, 1.7.1**
 
 
 .. function:: smdistributed.dataparallel.torch.distributed.is_available()
