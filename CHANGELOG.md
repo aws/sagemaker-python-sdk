@@ -1,5 +1,26 @@
 # Changelog
 
+## v2.34.0 (2021-04-12)
+
+### Features
+
+ * Add support for accelerator in Clarify
+
+### Bug Fixes and Other Changes
+
+ * add Documentation for how to use
+ * enable local mode tests that were skipped
+ * add integ test for HuggingFace with TensorFlow
+
+### Documentation Changes
+
+ * release notes for smdistributed.dataparallel v1.1.1
+ * fixing the SageMaker distributed version references
+
+### Testing and Release Infrastructure
+
+ * pin version for ducutils
+
 ## v2.33.0 (2021-04-05)
 
 ### Features

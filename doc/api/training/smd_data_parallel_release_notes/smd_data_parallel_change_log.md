@@ -1,3 +1,21 @@
+# Sagemaker Distributed Data Parallel 1.1.1 Release Notes
+
+* New Features
+* Bug Fixes
+* Known Issues
+
+*New Features:*
+
+* Adds support for PyTorch 1.8.1
+
+*Bug Fixes:*
+
+* Fixes a bug that was causing gradients from one of the worker nodes to be added twice resulting in incorrect `all_reduce` results under some conditions.
+
+*Known Issues:*
+
+* SageMaker distributed data parallel still is not efficient when run using a single node. For the best performance, use multi-node distributed training with `smdistributed.dataparallel`. Use a single node only for experimental runs while preparing your training pipeline.
+
 # Sagemaker Distributed Data Parallel 1.1.0 Release Notes
 
 * New Features
@@ -5,19 +23,19 @@
 * Improvements
 * Known Issues
 
-New Features:
+*New Features:*
 
 * Adds support for PyTorch 1.8.0 with CUDA 11.1 and CUDNN 8
 
-Bug Fixes:
+*Bug Fixes:*
 
 * Fixes crash issue when importing `smdataparallel` before PyTorch
 
-Improvements:
+*Improvements:*
 
 * Update `smdataparallel` name in python packages, descriptions, and log outputs
 
-Known Issues:
+*Known Issues:*
 
 * SageMaker DataParallel is not efficient when run using a single node. For the best performance, use multi-node distributed training with `smdataparallel`. Use a single node only for experimental runs while preparing your training pipeline.
 
