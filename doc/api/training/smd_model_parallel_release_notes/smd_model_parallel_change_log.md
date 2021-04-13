@@ -1,3 +1,33 @@
+# Sagemaker Distributed Model Parallel 1.3.1 Release Notes
+
+- New Features
+- Bug Fixes
+- Known Issues
+
+## New Features
+
+### TensorFlow
+
+- Exposes a new decorator ``register_post_partition_hook``. This allows invoking the decorated methods just after model partition but before executing the first step. For example loading a checkpoint. Refer to the [SageMaker distributed model parallel API documentation](https://sagemaker.readthedocs.io/en/stable/api/training/smp_versions/latest/smd_model_parallel_tensorflow.html) for more information.
+
+## Bug Fixes
+
+### PyTorch
+
+- Improved memory efficiency when using active microbatches by clearing activations at end of each microbatch.
+
+### TensorFlow
+
+- Fixed issue that caused hangs when training some models with XLA enabled.
+
+## Known Issues
+
+### PyTorch
+
+- A crash was observed when ``optimizer.step()`` was called for certain optimizers such as AdaDelta, when the partition on which this method was called has no local parameters assigned to it after partitioning. This is due to a bug in PyTorch which [has since been fixed](https://github.com/pytorch/pytorch/pull/52944). Till that makes its way to the next release of PyTorch, only call ``optimizer.step()`` on processes which have at least one local parameter. This can be checked like this ``len(list(model.local_parameters())) > 0``.
+
+- A performance regression still exists when training on SMP with PyTorch 1.7.1 compared to 1.6. The rootcause was found to be the slowdown in performance of `.grad` method calls in PyTorch 1.7.1 compared to 1.6. See the related discussion: https://github.com/pytorch/pytorch/issues/50636. This issue does not exist with PyTorch 1.8.
+
 # Sagemaker Distributed Model Parallel 1.3.0 Release Notes
 
 - New Features
