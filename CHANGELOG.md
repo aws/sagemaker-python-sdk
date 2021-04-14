@@ -1,5 +1,68 @@
 # Changelog
 
+## v2.35.0 (2021-04-14)
+
+### Features
+
+ * add support for PyTorch 1.8.1
+
+### Bug Fixes and Other Changes
+
+ * boto3 client param updated for feature store
+ * Updated release notes and API doc for smd model parallel 1.3.1
+
+## v2.34.0 (2021-04-12)
+
+### Features
+
+ * Add support for accelerator in Clarify
+
+### Bug Fixes and Other Changes
+
+ * add Documentation for how to use
+ * enable local mode tests that were skipped
+ * add integ test for HuggingFace with TensorFlow
+
+### Documentation Changes
+
+ * release notes for smdistributed.dataparallel v1.1.1
+ * fixing the SageMaker distributed version references
+
+### Testing and Release Infrastructure
+
+ * pin version for ducutils
+
+## v2.33.0 (2021-04-05)
+
+### Features
+
+ * Add environment variable support for SageMaker training job
+
+### Bug Fixes and Other Changes
+
+ * add version length mismatch validation for HuggingFace
+ * Disable debugger when checkpointing is enabled with distributed training
+ * map user context is list associations response
+
+### Testing and Release Infrastructure
+
+ * disable_profiler on mx-horovod test
+
+## v2.32.1 (2021-04-01)
+
+### Bug Fixes and Other Changes
+
+ * disable profiler in some release tests
+ * remove outdated notebook from test
+ * add compilation option for ml_eia2
+ * add short version to smdataparallel supported list
+
+### Documentation Changes
+
+ * creating a "latest" version sm distributed docs
+ * add docs for Sagemaker Model Parallel 1.3, released with PT 1.8
+ * update PyTorch version in doc
+
 ## v2.32.0 (2021-03-26)
 
 ### Features

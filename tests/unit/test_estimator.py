@@ -71,6 +71,7 @@ CODECOMMIT_REPO = "https://git-codecommit.us-west-2.amazonaws.com/v1/repos/test-
 CODECOMMIT_REPO_SSH = "ssh://git-codecommit.us-west-2.amazonaws.com/v1/repos/test-repo/"
 CODECOMMIT_BRANCH = "master"
 REPO_DIR = "/tmp/repo_dir"
+ENV_INPUT = {"env_key1": "env_val1", "env_key2": "env_val2", "env_key3": "env_val3"}
 
 DESCRIBE_TRAINING_JOB_RESULT = {"ModelArtifacts": {"S3ModelArtifacts": MODEL_DATA}}
 
@@ -120,7 +121,9 @@ DISTRIBUTION_PS_ENABLED = {"parameter_server": {"enabled": True}}
 DISTRIBUTION_MPI_ENABLED = {
     "mpi": {"enabled": True, "custom_mpi_options": "options", "processes_per_host": 2}
 }
-DISTRIBUTION_SM_DDP_ENABLED = {"smdistributed": {"dataparallel": {"enabled": True}}}
+DISTRIBUTION_SM_DDP_ENABLED = {
+    "smdistributed": {"dataparallel": {"enabled": True, "custom_mpi_options": "options"}}
+}
 
 
 class DummyFramework(Framework):
@@ -241,6 +244,7 @@ def test_framework_all_init_args(sagemaker_session):
         checkpoint_local_path="file://local/checkpoint",
         enable_sagemaker_metrics=True,
         enable_network_isolation=True,
+        environment=ENV_INPUT,
     )
     _TrainingJob.start_new(f, "s3://mydata", None)
     sagemaker_session.train.assert_called_once()
@@ -275,6 +279,7 @@ def test_framework_all_init_args(sagemaker_session):
         },
         "metric_definitions": [{"Name": "validation-rmse", "Regex": "validation-rmse=(\\d+)"}],
         "encrypt_inter_container_traffic": True,
+        "environment": {"env_key1": "env_val1", "env_key2": "env_val2", "env_key3": "env_val3"},
         "experiment_config": None,
         "checkpoint_s3_uri": "s3://bucket/checkpoint",
         "checkpoint_local_path": "file://local/checkpoint",
@@ -1085,6 +1090,7 @@ def test_framework_with_spot_and_checkpoints(sagemaker_session):
         "use_spot_instances": True,
         "checkpoint_s3_uri": "s3://mybucket/checkpoints/",
         "checkpoint_local_path": "/tmp/checkpoints",
+        "environment": None,
         "experiment_config": None,
     }
 
@@ -2389,6 +2395,7 @@ NO_INPUT_TRAIN_CALL = {
     "tags": None,
     "vpc_config": None,
     "metric_definitions": None,
+    "environment": None,
     "experiment_config": None,
 }
 
@@ -2676,6 +2683,24 @@ def test_generic_to_fit_with_sagemaker_metrics_missing(sagemaker_session):
     sagemaker_session.train.assert_called_once()
     args = sagemaker_session.train.call_args[1]
     assert "enable_sagemaker_metrics" not in args
+
+
+def test_add_environment_variables_to_train_args(sagemaker_session):
+    e = Estimator(
+        IMAGE_URI,
+        ROLE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        output_path=OUTPUT_PATH,
+        sagemaker_session=sagemaker_session,
+        environment=ENV_INPUT,
+    )
+
+    e.fit()
+
+    sagemaker_session.train.assert_called_once()
+    args = sagemaker_session.train.call_args[1]
+    assert args["environment"] == ENV_INPUT
 
 
 def test_generic_to_fit_with_sagemaker_metrics_enabled(sagemaker_session):
@@ -3267,6 +3292,7 @@ def test_framework_distribution_configuration(sagemaker_session):
     actual_ddp = framework._distribution_configuration(distribution=DISTRIBUTION_SM_DDP_ENABLED)
     expected_ddp = {
         "sagemaker_distributed_dataparallel_enabled": True,
+        "sagemaker_distributed_dataparallel_custom_mpi_options": "options",
         "sagemaker_instance_type": INSTANCE_TYPE,
     }
     assert actual_ddp == expected_ddp
