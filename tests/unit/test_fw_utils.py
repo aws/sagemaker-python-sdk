@@ -642,6 +642,7 @@ def test_validate_smdataparallel_args_not_raises():
         ("ml.p3.16xlarge", "pytorch", "1.7.1", "py3", smdataparallel_enabled),
         ("ml.p3.16xlarge", "pytorch", "1.7", "py3", smdataparallel_enabled),
         ("ml.p3.16xlarge", "pytorch", "1.8.0", "py3", smdataparallel_enabled),
+        ("ml.p3.16xlarge", "pytorch", "1.8.1", "py3", smdataparallel_enabled),
         ("ml.p3.16xlarge", "pytorch", "1.8", "py3", smdataparallel_enabled),
     ]
     for instance_type, framework_name, framework_version, py_version, distribution in good_args:
