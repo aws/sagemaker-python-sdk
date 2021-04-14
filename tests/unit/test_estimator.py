@@ -121,7 +121,9 @@ DISTRIBUTION_PS_ENABLED = {"parameter_server": {"enabled": True}}
 DISTRIBUTION_MPI_ENABLED = {
     "mpi": {"enabled": True, "custom_mpi_options": "options", "processes_per_host": 2}
 }
-DISTRIBUTION_SM_DDP_ENABLED = {"smdistributed": {"dataparallel": {"enabled": True}}}
+DISTRIBUTION_SM_DDP_ENABLED = {
+    "smdistributed": {"dataparallel": {"enabled": True, "custom_mpi_options": "options"}}
+}
 
 
 class DummyFramework(Framework):
@@ -3290,6 +3292,7 @@ def test_framework_distribution_configuration(sagemaker_session):
     actual_ddp = framework._distribution_configuration(distribution=DISTRIBUTION_SM_DDP_ENABLED)
     expected_ddp = {
         "sagemaker_distributed_dataparallel_enabled": True,
+        "sagemaker_distributed_dataparallel_custom_mpi_options": "options",
         "sagemaker_instance_type": INSTANCE_TYPE,
     }
     assert actual_ddp == expected_ddp
