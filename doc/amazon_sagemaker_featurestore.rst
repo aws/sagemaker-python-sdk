@@ -67,7 +67,7 @@ use the SageMaker default bucket and add a custom prefix to it.
    offline_feature_store_bucket = 's3://*{}*/*{}*'.format(default_bucket, prefix)
 
    sagemaker_client = boto_session.client(service_name='sagemaker', region_name=region)
-   featurestore_runtime = boto_session.client(service_name='featurestore-runtime', region_name=region)
+   featurestore_runtime = boto_session.client(service_name='sagemaker-featurestore-runtime', region_name=region)
 
    feature_store_session = Session(
        boto_session=boto_session,
