@@ -1,5 +1,16 @@
 # Changelog
 
+## v2.35.0 (2021-04-14)
+
+### Features
+
+ * add support for PyTorch 1.8.1
+
+### Bug Fixes and Other Changes
+
+ * boto3 client param updated for feature store
+ * Updated release notes and API doc for smd model parallel 1.3.1
+
 ## v2.34.0 (2021-04-12)
 
 ### Features

@@ -1954,6 +1954,7 @@ class Framework(EstimatorBase):
     INSTANCE_TYPE = "sagemaker_instance_type"
     MPI_NUM_PROCESSES_PER_HOST = "sagemaker_mpi_num_of_processes_per_host"
     MPI_CUSTOM_MPI_OPTIONS = "sagemaker_mpi_custom_mpi_options"
+    SM_DDP_CUSTOM_MPI_OPTIONS = "sagemaker_distributed_dataparallel_custom_mpi_options"
     CONTAINER_CODE_CHANNEL_SOURCEDIR_PATH = "/opt/ml/input/data/code/sourcedir.tar.gz"
 
     def __init__(
@@ -2629,6 +2630,10 @@ class Framework(EstimatorBase):
             smdataparallel_enabled = smdistributed.get("dataparallel", {}).get("enabled", False)
             distribution_config[self.LAUNCH_SM_DDP_ENV_NAME] = smdataparallel_enabled
             distribution_config[self.INSTANCE_TYPE] = self.instance_type
+            if smdataparallel_enabled:
+                distribution_config[self.SM_DDP_CUSTOM_MPI_OPTIONS] = smdistributed[
+                    "dataparallel"
+                ].get("custom_mpi_options", "")
 
         return distribution_config
 
