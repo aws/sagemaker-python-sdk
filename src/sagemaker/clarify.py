@@ -667,6 +667,9 @@ class SageMakerClarifyProcessor(Processor):
                 "Clarify-Explainability" and current timestamp.
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 user code file (default: None).
+            experiment_config (dict[str, str]): Experiment management configuration.
+                Dictionary contains three optional keys:
+                'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
         """
         analysis_config = data_config.get_config()
         predictor_config = model_config.get_predictor_config()
