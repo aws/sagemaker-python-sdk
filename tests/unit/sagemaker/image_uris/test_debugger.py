@@ -12,6 +12,8 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import pytest
+
 from sagemaker import image_uris
 from tests.unit.sagemaker.image_uris import expected_uris, regions
 
@@ -42,7 +44,7 @@ ACCOUNTS = {
 }
 
 
-def test_debugger():
+def test_retrieve_debugger_rule_container_in_supported_regions():
     for region in regions.regions():
         if region in ACCOUNTS.keys():
             uri = image_uris.retrieve("debugger", region=region)
@@ -51,3 +53,11 @@ def test_debugger():
                 "sagemaker-debugger-rules", ACCOUNTS[region], region, version="latest"
             )
             assert expected == uri
+
+
+def test_retrieve_debugger_rule_container_in_unsupported_regions():
+    for region in regions.regions():
+        if region not in ACCOUNTS.keys():
+            with pytest.raises(ValueError, match=".*for debugger rule container.*"):
+                image_uris.retrieve("debugger", region=region)
+            break

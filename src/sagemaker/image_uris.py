@@ -83,7 +83,7 @@ def retrieve(
     py_version = _validate_py_version_and_set_if_needed(py_version, version_config, framework)
     version_config = version_config.get(py_version) or version_config
 
-    registry = _registry_from_region(region, version_config["registries"])
+    registry = _registry_from_region(region, version_config["registries"], framework)
     hostname = utils._botocore_resolver().construct_endpoint("ecr", region)["hostname"]
 
     repo = version_config["repository"]
@@ -212,9 +212,9 @@ def _version_for_config(version, config):
     return version
 
 
-def _registry_from_region(region, registry_dict):
+def _registry_from_region(region, registry_dict, framework_name):
     """Returns the ECR registry (AWS account number) for the given region."""
-    _validate_arg(region, registry_dict.keys(), "region")
+    _validate_arg(region, registry_dict.keys(), "region", framework=framework_name)
     return registry_dict[region]
 
 
@@ -303,14 +303,21 @@ def _validate_py_version_and_set_if_needed(py_version, version_config, framework
     return py_version
 
 
-def _validate_arg(arg, available_options, arg_name):
+def _validate_arg(arg, available_options, arg_name, **kwargs):
     """Checks if the arg is in the available options, and raises a ``ValueError`` if not."""
     if arg not in available_options:
-        raise ValueError(
-            "Unsupported {arg_name}: {arg}. You may need to upgrade your SDK version "
-            "(pip install -U sagemaker) for newer {arg_name}s. Supported {arg_name}(s): "
-            "{options}.".format(arg_name=arg_name, arg=arg, options=", ".join(available_options))
+        error_msg = (
+            "You may need to upgrade your SDK version (pip install -U sagemaker) "
+            "for newer {arg_name}(s). Supported {arg_name}(s): "
+            "{options}.".format(arg_name=arg_name, options=", ".join(available_options))
         )
+
+        if arg_name == "region" and "framework" in kwargs and kwargs.get("framework") == "debugger":
+            raise ValueError(
+                f"Unsupported {arg_name}: {arg} for debugger rule container. " + error_msg
+            )
+
+        raise ValueError(f"Unsupported {arg_name}: {arg}. " + error_msg)
 
 
 def _format_tag(tag_prefix, processor, py_version, container_version):
