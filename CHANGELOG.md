@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.36.0 (2021-04-19)
+
+### Features
+
+ * enable smdataparallel custom mpi options support
+
 ## v2.35.0 (2021-04-14)
 
 ### Features
