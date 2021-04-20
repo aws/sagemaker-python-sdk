@@ -1,6 +1,5 @@
 # Sagemaker Distributed Data Parallel 1.1.2 Release Notes
 
-* New Features
 * Bug Fixes
 * Known Issues
 
