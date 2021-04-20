@@ -1,5 +1,5 @@
 
-Version 1.1.1 (Latest)
+Version 1.1.2 (Latest)
 ======================
 
 .. toctree::
