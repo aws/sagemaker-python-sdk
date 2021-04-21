@@ -1,5 +1,27 @@
 # Changelog
 
+## v2.38.0 (2021-04-21)
+
+### Features
+
+ * support multiprocess feature group ingest (#2111)
+
+## v2.37.0 (2021-04-20)
+
+### Features
+
+ * add experiment_config for clarify processing job
+
+### Documentation Changes
+
+ * release notes for smdistributed.dataparallel v1.1.2
+
+## v2.36.0 (2021-04-19)
+
+### Features
+
+ * enable smdataparallel custom mpi options support
+
 ## v2.35.0 (2021-04-14)
 
 ### Features
