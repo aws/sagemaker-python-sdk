@@ -84,7 +84,7 @@ Select a version to see the API documentation for version.
 .. toctree::
    :maxdepth: 1
 
-   sdp_versions/v1_1_0.rst
+   sdp_versions/latest.rst
    sdp_versions/v1_0_0.rst
 
 .. important::

@@ -265,6 +265,33 @@ def test_ingest_without_string_feature(
     assert output["FeatureGroupArn"].endswith(f"feature-group/{feature_group_name}")
 
 
+def test_ingest_multi_process(
+    feature_store_session,
+    role,
+    feature_group_name,
+    offline_store_s3_uri,
+    pandas_data_frame,
+):
+    feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
+    feature_group.load_feature_definitions(data_frame=pandas_data_frame)
+
+    with cleanup_feature_group(feature_group):
+        output = feature_group.create(
+            s3_uri=offline_store_s3_uri,
+            record_identifier_name="feature1",
+            event_time_feature_name="feature3",
+            role_arn=role,
+            enable_online_store=True,
+        )
+        _wait_for_feature_group_create(feature_group)
+
+        feature_group.ingest(
+            data_frame=pandas_data_frame, max_workers=3, max_processes=2, wait=True
+        )
+
+    assert output["FeatureGroupArn"].endswith(f"feature-group/{feature_group_name}")
+
+
 def _wait_for_feature_group_create(feature_group: FeatureGroup):
     status = feature_group.describe().get("FeatureGroupStatus")
     while status == "Creating":

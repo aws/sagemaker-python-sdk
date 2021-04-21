@@ -190,12 +190,36 @@ def pytorch_inference_py_version(pytorch_inference_version, request):
         return "py3"
 
 
+def _huggingface_base_fm_version(huggingface_vesion, base_fw):
+    config = image_uris.config_for_framework("huggingface")
+    training_config = config.get("training")
+    original_version = huggingface_vesion
+    if "version_aliases" in training_config:
+        huggingface_vesion = training_config.get("version_aliases").get(
+            huggingface_vesion, huggingface_vesion
+        )
+    version_config = training_config.get("versions").get(huggingface_vesion)
+    for key in list(version_config.keys()):
+        if key.startswith(base_fw):
+            base_fw_version = key[len(base_fw) :]
+            if len(original_version.split(".")) == 2:
+                base_fw_version = ".".join(base_fw_version.split(".")[:-1])
+            return base_fw_version
+
+
 @pytest.fixture(scope="module")
 def huggingface_pytorch_version(huggingface_training_version):
-    if Version(huggingface_training_version) <= Version("4.4.2"):
-        return "1.6.0"
-    else:
-        pytest.skip("Skipping Huggingface version.")
+    return _huggingface_base_fm_version(huggingface_training_version, "pytorch")
+
+
+@pytest.fixture(scope="module")
+def huggingface_pytorch_latest_version(huggingface_training_latest_version):
+    return _huggingface_base_fm_version(huggingface_training_latest_version, "pytorch")
+
+
+@pytest.fixture(scope="module")
+def huggingface_tensorflow_latest_version(huggingface_training_latest_version):
+    return _huggingface_base_fm_version(huggingface_training_latest_version, "tensorflow")
 
 
 @pytest.fixture(scope="module")

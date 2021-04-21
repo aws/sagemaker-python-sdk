@@ -130,6 +130,7 @@ def _create_train_job(tf_version, horovod=False, ps=False, py_version="py2", smd
         "tags": None,
         "vpc_config": None,
         "metric_definitions": None,
+        "environment": None,
         "experiment_config": None,
         "profiler_rule_configs": [
             {

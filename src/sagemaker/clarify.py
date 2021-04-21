@@ -123,6 +123,7 @@ class ModelConfig:
         content_type=None,
         content_template=None,
         custom_attributes=None,
+        accelerator_type=None,
     ):
         """Initializes a configuration of a model and the endpoint to be created for it.
 
@@ -151,6 +152,9 @@ class ModelConfig:
                 Section 3.3.6. Field Value Components (
                 https://tools.ietf.org/html/rfc7230#section-3.2.6) of the Hypertext Transfer
                 Protocol (HTTP/1.1).
+            accelerator_type (str): The Elastic Inference accelerator type to deploy to the model
+                endpoint instance for making inferences to the model, see
+                https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html.
         """
         self.predictor_config = {
             "model_name": model_name,
@@ -178,9 +182,8 @@ class ModelConfig:
                     f" Please include a placeholder $features."
                 )
             self.predictor_config["content_template"] = content_template
-
-        if custom_attributes is not None:
-            self.predictor_config["custom_attributes"] = custom_attributes
+        _set(custom_attributes, "custom_attributes", self.predictor_config)
+        _set(accelerator_type, "accelerator_type", self.predictor_config)
 
     def get_predictor_config(self):
         """Returns part of the predictor dictionary of the analysis config."""
@@ -400,6 +403,7 @@ class SageMakerClarifyProcessor(Processor):
         logs,
         job_name,
         kms_key,
+        experiment_config,
     ):
         """Runs a ProcessingJob with the Sagemaker Clarify container and an analysis config.
 
@@ -412,6 +416,9 @@ class SageMakerClarifyProcessor(Processor):
             job_name (str): Processing job name.
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 user code file (default: None).
+            experiment_config (dict[str, str]): Experiment management configuration.
+                Dictionary contains three optional keys:
+                'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
         """
         analysis_config["methods"]["report"] = {"name": "report", "title": "Analysis Report"}
         with tempfile.TemporaryDirectory() as tmpdirname:
@@ -454,6 +461,7 @@ class SageMakerClarifyProcessor(Processor):
                 logs=logs,
                 job_name=job_name,
                 kms_key=kms_key,
+                experiment_config=experiment_config,
             )
 
     def run_pre_training_bias(
@@ -465,6 +473,7 @@ class SageMakerClarifyProcessor(Processor):
         logs=True,
         job_name=None,
         kms_key=None,
+        experiment_config=None,
     ):
         """Runs a ProcessingJob to compute the requested bias 'methods' of the input data.
 
@@ -484,13 +493,16 @@ class SageMakerClarifyProcessor(Processor):
                 "Clarify-Pretraining-Bias" and current timestamp.
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 user code file (default: None).
+            experiment_config (dict[str, str]): Experiment management configuration.
+                Dictionary contains three optional keys:
+                'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
         """
         analysis_config = data_config.get_config()
         analysis_config.update(data_bias_config.get_config())
         analysis_config["methods"] = {"pre_training_bias": {"methods": methods}}
         if job_name is None:
             job_name = utils.name_from_base("Clarify-Pretraining-Bias")
-        self._run(data_config, analysis_config, wait, logs, job_name, kms_key)
+        self._run(data_config, analysis_config, wait, logs, job_name, kms_key, experiment_config)
 
     def run_post_training_bias(
         self,
@@ -503,6 +515,7 @@ class SageMakerClarifyProcessor(Processor):
         logs=True,
         job_name=None,
         kms_key=None,
+        experiment_config=None,
     ):
         """Runs a ProcessingJob to compute the requested bias 'methods' of the model predictions.
 
@@ -529,6 +542,9 @@ class SageMakerClarifyProcessor(Processor):
                 "Clarify-Posttraining-Bias" and current timestamp.
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 user code file (default: None).
+            experiment_config (dict[str, str]): Experiment management configuration.
+                Dictionary contains three optional keys:
+                'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
         """
         analysis_config = data_config.get_config()
         analysis_config.update(data_bias_config.get_config())
@@ -542,7 +558,7 @@ class SageMakerClarifyProcessor(Processor):
         _set(probability_threshold, "probability_threshold", analysis_config)
         if job_name is None:
             job_name = utils.name_from_base("Clarify-Posttraining-Bias")
-        self._run(data_config, analysis_config, wait, logs, job_name, kms_key)
+        self._run(data_config, analysis_config, wait, logs, job_name, kms_key, experiment_config)
 
     def run_bias(
         self,
@@ -556,6 +572,7 @@ class SageMakerClarifyProcessor(Processor):
         logs=True,
         job_name=None,
         kms_key=None,
+        experiment_config=None,
     ):
         """Runs a ProcessingJob to compute the requested bias 'methods' of the model predictions.
 
@@ -586,6 +603,9 @@ class SageMakerClarifyProcessor(Processor):
                 "Clarify-Bias" and current timestamp.
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 user code file (default: None).
+            experiment_config (dict[str, str]): Experiment management configuration.
+                Dictionary contains three optional keys:
+                'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
         """
         analysis_config = data_config.get_config()
         analysis_config.update(bias_config.get_config())
@@ -606,7 +626,7 @@ class SageMakerClarifyProcessor(Processor):
         }
         if job_name is None:
             job_name = utils.name_from_base("Clarify-Bias")
-        self._run(data_config, analysis_config, wait, logs, job_name, kms_key)
+        self._run(data_config, analysis_config, wait, logs, job_name, kms_key, experiment_config)
 
     def run_explainability(
         self,
@@ -618,6 +638,7 @@ class SageMakerClarifyProcessor(Processor):
         logs=True,
         job_name=None,
         kms_key=None,
+        experiment_config=None,
     ):
         """Runs a ProcessingJob computing for each example in the input the feature importance.
 
@@ -646,6 +667,9 @@ class SageMakerClarifyProcessor(Processor):
                 "Clarify-Explainability" and current timestamp.
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 user code file (default: None).
+            experiment_config (dict[str, str]): Experiment management configuration.
+                Dictionary contains three optional keys:
+                'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
         """
         analysis_config = data_config.get_config()
         predictor_config = model_config.get_predictor_config()
@@ -654,7 +678,7 @@ class SageMakerClarifyProcessor(Processor):
         analysis_config["predictor"] = predictor_config
         if job_name is None:
             job_name = utils.name_from_base("Clarify-Explainability")
-        self._run(data_config, analysis_config, wait, logs, job_name, kms_key)
+        self._run(data_config, analysis_config, wait, logs, job_name, kms_key, experiment_config)
 
 
 def _upload_analysis_config(analysis_config_file, s3_output_path, sagemaker_session, kms_key):
