@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.38.0 (2021-04-21)
+
+### Features
+
+ * support multiprocess feature group ingest (#2111)
+
 ## v2.37.0 (2021-04-20)
 
 ### Features
