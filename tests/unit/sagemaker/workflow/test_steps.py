@@ -219,60 +219,51 @@ def test_training_step_tensorflow(sagemaker_session):
         name="MyTrainingStep", estimator=estimator, inputs=inputs, cache_config=cache_config
     )
     step_request = step.to_request()
-    step_request['Arguments']['HyperParameters'].pop('sagemaker_job_name', None)
-    step_request['Arguments'].pop('ProfilerRuleConfigurations', None)
+    step_request["Arguments"]["HyperParameters"].pop("sagemaker_job_name", None)
+    step_request["Arguments"]["HyperParameters"].pop("sagemaker_program", None)
+    step_request["Arguments"].pop("ProfilerRuleConfigurations", None)
     assert step_request == {
-        'Name':'MyTrainingStep',
-        'Type':'Training',
-        'Arguments':{
-            'AlgorithmSpecification':{
-                'TrainingInputMode':'File',
-                'TrainingImage':'fakeimage',
-                'EnableSageMakerMetricsTimeSeries':True
+        "Name": "MyTrainingStep",
+        "Type": "Training",
+        "Arguments": {
+            "AlgorithmSpecification": {
+                "TrainingInputMode": "File",
+                "TrainingImage": "fakeimage",
+                "EnableSageMakerMetricsTimeSeries": True,
             },
-            'OutputDataConfig':{
-                'S3OutputPath':'s3://my-bucket/'
+            "OutputDataConfig": {"S3OutputPath": "s3://my-bucket/"},
+            "StoppingCondition": {"MaxRuntimeInSeconds": 86400},
+            "ResourceConfig": {
+                "InstanceCount": instance_count_parameter,
+                "InstanceType": instance_type_parameter,
+                "VolumeSizeInGB": 30,
             },
-            'StoppingCondition':{
-                'MaxRuntimeInSeconds':86400
-            },
-            'ResourceConfig':{
-                'InstanceCount':instance_count_parameter,
-                'InstanceType':instance_type_parameter,
-                'VolumeSizeInGB':30
-            },
-            'RoleArn':'DummyRole',
-            'InputDataConfig':[
+            "RoleArn": "DummyRole",
+            "InputDataConfig": [
                 {
-                    'DataSource':{
-                    'S3DataSource':{
-                        'S3DataType':'S3Prefix',
-                        'S3Uri':data_source_uri_parameter,
-                        'S3DataDistributionType':'FullyReplicated'
-                    }
+                    "DataSource": {
+                        "S3DataSource": {
+                            "S3DataType": "S3Prefix",
+                            "S3Uri": data_source_uri_parameter,
+                            "S3DataDistributionType": "FullyReplicated",
+                        }
                     },
-                    'ChannelName':'training'
+                    "ChannelName": "training",
                 }
             ],
-            'HyperParameters':{
-                'batch-size':training_batch_size_parameter,
-                'epochs':training_epochs_parameter,
-                'sagemaker_submit_directory':'"s3://mybucket/source"',
-                'sagemaker_program':'"/Volumes/Unix/workplace/pstaub/sagemaker-python-sdk/tests/unit/../data/dummy_script.py"',
-                'sagemaker_container_log_level':'20',
-                'sagemaker_region':'"us-west-2"',
-                'sagemaker_distributed_dataparallel_enabled':'true',
-                'sagemaker_instance_type':instance_type_parameter,
-                'sagemaker_distributed_dataparallel_custom_mpi_options':'""'
+            "HyperParameters": {
+                "batch-size": training_batch_size_parameter,
+                "epochs": training_epochs_parameter,
+                "sagemaker_submit_directory": '"s3://mybucket/source"',
+                "sagemaker_container_log_level": "20",
+                "sagemaker_region": '"us-west-2"',
+                "sagemaker_distributed_dataparallel_enabled": "true",
+                "sagemaker_instance_type": instance_type_parameter,
+                "sagemaker_distributed_dataparallel_custom_mpi_options": '""',
             },
-            'ProfilerConfig':{
-                'S3OutputPath':'s3://my-bucket/'
-            }
+            "ProfilerConfig": {"S3OutputPath": "s3://my-bucket/"},
         },
-        'CacheConfig':{
-            'Enabled':True,
-            'ExpireAfter':'PT1H'
-        }
+        "CacheConfig": {"Enabled": True, "ExpireAfter": "PT1H"},
     }
     assert step.properties.TrainingJobName.expr == {"Get": "Steps.MyTrainingStep.TrainingJobName"}
 
