@@ -101,7 +101,7 @@ def test_all_hyperparameters(sagemaker_session):
         clip_gradient=0.5,
         weight_decay=0.5,
         learning_rate=0.5,
-        **ALL_REQ_ARGS
+        **ALL_REQ_ARGS,
     )
     assert ntm.hyperparameters() == dict(
         num_topics=str(ALL_REQ_ARGS["num_topics"]),

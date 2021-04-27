@@ -83,7 +83,7 @@ def test_all_hyperparameters(sagemaker_session):
         max_restarts=3,
         max_iterations=10,
         tol=3.3,
-        **ALL_REQ_ARGS
+        **ALL_REQ_ARGS,
     )
     assert lda.hyperparameters() == dict(
         num_topics=str(ALL_REQ_ARGS["num_topics"]),
