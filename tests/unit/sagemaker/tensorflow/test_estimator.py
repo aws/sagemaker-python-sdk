@@ -159,7 +159,7 @@ def _build_tf(
     py_version=None,
     instance_type=None,
     base_job_name=None,
-    **kwargs
+    **kwargs,
 ):
     return TensorFlow(
         entry_point=SCRIPT_PATH,
@@ -170,7 +170,7 @@ def _build_tf(
         instance_count=INSTANCE_COUNT,
         instance_type=instance_type if instance_type else INSTANCE_TYPE,
         base_job_name=base_job_name,
-        **kwargs
+        **kwargs,
     )
 
 
