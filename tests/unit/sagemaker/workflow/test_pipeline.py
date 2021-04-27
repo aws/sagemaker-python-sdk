@@ -21,6 +21,7 @@ from botocore.exceptions import ClientError
 
 from mock import Mock
 
+from sagemaker.workflow.execution_variables import ExecutionVariables
 from sagemaker.workflow.parameters import ParameterString
 from sagemaker.workflow.pipeline import Pipeline
 from sagemaker.workflow.properties import Properties
@@ -182,14 +183,14 @@ def test_pipeline_basic():
     )
     assert pipeline.to_request() == {
         "Version": "2020-12-01",
-        "Metadata": {},
+        "Metadata": {"CommitId": pipeline.headcommit.hexsha, "GeneratedBy": ExecutionVariables.PIPELINE_EXECUTION_ARN},
         "Parameters": [{"Name": "MyStr", "Type": "String"}],
         "Steps": [{"Name": "MyStep", "Type": "Training", "Arguments": {"input_data": parameter}}],
     }
     assert ordered(json.loads(pipeline.definition())) == ordered(
         {
             "Version": "2020-12-01",
-            "Metadata": {},
+            "Metadata": {"CommitId": pipeline.headcommit.hexsha, "GeneratedBy": ExecutionVariables.PIPELINE_EXECUTION_ARN},
             "Parameters": [{"Name": "MyStr", "Type": "String"}],
             "Steps": [
                 {
@@ -214,7 +215,7 @@ def test_pipeline_two_step(sagemaker_session_mock):
     )
     assert pipeline.to_request() == {
         "Version": "2020-12-01",
-        "Metadata": {},
+        "Metadata": {"CommitId": pipeline.headcommit.hexsha, "GeneratedBy": ExecutionVariables.PIPELINE_EXECUTION_ARN},
         "Parameters": [{"Name": "MyStr", "Type": "String"}],
         "Steps": [
             {"Name": "MyStep1", "Type": "Training", "Arguments": {"input_data": parameter}},
@@ -228,7 +229,7 @@ def test_pipeline_two_step(sagemaker_session_mock):
     assert ordered(json.loads(pipeline.definition())) == ordered(
         {
             "Version": "2020-12-01",
-            "Metadata": {},
+            "Metadata": {"CommitId": pipeline.headcommit.hexsha, "GeneratedBy": ExecutionVariables.PIPELINE_EXECUTION_ARN},
             "Parameters": [{"Name": "MyStr", "Type": "String"}],
             "Steps": [
                 {

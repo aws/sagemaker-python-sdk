@@ -18,6 +18,8 @@ import json
 from copy import deepcopy
 from typing import Any, Dict, List, Sequence, Union
 
+from git import Repo
+
 import attr
 import botocore
 
@@ -30,6 +32,7 @@ from sagemaker.workflow.entities import (
     Expression,
     RequestType,
 )
+from sagemaker.workflow.execution_variables import ExecutionVariables
 from sagemaker.workflow.parameters import Parameter
 from sagemaker.workflow.properties import Properties
 from sagemaker.workflow.steps import Step
@@ -54,14 +57,17 @@ class Pipeline(Entity):
             with Amazon SageMaker APIs and any other AWS services needed. If not specified, the
             pipeline creates one using the default AWS configuration chain.
     """
-
     name: str = attr.ib(factory=str)
     parameters: Sequence[Parameter] = attr.ib(factory=list)
     steps: Sequence[Union[Step, StepCollection]] = attr.ib(factory=list)
     sagemaker_session: Session = attr.ib(factory=Session)
+    repo = Repo("~/github/sagemaker-python-sdk")
+    assert not repo.bare
+    headcommit = repo.head.commit
 
     _version: str = "2020-12-01"
-    _metadata: Dict[str, Any] = dict()
+    _metadata: Dict[str, Any] = dict(CommitId=headcommit.hexsha,
+                                     GeneratedBy=ExecutionVariables.PIPELINE_EXECUTION_ARN)
 
     def to_request(self) -> RequestType:
         """Gets the request structure for workflow service calls."""
@@ -73,11 +79,11 @@ class Pipeline(Entity):
         }
 
     def create(
-        self,
-        role_arn: str,
-        description: str = None,
-        experiment_name: str = None,
-        tags: List[Dict[str, str]] = None,
+            self,
+            role_arn: str,
+            description: str = None,
+            experiment_name: str = None,
+            tags: List[Dict[str, str]] = None,
     ) -> Dict[str, Any]:
         """Creates a Pipeline in the Pipelines service.
 
@@ -144,11 +150,11 @@ class Pipeline(Entity):
         return self.sagemaker_session.sagemaker_client.update_pipeline(**kwargs)
 
     def upsert(
-        self,
-        role_arn: str,
-        description: str = None,
-        experiment_name: str = None,
-        tags: List[Dict[str, str]] = None,
+            self,
+            role_arn: str,
+            description: str = None,
+            experiment_name: str = None,
+            tags: List[Dict[str, str]] = None,
     ) -> Dict[str, Any]:
         """Creates a pipeline or updates it, if it already exists.
 
@@ -167,8 +173,8 @@ class Pipeline(Entity):
         except ClientError as e:
             error = e.response["Error"]
             if (
-                error["Code"] == "ValidationException"
-                and "Pipeline names must be unique within" in error["Message"]
+                    error["Code"] == "ValidationException"
+                    and "Pipeline names must be unique within" in error["Message"]
             ):
                 response = self.update(role_arn, description)
             else:
@@ -184,9 +190,9 @@ class Pipeline(Entity):
         return self.sagemaker_session.sagemaker_client.delete_pipeline(PipelineName=self.name)
 
     def start(
-        self,
-        parameters: Dict[str, Any] = None,
-        execution_description: str = None,
+            self,
+            parameters: Dict[str, Any] = None,
+            execution_description: str = None,
     ):
         """Starts a Pipeline execution in the Workflow service.
 
