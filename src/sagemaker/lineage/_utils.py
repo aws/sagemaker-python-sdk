@@ -23,9 +23,7 @@ def _disassociate(source_arn=None, destination_arn=None, sagemaker_session=None)
     destination_arn is provided.
     """
     association_summaries = association.Association.list(
-        source_arn=source_arn,
-        destination_arn=destination_arn,
-        sagemaker_session=sagemaker_session,
+        source_arn=source_arn, destination_arn=destination_arn, sagemaker_session=sagemaker_session
     )
 
     for association_summary in association_summaries:

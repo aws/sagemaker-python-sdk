@@ -70,7 +70,9 @@ def test_pipeline_create(sagemaker_session_mock, role_arn):
     )
     pipeline.create(role_arn=role_arn)
     assert sagemaker_session_mock.sagemaker_client.create_pipeline.called_with(
-        PipelineName="MyPipeline", PipelineDefinition=pipeline.definition(), RoleArn=role_arn
+        PipelineName="MyPipeline",
+        PipelineDefinition=pipeline.definition(),
+        RoleArn=role_arn,
     )
 
 
@@ -83,7 +85,9 @@ def test_pipeline_update(sagemaker_session_mock, role_arn):
     )
     pipeline.update(role_arn=role_arn)
     assert sagemaker_session_mock.sagemaker_client.update_pipeline.called_with(
-        PipelineName="MyPipeline", PipelineDefinition=pipeline.definition(), RoleArn=role_arn
+        PipelineName="MyPipeline",
+        PipelineDefinition=pipeline.definition(),
+        RoleArn=role_arn,
     )
 
 
@@ -108,10 +112,14 @@ def test_pipeline_upsert(sagemaker_session_mock, role_arn):
     )
     pipeline.update(role_arn=role_arn)
     assert sagemaker_session_mock.sagemaker_client.create_pipeline.called_with(
-        PipelineName="MyPipeline", PipelineDefinition=pipeline.definition(), RoleArn=role_arn
+        PipelineName="MyPipeline",
+        PipelineDefinition=pipeline.definition(),
+        RoleArn=role_arn,
     )
     assert sagemaker_session_mock.sagemaker_client.update_pipeline.called_with(
-        PipelineName="MyPipeline", PipelineDefinition=pipeline.definition(), RoleArn=role_arn
+        PipelineName="MyPipeline",
+        PipelineDefinition=pipeline.definition(),
+        RoleArn=role_arn,
     )
 
 
@@ -147,7 +155,10 @@ def test_pipeline_start(sagemaker_session_mock):
     }
     pipeline = Pipeline(
         name="MyPipeline",
-        parameters=[ParameterString("alpha", "beta"), ParameterString("gamma", "delta")],
+        parameters=[
+            ParameterString("alpha", "beta"),
+            ParameterString("gamma", "delta"),
+        ],
         steps=[],
         sagemaker_session=sagemaker_session_mock,
     )
@@ -157,7 +168,8 @@ def test_pipeline_start(sagemaker_session_mock):
     )
     pipeline.start(parameters=dict(alpha="epsilon"))
     assert sagemaker_session_mock.start_pipeline_execution.called_with(
-        PipelineName="MyPipeline", PipelineParameters=[{"Name": "alpha", "Value": "epsilon"}]
+        PipelineName="MyPipeline",
+        PipelineParameters=[{"Name": "alpha", "Value": "epsilon"}],
     )
 
 
@@ -165,7 +177,10 @@ def test_pipeline_start_before_creation(sagemaker_session_mock):
     sagemaker_session_mock.sagemaker_client.describe_pipeline.side_effect = ClientError({}, "bar")
     pipeline = Pipeline(
         name="MyPipeline",
-        parameters=[ParameterString("alpha", "beta"), ParameterString("gamma", "delta")],
+        parameters=[
+            ParameterString("alpha", "beta"),
+            ParameterString("gamma", "delta"),
+        ],
         steps=[],
         sagemaker_session=sagemaker_session_mock,
     )
@@ -183,14 +198,26 @@ def test_pipeline_basic():
     )
     assert pipeline.to_request() == {
         "Version": "2020-12-01",
-        "Metadata": {"CommitId": pipeline.headcommit.hexsha, "GeneratedBy": ExecutionVariables.PIPELINE_EXECUTION_ARN},
+        "Metadata": {
+            "CommitId": pipeline.headcommit.hexsha,
+            "GeneratedBy": ExecutionVariables.PIPELINE_EXECUTION_ARN,
+        },
         "Parameters": [{"Name": "MyStr", "Type": "String"}],
-        "Steps": [{"Name": "MyStep", "Type": "Training", "Arguments": {"input_data": parameter}}],
+        "Steps": [
+            {
+                "Name": "MyStep",
+                "Type": "Training",
+                "Arguments": {"input_data": parameter},
+            }
+        ],
     }
     assert ordered(json.loads(pipeline.definition())) == ordered(
         {
             "Version": "2020-12-01",
-            "Metadata": {"CommitId": pipeline.headcommit.hexsha, "GeneratedBy": ExecutionVariables.PIPELINE_EXECUTION_ARN},
+            "Metadata": {
+                "CommitId": pipeline.headcommit.hexsha,
+                "GeneratedBy": ExecutionVariables.PIPELINE_EXECUTION_ARN,
+            },
             "Parameters": [{"Name": "MyStr", "Type": "String"}],
             "Steps": [
                 {
@@ -215,10 +242,17 @@ def test_pipeline_two_step(sagemaker_session_mock):
     )
     assert pipeline.to_request() == {
         "Version": "2020-12-01",
-        "Metadata": {"CommitId": pipeline.headcommit.hexsha, "GeneratedBy": ExecutionVariables.PIPELINE_EXECUTION_ARN},
+        "Metadata": {
+            "CommitId": pipeline.headcommit.hexsha,
+            "GeneratedBy": ExecutionVariables.PIPELINE_EXECUTION_ARN,
+        },
         "Parameters": [{"Name": "MyStr", "Type": "String"}],
         "Steps": [
-            {"Name": "MyStep1", "Type": "Training", "Arguments": {"input_data": parameter}},
+            {
+                "Name": "MyStep1",
+                "Type": "Training",
+                "Arguments": {"input_data": parameter},
+            },
             {
                 "Name": "MyStep2",
                 "Type": "Training",
@@ -229,7 +263,10 @@ def test_pipeline_two_step(sagemaker_session_mock):
     assert ordered(json.loads(pipeline.definition())) == ordered(
         {
             "Version": "2020-12-01",
-            "Metadata": {"CommitId": pipeline.headcommit.hexsha, "GeneratedBy": ExecutionVariables.PIPELINE_EXECUTION_ARN},
+            "Metadata": {
+                "CommitId": pipeline.headcommit.hexsha,
+                "GeneratedBy": ExecutionVariables.PIPELINE_EXECUTION_ARN,
+            },
             "Parameters": [{"Name": "MyStr", "Type": "String"}],
             "Steps": [
                 {
@@ -256,7 +293,10 @@ def test_pipeline_execution_basics(sagemaker_session_mock):
     }
     pipeline = Pipeline(
         name="MyPipeline",
-        parameters=[ParameterString("alpha", "beta"), ParameterString("gamma", "delta")],
+        parameters=[
+            ParameterString("alpha", "beta"),
+            ParameterString("gamma", "delta"),
+        ],
         steps=[],
         sagemaker_session=sagemaker_session_mock,
     )

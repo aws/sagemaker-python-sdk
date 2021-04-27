@@ -13,12 +13,8 @@
 """This module contains code to create and manage SageMaker ``Artifact``."""
 from __future__ import absolute_import
 
-from typing import Optional, Iterator
-from datetime import datetime
-
 from sagemaker.apiutils import _base_types
 from sagemaker.lineage import _api_types
-from sagemaker.lineage._api_types import AssociationSummary
 
 
 class Association(_base_types.Record):
@@ -47,13 +43,13 @@ class Association(_base_types.Record):
         association_type (str): the type of the association.
     """
 
-    source_arn: str = None
-    destination_arn: str = None
+    source_arn = None
+    destination_arn = None
 
-    _boto_create_method: str = "add_association"
-    _boto_delete_method: str = "delete_association"
+    _boto_create_method = "add_association"
+    _boto_delete_method = "delete_association"
 
-    _custom_boto_types: dict = {}
+    _custom_boto_types = {}
 
     _boto_delete_members = [
         "source_arn",
@@ -89,11 +85,11 @@ class Association(_base_types.Record):
     @classmethod
     def create(
         cls,
-        source_arn: str,
-        destination_arn: str,
-        association_type: str = None,
+        source_arn,
+        destination_arn,
+        association_type=None,
         sagemaker_session=None,
-    ) -> "Association":
+    ):
         """Add an association and return an ``Association`` object representing it.
 
         Args:
@@ -120,19 +116,19 @@ class Association(_base_types.Record):
     @classmethod
     def list(
         cls,
-        source_arn: str = None,
-        destination_arn: str = None,
-        source_type: str = None,
-        destination_type: str = None,
-        association_type: str = None,
-        created_after: Optional[datetime] = None,
-        created_before: Optional[datetime] = None,
-        sort_by: Optional[str] = None,
-        sort_order: Optional[str] = None,
-        max_results: Optional[int] = None,
-        next_token: Optional[str] = None,
+        source_arn=None,
+        destination_arn=None,
+        source_type=None,
+        destination_type=None,
+        association_type=None,
+        created_after=None,
+        created_before=None,
+        sort_by=None,
+        sort_order=None,
+        max_results=None,
+        next_token=None,
         sagemaker_session=None,
-    ) -> Iterator[AssociationSummary]:
+    ):
         """Return a list of context summaries.
 
         Args:

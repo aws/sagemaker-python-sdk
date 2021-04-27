@@ -13,13 +13,8 @@
 """This module contains code to create and manage SageMaker ``Actions``."""
 from __future__ import absolute_import
 
-from typing import Optional, Iterator
-from datetime import datetime
-
-from sagemaker import Session
 from sagemaker.apiutils import _base_types
 from sagemaker.lineage import _api_types, _utils
-from sagemaker.lineage._api_types import ActionSource, ActionSummary
 
 
 class Action(_base_types.Record):
@@ -58,24 +53,24 @@ class Action(_base_types.Record):
         last_modified_by (obj): Contextual info on which account created the action.
     """
 
-    action_arn: str = None
-    action_name: str = None
-    action_type: str = None
-    description: str = None
-    status: str = None
-    source: ActionSource = None
-    properties: dict = None
-    properties_to_remove: list = None
-    tags: list = None
-    creation_time: datetime = None
-    created_by: str = None
-    last_modified_time: datetime = None
-    last_modified_by: str = None
+    action_arn = None
+    action_name = None
+    action_type = None
+    description = None
+    status = None
+    source = None
+    properties = None
+    properties_to_remove = None
+    tags = None
+    creation_time = None
+    created_by = None
+    last_modified_time = None
+    last_modified_by = None
 
-    _boto_create_method: str = "create_action"
-    _boto_load_method: str = "describe_action"
-    _boto_update_method: str = "update_action"
-    _boto_delete_method: str = "delete_action"
+    _boto_create_method = "create_action"
+    _boto_load_method = "describe_action"
+    _boto_update_method = "update_action"
+    _boto_delete_method = "delete_action"
 
     _boto_update_members = [
         "action_name",
@@ -89,7 +84,7 @@ class Action(_base_types.Record):
 
     _custom_boto_types = {"source": (_api_types.ActionSource, False)}
 
-    def save(self) -> "Action":
+    def save(self):
         """Save the state of this Action to SageMaker.
 
         Returns:
@@ -97,7 +92,7 @@ class Action(_base_types.Record):
         """
         return self._invoke_api(self._boto_update_method, self._boto_update_members)
 
-    def delete(self, disassociate: bool = False):
+    def delete(self, disassociate=False):
         """Delete the action.
 
         Args:
@@ -109,14 +104,13 @@ class Action(_base_types.Record):
                 source_arn=self.action_arn, sagemaker_session=self.sagemaker_session
             )
             _utils._disassociate(
-                destination_arn=self.action_arn,
-                sagemaker_session=self.sagemaker_session,
+                destination_arn=self.action_arn, sagemaker_session=self.sagemaker_session
             )
 
         self._invoke_api(self._boto_delete_method, self._boto_delete_members)
 
     @classmethod
-    def load(cls, action_name: str, sagemaker_session: Session = None) -> "Action":
+    def load(cls, action_name, sagemaker_session=None):
         """Load an existing action and return an ``Action`` object representing it.
 
         Args:
@@ -160,16 +154,16 @@ class Action(_base_types.Record):
     @classmethod
     def create(
         cls,
-        action_name: str = None,
-        source_uri: str = None,
-        source_type: str = None,
-        action_type: str = None,
-        description: str = None,
-        status: str = None,
-        properties: dict = None,
-        tags: dict = None,
-        sagemaker_session: Session = None,
-    ) -> "Action":
+        action_name=None,
+        source_uri=None,
+        source_type=None,
+        action_type=None,
+        description=None,
+        status=None,
+        properties=None,
+        tags=None,
+        sagemaker_session=None,
+    ):
         """Create an action and return an ``Action`` object representing it.
 
         Args:
@@ -204,16 +198,16 @@ class Action(_base_types.Record):
     @classmethod
     def list(
         cls,
-        source_uri: Optional[str] = None,
-        action_type: Optional[str] = None,
-        created_after: Optional[datetime] = None,
-        created_before: Optional[datetime] = None,
-        sort_by: Optional[str] = None,
-        sort_order: Optional[str] = None,
-        sagemaker_session: Session = None,
-        max_results: Optional[int] = None,
-        next_token: Optional[str] = None,
-    ) -> Iterator[ActionSummary]:
+        source_uri=None,
+        action_type=None,
+        created_after=None,
+        created_before=None,
+        sort_by=None,
+        sort_order=None,
+        sagemaker_session=None,
+        max_results=None,
+        next_token=None,
+    ):
         """Return a list of action summaries.
 
         Args:
