@@ -34,7 +34,7 @@ COMMON_TRAIN_ARGS = {
 }
 ALL_REQ_ARGS = dict(
     {"k": K, "sample_size": SAMPLE_SIZE, "predictor_type": PREDICTOR_TYPE_REGRESSOR},
-    **COMMON_TRAIN_ARGS
+    **COMMON_TRAIN_ARGS,
 )
 
 REGION = "us-west-2"
@@ -104,7 +104,7 @@ def test_all_hyperparameters_regressor(sagemaker_session):
         index_metric="COSINE",
         faiss_index_ivf_nlists="auto",
         faiss_index_pq_m=1,
-        **ALL_REQ_ARGS
+        **ALL_REQ_ARGS,
     )
     assert knn.hyperparameters() == dict(
         k=str(ALL_REQ_ARGS["k"]),
@@ -130,7 +130,7 @@ def test_all_hyperparameters_classifier(sagemaker_session):
         index_type="faiss.IVFFlat",
         index_metric="L2",
         faiss_index_ivf_nlists="20",
-        **test_params
+        **test_params,
     )
     assert knn.hyperparameters() == dict(
         k=str(ALL_REQ_ARGS["k"]),
