@@ -93,7 +93,7 @@ def _xgboost_estimator(
     instance_type=None,
     instance_count=1,
     base_job_name=None,
-    **kwargs
+    **kwargs,
 ):
 
     return XGBoost(
@@ -105,7 +105,7 @@ def _xgboost_estimator(
         instance_count=instance_count,
         base_job_name=base_job_name,
         py_version=PYTHON_VERSION,
-        **kwargs
+        **kwargs,
     )
 
 

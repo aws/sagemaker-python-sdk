@@ -47,7 +47,7 @@ class DummyFrameworkModel(FrameworkModel):
             ROLE,
             ENTRY_POINT,
             sagemaker_session=sagemaker_session,
-            **kwargs
+            **kwargs,
         )
 
     def create_predictor(self, endpoint_name):

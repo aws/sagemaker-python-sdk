@@ -107,7 +107,7 @@ class DummyFrameworkModel(FrameworkModel):
             ROLE,
             SCRIPT_NAME,
             sagemaker_session=sagemaker_session,
-            **kwargs
+            **kwargs,
         )
 
     def prepare_container_def(self, instance_type, accelerator_type=None):
