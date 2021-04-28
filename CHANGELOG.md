@@ -1,5 +1,19 @@
 # Changelog
 
+## v2.39.0 (2021-04-28)
+
+### Features
+
+ * Add HF transformer version 4.5.0
+
+### Bug Fixes and Other Changes
+
+ * Allow hyperparameters in Tensorflow estimator to be parameterized
+
+### Testing and Release Infrastructure
+
+ * black format unit tests
+
 ## v2.38.0 (2021-04-21)
 
 ### Features
