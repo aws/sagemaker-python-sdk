@@ -37,11 +37,11 @@ class HuggingFacePredictor(Predictor):
     """
 
     def __init__(
-            self,
-            endpoint_name,
-            sagemaker_session=None,
-            serializer=NumpySerializer(),
-            deserializer=NumpyDeserializer(),
+        self,
+        endpoint_name,
+        sagemaker_session=None,
+        serializer=NumpySerializer(),
+        deserializer=NumpyDeserializer(),
     ):
         """Initialize an ``HuggingFacePredictor``.
 
@@ -89,18 +89,18 @@ class HuggingFaceModel(FrameworkModel):
     _framework_name = "huggingface"
 
     def __init__(
-            self,
-            model_data,
-            role,
-            entry_point,
-            transformers_version=None,
-            tensorflow_version=None,
-            pytorch_version=None,
-            py_version=None,
-            image_uri=None,
-            predictor_cls=HuggingFacePredictor,
-            model_server_workers=None,
-            **kwargs
+        self,
+        model_data,
+        role,
+        entry_point,
+        transformers_version=None,
+        tensorflow_version=None,
+        pytorch_version=None,
+        py_version=None,
+        image_uri=None,
+        predictor_cls=HuggingFacePredictor,
+        model_server_workers=None,
+        **kwargs,
     ):
         """Initialize a PyTorchModel.
 
@@ -152,7 +152,11 @@ class HuggingFaceModel(FrameworkModel):
             :class:`~sagemaker.model.Model`.
         """
         validate_version_or_image_args(transformers_version, py_version, image_uri)
-        _validate_pt_tf_versions(pytorch_version=pytorch_version,tensorflow_version=tensorflow_version,image_uri=image_uri)
+        _validate_pt_tf_versions(
+            pytorch_version=pytorch_version,
+            tensorflow_version=tensorflow_version,
+            image_uri=image_uri,
+        )
         if py_version == "py2":
             raise ValueError("py2 is not supported with HuggingFace images")
         self.framework_version = transformers_version
@@ -167,19 +171,19 @@ class HuggingFaceModel(FrameworkModel):
         self.model_server_workers = model_server_workers
 
     def register(
-            self,
-            content_types,
-            response_types,
-            inference_instances,
-            transform_instances,
-            model_package_name=None,
-            model_package_group_name=None,
-            image_uri=None,
-            model_metrics=None,
-            metadata_properties=None,
-            marketplace_cert=False,
-            approval_status=None,
-            description=None,
+        self,
+        content_types,
+        response_types,
+        inference_instances,
+        transform_instances,
+        model_package_name=None,
+        model_package_group_name=None,
+        image_uri=None,
+        model_metrics=None,
+        metadata_properties=None,
+        marketplace_cert=False,
+        approval_status=None,
+        description=None,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
@@ -290,9 +294,7 @@ class HuggingFaceModel(FrameworkModel):
                 f"tensorflow{self.tensorflow_version}"  # pylint: disable=no-member
             )
         else:
-            base_framework_version = (
-                f"pytorch{self.pytorch_version}"  # pylint: disable=no-member
-            )
+            base_framework_version = f"pytorch{self.pytorch_version}"  # pylint: disable=no-member
         return image_uris.retrieve(
             self._framework_name,
             region_name,
