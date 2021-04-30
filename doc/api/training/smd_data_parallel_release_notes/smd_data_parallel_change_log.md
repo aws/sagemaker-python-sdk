@@ -1,3 +1,19 @@
+# Sagemaker Distributed Data Parallel 1.2.0 Release Notes
+
+* New features
+* Bug Fixes
+
+*New features:*
+
+Support of [EFA network interface](https://aws.amazon.com/hpc/efa/) for distributed all-reduce.
+
+* Support of PyTorch 1.8.1
+
+*Bug Fixes:*
+
+* Improved performance on single node and small clusters.
+
+
 # Sagemaker Distributed Data Parallel 1.1.2 Release Notes
 
 * Bug Fixes
