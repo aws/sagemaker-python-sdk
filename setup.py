@@ -43,6 +43,7 @@ required_packages = [
     "importlib-metadata>=1.4.0",
     "packaging>=20.0",
     "pandas",
+    "pathos",
 ]
 
 # Specific use case dependencies

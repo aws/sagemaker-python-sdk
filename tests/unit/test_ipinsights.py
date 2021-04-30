@@ -103,7 +103,7 @@ def test_all_hyperparameters(sagemaker_session):
         random_negative_sampling_rate=5,
         shuffled_negative_sampling_rate=5,
         weight_decay=5.0,
-        **ALL_REQ_ARGS
+        **ALL_REQ_ARGS,
     )
     assert ipinsights.hyperparameters() == dict(
         num_entity_vectors=str(ALL_REQ_ARGS["num_entity_vectors"]),

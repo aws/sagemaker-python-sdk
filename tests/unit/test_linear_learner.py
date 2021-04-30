@@ -132,7 +132,7 @@ def test_all_hyperparameters(sagemaker_session):
         accuracy_top_k=3,
         f_beta=1.0,
         balance_multiclass_weights=False,
-        **ALL_REQ_ARGS
+        **ALL_REQ_ARGS,
     )
 
     assert lr.hyperparameters() == dict(

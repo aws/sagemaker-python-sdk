@@ -1506,8 +1506,8 @@ class _TrainingJob(_Job):
 
         if estimator.max_retry_attempts is not None:
             train_args["retry_strategy"] = {"MaximumRetryAttempts": estimator.max_retry_attempts}
-        # else:
-        #     train_args["retry_strategy"] = None
+        else:
+            train_args["retry_strategy"] = None
 
         if estimator.encrypt_inter_container_traffic:
             train_args["encrypt_inter_container_traffic"] = True
@@ -2471,7 +2471,13 @@ class Framework(EstimatorBase):
     @staticmethod
     def _json_encode_hyperparameters(hyperparameters):
         """Placeholder docstring"""
-        return {str(k): json.dumps(v) for (k, v) in hyperparameters.items()}
+        current_hyperparameters = hyperparameters
+        if current_hyperparameters is not None:
+            hyperparameters = {
+                str(k): (v if isinstance(v, (Parameter, Expression, Properties)) else json.dumps(v))
+                for (k, v) in current_hyperparameters.items()
+            }
+        return hyperparameters
 
     @classmethod
     def _update_init_params(cls, hp, tf_arguments):

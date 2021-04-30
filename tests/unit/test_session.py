@@ -154,7 +154,7 @@ def test_process(boto_session):
         },
         "role_arn": ROLE,
         "tags": [{"Name": "my-tag", "Value": "my-tag-value"}],
-        "experiment_config": {"ExperimentName": "AnExperiment"},
+        "experiment_config": {"ExperimentName": "AnExperiment"}
     }
     session.process(**process_request_args)
 
