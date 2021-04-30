@@ -147,6 +147,7 @@ def _get_train_args(job_name):
         "vpc_config": None,
         "metric_definitions": None,
         "environment": None,
+        "retry_strategy": None,
         "experiment_config": None,
         "debugger_hook_config": {
             "CollectionConfigurations": [],
@@ -992,7 +993,6 @@ def test_mx_missing_environment_variables(
         environment=None,
     )
     assert not mx.environment
-
 
 def test_mx_enable_sm_metrics(sagemaker_session, mxnet_training_version, mxnet_training_py_version):
     mx = MXNet(
