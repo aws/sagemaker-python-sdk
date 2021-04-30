@@ -162,6 +162,7 @@ def _create_train_job(toolkit, toolkit_version, framework):
         "profiler_config": {
             "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
         },
+        "retry_strategy": None,
     }
 
 

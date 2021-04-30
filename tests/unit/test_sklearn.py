@@ -129,6 +129,7 @@ def _create_train_job(version):
             "sagemaker_region": '"us-west-2"',
         },
         "stop_condition": {"MaxRuntimeInSeconds": 24 * 60 * 60},
+        "retry_strategy": None,
         "metric_definitions": None,
         "tags": None,
         "vpc_config": None,

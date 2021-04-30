@@ -124,6 +124,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         profiler_config=None,
         disable_profiler=False,
         environment=None,
+        max_retry_attempts=None,
         **kwargs,
     ):
         """Initialize an ``EstimatorBase`` instance.
@@ -269,6 +270,11 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 will be disabled (default: ``False``).
             environment (dict[str, str]) : Environment variables to be set for
                 use during training job (default: ``None``)
+             max_retry_attempts (int): The number of times to move a job to the STARTING status.
+                You can specify between 1 and 30 attempts.
+                If the value of attempts is greater than one, the job is retried on InternalServerFailure the same number of attempts as the value.
+                You can cap the total duration for your job by setting ``max_wait`` and ``max_run``
+                (default: ``None``)
 
         """
         instance_count = renamed_kwargs(
@@ -356,6 +362,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self.disable_profiler = disable_profiler
 
         self.environment = environment
+
+        self.max_retry_attempts = max_retry_attempts
 
         if not _region_supports_profiler(self.sagemaker_session.boto_region_name):
             self.disable_profiler = True
@@ -1114,6 +1122,13 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             if max_wait:
                 init_params["max_wait"] = max_wait
 
+        if job_details.get("RetryStrategy", False):
+            init_params["max_retry_attempts"] = job_details.get("RetryStrategy", {}).get("MaximumRetryAttempts")
+            max_wait = job_details.get("StoppingCondition", {}).get("MaxWaitTimeInSeconds")
+            if max_wait:
+                init_params["max_wait"] = max_wait
+
+
         return init_params
 
     def transformer(
@@ -1489,6 +1504,11 @@ class _TrainingJob(_Job):
         if estimator.enable_network_isolation():
             train_args["enable_network_isolation"] = True
 
+        if estimator.max_retry_attempts is not None:
+            train_args["retry_strategy"] = {"MaximumRetryAttempts": estimator.max_retry_attempts}
+        else:
+            train_args["retry_strategy"] = None
+
         if estimator.encrypt_inter_container_traffic:
             train_args["encrypt_inter_container_traffic"] = True
 
@@ -1521,6 +1541,7 @@ class _TrainingJob(_Job):
             train_args["profiler_config"] = estimator.profiler_config._to_request_dict()
 
         return train_args
+
 
     @classmethod
     def _add_spot_checkpoint_args(cls, local_mode, estimator, train_args):
@@ -1666,6 +1687,7 @@ class Estimator(EstimatorBase):
         profiler_config=None,
         disable_profiler=False,
         environment=None,
+        max_retry_attempts=None,
         **kwargs,
     ):
         """Initialize an ``Estimator`` instance.
@@ -1816,6 +1838,11 @@ class Estimator(EstimatorBase):
                 will be disabled (default: ``False``).
             environment (dict[str, str]) : Environment variables to be set for
                 use during training job (default: ``None``)
+            max_retry_attempts (int): The number of times to move a job to the STARTING status.
+                You can specify between 1 and 30 attempts.
+                If the value of attempts is greater than one, the job is retried on InternalServerFailure the same number of attempts as the value.
+                You can cap the total duration for your job by setting ``max_wait`` and ``max_run``
+                (default: ``None``)
         """
         self.image_uri = image_uri
         self.hyperparam_dict = hyperparameters.copy() if hyperparameters else {}
@@ -1850,6 +1877,7 @@ class Estimator(EstimatorBase):
             profiler_config=profiler_config,
             disable_profiler=disable_profiler,
             environment=environment,
+            max_retry_attempts=max_retry_attempts,
             **kwargs,
         )
 
