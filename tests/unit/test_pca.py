@@ -93,7 +93,7 @@ def test_all_hyperparameters(sagemaker_session):
         algorithm_mode="regular",
         subtract_mean="True",
         extra_components=1,
-        **ALL_REQ_ARGS
+        **ALL_REQ_ARGS,
     )
     assert pca.hyperparameters() == dict(
         num_components=str(ALL_REQ_ARGS["num_components"]),

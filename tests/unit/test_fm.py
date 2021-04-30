@@ -115,7 +115,7 @@ def test_all_hyperparameters(sagemaker_session):
         factors_init_scale=1.101,
         factors_init_sigma=1.202,
         factors_init_value=1.303,
-        **ALL_REQ_ARGS
+        **ALL_REQ_ARGS,
     )
     assert fm.hyperparameters() == dict(
         num_factors=str(ALL_REQ_ARGS["num_factors"]),
