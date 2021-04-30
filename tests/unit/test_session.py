@@ -1208,6 +1208,7 @@ def test_train_pack_to_request_with_optional_params(sagemaker_session):
     }
 
     stop_cond = {"MaxRuntimeInSeconds": MAX_TIME}
+    RETRY_STRATEGY = {"MaximumRetryAttempts": 2}
     hyperparameters = {"foo": "bar"}
 
     sagemaker_session.train(
@@ -1229,6 +1230,7 @@ def test_train_pack_to_request_with_optional_params(sagemaker_session):
         checkpoint_local_path="/tmp/checkpoints",
         enable_sagemaker_metrics=True,
         environment=ENV_INPUT,
+        retry_strategy=RETRY_STRATEGY,
     )
 
     _, _, actual_train_args = sagemaker_session.sagemaker_client.method_calls[0]
@@ -1243,6 +1245,7 @@ def test_train_pack_to_request_with_optional_params(sagemaker_session):
     assert actual_train_args["CheckpointConfig"]["S3Uri"] == "s3://mybucket/checkpoints/"
     assert actual_train_args["CheckpointConfig"]["LocalPath"] == "/tmp/checkpoints"
     assert actual_train_args["Environment"] == ENV_INPUT
+    assert actual_train_args["RetryStrategy"] == RETRY_STRATEGY
 
 
 def test_transform_pack_to_request(sagemaker_session):
