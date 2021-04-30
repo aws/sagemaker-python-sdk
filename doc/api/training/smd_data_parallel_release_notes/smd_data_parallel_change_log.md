@@ -5,9 +5,7 @@
 
 *New features:*
 
-Support of [EFA network interface](https://aws.amazon.com/hpc/efa/) for distributed all-reduce.
-
-* Support of PyTorch 1.8.1
+* Support of [EFA network interface](https://aws.amazon.com/hpc/efa/) for distributed all-reduce.
 
 *Bug Fixes:*
 
