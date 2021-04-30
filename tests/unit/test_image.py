@@ -751,10 +751,10 @@ def test_ecr_login_needed(check_output):
     token_response = "AWS:%s" % token
     b64_token = base64.b64encode(token_response.encode("utf-8"))
     response = {
-        u"authorizationData": [
+        "authorizationData": [
             {
-                u"authorizationToken": b64_token,
-                u"proxyEndpoint": u"https://520713654638.dkr.ecr.us-east-1.amazonaws.com",
+                "authorizationToken": b64_token,
+                "proxyEndpoint": "https://520713654638.dkr.ecr.us-east-1.amazonaws.com",
             }
         ],
         "ResponseMetadata": {

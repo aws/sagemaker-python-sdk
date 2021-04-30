@@ -92,7 +92,7 @@ def _sklearn_estimator(
         instance_type=instance_type if instance_type else INSTANCE_TYPE,
         base_job_name=base_job_name,
         py_version=PYTHON_VERSION,
-        **kwargs
+        **kwargs,
     )
 
 

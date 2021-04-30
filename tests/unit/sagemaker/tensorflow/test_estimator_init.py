@@ -35,7 +35,7 @@ def _build_tf(sagemaker_session, **kwargs):
         role="dummy-role",
         instance_count=1,
         instance_type="ml.c4.xlarge",
-        **kwargs
+        **kwargs,
     )
 
 
