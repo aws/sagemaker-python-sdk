@@ -140,7 +140,7 @@ class DummyFramework(Framework):
         vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT,
         enable_network_isolation=None,
         model_dir=None,
-        **kwargs
+        **kwargs,
     ):
         if enable_network_isolation is None:
             enable_network_isolation = self.enable_network_isolation()
@@ -151,7 +151,7 @@ class DummyFramework(Framework):
             entry_point=entry_point,
             enable_network_isolation=enable_network_isolation,
             role=role,
-            **kwargs
+            **kwargs,
         )
 
     @classmethod
@@ -171,7 +171,7 @@ class DummyFrameworkModel(FrameworkModel):
             role,
             entry_point or ENTRY_POINT,
             sagemaker_session=sagemaker_session,
-            **kwargs
+            **kwargs,
         )
 
     def create_predictor(self, endpoint_name):

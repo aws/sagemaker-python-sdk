@@ -1,3 +1,16 @@
+# Sagemaker Distributed Data Parallel 1.1.2 Release Notes
+
+* Bug Fixes
+* Known Issues
+
+*Bug Fixes:*
+
+* Fixed a bug that caused some TensorFlow operations to not work with certain data types. Operations forwarded from C++ have been extended to support every dtype supported by NCCL.
+
+*Known Issues:*
+
+* SageMaker distributed data parallel has slower throughput than NCCL when run using a single node. For the best performance, use multi-node distributed training with smdistributed.dataparallel. Use a single node only for experimental runs while preparing your training pipeline.
+
 # Sagemaker Distributed Data Parallel 1.1.1 Release Notes
 
 * New Features
