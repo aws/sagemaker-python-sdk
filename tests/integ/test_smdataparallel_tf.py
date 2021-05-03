@@ -26,8 +26,10 @@ smdataparallel_dir = os.path.join(
     os.path.dirname(__file__), "..", "data", "smdistributed_dataparallel"
 )
 
+
 @pytest.mark.skip(
-    reason="This test is skipped for now due ML capacity error." "This test should be re-enabled later."
+    reason="This test is skipped for now due ML capacity error."
+    "This test should be re-enabled later."
 )
 @pytest.mark.skipif(
     integ.test_region() not in integ.DATA_PARALLEL_TESTING_REGIONS,
