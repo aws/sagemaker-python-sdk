@@ -376,6 +376,56 @@ def test_register_model_with_model_repack(estimator, model_metrics):
  
 
 
+def test_register_model_tf(estimator_tf, model_metrics):
+    model_data = f"s3://{BUCKET}/model.tar.gz"
+    register_model = RegisterModel(
+        name="RegisterModelStep",
+        estimator=estimator_tf,
+        model_data=model_data,
+        content_types=["content_type"],
+        response_types=["response_type"],
+        inference_instances=["inference_instance"],
+        transform_instances=["transform_instance"],
+        model_package_group_name="mpg",
+        model_metrics=model_metrics,
+        approval_status="Approved",
+        description="description",
+    )
+    assert ordered(register_model.request_dicts()) == ordered(
+        [
+            {
+                "Name": "RegisterModelStep",
+                "Type": "RegisterModel",
+                "Arguments": {
+                    "InferenceSpecification": {
+                        "Containers": [
+                            {
+                                "Image": "763104351884.dkr.ecr.us-west-2.amazonaws.com/tensorflow-inference:1.15.2-cpu",
+                                "ModelDataUrl": f"s3://{BUCKET}/model.tar.gz",
+                            }
+                        ],
+                        "SupportedContentTypes": ["content_type"],
+                        "SupportedRealtimeInferenceInstanceTypes": ["inference_instance"],
+                        "SupportedResponseMIMETypes": ["response_type"],
+                        "SupportedTransformInstanceTypes": ["transform_instance"],
+                    },
+                    "ModelApprovalStatus": "Approved",
+                    "ModelMetrics": {
+                        "ModelQuality": {
+                            "Statistics": {
+                                "ContentType": "text/csv",
+                                "S3Uri": f"s3://{BUCKET}/metrics.csv",
+                            },
+                        },
+                    },
+                    "ModelPackageDescription": "description",
+                    "ModelPackageGroupName": "mpg",
+                },
+            },
+        ]
+    )
+
+
 def test_estimator_transformer(estimator):
     model_data = f"s3://{BUCKET}/model.tar.gz"
     model_inputs = CreateModelInput(
