@@ -1,5 +1,47 @@
 # Changelog
 
+## v2.39.0.post0 (2021-05-04)
+
+### Testing and Release Infrastructure
+
+ * disable smdataparallel tests
+
+## v2.39.0 (2021-04-28)
+
+### Features
+
+ * Add HF transformer version 4.5.0
+
+### Bug Fixes and Other Changes
+
+ * Allow hyperparameters in Tensorflow estimator to be parameterized
+
+### Testing and Release Infrastructure
+
+ * black format unit tests
+
+## v2.38.0 (2021-04-21)
+
+### Features
+
+ * support multiprocess feature group ingest (#2111)
+
+## v2.37.0 (2021-04-20)
+
+### Features
+
+ * add experiment_config for clarify processing job
+
+### Documentation Changes
+
+ * release notes for smdistributed.dataparallel v1.1.2
+
+## v2.36.0 (2021-04-19)
+
+### Features
+
+ * enable smdataparallel custom mpi options support
+
 ## v2.35.0 (2021-04-14)
 
 ### Features
