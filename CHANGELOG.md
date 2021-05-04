@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.39.0.post0 (2021-05-04)
+
+### Testing and Release Infrastructure
+
+ * disable smdataparallel tests
+
 ## v2.39.0 (2021-04-28)
 
 ### Features
