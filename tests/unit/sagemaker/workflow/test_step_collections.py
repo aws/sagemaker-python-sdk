@@ -28,6 +28,7 @@ from mock import (
 )
 
 from sagemaker.estimator import Estimator
+from sagemaker.tensorflow import TensorFlow
 from sagemaker.inputs import CreateModelInput, TransformInput
 from sagemaker.model_metrics import (
     MetricsSource,
@@ -121,6 +122,19 @@ def estimator(sagemaker_session):
 
 
 @pytest.fixture
+def estimator_tf(sagemaker_session):
+    return TensorFlow(
+        entry_point="/some/script.py",
+        framework_version="1.15.2",
+        py_version="py3",
+        role=ROLE,
+        instance_type="ml.c4.2xlarge",
+        instance_count=1,
+        sagemaker_session=sagemaker_session,
+    )
+
+
+@pytest.fixture
 def model_metrics():
     return ModelMetrics(
         model_statistics=MetricsSource(
@@ -179,6 +193,55 @@ def test_register_model(estimator, model_metrics):
                     "InferenceSpecification": {
                         "Containers": [
                             {"Image": "fakeimage", "ModelDataUrl": f"s3://{BUCKET}/model.tar.gz"}
+                        ],
+                        "SupportedContentTypes": ["content_type"],
+                        "SupportedRealtimeInferenceInstanceTypes": ["inference_instance"],
+                        "SupportedResponseMIMETypes": ["response_type"],
+                        "SupportedTransformInstanceTypes": ["transform_instance"],
+                    },
+                    "ModelApprovalStatus": "Approved",
+                    "ModelMetrics": {
+                        "ModelQuality": {
+                            "Statistics": {
+                                "ContentType": "text/csv",
+                                "S3Uri": f"s3://{BUCKET}/metrics.csv",
+                            },
+                        },
+                    },
+                    "ModelPackageDescription": "description",
+                    "ModelPackageGroupName": "mpg",
+                },
+            },
+        ]
+    )
+ 
+def test_register_model_tf(estimator_tf, model_metrics):
+    model_data = f"s3://{BUCKET}/model.tar.gz"
+    register_model = RegisterModel(
+        name="RegisterModelStep",
+        estimator=estimator_tf,
+        model_data=model_data,
+        content_types=["content_type"],
+        response_types=["response_type"],
+        inference_instances=["inference_instance"],
+        transform_instances=["transform_instance"],
+        model_package_group_name="mpg",
+        model_metrics=model_metrics,
+        approval_status="Approved",
+        description="description",
+    )
+    assert ordered(register_model.request_dicts()) == ordered(
+        [
+            {
+                "Name": "RegisterModelStep",
+                "Type": "RegisterModel",
+                "Arguments": {
+                    "InferenceSpecification": {
+                        "Containers": [
+                            {
+                                "Image": "763104351884.dkr.ecr.us-west-2.amazonaws.com/tensorflow-inference:1.15.2-cpu",
+                                "ModelDataUrl": f"s3://{BUCKET}/model.tar.gz",
+                            }
                         ],
                         "SupportedContentTypes": ["content_type"],
                         "SupportedRealtimeInferenceInstanceTypes": ["inference_instance"],
@@ -309,6 +372,8 @@ def test_register_model_with_model_repack(estimator, model_metrics):
             )
         else:
             raise Exception("A step exists in the collection of an invalid type.")
+
+ 
 
 
 def test_estimator_transformer(estimator):
