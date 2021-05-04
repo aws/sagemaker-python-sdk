@@ -776,6 +776,106 @@ def test_conditional_pytorch_training_model_registration(
             pass
 
 
+def test_model_registration_with_model_repack(
+    sagemaker_session,
+    role,
+    pipeline_name,
+    region_name,
+):
+    base_dir = os.path.join(DATA_DIR, "pytorch_mnist")
+    entry_point = os.path.join(base_dir, "mnist.py")
+    input_path = sagemaker_session.upload_data(
+        path=os.path.join(base_dir, "training"),
+        key_prefix="integ-test-data/pytorch_mnist/training",
+    )
+    inputs = TrainingInput(s3_data=input_path)
+
+    instance_count = ParameterInteger(name="InstanceCount", default_value=1)
+    instance_type = ParameterString(name="InstanceType", default_value="ml.m5.xlarge")
+    good_enough_input = ParameterInteger(name="GoodEnoughInput", default_value=1)
+
+    pytorch_estimator = PyTorch(
+        entry_point=entry_point,
+        role=role,
+        framework_version="1.5.0",
+        py_version="py3",
+        instance_count=instance_count,
+        instance_type=instance_type,
+        sagemaker_session=sagemaker_session,
+    )
+    step_train = TrainingStep(
+        name="pytorch-train",
+        estimator=pytorch_estimator,
+        inputs=inputs,
+    )
+
+    step_register = RegisterModel(
+        name="pytorch-register-model",
+        estimator=pytorch_estimator,
+        model_data=step_train.properties.ModelArtifacts.S3ModelArtifacts,
+        content_types=["*"],
+        response_types=["*"],
+        inference_instances=["*"],
+        transform_instances=["*"],
+        description="test-description",
+        entry_point=entry_point,
+    )
+
+    model = Model(
+        image_uri=pytorch_estimator.training_image_uri(),
+        model_data=step_train.properties.ModelArtifacts.S3ModelArtifacts,
+        sagemaker_session=sagemaker_session,
+        role=role,
+    )
+    model_inputs = CreateModelInput(
+        instance_type="ml.m5.large",
+        accelerator_type="ml.eia1.medium",
+    )
+    step_model = CreateModelStep(
+        name="pytorch-model",
+        model=model,
+        inputs=model_inputs,
+    )
+
+    step_cond = ConditionStep(
+        name="cond-good-enough",
+        conditions=[ConditionGreaterThanOrEqualTo(left=good_enough_input, right=1)],
+        if_steps=[step_train, step_register],
+        else_steps=[step_model],
+    )
+
+    pipeline = Pipeline(
+        name=pipeline_name,
+        parameters=[good_enough_input, instance_count, instance_type],
+        steps=[step_cond],
+        sagemaker_session=sagemaker_session,
+    )
+
+    try:
+        response = pipeline.create(role)
+        create_arn = response["PipelineArn"]
+        assert re.match(
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}", create_arn
+        )
+
+        execution = pipeline.start(parameters={})
+        assert re.match(
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
+            execution.arn,
+        )
+
+        execution = pipeline.start(parameters={"GoodEnoughInput": 0})
+        assert re.match(
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
+            execution.arn,
+        )
+    finally:
+        try:
+            pipeline.delete()
+        except Exception:
+            pass
+
+
 def test_training_job_with_debugger_and_profiler(
     sagemaker_session,
     pipeline_name,
@@ -864,6 +964,113 @@ def test_training_job_with_debugger_and_profiler(
 
         assert job_description["ProfilingStatus"] == "Enabled"
         assert job_description["ProfilerConfig"]["ProfilingIntervalInMilliseconds"] == 500
+    finally:
+        try:
+            pipeline.delete()
+        except Exception:
+            pass
+
+
+def test_two_processing_job_depends_on(
+    sagemaker_session,
+    role,
+    pipeline_name,
+    region_name,
+    cpu_instance_type,
+):
+    instance_count = ParameterInteger(name="InstanceCount", default_value=2)
+    script_path = os.path.join(DATA_DIR, "dummy_script.py")
+
+    pyspark_processor = PySparkProcessor(
+        base_job_name="sm-spark",
+        framework_version="2.4",
+        role=role,
+        instance_count=instance_count,
+        instance_type=cpu_instance_type,
+        max_runtime_in_seconds=1200,
+        sagemaker_session=sagemaker_session,
+    )
+
+    spark_run_args = pyspark_processor.get_run_args(
+        submit_app=script_path,
+        arguments=[
+            "--s3_input_bucket",
+            sagemaker_session.default_bucket(),
+            "--s3_input_key_prefix",
+            "spark-input",
+            "--s3_output_bucket",
+            sagemaker_session.default_bucket(),
+            "--s3_output_key_prefix",
+            "spark-output",
+        ],
+    )
+
+    step_pyspark_1 = ProcessingStep(
+        name="pyspark-process-1",
+        processor=pyspark_processor,
+        inputs=spark_run_args.inputs,
+        outputs=spark_run_args.outputs,
+        job_arguments=spark_run_args.arguments,
+        code=spark_run_args.code,
+    )
+
+    step_pyspark_2 = ProcessingStep(
+        name="pyspark-process-2",
+        depends_on=[step_pyspark_1.name],
+        processor=pyspark_processor,
+        inputs=spark_run_args.inputs,
+        outputs=spark_run_args.outputs,
+        job_arguments=spark_run_args.arguments,
+        code=spark_run_args.code,
+    )
+
+    pipeline = Pipeline(
+        name=pipeline_name,
+        parameters=[instance_count],
+        steps=[step_pyspark_1, step_pyspark_2],
+        sagemaker_session=sagemaker_session,
+    )
+
+    try:
+        response = pipeline.create(role)
+        create_arn = response["PipelineArn"]
+        assert re.match(
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            create_arn,
+        )
+
+        pipeline.parameters = [ParameterInteger(name="InstanceCount", default_value=1)]
+        response = pipeline.update(role)
+        update_arn = response["PipelineArn"]
+        assert re.match(
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            update_arn,
+        )
+
+        execution = pipeline.start(parameters={})
+        assert re.match(
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
+            execution.arn,
+        )
+
+        response = execution.describe()
+        assert response["PipelineArn"] == create_arn
+
+        try:
+            execution.wait(delay=60)
+        except WaiterError:
+            pass
+
+        execution_steps = execution.list_steps()
+        assert len(execution_steps) == 2
+        time_stamp = {}
+        for execution_step in execution_steps:
+            name = execution_step["StepName"]
+            if name == "pyspark-process-1":
+                time_stamp[name] = execution_step["EndTime"]
+            else:
+                time_stamp[name] = execution_step["StartTime"]
+        assert time_stamp["pyspark-process-1"] < time_stamp["pyspark-process-2"]
     finally:
         try:
             pipeline.delete()
