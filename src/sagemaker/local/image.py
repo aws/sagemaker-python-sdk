@@ -905,13 +905,14 @@ def _check_output(cmd):
         cmd = shlex.split(cmd)
 
     success = True
+    output = None
+
     try:
-        output = subprocess.run(cmd, shell=True, check=True)
+        subprocess.run(cmd, shell=True, check=True)
     except subprocess.CalledProcessError as e:
         output = e.output
         success = False
 
-    output = output.decode("utf-8")
     if not success:
         logger.error("Command output: %s", output)
         raise Exception(f"Failed to run {','.join(cmd)}")
