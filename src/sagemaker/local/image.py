@@ -151,7 +151,11 @@ class _SageMakerContainer(object):
             _pull_image(self.image)
 
         process = subprocess.run(
-            compose_command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True
+            compose_command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            shell=True,
+            check=True,
         )
 
         try:
@@ -231,7 +235,11 @@ class _SageMakerContainer(object):
             _pull_image(self.image)
 
         process = subprocess.run(
-            compose_command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True
+            compose_command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            shell=True,
+            check=True,
         )
 
         try:
@@ -300,7 +308,6 @@ class _SageMakerContainer(object):
         tasks.
         """
         if self.container:
-            self.container.down()
             self.container.join()
             self._cleanup()
         # for serving we can delete everything in the container root.
@@ -830,7 +837,7 @@ class _HostingContainer(Thread):
     def run(self):
         """Placeholder docstring"""
         self.process = subprocess.run(
-            self.command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True
+            self.command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, check=True
         )
         try:
             _write_output(self.process)
@@ -839,10 +846,6 @@ class _HostingContainer(Thread):
             # which contains the exit code and append the command line to it.
             msg = f"Failed to run: {self.command}, {str(e)}"
             raise RuntimeError(msg)
-
-    def down(self):
-        """Placeholder docstring"""
-        self.process.terminate()
 
 
 class _Volume(object):
