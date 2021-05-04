@@ -57,25 +57,22 @@ class HuggingFace(Framework):
 
         Args:
             py_version (str): Python version you want to use for executing your model training
-                code. Defaults to ``None``. Required unless ``image_uri`` is provided.  List
-                of supported versions:
-                https://github.com/aws/sagemaker-python-sdk#huggingface-sagemaker-estimators
+                code. Defaults to ``None``. Required unless ``image_uri`` is provided.  If
+                using PyTorch, the current supported version is ``py36``. If using TensorFlow,
+                the current supported version is ``py37``.
             entry_point (str): Path (absolute or relative) to the Python source
                 file which should be executed as the entry point to training.
                 If ``source_dir`` is specified, then ``entry_point``
                 must point to a file located at the root of ``source_dir``.
             transformers_version (str): Transformers version you want to use for
                 executing your model training code. Defaults to ``None``. Required unless
-                ``image_uri`` is provided. List of supported versions:
-                https://github.com/aws/sagemaker-python-sdk#huggingface-sagemaker-estimators.
+                ``image_uri`` is provided. The current supported version is ``4.4.2``.
             tensorflow_version (str): TensorFlow version you want to use for
                 executing your model training code. Defaults to ``None``. Required unless
-                ``pytorch_version`` is provided. List of supported versions:
-                https://github.com/aws/sagemaker-python-sdk#huggingface-sagemaker-estimators.
+                ``pytorch_version`` is provided. The current supported version is ``1.6.0``.
             pytorch_version (str): PyTorch version you want to use for
                 executing your model training code. Defaults to ``None``. Required unless
-                ``tensorflow_version`` is provided. List of supported versions:
-                https://github.com/aws/sagemaker-python-sdk#huggingface-sagemaker-estimators.
+                ``tensorflow_version`` is provided. The current supported version is ``2.4.1``.
             source_dir (str): Path (absolute, relative or an S3 URI) to a directory
                 with any other training source code dependencies aside from the entry
                 point file (default: None). If ``source_dir`` is an S3 URI, it must
