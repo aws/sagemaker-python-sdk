@@ -301,7 +301,7 @@ class _RegisterModelStep(Step):
                     model._framework_name,
                     region_name,
                     version=model.framework_version,
-                    py_version=model.py_version,
+                    py_version=model.py_version if hasattr(model, "py_version") else None,
                     instance_type=self.kwargs.get("instance_type", self.estimator.instance_type),
                     accelerator_type=self.kwargs.get("accelerator_type"),
                     image_scope="inference",
