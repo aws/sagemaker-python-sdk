@@ -306,28 +306,25 @@ def test_stream_output():
         p = subprocess.Popen(
             ["ls", "/some/unknown/path"], stdout=subprocess.PIPE, stderr=subprocess.PIPE
         )
-        sagemaker.local.image._stream_output(p)
+        sagemaker.local.image._write_output(p)
 
     p = subprocess.Popen(["echo", "hello"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    exit_code = sagemaker.local.image._stream_output(p)
+    exit_code = sagemaker.local.image._write_output(p)
     assert exit_code == 0
 
 
 def test_check_output():
     with pytest.raises(Exception):
-        sagemaker.local.image._check_output(["ls", "/some/unknown/path"])
+        sagemaker.local.image._check_output("ls /some/unknown/path")
 
     msg = "hello!"
 
-    output = sagemaker.local.image._check_output(["echo", msg]).strip()
-    assert output == msg
-
-    output = sagemaker.local.image._check_output("echo %s" % msg).strip()
+    output = sagemaker.local.image._check_output(f"echo {msg}").strip()
     assert output == msg
 
 
 @patch("sagemaker.local.local_session.LocalSession", Mock())
-@patch("sagemaker.local.image._stream_output", Mock())
+@patch("sagemaker.local.image._write_output", Mock())
 @patch("sagemaker.local.image._SageMakerContainer._cleanup")
 @patch("sagemaker.local.image._SageMakerContainer.retrieve_artifacts")
 @patch("sagemaker.local.data.get_data_source_instance")
@@ -395,7 +392,7 @@ def test_train(
 
 
 @patch("sagemaker.local.local_session.LocalSession", Mock())
-@patch("sagemaker.local.image._stream_output", Mock())
+@patch("sagemaker.local.image._write_output", Mock())
 @patch("sagemaker.local.image._SageMakerContainer._cleanup", Mock())
 @patch("sagemaker.local.data.get_data_source_instance")
 def test_train_with_hyperparameters_without_job_name(
@@ -432,7 +429,7 @@ def test_train_with_hyperparameters_without_job_name(
 
 
 @patch("sagemaker.local.local_session.LocalSession", Mock())
-@patch("sagemaker.local.image._stream_output", side_effect=RuntimeError("this is expected"))
+@patch("sagemaker.local.image._write_output", side_effect=RuntimeError("this is expected"))
 @patch("sagemaker.local.image._SageMakerContainer._cleanup")
 @patch("sagemaker.local.image._SageMakerContainer.retrieve_artifacts")
 @patch("sagemaker.local.data.get_data_source_instance")
@@ -466,7 +463,7 @@ def test_train_error(
 
 
 @patch("sagemaker.local.local_session.LocalSession", Mock())
-@patch("sagemaker.local.image._stream_output", Mock())
+@patch("sagemaker.local.image._write_output", Mock())
 @patch("sagemaker.local.image._SageMakerContainer._cleanup", Mock())
 @patch("sagemaker.local.data.get_data_source_instance")
 @patch("subprocess.Popen", Mock())
@@ -514,7 +511,7 @@ def test_train_local_code(get_data_source_instance, tmpdir, sagemaker_session):
 
 
 @patch("sagemaker.local.local_session.LocalSession", Mock())
-@patch("sagemaker.local.image._stream_output", Mock())
+@patch("sagemaker.local.image._write_output", Mock())
 @patch("sagemaker.local.image._SageMakerContainer._cleanup", Mock())
 @patch("sagemaker.local.data.get_data_source_instance")
 @patch("subprocess.Popen", Mock())

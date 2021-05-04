@@ -150,14 +150,14 @@ class _SageMakerContainer(object):
         if _ecr_login_if_needed(self.sagemaker_session.boto_session, self.image):
             _pull_image(self.image)
 
-        process = subprocess.Popen(
-            compose_command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+        process = subprocess.run(
+            compose_command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True
         )
 
         try:
-            _stream_output(process)
+            _write_output(process)
         except RuntimeError as e:
-            # _stream_output() doesn't have the command line. We will handle the exception
+            # _write_output() doesn't have the command line. We will handle the exception
             # which contains the exit code and append the command line to it.
             msg = f"Failed to run: {compose_command}"
             raise RuntimeError(msg) from e
@@ -230,16 +230,16 @@ class _SageMakerContainer(object):
         if _ecr_login_if_needed(self.sagemaker_session.boto_session, self.image):
             _pull_image(self.image)
 
-        process = subprocess.Popen(
-            compose_command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+        process = subprocess.run(
+            compose_command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True
         )
 
         try:
-            _stream_output(process)
+            _write_output(process)
         except RuntimeError as e:
-            # _stream_output() doesn't have the command line. We will handle the exception
+            # _write_output() doesn't have the command line. We will handle the exception
             # which contains the exit code and append the command line to it.
-            msg = "Failed to run: %s, %s" % (compose_command, str(e))
+            msg = f"Failed to run: {compose_command}, {str(e)}"
             raise RuntimeError(msg)
         finally:
             artifacts = self.retrieve_artifacts(compose_data, output_data_config, job_name)
@@ -362,7 +362,7 @@ class _SageMakerContainer(object):
         )
 
         if output_data_config["S3OutputPath"] == "":
-            output_data = "file://%s" % compressed_artifacts
+            output_data = f"file://{compressed_artifacts}"
         else:
             # Now we just need to move the compressed artifacts to wherever they are required
             output_data = sagemaker.local.utils.move_to_destination(
@@ -691,16 +691,18 @@ class _SageMakerContainer(object):
         """
         compose_cmd = "docker-compose"
 
-        command = [
-            compose_cmd,
-            "-f",
-            os.path.join(self.container_root, DOCKER_COMPOSE_FILENAME),
-            "up",
-            "--build",
-            "--abort-on-container-exit" if not detached else "--detach",  # mutually exclusive
-        ]
+        command = " ".join(
+            [
+                compose_cmd,
+                "-f",
+                os.path.join(self.container_root, DOCKER_COMPOSE_FILENAME),
+                "up",
+                "--build",
+                "--abort-on-container-exit" if not detached else "--detach",  # mutually exclusive
+            ]
+        )
 
-        logger.info("docker command: %s", " ".join(command))
+        logger.info("docker command: %s", command)
         return command
 
     def _create_docker_host(self, host, environment, optml_subdirs, command, volumes):
@@ -750,7 +752,7 @@ class _SageMakerContainer(object):
                 )
                 or 8080
             )
-            host_config.update({"ports": ["%s:8080" % serving_port]})
+            host_config.update({"ports": [f"{serving_port}:8080"]})
 
         return host_config
 
@@ -827,15 +829,15 @@ class _HostingContainer(Thread):
 
     def run(self):
         """Placeholder docstring"""
-        self.process = subprocess.Popen(
-            self.command, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        self.process = subprocess.run(
+            self.command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True
         )
         try:
-            _stream_output(self.process)
+            _write_output(self.process)
         except RuntimeError as e:
-            # _stream_output() doesn't have the command line. We will handle the exception
+            # _write_output() doesn't have the command line. We will handle the exception
             # which contains the exit code and append the command line to it.
-            msg = "Failed to run: %s, %s" % (self.command, str(e))
+            msg = f"Failed to run: {self.command}, {str(e)}"
             raise RuntimeError(msg)
 
     def down(self):
@@ -871,45 +873,37 @@ class _Volume(object):
         self.map = "{}:{}".format(self.host_dir, self.container_dir)
 
 
-def _stream_output(process):
-    """Stream the output of a process to stdout
+def _write_output(process):
+    """Write the output of a process to stdout
 
-    This function takes an existing process that will be polled for output.
-    Only stdout will be polled and sent to sys.stdout.
+    Only stdout will be sent to sys.stdout.
 
     Args:
-        process (subprocess.Popen): a process that has been started with
+        process (subprocess.CompletedProcess): a process that has been started with
             stdout=PIPE and stderr=STDOUT
 
-    Returns (int): process exit code
+    Returns (int): process return code
     """
-    exit_code = None
+    sys.stdout.write(process.stdout)
 
-    while exit_code is None:
-        stdout = process.stdout.readline().decode("utf-8")
-        sys.stdout.write(stdout)
-        exit_code = process.poll()
+    if process.returncode != 0:
+        raise RuntimeError(f"Process exited with code: {process.returncode}")
 
-    if exit_code != 0:
-        raise RuntimeError("Process exited with code: %s" % exit_code)
-
-    return exit_code
+    return process.returncode
 
 
-def _check_output(cmd, *popenargs, **kwargs):
+def _check_output(cmd):
     """Makes a call to `subprocess.check_output` for the given command and args.
 
     Args:
         cmd:
-        *popenargs:
-        **kwargs:
     """
     if isinstance(cmd, str):
         cmd = shlex.split(cmd)
 
     success = True
     try:
-        output = subprocess.check_output(cmd, *popenargs, **kwargs)
+        output = subprocess.run(cmd, shell=True, check=True)
     except subprocess.CalledProcessError as e:
         output = e.output
         success = False
@@ -917,7 +911,7 @@ def _check_output(cmd, *popenargs, **kwargs):
     output = output.decode("utf-8")
     if not success:
         logger.error("Command output: %s", output)
-        raise Exception("Failed to run %s" % ",".join(cmd))
+        raise Exception(f"Failed to run {','.join(cmd)}")
 
     return output
 
@@ -989,8 +983,8 @@ def _aws_credentials(session):
         if token is None:
             logger.info("Using the long-lived AWS credentials found in session")
             return [
-                "AWS_ACCESS_KEY_ID=%s" % (str(access_key)),
-                "AWS_SECRET_ACCESS_KEY=%s" % (str(secret_key)),
+                f"AWS_ACCESS_KEY_ID={str(access_key)}",
+                f"AWS_SECRET_ACCESS_KEY={str(secret_key)}",
             ]
         if not _aws_credentials_available_in_metadata_service():
             logger.warning(
@@ -998,9 +992,9 @@ def _aws_credentials(session):
                 "running."
             )
             return [
-                "AWS_ACCESS_KEY_ID=%s" % (str(access_key)),
-                "AWS_SECRET_ACCESS_KEY=%s" % (str(secret_key)),
-                "AWS_SESSION_TOKEN=%s" % (str(token)),
+                f"AWS_ACCESS_KEY_ID={str(access_key)}",
+                f"AWS_SECRET_ACCESS_KEY={str(secret_key)}",
+                f"AWS_SESSION_TOKEN={str(token)}",
             ]
         logger.info(
             "No AWS credentials found in session but credentials from EC2 Metadata Service are "
@@ -1056,7 +1050,7 @@ def _ecr_login_if_needed(boto_session, image):
         return False
 
     # do we have the image?
-    if _check_output("docker images -q %s" % image).strip():
+    if _check_output(f"docker images -q {image}").strip():
         return False
 
     if not boto_session:
@@ -1073,8 +1067,8 @@ def _ecr_login_if_needed(boto_session, image):
     token = raw_token.decode("utf-8").strip("AWS:")
     ecr_url = auth["authorizationData"][0]["proxyEndpoint"]
 
-    cmd = "docker login -u AWS -p %s %s" % (token, ecr_url)
-    subprocess.check_output(cmd.split())
+    cmd = f"docker login -u AWS -p {token} {ecr_url}"
+    subprocess.run(cmd, shell=True, check=True)
 
     return True
 
@@ -1085,8 +1079,8 @@ def _pull_image(image):
     Args:
         image:
     """
-    pull_image_command = ("docker pull %s" % image).strip()
+    pull_image_command = (f"docker pull {image}").strip()
     logger.info("docker command: %s", pull_image_command)
 
-    subprocess.check_output(pull_image_command.split())
+    subprocess.run(pull_image_command, shell=True, check=True)
     logger.info("image pulled: %s", image)
