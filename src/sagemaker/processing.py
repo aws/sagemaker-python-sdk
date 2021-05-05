@@ -1222,6 +1222,9 @@ class FrameworkProcessor(ScriptProcessor):
 cd /opt/ml/processing/input/code/
 tar -xzf payload/sourcedir.tar.gz
 
+# Exit on any error. SageMaker uses error code to mark failed job.
+set -e
+
 [[ -f 'requirements.txt' ]] && pip install -r requirements.txt
 
 python {entry_point} "$@"
