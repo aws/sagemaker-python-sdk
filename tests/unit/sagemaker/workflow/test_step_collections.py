@@ -120,6 +120,7 @@ def estimator(sagemaker_session):
         sagemaker_session=sagemaker_session,
     )
 
+
 @pytest.fixture
 def estimator_tf(sagemaker_session):
     return TensorFlow(
@@ -131,6 +132,7 @@ def estimator_tf(sagemaker_session):
         instance_count=1,
         sagemaker_session=sagemaker_session,
     )
+
 
 @pytest.fixture
 def model_metrics():
@@ -212,6 +214,7 @@ def test_register_model(estimator, model_metrics):
             },
         ]
     )
+
 
 def test_register_model_tf(estimator_tf, model_metrics):
     model_data = f"s3://{BUCKET}/model.tar.gz"
