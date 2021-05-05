@@ -1054,7 +1054,7 @@ def _ecr_login_if_needed(boto_session, image):
         return False
 
     # do we have the image?
-    if _check_output(f"docker images -q {image}").strip():
+    if _check_output(f"docker images -q {image}"):
         return False
 
     if not boto_session:
