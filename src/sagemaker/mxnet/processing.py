@@ -56,7 +56,7 @@ class MXNetProcessor(FrameworkProcessor):
         .. tip::
 
             You can find additional parameters for initializing this class at
-            :class:`~smallmatter.ds.FrameworkProcessor`.
+            :class:`~sagemaker.processing.FrameworkProcessor`.
         """
         super().__init__(
             self.estimator_cls,
