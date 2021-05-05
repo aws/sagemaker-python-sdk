@@ -1,16 +1,3 @@
-# Sagemaker Distributed Data Parallel 1.2.0 Release Notes
-
-* New features
-* Bug Fixes
-
-*New features:*
-
-* Support of [EFA network interface](https://aws.amazon.com/hpc/efa/) for distributed AllReduce. For best performance, it is recommended you use an instance type that supports Amazon Elastic Fabric Adapter (ml.p3dn.24xlarge and ml.p4d.24xlarge) when you train a model using SageMaker distributed data parallel.
-
-*Bug Fixes:*
-
-* Improved performance on single node and small clusters.
-
 # Sagemaker Distributed Data Parallel 1.1.2 Release Notes
 
 * Bug Fixes
