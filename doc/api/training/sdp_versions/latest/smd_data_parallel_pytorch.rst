@@ -155,7 +155,7 @@ PyTorch API
 
 .. rubric:: Supported versions
 
-**PyTorch 1.7.1, 1.8.1**
+**PyTorch 1.7.1, 1.8.0**
 
 
 .. function:: smdistributed.dataparallel.torch.distributed.is_available()
