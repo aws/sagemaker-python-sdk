@@ -1260,7 +1260,8 @@ python {entry_point} "$@"
         Args:
             estimator_cls (type): A subclass of the :class:`~sagemaker.estimator.Framework`
                 estimator
-            framework_version (str): The version of the framework
+            framework_version (str): The version of the framework. Value is ignored when
+                ``image_uri`` is provided.
             s3_prefix (str): The S3 prefix URI where custom code will be
                 uploaded - don't include a trailing slash since a string prepended
                 with a "/" is appended to ``s3_prefix``. The code file uploaded to S3
