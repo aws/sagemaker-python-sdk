@@ -30,9 +30,6 @@ from sagemaker.job import _Job
 from sagemaker.local import LocalSession
 from sagemaker.utils import base_name_from_image, name_from_base
 from sagemaker.session import Session
-from sagemaker.network import (
-    NetworkConfig,
-)  # noqa: F401 # pylint: disable=unused-import
 from sagemaker.workflow.properties import Properties
 from sagemaker.workflow.parameters import Parameter
 from sagemaker.workflow.entities import Expression
