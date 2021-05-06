@@ -638,9 +638,9 @@ class ScriptProcessor(Processor):
             self._CODE_CONTAINER_INPUT_NAME,
         )
         return s3.S3Uploader.upload(
-            local_path=code, 
-            desired_s3_uri=desired_s3_uri, 
-            kms_key=kms_key, 
+            local_path=code,
+            desired_s3_uri=desired_s3_uri,
+            kms_key=kms_key,
             sagemaker_session=self.sagemaker_session
         )
 
