@@ -219,14 +219,14 @@ class Processor(object):
         """
         self._current_job_name = self._generate_current_job_name(job_name=job_name)
 
-        inputs_with_code = self._include_code_in_inputs(inputs, code)
+        inputs_with_code = self._include_code_in_inputs(inputs, code, kms_key)
         normalized_inputs = self._normalize_inputs(inputs_with_code, kms_key)
         normalized_outputs = self._normalize_outputs(outputs)
         self.arguments = arguments
 
         return normalized_inputs, normalized_outputs
 
-    def _include_code_in_inputs(self, inputs, _code):
+    def _include_code_in_inputs(self, inputs, _code, kms_key=None):
         """A no op in the base class to include code in the processing job inputs.
 
         Args:
@@ -235,6 +235,8 @@ class Processor(object):
                 :class:`~sagemaker.processing.ProcessingInput` objects.
             _code (str): This can be an S3 URI or a local path to a file with the framework
                 script to run (default: None). A no op in the base class.
+            kms_key (str): The ARN of the KMS key that is used to encrypt the
+                user code file (default: None).
 
         Returns:
             list[:class:`~sagemaker.processing.ProcessingInput`]: inputs
@@ -528,7 +530,7 @@ class ScriptProcessor(Processor):
         if wait:
             self.latest_job.wait(logs=logs)
 
-    def _include_code_in_inputs(self, inputs, code):
+    def _include_code_in_inputs(self, inputs, code, kms_key=None):
         """Converts code to appropriate input and includes in input list.
 
         Side effects include:
@@ -541,12 +543,14 @@ class ScriptProcessor(Processor):
                 :class:`~sagemaker.processing.ProcessingInput` objects.
             code (str): This can be an S3 URI or a local path to a file with the framework
                 script to run (default: None).
+            kms_key (str): The ARN of the KMS key that is used to encrypt the
+                user code file (default: None).
 
         Returns:
             list[:class:`~sagemaker.processing.ProcessingInput`]: inputs together with the
                 code as `ProcessingInput`.
         """
-        user_code_s3_uri = self._handle_user_code_url(code)
+        user_code_s3_uri = self._handle_user_code_url(code, kms_key)
         user_script_name = self._get_user_code_name(code)
 
         inputs_with_code = self._convert_code_and_add_to_inputs(inputs, user_code_s3_uri)
@@ -567,7 +571,7 @@ class ScriptProcessor(Processor):
         code_url = urlparse(code)
         return os.path.basename(code_url.path)
 
-    def _handle_user_code_url(self, code):
+    def _handle_user_code_url(self, code, kms_key=None):
         """Gets the S3 URL containing the user's code.
 
            Inspects the scheme the customer passed in ("s3://" for code in S3, "file://" or nothing
@@ -575,6 +579,8 @@ class ScriptProcessor(Processor):
 
         Args:
             code (str): A URL to the customer's code.
+            kms_key (str): The ARN of the KMS key that is used to encrypt the
+                user code file (default: None).
 
         Returns:
             str: The S3 URL to the customer's code.
@@ -603,7 +609,7 @@ class ScriptProcessor(Processor):
                         code
                     )
                 )
-            user_code_s3_uri = self._upload_code(code_path)
+            user_code_s3_uri = self._upload_code(code_path, kms_key)
         else:
             raise ValueError(
                 "code {} url scheme {} is not recognized. Please pass a file path or S3 url".format(
@@ -612,11 +618,13 @@ class ScriptProcessor(Processor):
             )
         return user_code_s3_uri
 
-    def _upload_code(self, code):
+    def _upload_code(self, code, kms_key=None):
         """Uploads a code file or directory specified as a string and returns the S3 URI.
 
         Args:
             code (str): A file or directory to be uploaded to S3.
+            kms_key (str): The ARN of the KMS key that is used to encrypt the
+                user code file (default: None).
 
         Returns:
             str: The S3 URI of the uploaded file or directory.
@@ -630,7 +638,7 @@ class ScriptProcessor(Processor):
             self._CODE_CONTAINER_INPUT_NAME,
         )
         return s3.S3Uploader.upload(
-            local_path=code, desired_s3_uri=desired_s3_uri, sagemaker_session=self.sagemaker_session
+            local_path=code, desired_s3_uri=desired_s3_uri, kms_key=kms_key, sagemaker_session=self.sagemaker_session
         )
 
     def _convert_code_and_add_to_inputs(self, inputs, s3_uri):
