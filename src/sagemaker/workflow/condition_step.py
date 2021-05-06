@@ -40,6 +40,7 @@ class ConditionStep(Step):
     def __init__(
         self,
         name: str,
+        depends_on: List[str] = None,
         conditions: List[Condition] = None,
         if_steps: List[Union[Step, StepCollection]] = None,
         else_steps: List[Union[Step, StepCollection]] = None,
@@ -60,7 +61,7 @@ class ConditionStep(Step):
                 and `sagemaker.workflow.step_collections.StepCollection` instances that are
                 marked as ready for execution if the list of conditions evaluates to False.
         """
-        super(ConditionStep, self).__init__(name, StepTypeEnum.CONDITION)
+        super(ConditionStep, self).__init__(name, StepTypeEnum.CONDITION, depends_on)
         self.conditions = conditions or []
         self.if_steps = if_steps or []
         self.else_steps = else_steps or []

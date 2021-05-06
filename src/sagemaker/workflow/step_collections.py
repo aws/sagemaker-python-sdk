@@ -60,6 +60,7 @@ class RegisterModel(StepCollection):
         response_types,
         inference_instances,
         transform_instances,
+        depends_on: List[str] = None,
         model_package_group_name=None,
         model_metrics=None,
         approval_status=None,
@@ -80,6 +81,8 @@ class RegisterModel(StepCollection):
                 generate inferences in real-time (default: None).
             transform_instances (list): A list of the instance types on which a transformation
                 job can be run or on which an endpoint can be deployed (default: None).
+            depends_on (List[str]): The list of step names the first step in the collection
+                depends on
             model_package_group_name (str): The Model Package Group name, exclusive to
                 `model_package_name`, using `model_package_group_name` makes the Model Package
                 versioned (default: None).
@@ -94,12 +97,15 @@ class RegisterModel(StepCollection):
             **kwargs: additional arguments to `create_model`.
         """
         steps: List[Step] = []
+        repack_model = False
         if "entry_point" in kwargs:
+            repack_model = True
             entry_point = kwargs["entry_point"]
             source_dir = kwargs.get("source_dir")
             dependencies = kwargs.get("dependencies")
             repack_model_step = _RepackModelStep(
                 name=f"{name}RepackModel",
+                depends_on=depends_on,
                 estimator=estimator,
                 model_data=model_data,
                 entry_point=entry_point,
@@ -108,6 +114,11 @@ class RegisterModel(StepCollection):
             )
             steps.append(repack_model_step)
             model_data = repack_model_step.properties.ModelArtifacts.S3ModelArtifacts
+
+        # remove kwargs consumed by model repacking step
+        kwargs.pop("entry_point", None)
+        kwargs.pop("source_dir", None)
+        kwargs.pop("dependencies", None)
 
         register_model_step = _RegisterModelStep(
             name=name,
@@ -125,6 +136,9 @@ class RegisterModel(StepCollection):
             description=description,
             **kwargs,
         )
+        if not repack_model:
+            register_model_step.add_depends_on(depends_on)
+
         steps.append(register_model_step)
         self.steps = steps
 
@@ -155,6 +169,7 @@ class EstimatorTransformer(StepCollection):
         max_payload=None,
         tags=None,
         volume_kms_key=None,
+        depends_on: List[str] = None,
         **kwargs,
     ):
         """Construct steps required for a Transformer step collection:
@@ -191,6 +206,8 @@ class EstimatorTransformer(StepCollection):
                 it will be the format of the batch transform output.
             env (dict): The Environment variables to be set for use during the
                 transform job (default: None).
+            depends_on (List[str]): The list of step names the first step in
+                the collection depends on
         """
         steps = []
         if "entry_point" in kwargs:
@@ -199,6 +216,7 @@ class EstimatorTransformer(StepCollection):
             dependencies = kwargs.get("dependencies")
             repack_model_step = _RepackModelStep(
                 name=f"{name}RepackModel",
+                depends_on=depends_on,
                 estimator=estimator,
                 model_data=model_data,
                 entry_point=entry_point,
@@ -227,6 +245,9 @@ class EstimatorTransformer(StepCollection):
             model=model,
             inputs=model_inputs,
         )
+        if "entry_point" not in kwargs and depends_on:
+            # if the CreateModelStep is the first step in the collection
+            model_step.add_depends_on(depends_on)
         steps.append(model_step)
 
         transformer = Transformer(

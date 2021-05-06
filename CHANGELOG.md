@@ -1,5 +1,24 @@
 # Changelog
 
+## v2.39.1 (2021-05-05)
+
+### Bug Fixes and Other Changes
+
+ * RegisterModel step and custom dependency support
+
+### Documentation Changes
+
+ * reverting SageMaker distributed data parallel EFA doc updates
+ * adding new version, SM dist. data parallel 1.2.0.
+ * add current Hugging Face supported versions
+ * SMDDP 1.2.0 release notes
+
+## v2.39.0.post0 (2021-05-04)
+
+### Testing and Release Infrastructure
+
+ * disable smdataparallel tests
+
 ## v2.39.0 (2021-04-28)
 
 ### Features
