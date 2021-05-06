@@ -184,9 +184,7 @@ class Processor(object):
         if wait:
             self.latest_job.wait(logs=logs)
 
-    def _extend_processing_args(
-        self, inputs, outputs, **kwargs
-    ):  # pylint: disable=W0613
+    def _extend_processing_args(self, inputs, outputs, **kwargs):  # pylint: disable=W0613
         """Extend inputs and outputs based on extra parameters"""
         return inputs, outputs
 
@@ -288,22 +286,15 @@ class Processor(object):
             # Iterate through the provided list of inputs.
             for count, file_input in enumerate(inputs, 1):
                 if not isinstance(file_input, ProcessingInput):
-                    raise TypeError(
-                        "Your inputs must be provided as ProcessingInput objects."
-                    )
+                    raise TypeError("Your inputs must be provided as ProcessingInput objects.")
                 # Generate a name for the ProcessingInput if it doesn't have one.
                 if file_input.input_name is None:
                     file_input.input_name = "input-{}".format(count)
 
-                if (
-                    isinstance(file_input.source, Properties)
-                    or file_input.dataset_definition
-                ):
+                if isinstance(file_input.source, Properties) or file_input.dataset_definition:
                     normalized_inputs.append(file_input)
                     continue
-                if isinstance(
-                    file_input.s3_input.s3_uri, (Parameter, Expression, Properties)
-                ):
+                if isinstance(file_input.s3_input.s3_uri, (Parameter, Expression, Properties)):
                     normalized_inputs.append(file_input)
                     continue
                 # If the source is a local path, upload it to S3
@@ -349,9 +340,7 @@ class Processor(object):
             # Iterate through the provided list of outputs.
             for count, output in enumerate(outputs, 1):
                 if not isinstance(output, ProcessingOutput):
-                    raise TypeError(
-                        "Your outputs must be provided as ProcessingOutput objects."
-                    )
+                    raise TypeError("Your outputs must be provided as ProcessingOutput objects.")
                 # Generate a name for the ProcessingOutput if it doesn't have one.
                 if output.output_name is None:
                     output.output_name = "output-{}".format(count)
@@ -563,9 +552,7 @@ class ScriptProcessor(Processor):
         user_code_s3_uri = self._handle_user_code_url(code, kms_key)
         user_script_name = self._get_user_code_name(code)
 
-        inputs_with_code = self._convert_code_and_add_to_inputs(
-            inputs, user_code_s3_uri
-        )
+        inputs_with_code = self._convert_code_and_add_to_inputs(inputs, user_code_s3_uri)
 
         self._set_entrypoint(self.command, user_script_name)
         return inputs_with_code
@@ -700,9 +687,7 @@ class ScriptProcessor(Processor):
 class ProcessingJob(_Job):
     """Provides functionality to start, describe, and stop processing jobs."""
 
-    def __init__(
-        self, sagemaker_session, job_name, inputs, outputs, output_kms_key=None
-    ):
+    def __init__(self, sagemaker_session, job_name, inputs, outputs, output_kms_key=None):
         """Initializes a Processing job.
 
         Args:
@@ -720,9 +705,7 @@ class ProcessingJob(_Job):
         self.inputs = inputs
         self.outputs = outputs
         self.output_kms_key = output_kms_key
-        super(ProcessingJob, self).__init__(
-            sagemaker_session=sagemaker_session, job_name=job_name
-        )
+        super(ProcessingJob, self).__init__(sagemaker_session=sagemaker_session, job_name=job_name)
 
     @classmethod
     def start_new(cls, processor, inputs, outputs, experiment_config):
@@ -743,9 +726,7 @@ class ProcessingJob(_Job):
             :class:`~sagemaker.processing.ProcessingJob`: The instance of ``ProcessingJob`` created
                 using the ``Processor``.
         """
-        process_args = cls._get_process_args(
-            processor, inputs, outputs, experiment_config
-        )
+        process_args = cls._get_process_args(processor, inputs, outputs, experiment_config)
 
         # Print the job name and the user's inputs and outputs as lists of dictionaries.
         print()
@@ -819,26 +800,18 @@ class ProcessingJob(_Job):
 
         process_request_args["app_specification"] = {"ImageUri": processor.image_uri}
         if processor.arguments is not None:
-            process_request_args["app_specification"][
-                "ContainerArguments"
-            ] = processor.arguments
+            process_request_args["app_specification"]["ContainerArguments"] = processor.arguments
         if processor.entrypoint is not None:
-            process_request_args["app_specification"][
-                "ContainerEntrypoint"
-            ] = processor.entrypoint
+            process_request_args["app_specification"]["ContainerEntrypoint"] = processor.entrypoint
 
         process_request_args["environment"] = processor.env
 
         if processor.network_config is not None:
-            process_request_args[
-                "network_config"
-            ] = processor.network_config._to_request_dict()
+            process_request_args["network_config"] = processor.network_config._to_request_dict()
         else:
             process_request_args["network_config"] = None
 
-        process_request_args["role_arn"] = processor.sagemaker_session.expand_role(
-            processor.role
-        )
+        process_request_args["role_arn"] = processor.sagemaker_session.expand_role(processor.role)
 
         process_request_args["tags"] = processor.tags
 
@@ -859,9 +832,7 @@ class ProcessingJob(_Job):
             :class:`~sagemaker.processing.ProcessingJob`: The instance of ``ProcessingJob`` created
                 from the job name.
         """
-        job_desc = sagemaker_session.describe_processing_job(
-            job_name=processing_job_name
-        )
+        job_desc = sagemaker_session.describe_processing_job(job_name=processing_job_name)
 
         inputs = None
         if job_desc.get("ProcessingInputs"):
@@ -878,9 +849,9 @@ class ProcessingJob(_Job):
             ]
 
         outputs = None
-        if job_desc.get("ProcessingOutputConfig") and job_desc[
-            "ProcessingOutputConfig"
-        ].get("Outputs"):
+        if job_desc.get("ProcessingOutputConfig") and job_desc["ProcessingOutputConfig"].get(
+            "Outputs"
+        ):
             outputs = []
             for processing_output_dict in job_desc["ProcessingOutputConfig"]["Outputs"]:
                 processing_output = ProcessingOutput(
@@ -892,12 +863,8 @@ class ProcessingJob(_Job):
                 )
 
                 if "S3Output" in processing_output_dict:
-                    processing_output.source = processing_output_dict["S3Output"][
-                        "LocalPath"
-                    ]
-                    processing_output.destination = processing_output_dict["S3Output"][
-                        "S3Uri"
-                    ]
+                    processing_output.source = processing_output_dict["S3Output"]["LocalPath"]
+                    processing_output.destination = processing_output_dict["S3Output"]["S3Uri"]
 
                 outputs.append(processing_output)
         output_kms_key = None
@@ -1122,9 +1089,7 @@ class ProcessingInput(object):
                 self.s3_input.s3_compression_type == "Gzip"
                 and self.s3_input.s3_input_mode != "Pipe"
             ):
-                raise ValueError(
-                    "Data can only be gzipped when the input mode is Pipe."
-                )
+                raise ValueError("Data can only be gzipped when the input mode is Pipe.")
 
             s3_input_request["S3Input"] = S3Input.to_boto(self.s3_input)
 
