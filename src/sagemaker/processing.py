@@ -226,7 +226,7 @@ class Processor(object):
 
         return normalized_inputs, normalized_outputs
 
-    def _include_code_in_inputs(self, inputs, _code, kms_key=None):
+    def _include_code_in_inputs(self, inputs, _code, _kms_key):
         """A no op in the base class to include code in the processing job inputs.
 
         Args:
@@ -638,7 +638,10 @@ class ScriptProcessor(Processor):
             self._CODE_CONTAINER_INPUT_NAME,
         )
         return s3.S3Uploader.upload(
-            local_path=code, desired_s3_uri=desired_s3_uri, kms_key=kms_key, sagemaker_session=self.sagemaker_session
+            local_path=code, 
+            desired_s3_uri=desired_s3_uri, 
+            kms_key=kms_key, 
+            sagemaker_session=self.sagemaker_session
         )
 
     def _convert_code_and_add_to_inputs(self, inputs, s3_uri):
