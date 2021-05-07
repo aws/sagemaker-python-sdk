@@ -3500,11 +3500,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
                         NotebookInstanceName=instance_name
                     )
                     return instance_desc["RoleArn"]
-                else:
-                    user_profile_desc = self.sagemaker_client.describe_user_profile(
-                        DomainId=domain_id, UserProfileName=user_profile_name
-                    )
-                    return user_profile_desc["UserSettings"]["ExecutionRole"]
+                user_profile_desc = self.sagemaker_client.describe_user_profile(
+                    DomainId=domain_id, UserProfileName=user_profile_name
+                )
+                return user_profile_desc["UserSettings"]["ExecutionRole"]
             except ClientError:
                 LOGGER.debug(
                     "Couldn't call 'describe_notebook_instance' to get the Role "
