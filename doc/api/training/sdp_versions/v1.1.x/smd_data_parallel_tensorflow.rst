@@ -4,11 +4,11 @@ TensorFlow Guide to SageMaker's distributed data parallel library
 
 .. admonition:: Contents
 
-   - :ref:`tensorflow-sdp-modify`
-   - :ref:`tensorflow-sdp-api`
+   - :ref:`tensorflow-sdp-modify-11x`
+   - :ref:`tensorflow-sdp-api-11x`
 
-.. _tensorflow-sdp-modify:
-   :noindex:
+.. _tensorflow-sdp-modify-11x:
+
 
 Modify a TensorFlow 2.x training script to use SageMaker data parallel
 ======================================================================
@@ -151,18 +151,16 @@ script you will have for distributed training with the library.
        checkpoint.save(checkpoint_dir)
 
 
-.. _tensorflow-sdp-api:
-   :noindex:
+.. _tensorflow-sdp-api-11x:
+
 
 TensorFlow API
 ==============
 
 .. rubric:: Supported versions
 
-TensorFlow is supported in version 1.0.0 of ``sagemakerdistributed.dataparallel``.
-Reference version 1.0.0 `TensorFlow API documentation
-<https://sagemaker.readthedocs.io/en/stable/api/training/sdp_versions/latest/smd_data_parallel_tensorflow.html#tensorflow-sdp-api>`_
-for supported TensorFlow versions.
+Use version 1.0.0 or version 1.2.0 or later of ``smdistributed.dataparallel`` to use this
+library with TensorFlow.
 
 .. function:: smdistributed.dataparallel.tensorflow.init()
    :noindex:
