@@ -331,7 +331,7 @@ def create_tar_file(source_files, target=None):
     else:
         _, filename = tempfile.mkstemp()
 
-    with tarfile.open(filename, mode="w:gz") as t:
+    with tarfile.open(filename, mode="w:gz", dereference=True) as t:
         for sf in source_files:
             # Add all files from the directory into the root of the directory structure of the tar
             t.add(sf, arcname=os.path.basename(sf))
