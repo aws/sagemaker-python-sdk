@@ -1,5 +1,20 @@
 # Changelog
 
+## v2.40.0 (2021-05-11)
+
+### Features
+
+ * add xgboost framework version 1.2-2
+
+### Bug Fixes and Other Changes
+
+ * fix get_execution_role on Studio
+ * [fix] Check py_version existence in RegisterModel step
+
+### Documentation Changes
+
+ * SM Distributed EFA Launch
+
 ## v2.39.1 (2021-05-05)
 
 ### Bug Fixes and Other Changes
