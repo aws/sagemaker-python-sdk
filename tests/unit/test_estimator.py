@@ -3183,9 +3183,7 @@ def test_prepare_init_params_from_job_description_with_spot_training():
 
 def test_prepare_init_params_from_job_description_with_retry_strategy():
     job_description = RETURNED_JOB_DESCRIPTION.copy()
-    job_description["RetryStrategy"] = {
-        "MaximumRetryAttempts": 2
-    }
+    job_description["RetryStrategy"] = {"MaximumRetryAttempts": 2}
     job_description["StoppingCondition"] = {
         "MaxRuntimeInSeconds": 86400,
         "MaxWaitTimeInSeconds": 87000,

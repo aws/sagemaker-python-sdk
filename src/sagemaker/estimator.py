@@ -1125,8 +1125,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 init_params["max_wait"] = max_wait
 
         if job_details.get("RetryStrategy", False):
-            init_params["max_retry_attempts"] = job_details.get("RetryStrategy", {})\
-                .get("MaximumRetryAttempts")
+            init_params["max_retry_attempts"] = job_details.get("RetryStrategy", {}).get(
+                "MaximumRetryAttempts"
+            )
             max_wait = job_details.get("StoppingCondition", {}).get("MaxWaitTimeInSeconds")
             if max_wait:
                 init_params["max_wait"] = max_wait
