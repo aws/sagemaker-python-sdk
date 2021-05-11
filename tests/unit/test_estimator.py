@@ -1031,6 +1031,7 @@ def test_training_job_with_rule_job_summary(sagemaker_session, training_job_desc
         },
     ]
 
+
 def test_framework_with_spot_and_checkpoints(sagemaker_session):
     f = DummyFramework(
         "my_script.py",

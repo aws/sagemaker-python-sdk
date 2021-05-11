@@ -994,6 +994,7 @@ def test_mx_missing_environment_variables(
     )
     assert not mx.environment
 
+
 def test_mx_enable_sm_metrics(sagemaker_session, mxnet_training_version, mxnet_training_py_version):
     mx = MXNet(
         entry_point=SCRIPT_PATH,

@@ -105,7 +105,6 @@ def test_mnist_with_checkpoint_config(
     assert actual_retry_strategy == expected_retry_strategy
 
 
-
 def test_server_side_encryption(sagemaker_session, tf_full_version, tf_full_py_version):
     with kms_utils.bucket_with_encryption(sagemaker_session, ROLE) as (bucket_with_kms, kms_key):
         output_path = os.path.join(

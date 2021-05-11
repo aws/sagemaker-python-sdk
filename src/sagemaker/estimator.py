@@ -1130,8 +1130,6 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             max_wait = job_details.get("StoppingCondition", {}).get("MaxWaitTimeInSeconds")
             if max_wait:
                 init_params["max_wait"] = max_wait
-
-
         return init_params
 
     def transformer(
@@ -1544,7 +1542,6 @@ class _TrainingJob(_Job):
             train_args["profiler_config"] = estimator.profiler_config._to_request_dict()
 
         return train_args
-
 
     @classmethod
     def _add_spot_checkpoint_args(cls, local_mode, estimator, train_args):
