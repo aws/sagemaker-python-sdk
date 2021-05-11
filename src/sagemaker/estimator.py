@@ -272,7 +272,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 use during training job (default: ``None``)
              max_retry_attempts (int): The number of times to move a job to the STARTING status.
                 You can specify between 1 and 30 attempts.
-                If the value of attempts is greater than zero, the job is retried on InternalServerFailure
+                If the value of attempts is greater than zero,
+                the job is retried on InternalServerFailure
                 the same number of attempts as the value.
                 You can cap the total duration for your job by setting ``max_wait`` and ``max_run``
                 (default: ``None``)
@@ -1124,7 +1125,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 init_params["max_wait"] = max_wait
 
         if job_details.get("RetryStrategy", False):
-            init_params["max_retry_attempts"] = job_details.get("RetryStrategy", {}).get("MaximumRetryAttempts")
+            init_params["max_retry_attempts"] = job_details.get("RetryStrategy", {})\
+                .get("MaximumRetryAttempts")
             max_wait = job_details.get("StoppingCondition", {}).get("MaxWaitTimeInSeconds")
             if max_wait:
                 init_params["max_wait"] = max_wait
@@ -1841,7 +1843,8 @@ class Estimator(EstimatorBase):
                 use during training job (default: ``None``)
             max_retry_attempts (int): The number of times to move a job to the STARTING status.
                 You can specify between 1 and 30 attempts.
-                If the value of attempts is greater than zero, the job is retried on InternalServerFailure
+                If the value of attempts is greater than zero,
+                the job is retried on InternalServerFailure
                 the same number of attempts as the value.
                 You can cap the total duration for your job by setting ``max_wait`` and ``max_run``
                 (default: ``None``)
