@@ -69,11 +69,11 @@ class ImageURIRetrieveRefactor(Modifier):
                 original_args[2] = ast.Str(kw.value.s)
 
         if len(node.args) > 0:
-            original_args[1] = ast.Str(node.args[0].s)
+            original_args[1] = ast.Str(node.args[0]).s
         if len(node.args) > 1:
-            original_args[0] = ast.Str(node.args[1].s)
+            original_args[0] = ast.Str(node.args[1]).s
         if len(node.args) > 2:
-            original_args[2] = ast.Str(node.args[2].s)
+            original_args[2] = ast.Str(node.args[2]).s
 
         args = []
         for arg in original_args:
