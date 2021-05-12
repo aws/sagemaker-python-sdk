@@ -1306,7 +1306,7 @@ python {entry_point} "$@"
         self.py_version = py_version
 
         image_uri, base_job_name = self._pre_init_normalization(
-            instance_count, instance_type, image_uri, base_job_name
+            instance_count, instance_type, image_uri, base_job_name, sagemaker_session
         )
 
         super().__init__(
@@ -1334,6 +1334,7 @@ python {entry_point} "$@"
         instance_type: str,
         image_uri: Optional[str] = None,
         base_job_name: Optional[str] = None,
+        sagemaker_session: Optional[str] = None,
     ) -> Tuple[str, str]:
         """Normalize job name and container image uri."""
         # Normalize base_job_name
@@ -1355,6 +1356,7 @@ python {entry_point} "$@"
                 role="",
                 enable_network_isolation=False,
                 instance_count=instance_count,
+                sagemaker_session=sagemaker_session,
             )
             image_uri = est.training_image_uri()
 
