@@ -61,6 +61,8 @@ def test_mnist_with_checkpoint_config(
         checkpoint_s3_uri=checkpoint_s3_uri,
         checkpoint_local_path=checkpoint_local_path,
         environment=ENV_INPUT,
+        max_wait=24 * 60 * 60,
+        max_retry_attempts=2,
     )
     inputs = estimator.sagemaker_session.upload_data(
         path=os.path.join(MNIST_RESOURCE_PATH, "data"), key_prefix="scriptmode/mnist"
@@ -89,8 +91,16 @@ def test_mnist_with_checkpoint_config(
             "Environment"
         ]
     )
+
+    expected_retry_strategy = {
+        "MaximumRetryAttempts": 2,
+    }
+    actual_retry_strategy = sagemaker_session.sagemaker_client.describe_training_job(
+        TrainingJobName=training_job_name
+    )["RetryStrategy"]
     assert actual_training_checkpoint_config == expected_training_checkpoint_config
     assert actual_training_environment_variable_config == ENV_INPUT
+    assert actual_retry_strategy == expected_retry_strategy
 
 
 def test_server_side_encryption(sagemaker_session, tf_full_version, tf_full_py_version):
