@@ -63,19 +63,7 @@ def generate_data_ingestion_flow_from_s3_input(
         },
     }
 
-    output_node = {
-        "node_id": str(uuid4()),
-        "type": "TRANSFORM",
-        "operator": f"sagemaker.spark.infer_and_cast_type_{operator_version}",
-        "parameters": {},
-        "inputs": [
-            {"name": "default", "node_id": source_node["node_id"], "output_name": "default"}
-        ],
-        "outputs": [{"name": "default"}],
-    }
-
-    if schema:
-        output_node["trained_parameters"] = schema
+    output_node = _get_output_node(source_node['node_id'], operator_version, schema)
 
     flow = {
         "metadata": {"version": 1, "disable_limits": False},
@@ -122,19 +110,7 @@ def generate_data_ingestion_flow_from_athena_dataset_definition(
         },
     }
 
-    output_node = {
-        "node_id": str(uuid4()),
-        "type": "TRANSFORM",
-        "operator": f"sagemaker.spark.infer_and_cast_type_{operator_version}",
-        "parameters": {},
-        "inputs": [
-            {"name": "default", "node_id": source_node["node_id"], "output_name": "default"}
-        ],
-        "outputs": [{"name": "default"}],
-    }
-
-    if schema:
-        output_node["trained_parameters"] = schema
+    output_node = _get_output_node(source_node['node_id'], operator_version, schema)
 
     flow = {
         "metadata": {"version": 1, "disable_limits": False},
@@ -183,23 +159,34 @@ def generate_data_ingestion_flow_from_redshift_dataset_definition(
         },
     }
 
-    output_node = {
-        "node_id": str(uuid4()),
-        "type": "TRANSFORM",
-        "operator": f"sagemaker.spark.infer_and_cast_type_{operator_version}",
-        "parameters": {},
-        "inputs": [
-            {"name": "default", "node_id": source_node["node_id"], "output_name": "default"}
-        ],
-        "outputs": [{"name": "default"}],
-    }
-
-    if schema:
-        output_node["trained_parameters"] = schema
+    output_node = _get_output_node(source_node['node_id'], operator_version, schema)
 
     flow = {
         "metadata": {"version": 1, "disable_limits": False},
-        "nodes": [source_node, output_node],
+        "nodes": [source_node, output_node]
     }
 
     return flow, f'{output_node["node_id"]}.default'
+
+
+def _get_output_node(source_node_id: str, operator_version: str, schema: Dict):
+    """A helper function to generate output node, for internal use only
+
+    Args:
+        source_node_id (str): source node id
+        operator_version: (str): the version of the operator
+        schema: (typing.Dict): the schema for the data to be ingested
+    Returns:
+        dict (typing.Dict): output node
+    """
+    return {
+        "node_id": str(uuid4()),
+        "type": "TRANSFORM",
+        "operator": f"sagemaker.spark.infer_and_cast_type_{operator_version}",
+        "trained_parameters": {} if schema is None else schema,
+        "parameters": {},
+        "inputs": [
+            {"name": "default", "node_id": source_node_id, "output_name": "default"}
+        ],
+        "outputs": [{"name": "default"}],
+    }
