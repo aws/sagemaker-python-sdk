@@ -28,6 +28,7 @@ from sagemaker.debugger import (
     rule_configs,
 )
 from datetime import datetime
+from sagemaker import image_uris
 from sagemaker.inputs import CreateModelInput, TrainingInput
 from sagemaker.model import Model
 from sagemaker.processing import ProcessingInput, ProcessingOutput
@@ -39,6 +40,7 @@ from sagemaker.sklearn.processing import SKLearnProcessor
 from sagemaker.spark.processing import PySparkProcessor, SparkJarProcessor
 from sagemaker.workflow.conditions import ConditionGreaterThanOrEqualTo
 from sagemaker.workflow.condition_step import ConditionStep
+from sagemaker.wrangler.processing import DataWranglerProcessor
 from sagemaker.dataset_definition.inputs import DatasetDefinition, AthenaDatasetDefinition
 from sagemaker.workflow.execution_variables import ExecutionVariables
 from sagemaker.workflow.functions import Join
@@ -1071,6 +1073,116 @@ def test_two_processing_job_depends_on(
             else:
                 time_stamp[name] = execution_step["StartTime"]
         assert time_stamp["pyspark-process-1"] < time_stamp["pyspark-process-2"]
+    finally:
+        try:
+            pipeline.delete()
+        except Exception:
+            pass
+
+
+def test_one_step_data_wrangler_processing_pipeline(
+    sagemaker_session,
+    role,
+    pipeline_name,
+    region_name,
+):
+    instance_count = ParameterInteger(name="InstanceCount", default_value=1)
+    instance_type = ParameterString(name="InstanceType", default_value="ml.m5.4xlarge")
+
+    recipe_file_path = os.path.join(DATA_DIR, "workflow", "dummy_recipe.flow")
+    input_file_path = os.path.join(DATA_DIR, "workflow", "dummy_data.csv")
+
+    output_name = "3f74973c-fd1e-4845-89f8-0dd400031be9.default"
+    output_content_type = "CSV"
+    output_config = {output_name: {"content_type": output_content_type}}
+    job_argument = [f"--output-config '{json.dumps(output_config)}'"]
+
+    inputs = [
+        ProcessingInput(
+            input_name="dummy_data.csv",
+            source=input_file_path,
+            destination="/opt/ml/processing/dummy_data.csv",
+        )
+    ]
+
+    output_s3_uri = f"s3://{sagemaker_session.default_bucket()}/output"
+    outputs = [
+        ProcessingOutput(
+            output_name=output_name,
+            source="/opt/ml/processing/output",
+            destination=output_s3_uri,
+            s3_upload_mode="EndOfJob",
+        )
+    ]
+
+    data_wrangler_processor = DataWranglerProcessor(
+        role=role,
+        data_wrangler_flow_source=recipe_file_path,
+        instance_count=instance_count,
+        instance_type=instance_type,
+        sagemaker_session=sagemaker_session,
+        max_runtime_in_seconds=86400,
+    )
+
+    data_wrangler_step = ProcessingStep(
+        name="data-wrangler-step",
+        processor=data_wrangler_processor,
+        inputs=inputs,
+        outputs=outputs,
+        job_arguments=job_argument,
+    )
+
+    pipeline = Pipeline(
+        name=pipeline_name,
+        parameters=[instance_count, instance_type],
+        steps=[data_wrangler_step],
+        sagemaker_session=sagemaker_session,
+    )
+
+    definition = json.loads(pipeline.definition())
+    expected_image_uri = image_uris.retrieve(
+        "data-wrangler", region=sagemaker_session.boto_region_name
+    )
+    assert len(definition["Steps"]) == 1
+    assert definition["Steps"][0]["Arguments"]["AppSpecification"]["ImageUri"] is not None
+    assert definition["Steps"][0]["Arguments"]["AppSpecification"]["ImageUri"] == expected_image_uri
+
+    assert definition["Steps"][0]["Arguments"]["ProcessingInputs"] is not None
+    processing_inputs = definition["Steps"][0]["Arguments"]["ProcessingInputs"]
+    assert len(processing_inputs) == 2
+    for processing_input in processing_inputs:
+        if processing_input["InputName"] == "flow":
+            assert processing_input["S3Input"]["S3Uri"].endswith(".flow")
+            assert processing_input["S3Input"]["LocalPath"] == "/opt/ml/processing/flow"
+        elif processing_input["InputName"] == "dummy_data.csv":
+            assert processing_input["S3Input"]["S3Uri"].endswith(".csv")
+            assert processing_input["S3Input"]["LocalPath"] == "/opt/ml/processing/dummy_data.csv"
+        else:
+            raise AssertionError("Unknown input name")
+    assert definition["Steps"][0]["Arguments"]["ProcessingOutputConfig"] is not None
+    processing_outputs = definition["Steps"][0]["Arguments"]["ProcessingOutputConfig"]["Outputs"]
+    assert len(processing_outputs) == 1
+    assert processing_outputs[0]["OutputName"] == output_name
+    assert processing_outputs[0]["S3Output"] is not None
+    assert processing_outputs[0]["S3Output"]["LocalPath"] == "/opt/ml/processing/output"
+    assert processing_outputs[0]["S3Output"]["S3Uri"] == output_s3_uri
+
+    try:
+        response = pipeline.create(role)
+        create_arn = response["PipelineArn"]
+
+        execution = pipeline.start()
+        response = execution.describe()
+        assert response["PipelineArn"] == create_arn
+
+        try:
+            execution.wait(delay=60, max_attempts=10)
+        except WaiterError:
+            pass
+
+        execution_steps = execution.list_steps()
+        assert len(execution_steps) == 1
+        assert execution_steps[0]["StepName"] == "data-wrangler-step"
     finally:
         try:
             pipeline.delete()
