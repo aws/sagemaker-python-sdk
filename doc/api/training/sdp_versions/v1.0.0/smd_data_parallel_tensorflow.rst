@@ -456,7 +456,7 @@ TensorFlow API
 
       *   Supported compression types - ``none``, ``fp16``
 
-   - ``sparse_as_dense:`` Treats sparse gradient tensor as dense tensor. Defaults to False.
+   - ``sparse_as_dense:`` Treats sparse gradient tensor as dense tensor. Defaults to ``False``.
 
    - ``op (smdistributed.dataparallel.tensorflow.ReduceOp)(optional)``: The reduction operation to combine tensors across different ranks. Defaults to ``Average`` if None is given.
 
@@ -496,7 +496,7 @@ TensorFlow API
 
       *   Supported compression types - ``none``, ``fp16``
 
-   - ``sparse_as_dense:`` Treats sparse gradient tensor as dense tensor. Defaults to False.
+   - ``sparse_as_dense:`` Treats sparse gradient tensor as dense tensor. Defaults to ``False``.
 
    - ``op (smdistributed.dataparallel.tensorflow.ReduceOp)(optional)``: The reduction operation to combine tensors across different ranks. Defaults to ``Average`` if None is given.
 
