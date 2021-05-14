@@ -13,9 +13,17 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-from sagemaker.workflow.execution_variables import ExecutionVariables
+from sagemaker.workflow.pipeline_experiment_config import (
+    PipelineExperimentConfig,
+    PipelineExperimentConfigProperties,
+)
 
 
-def test_execution_variable():
-    var = ExecutionVariables.START_DATETIME
-    assert var.expr == {"Get": "Execution.StartDateTime"}
+def test_pipeline_experiment_config():
+    config = PipelineExperimentConfig("experiment-name", "trial-name")
+    assert config.to_request() == {"ExperimentName": "experiment-name", "TrialName": "trial-name"}
+
+
+def test_pipeline_experiment_config_property():
+    var = PipelineExperimentConfigProperties.EXPERIMENT_NAME
+    assert var.expr == {"Get": "PipelineExperimentConfig.ExperimentName"}
