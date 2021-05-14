@@ -39,6 +39,12 @@ ECR_HOSTNAME = "ecr.us-west-2.amazonaws.com"
 CUSTOM_IMAGE_URI = "012345678901.dkr.ecr.us-west-2.amazonaws.com/my-custom-image-uri"
 
 
+@pytest.fixture(autouse=True)
+def mock_create_tar_file():
+    with patch("sagemaker.utils.create_tar_file", MagicMock()) as create_tar_file:
+        yield create_tar_file
+
+
 @pytest.fixture()
 def sagemaker_session():
     boto_mock = Mock(name="boto_session", region_name=REGION)
@@ -71,6 +77,7 @@ def test_sklearn_processor_with_required_parameters(
     botocore_resolver.return_value.construct_endpoint.return_value = {"hostname": ECR_HOSTNAME}
 
     processor = SKLearnProcessor(
+        s3_prefix="s3://abcd/ef",
         role=ROLE,
         instance_type="ml.m4.xlarge",
         framework_version=sklearn_version,
@@ -78,7 +85,7 @@ def test_sklearn_processor_with_required_parameters(
         sagemaker_session=sagemaker_session,
     )
 
-    processor.run(code="/local/path/to/processing_code.py")
+    processor.run(entry_point="/local/path/to/processing_code.py")
 
     expected_args = _get_expected_args(processor._current_job_name)
 
