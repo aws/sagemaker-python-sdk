@@ -87,7 +87,7 @@ def test_sklearn_processor_with_required_parameters(
 
     processor.run(entry_point="/local/path/to/processing_code.py")
 
-    expected_args = _get_expected_args(processor._current_job_name)
+    expected_args = _get_expected_args(processor._current_job_name, "s3://abcd/ef")
 
     sklearn_image_uri = (
         "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:{}-cpu-py3"
@@ -623,17 +623,29 @@ def _get_expected_args(job_name, code_s3_uri="mocked_s3_uri_from_upload_data"):
     return {
         "inputs": [
             {
+                "InputName": "input-1",
+                "AppManaged": False,
+                "S3Input": {
+                    "S3Uri": f"{code_s3_uri}/{job_name}/source/sourcedir.tar.gz",
+                    "LocalPath": "/opt/ml/processing/input/code/payload/",
+                    "S3DataType": "S3Prefix",
+                    "S3InputMode": "File",
+                    "S3DataDistributionType": "FullyReplicated",
+                    "S3CompressionType": "None",
+                },
+            },
+            {
                 "InputName": "code",
                 "AppManaged": False,
                 "S3Input": {
-                    "S3Uri": code_s3_uri,
+                    "S3Uri": f"{code_s3_uri}/{job_name}/source/runproc.sh",
                     "LocalPath": "/opt/ml/processing/input/code",
                     "S3DataType": "S3Prefix",
                     "S3InputMode": "File",
                     "S3DataDistributionType": "FullyReplicated",
                     "S3CompressionType": "None",
                 },
-            }
+            },
         ],
         "output_config": {"Outputs": []},
         "job_name": job_name,
@@ -647,7 +659,7 @@ def _get_expected_args(job_name, code_s3_uri="mocked_s3_uri_from_upload_data"):
         "stopping_condition": None,
         "app_specification": {
             "ImageUri": CUSTOM_IMAGE_URI,
-            "ContainerEntrypoint": ["python3", "/opt/ml/processing/input/code/processing_code.py"],
+            "ContainerEntrypoint": ["/bin/bash", "/opt/ml/processing/input/code/runproc.sh"],
         },
         "environment": None,
         "network_config": None,
