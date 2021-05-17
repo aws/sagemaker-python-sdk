@@ -62,18 +62,18 @@ class ImageURIRetrieveRefactor(Modifier):
         original_args = [None] * 3
         for kw in node.keywords:
             if kw.arg == "repo_name":
-                original_args[0] = ast.Str(kw.value.s)
+                original_args[0] = ast.Str(kw.value)
             elif kw.arg == "repo_region":
-                original_args[1] = ast.Str(kw.value.s)
+                original_args[1] = ast.Str(kw.value)
             elif kw.arg == "repo_version":
-                original_args[2] = ast.Str(kw.value.s)
+                original_args[2] = ast.Str(kw.value)
 
         if len(node.args) > 0:
-            original_args[1] = ast.Str(node.args[0]).s
+            original_args[1] = ast.Str(node.args[0])
         if len(node.args) > 1:
-            original_args[0] = ast.Str(node.args[1]).s
+            original_args[0] = ast.Str(node.args[1])
         if len(node.args) > 2:
-            original_args[2] = ast.Str(node.args[2]).s
+            original_args[2] = ast.Str(node.args[2])
 
         args = []
         for arg in original_args:

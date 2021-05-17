@@ -147,7 +147,7 @@ class JupyterNotebookFileUpdater(FileUpdater):
         """
         source = cell["source"]
 
-        if source[0].startswith("%"):
+        if source and source[0].startswith("%"):
             return True
 
         return any(line.startswith("!") for line in source)
