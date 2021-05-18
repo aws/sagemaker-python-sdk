@@ -1,4 +1,4 @@
-# Copyright 2019-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2019-2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -10,7 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""This module contains code related to SKLearn Processors which are used for Processing jobs.
+"""This module contains code related to PyTorch Processors which are used for Processing jobs.
 
 These jobs let customers perform data pre-processing, post-processing, feature engineering,
 data validation, and model evaluation and interpretation on SageMaker.
@@ -18,27 +18,13 @@ data validation, and model evaluation and interpretation on SageMaker.
 from __future__ import absolute_import
 
 from sagemaker.processing import FrameworkProcessor
-from sagemaker.sklearn.estimator import SKLearn
+from sagemaker.pytorch.estimator import PyTorch
 
 
-class SKLearnProcessor(FrameworkProcessor):
-    """Initialize an ``SKLearnProcessor`` instance.
+class PyTorchProcessor(FrameworkProcessor):
+    """Handles Amazon SageMaker processing tasks for jobs using PyTorch containers."""
 
-    The SKLearnProcessor handles Amazon SageMaker processing tasks for jobs using scikit-learn.
-
-    Unless ``image_uri`` is specified, the scikit-learn environment is an
-    Amazon-built Docker container that executes functions defined in the supplied
-    ``entry_point`` Python script.
-
-    The arguments have the exact same meaning as in ``FrameworkProcessor``.
-
-    .. tip::
-
-        You can find additional parameters for initializing this class at
-        :class:`~sagemaker.processing.FrameworkProcessor`.
-    """
-
-    estimator_cls = SKLearn
+    estimator_cls = PyTorch
 
     def __init__(
         self,
@@ -59,7 +45,19 @@ class SKLearnProcessor(FrameworkProcessor):
         tags=None,
         network_config=None,
     ):
-        """This processor executes a Python script in a scikit-learn execution environment."""
+        """This processor executes a Python script in a PyTorch execution environment.
+
+        Unless ``image_uri`` is specified, the PyTorch environment is an
+        Amazon-built Docker container that executes functions defined in the supplied
+        ``entry_point`` Python script.
+
+        The arguments have the exact same meaning as in ``FrameworkProcessor``.
+
+        .. tip::
+
+            You can find additional parameters for initializing this class at
+            :class:`~sagemaker.processing.FrameworkProcessor`.
+        """
         super().__init__(
             self.estimator_cls,
             framework_version,
