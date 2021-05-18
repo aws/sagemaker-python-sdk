@@ -38,7 +38,7 @@ from sagemaker.session import get_execution_role
 from sagemaker.sklearn.estimator import SKLearn
 from sagemaker.sklearn.processing import SKLearnProcessor
 from sagemaker.spark.processing import PySparkProcessor, SparkJarProcessor
-from sagemaker.workflow.conditions import ConditionGreaterThanOrEqualTo
+from sagemaker.workflow.conditions import ConditionGreaterThanOrEqualTo, ConditionIn
 from sagemaker.workflow.condition_step import ConditionStep
 from sagemaker.wrangler.processing import DataWranglerProcessor
 from sagemaker.dataset_definition.inputs import DatasetDefinition, AthenaDatasetDefinition
@@ -696,6 +696,7 @@ def test_conditional_pytorch_training_model_registration(
     instance_count = ParameterInteger(name="InstanceCount", default_value=1)
     instance_type = ParameterString(name="InstanceType", default_value="ml.m5.xlarge")
     good_enough_input = ParameterInteger(name="GoodEnoughInput", default_value=1)
+    in_condition_input = ParameterString(name="Foo", default_value="Foo")
 
     pytorch_estimator = PyTorch(
         entry_point=entry_point,
@@ -741,14 +742,17 @@ def test_conditional_pytorch_training_model_registration(
 
     step_cond = ConditionStep(
         name="cond-good-enough",
-        conditions=[ConditionGreaterThanOrEqualTo(left=good_enough_input, right=1)],
+        conditions=[
+            ConditionGreaterThanOrEqualTo(left=good_enough_input, right=1),
+            ConditionIn(value=in_condition_input, in_values=["foo", "bar"]),
+        ],
         if_steps=[step_train, step_register],
         else_steps=[step_model],
     )
 
     pipeline = Pipeline(
         name=pipeline_name,
-        parameters=[good_enough_input, instance_count, instance_type],
+        parameters=[in_condition_input, good_enough_input, instance_count, instance_type],
         steps=[step_cond],
         sagemaker_session=sagemaker_session,
     )
