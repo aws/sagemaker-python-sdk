@@ -105,6 +105,7 @@ def test_sklearn_with_all_parameters(
     botocore_resolver.return_value.construct_endpoint.return_value = {"hostname": ECR_HOSTNAME}
 
     processor = SKLearnProcessor(
+        s3_prefix=MOCKED_S3_URI,
         role=ROLE,
         framework_version=sklearn_version,
         instance_type="ml.m4.xlarge",
@@ -126,7 +127,7 @@ def test_sklearn_with_all_parameters(
     )
 
     processor.run(
-        code="/local/path/to/processing_code.py",
+        entry_point="/local/path/to/processing_code.py",
         inputs=_get_data_inputs_all_parameters(),
         outputs=_get_data_outputs_all_parameters(),
         arguments=["--drop-columns", "'SelfEmployed'"],
@@ -136,7 +137,7 @@ def test_sklearn_with_all_parameters(
         experiment_config={"ExperimentName": "AnExperiment"},
     )
 
-    expected_args = _get_expected_args_all_parameters(processor._current_job_name)
+    expected_args = _get_expected_args_all_parameters_modular_code(processor._current_job_name)
     sklearn_image_uri = (
         "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:{}-cpu-py3"
     ).format(sklearn_version)
@@ -154,6 +155,7 @@ def test_sklearn_with_all_parameters_via_run_args(
     botocore_resolver.return_value.construct_endpoint.return_value = {"hostname": ECR_HOSTNAME}
 
     processor = SKLearnProcessor(
+        s3_prefix=MOCKED_S3_URI,
         role=ROLE,
         framework_version=sklearn_version,
         instance_type="ml.m4.xlarge",
@@ -174,6 +176,8 @@ def test_sklearn_with_all_parameters_via_run_args(
         sagemaker_session=sagemaker_session,
     )
 
+    # FIXME: to check FrameworkProcessor.get_run_args(), and possibly fix with
+    # source_dir, dependencies.
     run_args = processor.get_run_args(
         code="/local/path/to/processing_code.py",
         inputs=_get_data_inputs_all_parameters(),
@@ -182,7 +186,7 @@ def test_sklearn_with_all_parameters_via_run_args(
     )
 
     processor.run(
-        code=run_args.code,
+        entry_point=run_args.code,
         inputs=run_args.inputs,
         outputs=run_args.outputs,
         arguments=run_args.arguments,
@@ -191,7 +195,7 @@ def test_sklearn_with_all_parameters_via_run_args(
         experiment_config={"ExperimentName": "AnExperiment"},
     )
 
-    expected_args = _get_expected_args_all_parameters(processor._current_job_name)
+    expected_args = _get_expected_args_all_parameters_modular_code(processor._current_job_name)
     sklearn_image_uri = (
         "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:{}-cpu-py3"
     ).format(sklearn_version)
@@ -209,6 +213,7 @@ def test_sklearn_with_all_parameters_via_run_args_called_twice(
     botocore_resolver.return_value.construct_endpoint.return_value = {"hostname": ECR_HOSTNAME}
 
     processor = SKLearnProcessor(
+        s3_prefix=MOCKED_S3_URI,
         role=ROLE,
         framework_version=sklearn_version,
         instance_type="ml.m4.xlarge",
@@ -244,7 +249,7 @@ def test_sklearn_with_all_parameters_via_run_args_called_twice(
     )
 
     processor.run(
-        code=run_args.code,
+        entry_point=run_args.code,
         inputs=run_args.inputs,
         outputs=run_args.outputs,
         arguments=run_args.arguments,
@@ -253,7 +258,7 @@ def test_sklearn_with_all_parameters_via_run_args_called_twice(
         experiment_config={"ExperimentName": "AnExperiment"},
     )
 
-    expected_args = _get_expected_args_all_parameters(processor._current_job_name)
+    expected_args = _get_expected_args_all_parameters_modular_code(processor._current_job_name)
     sklearn_image_uri = (
         "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:{}-cpu-py3"
     ).format(sklearn_version)
@@ -748,9 +753,9 @@ def _get_data_inputs_all_parameters():
             input_name="redshift_dataset_definition",
             app_managed=True,
             dataset_definition=DatasetDefinition(
-                local_path="/opt/ml/processing/input/dd",
                 data_distribution_type="FullyReplicated",
                 input_mode="File",
+                local_path="/opt/ml/processing/input/dd",
                 redshift_dataset_definition=RedshiftDatasetDefinition(
                     cluster_id="cluster_id",
                     database="database",
@@ -768,15 +773,15 @@ def _get_data_inputs_all_parameters():
             input_name="athena_dataset_definition",
             app_managed=True,
             dataset_definition=DatasetDefinition(
-                local_path="/opt/ml/processing/input/dd",
                 data_distribution_type="FullyReplicated",
                 input_mode="File",
+                local_path="/opt/ml/processing/input/dd",
                 athena_dataset_definition=AthenaDatasetDefinition(
                     catalog="catalog",
                     database="database",
-                    work_group="workgroup",
                     query_string="query_string",
                     output_s3_uri="output_s3_uri",
+                    work_group="workgroup",
                     kms_key_id="kms_key_id",
                     output_format="AVRO",
                     output_compression="ZLIB",
@@ -800,6 +805,147 @@ def _get_data_outputs_all_parameters():
             feature_store_output=FeatureStoreOutput(feature_group_name="FeatureGroupName"),
         ),
     ]
+
+
+def _get_expected_args_all_parameters_modular_code(job_name, code_s3_uri=MOCKED_S3_URI):
+    # Add something to inputs
+    return {
+        "inputs": [
+            {
+                "InputName": "my_dataset",
+                "AppManaged": False,
+                "S3Input": {
+                    "S3Uri": "s3://path/to/my/dataset/census.csv",
+                    "LocalPath": "/container/path/",
+                    "S3DataType": "S3Prefix",
+                    "S3InputMode": "File",
+                    "S3DataDistributionType": "FullyReplicated",
+                    "S3CompressionType": "None",
+                },
+            },
+            {
+                "InputName": "s3_input",
+                "AppManaged": False,
+                "S3Input": {
+                    "S3Uri": "s3://path/to/my/dataset/census.csv",
+                    "LocalPath": "/container/path/",
+                    "S3DataType": "S3Prefix",
+                    "S3InputMode": "File",
+                    "S3DataDistributionType": "FullyReplicated",
+                    "S3CompressionType": "None",
+                },
+            },
+            {
+                "InputName": "redshift_dataset_definition",
+                "AppManaged": True,
+                "DatasetDefinition": {
+                    "DataDistributionType": "FullyReplicated",
+                    "InputMode": "File",
+                    "LocalPath": "/opt/ml/processing/input/dd",
+                    "RedshiftDatasetDefinition": {
+                        "ClusterId": "cluster_id",
+                        "Database": "database",
+                        "DbUser": "db_user",
+                        "QueryString": "query_string",
+                        "ClusterRoleArn": "cluster_role_arn",
+                        "OutputS3Uri": "output_s3_uri",
+                        "KmsKeyId": "kms_key_id",
+                        "OutputFormat": "CSV",
+                        "OutputCompression": "SNAPPY",
+                    },
+                },
+            },
+            {
+                "InputName": "athena_dataset_definition",
+                "AppManaged": True,
+                "DatasetDefinition": {
+                    "DataDistributionType": "FullyReplicated",
+                    "InputMode": "File",
+                    "LocalPath": "/opt/ml/processing/input/dd",
+                    "AthenaDatasetDefinition": {
+                        "Catalog": "catalog",
+                        "Database": "database",
+                        "QueryString": "query_string",
+                        "OutputS3Uri": "output_s3_uri",
+                        "WorkGroup": "workgroup",
+                        "KmsKeyId": "kms_key_id",
+                        "OutputFormat": "AVRO",
+                        "OutputCompression": "ZLIB",
+                    },
+                },
+            },
+            {
+                "InputName": "input-5",
+                "AppManaged": False,
+                "S3Input": {
+                    "S3Uri": f"{code_s3_uri}/{job_name}/source/sourcedir.tar.gz",
+                    "LocalPath": "/opt/ml/processing/input/code/payload/",
+                    "S3DataType": "S3Prefix",
+                    "S3InputMode": "File",
+                    "S3DataDistributionType": "FullyReplicated",
+                    "S3CompressionType": "None",
+                },
+            },
+            {
+                "InputName": "code",
+                "AppManaged": False,
+                "S3Input": {
+                    "S3Uri": f"{code_s3_uri}/{job_name}/source/runproc.sh",
+                    "LocalPath": "/opt/ml/processing/input/code",
+                    "S3DataType": "S3Prefix",
+                    "S3InputMode": "File",
+                    "S3DataDistributionType": "FullyReplicated",
+                    "S3CompressionType": "None",
+                },
+            },
+        ],
+        "output_config": {
+            "Outputs": [
+                {
+                    "OutputName": "my_output",
+                    "AppManaged": False,
+                    "S3Output": {
+                        "S3Uri": "s3://uri/",
+                        "LocalPath": "/container/path/",
+                        "S3UploadMode": "EndOfJob",
+                    },
+                },
+                {
+                    "OutputName": "feature_store_output",
+                    "AppManaged": True,
+                    "FeatureStoreOutput": {"FeatureGroupName": "FeatureGroupName"},
+                },
+            ],
+            "KmsKeyId": "arn:aws:kms:us-west-2:012345678901:key/output-kms-key",
+        },
+        "experiment_config": {"ExperimentName": "AnExperiment"},
+        "job_name": job_name,
+        "resources": {
+            "ClusterConfig": {
+                "InstanceType": "ml.m4.xlarge",
+                "InstanceCount": 1,
+                "VolumeSizeInGB": 100,
+                "VolumeKmsKeyId": "arn:aws:kms:us-west-2:012345678901:key/volume-kms-key",
+            }
+        },
+        "stopping_condition": {"MaxRuntimeInSeconds": 3600},
+        "app_specification": {
+            "ImageUri": "012345678901.dkr.ecr.us-west-2.amazonaws.com/my-custom-image-uri",
+            "ContainerArguments": ["--drop-columns", "'SelfEmployed'"],
+            "ContainerEntrypoint": ["/bin/bash", "/opt/ml/processing/input/code/runproc.sh"],
+        },
+        "environment": {"my_env_variable": "my_env_variable_value"},
+        "network_config": {
+            "EnableNetworkIsolation": True,
+            "EnableInterContainerTrafficEncryption": True,
+            "VpcConfig": {
+                "SecurityGroupIds": ["my_security_group_id"],
+                "Subnets": ["my_subnet_id"],
+            },
+        },
+        "role_arn": ROLE,
+        "tags": [{"Key": "my-tag", "Value": "my-tag-value"}],
+    }
 
 
 def _get_expected_args_all_parameters(job_name):
