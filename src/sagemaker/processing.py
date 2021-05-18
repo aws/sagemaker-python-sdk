@@ -30,7 +30,7 @@ from six.moves.urllib.request import url2pathname
 from sagemaker import s3
 from sagemaker.job import _Job
 from sagemaker.local import LocalSession
-from sagemaker.utils import base_name_from_image, name_from_base
+from sagemaker.utils import base_name_from_image, get_config_value, name_from_base
 from sagemaker.session import Session
 from sagemaker.network import NetworkConfig  # noqa: F401 # pylint: disable=unused-import
 from sagemaker.workflow.properties import Properties
@@ -1220,7 +1220,7 @@ class FrameworkProcessor(ScriptProcessor):
     runproc_sh = """#!/bin/bash
 
 cd /opt/ml/processing/input/code/
-tar -xzf payload/sourcedir.tar.gz
+tar -xzf sourcedir.tar.gz
 
 # Exit on any error. SageMaker uses error code to mark failed job.
 set -e
@@ -1235,7 +1235,6 @@ python {entry_point} "$@"
         self,
         estimator_cls,  # New arg
         framework_version,  # New arg
-        s3_prefix,  # New arg
         role,
         instance_count,
         instance_type,
@@ -1244,6 +1243,7 @@ python {entry_point} "$@"
         volume_size_in_gb=30,
         volume_kms_key=None,
         output_kms_key=None,
+        code_location=None,  # New arg
         max_runtime_in_seconds=None,
         base_job_name=None,
         sagemaker_session=None,
@@ -1262,10 +1262,6 @@ python {entry_point} "$@"
                 estimator
             framework_version (str): The version of the framework. Value is ignored when
                 ``image_uri`` is provided.
-            s3_prefix (str): The S3 prefix URI where custom code will be
-                uploaded - don't include a trailing slash since a string prepended
-                with a "/" is appended to ``s3_prefix``. The code file uploaded to S3
-                is 's3_prefix/job-name/source/sourcedir.tar.gz'.
             role (str): An AWS IAM role name or ARN. Amazon SageMaker Processing uses
                 this role to access AWS resources, such as data stored in Amazon S3.
             instance_count (int): The number of instances to run a processing job with.
@@ -1280,6 +1276,10 @@ python {entry_point} "$@"
                 to use for storing data during processing (default: 30).
             volume_kms_key (str): A KMS key for the processing volume (default: None).
             output_kms_key (str): The KMS key ID for processing job outputs (default: None).
+            code_location (str): The S3 prefix URI where custom code will be
+                uploaded (default: None). The code file uploaded to S3 is
+                'code_location/job-name/source/sourcedir.tar.gz'. If not specified, the
+                default ``code location`` is 's3://{sagemaker-default-bucket}'
             max_runtime_in_seconds (int): Timeout in seconds (default: None).
                 After this amount of time, Amazon SageMaker terminates the job,
                 regardless of its current status. If `max_runtime_in_seconds` is not
@@ -1325,8 +1325,14 @@ python {entry_point} "$@"
             tags=tags,
             network_config=network_config,
         )
+        # This subclass uses the "code" input for actual payload and the ScriptProcessor parent's
+        # functionality for uploading just a small entrypoint script to invoke it.
+        self._CODE_CONTAINER_INPUT_NAME = "entrypoint"
 
-        self.s3_prefix = s3_prefix
+        self.code_location = (
+            code_location[:-1] if (code_location and code_location.endswith("/"))
+            else code_location
+        )
 
     def _pre_init_normalization(
         self,
@@ -1474,12 +1480,26 @@ python {entry_point} "$@"
         )
 
         # Upload the bootstrapping code as s3://.../jobname/source/runproc.sh.
-        s3_runproc_sh = S3Uploader.upload_string_as_file_body(
-            self.runproc_sh.format(entry_point=entry_point),
-            desired_s3_uri=f"{self.s3_prefix}/{job_name}/source/runproc.sh",
-            sagemaker_session=self.sagemaker_session,
-        )
-        logger.info("runproc.sh uploaded to %s", s3_runproc_sh)
+        local_code = get_config_value("local.local_code", self.sagemaker_session.config)
+        if self.sagemaker_session.local_mode and local_code:
+            # TODO: Can we be more prescriptive about how to not trigger this error?
+            # How can user or us force a local mode `Estimator` to run with `local_code=False`?
+            raise RuntimeError(
+                "Local *code* is not currently supported for SageMaker Processing in Local Mode"
+            )
+        else:
+            # estimator 
+            entrypoint_s3_uri = estimator.uploaded_code.s3_prefix.replace(
+                "sourcedir.tar.gz",
+                "runproc.sh",
+            )
+            script = estimator.uploaded_code.script_name
+            s3_runproc_sh = S3Uploader.upload_string_as_file_body(
+                self.runproc_sh.format(entry_point=script),
+                desired_s3_uri=entrypoint_s3_uri,
+                sagemaker_session=self.sagemaker_session,
+            )
+            logger.info("runproc.sh uploaded to %s", s3_runproc_sh)
 
         # Submit a processing job.
         super().run(
@@ -1512,7 +1532,7 @@ python {entry_point} "$@"
             git_config=git_config,
             framework_version=self.framework_version,
             py_version=self.py_version,
-            code_location=self.s3_prefix,  # Upload to <code_loc>/jobname/output/source.tar.gz
+            code_location=self.code_location,  # Upload to <code_loc>/jobname/output/source.tar.gz
             enable_network_isolation=False,  # If true, uploads to input channel. Not what we want!
             image_uri=self.image_uri,  # The image uri is already normalized by this point.
             role=self.role,
@@ -1550,6 +1570,10 @@ python {entry_point} "$@"
         if inputs is None:
             inputs = []
         inputs.append(
-            ProcessingInput(source=s3_payload, destination="/opt/ml/processing/input/code/payload/")
+            ProcessingInput(
+                input_name="code",
+                source=s3_payload,
+                destination="/opt/ml/processing/input/code/",
+            )
         )
         return inputs
