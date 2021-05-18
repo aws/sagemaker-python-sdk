@@ -155,6 +155,7 @@ def test_sklearn_with_all_parameters_via_run_args(
     botocore_resolver.return_value.construct_endpoint.return_value = {"hostname": ECR_HOSTNAME}
 
     processor = SKLearnProcessor(
+        s3_prefix=MOCKED_S3_URI,
         role=ROLE,
         framework_version=sklearn_version,
         instance_type="ml.m4.xlarge",
@@ -175,6 +176,8 @@ def test_sklearn_with_all_parameters_via_run_args(
         sagemaker_session=sagemaker_session,
     )
 
+    # FIXME: to check FrameworkProcessor.get_run_args(), and possibly fix with
+    # source_dir, dependencies.
     run_args = processor.get_run_args(
         code="/local/path/to/processing_code.py",
         inputs=_get_data_inputs_all_parameters(),
@@ -183,7 +186,7 @@ def test_sklearn_with_all_parameters_via_run_args(
     )
 
     processor.run(
-        code=run_args.code,
+        entry_point=run_args.code,
         inputs=run_args.inputs,
         outputs=run_args.outputs,
         arguments=run_args.arguments,
@@ -192,7 +195,7 @@ def test_sklearn_with_all_parameters_via_run_args(
         experiment_config={"ExperimentName": "AnExperiment"},
     )
 
-    expected_args = _get_expected_args_all_parameters(processor._current_job_name)
+    expected_args = _get_expected_args_all_parameters_modular_code(processor._current_job_name)
     sklearn_image_uri = (
         "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:{}-cpu-py3"
     ).format(sklearn_version)
@@ -210,6 +213,7 @@ def test_sklearn_with_all_parameters_via_run_args_called_twice(
     botocore_resolver.return_value.construct_endpoint.return_value = {"hostname": ECR_HOSTNAME}
 
     processor = SKLearnProcessor(
+        s3_prefix=MOCKED_S3_URI,
         role=ROLE,
         framework_version=sklearn_version,
         instance_type="ml.m4.xlarge",
@@ -245,7 +249,7 @@ def test_sklearn_with_all_parameters_via_run_args_called_twice(
     )
 
     processor.run(
-        code=run_args.code,
+        entry_point=run_args.code,
         inputs=run_args.inputs,
         outputs=run_args.outputs,
         arguments=run_args.arguments,
@@ -254,7 +258,7 @@ def test_sklearn_with_all_parameters_via_run_args_called_twice(
         experiment_config={"ExperimentName": "AnExperiment"},
     )
 
-    expected_args = _get_expected_args_all_parameters(processor._current_job_name)
+    expected_args = _get_expected_args_all_parameters_modular_code(processor._current_job_name)
     sklearn_image_uri = (
         "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:{}-cpu-py3"
     ).format(sklearn_version)
