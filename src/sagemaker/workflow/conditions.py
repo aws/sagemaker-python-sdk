@@ -186,8 +186,8 @@ class ConditionIn(Condition):
         """Get the request structure for workflow service calls."""
         return {
             "Type": self.condition_type.value,
-            "Value": self.value.expr,
-            "In": [primitive_or_expr(in_value) for in_value in self.in_values],
+            "QueryValue": self.value.expr,
+            "Values": [primitive_or_expr(in_value) for in_value in self.in_values],
         }
 
 
