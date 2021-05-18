@@ -147,6 +147,7 @@ def _get_train_args(job_name):
         "vpc_config": None,
         "metric_definitions": None,
         "environment": None,
+        "retry_strategy": None,
         "experiment_config": None,
         "debugger_hook_config": {
             "CollectionConfigurations": [],

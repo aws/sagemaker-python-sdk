@@ -140,6 +140,7 @@ def _create_train_job(version, py_version):
             "sagemaker_region": '"us-west-2"',
         },
         "stop_condition": {"MaxRuntimeInSeconds": 24 * 60 * 60},
+        "retry_strategy": None,
         "tags": None,
         "vpc_config": None,
         "metric_definitions": None,
