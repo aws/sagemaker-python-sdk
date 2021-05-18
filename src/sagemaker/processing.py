@@ -1306,7 +1306,7 @@ python {entry_point} "$@"
         self.py_version = py_version
 
         image_uri, base_job_name = self._pre_init_normalization(
-            instance_count, instance_type, image_uri, base_job_name, sagemaker_session
+            instance_type, image_uri, base_job_name, sagemaker_session
         )
 
         super().__init__(
@@ -1330,7 +1330,6 @@ python {entry_point} "$@"
 
     def _pre_init_normalization(
         self,
-        instance_count: int,
         instance_type: str,
         image_uri: Optional[str] = None,
         base_job_name: Optional[str] = None,
@@ -1355,7 +1354,7 @@ python {entry_point} "$@"
                 entry_point="",
                 role="",
                 enable_network_isolation=False,
-                instance_count=1,
+                instance_count=1,  # SKLearn estimator explicitly disables instance_count>1
                 sagemaker_session=sagemaker_session,
             )
             image_uri = est.training_image_uri()
