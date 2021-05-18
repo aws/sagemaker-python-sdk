@@ -99,8 +99,8 @@ def test_condition_in():
     cond_in = ConditionIn(value=param, in_values=["abc", "def"])
     assert cond_in.to_request() == {
         "Type": "In",
-        "Value": {"Get": "Parameters.MyStr"},
-        "In": ["abc", "def"],
+        "QueryValue": {"Get": "Parameters.MyStr"},
+        "Values": ["abc", "def"],
     }
 
 
@@ -111,8 +111,8 @@ def test_condition_in_mixed():
     cond_in = ConditionIn(value=param, in_values=["abc", prop, var])
     assert cond_in.to_request() == {
         "Type": "In",
-        "Value": {"Get": "Parameters.MyStr"},
-        "In": ["abc", {"Get": "foo"}, {"Get": "Execution.StartDateTime"}],
+        "QueryValue": {"Get": "Parameters.MyStr"},
+        "Values": ["abc", {"Get": "foo"}, {"Get": "Execution.StartDateTime"}],
     }
 
 
@@ -138,8 +138,8 @@ def test_condition_not_in():
         "Type": "Not",
         "Expression": {
             "Type": "In",
-            "Value": {"Get": "Parameters.MyStr"},
-            "In": ["abc", "def"],
+            "QueryValue": {"Get": "Parameters.MyStr"},
+            "Values": ["abc", "def"],
         },
     }
 
@@ -160,8 +160,8 @@ def test_condition_or():
             },
             {
                 "Type": "In",
-                "Value": {"Get": "Parameters.MyStr"},
-                "In": ["abc", "def"],
+                "QueryValue": {"Get": "Parameters.MyStr"},
+                "Values": ["abc", "def"],
             },
         ],
     }
