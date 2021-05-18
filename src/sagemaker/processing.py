@@ -1355,7 +1355,7 @@ python {entry_point} "$@"
                 entry_point="",
                 role="",
                 enable_network_isolation=False,
-                instance_count=instance_count,
+                instance_count=1,
                 sagemaker_session=sagemaker_session,
             )
             image_uri = est.training_image_uri()
@@ -1518,7 +1518,7 @@ python {entry_point} "$@"
             image_uri=self.image_uri,  # The image uri is already normalized by this point.
             role=self.role,
             instance_type=self.instance_type,
-            instance_count=self.instance_count,
+            instance_count=1,
             sagemaker_session=self.sagemaker_session,
             debugger_hook_config=False,
             disable_profiler=True,
