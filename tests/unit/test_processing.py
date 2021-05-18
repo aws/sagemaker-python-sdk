@@ -37,6 +37,7 @@ REGION = "us-west-2"
 ROLE = "arn:aws:iam::012345678901:role/SageMakerRole"
 ECR_HOSTNAME = "ecr.us-west-2.amazonaws.com"
 CUSTOM_IMAGE_URI = "012345678901.dkr.ecr.us-west-2.amazonaws.com/my-custom-image-uri"
+MOCKED_S3_URI = "s3://mocked_s3_uri_from_upload_data"
 
 
 @pytest.fixture(autouse=True)
@@ -57,9 +58,7 @@ def sagemaker_session():
     )
     session_mock.default_bucket = Mock(name="default_bucket", return_value=BUCKET_NAME)
 
-    session_mock.upload_data = Mock(
-        name="upload_data", return_value="mocked_s3_uri_from_upload_data"
-    )
+    session_mock.upload_data = Mock(name="upload_data", return_value=MOCKED_S3_URI)
     session_mock.download_data = Mock(name="download_data")
     session_mock.expand_role.return_value = ROLE
     session_mock.describe_processing_job = MagicMock(
@@ -77,7 +76,7 @@ def test_sklearn_processor_with_required_parameters(
     botocore_resolver.return_value.construct_endpoint.return_value = {"hostname": ECR_HOSTNAME}
 
     processor = SKLearnProcessor(
-        s3_prefix="s3://abcd/ef",
+        s3_prefix=MOCKED_S3_URI,
         role=ROLE,
         instance_type="ml.m4.xlarge",
         framework_version=sklearn_version,
@@ -87,7 +86,7 @@ def test_sklearn_processor_with_required_parameters(
 
     processor.run(entry_point="/local/path/to/processing_code.py")
 
-    expected_args = _get_expected_args(processor._current_job_name, "s3://abcd/ef")
+    expected_args = _get_expected_args_modular_code(processor._current_job_name)
 
     sklearn_image_uri = (
         "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:{}-cpu-py3"
@@ -619,7 +618,45 @@ def _get_script_processor(sagemaker_session):
     )
 
 
-def _get_expected_args(job_name, code_s3_uri="mocked_s3_uri_from_upload_data"):
+def _get_expected_args(job_name, code_s3_uri=MOCKED_S3_URI):
+    return {
+        "inputs": [
+            {
+                "InputName": "code",
+                "AppManaged": False,
+                "S3Input": {
+                    "S3Uri": code_s3_uri,
+                    "LocalPath": "/opt/ml/processing/input/code",
+                    "S3DataType": "S3Prefix",
+                    "S3InputMode": "File",
+                    "S3DataDistributionType": "FullyReplicated",
+                    "S3CompressionType": "None",
+                },
+            },
+        ],
+        "output_config": {"Outputs": []},
+        "job_name": job_name,
+        "resources": {
+            "ClusterConfig": {
+                "InstanceType": "ml.m4.xlarge",
+                "InstanceCount": 1,
+                "VolumeSizeInGB": 30,
+            }
+        },
+        "stopping_condition": None,
+        "app_specification": {
+            "ImageUri": CUSTOM_IMAGE_URI,
+            "ContainerEntrypoint": ["python3", "/opt/ml/processing/input/code/processing_code.py"],
+        },
+        "environment": None,
+        "network_config": None,
+        "role_arn": ROLE,
+        "tags": None,
+        "experiment_config": None,
+    }
+
+
+def _get_expected_args_modular_code(job_name, code_s3_uri=MOCKED_S3_URI):
     return {
         "inputs": [
             {
@@ -674,7 +711,7 @@ def _get_data_input():
         "InputName": "input-1",
         "AppManaged": False,
         "S3Input": {
-            "S3Uri": "mocked_s3_uri_from_upload_data",
+            "S3Uri": MOCKED_S3_URI,
             "LocalPath": "/data/",
             "S3DataType": "S3Prefix",
             "S3InputMode": "File",
@@ -835,7 +872,7 @@ def _get_expected_args_all_parameters(job_name):
                 "InputName": "code",
                 "AppManaged": False,
                 "S3Input": {
-                    "S3Uri": "mocked_s3_uri_from_upload_data",
+                    "S3Uri": MOCKED_S3_URI,
                     "LocalPath": "/opt/ml/processing/input/code",
                     "S3DataType": "S3Prefix",
                     "S3InputMode": "File",
