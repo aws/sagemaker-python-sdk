@@ -84,6 +84,10 @@ inadvertently run your training code at the wrong point in execution.
 
 For more on training environment variables, please visit https://github.com/aws/sagemaker-containers.
 
+.. important::
+    The sagemaker-containers repository has been deprecated,
+    however it is still used to define Scikit-learn and XGBoost environment variables.
+
 Save the Model
 --------------
 
