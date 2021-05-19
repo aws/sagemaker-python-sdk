@@ -1264,7 +1264,7 @@ class FrameworkProcessor(ScriptProcessor):
             image_uri (str): The URI of the Docker image to use for the
                 processing jobs (default: None).
             command ([str]): The command to run, along with any command-line flags
-                to *precede* the ```entry_point script``` (default: ['python']).
+                to *precede* the ```code script``` (default: ['python']).
             volume_size_in_gb (int): Size in GB of the EBS volume
                 to use for storing data during processing (default: 30).
             volume_kms_key (str): A KMS key for the processing volume (default: None).
@@ -1361,7 +1361,7 @@ class FrameworkProcessor(ScriptProcessor):
 
     def run(  # type: ignore[override]
         self,
-        entry_point,
+        code,
         source_dir=None,
         dependencies=None,
         git_config=None,
@@ -1377,9 +1377,9 @@ class FrameworkProcessor(ScriptProcessor):
         """Runs a processing job.
 
         Args:
-            entrypoint (str): Path (absolute or relative) to the local Python source
+            code (str): Path (absolute or relative) to the local Python source
                 file which should be executed as the entry point to training. If
-                ``source_dir`` is specified, then ``entry_point`` must point to a file
+                ``source_dir`` is specified, then ``code`` must point to a file
                 located at the root of ``source_dir``.
             source_dir (str): Path (absolute, relative or an S3 URI) to a directory
                 with any other training source code dependencies aside from the entry
@@ -1464,9 +1464,7 @@ class FrameworkProcessor(ScriptProcessor):
         if job_name is None:
             job_name = self._generate_current_job_name()
 
-        estimator = self._upload_payload(
-            entry_point, source_dir, dependencies, git_config, job_name
-        )
+        estimator = self._upload_payload(code, source_dir, dependencies, git_config, job_name)
         inputs = self._patch_inputs_with_payload(
             inputs, estimator._hyperparameters["sagemaker_submit_directory"]
         )
@@ -1511,13 +1509,14 @@ class FrameworkProcessor(ScriptProcessor):
         This script implements the "framework" functionality for setting up your code:
         Untar-ing the sourcedir bundle in the ```code``` input; installing extra
         runtime dependencies if specified; and then invoking the ```command``` and
-        ```entry_point``` configured for the job.
+        ```code``` configured for the job.
 
         Args:
-            user_script (str): Relative path to ```entry_point``` in the source bundle
+            user_script (str): Relative path to ```code``` in the source bundle
                 - e.g. 'process.py'.
         """
-        return dedent("""\
+        return dedent(
+            """\
             #!/bin/bash
 
             cd /opt/ml/processing/input/code/
@@ -1529,7 +1528,8 @@ class FrameworkProcessor(ScriptProcessor):
             [[ -f 'requirements.txt' ]] && pip install -r requirements.txt
 
             {entry_point_command} {entry_point} "$@"
-        """).format(
+        """
+        ).format(
             entry_point_command=" ".join(self.command),
             entry_point=user_script,
         )
@@ -1605,7 +1605,7 @@ class FrameworkProcessor(ScriptProcessor):
             command ([str]): Ignored in favor of self.framework_entrypoint_command
             user_script_name (str): A filename with an extension.
         """
-        
+
         user_script_location = str(
             pathlib.PurePosixPath(
                 self._CODE_CONTAINER_BASE_PATH, self._CODE_CONTAINER_INPUT_NAME, user_script_name

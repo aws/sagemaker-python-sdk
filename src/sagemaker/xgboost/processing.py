@@ -49,7 +49,7 @@ class XGBoostEstimator(FrameworkProcessor):
         """This processor executes a Python script in an XGBoost execution environment.
 
         Unless ``image_uri`` is specified, the XGBoost environment is an Amazon-built
-        Docker container that executes functions defined in the supplied ``entry_point``
+        Docker container that executes functions defined in the supplied ``code``
         Python script.
 
         The arguments have the exact same meaning as in ``FrameworkProcessor``.
