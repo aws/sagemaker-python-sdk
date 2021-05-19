@@ -205,6 +205,7 @@ class _RegisterModelStep(Step):
             Estimator's training container image will be used (default: None).
         compile_model_family (str): Instance family for compiled model, if specified, a compiled
             model will be used (default: None).
+        container_def_list (list): A list of container defintiions.
         **kwargs: additional arguments to `create_model`.
     """
 
@@ -212,11 +213,11 @@ class _RegisterModelStep(Step):
         self,
         name: str,
         estimator: EstimatorBase,
-        model_data,
         content_types,
         response_types,
         inference_instances,
         transform_instances,
+        model_data=None,
         model_package_group_name=None,
         model_metrics=None,
         metadata_properties=None,
@@ -225,6 +226,7 @@ class _RegisterModelStep(Step):
         compile_model_family=None,
         description=None,
         depends_on: List[str] = None,
+        container_def_list=None,
         **kwargs,
     ):
         """Constructor of a register model step.
@@ -254,6 +256,7 @@ class _RegisterModelStep(Step):
             description (str): Model Package description (default: None).
             depends_on (List[str]): A list of step names this `sagemaker.workflow.steps.TrainingStep`
                 depends on
+            container_def_list (list): A list of container defintiions.
             **kwargs: additional arguments to `create_model`.
         """
         super(_RegisterModelStep, self).__init__(name, StepTypeEnum.REGISTER_MODEL, depends_on)
@@ -270,6 +273,7 @@ class _RegisterModelStep(Step):
         self.image_uri = image_uri
         self.compile_model_family = compile_model_family
         self.description = description
+        self.container_def_list = container_def_list
         self.kwargs = kwargs
 
         self._properties = Properties(
@@ -301,7 +305,7 @@ class _RegisterModelStep(Step):
             self.estimator.output_path = output_path
 
             # yeah, there is some framework stuff going on that we need to pull in here
-            if model.image_uri is None:
+            if model.image_uri is None and self.container_def_list is None:
                 region_name = self.estimator.sagemaker_session.boto_session.region_name
                 model.image_uri = image_uris.retrieve(
                     model._framework_name,
@@ -324,6 +328,7 @@ class _RegisterModelStep(Step):
             metadata_properties=self.metadata_properties,
             approval_status=self.approval_status,
             description=self.description,
+            container_def_list=self.container_def_list,
         )
         request_dict = model.sagemaker_session._get_create_model_package_request(
             **model_package_args

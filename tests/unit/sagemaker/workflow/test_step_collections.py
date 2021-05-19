@@ -266,6 +266,76 @@ def test_register_model_tf(estimator_tf, model_metrics):
     )
 
 
+def test_register_model_sip(estimator, model_metrics):
+    container_def_list = [
+        {
+            "Image": "fakeimage1",
+            "ModelDataUrl": "Url1",
+            "Environment": [{"k1": "v1"}, {"k2": "v2"}],
+        },
+        {
+            "Image": "fakeimage2",
+            "ModelDataUrl": "Url2",
+            "Environment": [{"k3": "v3"}, {"k4": "v4"}],
+        },
+    ]
+
+    register_model = RegisterModel(
+        name="RegisterModelStep",
+        estimator=estimator,
+        content_types=["content_type"],
+        response_types=["response_type"],
+        inference_instances=["inference_instance"],
+        transform_instances=["transform_instance"],
+        model_package_group_name="mpg",
+        model_metrics=model_metrics,
+        approval_status="Approved",
+        description="description",
+        container_def_list=container_def_list,
+        depends_on=["TestStep"],
+    )
+    assert ordered(register_model.request_dicts()) == ordered(
+        [
+            {
+                "Name": "RegisterModelStep",
+                "Type": "RegisterModel",
+                "DependsOn": ["TestStep"],
+                "Arguments": {
+                    "InferenceSpecification": {
+                        "Containers": [
+                            {
+                                "Image": "fakeimage1",
+                                "ModelDataUrl": "Url1",
+                                "Environment": [{"k1": "v1"}, {"k2": "v2"}],
+                            },
+                            {
+                                "Image": "fakeimage2",
+                                "ModelDataUrl": "Url2",
+                                "Environment": [{"k3": "v3"}, {"k4": "v4"}],
+                            },
+                        ],
+                        "SupportedContentTypes": ["content_type"],
+                        "SupportedRealtimeInferenceInstanceTypes": ["inference_instance"],
+                        "SupportedResponseMIMETypes": ["response_type"],
+                        "SupportedTransformInstanceTypes": ["transform_instance"],
+                    },
+                    "ModelApprovalStatus": "Approved",
+                    "ModelMetrics": {
+                        "ModelQuality": {
+                            "Statistics": {
+                                "ContentType": "text/csv",
+                                "S3Uri": f"s3://{BUCKET}/metrics.csv",
+                            },
+                        },
+                    },
+                    "ModelPackageDescription": "description",
+                    "ModelPackageGroupName": "mpg",
+                },
+            },
+        ]
+    )
+
+
 def test_register_model_with_model_repack(estimator, model_metrics):
     model_data = f"s3://{BUCKET}/model.tar.gz"
     register_model = RegisterModel(

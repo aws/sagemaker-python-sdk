@@ -195,6 +195,7 @@ class Model(object):
         marketplace_cert=False,
         approval_status=None,
         description=None,
+        container_def_list=None,
     ):
         """Get arguments for session.create_model_package method.
 
@@ -219,6 +220,7 @@ class Model(object):
             approval_status (str): Model Approval Status, values can be "Approved", "Rejected",
                 or "PendingManualApproval" (default: "PendingManualApproval").
             description (str): Model Package description (default: None).
+            container_def_list (list): A list of container defintiions.
         Returns:
             dict: A dictionary of method argument names and values.
         """
@@ -229,8 +231,13 @@ class Model(object):
             "ModelDataUrl": self.model_data,
         }
 
+        if container_def_list is not None:
+            containers = container_def_list
+        else:
+            containers = [container]
+
         model_package_args = {
-            "containers": [container],
+            "containers": containers,
             "content_types": content_types,
             "response_types": response_types,
             "inference_instances": inference_instances,
