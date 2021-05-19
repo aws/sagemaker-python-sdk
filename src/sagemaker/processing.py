@@ -1330,8 +1330,7 @@ python {entry_point} "$@"
         self._CODE_CONTAINER_INPUT_NAME = "entrypoint"
 
         self.code_location = (
-            code_location[:-1] if (code_location and code_location.endswith("/"))
-            else code_location
+            code_location[:-1] if (code_location and code_location.endswith("/")) else code_location
         )
 
     def _pre_init_normalization(
@@ -1488,7 +1487,7 @@ python {entry_point} "$@"
                 "Local *code* is not currently supported for SageMaker Processing in Local Mode"
             )
         else:
-            # estimator 
+            # estimator
             entrypoint_s3_uri = estimator.uploaded_code.s3_prefix.replace(
                 "sourcedir.tar.gz",
                 "runproc.sh",
@@ -1557,13 +1556,13 @@ python {entry_point} "$@"
 
         This method follows the same mechanism in ScriptProcessor.
         """
-        # ScriptProcessor job will download only s3://..../code/runproc.sh, hence we need to also
-        # inject our s3://.../sourcedir.tar.gz.
+        # Follow the exact same mechanism that ScriptProcessor does, which
+        # is to inject the S3 code artifact as a processing input. Note that
+        # framework processor take-over /opt/ml/processing/input/code for
+        # sourcedir.tar.gz, and let ScriptProcessor to place runproc.sh under
+        # /opt/ml/processing/input/{self._CODE_CONTAINER_INPUT_NAME}.
         #
-        # We'll follow the exact same mechanism that ScriptProcessor does, which is to inject the
-        # S3 code artifact as a processing input with destination
-        # /opt/ml/processing/input/code/payload/. Note that source.dir.tar.gz cannot go to
-        # /opt/ml/processing/input/code because the ScriptProcessor has first-right-to-use. See:
+        # See:
         # - ScriptProcessor._CODE_CONTAINER_BASE_PATH, ScriptProcessor._CODE_CONTAINER_INPUT_NAME.
         # - https://github.com/aws/sagemaker-python-sdk/blob/ \
         #   a7399455f5386d83ddc5cb15c0db00c04bd518ec/src/sagemaker/processing.py#L425-L426
