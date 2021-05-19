@@ -93,7 +93,7 @@ def test_all_hyperparameters(sagemaker_session):
         epochs=10,
         center_factor=2,
         eval_metrics=["msd", "ssd"],
-        **ALL_REQ_ARGS
+        **ALL_REQ_ARGS,
     )
     assert kmeans.hyperparameters() == dict(
         k=str(ALL_REQ_ARGS["k"]),

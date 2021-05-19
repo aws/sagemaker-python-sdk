@@ -76,7 +76,6 @@ def test_sklearn_processor_with_required_parameters(
     botocore_resolver.return_value.construct_endpoint.return_value = {"hostname": ECR_HOSTNAME}
 
     processor = SKLearnProcessor(
-        s3_prefix=MOCKED_S3_URI,
         role=ROLE,
         instance_type="ml.m4.xlarge",
         framework_version=sklearn_version,
@@ -105,7 +104,6 @@ def test_sklearn_with_all_parameters(
     botocore_resolver.return_value.construct_endpoint.return_value = {"hostname": ECR_HOSTNAME}
 
     processor = SKLearnProcessor(
-        s3_prefix=MOCKED_S3_URI,
         role=ROLE,
         framework_version=sklearn_version,
         instance_type="ml.m4.xlarge",
@@ -113,6 +111,7 @@ def test_sklearn_with_all_parameters(
         volume_size_in_gb=100,
         volume_kms_key="arn:aws:kms:us-west-2:012345678901:key/volume-kms-key",
         output_kms_key="arn:aws:kms:us-west-2:012345678901:key/output-kms-key",
+        code_location=MOCKED_S3_URI,
         max_runtime_in_seconds=3600,
         base_job_name="my_sklearn_processor",
         env={"my_env_variable": "my_env_variable_value"},
@@ -128,6 +127,7 @@ def test_sklearn_with_all_parameters(
 
     processor.run(
         entry_point="/local/path/to/processing_code.py",
+        # TODO: Add a source_dir in a way that the processor can validate it (fictional won't do)
         inputs=_get_data_inputs_all_parameters(),
         outputs=_get_data_outputs_all_parameters(),
         arguments=["--drop-columns", "'SelfEmployed'"],
@@ -155,7 +155,6 @@ def test_sklearn_with_all_parameters_via_run_args(
     botocore_resolver.return_value.construct_endpoint.return_value = {"hostname": ECR_HOSTNAME}
 
     processor = SKLearnProcessor(
-        s3_prefix=MOCKED_S3_URI,
         role=ROLE,
         framework_version=sklearn_version,
         instance_type="ml.m4.xlarge",
@@ -163,6 +162,7 @@ def test_sklearn_with_all_parameters_via_run_args(
         volume_size_in_gb=100,
         volume_kms_key="arn:aws:kms:us-west-2:012345678901:key/volume-kms-key",
         output_kms_key="arn:aws:kms:us-west-2:012345678901:key/output-kms-key",
+        code_location=MOCKED_S3_URI,
         max_runtime_in_seconds=3600,
         base_job_name="my_sklearn_processor",
         env={"my_env_variable": "my_env_variable_value"},
@@ -213,7 +213,6 @@ def test_sklearn_with_all_parameters_via_run_args_called_twice(
     botocore_resolver.return_value.construct_endpoint.return_value = {"hostname": ECR_HOSTNAME}
 
     processor = SKLearnProcessor(
-        s3_prefix=MOCKED_S3_URI,
         role=ROLE,
         framework_version=sklearn_version,
         instance_type="ml.m4.xlarge",
@@ -221,6 +220,7 @@ def test_sklearn_with_all_parameters_via_run_args_called_twice(
         volume_size_in_gb=100,
         volume_kms_key="arn:aws:kms:us-west-2:012345678901:key/volume-kms-key",
         output_kms_key="arn:aws:kms:us-west-2:012345678901:key/output-kms-key",
+        code_location=MOCKED_S3_URI,
         max_runtime_in_seconds=3600,
         base_job_name="my_sklearn_processor",
         env={"my_env_variable": "my_env_variable_value"},
@@ -300,7 +300,7 @@ def test_script_processor_works_with_absolute_local_path(
     processor = _get_script_processor(sagemaker_session)
     processor.run(code="/local/path/to/processing_code.py")
 
-    expected_args = _get_expected_args(processor._current_job_name)
+    expected_args = _get_expected_args(processor._current_job_name, code_s3_uri=MOCKED_S3_URI)
 
     sagemaker_session.process.assert_called_with(**expected_args)
 
@@ -313,7 +313,7 @@ def test_script_processor_works_with_relative_local_path(
     processor = _get_script_processor(sagemaker_session)
     processor.run(code="processing_code.py")
 
-    expected_args = _get_expected_args(processor._current_job_name)
+    expected_args = _get_expected_args(processor._current_job_name, code_s3_uri=MOCKED_S3_URI)
     sagemaker_session.process.assert_called_with(**expected_args)
 
 
@@ -324,7 +324,7 @@ def test_script_processor_works_with_relative_local_path_with_directories(
 ):
     processor = _get_script_processor(sagemaker_session)
     processor.run(code="path/to/processing_code.py")
-    expected_args = _get_expected_args(processor._current_job_name)
+    expected_args = _get_expected_args(processor._current_job_name, code_s3_uri=MOCKED_S3_URI)
     sagemaker_session.process.assert_called_with(**expected_args)
 
 
@@ -336,7 +336,7 @@ def test_script_processor_works_with_file_code_url_scheme(
     processor = _get_script_processor(sagemaker_session)
     processor.run(code="file:///path/to/processing_code.py")
 
-    expected_args = _get_expected_args(processor._current_job_name)
+    expected_args = _get_expected_args(processor._current_job_name, code_s3_uri=MOCKED_S3_URI)
     sagemaker_session.process.assert_called_with(**expected_args)
 
 
@@ -363,7 +363,7 @@ def test_script_processor_with_one_input(exists_mock, isfile_mock, sagemaker_ses
         ],
     )
 
-    expected_args = _get_expected_args(processor._current_job_name)
+    expected_args = _get_expected_args(processor._current_job_name, code_s3_uri=MOCKED_S3_URI)
     expected_args["inputs"].insert(0, _get_data_input())
 
     sagemaker_session.process.assert_called_with(**expected_args)
@@ -376,7 +376,7 @@ def test_script_processor_with_required_parameters(exists_mock, isfile_mock, sag
 
     processor.run(code="/local/path/to/processing_code.py")
 
-    expected_args = _get_expected_args(processor._current_job_name)
+    expected_args = _get_expected_args(processor._current_job_name, code_s3_uri=MOCKED_S3_URI)
     sagemaker_session.process.assert_called_with(**expected_args)
 
 
@@ -623,7 +623,7 @@ def _get_script_processor(sagemaker_session):
     )
 
 
-def _get_expected_args(job_name, code_s3_uri=MOCKED_S3_URI):
+def _get_expected_args(job_name, code_s3_uri=f"s3://{BUCKET_NAME}"):
     return {
         "inputs": [
             {
@@ -661,15 +661,15 @@ def _get_expected_args(job_name, code_s3_uri=MOCKED_S3_URI):
     }
 
 
-def _get_expected_args_modular_code(job_name, code_s3_uri=MOCKED_S3_URI):
+def _get_expected_args_modular_code(job_name, code_s3_uri=f"s3://{BUCKET_NAME}"):
     return {
         "inputs": [
             {
-                "InputName": "input-1",
+                "InputName": "code",
                 "AppManaged": False,
                 "S3Input": {
                     "S3Uri": f"{code_s3_uri}/{job_name}/source/sourcedir.tar.gz",
-                    "LocalPath": "/opt/ml/processing/input/code/payload/",
+                    "LocalPath": "/opt/ml/processing/input/code/",
                     "S3DataType": "S3Prefix",
                     "S3InputMode": "File",
                     "S3DataDistributionType": "FullyReplicated",
@@ -677,11 +677,11 @@ def _get_expected_args_modular_code(job_name, code_s3_uri=MOCKED_S3_URI):
                 },
             },
             {
-                "InputName": "code",
+                "InputName": "entrypoint",
                 "AppManaged": False,
                 "S3Input": {
                     "S3Uri": f"{code_s3_uri}/{job_name}/source/runproc.sh",
-                    "LocalPath": "/opt/ml/processing/input/code",
+                    "LocalPath": "/opt/ml/processing/input/entrypoint",
                     "S3DataType": "S3Prefix",
                     "S3InputMode": "File",
                     "S3DataDistributionType": "FullyReplicated",
@@ -690,6 +690,7 @@ def _get_expected_args_modular_code(job_name, code_s3_uri=MOCKED_S3_URI):
             },
         ],
         "output_config": {"Outputs": []},
+        "experiment_config": None,
         "job_name": job_name,
         "resources": {
             "ClusterConfig": {
@@ -701,7 +702,10 @@ def _get_expected_args_modular_code(job_name, code_s3_uri=MOCKED_S3_URI):
         "stopping_condition": None,
         "app_specification": {
             "ImageUri": CUSTOM_IMAGE_URI,
-            "ContainerEntrypoint": ["/bin/bash", "/opt/ml/processing/input/code/runproc.sh"],
+            "ContainerEntrypoint": [
+                "/bin/bash",
+                "/opt/ml/processing/input/entrypoint/runproc.sh",
+            ],
         },
         "environment": None,
         "network_config": None,
@@ -875,11 +879,11 @@ def _get_expected_args_all_parameters_modular_code(job_name, code_s3_uri=MOCKED_
                 },
             },
             {
-                "InputName": "input-5",
+                "InputName": "code",
                 "AppManaged": False,
                 "S3Input": {
                     "S3Uri": f"{code_s3_uri}/{job_name}/source/sourcedir.tar.gz",
-                    "LocalPath": "/opt/ml/processing/input/code/payload/",
+                    "LocalPath": "/opt/ml/processing/input/code/",
                     "S3DataType": "S3Prefix",
                     "S3InputMode": "File",
                     "S3DataDistributionType": "FullyReplicated",
@@ -887,11 +891,11 @@ def _get_expected_args_all_parameters_modular_code(job_name, code_s3_uri=MOCKED_
                 },
             },
             {
-                "InputName": "code",
+                "InputName": "entrypoint",
                 "AppManaged": False,
                 "S3Input": {
                     "S3Uri": f"{code_s3_uri}/{job_name}/source/runproc.sh",
-                    "LocalPath": "/opt/ml/processing/input/code",
+                    "LocalPath": "/opt/ml/processing/input/entrypoint",
                     "S3DataType": "S3Prefix",
                     "S3InputMode": "File",
                     "S3DataDistributionType": "FullyReplicated",
@@ -932,7 +936,10 @@ def _get_expected_args_all_parameters_modular_code(job_name, code_s3_uri=MOCKED_
         "app_specification": {
             "ImageUri": "012345678901.dkr.ecr.us-west-2.amazonaws.com/my-custom-image-uri",
             "ContainerArguments": ["--drop-columns", "'SelfEmployed'"],
-            "ContainerEntrypoint": ["/bin/bash", "/opt/ml/processing/input/code/runproc.sh"],
+            "ContainerEntrypoint": [
+                "/bin/bash",
+                "/opt/ml/processing/input/entrypoint/runproc.sh",
+            ],
         },
         "environment": {"my_env_variable": "my_env_variable_value"},
         "network_config": {

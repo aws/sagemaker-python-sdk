@@ -140,7 +140,7 @@ class DummyFramework(Framework):
         vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT,
         enable_network_isolation=None,
         model_dir=None,
-        **kwargs
+        **kwargs,
     ):
         if enable_network_isolation is None:
             enable_network_isolation = self.enable_network_isolation()
@@ -151,7 +151,7 @@ class DummyFramework(Framework):
             entry_point=entry_point,
             enable_network_isolation=enable_network_isolation,
             role=role,
-            **kwargs
+            **kwargs,
         )
 
     @classmethod
@@ -171,7 +171,7 @@ class DummyFrameworkModel(FrameworkModel):
             role,
             entry_point or ENTRY_POINT,
             sagemaker_session=sagemaker_session,
-            **kwargs
+            **kwargs,
         )
 
     def create_predictor(self, endpoint_name):
@@ -245,6 +245,7 @@ def test_framework_all_init_args(sagemaker_session):
         enable_sagemaker_metrics=True,
         enable_network_isolation=True,
         environment=ENV_INPUT,
+        max_retry_attempts=2,
     )
     _TrainingJob.start_new(f, "s3://mydata", None)
     sagemaker_session.train.assert_called_once()
@@ -269,6 +270,7 @@ def test_framework_all_init_args(sagemaker_session):
         "output_config": {"KmsKeyId": "outputkms", "S3OutputPath": "outputpath"},
         "vpc_config": {"Subnets": ["123", "456"], "SecurityGroupIds": ["789", "012"]},
         "stop_condition": {"MaxRuntimeInSeconds": 456},
+        "retry_strategy": {"MaximumRetryAttempts": 2},
         "role": sagemaker_session.expand_role(),
         "job_name": None,
         "resource_config": {
@@ -1092,6 +1094,7 @@ def test_framework_with_spot_and_checkpoints(sagemaker_session):
         "checkpoint_local_path": "/tmp/checkpoints",
         "environment": None,
         "experiment_config": None,
+        "retry_strategy": None,
     }
 
 
@@ -2392,6 +2395,7 @@ NO_INPUT_TRAIN_CALL = {
         "VolumeSizeInGB": 30,
     },
     "stop_condition": {"MaxRuntimeInSeconds": 86400},
+    "retry_strategy": None,
     "tags": None,
     "vpc_config": None,
     "metric_definitions": None,
@@ -2701,6 +2705,24 @@ def test_add_environment_variables_to_train_args(sagemaker_session):
     sagemaker_session.train.assert_called_once()
     args = sagemaker_session.train.call_args[1]
     assert args["environment"] == ENV_INPUT
+
+
+def test_add_retry_strategy_to_train_args(sagemaker_session):
+    e = Estimator(
+        IMAGE_URI,
+        ROLE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        output_path=OUTPUT_PATH,
+        sagemaker_session=sagemaker_session,
+        max_retry_attempts=2,
+    )
+
+    e.fit()
+
+    sagemaker_session.train.assert_called_once()
+    args = sagemaker_session.train.call_args[1]
+    assert args["retry_strategy"] == {"MaximumRetryAttempts": 2}
 
 
 def test_generic_to_fit_with_sagemaker_metrics_enabled(sagemaker_session):
@@ -3157,6 +3179,25 @@ def test_prepare_init_params_from_job_description_with_spot_training():
     assert init_params["use_spot_instances"]
     assert init_params["max_run"] == 86400
     assert init_params["max_wait"] == 87000
+
+
+def test_prepare_init_params_from_job_description_with_retry_strategy():
+    job_description = RETURNED_JOB_DESCRIPTION.copy()
+    job_description["RetryStrategy"] = {"MaximumRetryAttempts": 2}
+    job_description["StoppingCondition"] = {
+        "MaxRuntimeInSeconds": 86400,
+        "MaxWaitTimeInSeconds": 87000,
+    }
+
+    init_params = EstimatorBase._prepare_init_params_from_job_description(
+        job_details=job_description
+    )
+
+    assert init_params["role"] == "arn:aws:iam::366:role/SageMakerRole"
+    assert init_params["instance_count"] == 1
+    assert init_params["max_run"] == 86400
+    assert init_params["max_wait"] == 87000
+    assert init_params["max_retry_attempts"] == 2
 
 
 def test_prepare_init_params_from_job_description_with_invalid_training_job():

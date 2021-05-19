@@ -457,6 +457,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         profiler_rule_configs=None,
         profiler_config=None,
         environment=None,
+        retry_strategy=None,
     ):
         """Create an Amazon SageMaker training job.
 
@@ -529,6 +530,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 with SageMaker Profiler. (default: ``None``).
             environment (dict[str, str]) : Environment variables to be set for
                 use during training job (default: ``None``)
+            retry_strategy(dict): Defines RetryStrategy for InternalServerFailures.
+                * max_retry_attsmpts (int): Number of times a job should be retried.
+                The key in RetryStrategy is 'MaxRetryAttempts'.
 
         Returns:
             str: ARN of the training job, if it is created.
@@ -561,6 +565,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             profiler_rule_configs=profiler_rule_configs,
             profiler_config=profiler_config,
             environment=environment,
+            retry_strategy=retry_strategy,
         )
         LOGGER.info("Creating training-job with name: %s", job_name)
         LOGGER.debug("train request: %s", json.dumps(train_request, indent=4))
@@ -594,6 +599,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         profiler_rule_configs=None,
         profiler_config=None,
         environment=None,
+        retry_strategy=None,
     ):
         """Constructs a request compatible for creating an Amazon SageMaker training job.
 
@@ -665,6 +671,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 SageMaker Profiler. (default: ``None``).
             environment (dict[str, str]) : Environment variables to be set for
                 use during training job (default: ``None``)
+            retry_strategy(dict): Defines RetryStrategy for InternalServerFailures.
+                * max_retry_attsmpts (int): Number of times a job should be retried.
+                The key in RetryStrategy is 'MaxRetryAttempts'.
 
         Returns:
             Dict: a training request dict
@@ -748,6 +757,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         if profiler_config is not None:
             train_request["ProfilerConfig"] = profiler_config
+
+        if retry_strategy is not None:
+            train_request["RetryStrategy"] = retry_strategy
 
         return train_request
 
@@ -3490,12 +3502,20 @@ class Session(object):  # pylint: disable=too-many-public-methods
         """
         if os.path.exists(NOTEBOOK_METADATA_FILE):
             with open(NOTEBOOK_METADATA_FILE, "rb") as f:
-                instance_name = json.loads(f.read())["ResourceName"]
+                metadata = json.loads(f.read())
+                instance_name = metadata["ResourceName"]
+                domain_id = metadata.get("DomainId")
+                user_profile_name = metadata.get("UserProfileName")
             try:
-                instance_desc = self.sagemaker_client.describe_notebook_instance(
-                    NotebookInstanceName=instance_name
+                if domain_id is None:
+                    instance_desc = self.sagemaker_client.describe_notebook_instance(
+                        NotebookInstanceName=instance_name
+                    )
+                    return instance_desc["RoleArn"]
+                user_profile_desc = self.sagemaker_client.describe_user_profile(
+                    DomainId=domain_id, UserProfileName=user_profile_name
                 )
-                return instance_desc["RoleArn"]
+                return user_profile_desc["UserSettings"]["ExecutionRole"]
             except ClientError:
                 LOGGER.debug(
                     "Couldn't call 'describe_notebook_instance' to get the Role "

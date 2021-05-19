@@ -1,5 +1,67 @@
 # Changelog
 
+## v2.41.0 (2021-05-17)
+
+### Features
+
+ * add pipeline experiment config
+ * add data wrangler processor
+ * support RetryStrategy for training jobs
+
+### Bug Fixes and Other Changes
+
+ * fix repack pipeline step by putting inference.py in "code" sub dir
+ * add data wrangler image uri
+ * fix black-check errors
+
+## v2.40.0 (2021-05-11)
+
+### Features
+
+ * add xgboost framework version 1.2-2
+
+### Bug Fixes and Other Changes
+
+ * fix get_execution_role on Studio
+ * [fix] Check py_version existence in RegisterModel step
+
+### Documentation Changes
+
+ * SM Distributed EFA Launch
+
+## v2.39.1 (2021-05-05)
+
+### Bug Fixes and Other Changes
+
+ * RegisterModel step and custom dependency support
+
+### Documentation Changes
+
+ * reverting SageMaker distributed data parallel EFA doc updates
+ * adding new version, SM dist. data parallel 1.2.0.
+ * add current Hugging Face supported versions
+ * SMDDP 1.2.0 release notes
+
+## v2.39.0.post0 (2021-05-04)
+
+### Testing and Release Infrastructure
+
+ * disable smdataparallel tests
+
+## v2.39.0 (2021-04-28)
+
+### Features
+
+ * Add HF transformer version 4.5.0
+
+### Bug Fixes and Other Changes
+
+ * Allow hyperparameters in Tensorflow estimator to be parameterized
+
+### Testing and Release Infrastructure
+
+ * black format unit tests
+
 ## v2.38.0 (2021-04-21)
 
 ### Features

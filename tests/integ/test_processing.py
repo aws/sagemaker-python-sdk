@@ -125,13 +125,12 @@ def test_sklearn(sagemaker_session, sklearn_latest_version, cpu_instance_type):
         role=ROLE,
         instance_type=cpu_instance_type,
         instance_count=1,
-        command=["python3"],
         sagemaker_session=sagemaker_session,
         base_job_name="test-sklearn",
     )
 
     sklearn_processor.run(
-        code=script_path,
+        entry_point=script_path,
         inputs=[ProcessingInput(source=input_file_path, destination="/opt/ml/processing/inputs/")],
         wait=False,
         logs=False,
@@ -139,7 +138,7 @@ def test_sklearn(sagemaker_session, sklearn_latest_version, cpu_instance_type):
 
     job_description = sklearn_processor.latest_job.describe()
 
-    assert len(job_description["ProcessingInputs"]) == 2
+    assert len(job_description["ProcessingInputs"]) == 3
     assert job_description["ProcessingResources"]["ClusterConfig"]["InstanceCount"] == 1
     assert (
         job_description["ProcessingResources"]["ClusterConfig"]["InstanceType"] == cpu_instance_type
@@ -147,8 +146,8 @@ def test_sklearn(sagemaker_session, sklearn_latest_version, cpu_instance_type):
     assert job_description["ProcessingResources"]["ClusterConfig"]["VolumeSizeInGB"] == 30
     assert job_description["StoppingCondition"] == {"MaxRuntimeInSeconds": 86400}
     assert job_description["AppSpecification"]["ContainerEntrypoint"] == [
-        "python3",
-        "/opt/ml/processing/input/code/dummy_script.py",
+        "/bin/bash",
+        "/opt/ml/processing/input/entrypoint/runproc.sh",
     ]
     assert ROLE in job_description["RoleArn"]
 
@@ -162,7 +161,6 @@ def test_sklearn_with_customizations(
     sklearn_processor = SKLearnProcessor(
         framework_version=sklearn_latest_version,
         role=ROLE,
-        command=["python3"],
         instance_type=cpu_instance_type,
         instance_count=1,
         volume_size_in_gb=100,
@@ -176,7 +174,7 @@ def test_sklearn_with_customizations(
     )
 
     sklearn_processor.run(
-        code=os.path.join(DATA_DIR, "dummy_script.py"),
+        entry_point=os.path.join(DATA_DIR, "dummy_script.py"),
         inputs=[
             ProcessingInput(
                 source=input_file_path,
@@ -205,6 +203,7 @@ def test_sklearn_with_customizations(
     assert job_description["ProcessingInputs"][0]["InputName"] == "dummy_input"
 
     assert job_description["ProcessingInputs"][1]["InputName"] == "code"
+    assert job_description["ProcessingInputs"][2]["InputName"] == "entrypoint"
 
     assert job_description["ProcessingJobName"].startswith("test-sklearn-with-customizations")
 
@@ -221,8 +220,8 @@ def test_sklearn_with_customizations(
 
     assert job_description["AppSpecification"]["ContainerArguments"] == ["-v"]
     assert job_description["AppSpecification"]["ContainerEntrypoint"] == [
-        "python3",
-        "/opt/ml/processing/input/code/dummy_script.py",
+        "/bin/bash",
+        "/opt/ml/processing/input/entrypoint/runproc.sh",
     ]
     assert job_description["AppSpecification"]["ImageUri"] == image_uri
 
@@ -246,7 +245,6 @@ def test_sklearn_with_custom_default_bucket(
     sklearn_processor = SKLearnProcessor(
         framework_version=sklearn_latest_version,
         role=ROLE,
-        command=["python3"],
         instance_type=cpu_instance_type,
         instance_count=1,
         volume_size_in_gb=100,
@@ -260,7 +258,7 @@ def test_sklearn_with_custom_default_bucket(
     )
 
     sklearn_processor.run(
-        code=os.path.join(DATA_DIR, "dummy_script.py"),
+        entry_point=os.path.join(DATA_DIR, "dummy_script.py"),
         inputs=[
             ProcessingInput(
                 source=input_file_path,
@@ -292,6 +290,9 @@ def test_sklearn_with_custom_default_bucket(
     assert job_description["ProcessingInputs"][1]["InputName"] == "code"
     assert custom_bucket_name in job_description["ProcessingInputs"][1]["S3Input"]["S3Uri"]
 
+    assert job_description["ProcessingInputs"][2]["InputName"] == "entrypoint"
+    assert custom_bucket_name in job_description["ProcessingInputs"][2]["S3Input"]["S3Uri"]
+
     assert job_description["ProcessingJobName"].startswith("test-sklearn-with-customizations")
 
     assert job_description["ProcessingJobStatus"] == "Completed"
@@ -307,8 +308,8 @@ def test_sklearn_with_custom_default_bucket(
 
     assert job_description["AppSpecification"]["ContainerArguments"] == ["-v"]
     assert job_description["AppSpecification"]["ContainerEntrypoint"] == [
-        "python3",
-        "/opt/ml/processing/input/code/dummy_script.py",
+        "/bin/bash",
+        "/opt/ml/processing/input/entrypoint/runproc.sh",
     ]
     assert job_description["AppSpecification"]["ImageUri"] == image_uri
 
@@ -325,7 +326,6 @@ def test_sklearn_with_no_inputs_or_outputs(
     sklearn_processor = SKLearnProcessor(
         framework_version=sklearn_latest_version,
         role=ROLE,
-        command=["python3"],
         instance_type=cpu_instance_type,
         instance_count=1,
         volume_size_in_gb=100,
@@ -338,12 +338,16 @@ def test_sklearn_with_no_inputs_or_outputs(
     )
 
     sklearn_processor.run(
-        code=os.path.join(DATA_DIR, "dummy_script.py"), arguments=["-v"], wait=True, logs=True
+        entry_point=os.path.join(DATA_DIR, "dummy_script.py"),
+        arguments=["-v"],
+        wait=True,
+        logs=True,
     )
 
     job_description = sklearn_processor.latest_job.describe()
 
     assert job_description["ProcessingInputs"][0]["InputName"] == "code"
+    assert job_description["ProcessingInputs"][1]["InputName"] == "entrypoint"
 
     assert job_description["ProcessingJobName"].startswith("test-sklearn-with-no-inputs")
 
@@ -357,8 +361,8 @@ def test_sklearn_with_no_inputs_or_outputs(
 
     assert job_description["AppSpecification"]["ContainerArguments"] == ["-v"]
     assert job_description["AppSpecification"]["ContainerEntrypoint"] == [
-        "python3",
-        "/opt/ml/processing/input/code/dummy_script.py",
+        "/bin/bash",
+        "/opt/ml/processing/input/entrypoint/runproc.sh",
     ]
     assert job_description["AppSpecification"]["ImageUri"] == image_uri
 
@@ -683,7 +687,6 @@ def test_sklearn_with_network_config(sagemaker_session, sklearn_latest_version, 
         role=ROLE,
         instance_type=cpu_instance_type,
         instance_count=1,
-        command=["python3"],
         sagemaker_session=sagemaker_session,
         base_job_name="test-sklearn-with-network-config",
         network_config=NetworkConfig(
@@ -692,7 +695,7 @@ def test_sklearn_with_network_config(sagemaker_session, sklearn_latest_version, 
     )
 
     sklearn_processor.run(
-        code=script_path,
+        entry_point=script_path,
         inputs=[ProcessingInput(source=input_file_path, destination="/opt/ml/processing/inputs/")],
         wait=False,
         logs=False,

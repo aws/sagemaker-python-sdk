@@ -29,7 +29,6 @@ class MXNetProcessor(FrameworkProcessor):
     def __init__(
         self,
         framework_version,  # New arg
-        s3_prefix,  # New arg
         role,
         instance_count,
         instance_type,
@@ -38,6 +37,7 @@ class MXNetProcessor(FrameworkProcessor):
         volume_size_in_gb=30,
         volume_kms_key=None,
         output_kms_key=None,
+        code_location=None,  # New arg
         max_runtime_in_seconds=None,
         base_job_name=None,
         sagemaker_session=None,
@@ -61,7 +61,6 @@ class MXNetProcessor(FrameworkProcessor):
         super().__init__(
             self.estimator_cls,
             framework_version,
-            s3_prefix,
             role,
             instance_count,
             instance_type,
@@ -70,6 +69,7 @@ class MXNetProcessor(FrameworkProcessor):
             volume_size_in_gb,
             volume_kms_key,
             output_kms_key,
+            code_location,
             max_runtime_in_seconds,
             base_job_name,
             sagemaker_session,

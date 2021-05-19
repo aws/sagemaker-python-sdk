@@ -157,10 +157,7 @@ TensorFlow API
 
 .. rubric:: Supported versions
 
-TensorFlow is supported in version 1.0.0 of ``sagemakerdistributed.dataparallel``.
-Reference version 1.0.0 `TensorFlow API documentation
-<https://sagemaker.readthedocs.io/en/stable/api/training/sdp_versions/latest/smd_data_parallel_tensorflow.html#tensorflow-sdp-api>`_
-for supported TensorFlow versions.
+**TensorFlow 2.3.1, 2.4.1**
 
 .. function:: smdistributed.dataparallel.tensorflow.init()
 

@@ -15,6 +15,7 @@ from __future__ import absolute_import
 
 import pytest
 import sagemaker
+import os
 
 from mock import (
     Mock,
@@ -24,6 +25,7 @@ from mock import (
 
 from sagemaker.debugger import ProfilerConfig
 from sagemaker.estimator import Estimator
+from sagemaker.tensorflow import TensorFlow
 from sagemaker.inputs import TrainingInput, TransformInput, CreateModelInput
 from sagemaker.model import Model
 from sagemaker.processing import (
@@ -45,6 +47,10 @@ from sagemaker.workflow.steps import (
     CreateModelStep,
     CacheConfig,
 )
+from tests.unit import DATA_DIR
+
+SCRIPT_FILE = "dummy_script.py"
+SCRIPT_PATH = os.path.join(DATA_DIR, SCRIPT_FILE)
 
 REGION = "us-west-2"
 BUCKET = "my-bucket"
@@ -112,7 +118,7 @@ def test_custom_step():
     assert step.to_request() == {"Name": "MyStep", "Type": "Training", "Arguments": dict()}
 
 
-def test_training_step(sagemaker_session):
+def test_training_step_base_estimator(sagemaker_session):
     instance_type_parameter = ParameterString(name="InstanceType", default_value="c4.4xlarge")
     instance_count_parameter = ParameterInteger(name="InstanceCount", default_value=1)
     data_source_uri_parameter = ParameterString(
@@ -136,11 +142,17 @@ def test_training_step(sagemaker_session):
     inputs = TrainingInput(s3_data=data_source_uri_parameter)
     cache_config = CacheConfig(enable_caching=True, expire_after="PT1H")
     step = TrainingStep(
-        name="MyTrainingStep", estimator=estimator, inputs=inputs, cache_config=cache_config
+        name="MyTrainingStep",
+        depends_on=["TestStep"],
+        estimator=estimator,
+        inputs=inputs,
+        cache_config=cache_config,
     )
+    step.add_depends_on(["AnotherTestStep"])
     assert step.to_request() == {
         "Name": "MyTrainingStep",
         "Type": "Training",
+        "DependsOn": ["TestStep", "AnotherTestStep"],
         "Arguments": {
             "AlgorithmSpecification": {"TrainingImage": IMAGE_URI, "TrainingInputMode": "File"},
             "HyperParameters": {
@@ -177,6 +189,91 @@ def test_training_step(sagemaker_session):
     assert step.properties.TrainingJobName.expr == {"Get": "Steps.MyTrainingStep.TrainingJobName"}
 
 
+def test_training_step_tensorflow(sagemaker_session):
+    instance_type_parameter = ParameterString(name="InstanceType", default_value="ml.p3.16xlarge")
+    instance_count_parameter = ParameterInteger(name="InstanceCount", default_value=1)
+    data_source_uri_parameter = ParameterString(
+        name="DataSourceS3Uri", default_value=f"s3://{BUCKET}/train_manifest"
+    )
+    training_epochs_parameter = ParameterInteger(name="TrainingEpochs", default_value=5)
+    training_batch_size_parameter = ParameterInteger(name="TrainingBatchSize", default_value=500)
+    estimator = TensorFlow(
+        entry_point=os.path.join(DATA_DIR, SCRIPT_FILE),
+        role=ROLE,
+        model_dir=False,
+        image_uri=IMAGE_URI,
+        source_dir="s3://mybucket/source",
+        framework_version="2.4.1",
+        py_version="py37",
+        instance_count=instance_count_parameter,
+        instance_type=instance_type_parameter,
+        sagemaker_session=sagemaker_session,
+        # subnets=subnets,
+        hyperparameters={
+            "batch-size": training_batch_size_parameter,
+            "epochs": training_epochs_parameter,
+        },
+        # security_group_ids=security_group_ids,
+        debugger_hook_config=False,
+        # Training using SMDataParallel Distributed Training Framework
+        distribution={"smdistributed": {"dataparallel": {"enabled": True}}},
+    )
+
+    inputs = TrainingInput(s3_data=data_source_uri_parameter)
+    cache_config = CacheConfig(enable_caching=True, expire_after="PT1H")
+    step = TrainingStep(
+        name="MyTrainingStep", estimator=estimator, inputs=inputs, cache_config=cache_config
+    )
+    step_request = step.to_request()
+    step_request["Arguments"]["HyperParameters"].pop("sagemaker_job_name", None)
+    step_request["Arguments"]["HyperParameters"].pop("sagemaker_program", None)
+    step_request["Arguments"].pop("ProfilerRuleConfigurations", None)
+    assert step_request == {
+        "Name": "MyTrainingStep",
+        "Type": "Training",
+        "Arguments": {
+            "AlgorithmSpecification": {
+                "TrainingInputMode": "File",
+                "TrainingImage": "fakeimage",
+                "EnableSageMakerMetricsTimeSeries": True,
+            },
+            "OutputDataConfig": {"S3OutputPath": "s3://my-bucket/"},
+            "StoppingCondition": {"MaxRuntimeInSeconds": 86400},
+            "ResourceConfig": {
+                "InstanceCount": instance_count_parameter,
+                "InstanceType": instance_type_parameter,
+                "VolumeSizeInGB": 30,
+            },
+            "RoleArn": "DummyRole",
+            "InputDataConfig": [
+                {
+                    "DataSource": {
+                        "S3DataSource": {
+                            "S3DataType": "S3Prefix",
+                            "S3Uri": data_source_uri_parameter,
+                            "S3DataDistributionType": "FullyReplicated",
+                        }
+                    },
+                    "ChannelName": "training",
+                }
+            ],
+            "HyperParameters": {
+                "batch-size": training_batch_size_parameter,
+                "epochs": training_epochs_parameter,
+                "sagemaker_submit_directory": '"s3://mybucket/source"',
+                "sagemaker_container_log_level": "20",
+                "sagemaker_region": '"us-west-2"',
+                "sagemaker_distributed_dataparallel_enabled": "true",
+                "sagemaker_instance_type": instance_type_parameter,
+                "sagemaker_distributed_dataparallel_custom_mpi_options": '""',
+            },
+            "ProfilerConfig": {"S3OutputPath": "s3://my-bucket/"},
+        },
+        "CacheConfig": {"Enabled": True, "ExpireAfter": "PT1H"},
+    }
+    assert step.properties.TrainingJobName.expr == {"Get": "Steps.MyTrainingStep.TrainingJobName"}
+
+
 def test_processing_step(sagemaker_session):
     processing_input_data_uri_parameter = ParameterString(
         name="ProcessingInputDataUri", default_value=f"s3://{BUCKET}/processing_manifest"
@@ -199,14 +296,17 @@ def test_processing_step(sagemaker_session):
     cache_config = CacheConfig(enable_caching=True, expire_after="PT1H")
     step = ProcessingStep(
         name="MyProcessingStep",
+        depends_on=["TestStep", "SecondTestStep"],
         processor=processor,
         inputs=inputs,
         outputs=[],
         cache_config=cache_config,
     )
+    step.add_depends_on(["ThirdTestStep"])
     assert step.to_request() == {
         "Name": "MyProcessingStep",
         "Type": "Processing",
+        "DependsOn": ["TestStep", "SecondTestStep", "ThirdTestStep"],
         "Arguments": {
             "AppSpecification": {"ImageUri": "fakeimage"},
             "ProcessingInputs": [
@@ -306,13 +406,16 @@ def test_create_model_step(sagemaker_session):
     )
     step = CreateModelStep(
         name="MyCreateModelStep",
+        depends_on=["TestStep"],
         model=model,
         inputs=inputs,
     )
+    step.add_depends_on(["SecondTestStep"])
 
     assert step.to_request() == {
         "Name": "MyCreateModelStep",
         "Type": "Model",
+        "DependsOn": ["TestStep", "SecondTestStep"],
         "Arguments": {
             "ExecutionRoleArn": "DummyRole",
             "PrimaryContainer": {"Environment": {}, "Image": "fakeimage"},
@@ -331,11 +434,17 @@ def test_transform_step(sagemaker_session):
     inputs = TransformInput(data=f"s3://{BUCKET}/transform_manifest")
     cache_config = CacheConfig(enable_caching=True, expire_after="PT1H")
     step = TransformStep(
-        name="MyTransformStep", transformer=transformer, inputs=inputs, cache_config=cache_config
+        name="MyTransformStep",
+        depends_on=["TestStep"],
+        transformer=transformer,
+        inputs=inputs,
+        cache_config=cache_config,
     )
+    step.add_depends_on(["SecondTestStep"])
     assert step.to_request() == {
         "Name": "MyTransformStep",
         "Type": "Transform",
+        "DependsOn": ["TestStep", "SecondTestStep"],
         "Arguments": {
             "ModelName": "gisele",
             "TransformInput": {
