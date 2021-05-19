@@ -1478,7 +1478,6 @@ python {entry_point} "$@"
             inputs, estimator._hyperparameters["sagemaker_submit_directory"]
         )
 
-        # Upload the bootstrapping code as s3://.../jobname/source/runproc.sh.
         local_code = get_config_value("local.local_code", self.sagemaker_session.config)
         if self.sagemaker_session.local_mode and local_code:
             # TODO: Can we be more prescriptive about how to not trigger this error?
@@ -1486,19 +1485,19 @@ python {entry_point} "$@"
             raise RuntimeError(
                 "Local *code* is not currently supported for SageMaker Processing in Local Mode"
             )
-        else:
-            # estimator
-            entrypoint_s3_uri = estimator.uploaded_code.s3_prefix.replace(
-                "sourcedir.tar.gz",
-                "runproc.sh",
-            )
-            script = estimator.uploaded_code.script_name
-            s3_runproc_sh = S3Uploader.upload_string_as_file_body(
-                self.runproc_sh.format(entry_point=script),
-                desired_s3_uri=entrypoint_s3_uri,
-                sagemaker_session=self.sagemaker_session,
-            )
-            logger.info("runproc.sh uploaded to %s", s3_runproc_sh)
+
+        # Upload the bootstrapping code as s3://.../jobname/source/runproc.sh.
+        entrypoint_s3_uri = estimator.uploaded_code.s3_prefix.replace(
+            "sourcedir.tar.gz",
+            "runproc.sh",
+        )
+        script = estimator.uploaded_code.script_name
+        s3_runproc_sh = S3Uploader.upload_string_as_file_body(
+            self.runproc_sh.format(entry_point=script),
+            desired_s3_uri=entrypoint_s3_uri,
+            sagemaker_session=self.sagemaker_session,
+        )
+        logger.info("runproc.sh uploaded to %s", s3_runproc_sh)
 
         # Submit a processing job.
         super().run(
