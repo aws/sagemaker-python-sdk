@@ -31,6 +31,7 @@ from sagemaker.processing import (
 from sagemaker.sklearn.processing import SKLearnProcessor
 from sagemaker.network import NetworkConfig
 from sagemaker.processing import FeatureStoreOutput
+from sagemaker.fw_utils import UploadedCode
 
 BUCKET_NAME = "mybucket"
 REGION = "us-west-2"
@@ -67,6 +68,14 @@ def sagemaker_session():
     return session_mock
 
 
+@pytest.fixture()
+def uploaded_code(
+    s3_prefix="s3://mocked_s3_uri_from_upload_data/my_job_name/source/sourcedir.tar.gz",
+    script_name="processing_code.py",
+):
+    return UploadedCode(s3_prefix=s3_prefix, script_name=script_name)
+
+
 @patch("sagemaker.utils._botocore_resolver")
 @patch("os.path.exists", return_value=True)
 @patch("os.path.isfile", return_value=True)
@@ -99,7 +108,7 @@ def test_sklearn_processor_with_required_parameters(
 @patch("os.path.exists", return_value=True)
 @patch("os.path.isfile", return_value=True)
 def test_sklearn_with_all_parameters(
-    exists_mock, isfile_mock, botocore_resolver, sklearn_version, sagemaker_session
+    exists_mock, isfile_mock, botocore_resolver, sklearn_version, sagemaker_session, uploaded_code
 ):
     botocore_resolver.return_value.construct_endpoint.return_value = {"hostname": ECR_HOSTNAME}
 
@@ -126,17 +135,19 @@ def test_sklearn_with_all_parameters(
         sagemaker_session=sagemaker_session,
     )
 
-    processor.run(
-        entry_point="/local/path/to/processing_code.py",
-        # TODO: Add a source_dir in a way that the processor can validate it (fictional won't do)
-        inputs=_get_data_inputs_all_parameters(),
-        outputs=_get_data_outputs_all_parameters(),
-        arguments=["--drop-columns", "'SelfEmployed'"],
-        wait=True,
-        logs=False,
-        job_name="my_job_name",
-        experiment_config={"ExperimentName": "AnExperiment"},
-    )
+    with patch("sagemaker.estimator.tar_and_upload_dir", return_value=uploaded_code):
+        processor.run(
+            entry_point="processing_code.py",
+            source_dir="/local/path/to/source_dir",
+            dependencies=["/local/path/to/dep_01"],
+            inputs=_get_data_inputs_all_parameters(),
+            outputs=_get_data_outputs_all_parameters(),
+            arguments=["--drop-columns", "'SelfEmployed'"],
+            wait=True,
+            logs=False,
+            job_name="my_job_name",
+            experiment_config={"ExperimentName": "AnExperiment"},
+        )
 
     expected_args = _get_expected_args_all_parameters_modular_code(processor._current_job_name)
     sklearn_image_uri = (
