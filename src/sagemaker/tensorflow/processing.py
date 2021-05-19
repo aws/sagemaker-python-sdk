@@ -34,6 +34,7 @@ class TensorFlowProcessor(FrameworkProcessor):
         instance_type,
         py_version="py3",  # New kwarg
         image_uri=None,
+        command=["python"],
         volume_size_in_gb=30,
         volume_kms_key=None,
         output_kms_key=None,
@@ -66,6 +67,7 @@ class TensorFlowProcessor(FrameworkProcessor):
             instance_type,
             py_version,
             image_uri,
+            command,
             volume_size_in_gb,
             volume_kms_key,
             output_kms_key,

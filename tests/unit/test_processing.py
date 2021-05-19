@@ -106,6 +106,7 @@ def test_sklearn_with_all_parameters(
     processor = SKLearnProcessor(
         role=ROLE,
         framework_version=sklearn_version,
+        command=["Rscript"],
         instance_type="ml.m4.xlarge",
         instance_count=1,
         volume_size_in_gb=100,
@@ -153,12 +154,14 @@ def test_sklearn_with_all_parameters_via_run_args(
     exists_mock, isfile_mock, botocore_resolver, sklearn_version, sagemaker_session
 ):
     botocore_resolver.return_value.construct_endpoint.return_value = {"hostname": ECR_HOSTNAME}
+    custom_command = ["Rscript"]
 
     processor = SKLearnProcessor(
         role=ROLE,
         framework_version=sklearn_version,
+        command=custom_command,
         instance_type="ml.m4.xlarge",
-        instance_count=1,
+        instance_count=2,
         volume_size_in_gb=100,
         volume_kms_key="arn:aws:kms:us-west-2:012345678901:key/volume-kms-key",
         output_kms_key="arn:aws:kms:us-west-2:012345678901:key/output-kms-key",
@@ -195,13 +198,26 @@ def test_sklearn_with_all_parameters_via_run_args(
         experiment_config={"ExperimentName": "AnExperiment"},
     )
 
-    expected_args = _get_expected_args_all_parameters_modular_code(processor._current_job_name)
+    expected_args = _get_expected_args_all_parameters_modular_code(
+        processor._current_job_name,
+        instance_count=2,
+    )
     sklearn_image_uri = (
         "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:{}-cpu-py3"
     ).format(sklearn_version)
     expected_args["app_specification"]["ImageUri"] = sklearn_image_uri
 
     sagemaker_session.process.assert_called_with(**expected_args)
+
+    # Verify the alternate command was applied successfully:
+    framework_script = processor._generate_framework_script("processing_code.py")
+    expected_invocation = f"{' '.join(custom_command)} processing_code.py"
+    assert f"\n{expected_invocation}" in framework_script, (
+        "Framework script should contain customized invocation:\n{}\n\nGot:\n{}".format(
+            expected_invocation,
+            framework_script,
+        )
+    )
 
 
 @patch("sagemaker.utils._botocore_resolver")
@@ -811,7 +827,7 @@ def _get_data_outputs_all_parameters():
     ]
 
 
-def _get_expected_args_all_parameters_modular_code(job_name, code_s3_uri=MOCKED_S3_URI):
+def _get_expected_args_all_parameters_modular_code(job_name, code_s3_uri=MOCKED_S3_URI, instance_count=1):
     # Add something to inputs
     return {
         "inputs": [
@@ -927,7 +943,7 @@ def _get_expected_args_all_parameters_modular_code(job_name, code_s3_uri=MOCKED_
         "resources": {
             "ClusterConfig": {
                 "InstanceType": "ml.m4.xlarge",
-                "InstanceCount": 1,
+                "InstanceCount": instance_count,
                 "VolumeSizeInGB": 100,
                 "VolumeKmsKeyId": "arn:aws:kms:us-west-2:012345678901:key/volume-kms-key",
             }
