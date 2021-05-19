@@ -63,7 +63,7 @@ def generate_data_ingestion_flow_from_s3_input(
         },
     }
 
-    output_node = _get_output_node(source_node['node_id'], operator_version, schema)
+    output_node = _get_output_node(source_node["node_id"], operator_version, schema)
 
     flow = {
         "metadata": {"version": 1, "disable_limits": False},
@@ -110,7 +110,7 @@ def generate_data_ingestion_flow_from_athena_dataset_definition(
         },
     }
 
-    output_node = _get_output_node(source_node['node_id'], operator_version, schema)
+    output_node = _get_output_node(source_node["node_id"], operator_version, schema)
 
     flow = {
         "metadata": {"version": 1, "disable_limits": False},
@@ -159,11 +159,11 @@ def generate_data_ingestion_flow_from_redshift_dataset_definition(
         },
     }
 
-    output_node = _get_output_node(source_node['node_id'], operator_version, schema)
+    output_node = _get_output_node(source_node["node_id"], operator_version, schema)
 
     flow = {
         "metadata": {"version": 1, "disable_limits": False},
-        "nodes": [source_node, output_node]
+        "nodes": [source_node, output_node],
     }
 
     return flow, f'{output_node["node_id"]}.default'
@@ -185,8 +185,6 @@ def _get_output_node(source_node_id: str, operator_version: str, schema: Dict):
         "operator": f"sagemaker.spark.infer_and_cast_type_{operator_version}",
         "trained_parameters": {} if schema is None else schema,
         "parameters": {},
-        "inputs": [
-            {"name": "default", "node_id": source_node_id, "output_name": "default"}
-        ],
+        "inputs": [{"name": "default", "node_id": source_node_id, "output_name": "default"}],
         "outputs": [{"name": "default"}],
     }
