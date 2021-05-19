@@ -21,6 +21,7 @@ from __future__ import print_function, absolute_import
 import os
 import pathlib
 import logging
+from textwrap import dedent
 from typing import Dict, List, Optional, Tuple
 import attr
 
@@ -1217,18 +1218,7 @@ class FeatureStoreOutput(ApiObject):
 class FrameworkProcessor(ScriptProcessor):
     """Handles Amazon SageMaker processing tasks for jobs using a machine learning framework."""
 
-    runproc_sh = """#!/bin/bash
-
-cd /opt/ml/processing/input/code/
-tar -xzf sourcedir.tar.gz
-
-# Exit on any error. SageMaker uses error code to mark failed job.
-set -e
-
-[[ -f 'requirements.txt' ]] && pip install -r requirements.txt
-
-python {entry_point} "$@"
-"""
+    framework_entrypoint_command = ["/bin/bash"]
 
     # Added new (kw)args for estimator. The rest are from ScriptProcessor with same defaults.
     def __init__(
@@ -1240,6 +1230,7 @@ python {entry_point} "$@"
         instance_type,
         py_version="py3",  # New kwarg
         image_uri=None,
+        command=["python"],
         volume_size_in_gb=30,
         volume_kms_key=None,
         output_kms_key=None,
@@ -1272,6 +1263,8 @@ python {entry_point} "$@"
                 is ignored when ``image_uri`` is provided.
             image_uri (str): The URI of the Docker image to use for the
                 processing jobs (default: None).
+            command ([str]): The command to run, along with any command-line flags
+                to *precede* the ```entry_point script``` (default: ['python']).
             volume_size_in_gb (int): Size in GB of the EBS volume
                 to use for storing data during processing (default: 30).
             volume_kms_key (str): A KMS key for the processing volume (default: None).
@@ -1312,7 +1305,7 @@ python {entry_point} "$@"
         super().__init__(
             role=role,
             image_uri=image_uri,
-            command=["/bin/bash"],
+            command=command,
             instance_count=instance_count,
             instance_type=instance_type,
             volume_size_in_gb=volume_size_in_gb,
@@ -1493,7 +1486,7 @@ python {entry_point} "$@"
         )
         script = estimator.uploaded_code.script_name
         s3_runproc_sh = S3Uploader.upload_string_as_file_body(
-            self.runproc_sh.format(entry_point=script),
+            self._generate_framework_script(script),
             desired_s3_uri=entrypoint_s3_uri,
             sagemaker_session=self.sagemaker_session,
         )
@@ -1510,6 +1503,35 @@ python {entry_point} "$@"
             job_name=job_name,
             experiment_config=experiment_config,
             kms_key=kms_key,
+        )
+
+    def _generate_framework_script(self, user_script: str) -> str:
+        """Generate the framework entrypoint file (as text) for a processing job.
+
+        This script implements the "framework" functionality for setting up your code:
+        Untar-ing the sourcedir bundle in the ```code``` input; installing extra
+        runtime dependencies if specified; and then invoking the ```command``` and
+        ```entry_point``` configured for the job.
+
+        Args:
+            user_script (str): Relative path to ```entry_point``` in the source bundle
+                - e.g. 'process.py'.
+        """
+        return dedent("""\
+            #!/bin/bash
+
+            cd /opt/ml/processing/input/code/
+            tar -xzf sourcedir.tar.gz
+
+            # Exit on any error. SageMaker uses error code to mark failed job.
+            set -e
+
+            [[ -f 'requirements.txt' ]] && pip install -r requirements.txt
+
+            {entry_point_command} {entry_point} "$@"
+        """).format(
+            entry_point_command=" ".join(self.command),
+            entry_point=user_script,
         )
 
     def _upload_payload(
@@ -1575,3 +1597,18 @@ python {entry_point} "$@"
             )
         )
         return inputs
+
+    def _set_entrypoint(self, command, user_script_name):
+        """FrameworkProcessor override for setting processing job entrypoint.
+
+        Args:
+            command ([str]): Ignored in favor of self.framework_entrypoint_command
+            user_script_name (str): A filename with an extension.
+        """
+        
+        user_script_location = str(
+            pathlib.PurePosixPath(
+                self._CODE_CONTAINER_BASE_PATH, self._CODE_CONTAINER_INPUT_NAME, user_script_name
+            )
+        )
+        self.entrypoint = self.framework_entrypoint_command + [user_script_location]
