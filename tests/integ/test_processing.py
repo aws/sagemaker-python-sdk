@@ -130,7 +130,7 @@ def test_sklearn(sagemaker_session, sklearn_latest_version, cpu_instance_type):
     )
 
     sklearn_processor.run(
-        entry_point=script_path,
+        code=script_path,
         inputs=[ProcessingInput(source=input_file_path, destination="/opt/ml/processing/inputs/")],
         wait=False,
         logs=False,
@@ -174,7 +174,7 @@ def test_sklearn_with_customizations(
     )
 
     sklearn_processor.run(
-        entry_point=os.path.join(DATA_DIR, "dummy_script.py"),
+        code=os.path.join(DATA_DIR, "dummy_script.py"),
         inputs=[
             ProcessingInput(
                 source=input_file_path,
@@ -258,7 +258,7 @@ def test_sklearn_with_custom_default_bucket(
     )
 
     sklearn_processor.run(
-        entry_point=os.path.join(DATA_DIR, "dummy_script.py"),
+        code=os.path.join(DATA_DIR, "dummy_script.py"),
         inputs=[
             ProcessingInput(
                 source=input_file_path,
@@ -338,7 +338,7 @@ def test_sklearn_with_no_inputs_or_outputs(
     )
 
     sklearn_processor.run(
-        entry_point=os.path.join(DATA_DIR, "dummy_script.py"),
+        code=os.path.join(DATA_DIR, "dummy_script.py"),
         arguments=["-v"],
         wait=True,
         logs=True,
@@ -695,7 +695,7 @@ def test_sklearn_with_network_config(sagemaker_session, sklearn_latest_version, 
     )
 
     sklearn_processor.run(
-        entry_point=script_path,
+        code=script_path,
         inputs=[ProcessingInput(source=input_file_path, destination="/opt/ml/processing/inputs/")],
         wait=False,
         logs=False,

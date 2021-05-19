@@ -50,7 +50,7 @@ class MXNetProcessor(FrameworkProcessor):
 
         Unless ``image_uri`` is specified, the MXNet environment is an
         Amazon-built Docker container that executes functions defined in the supplied
-        ``entry_point`` Python script.
+        ``code`` Python script.
 
         The arguments have the exact same meaning as in ``FrameworkProcessor``.
 

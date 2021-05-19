@@ -92,7 +92,7 @@ def test_sklearn_processor_with_required_parameters(
         sagemaker_session=sagemaker_session,
     )
 
-    processor.run(entry_point="/local/path/to/processing_code.py")
+    processor.run(code="/local/path/to/processing_code.py")
 
     expected_args = _get_expected_args_modular_code(processor._current_job_name)
 
@@ -137,7 +137,7 @@ def test_sklearn_with_all_parameters(
 
     with patch("sagemaker.estimator.tar_and_upload_dir", return_value=uploaded_code):
         processor.run(
-            entry_point="processing_code.py",
+            code="processing_code.py",
             source_dir="/local/path/to/source_dir",
             dependencies=["/local/path/to/dep_01"],
             inputs=_get_data_inputs_all_parameters(),
@@ -200,7 +200,7 @@ def test_sklearn_with_all_parameters_via_run_args(
     )
 
     processor.run(
-        entry_point=run_args.code,
+        code=run_args.code,
         inputs=run_args.inputs,
         outputs=run_args.outputs,
         arguments=run_args.arguments,
@@ -223,11 +223,11 @@ def test_sklearn_with_all_parameters_via_run_args(
     # Verify the alternate command was applied successfully:
     framework_script = processor._generate_framework_script("processing_code.py")
     expected_invocation = f"{' '.join(custom_command)} processing_code.py"
-    assert f"\n{expected_invocation}" in framework_script, (
-        "Framework script should contain customized invocation:\n{}\n\nGot:\n{}".format(
-            expected_invocation,
-            framework_script,
-        )
+    assert (
+        f"\n{expected_invocation}" in framework_script
+    ), "Framework script should contain customized invocation:\n{}\n\nGot:\n{}".format(
+        expected_invocation,
+        framework_script,
     )
 
 
@@ -276,7 +276,7 @@ def test_sklearn_with_all_parameters_via_run_args_called_twice(
     )
 
     processor.run(
-        entry_point=run_args.code,
+        code=run_args.code,
         inputs=run_args.inputs,
         outputs=run_args.outputs,
         arguments=run_args.arguments,
@@ -838,7 +838,9 @@ def _get_data_outputs_all_parameters():
     ]
 
 
-def _get_expected_args_all_parameters_modular_code(job_name, code_s3_uri=MOCKED_S3_URI, instance_count=1):
+def _get_expected_args_all_parameters_modular_code(
+    job_name, code_s3_uri=MOCKED_S3_URI, instance_count=1
+):
     # Add something to inputs
     return {
         "inputs": [
