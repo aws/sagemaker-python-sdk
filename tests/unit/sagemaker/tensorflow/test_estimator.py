@@ -127,6 +127,7 @@ def _create_train_job(tf_version, horovod=False, ps=False, py_version="py2", smd
         },
         "hyperparameters": _hyperparameters(horovod, smdataparallel),
         "stop_condition": {"MaxRuntimeInSeconds": 24 * 60 * 60},
+        "retry_strategy": None,
         "tags": None,
         "vpc_config": None,
         "metric_definitions": None,
