@@ -54,6 +54,7 @@ class StepTypeEnum(Enum, metaclass=DefaultEnumMeta):
     REGISTER_MODEL = "RegisterModel"
     TRAINING = "Training"
     TRANSFORM = "Transform"
+    CALLBACK = "Callback"
 
 
 @attr.s
