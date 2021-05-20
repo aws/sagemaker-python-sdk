@@ -287,7 +287,11 @@ def shap_config():
 def test_pre_training_bias(clarify_processor, data_config, data_bias_config):
     with patch.object(SageMakerClarifyProcessor, "_run", return_value=None) as mock_method:
         clarify_processor.run_pre_training_bias(
-            data_config, data_bias_config, wait=True, job_name="test"
+            data_config,
+            data_bias_config,
+            wait=True,
+            job_name="test",
+            experiment_config={"ExperimentName": "AnExperiment"},
         )
         expected_analysis_config = {
             "dataset_type": "text/csv",
@@ -304,7 +308,13 @@ def test_pre_training_bias(clarify_processor, data_config, data_bias_config):
             "methods": {"pre_training_bias": {"methods": "all"}},
         }
         mock_method.assert_called_once_with(
-            data_config, expected_analysis_config, True, True, "test", None
+            data_config,
+            expected_analysis_config,
+            True,
+            True,
+            "test",
+            None,
+            {"ExperimentName": "AnExperiment"},
         )
 
 
@@ -319,6 +329,7 @@ def test_post_training_bias(
             model_predicted_label_config,
             wait=True,
             job_name="test",
+            experiment_config={"ExperimentName": "AnExperiment"},
         )
         expected_analysis_config = {
             "dataset_type": "text/csv",
@@ -340,14 +351,26 @@ def test_post_training_bias(
             },
         }
         mock_method.assert_called_once_with(
-            data_config, expected_analysis_config, True, True, "test", None
+            data_config,
+            expected_analysis_config,
+            True,
+            True,
+            "test",
+            None,
+            {"ExperimentName": "AnExperiment"},
         )
 
 
 def test_shap(clarify_processor, data_config, model_config, shap_config):
     with patch.object(SageMakerClarifyProcessor, "_run", return_value=None) as mock_method:
         clarify_processor.run_explainability(
-            data_config, model_config, shap_config, model_scores=None, wait=True, job_name="test"
+            data_config,
+            model_config,
+            shap_config,
+            model_scores=None,
+            wait=True,
+            job_name="test",
+            experiment_config={"ExperimentName": "AnExperiment"},
         )
         expected_analysis_config = {
             "dataset_type": "text/csv",
@@ -380,5 +403,11 @@ def test_shap(clarify_processor, data_config, model_config, shap_config):
             },
         }
         mock_method.assert_called_once_with(
-            data_config, expected_analysis_config, True, True, "test", None
+            data_config,
+            expected_analysis_config,
+            True,
+            True,
+            "test",
+            None,
+            {"ExperimentName": "AnExperiment"},
         )

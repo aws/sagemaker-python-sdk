@@ -1,5 +1,121 @@
 # Changelog
 
+## v2.41.0 (2021-05-17)
+
+### Features
+
+ * add pipeline experiment config
+ * add data wrangler processor
+ * support RetryStrategy for training jobs
+
+### Bug Fixes and Other Changes
+
+ * fix repack pipeline step by putting inference.py in "code" sub dir
+ * add data wrangler image uri
+ * fix black-check errors
+
+## v2.40.0 (2021-05-11)
+
+### Features
+
+ * add xgboost framework version 1.2-2
+
+### Bug Fixes and Other Changes
+
+ * fix get_execution_role on Studio
+ * [fix] Check py_version existence in RegisterModel step
+
+### Documentation Changes
+
+ * SM Distributed EFA Launch
+
+## v2.39.1 (2021-05-05)
+
+### Bug Fixes and Other Changes
+
+ * RegisterModel step and custom dependency support
+
+### Documentation Changes
+
+ * reverting SageMaker distributed data parallel EFA doc updates
+ * adding new version, SM dist. data parallel 1.2.0.
+ * add current Hugging Face supported versions
+ * SMDDP 1.2.0 release notes
+
+## v2.39.0.post0 (2021-05-04)
+
+### Testing and Release Infrastructure
+
+ * disable smdataparallel tests
+
+## v2.39.0 (2021-04-28)
+
+### Features
+
+ * Add HF transformer version 4.5.0
+
+### Bug Fixes and Other Changes
+
+ * Allow hyperparameters in Tensorflow estimator to be parameterized
+
+### Testing and Release Infrastructure
+
+ * black format unit tests
+
+## v2.38.0 (2021-04-21)
+
+### Features
+
+ * support multiprocess feature group ingest (#2111)
+
+## v2.37.0 (2021-04-20)
+
+### Features
+
+ * add experiment_config for clarify processing job
+
+### Documentation Changes
+
+ * release notes for smdistributed.dataparallel v1.1.2
+
+## v2.36.0 (2021-04-19)
+
+### Features
+
+ * enable smdataparallel custom mpi options support
+
+## v2.35.0 (2021-04-14)
+
+### Features
+
+ * add support for PyTorch 1.8.1
+
+### Bug Fixes and Other Changes
+
+ * boto3 client param updated for feature store
+ * Updated release notes and API doc for smd model parallel 1.3.1
+
+## v2.34.0 (2021-04-12)
+
+### Features
+
+ * Add support for accelerator in Clarify
+
+### Bug Fixes and Other Changes
+
+ * add Documentation for how to use
+ * enable local mode tests that were skipped
+ * add integ test for HuggingFace with TensorFlow
+
+### Documentation Changes
+
+ * release notes for smdistributed.dataparallel v1.1.1
+ * fixing the SageMaker distributed version references
+
+### Testing and Release Infrastructure
+
+ * pin version for ducutils
+
 ## v2.33.0 (2021-04-05)
 
 ### Features

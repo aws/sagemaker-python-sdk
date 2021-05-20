@@ -28,6 +28,10 @@ smdataparallel_dir = os.path.join(
 )
 
 
+@pytest.mark.skip(
+    reason="This test is skipped for now due ML capacity error."
+    "This test should be re-enabled later."
+)
 @pytest.mark.skipif(
     integ.test_region() not in integ.DATA_PARALLEL_TESTING_REGIONS,
     reason="Only allow this test to run in IAD and CMH to limit usage of p3.16xlarge",
@@ -47,7 +51,9 @@ def test_smdataparallel_pt_mnist(
         sagemaker_session=sagemaker_session,
         framework_version=pytorch_training_latest_version,
         py_version=pytorch_training_latest_py_version,
-        distribution={"smdistributed": {"dataparallel": {"enabled": True}}},
+        distribution={
+            "smdistributed": {"dataparallel": {"enabled": True, "custom_mpi_options": "--verbose"}}
+        },
     )
 
     with timeout.timeout(minutes=integ.TRAINING_DEFAULT_TIMEOUT_MINUTES):

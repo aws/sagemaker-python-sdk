@@ -88,7 +88,7 @@ def _chainer_estimator(
     num_processes=None,
     process_slots_per_host=None,
     additional_mpi_options=None,
-    **kwargs
+    **kwargs,
 ):
     return Chainer(
         entry_point=SCRIPT_PATH,
@@ -103,7 +103,7 @@ def _chainer_estimator(
         num_processes=num_processes,
         process_slots_per_host=process_slots_per_host,
         additional_mpi_options=additional_mpi_options,
-        **kwargs
+        **kwargs,
     )
 
 
@@ -140,6 +140,7 @@ def _create_train_job(version, py_version):
             "sagemaker_region": '"us-west-2"',
         },
         "stop_condition": {"MaxRuntimeInSeconds": 24 * 60 * 60},
+        "retry_strategy": None,
         "tags": None,
         "vpc_config": None,
         "metric_definitions": None,

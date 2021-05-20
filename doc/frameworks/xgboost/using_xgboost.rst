@@ -88,6 +88,10 @@ but you can access useful properties about the training environment through vari
 
 For the exhaustive list of available environment variables, see the `SageMaker Containers documentation <https://github.com/aws/sagemaker-containers#list-of-provided-environment-variables-by-sagemaker-containers>`__.
 
+.. important::
+    The sagemaker-containers repository has been deprecated,
+    however it is still used to define Scikit-learn and XGBoost environment variables.
+
 Let's look at the main elements of the script. Starting with the ``__main__`` guard,
 use a parser to read the hyperparameters passed to the estimator when creating the training job.
 These hyperparameters are made available as arguments to our input script.

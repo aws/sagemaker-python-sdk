@@ -124,6 +124,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         profiler_config=None,
         disable_profiler=False,
         environment=None,
+        max_retry_attempts=None,
         **kwargs,
     ):
         """Initialize an ``EstimatorBase`` instance.
@@ -269,6 +270,13 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 will be disabled (default: ``False``).
             environment (dict[str, str]) : Environment variables to be set for
                 use during training job (default: ``None``)
+             max_retry_attempts (int): The number of times to move a job to the STARTING status.
+                You can specify between 1 and 30 attempts.
+                If the value of attempts is greater than zero,
+                the job is retried on InternalServerFailure
+                the same number of attempts as the value.
+                You can cap the total duration for your job by setting ``max_wait`` and ``max_run``
+                (default: ``None``)
 
         """
         instance_count = renamed_kwargs(
@@ -356,6 +364,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self.disable_profiler = disable_profiler
 
         self.environment = environment
+
+        self.max_retry_attempts = max_retry_attempts
 
         if not _region_supports_profiler(self.sagemaker_session.boto_region_name):
             self.disable_profiler = True
@@ -1114,6 +1124,13 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             if max_wait:
                 init_params["max_wait"] = max_wait
 
+        if job_details.get("RetryStrategy", False):
+            init_params["max_retry_attempts"] = job_details.get("RetryStrategy", {}).get(
+                "MaximumRetryAttempts"
+            )
+            max_wait = job_details.get("StoppingCondition", {}).get("MaxWaitTimeInSeconds")
+            if max_wait:
+                init_params["max_wait"] = max_wait
         return init_params
 
     def transformer(
@@ -1489,6 +1506,11 @@ class _TrainingJob(_Job):
         if estimator.enable_network_isolation():
             train_args["enable_network_isolation"] = True
 
+        if estimator.max_retry_attempts is not None:
+            train_args["retry_strategy"] = {"MaximumRetryAttempts": estimator.max_retry_attempts}
+        else:
+            train_args["retry_strategy"] = None
+
         if estimator.encrypt_inter_container_traffic:
             train_args["encrypt_inter_container_traffic"] = True
 
@@ -1666,6 +1688,7 @@ class Estimator(EstimatorBase):
         profiler_config=None,
         disable_profiler=False,
         environment=None,
+        max_retry_attempts=None,
         **kwargs,
     ):
         """Initialize an ``Estimator`` instance.
@@ -1816,6 +1839,13 @@ class Estimator(EstimatorBase):
                 will be disabled (default: ``False``).
             environment (dict[str, str]) : Environment variables to be set for
                 use during training job (default: ``None``)
+            max_retry_attempts (int): The number of times to move a job to the STARTING status.
+                You can specify between 1 and 30 attempts.
+                If the value of attempts is greater than zero,
+                the job is retried on InternalServerFailure
+                the same number of attempts as the value.
+                You can cap the total duration for your job by setting ``max_wait`` and ``max_run``
+                (default: ``None``)
         """
         self.image_uri = image_uri
         self.hyperparam_dict = hyperparameters.copy() if hyperparameters else {}
@@ -1850,6 +1880,7 @@ class Estimator(EstimatorBase):
             profiler_config=profiler_config,
             disable_profiler=disable_profiler,
             environment=environment,
+            max_retry_attempts=max_retry_attempts,
             **kwargs,
         )
 
@@ -1954,6 +1985,7 @@ class Framework(EstimatorBase):
     INSTANCE_TYPE = "sagemaker_instance_type"
     MPI_NUM_PROCESSES_PER_HOST = "sagemaker_mpi_num_of_processes_per_host"
     MPI_CUSTOM_MPI_OPTIONS = "sagemaker_mpi_custom_mpi_options"
+    SM_DDP_CUSTOM_MPI_OPTIONS = "sagemaker_distributed_dataparallel_custom_mpi_options"
     CONTAINER_CODE_CHANNEL_SOURCEDIR_PATH = "/opt/ml/input/data/code/sourcedir.tar.gz"
 
     def __init__(
@@ -2442,7 +2474,13 @@ class Framework(EstimatorBase):
     @staticmethod
     def _json_encode_hyperparameters(hyperparameters):
         """Placeholder docstring"""
-        return {str(k): json.dumps(v) for (k, v) in hyperparameters.items()}
+        current_hyperparameters = hyperparameters
+        if current_hyperparameters is not None:
+            hyperparameters = {
+                str(k): (v if isinstance(v, (Parameter, Expression, Properties)) else json.dumps(v))
+                for (k, v) in current_hyperparameters.items()
+            }
+        return hyperparameters
 
     @classmethod
     def _update_init_params(cls, hp, tf_arguments):
@@ -2629,6 +2667,10 @@ class Framework(EstimatorBase):
             smdataparallel_enabled = smdistributed.get("dataparallel", {}).get("enabled", False)
             distribution_config[self.LAUNCH_SM_DDP_ENV_NAME] = smdataparallel_enabled
             distribution_config[self.INSTANCE_TYPE] = self.instance_type
+            if smdataparallel_enabled:
+                distribution_config[self.SM_DDP_CUSTOM_MPI_OPTIONS] = smdistributed[
+                    "dataparallel"
+                ].get("custom_mpi_options", "")
 
         return distribution_config
 
