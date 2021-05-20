@@ -13,25 +13,14 @@
 """Pipeline parameters and conditions for workflow."""
 from __future__ import absolute_import
 
-from typing import Dict
-
 from sagemaker.workflow.entities import (
-    Entity,
+    Expression,
     RequestType,
 )
 
 
-class ExecutionVariable(Entity, str):
+class ExecutionVariable(Expression):
     """Pipeline execution variables for workflow."""
-
-    def __new__(cls, *args, **kwargs):  # pylint: disable=unused-argument
-        """Subclass str"""
-        value = ""
-        if len(args) == 1:
-            value = args[0] or value
-        elif kwargs:
-            value = kwargs.get("name", value)
-        return str.__new__(cls, ExecutionVariable._expr(value))
 
     def __init__(self, name: str):
         """Create a pipeline execution variable.
@@ -39,30 +28,12 @@ class ExecutionVariable(Entity, str):
         Args:
             name (str): The name of the execution variable.
         """
-        super(ExecutionVariable, self).__init__()
         self.name = name
 
-    def __hash__(self):
-        """Hash function for execution variable types"""
-        return hash(tuple(self.to_request()))
-
-    def to_request(self) -> RequestType:
-        """Get the request structure for workflow service calls."""
-        return self.expr
-
     @property
-    def expr(self) -> Dict[str, str]:
+    def expr(self) -> RequestType:
         """The 'Get' expression dict for an `ExecutionVariable`."""
-        return ExecutionVariable._expr(self.name)
-
-    @classmethod
-    def _expr(cls, name):
-        """An internal classmethod for the 'Get' expression dict for an `ExecutionVariable`.
-
-        Args:
-            name (str): The name of the execution variable.
-        """
-        return {"Get": f"Execution.{name}"}
+        return {"Get": f"Execution.{self.name}"}
 
 
 class ExecutionVariables:

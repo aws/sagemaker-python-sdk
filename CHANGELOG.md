@@ -1,5 +1,34 @@
 # Changelog
 
+## v2.41.0 (2021-05-17)
+
+### Features
+
+ * add pipeline experiment config
+ * add data wrangler processor
+ * support RetryStrategy for training jobs
+
+### Bug Fixes and Other Changes
+
+ * fix repack pipeline step by putting inference.py in "code" sub dir
+ * add data wrangler image uri
+ * fix black-check errors
+
+## v2.40.0 (2021-05-11)
+
+### Features
+
+ * add xgboost framework version 1.2-2
+
+### Bug Fixes and Other Changes
+
+ * fix get_execution_role on Studio
+ * [fix] Check py_version existence in RegisterModel step
+
+### Documentation Changes
+
+ * SM Distributed EFA Launch
+
 ## v2.39.1 (2021-05-05)
 
 ### Bug Fixes and Other Changes
