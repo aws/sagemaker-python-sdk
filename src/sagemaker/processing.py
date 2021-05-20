@@ -1230,7 +1230,7 @@ class FrameworkProcessor(ScriptProcessor):
         instance_type,
         py_version="py3",  # New kwarg
         image_uri=None,
-        command=["python"],
+        command=["python3"],
         volume_size_in_gb=30,
         volume_kms_key=None,
         output_kms_key=None,
@@ -1359,6 +1359,60 @@ class FrameworkProcessor(ScriptProcessor):
 
         return image_uri, base_job_name
 
+    def get_run_args(
+        self,
+        code,
+        source_dir=None,
+        dependencies=None,
+        git_config=None,
+        inputs=None,
+        outputs=None,
+        arguments=None,
+        job_name=None,
+    ):
+        """Returns a RunArgs object.
+
+        This object contains the normalized inputs, outputs and arguments needed
+        when using a ``FrameworkProcessor`` in a :class:`~sagemaker.workflow.steps.ProcessingStep`.
+
+        Args:
+            code (str): This can be an S3 URI or a local path to a file with the framework
+                script to run. See the ``code`` argument in
+                `sagemaker.processing.FrameworkProcessor.run()`.
+            source_dir (str): Path (absolute, relative, or an S3 URI) to a directory wit
+                any other processing source code dependencies aside from the entrypoint
+                file (default: None). See the ``source_dir`` argument in
+                `sagemaker.processing.FrameworkProcessor.run()`
+            dependencies (list[str]): A list of paths to directories (absolute or relative)
+                with any additional libraries that will be exported to the container
+                (default: []). See the ``dependencies`` argument in
+                `sagemaker.processing.FrameworkProcessor.run()`.
+            git_config (dict[str, str]): Git configurations used for cloning files. See the
+                `git_config` argument in `sagemaker.processing.FrameworkProcessor.run()`.
+            inputs (list[:class:`~sagemaker.processing.ProcessingInput`]): Input files for
+                the processing job. These must be provided as
+                :class:`~sagemaker.processing.ProcessingInput` objects (default: None).
+            outputs (list[:class:`~sagemaker.processing.ProcessingOutput`]): Outputs for
+                the processing job. These can be specified as either path strings or
+                :class:`~sagemaker.processing.ProcessingOutput` objects (default: None).
+            arguments (list[str]): A list of string arguments to be passed to a
+                processing job (default: None).
+            job_name (str): Processing job name. If not specified, the processor generates
+                a default job name, based on the base job name and current timestamp.
+        """
+        # When job_name is None, the job_name to upload code (+payload) will
+        # differ from job_name used by run().
+        s3_runproc_sh, inputs, job_name = self._pack_and_upload_code(
+            code, source_dir, dependencies, git_config, job_name, inputs
+        )
+
+        return RunArgs(
+            s3_runproc_sh,
+            inputs=inputs,
+            outputs=outputs,
+            arguments=arguments,
+        )
+
     def run(  # type: ignore[override]
         self,
         code,
@@ -1377,15 +1431,17 @@ class FrameworkProcessor(ScriptProcessor):
         """Runs a processing job.
 
         Args:
-            code (str): Path (absolute or relative) to the local Python source
-                file which should be executed as the entry point to training. If
-                ``source_dir`` is specified, then ``code`` must point to a file
-                located at the root of ``source_dir``.
+            code (str): This can be an S3 URI or a local path to a file with the
+                framework script to run.Path (absolute or relative) to the local
+                Python source file which should be executed as the entry point
+                to training. When `code` is an S3 URI, ignore `source_dir`,
+                `dependencies, and `git_config`. If ``source_dir`` is specified,
+                then ``code`` must point to a file located at the root of ``source_dir``.
             source_dir (str): Path (absolute, relative or an S3 URI) to a directory
-                with any other training source code dependencies aside from the entry
+                with any other processing source code dependencies aside from the entry
                 point file (default: None). If ``source_dir`` is an S3 URI, it must
                 point to a tar.gz file. Structure within this directory are preserved
-                when training on Amazon SageMaker (default: None).
+                when processing on Amazon SageMaker (default: None).
             dependencies (list[str]): A list of paths to directories (absolute
                 or relative) with any additional libraries that will be exported
                 to the container (default: []). The library folders will be
@@ -1461,12 +1517,40 @@ class FrameworkProcessor(ScriptProcessor):
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 user code file (default: None).
         """
-        if job_name is None:
-            job_name = self._generate_current_job_name()
+        s3_runproc_sh, inputs, job_name = self._pack_and_upload_code(
+            code, source_dir, dependencies, git_config, job_name, inputs
+        )
 
-        estimator = self._upload_payload(code, source_dir, dependencies, git_config, job_name)
+        # Submit a processing job.
+        super().run(
+            code=s3_runproc_sh,
+            inputs=inputs,
+            outputs=outputs,
+            arguments=arguments,
+            wait=wait,
+            logs=logs,
+            job_name=job_name,
+            experiment_config=experiment_config,
+            kms_key=kms_key,
+        )
+
+    def _pack_and_upload_code(self, code, source_dir, dependencies, git_config, job_name, inputs):
+        if code.startswith("s3://"):
+            return code, inputs, job_name
+
+        if job_name is None:
+            job_name = self._generate_current_job_name(job_name)
+
+        estimator = self._upload_payload(
+            code,
+            source_dir,
+            dependencies,
+            git_config,
+            job_name,
+        )
         inputs = self._patch_inputs_with_payload(
-            inputs, estimator._hyperparameters["sagemaker_submit_directory"]
+            inputs,
+            estimator._hyperparameters["sagemaker_submit_directory"],
         )
 
         local_code = get_config_value("local.local_code", self.sagemaker_session.config)
@@ -1490,18 +1574,7 @@ class FrameworkProcessor(ScriptProcessor):
         )
         logger.info("runproc.sh uploaded to %s", s3_runproc_sh)
 
-        # Submit a processing job.
-        super().run(
-            code=s3_runproc_sh,
-            inputs=inputs,
-            outputs=outputs,
-            arguments=arguments,
-            wait=wait,
-            logs=logs,
-            job_name=job_name,
-            experiment_config=experiment_config,
-            kms_key=kms_key,
-        )
+        return s3_runproc_sh, inputs, job_name
 
     def _generate_framework_script(self, user_script: str) -> str:
         """Generate the framework entrypoint file (as text) for a processing job.
@@ -1525,7 +1598,12 @@ class FrameworkProcessor(ScriptProcessor):
             # Exit on any error. SageMaker uses error code to mark failed job.
             set -e
 
-            [[ -f 'requirements.txt' ]] && pip install -r requirements.txt
+            if [[ -f 'requirements.txt' ]]; then
+                # Some py3 containers has typing, which may breaks pip install
+                pip uninstall --yes typing
+
+                pip install -r requirements.txt
+            fi
 
             {entry_point_command} {entry_point} "$@"
         """

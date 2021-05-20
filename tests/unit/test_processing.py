@@ -162,7 +162,7 @@ def test_sklearn_with_all_parameters(
 @patch("os.path.exists", return_value=True)
 @patch("os.path.isfile", return_value=True)
 def test_sklearn_with_all_parameters_via_run_args(
-    exists_mock, isfile_mock, botocore_resolver, sklearn_version, sagemaker_session
+    exists_mock, isfile_mock, botocore_resolver, sklearn_version, sagemaker_session, uploaded_code
 ):
     botocore_resolver.return_value.construct_endpoint.return_value = {"hostname": ECR_HOSTNAME}
     custom_command = ["Rscript"]
@@ -190,28 +190,31 @@ def test_sklearn_with_all_parameters_via_run_args(
         sagemaker_session=sagemaker_session,
     )
 
-    # FIXME: to check FrameworkProcessor.get_run_args(), and possibly fix with
-    # source_dir, dependencies.
-    run_args = processor.get_run_args(
-        code="/local/path/to/processing_code.py",
-        inputs=_get_data_inputs_all_parameters(),
-        outputs=_get_data_outputs_all_parameters(),
-        arguments=["--drop-columns", "'SelfEmployed'"],
-    )
+    with patch("sagemaker.estimator.tar_and_upload_dir", return_value=uploaded_code):
+        run_args = processor.get_run_args(
+            code="processing_code.py",
+            source_dir="/local/path/to/source_dir",
+            dependencies=["/local/path/to/dep_01"],
+            git_config=None,
+            inputs=_get_data_inputs_all_parameters(),
+            outputs=_get_data_outputs_all_parameters(),
+            arguments=["--drop-columns", "'SelfEmployed'"],
+        )
 
-    processor.run(
-        code=run_args.code,
-        inputs=run_args.inputs,
-        outputs=run_args.outputs,
-        arguments=run_args.arguments,
-        wait=True,
-        logs=False,
-        experiment_config={"ExperimentName": "AnExperiment"},
-    )
+        processor.run(
+            code=run_args.code,
+            inputs=run_args.inputs,
+            outputs=run_args.outputs,
+            arguments=run_args.arguments,
+            wait=True,
+            logs=False,
+            experiment_config={"ExperimentName": "AnExperiment"},
+        )
 
     expected_args = _get_expected_args_all_parameters_modular_code(
         processor._current_job_name,
         instance_count=2,
+        code_s3_prefix=run_args.code.replace("/runproc.sh", ""),
     )
     sklearn_image_uri = (
         "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:{}-cpu-py3"
@@ -235,7 +238,7 @@ def test_sklearn_with_all_parameters_via_run_args(
 @patch("os.path.exists", return_value=True)
 @patch("os.path.isfile", return_value=True)
 def test_sklearn_with_all_parameters_via_run_args_called_twice(
-    exists_mock, isfile_mock, botocore_resolver, sklearn_version, sagemaker_session
+    exists_mock, isfile_mock, botocore_resolver, sklearn_version, sagemaker_session, uploaded_code
 ):
     botocore_resolver.return_value.construct_endpoint.return_value = {"hostname": ECR_HOSTNAME}
 
@@ -261,15 +264,22 @@ def test_sklearn_with_all_parameters_via_run_args_called_twice(
         sagemaker_session=sagemaker_session,
     )
 
-    run_args = processor.get_run_args(
-        code="/local/path/to/processing_code.py",
-        inputs=_get_data_inputs_all_parameters(),
-        outputs=_get_data_outputs_all_parameters(),
-        arguments=["--drop-columns", "'SelfEmployed'"],
-    )
+    with patch("sagemaker.estimator.tar_and_upload_dir", return_value=uploaded_code):
+        run_args = processor.get_run_args(
+            code="processing_code.py",
+            source_dir="/local/path/to/source_dir",
+            dependencies=["/local/path/to/dep_01"],
+            git_config=None,
+            inputs=_get_data_inputs_all_parameters(),
+            outputs=_get_data_outputs_all_parameters(),
+            arguments=["--drop-columns", "'SelfEmployed'"],
+        )
 
     run_args = processor.get_run_args(
         code="/local/path/to/processing_code.py",
+        source_dir=None,
+        dependencies=None,
+        git_config=None,
         inputs=_get_data_inputs_all_parameters(),
         outputs=_get_data_outputs_all_parameters(),
         arguments=["--drop-columns", "'SelfEmployed'"],
@@ -285,7 +295,10 @@ def test_sklearn_with_all_parameters_via_run_args_called_twice(
         experiment_config={"ExperimentName": "AnExperiment"},
     )
 
-    expected_args = _get_expected_args_all_parameters_modular_code(processor._current_job_name)
+    expected_args = _get_expected_args_all_parameters_modular_code(
+        processor._current_job_name,
+        code_s3_prefix=run_args.code.replace("/runproc.sh", ""),
+    )
     sklearn_image_uri = (
         "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:{}-cpu-py3"
     ).format(sklearn_version)
@@ -839,9 +852,14 @@ def _get_data_outputs_all_parameters():
 
 
 def _get_expected_args_all_parameters_modular_code(
-    job_name, code_s3_uri=MOCKED_S3_URI, instance_count=1
+    job_name,
+    code_s3_uri=MOCKED_S3_URI,
+    instance_count=1,
+    code_s3_prefix=None,
 ):
-    # Add something to inputs
+    if code_s3_prefix is None:
+        code_s3_prefix = f"{code_s3_uri}/{job_name}/source"
+
     return {
         "inputs": [
             {
@@ -911,7 +929,7 @@ def _get_expected_args_all_parameters_modular_code(
                 "InputName": "code",
                 "AppManaged": False,
                 "S3Input": {
-                    "S3Uri": f"{code_s3_uri}/{job_name}/source/sourcedir.tar.gz",
+                    "S3Uri": f"{code_s3_prefix}/sourcedir.tar.gz",
                     "LocalPath": "/opt/ml/processing/input/code/",
                     "S3DataType": "S3Prefix",
                     "S3InputMode": "File",
@@ -923,7 +941,7 @@ def _get_expected_args_all_parameters_modular_code(
                 "InputName": "entrypoint",
                 "AppManaged": False,
                 "S3Input": {
-                    "S3Uri": f"{code_s3_uri}/{job_name}/source/runproc.sh",
+                    "S3Uri": f"{code_s3_prefix}/runproc.sh",
                     "LocalPath": "/opt/ml/processing/input/entrypoint",
                     "S3DataType": "S3Prefix",
                     "S3InputMode": "File",
