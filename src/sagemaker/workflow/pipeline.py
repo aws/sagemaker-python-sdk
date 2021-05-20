@@ -16,7 +16,7 @@ from __future__ import absolute_import
 import json
 
 from copy import deepcopy
-from typing import Any, Dict, List, Sequence, Union
+from typing import Any, Dict, List, Sequence, Union, Optional
 
 import attr
 import botocore
@@ -29,7 +29,9 @@ from sagemaker.workflow.entities import (
     Expression,
     RequestType,
 )
+from sagemaker.workflow.execution_variables import ExecutionVariables
 from sagemaker.workflow.parameters import Parameter
+from sagemaker.workflow.pipeline_experiment_config import PipelineExperimentConfig
 from sagemaker.workflow.properties import Properties
 from sagemaker.workflow.steps import Step
 from sagemaker.workflow.step_collections import StepCollection
@@ -43,6 +45,12 @@ class Pipeline(Entity):
     Attributes:
         name (str): The name of the pipeline.
         parameters (Sequence[Parameters]): The list of the parameters.
+        pipeline_experiment_config (Optional[PipelineExperimentConfig]): If set,
+            the workflow will attempt to create an experiment and trial before
+            executing the steps. Creation will be skipped if an experiment or a trial with
+            the same name already exists. By default, pipeline name is used as
+            experiment name and execution id is used as the trial name.
+            If set to None, no experiment or trial will be created automatically.
         steps (Sequence[Steps]): The list of the non-conditional steps associated with the pipeline.
             Any steps that are within the
             `if_steps` or `else_steps` of a `ConditionStep` cannot be listed in the steps of a
@@ -56,6 +64,11 @@ class Pipeline(Entity):
 
     name: str = attr.ib(factory=str)
     parameters: Sequence[Parameter] = attr.ib(factory=list)
+    pipeline_experiment_config: Optional[PipelineExperimentConfig] = attr.ib(
+        default=PipelineExperimentConfig(
+            ExecutionVariables.PIPELINE_NAME, ExecutionVariables.PIPELINE_EXECUTION_ID
+        )
+    )
     steps: Sequence[Union[Step, StepCollection]] = attr.ib(factory=list)
     sagemaker_session: Session = attr.ib(factory=Session)
 
@@ -68,6 +81,9 @@ class Pipeline(Entity):
             "Version": self._version,
             "Metadata": self._metadata,
             "Parameters": list_to_request(self.parameters),
+            "PipelineExperimentConfig": self.pipeline_experiment_config.to_request()
+            if self.pipeline_experiment_config is not None
+            else None,
             "Steps": list_to_request(self.steps),
         }
 
@@ -75,7 +91,6 @@ class Pipeline(Entity):
         self,
         role_arn: str,
         description: str = None,
-        experiment_name: str = None,
         tags: List[Dict[str, str]] = None,
     ) -> Dict[str, Any]:
         """Creates a Pipeline in the Pipelines service.
@@ -83,7 +98,6 @@ class Pipeline(Entity):
         Args:
             role_arn (str): The role arn that is assumed by the pipeline to create step artifacts.
             description (str): A description of the pipeline.
-            experiment_name (str): The name of the experiment.
             tags (List[Dict[str, str]]): A list of {"Key": "string", "Value": "string"} dicts as
                 tags.
 
@@ -95,7 +109,6 @@ class Pipeline(Entity):
         kwargs = self._create_args(role_arn, description)
         update_args(
             kwargs,
-            ExperimentName=experiment_name,
             Tags=tags,
         )
         return self.sagemaker_session.sagemaker_client.create_pipeline(**kwargs)
@@ -105,7 +118,7 @@ class Pipeline(Entity):
 
         Args:
             role_arn (str): The role arn that is assumed by pipelines to create step artifacts.
-            pipeline_description (str): A description of the pipeline.
+            description (str): A description of the pipeline.
 
         Returns:
             A keyword argument dict for calling create_pipeline.
@@ -146,15 +159,13 @@ class Pipeline(Entity):
         self,
         role_arn: str,
         description: str = None,
-        experiment_name: str = None,
         tags: List[Dict[str, str]] = None,
     ) -> Dict[str, Any]:
         """Creates a pipeline or updates it, if it already exists.
 
         Args:
             role_arn (str): The role arn that is assumed by workflow to create step artifacts.
-            pipeline_description (str): A description of the pipeline.
-            experiment_name (str): The name of the experiment.
+            description (str): A description of the pipeline.
             tags (List[Dict[str, str]]): A list of {"Key": "string", "Value": "string"} dicts as
                 tags.
 
@@ -162,7 +173,7 @@ class Pipeline(Entity):
             response dict from service
         """
         try:
-            response = self.create(role_arn, description, experiment_name, tags)
+            response = self.create(role_arn, description, tags)
         except ClientError as e:
             error = e.response["Error"]
             if (
@@ -227,6 +238,9 @@ class Pipeline(Entity):
     def definition(self) -> str:
         """Converts a request structure to string representation for workflow service calls."""
         request_dict = self.to_request()
+        request_dict["PipelineExperimentConfig"] = interpolate(
+            request_dict["PipelineExperimentConfig"]
+        )
         request_dict["Steps"] = interpolate(request_dict["Steps"])
 
         return json.dumps(request_dict)
