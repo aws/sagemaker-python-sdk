@@ -1230,7 +1230,7 @@ class FrameworkProcessor(ScriptProcessor):
         instance_type,
         py_version="py3",  # New kwarg
         image_uri=None,
-        command=["python"],
+        command=["python3"],
         volume_size_in_gb=30,
         volume_kms_key=None,
         output_kms_key=None,
@@ -1598,7 +1598,12 @@ class FrameworkProcessor(ScriptProcessor):
             # Exit on any error. SageMaker uses error code to mark failed job.
             set -e
 
-            [[ -f 'requirements.txt' ]] && pip install -r requirements.txt
+            if [[ -f 'requirements.txt' ]]; then
+                # Some py3 containers has typing, which may breaks pip install
+                pip uninstall --yes typing
+
+                pip install -r requirements.txt
+            fi
 
             {entry_point_command} {entry_point} "$@"
         """
