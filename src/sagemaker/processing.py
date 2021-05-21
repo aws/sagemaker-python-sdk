@@ -135,7 +135,7 @@ class Processor(object):
         job_name=None,
         experiment_config=None,
         kms_key=None,
-        prefix=None
+        prefix=None,
     ):
         """Runs a processing job.
 
@@ -158,7 +158,7 @@ class Processor(object):
                 'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 user code file (default: None).
-            prefix (str): Bucket prefix the processing job will upload the local app and 
+            prefix (str): Bucket prefix the processing job will upload the local app and
                 inputs to before downloading to container.
 
         Raises:
@@ -176,7 +176,7 @@ class Processor(object):
             inputs=inputs,
             kms_key=kms_key,
             outputs=outputs,
-            prefix=prefix
+            prefix=prefix,
         )
 
         self.latest_job = ProcessingJob.start_new(
@@ -201,7 +201,7 @@ class Processor(object):
         outputs=None,
         code=None,
         kms_key=None,
-        prefix=None
+        prefix=None,
     ):
         """Normalizes the arguments so that they can be passed to the job run
 
@@ -221,11 +221,11 @@ class Processor(object):
                 script to run (default: None). A no op in the base class.
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 user code file (default: None).
-            prefix (str): Bucket prefix the processing job will upload the local app and 
+            prefix (str): Bucket prefix the processing job will upload the local app and
                 inputs to before downloading to container.
         """
         self._current_job_name = self._generate_current_job_name(job_name=job_name)
-        self._prefix = self._current_job_name if self._prefix == None else prefix
+        self._prefix = self._current_job_name if self._prefix is None else prefix
 
         inputs_with_code = self._include_code_in_inputs(inputs, code, kms_key)
         normalized_inputs = self._normalize_inputs(inputs_with_code, kms_key)
@@ -494,6 +494,7 @@ class ScriptProcessor(Processor):
         job_name=None,
         experiment_config=None,
         kms_key=None,
+        prefix=None,
     ):
         """Runs a processing job.
 
@@ -518,6 +519,8 @@ class ScriptProcessor(Processor):
                 'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 user code file (default: None).
+            prefix (str): Bucket prefix the processing job will upload the local app and
+                inputs to before downloading to container.
         """
         normalized_inputs, normalized_outputs = self._normalize_args(
             job_name=job_name,
@@ -526,6 +529,7 @@ class ScriptProcessor(Processor):
             outputs=outputs,
             code=code,
             kms_key=kms_key,
+            prefix=prefix,
         )
 
         self.latest_job = ProcessingJob.start_new(
