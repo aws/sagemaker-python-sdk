@@ -14,6 +14,7 @@ from __future__ import absolute_import
 
 import pytest
 from mock import Mock, patch, MagicMock
+from packaging import version
 
 from sagemaker.dataset_definition.inputs import (
     S3Input,
@@ -29,6 +30,7 @@ from sagemaker.processing import (
     ProcessingJob,
 )
 from sagemaker.sklearn.processing import SKLearnProcessor
+from sagemaker.pytorch.processing import PyTorchProcessor
 from sagemaker.network import NetworkConfig
 from sagemaker.processing import FeatureStoreOutput
 from sagemaker.fw_utils import UploadedCode
@@ -306,6 +308,38 @@ def test_sklearn_with_all_parameters_via_run_args_called_twice(
 
     sagemaker_session.process.assert_called_with(**expected_args)
 
+@patch("sagemaker.utils._botocore_resolver")
+@patch("os.path.exists", return_value=True)
+@patch("os.path.isfile", return_value=True)
+def test_pytorch_processor_with_required_parameters(
+    exists_mock, isfile_mock, botocore_resolver, sagemaker_session, pytorch_training_version
+):
+    botocore_resolver.return_value.construct_endpoint.return_value = {"hostname": ECR_HOSTNAME}
+
+    processor = PyTorchProcessor(
+        role=ROLE,
+        instance_type="ml.m4.xlarge",
+        framework_version=pytorch_training_version,
+        instance_count=1,
+        sagemaker_session=sagemaker_session,
+    )
+
+    processor.run(code="/local/path/to/processing_code.py")
+
+    expected_args = _get_expected_args_modular_code(processor._current_job_name)
+
+    if version.parse(pytorch_training_version) < version.parse("1.2"):
+        pytorch_image_uri = (
+            "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-pytorch:{}-cpu-py3"
+        ).format(pytorch_training_version)
+    else:
+        pytorch_image_uri = (
+            "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:{}-cpu-py3"
+        ).format(pytorch_training_version)
+    
+    expected_args["app_specification"]["ImageUri"] = pytorch_image_uri
+
+    sagemaker_session.process.assert_called_with(**expected_args)
 
 @patch("os.path.exists", return_value=False)
 def test_script_processor_errors_with_nonexistent_local_code(exists_mock, sagemaker_session):
