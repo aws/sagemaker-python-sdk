@@ -159,6 +159,12 @@ def test_pipeline_start(sagemaker_session_mock):
     assert sagemaker_session_mock.start_pipeline_execution.called_with(
         PipelineName="MyPipeline",
     )
+
+    pipeline.start(execution_display_name="pipeline-execution")
+    assert sagemaker_session_mock.start_pipeline_execution.called_with(
+        PipelineName="MyPipeline", PipelineExecutionDisplayName="pipeline-execution"
+    )
+
     pipeline.start(parameters=dict(alpha="epsilon"))
     assert sagemaker_session_mock.start_pipeline_execution.called_with(
         PipelineName="MyPipeline", PipelineParameters=[{"Name": "alpha", "Value": "epsilon"}]
