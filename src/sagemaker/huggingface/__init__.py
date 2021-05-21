@@ -14,3 +14,4 @@
 from __future__ import absolute_import
 
 from sagemaker.huggingface.estimator import HuggingFace  # noqa: F401
+from sagemaker.huggingface.processing import HuggingFaceProcessor  # noqa:F401
