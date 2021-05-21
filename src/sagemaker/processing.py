@@ -117,6 +117,7 @@ class Processor(object):
         self.latest_job = None
         self._current_job_name = None
         self.arguments = None
+        self._prefix = None
 
         if self.instance_type in ("local", "local_gpu"):
             if not isinstance(sagemaker_session, LocalSession):
@@ -134,6 +135,7 @@ class Processor(object):
         job_name=None,
         experiment_config=None,
         kms_key=None,
+        prefix=None
     ):
         """Runs a processing job.
 
@@ -156,6 +158,8 @@ class Processor(object):
                 'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 user code file (default: None).
+            prefix (str): Bucket prefix the processing job will upload the local app and 
+                inputs to before downloading to container.
 
         Raises:
             ValueError: if ``logs`` is True but ``wait`` is False.
@@ -172,6 +176,7 @@ class Processor(object):
             inputs=inputs,
             kms_key=kms_key,
             outputs=outputs,
+            prefix=prefix
         )
 
         self.latest_job = ProcessingJob.start_new(
@@ -196,6 +201,7 @@ class Processor(object):
         outputs=None,
         code=None,
         kms_key=None,
+        prefix=None
     ):
         """Normalizes the arguments so that they can be passed to the job run
 
@@ -215,8 +221,11 @@ class Processor(object):
                 script to run (default: None). A no op in the base class.
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 user code file (default: None).
+            prefix (str): Bucket prefix the processing job will upload the local app and 
+                inputs to before downloading to container.
         """
         self._current_job_name = self._generate_current_job_name(job_name=job_name)
+        self._prefix = self._current_job_name if self._prefix == None else prefix
 
         inputs_with_code = self._include_code_in_inputs(inputs, code, kms_key)
         normalized_inputs = self._normalize_inputs(inputs_with_code, kms_key)
@@ -304,7 +313,7 @@ class Processor(object):
                     desired_s3_uri = s3.s3_path_join(
                         "s3://",
                         self.sagemaker_session.default_bucket(),
-                        self._current_job_name,
+                        self._prefix,
                         "input",
                         file_input.input_name,
                     )
@@ -353,7 +362,7 @@ class Processor(object):
                     s3_uri = s3.s3_path_join(
                         "s3://",
                         self.sagemaker_session.default_bucket(),
-                        self._current_job_name,
+                        self._prefix,
                         "output",
                         output.output_name,
                     )
@@ -632,7 +641,7 @@ class ScriptProcessor(Processor):
         desired_s3_uri = s3.s3_path_join(
             "s3://",
             self.sagemaker_session.default_bucket(),
-            self._current_job_name,
+            self._prefix,
             "input",
             self._CODE_CONTAINER_INPUT_NAME,
         )

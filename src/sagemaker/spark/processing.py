@@ -213,6 +213,7 @@ class _SparkProcessorBase(ScriptProcessor):
         wait=True,
         logs=True,
         job_name=None,
+        prefix=None,
         experiment_config=None,
         kms_key=None,
     ):
@@ -233,6 +234,8 @@ class _SparkProcessorBase(ScriptProcessor):
                 Only meaningful when wait is True (default: True).
             job_name (str): Processing job name. If not specified, the processor generates
                 a default job name, based on the base job name and current timestamp.
+            prefix (str): Bucket prefix the processing job will upload the local app and 
+                inputs to before downloading to container.
             experiment_config (dict[str, str]): Experiment management configuration.
                 Dictionary contains three optional keys:
                 'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
@@ -249,6 +252,7 @@ class _SparkProcessorBase(ScriptProcessor):
             wait,
             logs,
             job_name,
+            prefix,
             experiment_config,
             kms_key,
         )
