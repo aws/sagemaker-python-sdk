@@ -315,6 +315,31 @@ def test_get_caller_identity_arn_from_describe_notebook_instance(boto_session):
     )
 
 
+@patch(
+    "six.moves.builtins.open",
+    mock_open(
+        read_data='{"ResourceName": "SageMakerInstance", '
+        '"DomainId": "d-kbnw5yk6tg8j", '
+        '"UserProfileName": "default-1617915559064"}'
+    ),
+)
+@patch("os.path.exists", side_effect=mock_exists(NOTEBOOK_METADATA_FILE, True))
+def test_get_caller_identity_arn_from_describe_user_profile(boto_session):
+    sess = Session(boto_session)
+    expected_role = "arn:aws:iam::369233609183:role/service-role/SageMakerRole-20171129T072388"
+    sess.sagemaker_client.describe_user_profile.return_value = {
+        "UserSettings": {"ExecutionRole": expected_role}
+    }
+
+    actual = sess.get_caller_identity_arn()
+
+    assert actual == expected_role
+    sess.sagemaker_client.describe_user_profile.assert_called_once_with(
+        DomainId="d-kbnw5yk6tg8j",
+        UserProfileName="default-1617915559064",
+    )
+
+
 @patch("six.moves.builtins.open", mock_open(read_data='{"ResourceName": "SageMakerInstance"}'))
 @patch("os.path.exists", side_effect=mock_exists(NOTEBOOK_METADATA_FILE, True))
 @patch("sagemaker.session.sts_regional_endpoint", return_value=STS_ENDPOINT)
@@ -1208,6 +1233,7 @@ def test_train_pack_to_request_with_optional_params(sagemaker_session):
     }
 
     stop_cond = {"MaxRuntimeInSeconds": MAX_TIME}
+    RETRY_STRATEGY = {"MaximumRetryAttempts": 2}
     hyperparameters = {"foo": "bar"}
 
     sagemaker_session.train(
@@ -1229,6 +1255,7 @@ def test_train_pack_to_request_with_optional_params(sagemaker_session):
         checkpoint_local_path="/tmp/checkpoints",
         enable_sagemaker_metrics=True,
         environment=ENV_INPUT,
+        retry_strategy=RETRY_STRATEGY,
     )
 
     _, _, actual_train_args = sagemaker_session.sagemaker_client.method_calls[0]
@@ -1243,6 +1270,7 @@ def test_train_pack_to_request_with_optional_params(sagemaker_session):
     assert actual_train_args["CheckpointConfig"]["S3Uri"] == "s3://mybucket/checkpoints/"
     assert actual_train_args["CheckpointConfig"]["LocalPath"] == "/tmp/checkpoints"
     assert actual_train_args["Environment"] == ENV_INPUT
+    assert actual_train_args["RetryStrategy"] == RETRY_STRATEGY
 
 
 def test_transform_pack_to_request(sagemaker_session):

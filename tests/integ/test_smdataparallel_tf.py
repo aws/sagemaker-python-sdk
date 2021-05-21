@@ -27,6 +27,10 @@ smdataparallel_dir = os.path.join(
 )
 
 
+@pytest.mark.skip(
+    reason="This test is skipped for now due ML capacity error."
+    "This test should be re-enabled later."
+)
 @pytest.mark.skipif(
     integ.test_region() not in integ.DATA_PARALLEL_TESTING_REGIONS,
     reason="Only allow this test to run in IAD and CMH to limit usage of p3.16xlarge",
