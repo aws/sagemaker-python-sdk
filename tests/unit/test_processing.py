@@ -31,6 +31,7 @@ from sagemaker.processing import (
 )
 from sagemaker.sklearn.processing import SKLearnProcessor
 from sagemaker.pytorch.processing import PyTorchProcessor
+from sagemaker.xgboost.processing import XGBoostEstimator
 from sagemaker.network import NetworkConfig
 from sagemaker.processing import FeatureStoreOutput
 from sagemaker.fw_utils import UploadedCode
@@ -340,6 +341,40 @@ def test_pytorch_processor_with_required_parameters(
     expected_args["app_specification"]["ImageUri"] = pytorch_image_uri
 
     sagemaker_session.process.assert_called_with(**expected_args)
+
+@patch("sagemaker.utils._botocore_resolver")
+@patch("os.path.exists", return_value=True)
+@patch("os.path.isfile", return_value=True)
+def test_xgboost_with_required_parameters(
+    exists_mock, isfile_mock, botocore_resolver, sagemaker_session, xgboost_framework_version
+):
+    botocore_resolver.return_value.construct_endpoint.return_value = {"hostname": ECR_HOSTNAME}
+
+    processor = XGBoostEstimator(
+        role=ROLE,
+        instance_type="ml.m4.xlarge",
+        framework_version=xgboost_framework_version,
+        instance_count=1,
+        sagemaker_session=sagemaker_session,
+    )
+
+    processor.run(code="/local/path/to/processing_code.py")
+
+    expected_args = _get_expected_args_modular_code(processor._current_job_name)
+
+    if version.parse(xgboost_framework_version) < version.parse("1.2-1"):
+        xgboost_image_uri = (
+            "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost:{}-cpu-py3"
+        ).format(xgboost_framework_version)
+    else:
+        xgboost_image_uri = (
+            "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost:{}"
+        ).format(xgboost_framework_version)
+    
+    expected_args["app_specification"]["ImageUri"] = xgboost_image_uri
+
+    sagemaker_session.process.assert_called_with(**expected_args)
+
 
 @patch("os.path.exists", return_value=False)
 def test_script_processor_errors_with_nonexistent_local_code(exists_mock, sagemaker_session):
