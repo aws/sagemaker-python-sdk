@@ -115,6 +115,7 @@ class DataWranglerProcessor(Processor):
         outputs=None,
         code=None,
         kms_key=None,
+        prefix=None,
     ):
         """Normalizes the arguments so that they can be passed to the job run
 
@@ -134,12 +135,14 @@ class DataWranglerProcessor(Processor):
                 script to run (default: None). A no op in the base class.
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 user code file (default: None).
+            prefix (str): Bucket prefix the processing job will upload the local app and
+                inputs to before downloading to container.
         """
         inputs = inputs or []
         found = any(element.input_name == "flow" for element in inputs)
         if not found:
             inputs.append(self._get_recipe_input())
-        return super()._normalize_args(job_name, arguments, inputs, outputs, code, kms_key)
+        return super()._normalize_args(job_name, arguments, inputs, outputs, code, kms_key, prefix)
 
     def _get_recipe_input(self):
         """Creates a ProcessingInput with Data Wrangler recipe uri and appends it to inputs"""
