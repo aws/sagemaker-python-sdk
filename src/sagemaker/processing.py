@@ -225,7 +225,7 @@ class Processor(object):
                 inputs to before downloading to container.
         """
         self._current_job_name = self._generate_current_job_name(job_name=job_name)
-        self._prefix = self._current_job_name if prefix is None else prefix
+        self._prefix = self._current_job_name if prefix is None else s3.s3_path_join(prefix, self._current_job_name)
 
         inputs_with_code = self._include_code_in_inputs(inputs, code, kms_key)
         normalized_inputs = self._normalize_inputs(inputs_with_code, kms_key)
