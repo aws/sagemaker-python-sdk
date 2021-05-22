@@ -128,7 +128,8 @@ class Processor(object):
 
         if self.instance_type in ("local", "local_gpu"):
             if not isinstance(sagemaker_session, LocalSession):
-                sagemaker_session = LocalSession()
+                # Until Local Mode Processing supports local code, we need to disable it:
+                sagemaker_session = LocalSession(disable_local_code=True)
 
         self.sagemaker_session = sagemaker_session or Session()
 
@@ -1568,10 +1569,11 @@ class FrameworkProcessor(ScriptProcessor):
 
         local_code = get_config_value("local.local_code", self.sagemaker_session.config)
         if self.sagemaker_session.local_mode and local_code:
-            # TODO: Can we be more prescriptive about how to not trigger this error?
-            # How can user or us force a local mode `Estimator` to run with `local_code=False`?
             raise RuntimeError(
-                "Local *code* is not currently supported for SageMaker Processing in Local Mode"
+                "SageMaker Processing Local Mode does not currently support 'local code' mode. "
+                "Please use a LocalSession created with disable_local_code=True, or leave "
+                "sagemaker_session unspecified when creating your Processor to have one set up "
+                "automatically."
             )
 
         # Upload the bootstrapping code as s3://.../jobname/source/runproc.sh.
