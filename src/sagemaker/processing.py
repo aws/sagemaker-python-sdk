@@ -22,7 +22,7 @@ import os
 import pathlib
 import logging
 from textwrap import dedent
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 import attr
 
 from six.moves.urllib.parse import urlparse
@@ -1231,7 +1231,7 @@ class FrameworkProcessor(ScriptProcessor):
         instance_type,
         py_version="py3",  # New kwarg
         image_uri=None,
-        command=["python3"],
+        command=None,
         volume_size_in_gb=30,
         volume_kms_key=None,
         output_kms_key=None,
@@ -1265,7 +1265,8 @@ class FrameworkProcessor(ScriptProcessor):
             image_uri (str): The URI of the Docker image to use for the
                 processing jobs (default: None).
             command ([str]): The command to run, along with any command-line flags
-                to *precede* the ```code script``` (default: ['python']).
+                to *precede* the ```code script```. Example: ["python3", "-v"]. If not
+                provided, ["python"] will be chosen (default: None).
             volume_size_in_gb (int): Size in GB of the EBS volume
                 to use for storing data during processing (default: 30).
             volume_kms_key (str): A KMS key for the processing volume (default: None).
@@ -1295,6 +1296,9 @@ class FrameworkProcessor(ScriptProcessor):
                 object that configures network isolation, encryption of
                 inter-container traffic, security group IDs, and subnets (default: None).
         """
+        if not command:
+            command = ["python"]
+
         self.estimator_cls = estimator_cls
         self.framework_version = framework_version
         self.py_version = py_version
@@ -1549,6 +1553,7 @@ class FrameworkProcessor(ScriptProcessor):
         )
 
     def _pack_and_upload_code(self, code, source_dir, dependencies, git_config, job_name, inputs):
+        """Pack local code bundle and upload to Amazon S3."""
         if code.startswith("s3://"):
             return code, inputs, job_name
 
