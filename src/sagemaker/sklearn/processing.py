@@ -48,7 +48,7 @@ class SKLearnProcessor(FrameworkProcessor):
         instance_type,
         py_version="py3",  # New kwarg
         image_uri=None,
-        command=["python3"],
+        command=None,
         volume_size_in_gb=30,
         volume_kms_key=None,
         output_kms_key=None,
