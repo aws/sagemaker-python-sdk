@@ -128,7 +128,8 @@ class Processor(object):
 
         if self.instance_type in ("local", "local_gpu"):
             if not isinstance(sagemaker_session, LocalSession):
-                sagemaker_session = LocalSession()
+                # Until Local Mode Processing supports local code, we need to disable it:
+                sagemaker_session = LocalSession(disable_local_code=True)
 
         self.sagemaker_session = sagemaker_session or Session()
 
@@ -1298,10 +1299,15 @@ class FrameworkProcessor(ScriptProcessor):
         self.framework_version = framework_version
         self.py_version = py_version
 
-        image_uri, base_job_name = self._pre_init_normalization(
-            instance_type, image_uri, base_job_name, sagemaker_session
-        )
-
+        # 1. To finalize/normalize the image_uri or base_job_name, we need to create an
+        #    estimator_cls instance.
+        # 2. We want to make it easy for children of FrameworkProcessor to override estimator
+        #    creation via a function (to create FrameworkProcessors for Estimators that may have
+        #    different signatures - like HuggingFace or others in future).
+        # 3. Super-class __init__ doesn't (currently) do anything with these params besides
+        #    storing them
+        #
+        # Therefore we'll init the superclass first and then customize the setup after:
         super().__init__(
             role=role,
             image_uri=image_uri,
@@ -1318,6 +1324,7 @@ class FrameworkProcessor(ScriptProcessor):
             tags=tags,
             network_config=network_config,
         )
+
         # This subclass uses the "code" input for actual payload and the ScriptProcessor parent's
         # functionality for uploading just a small entrypoint script to invoke it.
         self._CODE_CONTAINER_INPUT_NAME = "entrypoint"
@@ -1326,38 +1333,45 @@ class FrameworkProcessor(ScriptProcessor):
             code_location[:-1] if (code_location and code_location.endswith("/")) else code_location
         )
 
-    def _pre_init_normalization(
-        self,
-        instance_type: str,
-        image_uri: Optional[str] = None,
-        base_job_name: Optional[str] = None,
-        sagemaker_session: Optional[str] = None,
-    ) -> Tuple[str, str]:
-        """Normalize job name and container image uri."""
-        # Normalize base_job_name
-        if base_job_name is None:
-            base_job_name = self.estimator_cls._framework_name
+        if image_uri is None or base_job_name is None:
+            # For these default configuration purposes, we don't need the optional args:
+            est = self._create_estimator()
+            if image_uri is None:
+                self.image_uri = est.training_image_uri()
             if base_job_name is None:
-                logger.warning("Framework name is None. Please check with the maintainer.")
-                base_job_name = str(base_job_name)  # Keep mypy happy.
+                self.base_job_name = est.base_job_name or estimator_cls._framework_name
+                if base_job_name is None:
+                    base_job_name = "framework-processor"
 
-        # Normalize image uri.
-        if image_uri is None:
-            # Estimator used only to probe image uri, so can get away with some dummy values.
-            est = self.estimator_cls(
-                framework_version=self.framework_version,
-                instance_type=instance_type,
-                py_version=self.py_version,
-                image_uri=image_uri,
-                entry_point="",
-                role="",
-                enable_network_isolation=False,
-                instance_count=1,  # SKLearn estimator explicitly disables instance_count>1
-                sagemaker_session=sagemaker_session,
-            )
-            image_uri = est.training_image_uri()
-
-        return image_uri, base_job_name
+    def _create_estimator(
+        self,
+        entry_point="",
+        source_dir=None,
+        dependencies=None,
+        git_config=None,
+    ):
+        """Instantiate the Framework Estimator that backs this Processor"""
+        return self.estimator_cls(
+            framework_version=self.framework_version,
+            py_version=self.py_version,
+            entry_point=entry_point,
+            source_dir=source_dir,
+            dependencies=dependencies,
+            git_config=git_config,
+            code_location=self.code_location,
+            enable_network_isolation=False,  # True -> uploads to input channel. Not what we want!
+            image_uri=self.image_uri,
+            role=self.role,
+            # Estimator instance_count doesn't currently matter to FrameworkProcessor, and the
+            # SKLearn Framework Estimator requires instance_type==1. So here we hard-wire it to 1,
+            # but if it matters in future perhaps we could take self.instance_count here and have
+            # SKLearnProcessor override this function instead:
+            instance_count=1,
+            instance_type=self.instance_type,
+            sagemaker_session=self.sagemaker_session,
+            debugger_hook_config=False,
+            disable_profiler=True,
+        )
 
     def get_run_args(
         self,
@@ -1555,10 +1569,11 @@ class FrameworkProcessor(ScriptProcessor):
 
         local_code = get_config_value("local.local_code", self.sagemaker_session.config)
         if self.sagemaker_session.local_mode and local_code:
-            # TODO: Can we be more prescriptive about how to not trigger this error?
-            # How can user or us force a local mode `Estimator` to run with `local_code=False`?
             raise RuntimeError(
-                "Local *code* is not currently supported for SageMaker Processing in Local Mode"
+                "SageMaker Processing Local Mode does not currently support 'local code' mode. "
+                "Please use a LocalSession created with disable_local_code=True, or leave "
+                "sagemaker_session unspecified when creating your Processor to have one set up "
+                "automatically."
             )
 
         # Upload the bootstrapping code as s3://.../jobname/source/runproc.sh.
@@ -1623,22 +1638,11 @@ class FrameworkProcessor(ScriptProcessor):
         """Upload payload sourcedir.tar.gz to S3."""
         # A new estimator instance is required, because each call to ScriptProcessor.run() can
         # use different codes.
-        estimator = self.estimator_cls(
+        estimator = self._create_estimator(
             entry_point=entry_point,
             source_dir=source_dir,
             dependencies=dependencies,
             git_config=git_config,
-            framework_version=self.framework_version,
-            py_version=self.py_version,
-            code_location=self.code_location,  # Upload to <code_loc>/jobname/output/source.tar.gz
-            enable_network_isolation=False,  # If true, uploads to input channel. Not what we want!
-            image_uri=self.image_uri,  # The image uri is already normalized by this point.
-            role=self.role,
-            instance_type=self.instance_type,
-            instance_count=1,
-            sagemaker_session=self.sagemaker_session,
-            debugger_hook_config=False,
-            disable_profiler=True,
         )
 
         estimator._prepare_for_training(job_name=job_name)

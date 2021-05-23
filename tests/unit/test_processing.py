@@ -31,6 +31,7 @@ from sagemaker.processing import (
 )
 from sagemaker.sklearn.processing import SKLearnProcessor
 from sagemaker.pytorch.processing import PyTorchProcessor
+from sagemaker.utils import get_config_value
 from sagemaker.xgboost.processing import XGBoostEstimator
 from sagemaker.network import NetworkConfig
 from sagemaker.processing import FeatureStoreOutput
@@ -159,6 +160,20 @@ def test_sklearn_with_all_parameters(
     expected_args["app_specification"]["ImageUri"] = sklearn_image_uri
 
     sagemaker_session.process.assert_called_with(**expected_args)
+
+
+
+def test_local_mode_disables_local_code_by_default(sklearn_latest_version):
+    processor = SKLearnProcessor(
+        framework_version=sklearn_latest_version,
+        role=ROLE,
+        instance_count=1,
+        instance_type="local",
+    )
+
+    # Most tests use a fixture for sagemaker_session for consistent behaviour, so this unit test
+    # checks that the default initialization disables unsupported 'local_code' mode:
+    assert not get_config_value("local.local_code", processor.sagemaker_session.config)
 
 
 @patch("sagemaker.utils._botocore_resolver")
