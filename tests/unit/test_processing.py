@@ -40,7 +40,6 @@ from sagemaker.network import NetworkConfig
 from sagemaker.processing import FeatureStoreOutput
 from sagemaker.fw_utils import UploadedCode
 from sagemaker.utils import get_config_value
-from sagemaker.fw_utils import create_image_uri
 
 BUCKET_NAME = "mybucket"
 REGION = "us-west-2"
