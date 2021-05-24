@@ -128,6 +128,21 @@ def test_invalid_model_config():
     )
 
 
+def test_invalid_model_config_with_bad_endpoint_name_prefix():
+    with pytest.raises(ValueError) as error:
+        ModelConfig(
+            model_name="xgboost-model",
+            instance_type="ml.c5.xlarge",
+            instance_count=1,
+            accept_type="invalid_accept_type",
+            endpoint_name_prefix="~invalid_endpoint_prefix",
+        )
+    assert (
+        "Invalid endpoint_name_prefix. Please follow pattern ^[a-zA-Z0-9](-*[a-zA-Z0-9])."
+        in str(error.value)
+    )
+
+
 def test_model_predicted_label_config():
     label = "label"
     probability = "pr"
@@ -171,11 +186,13 @@ def test_shap_config():
     num_samples = 100
     agg_method = "mean_sq"
     use_logit = True
+    seed = 123
     shap_config = SHAPConfig(
         baseline=baseline,
         num_samples=num_samples,
         agg_method=agg_method,
         use_logit=use_logit,
+        seed=seed,
     )
     expected_config = {
         "shap": {
@@ -184,6 +201,7 @@ def test_shap_config():
             "agg_method": agg_method,
             "use_logit": use_logit,
             "save_local_shap_values": True,
+            "seed": seed,
         }
     }
     assert expected_config == shap_config.get_explainability_config()
@@ -394,6 +412,7 @@ def test_shap(clarify_processor, data_config, model_config, shap_config):
                     "agg_method": "mean_sq",
                     "use_logit": False,
                     "save_local_shap_values": True,
+                    "seed": None,
                 }
             },
             "predictor": {
