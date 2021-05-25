@@ -37,6 +37,10 @@ def test_parameter_with_default():
     assert param.to_request() == {"Name": "MyFloat", "Type": "Float", "DefaultValue": 1.2}
 
 
+def test_parameter_with_default_value_zero():
+    param = ParameterInteger(name="MyInteger", default_value=0)
+    assert param.to_request() == {"Name": "MyInteger", "Type": "Integer", "DefaultValue": 0}
+
 def test_parameter_string_with_enum_values():
     param = ParameterString("MyString", enum_values=["a", "b"])
     assert param.to_request() == {"Name": "MyString", "Type": "String", "EnumValues": ["a", "b"]}
