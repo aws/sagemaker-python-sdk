@@ -40,6 +40,7 @@ from sagemaker.utils import (
     secondary_training_status_changed,
     secondary_training_status_message,
     sts_regional_endpoint,
+    unique_name_from_base,
 )
 from sagemaker import exceptions
 
@@ -3463,8 +3464,11 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Returns:
             str: The name of the created ``Endpoint``.
         """
+        endpoint_config_name = unique_name_from_base(name)
         if not _deployment_entity_exists(
-            lambda: self.sagemaker_client.describe_endpoint_config(EndpointConfigName=name)
+            lambda: self.sagemaker_client.describe_endpoint_config(
+                EndpointConfigName=endpoint_config_name
+            )
         ):
             config_options = {"EndpointConfigName": name, "ProductionVariants": production_variants}
             tags = _append_project_tags(tags)
@@ -3476,6 +3480,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 config_options["DataCaptureConfig"] = data_capture_config_dict
 
             self.sagemaker_client.create_endpoint_config(**config_options)
+
         return self.create_endpoint(endpoint_name=name, config_name=name, tags=tags, wait=wait)
 
     def expand_role(self, role):
