@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
+from build.lib.sagemaker.local import image
 from platform import python_version
 
 import pytest
@@ -32,12 +33,13 @@ from sagemaker.processing import (
 )
 from sagemaker.sklearn.processing import SKLearnProcessor
 from sagemaker.pytorch.processing import PyTorchProcessor
-from sagemaker.utils import get_config_value
+from sagemaker.tensorflow.processing import TensorFlowProcessor
 from sagemaker.xgboost.processing import XGBoostEstimator
 from sagemaker.mxnet.processing import MXNetProcessor
 from sagemaker.network import NetworkConfig
 from sagemaker.processing import FeatureStoreOutput
 from sagemaker.fw_utils import UploadedCode
+from sagemaker.utils import get_config_value
 
 BUCKET_NAME = "mybucket"
 REGION = "us-west-2"
@@ -362,7 +364,7 @@ def test_pytorch_processor_with_required_parameters(
 @patch("sagemaker.utils._botocore_resolver")
 @patch("os.path.exists", return_value=True)
 @patch("os.path.isfile", return_value=True)
-def test_xgboost_with_required_parameters(
+def test_xgboost_processor_with_required_parameters(
     exists_mock, isfile_mock, botocore_resolver, sagemaker_session, xgboost_framework_version
 ):
     botocore_resolver.return_value.construct_endpoint.return_value = {"hostname": ECR_HOSTNAME}
@@ -395,7 +397,7 @@ def test_xgboost_with_required_parameters(
 @patch("sagemaker.utils._botocore_resolver")
 @patch("os.path.exists", return_value=True)
 @patch("os.path.isfile", return_value=True)
-def test_mxnet_with_required_parameters(
+def test_mxnet_processor_with_required_parameters(
     exists_mock, isfile_mock, botocore_resolver, sagemaker_session, mxnet_training_version, mxnet_training_py_version
 ):
     botocore_resolver.return_value.construct_endpoint.return_value = {"hostname": ECR_HOSTNAME}
@@ -427,6 +429,54 @@ def test_mxnet_with_required_parameters(
         ).format(mxnet_training_version, mxnet_training_py_version)
     
     expected_args["app_specification"]["ImageUri"] = mxnet_image_uri
+
+    sagemaker_session.process.assert_called_with(**expected_args)
+
+@patch("sagemaker.utils._botocore_resolver")
+@patch("os.path.exists", return_value=True)
+@patch("os.path.isfile", return_value=True)
+def test_tensorflow_processor_with_required_parameters(
+    exists_mock, isfile_mock, botocore_resolver, sagemaker_session, tensorflow_training_version, tensorflow_training_py_version
+):
+    
+    
+    botocore_resolver.return_value.construct_endpoint.return_value = {"hostname": ECR_HOSTNAME}
+
+    if version.parse(tensorflow_training_version) <= version.parse("1.13.1"):
+        
+        processor = TensorFlowProcessor(
+            role=ROLE,
+            instance_type="ml.m4.xlarge",
+            framework_version=tensorflow_training_version,
+            py_version=tensorflow_training_py_version,
+            instance_count=1,
+            sagemaker_session=sagemaker_session,
+            image_uri="520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-tensorflow:{}-cpu-{}".format(tensorflow_training_version, tensorflow_training_py_version)
+        )
+    else:
+        processor = TensorFlowProcessor(
+            role=ROLE,
+            instance_type="ml.m4.xlarge",
+            framework_version=tensorflow_training_version,
+            py_version=tensorflow_training_py_version,
+            instance_count=1,
+            sagemaker_session=sagemaker_session,
+        )
+
+    processor.run(code="/local/path/to/processing_code.py")
+
+    expected_args = _get_expected_args_modular_code(processor._current_job_name)
+
+    if version.parse(tensorflow_training_version) <= version.parse("1.13.1"):
+        tensorflow_image_uri = (
+            "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-tensorflow:{}-cpu-{}"
+        ).format(tensorflow_training_version, tensorflow_training_py_version)
+    else:
+        tensorflow_image_uri = (
+            "763104351884.dkr.ecr.us-west-2.amazonaws.com/tensorflow-training:{}-cpu-{}"
+        ).format(tensorflow_training_version, tensorflow_training_py_version)
+    
+    expected_args["app_specification"]["ImageUri"] = tensorflow_image_uri
 
     sagemaker_session.process.assert_called_with(**expected_args)
 
