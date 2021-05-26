@@ -1,0 +1,143 @@
+{
+    "training": {
+        "processors": ["gpu"],
+        "version_aliases": {
+            "4.4": "4.4.2",
+            "4.5": "4.5.0"
+        },
+        "versions": {
+            "4.4.2": {
+                "version_aliases": {
+                    "pytorch1.6": "pytorch1.6.0",
+                    "tensorflow2.4": "tensorflow2.4.1"
+                },
+                "pytorch1.6.0": {
+                    "py_versions": ["py36"],
+                    "registries": {
+                        "af-south-1": "626614931356",
+                        "ap-east-1": "871362719292",
+                        "ap-northeast-1": "763104351884",
+                        "ap-northeast-2": "763104351884",
+                        "ap-south-1": "763104351884",
+                        "ap-southeast-1": "763104351884",
+                        "ap-southeast-2": "763104351884",
+                        "ca-central-1": "763104351884",
+                        "cn-north-1": "727897471807",
+                        "cn-northwest-1": "727897471807",
+                        "eu-central-1": "763104351884",
+                        "eu-north-1": "763104351884",
+                        "eu-west-1": "763104351884",
+                        "eu-west-2": "763104351884",
+                        "eu-west-3": "763104351884",
+                        "eu-south-1": "692866216735",
+                        "me-south-1": "217643126080",
+                        "sa-east-1": "763104351884",
+                        "us-east-1": "763104351884",
+                        "us-east-2": "763104351884",
+                        "us-gov-west-1": "442386744353",
+                        "us-iso-east-1": "886529160074",
+                        "us-west-1": "763104351884",
+                        "us-west-2": "763104351884"
+                    },
+                    "repository": "huggingface-pytorch-training"
+                },
+                "tensorflow2.4.1": {
+                    "py_versions": ["py37"],
+                    "registries": {
+                        "af-south-1": "626614931356",
+                        "ap-east-1": "871362719292",
+                        "ap-northeast-1": "763104351884",
+                        "ap-northeast-2": "763104351884",
+                        "ap-south-1": "763104351884",
+                        "ap-southeast-1": "763104351884",
+                        "ap-southeast-2": "763104351884",
+                        "ca-central-1": "763104351884",
+                        "cn-north-1": "727897471807",
+                        "cn-northwest-1": "727897471807",
+                        "eu-central-1": "763104351884",
+                        "eu-north-1": "763104351884",
+                        "eu-south-1": "692866216735",
+                        "eu-west-1": "763104351884",
+                        "eu-west-2": "763104351884",
+                        "eu-west-3": "763104351884",
+                        "me-south-1": "217643126080",
+                        "sa-east-1": "763104351884",
+                        "us-east-1": "763104351884",
+                        "us-east-2": "763104351884",
+                        "us-gov-west-1": "442386744353",
+                        "us-iso-east-1": "886529160074",
+                        "us-west-1": "763104351884",
+                        "us-west-2": "763104351884"
+                    },
+                    "repository": "huggingface-tensorflow-training"
+                }
+            },
+            "4.5.0": {
+                "version_aliases": {
+                    "pytorch1.6": "pytorch1.6.0",
+                    "tensorflow2.4": "tensorflow2.4.1"
+                },
+                "pytorch1.6.0": {
+                    "py_versions": ["py36"],
+                    "registries": {
+                        "af-south-1": "626614931356",
+                        "ap-east-1": "871362719292",
+                        "ap-northeast-1": "763104351884",
+                        "ap-northeast-2": "763104351884",
+                        "ap-south-1": "763104351884",
+                        "ap-southeast-1": "763104351884",
+                        "ap-southeast-2": "763104351884",
+                        "ca-central-1": "763104351884",
+                        "cn-north-1": "727897471807",
+                        "cn-northwest-1": "727897471807",
+                        "eu-central-1": "763104351884",
+                        "eu-north-1": "763104351884",
+                        "eu-west-1": "763104351884",
+                        "eu-west-2": "763104351884",
+                        "eu-west-3": "763104351884",
+                        "eu-south-1": "692866216735",
+                        "me-south-1": "217643126080",
+                        "sa-east-1": "763104351884",
+                        "us-east-1": "763104351884",
+                        "us-east-2": "763104351884",
+                        "us-gov-west-1": "442386744353",
+                        "us-iso-east-1": "886529160074",
+                        "us-west-1": "763104351884",
+                        "us-west-2": "763104351884"
+                    },
+                    "repository": "huggingface-pytorch-training"
+                },
+                "tensorflow2.4.1": {
+                    "py_versions": ["py37"],
+                    "registries": {
+                        "af-south-1": "626614931356",
+                        "ap-east-1": "871362719292",
+                        "ap-northeast-1": "763104351884",
+                        "ap-northeast-2": "763104351884",
+                        "ap-south-1": "763104351884",
+                        "ap-southeast-1": "763104351884",
+                        "ap-southeast-2": "763104351884",
+                        "ca-central-1": "763104351884",
+                        "cn-north-1": "727897471807",
+                        "cn-northwest-1": "727897471807",
+                        "eu-central-1": "763104351884",
+                        "eu-north-1": "763104351884",
+                        "eu-south-1": "692866216735",
+                        "eu-west-1": "763104351884",
+                        "eu-west-2": "763104351884",
+                        "eu-west-3": "763104351884",
+                        "me-south-1": "217643126080",
+                        "sa-east-1": "763104351884",
+                        "us-east-1": "763104351884",
+                        "us-east-2": "763104351884",
+                        "us-gov-west-1": "442386744353",
+                        "us-iso-east-1": "886529160074",
+                        "us-west-1": "763104351884",
+                        "us-west-2": "763104351884"
+                    },
+                    "repository": "huggingface-tensorflow-training"
+                }
+            }
+        }
+    }
+}

@@ -15,13 +15,7 @@ from __future__ import absolute_import
 import datetime
 import unittest.mock
 
-import pytest
 from sagemaker.lineage import association, _api_types
-
-
-@pytest.fixture
-def sagemaker_session():
-    return unittest.mock.Mock()
 
 
 def test_create(sagemaker_session):
@@ -98,7 +92,11 @@ def test_list(sagemaker_session):
                     "DestinationType": "D" + str(i),
                     "AssociationType": "E" + str(i),
                     "CreationTime": creation_time + datetime.timedelta(hours=i),
-                    "CreatedBy": {},
+                    "CreatedBy": {
+                        "UserProfileArn": "profileArn",
+                        "UserProfileName": "profileName",
+                        "DomainId": "domainId",
+                    },
                 }
                 for i in range(10)
             ],
@@ -115,7 +113,11 @@ def test_list(sagemaker_session):
                     "DestinationType": "D" + str(i),
                     "AssociationType": "E" + str(i),
                     "CreationTime": creation_time + datetime.timedelta(hours=i),
-                    "CreatedBy": {},
+                    "CreatedBy": {
+                        "UserProfileArn": "profileArn",
+                        "UserProfileName": "profileName",
+                        "DomainId": "domainId",
+                    },
                 }
                 for i in range(10, 20)
             ]
@@ -132,7 +134,11 @@ def test_list(sagemaker_session):
             destination_type="D" + str(i),
             association_type="E" + str(i),
             creation_time=creation_time + datetime.timedelta(hours=i),
-            created_by={},
+            created_by=_api_types.UserContext(
+                user_profile_arn="profileArn",
+                user_profile_name="profileName",
+                domain_id="domainId",
+            ),
         )
         for i in range(20)
     ]

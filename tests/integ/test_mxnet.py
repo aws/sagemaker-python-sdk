@@ -65,7 +65,7 @@ def mxnet_training_job(
         return mx.latest_training_job.name
 
 
-@pytest.mark.canary_quick
+@pytest.mark.release
 def test_attach_deploy(mxnet_training_job, sagemaker_session, cpu_instance_type):
     endpoint_name = "test-mxnet-attach-deploy-{}".format(sagemaker_timestamp())
 
@@ -97,7 +97,7 @@ def test_deploy_estimator_with_different_instance_types(
             try:
                 predictor = estimator.deploy(1, instance_type)
 
-                model_name = predictor._model_names[0]
+                model_name = predictor._get_model_names()[0]
                 config_name = sagemaker_session.sagemaker_client.describe_endpoint(
                     EndpointName=predictor.endpoint_name
                 )["EndpointConfigName"]
@@ -305,7 +305,6 @@ def test_deploy_model_and_update_endpoint(
         assert new_config["ProductionVariants"][0]["InitialInstanceCount"] == 1
 
 
-@pytest.mark.canary_quick
 @pytest.mark.skipif(
     tests.integ.test_region() not in tests.integ.EI_SUPPORTED_REGIONS,
     reason="EI isn't supported in that specific region.",
@@ -314,7 +313,7 @@ def test_deploy_model_with_accelerator(
     mxnet_training_job,
     sagemaker_session,
     mxnet_eia_latest_version,
-    mxnet_eia_py_version,
+    mxnet_eia_latest_py_version,
     cpu_instance_type,
 ):
     endpoint_name = "test-mxnet-deploy-model-ei-{}".format(sagemaker_timestamp())
@@ -324,13 +323,13 @@ def test_deploy_model_with_accelerator(
             TrainingJobName=mxnet_training_job
         )
         model_data = desc["ModelArtifacts"]["S3ModelArtifacts"]
-        script_path = os.path.join(DATA_DIR, "mxnet_mnist", "mnist.py")
+        script_path = os.path.join(DATA_DIR, "mxnet_mnist", "mnist_ei.py")
         model = MXNetModel(
             model_data,
             "SageMakerRole",
             entry_point=script_path,
             framework_version=mxnet_eia_latest_version,
-            py_version=mxnet_eia_py_version,
+            py_version=mxnet_eia_latest_py_version,
             sagemaker_session=sagemaker_session,
         )
         predictor = model.deploy(

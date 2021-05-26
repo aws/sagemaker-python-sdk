@@ -100,6 +100,7 @@ def pandas_data_frame():
             "feature1": pd.Series(np.arange(10.0), dtype="float64"),
             "feature2": pd.Series(np.arange(10), dtype="int64"),
             "feature3": pd.Series(["2020-10-30T03:43:21Z"] * 10, dtype="string"),
+            "feature4": pd.Series(np.arange(5.0), dtype="float64"),  # contains nan
         }
     )
     return df
@@ -132,6 +133,7 @@ def create_table_ddl():
         "  feature1 FLOAT\n"
         "  feature2 INT\n"
         "  feature3 STRING\n"
+        "  feature4 FLOAT\n"
         "  write_time TIMESTAMP\n"
         "  event_time TIMESTAMP\n"
         "  is_deleted BOOLEAN\n"
@@ -140,8 +142,7 @@ def create_table_ddl():
         "  STORED AS\n"
         "  INPUTFORMAT 'parquet.hive.DeprecatedParquetInputFormat'\n"
         "  OUTPUTFORMAT 'parquet.hive.DeprecatedParquetOutputFormat'\n"
-        "LOCATION 's3://sagemaker-test-featurestore-{region}-{account}"
-        "/{account}/sagemaker/us-east-2/offline-store/{feature_group_name}'"
+        "LOCATION '{resolved_output_s3_uri}'"
     )
 
 
@@ -189,12 +190,19 @@ def test_create_feature_store(
         )
         _wait_for_feature_group_create(feature_group)
 
+        resolved_output_s3_uri = (
+            feature_group.describe()
+            .get("OfflineStoreConfig")
+            .get("S3StorageConfig")
+            .get("ResolvedOutputS3Uri")
+        )
         # Ingest data
         feature_group.put_record(record=record)
         ingestion_manager = feature_group.ingest(
             data_frame=pandas_data_frame, max_workers=3, wait=False
         )
         ingestion_manager.wait()
+        assert 0 == len(ingestion_manager.failed_rows)
 
         # Query the integrated Glue table.
         athena_query = feature_group.athena_query()
@@ -214,11 +222,15 @@ def test_create_feature_store(
                 time.sleep(60)
 
         assert df.shape[0] == 11
+        nans = pd.isna(df.loc[df["feature1"].isin([5, 6, 7, 8, 9])]["feature4"])
+        for is_na in nans.items():
+            assert is_na
         assert (
             create_table_ddl.format(
                 feature_group_name=feature_group_name,
                 region=feature_store_session.boto_session.region_name,
                 account=feature_store_session.account_id(),
+                resolved_output_s3_uri=resolved_output_s3_uri,
             )
             == feature_group.as_hive_ddl()
         )
@@ -249,6 +261,33 @@ def test_ingest_without_string_feature(
             data_frame=pandas_data_frame_without_string, max_workers=3, wait=False
         )
         ingestion_manager.wait()
+
+    assert output["FeatureGroupArn"].endswith(f"feature-group/{feature_group_name}")
+
+
+def test_ingest_multi_process(
+    feature_store_session,
+    role,
+    feature_group_name,
+    offline_store_s3_uri,
+    pandas_data_frame,
+):
+    feature_group = FeatureGroup(name=feature_group_name, sagemaker_session=feature_store_session)
+    feature_group.load_feature_definitions(data_frame=pandas_data_frame)
+
+    with cleanup_feature_group(feature_group):
+        output = feature_group.create(
+            s3_uri=offline_store_s3_uri,
+            record_identifier_name="feature1",
+            event_time_feature_name="feature3",
+            role_arn=role,
+            enable_online_store=True,
+        )
+        _wait_for_feature_group_create(feature_group)
+
+        feature_group.ingest(
+            data_frame=pandas_data_frame, max_workers=3, max_processes=2, wait=True
+        )
 
     assert output["FeatureGroupArn"].endswith(f"feature-group/{feature_group_name}")
 

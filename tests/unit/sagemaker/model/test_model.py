@@ -54,6 +54,20 @@ def test_prepare_container_def_with_model_data_and_env():
     assert expected == container_def
 
 
+def test_prepare_container_def_with_image_config():
+    image_config = {"RepositoryAccessMode": "Vpc"}
+    model = Model(MODEL_IMAGE, image_config=image_config)
+
+    expected = {
+        "Image": MODEL_IMAGE,
+        "ImageConfig": {"RepositoryAccessMode": "Vpc"},
+        "Environment": {},
+    }
+
+    container_def = model.prepare_container_def()
+    assert expected == container_def
+
+
 def test_model_enable_network_isolation():
     model = Model(MODEL_IMAGE, MODEL_DATA)
     assert model.enable_network_isolation() is False

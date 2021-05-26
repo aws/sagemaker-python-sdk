@@ -158,7 +158,7 @@ def _tune(
     return tuner
 
 
-@pytest.mark.canary_quick
+@pytest.mark.release
 def test_tuning_kmeans(
     sagemaker_session, kmeans_train_set, kmeans_estimator, hyperparameter_ranges, cpu_instance_type
 ):
@@ -525,7 +525,7 @@ def test_stop_tuning_job(sagemaker_session, cpu_instance_type):
 
 
 @pytest.mark.slow_test
-@pytest.mark.canary_quick
+@pytest.mark.release
 def test_tuning_mxnet(
     sagemaker_session,
     mxnet_training_latest_version,
@@ -578,7 +578,7 @@ def test_tuning_mxnet(
         predictor.predict(data)
 
 
-@pytest.mark.canary_quick
+@pytest.mark.release
 def test_tuning_tf(
     sagemaker_session,
     cpu_instance_type,
@@ -675,7 +675,7 @@ def test_tuning_tf_vpc_multi(
         tuner.fit(inputs, job_name=tuning_job_name)
 
 
-@pytest.mark.canary_quick
+@pytest.mark.release
 def test_tuning_chainer(
     sagemaker_session, chainer_latest_version, chainer_latest_py_version, cpu_instance_type
 ):
@@ -742,7 +742,7 @@ def test_tuning_chainer(
         assert len(output) == batch_size
 
 
-@pytest.mark.canary_quick
+@pytest.mark.release
 @pytest.mark.skip(
     reason="This test has always failed, but the failure was masked by a bug. "
     "This test should be fixed. Details in https://github.com/aws/sagemaker-python-sdk/pull/968"
@@ -817,7 +817,7 @@ def test_attach_tuning_pytorch(
         _assert_model_name_match(sagemaker_session.sagemaker_client, endpoint_name, model_name)
 
 
-@pytest.mark.canary_quick
+@pytest.mark.release
 def test_tuning_byo_estimator(sagemaker_session, cpu_instance_type):
     """Use Factorization Machines algorithm as an example here.
 

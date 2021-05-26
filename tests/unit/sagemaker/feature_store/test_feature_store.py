@@ -24,7 +24,17 @@ from sagemaker.feature_store.feature_definition import (
     StringFeatureDefinition,
     FeatureTypeEnum,
 )
-from sagemaker.feature_store.feature_group import FeatureGroup, IngestionManagerPandas, AthenaQuery
+from sagemaker.feature_store.feature_group import (
+    FeatureGroup,
+    IngestionManagerPandas,
+    AthenaQuery,
+    IngestionError,
+)
+
+
+class PicklableMock(Mock):
+    def __reduce__(self):
+        return (Mock, ())
 
 
 @pytest.fixture
@@ -40,6 +50,11 @@ def s3_uri():
 @pytest.fixture
 def sagemaker_session_mock():
     return Mock()
+
+
+@pytest.fixture
+def fs_runtime_client_config_mock():
+    return PicklableMock()
 
 
 @pytest.fixture
@@ -66,8 +81,7 @@ def create_table_ddl():
         "  STORED AS\n"
         "  INPUTFORMAT 'parquet.hive.DeprecatedParquetInputFormat'\n"
         "  OUTPUTFORMAT 'parquet.hive.DeprecatedParquetOutputFormat'\n"
-        "LOCATION 's3://some-bucket"
-        "/{account}/sagemaker/{region}/offline-store/{feature_group_name}'"
+        "LOCATION 's3://resolved_output_s3_uri'"
     )
 
 
@@ -177,8 +191,30 @@ def test_load_feature_definition_unsupported_types(sagemaker_session_mock):
     assert "Failed to infer Feature type based on dtype object for column object." in str(error)
 
 
+def test_ingest_zero_processes():
+    feature_group = FeatureGroup(name="MyGroup", sagemaker_session=sagemaker_session_mock)
+    df = Mock()
+    with pytest.raises(RuntimeError) as error:
+        feature_group.ingest(data_frame=df, max_workers=1, max_processes=0)
+
+    assert "max_processes must be greater than 0." in str(error)
+
+
+def test_ingest_zero_workers():
+    feature_group = FeatureGroup(name="MyGroup", sagemaker_session=sagemaker_session_mock)
+    df = Mock()
+    with pytest.raises(RuntimeError) as error:
+        feature_group.ingest(data_frame=df, max_workers=0, max_processes=1)
+
+    assert "max_workers must be greater than 0." in str(error)
+
+
 @patch("sagemaker.feature_store.feature_group.IngestionManagerPandas")
-def test_ingest(ingestion_manager_init, sagemaker_session_mock):
+def test_ingest(ingestion_manager_init, sagemaker_session_mock, fs_runtime_client_config_mock):
+    sagemaker_session_mock.sagemaker_featurestore_runtime_client.meta.config = (
+        fs_runtime_client_config_mock
+    )
+
     feature_group = FeatureGroup(name="MyGroup", sagemaker_session=sagemaker_session_mock)
     df = pd.DataFrame(dict((f"float{i}", pd.Series([2.0], dtype="float64")) for i in range(300)))
 
@@ -188,36 +224,25 @@ def test_ingest(ingestion_manager_init, sagemaker_session_mock):
 
     ingestion_manager_init.assert_called_once_with(
         feature_group_name="MyGroup",
-        sagemaker_session=sagemaker_session_mock,
-        data_frame=df,
+        sagemaker_fs_runtime_client_config=fs_runtime_client_config_mock,
         max_workers=10,
+        max_processes=1,
     )
-    mock_ingestion_manager_instance.run.assert_called_once_with(wait=True, timeout=None)
-
-
-@patch("sagemaker.feature_store.feature_group.IngestionManagerPandas")
-def test_ingest_default_max_workers(ingestion_manager_init, sagemaker_session_mock):
-    feature_group = FeatureGroup(name="MyGroup", sagemaker_session=sagemaker_session_mock)
-    df = pd.DataFrame({"float": pd.Series([2.0], dtype="float64")})
-
-    mock_ingestion_manager_instance = Mock()
-    ingestion_manager_init.return_value = mock_ingestion_manager_instance
-    feature_group.ingest(data_frame=df)
-
-    ingestion_manager_init.assert_called_once_with(
-        feature_group_name="MyGroup",
-        sagemaker_session=sagemaker_session_mock,
-        data_frame=df,
-        max_workers=1,
+    mock_ingestion_manager_instance.run.assert_called_once_with(
+        data_frame=df, wait=True, timeout=None
     )
-    mock_ingestion_manager_instance.run.assert_called_once_with(wait=True, timeout=None)
 
 
 def test_as_hive_ddl_with_default_values(
     create_table_ddl, feature_group_dummy_definitions, sagemaker_session_mock
 ):
     sagemaker_session_mock.describe_feature_group.return_value = {
-        "OfflineStoreConfig": {"S3StorageConfig": {"S3Uri": "s3://some-bucket"}}
+        "OfflineStoreConfig": {
+            "S3StorageConfig": {
+                "S3Uri": "s3://some-bucket",
+                "ResolvedOutputS3Uri": "s3://resolved_output_s3_uri",
+            }
+        }
     }
     sagemaker_session_mock.account_id.return_value = "1234"
     sagemaker_session_mock.boto_session.region_name = "us-west-2"
@@ -238,7 +263,12 @@ def test_as_hive_ddl_with_default_values(
 
 def test_as_hive_ddl(create_table_ddl, feature_group_dummy_definitions, sagemaker_session_mock):
     sagemaker_session_mock.describe_feature_group.return_value = {
-        "OfflineStoreConfig": {"S3StorageConfig": {"S3Uri": "s3://some-bucket"}}
+        "OfflineStoreConfig": {
+            "S3StorageConfig": {
+                "S3Uri": "s3://some-bucket",
+                "ResolvedOutputS3Uri": "s3://resolved_output_s3_uri",
+            }
+        }
     }
     sagemaker_session_mock.account_id.return_value = "1234"
     sagemaker_session_mock.boto_session.region_name = "us-west-2"
@@ -258,35 +288,77 @@ def test_as_hive_ddl(create_table_ddl, feature_group_dummy_definitions, sagemake
 
 
 @patch(
-    "sagemaker.feature_store.feature_group.IngestionManagerPandas._ingest_single_batch",
+    "sagemaker.feature_store.feature_group.IngestionManagerPandas._run_multi_process",
     MagicMock(),
 )
 def test_ingestion_manager_run_success():
     df = pd.DataFrame({"float": pd.Series([2.0], dtype="float64")})
     manager = IngestionManagerPandas(
         feature_group_name="MyGroup",
-        sagemaker_session=sagemaker_session_mock,
-        data_frame=df,
+        sagemaker_fs_runtime_client_config=fs_runtime_client_config_mock,
         max_workers=10,
     )
-    manager.run()
+    manager.run(df)
+
+    manager._run_multi_process.assert_called_once_with(data_frame=df, wait=True, timeout=None)
+
+
+@patch(
+    "sagemaker.feature_store.feature_group.IngestionManagerPandas._run_multi_threaded",
+    PicklableMock(return_value=[]),
+)
+def test_ingestion_manager_run_multi_process_with_multi_thread_success(
+    fs_runtime_client_config_mock,
+):
+    df = pd.DataFrame({"float": pd.Series([2.0], dtype="float64")})
+    manager = IngestionManagerPandas(
+        feature_group_name="MyGroup",
+        sagemaker_fs_runtime_client_config=fs_runtime_client_config_mock,
+        max_workers=2,
+        max_processes=2,
+    )
+    manager.run(df)
 
 
 @patch(
     "sagemaker.feature_store.feature_group.IngestionManagerPandas._ingest_single_batch",
-    MagicMock(side_effect=Exception("Failed!")),
+    MagicMock(return_value=[1]),
 )
 def test_ingestion_manager_run_failure():
     df = pd.DataFrame({"float": pd.Series([2.0], dtype="float64")})
     manager = IngestionManagerPandas(
         feature_group_name="MyGroup",
-        sagemaker_session=sagemaker_session_mock,
-        data_frame=df,
-        max_workers=10,
+        sagemaker_fs_runtime_client_config=fs_runtime_client_config_mock,
+        max_workers=1,
     )
-    with pytest.raises(RuntimeError) as error:
-        manager.run()
+
+    with pytest.raises(IngestionError) as error:
+        manager.run(df)
+
     assert "Failed to ingest some data into FeatureGroup MyGroup" in str(error)
+    assert error.value.failed_rows == [1]
+    assert manager.failed_rows == [1]
+
+
+@patch(
+    "sagemaker.feature_store.feature_group.IngestionManagerPandas._ingest_single_batch",
+    PicklableMock(return_value=[1]),
+)
+def test_ingestion_manager_run_multi_process_failure():
+    df = pd.DataFrame({"float": pd.Series([2.0], dtype="float64")})
+    manager = IngestionManagerPandas(
+        feature_group_name="MyGroup",
+        sagemaker_fs_runtime_client_config=None,
+        max_workers=2,
+        max_processes=2,
+    )
+
+    with pytest.raises(IngestionError) as error:
+        manager.run(df)
+
+    assert "Failed to ingest some data into FeatureGroup MyGroup" in str(error)
+    assert error.value.failed_rows == [1, 1, 1, 1]
+    assert manager.failed_rows == [1, 1, 1, 1]
 
 
 @pytest.fixture

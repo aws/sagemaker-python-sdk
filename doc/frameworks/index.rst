@@ -9,6 +9,7 @@ The SageMaker Python SDK supports managed training and inference for a variety o
 
     mxnet/index
     chainer/index
+    huggingface/index
     pytorch/index
     rl/index
     sklearn/index

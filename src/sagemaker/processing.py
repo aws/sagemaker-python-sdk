@@ -20,6 +20,7 @@ from __future__ import print_function, absolute_import
 
 import os
 import pathlib
+import attr
 
 from six.moves.urllib.parse import urlparse
 from six.moves.urllib.request import url2pathname
@@ -29,8 +30,8 @@ from sagemaker.job import _Job
 from sagemaker.local import LocalSession
 from sagemaker.utils import base_name_from_image, name_from_base
 from sagemaker.session import Session
-from sagemaker.network import NetworkConfig  # noqa: F401 # pylint: disable=unused-import
 from sagemaker.workflow.properties import Properties
+from sagemaker.workflow.parameters import Parameter
 from sagemaker.workflow.entities import Expression
 from sagemaker.dataset_definition.inputs import S3Input, DatasetDefinition
 from sagemaker.apiutils._base_types import ApiObject
@@ -207,24 +208,24 @@ class Processor(object):
             inputs (list[:class:`~sagemaker.processing.ProcessingInput`]): Input files for
                 the processing job. These must be provided as
                 :class:`~sagemaker.processing.ProcessingInput` objects (default: None).
-            kms_key (str): The ARN of the KMS key that is used to encrypt the
-                user code file (default: None).
             outputs (list[:class:`~sagemaker.processing.ProcessingOutput`]): Outputs for
                 the processing job. These can be specified as either path strings or
                 :class:`~sagemaker.processing.ProcessingOutput` objects (default: None).
             code (str): This can be an S3 URI or a local path to a file with the framework
                 script to run (default: None). A no op in the base class.
+            kms_key (str): The ARN of the KMS key that is used to encrypt the
+                user code file (default: None).
         """
         self._current_job_name = self._generate_current_job_name(job_name=job_name)
 
-        inputs_with_code = self._include_code_in_inputs(inputs, code)
+        inputs_with_code = self._include_code_in_inputs(inputs, code, kms_key)
         normalized_inputs = self._normalize_inputs(inputs_with_code, kms_key)
         normalized_outputs = self._normalize_outputs(outputs)
         self.arguments = arguments
 
         return normalized_inputs, normalized_outputs
 
-    def _include_code_in_inputs(self, inputs, _code):
+    def _include_code_in_inputs(self, inputs, _code, _kms_key):
         """A no op in the base class to include code in the processing job inputs.
 
         Args:
@@ -233,6 +234,8 @@ class Processor(object):
                 :class:`~sagemaker.processing.ProcessingInput` objects.
             _code (str): This can be an S3 URI or a local path to a file with the framework
                 script to run (default: None). A no op in the base class.
+            kms_key (str): The ARN of the KMS key that is used to encrypt the
+                user code file (default: None).
 
         Returns:
             list[:class:`~sagemaker.processing.ProcessingInput`]: inputs
@@ -291,7 +294,9 @@ class Processor(object):
                 if isinstance(file_input.source, Properties) or file_input.dataset_definition:
                     normalized_inputs.append(file_input)
                     continue
-
+                if isinstance(file_input.s3_input.s3_uri, (Parameter, Expression, Properties)):
+                    normalized_inputs.append(file_input)
+                    continue
                 # If the source is a local path, upload it to S3
                 # and save the S3 uri in the ProcessingInput source.
                 parse_result = urlparse(file_input.s3_input.s3_uri)
@@ -339,8 +344,7 @@ class Processor(object):
                 # Generate a name for the ProcessingOutput if it doesn't have one.
                 if output.output_name is None:
                     output.output_name = "output-{}".format(count)
-                # if the output's destination is a workflow expression, do no normalization
-                if isinstance(output.destination, Expression):
+                if isinstance(output.destination, (Parameter, Expression, Properties)):
                     normalized_outputs.append(output)
                     continue
                 # If the output's destination is not an s3_uri, create one.
@@ -442,6 +446,34 @@ class ScriptProcessor(Processor):
             network_config=network_config,
         )
 
+    def get_run_args(
+        self,
+        code,
+        inputs=None,
+        outputs=None,
+        arguments=None,
+    ):
+        """Returns a RunArgs object.
+
+        For processors (:class:`~sagemaker.spark.processing.PySparkProcessor`,
+        :class:`~sagemaker.spark.processing.SparkJar`) that have special
+        run() arguments, this object contains the normalized arguments for passing to
+        :class:`~sagemaker.workflow.steps.ProcessingStep`.
+
+        Args:
+            code (str): This can be an S3 URI or a local path to a file with the framework
+                script to run.
+            inputs (list[:class:`~sagemaker.processing.ProcessingInput`]): Input files for
+                the processing job. These must be provided as
+                :class:`~sagemaker.processing.ProcessingInput` objects (default: None).
+            outputs (list[:class:`~sagemaker.processing.ProcessingOutput`]): Outputs for
+                the processing job. These can be specified as either path strings or
+                :class:`~sagemaker.processing.ProcessingOutput` objects (default: None).
+            arguments (list[str]): A list of string arguments to be passed to a
+                processing job (default: None).
+        """
+        return RunArgs(code=code, inputs=inputs, outputs=outputs, arguments=arguments)
+
     def run(
         self,
         code,
@@ -497,7 +529,7 @@ class ScriptProcessor(Processor):
         if wait:
             self.latest_job.wait(logs=logs)
 
-    def _include_code_in_inputs(self, inputs, code):
+    def _include_code_in_inputs(self, inputs, code, kms_key=None):
         """Converts code to appropriate input and includes in input list.
 
         Side effects include:
@@ -510,12 +542,14 @@ class ScriptProcessor(Processor):
                 :class:`~sagemaker.processing.ProcessingInput` objects.
             code (str): This can be an S3 URI or a local path to a file with the framework
                 script to run (default: None).
+            kms_key (str): The ARN of the KMS key that is used to encrypt the
+                user code file (default: None).
 
         Returns:
             list[:class:`~sagemaker.processing.ProcessingInput`]: inputs together with the
                 code as `ProcessingInput`.
         """
-        user_code_s3_uri = self._handle_user_code_url(code)
+        user_code_s3_uri = self._handle_user_code_url(code, kms_key)
         user_script_name = self._get_user_code_name(code)
 
         inputs_with_code = self._convert_code_and_add_to_inputs(inputs, user_code_s3_uri)
@@ -536,7 +570,7 @@ class ScriptProcessor(Processor):
         code_url = urlparse(code)
         return os.path.basename(code_url.path)
 
-    def _handle_user_code_url(self, code):
+    def _handle_user_code_url(self, code, kms_key=None):
         """Gets the S3 URL containing the user's code.
 
            Inspects the scheme the customer passed in ("s3://" for code in S3, "file://" or nothing
@@ -544,6 +578,8 @@ class ScriptProcessor(Processor):
 
         Args:
             code (str): A URL to the customer's code.
+            kms_key (str): The ARN of the KMS key that is used to encrypt the
+                user code file (default: None).
 
         Returns:
             str: The S3 URL to the customer's code.
@@ -572,7 +608,7 @@ class ScriptProcessor(Processor):
                         code
                     )
                 )
-            user_code_s3_uri = self._upload_code(code_path)
+            user_code_s3_uri = self._upload_code(code_path, kms_key)
         else:
             raise ValueError(
                 "code {} url scheme {} is not recognized. Please pass a file path or S3 url".format(
@@ -581,11 +617,13 @@ class ScriptProcessor(Processor):
             )
         return user_code_s3_uri
 
-    def _upload_code(self, code):
+    def _upload_code(self, code, kms_key=None):
         """Uploads a code file or directory specified as a string and returns the S3 URI.
 
         Args:
             code (str): A file or directory to be uploaded to S3.
+            kms_key (str): The ARN of the KMS key that is used to encrypt the
+                user code file (default: None).
 
         Returns:
             str: The S3 URI of the uploaded file or directory.
@@ -599,7 +637,10 @@ class ScriptProcessor(Processor):
             self._CODE_CONTAINER_INPUT_NAME,
         )
         return s3.S3Uploader.upload(
-            local_path=code, desired_s3_uri=desired_s3_uri, sagemaker_session=self.sagemaker_session
+            local_path=code,
+            desired_s3_uri=desired_s3_uri,
+            kms_key=kms_key,
+            sagemaker_session=self.sagemaker_session,
         )
 
     def _convert_code_and_add_to_inputs(self, inputs, s3_uri):
@@ -635,7 +676,9 @@ class ScriptProcessor(Processor):
         """
         user_script_location = str(
             pathlib.PurePosixPath(
-                self._CODE_CONTAINER_BASE_PATH, self._CODE_CONTAINER_INPUT_NAME, user_script_name
+                self._CODE_CONTAINER_BASE_PATH,
+                self._CODE_CONTAINER_INPUT_NAME,
+                user_script_name,
             )
         )
         self.entrypoint = command + [user_script_location]
@@ -1035,7 +1078,10 @@ class ProcessingInput(object):
         """Generates a request dictionary using the parameters provided to the class."""
 
         # Create the request dictionary.
-        s3_input_request = {"InputName": self.input_name, "AppManaged": self.app_managed}
+        s3_input_request = {
+            "InputName": self.input_name,
+            "AppManaged": self.app_managed,
+        }
 
         if self.s3_input:
             # Check the compression type, then add it to the dictionary.
@@ -1070,7 +1116,7 @@ class ProcessingInput(object):
             self.s3_data_type = self.s3_input.s3_data_type
             self.s3_input_mode = self.s3_input.s3_input_mode
             self.s3_data_distribution_type = self.s3_input.s3_data_distribution_type
-        elif self.source and self.destination:
+        elif self.source is not None and self.destination is not None:
             self.s3_input = S3Input(
                 s3_uri=self.source,
                 local_path=self.destination,
@@ -1142,6 +1188,33 @@ class ProcessingOutput(object):
 
         # Return the request dictionary.
         return s3_output_request
+
+
+@attr.s
+class RunArgs(object):
+    """Accepts parameters that correspond to ScriptProcessors.
+
+    An instance of this class is returned from the ``get_run_args()`` method on processors,
+    and is used for normalizing the arguments so that they can be passed to
+    :class:`~sagemaker.workflow.steps.ProcessingStep`
+
+    Args:
+        code (str): This can be an S3 URI or a local path to a file with the framework
+            script to run.
+        inputs (list[:class:`~sagemaker.processing.ProcessingInput`]): Input files for
+            the processing job. These must be provided as
+            :class:`~sagemaker.processing.ProcessingInput` objects (default: None).
+        outputs (list[:class:`~sagemaker.processing.ProcessingOutput`]): Outputs for
+            the processing job. These can be specified as either path strings or
+            :class:`~sagemaker.processing.ProcessingOutput` objects (default: None).
+        arguments (list[str]): A list of string arguments to be passed to a
+            processing job (default: None).
+    """
+
+    code = attr.ib()
+    inputs = attr.ib(default=None)
+    outputs = attr.ib(default=None)
+    arguments = attr.ib(default=None)
 
 
 class FeatureStoreOutput(ApiObject):

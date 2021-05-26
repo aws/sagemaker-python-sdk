@@ -30,9 +30,15 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Sequence, List, Dict, Any, Union
 from urllib.parse import urlparse
 
+from multiprocessing.pool import AsyncResult
+import signal
 import attr
 import pandas as pd
 from pandas import DataFrame
+
+import boto3
+from botocore.config import Config
+from pathos.multiprocessing import ProcessingPool
 
 from sagemaker import Session
 from sagemaker.feature_store.feature_definition import (
@@ -150,45 +156,75 @@ class IngestionManagerPandas:
 
     Attributes:
         feature_group_name (str): name of the Feature Group.
-        sagemaker_session (Session): instance of the Session class to perform boto calls.
+        sagemaker_fs_runtime_client_config (Config): instance of the Config class
+            for boto calls.
         data_frame (DataFrame): pandas DataFrame to be ingested to the given feature group.
         max_workers (int): number of threads to create.
+        max_processes (int): number of processes to create. Each process spawns
+            ``max_workers`` threads.
     """
 
     feature_group_name: str = attr.ib()
-    sagemaker_session: Session = attr.ib()
-    data_frame: DataFrame = attr.ib()
+    sagemaker_fs_runtime_client_config: Config = attr.ib()
     max_workers: int = attr.ib(default=1)
-    _futures: Dict[Any, Any] = attr.ib(init=False, factory=dict)
+    max_processes: int = attr.ib(default=1)
+    _async_result: AsyncResult = attr.ib(default=None)
+    _processing_pool: ProcessingPool = attr.ib(default=None)
+    _failed_indices: List[int] = attr.ib(factory=list)
 
     @staticmethod
     def _ingest_single_batch(
         data_frame: DataFrame,
         feature_group_name: str,
-        sagemaker_session: Session,
+        client_config: Config,
         start_index: int,
         end_index: int,
-    ):
+    ) -> List[int]:
         """Ingest a single batch of DataFrame rows into FeatureStore.
 
         Args:
             data_frame (DataFrame): source DataFrame to be ingested.
             feature_group_name (str): name of the Feature Group.
-            sagemaker_session (Session): session instance to perform boto calls.
+            client_config (Config): Configuration for the sagemaker feature store runtime
+                client to perform boto calls.
             start_index (int): starting position to ingest in this batch.
             end_index (int): ending position to ingest in this batch.
+
+        Returns:
+            List of row indices that failed to be ingested.
         """
+        sagemaker_featurestore_runtime_client = boto3.Session().client(
+            service_name="sagemaker-featurestore-runtime", config=client_config
+        )
+
         logger.info("Started ingesting index %d to %d", start_index, end_index)
-        for row in data_frame[start_index:end_index].itertuples(index=False):
+        failed_rows = list()
+        for row in data_frame[start_index:end_index].itertuples():
             record = [
                 FeatureValue(
-                    feature_name=data_frame.columns[index], value_as_string=str(row[index])
+                    feature_name=data_frame.columns[index - 1], value_as_string=str(row[index])
                 )
-                for index in range(len(row))
+                for index in range(1, len(row))
+                if pd.notna(row[index])
             ]
-            sagemaker_session.put_record(
-                feature_group_name=feature_group_name, record=[value.to_dict() for value in record]
-            )
+            try:
+                sagemaker_featurestore_runtime_client.put_record(
+                    FeatureGroupName=feature_group_name,
+                    Record=[value.to_dict() for value in record],
+                )
+            except Exception as e:  # pylint: disable=broad-except
+                logger.error("Failed to ingest row %d: %s", row[0], e)
+                failed_rows.append(row[0])
+        return failed_rows
+
+    @property
+    def failed_rows(self) -> List[int]:
+        """Get rows that failed to ingest.
+
+        Returns:
+            List of row indices that failed to be ingested.
+        """
+        return self._failed_indices
 
     def wait(self, timeout=None):
         """Wait for the ingestion process to finish.
@@ -197,52 +233,133 @@ class IngestionManagerPandas:
             timeout (Union[int, float]): ``concurrent.futures.TimeoutError`` will be raised
                 if timeout is reached.
         """
-        failed = False
-        for future in as_completed(self._futures, timeout=timeout):
-            start, end = self._futures[future]
-            try:
-                future.result()
-            except Exception as e:  # pylint: disable=broad-except
-                failed = True
-                logger.error("Failed to ingest row %d to %d: %s", start, end, e)
-            else:
-                logger.info("Successfully ingested row %d to %d", start, end)
+        try:
+            results = self._async_result.get(timeout=timeout)
+        except KeyboardInterrupt as i:
+            # terminate workers abruptly on keyboard interrupt.
+            self._processing_pool.terminate()
+            self._processing_pool.close()
+            self._processing_pool.clear()
+            raise i
+        else:
+            # terminate normally
+            self._processing_pool.close()
+            self._processing_pool.clear()
 
-        if failed:
-            raise RuntimeError(
-                f"Failed to ingest some data into FeatureGroup {self.feature_group_name}"
+        self._failed_indices = [
+            failed_index for failed_indices in results for failed_index in failed_indices
+        ]
+
+        if len(self._failed_indices) > 0:
+            raise IngestionError(
+                self._failed_indices,
+                f"Failed to ingest some data into FeatureGroup {self.feature_group_name}",
             )
 
-    def run(self, wait=True, timeout=None):
+    def _run_multi_process(self, data_frame: DataFrame, wait=True, timeout=None):
+        """Start the ingestion process with the specified number of processes.
+
+        Args:
+            data_frame (DataFrame): source DataFrame to be ingested.
+            wait (bool): whether to wait for the ingestion to finish or not.
+            timeout (Union[int, float]): ``concurrent.futures.TimeoutError`` will be raised
+                if timeout is reached.
+        """
+        batch_size = math.ceil(data_frame.shape[0] / self.max_processes)
+
+        args = []
+        for i in range(self.max_processes):
+            start_index = min(i * batch_size, data_frame.shape[0])
+            end_index = min(i * batch_size + batch_size, data_frame.shape[0])
+            args += [(data_frame[start_index:end_index], start_index, timeout)]
+
+        def init_worker():
+            # ignore keyboard interrupts in child processes.
+            signal.signal(signal.SIGINT, signal.SIG_IGN)
+
+        self._processing_pool = ProcessingPool(self.max_processes, init_worker)
+        self._processing_pool.restart(force=True)
+
+        f = lambda x: self._run_multi_threaded(*x)  # noqa: E731
+        self._async_result = self._processing_pool.amap(f, args)
+
+        if wait:
+            self.wait(timeout=timeout)
+
+    def _run_multi_threaded(self, data_frame: DataFrame, row_offset=0, timeout=None) -> List[int]:
         """Start the ingestion process.
 
         Args:
+            data_frame (DataFrame): source DataFrame to be ingested.
+            row_offset (int): if ``data_frame`` is a partition of a parent DataFrame, then the
+                index of the parent where ``data_frame`` starts. Otherwise, 0.
             wait (bool): whether to wait for the ingestion to finish or not.
             timeout (Union[int, float]): ``concurrent.futures.TimeoutError`` will be raised
-            if timeout is reached.
+                if timeout is reached.
+
+        Returns:
+            List of row indices that failed to be ingested.
         """
         executor = ThreadPoolExecutor(max_workers=self.max_workers)
-        batch_size = math.ceil(self.data_frame.shape[0] / self.max_workers)
+        batch_size = math.ceil(data_frame.shape[0] / self.max_workers)
 
         futures = {}
         for i in range(self.max_workers):
-            start_index = min(i * batch_size, self.data_frame.shape[0])
-            end_index = min(i * batch_size + batch_size, self.data_frame.shape[0])
+            start_index = min(i * batch_size, data_frame.shape[0])
+            end_index = min(i * batch_size + batch_size, data_frame.shape[0])
             futures[
                 executor.submit(
                     self._ingest_single_batch,
                     feature_group_name=self.feature_group_name,
-                    sagemaker_session=self.sagemaker_session,
-                    data_frame=self.data_frame,
+                    data_frame=data_frame,
                     start_index=start_index,
                     end_index=end_index,
+                    client_config=self.sagemaker_fs_runtime_client_config,
                 )
-            ] = (start_index, end_index)
+            ] = (start_index + row_offset, end_index + row_offset)
 
-        self._futures = futures
-        if wait:
-            self.wait(timeout=timeout)
+        failed_indices = list()
+        for future in as_completed(futures, timeout=timeout):
+            start, end = futures[future]
+            result = future.result()
+            if result:
+                logger.error("Failed to ingest row %d to %d", start, end)
+            else:
+                logger.info("Successfully ingested row %d to %d", start, end)
+            failed_indices += result
+
         executor.shutdown(wait=False)
+
+        return failed_indices
+
+    def run(self, data_frame: DataFrame, wait=True, timeout=None):
+        """Start the ingestion process.
+
+        Args:
+            data_frame (DataFrame): source DataFrame to be ingested.
+            wait (bool): whether to wait for the ingestion to finish or not.
+            timeout (Union[int, float]): ``concurrent.futures.TimeoutError`` will be raised
+                if timeout is reached.
+        """
+        self._run_multi_process(data_frame=data_frame, wait=wait, timeout=timeout)
+
+
+class IngestionError(Exception):
+    """Exception raised for errors during ingestion.
+
+    Attributes:
+        failed_rows: list of indices from the data frame for which ingestion failed.
+        message: explanation of the error
+    """
+
+    def __init__(self, failed_rows, message):
+        super(IngestionError, self).__init__(message)
+        self.failed_rows = failed_rows
+        self.message = message
+
+    def __str__(self) -> str:
+        """String representation of the error."""
+        return f"{self.failed_rows} -> {self.message}"
 
 
 @attr.s
@@ -427,6 +544,7 @@ class FeatureGroup:
         self,
         data_frame: DataFrame,
         max_workers: int = 1,
+        max_processes: int = 1,
         wait: bool = True,
         timeout: Union[int, float] = None,
     ) -> IngestionManagerPandas:
@@ -435,9 +553,23 @@ class FeatureGroup:
         ``max_worker`` number of thread will be created to work on different partitions of
         the ``data_frame`` in parallel.
 
+        ``max_processes`` number of processes will be created to work on different partitions
+        of the ``data_frame`` in parallel, each with ``max_worker`` threads.
+
+        The ingest function will attempt to ingest all records in the data frame. If ``wait``
+        is True, then an exception is thrown after all records have been processed. If ``wait``
+        is False, then a later call to the returned instance IngestionManagerPandas' ``wait()``
+        function will throw an exception.
+
+        Zero based indices of rows that failed to be ingested can be found in the exception.
+        They can also be found from the IngestionManagerPandas' ``failed_rows`` function after
+        the exception is thrown.
+
         Args:
             data_frame (DataFrame): data_frame to be ingested to feature store.
             max_workers (int): number of threads to be created.
+            max_processes (int): number of processes to be created. Each process spawns
+                ``max_worker`` number of threads.
             wait (bool): whether to wait for the ingestion to finish or not.
             timeout (Union[int, float]): ``concurrent.futures.TimeoutError`` will be raised
                 if timeout is reached.
@@ -445,13 +577,21 @@ class FeatureGroup:
         Returns:
             An instance of IngestionManagerPandas.
         """
+        if max_processes <= 0:
+            raise RuntimeError("max_processes must be greater than 0.")
+
+        if max_workers <= 0:
+            raise RuntimeError("max_workers must be greater than 0.")
+
         manager = IngestionManagerPandas(
             feature_group_name=self.name,
-            sagemaker_session=self.sagemaker_session,
-            data_frame=data_frame,
+            sagemaker_fs_runtime_client_config=self.sagemaker_session.sagemaker_featurestore_runtime_client.meta.config,
             max_workers=max_workers,
+            max_processes=max_processes,
         )
-        manager.run(wait=wait, timeout=timeout)
+
+        manager.run(data_frame=data_frame, wait=wait, timeout=timeout)
+
         return manager
 
     def athena_query(self) -> AthenaQuery:
@@ -492,14 +632,11 @@ class FeatureGroup:
         if not table_name:
             table_name = self.name
 
-        s3_uri = self.describe().get("OfflineStoreConfig").get("S3StorageConfig").get("S3Uri")
-        offline_store_s3_uri = os.path.join(
-            s3_uri,
-            self.sagemaker_session.account_id(),
-            "sagemaker",
-            self.sagemaker_session.boto_session.region_name,
-            "offline-store",
-            self.name,
+        resolved_output_s3_uri = (
+            self.describe()
+            .get("OfflineStoreConfig")
+            .get("S3StorageConfig")
+            .get("ResolvedOutputS3Uri")
         )
 
         ddl = f"CREATE EXTERNAL TABLE IF NOT EXISTS {database}.{table_name} (\n"
@@ -517,6 +654,6 @@ class FeatureGroup:
             "  STORED AS\n"
             "  INPUTFORMAT 'parquet.hive.DeprecatedParquetInputFormat'\n"
             "  OUTPUTFORMAT 'parquet.hive.DeprecatedParquetOutputFormat'\n"
-            f"LOCATION '{offline_store_s3_uri}'"
+            f"LOCATION '{resolved_output_s3_uri}'"
         )
         return ddl

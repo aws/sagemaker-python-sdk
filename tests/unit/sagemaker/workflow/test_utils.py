@@ -24,6 +24,7 @@ from mock import (
     Mock,
     PropertyMock,
 )
+
 from sagemaker.estimator import Estimator
 from sagemaker.workflow._utils import _RepackModelStep
 from tests.unit import DATA_DIR
@@ -108,6 +109,7 @@ def test_repack_model_step(estimator):
         estimator=estimator,
         model_data=model_data,
         entry_point=entry_point,
+        depends_on=["TestStep"],
     )
     request_dict = step.to_request()
 
@@ -121,6 +123,7 @@ def test_repack_model_step(estimator):
     assert request_dict == {
         "Name": "MyRepackModelStep",
         "Type": "Training",
+        "DependsOn": ["TestStep"],
         "Arguments": {
             "AlgorithmSpecification": {"TrainingInputMode": "File"},
             "DebugHookConfig": {"CollectionConfigurations": [], "S3OutputPath": "s3://my-bucket/"},

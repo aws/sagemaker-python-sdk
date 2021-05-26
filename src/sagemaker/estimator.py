@@ -52,6 +52,9 @@ from sagemaker.fw_utils import (
     _region_supports_profiler,
     get_mp_parameters,
 )
+from sagemaker.workflow.properties import Properties
+from sagemaker.workflow.parameters import Parameter
+from sagemaker.workflow.entities import Expression
 from sagemaker.inputs import TrainingInput
 from sagemaker.job import _Job
 from sagemaker.local import LocalSession
@@ -120,6 +123,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         enable_network_isolation=False,
         profiler_config=None,
         disable_profiler=False,
+        environment=None,
+        max_retry_attempts=None,
         **kwargs,
     ):
         """Initialize an ``EstimatorBase`` instance.
@@ -263,6 +268,15 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 ``disable_profiler`` parameter to ``True``.
             disable_profiler (bool): Specifies whether Debugger monitoring and profiling
                 will be disabled (default: ``False``).
+            environment (dict[str, str]) : Environment variables to be set for
+                use during training job (default: ``None``)
+             max_retry_attempts (int): The number of times to move a job to the STARTING status.
+                You can specify between 1 and 30 attempts.
+                If the value of attempts is greater than zero,
+                the job is retried on InternalServerFailure
+                the same number of attempts as the value.
+                You can cap the total duration for your job by setting ``max_wait`` and ``max_run``
+                (default: ``None``)
 
         """
         instance_count = renamed_kwargs(
@@ -348,6 +362,13 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
 
         self.profiler_config = profiler_config
         self.disable_profiler = disable_profiler
+
+        self.environment = environment
+
+        self.max_retry_attempts = max_retry_attempts
+
+        if not _region_supports_profiler(self.sagemaker_session.boto_region_name):
+            self.disable_profiler = True
 
         self.profiler_rule_configs = None
         self.profiler_rules = None
@@ -817,7 +838,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         If the output is a tty or a Jupyter cell, it will be color-coded based
         on which instance the log entry is from.
         """
-        self.sagemaker_session.logs_for_job(self.latest_training_job, wait=True)
+        self.sagemaker_session.logs_for_job(self.latest_training_job.name, wait=True)
 
     def deploy(
         self,
@@ -1103,6 +1124,13 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             if max_wait:
                 init_params["max_wait"] = max_wait
 
+        if job_details.get("RetryStrategy", False):
+            init_params["max_retry_attempts"] = job_details.get("RetryStrategy", {}).get(
+                "MaximumRetryAttempts"
+            )
+            max_wait = job_details.get("StoppingCondition", {}).get("MaxWaitTimeInSeconds")
+            if max_wait:
+                init_params["max_wait"] = max_wait
         return init_params
 
     def transformer(
@@ -1453,7 +1481,10 @@ class _TrainingJob(_Job):
 
         current_hyperparameters = estimator.hyperparameters()
         if current_hyperparameters is not None:
-            hyperparameters = {str(k): str(v) for (k, v) in current_hyperparameters.items()}
+            hyperparameters = {
+                str(k): (v if isinstance(v, (Parameter, Expression, Properties)) else str(v))
+                for (k, v) in current_hyperparameters.items()
+            }
 
         train_args = config.copy()
         train_args["input_mode"] = estimator.input_mode
@@ -1462,6 +1493,7 @@ class _TrainingJob(_Job):
         train_args["tags"] = estimator.tags
         train_args["metric_definitions"] = estimator.metric_definitions
         train_args["experiment_config"] = experiment_config
+        train_args["environment"] = estimator.environment
 
         if isinstance(inputs, TrainingInput):
             if "InputMode" in inputs.config:
@@ -1473,6 +1505,11 @@ class _TrainingJob(_Job):
 
         if estimator.enable_network_isolation():
             train_args["enable_network_isolation"] = True
+
+        if estimator.max_retry_attempts is not None:
+            train_args["retry_strategy"] = {"MaximumRetryAttempts": estimator.max_retry_attempts}
+        else:
+            train_args["retry_strategy"] = None
 
         if estimator.encrypt_inter_container_traffic:
             train_args["encrypt_inter_container_traffic"] = True
@@ -1650,6 +1687,8 @@ class Estimator(EstimatorBase):
         enable_sagemaker_metrics=None,
         profiler_config=None,
         disable_profiler=False,
+        environment=None,
+        max_retry_attempts=None,
         **kwargs,
     ):
         """Initialize an ``Estimator`` instance.
@@ -1787,11 +1826,6 @@ class Estimator(EstimatorBase):
                 API_AlgorithmSpecification.html#SageMaker-Type-AlgorithmSpecification-
                 EnableSageMakerMetricsTimeSeries>`_.
                 (default: ``None``).
-            enable_network_isolation (bool): Specifies whether container will
-                run in network isolation mode (default: ``False``). Network
-                isolation mode restricts the container access to outside networks
-                (such as the Internet). The container does not make any inbound or
-                outbound network calls. Also known as Internet-free mode.
             profiler_config (:class:`~sagemaker.debugger.ProfilerConfig`):
                 Configuration for how SageMaker Debugger collects
                 monitoring and profiling information from your training job.
@@ -1803,6 +1837,15 @@ class Estimator(EstimatorBase):
                 ``disable_profiler`` parameter to ``True``.
             disable_profiler (bool): Specifies whether Debugger monitoring and profiling
                 will be disabled (default: ``False``).
+            environment (dict[str, str]) : Environment variables to be set for
+                use during training job (default: ``None``)
+            max_retry_attempts (int): The number of times to move a job to the STARTING status.
+                You can specify between 1 and 30 attempts.
+                If the value of attempts is greater than zero,
+                the job is retried on InternalServerFailure
+                the same number of attempts as the value.
+                You can cap the total duration for your job by setting ``max_wait`` and ``max_run``
+                (default: ``None``)
         """
         self.image_uri = image_uri
         self.hyperparam_dict = hyperparameters.copy() if hyperparameters else {}
@@ -1836,6 +1879,8 @@ class Estimator(EstimatorBase):
             enable_network_isolation=enable_network_isolation,
             profiler_config=profiler_config,
             disable_profiler=disable_profiler,
+            environment=environment,
+            max_retry_attempts=max_retry_attempts,
             **kwargs,
         )
 
@@ -1940,6 +1985,7 @@ class Framework(EstimatorBase):
     INSTANCE_TYPE = "sagemaker_instance_type"
     MPI_NUM_PROCESSES_PER_HOST = "sagemaker_mpi_num_of_processes_per_host"
     MPI_CUSTOM_MPI_OPTIONS = "sagemaker_mpi_custom_mpi_options"
+    SM_DDP_CUSTOM_MPI_OPTIONS = "sagemaker_distributed_dataparallel_custom_mpi_options"
     CONTAINER_CODE_CHANNEL_SOURCEDIR_PATH = "/opt/ml/input/data/code/sourcedir.tar.gz"
 
     def __init__(
@@ -2205,7 +2251,21 @@ class Framework(EstimatorBase):
         ):
             self.debugger_hook_config = DebuggerHookConfig(s3_output_path=self.output_path)
         elif not self.debugger_hook_config:
-            self.debugger_hook_config = None
+            # set hook config to False if _region_supports_debugger is False
+            self.debugger_hook_config = False
+
+        # Disable debugger if checkpointing is enabled by the customer
+        if self.checkpoint_s3_uri and self.checkpoint_local_path and self.debugger_hook_config:
+            if self._framework_name in {"mxnet", "pytorch", "tensorflow"}:
+                if self.instance_count > 1 or (
+                    hasattr(self, "distribution")
+                    and self.distribution is not None  # pylint: disable=no-member
+                ):
+                    logger.info(
+                        "SMDebug Does Not Currently Support \
+                        Distributed Training Jobs With Checkpointing Enabled"
+                    )
+                    self.debugger_hook_config = False
 
     def _stage_user_code_in_s3(self):
         """Upload the user training script to s3 and return the location.
@@ -2333,6 +2393,22 @@ class Framework(EstimatorBase):
             distribution = self.distribution  # pylint: disable=no-member
         else:
             distribution = None
+
+        if hasattr(self, "tensorflow_version") or hasattr(self, "pytorch_version"):
+            processor = image_uris._processor(self.instance_type, ["cpu", "gpu"])
+            container_version = "cu110-ubuntu18.04" if processor == "gpu" else None
+            if self.tensorflow_version is not None:  # pylint: disable=no-member
+                base_framework_version = (
+                    f"tensorflow{self.tensorflow_version}"  # pylint: disable=no-member
+                )
+            else:
+                base_framework_version = (
+                    f"pytorch{self.pytorch_version}"  # pylint: disable=no-member
+                )
+        else:
+            container_version = None
+            base_framework_version = None
+
         return image_uris.retrieve(
             self._framework_name,
             self.sagemaker_session.boto_region_name,
@@ -2341,6 +2417,8 @@ class Framework(EstimatorBase):
             py_version=self.py_version,  # pylint: disable=no-member
             image_scope="training",
             distribution=distribution,
+            base_framework_version=base_framework_version,
+            container_version=container_version,
         )
 
     @classmethod
@@ -2396,7 +2474,13 @@ class Framework(EstimatorBase):
     @staticmethod
     def _json_encode_hyperparameters(hyperparameters):
         """Placeholder docstring"""
-        return {str(k): json.dumps(v) for (k, v) in hyperparameters.items()}
+        current_hyperparameters = hyperparameters
+        if current_hyperparameters is not None:
+            hyperparameters = {
+                str(k): (v if isinstance(v, (Parameter, Expression, Properties)) else json.dumps(v))
+                for (k, v) in current_hyperparameters.items()
+            }
+        return hyperparameters
 
     @classmethod
     def _update_init_params(cls, hp, tf_arguments):
@@ -2583,6 +2667,10 @@ class Framework(EstimatorBase):
             smdataparallel_enabled = smdistributed.get("dataparallel", {}).get("enabled", False)
             distribution_config[self.LAUNCH_SM_DDP_ENV_NAME] = smdataparallel_enabled
             distribution_config[self.INSTANCE_TYPE] = self.instance_type
+            if smdataparallel_enabled:
+                distribution_config[self.SM_DDP_CUSTOM_MPI_OPTIONS] = smdistributed[
+                    "dataparallel"
+                ].get("custom_mpi_options", "")
 
         return distribution_config
 

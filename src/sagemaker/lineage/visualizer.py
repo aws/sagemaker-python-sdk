@@ -12,9 +12,15 @@
 # language governing permissions and limitations under the License.
 """This module contains functionality to display lineage data."""
 from __future__ import absolute_import
-import logging
-import pandas as pd
 
+import logging
+
+from typing import Optional, Any, Iterator
+
+import pandas as pd
+from pandas import DataFrame
+
+from sagemaker.lineage._api_types import AssociationSummary
 from sagemaker.lineage.association import Association
 
 
@@ -31,16 +37,16 @@ class LineageTableVisualizer(object):
 
     def show(
         self,
-        trial_component_name=None,
-        training_job_name=None,
-        processing_job_name=None,
-        pipeline_execution_step=None,
-        model_package_arn=None,
-        endpoint_arn=None,
-        artifact_arn=None,
-        context_arn=None,
-        actions_arn=None,
-    ):
+        trial_component_name: Optional[str] = None,
+        training_job_name: Optional[str] = None,
+        processing_job_name: Optional[str] = None,
+        pipeline_execution_step: Optional[object] = None,
+        model_package_arn: Optional[str] = None,
+        endpoint_arn: Optional[str] = None,
+        artifact_arn: Optional[str] = None,
+        context_arn: Optional[str] = None,
+        actions_arn: Optional[str] = None,
+    ) -> DataFrame:
         """Generate a dataframe containing all incoming and outgoing lineage entities.
 
           Examples:
@@ -65,7 +71,7 @@ class LineageTableVisualizer(object):
         Returns:
             DataFrame: Pandas dataframe containing lineage associations.
         """
-        start_arn = None
+        start_arn: str = None
 
         if trial_component_name:
             start_arn = self._get_start_arn_from_trial_component_name(trial_component_name)
@@ -90,7 +96,7 @@ class LineageTableVisualizer(object):
 
         return self._get_associations_dataframe(start_arn)
 
-    def _get_start_arn_from_pipeline_execution_step(self, pipeline_execution_step):
+    def _get_start_arn_from_pipeline_execution_step(self, pipeline_execution_step: object) -> str:
         """Given a pipeline exection step retrieve the arn of the lineage entity that represents it.
 
         Args:
@@ -99,13 +105,14 @@ class LineageTableVisualizer(object):
         Returns:
             str: The arn of the lineage entity
         """
-        start_arn = None
+        start_arn: str = None
 
         if not pipeline_execution_step["Metadata"]:
             return None
 
-        metadata = pipeline_execution_step["Metadata"]
-        jobs = ["TrainingJob", "ProccessingJob", "TransformJob"]
+        metadata: Any = pipeline_execution_step["Metadata"]
+        jobs: list = ["TrainingJob", "ProcessingJob", "TransformJob"]
+
         for job in jobs:
             if job in metadata and metadata[job]:
                 job_arn = metadata[job]["Arn"]
@@ -117,7 +124,7 @@ class LineageTableVisualizer(object):
 
         return start_arn
 
-    def _get_start_arn_from_job_arn(self, job_arn):
+    def _get_start_arn_from_job_arn(self, job_arn: str) -> str:
         """Given a job arn return the lineage entity.
 
         Args:
@@ -126,16 +133,16 @@ class LineageTableVisualizer(object):
         Returns:
           str: The arn of the job's lineage entity.
         """
-        start_arn = None
-        response = self._session.sagemaker_client.list_trial_components(SourceArn=job_arn)
-        trial_components = response["TrialComponentSummaries"]
+        start_arn: str = None
+        response: Any = self._session.sagemaker_client.list_trial_components(SourceArn=job_arn)
+        trial_components: Any = response["TrialComponentSummaries"]
         if trial_components:
             start_arn = trial_components[0]["TrialComponentArn"]
         else:
             logging.warning("No trial components found for %s", job_arn)
         return start_arn
 
-    def _get_associations_dataframe(self, arn):
+    def _get_associations_dataframe(self, arn: str) -> DataFrame:
         """Create a data frame containing lineage association information.
 
         Args:
@@ -148,17 +155,25 @@ class LineageTableVisualizer(object):
             # no associations
             return None
 
-        upstream_associations = self._get_associations(dest_arn=arn)
-        downstream_associations = self._get_associations(src_arn=arn)
-        inputs = list(map(self._convert_input_association_to_df_row, upstream_associations))
-        outputs = list(map(self._convert_output_association_to_df_row, downstream_associations))
-        df = pd.DataFrame(
+        upstream_associations: Iterator[AssociationSummary] = self._get_associations(dest_arn=arn)
+        downstream_associations: Iterator[AssociationSummary] = self._get_associations(src_arn=arn)
+        inputs: list = list(map(self._convert_input_association_to_df_row, upstream_associations))
+        outputs: list = list(
+            map(self._convert_output_association_to_df_row, downstream_associations)
+        )
+        df: DataFrame = pd.DataFrame(
             inputs + outputs,
-            columns=["Name/Source", "Direction", "Type", "Association Type", "Lineage Type"],
+            columns=[
+                "Name/Source",
+                "Direction",
+                "Type",
+                "Association Type",
+                "Lineage Type",
+            ],
         )
         return df
 
-    def _get_start_arn_from_trial_component_name(self, tc_name):
+    def _get_start_arn_from_trial_component_name(self, tc_name: str) -> str:
         """Given a trial component name retrieve a start arn.
 
         Args:
@@ -167,13 +182,13 @@ class LineageTableVisualizer(object):
         Returns:
           str: The arn of the trial component.
         """
-        response = self._session.sagemaker_client.describe_trial_component(
+        response: Any = self._session.sagemaker_client.describe_trial_component(
             TrialComponentName=tc_name
         )
-        tc_arn = response["TrialComponentArn"]
+        tc_arn: str = response["TrialComponentArn"]
         return tc_arn
 
-    def _get_start_arn_from_model_package_arn(self, model_package_arn):
+    def _get_start_arn_from_model_package_arn(self, model_package_arn: str) -> str:
         """Given a model package arn retrieve the arn lineage entity.
 
         Args:
@@ -182,16 +197,16 @@ class LineageTableVisualizer(object):
         Returns:
             str: The arn of the lineage entity that represents the model package.
         """
-        response = self._session.sagemaker_client.list_artifacts(SourceUri=model_package_arn)
-        artifacts = response["ArtifactSummaries"]
-        artifact_arn = None
+        response: Any = self._session.sagemaker_client.list_artifacts(SourceUri=model_package_arn)
+        artifacts: Any = response["ArtifactSummaries"]
+        artifact_arn: str = None
         if artifacts:
             artifact_arn = artifacts[0]["ArtifactArn"]
         else:
             logging.debug("No artifacts found for %s.", model_package_arn)
         return artifact_arn
 
-    def _get_start_arn_from_endpoint_arn(self, endpoint_arn):
+    def _get_start_arn_from_endpoint_arn(self, endpoint_arn: str) -> str:
         """Given an endpoint arn retrieve the arn of the lineage entity.
 
         Args:
@@ -200,16 +215,18 @@ class LineageTableVisualizer(object):
         Returns:
             str: The arn of the lineage entity that represents the model package.
         """
-        response = self._session.sagemaker_client.list_contexts(SourceUri=endpoint_arn)
-        contexts = response["ContextSummaries"]
-        context_arn = None
+        response: Any = self._session.sagemaker_client.list_contexts(SourceUri=endpoint_arn)
+        contexts: Any = response["ContextSummaries"]
+        context_arn: str = None
         if contexts:
             context_arn = contexts[0]["ContextArn"]
         else:
             logging.debug("No contexts found for %s.", endpoint_arn)
         return context_arn
 
-    def _get_associations(self, src_arn=None, dest_arn=None):
+    def _get_associations(
+        self, src_arn: Optional[str] = None, dest_arn: Optional[str] = None
+    ) -> Iterator[AssociationSummary]:
         """Given an arn retrieve all associated lineage entities.
 
         The arn must be one of: experiment, trial, trial component, artifact, action, or context.
@@ -223,14 +240,16 @@ class LineageTableVisualizer(object):
             entity of interest.
         """
         if src_arn:
-            associations = Association.list(source_arn=src_arn, sagemaker_session=self._session)
+            associations: Iterator[AssociationSummary] = Association.list(
+                source_arn=src_arn, sagemaker_session=self._session
+            )
         else:
-            associations = Association.list(
+            associations: Iterator[AssociationSummary] = Association.list(
                 destination_arn=dest_arn, sagemaker_session=self._session
             )
         return associations
 
-    def _convert_input_association_to_df_row(self, association):
+    def _convert_input_association_to_df_row(self, association) -> list:
         """Convert an input association to a data frame row.
 
         Args:
@@ -247,7 +266,7 @@ class LineageTableVisualizer(object):
             association.association_type,
         )
 
-    def _convert_output_association_to_df_row(self, association):
+    def _convert_output_association_to_df_row(self, association) -> list:
         """Convert an output association to a data frame row.
 
         Args:
@@ -264,7 +283,14 @@ class LineageTableVisualizer(object):
             association.association_type,
         )
 
-    def _convert_association_to_df_row(self, arn, name, direction, src_dest_type, association_type):
+    def _convert_association_to_df_row(
+        self,
+        arn: str,
+        name: str,
+        direction: str,
+        src_dest_type: str,
+        association_type: type,
+    ) -> list:
         """Convert association data into a data frame row.
 
         Args:
@@ -284,7 +310,7 @@ class LineageTableVisualizer(object):
         name = self._get_friendly_name(name, arn, entity_type)
         return [name, direction, src_dest_type, association_type, entity_type]
 
-    def _get_friendly_name(self, name, arn, entity_type):
+    def _get_friendly_name(self, name: str, arn: str, entity_type: str) -> str:
         """Get a human readable name from the association.
 
         Args:

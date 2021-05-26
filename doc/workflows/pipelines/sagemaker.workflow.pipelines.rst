@@ -51,6 +51,11 @@ Execution_variables
 
 .. autoclass:: sagemaker.workflow.execution_variables.ExecutionVariables
 
+Functions
+---------
+
+.. autoclass:: sagemaker.workflow.functions.Join
+
 Parameters
 ----------
 
@@ -109,8 +114,6 @@ Steps
 .. autoclass:: sagemaker.workflow.steps.TransformStep
 
 .. autoclass:: sagemaker.workflow.steps.ProcessingStep
-
-.. autoclass:: sagemaker.workflow.steps.FailStep
 
 Utilities
 ---------

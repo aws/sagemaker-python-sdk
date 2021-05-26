@@ -56,6 +56,9 @@ def test_list(association_objs, sagemaker_session):
     # sanity check
     assert association_keys_listed
 
+    for listed_asscn in listed:
+        assert listed_asscn.created_by is None
+
 
 @pytest.mark.timeout(30)
 def test_set_tag(association_obj, sagemaker_session):
