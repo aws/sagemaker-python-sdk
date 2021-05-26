@@ -46,8 +46,11 @@ def _append_project_tags(tags=None, working_dir=None):
         return tags
 
     all_tags = tags or []
-    all_tags.extend(additional_tags)
-
+    # Don't add project tags multiple times.
+    all_tag_keys = set(map(lambda t: t["Key"], all_tags))
+    for tag in additional_tags:
+        if not tag["Key"] in all_tag_keys:
+            all_tags.append(tag)
     return all_tags
 
 

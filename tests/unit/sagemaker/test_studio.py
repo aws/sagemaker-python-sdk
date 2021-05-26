@@ -94,3 +94,24 @@ def test_append_project_tags(tmpdir):
         {"Key": "sagemaker:project-id", "Value": "proj-1234"},
         {"Key": "sagemaker:project-name", "Value": "proj-name"},
     ]
+
+
+def test_append_project_tags_multiple_times(tmpdir):
+    # This test case ensures that project tags only get added once.
+    # Sagemaker API fails when the same tag is added multiple times in the tags array.
+    config = tmpdir.join(".sagemaker-code-config")
+    config.write('{"sagemakerProjectId": "proj-1234", "sagemakerProjectName": "proj-name"}')
+    working_dir = tmpdir.mkdir("sub")
+
+    tags = _append_project_tags([{"Key": "a", "Value": "b"}], working_dir)
+    assert tags == [
+        {"Key": "a", "Value": "b"},
+        {"Key": "sagemaker:project-id", "Value": "proj-1234"},
+        {"Key": "sagemaker:project-name", "Value": "proj-name"},
+    ]
+    tags = _append_project_tags(tags, working_dir)
+    assert tags == [
+        {"Key": "a", "Value": "b"},
+        {"Key": "sagemaker:project-id", "Value": "proj-1234"},
+        {"Key": "sagemaker:project-name", "Value": "proj-name"},
+    ]
