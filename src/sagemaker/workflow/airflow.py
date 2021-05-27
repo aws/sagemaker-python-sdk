@@ -244,6 +244,11 @@ def training_config(estimator, inputs=None, job_name=None, mini_batch_size=None)
     if estimator.metric_definitions is not None:
         train_config["AlgorithmSpecification"]["MetricDefinitions"] = estimator.metric_definitions
 
+    if estimator.checkpoint_s3_uri:
+        train_config["CheckpointConfig"] =  {"S3Uri": estimator.checkpoint_s3_uri}
+        if estimator.checkpoint_local_path:
+            train_config["CheckpointConfig"]["LocalPath"] = estimator.checkpoint_local_path
+
     return train_config
 
 

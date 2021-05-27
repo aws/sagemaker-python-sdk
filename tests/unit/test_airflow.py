@@ -106,6 +106,8 @@ def test_byo_training_config_all_args(sagemaker_session):
         security_group_ids=["{{ security_group_ids }}"],
         model_uri="{{ model_uri }}",
         model_channel_name="{{ model_chanel }}",
+        checkpoint_s3_uri="{{ checkpoint_s3_uri }}",
+        checkpoint_local_path="{{ checkpoint_local_path }}",
         sagemaker_session=sagemaker_session,
         use_spot_instances=True,
     )
@@ -117,6 +119,10 @@ def test_byo_training_config_all_args(sagemaker_session):
     config = airflow.training_config(byo, data)
     expected_config = {
         "AlgorithmSpecification": {"TrainingImage": "byo", "TrainingInputMode": "Pipe"},
+        "CheckpointConfig": {
+            "LocalPath": "{{ checkpoint_local_path }}",
+            "S3Uri": "{{ checkpoint_s3_uri }}",
+        },
         "OutputDataConfig": {
             "S3OutputPath": "{{ output_path }}",
             "KmsKeyId": "{{ output_volume_kms_key }}",
