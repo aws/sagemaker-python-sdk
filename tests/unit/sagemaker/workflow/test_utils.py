@@ -24,6 +24,7 @@ from mock import (
     Mock,
     PropertyMock,
 )
+
 from sagemaker.estimator import Estimator
 from sagemaker.workflow._utils import _RepackModelStep
 from tests.unit import DATA_DIR

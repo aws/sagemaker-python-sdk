@@ -328,7 +328,7 @@ class _RegisterModelStep(Step):
             metadata_properties=self.metadata_properties,
             approval_status=self.approval_status,
             description=self.description,
-            container_def_list=self.container_def_list,
+            container_def_list=self.container_def_list
         )
         request_dict = model.sagemaker_session._get_create_model_package_request(
             **model_package_args
