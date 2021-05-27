@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.42.1 (2021-05-27)
+
+### Bug Fixes and Other Changes
+
+ * default value removed if zero for integer param
+
 ## v2.42.0 (2021-05-24)
 
 ### Features
