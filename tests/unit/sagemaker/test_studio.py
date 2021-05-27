@@ -94,3 +94,11 @@ def test_append_project_tags(tmpdir):
         {"Key": "sagemaker:project-id", "Value": "proj-1234"},
         {"Key": "sagemaker:project-name", "Value": "proj-name"},
     ]
+
+    tags = _append_project_tags(
+        [{"Key": "sagemaker:project-id", "Value": "proj-1234"}], working_dir
+    )
+    assert tags == [
+        {"Key": "sagemaker:project-id", "Value": "proj-1234"},
+        {"Key": "sagemaker:project-name", "Value": "proj-name"},
+    ]
