@@ -126,7 +126,7 @@ class ModelConfig:
         accelerator_type=None,
         endpoint_name_prefix=None,
     ):
-        """Initializes a configuration of a model and the endpoint to be created for it.
+        r"""Initializes a configuration of a model and the endpoint to be created for it.
 
         Args:
             model_name (str): Model name (as created by 'CreateModel').
@@ -321,8 +321,9 @@ class SHAPConfig(ExplainabilityConfig):
             "agg_method": agg_method,
             "use_logit": use_logit,
             "save_local_shap_values": save_local_shap_values,
-            "seed": seed,
         }
+        if seed is not None:
+            self.shap_config["seed"] = seed
 
     def get_explainability_config(self):
         """Returns config."""
