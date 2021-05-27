@@ -1,5 +1,24 @@
 # Changelog
 
+## v2.42.0 (2021-05-24)
+
+### Features
+
+ * support for custom pipeline execution name
+ * Add data ingestion only data-wrangler flow recipe generation helper function
+
+### Bug Fixes and Other Changes
+
+ * add kms key for processing job code upload
+ * remove failing notebooks from notebook pr test
+ * fix in and not in condition bug
+ * Update overview.rst
+
+### Documentation Changes
+
+ * Update "Ask a question" contact link
+ * Update smdp docs with sparse_as_dense support
+
 ## v2.41.0 (2021-05-17)
 
 ### Features
