@@ -157,7 +157,7 @@ class ModelConfig:
                 endpoint instance for making inferences to the model, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html.
             endpoint_name_prefix (str): The endpoint name prefix of a new endpoint. Must follow
-                pattern ^[a-zA-Z0-9](-*[a-zA-Z0-9].
+                pattern "^[a-zA-Z0-9](-\*[a-zA-Z0-9]".
         """
         self.predictor_config = {
             "model_name": model_name,
@@ -349,6 +349,7 @@ class SageMakerClarifyProcessor(Processor):
         env=None,
         tags=None,
         network_config=None,
+        version="1.0",
     ):
         """Initializes a ``Processor`` instance, computing bias metrics and model explanations.
 
@@ -382,8 +383,9 @@ class SageMakerClarifyProcessor(Processor):
                 A :class:`~sagemaker.network.NetworkConfig`
                 object that configures network isolation, encryption of
                 inter-container traffic, security group IDs, and subnets.
+            version (str): Clarify version want to be used (default: "1.0").
         """
-        container_uri = image_uris.retrieve("clarify", sagemaker_session.boto_region_name)
+        container_uri = image_uris.retrieve("clarify", sagemaker_session.boto_region_name, version)
         super(SageMakerClarifyProcessor, self).__init__(
             role,
             container_uri,
