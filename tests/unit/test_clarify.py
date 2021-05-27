@@ -412,7 +412,6 @@ def test_shap(clarify_processor, data_config, model_config, shap_config):
                     "agg_method": "mean_sq",
                     "use_logit": False,
                     "save_local_shap_values": True,
-                    "seed": None,
                 }
             },
             "predictor": {
