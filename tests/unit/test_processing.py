@@ -165,10 +165,10 @@ def test_sklearn_with_all_parameters(
     sagemaker_session.process.assert_called_with(**expected_args)
 
 
-
-def test_local_mode_disables_local_code_by_default(sklearn_latest_version):
-    processor = SKLearnProcessor(
-        framework_version=sklearn_latest_version,
+@patch("sagemaker.local.LocalSession.__init__", return_value=None)
+def test_local_mode_disables_local_code_by_default(localsession_mock):
+    Processor(
+        image_uri="",
         role=ROLE,
         instance_count=1,
         instance_type="local",
@@ -176,7 +176,7 @@ def test_local_mode_disables_local_code_by_default(sklearn_latest_version):
 
     # Most tests use a fixture for sagemaker_session for consistent behaviour, so this unit test
     # checks that the default initialization disables unsupported 'local_code' mode:
-    assert not get_config_value("local.local_code", processor.sagemaker_session.config)
+    localsession_mock.assert_called_with(disable_local_code=True)
 
 
 @patch("sagemaker.utils._botocore_resolver")
