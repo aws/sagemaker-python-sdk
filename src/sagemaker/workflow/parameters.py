@@ -80,7 +80,7 @@ class Parameter(Entity):
             "Name": self.name,
             "Type": self.parameter_type.value,
         }
-        if self.default_value:
+        if self.default_value is not None:
             value["DefaultValue"] = self.default_value
         return value
 

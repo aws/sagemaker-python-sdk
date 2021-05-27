@@ -459,7 +459,7 @@ library with TensorFlow.
 
       *   Supported compression types - ``none``, ``fp16``
 
-   - ``sparse_as_dense:`` Not supported. Raises not supported error.
+   - ``sparse_as_dense:`` Treats sparse gradient tensor as dense tensor. Defaults to ``False``.
 
    - ``op (smdistributed.dataparallel.tensorflow.ReduceOp)(optional)``: The reduction operation to combine tensors across different ranks. Defaults to ``Average`` if None is given.
 
@@ -498,6 +498,8 @@ library with TensorFlow.
    - ``compression (smdistributed.dataparallel.tensorflow.Compression)(optional)``: Compression algorithm used to reduce the amount of data sent and received by each worker node. Defaults to not using compression.
 
       *   Supported compression types - ``none``, ``fp16``
+
+   - ``sparse_as_dense:`` Treats sparse gradient tensor as dense tensor. Defaults to ``False``.
 
    - ``op (smdistributed.dataparallel.tensorflow.ReduceOp)(optional)``: The reduction operation to combine tensors across different ranks. Defaults to ``Average`` if None is given.
 
