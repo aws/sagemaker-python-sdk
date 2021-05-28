@@ -19,31 +19,37 @@ import subprocess
 import time
 import uuid
 
+from contextlib import contextmanager
 import pytest
 
 from botocore.exceptions import WaiterError
+import pandas as pd
+from tests.integ.timeout import timeout
+
 from sagemaker.debugger import (
     DebuggerHookConfig,
     Rule,
     rule_configs,
 )
 from datetime import datetime
+from sagemaker.session import Session
 from sagemaker import image_uris
 from sagemaker.inputs import CreateModelInput, TrainingInput
 from sagemaker.model import Model
-from sagemaker.processing import ProcessingInput, ProcessingOutput
+from sagemaker.processing import ProcessingInput, ProcessingOutput, FeatureStoreOutput
 from sagemaker.pytorch.estimator import PyTorch
 from sagemaker.s3 import S3Uploader
 from sagemaker.session import get_execution_role
 from sagemaker.sklearn.estimator import SKLearn
 from sagemaker.sklearn.processing import SKLearnProcessor
 from sagemaker.spark.processing import PySparkProcessor, SparkJarProcessor
-from sagemaker.workflow.conditions import ConditionGreaterThanOrEqualTo
+from sagemaker.workflow.conditions import ConditionGreaterThanOrEqualTo, ConditionIn
 from sagemaker.workflow.condition_step import ConditionStep
 from sagemaker.wrangler.processing import DataWranglerProcessor
 from sagemaker.dataset_definition.inputs import DatasetDefinition, AthenaDatasetDefinition
 from sagemaker.workflow.execution_variables import ExecutionVariables
 from sagemaker.workflow.functions import Join
+from sagemaker.wrangler.ingestion import generate_data_ingestion_flow_from_s3_input
 from sagemaker.workflow.parameters import (
     ParameterInteger,
     ParameterString,
@@ -56,6 +62,7 @@ from sagemaker.workflow.steps import (
 )
 from sagemaker.workflow.step_collections import RegisterModel
 from sagemaker.workflow.pipeline import Pipeline
+from sagemaker.feature_store.feature_group import FeatureGroup, FeatureDefinition, FeatureTypeEnum
 from tests.integ import DATA_DIR
 
 
@@ -82,6 +89,19 @@ def role(sagemaker_session):
 @pytest.fixture(scope="module")
 def script_dir():
     return os.path.join(DATA_DIR, "sklearn_processing")
+
+
+@pytest.fixture(scope="module")
+def feature_store_session(sagemaker_session):
+    boto_session = sagemaker_session.boto_session
+    sagemaker_client = boto_session.client("sagemaker")
+    featurestore_runtime_client = boto_session.client("sagemaker-featurestore-runtime")
+
+    return Session(
+        boto_session=boto_session,
+        sagemaker_client=sagemaker_client,
+        sagemaker_featurestore_runtime_client=featurestore_runtime_client,
+    )
 
 
 @pytest.fixture
@@ -794,6 +814,7 @@ def test_conditional_pytorch_training_model_registration(
     instance_count = ParameterInteger(name="InstanceCount", default_value=1)
     instance_type = ParameterString(name="InstanceType", default_value="ml.m5.xlarge")
     good_enough_input = ParameterInteger(name="GoodEnoughInput", default_value=1)
+    in_condition_input = ParameterString(name="Foo", default_value="Foo")
 
     pytorch_estimator = PyTorch(
         entry_point=entry_point,
@@ -839,14 +860,17 @@ def test_conditional_pytorch_training_model_registration(
 
     step_cond = ConditionStep(
         name="cond-good-enough",
-        conditions=[ConditionGreaterThanOrEqualTo(left=good_enough_input, right=1)],
+        conditions=[
+            ConditionGreaterThanOrEqualTo(left=good_enough_input, right=1),
+            ConditionIn(value=in_condition_input, in_values=["foo", "bar"]),
+        ],
         if_steps=[step_train, step_register],
         else_steps=[step_model],
     )
 
     pipeline = Pipeline(
         name=pipeline_name,
-        parameters=[good_enough_input, instance_count, instance_type],
+        parameters=[in_condition_input, good_enough_input, instance_count, instance_type],
         steps=[step_cond],
         sagemaker_session=sagemaker_session,
     )
@@ -1178,12 +1202,7 @@ def test_two_processing_job_depends_on(
             pass
 
 
-def test_one_step_data_wrangler_processing_pipeline(
-    sagemaker_session,
-    role,
-    pipeline_name,
-    region_name,
-):
+def test_one_step_data_wrangler_processing_pipeline(sagemaker_session, role, pipeline_name):
     instance_count = ParameterInteger(name="InstanceCount", default_value=1)
     instance_type = ParameterString(name="InstanceType", default_value="ml.m5.4xlarge")
 
@@ -1285,4 +1304,169 @@ def test_one_step_data_wrangler_processing_pipeline(
         try:
             pipeline.delete()
         except Exception:
+            pass
+
+
+def test_one_step_ingestion_pipeline(
+    sagemaker_session, feature_store_session, feature_definitions, role, pipeline_name
+):
+    instance_count = ParameterInteger(name="InstanceCount", default_value=1)
+    instance_type = ParameterString(name="InstanceType", default_value="ml.m5.4xlarge")
+
+    input_name = "features.csv"
+    input_file_path = os.path.join(DATA_DIR, "workflow", "features.csv")
+    input_data_uri = os.path.join(
+        "s3://", sagemaker_session.default_bucket(), "py-sdk-ingestion-test-input/features.csv"
+    )
+    with open(input_file_path, "r") as data:
+        body = data.read()
+        S3Uploader.upload_string_as_file_body(
+            body=body, desired_s3_uri=input_data_uri, sagemaker_session=sagemaker_session
+        )
+
+    inputs = [
+        ProcessingInput(
+            input_name=input_name,
+            source=input_data_uri,
+            destination="/opt/ml/processing/features.csv",
+        )
+    ]
+
+    feature_group_name = f"py-sdk-integ-fg-{int(time.time() * 10**7)}"
+    feature_group = FeatureGroup(
+        name=feature_group_name,
+        feature_definitions=feature_definitions,
+        sagemaker_session=feature_store_session,
+    )
+
+    ingestion_only_flow, output_name = generate_data_ingestion_flow_from_s3_input(
+        input_name,
+        input_data_uri,
+        s3_content_type="csv",
+        s3_has_header=True,
+    )
+
+    outputs = [
+        ProcessingOutput(
+            output_name=output_name,
+            app_managed=True,
+            feature_store_output=FeatureStoreOutput(feature_group_name=feature_group_name),
+        )
+    ]
+
+    temp_flow_path = "./ingestion.flow"
+    with cleanup_feature_group(feature_group):
+        json.dump(ingestion_only_flow, open(temp_flow_path, "w"))
+
+        data_wrangler_processor = DataWranglerProcessor(
+            role=role,
+            data_wrangler_flow_source=temp_flow_path,
+            instance_count=instance_count,
+            instance_type=instance_type,
+            sagemaker_session=sagemaker_session,
+            max_runtime_in_seconds=86400,
+        )
+
+        data_wrangler_step = ProcessingStep(
+            name="ingestion-step", processor=data_wrangler_processor, inputs=inputs, outputs=outputs
+        )
+
+        pipeline = Pipeline(
+            name=pipeline_name,
+            parameters=[instance_count, instance_type],
+            steps=[data_wrangler_step],
+            sagemaker_session=sagemaker_session,
+        )
+
+        try:
+            response = pipeline.create(role)
+            create_arn = response["PipelineArn"]
+
+            offline_store_s3_uri = os.path.join(
+                "s3://", sagemaker_session.default_bucket(), feature_group_name
+            )
+            feature_group.create(
+                s3_uri=offline_store_s3_uri,
+                record_identifier_name="f11",
+                event_time_feature_name="f10",
+                role_arn=role,
+                enable_online_store=False,
+            )
+            _wait_for_feature_group_create(feature_group)
+
+            execution = pipeline.start()
+            response = execution.describe()
+            assert response["PipelineArn"] == create_arn
+
+            try:
+                execution.wait(delay=60, max_attempts=10)
+            except WaiterError:
+                pass
+
+            execution_steps = execution.list_steps()
+
+            assert len(execution_steps) == 1
+            assert execution_steps[0]["StepName"] == "ingestion-step"
+            assert execution_steps[0]["StepStatus"] == "Succeeded"
+
+            athena_query = feature_group.athena_query()
+            with timeout(minutes=10):
+                athena_query.run(
+                    query_string=f'SELECT * FROM "{athena_query.table_name}"',
+                    output_location=f"{offline_store_s3_uri}/query_results",
+                )
+                athena_query.wait()
+                assert "SUCCEEDED" == athena_query.get_query_execution().get("QueryExecution").get(
+                    "Status"
+                ).get("State")
+
+                df = athena_query.as_dataframe()
+                assert pd.read_csv(input_file_path).shape[0] == df.shape[0]
+        finally:
+            try:
+                pipeline.delete()
+            except Exception as e:
+                print(f"Delete pipeline failed with error: {e}")
+            os.remove(temp_flow_path)
+
+
+def _wait_for_feature_group_create(feature_group: FeatureGroup):
+    status = feature_group.describe().get("FeatureGroupStatus")
+    while status == "Creating":
+        print("Waiting for Feature Group Creation")
+        time.sleep(5)
+        status = feature_group.describe().get("FeatureGroupStatus")
+    if status != "Created":
+        print(feature_group.describe())
+        raise RuntimeError(f"Failed to create feature group {feature_group.name}")
+    print(f"FeatureGroup {feature_group.name} successfully created.")
+
+
+@pytest.fixture
+def feature_definitions():
+    return [
+        FeatureDefinition(feature_name="f1", feature_type=FeatureTypeEnum.STRING),
+        FeatureDefinition(feature_name="f2", feature_type=FeatureTypeEnum.FRACTIONAL),
+        FeatureDefinition(feature_name="f3", feature_type=FeatureTypeEnum.FRACTIONAL),
+        FeatureDefinition(feature_name="f4", feature_type=FeatureTypeEnum.FRACTIONAL),
+        FeatureDefinition(feature_name="f5", feature_type=FeatureTypeEnum.FRACTIONAL),
+        FeatureDefinition(feature_name="f6", feature_type=FeatureTypeEnum.FRACTIONAL),
+        FeatureDefinition(feature_name="f7", feature_type=FeatureTypeEnum.FRACTIONAL),
+        FeatureDefinition(feature_name="f8", feature_type=FeatureTypeEnum.FRACTIONAL),
+        FeatureDefinition(feature_name="f9", feature_type=FeatureTypeEnum.INTEGRAL),
+        FeatureDefinition(feature_name="f10", feature_type=FeatureTypeEnum.FRACTIONAL),
+        FeatureDefinition(feature_name="f11", feature_type=FeatureTypeEnum.STRING),
+    ]
+
+
+@contextmanager
+def cleanup_feature_group(feature_group: FeatureGroup):
+    try:
+        yield
+    finally:
+        try:
+            feature_group.delete()
+            print("FeatureGroup cleaned up")
+        except Exception as e:
+            print(f"Delete FeatureGroup failed with error: {e}.")
             pass
