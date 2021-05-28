@@ -21,7 +21,7 @@ from sagemaker.processing import FrameworkProcessor
 from sagemaker.xgboost.estimator import XGBoost
 
 
-class XGBoostEstimator(FrameworkProcessor):
+class XGBoostProcessor(FrameworkProcessor):
     """Handles Amazon SageMaker processing tasks for jobs using XGBoost containers."""
 
     estimator_cls = XGBoost
@@ -29,15 +29,16 @@ class XGBoostEstimator(FrameworkProcessor):
     def __init__(
         self,
         framework_version,  # New arg
-        s3_prefix,  # New arg
         role,
         instance_count,
         instance_type,
         py_version="py3",  # New kwarg
         image_uri=None,
+        command=None,
         volume_size_in_gb=30,
         volume_kms_key=None,
         output_kms_key=None,
+        code_location=None,  # New arg
         max_runtime_in_seconds=None,
         base_job_name=None,
         sagemaker_session=None,
@@ -48,7 +49,7 @@ class XGBoostEstimator(FrameworkProcessor):
         """This processor executes a Python script in an XGBoost execution environment.
 
         Unless ``image_uri`` is specified, the XGBoost environment is an Amazon-built
-        Docker container that executes functions defined in the supplied ``entry_point``
+        Docker container that executes functions defined in the supplied ``code``
         Python script.
 
         The arguments have the exact same meaning as in ``FrameworkProcessor``.
@@ -56,20 +57,21 @@ class XGBoostEstimator(FrameworkProcessor):
         .. tip::
 
             You can find additional parameters for initializing this class at
-            :class:`~smallmatter.ds.FrameworkProcessor`.
+            :class:`~sagemaker.processing.FrameworkProcessor`.
         """
         super().__init__(
             self.estimator_cls,
             framework_version,
-            s3_prefix,
             role,
             instance_count,
             instance_type,
             py_version,
             image_uri,
+            command,
             volume_size_in_gb,
             volume_kms_key,
             output_kms_key,
+            code_location,
             max_runtime_in_seconds,
             base_job_name,
             sagemaker_session,

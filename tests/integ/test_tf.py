@@ -18,11 +18,11 @@ import time
 
 import pytest
 
-from sagemaker.tensorflow import TensorFlow
+from sagemaker.tensorflow import TensorFlow, TensorFlowProcessor
 from sagemaker.utils import unique_name_from_base, sagemaker_timestamp
 
 import tests.integ
-from tests.integ import kms_utils, timeout
+from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES, kms_utils, timeout
 from tests.integ.retry import retries
 from tests.integ.s3_utils import assert_s3_files_exist
 
@@ -39,6 +39,35 @@ TAGS = [{"Key": "some-key", "Value": "some-value"}]
 ENV_INPUT = {"env_key1": "env_val1", "env_key2": "env_val2", "env_key3": "env_val3"}
 
 
+@pytest.mark.release
+def test_framework_processing_job_with_deps(
+    sagemaker_session,
+    instance_type,
+    tensorflow_training_latest_version,
+    tensorflow_training_latest_py_version,
+):
+    with timeout.timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
+        code_path = os.path.join(DATA_DIR, "dummy_code_bundle_with_reqs")
+        entry_point = "main_script.py"
+
+        processor = TensorFlowProcessor(
+            framework_version=tensorflow_training_latest_version,
+            py_version=tensorflow_training_latest_py_version,
+            role=ROLE,
+            instance_count=1,
+            instance_type=instance_type,
+            sagemaker_session=sagemaker_session,
+            base_job_name="test-tensorflow",
+        )
+
+        processor.run(
+            code=entry_point,
+            source_dir=code_path,
+            inputs=[],
+            wait=True,
+        )
+
+
 def test_mnist_with_checkpoint_config(
     sagemaker_session,
     instance_type,
@@ -51,7 +80,7 @@ def test_mnist_with_checkpoint_config(
     checkpoint_local_path = "/test/checkpoint/path"
     estimator = TensorFlow(
         entry_point=SCRIPT,
-        role="SageMakerRole",
+        role=ROLE,
         instance_count=1,
         instance_type=instance_type,
         sagemaker_session=sagemaker_session,
