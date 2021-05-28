@@ -21,7 +21,7 @@ from sagemaker.processing import FrameworkProcessor
 from sagemaker.xgboost.estimator import XGBoost
 
 
-class XGBoostEstimator(FrameworkProcessor):
+class XGBoostProcessor(FrameworkProcessor):
     """Handles Amazon SageMaker processing tasks for jobs using XGBoost containers."""
 
     estimator_cls = XGBoost

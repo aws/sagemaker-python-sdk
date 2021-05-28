@@ -411,4 +411,8 @@ def _parametrize_framework_version_fixtures(metafunc, fixture_prefix, config):
     if fixture_name in metafunc.fixturenames:
         config = config["versions"]
         py_versions = config[latest_version].get("py_versions", config[latest_version].keys())
-        metafunc.parametrize(fixture_name, (sorted(py_versions)[-1],), scope="session")
+        if "repository" in py_versions or "registries" in py_versions:
+            # Config did not specify `py_versions` and is not arranged by py_version. Assume py3
+            metafunc.parametrize(fixture_name, ("py3",), scope="session")
+        else:
+            metafunc.parametrize(fixture_name, (sorted(py_versions)[-1],), scope="session")
