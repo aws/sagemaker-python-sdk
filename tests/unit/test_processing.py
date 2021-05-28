@@ -33,7 +33,7 @@ from sagemaker.processing import (
 from sagemaker.sklearn.processing import SKLearnProcessor
 from sagemaker.pytorch.processing import PyTorchProcessor
 from sagemaker.tensorflow.processing import TensorFlowProcessor
-from sagemaker.xgboost.processing import XGBoostEstimator
+from sagemaker.xgboost.processing import XGBoostProcessor
 from sagemaker.mxnet.processing import MXNetProcessor
 from sagemaker.network import NetworkConfig
 from sagemaker.processing import FeatureStoreOutput
@@ -355,7 +355,7 @@ def test_pytorch_processor_with_required_parameters(
         pytorch_image_uri = (
             "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:{}-cpu-py3"
         ).format(pytorch_training_version)
-    
+
     expected_args["app_specification"]["ImageUri"] = pytorch_image_uri
 
     sagemaker_session.process.assert_called_with(**expected_args)
@@ -368,7 +368,7 @@ def test_xgboost_processor_with_required_parameters(
 ):
     botocore_resolver.return_value.construct_endpoint.return_value = {"hostname": ECR_HOSTNAME}
 
-    processor = XGBoostEstimator(
+    processor = XGBoostProcessor(
         role=ROLE,
         instance_type="ml.m4.xlarge",
         framework_version=xgboost_framework_version,
@@ -388,7 +388,7 @@ def test_xgboost_processor_with_required_parameters(
         xgboost_image_uri = (
             "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost:{}"
         ).format(xgboost_framework_version)
-    
+
     expected_args["app_specification"]["ImageUri"] = xgboost_image_uri
 
     sagemaker_session.process.assert_called_with(**expected_args)
