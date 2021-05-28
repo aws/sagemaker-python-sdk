@@ -230,9 +230,7 @@ def test_failed_training_job(
             sklearn.fit(train_input, job_name=job_name)
 
 
-def _run_processing_job(
-    sagemaker_session, instance_type, sklearn_version, py_version, wait=True
-):
+def _run_processing_job(sagemaker_session, instance_type, sklearn_version, py_version, wait=True):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
 
         code_path = os.path.join(DATA_DIR, "dummy_code_bundle_with_reqs")

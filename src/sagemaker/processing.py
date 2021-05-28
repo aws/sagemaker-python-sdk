@@ -1702,7 +1702,7 @@ class FrameworkProcessor(ScriptProcessor):
         return inputs
 
     def _set_entrypoint(self, command, user_script_name):
-        """FrameworkProcessor override for setting processing job entrypoint.
+        """Framework processor override for setting processing job entrypoint.
 
         Args:
             command ([str]): Ignored in favor of self.framework_entrypoint_command
