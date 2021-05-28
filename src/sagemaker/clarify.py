@@ -350,7 +350,7 @@ class SageMakerClarifyProcessor(Processor):
         env=None,
         tags=None,
         network_config=None,
-        version="1.0",
+        version=None,
     ):
         """Initializes a ``Processor`` instance, computing bias metrics and model explanations.
 
@@ -384,7 +384,7 @@ class SageMakerClarifyProcessor(Processor):
                 A :class:`~sagemaker.network.NetworkConfig`
                 object that configures network isolation, encryption of
                 inter-container traffic, security group IDs, and subnets.
-            version (str): Clarify version want to be used (default: "1.0").
+            version (str): Clarify version want to be used.
         """
         container_uri = image_uris.retrieve("clarify", sagemaker_session.boto_region_name, version)
         super(SageMakerClarifyProcessor, self).__init__(
