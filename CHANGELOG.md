@@ -1,5 +1,21 @@
 # Changelog
 
+## v2.43.0 (2021-05-31)
+
+### Features
+
+ * add xgboost framework version 1.3-1
+
+### Bug Fixes and Other Changes
+
+ * remove duplicated tags in _append_project_tags
+
+## v2.42.1 (2021-05-27)
+
+### Bug Fixes and Other Changes
+
+ * default value removed if zero for integer param
+
 ## v2.42.0 (2021-05-24)
 
 ### Features
