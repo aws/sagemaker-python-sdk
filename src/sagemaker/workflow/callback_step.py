@@ -13,7 +13,7 @@
 """The step definitions for workflow."""
 from __future__ import absolute_import
 
-from typing import List
+from typing import List, Dict
 from enum import Enum
 
 import attr
@@ -59,6 +59,20 @@ class CallbackOutput:
             "OutputType": self.output_type.value,
         }
 
+    @property
+    def expr(self) -> Dict[str, str]:
+        """The 'Get' expression dict for a `Parameter`."""
+        return CallbackOutput._expr(self.output_name)
+
+    @classmethod
+    def _expr(cls, name):
+        """An internal classmethod for the 'Get' expression dict for a `CallbackOutput`.
+
+        Args:
+            name (str): The name of the callback output.
+        """
+        return {"Get": f"Steps.{name}.OutputParameters['{name}']"}
+
 
 class CallbackStep(Step):
     """Callback step for workflow."""
@@ -91,7 +105,12 @@ class CallbackStep(Step):
 
         root_path = f"Steps.{name}"
         root_prop = Properties(path=root_path)
-        root_prop.__dict__["OutputParameters"] = Properties(f"{root_path}.OutputParameters")
+        for output in outputs:
+            property_dict = {}
+            property_dict[output.output_name] = Properties(
+                f"{root_path}.OutputParameters['{output.output_name}']"
+            )
+            root_prop.__dict__["Outputs"] = property_dict
         self._properties = root_prop
 
     @property
