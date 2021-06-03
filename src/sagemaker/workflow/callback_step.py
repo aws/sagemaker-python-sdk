@@ -41,8 +41,7 @@ class CallbackOutputTypeEnum(Enum, metaclass=DefaultEnumMeta):
 
 @attr.s
 class CallbackOutput:
-    """Output for a callback step. The value of this output is provided at time of callback
-    via the SendPipelineExecutionStepSuccess API
+    """Output for a callback step.
 
     Attributes:
         output_name (str): The output name

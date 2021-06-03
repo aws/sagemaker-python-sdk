@@ -65,8 +65,12 @@ def test_callback_step_output_expr():
         outputs=[outputParam1, outputParam2],
     )
 
-    assert cb_step.properties.Outputs['output1'].expr == {"Get": "Steps.MyCallbackStep.OutputParameters['output1']"}
-    assert cb_step.properties.Outputs['output2'].expr == {"Get": "Steps.MyCallbackStep.OutputParameters['output2']"}
+    assert cb_step.properties.Outputs["output1"].expr == {
+        "Get": "Steps.MyCallbackStep.OutputParameters['output1']"
+    }
+    assert cb_step.properties.Outputs["output2"].expr == {
+        "Get": "Steps.MyCallbackStep.OutputParameters['output2']"
+    }
 
 
 def test_pipeline_interpolates_callback_outputs():
@@ -84,7 +88,7 @@ def test_pipeline_interpolates_callback_outputs():
         name="MyCallbackStep2",
         depends_on=["TestStep"],
         sqs_queue_url="https://sqs.us-east-2.amazonaws.com/123456789012/MyQueue",
-        inputs={"arg1": cb_step1.properties.Outputs['output1']},
+        inputs={"arg1": cb_step1.properties.Outputs["output1"]},
         outputs=[outputParam2],
     )
 
@@ -107,36 +111,18 @@ def test_pipeline_interpolates_callback_outputs():
             {
                 "Name": "MyCallbackStep1",
                 "Type": "Callback",
-                "Arguments": {
-                    "arg1": "foo"
-                },
-                "DependsOn": [
-                    "TestStep"
-                ],
+                "Arguments": {"arg1": "foo"},
+                "DependsOn": ["TestStep"],
                 "SqsQueueUrl": "https://sqs.us-east-2.amazonaws.com/123456789012/MyQueue",
-                "OutputParameters": [
-                    {
-                        "OutputName": "output1",
-                        "OutputType": "String"
-                    }
-                ]
+                "OutputParameters": [{"OutputName": "output1", "OutputType": "String"}],
             },
             {
                 "Name": "MyCallbackStep2",
                 "Type": "Callback",
-                "Arguments": {
-                    "arg1": {"Get": "Steps.MyCallbackStep1.OutputParameters['output1']"}
-                },
-                "DependsOn": [
-                    "TestStep"
-                ],
+                "Arguments": {"arg1": {"Get": "Steps.MyCallbackStep1.OutputParameters['output1']"}},
+                "DependsOn": ["TestStep"],
                 "SqsQueueUrl": "https://sqs.us-east-2.amazonaws.com/123456789012/MyQueue",
-                "OutputParameters": [
-                    {
-                        "OutputName": "output2",
-                        "OutputType": "String"
-                    }
-                ]
-            }
-        ]
+                "OutputParameters": [{"OutputName": "output2", "OutputType": "String"}],
+            },
+        ],
     }
