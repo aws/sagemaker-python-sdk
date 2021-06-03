@@ -92,7 +92,7 @@ class HuggingFaceModel(FrameworkModel):
         self,
         model_data,
         role,
-        entry_point,
+        entry_point=None,
         transformers_version=None,
         tensorflow_version=None,
         pytorch_version=None,
@@ -116,6 +116,7 @@ class HuggingFaceModel(FrameworkModel):
                 file which should be executed as the entry point to model
                 hosting. If ``source_dir`` is specified, then ``entry_point``
                 must point to a file located at the root of ``source_dir``.
+                Defaults to None.
             transformers_version (str): transformers version you want to use for
                 executing your model training code. Defaults to None. Required
                 unless ``image_uri`` is provided.
