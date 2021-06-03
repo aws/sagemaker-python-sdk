@@ -91,7 +91,8 @@ class CallbackStep(Step):
         Args:
             name (str): The name of the callback step.
             sqs_queue_url (str): An SQS queue URL for receiving callback messages.
-            inputs (dict): Input arguments that will be provided in the SQS message body of callback messages.
+            inputs (dict): Input arguments that will be provided
+                in the SQS message body of callback messages.
             outputs (List[CallbackOutput]): Outputs that can be provided when completing a callback.
             cache_config (CacheConfig):  A `sagemaker.workflow.steps.CacheConfig` instance.
             depends_on (List[str]): A list of step names this `sagemaker.workflow.steps.TransformStep`
