@@ -105,12 +105,14 @@ class CallbackStep(Step):
 
         root_path = f"Steps.{name}"
         root_prop = Properties(path=root_path)
+
+        property_dict = {}
         for output in outputs:
-            property_dict = {}
             property_dict[output.output_name] = Properties(
                 f"{root_path}.OutputParameters['{output.output_name}']"
             )
-            root_prop.__dict__["Outputs"] = property_dict
+
+        root_prop.__dict__["Outputs"] = property_dict
         self._properties = root_prop
 
     @property
