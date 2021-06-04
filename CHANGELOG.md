@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.44.0 (2021-06-01)
+
+### Features
+
+ * support endpoint_name_prefix, seed and version for Clarify
+
 ## v2.43.0 (2021-05-31)
 
 ### Features
