@@ -28,6 +28,7 @@ from mock import (
 )
 
 from sagemaker.estimator import Estimator
+from sagemaker.model import Model
 from sagemaker.tensorflow import TensorFlow
 from sagemaker.inputs import CreateModelInput, TransformInput
 from sagemaker.model_metrics import (
@@ -267,17 +268,15 @@ def test_register_model_tf(estimator_tf, model_metrics):
 
 
 def test_register_model_sip(estimator, model_metrics):
-    container_def_list = [
-        {
-            "Image": "fakeimage1",
-            "ModelDataUrl": "Url1",
-            "Environment": [{"k1": "v1"}, {"k2": "v2"}],
-        },
-        {
-            "Image": "fakeimage2",
-            "ModelDataUrl": "Url2",
-            "Environment": [{"k3": "v3"}, {"k4": "v4"}],
-        },
+    model_list = [
+        Model(
+            image_uri="fakeimage1",
+            model_data="Url1",
+            env=[{"k1": "v1"}, {"k2": "v2"}]),
+        Model(
+            image_uri="fakeimage2",
+            model_data="Url2",
+            env=[{"k3": "v3"}, {"k4": "v4"}]),
     ]
 
     register_model = RegisterModel(
@@ -291,7 +290,7 @@ def test_register_model_sip(estimator, model_metrics):
         model_metrics=model_metrics,
         approval_status="Approved",
         description="description",
-        container_def_list=container_def_list,
+        models=model_list,
         depends_on=["TestStep"],
     )
     assert ordered(register_model.request_dicts()) == ordered(

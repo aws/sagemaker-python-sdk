@@ -17,6 +17,7 @@ import os
 import shutil
 import tarfile
 import tempfile
+import sagemaker
 
 from typing import List
 
@@ -205,7 +206,7 @@ class _RegisterModelStep(Step):
             Estimator's training container image will be used (default: None).
         compile_model_family (str): Instance family for compiled model, if specified, a compiled
             model will be used (default: None).
-        container_def_list (list): A list of container defintiions.
+        model_list (list): A list of models.
         **kwargs: additional arguments to `create_model`.
     """
 
@@ -226,7 +227,7 @@ class _RegisterModelStep(Step):
         compile_model_family=None,
         description=None,
         depends_on: List[str] = None,
-        container_def_list=None,
+        model_list=None,
         **kwargs,
     ):
         """Constructor of a register model step.
@@ -256,7 +257,7 @@ class _RegisterModelStep(Step):
             description (str): Model Package description (default: None).
             depends_on (List[str]): A list of step names this `sagemaker.workflow.steps.TrainingStep`
                 depends on
-            container_def_list (list): A list of container defintiions.
+            model_list (list): A list of models.
             **kwargs: additional arguments to `create_model`.
         """
         super(_RegisterModelStep, self).__init__(name, StepTypeEnum.REGISTER_MODEL, depends_on)
@@ -273,17 +274,97 @@ class _RegisterModelStep(Step):
         self.image_uri = image_uri
         self.compile_model_family = compile_model_family
         self.description = description
-        self.container_def_list = container_def_list
+        self.model_list = model_list
         self.kwargs = kwargs
+        self.container_def_list = None
 
         self._properties = Properties(
             path=f"Steps.{name}", shape_name="DescribeModelPackageResponse"
         )
 
+    def _get_model_package_args(
+        self,
+        content_types,
+        response_types,
+        inference_instances,
+        transform_instances,
+        model_data=None,
+        model_package_name=None,
+        model_package_group_name=None,
+        image_uri=None,
+        model_metrics=None,
+        metadata_properties=None,
+        marketplace_cert=False,
+        approval_status=None,
+        description=None,
+        container_def_list=None,
+    ):
+        """Get arguments for session.create_model_package method.
+
+        Args:
+            content_types (list): The supported MIME types for the input data.
+            response_types (list): The supported MIME types for the output data.
+            inference_instances (list): A list of the instance types that are used to
+                generate inferences in real-time.
+            transform_instances (list): A list of the instance types on which a transformation
+                job can be run or on which an endpoint can be deployed.
+            model_package_name (str): Model Package name, exclusive to `model_package_group_name`,
+                using `model_package_name` makes the Model Package un-versioned (default: None).
+            model_package_group_name (str): Model Package Group name, exclusive to
+                `model_package_name`, using `model_package_group_name` makes the Model Package
+                versioned (default: None).
+            image_uri (str): Inference image uri for the container. Model class' self.image will
+                be used if it is None (default: None).
+            model_metrics (ModelMetrics): ModelMetrics object (default: None).
+            metadata_properties (MetadataProperties): MetadataProperties object (default: None).
+            marketplace_cert (bool): A boolean value indicating if the Model Package is certified
+                for AWS Marketplace (default: False).
+            approval_status (str): Model Approval Status, values can be "Approved", "Rejected",
+                or "PendingManualApproval" (default: "PendingManualApproval").
+            description (str): Model Package description (default: None).
+            container_def_list (list): A list of container defintiions.
+        Returns:
+            dict: A dictionary of method argument names and values.
+        """
+        if image_uri:
+            container = {
+                "Image": image_uri,
+                "ModelDataUrl": model_data,
+            }
+
+        if container_def_list is not None:
+            containers = container_def_list
+        else:
+            containers = [container]
+
+        model_package_args = {
+            "containers": containers,
+            "content_types": content_types,
+            "response_types": response_types,
+            "inference_instances": inference_instances,
+            "transform_instances": transform_instances,
+            "marketplace_cert": marketplace_cert,
+        }
+
+        if model_package_name is not None:
+            model_package_args["model_package_name"] = model_package_name
+        if model_package_group_name is not None:
+            model_package_args["model_package_group_name"] = model_package_group_name
+        if model_metrics is not None:
+            model_package_args["model_metrics"] = model_metrics._to_request_dict()
+        if metadata_properties is not None:
+            model_package_args["metadata_properties"] = metadata_properties._to_request_dict()
+        if approval_status is not None:
+            model_package_args["approval_status"] = approval_status
+        if description is not None:
+            model_package_args["description"] = description
+        return model_package_args
+
     @property
     def arguments(self) -> RequestType:
         """The arguments dict that are used to call `create_model_package`."""
         model_name = self.name
+        model_list = self.model_list
         if self.compile_model_family:
             model = self.estimator._compiled_models[self.compile_model_family]
         else:
@@ -297,6 +378,8 @@ class _RegisterModelStep(Step):
             # create the model, but custom funky framework stuff going on in some places
             if self.image_uri:
                 model = self.estimator.create_model(image_uri=self.image_uri, **self.kwargs)
+            elif self.model_list:
+                model = self.estimator.create_model()
             else:
                 model = self.estimator.create_model(**self.kwargs)
             model.model_data = self.model_data
@@ -305,7 +388,7 @@ class _RegisterModelStep(Step):
             self.estimator.output_path = output_path
 
             # yeah, there is some framework stuff going on that we need to pull in here
-            if model.image_uri is None and self.container_def_list is None:
+            if model.image_uri is None and model_list is None:
                 region_name = self.estimator.sagemaker_session.boto_session.region_name
                 model.image_uri = image_uris.retrieve(
                     model._framework_name,
@@ -316,20 +399,26 @@ class _RegisterModelStep(Step):
                     accelerator_type=self.kwargs.get("accelerator_type"),
                     image_scope="inference",
                 )
-        model.name = model_name
+            model.name = model_name
 
-        model_package_args = model._get_model_package_args(
+            if model_list:
+                self.container_def_list = sagemaker.pipeline_container_def(model_list)
+
+        model_package_args = self._get_model_package_args(
             content_types=self.content_types,
             response_types=self.response_types,
             inference_instances=self.inference_instances,
             transform_instances=self.transform_instances,
+            model_data=model.model_data,
             model_package_group_name=self.model_package_group_name,
+            image_uri=model.image_uri,
             model_metrics=self.model_metrics,
             metadata_properties=self.metadata_properties,
             approval_status=self.approval_status,
             description=self.description,
-            container_def_list=self.container_def_list,
+            container_def_list=self.container_def_list
         )
+
         request_dict = model.sagemaker_session._get_create_model_package_request(
             **model_package_args
         )
