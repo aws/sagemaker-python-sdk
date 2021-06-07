@@ -216,7 +216,6 @@ def test_register_model(estimator, model_metrics):
         ]
     )
 
-
 def test_register_model_tf(estimator_tf, model_metrics):
     model_data = f"s3://{BUCKET}/model.tar.gz"
     register_model = RegisterModel(
@@ -265,7 +264,6 @@ def test_register_model_tf(estimator_tf, model_metrics):
             },
         ]
     )
-
 
 def test_register_model_sip(estimator, model_metrics):
     model_list = [
