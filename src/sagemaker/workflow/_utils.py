@@ -17,9 +17,9 @@ import os
 import shutil
 import tarfile
 import tempfile
-import sagemaker
-
 from typing import List
+
+import sagemaker
 
 from sagemaker import image_uris
 from sagemaker.inputs import TrainingInput
@@ -416,7 +416,7 @@ class _RegisterModelStep(Step):
             metadata_properties=self.metadata_properties,
             approval_status=self.approval_status,
             description=self.description,
-            container_def_list=self.container_def_list
+            container_def_list=self.container_def_list,
         )
 
         request_dict = model.sagemaker_session._get_create_model_package_request(

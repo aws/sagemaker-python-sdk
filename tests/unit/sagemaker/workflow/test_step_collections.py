@@ -216,6 +216,7 @@ def test_register_model(estimator, model_metrics):
         ]
     )
 
+
 def test_register_model_tf(estimator_tf, model_metrics):
     model_data = f"s3://{BUCKET}/model.tar.gz"
     register_model = RegisterModel(
@@ -265,16 +266,11 @@ def test_register_model_tf(estimator_tf, model_metrics):
         ]
     )
 
+
 def test_register_model_sip(estimator, model_metrics):
     model_list = [
-        Model(
-            image_uri="fakeimage1",
-            model_data="Url1",
-            env=[{"k1": "v1"}, {"k2": "v2"}]),
-        Model(
-            image_uri="fakeimage2",
-            model_data="Url2",
-            env=[{"k3": "v3"}, {"k4": "v4"}]),
+        Model(image_uri="fakeimage1", model_data="Url1", env=[{"k1": "v1"}, {"k2": "v2"}]),
+        Model(image_uri="fakeimage2", model_data="Url2", env=[{"k3": "v3"}, {"k4": "v4"}]),
     ]
 
     register_model = RegisterModel(
