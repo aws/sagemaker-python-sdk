@@ -24,6 +24,7 @@ from botocore.exceptions import ClientError
 
 from sagemaker._studio import _append_project_tags
 from sagemaker.session import Session
+from sagemaker.workflow.callback_step import CallbackOutput
 from sagemaker.workflow.entities import (
     Entity,
     Expression,
@@ -281,7 +282,7 @@ def _interpolate(obj: Union[RequestType, Any]):
     Args:
         obj (Union[RequestType, Any]): The request dict.
     """
-    if isinstance(obj, (Expression, Parameter, Properties)):
+    if isinstance(obj, (Expression, Parameter, Properties, CallbackOutput)):
         return obj.expr
     if isinstance(obj, dict):
         new = obj.__class__()
