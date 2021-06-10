@@ -67,6 +67,7 @@ class HuggingFacePredictor(Predictor):
 
 
 def _validate_pt_tf_versions(pytorch_version, tensorflow_version, image_uri):
+    """Placeholder docstring"""
 
     if image_uri is not None:
         return
@@ -84,14 +85,14 @@ def _validate_pt_tf_versions(pytorch_version, tensorflow_version, image_uri):
 
 
 class HuggingFaceModel(FrameworkModel):
-    """An PyTorch SageMaker ``Model`` that can be deployed to a SageMaker ``Endpoint``."""
+    """An HuggingFace SageMaker ``Model`` that can be deployed to a SageMaker ``Endpoint``."""
 
     _framework_name = "huggingface"
 
     def __init__(
         self,
-        model_data,
         role,
+        model_data=None,
         entry_point=None,
         transformers_version=None,
         tensorflow_version=None,
@@ -102,7 +103,7 @@ class HuggingFaceModel(FrameworkModel):
         model_server_workers=None,
         **kwargs,
     ):
-        """Initialize a PyTorchModel.
+        """Initialize a HuggingFaceModel.
 
         Args:
             model_data (str): The S3 location of a SageMaker model data
