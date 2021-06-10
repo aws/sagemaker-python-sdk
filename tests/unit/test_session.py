@@ -344,8 +344,8 @@ def test_get_caller_identity_arn_from_describe_user_profile(boto_session):
     "six.moves.builtins.open",
     mock_open(
         read_data='{"ResourceName": "SageMakerInstance", '
-                  '"DomainId": "d-kbnw5yk6tg8j", '
-                  '"UserProfileName": "default-1617915559064"}'
+        '"DomainId": "d-kbnw5yk6tg8j", '
+        '"UserProfileName": "default-1617915559064"}'
     ),
 )
 @patch("os.path.exists", side_effect=mock_exists(NOTEBOOK_METADATA_FILE, True))
