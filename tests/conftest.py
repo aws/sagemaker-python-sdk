@@ -192,7 +192,7 @@ def pytorch_inference_py_version(pytorch_inference_version, request):
 
 @pytest.fixture(scope="module")
 def huggingface_pytorch_version(huggingface_training_version):
-    return _huggingface_base_fm_version(huggingface_training_version, "pytorch")
+    return _huggingface_base_fm_version(huggingface_training_version, "pytorch")[0]
 
 
 @pytest.fixture(scope="module")
