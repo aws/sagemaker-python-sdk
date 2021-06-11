@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.45.0 (2021-06-07)
+
+### Features
+
+ * Add support for Callback steps in model building pipelines
+
 ## v2.44.0 (2021-06-01)
 
 ### Features
