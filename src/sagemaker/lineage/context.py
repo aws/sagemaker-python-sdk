@@ -13,12 +13,16 @@
 """This module contains code to create and manage SageMaker ``Context``."""
 from __future__ import absolute_import
 
+from datetime import datetime
+from typing import Iterator, Optional
+
 from sagemaker.apiutils import _base_types
 from sagemaker.lineage import (
     _api_types,
     _utils,
     association,
 )
+from sagemaker.lineage._api_types import ContextSummary
 
 
 class Context(_base_types.Record):
@@ -38,20 +42,20 @@ class Context(_base_types.Record):
         last_modified_by (obj): Contextual info on which account created the context.
     """
 
-    context_arn = None
-    context_name = None
-    context_type = None
-    properties = None
-    tags = None
-    creation_time = None
-    created_by = None
-    last_modified_time = None
-    last_modified_by = None
+    context_arn: str = None
+    context_name: str = None
+    context_type: str = None
+    properties: dict = None
+    tags: list = None
+    creation_time: datetime = None
+    created_by: str = None
+    last_modified_time: datetime = None
+    last_modified_by: str = None
 
-    _boto_load_method = "describe_context"
-    _boto_create_method = "create_context"
-    _boto_update_method = "update_context"
-    _boto_delete_method = "delete_context"
+    _boto_load_method: str = "describe_context"
+    _boto_create_method: str = "create_context"
+    _boto_update_method: str = "update_context"
+    _boto_delete_method: str = "delete_context"
 
     _custom_boto_types = {
         "source": (_api_types.ContextSource, False),
@@ -65,7 +69,7 @@ class Context(_base_types.Record):
     ]
     _boto_delete_members = ["context_name"]
 
-    def save(self):
+    def save(self) -> "Context":
         """Save the state of this Context to SageMaker.
 
         Returns:
@@ -73,7 +77,7 @@ class Context(_base_types.Record):
         """
         return self._invoke_api(self._boto_update_method, self._boto_update_members)
 
-    def delete(self, disassociate=False):
+    def delete(self, disassociate: bool = False):
         """Delete the context object.
 
         Args:
@@ -87,7 +91,8 @@ class Context(_base_types.Record):
                 source_arn=self.context_arn, sagemaker_session=self.sagemaker_session
             )
             _utils._disassociate(
-                destination_arn=self.context_arn, sagemaker_session=self.sagemaker_session
+                destination_arn=self.context_arn,
+                sagemaker_session=self.sagemaker_session,
             )
         return self._invoke_api(self._boto_delete_method, self._boto_delete_members)
 
@@ -114,7 +119,7 @@ class Context(_base_types.Record):
         return self._set_tags(resource_arn=self.context_arn, tags=tags)
 
     @classmethod
-    def load(cls, context_name, sagemaker_session=None):
+    def load(cls, context_name: str, sagemaker_session=None) -> "Context":
         """Load an existing context and return an ``Context`` object representing it.
 
         Examples:
@@ -155,15 +160,15 @@ class Context(_base_types.Record):
     @classmethod
     def create(
         cls,
-        context_name=None,
-        source_uri=None,
-        source_type=None,
-        context_type=None,
-        description=None,
-        properties=None,
-        tags=None,
+        context_name: str = None,
+        source_uri: str = None,
+        source_type: str = None,
+        context_type: str = None,
+        description: str = None,
+        properties: dict = None,
+        tags: dict = None,
         sagemaker_session=None,
-    ):
+    ) -> "Context":
         """Create a context and return a ``Context`` object representing it.
 
         Args:
@@ -196,16 +201,16 @@ class Context(_base_types.Record):
     @classmethod
     def list(
         cls,
-        source_uri=None,
-        context_type=None,
-        created_after=None,
-        created_before=None,
-        sort_by=None,
-        sort_order=None,
-        max_results=None,
-        next_token=None,
+        source_uri: Optional[str] = None,
+        context_type: Optional[str] = None,
+        created_after: Optional[datetime] = None,
+        created_before: Optional[datetime] = None,
+        sort_by: Optional[str] = None,
+        sort_order: Optional[str] = None,
+        max_results: Optional[int] = None,
+        next_token: Optional[str] = None,
         sagemaker_session=None,
-    ):
+    ) -> Iterator[ContextSummary]:
         """Return a list of context summaries.
 
         Args:
@@ -247,19 +252,19 @@ class Context(_base_types.Record):
 class EndpointContext(Context):
     """An Amazon SageMaker endpoint context, which is part of a SageMaker lineage."""
 
-    def models(self):
+    def models(self) -> list:
         """Get all models deployed by all endpoint versions of the endpoint.
 
         Returns:
             list of Associations: Associations that destination represents an endpoint's model.
         """
-        endpoint_actions = association.Association.list(
+        endpoint_actions: Iterator = association.Association.list(
             sagemaker_session=self.sagemaker_session,
             source_arn=self.context_arn,
             destination_type="ModelDeployment",
         )
 
-        model_list = [
+        model_list: list = [
             model
             for endpoint_action in endpoint_actions
             for model in association.Association.list(

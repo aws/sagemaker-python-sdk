@@ -52,7 +52,15 @@ ELASTIC_INFERENCE_REGIONS = [
 ]
 
 
-def _test_image_uris(framework, fw_version, py_version, scope, expected_fn, expected_fn_args):
+def _test_image_uris(
+    framework,
+    fw_version,
+    py_version,
+    scope,
+    expected_fn,
+    expected_fn_args,
+    base_framework_version=None,
+):
     base_args = {
         "framework": framework,
         "version": fw_version,

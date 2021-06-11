@@ -456,6 +456,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         enable_sagemaker_metrics=None,
         profiler_rule_configs=None,
         profiler_config=None,
+        environment=None,
+        retry_strategy=None,
     ):
         """Create an Amazon SageMaker training job.
 
@@ -522,9 +524,15 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 Series. For more information see:
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_AlgorithmSpecification.html#SageMaker-Type-AlgorithmSpecification-EnableSageMakerMetricsTimeSeries
                 (default: ``None``).
-            profiler_rule_configs (list[dict]): A list of profiler rule configurations.
+            profiler_rule_configs (list[dict]): A list of profiler rule
+                configurations.src/sagemaker/lineage/artifact.py:285
             profiler_config (dict): Configuration for how profiling information is emitted
                 with SageMaker Profiler. (default: ``None``).
+            environment (dict[str, str]) : Environment variables to be set for
+                use during training job (default: ``None``)
+            retry_strategy(dict): Defines RetryStrategy for InternalServerFailures.
+                * max_retry_attsmpts (int): Number of times a job should be retried.
+                The key in RetryStrategy is 'MaxRetryAttempts'.
 
         Returns:
             str: ARN of the training job, if it is created.
@@ -556,6 +564,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             enable_sagemaker_metrics=enable_sagemaker_metrics,
             profiler_rule_configs=profiler_rule_configs,
             profiler_config=profiler_config,
+            environment=environment,
+            retry_strategy=retry_strategy,
         )
         LOGGER.info("Creating training-job with name: %s", job_name)
         LOGGER.debug("train request: %s", json.dumps(train_request, indent=4))
@@ -588,6 +598,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         enable_sagemaker_metrics=None,
         profiler_rule_configs=None,
         profiler_config=None,
+        environment=None,
+        retry_strategy=None,
     ):
         """Constructs a request compatible for creating an Amazon SageMaker training job.
 
@@ -657,6 +669,11 @@ class Session(object):  # pylint: disable=too-many-public-methods
             profiler_rule_configs (list[dict]): A list of profiler rule configurations.
             profiler_config(dict): Configuration for how profiling information is emitted with
                 SageMaker Profiler. (default: ``None``).
+            environment (dict[str, str]) : Environment variables to be set for
+                use during training job (default: ``None``)
+            retry_strategy(dict): Defines RetryStrategy for InternalServerFailures.
+                * max_retry_attsmpts (int): Number of times a job should be retried.
+                The key in RetryStrategy is 'MaxRetryAttempts'.
 
         Returns:
             Dict: a training request dict
@@ -699,6 +716,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if hyperparameters and len(hyperparameters) > 0:
             train_request["HyperParameters"] = hyperparameters
 
+        if environment is not None:
+            train_request["Environment"] = environment
+
         if tags is not None:
             train_request["Tags"] = tags
 
@@ -737,6 +757,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         if profiler_config is not None:
             train_request["ProfilerConfig"] = profiler_config
+
+        if retry_strategy is not None:
+            train_request["RetryStrategy"] = retry_strategy
 
         return train_request
 
@@ -3479,12 +3502,24 @@ class Session(object):  # pylint: disable=too-many-public-methods
         """
         if os.path.exists(NOTEBOOK_METADATA_FILE):
             with open(NOTEBOOK_METADATA_FILE, "rb") as f:
-                instance_name = json.loads(f.read())["ResourceName"]
+                metadata = json.loads(f.read())
+                instance_name = metadata["ResourceName"]
+                domain_id = metadata.get("DomainId")
+                user_profile_name = metadata.get("UserProfileName")
             try:
-                instance_desc = self.sagemaker_client.describe_notebook_instance(
-                    NotebookInstanceName=instance_name
+                if domain_id is None:
+                    instance_desc = self.sagemaker_client.describe_notebook_instance(
+                        NotebookInstanceName=instance_name
+                    )
+                    return instance_desc["RoleArn"]
+                user_profile_desc = self.sagemaker_client.describe_user_profile(
+                    DomainId=domain_id, UserProfileName=user_profile_name
                 )
-                return instance_desc["RoleArn"]
+                if user_profile_desc.get("UserSettings") is not None:
+                    return user_profile_desc["UserSettings"]["ExecutionRole"]
+
+                domain_desc = self.sagemaker_client.describe_domain(DomainId=domain_id)
+                return domain_desc["DefaultUserSettings"]["ExecutionRole"]
             except ClientError:
                 LOGGER.debug(
                     "Couldn't call 'describe_notebook_instance' to get the Role "
@@ -3498,14 +3533,6 @@ class Session(object):  # pylint: disable=too-many-public-methods
             endpoint_url=sts_regional_endpoint(self.boto_region_name),
         ).get_caller_identity()["Arn"]
 
-        if "AmazonSageMaker-ExecutionRole" in assumed_role:
-            role = re.sub(
-                r"^(.+)sts::(\d+):assumed-role/(.+?)/.*$",
-                r"\1iam::\2:role/service-role/\3",
-                assumed_role,
-            )
-            return role
-
         role = re.sub(r"^(.+)sts::(\d+):assumed-role/(.+?)/.*$", r"\1iam::\2:role/\3", assumed_role)
 
         # Call IAM to get the role's path
@@ -3517,6 +3544,24 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 "Couldn't call 'get_role' to get Role ARN from role name %s to get Role path.",
                 role_name,
             )
+
+            # This conditional has been present since the inception of SageMaker
+            # Guessing this conditional's purpose was to handle lack of IAM permissions
+            # https://github.com/aws/sagemaker-python-sdk/issues/2089#issuecomment-791802713
+            if "AmazonSageMaker-ExecutionRole" in assumed_role:
+                LOGGER.warning(
+                    "Assuming role was created in SageMaker AWS console, "
+                    "as the name contains `AmazonSageMaker-ExecutionRole`. "
+                    "Defaulting to Role ARN with service-role in path. "
+                    "If this Role ARN is incorrect, please add "
+                    "IAM read permissions to your role or supply the "
+                    "Role Arn directly."
+                )
+                role = re.sub(
+                    r"^(.+)sts::(\d+):assumed-role/(.+?)/.*$",
+                    r"\1iam::\2:role/service-role/\3",
+                    assumed_role,
+                )
 
         return role
 
@@ -4018,7 +4063,7 @@ def update_args(args: Dict[str, Any], **kwargs):
             args.update({key: value})
 
 
-def container_def(image_uri, model_data_url=None, env=None, container_mode=None):
+def container_def(image_uri, model_data_url=None, env=None, container_mode=None, image_config=None):
     """Create a definition for executing a container as part of a SageMaker model.
 
     Args:
@@ -4030,6 +4075,9 @@ def container_def(image_uri, model_data_url=None, env=None, container_mode=None)
                 * MultiModel: Indicates that model container can support hosting multiple models
                 * SingleModel: Indicates that model container can support hosting a single model
                 This is the default model container mode when container_mode = None
+        image_config (dict[str, str]): Specifies whether the image of model container is pulled
+            from ECR, or private registry in your VPC. By default it is set to pull model
+            container image from ECR. (default: None).
 
     Returns:
         dict[str, str]: A complete container definition object usable with the CreateModel API if
@@ -4042,6 +4090,8 @@ def container_def(image_uri, model_data_url=None, env=None, container_mode=None)
         c_def["ModelDataUrl"] = model_data_url
     if container_mode:
         c_def["Mode"] = container_mode
+    if image_config:
+        c_def["ImageConfig"] = image_config
     return c_def
 
 

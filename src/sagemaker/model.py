@@ -16,6 +16,7 @@ from __future__ import absolute_import
 import json
 import logging
 import os
+import re
 
 import sagemaker
 from sagemaker import (
@@ -52,6 +53,7 @@ class Model(object):
         sagemaker_session=None,
         enable_network_isolation=False,
         model_kms_key=None,
+        image_config=None,
     ):
         """Initialize an SageMaker ``Model``.
 
@@ -89,6 +91,10 @@ class Model(object):
                 or from the model container.
             model_kms_key (str): KMS key ARN used to encrypt the repacked
                 model archive file if the model is repacked
+            image_config (dict[str, str]): Specifies whether the image of
+                model container is pulled from ECR, or private registry in your
+                VPC. By default it is set to pull model container image from
+                ECR. (default: None).
         """
         self.model_data = model_data
         self.image_uri = image_uri
@@ -105,6 +111,7 @@ class Model(object):
         self._is_edge_packaged_model = False
         self._enable_network_isolation = enable_network_isolation
         self.model_kms_key = model_kms_key
+        self.image_config = image_config
 
     def register(
         self,
@@ -146,7 +153,7 @@ class Model(object):
             description (str): Model Package description (default: None).
 
         Returns:
-            str: A string of SageMaker Model Package ARN.
+            A `sagemaker.model.ModelPackage` instance.
         """
         if self.model_data is None:
             raise ValueError("SageMaker Model Package cannot be created without model data.")
@@ -278,7 +285,9 @@ class Model(object):
         Returns:
             dict: A container definition object usable with the CreateModel API.
         """
-        return sagemaker.container_def(self.image_uri, self.model_data, self.env)
+        return sagemaker.container_def(
+            self.image_uri, self.model_data, self.env, image_config=self.image_config
+        )
 
     def enable_network_isolation(self):
         """Whether to enable network isolation when creating this Model
@@ -398,6 +407,7 @@ class Model(object):
         target_platform_arch=None,
         target_platform_accelerator=None,
         compiler_options=None,
+        framework_version=None,
     ):
         """Placeholder Docstring"""
         input_model_config = {
@@ -407,6 +417,14 @@ class Model(object):
             else input_shape,
             "Framework": framework.upper(),
         }
+
+        if (
+            framework.lower() == "pytorch"
+            and re.match("(?=^ml_)(?!ml_inf)", target_instance_type) is not None
+            and framework_version is not None
+        ):
+            input_model_config["FrameworkVersion"] = utils.get_short_version(framework_version)
+
         role = self.sagemaker_session.expand_role(role)
         output_model_config = {
             "S3OutputLocation": output_path,
@@ -572,7 +590,8 @@ class Model(object):
             framework (str): The framework that is used to train the original
                 model. Allowed values: 'mxnet', 'tensorflow', 'keras', 'pytorch',
                 'onnx', 'xgboost'
-            framework_version (str):
+            framework_version (str): The version of framework, for example:
+                '1.5' for PyTorch
             target_platform_os (str): Target Platform OS, for example: 'LINUX'.
                 For allowed strings see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_OutputConfig.html.
@@ -626,13 +645,15 @@ class Model(object):
             target_platform_arch,
             target_platform_accelerator,
             compiler_options,
+            framework_version,
         )
         self.sagemaker_session.compile_model(**config)
         job_status = self.sagemaker_session.wait_for_compilation_job(job_name)
         self.model_data = job_status["ModelArtifacts"]["S3ModelArtifacts"]
-
         if target_instance_family is not None:
-            if target_instance_family.startswith("ml_"):
+            if target_instance_family == "ml_eia2":
+                pass
+            elif target_instance_family.startswith("ml_"):
                 self.image_uri = self._compilation_image_uri(
                     self.sagemaker_session.boto_region_name,
                     target_instance_family,

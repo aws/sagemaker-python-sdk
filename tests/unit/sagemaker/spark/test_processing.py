@@ -246,9 +246,7 @@ def test_spark_processor_base_run(mock_super_run, spark_processor_base):
 )
 @patch("sagemaker.spark.processing.ProcessingOutput")
 @patch("sagemaker.spark.processing._SparkProcessorBase._stage_configuration")
-@patch("sagemaker.processing.ScriptProcessor.run")
 def test_spark_processor_base_extend_processing_args(
-    mock_super_run,
     mock_stage_configuration,
     mock_processing_output,
     spark_processor_base,
@@ -755,6 +753,104 @@ def test_py_spark_processor_run(
             logs=True,
             job_name="jobName",
             experiment_config=None,
+            kms_key=None,
+        )
+
+
+@pytest.mark.parametrize(
+    "config, expected",
+    [
+        (
+            {
+                "submit_app": None,
+                "files": ["test"],
+                "inputs": [],
+                "opt": None,
+                "arguments": ["arg1"],
+            },
+            ValueError,
+        ),
+        (
+            {
+                "submit_app": "test.py",
+                "files": None,
+                "inputs": [processing_input],
+                "opt": None,
+                "arguments": ["arg1"],
+            },
+            [processing_input],
+        ),
+        (
+            {
+                "submit_app": "test.py",
+                "files": ["test"],
+                "inputs": [processing_input],
+                "opt": None,
+                "arguments": ["arg1"],
+            },
+            [processing_input, processing_input, processing_input, processing_input],
+        ),
+        (
+            {
+                "submit_app": "test.py",
+                "files": ["test"],
+                "inputs": None,
+                "opt": None,
+                "arguments": ["arg1"],
+            },
+            [processing_input, processing_input, processing_input],
+        ),
+        (
+            {
+                "submit_app": "test.py",
+                "files": ["test"],
+                "inputs": None,
+                "opt": "opt",
+                "arguments": ["arg1"],
+            },
+            [processing_input, processing_input, processing_input],
+        ),
+    ],
+)
+@patch("sagemaker.spark.processing._SparkProcessorBase.get_run_args")
+@patch("sagemaker.spark.processing._SparkProcessorBase._stage_submit_deps")
+@patch("sagemaker.spark.processing._SparkProcessorBase._generate_current_job_name")
+def test_py_spark_processor_get_run_args(
+    mock_generate_current_job_name,
+    mock_stage_submit_deps,
+    mock_super_get_run_args,
+    py_spark_processor,
+    config,
+    expected,
+):
+    mock_stage_submit_deps.return_value = (processing_input, "opt")
+    mock_generate_current_job_name.return_value = "jobName"
+
+    if expected is ValueError:
+        with pytest.raises(expected):
+            py_spark_processor.get_run_args(
+                submit_app=config["submit_app"],
+                submit_py_files=config["files"],
+                submit_jars=config["files"],
+                submit_files=config["files"],
+                inputs=config["inputs"],
+                arguments=config["arguments"],
+            )
+    else:
+        py_spark_processor.get_run_args(
+            submit_app=config["submit_app"],
+            submit_py_files=config["files"],
+            submit_jars=config["files"],
+            submit_files=config["files"],
+            inputs=config["inputs"],
+            arguments=config["arguments"],
+        )
+
+        mock_super_get_run_args.assert_called_with(
+            code=config["submit_app"],
+            inputs=expected,
+            outputs=None,
+            arguments=config["arguments"],
         )
 
 
@@ -903,6 +999,135 @@ def test_spark_jar_processor_run(
             job_name="jobName",
             experiment_config=None,
             kms_key=None,
+        )
+
+
+@pytest.mark.parametrize(
+    "config, expected",
+    [
+        (
+            {
+                "submit_app": None,
+                "submit_class": "_class",
+                "files": ["test"],
+                "inputs": [],
+                "opt": None,
+                "arguments": ["arg1"],
+                "kms_key": "test_kms_key",
+            },
+            ValueError,
+        ),
+        (
+            {
+                "submit_app": "test.py",
+                "submit_class": None,
+                "files": ["test"],
+                "inputs": [],
+                "opt": None,
+                "arguments": ["arg1"],
+                "kms_key": "test_kms_key",
+            },
+            ValueError,
+        ),
+        (
+            {
+                "submit_app": "test.py",
+                "submit_class": "_class",
+                "files": None,
+                "inputs": [processing_input],
+                "opt": None,
+                "arguments": ["arg1"],
+                "kms_key": "test_kms_key",
+            },
+            [processing_input],
+        ),
+        (
+            {
+                "submit_app": "test.py",
+                "submit_class": "_class",
+                "files": ["test"],
+                "inputs": [processing_input],
+                "opt": None,
+                "arguments": ["arg1"],
+                "kms_key": "test_kms_key",
+            },
+            [processing_input, processing_input, processing_input],
+        ),
+        (
+            {
+                "submit_app": "test.py",
+                "submit_class": "_class",
+                "files": ["test"],
+                "inputs": None,
+                "opt": None,
+                "arguments": ["arg1"],
+                "kms_key": "test_kms_key",
+            },
+            [processing_input, processing_input],
+        ),
+        (
+            {
+                "submit_app": "test.py",
+                "submit_class": "_class",
+                "files": ["test"],
+                "inputs": None,
+                "opt": "opt",
+                "arguments": ["arg1"],
+                "kms_key": "test_kms_key",
+            },
+            [processing_input, processing_input],
+        ),
+    ],
+)
+@patch("sagemaker.spark.processing._SparkProcessorBase.get_run_args")
+@patch("sagemaker.spark.processing._SparkProcessorBase._stage_submit_deps")
+@patch("sagemaker.spark.processing._SparkProcessorBase._generate_current_job_name")
+def test_spark_jar_processor_get_run_args(
+    mock_generate_current_job_name,
+    mock_stage_submit_deps,
+    mock_super_get_run_args,
+    config,
+    expected,
+    sagemaker_session,
+):
+    mock_stage_submit_deps.return_value = (processing_input, "opt")
+    mock_generate_current_job_name.return_value = "jobName"
+
+    spark_jar_processor = SparkJarProcessor(
+        base_job_name="sm-spark",
+        role="AmazonSageMaker-ExecutionRole",
+        framework_version="2.4",
+        instance_count=1,
+        instance_type="ml.c5.xlarge",
+        image_uri="790336243319.dkr.ecr.us-west-2.amazonaws.com/sagemaker-spark:0.1",
+        sagemaker_session=sagemaker_session,
+    )
+
+    if expected is ValueError:
+        with pytest.raises(expected):
+            spark_jar_processor.get_run_args(
+                submit_app=config["submit_app"],
+                submit_class=config["submit_class"],
+                submit_jars=config["files"],
+                submit_files=config["files"],
+                inputs=config["inputs"],
+                arguments=config["arguments"],
+            )
+    else:
+        spark_jar_processor.get_run_args(
+            submit_app=config["submit_app"],
+            submit_class=config["submit_class"],
+            submit_jars=config["files"],
+            submit_files=config["files"],
+            inputs=config["inputs"],
+            arguments=config["arguments"],
+        )
+
+        mock_super_get_run_args.assert_called_with(
+            code=config["submit_app"],
+            inputs=expected,
+            outputs=None,
+            arguments=config["arguments"],
         )
 
 

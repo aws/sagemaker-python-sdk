@@ -154,7 +154,7 @@ directories ('train' and 'test').
     pytorch_estimator = PyTorch('pytorch-train.py',
                                 instance_type='ml.p3.2xlarge',
                                 instance_count=1,
-                                framework_version='1.5.0',
+                                framework_version='1.8.0',
                                 py_version='py3',
                                 hyperparameters = {'epochs': 20, 'batch-size': 64, 'learning-rate': 0.1})
     pytorch_estimator.fit({'train': 's3://my-data-bucket/path/to/my/training/data',
@@ -248,7 +248,7 @@ operation.
     pytorch_estimator = PyTorch(entry_point='train_and_deploy.py',
                                 instance_type='ml.p3.2xlarge',
                                 instance_count=1,
-                                framework_version='1.5.0',
+                                framework_version='1.8.0',
                                 py_version='py3')
     pytorch_estimator.fit('s3://my_bucket/my_training_data/')
 

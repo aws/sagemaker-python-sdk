@@ -6,7 +6,7 @@
 PyTorch API
 ===========
 
-**Supported versions: 1.7.1, 1.6**
+**Supported versions: 1.7.1, 1.6.0**
 
 This API document assumes you use the following import statements in your training scripts.
 
@@ -23,6 +23,7 @@ This API document assumes you use the following import statements in your traini
    to learn how to use the following API in your PyTorch training script.
 
 .. class:: smp.DistributedModel
+   :noindex:
 
    A sub-class of ``torch.nn.Module`` which specifies the model to be
    partitioned. Accepts a ``torch.nn.Module`` object ``module`` which is
@@ -30,7 +31,6 @@ This API document assumes you use the following import statements in your traini
    internally manages model parallelism and data parallelism. Only one
    model in the training script can be wrapped with
    ``smp.DistributedModel``.
-
 
    **Example:**
 
@@ -88,6 +88,17 @@ This API document assumes you use the following import statements in your traini
    In these examples, all ``__call__``  and ``backward`` method calls on
    the model objects (``model(inputs)`` and ``model.backward(loss)``) must be made inside
    a ``smp.step``-decorated function.
+
+   **Using DDP**
+
+   If DDP is enabled, do not not place a PyTorch
+   ``DistributedDataParallel`` wrapper around the ``DistributedModel`` because
+   the ``DistributedModel`` wrapper will also handle data parallelism.
+
+   Unlike the original DDP wrapper, when you use ``DistributedModel``,
+   model parameters and buffers are not immediately broadcast across
+   processes when the wrapper is called. Instead, the broadcast is deferred to the first call of the
+   ``smp.step``-decorated function when the partition is done.
 
    **Parameters**
 
@@ -149,7 +160,7 @@ This API document assumes you use the following import statements in your traini
       This parameter is forwarded to the underlying ``DistributedDataParallel`` wrapper.
       Please see: `broadcast_buffer <https://pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html#torch.nn.parallel.DistributedDataParallel>`__.
 
-   -  ``gradient_as_bucket_view (PyTorch 1.7 only)`` (default: False): To be
+   -  ``gradient_as_bucket_view (PyTorch 1.7.1 only)`` (default: False): To be
       used with ``ddp=True``. This parameter is forwarded to the underlying
       ``DistributedDataParallel`` wrapper. Please see `gradient_as_bucket_view <https://pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html#torch.nn.parallel.DistributedDataParallel>`__.
 
@@ -165,6 +176,7 @@ This API document assumes you use the following import statements in your traini
    **Methods**
 
    .. function:: backward(tensors, grad_tensors)
+      :noindex:
 
       Triggers a distributed backward
       pass across model partitions. Example usage provided in the previous
@@ -173,11 +185,13 @@ This API document assumes you use the following import statements in your traini
       ``retain_grad`` and ``create_graph``  flags are not supported.
 
    .. function:: local_buffers( )
+      :noindex:
 
       Returns an iterator over buffers for the modules in
       the partitioned model that have been assigned to the current process.
 
    .. function:: local_named_buffers( )
+      :noindex:
 
       Returns an iterator over buffers for the
       modules in the partitioned model that have been assigned to the current
@@ -185,12 +199,14 @@ This API document assumes you use the following import statements in your traini
       itself.
 
    .. function:: local_parameters( )
+      :noindex:
 
       Returns an iterator over parameters for the
       modules in the partitioned model that have been assigned to the current
       process.
 
    .. function:: local_named_parameters( )
+      :noindex:
 
       Returns an iterator over parameters for
       the modules in the partitioned model that have been assigned to the
@@ -198,17 +214,20 @@ This API document assumes you use the following import statements in your traini
       the parameter itself.
 
    .. function:: local_modules( )
+      :noindex:
 
       Returns an iterator over the modules in the
       partitioned model that have been assigned to the current process.
 
    .. function:: local_named_modules( )
+      :noindex:
 
       Returns an iterator over the modules in the
       partitioned model that have been assigned to the current process. This
       yields both the name of the module as well as the module itself.
 
    .. function:: local_state_dict( )
+      :noindex:
 
       Returns the ``state_dict`` that contains local
       parameters that belong to the current \ ``mp_rank``. This ``state_dict``
@@ -218,13 +237,17 @@ This API document assumes you use the following import statements in your traini
       partition, or to the entire model.
 
    .. function:: state_dict( )
+      :noindex:
 
       Returns the ``state_dict`` that contains parameters
       for the entire model. It first collects the \ ``local_state_dict``  and
       gathers and merges the \ ``local_state_dict`` from all ``mp_rank``\ s to
-      create a full ``state_dict``.
+      create a full ``state_dict``. Please note that this needs to be called on all ranks with
+      ``dp_rank()==0`` to ensure the gather happens properly.
+      If it is only called on all such ranks, it can hang.
 
    .. function:: load_state_dict( )
+      :noindex:
 
       Same as the ``torch.module.load_state_dict()`` ,
       except: It first gathers and merges the ``state_dict``\ s across
@@ -232,6 +255,7 @@ This API document assumes you use the following import statements in your traini
       model partition so that each rank knows its local parameters.
 
    .. function:: register_post_partition_hook(hook)
+      :noindex:
 
       Registers a callable ``hook`` to
       be executed after the model is partitioned. This is useful in situations
@@ -241,21 +265,27 @@ This API document assumes you use the following import statements in your traini
       which can be used to remove the hook by calling ``handle.remove()``.
 
    .. function:: cpu( )
+      :noindex:
 
       Allgathers parameters and buffers across all ``mp_rank``\ s and moves them
       to the CPU.
 
    .. function:: join( )
+      :noindex:
 
-      **Available for PyTorch 1.7 only**
+      **Available for PyTorch 1.7.1 only**
+
       A context manager to be used in conjunction with an instance of
-      ``smp.DistributedModel``to be able to train with uneven inputs across
+      ``smp.DistributedModel`` to be able to train with uneven inputs across
       participating processes. This is only supported when ``ddp=True`` for
       ``smp.DistributedModel``. This will use the join with the wrapped
-      ``DistributedDataParallel`` instance. Please see: `join <https://pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html#torch.nn.parallel.DistributedDataParallel.join>`__.
+      ``DistributedDataParallel`` instance. For more information, see:
+      `join <https://pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html#torch.nn.parallel.DistributedDataParallel.join>`__
+      in the PyTorch documentation.
 
 
 .. class:: smp.DistributedOptimizer
+   :noindex:
 
    **Parameters**
    - ``optimizer``
@@ -264,6 +294,7 @@ This API document assumes you use the following import statements in your traini
    returns ``optimizer`` with the following methods overridden:
 
    .. function:: state_dict( )
+      :noindex:
 
       Returns the ``state_dict`` that contains optimizer state for the entire model.
       It first collects the ``local_state_dict`` and gathers and merges
@@ -271,6 +302,7 @@ This API document assumes you use the following import statements in your traini
       ``state_dict``.
 
    .. function::  load_state_dict( )
+      :noindex:
 
       Same as the ``torch.optimizer.load_state_dict()`` , except:
 
@@ -280,6 +312,7 @@ This API document assumes you use the following import statements in your traini
             rank knows its local parameters.
 
    .. function::  local_state_dict( )
+      :noindex:
 
       Returns the ``state_dict`` that contains the
       local optimizer state that belongs to the current \ ``mp_rank``. This
@@ -326,12 +359,14 @@ This API document assumes you use the following import statements in your traini
               self.child3 = Child3()                # child3 on default_partition
 
 .. function:: smp.get_world_process_group( )
+   :noindex:
 
    Returns a ``torch.distributed`` ``ProcessGroup`` that consists of all
    processes, which can be used with the ``torch.distributed`` API.
    Requires ``"ddp": True`` in SageMaker Python SDK parameters.
 
 .. function:: smp.get_mp_process_group( )
+   :noindex:
 
    Returns a ``torch.distributed`` ``ProcessGroup`` that consists of the
    processes in the ``MP_GROUP`` which contains the current process, which
@@ -339,6 +374,7 @@ This API document assumes you use the following import statements in your traini
    ``"ddp": True`` in SageMaker Python SDK parameters.
 
 .. function:: smp.get_dp_process_group( )
+   :noindex:
 
    Returns a ``torch.distributed`` ``ProcessGroup`` that consists of the
    processes in the ``DP_GROUP`` which contains the current process, which
@@ -346,16 +382,19 @@ This API document assumes you use the following import statements in your traini
    ``"ddp": True`` in SageMaker Python SDK parameters.
 
 .. function:: smp.is_initialized( )
+   :noindex:
 
    Returns ``True`` if ``smp.init`` has already been called for the
    process, and ``False`` otherwise.
 
 .. function::smp.is_tracing( )
+   :noindex:
 
    Returns ``True`` if the current process is running the tracing step, and
    ``False`` otherwise.
 
 .. data:: smp.nn.FusedLayerNorm
+   :noindex:
 
    `Apex Fused Layer Norm <https://nvidia.github.io/apex/layernorm.html>`__ is currently not
    supported by the library. ``smp.nn.FusedLayerNorm`` replaces ``apex``
@@ -363,7 +402,7 @@ This API document assumes you use the following import statements in your traini
    ``apex`` to be installed on the system.
 
 .. data:: smp.optimizers.FusedNovoGrad
-
+   :noindex:
 
    `Fused Novo Grad optimizer <https://nvidia.github.io/apex/optimizers.html#apex.optimizers.FusedNovoGrad>`__ is
    currently not supported by the library. ``smp.optimizers.FusedNovoGrad`` replaces ``apex`` ``FusedNovoGrad``
@@ -371,7 +410,7 @@ This API document assumes you use the following import statements in your traini
    be installed on the system.
 
 .. data:: smp.optimizers.FusedLamb
-
+   :noindex:
 
    `FusedLamb optimizer <https://nvidia.github.io/apex/optimizers.html#apex.optimizers.FusedLAMB>`__
    currently doesn’t work with the library. ``smp.optimizers.FusedLamb`` replaces
@@ -379,17 +418,20 @@ This API document assumes you use the following import statements in your traini
    This requires ``apex`` to be installed on the system.
 
 .. data:: smp.amp.GradScaler
+   :noindex:
 
    `Torch AMP Gradscaler <https://pytorch.org/docs/stable/amp.html#torch.cuda.amp.GradScaler>`__
    currently doesn’t work with the library. ``smp.amp.GradScaler`` replaces
    ``torch.amp.GradScaler`` and provides the same functionality.
 
 .. _pytorch_saving_loading:
+   :noindex:
 
 APIs for Saving and Loading
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. function:: smp.save( )
+   :noindex:
 
    Saves an object. This operation is similar to ``torch.save()``, except
    it has an additional keyword argument, ``partial``, and accepts only
@@ -412,6 +454,7 @@ APIs for Saving and Loading
       override the defaultprotocol.
 
 .. function:: smp.load( )
+   :noindex:
 
    Loads an object saved with ``smp.save()`` from a file.
 
@@ -436,6 +479,7 @@ APIs for Saving and Loading
       Should be used when loading a model trained with the library.
 
 .. _pytorch_saving_loading_instructions:
+   :noindex:
 
 General Instruction For Saving and Loading
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

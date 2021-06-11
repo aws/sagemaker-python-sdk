@@ -13,6 +13,7 @@
 from __future__ import print_function
 
 import argparse
+import os
 import time
 import torch
 import torch.nn as nn
@@ -150,8 +151,8 @@ def main():
     parser.add_argument(
         "--data-path",
         type=str,
-        default="/tmp/data",
-        help="Path for downloading " "the MNIST dataset",
+        default=os.environ["SM_CHANNEL_TRAINING"],
+        help="Path for downloading the MNIST dataset",
     )
 
     args = parser.parse_args()
@@ -186,7 +187,7 @@ def main():
         train_dataset = datasets.MNIST(
             data_path,
             train=True,
-            download=True,
+            download=False,  # True sets a dependency on an external site for our tests.
             transform=transforms.Compose(
                 [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
             ),

@@ -65,6 +65,8 @@ EXPERIMENT_CONFIG = {
 
 MODEL_PKG_RESPONSE = {"ModelPackageArn": "arn:model-pkg-arn"}
 
+ENV_INPUT = {"env_key1": "env_val1", "env_key2": "env_val2", "env_key3": "env_val3"}
+
 
 @pytest.fixture()
 def sagemaker_session():
@@ -144,6 +146,8 @@ def _get_train_args(job_name):
         "tags": None,
         "vpc_config": None,
         "metric_definitions": None,
+        "environment": None,
+        "retry_strategy": None,
         "experiment_config": None,
         "debugger_hook_config": {
             "CollectionConfigurations": [],
@@ -957,6 +961,38 @@ def test_create_model_with_custom_hosting_image(sagemaker_session):
     model = mx.create_model(image_uri=custom_hosting_image)
 
     assert model.image_uri == custom_hosting_image
+
+
+def test_mx_add_environment_variables(
+    sagemaker_session, mxnet_training_version, mxnet_training_py_version
+):
+    mx = MXNet(
+        entry_point=SCRIPT_PATH,
+        framework_version=mxnet_training_version,
+        py_version=mxnet_training_py_version,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        environment=ENV_INPUT,
+    )
+    assert mx.environment == ENV_INPUT
+
+
+def test_mx_missing_environment_variables(
+    sagemaker_session, mxnet_training_version, mxnet_training_py_version
+):
+    mx = MXNet(
+        entry_point=SCRIPT_PATH,
+        framework_version=mxnet_training_version,
+        py_version=mxnet_training_py_version,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        environment=None,
+    )
+    assert not mx.environment
 
 
 def test_mx_enable_sm_metrics(sagemaker_session, mxnet_training_version, mxnet_training_py_version):

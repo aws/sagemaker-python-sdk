@@ -46,6 +46,7 @@ def _append_project_tags(tags=None, working_dir=None):
         return tags
 
     all_tags = tags or []
+    additional_tags = [tag for tag in additional_tags if tag not in all_tags]
     all_tags.extend(additional_tags)
 
     return all_tags

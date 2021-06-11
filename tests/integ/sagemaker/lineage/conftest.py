@@ -25,17 +25,12 @@ from sagemaker.lineage import (
     association,
     artifact,
 )
-from sagemaker.session import Session
+
 from smexperiments import trial_component, trial, experiment
 
 from tests.integ.sagemaker.lineage.helpers import name, names
 
 SLEEP_TIME_SECONDS = 1
-
-
-@pytest.fixture()
-def sagemaker_session(boto_session):
-    return Session(boto_session=boto_session)
 
 
 @pytest.fixture
@@ -160,7 +155,8 @@ def artifact_obj_with_association(sagemaker_session, artifact_obj):
 @pytest.fixture
 def trial_component_obj(sagemaker_session):
     trial_component_obj = trial_component.TrialComponent.create(
-        trial_component_name=name(), sagemaker_boto_client=sagemaker_session.sagemaker_client
+        trial_component_name=name(),
+        sagemaker_boto_client=sagemaker_session.sagemaker_client,
     )
     yield trial_component_obj
     time.sleep(0.5)
@@ -306,6 +302,16 @@ def artifact_objs(sagemaker_session):
             )
         )
         time.sleep(SLEEP_TIME_SECONDS)
+
+    artifact_objs.append(
+        artifact.Artifact.create(
+            artifact_name=name(),
+            artifact_type="SDKIntegrationTestType2",
+            source_uri=name(),
+            properties={"k1": "v1"},
+            sagemaker_session=sagemaker_session,
+        )
+    )
 
     yield artifact_objs
 

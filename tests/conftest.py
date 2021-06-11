@@ -58,6 +58,7 @@ FRAMEWORKS_FOR_GENERATED_VERSION_FIXTURES = (
     "vw",
     "xgboost",
     "spark",
+    "huggingface",
 )
 
 
@@ -157,14 +158,24 @@ def mxnet_training_py_version(mxnet_training_version, request):
 
 
 @pytest.fixture(scope="module", params=["py2", "py3"])
-def mxnet_eia_py_version(request):
-    return request.param
+def mxnet_eia_py_version(mxnet_eia_version, request):
+    if Version(mxnet_eia_version) < Version("1.7.0"):
+        return request.param
+    else:
+        return "py3"
+
+
+@pytest.fixture(scope="module")
+def mxnet_eia_latest_py_version():
+    return "py3"
 
 
 @pytest.fixture(scope="module", params=["py2", "py3"])
 def pytorch_training_py_version(pytorch_training_version, request):
     if Version(pytorch_training_version) < Version("1.5.0"):
         return request.param
+    elif Version(pytorch_training_version) == Version("1.7.1"):
+        return "py36"
     else:
         return "py3"
 
@@ -173,13 +184,40 @@ def pytorch_training_py_version(pytorch_training_version, request):
 def pytorch_inference_py_version(pytorch_inference_version, request):
     if Version(pytorch_inference_version) < Version("1.4.0"):
         return request.param
+    elif Version(pytorch_inference_version) == Version("1.7.1"):
+        return "py36"
     else:
         return "py3"
 
 
 @pytest.fixture(scope="module")
+def huggingface_pytorch_version(huggingface_training_version):
+    return _huggingface_base_fm_version(huggingface_training_version, "pytorch")[0]
+
+
+@pytest.fixture(scope="module")
 def pytorch_eia_py_version():
     return "py3"
+
+
+@pytest.fixture(scope="module")
+def neo_pytorch_latest_py_version():
+    return "py3"
+
+
+@pytest.fixture(scope="module")
+def neo_pytorch_compilation_job_name():
+    return utils.name_from_base("pytorch-neo-model")
+
+
+@pytest.fixture(scope="module")
+def neo_pytorch_target_device():
+    return "ml_c5"
+
+
+@pytest.fixture(scope="module")
+def neo_pytorch_cpu_instance_type():
+    return "ml.c5.xlarge"
 
 
 @pytest.fixture(scope="module")
@@ -206,17 +244,21 @@ def tensorflow_training_py_version(tensorflow_training_version, request):
 @pytest.fixture(scope="module", params=["py2", "py3"])
 def tensorflow_inference_py_version(tensorflow_inference_version, request):
     version = Version(tensorflow_inference_version)
-    if version == Version("1.15.4"):
+    if version == Version("1.15") or Version("1.15.4") <= version < Version("1.16"):
         return "py36"
     return _tf_py_version(tensorflow_inference_version, request)
 
 
 def _tf_py_version(tf_version, request):
     version = Version(tf_version)
-    if Version("1.15") <= version <= Version("1.15.4"):
+    if version == Version("1.15") or Version("1.15.4") <= version < Version("1.16"):
         return "py3"
     if version < Version("1.11"):
         return "py2"
+    if version == Version("2.0") or Version("2.0.3") <= version < Version("2.1"):
+        return "py3"
+    if version == Version("2.1") or Version("2.1.2") <= version < Version("2.2"):
+        return "py3"
     if version < Version("2.2"):
         return request.param
     return "py37"
@@ -326,6 +368,32 @@ def _generate_all_framework_version_fixtures(metafunc):
                 )
 
 
+def _huggingface_base_fm_version(huggingface_vesion, base_fw):
+    config = image_uris.config_for_framework("huggingface")
+    training_config = config.get("training")
+    original_version = huggingface_vesion
+    if "version_aliases" in training_config:
+        huggingface_vesion = training_config.get("version_aliases").get(
+            huggingface_vesion, huggingface_vesion
+        )
+    version_config = training_config.get("versions").get(huggingface_vesion)
+    versions = list()
+    for key in list(version_config.keys()):
+        if key.startswith(base_fw):
+            base_fw_version = key[len(base_fw) :]
+            if len(original_version.split(".")) == 2:
+                base_fw_version = ".".join(base_fw_version.split(".")[:-1])
+            versions.append(base_fw_version)
+    return versions
+
+
+def _generate_huggingface_base_fw_latest_versions(metafunc, huggingface_version, base_fw):
+    versions = _huggingface_base_fm_version(huggingface_version, base_fw)
+    fixture_name = f"huggingface_{base_fw}_latest_version"
+    if fixture_name in metafunc.fixturenames:
+        metafunc.parametrize(fixture_name, versions, scope="session")
+
+
 def _parametrize_framework_version_fixtures(metafunc, fixture_prefix, config):
     fixture_name = "{}_version".format(fixture_prefix)
     if fixture_name in metafunc.fixturenames:
@@ -337,6 +405,10 @@ def _parametrize_framework_version_fixtures(metafunc, fixture_prefix, config):
     fixture_name = "{}_latest_version".format(fixture_prefix)
     if fixture_name in metafunc.fixturenames:
         metafunc.parametrize(fixture_name, (latest_version,), scope="session")
+
+    if "huggingface" in fixture_prefix:
+        _generate_huggingface_base_fw_latest_versions(metafunc, latest_version, "pytorch")
+        _generate_huggingface_base_fw_latest_versions(metafunc, latest_version, "tensorflow")
 
     fixture_name = "{}_latest_py_version".format(fixture_prefix)
     if fixture_name in metafunc.fixturenames:

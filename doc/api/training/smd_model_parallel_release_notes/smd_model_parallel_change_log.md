@@ -1,3 +1,72 @@
+# Sagemaker Distributed Model Parallel 1.3.1 Release Notes
+
+- New Features
+- Bug Fixes
+- Known Issues
+
+## New Features
+
+### TensorFlow
+
+- Exposes a new decorator ``register_post_partition_hook``. This allows invoking the decorated methods just after model partition but before executing the first step. For example loading a checkpoint. Refer to the [SageMaker distributed model parallel API documentation](https://sagemaker.readthedocs.io/en/stable/api/training/smp_versions/latest/smd_model_parallel_tensorflow.html) for more information.
+
+## Bug Fixes
+
+### PyTorch
+
+- Improved memory efficiency when using active microbatches by clearing activations at end of each microbatch.
+
+### TensorFlow
+
+- Fixed issue that caused hangs when training some models with XLA enabled.
+
+## Known Issues
+
+### PyTorch
+
+- A crash was observed when ``optimizer.step()`` was called for certain optimizers such as AdaDelta, when the partition on which this method was called has no local parameters assigned to it after partitioning. This is due to a bug in PyTorch which [has since been fixed](https://github.com/pytorch/pytorch/pull/52944). Till that makes its way to the next release of PyTorch, only call ``optimizer.step()`` on processes which have at least one local parameter. This can be checked like this ``len(list(model.local_parameters())) > 0``.
+
+- A performance regression still exists when training on SMP with PyTorch 1.7.1 compared to 1.6. The rootcause was found to be the slowdown in performance of `.grad` method calls in PyTorch 1.7.1 compared to 1.6. See the related discussion: https://github.com/pytorch/pytorch/issues/50636. This issue does not exist with PyTorch 1.8.
+
+# Sagemaker Distributed Model Parallel 1.3.0 Release Notes
+
+- New Features
+- Bug Fixes
+- Known Issues
+
+## New Features
+
+### PyTorch
+
+#### Add support for PyTorch 1.8
+
+- Adds a new method to DistributedModel ``register_comm_hook`` (for PyTorch 1.8 and newer only). This method behaves the same as the corresponding method with the same name in
+`torch.DistributedDataParallel` API. Refer to the [SageMaker distributed model parallel API documentation](https://sagemaker.readthedocs.io/en/stable/api/training/smd_model_parallel_pytorch.html#smp.DistributedModel) for more information.
+
+#### Others
+- Adds a configuration ``active_microbatches`` to the SageMaker SDK API for launching jobs, to control the number of active microbatches during training. This helps limit memory usage in cases where the number of microbatches is high. Refer to the [SageMaker Python SDK parameters API documentation](https://sagemaker.readthedocs.io/en/stable/api/training/smd_model_parallel_general.html) for more information.
+
+- Adds a configuration ``deterministic_server`` to the SageMaker SDK API for launching jobs, which ensures that the execution server for pipeline parallelism processes requests in a deterministic order across data parallel ranks. Refer to the [SageMaker Python SDK parameters API documentation](https://sagemaker.readthedocs.io/en/stable/api/training/smd_model_parallel_general.html) for more information.
+
+- Parameter passing is now supported in ``module.forward`` methods for DistributedModel and its submodules. This removes the restriction of having to pass `nn.Parameter` to the `__init__` call and making it a member of the module to use it.
+## Bug Fixes
+
+### PyTorch
+
+- Fixed a case where training hangs due to a module having computation which requires grads that is not used by the final output of the module. Now such a situtation raises an error with suggestions on making such computation compatible.
+
+- Fixed an issue with buffers which caused the buffers to not be on the correct device after a model is partitioned, and not be synchronized across steps (when ``broadcast_buffers`` is True). This could have caused correctness issues in models with buffers.
+
+## Known Issues
+
+### PyTorch
+
+- ``mp_barrier`` and ``get_mp_process_group`` are wrongly marked as deprecated methods. Ignore the deprecation warning.
+
+- A crash was observed when ``optimizer.step()`` was called for certain optimizers such as AdaDelta, when the partition on which this method was called has no local parameters assigned to it after partitioning. This is due to a bug in PyTorch which [has since been fixed](https://github.com/pytorch/pytorch/pull/52944). Till that makes its way to the next release of PyTorch, only call ``optimizer.step()`` on processes which have at least one local parameter. This can be checked like this ``len(list(model.local_parameters())) > 0``.
+
+- A performance regression still exists when training on SMP with PyTorch 1.7.1 compared to 1.6. The rootcause was found to be the slowdown in performance of `.grad` method calls in PyTorch 1.7.1 compared to 1.6. See the related discussion: https://github.com/pytorch/pytorch/issues/50636. This issue does not exist with PyTorch 1.8.
+
 # Sagemaker Distributed Model Parallel 1.2.0 Release Notes
 
 - New Features
@@ -8,18 +77,18 @@
 
 ### PyTorch
 
-#### Add support for PyTorch 1.7
+#### Add support for PyTorch 1.7.1
 
-- Adds support for `gradient_as_bucket_view` (PyTorch 1.7 only), `find_unused_parameters` (PyTorch 1.7 only) and `broadcast_buffers` options to `smp.DistributedModel`. These options behave the same as the corresponding options (with the same names) in
-`torch.DistributedDataParallel` API. Please refer to the [SageMaker distributed model parallel API documentation](https://sagemaker.readthedocs.io/en/stable/api/training/smd_model_parallel_pytorch.html#smp.DistributedModel) for more information.
+- Adds support for `gradient_as_bucket_view` (PyTorch 1.7.1 only), `find_unused_parameters` (PyTorch 1.7.1 only) and `broadcast_buffers` options to `smp.DistributedModel`. These options behave the same as the corresponding options (with the same names) in
+`torch.DistributedDataParallel` API. Refer to the [SageMaker distributed model parallel API documentation](https://sagemaker.readthedocs.io/en/stable/api/training/smd_model_parallel_pytorch.html#smp.DistributedModel) for more information.
 
-- Adds support for `join` (PyTorch 1.7 only) context manager, which is to be used in conjunction with an instance of `smp.DistributedModel` to be able to train with uneven inputs across participating processes.
+- Adds support for `join` (PyTorch 1.7.1 only) context manager, which is to be used in conjunction with an instance of `smp.DistributedModel` to be able to train with uneven inputs across participating processes.
 
-- Adds support for `_register_comm_hook` (PyTorch 1.7 only) which will register the callable as a communication hook for DDP. NOTE: Like in DDP, this is an experimental API and subject to change.
+- Adds support for `_register_comm_hook` (PyTorch 1.7.1 only) which will register the callable as a communication hook for DDP. NOTE: Like in DDP, this is an experimental API and subject to change.
 
 ### Tensorflow
 
-- Adds support for Tensorflow 2.4
+- Adds support for Tensorflow 2.4.1
 
 ## Bug Fixes
 
@@ -36,7 +105,7 @@ regular dicts.
 
 ### PyTorch
 
-- A performance regression was observed when training on SMP with PyTorch 1.7.1 compared to 1.6. The rootcause was found to be the slowdown in performance of `.grad` method calls in PyTorch 1.7.1 compared to 1.6. Please see the related discussion: https://github.com/pytorch/pytorch/issues/50636.
+- A performance regression was observed when training on SMP with PyTorch 1.7.1 compared to 1.6.0. The rootcause was found to be the slowdown in performance of `.grad` method calls in PyTorch 1.7.1 compared to 1.6.0. See the related discussion: https://github.com/pytorch/pytorch/issues/50636.
 
 
 # Sagemaker Distributed Model Parallel 1.1.0 Release Notes

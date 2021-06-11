@@ -15,13 +15,7 @@ from __future__ import absolute_import
 import datetime
 import unittest.mock
 
-import pytest
 from sagemaker.lineage import action, _api_types
-
-
-@pytest.fixture
-def sagemaker_session():
-    return unittest.mock.Mock()
 
 
 def test_create(sagemaker_session):

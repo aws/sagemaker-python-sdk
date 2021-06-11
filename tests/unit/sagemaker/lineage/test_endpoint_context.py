@@ -14,13 +14,7 @@ from __future__ import absolute_import
 
 import unittest.mock
 
-import pytest
 from sagemaker.lineage import context, _api_types
-
-
-@pytest.fixture
-def sagemaker_session():
-    return unittest.mock.Mock()
 
 
 def test_models(sagemaker_session):
@@ -38,7 +32,7 @@ def test_models(sagemaker_session):
                     "DestinationType": "ModelDeployment",
                     "AssociationType": "E1",
                     "CreationTime": None,
-                    "CreatedBy": {},
+                    "CreatedBy": None,
                 }
             ],
         },
@@ -53,7 +47,7 @@ def test_models(sagemaker_session):
                     "DestinationType": "Model",
                     "AssociationType": "E2",
                     "CreationTime": None,
-                    "CreatedBy": {},
+                    "CreatedBy": None,
                 }
             ]
         },
@@ -77,7 +71,7 @@ def test_models(sagemaker_session):
             destination_type="Model",
             association_type="E2",
             creation_time=None,
-            created_by={},
+            created_by=None,
         )
     ]
     assert expected_model_list == model_list

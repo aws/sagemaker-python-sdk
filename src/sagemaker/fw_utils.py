@@ -49,7 +49,7 @@ PARAMETER_SERVER_MULTI_GPU_WARNING = (
 )
 
 DEBUGGER_UNSUPPORTED_REGIONS = ("us-iso-east-1",)
-PROFILER_UNSUPPORTED_REGIONS = ("us-iso-east-1", "cn-north-1", "cn-northwest-1")
+PROFILER_UNSUPPORTED_REGIONS = ("us-iso-east-1",)
 
 SINGLE_GPU_INSTANCE_TYPES = ("ml.p2.xlarge", "ml.p3.2xlarge")
 SM_DATAPARALLEL_SUPPORTED_INSTANCE_TYPES = (
@@ -59,8 +59,8 @@ SM_DATAPARALLEL_SUPPORTED_INSTANCE_TYPES = (
     "local_gpu",
 )
 SM_DATAPARALLEL_SUPPORTED_FRAMEWORK_VERSIONS = {
-    "tensorflow": ["2.3.0", "2.3.1"],
-    "pytorch": ["1.6.0"],
+    "tensorflow": ["2.3", "2.3.1", "2.3.2", "2.4", "2.4.1"],
+    "pytorch": ["1.6", "1.6.0", "1.7", "1.7.1", "1.8", "1.8.0", "1.8.1"],
 }
 SMDISTRIBUTED_SUPPORTED_STRATEGIES = ["dataparallel", "modelparallel"]
 
@@ -139,10 +139,17 @@ def validate_mp_config(config):
     validate_in("placement_strategy", ["spread", "cluster"])
     validate_in("optimize", ["speed", "memory"])
 
-    for key in ["microbatches", "partitions"]:
+    for key in ["microbatches", "partitions", "active_microbatches"]:
         validate_positive(key)
 
-    for key in ["auto_partition", "contiguous", "load_partition", "horovod", "ddp"]:
+    for key in [
+        "auto_partition",
+        "contiguous",
+        "load_partition",
+        "horovod",
+        "ddp",
+        "deterministic_server",
+    ]:
         validate_bool(key)
 
     if "partition_file" in config and not isinstance(config.get("partition_file"), str):
@@ -288,9 +295,10 @@ def framework_name_from_image(image_uri):
     # We must support both the legacy and current image name format.
     name_pattern = re.compile(
         r"""^(?:sagemaker(?:-rl)?-)?
-        (tensorflow|mxnet|chainer|pytorch|scikit-learn|xgboost)(?:-)?
+        (tensorflow|mxnet|chainer|pytorch|scikit-learn|xgboost
+        |huggingface-tensorflow|huggingface-pytorch)(?:-)?
         (scriptmode|training)?
-        :(.*)-(.*?)-(py2|py3[67]?)$""",
+        :(.*)-(.*?)-(py2|py3[67]?)(?:.*)$""",
         re.VERBOSE,
     )
     name_match = name_pattern.match(sagemaker_match.group(9))
