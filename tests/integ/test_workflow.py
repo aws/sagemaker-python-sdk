@@ -45,6 +45,7 @@ from sagemaker.sklearn.processing import SKLearnProcessor
 from sagemaker.spark.processing import PySparkProcessor, SparkJarProcessor
 from sagemaker.workflow.conditions import ConditionGreaterThanOrEqualTo, ConditionIn
 from sagemaker.workflow.condition_step import ConditionStep
+from sagemaker.workflow.callback_step import CallbackStep, CallbackOutput, CallbackOutputTypeEnum
 from sagemaker.wrangler.processing import DataWranglerProcessor
 from sagemaker.dataset_definition.inputs import DatasetDefinition, AthenaDatasetDefinition
 from sagemaker.workflow.execution_variables import ExecutionVariables
@@ -691,6 +692,46 @@ def test_one_step_sparkjar_processing_pipeline(
         execution_steps = execution.list_steps()
         assert len(execution_steps) == 1
         assert execution_steps[0]["StepName"] == "sparkjar-process"
+    finally:
+        try:
+            pipeline.delete()
+        except Exception:
+            pass
+
+
+def test_one_step_callback_pipeline(sagemaker_session, role, pipeline_name, region_name):
+    instance_count = ParameterInteger(name="InstanceCount", default_value=2)
+
+    outputParam1 = CallbackOutput(output_name="output1", output_type=CallbackOutputTypeEnum.String)
+    step_callback = CallbackStep(
+        name="callback-step",
+        sqs_queue_url="https://sqs.us-east-2.amazonaws.com/123456789012/MyQueue",
+        inputs={"arg1": "foo"},
+        outputs=[outputParam1],
+    )
+
+    pipeline = Pipeline(
+        name=pipeline_name,
+        parameters=[instance_count],
+        steps=[step_callback],
+        sagemaker_session=sagemaker_session,
+    )
+
+    try:
+        response = pipeline.create(role)
+        create_arn = response["PipelineArn"]
+        assert re.match(
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            create_arn,
+        )
+
+        pipeline.parameters = [ParameterInteger(name="InstanceCount", default_value=1)]
+        response = pipeline.update(role)
+        update_arn = response["PipelineArn"]
+        assert re.match(
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            update_arn,
+        )
     finally:
         try:
             pipeline.delete()

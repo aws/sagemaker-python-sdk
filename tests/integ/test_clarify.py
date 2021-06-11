@@ -144,6 +144,7 @@ def model_config(model_name):
         instance_type="ml.c5.xlarge",
         instance_count=1,
         accept_type="application/jsonlines",
+        endpoint_name_prefix="myprefix",
     )
 
 
@@ -172,6 +173,7 @@ def shap_config():
         ],
         num_samples=2,
         agg_method="mean_sq",
+        seed=123,
     )
 
 
