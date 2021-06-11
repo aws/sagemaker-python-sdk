@@ -74,8 +74,8 @@ def test_huggingface_training(
 
         hf = HuggingFace(
             py_version="py36",
-            entry_point="examples/text-classification/run_glue.py",
-            role=ROLE,
+            entry_point=os.path.join(data_path, "run_glue.py"),
+            role="SageMakerRole",
             transformers_version=huggingface_training_latest_version,
             pytorch_version=huggingface_pytorch_latest_version,
             instance_count=1,
@@ -91,10 +91,6 @@ def test_huggingface_training(
                 "output_dir": "/opt/ml/model",
             },
             sagemaker_session=sagemaker_session,
-            git_config={
-                "repo": "https://github.com/huggingface/transformers.git",
-                "branch": f"v{huggingface_training_latest_version}",
-            },
             disable_profiler=True,
         )
 
