@@ -674,8 +674,10 @@ class SageMakerClarifyProcessor(Processor):
                 endpoint to be created.
             explainability_config (:class:`~sagemaker.clarify.ExplainabilityConfig`): Config of the
                 specific explainability method. Currently, only SHAP is supported.
-            model_scores:  Index or JSONPath location in the model output for the predicted scores
-                to be explained. This is not required if the model output is a single score.
+            model_scores(str|int|ModelPredictedLabelConfig):  Index or JSONPath location in the
+                model output for the predicted scores to be explained. This is not required if the
+                model output is a single score. Alternatively, an instance of
+                ModelPredictedLabelConfig can be provided.
             wait (bool): Whether the call should wait until the job completes (default: True).
             logs (bool): Whether to show the logs produced by the job.
                 Only meaningful when ``wait`` is True (default: True).
@@ -689,7 +691,12 @@ class SageMakerClarifyProcessor(Processor):
         """
         analysis_config = data_config.get_config()
         predictor_config = model_config.get_predictor_config()
-        _set(model_scores, "label", predictor_config)
+        if isinstance(model_scores, ModelPredictedLabelConfig):
+            probability_threshold, predicted_label_config = model_scores.get_predictor_config()
+            _set(probability_threshold, "probability_threshold", analysis_config)
+            predictor_config.update(predicted_label_config)
+        else:
+            _set(model_scores, "label", predictor_config)
         analysis_config["methods"] = explainability_config.get_explainability_config()
         analysis_config["predictor"] = predictor_config
         if job_name is None:

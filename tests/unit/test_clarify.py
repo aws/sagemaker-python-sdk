@@ -379,13 +379,20 @@ def test_post_training_bias(
         )
 
 
-def test_shap(clarify_processor, data_config, model_config, shap_config):
+def _run_test_shap(
+    clarify_processor,
+    data_config,
+    model_config,
+    shap_config,
+    model_scores,
+    expected_predictor_config,
+):
     with patch.object(SageMakerClarifyProcessor, "_run", return_value=None) as mock_method:
         clarify_processor.run_explainability(
             data_config,
             model_config,
             shap_config,
-            model_scores=None,
+            model_scores=model_scores,
             wait=True,
             job_name="test",
             experiment_config={"ExperimentName": "AnExperiment"},
@@ -414,11 +421,7 @@ def test_shap(clarify_processor, data_config, model_config, shap_config):
                     "save_local_shap_values": True,
                 }
             },
-            "predictor": {
-                "model_name": "xgboost-model",
-                "instance_type": "ml.c5.xlarge",
-                "initial_instance_count": 1,
-            },
+            "predictor": expected_predictor_config,
         }
         mock_method.assert_called_once_with(
             data_config,
@@ -429,3 +432,44 @@ def test_shap(clarify_processor, data_config, model_config, shap_config):
             None,
             {"ExperimentName": "AnExperiment"},
         )
+
+
+def test_shap(clarify_processor, data_config, model_config, shap_config):
+    model_scores = None
+    expected_predictor_config = {
+        "model_name": "xgboost-model",
+        "instance_type": "ml.c5.xlarge",
+        "initial_instance_count": 1,
+    }
+    _run_test_shap(
+        clarify_processor,
+        data_config,
+        model_config,
+        shap_config,
+        model_scores,
+        expected_predictor_config,
+    )
+
+
+def test_shap_with_predicted_label(clarify_processor, data_config, model_config, shap_config):
+    probability = "pr"
+    label_headers = ["success"]
+    model_scores = ModelPredictedLabelConfig(
+        probability=probability,
+        label_headers=label_headers,
+    )
+    expected_predictor_config = {
+        "model_name": "xgboost-model",
+        "instance_type": "ml.c5.xlarge",
+        "initial_instance_count": 1,
+        "probability": probability,
+        "label_headers": label_headers,
+    }
+    _run_test_shap(
+        clarify_processor,
+        data_config,
+        model_config,
+        shap_config,
+        model_scores,
+        expected_predictor_config,
+    )
