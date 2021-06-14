@@ -1,5 +1,33 @@
 # Changelog
 
+## v2.45.0 (2021-06-07)
+
+### Features
+
+ * Add support for Callback steps in model building pipelines
+
+## v2.44.0 (2021-06-01)
+
+### Features
+
+ * support endpoint_name_prefix, seed and version for Clarify
+
+## v2.43.0 (2021-05-31)
+
+### Features
+
+ * add xgboost framework version 1.3-1
+
+### Bug Fixes and Other Changes
+
+ * remove duplicated tags in _append_project_tags
+
+## v2.42.1 (2021-05-27)
+
+### Bug Fixes and Other Changes
+
+ * default value removed if zero for integer param
+
 ## v2.42.0 (2021-05-24)
 
 ### Features

@@ -19,7 +19,7 @@ from abc import ABC, abstractmethod
 import json
 import os
 import tempfile
-
+import re
 from sagemaker.processing import ProcessingInput, ProcessingOutput, Processor
 from sagemaker import image_uris, s3, utils
 
@@ -124,8 +124,9 @@ class ModelConfig:
         content_template=None,
         custom_attributes=None,
         accelerator_type=None,
+        endpoint_name_prefix=None,
     ):
-        """Initializes a configuration of a model and the endpoint to be created for it.
+        r"""Initializes a configuration of a model and the endpoint to be created for it.
 
         Args:
             model_name (str): Model name (as created by 'CreateModel').
@@ -155,12 +156,21 @@ class ModelConfig:
             accelerator_type (str): The Elastic Inference accelerator type to deploy to the model
                 endpoint instance for making inferences to the model, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html.
+            endpoint_name_prefix (str): The endpoint name prefix of a new endpoint. Must follow
+                pattern "^[a-zA-Z0-9](-\*[a-zA-Z0-9]".
         """
         self.predictor_config = {
             "model_name": model_name,
             "instance_type": instance_type,
             "initial_instance_count": instance_count,
         }
+        if endpoint_name_prefix is not None:
+            if re.search("^[a-zA-Z0-9](-*[a-zA-Z0-9])", endpoint_name_prefix) is None:
+                raise ValueError(
+                    "Invalid endpoint_name_prefix."
+                    " Please follow pattern ^[a-zA-Z0-9](-*[a-zA-Z0-9])."
+                )
+            self.predictor_config["endpoint_name_prefix"] = endpoint_name_prefix
         if accept_type is not None:
             if accept_type not in ["text/csv", "application/jsonlines"]:
                 raise ValueError(
@@ -277,6 +287,7 @@ class SHAPConfig(ExplainabilityConfig):
         agg_method,
         use_logit=False,
         save_local_shap_values=True,
+        seed=None,
     ):
         """Initializes config for SHAP.
 
@@ -297,6 +308,7 @@ class SHAPConfig(ExplainabilityConfig):
                 have log-odds units.
             save_local_shap_values (bool): Indicator of whether to save the local SHAP values
                 in the output location. Default is True.
+            seed (int): seed value to get deterministic SHAP values. Default is None.
         """
         if agg_method not in ["mean_abs", "median", "mean_sq"]:
             raise ValueError(
@@ -310,6 +322,8 @@ class SHAPConfig(ExplainabilityConfig):
             "use_logit": use_logit,
             "save_local_shap_values": save_local_shap_values,
         }
+        if seed is not None:
+            self.shap_config["seed"] = seed
 
     def get_explainability_config(self):
         """Returns config."""
@@ -336,6 +350,7 @@ class SageMakerClarifyProcessor(Processor):
         env=None,
         tags=None,
         network_config=None,
+        version=None,
     ):
         """Initializes a ``Processor`` instance, computing bias metrics and model explanations.
 
@@ -369,8 +384,9 @@ class SageMakerClarifyProcessor(Processor):
                 A :class:`~sagemaker.network.NetworkConfig`
                 object that configures network isolation, encryption of
                 inter-container traffic, security group IDs, and subnets.
+            version (str): Clarify version want to be used.
         """
-        container_uri = image_uris.retrieve("clarify", sagemaker_session.boto_region_name)
+        container_uri = image_uris.retrieve("clarify", sagemaker_session.boto_region_name, version)
         super(SageMakerClarifyProcessor, self).__init__(
             role,
             container_uri,
