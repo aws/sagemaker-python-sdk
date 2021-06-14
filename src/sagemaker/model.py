@@ -1159,8 +1159,8 @@ class FrameworkModel(Model):
             dir_name = None
 
         return {
-            SCRIPT_PARAM_NAME.upper(): script_name,
-            DIR_PARAM_NAME.upper(): dir_name,
+            SCRIPT_PARAM_NAME.upper(): script_name or str(),
+            DIR_PARAM_NAME.upper(): dir_name or str(),
             CONTAINER_LOG_LEVEL_PARAM_NAME.upper(): str(self.container_log_level),
             SAGEMAKER_REGION_PARAM_NAME.upper(): self.sagemaker_session.boto_region_name,
         }
