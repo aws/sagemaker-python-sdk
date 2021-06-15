@@ -1,5 +1,27 @@
 # Changelog
 
+## v2.46.0 (2021-06-15)
+
+### Features
+
+ * Add HF transformer version 4.6.1
+
+### Bug Fixes and Other Changes
+
+ * encode localmode payload to UTF-8
+ * call DescribeDomain as fallback in get_execution_role
+ * parameterize PT and TF version for HuggingFace tests
+
+### Documentation Changes
+
+ * Add import statement in Batch Transform Overview doc
+
+## v2.45.0 (2021-06-07)
+
+### Features
+
+ * Add support for Callback steps in model building pipelines
+
 ## v2.44.0 (2021-06-01)
 
 ### Features
