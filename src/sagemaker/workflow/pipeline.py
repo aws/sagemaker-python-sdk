@@ -20,11 +20,11 @@ from typing import Any, Dict, List, Sequence, Union, Optional
 
 import attr
 import botocore
-
 from botocore.exceptions import ClientError
 
 from sagemaker._studio import _append_project_tags
 from sagemaker.session import Session
+from sagemaker.workflow.callback_step import CallbackOutput
 from sagemaker.workflow.entities import (
     Entity,
     Expression,
@@ -197,6 +197,7 @@ class Pipeline(Entity):
     def start(
         self,
         parameters: Dict[str, Any] = None,
+        execution_display_name: str = None,
         execution_description: str = None,
     ):
         """Starts a Pipeline execution in the Workflow service.
@@ -204,6 +205,7 @@ class Pipeline(Entity):
         Args:
             parameters (List[Dict[str, str]]): A list of parameter dicts of the form
                 {"Name": "string", "Value": "string"}.
+            execution_display_name (str): The display name of the pipeline execution.
             execution_description (str): A description of the execution.
 
         Returns:
@@ -220,11 +222,13 @@ class Pipeline(Entity):
                 "This pipeline is not associated with a Pipeline in SageMaker. "
                 "Please invoke create() first before attempting to invoke start()."
             )
+
         kwargs = dict(PipelineName=self.name)
         update_args(
             kwargs,
             PipelineParameters=format_start_parameters(parameters),
             PipelineExecutionDescription=execution_description,
+            PipelineExecutionDisplayName=execution_display_name,
         )
         response = self.sagemaker_session.sagemaker_client.start_pipeline_execution(**kwargs)
         return _PipelineExecution(
@@ -278,7 +282,7 @@ def _interpolate(obj: Union[RequestType, Any]):
     Args:
         obj (Union[RequestType, Any]): The request dict.
     """
-    if isinstance(obj, (Expression, Parameter, Properties)):
+    if isinstance(obj, (Expression, Parameter, Properties, CallbackOutput)):
         return obj.expr
     if isinstance(obj, dict):
         new = obj.__class__()
