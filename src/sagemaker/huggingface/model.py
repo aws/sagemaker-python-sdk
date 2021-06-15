@@ -17,14 +17,14 @@ import logging
 
 import sagemaker
 from sagemaker import image_uris
-from sagemaker.deserializers import NumpyDeserializer
+from sagemaker.deserializers import JSONDeserializer
 from sagemaker.fw_utils import (
     model_code_key_prefix,
     validate_version_or_image_args,
 )
 from sagemaker.model import FrameworkModel, MODEL_SERVER_WORKERS_PARAM_NAME
 from sagemaker.predictor import Predictor
-from sagemaker.serializers import NumpySerializer
+from sagemaker.serializers import JSONSerializer
 
 logger = logging.getLogger("sagemaker")
 
@@ -40,8 +40,8 @@ class HuggingFacePredictor(Predictor):
         self,
         endpoint_name,
         sagemaker_session=None,
-        serializer=NumpySerializer(),
-        deserializer=NumpyDeserializer(),
+        serializer=JSONSerializer(),
+        deserializer=JSONDeserializer(),
     ):
         """Initialize an ``HuggingFacePredictor``.
 
