@@ -16,6 +16,7 @@ from __future__ import absolute_import, print_function
 import json
 import logging
 import os
+import pdb
 import re
 import sys
 import time
@@ -40,7 +41,6 @@ from sagemaker.utils import (
     secondary_training_status_changed,
     secondary_training_status_message,
     sts_regional_endpoint,
-    unique_name_from_base,
 )
 from sagemaker import exceptions
 
@@ -3464,12 +3464,13 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Returns:
             str: The name of the created ``Endpoint``.
         """
-        endpoint_config_name = unique_name_from_base(name)
+
         if not _deployment_entity_exists(
-            lambda: self.sagemaker_client.describe_endpoint_config(
-                EndpointConfigName=endpoint_config_name
-            )
+            lambda: self.sagemaker_client.describe_endpoint_config(EndpointConfigName=name)
+        ) and not _endpoint_config_name_exists(
+            lambda: self.sagemaker_client.list_endpoint_configs(NameContains=name)
         ):
+
             config_options = {"EndpointConfigName": name, "ProductionVariants": production_variants}
             tags = _append_project_tags(tags)
             if tags:
@@ -4196,6 +4197,21 @@ def _deployment_entity_exists(describe_fn):
         if not (
             error_code == "ValidationException"
             and "Could not find" in ce.response["Error"]["Message"]
+        ):
+            raise ce
+        return False
+
+
+def _endpoint_config_name_exists(describe_fn):
+    """Checks if similar endpoint configuration name exists."""
+    try:
+        describe_fn()
+        return True
+    except ClientError as ce:
+        error_code = ce.response["Error"]["Code"]
+        if not (
+            error_code == "ValidationException"
+            and "Similar endpoint configuration name exists" in ce.response["Error"]["Message"]
         ):
             raise ce
         return False
