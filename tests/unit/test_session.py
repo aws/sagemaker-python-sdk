@@ -16,6 +16,7 @@ import datetime
 import io
 import logging
 import os
+import pdb
 
 import pytest
 import six
@@ -1821,7 +1822,18 @@ def test_endpoint_from_production_variants(sagemaker_session):
     ex = ClientError(
         {"Error": {"Code": "ValidationException", "Message": "Could not find your thing"}}, "b"
     )
+    ex1 = ClientError(
+        {
+            "Error": {
+                "Code": "ValidationException",
+                "Message": "Similar endpoint configuration name exists",
+            }
+        },
+        "b",
+    )
+
     ims.sagemaker_client.describe_endpoint_config = Mock(side_effect=ex)
+    ims.sagemaker_client.list_endpoint_configs = Mock(side_effect=ex1)
     sagemaker_session.endpoint_from_production_variants("some-endpoint", pvs)
     sagemaker_session.sagemaker_client.create_endpoint.assert_called_with(
         EndpointConfigName="some-endpoint", EndpointName="some-endpoint", Tags=[]
@@ -1851,7 +1863,18 @@ def test_endpoint_from_production_variants_with_tags(sagemaker_session):
     ex = ClientError(
         {"Error": {"Code": "ValidationException", "Message": "Could not find your thing"}}, "b"
     )
+    ex1 = ClientError(
+        {
+            "Error": {
+                "Code": "ValidationException",
+                "Message": "Similar endpoint configuration name exists",
+            }
+        },
+        "b",
+    )
+
     ims.sagemaker_client.describe_endpoint_config = Mock(side_effect=ex)
+    ims.sagemaker_client.list_endpoint_configs = Mock(side_effect=ex1)
     tags = [{"ModelName": "TestModel"}]
     sagemaker_session.endpoint_from_production_variants("some-endpoint", pvs, tags)
     sagemaker_session.sagemaker_client.create_endpoint.assert_called_with(
@@ -1872,7 +1895,18 @@ def test_endpoint_from_production_variants_with_accelerator_type(sagemaker_sessi
     ex = ClientError(
         {"Error": {"Code": "ValidationException", "Message": "Could not find your thing"}}, "b"
     )
+    ex1 = ClientError(
+        {
+            "Error": {
+                "Code": "ValidationException",
+                "Message": "Similar endpoint configuration name exists",
+            }
+        },
+        "b",
+    )
+
     ims.sagemaker_client.describe_endpoint_config = Mock(side_effect=ex)
+    ims.sagemaker_client.list_endpoint_configs = Mock(side_effect=ex1)
     tags = [{"ModelName": "TestModel"}]
     sagemaker_session.endpoint_from_production_variants("some-endpoint", pvs, tags)
     sagemaker_session.sagemaker_client.create_endpoint.assert_called_with(
