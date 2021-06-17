@@ -134,7 +134,7 @@ def test_huggingface_inference(sagemaker_session, gpu_instance_type):
         predictor = HuggingFacePredictor(endpoint_name=endpoint_name)
         data = {
             "inputs": "Camera - You are awarded a SiPix Digital Camera!"
-                      "call 09061221066 fromm landline. Delivery within 28 days."
+            "call 09061221066 fromm landline. Delivery within 28 days."
         }
         output = predictor.predict(data)
         assert "score" in output[0]
