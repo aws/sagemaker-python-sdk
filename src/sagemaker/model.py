@@ -1124,7 +1124,7 @@ class FrameworkModel(Model):
                 dependencies=self.dependencies,
             )
 
-        if repack and self.model_data is not None:
+        if repack and self.model_data is not None and self.entry_point is not None:
             bucket = self.bucket or self.sagemaker_session.default_bucket()
             repacked_model_data = "s3://" + "/".join([bucket, key_prefix, "model.tar.gz"])
 
