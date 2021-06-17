@@ -38,6 +38,7 @@ from sagemaker.inputs import CreateModelInput, TrainingInput
 from sagemaker.model import Model
 from sagemaker.processing import ProcessingInput, ProcessingOutput, FeatureStoreOutput
 from sagemaker.pytorch.estimator import PyTorch
+from sagemaker.tuner import HyperparameterTuner, IntegerParameter
 from sagemaker.s3 import S3Uploader
 from sagemaker.session import get_execution_role
 from sagemaker.sklearn.estimator import SKLearn
@@ -60,6 +61,7 @@ from sagemaker.workflow.steps import (
     ProcessingStep,
     TrainingStep,
     CacheConfig,
+    TuningStep,
 )
 from sagemaker.workflow.step_collections import RegisterModel
 from sagemaker.workflow.pipeline import Pipeline
@@ -842,6 +844,81 @@ def test_conditional_pytorch_training_model_registration(
         except Exception:
             pass
 
+
+def test_tuning(
+    sagemaker_session,
+    role,
+    cpu_instance_type,
+    pipeline_name,
+    region_name,
+):
+    base_dir = os.path.join(DATA_DIR, "pytorch_mnist")
+    entry_point = os.path.join(base_dir, "mnist.py")
+    input_path = sagemaker_session.upload_data(
+        path=os.path.join(base_dir, "training"),
+        key_prefix="integ-test-data/pytorch_mnist/training",
+    )
+    inputs = TrainingInput(s3_data=input_path)
+
+    instance_count = ParameterInteger(name="InstanceCount", default_value=1)
+    instance_type = ParameterString(name="InstanceType", default_value="ml.m5.xlarge")
+
+    pytorch_estimator = PyTorch(
+        entry_point=entry_point,
+        role=role,
+        framework_version="1.5.0",
+        py_version="py3",
+        instance_count=1,
+        instance_type="ml.m5.xlarge",
+        sagemaker_session=sagemaker_session,
+        enable_sagemaker_metrics=True,
+    )
+
+    hyperparameter_ranges = {
+        "batch-size": IntegerParameter(64, 128),
+    }
+
+    tuner = HyperparameterTuner(
+        estimator=pytorch_estimator,
+        objective_metric_name="test:acc",
+        objective_type="Maximize",
+        hyperparameter_ranges=hyperparameter_ranges,
+        metric_definitions=[{
+            "Name": "test:acc",
+            "Regex": "Overall test accuracy: (.*?);"
+        }]
+    )
+
+    step_tune = TuningStep(
+        name="my-tuning-step",
+        tuner=tuner,
+        inputs=inputs,
+    )
+
+    pipeline = Pipeline(
+        name=pipeline_name,
+        parameters=[instance_count, instance_type],
+        steps=[step_tune],
+        sagemaker_session=sagemaker_session,
+    )
+    print(pipeline.definition())
+    try:
+        response = pipeline.create(role)
+        create_arn = response["PipelineArn"]
+        assert re.match(
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}", create_arn
+        )
+
+        execution = pipeline.start(parameters={})
+        assert re.match(
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
+            execution.arn,
+        )
+    finally:
+        try:
+            pipeline.delete()
+        except Exception:
+            pass
 
 def test_model_registration_with_model_repack(
     sagemaker_session,

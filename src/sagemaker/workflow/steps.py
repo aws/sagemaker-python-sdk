@@ -14,6 +14,7 @@
 from __future__ import absolute_import
 
 import abc
+import typing
 
 from enum import Enum
 from typing import Dict, List
@@ -34,6 +35,7 @@ from sagemaker.processing import (
     Processor,
 )
 from sagemaker.transformer import Transformer, _TransformJob
+from sagemaker.tuner import HyperparameterTuner, _TuningJob
 from sagemaker.workflow.entities import (
     DefaultEnumMeta,
     Entity,
@@ -55,6 +57,7 @@ class StepTypeEnum(Enum, metaclass=DefaultEnumMeta):
     TRAINING = "Training"
     TRANSFORM = "Transform"
     CALLBACK = "Callback"
+    TUNING = "Tuning"
 
 
 @attr.s
@@ -96,6 +99,7 @@ class Step(Entity):
         """Add step names to the current step depends on list"""
         if not step_names:
             return
+
         if not self.depends_on:
             self.depends_on = []
         self.depends_on.extend(step_names)
@@ -416,4 +420,106 @@ class ProcessingStep(Step):
             request_dict["PropertyFiles"] = [
                 property_file.expr for property_file in self.property_files
             ]
+        return request_dict
+
+
+class TuningStep(Step):
+    """Tuning step for workflow."""
+
+    def __init__(
+        self,
+        name: str,
+        tuner: HyperparameterTuner,
+        inputs=None,
+        job_arguments: List[str] = None,
+        cache_config: CacheConfig = None,
+        depends_on: List[str] = None,
+    ):
+        """Construct a TuningStep, given a `HyperparameterTuner` instance.
+
+        In addition to the tuner instance, the other arguments are those that are supplied to
+        the `fit` method of the `sagemaker.tuner.HyperparameterTuner`.
+
+        Args:
+            name (str): The name of the tuning step.
+            tuner (HyperparameterTuner): A `sagemaker.tuner.HyperparameterTuner` instance.
+            inputs: Information about the training data. Please refer to the
+                ``fit()`` method of the associated estimator, as this can take
+                any of the following forms:
+
+                * (str) - The S3 location where training data is saved.
+                * (dict[str, str] or dict[str, sagemaker.inputs.TrainingInput]) -
+                    If using multiple channels for training data, you can specify
+                    a dict mapping channel names to strings or
+                    :func:`~sagemaker.inputs.TrainingInput` objects.
+                * (sagemaker.inputs.TrainingInput) - Channel configuration for S3 data sources
+                    that can provide additional information about the training dataset.
+                    See :func:`sagemaker.inputs.TrainingInput` for full details.
+                * (sagemaker.session.FileSystemInput) - channel configuration for
+                    a file system data source that can provide additional information as well as
+                    the path to the training dataset.
+                * (sagemaker.amazon.amazon_estimator.RecordSet) - A collection of
+                    Amazon :class:~`Record` objects serialized and stored in S3.
+                    For use with an estimator for an Amazon algorithm.
+                * (sagemaker.amazon.amazon_estimator.FileSystemRecordSet) -
+                    Amazon SageMaker channel configuration for a file system data source for
+                    Amazon algorithms.
+                * (list[sagemaker.amazon.amazon_estimator.RecordSet]) - A list of
+                    :class:~`sagemaker.amazon.amazon_estimator.RecordSet` objects,
+                    where each instance is a different channel of training data.
+                * (list[sagemaker.amazon.amazon_estimator.FileSystemRecordSet]) - A list of
+                    :class:~`sagemaker.amazon.amazon_estimator.FileSystemRecordSet` objects,
+                    where each instance is a different channel of training data.
+            job_arguments (List[str]): A list of strings to be passed into the processing job.
+                Defaults to `None`.
+            cache_config (CacheConfig):  A `sagemaker.workflow.steps.CacheConfig` instance.
+            depends_on (List[str]): A list of step names this `sagemaker.workflow.steps.ProcessingStep`
+                depends on
+        """
+        super(TuningStep, self).__init__(name, StepTypeEnum.TUNING, depends_on)
+        self.tuner = tuner
+        self.inputs = inputs
+        self.job_arguments = job_arguments
+        self._properties = Properties(
+            path=f"Steps.{name}",
+            shape_names=[
+                "DescribeHyperParameterTuningJobResponse",
+                "ListTrainingJobsForHyperParameterTuningJobResponse",
+            ],
+        )
+        self.cache_config = cache_config
+
+    @property
+    def arguments(self) -> RequestType:
+        """The arguments dict that is used to call `create_hyper_parameter_tuning_job`.
+
+        NOTE: The CreateHyperParameterTuningJob request is not quite the args list that workflow needs.
+        The HyperParameterTuningJobName attribute cannot be included.
+        """
+        if self.tuner.estimator is not None:
+            self.tuner.estimator._prepare_for_training()
+        else:
+            for _, estimator in self.tuner.estimator_dict.items():
+                estimator._prepare_for_training()
+
+        self.tuner._prepare_for_tuning()
+        tuner_args = _TuningJob._get_tuner_args(self.tuner, self.inputs)
+        request_dict = self.tuner.sagemaker_session._get_tuning_request(**tuner_args)
+        request_dict.pop("HyperParameterTuningJobName")
+
+        return request_dict
+
+    @property
+    def properties(self):
+        """A Properties object representing the `DescribeHyperParameterTuningJobResponse` and
+        `ListTrainingJobsForHyperParameterTuningJobResponse` data model.
+        """
+        return self._properties
+
+    def to_request(self) -> RequestType:
+        """Updates the dictionary with cache configuration."""
+        request_dict = super().to_request()
+        if self.cache_config:
+            request_dict.update(self.cache_config.config)
+
         return request_dict
