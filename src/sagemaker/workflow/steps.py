@@ -16,7 +16,7 @@ from __future__ import absolute_import
 import abc
 
 from enum import Enum
-from typing import Dict, List
+from typing import Dict, List, Union
 
 import attr
 
@@ -145,7 +145,7 @@ class TrainingStep(Step):
         self,
         name: str,
         estimator: EstimatorBase,
-        inputs: TrainingInput = None,
+        inputs: Union[TrainingInput, dict, str] = None,
         cache_config: CacheConfig = None,
         depends_on: List[str] = None,
     ):
@@ -157,7 +157,22 @@ class TrainingStep(Step):
         Args:
             name (str): The name of the training step.
             estimator (EstimatorBase): A `sagemaker.estimator.EstimatorBase` instance.
-            inputs (TrainingInput): A `sagemaker.inputs.TrainingInput` instance. Defaults to `None`.
+            inputs (str or dict or sagemaker.inputs.TrainingInput): Information
+                about the training data. This can be one of three types:
+
+                * (str) the S3 location where training data is saved, or a file:// path in
+                    local mode.
+                * (dict[str, str] or dict[str, sagemaker.inputs.TrainingInput]) If using multiple
+                    channels for training data, you can specify a dict mapping channel names to
+                    strings or :func:`~sagemaker.inputs.TrainingInput` objects.
+                * (sagemaker.inputs.TrainingInput) - channel configuration for S3 data sources
+                    that can provide additional information as well as the path to the training
+                    dataset.
+                    See :func:`sagemaker.inputs.TrainingInput` for full details.
+                * (sagemaker.session.FileSystemInput) - channel configuration for
+                    a file system data source that can provide additional information as well as
+                    the path to the training dataset.
+
             cache_config (CacheConfig):  A `sagemaker.workflow.steps.CacheConfig` instance.
             depends_on (List[str]): A list of step names this `sagemaker.workflow.steps.TrainingStep`
                 depends on
