@@ -58,19 +58,18 @@ class CallbackOutput:
             "OutputType": self.output_type.value,
         }
 
-    @property
-    def expr(self) -> Dict[str, str]:
-        """The 'Get' expression dict for a `Parameter`."""
-        return CallbackOutput._expr(self.output_name)
+    def expr(self, step_name) -> Dict[str, str]:
+        """The 'Get' expression dict for a `CallbackOutput`."""
+        return CallbackOutput._expr(self.output_name, step_name)
 
     @classmethod
-    def _expr(cls, name):
+    def _expr(cls, name, step_name):
         """An internal classmethod for the 'Get' expression dict for a `CallbackOutput`.
 
         Args:
             name (str): The name of the callback output.
         """
-        return {"Get": f"Steps.{name}.OutputParameters['{name}']"}
+        return {"Get": f"Steps.{step_name}.OutputParameters['{name}']"}
 
 
 class CallbackStep(Step):
