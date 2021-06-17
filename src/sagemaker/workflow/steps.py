@@ -25,6 +25,7 @@ from sagemaker.inputs import (
     CreateModelInput,
     TrainingInput,
     TransformInput,
+    FileSystemInput
 )
 from sagemaker.model import Model
 from sagemaker.processing import (
@@ -43,7 +44,6 @@ from sagemaker.workflow.properties import (
     PropertyFile,
     Properties,
 )
-
 
 class StepTypeEnum(Enum, metaclass=DefaultEnumMeta):
     """Enum of step types."""
@@ -145,7 +145,7 @@ class TrainingStep(Step):
         self,
         name: str,
         estimator: EstimatorBase,
-        inputs: Union[TrainingInput, dict, str] = None,
+        inputs: Union[TrainingInput, dict, str, FileSystemInput] = None,
         cache_config: CacheConfig = None,
         depends_on: List[str] = None,
     ):
@@ -157,7 +157,8 @@ class TrainingStep(Step):
         Args:
             name (str): The name of the training step.
             estimator (EstimatorBase): A `sagemaker.estimator.EstimatorBase` instance.
-            inputs (str or dict or sagemaker.inputs.TrainingInput): Information
+            inputs (str or dict or sagemaker.inputs.TrainingInput
+                or sagemaker.inputs.FileSystemInput): Information
                 about the training data. This can be one of three types:
 
                 * (str) the S3 location where training data is saved, or a file:// path in
@@ -169,7 +170,7 @@ class TrainingStep(Step):
                     that can provide additional information as well as the path to the training
                     dataset.
                     See :func:`sagemaker.inputs.TrainingInput` for full details.
-                * (sagemaker.session.FileSystemInput) - channel configuration for
+                * (sagemaker.inputs.FileSystemInput) - channel configuration for
                     a file system data source that can provide additional information as well as
                     the path to the training dataset.
 
