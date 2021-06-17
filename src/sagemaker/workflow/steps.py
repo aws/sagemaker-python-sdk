@@ -21,12 +21,7 @@ from typing import Dict, List, Union
 import attr
 
 from sagemaker.estimator import EstimatorBase, _TrainingJob
-from sagemaker.inputs import (
-    CreateModelInput,
-    TrainingInput,
-    TransformInput,
-    FileSystemInput
-)
+from sagemaker.inputs import CreateModelInput, TrainingInput, TransformInput, FileSystemInput
 from sagemaker.model import Model
 from sagemaker.processing import (
     ProcessingInput,
@@ -44,6 +39,7 @@ from sagemaker.workflow.properties import (
     PropertyFile,
     Properties,
 )
+
 
 class StepTypeEnum(Enum, metaclass=DefaultEnumMeta):
     """Enum of step types."""
