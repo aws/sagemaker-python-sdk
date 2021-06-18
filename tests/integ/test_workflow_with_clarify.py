@@ -33,7 +33,8 @@ from sagemaker.clarify import (
 from sagemaker.processing import ProcessingInput, ProcessingOutput
 from sagemaker.session import get_execution_role
 from sagemaker.workflow.conditions import ConditionLessThanOrEqualTo
-from sagemaker.workflow.condition_step import ConditionStep, JsonGet
+from sagemaker.workflow.condition_step import ConditionStep
+from sagemaker.workflow.functions import JsonGet
 from sagemaker.workflow.parameters import (
     ParameterInteger,
     ParameterString,
