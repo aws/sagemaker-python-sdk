@@ -70,6 +70,10 @@ class JsonGet(Expression):
             name = self.property_file.name
         else:
             name = self.property_file
+
+        if not isinstance(self.processing_step_name, str):
+            raise ValueError("processing_step_name passed in is not instance of a str")
+
         return {
             "Std:JsonGet": {
                 "PropertyFile": {"Get": f"Steps.{self.processing_step_name}.PropertyFiles.{name}"},
