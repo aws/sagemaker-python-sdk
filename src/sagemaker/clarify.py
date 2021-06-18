@@ -515,8 +515,10 @@ class SageMakerClarifyProcessor(Processor):
             wait (bool): Whether the call should wait until the job completes (default: True).
             logs (bool): Whether to show the logs produced by the job.
                 Only meaningful when ``wait`` is True (default: True).
-            job_name (str): Processing job name. If not specified, a name is composed of
-                "Clarify-Pretraining-Bias" and current timestamp.
+            job_name (str): Processing job name. When ``job_name`` is not specified, if
+                ``job_name_prefix`` in :class:`SageMakerClarifyProcessor` specified, the job name
+                will be composed of ``job_name_prefix`` and current timestamp; otherwise use
+                "Clarify-Pretraining-Bias" as prefix.
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 user code file (default: None).
             experiment_config (dict[str, str]): Experiment management configuration.
@@ -561,23 +563,25 @@ class SageMakerClarifyProcessor(Processor):
             model_predicted_label_config (:class:`~sagemaker.clarify.ModelPredictedLabelConfig`):
                 Config of how to extract the predicted label from the model output.
             methods (str or list[str]): Selector of a subset of potential metrics:
-                ["`DPPL <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-dppl.html>`_",
-                "`DI <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-di.html>`_",
+                ["`DPPL <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-dppl.html>`_"
+                , "`DI <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-di.html>`_",
                 "`DCA <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-dca.html>`_",
                 "`DCR <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-dcr.html>`_",
                 "`RD <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-rd.html>`_",
                 "`DAR <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-dar.html>`_",
                 "`DRR <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-drr.html>`_",
                 "`AD <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-ad.html>`_",
-                "`CDDPL <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-cddpl.html>`_",
-                "`TE <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-te.html>`_",
+                "`CDDPL <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-cddpl.html>`_
+                ", "`TE <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-te.html>`_",
                 "`FT <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-ft.html>`_"].
                 Defaults to computing all.
             wait (bool): Whether the call should wait until the job completes (default: True).
             logs (bool): Whether to show the logs produced by the job.
                 Only meaningful when ``wait`` is True (default: True).
-            job_name (str): Processing job name. If not specified, a name is composed of
-                "Clarify-Posttraining-Bias" and current timestamp.
+            job_name (str): Processing job name. When ``job_name`` is not specified, if
+                ``job_name_prefix`` in :class:`SageMakerClarifyProcessor` specified, the job name
+                will be composed of ``job_name_prefix`` and current timestamp; otherwise use
+                "Clarify-Posttraining-Bias" as prefix.
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 user code file (default: None).
             experiment_config (dict[str, str]): Experiment management configuration.
@@ -640,23 +644,25 @@ class SageMakerClarifyProcessor(Processor):
                 "`CDDL <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-cdd.html>`_"].
                 Defaults to computing all.
             post_training_methods (str or list[str]): Selector of a subset of potential metrics:
-                ["`DPPL <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-dppl.html>`_",
-                "`DI <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-di.html>`_",
+                ["`DPPL <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-dppl.html>`_"
+                , "`DI <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-di.html>`_",
                 "`DCA <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-dca.html>`_",
                 "`DCR <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-dcr.html>`_",
                 "`RD <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-rd.html>`_",
                 "`DAR <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-dar.html>`_",
                 "`DRR <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-drr.html>`_",
                 "`AD <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-ad.html>`_",
-                "`CDDPL <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-cddpl.html>`_",
-                "`TE <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-te.html>`_",
+                "`CDDPL <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-cddpl.html>`_
+                ", "`TE <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-te.html>`_",
                 "`FT <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-ft.html>`_"].
                 Defaults to computing all.
             wait (bool): Whether the call should wait until the job completes (default: True).
             logs (bool): Whether to show the logs produced by the job.
                 Only meaningful when ``wait`` is True (default: True).
-            job_name (str): Processing job name. If not specified, a name is composed of
-                "Clarify-Bias" and current timestamp.
+            job_name (str): Processing job name. When ``job_name`` is not specified, if
+                ``job_name_prefix`` in :class:`SageMakerClarifyProcessor` specified, the job name
+                will be composed of ``job_name_prefix`` and current timestamp; otherwise use
+                "Clarify-Bias" as prefix.
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 user code file (default: None).
             experiment_config (dict[str, str]): Experiment management configuration.
@@ -722,8 +728,10 @@ class SageMakerClarifyProcessor(Processor):
             wait (bool): Whether the call should wait until the job completes (default: True).
             logs (bool): Whether to show the logs produced by the job.
                 Only meaningful when ``wait`` is True (default: True).
-            job_name (str): Processing job name. If not specified, a name is composed of
-                "Clarify-Explainability" and current timestamp.
+            job_name (str): Processing job name. When ``job_name`` is not specified, if
+                ``job_name_prefix`` in :class:`SageMakerClarifyProcessor` specified, the job name
+                will be composed of ``job_name_prefix`` and current timestamp; otherwise use
+                "Clarify-Explainability" as prefix.
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 user code file (default: None).
             experiment_config (dict[str, str]): Experiment management configuration.
