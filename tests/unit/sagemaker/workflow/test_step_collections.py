@@ -182,6 +182,7 @@ def test_register_model(estimator, model_metrics):
         approval_status="Approved",
         description="description",
         depends_on=["TestStep"],
+        tags=[{"Key": "myKey", "Value": "myValue"}]
     )
     assert ordered(register_model.request_dicts()) == ordered(
         [
@@ -210,6 +211,7 @@ def test_register_model(estimator, model_metrics):
                     },
                     "ModelPackageDescription": "description",
                     "ModelPackageGroupName": "mpg",
+                    "Tags": [{"Key": "myKey", "Value": "myValue"}]
                 },
             },
         ]
