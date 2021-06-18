@@ -238,7 +238,7 @@ def test_workflow_with_clarify(
         )
 
         cond_left = JsonGet(
-            step=step_process,
+            processing_step_name=step_process.name,
             property_file="BiasOutput",
             json_path="post_training_bias_metrics.facets.F1[0].metrics[0].value",
         )
