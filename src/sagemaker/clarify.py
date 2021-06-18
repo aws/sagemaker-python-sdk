@@ -350,6 +350,7 @@ class SageMakerClarifyProcessor(Processor):
         env=None,
         tags=None,
         network_config=None,
+        job_name_prefix=None,
         version=None,
     ):
         """Initializes a ``Processor`` instance, computing bias metrics and model explanations.
@@ -384,9 +385,11 @@ class SageMakerClarifyProcessor(Processor):
                 A :class:`~sagemaker.network.NetworkConfig`
                 object that configures network isolation, encryption of
                 inter-container traffic, security group IDs, and subnets.
+            job_name_prefix (str): Processing job name prefix.
             version (str): Clarify version want to be used.
         """
         container_uri = image_uris.retrieve("clarify", sagemaker_session.boto_region_name, version)
+        self.job_name_prefix = job_name_prefix
         super(SageMakerClarifyProcessor, self).__init__(
             role,
             container_uri,
@@ -517,7 +520,10 @@ class SageMakerClarifyProcessor(Processor):
         analysis_config.update(data_bias_config.get_config())
         analysis_config["methods"] = {"pre_training_bias": {"methods": methods}}
         if job_name is None:
-            job_name = utils.name_from_base("Clarify-Pretraining-Bias")
+            if self.job_name_prefix:
+                job_name = utils.name_from_base(self.job_name_prefix)
+            else:
+                job_name = utils.name_from_base("Clarify-Pretraining-Bias")
         self._run(data_config, analysis_config, wait, logs, job_name, kms_key, experiment_config)
 
     def run_post_training_bias(
@@ -573,7 +579,10 @@ class SageMakerClarifyProcessor(Processor):
         analysis_config["predictor"] = predictor_config
         _set(probability_threshold, "probability_threshold", analysis_config)
         if job_name is None:
-            job_name = utils.name_from_base("Clarify-Posttraining-Bias")
+            if self.job_name_prefix:
+                job_name = utils.name_from_base(self.job_name_prefix)
+            else:
+                job_name = utils.name_from_base("Clarify-Posttraining-Bias")
         self._run(data_config, analysis_config, wait, logs, job_name, kms_key, experiment_config)
 
     def run_bias(
@@ -641,7 +650,10 @@ class SageMakerClarifyProcessor(Processor):
             "post_training_bias": {"methods": post_training_methods},
         }
         if job_name is None:
-            job_name = utils.name_from_base("Clarify-Bias")
+            if self.job_name_prefix:
+                job_name = utils.name_from_base(self.job_name_prefix)
+            else:
+                job_name = utils.name_from_base("Clarify-Bias")
         self._run(data_config, analysis_config, wait, logs, job_name, kms_key, experiment_config)
 
     def run_explainability(
@@ -693,7 +705,10 @@ class SageMakerClarifyProcessor(Processor):
         analysis_config["methods"] = explainability_config.get_explainability_config()
         analysis_config["predictor"] = predictor_config
         if job_name is None:
-            job_name = utils.name_from_base("Clarify-Explainability")
+            if self.job_name_prefix:
+                job_name = utils.name_from_base(self.job_name_prefix)
+            else:
+                job_name = utils.name_from_base("Clarify-Explainability")
         self._run(data_config, analysis_config, wait, logs, job_name, kms_key, experiment_config)
 
 
