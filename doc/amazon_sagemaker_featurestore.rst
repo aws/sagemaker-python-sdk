@@ -290,7 +290,14 @@ example identifier to retrieve the record.
 
    record_identifier_value = str(2990130)
    featurestore_runtime.get_record(FeatureGroupName=transaction_feature_group_name, RecordIdentifierValueAsString=record_identifier_value)
+   
+You can use the ``batch_get_record`` function to retrieve multiple records simultaneously from your feature store. The following example uses this API to retrieve a batch of records.
 
+.. code:: python
+
+   record_identifier_values = ["573291", "109382", "828400", "124013"]
+   featurestore_runtime.batch_get_record(Identifiers=[{"FeatureGroupName": transaction_feature_group_name, "RecordIdentifiersValueAsString": record_identifier_values}])
+   
 An example response from the fraud detection example:
 
 .. code:: python
