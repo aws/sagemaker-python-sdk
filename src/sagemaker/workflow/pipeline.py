@@ -242,6 +242,7 @@ class Pipeline(Entity):
         request_dict["PipelineExperimentConfig"] = interpolate(
             request_dict["PipelineExperimentConfig"]
         )
+        print(request_dict["Steps"])
         request_dict["Steps"] = interpolate(request_dict["Steps"])
 
         return json.dumps(request_dict)

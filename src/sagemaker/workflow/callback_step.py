@@ -13,7 +13,7 @@
 """The step definitions for workflow."""
 from __future__ import absolute_import
 
-from typing import List, Dict
+from typing import List, Dict, Union
 from enum import Enum
 
 import attr
@@ -83,7 +83,7 @@ class CallbackStep(Step):
         inputs: dict,
         outputs: List[CallbackOutput],
         cache_config: CacheConfig = None,
-        depends_on: List[str] = None,
+        depends_on: Union[List[str], List[Step]] = None,
     ):
         """Constructs a CallbackStep.
 
@@ -94,8 +94,8 @@ class CallbackStep(Step):
                 in the SQS message body of callback messages.
             outputs (List[CallbackOutput]): Outputs that can be provided when completing a callback.
             cache_config (CacheConfig):  A `sagemaker.workflow.steps.CacheConfig` instance.
-            depends_on (List[str]): A list of step names this `sagemaker.workflow.steps.TransformStep`
-                depends on
+            depends_on (List[str] or List[Step]): A list of step names or step instances
+                this `sagemaker.workflow.steps.CallbackStep` depends on
         """
         super(CallbackStep, self).__init__(name, StepTypeEnum.CALLBACK, depends_on)
         self.sqs_queue_url = sqs_queue_url
