@@ -91,7 +91,7 @@ class Step(Entity):
         return request_dict
 
     def add_depends_on(self, step_names: Union[List[str], List["Step"]]):
-        """Add step names or stpe instances to the current step depends on list"""
+        """Add step names or step instances to the current step depends on list"""
 
         if not step_names:
             return
