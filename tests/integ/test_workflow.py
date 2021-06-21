@@ -756,6 +756,7 @@ def test_two_step_callback_pipeline_with_output_reference(
         name="callback-step2",
         sqs_queue_url="https://sqs.us-east-2.amazonaws.com/123456789012/MyQueue",
         inputs={"arg1": outputParam1},
+        outputs=[],
     )
 
     pipeline = Pipeline(
