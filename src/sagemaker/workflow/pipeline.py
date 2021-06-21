@@ -240,8 +240,7 @@ class Pipeline(Entity):
         """Converts a request structure to string representation for workflow service calls."""
         request_dict = self.to_request()
         request_dict["PipelineExperimentConfig"] = interpolate(
-            request_dict["PipelineExperimentConfig"],
-            {}
+            request_dict["PipelineExperimentConfig"], {}
         )
         callback_output_to_step_map = _map_callback_outputs(self.steps)
         request_dict["Steps"] = interpolate(
@@ -274,6 +273,7 @@ def interpolate(
 
     Args:
         request_obj (RequestType): The request dict.
+        callback_output_to_step_map (Dict[str, str]): A dict of output name -> step name.
 
     Returns:
         RequestType: The request dict with Parameter values replaced by their expression.
@@ -287,6 +287,7 @@ def _interpolate(obj: Union[RequestType, Any], callback_output_to_step_map: Dict
 
     Args:
         obj (Union[RequestType, Any]): The request dict.
+        callback_output_to_step_map (Dict[str, str]): A dict of output name -> step name.
     """
     if isinstance(obj, (Expression, Parameter, Properties)):
         return obj.expr
