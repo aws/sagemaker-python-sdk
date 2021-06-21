@@ -67,6 +67,7 @@ class RegisterModel(StepCollection):
         image_uri=None,
         compile_model_family=None,
         description=None,
+        tags=None,
         **kwargs,
     ):
         """Construct steps `_RepackModelStep` and `_RegisterModelStep` based on the estimator.
@@ -94,6 +95,10 @@ class RegisterModel(StepCollection):
             compile_model_family (str): The instance family for the compiled model. If
                 specified, a compiled model is used (default: None).
             description (str): Model Package description (default: None).
+            tags (List[dict[str, str]]): The list of tags to attach to the model package group. Note
+                that tags will only be applied to newly created model package groups; if the
+                name of an existing group is passed to "model_package_group_name",
+                tags will not be applied.
             **kwargs: additional arguments to `create_model`.
         """
         steps: List[Step] = []
@@ -134,6 +139,7 @@ class RegisterModel(StepCollection):
             image_uri=image_uri,
             compile_model_family=compile_model_family,
             description=description,
+            tags=tags,
             **kwargs,
         )
         if not repack_model:
