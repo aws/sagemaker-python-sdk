@@ -68,6 +68,8 @@ class CallbackOutput:
 
         Args:
             name (str): The name of the callback output.
+            step_name (str): The name of the step the callback step associated
+                with this output belongs to.
         """
         return {"Get": f"Steps.{step_name}.OutputParameters['{name}']"}
 
