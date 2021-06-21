@@ -2724,6 +2724,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         marketplace_cert=False,
         approval_status="PendingManualApproval",
         description=None,
+        tags=None,
     ):
         """Get request dictionary for CreateModelPackage API.
 
@@ -2761,6 +2762,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             request_dict["ModelPackageGroupName"] = model_package_group_name
         if description is not None:
             request_dict["ModelPackageDescription"] = description
+        if tags is not None:
+            request_dict["Tags"] = tags
         if model_metrics:
             request_dict["ModelMetrics"] = model_metrics
         if metadata_properties:
