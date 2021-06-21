@@ -467,6 +467,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 a directory in the Docker container.
                 * 'Pipe' - Amazon SageMaker streams data directly from S3 to the container via a
                 Unix-named pipe.
+                * 'FastFile' - Amazon SageMaker streams data from S3 on demand instead of
+                downloading the entire dataset before training begins.
             input_config (list): A list of Channel objects. Each channel is a named input source.
                 Please refer to the format details described:
                 https://botocore.readthedocs.io/en/latest/reference/services/sagemaker.html#SageMaker.Client.create_training_job
@@ -609,6 +611,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 a directory in the Docker container.
                 * 'Pipe' - Amazon SageMaker streams data directly from S3 to the container via a
                 Unix-named pipe.
+                * 'FastFile' - Amazon SageMaker streams data from S3 on demand instead of
+                downloading the entire dataset before training begins.
             input_config (list): A list of Channel objects. Each channel is a named input source.
                 Please refer to the format details described:
                 https://botocore.readthedocs.io/en/latest/reference/services/sagemaker.html#SageMaker.Client.create_training_job
@@ -1897,6 +1901,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 a directory in the Docker container.
                 * 'Pipe' - Amazon SageMaker streams data directly from S3 to the container via a
                 Unix-named pipe.
+                * 'FastFile' - Amazon SageMaker streams data from S3 on demand instead of
+                downloading the entire dataset before training begins.
             metric_definitions (list[dict]): A list of dictionaries that defines the metric(s)
                 used to evaluate the training jobs. Each dictionary contains two keys: 'Name' for
                 the name of the metric, and 'Regex' for the regular expression used to extract the
@@ -2180,6 +2186,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
                     a directory in the Docker container.
                 * 'Pipe' - Amazon SageMaker streams data directly from S3 to the container via a
                     Unix-named pipe.
+                * 'FastFile' - Amazon SageMaker streams data from S3 on demand instead of
+                    downloading the entire dataset before training begins.
             role (str): An AWS IAM role (either name or full ARN). The Amazon SageMaker training
                 jobs and APIs that create Amazon SageMaker endpoints use this role to access
                 training data and model artifacts. You must grant sufficient permissions to
@@ -2716,6 +2724,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         marketplace_cert=False,
         approval_status="PendingManualApproval",
         description=None,
+        tags=None,
     ):
         """Get request dictionary for CreateModelPackage API.
 
@@ -2753,6 +2762,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             request_dict["ModelPackageGroupName"] = model_package_group_name
         if description is not None:
             request_dict["ModelPackageDescription"] = description
+        if tags is not None:
+            request_dict["Tags"] = tags
         if model_metrics:
             request_dict["ModelMetrics"] = model_metrics
         if metadata_properties:
