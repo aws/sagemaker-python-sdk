@@ -65,6 +65,7 @@ from sagemaker.workflow.step_collections import RegisterModel
 from sagemaker.workflow.pipeline import Pipeline
 from sagemaker.feature_store.feature_group import FeatureGroup, FeatureDefinition, FeatureTypeEnum
 from tests.integ import DATA_DIR
+from tests.integ.kms_utils import get_or_create_kms_key
 
 
 def ordered(obj):
@@ -849,6 +850,7 @@ def test_model_registration_with_model_repack(
     pipeline_name,
     region_name,
 ):
+    kms_key = get_or_create_kms_key(sagemaker_session, role)
     base_dir = os.path.join(DATA_DIR, "pytorch_mnist")
     entry_point = os.path.join(base_dir, "mnist.py")
     input_path = sagemaker_session.upload_data(
@@ -869,6 +871,7 @@ def test_model_registration_with_model_repack(
         instance_count=instance_count,
         instance_type=instance_type,
         sagemaker_session=sagemaker_session,
+        output_kms_key=kms_key,
     )
     step_train = TrainingStep(
         name="pytorch-train",
@@ -880,12 +883,13 @@ def test_model_registration_with_model_repack(
         name="pytorch-register-model",
         estimator=pytorch_estimator,
         model_data=step_train.properties.ModelArtifacts.S3ModelArtifacts,
-        content_types=["*"],
-        response_types=["*"],
-        inference_instances=["*"],
-        transform_instances=["*"],
+        content_types=["text/csv"],
+        response_types=["text/csv"],
+        inference_instances=["ml.t2.medium", "ml.m5.large"],
+        transform_instances=["ml.m5.large"],
         description="test-description",
         entry_point=entry_point,
+        model_kms_key=kms_key,
     )
 
     model = Model(
