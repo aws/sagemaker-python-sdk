@@ -60,6 +60,7 @@ class _RepackModelStep(TrainingStep):
         source_dir: str = None,
         dependencies: List = None,
         depends_on: List[str] = None,
+        **kwargs,
     ):
         """Constructs a TrainingStep, given an `EstimatorBase` instance.
 
@@ -98,6 +99,7 @@ class _RepackModelStep(TrainingStep):
                 "inference_script": self._entry_point_basename,
                 "model_archive": self._model_archive,
             },
+            **kwargs,
         )
         repacker.disable_profiler = True
         inputs = TrainingInput(self._model_prefix)
