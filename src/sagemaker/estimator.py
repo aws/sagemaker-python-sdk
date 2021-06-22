@@ -1007,7 +1007,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         if compile_model_family is not None:
             model = self._compiled_models[compile_model_family]
         else:
-            kwargs["model_kms_key"] = self.output_kms_key
+            if "model_kms_key" not in kwargs:
+                kwargs["model_kms_key"] = self.output_kms_key
             model = self.create_model(image_uri=image_uri, **kwargs)
         model.name = model_name
         return model.register(
