@@ -24,7 +24,7 @@ from botocore.exceptions import ClientError
 
 from sagemaker._studio import _append_project_tags
 from sagemaker.session import Session
-from sagemaker.workflow.callback_step import CallbackOutput
+from sagemaker.workflow.callback_step import CallbackOutput, CallbackStep
 from sagemaker.workflow.entities import (
     Entity,
     Expression,
@@ -240,9 +240,12 @@ class Pipeline(Entity):
         """Converts a request structure to string representation for workflow service calls."""
         request_dict = self.to_request()
         request_dict["PipelineExperimentConfig"] = interpolate(
-            request_dict["PipelineExperimentConfig"]
+            request_dict["PipelineExperimentConfig"], {}
         )
-        request_dict["Steps"] = interpolate(request_dict["Steps"])
+        callback_output_to_step_map = _map_callback_outputs(self.steps)
+        request_dict["Steps"] = interpolate(
+            request_dict["Steps"], callback_output_to_step_map=callback_output_to_step_map
+        )
 
         return json.dumps(request_dict)
 
@@ -263,36 +266,60 @@ def format_start_parameters(parameters: Dict[str, Any]) -> List[Dict[str, Any]]:
     return [{"Name": name, "Value": str(value)} for name, value in parameters.items()]
 
 
-def interpolate(request_obj: RequestType) -> RequestType:
+def interpolate(
+    request_obj: RequestType, callback_output_to_step_map: Dict[str, str]
+) -> RequestType:
     """Replaces Parameter values in a list of nested Dict[str, Any] with their workflow expression.
 
     Args:
         request_obj (RequestType): The request dict.
+        callback_output_to_step_map (Dict[str, str]): A dict of output name -> step name.
 
     Returns:
         RequestType: The request dict with Parameter values replaced by their expression.
     """
     request_obj_copy = deepcopy(request_obj)
-    return _interpolate(request_obj_copy)
+    return _interpolate(request_obj_copy, callback_output_to_step_map=callback_output_to_step_map)
 
 
-def _interpolate(obj: Union[RequestType, Any]):
+def _interpolate(obj: Union[RequestType, Any], callback_output_to_step_map: Dict[str, str]):
     """Walks the nested request dict, replacing Parameter type values with workflow expressions.
 
     Args:
         obj (Union[RequestType, Any]): The request dict.
+        callback_output_to_step_map (Dict[str, str]): A dict of output name -> step name.
     """
-    if isinstance(obj, (Expression, Parameter, Properties, CallbackOutput)):
+    if isinstance(obj, (Expression, Parameter, Properties)):
         return obj.expr
+    if isinstance(obj, CallbackOutput):
+        step_name = callback_output_to_step_map[obj.output_name]
+        return obj.expr(step_name)
     if isinstance(obj, dict):
         new = obj.__class__()
         for key, value in obj.items():
-            new[key] = interpolate(value)
+            new[key] = interpolate(value, callback_output_to_step_map)
     elif isinstance(obj, (list, set, tuple)):
-        new = obj.__class__(interpolate(value) for value in obj)
+        new = obj.__class__(interpolate(value, callback_output_to_step_map) for value in obj)
     else:
         return obj
     return new
+
+
+def _map_callback_outputs(steps: List[Step]):
+    """Iterate over the provided steps, building a map of callback output parameters to step names.
+
+    Args:
+        step (List[Step]): The steps list.
+    """
+
+    callback_output_map = {}
+    for step in steps:
+        if isinstance(step, CallbackStep):
+            if step.outputs:
+                for output in step.outputs:
+                    callback_output_map[output.output_name] = step.name
+
+    return callback_output_map
 
 
 def update_args(args: Dict[str, Any], **kwargs):
