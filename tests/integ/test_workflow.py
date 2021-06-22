@@ -740,6 +740,47 @@ def test_one_step_callback_pipeline(sagemaker_session, role, pipeline_name, regi
             pass
 
 
+def test_two_step_callback_pipeline_with_output_reference(
+    sagemaker_session, role, pipeline_name, region_name
+):
+    instance_count = ParameterInteger(name="InstanceCount", default_value=2)
+
+    outputParam1 = CallbackOutput(output_name="output1", output_type=CallbackOutputTypeEnum.String)
+    step_callback1 = CallbackStep(
+        name="callback-step1",
+        sqs_queue_url="https://sqs.us-east-2.amazonaws.com/123456789012/MyQueue",
+        inputs={"arg1": "foo"},
+        outputs=[outputParam1],
+    )
+
+    step_callback2 = CallbackStep(
+        name="callback-step2",
+        sqs_queue_url="https://sqs.us-east-2.amazonaws.com/123456789012/MyQueue",
+        inputs={"arg1": outputParam1},
+        outputs=[],
+    )
+
+    pipeline = Pipeline(
+        name=pipeline_name,
+        parameters=[instance_count],
+        steps=[step_callback1, step_callback2],
+        sagemaker_session=sagemaker_session,
+    )
+
+    try:
+        response = pipeline.create(role)
+        create_arn = response["PipelineArn"]
+        assert re.match(
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            create_arn,
+        )
+    finally:
+        try:
+            pipeline.delete()
+        except Exception:
+            pass
+
+
 def test_conditional_pytorch_training_model_registration(
     sagemaker_session,
     role,
