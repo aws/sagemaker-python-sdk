@@ -1,5 +1,18 @@
 # Changelog
 
+## v2.46.1 (2021-06-22)
+
+### Bug Fixes and Other Changes
+
+ * Register model step tags
+
+### Documentation Changes
+
+ * update to include new batch_get_record api call
+ * Correct type annotation for TrainingStep inputs
+ * introduce input mode FastFile
+ * update hf transformer version
+
 ## v2.46.0 (2021-06-15)
 
 ### Features
