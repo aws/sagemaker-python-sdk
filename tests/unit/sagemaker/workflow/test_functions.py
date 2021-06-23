@@ -14,13 +14,14 @@
 from __future__ import absolute_import
 
 from sagemaker.workflow.execution_variables import ExecutionVariables
-from sagemaker.workflow.functions import Join
+from sagemaker.workflow.functions import Join, JsonGet
 from sagemaker.workflow.parameters import (
     ParameterFloat,
     ParameterInteger,
     ParameterString,
 )
 from sagemaker.workflow.properties import Properties
+from sagemaker.workflow.properties import PropertyFile
 
 
 def test_join_primitives_default_on():
@@ -65,4 +66,17 @@ def test_join_expressions():
                 {"Std:Join": {"On": ",", "Values": [1, "a", False, 1.1]}},
             ],
         },
+    }
+
+
+def test_json_get_expressions():
+    params = PropertyFile(name="params", output_name="params", path="params.json")
+
+    assert JsonGet(
+        processing_step_name="processing_step", property_file=params, json_path="alpha"
+    ).expr == {
+        "Std:JsonGet": {
+            "PropertyFile": {"Get": "Steps.processing_step.PropertyFiles.params"},
+            "Path": "alpha",
+        }
     }
