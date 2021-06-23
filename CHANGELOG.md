@@ -1,5 +1,34 @@
 # Changelog
 
+## v2.46.1 (2021-06-22)
+
+### Bug Fixes and Other Changes
+
+ * Register model step tags
+
+### Documentation Changes
+
+ * update to include new batch_get_record api call
+ * Correct type annotation for TrainingStep inputs
+ * introduce input mode FastFile
+ * update hf transformer version
+
+## v2.46.0 (2021-06-15)
+
+### Features
+
+ * Add HF transformer version 4.6.1
+
+### Bug Fixes and Other Changes
+
+ * encode localmode payload to UTF-8
+ * call DescribeDomain as fallback in get_execution_role
+ * parameterize PT and TF version for HuggingFace tests
+
+### Documentation Changes
+
+ * Add import statement in Batch Transform Overview doc
+
 ## v2.45.0 (2021-06-07)
 
 ### Features

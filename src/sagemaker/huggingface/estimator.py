@@ -66,7 +66,7 @@ class HuggingFace(Framework):
                 must point to a file located at the root of ``source_dir``.
             transformers_version (str): Transformers version you want to use for
                 executing your model training code. Defaults to ``None``. Required unless
-                ``image_uri`` is provided. The current supported version is ``4.4.2``.
+                ``image_uri`` is provided. The current supported version is ``4.6.1``.
             tensorflow_version (str): TensorFlow version you want to use for
                 executing your model training code. Defaults to ``None``. Required unless
                 ``pytorch_version`` is provided. The current supported version is ``1.6.0``.

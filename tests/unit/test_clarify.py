@@ -26,6 +26,10 @@ from sagemaker.clarify import (
 )
 from sagemaker import image_uris
 
+JOB_NAME_PREFIX = "my-prefix"
+TIMESTAMP = "2021-06-17-22-29-54-685"
+JOB_NAME = "{}-{}".format(JOB_NAME_PREFIX, TIMESTAMP)
+
 
 def test_uri():
     uri = image_uris.retrieve("clarify", "us-west-2")
@@ -249,6 +253,17 @@ def clarify_processor(sagemaker_session):
 
 
 @pytest.fixture(scope="module")
+def clarify_processor_with_job_name_prefix(sagemaker_session):
+    return SageMakerClarifyProcessor(
+        role="AmazonSageMaker-ExecutionRole",
+        instance_count=1,
+        instance_type="ml.c5.xlarge",
+        sagemaker_session=sagemaker_session,
+        job_name_prefix=JOB_NAME_PREFIX,
+    )
+
+
+@pytest.fixture(scope="module")
 def data_config():
     return DataConfig(
         s3_data_input_path="s3://input/train.csv",
@@ -302,7 +317,14 @@ def shap_config():
     )
 
 
-def test_pre_training_bias(clarify_processor, data_config, data_bias_config):
+@patch("sagemaker.utils.name_from_base", return_value=JOB_NAME)
+def test_pre_training_bias(
+    name_from_base,
+    clarify_processor,
+    clarify_processor_with_job_name_prefix,
+    data_config,
+    data_bias_config,
+):
     with patch.object(SageMakerClarifyProcessor, "_run", return_value=None) as mock_method:
         clarify_processor.run_pre_training_bias(
             data_config,
@@ -325,7 +347,7 @@ def test_pre_training_bias(clarify_processor, data_config, data_bias_config):
             "group_variable": "F2",
             "methods": {"pre_training_bias": {"methods": "all"}},
         }
-        mock_method.assert_called_once_with(
+        mock_method.assert_called_with(
             data_config,
             expected_analysis_config,
             True,
@@ -334,10 +356,33 @@ def test_pre_training_bias(clarify_processor, data_config, data_bias_config):
             None,
             {"ExperimentName": "AnExperiment"},
         )
+        clarify_processor_with_job_name_prefix.run_pre_training_bias(
+            data_config,
+            data_bias_config,
+            wait=True,
+            experiment_config={"ExperimentName": "AnExperiment"},
+        )
+        name_from_base.assert_called_with(JOB_NAME_PREFIX)
+        mock_method.assert_called_with(
+            data_config,
+            expected_analysis_config,
+            True,
+            True,
+            JOB_NAME,
+            None,
+            {"ExperimentName": "AnExperiment"},
+        )
 
 
+@patch("sagemaker.utils.name_from_base", return_value=JOB_NAME)
 def test_post_training_bias(
-    clarify_processor, data_config, data_bias_config, model_config, model_predicted_label_config
+    name_from_base,
+    clarify_processor,
+    clarify_processor_with_job_name_prefix,
+    data_config,
+    data_bias_config,
+    model_config,
+    model_predicted_label_config,
 ):
     with patch.object(SageMakerClarifyProcessor, "_run", return_value=None) as mock_method:
         clarify_processor.run_post_training_bias(
@@ -368,7 +413,7 @@ def test_post_training_bias(
                 "initial_instance_count": 1,
             },
         }
-        mock_method.assert_called_once_with(
+        mock_method.assert_called_with(
             data_config,
             expected_analysis_config,
             True,
@@ -377,22 +422,41 @@ def test_post_training_bias(
             None,
             {"ExperimentName": "AnExperiment"},
         )
+        clarify_processor_with_job_name_prefix.run_post_training_bias(
+            data_config,
+            data_bias_config,
+            model_config,
+            model_predicted_label_config,
+            wait=True,
+            experiment_config={"ExperimentName": "AnExperiment"},
+        )
+        name_from_base.assert_called_with(JOB_NAME_PREFIX)
+        mock_method.assert_called_with(
+            data_config,
+            expected_analysis_config,
+            True,
+            True,
+            JOB_NAME,
+            None,
+            {"ExperimentName": "AnExperiment"},
+        )
 
 
-def _run_test_shap(
+@patch("sagemaker.utils.name_from_base", return_value=JOB_NAME)
+def test_shap(
+    name_from_base,
     clarify_processor,
+    clarify_processor_with_job_name_prefix,
     data_config,
     model_config,
     shap_config,
-    model_scores,
-    expected_predictor_config,
 ):
     with patch.object(SageMakerClarifyProcessor, "_run", return_value=None) as mock_method:
         clarify_processor.run_explainability(
             data_config,
             model_config,
             shap_config,
-            model_scores=model_scores,
+            model_scores=None,
             wait=True,
             job_name="test",
             experiment_config={"ExperimentName": "AnExperiment"},
@@ -421,9 +485,13 @@ def _run_test_shap(
                     "save_local_shap_values": True,
                 }
             },
-            "predictor": expected_predictor_config,
+            "predictor": {
+                "model_name": "xgboost-model",
+                "instance_type": "ml.c5.xlarge",
+                "initial_instance_count": 1,
+            },
         }
-        mock_method.assert_called_once_with(
+        mock_method.assert_called_with(
             data_config,
             expected_analysis_config,
             True,
@@ -432,44 +500,21 @@ def _run_test_shap(
             None,
             {"ExperimentName": "AnExperiment"},
         )
-
-
-def test_shap(clarify_processor, data_config, model_config, shap_config):
-    model_scores = None
-    expected_predictor_config = {
-        "model_name": "xgboost-model",
-        "instance_type": "ml.c5.xlarge",
-        "initial_instance_count": 1,
-    }
-    _run_test_shap(
-        clarify_processor,
-        data_config,
-        model_config,
-        shap_config,
-        model_scores,
-        expected_predictor_config,
-    )
-
-
-def test_shap_with_predicted_label(clarify_processor, data_config, model_config, shap_config):
-    probability = "pr"
-    label_headers = ["success"]
-    model_scores = ModelPredictedLabelConfig(
-        probability=probability,
-        label_headers=label_headers,
-    )
-    expected_predictor_config = {
-        "model_name": "xgboost-model",
-        "instance_type": "ml.c5.xlarge",
-        "initial_instance_count": 1,
-        "probability": probability,
-        "label_headers": label_headers,
-    }
-    _run_test_shap(
-        clarify_processor,
-        data_config,
-        model_config,
-        shap_config,
-        model_scores,
-        expected_predictor_config,
-    )
+        clarify_processor_with_job_name_prefix.run_explainability(
+            data_config,
+            model_config,
+            shap_config,
+            model_scores=None,
+            wait=True,
+            experiment_config={"ExperimentName": "AnExperiment"},
+        )
+        name_from_base.assert_called_with(JOB_NAME_PREFIX)
+        mock_method.assert_called_with(
+            data_config,
+            expected_analysis_config,
+            True,
+            True,
+            JOB_NAME,
+            None,
+            {"ExperimentName": "AnExperiment"},
+        )

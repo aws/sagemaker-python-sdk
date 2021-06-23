@@ -67,6 +67,7 @@ class RegisterModel(StepCollection):
         image_uri=None,
         compile_model_family=None,
         description=None,
+        tags=None,
         **kwargs,
     ):
         """Construct steps `_RepackModelStep` and `_RegisterModelStep` based on the estimator.
@@ -94,15 +95,21 @@ class RegisterModel(StepCollection):
             compile_model_family (str): The instance family for the compiled model. If
                 specified, a compiled model is used (default: None).
             description (str): Model Package description (default: None).
+            tags (List[dict[str, str]]): The list of tags to attach to the model package group. Note
+                that tags will only be applied to newly created model package groups; if the
+                name of an existing group is passed to "model_package_group_name",
+                tags will not be applied.
             **kwargs: additional arguments to `create_model`.
         """
         steps: List[Step] = []
         repack_model = False
         if "entry_point" in kwargs:
             repack_model = True
-            entry_point = kwargs["entry_point"]
+            entry_point = kwargs.pop("entry_point", None)
             source_dir = kwargs.get("source_dir")
             dependencies = kwargs.get("dependencies")
+            kwargs = dict(**kwargs, output_kms_key=kwargs.pop("model_kms_key", None))
+
             repack_model_step = _RepackModelStep(
                 name=f"{name}RepackModel",
                 depends_on=depends_on,
@@ -111,6 +118,7 @@ class RegisterModel(StepCollection):
                 entry_point=entry_point,
                 source_dir=source_dir,
                 dependencies=dependencies,
+                **kwargs,
             )
             steps.append(repack_model_step)
             model_data = repack_model_step.properties.ModelArtifacts.S3ModelArtifacts
@@ -119,6 +127,7 @@ class RegisterModel(StepCollection):
         kwargs.pop("entry_point", None)
         kwargs.pop("source_dir", None)
         kwargs.pop("dependencies", None)
+        kwargs.pop("output_kms_key", None)
 
         register_model_step = _RegisterModelStep(
             name=name,
@@ -134,6 +143,7 @@ class RegisterModel(StepCollection):
             image_uri=image_uri,
             compile_model_family=compile_model_family,
             description=description,
+            tags=tags,
             **kwargs,
         )
         if not repack_model:
