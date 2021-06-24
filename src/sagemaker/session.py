@@ -2027,6 +2027,45 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 "Only one of training_config and training_config_list should be provided."
             )
 
+        tune_request = self._get_tuning_request(
+            job_name=job_name,
+            tuning_config=tuning_config,
+            training_config=training_config,
+            training_config_list=training_config_list,
+            warm_start_config=warm_start_config,
+            tags=tags,
+        )
+
+        LOGGER.info("Creating hyperparameter tuning job with name: %s", job_name)
+        LOGGER.debug("tune request: %s", json.dumps(tune_request, indent=4))
+        self.sagemaker_client.create_hyper_parameter_tuning_job(**tune_request)
+
+    def _get_tuning_request(
+        self,
+        job_name,
+        tuning_config,
+        training_config=None,
+        training_config_list=None,
+        warm_start_config=None,
+        tags=None,
+    ):
+        """Construct CreateHyperParameterTuningJob request
+
+        Args:
+            job_name (str): Name of the tuning job being created.
+            tuning_config (dict): Configuration to launch the tuning job.
+            training_config (dict): Configuration to launch training jobs under the tuning job
+                using a single algorithm.
+            training_config_list (list[dict]): A list of configurations to launch training jobs
+                under the tuning job using one or multiple algorithms. Either training_config
+                or training_config_list should be provided, but not both.
+            warm_start_config (dict): Configuration defining the type of warm start and
+                other required configurations.
+            tags (list[dict]): List of tags for labeling the tuning job. For more, see
+                https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
+        Returns:
+            dict: A dictionary for CreateHyperParameterTuningJob request
+        """
         tune_request = {
             "HyperParameterTuningJobName": job_name,
             "HyperParameterTuningJobConfig": self._map_tuning_config(**tuning_config),
@@ -2047,9 +2086,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if tags is not None:
             tune_request["Tags"] = tags
 
-        LOGGER.info("Creating hyperparameter tuning job with name: %s", job_name)
-        LOGGER.debug("tune request: %s", json.dumps(tune_request, indent=4))
-        self.sagemaker_client.create_hyper_parameter_tuning_job(**tune_request)
+        return tune_request
 
     def describe_tuning_job(self, job_name):
         """Calls DescribeHyperParameterTuningJob API for the given job name, returns the response.

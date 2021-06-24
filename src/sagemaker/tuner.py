@@ -346,7 +346,9 @@ class HyperparameterTuner(object):
                 estimator_name: self._prepare_static_hyperparameters(
                     estimator,
                     self._hyperparameter_ranges_dict[estimator_name],
-                    include_cls_metadata.get(estimator_name, False),
+                    include_cls_metadata.get(estimator_name, False)
+                    if isinstance(include_cls_metadata, dict)
+                    else include_cls_metadata,
                 )
                 for (estimator_name, estimator) in self.estimator_dict.items()
             }
@@ -1460,6 +1462,22 @@ class _TuningJob(_Job):
             sagemaker.tuner._TuningJob: Constructed object that captures all
             information about the started job.
         """
+        tuner_args = cls._get_tuner_args(tuner, inputs)
+        tuner.sagemaker_session.create_tuning_job(**tuner_args)
+
+        return cls(tuner.sagemaker_session, tuner._current_job_name)
+
+    @classmethod
+    def _get_tuner_args(cls, tuner, inputs):
+        """Gets a dict of arguments for a new Amazon SageMaker tuning job from the tuner
+        Args:
+            tuner (:class:`~sagemaker.tuner.HyperparameterTuner`):
+                The ``HyperparameterTuner`` instance that started the job.
+            inputs: Information about the training data. Please refer to the
+            ``fit()`` method of the associated estimator.
+        Returns:
+            Dict: dict for `sagemaker.session.Session.tune` method
+        """
         warm_start_config_req = None
         if tuner.warm_start_config:
             warm_start_config_req = tuner.warm_start_config.to_input_req()
@@ -1506,8 +1524,7 @@ class _TuningJob(_Job):
                 for estimator_name in sorted(tuner.estimator_dict.keys())
             ]
 
-        tuner.sagemaker_session.create_tuning_job(**tuner_args)
-        return cls(tuner.sagemaker_session, tuner._current_job_name)
+        return tuner_args
 
     @staticmethod
     def _prepare_training_config(
