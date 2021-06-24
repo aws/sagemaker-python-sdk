@@ -410,13 +410,13 @@ def test_three_step_definition(
 
 def test_one_step_sklearn_processing_pipeline(
     sagemaker_session,
-    role,
     sklearn_latest_version,
     cpu_instance_type,
     pipeline_name,
     region_name,
     athena_dataset_definition,
 ):
+    role = "arn:aws:iam::734680132978:role/SageMakerFullAccessRole"
     instance_count = ParameterInteger(name="InstanceCount", default_value=2)
     script_path = os.path.join(DATA_DIR, "dummy_script.py")
     input_file_path = os.path.join(DATA_DIR, "dummy_input.txt")
@@ -458,20 +458,26 @@ def test_one_step_sklearn_processing_pipeline(
         # sagemaker entities. However, the jobs created in the steps themselves execute
         # under a potentially different role, often requiring access to S3 and other
         # artifacts not required to during creation of the jobs in the pipeline steps.
-        response = pipeline.create(role)
+        response = pipeline.create(role, tags=[{"Key": "foo", "Value": "abc"}, {"Key": "bar", "Value": "xyz"}])
         create_arn = response["PipelineArn"]
         assert re.match(
             fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
             create_arn,
         )
+        original_tags = sagemaker_session.sagemaker_client.list_tags(ResourceArn=create_arn)
+        for tag in [{"Key": "foo", "Value": "abc"}, {"Key": "bar", "Value": "xyz"}]:
+            assert tag in original_tags["Tags"]
 
         pipeline.parameters = [ParameterInteger(name="InstanceCount", default_value=1)]
-        response = pipeline.update(role)
+        response = pipeline.upsert(role, tags=[{"Key": "abc", "Value": "foo"}, {"Key": "xyz", "Value": "bar"}])
         update_arn = response["PipelineArn"]
         assert re.match(
             fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
             update_arn,
         )
+        updated_tags = sagemaker_session.sagemaker_client.list_tags(ResourceArn=create_arn)
+        for tag in [{"Key": "abc", "Value": "foo"}, {"Key": "xyz", "Value": "bar"}]:
+            assert tag in updated_tags["Tags"]
 
         execution = pipeline.start(parameters={})
         assert re.match(

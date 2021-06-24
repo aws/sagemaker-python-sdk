@@ -102,20 +102,38 @@ def test_pipeline_upsert(sagemaker_session_mock, role_arn):
                 }
             },
         ),
+        {"PipelineArn": "mock_pipeline_arn"},
+        [
+            {"Key": "dummy", "Value": "dummy_tag"}
+        ],
+        {},
         {},
     ]
+
     pipeline = Pipeline(
         name="MyPipeline",
         parameters=[],
         steps=[],
         sagemaker_session=sagemaker_session_mock,
     )
-    pipeline.update(role_arn=role_arn)
+
+    tags = [
+        {"Key": "foo", "Value": "abc"},
+        {"Key": "bar", "Value": "xyz"},
+    ]
+    pipeline.upsert(role_arn=role_arn, tags=tags)
     assert sagemaker_session_mock.sagemaker_client.create_pipeline.called_with(
         PipelineName="MyPipeline", PipelineDefinition=pipeline.definition(), RoleArn=role_arn
     )
     assert sagemaker_session_mock.sagemaker_client.update_pipeline.called_with(
         PipelineName="MyPipeline", PipelineDefinition=pipeline.definition(), RoleArn=role_arn
+    )
+    assert sagemaker_session_mock.sagemaker_client.list_tags.called_with(ResourceArn="mock_pipeline_arn")
+    assert sagemaker_session_mock.sagemaker_client.delete_tags(
+        ResourceArn="mock_pipeline_arn", TagKeys=["dummy"]
+    )
+    assert sagemaker_session_mock.sagemaker_client.add_tags.called_with(
+        ResourceArn="mock_pipeline_arn", Tags=tags
     )
 
 

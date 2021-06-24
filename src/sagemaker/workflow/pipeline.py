@@ -143,7 +143,7 @@ class Pipeline(Entity):
         """
         return self.sagemaker_session.sagemaker_client.describe_pipeline(PipelineName=self.name)
 
-    def update(self, role_arn: str, description: str = None) -> Dict[str, Any]:
+    def update(self, role_arn: str, description: str = None, ) -> Dict[str, Any]:
         """Updates a Pipeline in the Workflow service.
 
         Args:
@@ -182,6 +182,20 @@ class Pipeline(Entity):
                 and "Pipeline names must be unique within" in error["Message"]
             ):
                 response = self.update(role_arn, description)
+                if tags is not None:
+                    old_tags = self.sagemaker_session.sagemaker_client.list_tags(
+                        ResourceArn=response["PipelineArn"])["Tags"]
+
+                    tag_keys = [tag["Key"] for tag in old_tags]
+
+                    self.sagemaker_session.sagemaker_client.delete_tags(
+                        ResourceArn=response["PipelineArn"],
+                        TagKeys=tag_keys
+                    )
+                    self.sagemaker_session.sagemaker_client.add_tags(
+                        ResourceArn=response["PipelineArn"],
+                        Tags=tags
+                    )
             else:
                 raise
         return response
