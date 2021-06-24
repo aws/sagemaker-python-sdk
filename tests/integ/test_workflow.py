@@ -459,7 +459,7 @@ def test_one_step_sklearn_processing_pipeline(
         # under a potentially different role, often requiring access to S3 and other
         # artifacts not required to during creation of the jobs in the pipeline steps.
         response = pipeline.create(
-            role, tags=[{"Key": "foo", "Value": "abc"}, {"Key": "bar", "Value": "xyz"}]
+            role, tags=[{"Key": "foo", "Value": "123"}, {"Key": "bar", "Value": "456"}]
         )
         create_arn = response["PipelineArn"]
         assert re.match(
@@ -467,12 +467,12 @@ def test_one_step_sklearn_processing_pipeline(
             create_arn,
         )
         original_tags = sagemaker_session.sagemaker_client.list_tags(ResourceArn=create_arn)
-        for tag in [{"Key": "foo", "Value": "abc"}, {"Key": "bar", "Value": "xyz"}]:
+        for tag in [{"Key": "foo", "Value": "123"}, {"Key": "bar", "Value": "456"}]:
             assert tag in original_tags["Tags"]
 
         pipeline.parameters = [ParameterInteger(name="InstanceCount", default_value=1)]
         response = pipeline.upsert(
-            role, tags=[{"Key": "abc", "Value": "foo"}, {"Key": "xyz", "Value": "bar"}]
+            role, tags=[{"Key": "foo", "Value": "abc"}, {"Key": "baz", "Value": "789"}]
         )
         update_arn = response["PipelineArn"]
         assert re.match(
@@ -480,7 +480,11 @@ def test_one_step_sklearn_processing_pipeline(
             update_arn,
         )
         updated_tags = sagemaker_session.sagemaker_client.list_tags(ResourceArn=create_arn)
-        for tag in [{"Key": "abc", "Value": "foo"}, {"Key": "xyz", "Value": "bar"}]:
+        for tag in [
+            {"Key": "foo", "Value": "abc"},
+            {"Key": "bar", "Value": "456"},
+            {"Key": "baz", "Value": "789"},
+        ]:
             assert tag in updated_tags["Tags"]
 
         execution = pipeline.start(parameters={})

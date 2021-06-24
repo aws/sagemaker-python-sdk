@@ -187,11 +187,11 @@ class Pipeline(Entity):
                         ResourceArn=response["PipelineArn"]
                     )["Tags"]
 
-                    tag_keys = [tag["Key"] for tag in old_tags]
+                    tag_keys = [tag["Key"] for tag in tags]
+                    for old_tag in old_tags:
+                        if old_tag["Key"] not in tag_keys:
+                            tags.append(old_tag)
 
-                    self.sagemaker_session.sagemaker_client.delete_tags(
-                        ResourceArn=response["PipelineArn"], TagKeys=tag_keys
-                    )
                     self.sagemaker_session.sagemaker_client.add_tags(
                         ResourceArn=response["PipelineArn"], Tags=tags
                     )
