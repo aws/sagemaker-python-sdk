@@ -417,7 +417,6 @@ def test_one_step_sklearn_processing_pipeline(
     region_name,
     athena_dataset_definition,
 ):
-    role
     instance_count = ParameterInteger(name="InstanceCount", default_value=2)
     script_path = os.path.join(DATA_DIR, "dummy_script.py")
     input_file_path = os.path.join(DATA_DIR, "dummy_input.txt")
