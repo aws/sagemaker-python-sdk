@@ -184,17 +184,16 @@ class Pipeline(Entity):
                 response = self.update(role_arn, description)
                 if tags is not None:
                     old_tags = self.sagemaker_session.sagemaker_client.list_tags(
-                        ResourceArn=response["PipelineArn"])["Tags"]
+                        ResourceArn=response["PipelineArn"]
+                    )["Tags"]
 
                     tag_keys = [tag["Key"] for tag in old_tags]
 
                     self.sagemaker_session.sagemaker_client.delete_tags(
-                        ResourceArn=response["PipelineArn"],
-                        TagKeys=tag_keys
+                        ResourceArn=response["PipelineArn"], TagKeys=tag_keys
                     )
                     self.sagemaker_session.sagemaker_client.add_tags(
-                        ResourceArn=response["PipelineArn"],
-                        Tags=tags
+                        ResourceArn=response["PipelineArn"], Tags=tags
                     )
             else:
                 raise
