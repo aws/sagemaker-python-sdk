@@ -410,13 +410,14 @@ def test_three_step_definition(
 
 def test_one_step_sklearn_processing_pipeline(
     sagemaker_session,
+    role,
     sklearn_latest_version,
     cpu_instance_type,
     pipeline_name,
     region_name,
     athena_dataset_definition,
 ):
-    role = "arn:aws:iam::734680132978:role/SageMakerFullAccessRole"
+    role
     instance_count = ParameterInteger(name="InstanceCount", default_value=2)
     script_path = os.path.join(DATA_DIR, "dummy_script.py")
     input_file_path = os.path.join(DATA_DIR, "dummy_input.txt")

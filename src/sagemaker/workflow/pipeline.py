@@ -143,7 +143,7 @@ class Pipeline(Entity):
         """
         return self.sagemaker_session.sagemaker_client.describe_pipeline(PipelineName=self.name)
 
-    def update(self, role_arn: str, description: str = None, ) -> Dict[str, Any]:
+    def update(self, role_arn: str, description: str = None) -> Dict[str, Any]:
         """Updates a Pipeline in the Workflow service.
 
         Args:
