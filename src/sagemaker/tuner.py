@@ -1470,6 +1470,7 @@ class _TuningJob(_Job):
     @classmethod
     def _get_tuner_args(cls, tuner, inputs):
         """Gets a dict of arguments for a new Amazon SageMaker tuning job from the tuner
+
         Args:
             tuner (:class:`~sagemaker.tuner.HyperparameterTuner`):
                 The ``HyperparameterTuner`` instance that started the job.

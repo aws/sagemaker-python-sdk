@@ -511,7 +511,9 @@ class TuningStep(Step):
 
     @property
     def properties(self):
-        """A Properties object representing the `DescribeHyperParameterTuningJobResponse` and
+        """A Properties object representing
+
+        `DescribeHyperParameterTuningJobResponse` and
         `ListTrainingJobsForHyperParameterTuningJobResponse` data model.
         """
         return self._properties
