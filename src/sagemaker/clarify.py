@@ -19,7 +19,7 @@ from abc import ABC, abstractmethod
 import json
 import os
 import tempfile
-
+import re
 from sagemaker.processing import ProcessingInput, ProcessingOutput, Processor
 from sagemaker import image_uris, s3, utils
 
@@ -124,8 +124,9 @@ class ModelConfig:
         content_template=None,
         custom_attributes=None,
         accelerator_type=None,
+        endpoint_name_prefix=None,
     ):
-        """Initializes a configuration of a model and the endpoint to be created for it.
+        r"""Initializes a configuration of a model and the endpoint to be created for it.
 
         Args:
             model_name (str): Model name (as created by 'CreateModel').
@@ -155,12 +156,21 @@ class ModelConfig:
             accelerator_type (str): The Elastic Inference accelerator type to deploy to the model
                 endpoint instance for making inferences to the model, see
                 https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html.
+            endpoint_name_prefix (str): The endpoint name prefix of a new endpoint. Must follow
+                pattern "^[a-zA-Z0-9](-\*[a-zA-Z0-9]".
         """
         self.predictor_config = {
             "model_name": model_name,
             "instance_type": instance_type,
             "initial_instance_count": instance_count,
         }
+        if endpoint_name_prefix is not None:
+            if re.search("^[a-zA-Z0-9](-*[a-zA-Z0-9])", endpoint_name_prefix) is None:
+                raise ValueError(
+                    "Invalid endpoint_name_prefix."
+                    " Please follow pattern ^[a-zA-Z0-9](-*[a-zA-Z0-9])."
+                )
+            self.predictor_config["endpoint_name_prefix"] = endpoint_name_prefix
         if accept_type is not None:
             if accept_type not in ["text/csv", "application/jsonlines"]:
                 raise ValueError(
@@ -277,6 +287,7 @@ class SHAPConfig(ExplainabilityConfig):
         agg_method,
         use_logit=False,
         save_local_shap_values=True,
+        seed=None,
     ):
         """Initializes config for SHAP.
 
@@ -297,6 +308,7 @@ class SHAPConfig(ExplainabilityConfig):
                 have log-odds units.
             save_local_shap_values (bool): Indicator of whether to save the local SHAP values
                 in the output location. Default is True.
+            seed (int): seed value to get deterministic SHAP values. Default is None.
         """
         if agg_method not in ["mean_abs", "median", "mean_sq"]:
             raise ValueError(
@@ -310,6 +322,8 @@ class SHAPConfig(ExplainabilityConfig):
             "use_logit": use_logit,
             "save_local_shap_values": save_local_shap_values,
         }
+        if seed is not None:
+            self.shap_config["seed"] = seed
 
     def get_explainability_config(self):
         """Returns config."""
@@ -336,6 +350,8 @@ class SageMakerClarifyProcessor(Processor):
         env=None,
         tags=None,
         network_config=None,
+        job_name_prefix=None,
+        version=None,
     ):
         """Initializes a ``Processor`` instance, computing bias metrics and model explanations.
 
@@ -369,8 +385,11 @@ class SageMakerClarifyProcessor(Processor):
                 A :class:`~sagemaker.network.NetworkConfig`
                 object that configures network isolation, encryption of
                 inter-container traffic, security group IDs, and subnets.
+            job_name_prefix (str): Processing job name prefix.
+            version (str): Clarify version want to be used.
         """
-        container_uri = image_uris.retrieve("clarify", sagemaker_session.boto_region_name)
+        container_uri = image_uris.retrieve("clarify", sagemaker_session.boto_region_name, version)
+        self.job_name_prefix = job_name_prefix
         super(SageMakerClarifyProcessor, self).__init__(
             role,
             container_uri,
@@ -484,13 +503,22 @@ class SageMakerClarifyProcessor(Processor):
             data_config (:class:`~sagemaker.clarify.DataConfig`): Config of the input/output data.
             data_bias_config (:class:`~sagemaker.clarify.BiasConfig`): Config of sensitive groups.
             methods (str or list[str]): Selector of a subset of potential metrics:
-                ["CI", "DPL", "KL", "JS", "LP", "TVD", "KS", "CDDL"]. Defaults to computing all.
-                # TODO: Provide a pointer to the official documentation of those.
+                ["`CI <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-ci.html>`_",
+                "`DPL <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-dpl.html>`_",
+                "`KL <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-kl.html>`_",
+                "`JS <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-js.html>`_",
+                "`LP <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-lp.html>`_",
+                "`TVD <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-tvd.html>`_",
+                "`KS <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-ks.html>`_",
+                "`CDDL <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-cdd.html>`_"].
+                Defaults to computing all.
             wait (bool): Whether the call should wait until the job completes (default: True).
             logs (bool): Whether to show the logs produced by the job.
                 Only meaningful when ``wait`` is True (default: True).
-            job_name (str): Processing job name. If not specified, a name is composed of
-                "Clarify-Pretraining-Bias" and current timestamp.
+            job_name (str): Processing job name. When ``job_name`` is not specified, if
+                ``job_name_prefix`` in :class:`SageMakerClarifyProcessor` specified, the job name
+                will be composed of ``job_name_prefix`` and current timestamp; otherwise use
+                "Clarify-Pretraining-Bias" as prefix.
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 user code file (default: None).
             experiment_config (dict[str, str]): Experiment management configuration.
@@ -501,7 +529,10 @@ class SageMakerClarifyProcessor(Processor):
         analysis_config.update(data_bias_config.get_config())
         analysis_config["methods"] = {"pre_training_bias": {"methods": methods}}
         if job_name is None:
-            job_name = utils.name_from_base("Clarify-Pretraining-Bias")
+            if self.job_name_prefix:
+                job_name = utils.name_from_base(self.job_name_prefix)
+            else:
+                job_name = utils.name_from_base("Clarify-Pretraining-Bias")
         self._run(data_config, analysis_config, wait, logs, job_name, kms_key, experiment_config)
 
     def run_post_training_bias(
@@ -532,14 +563,25 @@ class SageMakerClarifyProcessor(Processor):
             model_predicted_label_config (:class:`~sagemaker.clarify.ModelPredictedLabelConfig`):
                 Config of how to extract the predicted label from the model output.
             methods (str or list[str]): Selector of a subset of potential metrics:
-                # TODO: Provide a pointer to the official documentation of those.
-                ["DPPL", "DI", "DCA", "DCR", "RD", "DAR", "DRR", "AD", "CDDPL", "TE", "FT"].
+                ["`DPPL <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-dppl.html>`_"
+                , "`DI <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-di.html>`_",
+                "`DCA <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-dca.html>`_",
+                "`DCR <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-dcr.html>`_",
+                "`RD <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-rd.html>`_",
+                "`DAR <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-dar.html>`_",
+                "`DRR <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-drr.html>`_",
+                "`AD <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-ad.html>`_",
+                "`CDDPL <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-cddpl.html>`_
+                ", "`TE <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-te.html>`_",
+                "`FT <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-ft.html>`_"].
                 Defaults to computing all.
             wait (bool): Whether the call should wait until the job completes (default: True).
             logs (bool): Whether to show the logs produced by the job.
                 Only meaningful when ``wait`` is True (default: True).
-            job_name (str): Processing job name. If not specified, a name is composed of
-                "Clarify-Posttraining-Bias" and current timestamp.
+            job_name (str): Processing job name. When ``job_name`` is not specified, if
+                ``job_name_prefix`` in :class:`SageMakerClarifyProcessor` specified, the job name
+                will be composed of ``job_name_prefix`` and current timestamp; otherwise use
+                "Clarify-Posttraining-Bias" as prefix.
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 user code file (default: None).
             experiment_config (dict[str, str]): Experiment management configuration.
@@ -557,7 +599,10 @@ class SageMakerClarifyProcessor(Processor):
         analysis_config["predictor"] = predictor_config
         _set(probability_threshold, "probability_threshold", analysis_config)
         if job_name is None:
-            job_name = utils.name_from_base("Clarify-Posttraining-Bias")
+            if self.job_name_prefix:
+                job_name = utils.name_from_base(self.job_name_prefix)
+            else:
+                job_name = utils.name_from_base("Clarify-Posttraining-Bias")
         self._run(data_config, analysis_config, wait, logs, job_name, kms_key, experiment_config)
 
     def run_bias(
@@ -589,18 +634,35 @@ class SageMakerClarifyProcessor(Processor):
             model_predicted_label_config (:class:`~sagemaker.clarify.ModelPredictedLabelConfig`):
                 Config of how to extract the predicted label from the model output.
             pre_training_methods (str or list[str]): Selector of a subset of potential metrics:
-                # TODO: Provide a pointer to the official documentation of those.
-                ["DPPL", "DI", "DCA", "DCR", "RD", "DAR", "DRR", "AD", "CDDPL", "TE", "FT"].
+                ["`CI <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-ci.html>`_",
+                "`DPL <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-dpl.html>`_",
+                "`KL <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-kl.html>`_",
+                "`JS <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-js.html>`_",
+                "`LP <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-lp.html>`_",
+                "`TVD <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-tvd.html>`_",
+                "`KS <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-ks.html>`_",
+                "`CDDL <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-cdd.html>`_"].
                 Defaults to computing all.
             post_training_methods (str or list[str]): Selector of a subset of potential metrics:
-                # TODO: Provide a pointer to the official documentation of those.
-                ["DPPL", "DI", "DCA", "DCR", "RD", "DAR", "DRR", "AD", "CDDPL", "TE", "FT"].
+                ["`DPPL <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-dppl.html>`_"
+                , "`DI <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-di.html>`_",
+                "`DCA <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-dca.html>`_",
+                "`DCR <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-dcr.html>`_",
+                "`RD <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-rd.html>`_",
+                "`DAR <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-dar.html>`_",
+                "`DRR <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-drr.html>`_",
+                "`AD <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-ad.html>`_",
+                "`CDDPL <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-cddpl.html>`_
+                ", "`TE <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-te.html>`_",
+                "`FT <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-ft.html>`_"].
                 Defaults to computing all.
             wait (bool): Whether the call should wait until the job completes (default: True).
             logs (bool): Whether to show the logs produced by the job.
                 Only meaningful when ``wait`` is True (default: True).
-            job_name (str): Processing job name. If not specified, a name is composed of
-                "Clarify-Bias" and current timestamp.
+            job_name (str): Processing job name. When ``job_name`` is not specified, if
+                ``job_name_prefix`` in :class:`SageMakerClarifyProcessor` specified, the job name
+                will be composed of ``job_name_prefix`` and current timestamp; otherwise use
+                "Clarify-Bias" as prefix.
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 user code file (default: None).
             experiment_config (dict[str, str]): Experiment management configuration.
@@ -625,7 +687,10 @@ class SageMakerClarifyProcessor(Processor):
             "post_training_bias": {"methods": post_training_methods},
         }
         if job_name is None:
-            job_name = utils.name_from_base("Clarify-Bias")
+            if self.job_name_prefix:
+                job_name = utils.name_from_base(self.job_name_prefix)
+            else:
+                job_name = utils.name_from_base("Clarify-Bias")
         self._run(data_config, analysis_config, wait, logs, job_name, kms_key, experiment_config)
 
     def run_explainability(
@@ -663,8 +728,10 @@ class SageMakerClarifyProcessor(Processor):
             wait (bool): Whether the call should wait until the job completes (default: True).
             logs (bool): Whether to show the logs produced by the job.
                 Only meaningful when ``wait`` is True (default: True).
-            job_name (str): Processing job name. If not specified, a name is composed of
-                "Clarify-Explainability" and current timestamp.
+            job_name (str): Processing job name. When ``job_name`` is not specified, if
+                ``job_name_prefix`` in :class:`SageMakerClarifyProcessor` specified, the job name
+                will be composed of ``job_name_prefix`` and current timestamp; otherwise use
+                "Clarify-Explainability" as prefix.
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 user code file (default: None).
             experiment_config (dict[str, str]): Experiment management configuration.
@@ -677,7 +744,10 @@ class SageMakerClarifyProcessor(Processor):
         analysis_config["methods"] = explainability_config.get_explainability_config()
         analysis_config["predictor"] = predictor_config
         if job_name is None:
-            job_name = utils.name_from_base("Clarify-Explainability")
+            if self.job_name_prefix:
+                job_name = utils.name_from_base(self.job_name_prefix)
+            else:
+                job_name = utils.name_from_base("Clarify-Explainability")
         self._run(data_config, analysis_config, wait, logs, job_name, kms_key, experiment_config)
 
 

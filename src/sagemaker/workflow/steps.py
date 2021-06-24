@@ -16,16 +16,12 @@ from __future__ import absolute_import
 import abc
 
 from enum import Enum
-from typing import Dict, List
+from typing import Dict, List, Union
 
 import attr
 
 from sagemaker.estimator import EstimatorBase, _TrainingJob
-from sagemaker.inputs import (
-    CreateModelInput,
-    TrainingInput,
-    TransformInput,
-)
+from sagemaker.inputs import CreateModelInput, TrainingInput, TransformInput, FileSystemInput
 from sagemaker.model import Model
 from sagemaker.processing import (
     ProcessingInput,
@@ -54,6 +50,7 @@ class StepTypeEnum(Enum, metaclass=DefaultEnumMeta):
     REGISTER_MODEL = "RegisterModel"
     TRAINING = "Training"
     TRANSFORM = "Transform"
+    CALLBACK = "Callback"
 
 
 @attr.s
@@ -63,12 +60,13 @@ class Step(Entity):
     Attributes:
         name (str): The name of the step.
         step_type (StepTypeEnum): The type of the step.
-        depends_on (List[str]): The list of step names the current step depends on
+        depends_on (List[str] or List[Step]): The list of step names or step
+            instances the current step depends on
     """
 
     name: str = attr.ib(factory=str)
     step_type: StepTypeEnum = attr.ib(factory=StepTypeEnum.factory)
-    depends_on: List[str] = attr.ib(default=None)
+    depends_on: Union[List[str], List["Step"]] = attr.ib(default=None)
 
     @property
     @abc.abstractmethod
@@ -88,11 +86,13 @@ class Step(Entity):
             "Arguments": self.arguments,
         }
         if self.depends_on:
-            request_dict["DependsOn"] = self.depends_on
+            request_dict["DependsOn"] = self._resolve_depends_on(self.depends_on)
+
         return request_dict
 
-    def add_depends_on(self, step_names: List[str]):
-        """Add step names to the current step depends on list"""
+    def add_depends_on(self, step_names: Union[List[str], List["Step"]]):
+        """Add step names or step instances to the current step depends on list"""
+
         if not step_names:
             return
         if not self.depends_on:
@@ -103,6 +103,19 @@ class Step(Entity):
     def ref(self) -> Dict[str, str]:
         """Gets a reference dict for steps"""
         return {"Name": self.name}
+
+    @staticmethod
+    def _resolve_depends_on(depends_on_list: Union[List[str], List["Step"]]):
+        """Resolver the step depends on list"""
+        depends_on = []
+        for step in depends_on_list:
+            if isinstance(step, Step):
+                depends_on.append(step.name)
+            elif isinstance(step, str):
+                depends_on.append(step)
+            else:
+                raise ValueError(f"Invalid input step name: {step}")
+        return depends_on
 
 
 @attr.s
@@ -144,9 +157,9 @@ class TrainingStep(Step):
         self,
         name: str,
         estimator: EstimatorBase,
-        inputs: TrainingInput = None,
+        inputs: Union[TrainingInput, dict, str, FileSystemInput] = None,
         cache_config: CacheConfig = None,
-        depends_on: List[str] = None,
+        depends_on: Union[List[str], List[Step]] = None,
     ):
         """Construct a TrainingStep, given an `EstimatorBase` instance.
 
@@ -156,10 +169,26 @@ class TrainingStep(Step):
         Args:
             name (str): The name of the training step.
             estimator (EstimatorBase): A `sagemaker.estimator.EstimatorBase` instance.
-            inputs (TrainingInput): A `sagemaker.inputs.TrainingInput` instance. Defaults to `None`.
+            inputs (str or dict or sagemaker.inputs.TrainingInput
+                or sagemaker.inputs.FileSystemInput): Information
+                about the training data. This can be one of three types:
+
+                * (str) the S3 location where training data is saved, or a file:// path in
+                    local mode.
+                * (dict[str, str] or dict[str, sagemaker.inputs.TrainingInput]) If using multiple
+                    channels for training data, you can specify a dict mapping channel names to
+                    strings or :func:`~sagemaker.inputs.TrainingInput` objects.
+                * (sagemaker.inputs.TrainingInput) - channel configuration for S3 data sources
+                    that can provide additional information as well as the path to the training
+                    dataset.
+                    See :func:`sagemaker.inputs.TrainingInput` for full details.
+                * (sagemaker.inputs.FileSystemInput) - channel configuration for
+                    a file system data source that can provide additional information as well as
+                    the path to the training dataset.
+
             cache_config (CacheConfig):  A `sagemaker.workflow.steps.CacheConfig` instance.
-            depends_on (List[str]): A list of step names this `sagemaker.workflow.steps.TrainingStep`
-                depends on
+            depends_on (List[str] or List[Step]): A list of step names or step instances
+                this `sagemaker.workflow.steps.TrainingStep` depends on
         """
         super(TrainingStep, self).__init__(name, StepTypeEnum.TRAINING, depends_on)
         self.estimator = estimator
@@ -204,7 +233,11 @@ class CreateModelStep(Step):
     """CreateModel step for workflow."""
 
     def __init__(
-        self, name: str, model: Model, inputs: CreateModelInput, depends_on: List[str] = None
+        self,
+        name: str,
+        model: Model,
+        inputs: CreateModelInput,
+        depends_on: Union[List[str], List[Step]] = None,
     ):
         """Construct a CreateModelStep, given an `sagemaker.model.Model` instance.
 
@@ -216,8 +249,8 @@ class CreateModelStep(Step):
             model (Model): A `sagemaker.model.Model` instance.
             inputs (CreateModelInput): A `sagemaker.inputs.CreateModelInput` instance.
                 Defaults to `None`.
-            depends_on (List[str]): A list of step names this `sagemaker.workflow.steps.CreateModelStep`
-                depends on
+            depends_on (List[str] or List[Step]): A list of step names or step instances
+                this `sagemaker.workflow.steps.CreateModelStep` depends on
         """
         super(CreateModelStep, self).__init__(name, StepTypeEnum.CREATE_MODEL, depends_on)
         self.model = model
@@ -262,7 +295,7 @@ class TransformStep(Step):
         transformer: Transformer,
         inputs: TransformInput,
         cache_config: CacheConfig = None,
-        depends_on: List[str] = None,
+        depends_on: Union[List[str], List[Step]] = None,
     ):
         """Constructs a TransformStep, given an `Transformer` instance.
 
@@ -274,8 +307,8 @@ class TransformStep(Step):
             transformer (Transformer): A `sagemaker.transformer.Transformer` instance.
             inputs (TransformInput): A `sagemaker.inputs.TransformInput` instance.
             cache_config (CacheConfig):  A `sagemaker.workflow.steps.CacheConfig` instance.
-            depends_on (List[str]): A list of step names this `sagemaker.workflow.steps.TransformStep`
-                depends on
+            depends_on (List[str] or List[Step]): A list of step names or step instances
+                this `sagemaker.workflow.steps.TransformStep` depends on
         """
         super(TransformStep, self).__init__(name, StepTypeEnum.TRANSFORM, depends_on)
         self.transformer = transformer
@@ -338,7 +371,7 @@ class ProcessingStep(Step):
         code: str = None,
         property_files: List[PropertyFile] = None,
         cache_config: CacheConfig = None,
-        depends_on: List[str] = None,
+        depends_on: Union[List[str], List[Step]] = None,
     ):
         """Construct a ProcessingStep, given a `Processor` instance.
 
@@ -359,8 +392,8 @@ class ProcessingStep(Step):
             property_files (List[PropertyFile]): A list of property files that workflow looks
                 for and resolves from the configured processing output list.
             cache_config (CacheConfig):  A `sagemaker.workflow.steps.CacheConfig` instance.
-            depends_on (List[str]): A list of step names this `sagemaker.workflow.steps.ProcessingStep`
-                depends on
+            depends_on (List[str] or List[Step]): A list of step names or step instance
+                this `sagemaker.workflow.steps.ProcessingStep` depends on
         """
         super(ProcessingStep, self).__init__(name, StepTypeEnum.PROCESSING, depends_on)
         self.processor = processor

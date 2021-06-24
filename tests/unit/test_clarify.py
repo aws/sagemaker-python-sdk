@@ -26,6 +26,10 @@ from sagemaker.clarify import (
 )
 from sagemaker import image_uris
 
+JOB_NAME_PREFIX = "my-prefix"
+TIMESTAMP = "2021-06-17-22-29-54-685"
+JOB_NAME = "{}-{}".format(JOB_NAME_PREFIX, TIMESTAMP)
+
 
 def test_uri():
     uri = image_uris.retrieve("clarify", "us-west-2")
@@ -128,6 +132,21 @@ def test_invalid_model_config():
     )
 
 
+def test_invalid_model_config_with_bad_endpoint_name_prefix():
+    with pytest.raises(ValueError) as error:
+        ModelConfig(
+            model_name="xgboost-model",
+            instance_type="ml.c5.xlarge",
+            instance_count=1,
+            accept_type="invalid_accept_type",
+            endpoint_name_prefix="~invalid_endpoint_prefix",
+        )
+    assert (
+        "Invalid endpoint_name_prefix. Please follow pattern ^[a-zA-Z0-9](-*[a-zA-Z0-9])."
+        in str(error.value)
+    )
+
+
 def test_model_predicted_label_config():
     label = "label"
     probability = "pr"
@@ -171,11 +190,13 @@ def test_shap_config():
     num_samples = 100
     agg_method = "mean_sq"
     use_logit = True
+    seed = 123
     shap_config = SHAPConfig(
         baseline=baseline,
         num_samples=num_samples,
         agg_method=agg_method,
         use_logit=use_logit,
+        seed=seed,
     )
     expected_config = {
         "shap": {
@@ -184,6 +205,7 @@ def test_shap_config():
             "agg_method": agg_method,
             "use_logit": use_logit,
             "save_local_shap_values": True,
+            "seed": seed,
         }
     }
     assert expected_config == shap_config.get_explainability_config()
@@ -227,6 +249,17 @@ def clarify_processor(sagemaker_session):
         instance_count=1,
         instance_type="ml.c5.xlarge",
         sagemaker_session=sagemaker_session,
+    )
+
+
+@pytest.fixture(scope="module")
+def clarify_processor_with_job_name_prefix(sagemaker_session):
+    return SageMakerClarifyProcessor(
+        role="AmazonSageMaker-ExecutionRole",
+        instance_count=1,
+        instance_type="ml.c5.xlarge",
+        sagemaker_session=sagemaker_session,
+        job_name_prefix=JOB_NAME_PREFIX,
     )
 
 
@@ -284,7 +317,14 @@ def shap_config():
     )
 
 
-def test_pre_training_bias(clarify_processor, data_config, data_bias_config):
+@patch("sagemaker.utils.name_from_base", return_value=JOB_NAME)
+def test_pre_training_bias(
+    name_from_base,
+    clarify_processor,
+    clarify_processor_with_job_name_prefix,
+    data_config,
+    data_bias_config,
+):
     with patch.object(SageMakerClarifyProcessor, "_run", return_value=None) as mock_method:
         clarify_processor.run_pre_training_bias(
             data_config,
@@ -307,7 +347,7 @@ def test_pre_training_bias(clarify_processor, data_config, data_bias_config):
             "group_variable": "F2",
             "methods": {"pre_training_bias": {"methods": "all"}},
         }
-        mock_method.assert_called_once_with(
+        mock_method.assert_called_with(
             data_config,
             expected_analysis_config,
             True,
@@ -316,10 +356,33 @@ def test_pre_training_bias(clarify_processor, data_config, data_bias_config):
             None,
             {"ExperimentName": "AnExperiment"},
         )
+        clarify_processor_with_job_name_prefix.run_pre_training_bias(
+            data_config,
+            data_bias_config,
+            wait=True,
+            experiment_config={"ExperimentName": "AnExperiment"},
+        )
+        name_from_base.assert_called_with(JOB_NAME_PREFIX)
+        mock_method.assert_called_with(
+            data_config,
+            expected_analysis_config,
+            True,
+            True,
+            JOB_NAME,
+            None,
+            {"ExperimentName": "AnExperiment"},
+        )
 
 
+@patch("sagemaker.utils.name_from_base", return_value=JOB_NAME)
 def test_post_training_bias(
-    clarify_processor, data_config, data_bias_config, model_config, model_predicted_label_config
+    name_from_base,
+    clarify_processor,
+    clarify_processor_with_job_name_prefix,
+    data_config,
+    data_bias_config,
+    model_config,
+    model_predicted_label_config,
 ):
     with patch.object(SageMakerClarifyProcessor, "_run", return_value=None) as mock_method:
         clarify_processor.run_post_training_bias(
@@ -350,7 +413,7 @@ def test_post_training_bias(
                 "initial_instance_count": 1,
             },
         }
-        mock_method.assert_called_once_with(
+        mock_method.assert_called_with(
             data_config,
             expected_analysis_config,
             True,
@@ -359,9 +422,35 @@ def test_post_training_bias(
             None,
             {"ExperimentName": "AnExperiment"},
         )
+        clarify_processor_with_job_name_prefix.run_post_training_bias(
+            data_config,
+            data_bias_config,
+            model_config,
+            model_predicted_label_config,
+            wait=True,
+            experiment_config={"ExperimentName": "AnExperiment"},
+        )
+        name_from_base.assert_called_with(JOB_NAME_PREFIX)
+        mock_method.assert_called_with(
+            data_config,
+            expected_analysis_config,
+            True,
+            True,
+            JOB_NAME,
+            None,
+            {"ExperimentName": "AnExperiment"},
+        )
 
 
-def test_shap(clarify_processor, data_config, model_config, shap_config):
+@patch("sagemaker.utils.name_from_base", return_value=JOB_NAME)
+def test_shap(
+    name_from_base,
+    clarify_processor,
+    clarify_processor_with_job_name_prefix,
+    data_config,
+    model_config,
+    shap_config,
+):
     with patch.object(SageMakerClarifyProcessor, "_run", return_value=None) as mock_method:
         clarify_processor.run_explainability(
             data_config,
@@ -402,12 +491,30 @@ def test_shap(clarify_processor, data_config, model_config, shap_config):
                 "initial_instance_count": 1,
             },
         }
-        mock_method.assert_called_once_with(
+        mock_method.assert_called_with(
             data_config,
             expected_analysis_config,
             True,
             True,
             "test",
+            None,
+            {"ExperimentName": "AnExperiment"},
+        )
+        clarify_processor_with_job_name_prefix.run_explainability(
+            data_config,
+            model_config,
+            shap_config,
+            model_scores=None,
+            wait=True,
+            experiment_config={"ExperimentName": "AnExperiment"},
+        )
+        name_from_base.assert_called_with(JOB_NAME_PREFIX)
+        mock_method.assert_called_with(
+            data_config,
+            expected_analysis_config,
+            True,
+            True,
+            JOB_NAME,
             None,
             {"ExperimentName": "AnExperiment"},
         )
