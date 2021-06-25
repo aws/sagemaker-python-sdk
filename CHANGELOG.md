@@ -1,5 +1,20 @@
 # Changelog
 
+## v2.47.0 (2021-06-25)
+
+### Features
+
+ * support job_name_prefix for Clarify
+
+### Bug Fixes and Other Changes
+
+ * Add configuration option with headers for Clarify Explainability
+ * jsonGet interpolation issue 2426 + allow step depends on pass in step instance
+ * add default retries to feature group ingestion.
+ * Update using_pytorch.rst
+ * kms key does not propapate in register model step
+ * Correctly interpolate Callback output parameters
+
 ## v2.46.1 (2021-06-22)
 
 ### Bug Fixes and Other Changes
