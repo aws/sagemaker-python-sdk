@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.47.1 (2021-06-27)
+
+### Bug Fixes and Other Changes
+
+ * revert "fix: jsonGet interpolation issue 2426 + allow step depends on pass in step instance (#2477)"
+
 ## v2.47.0 (2021-06-25)
 
 ### Features
