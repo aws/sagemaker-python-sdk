@@ -54,11 +54,11 @@ class RegisterModel(StepCollection):
     def __init__(
         self,
         name: str,
-        estimator: EstimatorBase,
         content_types,
         response_types,
         inference_instances,
         transform_instances,
+        estimator: EstimatorBase = None,
         model_data=None,
         depends_on: List[str] = None,
         model_package_group_name=None,
@@ -121,6 +121,25 @@ class RegisterModel(StepCollection):
         kwargs.pop("entry_point", None)
         kwargs.pop("source_dir", None)
         kwargs.pop("dependencies", None)
+
+        if models is not None:
+            for model in models:
+                if model.entry_point is not None:
+                    repack_model = True
+                    entry_point = model.entry_point
+                    source_dir = model.source_dir
+                    dependencies = model.dependencies
+                    repack_model_step = _RepackModelStep(
+                    name=f"{model.name}RepackModel",
+                    depends_on=depends_on,
+                    estimator=estimator,
+                    model_data=model.model_data,
+                    entry_point=entry_point,
+                    source_dir=source_dir,
+                    dependencies=dependencies,
+                )
+                steps.append(repack_model_step)
+                model.model_data = repack_model_step.properties.ModelArtifacts.S3ModelArtifacts
 
         register_model_step = _RegisterModelStep(
             name=name,

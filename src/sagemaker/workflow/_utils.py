@@ -31,6 +31,7 @@ from sagemaker.estimator import EstimatorBase
 from sagemaker.sklearn.estimator import SKLearn
 from sagemaker.workflow.entities import RequestType
 from sagemaker.workflow.properties import Properties
+from sagemaker.session import get_create_model_package_request
 from sagemaker.workflow.steps import (
     StepTypeEnum,
     TrainingStep,
@@ -213,11 +214,11 @@ class _RegisterModelStep(Step):
     def __init__(
         self,
         name: str,
-        estimator: EstimatorBase,
         content_types,
         response_types,
         inference_instances,
         transform_instances,
+        estimator: EstimatorBase=None,
         model_data=None,
         model_package_group_name=None,
         model_metrics=None,
@@ -326,19 +327,9 @@ class _RegisterModelStep(Step):
         Returns:
             dict: A dictionary of method argument names and values.
         """
-        if image_uri:
-            container = {
-                "Image": image_uri,
-                "ModelDataUrl": model_data,
-            }
-
-        if container_def_list is not None:
-            containers = container_def_list
-        else:
-            containers = [container]
 
         model_package_args = {
-            "containers": containers,
+            "containers": container_def_list,
             "content_types": content_types,
             "response_types": response_types,
             "inference_instances": inference_instances,
@@ -365,53 +356,54 @@ class _RegisterModelStep(Step):
         """The arguments dict that are used to call `create_model_package`."""
         model_name = self.name
         model_list = self.model_list
-        if self.compile_model_family:
-            model = self.estimator._compiled_models[self.compile_model_family]
-        else:
-            # create_model wants the estimator to have a model_data attribute...
-            self.estimator._current_job_name = model_name
-
-            # placeholder. replaced with model_data later
-            output_path = self.estimator.output_path
-            self.estimator.output_path = "/tmp"
-
-            # create the model, but custom funky framework stuff going on in some places
-            if self.image_uri:
-                model = self.estimator.create_model(image_uri=self.image_uri, **self.kwargs)
-            elif self.model_list:
-                model = self.estimator.create_model()
+        if model_list:
+            self.container_def_list = sagemaker.pipeline_container_def(model_list,self.inference_instances[0])
+        elif self.estimator:
+            if self.compile_model_family:
+                model = self.estimator._compiled_models[self.compile_model_family]
+                self.model_data = model.model_data
             else:
-                model = self.estimator.create_model(**self.kwargs)
-            model.model_data = self.model_data
+                # create_model wants the estimator to have a model_data attribute...
+                self.estimator._current_job_name = model_name
 
-            # reset placeholder
-            self.estimator.output_path = output_path
+                # placeholder. replaced with model_data later
+                output_path = self.estimator.output_path
+                self.estimator.output_path = "/tmp"
 
-            # yeah, there is some framework stuff going on that we need to pull in here
-            if model.image_uri is None and model_list is None:
-                region_name = self.estimator.sagemaker_session.boto_session.region_name
-                model.image_uri = image_uris.retrieve(
-                    model._framework_name,
-                    region_name,
-                    version=model.framework_version,
-                    py_version=model.py_version if hasattr(model, "py_version") else None,
-                    instance_type=self.kwargs.get("instance_type", self.estimator.instance_type),
-                    accelerator_type=self.kwargs.get("accelerator_type"),
-                    image_scope="inference",
-                )
-            model.name = model_name
+                # create the model, but custom funky framework stuff going on in some places
+                if self.image_uri:
+                    model = self.estimator.create_model(image_uri=self.image_uri, **self.kwargs)
+                else:
+                    model = self.estimator.create_model(**self.kwargs)
+                    self.image_uri = model.image_uri
 
-            if model_list:
-                self.container_def_list = sagemaker.pipeline_container_def(model_list)
+                # reset placeholder
+                self.estimator.output_path = output_path
 
+                # yeah, there is some framework stuff going on that we need to pull in here
+                if self.image_uri is None:
+                    region_name = self.estimator.sagemaker_session.boto_session.region_name
+                    self.image_uri = image_uris.retrieve(
+                            model._framework_name,
+                            region_name,
+                            version=model.framework_version,
+                            py_version=model.py_version if hasattr(model, "py_version") else None,
+                            instance_type=self.kwargs.get("instance_type", self.estimator.instance_type),
+                            accelerator_type=self.kwargs.get("accelerator_type"),
+                            image_scope="inference",
+                            )
+                    model.name = model_name
+                    model.image_uri = self.image_uri
+                    model.model_data = self.model_data
+
+            self.container_def_list = [model.prepare_container_def()]
+        
         model_package_args = self._get_model_package_args(
             content_types=self.content_types,
             response_types=self.response_types,
             inference_instances=self.inference_instances,
             transform_instances=self.transform_instances,
-            model_data=model.model_data,
             model_package_group_name=self.model_package_group_name,
-            image_uri=model.image_uri,
             model_metrics=self.model_metrics,
             metadata_properties=self.metadata_properties,
             approval_status=self.approval_status,
@@ -419,7 +411,7 @@ class _RegisterModelStep(Step):
             container_def_list=self.container_def_list,
         )
 
-        request_dict = model.sagemaker_session._get_create_model_package_request(
+        request_dict = sagemaker.get_create_model_package_request(
             **model_package_args
         )
         # these are not available in the workflow service and will cause rejection
