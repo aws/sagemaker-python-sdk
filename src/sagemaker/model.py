@@ -258,6 +258,8 @@ class Model(object):
             model_package_args["approval_status"] = approval_status
         if description is not None:
             model_package_args["description"] = description
+        if tags is not None:
+            model_package_args["tags"] = tags
         return model_package_args
 
     def _init_sagemaker_session_if_does_not_exist(self, instance_type):

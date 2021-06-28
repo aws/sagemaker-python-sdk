@@ -107,10 +107,11 @@ class RegisterModel(StepCollection):
         repack_model = False
         if "entry_point" in kwargs:
             repack_model = True
-            entry_point = kwargs["entry_point"]
+            entry_point = kwargs.pop("entry_point", None)
             source_dir = kwargs.get("source_dir")
             dependencies = kwargs.get("dependencies")
             kwargs = dict(**kwargs, output_kms_key=kwargs.pop("model_kms_key", None))
+
             repack_model_step = _RepackModelStep(
                 name=f"{name}RepackModel",
                 depends_on=depends_on,
@@ -119,6 +120,7 @@ class RegisterModel(StepCollection):
                 entry_point=entry_point,
                 source_dir=source_dir,
                 dependencies=dependencies,
+                **kwargs,
             )
             steps.append(repack_model_step)
             model_data = repack_model_step.properties.ModelArtifacts.S3ModelArtifacts
@@ -127,6 +129,7 @@ class RegisterModel(StepCollection):
         kwargs.pop("entry_point", None)
         kwargs.pop("source_dir", None)
         kwargs.pop("dependencies", None)
+        kwargs.pop("output_kms_key", None)
 
         if models is not None:
             for model in models:

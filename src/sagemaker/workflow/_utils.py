@@ -62,6 +62,7 @@ class _RepackModelStep(TrainingStep):
         source_dir: str = None,
         dependencies: List = None,
         depends_on: List[str] = None,
+        **kwargs,
     ):
         """Constructs a TrainingStep, given an `EstimatorBase` instance.
 
@@ -100,6 +101,7 @@ class _RepackModelStep(TrainingStep):
                 "inference_script": self._entry_point_basename,
                 "model_archive": self._model_archive,
             },
+            **kwargs,
         )
         repacker.disable_profiler = True
         inputs = TrainingInput(self._model_prefix)
@@ -270,6 +272,7 @@ class _RegisterModelStep(Step):
         self.inference_instances = inference_instances
         self.transform_instances = transform_instances
         self.model_package_group_name = model_package_group_name
+        self.tags = tags
         self.model_metrics = model_metrics
         self.metadata_properties = metadata_properties
         self.approval_status = approval_status
@@ -419,6 +422,7 @@ class _RegisterModelStep(Step):
         request_dict = sagemaker.get_create_model_package_request(
             **model_package_args
         )
+
         # these are not available in the workflow service and will cause rejection
         if "CertifyForMarketplace" in request_dict:
             request_dict.pop("CertifyForMarketplace")
