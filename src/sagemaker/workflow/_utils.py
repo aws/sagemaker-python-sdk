@@ -228,6 +228,7 @@ class _RegisterModelStep(Step):
         compile_model_family=None,
         description=None,
         depends_on: List[str] = None,
+        tags = None,
         model_list=None,
         **kwargs,
     ):
@@ -298,6 +299,7 @@ class _RegisterModelStep(Step):
         marketplace_cert=False,
         approval_status=None,
         description=None,
+        tags=None,
         container_def_list=None,
     ):
         """Get arguments for session.create_model_package method.
@@ -349,6 +351,8 @@ class _RegisterModelStep(Step):
             model_package_args["approval_status"] = approval_status
         if description is not None:
             model_package_args["description"] = description
+        if tags is not None:
+            model_package_args["tags"] = tags
         return model_package_args
 
     @property
@@ -397,7 +401,7 @@ class _RegisterModelStep(Step):
                     model.model_data = self.model_data
 
             self.container_def_list = [model.prepare_container_def()]
-        
+
         model_package_args = self._get_model_package_args(
             content_types=self.content_types,
             response_types=self.response_types,
@@ -408,6 +412,7 @@ class _RegisterModelStep(Step):
             metadata_properties=self.metadata_properties,
             approval_status=self.approval_status,
             description=self.description,
+            tags=self.tags,
             container_def_list=self.container_def_list,
         )
 

@@ -195,6 +195,7 @@ class Model(object):
         marketplace_cert=False,
         approval_status=None,
         description=None,
+        tags=None,
         container_def_list=None,
     ):
         """Get arguments for session.create_model_package method.

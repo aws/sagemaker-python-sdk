@@ -67,6 +67,7 @@ class RegisterModel(StepCollection):
         image_uri=None,
         compile_model_family=None,
         description=None,
+        tags=None,
         models=None,
         **kwargs,
     ):
@@ -95,6 +96,10 @@ class RegisterModel(StepCollection):
             compile_model_family (str): The instance family for the compiled model. If
                 specified, a compiled model is used (default: None).
             description (str): Model Package description (default: None).
+            tags (List[dict[str, str]]): The list of tags to attach to the model package group. Note
+                that tags will only be applied to newly created model package groups; if the
+                name of an existing group is passed to "model_package_group_name",
+                tags will not be applied.
             models (list): A list of models.
             **kwargs: additional arguments to `create_model`.
         """
@@ -105,6 +110,7 @@ class RegisterModel(StepCollection):
             entry_point = kwargs["entry_point"]
             source_dir = kwargs.get("source_dir")
             dependencies = kwargs.get("dependencies")
+            kwargs = dict(**kwargs, output_kms_key=kwargs.pop("model_kms_key", None))
             repack_model_step = _RepackModelStep(
                 name=f"{name}RepackModel",
                 depends_on=depends_on,
@@ -141,6 +147,26 @@ class RegisterModel(StepCollection):
                 steps.append(repack_model_step)
                 model.model_data = repack_model_step.properties.ModelArtifacts.S3ModelArtifacts
 
+        if models is not None:
+            for model in models:
+                if model.entry_point is not None:
+                    repack_model = True
+                    entry_point = model.entry_point
+                    source_dir = model.source_dir
+                    dependencies = model.dependencies
+                    repack_model_step = _RepackModelStep(
+                    name=f"{model.name}RepackModel",
+                    depends_on=depends_on,
+                    estimator=estimator,
+                    model_data=model.model_data,
+                    entry_point=entry_point,
+                    source_dir=source_dir,
+                    dependencies=dependencies,
+                    output_kms_key=model.model_kms_key,
+                )
+                steps.append(repack_model_step)
+                model.model_data = repack_model_step.properties.ModelArtifacts.S3ModelArtifacts
+
         register_model_step = _RegisterModelStep(
             name=name,
             estimator=estimator,
@@ -155,6 +181,7 @@ class RegisterModel(StepCollection):
             image_uri=image_uri,
             compile_model_family=compile_model_family,
             description=description,
+            tags=tags,
             model_list=models,
             **kwargs,
         )
