@@ -44,6 +44,7 @@ from sagemaker.workflow.properties import (
     PropertyFile,
     Properties,
 )
+from sagemaker.workflow.functions import Join
 
 
 class StepTypeEnum(Enum, metaclass=DefaultEnumMeta):
@@ -525,3 +526,27 @@ class TuningStep(Step):
             request_dict.update(self.cache_config.config)
 
         return request_dict
+
+    def get_top_model_s3_uri(self, top_k: int, s3_bucket: str, prefix: str = ""):
+        """Get the model artifact s3 uri from the top performing training jobs.
+
+        Args:
+            top_k (int): the index of the top performing training job
+                tuning step stores up to 50 top performing training jobs, hence
+                a valid top_k value is from 0 to 49. The best training job
+                model is at index 0
+            s3_bucket (str): the s3 bucket to store the training job output artifact
+            prefix (str): the s3 key prefix to store the training job output artifact
+        """
+        values = ["s3:/", s3_bucket]
+        if prefix != "" and prefix is not None:
+            values.append(prefix)
+
+        return Join(
+            on="/",
+            values=values
+            + [
+                self.properties.TrainingJobSummaries[top_k].TrainingJobName,
+                "output/model.tar.gz",
+            ],
+        )

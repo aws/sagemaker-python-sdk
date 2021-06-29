@@ -884,6 +884,8 @@ def test_tuning(
         objective_type="Maximize",
         hyperparameter_ranges=hyperparameter_ranges,
         metric_definitions=[{"Name": "test:acc", "Regex": "Overall test accuracy: (.*?);"}],
+        max_jobs=2,
+        max_parallel_jobs=2,
     )
 
     step_tune = TuningStep(
@@ -892,13 +894,48 @@ def test_tuning(
         inputs=inputs,
     )
 
+    best_model = Model(
+        image_uri=pytorch_estimator.training_image_uri(),
+        model_data=step_tune.get_top_model_s3_uri(
+            top_k=0,
+            s3_bucket=sagemaker_session.default_bucket(),
+        ),
+        sagemaker_session=sagemaker_session,
+        role=role,
+    )
+    model_inputs = CreateModelInput(
+        instance_type="ml.m5.large",
+        accelerator_type="ml.eia1.medium",
+    )
+    step_best_model = CreateModelStep(
+        name="1st-model",
+        model=best_model,
+        inputs=model_inputs,
+    )
+
+    second_best_model = Model(
+        image_uri=pytorch_estimator.training_image_uri(),
+        model_data=step_tune.get_top_model_s3_uri(
+            top_k=1,
+            s3_bucket=sagemaker_session.default_bucket(),
+        ),
+        sagemaker_session=sagemaker_session,
+        role=role,
+    )
+
+    step_second_best_model = CreateModelStep(
+        name="2nd-best-model",
+        model=second_best_model,
+        inputs=model_inputs,
+    )
+
     pipeline = Pipeline(
         name=pipeline_name,
         parameters=[instance_count, instance_type],
-        steps=[step_tune],
+        steps=[step_tune, step_best_model, step_second_best_model],
         sagemaker_session=sagemaker_session,
     )
-    print(pipeline.definition())
+
     try:
         response = pipeline.create(role)
         create_arn = response["PipelineArn"]

@@ -551,7 +551,7 @@ def test_single_algo_tuning_step(sagemaker_session):
         tuner=tuner,
         inputs=inputs,
     )
-    print(tuning_step.to_request())
+
     assert tuning_step.to_request() == {
         "Name": "MyTuningStep",
         "Type": "Tuning",
@@ -643,6 +643,18 @@ def test_single_algo_tuning_step(sagemaker_session):
     }
     assert tuning_step.properties.TrainingJobSummaries[0].TrainingJobName.expr == {
         "Get": "Steps.MyTuningStep.TrainingJobSummaries[0].TrainingJobName"
+    }
+    assert tuning_step.get_top_model_s3_uri(0, "my-bucket", "my-prefix").expr == {
+        "Std:Join": {
+            "On": "/",
+            "Values": [
+                "s3:/",
+                "my-bucket",
+                "my-prefix",
+                {"Get": "Steps.MyTuningStep.TrainingJobSummaries[0].TrainingJobName"},
+                "output/model.tar.gz",
+            ],
+        }
     }
 
 
