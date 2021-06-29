@@ -142,14 +142,14 @@
     },
 
     "inference": {
-        "processors": ["gpu"],
+        "processors": ["gpu", "cpu"],
         "version_aliases": {
             "4.6": "4.6.1"
         },
         "versions": {
             "4.6.1": {
                 "version_aliases": {
-                    "pytorch1.6": "pytorch1.7.1",
+                    "pytorch1.7": "pytorch1.7.1",
                     "tensorflow2.4": "tensorflow2.4.1"
                 },
                 "pytorch1.7.1": {
