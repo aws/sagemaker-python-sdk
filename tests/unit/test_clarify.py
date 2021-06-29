@@ -71,7 +71,9 @@ def test_data_config():
 def test_data_bias_config():
     label_values = [1]
     facet_name = "F1"
-    facet_threshold = 0.3
+    facet_name2 = "F2"
+    facet_threshold = [0.3]
+    facet_threshold2 = [0.1]
     group_name = "A151"
 
     data_bias_config = BiasConfig(
@@ -81,12 +83,88 @@ def test_data_bias_config():
         group_name=group_name,
     )
 
+    data_bias_config_without_value_or_threshold = BiasConfig(
+        label_values_or_threshold=label_values,
+        facet_list=[{"name_or_index": facet_name}],
+        group_name=group_name,
+    )
+
+    data_bias_config_with_facet_list = BiasConfig(
+        label_values_or_threshold=label_values,
+        facet_list=[{"name_or_index": facet_name, "value_or_threshold": facet_threshold}],
+        group_name=group_name,
+    )
+
+    data_bias_config_with_multiple_facets = BiasConfig(
+        label_values_or_threshold=label_values,
+        facet_list=[
+            {"name_or_index": facet_name, "value_or_threshold": facet_threshold},
+            {"name_or_index": facet_name2, "value_or_threshold": facet_threshold2},
+        ],
+        group_name=group_name,
+    )
+
     expected_config = {
         "label_values_or_threshold": label_values,
         "facet": [{"name_or_index": facet_name, "value_or_threshold": facet_threshold}],
         "group_variable": group_name,
     }
+    expected_config_without_value_or_threshold = {
+        "label_values_or_threshold": label_values,
+        "facet": [{"name_or_index": facet_name}],
+        "group_variable": group_name,
+    }
+    expected_config_with_multiple_facets = {
+        "label_values_or_threshold": label_values,
+        "facet": [
+            {"name_or_index": facet_name, "value_or_threshold": facet_threshold},
+            {"name_or_index": facet_name2, "value_or_threshold": facet_threshold2},
+        ],
+        "group_variable": group_name,
+    }
     assert expected_config == data_bias_config.get_config()
+    assert (
+        expected_config_without_value_or_threshold
+        == data_bias_config_without_value_or_threshold.get_config()
+    )
+    assert (
+        expected_config_with_multiple_facets == data_bias_config_with_multiple_facets.get_config()
+    )
+    assert expected_config == data_bias_config_with_facet_list.get_config()
+
+
+def test_invalid_data_bias_config():
+    label_values = [1]
+    facet_name = "F1"
+    facet_threshold = [0.3]
+    group_name = "A151"
+    with pytest.raises(ValueError) as error:
+        BiasConfig(
+            label_values_or_threshold=label_values,
+            facet_list=[
+                {"random_field": "random_string", "name_or_index": facet_name, "value_or_threshold": facet_threshold}
+            ],
+            group_name=group_name,
+        )
+    assert (
+        "Please only include 'name_or_index' or 'value_or_threshold' in dictionary keys." in str(error.value)
+    )
+    with pytest.raises(ValueError) as error:
+        BiasConfig(
+            label_values_or_threshold=label_values,
+            facet_list=[{"value_or_threshold": facet_threshold}],
+            group_name=group_name
+        )
+    assert (
+        "Please include valid format of 'name_or_index' in dictionary" in str(error.value)
+    )
+    with pytest.raises(ValueError) as error:
+        BiasConfig(
+            label_values_or_threshold=label_values,
+            facet_list=[{"name_or_index": facet_name, "value_or_threshold": True}],
+            group_name=group_name,
+        )
+    assert "Please include valid format of 'value_or_threshold' in dictionary" in str(error.value)
 
 
 def test_model_config():

@@ -48,8 +48,8 @@ class DataConfig:
             headers (list[str]): A list of column names in the input dataset.
             features (str): JSONPath for locating the feature columns for bias metrics if the
                 dataset format is JSONLines.
-            dataset_type (str): Format of the dataset. Valid values are "text/csv" for CSV
-                and "application/jsonlines" for JSONLines.
+            dataset_type (str): Format of the dataset. Valid values are "text/csv" for CSV,
+                "application/jsonlines" for JSONLines, and "application/x-parquet" for Parquet.
             s3_data_distribution_type (str): Valid options are "FullyReplicated" or
                 "ShardedByS3Key".
             s3_compression_type (str): Valid options are "None" or "Gzip".
@@ -61,6 +61,11 @@ class DataConfig:
         self.label = label
         self.headers = headers
         self.features = features
+        if dataset_type not in ["text/csv", "application/jsonlines", "application/x-parquet"]:
+            raise ValueError(
+                f"Invalid dataset_type {dataset_type}."
+                f" Please choose text/csv or application/jsonlines or application/x-parquet."
+            )
         self.analysis_config = {
             "dataset_type": dataset_type,
         }
@@ -79,8 +84,9 @@ class BiasConfig:
     def __init__(
         self,
         label_values_or_threshold,
-        facet_name,
+        facet_name=None,
         facet_values_or_threshold=None,
+        facet_list=None,
         group_name=None,
     ):
         """Initializes a configuration of the sensitive groups in the dataset.
@@ -94,15 +100,55 @@ class BiasConfig:
                 threshold for a numeric facet column that defines the lower bound of a sensitive
                 group. Defaults to considering each possible value as sensitive group and
                 computing metrics vs all the other examples.
+            facet_list (list[dict]): Optional list of dictionaries that defines the sensitive
+                attribute(s). Each dictionary contains two keys in the form of the following:
+                'name_or_index' (int or str) for facet column name or index,
+                optional 'value_or_threshold' (list[int or float or str]) for list of values or
+                threshold that the facet column can take which indicates the sensitive group.
+                This should can be defined only if there are more than one sensitive attribute.
             group_name (str): Optional column name or index to indicate a group column to be used
                 for the bias metric 'Conditional Demographic Disparity in Labels - CDDL' or
                 'Conditional Demographic Disparity in Predicted Labels - CDDPL'.
         """
-        facet = {"name_or_index": facet_name}
-        _set(facet_values_or_threshold, "value_or_threshold", facet)
+        if facet_list:
+            for facet_object in facet_list:
+                if not all(
+                    field in ["name_or_index", "value_or_threshold"] for field in facet_object
+                ):
+                    raise ValueError(
+                        f"Invalid facet_list {facet_list}."
+                        f" Please only include 'name_or_index' or 'value_or_threshold'"
+                        f" in dictionary keys."
+                    )
+                if "name_or_index" not in facet_object or not isinstance(
+                    facet_object["name_or_index"], (str, int)
+                ):
+                    raise ValueError(
+                        f"Invalid facet_list {facet_list}."
+                        f" Please include valid format of 'name_or_index' in dictionary:"
+                        f" str, int."
+                    )
+                if "value_or_threshold" in facet_object and not (
+                    isinstance(facet_object["value_or_threshold"], list)
+                    and all(
+                        isinstance(v, (str, int, float)) for v in facet_object["value_or_threshold"]
+                    )
+                ):
+                    raise ValueError(
+                        f"Invalid facet_list {facet_list}."
+                        f" Please include valid format of 'value_or_threshold' in dictionary:"
+                        f" list[int or float or str]."
+                    )
+        elif facet_name is not None:
+            facet = {"name_or_index": facet_name}
+            _set(facet_values_or_threshold, "value_or_threshold", facet)
+            facet_list = [facet]
+        else:
+            raise ValueError("Please specify facet_name or facet_list.")
+
         self.analysis_config = {
             "label_values_or_threshold": label_values_or_threshold,
-            "facet": [facet],
+            "facet": facet_list,
         }
         _set(group_name, "group_variable", self.analysis_config)
 
