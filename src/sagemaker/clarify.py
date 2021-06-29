@@ -105,7 +105,7 @@ class BiasConfig:
                 'name_or_index' (int or str) for facet column name or index,
                 optional 'value_or_threshold' (list[int or float or str]) for list of values or
                 threshold that the facet column can take which indicates the sensitive group.
-                This should can be defined only if there are more than one sensitive attribute.
+                This can be defined if there are more than one sensitive attribute.
             group_name (str): Optional column name or index to indicate a group column to be used
                 for the bias metric 'Conditional Demographic Disparity in Labels - CDDL' or
                 'Conditional Demographic Disparity in Predicted Labels - CDDPL'.
