@@ -182,6 +182,19 @@ class Pipeline(Entity):
                 and "Pipeline names must be unique within" in error["Message"]
             ):
                 response = self.update(role_arn, description)
+                if tags is not None:
+                    old_tags = self.sagemaker_session.sagemaker_client.list_tags(
+                        ResourceArn=response["PipelineArn"]
+                    )["Tags"]
+
+                    tag_keys = [tag["Key"] for tag in tags]
+                    for old_tag in old_tags:
+                        if old_tag["Key"] not in tag_keys:
+                            tags.append(old_tag)
+
+                    self.sagemaker_session.sagemaker_client.add_tags(
+                        ResourceArn=response["PipelineArn"], Tags=tags
+                    )
             else:
                 raise
         return response
