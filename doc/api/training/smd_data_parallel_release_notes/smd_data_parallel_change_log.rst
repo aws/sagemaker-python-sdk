@@ -11,7 +11,6 @@ Sagemaker Distributed Data Parallel 1.2.1 Release Notes
 
 -  Improved performance on a single node.
 -  Improved performance on small clusters (2-4 nodes).
--  Improved performance of ``Accumulator``.
 
 **Bug fixes**
 
