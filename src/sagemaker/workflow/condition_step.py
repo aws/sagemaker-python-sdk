@@ -18,6 +18,12 @@ from typing import List, Union
 import attr
 
 from sagemaker.workflow.conditions import Condition
+from sagemaker.workflow.steps import (
+    Step,
+    StepTypeEnum,
+)
+from sagemaker.workflow.step_collections import StepCollection
+from sagemaker.workflow.utilities import list_to_request
 from sagemaker.workflow.entities import (
     Expression,
     RequestType,
@@ -26,12 +32,6 @@ from sagemaker.workflow.properties import (
     Properties,
     PropertyFile,
 )
-from sagemaker.workflow.steps import (
-    Step,
-    StepTypeEnum,
-)
-from sagemaker.workflow.step_collections import StepCollection
-from sagemaker.workflow.utilities import list_to_request
 
 
 class ConditionStep(Step):
@@ -40,7 +40,7 @@ class ConditionStep(Step):
     def __init__(
         self,
         name: str,
-        depends_on: List[str] = None,
+        depends_on: Union[List[str], List[Step]] = None,
         conditions: List[Condition] = None,
         if_steps: List[Union[Step, StepCollection]] = None,
         else_steps: List[Union[Step, StepCollection]] = None,
@@ -89,7 +89,6 @@ class ConditionStep(Step):
 @attr.s
 class JsonGet(Expression):
     """Get JSON properties from PropertyFiles.
-
     Attributes:
         step (Step): The step from which to get the property file.
         property_file (Union[PropertyFile, str]): Either a PropertyFile instance
