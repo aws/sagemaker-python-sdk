@@ -31,7 +31,7 @@ import six
 import sagemaker.logs
 from sagemaker import vpc_utils
 
-from sagemaker._studio import _append_project_tag
+from sagemaker._studio import _append_project_tags
 from sagemaker.deprecations import deprecated_class
 from sagemaker.inputs import ShuffleConfig, TrainingInput
 from sagemaker.user_agent import prepend_user_agent
