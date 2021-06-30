@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.47.2 (2021-06-30)
+
+### Bug Fixes and Other Changes
+
+ * handle tags when upsert pipeine
+
 ## v2.47.1 (2021-06-27)
 
 ### Bug Fixes and Other Changes
