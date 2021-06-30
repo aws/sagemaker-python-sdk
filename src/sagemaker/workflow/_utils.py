@@ -220,7 +220,7 @@ class _RegisterModelStep(Step):
         response_types,
         inference_instances,
         transform_instances,
-        estimator: EstimatorBase=None,
+        estimator: EstimatorBase = None,
         model_data=None,
         model_package_group_name=None,
         model_metrics=None,
@@ -230,7 +230,7 @@ class _RegisterModelStep(Step):
         compile_model_family=None,
         description=None,
         depends_on: List[str] = None,
-        tags = None,
+        tags=None,
         model_list=None,
         **kwargs,
     ):
@@ -279,6 +279,7 @@ class _RegisterModelStep(Step):
         self.image_uri = image_uri
         self.compile_model_family = compile_model_family
         self.description = description
+        self.tags = tags
         self.model_list = model_list
         self.kwargs = kwargs
         self.container_def_list = None
@@ -293,10 +294,8 @@ class _RegisterModelStep(Step):
         response_types,
         inference_instances,
         transform_instances,
-        model_data=None,
         model_package_name=None,
         model_package_group_name=None,
-        image_uri=None,
         model_metrics=None,
         metadata_properties=None,
         marketplace_cert=False,
@@ -364,7 +363,9 @@ class _RegisterModelStep(Step):
         model_name = self.name
         model_list = self.model_list
         if model_list:
-            self.container_def_list = sagemaker.pipeline_container_def(model_list,self.inference_instances[0])
+            self.container_def_list = sagemaker.pipeline_container_def(
+                model_list, self.inference_instances[0]
+            )
         elif self.estimator:
             if self.compile_model_family:
                 model = self.estimator._compiled_models[self.compile_model_family]
@@ -391,14 +392,16 @@ class _RegisterModelStep(Step):
                 if self.image_uri is None:
                     region_name = self.estimator.sagemaker_session.boto_session.region_name
                     self.image_uri = image_uris.retrieve(
-                            model._framework_name,
-                            region_name,
-                            version=model.framework_version,
-                            py_version=model.py_version if hasattr(model, "py_version") else None,
-                            instance_type=self.kwargs.get("instance_type", self.estimator.instance_type),
-                            accelerator_type=self.kwargs.get("accelerator_type"),
-                            image_scope="inference",
-                            )
+                        model._framework_name,
+                        region_name,
+                        version=model.framework_version,
+                        py_version=model.py_version if hasattr(model, "py_version") else None,
+                        instance_type=self.kwargs.get(
+                            "instance_type", self.estimator.instance_type
+                        ),
+                        accelerator_type=self.kwargs.get("accelerator_type"),
+                        image_scope="inference",
+                    )
                     model.name = model_name
                     model.image_uri = self.image_uri
                     model.model_data = self.model_data
@@ -419,10 +422,7 @@ class _RegisterModelStep(Step):
             container_def_list=self.container_def_list,
         )
 
-        request_dict = sagemaker.get_create_model_package_request(
-            **model_package_args
-        )
-
+        request_dict = get_create_model_package_request(**model_package_args)
         # these are not available in the workflow service and will cause rejection
         if "CertifyForMarketplace" in request_dict:
             request_dict.pop("CertifyForMarketplace")

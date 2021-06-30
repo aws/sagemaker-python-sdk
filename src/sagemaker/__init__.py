@@ -55,7 +55,6 @@ from sagemaker.predictor import Predictor  # noqa: F401
 from sagemaker.processing import Processor, ScriptProcessor  # noqa: F401
 from sagemaker.session import Session  # noqa: F401
 from sagemaker.session import container_def, pipeline_container_def  # noqa: F401
-from sagemaker.session import get_create_model_package_request
 from sagemaker.session import production_variant  # noqa: F401
 from sagemaker.session import get_execution_role  # noqa: F401
 

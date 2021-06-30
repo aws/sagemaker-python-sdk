@@ -4059,77 +4059,77 @@ class Session(object):  # pylint: disable=too-many-public-methods
         )
         return sts_client.get_caller_identity()["Account"]
 
-def get_create_model_package_request(
-        model_package_name=None,
-        model_package_group_name=None,
-        containers=None,
-        content_types=None,
-        response_types=None,
-        inference_instances=None,
-        transform_instances=None,
-        model_metrics=None,
-        metadata_properties=None,
-        marketplace_cert=False,
-        approval_status="PendingManualApproval",
-        description=None,
-    ):
-        """Get request dictionary for CreateModelPackage API.
 
-        Args:
-            model_package_name (str): Model Package name, exclusive to `model_package_group_name`,
-                using `model_package_name` makes the Model Package un-versioned (default: None).
-            model_package_group_name (str): Model Package Group name, exclusive to
-                `model_package_name`, using `model_package_group_name` makes the Model Package
-                versioned (default: None).
-            containers (list): A list of inference containers that can be used for inference
-                specifications of Model Package (default: None).
-            content_types (list): The supported MIME types for the input data (default: None).
-            response_types (list): The supported MIME types for the output data (default: None).
-            inference_instances (list): A list of the instance types that are used to
-                generate inferences in real-time (default: None).
-            transform_instances (list): A list of the instance types on which a transformation
-                job can be run or on which an endpoint can be deployed (default: None).
-            model_metrics (ModelMetrics): ModelMetrics object (default: None).
-            metadata_properties (MetadataProperties): MetadataProperties object (default: None).
-            marketplace_cert (bool): A boolean value indicating if the Model Package is certified
-                for AWS Marketplace (default: False).
-            approval_status (str): Model Approval Status, values can be "Approved", "Rejected",
-                or "PendingManualApproval" (default: "PendingManualApproval").
-            description (str): Model Package description (default: None).
-        """
-        if all([model_package_name, model_package_group_name]):
+def get_create_model_package_request(
+    model_package_name=None,
+    model_package_group_name=None,
+    containers=None,
+    content_types=None,
+    response_types=None,
+    inference_instances=None,
+    transform_instances=None,
+    model_metrics=None,
+    metadata_properties=None,
+    marketplace_cert=False,
+    approval_status="PendingManualApproval",
+    description=None,
+):
+    """Get request dictionary for CreateModelPackage API.
+
+    Args:
+        model_package_name (str): Model Package name, exclusive to `model_package_group_name`,
+        using `model_package_name` makes the Model Package un-versioned (default: None).
+        model_package_group_name (str): Model Package Group name, exclusive to
+        `model_package_name`, using `model_package_group_name` makes the Model Package
+        versioned (default: None).
+        containers (list): A list of inference containers that can be used for inference
+        specifications of Model Package (default: None).
+        content_types (list): The supported MIME types for the input data (default: None).
+        response_types (list): The supported MIME types for the output data (default: None).
+        inference_instances (list): A list of the instance types that are used to
+        generate inferences in real-time (default: None).
+        transform_instances (list): A list of the instance types on which a transformation
+        job can be run or on which an endpoint can be deployed (default: None).
+        model_metrics (ModelMetrics): ModelMetrics object (default: None).
+        metadata_properties (MetadataProperties): MetadataProperties object (default: None).
+        marketplace_cert (bool): A boolean value indicating if the Model Package is certified
+        for AWS Marketplace (default: False).
+        approval_status (str): Model Approval Status, values can be "Approved", "Rejected",
+        or "PendingManualApproval" (default: "PendingManualApproval").
+        description (str): Model Package description (default: None).
+    """
+    if all([model_package_name, model_package_group_name]):
+        raise ValueError(
+            "model_package_name and model_package_group_name cannot be present at the " "same time."
+        )
+    request_dict = {}
+    if model_package_name is not None:
+        request_dict["ModelPackageName"] = model_package_name
+    if model_package_group_name is not None:
+        request_dict["ModelPackageGroupName"] = model_package_group_name
+    if description is not None:
+        request_dict["ModelPackageDescription"] = description
+    if model_metrics:
+        request_dict["ModelMetrics"] = model_metrics
+    if metadata_properties:
+        request_dict["MetadataProperties"] = metadata_properties
+    if containers is not None:
+        if not all([content_types, response_types, inference_instances, transform_instances]):
             raise ValueError(
-                "model_package_name and model_package_group_name cannot be present at the "
-                "same time."
+                "content_types, response_types, inference_inferences and transform_instances "
+                "must be provided if containers is present."
             )
-        request_dict = {}
-        if model_package_name is not None:
-            request_dict["ModelPackageName"] = model_package_name
-        if model_package_group_name is not None:
-            request_dict["ModelPackageGroupName"] = model_package_group_name
-        if description is not None:
-            request_dict["ModelPackageDescription"] = description
-        if model_metrics:
-            request_dict["ModelMetrics"] = model_metrics
-        if metadata_properties:
-            request_dict["MetadataProperties"] = metadata_properties
-        if containers is not None:
-            if not all([content_types, response_types, inference_instances, transform_instances]):
-                raise ValueError(
-                    "content_types, response_types, inference_inferences and transform_instances "
-                    "must be provided if containers is present."
-                )
-            inference_specification = {
-                "Containers": containers,
-                "SupportedContentTypes": content_types,
-                "SupportedResponseMIMETypes": response_types,
-                "SupportedRealtimeInferenceInstanceTypes": inference_instances,
-                "SupportedTransformInstanceTypes": transform_instances,
-            }
-            request_dict["InferenceSpecification"] = inference_specification
-        request_dict["CertifyForMarketplace"] = marketplace_cert
-        request_dict["ModelApprovalStatus"] = approval_status
-        return request_dict
+        inference_specification = {
+            "Containers": containers,
+            "SupportedContentTypes": content_types,
+            "SupportedResponseMIMETypes": response_types,
+            "SupportedRealtimeInferenceInstanceTypes": inference_instances,
+            "SupportedTransformInstanceTypes": transform_instances,
+        }
+        request_dict["InferenceSpecification"] = inference_specification
+    request_dict["CertifyForMarketplace"] = marketplace_cert
+    request_dict["ModelApprovalStatus"] = approval_status
+    return request_dict
 
 
 def update_args(args: Dict[str, Any], **kwargs):
