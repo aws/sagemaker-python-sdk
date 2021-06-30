@@ -67,6 +67,7 @@ from sagemaker.workflow.step_collections import RegisterModel
 from sagemaker.workflow.pipeline import Pipeline
 from sagemaker.feature_store.feature_group import FeatureGroup, FeatureDefinition, FeatureTypeEnum
 from tests.integ import DATA_DIR
+from tests.integ.kms_utils import get_or_create_kms_key
 
 
 def ordered(obj):
@@ -459,20 +460,34 @@ def test_one_step_sklearn_processing_pipeline(
         # sagemaker entities. However, the jobs created in the steps themselves execute
         # under a potentially different role, often requiring access to S3 and other
         # artifacts not required to during creation of the jobs in the pipeline steps.
-        response = pipeline.create(role)
+        response = pipeline.create(
+            role, tags=[{"Key": "foo", "Value": "123"}, {"Key": "bar", "Value": "456"}]
+        )
         create_arn = response["PipelineArn"]
         assert re.match(
             fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
             create_arn,
         )
+        original_tags = sagemaker_session.sagemaker_client.list_tags(ResourceArn=create_arn)
+        for tag in [{"Key": "foo", "Value": "123"}, {"Key": "bar", "Value": "456"}]:
+            assert tag in original_tags["Tags"]
 
         pipeline.parameters = [ParameterInteger(name="InstanceCount", default_value=1)]
-        response = pipeline.update(role)
+        response = pipeline.upsert(
+            role, tags=[{"Key": "foo", "Value": "abc"}, {"Key": "baz", "Value": "789"}]
+        )
         update_arn = response["PipelineArn"]
         assert re.match(
             fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
             update_arn,
         )
+        updated_tags = sagemaker_session.sagemaker_client.list_tags(ResourceArn=create_arn)
+        for tag in [
+            {"Key": "foo", "Value": "abc"},
+            {"Key": "bar", "Value": "456"},
+            {"Key": "baz", "Value": "789"},
+        ]:
+            assert tag in updated_tags["Tags"]
 
         execution = pipeline.start(parameters={})
         assert re.match(
@@ -741,6 +756,47 @@ def test_one_step_callback_pipeline(sagemaker_session, role, pipeline_name, regi
             pass
 
 
+def test_two_step_callback_pipeline_with_output_reference(
+    sagemaker_session, role, pipeline_name, region_name
+):
+    instance_count = ParameterInteger(name="InstanceCount", default_value=2)
+
+    outputParam1 = CallbackOutput(output_name="output1", output_type=CallbackOutputTypeEnum.String)
+    step_callback1 = CallbackStep(
+        name="callback-step1",
+        sqs_queue_url="https://sqs.us-east-2.amazonaws.com/123456789012/MyQueue",
+        inputs={"arg1": "foo"},
+        outputs=[outputParam1],
+    )
+
+    step_callback2 = CallbackStep(
+        name="callback-step2",
+        sqs_queue_url="https://sqs.us-east-2.amazonaws.com/123456789012/MyQueue",
+        inputs={"arg1": outputParam1},
+        outputs=[],
+    )
+
+    pipeline = Pipeline(
+        name=pipeline_name,
+        parameters=[instance_count],
+        steps=[step_callback1, step_callback2],
+        sagemaker_session=sagemaker_session,
+    )
+
+    try:
+        response = pipeline.create(role)
+        create_arn = response["PipelineArn"]
+        assert re.match(
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            create_arn,
+        )
+    finally:
+        try:
+            pipeline.delete()
+        except Exception:
+            pass
+
+
 def test_conditional_pytorch_training_model_registration(
     sagemaker_session,
     role,
@@ -924,6 +980,7 @@ def test_model_registration_with_model_repack(
     pipeline_name,
     region_name,
 ):
+    kms_key = get_or_create_kms_key(sagemaker_session, role)
     base_dir = os.path.join(DATA_DIR, "pytorch_mnist")
     entry_point = os.path.join(base_dir, "mnist.py")
     input_path = sagemaker_session.upload_data(
@@ -944,6 +1001,7 @@ def test_model_registration_with_model_repack(
         instance_count=instance_count,
         instance_type=instance_type,
         sagemaker_session=sagemaker_session,
+        output_kms_key=kms_key,
     )
     step_train = TrainingStep(
         name="pytorch-train",
@@ -955,12 +1013,13 @@ def test_model_registration_with_model_repack(
         name="pytorch-register-model",
         estimator=pytorch_estimator,
         model_data=step_train.properties.ModelArtifacts.S3ModelArtifacts,
-        content_types=["*"],
-        response_types=["*"],
-        inference_instances=["*"],
-        transform_instances=["*"],
+        content_types=["text/csv"],
+        response_types=["text/csv"],
+        inference_instances=["ml.t2.medium", "ml.m5.large"],
+        transform_instances=["ml.m5.large"],
         description="test-description",
         entry_point=entry_point,
+        model_kms_key=kms_key,
     )
 
     model = Model(
