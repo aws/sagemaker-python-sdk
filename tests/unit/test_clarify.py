@@ -142,22 +142,24 @@ def test_invalid_data_bias_config():
         BiasConfig(
             label_values_or_threshold=label_values,
             facet_list=[
-                {"random_field": "random_string", "name_or_index": facet_name, "value_or_threshold": facet_threshold}
+                {
+                    "random_field": "random_string",
+                    "name_or_index": facet_name,
+                    "value_or_threshold": facet_threshold,
+                }
             ],
             group_name=group_name,
         )
-    assert (
-        "Please only include 'name_or_index' or 'value_or_threshold' in dictionary keys." in str(error.value)
+    assert "Please only include 'name_or_index' or 'value_or_threshold' in dictionary keys." in str(
+        error.value
     )
     with pytest.raises(ValueError) as error:
         BiasConfig(
             label_values_or_threshold=label_values,
             facet_list=[{"value_or_threshold": facet_threshold}],
-            group_name=group_name
+            group_name=group_name,
         )
-    assert (
-        "Please include valid format of 'name_or_index' in dictionary" in str(error.value)
-    )
+    assert "Please include valid format of 'name_or_index' in dictionary" in str(error.value)
     with pytest.raises(ValueError) as error:
         BiasConfig(
             label_values_or_threshold=label_values,
