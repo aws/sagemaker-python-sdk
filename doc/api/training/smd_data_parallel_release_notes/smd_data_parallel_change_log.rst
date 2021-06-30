@@ -9,12 +9,10 @@ Sagemaker Distributed Data Parallel 1.2.1 Release Notes
 
 **Improvements**
 
--  Improved performance on a single node.
--  Improved performance on small clusters (2-4 nodes).
+-  Improved performance on a single node and small clusters (2-4 nodes).
 
 **Bug fixes**
 
--  Device selection for SageMaker.
 -  Enable ``sparse_as_dense`` by default for SageMaker distributed data
    parallel library for TensorFlow APIs: ``DistributedGradientTape`` and
    ``DistributedOptimizer``.
