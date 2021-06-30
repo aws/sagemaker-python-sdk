@@ -406,7 +406,7 @@ class _RegisterModelStep(Step):
                     model.image_uri = self.image_uri
                     model.model_data = self.model_data
 
-            self.container_def_list = [model.prepare_container_def()]
+            self.container_def_list = [sagemaker.container_def(self.image_uri, self.model_data)]
 
         model_package_args = self._get_model_package_args(
             content_types=self.content_types,

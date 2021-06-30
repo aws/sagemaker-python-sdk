@@ -194,7 +194,11 @@ def test_register_model(estimator, model_metrics):
                 "Arguments": {
                     "InferenceSpecification": {
                         "Containers": [
-                            {"Image": "fakeimage", "ModelDataUrl": f"s3://{BUCKET}/model.tar.gz"}
+                            {
+                                "Image": "fakeimage",
+                                "ModelDataUrl": f"s3://{BUCKET}/model.tar.gz",
+                                "Environment": [],
+                            }
                         ],
                         "SupportedContentTypes": ["content_type"],
                         "SupportedRealtimeInferenceInstanceTypes": ["inference_instance"],
@@ -245,6 +249,7 @@ def test_register_model_tf(estimator_tf, model_metrics):
                             {
                                 "Image": "763104351884.dkr.ecr.us-west-2.amazonaws.com/tensorflow-inference:1.15.2-cpu",
                                 "ModelDataUrl": f"s3://{BUCKET}/model.tar.gz",
+                                "Environment": [],
                             }
                         ],
                         "SupportedContentTypes": ["content_type"],

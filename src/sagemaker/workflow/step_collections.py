@@ -133,7 +133,7 @@ class RegisterModel(StepCollection):
 
         if models is not None:
             for model in models:
-                if model.entry_point is not None:
+                if hasattr(model, "entry_point"):
                     repack_model = True
                     entry_point = model.entry_point
                     source_dir = model.source_dir
