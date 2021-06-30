@@ -95,11 +95,12 @@ class BiasConfig:
             label_values_or_threshold (Any): List of label values or threshold to indicate positive
                 outcome used for bias metrics.
             facet_name (str): Sensitive attribute in the input data for which we like to compare
-                metrics. Will be ignored if pass 'facet_list'.
+                metrics. Will be ignored if 'facet_list' is given.
             facet_values_or_threshold (list): Optional list of values to form a sensitive group or
                 threshold for a numeric facet column that defines the lower bound of a sensitive
                 group. Defaults to considering each possible value as sensitive group and
-                computing metrics vs all the other examples.
+                computing metrics vs all the other examples. Will be ignored if 'facet_list' is
+                given.
             facet_list (list[dict]): Optional list of dictionaries that defines the sensitive
                 attribute(s). Each dictionary contains two keys in the form of the following:
                 'name_or_index' (int or str) for facet column name or index,
