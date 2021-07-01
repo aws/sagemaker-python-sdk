@@ -33,8 +33,6 @@ Conditions
 
 .. autoclass:: sagemaker.workflow.conditions.ConditionOr
 
-.. autofunction:: sagemaker.workflow.conditions.primitive_or_expr
-
 Entities
 --------
 
@@ -44,7 +42,7 @@ Entities
 
 .. autoclass:: sagemaker.workflow.entities.Expression
 
-Execution_variables
+Execution Variables
 -------------------
 
 .. autoclass:: sagemaker.workflow.execution_variables.ExecutionVariable
@@ -73,12 +71,17 @@ Pipeline
 --------
 
 .. autoclass:: sagemaker.workflow.pipeline.Pipeline
+    :members:
 
-.. autofunction:: sagemaker.workflow.pipeline.format_start_parameters
+.. autoclass:: sagemaker.workflow.pipeline._PipelineExecution
+    :members:
 
-.. autofunction:: sagemaker.workflow.pipeline.interpolate
+Pipeline Experiment Config
+--------------------------
 
-.. autofunction:: sagemaker.workflow.pipeline.update_args
+.. autoclass:: sagemaker.workflow.pipeline_experiment_config.PipelineExperimentConfig
+
+.. autoclass:: sagemaker.workflow.pipeline_experiment_config.PipelineExperimentConfigProperty
 
 Properties
 ----------
@@ -117,7 +120,4 @@ Steps
 
 .. autoclass:: sagemaker.workflow.steps.TuningStep
 
-Utilities
----------
-
-.. autofunction:: sagemaker.workflow.utilities.list_to_request
+.. autoclass:: sagemaker.workflow.steps.CacheConfig
