@@ -380,7 +380,7 @@ def _huggingface_base_fm_version(huggingface_version, base_fw):
     versions = list()
     for key in list(version_config.keys()):
         if key.startswith(base_fw):
-            base_fw_version = key[len(base_fw):]
+            base_fw_version = key[len(base_fw) :]
             if len(original_version.split(".")) == 2:
                 base_fw_version = ".".join(base_fw_version.split(".")[:-1])
             versions.append(base_fw_version)
