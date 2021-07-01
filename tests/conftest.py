@@ -368,19 +368,19 @@ def _generate_all_framework_version_fixtures(metafunc):
                 )
 
 
-def _huggingface_base_fm_version(huggingface_vesion, base_fw):
+def _huggingface_base_fm_version(huggingface_version, base_fw):
     config = image_uris.config_for_framework("huggingface")
     training_config = config.get("training")
-    original_version = huggingface_vesion
+    original_version = huggingface_version
     if "version_aliases" in training_config:
-        huggingface_vesion = training_config.get("version_aliases").get(
-            huggingface_vesion, huggingface_vesion
+        huggingface_version = training_config.get("version_aliases").get(
+            huggingface_version, huggingface_version
         )
-    version_config = training_config.get("versions").get(huggingface_vesion)
+    version_config = training_config.get("versions").get(huggingface_version)
     versions = list()
     for key in list(version_config.keys()):
         if key.startswith(base_fw):
-            base_fw_version = key[len(base_fw) :]
+            base_fw_version = key[len(base_fw):]
             if len(original_version.split(".")) == 2:
                 base_fw_version = ".".join(base_fw_version.split(".")[:-1])
             versions.append(base_fw_version)
@@ -406,7 +406,7 @@ def _parametrize_framework_version_fixtures(metafunc, fixture_prefix, config):
     if fixture_name in metafunc.fixturenames:
         metafunc.parametrize(fixture_name, (latest_version,), scope="session")
 
-    if "huggingface" in fixture_prefix:
+    if "huggingface_training" in fixture_prefix:
         _generate_huggingface_base_fw_latest_versions(metafunc, latest_version, "pytorch")
         _generate_huggingface_base_fw_latest_versions(metafunc, latest_version, "tensorflow")
 
