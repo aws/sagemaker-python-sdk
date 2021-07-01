@@ -1,5 +1,12 @@
 # Changelog
 
+## v2.47.2.post0 (2021-07-01)
+
+### Documentation Changes
+
+ * smddp 1.2.1 release note / convert md to rst
+ * add smd model parallel 1.4.0 release note / restructure doc files
+
 ## v2.47.2 (2021-06-30)
 
 ### Bug Fixes and Other Changes
