@@ -122,7 +122,6 @@ def test_huggingface_inference(sagemaker_session, gpu_instance_type):
     model = HuggingFaceModel(
         sagemaker_session=sagemaker_session,
         role="SageMakerRole",
-        image_uri="214660476583.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-inference:gpu",
         env=env,
     )
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
