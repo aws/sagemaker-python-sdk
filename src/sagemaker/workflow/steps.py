@@ -465,7 +465,7 @@ class TuningStep(Step):
         inputs=None,
         job_arguments: List[str] = None,
         cache_config: CacheConfig = None,
-        depends_on: List[str] = None,
+        depends_on: Union[List[str], List[Step]] = None,
     ):
         """Construct a TuningStep, given a `HyperparameterTuner` instance.
 
@@ -505,8 +505,8 @@ class TuningStep(Step):
             job_arguments (List[str]): A list of strings to be passed into the processing job.
                 Defaults to `None`.
             cache_config (CacheConfig):  A `sagemaker.workflow.steps.CacheConfig` instance.
-            depends_on (List[str]): A list of step names this `sagemaker.workflow.steps.ProcessingStep`
-                depends on
+            depends_on (List[str] or List[Step]): A list of step names or step instance
+                this `sagemaker.workflow.steps.ProcessingStep` depends on
         """
         super(TuningStep, self).__init__(name, StepTypeEnum.TUNING, depends_on)
         self.tuner = tuner
