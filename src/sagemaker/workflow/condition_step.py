@@ -89,6 +89,7 @@ class ConditionStep(Step):
 @attr.s
 class JsonGet(Expression):
     """Get JSON properties from PropertyFiles.
+
     Attributes:
         step (Step): The step from which to get the property file.
         property_file (Union[PropertyFile, str]): Either a PropertyFile instance
