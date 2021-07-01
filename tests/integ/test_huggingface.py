@@ -108,10 +108,7 @@ def test_huggingface_training_tf(
         hf.fit(train_input)
 
 
-@pytest.mark.release
-@pytest.mark.skipif(
-    integ.test_region() in integ.TRAINING_NO_P2_REGIONS, reason="no ml.p2 instances in this region"
-)
+@pytest.mark.skip
 def test_huggingface_inference(sagemaker_session, gpu_instance_type):
     env = {
         "HF_MODEL_ID": "sshleifer/tiny-distilbert-base-uncased-finetuned-sst-2-english",
