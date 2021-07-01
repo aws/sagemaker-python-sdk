@@ -47,3 +47,33 @@ def test_properties_describe_model_package_output():
     assert prop.ValidationSpecification.ValidationRole.expr == {
         "Get": "Steps.MyStep.ValidationSpecification.ValidationRole"
     }
+
+def test_properties_tuning_job():
+    prop = Properties(
+        "Steps.MyStep",
+        shape_names=[
+            "DescribeHyperParameterTuningJobResponse",
+            "ListTrainingJobsForHyperParameterTuningJobResponse",
+        ],
+    )
+    some_prop_names = [
+        "BestTrainingJob",
+        "HyperParameterTuningJobConfig",
+        "ObjectiveStatusCounters",
+        "TrainingJobSummaries",
+    ]
+    for name in some_prop_names:
+        assert name in prop.__dict__.keys()
+
+    assert prop.HyperParameterTuningJobName.expr == {
+        "Get": "Steps.MyStep.HyperParameterTuningJobName"
+    }
+    assert prop.HyperParameterTuningJobConfig.HyperParameterTuningJobObjective.Type.expr == {
+        "Get": "Steps.MyStep.HyperParameterTuningJobConfig.HyperParameterTuningJobObjective.Type"
+    }
+    assert prop.ObjectiveStatusCounters.Succeeded.expr == {
+        "Get": "Steps.MyStep.ObjectiveStatusCounters.Succeeded"
+    }
+    assert prop.TrainingJobSummaries[0].TrainingJobName.expr == {
+        "Get": "Steps.MyStep.TrainingJobSummaries[0].TrainingJobName"
+    }
