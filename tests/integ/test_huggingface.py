@@ -17,9 +17,11 @@ import os
 import pytest
 
 from sagemaker.huggingface import HuggingFace
+from sagemaker.huggingface.model import HuggingFaceModel, HuggingFacePredictor
+from sagemaker.utils import unique_name_from_base
 from tests import integ
 from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
-from tests.integ.timeout import timeout
+from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 
 @pytest.mark.release
@@ -104,3 +106,31 @@ def test_huggingface_training_tf(
         )
 
         hf.fit(train_input)
+
+
+@pytest.mark.skip
+def test_huggingface_inference(sagemaker_session, gpu_instance_type):
+    env = {
+        "HF_MODEL_ID": "sshleifer/tiny-distilbert-base-uncased-finetuned-sst-2-english",
+        "HF_TASK": "text-classification",
+    }
+    endpoint_name = unique_name_from_base("test-hf-inference")
+
+    model = HuggingFaceModel(
+        sagemaker_session=sagemaker_session,
+        role="SageMakerRole",
+        image_uri="214660476583.dkr.ecr.us-west-2.amazonaws.com/huggingface-pytorch-inference:gpu",
+        env=env,
+    )
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
+        model.deploy(
+            instance_type=gpu_instance_type, initial_instance_count=1, endpoint_name=endpoint_name
+        )
+
+        predictor = HuggingFacePredictor(endpoint_name=endpoint_name)
+        data = {
+            "inputs": "Camera - You are awarded a SiPix Digital Camera!"
+            "call 09061221066 fromm landline. Delivery within 28 days."
+        }
+        output = predictor.predict(data)
+        assert "score" in output[0]
