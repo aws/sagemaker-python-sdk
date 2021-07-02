@@ -112,7 +112,12 @@ def test_huggingface_training_tf(
 @pytest.mark.skipif(
     integ.test_region() in integ.TRAINING_NO_P2_REGIONS, reason="no ml.p2 instances in this region"
 )
-def test_huggingface_inference(sagemaker_session, gpu_instance_type):
+def test_huggingface_inference(
+    sagemaker_session,
+    gpu_instance_type,
+    huggingface_inference_latest_version,
+    huggingface_pytorch_latest_version,
+):
     env = {
         "HF_MODEL_ID": "sshleifer/tiny-distilbert-base-uncased-finetuned-sst-2-english",
         "HF_TASK": "text-classification",
@@ -124,6 +129,10 @@ def test_huggingface_inference(sagemaker_session, gpu_instance_type):
         role="SageMakerRole",
         env=env,
         py_version="py36",
+        transformers_version=huggingface_inference_latest_version,
+        pytorch_version=huggingface_pytorch_latest_version,
+        instance_count=1,
+        instance_type=gpu_instance_type,
     )
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         model.deploy(
