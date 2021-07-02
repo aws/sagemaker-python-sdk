@@ -123,6 +123,7 @@ def test_huggingface_inference(sagemaker_session, gpu_instance_type):
         sagemaker_session=sagemaker_session,
         role="SageMakerRole",
         env=env,
+        py_version="py36",
     )
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         model.deploy(
