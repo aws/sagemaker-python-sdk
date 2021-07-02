@@ -131,8 +131,6 @@ def test_huggingface_inference(
         py_version="py36",
         transformers_version=huggingface_inference_latest_version,
         pytorch_version=huggingface_pytorch_latest_version,
-        instance_count=1,
-        instance_type=gpu_instance_type,
     )
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         model.deploy(
