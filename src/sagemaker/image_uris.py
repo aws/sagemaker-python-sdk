@@ -97,6 +97,7 @@ def retrieve(
             re.compile("^(pytorch|tensorflow)(.*)$").match(base_framework_version).group(2)
         )
         tag_prefix = f"{pt_or_tf_version}-transformers{original_version}"
+        container_version = "cu110-ubuntu18.04" if processor == "gpu" else None
     else:
         tag_prefix = version_config.get("tag_prefix", version)
 
@@ -109,8 +110,6 @@ def retrieve(
 
     if _should_auto_select_container_version(instance_type, distribution):
         container_versions = {
-            "tensorflow-2.4-gpu-py37": "cu110-ubuntu18.04-v1",
-            "tensorflow-2.4.1-gpu-py37": "cu110-ubuntu18.04-v1.1",
             "tensorflow-2.3-gpu-py37": "cu110-ubuntu18.04-v3",
             "tensorflow-2.3.1-gpu-py37": "cu110-ubuntu18.04",
             "tensorflow-2.3.2-gpu-py37": "cu110-ubuntu18.04",
@@ -123,8 +122,6 @@ def retrieve(
             "pytorch-1.6.0-gpu-py36": "cu110-ubuntu18.04",
             "pytorch-1.6-gpu-py3": "cu110-ubuntu18.04-v3",
             "pytorch-1.6.0-gpu-py3": "cu110-ubuntu18.04",
-            "pytorch-1.7-gpu-py36": "cu110-ubuntu18.04-v1",
-            "pytorch-1.7.1-gpu-py36": "cu110-ubuntu18.04-v1.0",
         }
         key = "-".join([framework, tag])
         if key in container_versions:
