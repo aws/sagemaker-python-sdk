@@ -306,4 +306,5 @@ class HuggingFaceModel(FrameworkModel):
             accelerator_type=accelerator_type,
             image_scope="inference",
             base_framework_version=base_framework_version,
+            container_version="cu110-ubuntu18.04",
         )
