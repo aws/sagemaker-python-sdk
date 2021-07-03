@@ -71,7 +71,24 @@ def retrieve(
     original_version = version
     version = _validate_version_and_set_if_needed(version, config, framework)
     version_config = config["versions"][_version_for_config(version, config)]
-    print("framework", framework, "| region", region, "| version",version, "| py_version",py_version, "| instance_type",instance_type, "| image_scope", image_scope, "| container_version", container_version, "| distribution", distribution)
+    print(
+        "framework",
+        framework,
+        "| region",
+        region,
+        "| version",
+        version,
+        "| py_version",
+        py_version,
+        "| instance_type",
+        instance_type,
+        "| image_scope",
+        image_scope,
+        "| container_version",
+        container_version,
+        "| distribution",
+        distribution,
+    )
     if framework == HUGGING_FACE_FRAMEWORK:
         if version_config.get("version_aliases"):
             full_base_framework_version = version_config["version_aliases"].get(
