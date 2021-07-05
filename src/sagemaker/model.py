@@ -81,7 +81,7 @@ def get_model_package_args(
         container_def_list (list): A list of container defintiions.
     Returns:
         dict: A dictionary of method argument names and values.
-    """ 
+    """
     if container_def_list is not None:
         containers = container_def_list
     else:
