@@ -81,16 +81,14 @@ def get_model_package_args(
         container_def_list (list): A list of container defintiions.
     Returns:
         dict: A dictionary of method argument names and values.
-    """
-    if image_uri:
+    """ 
+    if container_def_list is not None:
+        containers = container_def_list
+    else:
         container = {
             "Image": image_uri,
             "ModelDataUrl": model_data,
         }
-
-    if container_def_list is not None:
-        containers = container_def_list
-    else:
         containers = [container]
 
     model_package_args = {
