@@ -904,6 +904,7 @@ def test_conditional_pytorch_training_model_registration(
         except Exception:
             pass
 
+
 def test_tuning(
     sagemaker_session,
     role,
@@ -1027,7 +1028,7 @@ def test_mxnet_model_registration(
 
     instance_count = ParameterInteger(name="InstanceCount", default_value=1)
     instance_type = ParameterString(name="InstanceType", default_value="ml.m5.xlarge")
-    
+
     model = MXNetModel(
         entry_point=entry_point,
         source_dir=base_dir,
