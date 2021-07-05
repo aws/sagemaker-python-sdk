@@ -245,7 +245,7 @@ class Model(object):
             model_package_name,
             model_package_group_name,
             self.model_data,
-            image_uri,
+            image_uri or self.image_uri,
             model_metrics,
             metadata_properties,
             marketplace_cert,
