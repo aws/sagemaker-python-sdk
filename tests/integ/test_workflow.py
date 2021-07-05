@@ -41,6 +41,10 @@ from sagemaker.pytorch.estimator import PyTorch
 from sagemaker.s3 import S3Uploader
 from sagemaker.session import get_execution_role
 from sagemaker.sklearn.estimator import SKLearn
+from sagemaker.sklearn import SKLearnModel
+from sagemaker.mxnet.model import MXNetModel
+from sagemaker.xgboost import XGBoostModel
+from sagemaker.xgboost import XGBoost
 from sagemaker.sklearn.processing import SKLearnProcessor
 from sagemaker.spark.processing import PySparkProcessor, SparkJarProcessor
 from sagemaker.workflow.conditions import ConditionGreaterThanOrEqualTo, ConditionIn
@@ -874,6 +878,262 @@ def test_conditional_pytorch_training_model_registration(
         )
 
         execution = pipeline.start(parameters={"GoodEnoughInput": 0})
+        assert re.match(
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
+            execution.arn,
+        )
+    finally:
+        try:
+            pipeline.delete()
+        except Exception:
+            pass
+
+
+def test_mxnet_model_registration(
+    sagemaker_session,
+    role,
+    cpu_instance_type,
+    pipeline_name,
+    region_name,
+):
+    base_dir = os.path.join(DATA_DIR, "mxnet_mnist/code")
+    entry_point = os.path.join(base_dir, "inference.py")
+    mx_mnist_model_data = base_dir + "/model.tar.gz"
+
+    instance_count = ParameterInteger(name="InstanceCount", default_value=1)
+    instance_type = ParameterString(name="InstanceType", default_value="ml.m5.xlarge")
+
+    model = MXNetModel(
+        entry_point=entry_point,
+        source_dir=base_dir,
+        role=role,
+        model_data=mx_mnist_model_data,
+        framework_version="1.7.0",
+        py_version="py3",
+        sagemaker_session=sagemaker_session,
+    )
+
+    step_register = RegisterModel(
+        name="mxnet-register-model",
+        models=[model],
+        content_types=["*"],
+        response_types=["*"],
+        inference_instances=["ml.m5.xlarge"],
+        transform_instances=["*"],
+        description="test-description",
+    )
+
+    pipeline = Pipeline(
+        name=pipeline_name,
+        parameters=[instance_count, instance_type],
+        steps=[step_register],
+        sagemaker_session=sagemaker_session,
+    )
+
+    try:
+        response = pipeline.create(role)
+        create_arn = response["PipelineArn"]
+        assert re.match(
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}", create_arn
+        )
+
+        execution = pipeline.start(parameters={})
+        assert re.match(
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
+            execution.arn,
+        )
+
+        execution = pipeline.start()
+        assert re.match(
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
+            execution.arn,
+        )
+    finally:
+        try:
+            pipeline.delete()
+        except Exception:
+            pass
+
+
+def test_sklearn_xgboost_sip_model_registration(
+    sagemaker_session,
+    role,
+    cpu_instance_type,
+    pipeline_name,
+    region_name,
+):
+    prefix = "sip"
+    bucket_name = sagemaker_session.default_bucket()
+    instance_count = ParameterInteger(name="InstanceCount", default_value=1)
+    instance_type = ParameterString(name="InstanceType", default_value="ml.m5.xlarge")
+
+    sklearn_processor = SKLearnProcessor(
+        role=role,
+        instance_type=instance_type,
+        instance_count=instance_count,
+        framework_version="0.20.0",
+    )
+
+    # The path to the raw data.
+    raw_data_path = "s3://{0}/{1}/data/raw/".format(bucket_name, prefix)
+    raw_data_path_param = ParameterString(name="raw_data_path", default_value=raw_data_path)
+
+    # The output path to the training data.
+    train_data_path = "s3://{0}/{1}/data/preprocessed/train/".format(bucket_name, prefix)
+    train_data_path_param = ParameterString(name="train_data_path", default_value=train_data_path)
+
+    # The output path to the validation data.
+    val_data_path = "s3://{0}/{1}/data/preprocessed/val/".format(bucket_name, prefix)
+    val_data_path_param = ParameterString(name="val_data_path", default_value=val_data_path)
+
+    # The training output path for the model.
+    output_path = "s3://{0}/{1}/output/".format(bucket_name, prefix)
+    output_path_param = ParameterString(name="output_path", default_value=output_path)
+
+    # The output path to the featurizer model.
+    model_path = "s3://{0}/{1}/output/sklearn/".format(bucket_name, prefix)
+    model_path_param = ParameterString(name="model_path", default_value=model_path)
+
+    inputs = [
+        ProcessingInput(
+            input_name="raw_data",
+            source=raw_data_path_param,
+            destination="/opt/ml/processing/input",
+        )
+    ]
+
+    outputs = [
+        ProcessingOutput(
+            output_name="train_data",
+            source="/opt/ml/processing/train",
+            destination=train_data_path_param,
+        ),
+        ProcessingOutput(
+            output_name="val_data", source="/opt/ml/processing/val", destination=val_data_path_param
+        ),
+        ProcessingOutput(
+            output_name="model", source="/opt/ml/processing/model", destination=model_path_param
+        ),
+    ]
+
+    base_dir = os.path.join(DATA_DIR, "sip")
+    code_path = base_dir + "/preprocessor.py"
+
+    processing_step = ProcessingStep(
+        name="Processing",
+        code=code_path,
+        processor=sklearn_processor,
+        inputs=inputs,
+        outputs=outputs,
+        job_arguments=["--train-test-split-ratio", "0.2"],
+    )
+
+    entry_point = "training.py"
+    source_dir = base_dir
+    code_location = "s3://{0}/{1}/code".format(bucket_name, prefix)
+
+    estimator = XGBoost(
+        entry_point=entry_point,
+        source_dir=source_dir,
+        output_path=output_path_param,
+        code_location=code_location,
+        instance_type=instance_type,
+        instance_count=instance_count,
+        framework_version="0.90-2",
+        py_version="py3",
+        role=role,
+    )
+
+    training_step = TrainingStep(
+        name="Training",
+        estimator=estimator,
+        inputs={
+            "train": TrainingInput(
+                s3_data=processing_step.properties.ProcessingOutputConfig.Outputs[
+                    "train_data"
+                ].S3Output.S3Uri,
+                content_type="text/csv",
+            ),
+            "validation": TrainingInput(
+                s3_data=processing_step.properties.ProcessingOutputConfig.Outputs[
+                    "val_data"
+                ].S3Output.S3Uri,
+                content_type="text/csv",
+            ),
+        },
+    )
+
+    code_location = "s3://{0}/{1}/code".format(bucket_name, prefix)
+    source_dir = base_dir + "/sklearn_source_dir/"
+
+    sklearn_model = SKLearnModel(
+        name="sklearn-model",
+        model_data=processing_step.properties.ProcessingOutputConfig.Outputs[
+            "model"
+        ].S3Output.S3Uri,
+        entry_point="inference.py",
+        source_dir=source_dir,
+        code_location=code_location,
+        role=role,
+        sagemaker_session=sagemaker_session,
+        framework_version="0.20.0",
+        py_version="py3",
+    )
+
+    code_location = "s3://{0}/{1}/code".format(bucket_name, prefix)
+    source_dir = base_dir + "/xgboost_source_dir/"
+
+    xgboost_model = XGBoostModel(
+        name="xgboost-model",
+        model_data=training_step.properties.ModelArtifacts.S3ModelArtifacts,
+        entry_point="inference.py",
+        source_dir=source_dir,
+        code_location=code_location,
+        framework_version="0.90-2",
+        py_version="py3",
+        role=role,
+        sagemaker_session=sagemaker_session,
+    )
+
+    step_register = RegisterModel(
+        name="AbaloneRegisterModel",
+        models=[xgboost_model, sklearn_model],
+        content_types=["application/json"],
+        response_types=["application/json"],
+        inference_instances=["ml.t2.medium", "ml.m5.xlarge"],
+        transform_instances=["ml.m5.xlarge"],
+        model_package_group_name="windturbine",
+    )
+
+    pipeline = Pipeline(
+        name=pipeline_name,
+        parameters=[
+            raw_data_path_param,
+            train_data_path_param,
+            val_data_path_param,
+            model_path_param,
+            instance_type,
+            instance_count,
+            output_path_param,
+        ],
+        steps=[processing_step, training_step, step_register],
+        sagemaker_session=sagemaker_session,
+    )
+
+    try:
+        response = pipeline.create(role)
+        create_arn = response["PipelineArn"]
+        assert re.match(
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}", create_arn
+        )
+
+        execution = pipeline.start(parameters={})
+        assert re.match(
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
+            execution.arn,
+        )
+
+        execution = pipeline.start()
         assert re.match(
             fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
             execution.arn,

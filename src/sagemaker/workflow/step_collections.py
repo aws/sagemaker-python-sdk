@@ -115,7 +115,8 @@ class RegisterModel(StepCollection):
             repack_model_step = _RepackModelStep(
                 name=f"{name}RepackModel",
                 depends_on=depends_on,
-                estimator=estimator,
+                sagemaker_session=estimator.sagemaker_session,
+                role=estimator.role,
                 model_data=model_data,
                 entry_point=entry_point,
                 source_dir=source_dir,
@@ -133,15 +134,23 @@ class RegisterModel(StepCollection):
 
         if models is not None:
             for model in models:
+                if estimator is not None:
+                    sagemaker_session = estimator.sagemaker_session
+                    role = estimator.role
+                else:
+                    sagemaker_session = model.sagemaker_session
+                    role = model.role
                 if hasattr(model, "entry_point"):
                     repack_model = True
                     entry_point = model.entry_point
                     source_dir = model.source_dir
                     dependencies = model.dependencies
+                    name = model.name or model._framework_name
                     repack_model_step = _RepackModelStep(
-                        name=f"{model.name}RepackModel",
+                        name=f"{name}RepackModel",
                         depends_on=depends_on,
-                        estimator=estimator,
+                        sagemaker_session=sagemaker_session,
+                        role=role,
                         model_data=model.model_data,
                         entry_point=entry_point,
                         source_dir=source_dir,
@@ -249,7 +258,8 @@ class EstimatorTransformer(StepCollection):
             repack_model_step = _RepackModelStep(
                 name=f"{name}RepackModel",
                 depends_on=depends_on,
-                estimator=estimator,
+                sagemaker_session=estimator.sagemaker_session,
+                role=estimator.sagemaker_session,
                 model_data=model_data,
                 entry_point=entry_point,
                 source_dir=source_dir,

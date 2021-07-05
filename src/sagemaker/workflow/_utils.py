@@ -32,6 +32,7 @@ from sagemaker.sklearn.estimator import SKLearn
 from sagemaker.workflow.entities import RequestType
 from sagemaker.workflow.properties import Properties
 from sagemaker.session import get_create_model_package_request
+from sagemaker.model import get_model_package_args
 from sagemaker.workflow.steps import (
     StepTypeEnum,
     TrainingStep,
@@ -56,7 +57,8 @@ class _RepackModelStep(TrainingStep):
     def __init__(
         self,
         name: str,
-        estimator: EstimatorBase,
+        sagemaker_session,
+        role,
         model_data: str,
         entry_point: str,
         source_dir: str = None,
@@ -75,8 +77,9 @@ class _RepackModelStep(TrainingStep):
             inputs (TrainingInput): A `sagemaker.inputs.TrainingInput` instance. Defaults to `None`.
         """
         # yeah, go ahead and save the originals for now
-        self._estimator = estimator
         self._model_data = model_data
+        self.sagemaker_session = sagemaker_session
+        self.role = role
         if isinstance(model_data, Properties):
             self._model_prefix = model_data
             self._model_archive = "model.tar.gz"
@@ -95,8 +98,8 @@ class _RepackModelStep(TrainingStep):
             entry_point=REPACK_SCRIPT,
             source_dir=self._source_dir,
             dependencies=self._dependencies,
-            sagemaker_session=self._estimator.sagemaker_session,
-            role=self._estimator.role,
+            sagemaker_session=self.sagemaker_session,
+            role=self.role,
             hyperparameters={
                 "inference_script": self._entry_point_basename,
                 "model_archive": self._model_archive,
@@ -152,7 +155,7 @@ class _RepackModelStep(TrainingStep):
                 S3Downloader.download(
                     s3_uri=self._source_dir,
                     local_path=local_path,
-                    sagemaker_session=self._estimator.sagemaker_session,
+                    sagemaker_session=self.sagemaker_session,
                 )
 
                 src_dir = os.path.join(tmp, "src")
@@ -166,7 +169,7 @@ class _RepackModelStep(TrainingStep):
                 S3Uploader.upload(
                     local_path=local_path,
                     desired_s3_uri=self._source_dir,
-                    sagemaker_session=self._estimator.sagemaker_session,
+                    sagemaker_session=self.sagemaker_session,
                 )
         else:
             shutil.copy2(fname, os.path.join(self._source_dir, REPACK_SCRIPT))
@@ -288,75 +291,6 @@ class _RegisterModelStep(Step):
             path=f"Steps.{name}", shape_name="DescribeModelPackageResponse"
         )
 
-    def _get_model_package_args(
-        self,
-        content_types,
-        response_types,
-        inference_instances,
-        transform_instances,
-        model_package_name=None,
-        model_package_group_name=None,
-        model_metrics=None,
-        metadata_properties=None,
-        marketplace_cert=False,
-        approval_status=None,
-        description=None,
-        tags=None,
-        container_def_list=None,
-    ):
-        """Get arguments for session.create_model_package method.
-
-        Args:
-            content_types (list): The supported MIME types for the input data.
-            response_types (list): The supported MIME types for the output data.
-            inference_instances (list): A list of the instance types that are used to
-                generate inferences in real-time.
-            transform_instances (list): A list of the instance types on which a transformation
-                job can be run or on which an endpoint can be deployed.
-            model_package_name (str): Model Package name, exclusive to `model_package_group_name`,
-                using `model_package_name` makes the Model Package un-versioned (default: None).
-            model_package_group_name (str): Model Package Group name, exclusive to
-                `model_package_name`, using `model_package_group_name` makes the Model Package
-                versioned (default: None).
-            image_uri (str): Inference image uri for the container. Model class' self.image will
-                be used if it is None (default: None).
-            model_metrics (ModelMetrics): ModelMetrics object (default: None).
-            metadata_properties (MetadataProperties): MetadataProperties object (default: None).
-            marketplace_cert (bool): A boolean value indicating if the Model Package is certified
-                for AWS Marketplace (default: False).
-            approval_status (str): Model Approval Status, values can be "Approved", "Rejected",
-                or "PendingManualApproval" (default: "PendingManualApproval").
-            description (str): Model Package description (default: None).
-            container_def_list (list): A list of container defintiions.
-        Returns:
-            dict: A dictionary of method argument names and values.
-        """
-
-        model_package_args = {
-            "containers": container_def_list,
-            "content_types": content_types,
-            "response_types": response_types,
-            "inference_instances": inference_instances,
-            "transform_instances": transform_instances,
-            "marketplace_cert": marketplace_cert,
-        }
-
-        if model_package_name is not None:
-            model_package_args["model_package_name"] = model_package_name
-        if model_package_group_name is not None:
-            model_package_args["model_package_group_name"] = model_package_group_name
-        if model_metrics is not None:
-            model_package_args["model_metrics"] = model_metrics._to_request_dict()
-        if metadata_properties is not None:
-            model_package_args["metadata_properties"] = metadata_properties._to_request_dict()
-        if approval_status is not None:
-            model_package_args["approval_status"] = approval_status
-        if description is not None:
-            model_package_args["description"] = description
-        if tags is not None:
-            model_package_args["tags"] = tags
-        return model_package_args
-
     @property
     def arguments(self) -> RequestType:
         """The arguments dict that are used to call `create_model_package`."""
@@ -366,6 +300,7 @@ class _RegisterModelStep(Step):
             self.container_def_list = sagemaker.pipeline_container_def(
                 model_list, self.inference_instances[0]
             )
+
         elif self.estimator:
             if self.compile_model_family:
                 model = self.estimator._compiled_models[self.compile_model_family]
@@ -408,7 +343,7 @@ class _RegisterModelStep(Step):
 
             self.container_def_list = [sagemaker.container_def(self.image_uri, self.model_data)]
 
-        model_package_args = self._get_model_package_args(
+        model_package_args = get_model_package_args(
             content_types=self.content_types,
             response_types=self.response_types,
             inference_instances=self.inference_instances,
