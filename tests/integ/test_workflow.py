@@ -1022,16 +1022,17 @@ def test_mxnet_model_registration(
     pipeline_name,
     region_name,
 ):
-    base_dir = os.path.join(DATA_DIR, "mxnet_mnist/code")
-    entry_point = os.path.join(base_dir, "inference.py")
-    mx_mnist_model_data = os.path.join(base_dir, "/model.tar.gz")
+    base_dir = os.path.join(DATA_DIR, "mxnet_mnist")
+    source_dir = os.path.join(base_dir, "code")
+    entry_point = os.path.join(source_dir, "inference.py")
+    mx_mnist_model_data = os.path.join(base_dir, "model.tar.gz")
 
     instance_count = ParameterInteger(name="InstanceCount", default_value=1)
     instance_type = ParameterString(name="InstanceType", default_value="ml.m5.xlarge")
 
     model = MXNetModel(
         entry_point=entry_point,
-        source_dir=base_dir,
+        source_dir=source_dir,
         role=role,
         model_data=mx_mnist_model_data,
         framework_version="1.7.0",
@@ -1098,6 +1099,7 @@ def test_sklearn_xgboost_sip_model_registration(
         instance_type=instance_type,
         instance_count=instance_count,
         framework_version="0.20.0",
+        sagemaker_session=sagemaker_session
     )
 
     # The path to the raw data.
