@@ -13,6 +13,7 @@
 from __future__ import absolute_import
 
 import os
+import pdb
 
 import pytest
 
@@ -35,6 +36,7 @@ def test_huggingface_training(
     huggingface_training_latest_version,
     huggingface_training_pytorch_latest_version,
 ):
+    print(sagemaker_session._region_name)
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         data_path = os.path.join(DATA_DIR, "huggingface")
 
@@ -78,6 +80,7 @@ def test_huggingface_training_tf(
     huggingface_training_latest_version,
     huggingface_training_tensorflow_latest_version,
 ):
+    print(sagemaker_session._region_name)
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         data_path = os.path.join(DATA_DIR, "huggingface")
 
@@ -123,7 +126,7 @@ def test_huggingface_inference(
         "HF_TASK": "text-classification",
     }
     endpoint_name = unique_name_from_base("test-hf-inference")
-
+    print( sagemaker_session._region_name)
     model = HuggingFaceModel(
         sagemaker_session=sagemaker_session,
         role="SageMakerRole",
