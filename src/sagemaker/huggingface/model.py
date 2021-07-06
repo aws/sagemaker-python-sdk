@@ -294,7 +294,7 @@ class HuggingFaceModel(FrameworkModel):
         if instance_type == "gpu":
             container_version = "cu110-ubuntu18.04"
         else:
-            container_version = None
+            container_version = "ubuntu18.04"
         if self.tensorflow_version is not None:  # pylint: disable=no-member
             base_framework_version = (
                 f"tensorflow{self.tensorflow_version}"  # pylint: disable=no-member
