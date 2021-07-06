@@ -33,7 +33,7 @@ def test_huggingface_training(
     sagemaker_session,
     gpu_instance_type,
     huggingface_training_latest_version,
-    huggingface_pytorch_latest_version,
+    huggingface_training_pytorch_latest_version,
 ):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         data_path = os.path.join(DATA_DIR, "huggingface")
@@ -43,7 +43,7 @@ def test_huggingface_training(
             entry_point=os.path.join(data_path, "run_glue.py"),
             role="SageMakerRole",
             transformers_version=huggingface_training_latest_version,
-            pytorch_version=huggingface_pytorch_latest_version,
+            pytorch_version=huggingface_training_pytorch_latest_version,
             instance_count=1,
             instance_type=gpu_instance_type,
             hyperparameters={
@@ -76,7 +76,7 @@ def test_huggingface_training_tf(
     sagemaker_session,
     gpu_instance_type,
     huggingface_training_latest_version,
-    huggingface_tensorflow_latest_version,
+    huggingface_training_tensorflow_latest_version,
 ):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         data_path = os.path.join(DATA_DIR, "huggingface")
@@ -86,7 +86,7 @@ def test_huggingface_training_tf(
             entry_point=os.path.join(data_path, "run_tf.py"),
             role="SageMakerRole",
             transformers_version=huggingface_training_latest_version,
-            tensorflow_version=huggingface_tensorflow_latest_version,
+            tensorflow_version=huggingface_training_tensorflow_latest_version,
             instance_count=1,
             instance_type=gpu_instance_type,
             hyperparameters={
@@ -116,7 +116,7 @@ def test_huggingface_inference(
     sagemaker_session,
     gpu_instance_type,
     huggingface_inference_latest_version,
-    huggingface_pytorch_latest_version,
+    huggingface_inference_pytorch_latest_version,
 ):
     env = {
         "HF_MODEL_ID": "sshleifer/tiny-distilbert-base-uncased-finetuned-sst-2-english",
@@ -130,7 +130,7 @@ def test_huggingface_inference(
         env=env,
         py_version="py36",
         transformers_version=huggingface_inference_latest_version,
-        pytorch_version=huggingface_pytorch_latest_version,
+        pytorch_version=huggingface_inference_pytorch_latest_version,
     )
     with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
         model.deploy(
