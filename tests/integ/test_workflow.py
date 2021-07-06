@@ -1099,7 +1099,7 @@ def test_sklearn_xgboost_sip_model_registration(
         instance_type=instance_type,
         instance_count=instance_count,
         framework_version="0.20.0",
-        sagemaker_session=sagemaker_session
+        sagemaker_session=sagemaker_session,
     )
 
     # The path to the raw data.
