@@ -291,6 +291,10 @@ class HuggingFaceModel(FrameworkModel):
             str: The appropriate image URI based on the given parameters.
 
         """
+        if instance_type == "gpu":
+            container_version = "cu110-ubuntu18.04"
+        else:
+            container_version = None
         if self.tensorflow_version is not None:  # pylint: disable=no-member
             base_framework_version = (
                 f"tensorflow{self.tensorflow_version}"  # pylint: disable=no-member
@@ -306,5 +310,5 @@ class HuggingFaceModel(FrameworkModel):
             accelerator_type=accelerator_type,
             image_scope="inference",
             base_framework_version=base_framework_version,
-            container_version="cu110-ubuntu18.04",
+            container_version=container_version,
         )
