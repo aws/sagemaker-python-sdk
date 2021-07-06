@@ -250,7 +250,7 @@ class HuggingFace(Framework):
             entry_point (str): Path (absolute or relative) to the local Python source file which
                 should be executed as the entry point to training. If ``source_dir`` is specified,
                 then ``entry_point`` must point to a file located at the root of ``source_dir``.
-                If not specified, the training entry point is used.
+                Defaults to `None`.
             source_dir (str): Path (absolute or relative) to a directory with any other serving
                 source code dependencies aside from the entry point file.
                 If not specified, the model source directory from training is used.
@@ -272,7 +272,7 @@ class HuggingFace(Framework):
         return HuggingFaceModel(
             role or self.role,
             model_data=self.model_data,
-            entry_point=entry_point or None,
+            entry_point=entry_point,
             transformers_version=self.framework_version,
             tensorflow_version=self.tensorflow_version,
             pytorch_version=self.pytorch_version,
