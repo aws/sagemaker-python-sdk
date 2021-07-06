@@ -33,8 +33,7 @@ from sagemaker.clarify import (
 from sagemaker.processing import ProcessingInput, ProcessingOutput
 from sagemaker.session import get_execution_role
 from sagemaker.workflow.conditions import ConditionLessThanOrEqualTo
-from sagemaker.workflow.condition_step import ConditionStep
-from sagemaker.workflow.functions import JsonGet
+from sagemaker.workflow.condition_step import ConditionStep, JsonGet
 from sagemaker.workflow.parameters import (
     ParameterInteger,
     ParameterString,
@@ -238,7 +237,7 @@ def test_workflow_with_clarify(
         )
 
         cond_left = JsonGet(
-            processing_step_name=step_process.name,
+            step=step_process,
             property_file="BiasOutput",
             json_path="post_training_bias_metrics.facets.F1[0].metrics[0].value",
         )

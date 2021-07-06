@@ -13,7 +13,7 @@
 """The step definitions for workflow."""
 from __future__ import absolute_import
 
-from typing import List, Union
+from typing import List
 
 import attr
 
@@ -60,7 +60,7 @@ class RegisterModel(StepCollection):
         response_types,
         inference_instances,
         transform_instances,
-        depends_on: Union[List[str], List[Step]] = None,
+        depends_on: List[str] = None,
         model_package_group_name=None,
         model_metrics=None,
         approval_status=None,
@@ -82,8 +82,8 @@ class RegisterModel(StepCollection):
                 generate inferences in real-time (default: None).
             transform_instances (list): A list of the instance types on which a transformation
                 job can be run or on which an endpoint can be deployed (default: None).
-            depends_on (List[str] or List[Step]): The list of step names or step instances
-                the first step in the collection depends on
+            depends_on (List[str]): The list of step names the first step in the collection
+                depends on
             model_package_group_name (str): The Model Package Group name, exclusive to
                 `model_package_name`, using `model_package_group_name` makes the Model Package
                 versioned (default: None).
@@ -179,7 +179,7 @@ class EstimatorTransformer(StepCollection):
         max_payload=None,
         tags=None,
         volume_kms_key=None,
-        depends_on: Union[List[str], List[Step]] = None,
+        depends_on: List[str] = None,
         **kwargs,
     ):
         """Construct steps required for a Transformer step collection:
@@ -216,8 +216,8 @@ class EstimatorTransformer(StepCollection):
                 it will be the format of the batch transform output.
             env (dict): The Environment variables to be set for use during the
                 transform job (default: None).
-            depends_on (List[str] or List[Step]): The list of step names or step instances
-                the first step in the collection depends on
+            depends_on (List[str]): The list of step names the first step in
+                the collection depends on
         """
         steps = []
         if "entry_point" in kwargs:
