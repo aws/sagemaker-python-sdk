@@ -1168,6 +1168,7 @@ def test_sklearn_xgboost_sip_model_registration(
         instance_type=instance_type,
         instance_count=instance_count,
         framework_version="0.90-2",
+        sagemaker_session=sagemaker_session,
         py_version="py3",
         role=role,
     )
