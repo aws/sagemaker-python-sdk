@@ -18,7 +18,7 @@ import shutil
 import tarfile
 import tempfile
 
-from typing import List
+from typing import List, Union
 
 from sagemaker import image_uris
 from sagemaker.inputs import TrainingInput
@@ -59,7 +59,7 @@ class _RepackModelStep(TrainingStep):
         entry_point: str,
         source_dir: str = None,
         dependencies: List = None,
-        depends_on: List[str] = None,
+        depends_on: Union[List[str], List[Step]] = None,
         **kwargs,
     ):
         """Constructs a TrainingStep, given an `EstimatorBase` instance.
@@ -226,7 +226,7 @@ class _RegisterModelStep(Step):
         image_uri=None,
         compile_model_family=None,
         description=None,
-        depends_on: List[str] = None,
+        depends_on: Union[List[str], List[Step]] = None,
         tags=None,
         **kwargs,
     ):
@@ -255,8 +255,8 @@ class _RegisterModelStep(Step):
             compile_model_family (str): Instance family for compiled model, if specified, a compiled
                 model will be used (default: None).
             description (str): Model Package description (default: None).
-            depends_on (List[str]): A list of step names this `sagemaker.workflow.steps.TrainingStep`
-                depends on
+            depends_on (List[str] or List[Step]): A list of step names or instances
+                this step depends on
             **kwargs: additional arguments to `create_model`.
         """
         super(_RegisterModelStep, self).__init__(name, StepTypeEnum.REGISTER_MODEL, depends_on)
