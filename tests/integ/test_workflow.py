@@ -1024,7 +1024,7 @@ def test_mxnet_model_registration(
 ):
     base_dir = os.path.join(DATA_DIR, "mxnet_mnist/code")
     entry_point = os.path.join(base_dir, "inference.py")
-    mx_mnist_model_data = base_dir + "/model.tar.gz"
+    mx_mnist_model_data = os.path.join(base_dir, "/model.tar.gz")
 
     instance_count = ParameterInteger(name="InstanceCount", default_value=1)
     instance_type = ParameterString(name="InstanceType", default_value="ml.m5.xlarge")
@@ -1143,7 +1143,7 @@ def test_sklearn_xgboost_sip_model_registration(
     ]
 
     base_dir = os.path.join(DATA_DIR, "sip")
-    code_path = base_dir + "/preprocessor.py"
+    code_path = os.path.join(base_dir, "preprocessor.py")
 
     processing_step = ProcessingStep(
         name="Processing",
@@ -1190,7 +1190,7 @@ def test_sklearn_xgboost_sip_model_registration(
     )
 
     code_location = "s3://{0}/{1}/code".format(bucket_name, prefix)
-    source_dir = base_dir + "/sklearn_source_dir/"
+    source_dir = os.path.join(base_dir, "sklearn_source_dir")
 
     sklearn_model = SKLearnModel(
         name="sklearn-model",
@@ -1207,7 +1207,7 @@ def test_sklearn_xgboost_sip_model_registration(
     )
 
     code_location = "s3://{0}/{1}/code".format(bucket_name, prefix)
-    source_dir = base_dir + "/xgboost_source_dir/"
+    source_dir = os.path.join(base_dir, "xgboost_source_dir")
 
     xgboost_model = XGBoostModel(
         name="xgboost-model",
