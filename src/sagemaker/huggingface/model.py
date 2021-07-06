@@ -291,7 +291,7 @@ class HuggingFaceModel(FrameworkModel):
             str: The appropriate image URI based on the given parameters.
 
         """
-        if instance_type == "gpu":
+        if image_uris._processor(instance_type, ["cpu", "gpu"]) == "gpu":
             container_version = "cu110-ubuntu18.04"
         else:
             container_version = "ubuntu18.04"
