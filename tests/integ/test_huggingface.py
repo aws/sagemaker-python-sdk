@@ -126,7 +126,7 @@ def test_huggingface_inference(
         "HF_TASK": "text-classification",
     }
     endpoint_name = unique_name_from_base("test-hf-inference")
-    print( sagemaker_session._region_name)
+    print(sagemaker_session._region_name)
     model = HuggingFaceModel(
         sagemaker_session=sagemaker_session,
         role="SageMakerRole",
