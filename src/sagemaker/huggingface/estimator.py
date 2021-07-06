@@ -272,7 +272,7 @@ class HuggingFace(Framework):
         return HuggingFaceModel(
             role or self.role,
             model_data=self.model_data,
-            entry_point=entry_point or self._model_entry_point(),
+            entry_point=entry_point or None,
             transformers_version=self.framework_version,
             tensorflow_version=self.tensorflow_version,
             pytorch_version=self.pytorch_version,
