@@ -15,7 +15,6 @@ import logging
 
 import json
 import os
-import pdb
 
 import pytest
 from mock import MagicMock, Mock, patch
@@ -267,11 +266,12 @@ def test_huggingface(
     assert actual_train_args == expected_train_args
 
 
-def test_attach(sagemaker_session, huggingface_training_version, huggingface_training_pytorch_latest_version):
-    print(huggingface_training_version)
+def test_attach(
+    sagemaker_session, huggingface_training_version, huggingface_pytorch_training_version
+):
     training_image = (
         f"1.dkr.ecr.us-east-1.amazonaws.com/huggingface-pytorch-training:"
-        f"{huggingface_training_pytorch_latest_version}-"
+        f"{huggingface_pytorch_training_version}-"
         f"transformers{huggingface_training_version}-gpu-py36-cu110-ubuntu18.04"
     )
     returned_job_description = {
@@ -306,7 +306,7 @@ def test_attach(sagemaker_session, huggingface_training_version, huggingface_tra
     assert estimator.latest_training_job.job_name == "neo"
     assert estimator.py_version == "py36"
     assert estimator.framework_version == huggingface_training_version
-    assert estimator.pytorch_version == huggingface_training_pytorch_latest_version
+    assert estimator.pytorch_version == huggingface_pytorch_training_version
     assert estimator.role == "arn:aws:iam::366:role/SageMakerRole"
     assert estimator.instance_count == 1
     assert estimator.max_run == 24 * 60 * 60
