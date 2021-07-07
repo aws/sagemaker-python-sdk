@@ -23,6 +23,7 @@ from sagemaker.fw_utils import (
     warn_if_parameter_server_with_multi_gpu,
     validate_smdistributed,
 )
+from sagemaker.huggingface.model import HuggingFaceModel
 from sagemaker.vpc_utils import VPC_CONFIG_DEFAULT
 
 logger = logging.getLogger("sagemaker")
@@ -233,8 +234,58 @@ class HuggingFace(Framework):
         dependencies=None,
         **kwargs
     ):
-        """Placeholder docstring"""
-        raise NotImplementedError("Creating model with HuggingFace training job is not supported.")
+        """Create a SageMaker ``HuggingFaceModel`` object that can be deployed to an ``Endpoint``.
+
+        Args:
+            model_server_workers (int): Optional. The number of worker processes
+                used by the inference server. If None, server will use one
+                worker per vCPU.
+            role (str): The ``ExecutionRoleArn`` IAM Role ARN for the ``Model``,
+                which is also used during transform jobs. If not specified, the
+                role from the Estimator will be used.
+            vpc_config_override (dict[str, list[str]]): Optional override for VpcConfig set on
+                the model. Default: use subnets and security groups from this Estimator.
+                * 'Subnets' (list[str]): List of subnet ids.
+                * 'SecurityGroupIds' (list[str]): List of security group ids.
+            entry_point (str): Path (absolute or relative) to the local Python source file which
+                should be executed as the entry point to training. If ``source_dir`` is specified,
+                then ``entry_point`` must point to a file located at the root of ``source_dir``.
+                Defaults to `None`.
+            source_dir (str): Path (absolute or relative) to a directory with any other serving
+                source code dependencies aside from the entry point file.
+                If not specified, the model source directory from training is used.
+            dependencies (list[str]): A list of paths to directories (absolute or relative) with
+                any additional libraries that will be exported to the container.
+                If not specified, the dependencies from training are used.
+                This is not supported with "local code" in Local Mode.
+            **kwargs: Additional kwargs passed to the :class:`~sagemaker.huggingface.model.HuggingFaceModel`
+                constructor.
+        Returns:
+            sagemaker.huggingface.model.HuggingFaceModel: A SageMaker ``HuggingFaceModel``
+            object. See :func:`~sagemaker.huggingface.model.HuggingFaceModel` for full details.
+        """
+        if "image_uri" not in kwargs:
+            kwargs["image_uri"] = self.image_uri
+
+        kwargs["name"] = self._get_or_create_name(kwargs.get("name"))
+
+        return HuggingFaceModel(
+            role or self.role,
+            model_data=self.model_data,
+            entry_point=entry_point,
+            transformers_version=self.framework_version,
+            tensorflow_version=self.tensorflow_version,
+            pytorch_version=self.pytorch_version,
+            py_version=self.py_version,
+            source_dir=(source_dir or self._model_source_dir()),
+            container_log_level=self.container_log_level,
+            code_location=self.code_location,
+            model_server_workers=model_server_workers,
+            sagemaker_session=self.sagemaker_session,
+            vpc_config=self.get_vpc_config(vpc_config_override),
+            dependencies=(dependencies or self.dependencies),
+            **kwargs
+        )
 
     @classmethod
     def _prepare_init_params_from_job_description(cls, job_details, model_channel_name=None):
