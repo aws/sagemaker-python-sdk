@@ -1,5 +1,15 @@
 # Changelog
 
+## v2.48.0 (2021-07-07)
+
+### Features
+
+ * HuggingFace Inference
+
+### Bug Fixes and Other Changes
+
+ * add support for SageMaker workflow tuning step
+
 ## v2.47.2.post0 (2021-07-01)
 
 ### Documentation Changes
