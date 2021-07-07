@@ -35,7 +35,6 @@ def test_huggingface_training(
     huggingface_training_latest_version,
     huggingface_training_pytorch_latest_version,
 ):
-    print(sagemaker_session._region_name)
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         data_path = os.path.join(DATA_DIR, "huggingface")
 
@@ -79,7 +78,6 @@ def test_huggingface_training_tf(
     huggingface_training_latest_version,
     huggingface_training_tensorflow_latest_version,
 ):
-    print(sagemaker_session._region_name)
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         data_path = os.path.join(DATA_DIR, "huggingface")
 
