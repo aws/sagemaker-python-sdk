@@ -460,35 +460,14 @@ def test_one_step_sklearn_processing_pipeline(
         # sagemaker entities. However, the jobs created in the steps themselves execute
         # under a potentially different role, often requiring access to S3 and other
         # artifacts not required to during creation of the jobs in the pipeline steps.
-        response = pipeline.create(
-            role, tags=[{"Key": "foo", "Value": "123"}, {"Key": "bar", "Value": "456"}]
-        )
+        response = pipeline.create(role)
         create_arn = response["PipelineArn"]
         assert re.match(
             fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
             create_arn,
         )
-        original_tags = sagemaker_session.sagemaker_client.list_tags(ResourceArn=create_arn)
-        for tag in [{"Key": "foo", "Value": "123"}, {"Key": "bar", "Value": "456"}]:
-            assert tag in original_tags["Tags"]
 
         pipeline.parameters = [ParameterInteger(name="InstanceCount", default_value=1)]
-        response = pipeline.upsert(
-            role, tags=[{"Key": "foo", "Value": "abc"}, {"Key": "baz", "Value": "789"}]
-        )
-        update_arn = response["PipelineArn"]
-        assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
-            update_arn,
-        )
-        updated_tags = sagemaker_session.sagemaker_client.list_tags(ResourceArn=create_arn)
-        for tag in [
-            {"Key": "foo", "Value": "abc"},
-            {"Key": "bar", "Value": "456"},
-            {"Key": "baz", "Value": "789"},
-        ]:
-            assert tag in updated_tags["Tags"]
-
         execution = pipeline.start(parameters={})
         assert re.match(
             fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
