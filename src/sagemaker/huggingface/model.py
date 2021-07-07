@@ -85,7 +85,8 @@ def _validate_pt_tf_versions(pytorch_version, tensorflow_version, image_uri):
 
 
 class HuggingFaceModel(FrameworkModel):
-    """A Hugging Face SageMaker ``Model`` that can be deployed to an Amazon SageMaker ``Endpoint``."""
+    """A Hugging Face SageMaker ``Model`` that can be deployed
+    to an Amazon SageMaker ``Endpoint``."""
 
     _framework_name = "huggingface"
 
@@ -197,14 +198,16 @@ class HuggingFaceModel(FrameworkModel):
             transform_instances (list): A list of the instance types on which a transformation
                 job can be run or on which an endpoint can be deployed.
             model_package_name (str): Model Package name, exclusive to `model_package_group_name`,
-                using `model_package_name` makes the Model Package un-versioned. Defaults to ``None``.
+                using `model_package_name` makes the Model Package un-versioned.
+                Defaults to ``None``.
             model_package_group_name (str): Model Package Group name, exclusive to
                 `model_package_name`, using `model_package_group_name` makes the Model Package
                 versioned. Defaults to ``None``.
             image_uri (str): Inference image URI for the container. Model class' self.image will
                 be used if it is None. Defaults to ``None``.
             model_metrics (ModelMetrics): ModelMetrics object. Defaults to ``None``.
-            metadata_properties (MetadataProperties): MetadataProperties object. Defaults to ``None``.
+            metadata_properties (MetadataProperties): MetadataProperties object.
+                Defaults to ``None``.
             marketplace_cert (bool): A boolean value indicating if the Model Package is certified
                 for AWS Marketplace. Defaults to ``False``.
             approval_status (str): Model Approval Status, values can be "Approved", "Rejected",
