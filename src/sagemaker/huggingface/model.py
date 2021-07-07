@@ -30,10 +30,10 @@ logger = logging.getLogger("sagemaker")
 
 
 class HuggingFacePredictor(Predictor):
-    """A Predictor for inference against HuggingFace Endpoints.
+    """A Predictor for inference against Hugging Face Endpoints.
 
     This is able to serialize Python lists, dictionaries, and numpy arrays to
-    multidimensional tensors for HuggingFace inference.
+    multidimensional tensors for Hugging Face inference.
     """
 
     def __init__(
@@ -48,7 +48,7 @@ class HuggingFacePredictor(Predictor):
         Args:
             endpoint_name (str): The name of the endpoint to perform inference
                 on.
-            sagemaker_session (sagemaker.session.Session): Session object which
+            sagemaker_session (sagemaker.session.Session): Session object that
                 manages interactions with Amazon SageMaker APIs and any other
                 AWS services needed. If not specified, the estimator creates one
                 using the default AWS configuration chain.
@@ -85,7 +85,7 @@ def _validate_pt_tf_versions(pytorch_version, tensorflow_version, image_uri):
 
 
 class HuggingFaceModel(FrameworkModel):
-    """An HuggingFace SageMaker ``Model`` that can be deployed to a SageMaker ``Endpoint``."""
+    """A Hugging Face SageMaker ``Model`` that can be deployed to an Amazon SageMaker ``Endpoint``."""
 
     _framework_name = "huggingface"
 
@@ -106,19 +106,19 @@ class HuggingFaceModel(FrameworkModel):
         """Initialize a HuggingFaceModel.
 
         Args:
-            model_data (str): The S3 location of a SageMaker model data
+            model_data (str): The Amazon S3 location of a SageMaker model data
                 ``.tar.gz`` file.
-            role (str): An AWS IAM role (either name or full ARN). The Amazon
+            role (str): An AWS IAM role specified with either the name or full ARN. The Amazon
                 SageMaker training jobs and APIs that create Amazon SageMaker
                 endpoints use this role to access training data and model
                 artifacts. After the endpoint is created, the inference code
                 might use the IAM role, if it needs to access an AWS resource.
-            entry_point (str): Path (absolute or relative) to the Python source
-                file which should be executed as the entry point to model
+            entry_point (str): The absolute or relative path to the Python source
+                file that should be executed as the entry point to model
                 hosting. If ``source_dir`` is specified, then ``entry_point``
                 must point to a file located at the root of ``source_dir``.
                 Defaults to None.
-            transformers_version (str): transformers version you want to use for
+            transformers_version (str): Transformers version you want to use for
                 executing your model training code. Defaults to None. Required
                 unless ``image_uri`` is provided.
             tensorflow_version (str): TensorFlow version you want to use for
@@ -132,7 +132,7 @@ class HuggingFaceModel(FrameworkModel):
             py_version (str): Python version you want to use for executing your
                 model training code. Defaults to ``None``. Required unless
                 ``image_uri`` is provided.
-            image_uri (str): A Docker image URI (default: None). If not specified, a
+            image_uri (str): A Docker image URI. Defaults to None. If not specified, a
                 default image for PyTorch will be used. If ``framework_version``
                 or ``py_version`` are ``None``, then ``image_uri`` is required. If
                 also ``None``, then a ``ValueError`` will be raised.
@@ -197,19 +197,19 @@ class HuggingFaceModel(FrameworkModel):
             transform_instances (list): A list of the instance types on which a transformation
                 job can be run or on which an endpoint can be deployed.
             model_package_name (str): Model Package name, exclusive to `model_package_group_name`,
-                using `model_package_name` makes the Model Package un-versioned (default: None).
+                using `model_package_name` makes the Model Package un-versioned. Defaults to ``None``.
             model_package_group_name (str): Model Package Group name, exclusive to
                 `model_package_name`, using `model_package_group_name` makes the Model Package
-                versioned (default: None).
-            image_uri (str): Inference image uri for the container. Model class' self.image will
-                be used if it is None (default: None).
-            model_metrics (ModelMetrics): ModelMetrics object (default: None).
-            metadata_properties (MetadataProperties): MetadataProperties object (default: None).
+                versioned. Defaults to ``None``.
+            image_uri (str): Inference image URI for the container. Model class' self.image will
+                be used if it is None. Defaults to ``None``.
+            model_metrics (ModelMetrics): ModelMetrics object. Defaults to ``None``.
+            metadata_properties (MetadataProperties): MetadataProperties object. Defaults to ``None``.
             marketplace_cert (bool): A boolean value indicating if the Model Package is certified
-                for AWS Marketplace (default: False).
+                for AWS Marketplace. Defaults to ``False``.
             approval_status (str): Model Approval Status, values can be "Approved", "Rejected",
-                or "PendingManualApproval" (default: "PendingManualApproval").
-            description (str): Model Package description (default: None).
+                or "PendingManualApproval". Defaults to ``PendingManualApproval``.
+            description (str): Model Package description. Defaults to ``None``.
 
         Returns:
             A `sagemaker.model.ModelPackage` instance.
