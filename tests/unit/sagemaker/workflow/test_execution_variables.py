@@ -18,6 +18,4 @@ from sagemaker.workflow.execution_variables import ExecutionVariables
 
 def test_execution_variable():
     var = ExecutionVariables.START_DATETIME
-    assert var.to_request() == {"Get": "Execution.StartDateTime"}
     assert var.expr == {"Get": "Execution.StartDateTime"}
-    assert isinstance(var, str)

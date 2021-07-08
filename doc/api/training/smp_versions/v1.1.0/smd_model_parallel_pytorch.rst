@@ -265,7 +265,9 @@ This API document assumes you use the following import statements in your traini
       Returns the ``state_dict`` that contains optimizer state for the entire model.
       It first collects the ``local_state_dict`` and gathers and merges
       the ``local_state_dict`` from all ``mp_rank``s to create a full
-      ``state_dict``.
+      ``state_dict``. Please note that this needs to be called on all ranks with
+      ``dp_rank()==0`` to ensure the gather happens properly.
+      If it is only called on all such ranks, it can hang.
 
    .. function::  load_state_dict( )
       :noindex:

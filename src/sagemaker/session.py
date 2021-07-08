@@ -456,6 +456,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         enable_sagemaker_metrics=None,
         profiler_rule_configs=None,
         profiler_config=None,
+        environment=None,
+        retry_strategy=None,
     ):
         """Create an Amazon SageMaker training job.
 
@@ -465,6 +467,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 a directory in the Docker container.
                 * 'Pipe' - Amazon SageMaker streams data directly from S3 to the container via a
                 Unix-named pipe.
+                * 'FastFile' - Amazon SageMaker streams data from S3 on demand instead of
+                downloading the entire dataset before training begins.
             input_config (list): A list of Channel objects. Each channel is a named input source.
                 Please refer to the format details described:
                 https://botocore.readthedocs.io/en/latest/reference/services/sagemaker.html#SageMaker.Client.create_training_job
@@ -522,9 +526,15 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 Series. For more information see:
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_AlgorithmSpecification.html#SageMaker-Type-AlgorithmSpecification-EnableSageMakerMetricsTimeSeries
                 (default: ``None``).
-            profiler_rule_configs (list[dict]): A list of profiler rule configurations.
+            profiler_rule_configs (list[dict]): A list of profiler rule
+                configurations.src/sagemaker/lineage/artifact.py:285
             profiler_config (dict): Configuration for how profiling information is emitted
                 with SageMaker Profiler. (default: ``None``).
+            environment (dict[str, str]) : Environment variables to be set for
+                use during training job (default: ``None``)
+            retry_strategy(dict): Defines RetryStrategy for InternalServerFailures.
+                * max_retry_attsmpts (int): Number of times a job should be retried.
+                The key in RetryStrategy is 'MaxRetryAttempts'.
 
         Returns:
             str: ARN of the training job, if it is created.
@@ -556,6 +566,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             enable_sagemaker_metrics=enable_sagemaker_metrics,
             profiler_rule_configs=profiler_rule_configs,
             profiler_config=profiler_config,
+            environment=environment,
+            retry_strategy=retry_strategy,
         )
         LOGGER.info("Creating training-job with name: %s", job_name)
         LOGGER.debug("train request: %s", json.dumps(train_request, indent=4))
@@ -588,6 +600,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         enable_sagemaker_metrics=None,
         profiler_rule_configs=None,
         profiler_config=None,
+        environment=None,
+        retry_strategy=None,
     ):
         """Constructs a request compatible for creating an Amazon SageMaker training job.
 
@@ -597,6 +611,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 a directory in the Docker container.
                 * 'Pipe' - Amazon SageMaker streams data directly from S3 to the container via a
                 Unix-named pipe.
+                * 'FastFile' - Amazon SageMaker streams data from S3 on demand instead of
+                downloading the entire dataset before training begins.
             input_config (list): A list of Channel objects. Each channel is a named input source.
                 Please refer to the format details described:
                 https://botocore.readthedocs.io/en/latest/reference/services/sagemaker.html#SageMaker.Client.create_training_job
@@ -657,6 +673,11 @@ class Session(object):  # pylint: disable=too-many-public-methods
             profiler_rule_configs (list[dict]): A list of profiler rule configurations.
             profiler_config(dict): Configuration for how profiling information is emitted with
                 SageMaker Profiler. (default: ``None``).
+            environment (dict[str, str]) : Environment variables to be set for
+                use during training job (default: ``None``)
+            retry_strategy(dict): Defines RetryStrategy for InternalServerFailures.
+                * max_retry_attsmpts (int): Number of times a job should be retried.
+                The key in RetryStrategy is 'MaxRetryAttempts'.
 
         Returns:
             Dict: a training request dict
@@ -699,6 +720,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if hyperparameters and len(hyperparameters) > 0:
             train_request["HyperParameters"] = hyperparameters
 
+        if environment is not None:
+            train_request["Environment"] = environment
+
         if tags is not None:
             train_request["Tags"] = tags
 
@@ -737,6 +761,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         if profiler_config is not None:
             train_request["ProfilerConfig"] = profiler_config
+
+        if retry_strategy is not None:
+            train_request["RetryStrategy"] = retry_strategy
 
         return train_request
 
@@ -1874,6 +1901,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 a directory in the Docker container.
                 * 'Pipe' - Amazon SageMaker streams data directly from S3 to the container via a
                 Unix-named pipe.
+                * 'FastFile' - Amazon SageMaker streams data from S3 on demand instead of
+                downloading the entire dataset before training begins.
             metric_definitions (list[dict]): A list of dictionaries that defines the metric(s)
                 used to evaluate the training jobs. Each dictionary contains two keys: 'Name' for
                 the name of the metric, and 'Regex' for the regular expression used to extract the
@@ -2004,6 +2033,45 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 "Only one of training_config and training_config_list should be provided."
             )
 
+        tune_request = self._get_tuning_request(
+            job_name=job_name,
+            tuning_config=tuning_config,
+            training_config=training_config,
+            training_config_list=training_config_list,
+            warm_start_config=warm_start_config,
+            tags=tags,
+        )
+
+        LOGGER.info("Creating hyperparameter tuning job with name: %s", job_name)
+        LOGGER.debug("tune request: %s", json.dumps(tune_request, indent=4))
+        self.sagemaker_client.create_hyper_parameter_tuning_job(**tune_request)
+
+    def _get_tuning_request(
+        self,
+        job_name,
+        tuning_config,
+        training_config=None,
+        training_config_list=None,
+        warm_start_config=None,
+        tags=None,
+    ):
+        """Construct CreateHyperParameterTuningJob request
+
+        Args:
+            job_name (str): Name of the tuning job being created.
+            tuning_config (dict): Configuration to launch the tuning job.
+            training_config (dict): Configuration to launch training jobs under the tuning job
+                using a single algorithm.
+            training_config_list (list[dict]): A list of configurations to launch training jobs
+                under the tuning job using one or multiple algorithms. Either training_config
+                or training_config_list should be provided, but not both.
+            warm_start_config (dict): Configuration defining the type of warm start and
+                other required configurations.
+            tags (list[dict]): List of tags for labeling the tuning job. For more, see
+                https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
+        Returns:
+            dict: A dictionary for CreateHyperParameterTuningJob request
+        """
         tune_request = {
             "HyperParameterTuningJobName": job_name,
             "HyperParameterTuningJobConfig": self._map_tuning_config(**tuning_config),
@@ -2024,9 +2092,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if tags is not None:
             tune_request["Tags"] = tags
 
-        LOGGER.info("Creating hyperparameter tuning job with name: %s", job_name)
-        LOGGER.debug("tune request: %s", json.dumps(tune_request, indent=4))
-        self.sagemaker_client.create_hyper_parameter_tuning_job(**tune_request)
+        return tune_request
 
     def describe_tuning_job(self, job_name):
         """Calls DescribeHyperParameterTuningJob API for the given job name, returns the response.
@@ -2157,6 +2223,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
                     a directory in the Docker container.
                 * 'Pipe' - Amazon SageMaker streams data directly from S3 to the container via a
                     Unix-named pipe.
+                * 'FastFile' - Amazon SageMaker streams data from S3 on demand instead of
+                    downloading the entire dataset before training begins.
             role (str): An AWS IAM role (either name or full ARN). The Amazon SageMaker training
                 jobs and APIs that create Amazon SageMaker endpoints use this role to access
                 training data and model artifacts. You must grant sufficient permissions to
@@ -2693,6 +2761,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         marketplace_cert=False,
         approval_status="PendingManualApproval",
         description=None,
+        tags=None,
     ):
         """Get request dictionary for CreateModelPackage API.
 
@@ -2730,6 +2799,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
             request_dict["ModelPackageGroupName"] = model_package_group_name
         if description is not None:
             request_dict["ModelPackageDescription"] = description
+        if tags is not None:
+            request_dict["Tags"] = tags
         if model_metrics:
             request_dict["ModelMetrics"] = model_metrics
         if metadata_properties:
@@ -3479,12 +3550,24 @@ class Session(object):  # pylint: disable=too-many-public-methods
         """
         if os.path.exists(NOTEBOOK_METADATA_FILE):
             with open(NOTEBOOK_METADATA_FILE, "rb") as f:
-                instance_name = json.loads(f.read())["ResourceName"]
+                metadata = json.loads(f.read())
+                instance_name = metadata["ResourceName"]
+                domain_id = metadata.get("DomainId")
+                user_profile_name = metadata.get("UserProfileName")
             try:
-                instance_desc = self.sagemaker_client.describe_notebook_instance(
-                    NotebookInstanceName=instance_name
+                if domain_id is None:
+                    instance_desc = self.sagemaker_client.describe_notebook_instance(
+                        NotebookInstanceName=instance_name
+                    )
+                    return instance_desc["RoleArn"]
+                user_profile_desc = self.sagemaker_client.describe_user_profile(
+                    DomainId=domain_id, UserProfileName=user_profile_name
                 )
-                return instance_desc["RoleArn"]
+                if user_profile_desc.get("UserSettings") is not None:
+                    return user_profile_desc["UserSettings"]["ExecutionRole"]
+
+                domain_desc = self.sagemaker_client.describe_domain(DomainId=domain_id)
+                return domain_desc["DefaultUserSettings"]["ExecutionRole"]
             except ClientError:
                 LOGGER.debug(
                     "Couldn't call 'describe_notebook_instance' to get the Role "

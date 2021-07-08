@@ -127,9 +127,11 @@ def _create_train_job(tf_version, horovod=False, ps=False, py_version="py2", smd
         },
         "hyperparameters": _hyperparameters(horovod, smdataparallel),
         "stop_condition": {"MaxRuntimeInSeconds": 24 * 60 * 60},
+        "retry_strategy": None,
         "tags": None,
         "vpc_config": None,
         "metric_definitions": None,
+        "environment": None,
         "experiment_config": None,
         "profiler_rule_configs": [
             {
@@ -158,7 +160,7 @@ def _build_tf(
     py_version=None,
     instance_type=None,
     base_job_name=None,
-    **kwargs
+    **kwargs,
 ):
     return TensorFlow(
         entry_point=SCRIPT_PATH,
@@ -169,7 +171,7 @@ def _build_tf(
         instance_count=INSTANCE_COUNT,
         instance_type=instance_type if instance_type else INSTANCE_TYPE,
         base_job_name=base_job_name,
-        **kwargs
+        **kwargs,
     )
 
 

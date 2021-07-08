@@ -153,9 +153,9 @@ you will have for distributed training with the distributed data parallel librar
 PyTorch API
 ===========
 
-**Supported versions:**
+.. rubric:: Supported versions
 
--  PyTorch 1.6.0, 1.8.0
+**PyTorch 1.7.1, 1.8.1**
 
 
 .. function:: smdistributed.dataparallel.torch.distributed.is_available()

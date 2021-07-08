@@ -75,7 +75,7 @@ class PyTorch(Framework):
             framework_version (str): PyTorch version you want to use for
                 executing your model training code. Defaults to ``None``. Required unless
                 ``image_uri`` is provided. List of supported versions:
-                https://github.com/aws/sagemaker-python-sdk#pytorch-sagemaker-estimators.
+                https://github.com/aws/deep-learning-containers/blob/master/available_images.md.
             py_version (str): Python version you want to use for executing your
                 model training code. One of 'py2' or 'py3'. Defaults to ``None``. Required
                 unless ``image_uri`` is provided.

@@ -191,11 +191,10 @@ def pytorch_inference_py_version(pytorch_inference_version, request):
 
 
 @pytest.fixture(scope="module")
-def huggingface_pytorch_version(huggingface_training_version):
-    if Version(huggingface_training_version) <= Version("4.4.2"):
-        return "1.6.0"
-    else:
-        pytest.skip("Skipping Huggingface version.")
+def huggingface_pytorch_training_version(huggingface_training_version):
+    return _huggingface_base_fm_version(
+        huggingface_training_version, "pytorch", "huggingface_training"
+    )[0]
 
 
 @pytest.fixture(scope="module")
@@ -371,6 +370,39 @@ def _generate_all_framework_version_fixtures(metafunc):
                 )
 
 
+def _huggingface_base_fm_version(huggingface_version, base_fw, fixture_prefix):
+    config = image_uris.config_for_framework("huggingface")
+    if fixture_prefix == "huggingface_training":
+        hf_config = config.get("training")
+    else:
+        hf_config = config.get("inference")
+    original_version = huggingface_version
+    if "version_aliases" in hf_config:
+        huggingface_version = hf_config.get("version_aliases").get(
+            huggingface_version, huggingface_version
+        )
+    version_config = hf_config.get("versions").get(huggingface_version)
+    versions = list()
+
+    for key in list(version_config.keys()):
+        if key.startswith(base_fw):
+            base_fw_version = key[len(base_fw) :]
+            if len(original_version.split(".")) == 2:
+                base_fw_version = ".".join(base_fw_version.split(".")[:-1])
+            versions.append(base_fw_version)
+    return versions
+
+
+def _generate_huggingface_base_fw_latest_versions(
+    metafunc, fixture_prefix, huggingface_version, base_fw
+):
+    versions = _huggingface_base_fm_version(huggingface_version, base_fw, fixture_prefix)
+    fixture_name = f"{fixture_prefix}_{base_fw}_latest_version"
+
+    if fixture_name in metafunc.fixturenames:
+        metafunc.parametrize(fixture_name, versions, scope="session")
+
+
 def _parametrize_framework_version_fixtures(metafunc, fixture_prefix, config):
     fixture_name = "{}_version".format(fixture_prefix)
     if fixture_name in metafunc.fixturenames:
@@ -382,6 +414,14 @@ def _parametrize_framework_version_fixtures(metafunc, fixture_prefix, config):
     fixture_name = "{}_latest_version".format(fixture_prefix)
     if fixture_name in metafunc.fixturenames:
         metafunc.parametrize(fixture_name, (latest_version,), scope="session")
+
+    if "huggingface" in fixture_prefix:
+        _generate_huggingface_base_fw_latest_versions(
+            metafunc, fixture_prefix, latest_version, "pytorch"
+        )
+        _generate_huggingface_base_fw_latest_versions(
+            metafunc, fixture_prefix, latest_version, "tensorflow"
+        )
 
     fixture_name = "{}_latest_py_version".format(fixture_prefix)
     if fixture_name in metafunc.fixturenames:

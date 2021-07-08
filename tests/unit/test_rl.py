@@ -146,6 +146,7 @@ def _create_train_job(toolkit, toolkit_version, framework):
             {"Name": "reward-training", "Regex": "^Training>.*Total reward=(.*?),"},
             {"Name": "reward-testing", "Regex": "^Testing>.*Total reward=(.*?),"},
         ],
+        "environment": None,
         "experiment_config": None,
         "debugger_hook_config": {
             "CollectionConfigurations": [],
@@ -161,6 +162,7 @@ def _create_train_job(toolkit, toolkit_version, framework):
         "profiler_config": {
             "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
         },
+        "retry_strategy": None,
     }
 
 

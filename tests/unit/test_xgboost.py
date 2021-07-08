@@ -93,7 +93,7 @@ def _xgboost_estimator(
     instance_type=None,
     instance_count=1,
     base_job_name=None,
-    **kwargs
+    **kwargs,
 ):
 
     return XGBoost(
@@ -105,7 +105,7 @@ def _xgboost_estimator(
         instance_count=instance_count,
         base_job_name=base_job_name,
         py_version=PYTHON_VERSION,
-        **kwargs
+        **kwargs,
     )
 
 
@@ -142,9 +142,11 @@ def _create_train_job(version, instance_count=1, instance_type="ml.c4.4xlarge"):
             "sagemaker_region": '"us-west-2"',
         },
         "stop_condition": {"MaxRuntimeInSeconds": 24 * 60 * 60},
+        "retry_strategy": None,
         "metric_definitions": None,
         "tags": None,
         "vpc_config": None,
+        "environment": None,
         "experiment_config": None,
         "debugger_hook_config": {
             "CollectionConfigurations": [],

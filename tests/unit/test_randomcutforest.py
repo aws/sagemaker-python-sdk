@@ -96,7 +96,7 @@ def test_all_hyperparameters(sagemaker_session):
         num_trees=NUM_TREES,
         num_samples_per_tree=NUM_SAMPLES_PER_TREE,
         eval_metrics=EVAL_METRICS,
-        **ALL_REQ_ARGS
+        **ALL_REQ_ARGS,
     )
     assert randomcutforest.hyperparameters() == dict(
         num_samples_per_tree=str(NUM_SAMPLES_PER_TREE),

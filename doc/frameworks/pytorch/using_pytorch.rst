@@ -31,7 +31,7 @@ To train a PyTorch model by using the SageMaker Python SDK:
 Prepare a PyTorch Training Script
 =================================
 
-Your PyTorch training script must be a Python 2.7 or 3.5 compatible source file.
+Your PyTorch training script must be a Python 3.6 compatible source file.
 
 Prepare your script in a separate source file than the notebook, terminal session, or source file you're
 using to submit the script to SageMaker via a ``PyTorch`` Estimator. This will be discussed in further detail below.
@@ -154,7 +154,7 @@ directories ('train' and 'test').
     pytorch_estimator = PyTorch('pytorch-train.py',
                                 instance_type='ml.p3.2xlarge',
                                 instance_count=1,
-                                framework_version='1.5.0',
+                                framework_version='1.8.0',
                                 py_version='py3',
                                 hyperparameters = {'epochs': 20, 'batch-size': 64, 'learning-rate': 0.1})
     pytorch_estimator.fit({'train': 's3://my-data-bucket/path/to/my/training/data',
@@ -248,7 +248,7 @@ operation.
     pytorch_estimator = PyTorch(entry_point='train_and_deploy.py',
                                 instance_type='ml.p3.2xlarge',
                                 instance_count=1,
-                                framework_version='1.5.0',
+                                framework_version='1.8.0',
                                 py_version='py3')
     pytorch_estimator.fit('s3://my_bucket/my_training_data/')
 

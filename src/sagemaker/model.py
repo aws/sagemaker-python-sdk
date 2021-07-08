@@ -195,6 +195,7 @@ class Model(object):
         marketplace_cert=False,
         approval_status=None,
         description=None,
+        tags=None,
     ):
         """Get arguments for session.create_model_package method.
 
@@ -250,6 +251,8 @@ class Model(object):
             model_package_args["approval_status"] = approval_status
         if description is not None:
             model_package_args["description"] = description
+        if tags is not None:
+            model_package_args["tags"] = tags
         return model_package_args
 
     def _init_sagemaker_session_if_does_not_exist(self, instance_type):
@@ -651,7 +654,9 @@ class Model(object):
         job_status = self.sagemaker_session.wait_for_compilation_job(job_name)
         self.model_data = job_status["ModelArtifacts"]["S3ModelArtifacts"]
         if target_instance_family is not None:
-            if target_instance_family.startswith("ml_"):
+            if target_instance_family == "ml_eia2":
+                pass
+            elif target_instance_family.startswith("ml_"):
                 self.image_uri = self._compilation_image_uri(
                     self.sagemaker_session.boto_region_name,
                     target_instance_family,
@@ -1109,7 +1114,7 @@ class FrameworkModel(Model):
     def _upload_code(self, key_prefix, repack=False):
         """Placeholder Docstring"""
         local_code = utils.get_config_value("local.local_code", self.sagemaker_session.config)
-        if self.sagemaker_session.local_mode and local_code:
+        if (self.sagemaker_session.local_mode and local_code) or self.entry_point is None:
             self.uploaded_code = None
         elif not repack:
             bucket = self.bucket or self.sagemaker_session.default_bucket()
@@ -1122,7 +1127,7 @@ class FrameworkModel(Model):
                 dependencies=self.dependencies,
             )
 
-        if repack:
+        if repack and self.model_data is not None and self.entry_point is not None:
             bucket = self.bucket or self.sagemaker_session.default_bucket()
             repacked_model_data = "s3://" + "/".join([bucket, key_prefix, "model.tar.gz"])
 
@@ -1157,8 +1162,8 @@ class FrameworkModel(Model):
             dir_name = None
 
         return {
-            SCRIPT_PARAM_NAME.upper(): script_name,
-            DIR_PARAM_NAME.upper(): dir_name,
+            SCRIPT_PARAM_NAME.upper(): script_name or str(),
+            DIR_PARAM_NAME.upper(): dir_name or str(),
             CONTAINER_LOG_LEVEL_PARAM_NAME.upper(): str(self.container_log_level),
             SAGEMAKER_REGION_PARAM_NAME.upper(): self.sagemaker_session.boto_region_name,
         }

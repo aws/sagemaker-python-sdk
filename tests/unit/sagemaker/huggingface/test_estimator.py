@@ -15,6 +15,7 @@ import logging
 
 import json
 import os
+
 import pytest
 from mock import MagicMock, Mock, patch
 
@@ -149,6 +150,8 @@ def _create_train_job(version, base_framework_version):
         "tags": None,
         "vpc_config": None,
         "metric_definitions": None,
+        "environment": None,
+        "retry_strategy": None,
         "experiment_config": None,
         "debugger_hook_config": {
             "CollectionConfigurations": [],
@@ -167,6 +170,59 @@ def _create_train_job(version, base_framework_version):
     }
 
 
+def test_huggingface_invalid_args():
+    with pytest.raises(ValueError) as error:
+        HuggingFace(
+            py_version="py36",
+            entry_point=SCRIPT_PATH,
+            role=ROLE,
+            instance_count=INSTANCE_COUNT,
+            instance_type=INSTANCE_TYPE,
+            transformers_version="4.2.1",
+            pytorch_version="1.6",
+            enable_sagemaker_metrics=False,
+        )
+    assert "use either full version or shortened version" in str(error)
+
+    with pytest.raises(ValueError) as error:
+        HuggingFace(
+            py_version="py36",
+            entry_point=SCRIPT_PATH,
+            role=ROLE,
+            instance_count=INSTANCE_COUNT,
+            instance_type=INSTANCE_TYPE,
+            pytorch_version="1.6",
+            enable_sagemaker_metrics=False,
+        )
+    assert "transformers_version, and image_uri are both None." in str(error)
+
+    with pytest.raises(ValueError) as error:
+        HuggingFace(
+            py_version="py36",
+            entry_point=SCRIPT_PATH,
+            role=ROLE,
+            instance_count=INSTANCE_COUNT,
+            instance_type=INSTANCE_TYPE,
+            transformers_version="4.2.1",
+            enable_sagemaker_metrics=False,
+        )
+    assert "tensorflow_version and pytorch_version are both None." in str(error)
+
+    with pytest.raises(ValueError) as error:
+        HuggingFace(
+            py_version="py36",
+            entry_point=SCRIPT_PATH,
+            role=ROLE,
+            instance_count=INSTANCE_COUNT,
+            instance_type=INSTANCE_TYPE,
+            transformers_version="4.2",
+            pytorch_version="1.6",
+            tensorflow_version="2.3",
+            enable_sagemaker_metrics=False,
+        )
+    assert "tensorflow_version and pytorch_version are both not None." in str(error)
+
+
 @patch("sagemaker.utils.repack_model", MagicMock())
 @patch("sagemaker.utils.create_tar_file", MagicMock())
 @patch("sagemaker.estimator.name_from_base", return_value=JOB_NAME)
@@ -176,7 +232,7 @@ def test_huggingface(
     name_from_base,
     sagemaker_session,
     huggingface_training_version,
-    huggingface_pytorch_version,
+    huggingface_pytorch_training_version,
 ):
     hf = HuggingFace(
         py_version="py36",
@@ -186,7 +242,7 @@ def test_huggingface(
         instance_count=INSTANCE_COUNT,
         instance_type=INSTANCE_TYPE,
         transformers_version=huggingface_training_version,
-        pytorch_version=huggingface_pytorch_version,
+        pytorch_version=huggingface_pytorch_training_version,
         enable_sagemaker_metrics=False,
     )
 
@@ -200,7 +256,7 @@ def test_huggingface(
     assert boto_call_names == ["resource"]
 
     expected_train_args = _create_train_job(
-        huggingface_training_version, f"pytorch{huggingface_pytorch_version}"
+        huggingface_training_version, f"pytorch{huggingface_pytorch_training_version}"
     )
     expected_train_args["input_config"][0]["DataSource"]["S3DataSource"]["S3Uri"] = inputs
     expected_train_args["experiment_config"] = EXPERIMENT_CONFIG
@@ -210,10 +266,12 @@ def test_huggingface(
     assert actual_train_args == expected_train_args
 
 
-def test_attach(sagemaker_session, huggingface_training_version, huggingface_pytorch_version):
+def test_attach(
+    sagemaker_session, huggingface_training_version, huggingface_pytorch_training_version
+):
     training_image = (
         f"1.dkr.ecr.us-east-1.amazonaws.com/huggingface-pytorch-training:"
-        f"{huggingface_pytorch_version}-"
+        f"{huggingface_pytorch_training_version}-"
         f"transformers{huggingface_training_version}-gpu-py36-cu110-ubuntu18.04"
     )
     returned_job_description = {
@@ -248,7 +306,7 @@ def test_attach(sagemaker_session, huggingface_training_version, huggingface_pyt
     assert estimator.latest_training_job.job_name == "neo"
     assert estimator.py_version == "py36"
     assert estimator.framework_version == huggingface_training_version
-    assert estimator.pytorch_version == huggingface_pytorch_version
+    assert estimator.pytorch_version == huggingface_pytorch_training_version
     assert estimator.role == "arn:aws:iam::366:role/SageMakerRole"
     assert estimator.instance_count == 1
     assert estimator.max_run == 24 * 60 * 60

@@ -34,6 +34,8 @@ Select a version to see the API documentation for version. To use the library, r
 .. toctree::
    :maxdepth: 1
 
+   smp_versions/latest.rst
+   smp_versions/v1_3_0.rst
    smp_versions/v1_2_0.rst
    smp_versions/v1_1_0.rst
 
@@ -64,8 +66,10 @@ developer guide. This developer guide documentation includes:
 Release Notes
 =============
 
-New features, bug fixes, and improvements are regularly made to the SageMaker distributed model parallel library.
-To see the the latest changes made to the library, refer to the library
-`Release Notes
-<https://github.com/aws/sagemaker-python-sdk/blob/master/doc/api/training/smd_model_parallel_release_notes/>`_.
+New features, bug fixes, and improvements are regularly made to the SageMaker
+distributed model parallel library.
 
+.. toctree::
+   :maxdepth: 1
+
+   smd_model_parallel_release_notes/smd_model_parallel_change_log

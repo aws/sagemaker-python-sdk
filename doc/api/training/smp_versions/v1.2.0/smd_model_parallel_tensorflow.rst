@@ -44,6 +44,7 @@ TensorFlow API
    **Methods:**
 
    .. function:: save_model(save_path="/opt/ml/model")
+      :noindex:
 
       **Inputs**
       - ``save_path`` (``string``): A path to save an unpartitioned model with latest training weights.
@@ -54,6 +55,7 @@ TensorFlow API
       SageMaker monitors to upload the model artifacts to Amazon S3.
 
 .. function:: smp.partition(index)
+   :noindex:
 
    **Inputs**
 
@@ -86,7 +88,7 @@ TensorFlow API
    ​
 
 .. class:: smp.CheckpointManager
-
+   :noindex:
 
    A subclass of TensorFlow
    `CheckpointManager <https://www.tensorflow.org/api_docs/python/tf/train/CheckpointManager>`__,
@@ -130,10 +132,12 @@ TensorFlow API
    **Methods:**
 
    .. function:: save( )
+      :noindex:
 
       Saves a new checkpoint in the specified directory. Internally uses ``tf.train.CheckpointManager.save()``.
 
    .. function:: restore( )
+      :noindex:
 
       Restores the latest checkpoint in the specified directory.
       Internally uses ``tf.train.CheckpointManager.restore()``.

@@ -43,11 +43,17 @@ def test_condition_step():
     step1 = CustomStep("MyStep1")
     step2 = CustomStep("MyStep2")
     cond_step = ConditionStep(
-        name="MyConditionStep", conditions=[cond], if_steps=[step1], else_steps=[step2]
+        name="MyConditionStep",
+        depends_on=["TestStep"],
+        conditions=[cond],
+        if_steps=[step1],
+        else_steps=[step2],
     )
+    cond_step.add_depends_on(["SecondTestStep"])
     assert cond_step.to_request() == {
         "Name": "MyConditionStep",
         "Type": "Condition",
+        "DependsOn": ["TestStep", "SecondTestStep"],
         "Arguments": {
             "Conditions": [
                 {

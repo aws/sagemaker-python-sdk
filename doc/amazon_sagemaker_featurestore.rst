@@ -67,7 +67,7 @@ use the SageMaker default bucket and add a custom prefix to it.
    offline_feature_store_bucket = 's3://*{}*/*{}*'.format(default_bucket, prefix)
 
    sagemaker_client = boto_session.client(service_name='sagemaker', region_name=region)
-   featurestore_runtime = boto_session.client(service_name='featurestore-runtime', region_name=region)
+   featurestore_runtime = boto_session.client(service_name='sagemaker-featurestore-runtime', region_name=region)
 
    feature_store_session = Session(
        boto_session=boto_session,
@@ -290,6 +290,13 @@ example identifier to retrieve the record.
 
    record_identifier_value = str(2990130)
    featurestore_runtime.get_record(FeatureGroupName=transaction_feature_group_name, RecordIdentifierValueAsString=record_identifier_value)
+
+You can use the ``batch_get_record`` function to retrieve multiple records simultaneously from your feature store. The following example uses this API to retrieve a batch of records.
+
+.. code:: python
+
+   record_identifier_values = ["573291", "109382", "828400", "124013"]
+   featurestore_runtime.batch_get_record(Identifiers=[{"FeatureGroupName": transaction_feature_group_name, "RecordIdentifiersValueAsString": record_identifier_values}])
 
 An example response from the fraud detection example:
 

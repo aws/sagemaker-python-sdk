@@ -1,5 +1,288 @@
 # Changelog
 
+## v2.48.0 (2021-07-07)
+
+### Features
+
+ * HuggingFace Inference
+
+### Bug Fixes and Other Changes
+
+ * add support for SageMaker workflow tuning step
+
+## v2.47.2.post0 (2021-07-01)
+
+### Documentation Changes
+
+ * smddp 1.2.1 release note / convert md to rst
+ * add smd model parallel 1.4.0 release note / restructure doc files
+
+## v2.47.2 (2021-06-30)
+
+### Bug Fixes and Other Changes
+
+ * handle tags when upsert pipeine
+
+## v2.47.1 (2021-06-27)
+
+### Bug Fixes and Other Changes
+
+ * revert "fix: jsonGet interpolation issue 2426 + allow step depends on pass in step instance (#2477)"
+
+## v2.47.0 (2021-06-25)
+
+### Features
+
+ * support job_name_prefix for Clarify
+
+### Bug Fixes and Other Changes
+
+ * Add configuration option with headers for Clarify Explainability
+ * jsonGet interpolation issue 2426 + allow step depends on pass in step instance
+ * add default retries to feature group ingestion.
+ * Update using_pytorch.rst
+ * kms key does not propapate in register model step
+ * Correctly interpolate Callback output parameters
+
+## v2.46.1 (2021-06-22)
+
+### Bug Fixes and Other Changes
+
+ * Register model step tags
+
+### Documentation Changes
+
+ * update to include new batch_get_record api call
+ * Correct type annotation for TrainingStep inputs
+ * introduce input mode FastFile
+ * update hf transformer version
+
+## v2.46.0 (2021-06-15)
+
+### Features
+
+ * Add HF transformer version 4.6.1
+
+### Bug Fixes and Other Changes
+
+ * encode localmode payload to UTF-8
+ * call DescribeDomain as fallback in get_execution_role
+ * parameterize PT and TF version for HuggingFace tests
+
+### Documentation Changes
+
+ * Add import statement in Batch Transform Overview doc
+
+## v2.45.0 (2021-06-07)
+
+### Features
+
+ * Add support for Callback steps in model building pipelines
+
+## v2.44.0 (2021-06-01)
+
+### Features
+
+ * support endpoint_name_prefix, seed and version for Clarify
+
+## v2.43.0 (2021-05-31)
+
+### Features
+
+ * add xgboost framework version 1.3-1
+
+### Bug Fixes and Other Changes
+
+ * remove duplicated tags in _append_project_tags
+
+## v2.42.1 (2021-05-27)
+
+### Bug Fixes and Other Changes
+
+ * default value removed if zero for integer param
+
+## v2.42.0 (2021-05-24)
+
+### Features
+
+ * support for custom pipeline execution name
+ * Add data ingestion only data-wrangler flow recipe generation helper function
+
+### Bug Fixes and Other Changes
+
+ * add kms key for processing job code upload
+ * remove failing notebooks from notebook pr test
+ * fix in and not in condition bug
+ * Update overview.rst
+
+### Documentation Changes
+
+ * Update "Ask a question" contact link
+ * Update smdp docs with sparse_as_dense support
+
+## v2.41.0 (2021-05-17)
+
+### Features
+
+ * add pipeline experiment config
+ * add data wrangler processor
+ * support RetryStrategy for training jobs
+
+### Bug Fixes and Other Changes
+
+ * fix repack pipeline step by putting inference.py in "code" sub dir
+ * add data wrangler image uri
+ * fix black-check errors
+
+## v2.40.0 (2021-05-11)
+
+### Features
+
+ * add xgboost framework version 1.2-2
+
+### Bug Fixes and Other Changes
+
+ * fix get_execution_role on Studio
+ * [fix] Check py_version existence in RegisterModel step
+
+### Documentation Changes
+
+ * SM Distributed EFA Launch
+
+## v2.39.1 (2021-05-05)
+
+### Bug Fixes and Other Changes
+
+ * RegisterModel step and custom dependency support
+
+### Documentation Changes
+
+ * reverting SageMaker distributed data parallel EFA doc updates
+ * adding new version, SM dist. data parallel 1.2.0.
+ * add current Hugging Face supported versions
+ * SMDDP 1.2.0 release notes
+
+## v2.39.0.post0 (2021-05-04)
+
+### Testing and Release Infrastructure
+
+ * disable smdataparallel tests
+
+## v2.39.0 (2021-04-28)
+
+### Features
+
+ * Add HF transformer version 4.5.0
+
+### Bug Fixes and Other Changes
+
+ * Allow hyperparameters in Tensorflow estimator to be parameterized
+
+### Testing and Release Infrastructure
+
+ * black format unit tests
+
+## v2.38.0 (2021-04-21)
+
+### Features
+
+ * support multiprocess feature group ingest (#2111)
+
+## v2.37.0 (2021-04-20)
+
+### Features
+
+ * add experiment_config for clarify processing job
+
+### Documentation Changes
+
+ * release notes for smdistributed.dataparallel v1.1.2
+
+## v2.36.0 (2021-04-19)
+
+### Features
+
+ * enable smdataparallel custom mpi options support
+
+## v2.35.0 (2021-04-14)
+
+### Features
+
+ * add support for PyTorch 1.8.1
+
+### Bug Fixes and Other Changes
+
+ * boto3 client param updated for feature store
+ * Updated release notes and API doc for smd model parallel 1.3.1
+
+## v2.34.0 (2021-04-12)
+
+### Features
+
+ * Add support for accelerator in Clarify
+
+### Bug Fixes and Other Changes
+
+ * add Documentation for how to use
+ * enable local mode tests that were skipped
+ * add integ test for HuggingFace with TensorFlow
+
+### Documentation Changes
+
+ * release notes for smdistributed.dataparallel v1.1.1
+ * fixing the SageMaker distributed version references
+
+### Testing and Release Infrastructure
+
+ * pin version for ducutils
+
+## v2.33.0 (2021-04-05)
+
+### Features
+
+ * Add environment variable support for SageMaker training job
+
+### Bug Fixes and Other Changes
+
+ * add version length mismatch validation for HuggingFace
+ * Disable debugger when checkpointing is enabled with distributed training
+ * map user context is list associations response
+
+### Testing and Release Infrastructure
+
+ * disable_profiler on mx-horovod test
+
+## v2.32.1 (2021-04-01)
+
+### Bug Fixes and Other Changes
+
+ * disable profiler in some release tests
+ * remove outdated notebook from test
+ * add compilation option for ml_eia2
+ * add short version to smdataparallel supported list
+
+### Documentation Changes
+
+ * creating a "latest" version sm distributed docs
+ * add docs for Sagemaker Model Parallel 1.3, released with PT 1.8
+ * update PyTorch version in doc
+
+## v2.32.0 (2021-03-26)
+
+### Features
+
+ * upgrade neo mxnet to 1.8
+ * Enable Profiler in China Regions
+
+### Bug Fixes and Other Changes
+
+ * use workflow parameters in training hyperparameters (#2114) (#2115)
+ * skip HuggingFace tests in regions without p2 instances
+
+### Documentation Changes
+
+ * add Feature Store methods docs
+
 ## v2.31.1 (2021-03-23)
 
 ### Bug Fixes and Other Changes

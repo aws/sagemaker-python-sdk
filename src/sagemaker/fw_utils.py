@@ -59,8 +59,8 @@ SM_DATAPARALLEL_SUPPORTED_INSTANCE_TYPES = (
     "local_gpu",
 )
 SM_DATAPARALLEL_SUPPORTED_FRAMEWORK_VERSIONS = {
-    "tensorflow": ["2.3.1", "2.3.2", "2.4.1"],
-    "pytorch": ["1.6.0", "1.7.1", "1.8.0"],
+    "tensorflow": ["2.3", "2.3.1", "2.3.2", "2.4", "2.4.1"],
+    "pytorch": ["1.6", "1.6.0", "1.7", "1.7.1", "1.8", "1.8.0", "1.8.1"],
 }
 SMDISTRIBUTED_SUPPORTED_STRATEGIES = ["dataparallel", "modelparallel"]
 
@@ -139,10 +139,17 @@ def validate_mp_config(config):
     validate_in("placement_strategy", ["spread", "cluster"])
     validate_in("optimize", ["speed", "memory"])
 
-    for key in ["microbatches", "partitions"]:
+    for key in ["microbatches", "partitions", "active_microbatches"]:
         validate_positive(key)
 
-    for key in ["auto_partition", "contiguous", "load_partition", "horovod", "ddp"]:
+    for key in [
+        "auto_partition",
+        "contiguous",
+        "load_partition",
+        "horovod",
+        "ddp",
+        "deterministic_server",
+    ]:
         validate_bool(key)
 
     if "partition_file" in config and not isinstance(config.get("partition_file"), str):

@@ -114,6 +114,8 @@ def test_mp_config_string_names(pipeline, placement_strategy, optimize, trace_de
         "placement_strategy": placement_strategy,
         "optimize": optimize,
         "trace_device": trace_device,
+        "active_microbatches": 8,
+        "deterministic_server": True,
     }
     fw_utils.validate_mp_config(mp_parameters)
 
@@ -551,11 +553,15 @@ def test_validate_version_or_image_args_raises():
 
 def test_validate_smdistributed_not_raises():
     smdataparallel_enabled = {"smdistributed": {"dataparallel": {"enabled": True}}}
+    smdataparallel_enabled_custom_mpi = {
+        "smdistributed": {"dataparallel": {"enabled": True, "custom_mpi_options": "--verbose"}}
+    }
     smdataparallel_disabled = {"smdistributed": {"dataparallel": {"enabled": False}}}
     instance_types = list(fw_utils.SM_DATAPARALLEL_SUPPORTED_INSTANCE_TYPES)
 
     good_args = [
         (smdataparallel_enabled, "custom-container"),
+        (smdataparallel_enabled_custom_mpi, "custom-container"),
         (smdataparallel_disabled, "custom-container"),
     ]
     frameworks = ["tensorflow", "pytorch"]
@@ -574,17 +580,17 @@ def test_validate_smdistributed_not_raises():
 
 def test_validate_smdistributed_raises():
     bad_args = [
-        {"smdistributed": {"dataparallel": {"enabled": True}}},
         {"smdistributed": "dummy"},
         {"smdistributed": {"dummy"}},
         {"smdistributed": {"dummy": "val"}},
         {"smdistributed": {"dummy": {"enabled": True}}},
     ]
+    instance_types = list(fw_utils.SM_DATAPARALLEL_SUPPORTED_INSTANCE_TYPES)
     frameworks = ["tensorflow", "pytorch"]
-    for framework, distribution in product(frameworks, bad_args):
+    for framework, distribution, instance_type in product(frameworks, bad_args, instance_types):
         with pytest.raises(ValueError):
             fw_utils.validate_smdistributed(
-                instance_type=None,
+                instance_type=instance_type,
                 framework_name=framework,
                 framework_version=None,
                 py_version=None,
@@ -622,6 +628,9 @@ def test_validate_smdataparallel_args_raises():
 
 def test_validate_smdataparallel_args_not_raises():
     smdataparallel_enabled = {"smdistributed": {"dataparallel": {"enabled": True}}}
+    smdataparallel_enabled_custom_mpi = {
+        "smdistributed": {"dataparallel": {"enabled": True, "custom_mpi_options": "--verbose"}}
+    }
     smdataparallel_disabled = {"smdistributed": {"dataparallel": {"enabled": False}}}
 
     # Cases {PT|TF2}
@@ -632,10 +641,18 @@ def test_validate_smdataparallel_args_not_raises():
         (None, None, None, None, smdataparallel_disabled),
         ("ml.p3.16xlarge", "tensorflow", "2.3.1", "py3", smdataparallel_enabled),
         ("ml.p3.16xlarge", "tensorflow", "2.3.2", "py3", smdataparallel_enabled),
+        ("ml.p3.16xlarge", "tensorflow", "2.3", "py3", smdataparallel_enabled),
         ("ml.p3.16xlarge", "tensorflow", "2.4.1", "py3", smdataparallel_enabled),
+        ("ml.p3.16xlarge", "tensorflow", "2.4", "py3", smdataparallel_enabled),
         ("ml.p3.16xlarge", "pytorch", "1.6.0", "py3", smdataparallel_enabled),
+        ("ml.p3.16xlarge", "pytorch", "1.6", "py3", smdataparallel_enabled),
         ("ml.p3.16xlarge", "pytorch", "1.7.1", "py3", smdataparallel_enabled),
+        ("ml.p3.16xlarge", "pytorch", "1.7", "py3", smdataparallel_enabled),
         ("ml.p3.16xlarge", "pytorch", "1.8.0", "py3", smdataparallel_enabled),
+        ("ml.p3.16xlarge", "pytorch", "1.8.1", "py3", smdataparallel_enabled),
+        ("ml.p3.16xlarge", "pytorch", "1.8", "py3", smdataparallel_enabled),
+        ("ml.p3.16xlarge", "tensorflow", "2.4.1", "py3", smdataparallel_enabled_custom_mpi),
+        ("ml.p3.16xlarge", "pytorch", "1.8.0", "py3", smdataparallel_enabled_custom_mpi),
     ]
     for instance_type, framework_name, framework_version, py_version, distribution in good_args:
         fw_utils._validate_smdataparallel_args(

@@ -59,6 +59,8 @@ class _RepackModelStep(TrainingStep):
         entry_point: str,
         source_dir: str = None,
         dependencies: List = None,
+        depends_on: List[str] = None,
+        **kwargs,
     ):
         """Constructs a TrainingStep, given an `EstimatorBase` instance.
 
@@ -97,12 +99,15 @@ class _RepackModelStep(TrainingStep):
                 "inference_script": self._entry_point_basename,
                 "model_archive": self._model_archive,
             },
+            **kwargs,
         )
         repacker.disable_profiler = True
         inputs = TrainingInput(self._model_prefix)
 
         # super!
-        super(_RepackModelStep, self).__init__(name=name, estimator=repacker, inputs=inputs)
+        super(_RepackModelStep, self).__init__(
+            name=name, depends_on=depends_on, estimator=repacker, inputs=inputs
+        )
 
     def _prepare_for_repacking(self):
         """Prepares the source for the estimator."""
@@ -221,6 +226,8 @@ class _RegisterModelStep(Step):
         image_uri=None,
         compile_model_family=None,
         description=None,
+        depends_on: List[str] = None,
+        tags=None,
         **kwargs,
     ):
         """Constructor of a register model step.
@@ -248,9 +255,11 @@ class _RegisterModelStep(Step):
             compile_model_family (str): Instance family for compiled model, if specified, a compiled
                 model will be used (default: None).
             description (str): Model Package description (default: None).
+            depends_on (List[str]): A list of step names this `sagemaker.workflow.steps.TrainingStep`
+                depends on
             **kwargs: additional arguments to `create_model`.
         """
-        super(_RegisterModelStep, self).__init__(name, StepTypeEnum.REGISTER_MODEL)
+        super(_RegisterModelStep, self).__init__(name, StepTypeEnum.REGISTER_MODEL, depends_on)
         self.estimator = estimator
         self.model_data = model_data
         self.content_types = content_types
@@ -258,6 +267,7 @@ class _RegisterModelStep(Step):
         self.inference_instances = inference_instances
         self.transform_instances = transform_instances
         self.model_package_group_name = model_package_group_name
+        self.tags = tags
         self.model_metrics = model_metrics
         self.metadata_properties = metadata_properties
         self.approval_status = approval_status
@@ -301,7 +311,7 @@ class _RegisterModelStep(Step):
                     model._framework_name,
                     region_name,
                     version=model.framework_version,
-                    py_version=model.py_version,
+                    py_version=model.py_version if hasattr(model, "py_version") else None,
                     instance_type=self.kwargs.get("instance_type", self.estimator.instance_type),
                     accelerator_type=self.kwargs.get("accelerator_type"),
                     image_scope="inference",
@@ -318,10 +328,12 @@ class _RegisterModelStep(Step):
             metadata_properties=self.metadata_properties,
             approval_status=self.approval_status,
             description=self.description,
+            tags=self.tags,
         )
         request_dict = model.sagemaker_session._get_create_model_package_request(
             **model_package_args
         )
+
         # these are not available in the workflow service and will cause rejection
         if "CertifyForMarketplace" in request_dict:
             request_dict.pop("CertifyForMarketplace")

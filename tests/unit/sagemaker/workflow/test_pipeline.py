@@ -21,8 +21,13 @@ from botocore.exceptions import ClientError
 
 from mock import Mock
 
+from sagemaker.workflow.execution_variables import ExecutionVariables
 from sagemaker.workflow.parameters import ParameterString
 from sagemaker.workflow.pipeline import Pipeline
+from sagemaker.workflow.pipeline_experiment_config import (
+    PipelineExperimentConfig,
+    PipelineExperimentConfigProperties,
+)
 from sagemaker.workflow.properties import Properties
 from sagemaker.workflow.steps import (
     Step,
@@ -97,20 +102,36 @@ def test_pipeline_upsert(sagemaker_session_mock, role_arn):
                 }
             },
         ),
+        {"PipelineArn": "mock_pipeline_arn"},
+        [{"Key": "dummy", "Value": "dummy_tag"}],
         {},
     ]
+
     pipeline = Pipeline(
         name="MyPipeline",
         parameters=[],
         steps=[],
         sagemaker_session=sagemaker_session_mock,
     )
-    pipeline.update(role_arn=role_arn)
+
+    tags = [
+        {"Key": "foo", "Value": "abc"},
+        {"Key": "bar", "Value": "xyz"},
+    ]
+    pipeline.upsert(role_arn=role_arn, tags=tags)
     assert sagemaker_session_mock.sagemaker_client.create_pipeline.called_with(
         PipelineName="MyPipeline", PipelineDefinition=pipeline.definition(), RoleArn=role_arn
     )
     assert sagemaker_session_mock.sagemaker_client.update_pipeline.called_with(
         PipelineName="MyPipeline", PipelineDefinition=pipeline.definition(), RoleArn=role_arn
+    )
+    assert sagemaker_session_mock.sagemaker_client.list_tags.called_with(
+        ResourceArn="mock_pipeline_arn"
+    )
+
+    tags.append({"Key": "dummy", "Value": "dummy_tag"})
+    assert sagemaker_session_mock.sagemaker_client.add_tags.called_with(
+        ResourceArn="mock_pipeline_arn", Tags=tags
     )
 
 
@@ -154,6 +175,12 @@ def test_pipeline_start(sagemaker_session_mock):
     assert sagemaker_session_mock.start_pipeline_execution.called_with(
         PipelineName="MyPipeline",
     )
+
+    pipeline.start(execution_display_name="pipeline-execution")
+    assert sagemaker_session_mock.start_pipeline_execution.called_with(
+        PipelineName="MyPipeline", PipelineExecutionDisplayName="pipeline-execution"
+    )
+
     pipeline.start(parameters=dict(alpha="epsilon"))
     assert sagemaker_session_mock.start_pipeline_execution.called_with(
         PipelineName="MyPipeline", PipelineParameters=[{"Name": "alpha", "Value": "epsilon"}]
@@ -184,6 +211,10 @@ def test_pipeline_basic():
         "Version": "2020-12-01",
         "Metadata": {},
         "Parameters": [{"Name": "MyStr", "Type": "String"}],
+        "PipelineExperimentConfig": {
+            "ExperimentName": ExecutionVariables.PIPELINE_NAME,
+            "TrialName": ExecutionVariables.PIPELINE_EXECUTION_ID,
+        },
         "Steps": [{"Name": "MyStep", "Type": "Training", "Arguments": {"input_data": parameter}}],
     }
     assert ordered(json.loads(pipeline.definition())) == ordered(
@@ -191,6 +222,10 @@ def test_pipeline_basic():
             "Version": "2020-12-01",
             "Metadata": {},
             "Parameters": [{"Name": "MyStr", "Type": "String"}],
+            "PipelineExperimentConfig": {
+                "ExperimentName": {"Get": "Execution.PipelineName"},
+                "TrialName": {"Get": "Execution.PipelineExecutionId"},
+            },
             "Steps": [
                 {
                     "Name": "MyStep",
@@ -204,8 +239,15 @@ def test_pipeline_basic():
 
 def test_pipeline_two_step(sagemaker_session_mock):
     parameter = ParameterString("MyStr")
-    step1 = CustomStep(name="MyStep1", input_data=parameter)
-    step2 = CustomStep(name="MyStep2", input_data=step1.properties.S3Uri)
+    step1 = CustomStep(
+        name="MyStep1",
+        input_data=[
+            parameter,  # parameter reference
+            ExecutionVariables.PIPELINE_EXECUTION_ID,  # execution variable
+            PipelineExperimentConfigProperties.EXPERIMENT_NAME,  # experiment config property
+        ],
+    )
+    step2 = CustomStep(name="MyStep2", input_data=[step1.properties.S3Uri])  # step property
     pipeline = Pipeline(
         name="MyPipeline",
         parameters=[parameter],
@@ -216,12 +258,26 @@ def test_pipeline_two_step(sagemaker_session_mock):
         "Version": "2020-12-01",
         "Metadata": {},
         "Parameters": [{"Name": "MyStr", "Type": "String"}],
+        "PipelineExperimentConfig": {
+            "ExperimentName": ExecutionVariables.PIPELINE_NAME,
+            "TrialName": ExecutionVariables.PIPELINE_EXECUTION_ID,
+        },
         "Steps": [
-            {"Name": "MyStep1", "Type": "Training", "Arguments": {"input_data": parameter}},
+            {
+                "Name": "MyStep1",
+                "Type": "Training",
+                "Arguments": {
+                    "input_data": [
+                        parameter,
+                        ExecutionVariables.PIPELINE_EXECUTION_ID,
+                        PipelineExperimentConfigProperties.EXPERIMENT_NAME,
+                    ]
+                },
+            },
             {
                 "Name": "MyStep2",
                 "Type": "Training",
-                "Arguments": {"input_data": step1.properties.S3Uri},
+                "Arguments": {"input_data": [step1.properties.S3Uri]},
             },
         ],
     }
@@ -230,17 +286,75 @@ def test_pipeline_two_step(sagemaker_session_mock):
             "Version": "2020-12-01",
             "Metadata": {},
             "Parameters": [{"Name": "MyStr", "Type": "String"}],
+            "PipelineExperimentConfig": {
+                "ExperimentName": {"Get": "Execution.PipelineName"},
+                "TrialName": {"Get": "Execution.PipelineExecutionId"},
+            },
             "Steps": [
                 {
                     "Name": "MyStep1",
                     "Type": "Training",
-                    "Arguments": {"input_data": {"Get": "Parameters.MyStr"}},
+                    "Arguments": {
+                        "input_data": [
+                            {"Get": "Parameters.MyStr"},
+                            {"Get": "Execution.PipelineExecutionId"},
+                            {"Get": "PipelineExperimentConfig.ExperimentName"},
+                        ]
+                    },
                 },
                 {
                     "Name": "MyStep2",
                     "Type": "Training",
-                    "Arguments": {"input_data": {"Get": "Steps.MyStep1.S3Uri"}},
+                    "Arguments": {"input_data": [{"Get": "Steps.MyStep1.S3Uri"}]},
                 },
+            ],
+        }
+    )
+
+
+def test_pipeline_override_experiment_config():
+    pipeline = Pipeline(
+        name="MyPipeline",
+        pipeline_experiment_config=PipelineExperimentConfig("MyExperiment", "MyTrial"),
+        steps=[CustomStep(name="MyStep", input_data="input")],
+        sagemaker_session=sagemaker_session_mock,
+    )
+    assert ordered(json.loads(pipeline.definition())) == ordered(
+        {
+            "Version": "2020-12-01",
+            "Metadata": {},
+            "Parameters": [],
+            "PipelineExperimentConfig": {"ExperimentName": "MyExperiment", "TrialName": "MyTrial"},
+            "Steps": [
+                {
+                    "Name": "MyStep",
+                    "Type": "Training",
+                    "Arguments": {"input_data": "input"},
+                }
+            ],
+        }
+    )
+
+
+def test_pipeline_disable_experiment_config():
+    pipeline = Pipeline(
+        name="MyPipeline",
+        pipeline_experiment_config=None,
+        steps=[CustomStep(name="MyStep", input_data="input")],
+        sagemaker_session=sagemaker_session_mock,
+    )
+    assert ordered(json.loads(pipeline.definition())) == ordered(
+        {
+            "Version": "2020-12-01",
+            "Metadata": {},
+            "Parameters": [],
+            "PipelineExperimentConfig": None,
+            "Steps": [
+                {
+                    "Name": "MyStep",
+                    "Type": "Training",
+                    "Arguments": {"input_data": "input"},
+                }
             ],
         }
     )

@@ -4,11 +4,10 @@ TensorFlow Guide to SageMaker's distributed data parallel library
 
 .. admonition:: Contents
 
-   - :ref:`tensorflow-sdp-modify`
-   - :ref:`tensorflow-sdp-api`
+   - :ref:`tensorflow-sdp-modify-1.0.0`
+   - :ref:`tensorflow-sdp-api-1.0.0`
 
-.. _tensorflow-sdp-modify:
-   :noindex:
+.. _tensorflow-sdp-modify-1.0.0:
 
 Modify a TensorFlow 2.x training script to use SageMaker data parallel
 ======================================================================
@@ -150,15 +149,14 @@ script you will have for distributed training with the library.
        checkpoint.save(checkpoint_dir)
 
 
-.. _tensorflow-sdp-api:
-   :noindex:
+.. _tensorflow-sdp-api-1.0.0:
 
 TensorFlow API
 ==============
 
 .. rubric:: Supported versions
 
--  TensorFlow 2.x - 2.3.1
+**TensorFlow 2.3.x - 2.4.1**
 
 
 .. function:: smdistributed.dataparallel.tensorflow.init()
@@ -458,7 +456,7 @@ TensorFlow API
 
       *   Supported compression types - ``none``, ``fp16``
 
-   - ``sparse_as_dense:`` Not supported. Raises not supported error.
+   - ``sparse_as_dense:`` Treats sparse gradient tensor as dense tensor. Defaults to ``False``.
 
    - ``op (smdistributed.dataparallel.tensorflow.ReduceOp)(optional)``: The reduction operation to combine tensors across different ranks. Defaults to ``Average`` if None is given.
 
@@ -497,6 +495,8 @@ TensorFlow API
    - ``compression (smdistributed.dataparallel.tensorflow.Compression)(optional)``: Compression algorithm used to reduce the amount of data sent and received by each worker node. Defaults to not using compression.
 
       *   Supported compression types - ``none``, ``fp16``
+
+   - ``sparse_as_dense:`` Treats sparse gradient tensor as dense tensor. Defaults to ``False``.
 
    - ``op (smdistributed.dataparallel.tensorflow.ReduceOp)(optional)``: The reduction operation to combine tensors across different ranks. Defaults to ``Average`` if None is given.
 
