@@ -85,8 +85,7 @@ def _validate_pt_tf_versions(pytorch_version, tensorflow_version, image_uri):
 
 
 class HuggingFaceModel(FrameworkModel):
-    """A Hugging Face SageMaker ``Model`` that can be deployed
-    to an Amazon SageMaker ``Endpoint``."""
+    """A Hugging Face SageMaker ``Model`` that can be deployed to a SageMaker ``Endpoint``."""
 
     _framework_name = "huggingface"
 
