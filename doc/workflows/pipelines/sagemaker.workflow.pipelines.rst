@@ -109,9 +109,9 @@ Steps
 
 .. autoclass:: sagemaker.workflow.steps.TrainingStep
 
-.. autofunction:: sagemaker.workflow.steps.TuningStep.get_top_model_s3_uri
-
 .. autoclass:: sagemaker.workflow.steps.TuningStep
+
+.. autofunction:: sagemaker.workflow.steps.TuningStep.get_top_model_s3_uri
 
 .. autoclass:: sagemaker.workflow.steps.TransformStep
 
