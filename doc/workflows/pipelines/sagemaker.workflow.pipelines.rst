@@ -117,6 +117,9 @@ Steps
 
 .. autoclass:: sagemaker.workflow.steps.TuningStep
 
+.. autofunction:: sagemaker.workflow.steps.TuningStep.get_top_model_s3_uri
+
+
 Utilities
 ---------
 
