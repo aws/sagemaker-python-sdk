@@ -559,7 +559,7 @@ class Model(object):
         role,
         tags=None,
         job_name=None,
-        compile_max_run=5 * 60,
+        compile_max_run=15 * 60,
         framework=None,
         framework_version=None,
         target_platform_os=None,
@@ -588,7 +588,7 @@ class Model(object):
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
             job_name (str): The name of the compilation job
             compile_max_run (int): Timeout in seconds for compilation (default:
-                3 * 60). After this amount of time Amazon SageMaker Neo
+                15 * 60). After this amount of time Amazon SageMaker Neo
                 terminates the compilation job regardless of its current status.
             framework (str): The framework that is used to train the original
                 model. Allowed values: 'mxnet', 'tensorflow', 'keras', 'pytorch',
@@ -1114,7 +1114,7 @@ class FrameworkModel(Model):
     def _upload_code(self, key_prefix, repack=False):
         """Placeholder Docstring"""
         local_code = utils.get_config_value("local.local_code", self.sagemaker_session.config)
-        if self.sagemaker_session.local_mode and local_code:
+        if (self.sagemaker_session.local_mode and local_code) or self.entry_point is None:
             self.uploaded_code = None
         elif not repack:
             bucket = self.bucket or self.sagemaker_session.default_bucket()
@@ -1127,7 +1127,7 @@ class FrameworkModel(Model):
                 dependencies=self.dependencies,
             )
 
-        if repack:
+        if repack and self.model_data is not None and self.entry_point is not None:
             bucket = self.bucket or self.sagemaker_session.default_bucket()
             repacked_model_data = "s3://" + "/".join([bucket, key_prefix, "model.tar.gz"])
 
@@ -1162,8 +1162,8 @@ class FrameworkModel(Model):
             dir_name = None
 
         return {
-            SCRIPT_PARAM_NAME.upper(): script_name,
-            DIR_PARAM_NAME.upper(): dir_name,
+            SCRIPT_PARAM_NAME.upper(): script_name or str(),
+            DIR_PARAM_NAME.upper(): dir_name or str(),
             CONTAINER_LOG_LEVEL_PARAM_NAME.upper(): str(self.container_log_level),
             SAGEMAKER_REGION_PARAM_NAME.upper(): self.sagemaker_session.boto_region_name,
         }
