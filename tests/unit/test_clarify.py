@@ -108,7 +108,7 @@ def test_data_bias_config_multi_facet():
             {"name_or_index": facet_name[0], "value_or_threshold": facet_threshold[0]},
             {"name_or_index": facet_name[1], "value_or_threshold": facet_threshold[1]},
         ],
-        "group_variable": group_name
+        "group_variable": group_name,
     }
     assert expected_config == data_bias_config.get_config()
 
@@ -132,7 +132,7 @@ def test_data_bias_config_multi_facet_not_all_with_value():
             {"name_or_index": facet_name[0], "value_or_threshold": facet_threshold[0]},
             {"name_or_index": facet_name[1]},
         ],
-        "group_variable": group_name
+        "group_variable": group_name,
     }
     assert expected_config == data_bias_config.get_config()
 

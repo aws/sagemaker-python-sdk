@@ -88,8 +88,8 @@ class BiasConfig:
         Args:
             label_values_or_threshold (Any): List of label values or threshold to indicate positive
                 outcome used for bias metrics.
-            facet_name (str or [str]): String or List of strings of sensitive attribute(s) in the input data
-            for which we like to compare metrics.
+            facet_name (str or [str]): String or List of strings of sensitive attribute(s) in the
+            input data for which we like to compare metrics.
             facet_values_or_threshold (list): Optional list of values to form a sensitive group or
                 threshold for a numeric facet column that defines the lower bound of a sensitive
                 group. Defaults to considering each possible value as sensitive group and
