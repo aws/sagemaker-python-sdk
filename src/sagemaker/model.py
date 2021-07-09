@@ -559,7 +559,7 @@ class Model(object):
         role,
         tags=None,
         job_name=None,
-        compile_max_run=5 * 60,
+        compile_max_run=15 * 60,
         framework=None,
         framework_version=None,
         target_platform_os=None,
@@ -588,7 +588,7 @@ class Model(object):
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
             job_name (str): The name of the compilation job
             compile_max_run (int): Timeout in seconds for compilation (default:
-                3 * 60). After this amount of time Amazon SageMaker Neo
+                15 * 60). After this amount of time Amazon SageMaker Neo
                 terminates the compilation job regardless of its current status.
             framework (str): The framework that is used to train the original
                 model. Allowed values: 'mxnet', 'tensorflow', 'keras', 'pytorch',
