@@ -2521,8 +2521,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
         request = {"ModelName": name, "ExecutionRoleArn": role}
         if isinstance(container_definition, list):
             request["Containers"] = container_definition
-        else:
+        elif container_definition["ModelPackageName"] is not None:
             request["Containers"] = [container_definition]
+        else:
+            request["PrimaryContainer"] = container_definition
 
         if tags:
             request["Tags"] = tags

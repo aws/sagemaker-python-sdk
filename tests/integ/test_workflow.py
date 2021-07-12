@@ -1019,8 +1019,7 @@ def test_mxnet_model_registration(
         py_version="py3",
         sagemaker_session=sagemaker_session,
     )
-    
-    pipeline_model = PipelineModel([model],role)
+    pipeline_model = PipelineModel([model], role, sagemaker_session)
 
     step_register = RegisterModel(
         name="mxnet-register-model",
@@ -1205,8 +1204,10 @@ def test_sklearn_xgboost_sip_model_registration(
         role=role,
         sagemaker_session=sagemaker_session,
     )
-    
-    pipeline_model = PipelineModel([xgboost_model, sklearn_model],role)
+
+    pipeline_model = PipelineModel(
+        [xgboost_model, sklearn_model], role, sagemaker_session=sagemaker_session
+    )
 
     step_register = RegisterModel(
         name="AbaloneRegisterModel",

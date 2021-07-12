@@ -139,7 +139,7 @@ class RegisterModel(StepCollection):
                     sagemaker_session = estimator.sagemaker_session
                     role = estimator.role
                 else:
-                    sagemaker_session = model.sagemaker_session
+                    sagemaker_session = pipeline_model.sagemaker_session or model.sagemaker_session
                     role = pipeline_model.role
                 if hasattr(model, "entry_point"):
                     repack_model = True

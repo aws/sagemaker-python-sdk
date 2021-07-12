@@ -280,7 +280,7 @@ def test_register_model_sip(estimator, model_metrics):
         Model(image_uri="fakeimage1", model_data="Url1", env=[{"k1": "v1"}, {"k2": "v2"}]),
         Model(image_uri="fakeimage2", model_data="Url2", env=[{"k3": "v3"}, {"k4": "v4"}]),
     ]
-    
+
     pipeline_model = PipelineModel(model_list, ROLE)
 
     register_model = RegisterModel(
