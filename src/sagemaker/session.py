@@ -2521,7 +2521,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         request = {"ModelName": name, "ExecutionRoleArn": role}
         if isinstance(container_definition, list):
             request["Containers"] = container_definition
-        elif 'ModelPackageName' in container_definition:
+        elif "ModelPackageName" in container_definition:
             request["Containers"] = [container_definition]
         else:
             request["PrimaryContainer"] = container_definition
