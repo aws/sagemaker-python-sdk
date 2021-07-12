@@ -36,6 +36,7 @@ from sagemaker.session import Session
 from sagemaker import image_uris
 from sagemaker.inputs import CreateModelInput, TrainingInput
 from sagemaker.model import Model
+from sagemaker import PipelineModel
 from sagemaker.processing import ProcessingInput, ProcessingOutput, FeatureStoreOutput
 from sagemaker.pytorch.estimator import PyTorch
 from sagemaker.tuner import HyperparameterTuner, IntegerParameter
@@ -1018,10 +1019,12 @@ def test_mxnet_model_registration(
         py_version="py3",
         sagemaker_session=sagemaker_session,
     )
+    
+    pipeline_model = PipelineModel([model],role)
 
     step_register = RegisterModel(
         name="mxnet-register-model",
-        models=[model],
+        pipeline_model=pipeline_model,
         content_types=["*"],
         response_types=["*"],
         inference_instances=["ml.m5.xlarge"],
@@ -1202,10 +1205,12 @@ def test_sklearn_xgboost_sip_model_registration(
         role=role,
         sagemaker_session=sagemaker_session,
     )
+    
+    pipeline_model = PipelineModel([xgboost_model, sklearn_model],role)
 
     step_register = RegisterModel(
         name="AbaloneRegisterModel",
-        models=[xgboost_model, sklearn_model],
+        pipeline_model=pipeline_model,
         content_types=["application/json"],
         response_types=["application/json"],
         inference_instances=["ml.t2.medium", "ml.m5.xlarge"],

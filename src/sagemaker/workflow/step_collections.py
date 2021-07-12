@@ -68,7 +68,7 @@ class RegisterModel(StepCollection):
         compile_model_family=None,
         description=None,
         tags=None,
-        models=None,
+        pipeline_model=None,
         **kwargs,
     ):
         """Construct steps `_RepackModelStep` and `_RegisterModelStep` based on the estimator.
@@ -100,7 +100,8 @@ class RegisterModel(StepCollection):
                 that tags will only be applied to newly created model package groups; if the
                 name of an existing group is passed to "model_package_group_name",
                 tags will not be applied.
-            models (list): A list of models.
+            pipeline_model (object): A PipelineModel object that comprises a list of models
+                which gets executed as a serial inference pipeline.
             **kwargs: additional arguments to `create_model`.
         """
         steps: List[Step] = []
@@ -132,14 +133,14 @@ class RegisterModel(StepCollection):
         kwargs.pop("dependencies", None)
         kwargs.pop("output_kms_key", None)
 
-        if models is not None:
-            for model in models:
+        if pipeline_model is not None:
+            for model in pipeline_model.models:
                 if estimator is not None:
                     sagemaker_session = estimator.sagemaker_session
                     role = estimator.role
                 else:
                     sagemaker_session = model.sagemaker_session
-                    role = model.role
+                    role = pipeline_model.role
                 if hasattr(model, "entry_point"):
                     repack_model = True
                     entry_point = model.entry_point
@@ -174,7 +175,7 @@ class RegisterModel(StepCollection):
             compile_model_family=compile_model_family,
             description=description,
             tags=tags,
-            model_list=models,
+            model_list=pipeline_model.models,
             **kwargs,
         )
         if not repack_model:

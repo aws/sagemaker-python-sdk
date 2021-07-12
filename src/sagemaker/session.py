@@ -2522,7 +2522,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if isinstance(container_definition, list):
             request["Containers"] = container_definition
         else:
-            request["PrimaryContainer"] = container_definition
+            request["Containers"] = [container_definition]
+
         if tags:
             request["Tags"] = tags
 

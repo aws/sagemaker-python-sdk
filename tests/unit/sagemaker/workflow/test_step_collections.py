@@ -27,6 +27,7 @@ from mock import (
     PropertyMock,
 )
 
+from sagemaker import PipelineModel
 from sagemaker.estimator import Estimator
 from sagemaker.model import Model
 from sagemaker.tensorflow import TensorFlow
@@ -279,6 +280,8 @@ def test_register_model_sip(estimator, model_metrics):
         Model(image_uri="fakeimage1", model_data="Url1", env=[{"k1": "v1"}, {"k2": "v2"}]),
         Model(image_uri="fakeimage2", model_data="Url2", env=[{"k3": "v3"}, {"k4": "v4"}]),
     ]
+    
+    pipeline_model = PipelineModel(model_list, ROLE)
 
     register_model = RegisterModel(
         name="RegisterModelStep",
@@ -291,7 +294,7 @@ def test_register_model_sip(estimator, model_metrics):
         model_metrics=model_metrics,
         approval_status="Approved",
         description="description",
-        models=model_list,
+        pipeline_model=pipeline_model,
         depends_on=["TestStep"],
     )
     assert ordered(register_model.request_dicts()) == ordered(
