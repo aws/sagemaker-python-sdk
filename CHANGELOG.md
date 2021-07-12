@@ -1,5 +1,12 @@
 # Changelog
 
+## v2.48.2 (2021-07-12)
+
+### Bug Fixes and Other Changes
+
+ * default time for compilation jobs
+ * skip hf inference test
+
 ## v2.48.1 (2021-07-08)
 
 ### Bug Fixes and Other Changes
