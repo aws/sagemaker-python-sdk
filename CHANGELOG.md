@@ -1,5 +1,24 @@
 # Changelog
 
+## v2.48.2 (2021-07-12)
+
+### Bug Fixes and Other Changes
+
+ * default time for compilation jobs
+ * skip hf inference test
+
+## v2.48.1 (2021-07-08)
+
+### Bug Fixes and Other Changes
+
+ * skip HF inference test
+ * remove upsert from test_workflow
+
+### Documentation Changes
+
+ * Add Hugging Face docs
+ * add tuning step to doc
+
 ## v2.48.0 (2021-07-07)
 
 ### Features
