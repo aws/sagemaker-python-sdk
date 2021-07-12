@@ -106,6 +106,7 @@ class RegisterModel(StepCollection):
         """
         steps: List[Step] = []
         repack_model = False
+        self.model_list = None
         if "entry_point" in kwargs:
             repack_model = True
             entry_point = kwargs.pop("entry_point", None)
@@ -134,6 +135,7 @@ class RegisterModel(StepCollection):
         kwargs.pop("output_kms_key", None)
 
         if pipeline_model is not None:
+            self.model_list = pipeline_model.models
             for model in pipeline_model.models:
                 if estimator is not None:
                     sagemaker_session = estimator.sagemaker_session
@@ -175,7 +177,7 @@ class RegisterModel(StepCollection):
             compile_model_family=compile_model_family,
             description=description,
             tags=tags,
-            model_list=pipeline_model.models,
+            model_list=self.model_list,
             **kwargs,
         )
         if not repack_model:
