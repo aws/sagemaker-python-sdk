@@ -19,6 +19,7 @@ import attr
 
 from sagemaker.estimator import EstimatorBase
 from sagemaker.model import Model
+from sagemaker import PipelineModel
 from sagemaker.predictor import Predictor
 from sagemaker.transformer import Transformer
 from sagemaker.workflow.entities import RequestType
@@ -68,7 +69,7 @@ class RegisterModel(StepCollection):
         compile_model_family=None,
         description=None,
         tags=None,
-        pipeline_model=None,
+        model=None,
         **kwargs,
     ):
         """Construct steps `_RepackModelStep` and `_RegisterModelStep` based on the estimator.
@@ -100,8 +101,8 @@ class RegisterModel(StepCollection):
                 that tags will only be applied to newly created model package groups; if the
                 name of an existing group is passed to "model_package_group_name",
                 tags will not be applied.
-            pipeline_model (object): A PipelineModel object that comprises a list of models
-                which gets executed as a serial inference pipeline.
+            model (object or Model): A PipelineModel object that comprises a list of models
+                which gets executed as a serial inference pipeline or a Model object.
             **kwargs: additional arguments to `create_model`.
         """
         steps: List[Step] = []
@@ -134,33 +135,39 @@ class RegisterModel(StepCollection):
         kwargs.pop("dependencies", None)
         kwargs.pop("output_kms_key", None)
 
-        if pipeline_model is not None:
-            self.model_list = pipeline_model.models
-            for model in pipeline_model.models:
+        if model is not None:
+            if isinstance(model, PipelineModel):
+                self.model_list = model.models
+            elif isinstance(model, Model):
+                self.model_list = [model]
+
+            for model_entity in self.model_list:
                 if estimator is not None:
                     sagemaker_session = estimator.sagemaker_session
                     role = estimator.role
                 else:
-                    sagemaker_session = pipeline_model.sagemaker_session or model.sagemaker_session
-                    role = pipeline_model.role
-                if hasattr(model, "entry_point"):
+                    sagemaker_session = model_entity.sagemaker_session
+                    role = model_entity.role
+                if hasattr(model_entity, "entry_point"):
                     repack_model = True
-                    entry_point = model.entry_point
-                    source_dir = model.source_dir
-                    dependencies = model.dependencies
-                    name = model.name or model._framework_name
+                    entry_point = model_entity.entry_point
+                    source_dir = model_entity.source_dir
+                    dependencies = model_entity.dependencies
+                    name = model_entity.name or model_entity._framework_name
                     repack_model_step = _RepackModelStep(
                         name=f"{name}RepackModel",
                         depends_on=depends_on,
                         sagemaker_session=sagemaker_session,
                         role=role,
-                        model_data=model.model_data,
+                        model_data=model_entity.model_data,
                         entry_point=entry_point,
                         source_dir=source_dir,
                         dependencies=dependencies,
                     )
                     steps.append(repack_model_step)
-                    model.model_data = repack_model_step.properties.ModelArtifacts.S3ModelArtifacts
+                    model_entity.model_data = (
+                        repack_model_step.properties.ModelArtifacts.S3ModelArtifacts
+                    )
 
         register_model_step = _RegisterModelStep(
             name=name,

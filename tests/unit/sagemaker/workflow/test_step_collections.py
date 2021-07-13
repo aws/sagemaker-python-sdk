@@ -294,7 +294,7 @@ def test_register_model_sip(estimator, model_metrics):
         model_metrics=model_metrics,
         approval_status="Approved",
         description="description",
-        pipeline_model=pipeline_model,
+        model=pipeline_model,
         depends_on=["TestStep"],
     )
     assert ordered(register_model.request_dicts()) == ordered(

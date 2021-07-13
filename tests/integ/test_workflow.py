@@ -1019,11 +1019,10 @@ def test_mxnet_model_registration(
         py_version="py3",
         sagemaker_session=sagemaker_session,
     )
-    pipeline_model = PipelineModel([model], role, sagemaker_session)
 
     step_register = RegisterModel(
         name="mxnet-register-model",
-        pipeline_model=pipeline_model,
+        model=model,
         content_types=["*"],
         response_types=["*"],
         inference_instances=["ml.m5.xlarge"],
@@ -1211,7 +1210,7 @@ def test_sklearn_xgboost_sip_model_registration(
 
     step_register = RegisterModel(
         name="AbaloneRegisterModel",
-        pipeline_model=pipeline_model,
+        model=pipeline_model,
         content_types=["application/json"],
         response_types=["application/json"],
         inference_instances=["ml.t2.medium", "ml.m5.xlarge"],
