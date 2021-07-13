@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import io
 from mock import Mock
 import pytest
 
@@ -26,17 +27,22 @@ def mock_client():
 
 
 def test_predict(mock_client):
-    # TODO
-    # mock_client.create_function = Mock(return_value={"class": "cat"})
-    # predictor = LambdaPredictor("my_function", mock_client)
-    #
-    # prediction = predictor.predict({"url": "https://images.com/cat.jpg"})
-    #
-    # assert prediction = {"class": "cat"}
-    # mock_client.invoke.assert_called_once
-    # _, kwargs = mock_client.delete_function.call_args
-    # assert kwargs["FunctionName"] == "my-function"
-    pass
+    mock_client.invoke = Mock(
+        return_value={
+            "StatusCode": 200,
+            "Payload": io.BytesIO(b'{"class": "cat"}'),
+            "ResponseMetadata": {"HTTPHeaders": {"content-type": "application/json"}},
+        }
+    )
+    predictor = LambdaPredictor(FUNCTION_NAME, mock_client)
+
+    prediction = predictor.predict({"url": "https://images.com/cat.jpg"})
+
+    mock_client.invoke.assert_called_once
+    _, kwargs = mock_client.invoke.call_args
+    assert kwargs["FunctionName"] == FUNCTION_NAME
+
+    assert prediction == {"class": "cat"}
 
 
 def test_destroy(mock_client):
