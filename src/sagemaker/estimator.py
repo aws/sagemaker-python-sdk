@@ -29,6 +29,7 @@ from sagemaker import git_utils, image_uris
 from sagemaker.analytics import TrainingJobAnalytics
 from sagemaker.debugger import TensorBoardOutputConfig  # noqa: F401 # pylint: disable=unused-import
 from sagemaker.debugger import (
+    DEBUGGER_FLAG,
     DebuggerHookConfig,
     FrameworkProfile,
     get_default_profiler_rule,
@@ -2268,6 +2269,9 @@ class Framework(EstimatorBase):
                         Distributed Training Jobs With Checkpointing Enabled"
                     )
                     self.debugger_hook_config = False
+
+        if self.debugger_hook_config is False:
+            self.environment[DEBUGGER_FLAG] = "0"
 
     def _stage_user_code_in_s3(self):
         """Upload the user training script to s3 and return the location.
