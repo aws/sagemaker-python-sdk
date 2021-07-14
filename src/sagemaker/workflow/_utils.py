@@ -236,38 +236,38 @@ class _RegisterModelStep(Step):
     ):
         """Constructor of a register model step.
 
-                Args:
-                    name (str): The name of the training step.
-                    step_type (StepTypeEnum): The type of the step with value
-                        `StepTypeEnum.Training`.
-                    estimator (EstimatorBase): A `sagemaker.estimator.EstimatorBase` instance.
-                    model_data: the S3 URI to the model data from training.
-                    content_types (list): The supported MIME types for the
-                        input data (default: None).
-                    response_types (list): The supported MIME types for
-                        the output data (default: None).
-                    inference_instances (list): A list of the instance types that are used to
-                        generate inferences in real-time (default: None).
-                    transform_instances (list): A list of the instance types on which a
-                        transformation job can be run or on which an endpoint
-                        can be deployed (default: None).
-                    model_package_group_name (str): Model Package Group name, exclusive to
-                        `model_package_name`, using `model_package_group_name`
-                        makes the Model Package versioned (default: None).
-                    model_metrics (ModelMetrics): ModelMetrics object (default: None).
-                    metadata_properties (MetadataProperties): MetadataProperties object
-                        (default: None).
-                    approval_status (str): Model Approval Status, values can be "Approved",
-                        "Rejected", or "PendingManualApproval"
-                        (default: "PendingManualApproval").
-                    image_uri (str): The container image uri for Model Package, if not specified,
-                        Estimator's training container image will be used (default: None).
-                    compile_model_family (str): Instance family for compiled model,
-                        if specified, a compiled model will be used (default: None).
-                    description (str): Model Package description (default: None).
-                    depends_on (List[str] or List[Step]): A list of step names or instances
-                        this step depends on
-                    **kwargs: additional arguments to `create_model`.
+        Args:
+            name (str): The name of the training step.
+            step_type (StepTypeEnum): The type of the step with value
+                `StepTypeEnum.Training`.
+            estimator (EstimatorBase): A `sagemaker.estimator.EstimatorBase` instance.
+            model_data: the S3 URI to the model data from training.
+            content_types (list): The supported MIME types for the
+                input data (default: None).
+            response_types (list): The supported MIME types for
+                the output data (default: None).
+            inference_instances (list): A list of the instance types that are used to
+                generate inferences in real-time (default: None).
+            transform_instances (list): A list of the instance types on which a
+                transformation job can be run or on which an endpoint
+                can be deployed (default: None).
+            model_package_group_name (str): Model Package Group name, exclusive to
+                `model_package_name`, using `model_package_group_name`
+                makes the Model Package versioned (default: None).
+            model_metrics (ModelMetrics): ModelMetrics object (default: None).
+            metadata_properties (MetadataProperties): MetadataProperties object
+                (default: None).
+            approval_status (str): Model Approval Status, values can be "Approved",
+                "Rejected", or "PendingManualApproval"
+                (default: "PendingManualApproval").
+            image_uri (str): The container image uri for Model Package, if not specified,
+                Estimator's training container image will be used (default: None).
+            compile_model_family (str): Instance family for compiled model,
+                if specified, a compiled model will be used (default: None).
+            description (str): Model Package description (default: None).
+            depends_on (List[str] or List[Step]): A list of step names or instances
+                this step depends on
+            **kwargs: additional arguments to `create_model`.
         """
         super(_RegisterModelStep, self).__init__(name, StepTypeEnum.REGISTER_MODEL, depends_on)
         self.estimator = estimator
