@@ -746,11 +746,10 @@ def test_mxnet_with_debugger_hook_config_disabled(
 
         mx.fit({"train": train_input, "test": test_input})
 
-        assert mx.environment.get(DEBUGGER_FLAG) == "0"
-
         job_description = mx.latest_training_job.describe()
 
         assert job_description.get("DebugHookConfig") is None
+        assert job_description.get("Environment", {}).get("USE_SMDEBUG") == "0"
 
 
 def _get_rule_evaluation_statuses(job_description):
