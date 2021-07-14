@@ -27,7 +27,9 @@ from mock import (
     PropertyMock,
 )
 
+from sagemaker import PipelineModel
 from sagemaker.estimator import Estimator
+from sagemaker.model import Model
 from sagemaker.tensorflow import TensorFlow
 from sagemaker.inputs import CreateModelInput, TransformInput
 from sagemaker.model_metrics import (
@@ -245,6 +247,70 @@ def test_register_model_tf(estimator_tf, model_metrics):
                                 "Image": "763104351884.dkr.ecr.us-west-2.amazonaws.com/tensorflow-inference:1.15.2-cpu",
                                 "ModelDataUrl": f"s3://{BUCKET}/model.tar.gz",
                             }
+                        ],
+                        "SupportedContentTypes": ["content_type"],
+                        "SupportedRealtimeInferenceInstanceTypes": ["inference_instance"],
+                        "SupportedResponseMIMETypes": ["response_type"],
+                        "SupportedTransformInstanceTypes": ["transform_instance"],
+                    },
+                    "ModelApprovalStatus": "Approved",
+                    "ModelMetrics": {
+                        "ModelQuality": {
+                            "Statistics": {
+                                "ContentType": "text/csv",
+                                "S3Uri": f"s3://{BUCKET}/metrics.csv",
+                            },
+                        },
+                    },
+                    "ModelPackageDescription": "description",
+                    "ModelPackageGroupName": "mpg",
+                },
+            },
+        ]
+    )
+
+
+def test_register_model_sip(estimator, model_metrics):
+    model_list = [
+        Model(image_uri="fakeimage1", model_data="Url1", env=[{"k1": "v1"}, {"k2": "v2"}]),
+        Model(image_uri="fakeimage2", model_data="Url2", env=[{"k3": "v3"}, {"k4": "v4"}]),
+    ]
+
+    pipeline_model = PipelineModel(model_list, ROLE)
+
+    register_model = RegisterModel(
+        name="RegisterModelStep",
+        estimator=estimator,
+        content_types=["content_type"],
+        response_types=["response_type"],
+        inference_instances=["inference_instance"],
+        transform_instances=["transform_instance"],
+        model_package_group_name="mpg",
+        model_metrics=model_metrics,
+        approval_status="Approved",
+        description="description",
+        model=pipeline_model,
+        depends_on=["TestStep"],
+    )
+    assert ordered(register_model.request_dicts()) == ordered(
+        [
+            {
+                "Name": "RegisterModelStep",
+                "Type": "RegisterModel",
+                "DependsOn": ["TestStep"],
+                "Arguments": {
+                    "InferenceSpecification": {
+                        "Containers": [
+                            {
+                                "Image": "fakeimage1",
+                                "ModelDataUrl": "Url1",
+                                "Environment": [{"k1": "v1"}, {"k2": "v2"}],
+                            },
+                            {
+                                "Image": "fakeimage2",
+                                "ModelDataUrl": "Url2",
+                                "Environment": [{"k3": "v3"}, {"k4": "v4"}],
+                            },
                         ],
                         "SupportedContentTypes": ["content_type"],
                         "SupportedRealtimeInferenceInstanceTypes": ["inference_instance"],
