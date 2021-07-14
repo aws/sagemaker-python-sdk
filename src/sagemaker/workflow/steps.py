@@ -559,7 +559,7 @@ class TuningStep(Step):
 
         return request_dict
 
-    def get_top_model_s3_uri(self, top_k: int, s3_bucket: str, prefix: str = ""):
+    def get_top_model_s3_uri(self, top_k: int, s3_bucket: str, prefix: str = "") -> Join:
         """Get the model artifact s3 uri from the top performing training jobs.
 
         Args:

@@ -17,9 +17,7 @@ import os
 import shutil
 import tarfile
 import tempfile
-
 from typing import List, Union
-
 from sagemaker import image_uris
 from sagemaker.inputs import TrainingInput
 from sagemaker.s3 import (
@@ -30,6 +28,8 @@ from sagemaker.estimator import EstimatorBase
 from sagemaker.sklearn.estimator import SKLearn
 from sagemaker.workflow.entities import RequestType
 from sagemaker.workflow.properties import Properties
+from sagemaker.session import get_create_model_package_request
+from sagemaker.session import get_model_package_args
 from sagemaker.workflow.steps import (
     StepTypeEnum,
     TrainingStep,
@@ -54,7 +54,8 @@ class _RepackModelStep(TrainingStep):
     def __init__(
         self,
         name: str,
-        estimator: EstimatorBase,
+        sagemaker_session,
+        role,
         model_data: str,
         entry_point: str,
         source_dir: str = None,
@@ -73,8 +74,9 @@ class _RepackModelStep(TrainingStep):
             inputs (TrainingInput): A `sagemaker.inputs.TrainingInput` instance. Defaults to `None`.
         """
         # yeah, go ahead and save the originals for now
-        self._estimator = estimator
         self._model_data = model_data
+        self.sagemaker_session = sagemaker_session
+        self.role = role
         if isinstance(model_data, Properties):
             self._model_prefix = model_data
             self._model_archive = "model.tar.gz"
@@ -93,8 +95,8 @@ class _RepackModelStep(TrainingStep):
             entry_point=REPACK_SCRIPT,
             source_dir=self._source_dir,
             dependencies=self._dependencies,
-            sagemaker_session=self._estimator.sagemaker_session,
-            role=self._estimator.role,
+            sagemaker_session=self.sagemaker_session,
+            role=self.role,
             hyperparameters={
                 "inference_script": self._entry_point_basename,
                 "model_archive": self._model_archive,
@@ -150,7 +152,7 @@ class _RepackModelStep(TrainingStep):
                 S3Downloader.download(
                     s3_uri=self._source_dir,
                     local_path=local_path,
-                    sagemaker_session=self._estimator.sagemaker_session,
+                    sagemaker_session=self.sagemaker_session,
                 )
 
                 src_dir = os.path.join(tmp, "src")
@@ -164,7 +166,7 @@ class _RepackModelStep(TrainingStep):
                 S3Uploader.upload(
                     local_path=local_path,
                     desired_s3_uri=self._source_dir,
-                    sagemaker_session=self._estimator.sagemaker_session,
+                    sagemaker_session=self.sagemaker_session,
                 )
         else:
             shutil.copy2(fname, os.path.join(self._source_dir, REPACK_SCRIPT))
@@ -207,18 +209,19 @@ class _RegisterModelStep(Step):
             Estimator's training container image will be used (default: None).
         compile_model_family (str): Instance family for compiled model, if specified, a compiled
             model will be used (default: None).
+        container_def_list (list): A list of container definitions.
         **kwargs: additional arguments to `create_model`.
     """
 
     def __init__(
         self,
         name: str,
-        estimator: EstimatorBase,
-        model_data,
         content_types,
         response_types,
         inference_instances,
         transform_instances,
+        estimator: EstimatorBase = None,
+        model_data=None,
         model_package_group_name=None,
         model_metrics=None,
         metadata_properties=None,
@@ -228,36 +231,43 @@ class _RegisterModelStep(Step):
         description=None,
         depends_on: Union[List[str], List[Step]] = None,
         tags=None,
+        container_def_list=None,
         **kwargs,
     ):
         """Constructor of a register model step.
 
-        Args:
-            name (str): The name of the training step.
-            step_type (StepTypeEnum): The type of the step with value `StepTypeEnum.Training`.
-            estimator (EstimatorBase): A `sagemaker.estimator.EstimatorBase` instance.
-            model_data: the S3 URI to the model data from training.
-            content_types (list): The supported MIME types for the input data (default: None).
-            response_types (list): The supported MIME types for the output data (default: None).
-            inference_instances (list): A list of the instance types that are used to
-                generate inferences in real-time (default: None).
-            transform_instances (list): A list of the instance types on which a transformation
-                job can be run or on which an endpoint can be deployed (default: None).
-            model_package_group_name (str): Model Package Group name, exclusive to
-                `model_package_name`, using `model_package_group_name` makes the Model Package
-                versioned (default: None).
-            model_metrics (ModelMetrics): ModelMetrics object (default: None).
-            metadata_properties (MetadataProperties): MetadataProperties object (default: None).
-            approval_status (str): Model Approval Status, values can be "Approved", "Rejected",
-                or "PendingManualApproval" (default: "PendingManualApproval").
-            image_uri (str): The container image uri for Model Package, if not specified,
-                Estimator's training container image will be used (default: None).
-            compile_model_family (str): Instance family for compiled model, if specified, a compiled
-                model will be used (default: None).
-            description (str): Model Package description (default: None).
-            depends_on (List[str] or List[Step]): A list of step names or instances
-                this step depends on
-            **kwargs: additional arguments to `create_model`.
+                Args:
+                    name (str): The name of the training step.
+                    step_type (StepTypeEnum): The type of the step with value
+                        `StepTypeEnum.Training`.
+                    estimator (EstimatorBase): A `sagemaker.estimator.EstimatorBase` instance.
+                    model_data: the S3 URI to the model data from training.
+                    content_types (list): The supported MIME types for the
+                        input data (default: None).
+                    response_types (list): The supported MIME types for
+                        the output data (default: None).
+                    inference_instances (list): A list of the instance types that are used to
+                        generate inferences in real-time (default: None).
+                    transform_instances (list): A list of the instance types on which a
+                        transformation job can be run or on which an endpoint
+                        can be deployed (default: None).
+                    model_package_group_name (str): Model Package Group name, exclusive to
+                        `model_package_name`, using `model_package_group_name`
+                        makes the Model Package versioned (default: None).
+                    model_metrics (ModelMetrics): ModelMetrics object (default: None).
+                    metadata_properties (MetadataProperties): MetadataProperties object
+                        (default: None).
+                    approval_status (str): Model Approval Status, values can be "Approved",
+                        "Rejected", or "PendingManualApproval"
+                        (default: "PendingManualApproval").
+                    image_uri (str): The container image uri for Model Package, if not specified,
+                        Estimator's training container image will be used (default: None).
+                    compile_model_family (str): Instance family for compiled model,
+                        if specified, a compiled model will be used (default: None).
+                    description (str): Model Package description (default: None).
+                    depends_on (List[str] or List[Step]): A list of step names or instances
+                        this step depends on
+                    **kwargs: additional arguments to `create_model`.
         """
         super(_RegisterModelStep, self).__init__(name, StepTypeEnum.REGISTER_MODEL, depends_on)
         self.estimator = estimator
@@ -274,7 +284,9 @@ class _RegisterModelStep(Step):
         self.image_uri = image_uri
         self.compile_model_family = compile_model_family
         self.description = description
+        self.tags = tags
         self.kwargs = kwargs
+        self.container_def_list = container_def_list
 
         self._properties = Properties(
             path=f"Steps.{name}", shape_name="DescribeModelPackageResponse"
@@ -284,56 +296,63 @@ class _RegisterModelStep(Step):
     def arguments(self) -> RequestType:
         """The arguments dict that are used to call `create_model_package`."""
         model_name = self.name
-        if self.compile_model_family:
-            model = self.estimator._compiled_models[self.compile_model_family]
-        else:
-            # create_model wants the estimator to have a model_data attribute...
-            self.estimator._current_job_name = model_name
 
-            # placeholder. replaced with model_data later
-            output_path = self.estimator.output_path
-            self.estimator.output_path = "/tmp"
-
-            # create the model, but custom funky framework stuff going on in some places
-            if self.image_uri:
-                model = self.estimator.create_model(image_uri=self.image_uri, **self.kwargs)
+        if self.container_def_list is None:
+            if self.compile_model_family:
+                model = self.estimator._compiled_models[self.compile_model_family]
+                self.model_data = model.model_data
             else:
-                model = self.estimator.create_model(**self.kwargs)
-            model.model_data = self.model_data
+                # create_model wants the estimator to have a model_data attribute...
+                self.estimator._current_job_name = model_name
 
-            # reset placeholder
-            self.estimator.output_path = output_path
+                # placeholder. replaced with model_data later
+                output_path = self.estimator.output_path
+                self.estimator.output_path = "/tmp"
 
-            # yeah, there is some framework stuff going on that we need to pull in here
-            if model.image_uri is None:
-                region_name = self.estimator.sagemaker_session.boto_session.region_name
-                model.image_uri = image_uris.retrieve(
-                    model._framework_name,
-                    region_name,
-                    version=model.framework_version,
-                    py_version=model.py_version if hasattr(model, "py_version") else None,
-                    instance_type=self.kwargs.get("instance_type", self.estimator.instance_type),
-                    accelerator_type=self.kwargs.get("accelerator_type"),
-                    image_scope="inference",
-                )
-        model.name = model_name
+                # create the model, but custom funky framework stuff going on in some places
+                if self.image_uri:
+                    model = self.estimator.create_model(image_uri=self.image_uri, **self.kwargs)
+                else:
+                    model = self.estimator.create_model(**self.kwargs)
+                    self.image_uri = model.image_uri
 
-        model_package_args = model._get_model_package_args(
+                # reset placeholder
+                self.estimator.output_path = output_path
+
+                # yeah, there is some framework stuff going on that we need to pull in here
+                if self.image_uri is None:
+                    region_name = self.estimator.sagemaker_session.boto_session.region_name
+                    self.image_uri = image_uris.retrieve(
+                        model._framework_name,
+                        region_name,
+                        version=model.framework_version,
+                        py_version=model.py_version if hasattr(model, "py_version") else None,
+                        instance_type=self.kwargs.get(
+                            "instance_type", self.estimator.instance_type
+                        ),
+                        accelerator_type=self.kwargs.get("accelerator_type"),
+                        image_scope="inference",
+                    )
+                    model.name = model_name
+                    model.model_data = self.model_data
+
+        model_package_args = get_model_package_args(
             content_types=self.content_types,
             response_types=self.response_types,
             inference_instances=self.inference_instances,
             transform_instances=self.transform_instances,
             model_package_group_name=self.model_package_group_name,
+            model_data=self.model_data,
+            image_uri=self.image_uri,
             model_metrics=self.model_metrics,
             metadata_properties=self.metadata_properties,
             approval_status=self.approval_status,
             description=self.description,
             tags=self.tags,
-        )
-        request_dict = model.sagemaker_session._get_create_model_package_request(
-            **model_package_args
+            container_def_list=self.container_def_list,
         )
 
+        request_dict = get_create_model_package_request(**model_package_args)
         # these are not available in the workflow service and will cause rejection
         if "CertifyForMarketplace" in request_dict:
             request_dict.pop("CertifyForMarketplace")
