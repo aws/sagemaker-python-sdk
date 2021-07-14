@@ -108,6 +108,7 @@ class RegisterModel(StepCollection):
         steps: List[Step] = []
         repack_model = False
         self.model_list = None
+        self.container_def_list = None
         if "entry_point" in kwargs:
             repack_model = True
             entry_point = kwargs.pop("entry_point", None)
