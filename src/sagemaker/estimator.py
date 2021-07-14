@@ -2271,6 +2271,8 @@ class Framework(EstimatorBase):
                     self.debugger_hook_config = False
 
         if self.debugger_hook_config is False:
+            if self.environment is None:
+                self.environment = {}
             self.environment[DEBUGGER_FLAG] = "0"
 
     def _stage_user_code_in_s3(self):
