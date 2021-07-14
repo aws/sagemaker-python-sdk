@@ -138,8 +138,10 @@ class RegisterModel(StepCollection):
         if model is not None:
             if isinstance(model, PipelineModel):
                 self.model_list = model.models
+                self.container_def_list = model.pipeline_container_def(inference_instances[0])
             elif isinstance(model, Model):
                 self.model_list = [model]
+                self.container_def_list = [model.prepare_container_def(inference_instances[0])]
 
             for model_entity in self.model_list:
                 if estimator is not None:
@@ -184,7 +186,7 @@ class RegisterModel(StepCollection):
             compile_model_family=compile_model_family,
             description=description,
             tags=tags,
-            model_list=self.model_list,
+            container_def_list=self.container_def_list,
             **kwargs,
         )
         if not repack_model:

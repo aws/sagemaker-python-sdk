@@ -38,85 +38,6 @@ NEO_ALLOWED_FRAMEWORKS = set(
 )
 
 
-def get_model_package_args(
-    content_types,
-    response_types,
-    inference_instances,
-    transform_instances,
-    model_package_name=None,
-    model_package_group_name=None,
-    model_data=None,
-    image_uri=None,
-    model_metrics=None,
-    metadata_properties=None,
-    marketplace_cert=False,
-    approval_status=None,
-    description=None,
-    tags=None,
-    container_def_list=None,
-):
-    """Get arguments for session.create_model_package method.
-
-    Args:
-        content_types (list): The supported MIME types for the input data.
-        response_types (list): The supported MIME types for the output data.
-        inference_instances (list): A list of the instance types that are used to
-        generate inferences in real-time.
-        transform_instances (list): A list of the instance types on which a transformation
-        job can be run or on which an endpoint can be deployed.
-        model_package_name (str): Model Package name, exclusive to `model_package_group_name`,
-        using `model_package_name` makes the Model Package un-versioned (default: None).
-        model_package_group_name (str): Model Package Group name, exclusive to
-        `model_package_name`, using `model_package_group_name` makes the Model Package
-        versioned (default: None).
-        image_uri (str): Inference image uri for the container. Model class' self.image will
-        be used if it is None (default: None).
-        model_metrics (ModelMetrics): ModelMetrics object (default: None).
-        metadata_properties (MetadataProperties): MetadataProperties object (default: None).
-        marketplace_cert (bool): A boolean value indicating if the Model Package is certified
-        for AWS Marketplace (default: False).
-        approval_status (str): Model Approval Status, values can be "Approved", "Rejected",
-        or "PendingManualApproval" (default: "PendingManualApproval").
-        description (str): Model Package description (default: None).
-        container_def_list (list): A list of container defintiions.
-    Returns:
-        dict: A dictionary of method argument names and values.
-    """
-    if container_def_list is not None:
-        containers = container_def_list
-    else:
-        container = {
-            "Image": image_uri,
-            "ModelDataUrl": model_data,
-        }
-        containers = [container]
-
-    model_package_args = {
-        "containers": containers,
-        "content_types": content_types,
-        "response_types": response_types,
-        "inference_instances": inference_instances,
-        "transform_instances": transform_instances,
-        "marketplace_cert": marketplace_cert,
-    }
-
-    if model_package_name is not None:
-        model_package_args["model_package_name"] = model_package_name
-    if model_package_group_name is not None:
-        model_package_args["model_package_group_name"] = model_package_group_name
-    if model_metrics is not None:
-        model_package_args["model_metrics"] = model_metrics._to_request_dict()
-    if metadata_properties is not None:
-        model_package_args["metadata_properties"] = metadata_properties._to_request_dict()
-    if approval_status is not None:
-        model_package_args["approval_status"] = approval_status
-    if description is not None:
-        model_package_args["description"] = description
-    if tags is not None:
-        model_package_args["tags"] = tags
-    return model_package_args
-
-
 class Model(object):
     """A SageMaker ``Model`` that can be deployed to an ``Endpoint``."""
 
@@ -237,7 +158,7 @@ class Model(object):
         if self.model_data is None:
             raise ValueError("SageMaker Model Package cannot be created without model data.")
 
-        model_pkg_args = get_model_package_args(
+        model_pkg_args = sagemaker.get_model_package_args(
             content_types,
             response_types,
             inference_instances,

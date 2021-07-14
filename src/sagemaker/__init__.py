@@ -48,13 +48,14 @@ from sagemaker.algorithm import AlgorithmEstimator  # noqa: F401
 from sagemaker.analytics import TrainingJobAnalytics, HyperparameterTuningJobAnalytics  # noqa: F401
 from sagemaker.local.local_session import LocalSession  # noqa: F401
 
-from sagemaker.model import Model, ModelPackage, get_model_package_args  # noqa: F401
+from sagemaker.model import Model, ModelPackage  # noqa: F401
 from sagemaker.model_metrics import ModelMetrics, MetricsSource  # noqa: F401
 from sagemaker.pipeline import PipelineModel  # noqa: F401
 from sagemaker.predictor import Predictor  # noqa: F401
 from sagemaker.processing import Processor, ScriptProcessor  # noqa: F401
 from sagemaker.session import Session  # noqa: F401
 from sagemaker.session import container_def, pipeline_container_def  # noqa: F401
+from sagemaker.session import get_model_package_args  # noqa: F401
 from sagemaker.session import production_variant  # noqa: F401
 from sagemaker.session import get_execution_role  # noqa: F401
 

@@ -19,8 +19,6 @@ import tarfile
 import tempfile
 from typing import List
 
-import sagemaker
-
 from sagemaker import image_uris
 from sagemaker.inputs import TrainingInput
 from sagemaker.s3 import (
@@ -32,7 +30,7 @@ from sagemaker.sklearn.estimator import SKLearn
 from sagemaker.workflow.entities import RequestType
 from sagemaker.workflow.properties import Properties
 from sagemaker.session import get_create_model_package_request
-from sagemaker.model import get_model_package_args
+from sagemaker.session import get_model_package_args
 from sagemaker.workflow.steps import (
     StepTypeEnum,
     TrainingStep,
@@ -212,7 +210,7 @@ class _RegisterModelStep(Step):
             Estimator's training container image will be used (default: None).
         compile_model_family (str): Instance family for compiled model, if specified, a compiled
             model will be used (default: None).
-        model_list (list): A list of models.
+        container_def_list (list): A list of container definitions.
         **kwargs: additional arguments to `create_model`.
     """
 
@@ -234,7 +232,7 @@ class _RegisterModelStep(Step):
         description=None,
         depends_on: List[str] = None,
         tags=None,
-        model_list=None,
+        container_def_list=None,
         **kwargs,
     ):
         """Constructor of a register model step.
@@ -264,7 +262,7 @@ class _RegisterModelStep(Step):
             description (str): Model Package description (default: None).
             depends_on (List[str]): A list of step names this `sagemaker.workflow.steps.TrainingStep`
                 depends on
-            model_list (list): A list of models.
+            container_def_list (list): A list of containers.
             **kwargs: additional arguments to `create_model`.
         """
         super(_RegisterModelStep, self).__init__(name, StepTypeEnum.REGISTER_MODEL, depends_on)
@@ -283,9 +281,8 @@ class _RegisterModelStep(Step):
         self.compile_model_family = compile_model_family
         self.description = description
         self.tags = tags
-        self.model_list = model_list
         self.kwargs = kwargs
-        self.container_def_list = None
+        self.container_def_list = container_def_list
 
         self._properties = Properties(
             path=f"Steps.{name}", shape_name="DescribeModelPackageResponse"
@@ -295,13 +292,8 @@ class _RegisterModelStep(Step):
     def arguments(self) -> RequestType:
         """The arguments dict that are used to call `create_model_package`."""
         model_name = self.name
-        model_list = self.model_list
-        if model_list:
-            self.container_def_list = sagemaker.pipeline_container_def(
-                model_list, self.inference_instances[0]
-            )
 
-        elif self.estimator:
+        if self.container_def_list is None:
             if self.compile_model_family:
                 model = self.estimator._compiled_models[self.compile_model_family]
                 self.model_data = model.model_data
@@ -338,10 +330,7 @@ class _RegisterModelStep(Step):
                         image_scope="inference",
                     )
                     model.name = model_name
-                    model.image_uri = self.image_uri
                     model.model_data = self.model_data
-
-            self.container_def_list = [sagemaker.container_def(self.image_uri, self.model_data)]
 
         model_package_args = get_model_package_args(
             content_types=self.content_types,
@@ -349,6 +338,8 @@ class _RegisterModelStep(Step):
             inference_instances=self.inference_instances,
             transform_instances=self.transform_instances,
             model_package_group_name=self.model_package_group_name,
+            model_data=self.model_data,
+            image_uri=self.image_uri,
             model_metrics=self.model_metrics,
             metadata_properties=self.metadata_properties,
             approval_status=self.approval_status,
