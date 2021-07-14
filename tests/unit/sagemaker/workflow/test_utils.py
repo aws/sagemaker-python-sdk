@@ -106,7 +106,8 @@ def test_repack_model_step(estimator):
     entry_point = f"{DATA_DIR}/dummy_script.py"
     step = _RepackModelStep(
         name="MyRepackModelStep",
-        estimator=estimator,
+        sagemaker_session=estimator.sagemaker_session,
+        role=estimator.role,
         model_data=model_data,
         entry_point=entry_point,
         depends_on=["TestStep"],
@@ -159,7 +160,8 @@ def test_repack_model_step_with_source_dir(estimator, source_dir):
     entry_point = "inference.py"
     step = _RepackModelStep(
         name="MyRepackModelStep",
-        estimator=estimator,
+        sagemaker_session=estimator.sagemaker_session,
+        role=estimator.role,
         model_data=model_data,
         entry_point=entry_point,
         source_dir=source_dir,
