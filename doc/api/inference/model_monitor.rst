@@ -26,3 +26,8 @@ Model Monitor
     :members:
     :undoc-members:
     :show-inheritance:
+
+.. automodule:: sagemaker.model_monitor.clarify_model_monitoring
+    :members:
+    :undoc-members:
+    :show-inheritance:
