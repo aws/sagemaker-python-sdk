@@ -88,21 +88,34 @@ class BiasConfig:
         Args:
             label_values_or_threshold (Any): List of label values or threshold to indicate positive
                 outcome used for bias metrics.
-            facet_name (str): Sensitive attribute in the input data for which we like to compare
-                metrics.
+            facet_name (str or [str]): String or List of strings of sensitive attribute(s) in the
+            input data for which we like to compare metrics.
             facet_values_or_threshold (list): Optional list of values to form a sensitive group or
                 threshold for a numeric facet column that defines the lower bound of a sensitive
                 group. Defaults to considering each possible value as sensitive group and
                 computing metrics vs all the other examples.
+                If facet_name is a list, this needs to be None or a List consisting of lists or None
+                with the same length as facet_name list.
             group_name (str): Optional column name or index to indicate a group column to be used
                 for the bias metric 'Conditional Demographic Disparity in Labels - CDDL' or
                 'Conditional Demographic Disparity in Predicted Labels - CDDPL'.
         """
-        facet = {"name_or_index": facet_name}
-        _set(facet_values_or_threshold, "value_or_threshold", facet)
+        if isinstance(facet_name, str):
+            facet = {"name_or_index": facet_name}
+            _set(facet_values_or_threshold, "value_or_threshold", facet)
+            facet_list = [facet]
+        elif facet_values_or_threshold is None or len(facet_name) == len(facet_values_or_threshold):
+            facet_list = []
+            for i, single_facet_name in enumerate(facet_name):
+                facet = {"name_or_index": single_facet_name}
+                if facet_values_or_threshold is not None:
+                    _set(facet_values_or_threshold[i], "value_or_threshold", facet)
+                facet_list.append(facet)
+        else:
+            raise ValueError("Wrong combination of argument values passed")
         self.analysis_config = {
             "label_values_or_threshold": label_values_or_threshold,
-            "facet": [facet],
+            "facet": facet_list,
         }
         _set(group_name, "group_variable", self.analysis_config)
 
