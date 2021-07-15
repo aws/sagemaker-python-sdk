@@ -1,5 +1,17 @@
 # Changelog
 
+## v2.49.0 (2021-07-15)
+
+### Features
+
+ * Adding serial inference pipeline support to RegisterModel Step
+
+### Documentation Changes
+
+ * add tuning step get_top_model_s3_uri and callback step to doc
+ * links for HF in sdk
+ * Add Clarify module to Model Monitoring API docs
+
 ## v2.48.2 (2021-07-12)
 
 ### Bug Fixes and Other Changes
