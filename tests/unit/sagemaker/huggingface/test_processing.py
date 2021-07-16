@@ -68,7 +68,7 @@ def test_huggingface_processor_with_required_parameters(
     botocore_resolver,
     sagemaker_session,
     huggingface_training_version,
-    huggingface_pytorch_version,
+    huggingface_pytorch_training_version,
 ):
     botocore_resolver.return_value.construct_endpoint.return_value = {"hostname": ECR_HOSTNAME}
 
@@ -76,7 +76,7 @@ def test_huggingface_processor_with_required_parameters(
         role=ROLE,
         instance_type=GPU_INSTANCE_TYPE,
         transformers_version=huggingface_training_version,
-        pytorch_version=huggingface_pytorch_version,
+        pytorch_version=huggingface_pytorch_training_version,
         instance_count=1,
         sagemaker_session=sagemaker_session,
     )
@@ -86,7 +86,7 @@ def test_huggingface_processor_with_required_parameters(
     expected_args = _get_expected_args_modular_code(processor._current_job_name)
     expected_args["app_specification"]["ImageUri"] = get_full_gpu_image_uri(
         huggingface_training_version,
-        f"pytorch{huggingface_pytorch_version}",
+        f"pytorch{huggingface_pytorch_training_version}",
     )
 
     sagemaker_session.process.assert_called_with(**expected_args)
