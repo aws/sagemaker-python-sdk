@@ -171,7 +171,7 @@ class RegisterModel(StepCollection):
                     )
                     # remove kwargs consumed by model repacking step
                     kwargs.pop("output_kms_key", None)
-                    
+
             if isinstance(model, PipelineModel):
                 self.container_def_list = model.pipeline_container_def(inference_instances[0])
             elif isinstance(model, Model):
