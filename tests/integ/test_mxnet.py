@@ -186,7 +186,7 @@ def test_deploy_model(
         result = predictor.predict(data)
         assert result is not None
 
-    predictor.delete_model()
+    model.delete_model()
     with pytest.raises(Exception) as exception:
         sagemaker_session.sagemaker_client.describe_model(ModelName=model.name)
         assert "Could not find model" in str(exception.value)
