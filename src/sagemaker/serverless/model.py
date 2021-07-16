@@ -44,7 +44,7 @@ class LambdaModel(ModelBase):
         self._role = role
 
     def deploy(
-        self, function_name: str, timeout: int, memory_size: int, wait: bool = False
+        self, function_name: str, timeout: int, memory_size: int, wait: bool = True
     ) -> LambdaPredictor:
         """Create a Lambda function using the image specified in the constructor.
 
