@@ -139,10 +139,8 @@ class RegisterModel(StepCollection):
         if model is not None:
             if isinstance(model, PipelineModel):
                 self.model_list = model.models
-                self.container_def_list = model.pipeline_container_def(inference_instances[0])
             elif isinstance(model, Model):
                 self.model_list = [model]
-                self.container_def_list = [model.prepare_container_def(inference_instances[0])]
 
             for model_entity in self.model_list:
                 if estimator is not None:
@@ -156,9 +154,9 @@ class RegisterModel(StepCollection):
                     entry_point = model_entity.entry_point
                     source_dir = model_entity.source_dir
                     dependencies = model_entity.dependencies
-                    name = model_entity.name or model_entity._framework_name
+                    model_name = model_entity.name or model_entity._framework_name
                     repack_model_step = _RepackModelStep(
-                        name=f"{name}RepackModel",
+                        name=f"{model_name}RepackModel",
                         depends_on=depends_on,
                         sagemaker_session=sagemaker_session,
                         role=role,
@@ -171,6 +169,10 @@ class RegisterModel(StepCollection):
                     model_entity.model_data = (
                         repack_model_step.properties.ModelArtifacts.S3ModelArtifacts
                     )
+            if isinstance(model, PipelineModel):
+                self.container_def_list = model.pipeline_container_def(inference_instances[0])
+            elif isinstance(model, Model):
+                self.container_def_list = [model.prepare_container_def(inference_instances[0])]
 
         register_model_step = _RegisterModelStep(
             name=name,
