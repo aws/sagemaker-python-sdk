@@ -32,6 +32,7 @@ from sagemaker import image_uris
 from sagemaker.utils import build_dict
 
 framework_name = "debugger"
+DEBUGGER_FLAG = "USE_SMDEBUG"
 
 
 def get_rule_container_image_uri(region):
