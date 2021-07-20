@@ -137,7 +137,7 @@ class SKLearnModel(FrameworkModel):
         )
 
         self.model_server_workers = model_server_workers
-    
+
     def register(
         self,
         content_types,
@@ -204,7 +204,6 @@ class SKLearnModel(FrameworkModel):
             approval_status,
             description,
         )
-
 
     def prepare_container_def(self, instance_type=None, accelerator_type=None):
         """Container definition with framework configuration set in model environment variables.
