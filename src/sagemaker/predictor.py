@@ -62,7 +62,7 @@ class PredictorBase(abc.ABC):
         """Perform inference on the provided data and return a prediction."""
 
     @abc.abstractmethod
-    def destroy(self, *args, **kwargs) -> None:
+    def delete_endpoint(self, *args, **kwargs) -> None:
         """Destroy resources associated with this predictor."""
 
     @property
@@ -329,8 +329,6 @@ class Predictor(PredictorBase):
             self._delete_endpoint_config()
 
         self.sagemaker_session.delete_endpoint(self.endpoint_name)
-
-    destroy = delete_endpoint
 
     def delete_model(self):
         """Deletes the Amazon SageMaker models backing this predictor."""

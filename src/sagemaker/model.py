@@ -52,7 +52,7 @@ class ModelBase(abc.ABC):
         """Deploy this model to a compute service."""
 
     @abc.abstractmethod
-    def destroy(self, *args, **kwargs) -> None:
+    def delete_model(self, *args, **kwargs) -> None:
         """Destroy resources associated with this model."""
 
 
@@ -822,8 +822,6 @@ class Model(ModelBase):
                 "The SageMaker model must be created first before attempting to delete."
             )
         self.sagemaker_session.delete_model(self.name)
-
-    destroy = delete_model
 
 
 SCRIPT_PARAM_NAME = "sagemaker_program"

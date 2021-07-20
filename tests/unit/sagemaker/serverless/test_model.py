@@ -49,4 +49,4 @@ def test_deploy(mock_client, wait):
 
 def test_destroy():
     model = LambdaModel(IMAGE_URI, ROLE, client=mock_client)
-    model.destroy()  # NOTE: This method is a no-op.
+    model.delete_model()  # NOTE: This method is a no-op.

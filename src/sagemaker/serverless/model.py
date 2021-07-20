@@ -82,7 +82,7 @@ class LambdaModel(ModelBase):
 
         return LambdaPredictor(function_name, client=self._client)
 
-    def destroy(self) -> None:
+    def delete_model(self) -> None:
         """Destroy resources associated with this model.
 
         This method does not delete the image specified in the constructor. As
