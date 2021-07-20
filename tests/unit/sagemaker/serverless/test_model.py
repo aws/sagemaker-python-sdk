@@ -47,6 +47,15 @@ def test_deploy(mock_client, wait):
     assert predictor.function_name == function_name
 
 
+def test_deploy_raises_error_on_failure(mock_client):
+    model = LambdaModel(IMAGE_URI, ROLE, client=mock_client)
+    mock_client.create_function = Mock(return_value={"State": "Pending"})
+    mock_client.get_function_configuration = Mock(return_value={"State": "Failed", "StateReason": "Resource limit"})
+
+    with pytest.raises(RuntimeError):
+        model.deploy("my-function", timeout=3, memory_size=128, wait=True)
+
+
 def test_destroy():
     model = LambdaModel(IMAGE_URI, ROLE, client=mock_client)
     model.delete_model()  # NOTE: This method is a no-op.
