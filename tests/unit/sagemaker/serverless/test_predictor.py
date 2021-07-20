@@ -45,7 +45,7 @@ def test_predict(mock_client):
     assert prediction == {"class": "cat"}
 
 
-def test_destroy(mock_client):
+def test_delete_endpoint(mock_client):
     predictor = LambdaPredictor(FUNCTION_NAME, client=mock_client)
 
     predictor.delete_endpoint()

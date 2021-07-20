@@ -56,6 +56,6 @@ def test_deploy_raises_error_on_failure(mock_client):
         model.deploy("my-function", timeout=3, memory_size=128, wait=True)
 
 
-def test_destroy():
+def test_delete_model():
     model = LambdaModel(IMAGE_URI, ROLE, client=mock_client)
     model.delete_model()  # NOTE: This method is a no-op.
