@@ -9,4 +9,5 @@ For general information about using the SageMaker Python SDK, see :ref:`overview
     :maxdepth: 2
 
     sagemaker.huggingface
-    Use Hugging Face with the SageMaker Python SDK <https://huggingface.co/transformers/sagemaker.html>
+    Train Hugging Face models on Amazon SageMaker with the SageMaker Python SDK <https://huggingface.co/docs/sagemaker/train>
+    Deploy Hugging Face models to Amazon SageMaker with the SageMaker Python SDK <https://huggingface.co/docs/sagemaker/inference>
