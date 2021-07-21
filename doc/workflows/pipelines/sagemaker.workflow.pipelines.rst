@@ -6,6 +6,7 @@ ConditionStep
 
 .. autoclass:: sagemaker.workflow.condition_step.ConditionStep
 
+.. autoclass:: sagemaker.workflow.condition_step.JsonGet
 
 Conditions
 ----------
@@ -54,7 +55,6 @@ Functions
 ---------
 
 .. autoclass:: sagemaker.workflow.functions.Join
-.. autoclass:: sagemaker.workflow.functions.JsonGet
 
 Parameters
 ----------
@@ -109,11 +109,17 @@ Steps
 
 .. autoclass:: sagemaker.workflow.steps.TrainingStep
 
-.. autoclass:: sagemaker.workflow.steps.CreateModelStep
+.. autoclass:: sagemaker.workflow.steps.TuningStep
+
+.. autofunction:: sagemaker.workflow.steps.TuningStep.get_top_model_s3_uri
 
 .. autoclass:: sagemaker.workflow.steps.TransformStep
 
 .. autoclass:: sagemaker.workflow.steps.ProcessingStep
+
+.. autoclass:: sagemaker.workflow.steps.CreateModelStep
+
+.. autoclass:: sagemaker.workflow.callback_step.CallbackStep
 
 Utilities
 ---------

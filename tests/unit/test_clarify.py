@@ -89,6 +89,54 @@ def test_data_bias_config():
     assert expected_config == data_bias_config.get_config()
 
 
+def test_data_bias_config_multi_facet():
+    label_values = [1]
+    facet_name = ["Facet1", "Facet2"]
+    facet_threshold = [[0], [1, 2]]
+    group_name = "A151"
+
+    data_bias_config = BiasConfig(
+        label_values_or_threshold=label_values,
+        facet_name=facet_name,
+        facet_values_or_threshold=facet_threshold,
+        group_name=group_name,
+    )
+
+    expected_config = {
+        "label_values_or_threshold": label_values,
+        "facet": [
+            {"name_or_index": facet_name[0], "value_or_threshold": facet_threshold[0]},
+            {"name_or_index": facet_name[1], "value_or_threshold": facet_threshold[1]},
+        ],
+        "group_variable": group_name,
+    }
+    assert expected_config == data_bias_config.get_config()
+
+
+def test_data_bias_config_multi_facet_not_all_with_value():
+    label_values = [1]
+    facet_name = ["Facet1", "Facet2"]
+    facet_threshold = [[0], None]
+    group_name = "A151"
+
+    data_bias_config = BiasConfig(
+        label_values_or_threshold=label_values,
+        facet_name=facet_name,
+        facet_values_or_threshold=facet_threshold,
+        group_name=group_name,
+    )
+
+    expected_config = {
+        "label_values_or_threshold": label_values,
+        "facet": [
+            {"name_or_index": facet_name[0], "value_or_threshold": facet_threshold[0]},
+            {"name_or_index": facet_name[1]},
+        ],
+        "group_variable": group_name,
+    }
+    assert expected_config == data_bias_config.get_config()
+
+
 def test_model_config():
     model_name = "xgboost-model"
     instance_type = "ml.c5.xlarge"
@@ -442,21 +490,22 @@ def test_post_training_bias(
         )
 
 
-@patch("sagemaker.utils.name_from_base", return_value=JOB_NAME)
-def test_shap(
+def _run_test_shap(
     name_from_base,
     clarify_processor,
     clarify_processor_with_job_name_prefix,
     data_config,
     model_config,
     shap_config,
+    model_scores,
+    expected_predictor_config,
 ):
     with patch.object(SageMakerClarifyProcessor, "_run", return_value=None) as mock_method:
         clarify_processor.run_explainability(
             data_config,
             model_config,
             shap_config,
-            model_scores=None,
+            model_scores=model_scores,
             wait=True,
             job_name="test",
             experiment_config={"ExperimentName": "AnExperiment"},
@@ -485,11 +534,7 @@ def test_shap(
                     "save_local_shap_values": True,
                 }
             },
-            "predictor": {
-                "model_name": "xgboost-model",
-                "instance_type": "ml.c5.xlarge",
-                "initial_instance_count": 1,
-            },
+            "predictor": expected_predictor_config,
         }
         mock_method.assert_called_with(
             data_config,
@@ -504,7 +549,7 @@ def test_shap(
             data_config,
             model_config,
             shap_config,
-            model_scores=None,
+            model_scores=model_scores,
             wait=True,
             experiment_config={"ExperimentName": "AnExperiment"},
         )
@@ -518,3 +563,63 @@ def test_shap(
             None,
             {"ExperimentName": "AnExperiment"},
         )
+
+
+@patch("sagemaker.utils.name_from_base", return_value=JOB_NAME)
+def test_shap(
+    name_from_base,
+    clarify_processor,
+    clarify_processor_with_job_name_prefix,
+    data_config,
+    model_config,
+    shap_config,
+):
+    expected_predictor_config = {
+        "model_name": "xgboost-model",
+        "instance_type": "ml.c5.xlarge",
+        "initial_instance_count": 1,
+    }
+    _run_test_shap(
+        name_from_base,
+        clarify_processor,
+        clarify_processor_with_job_name_prefix,
+        data_config,
+        model_config,
+        shap_config,
+        None,
+        expected_predictor_config,
+    )
+
+
+@patch("sagemaker.utils.name_from_base", return_value=JOB_NAME)
+def test_shap_with_predicted_label(
+    name_from_base,
+    clarify_processor,
+    clarify_processor_with_job_name_prefix,
+    data_config,
+    model_config,
+    shap_config,
+):
+    probability = "pr"
+    label_headers = ["success"]
+    model_scores = ModelPredictedLabelConfig(
+        probability=probability,
+        label_headers=label_headers,
+    )
+    expected_predictor_config = {
+        "model_name": "xgboost-model",
+        "instance_type": "ml.c5.xlarge",
+        "initial_instance_count": 1,
+        "probability": probability,
+        "label_headers": label_headers,
+    }
+    _run_test_shap(
+        name_from_base,
+        clarify_processor,
+        clarify_processor_with_job_name_prefix,
+        data_config,
+        model_config,
+        shap_config,
+        model_scores,
+        expected_predictor_config,
+    )
