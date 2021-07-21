@@ -61,7 +61,7 @@ class LambdaPredictor(PredictorBase):
             response["ResponseMetadata"]["HTTPHeaders"]["content-type"],
         )
 
-    def delete_endpoint(self) -> None:
+    def delete_predictor(self) -> None:
         """Destroy the Lambda function specified in the constructor."""
         self._client.delete_function(FunctionName=self._function_name)
 
