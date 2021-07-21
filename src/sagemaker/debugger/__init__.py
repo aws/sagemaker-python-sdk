@@ -15,6 +15,7 @@ from __future__ import absolute_import
 
 from sagemaker.debugger.debugger import (  # noqa: F401
     CollectionConfig,
+    DEBUGGER_FLAG,
     DebuggerHookConfig,
     framework_name,
     get_default_profiler_rule,

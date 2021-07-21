@@ -1,5 +1,121 @@
 # Changelog
 
+## v2.49.1 (2021-07-19)
+
+### Bug Fixes and Other Changes
+
+ * Set flag when debugger is disabled
+ * KMS Key fix for kwargs
+ * Update BiasConfig to accept multiple facet params
+
+### Documentation Changes
+
+ * Update huggingface estimator documentation
+
+## v2.49.0 (2021-07-15)
+
+### Features
+
+ * Adding serial inference pipeline support to RegisterModel Step
+
+### Documentation Changes
+
+ * add tuning step get_top_model_s3_uri and callback step to doc
+ * links for HF in sdk
+ * Add Clarify module to Model Monitoring API docs
+
+## v2.48.2 (2021-07-12)
+
+### Bug Fixes and Other Changes
+
+ * default time for compilation jobs
+ * skip hf inference test
+
+## v2.48.1 (2021-07-08)
+
+### Bug Fixes and Other Changes
+
+ * skip HF inference test
+ * remove upsert from test_workflow
+
+### Documentation Changes
+
+ * Add Hugging Face docs
+ * add tuning step to doc
+
+## v2.48.0 (2021-07-07)
+
+### Features
+
+ * HuggingFace Inference
+
+### Bug Fixes and Other Changes
+
+ * add support for SageMaker workflow tuning step
+
+## v2.47.2.post0 (2021-07-01)
+
+### Documentation Changes
+
+ * smddp 1.2.1 release note / convert md to rst
+ * add smd model parallel 1.4.0 release note / restructure doc files
+
+## v2.47.2 (2021-06-30)
+
+### Bug Fixes and Other Changes
+
+ * handle tags when upsert pipeine
+
+## v2.47.1 (2021-06-27)
+
+### Bug Fixes and Other Changes
+
+ * revert "fix: jsonGet interpolation issue 2426 + allow step depends on pass in step instance (#2477)"
+
+## v2.47.0 (2021-06-25)
+
+### Features
+
+ * support job_name_prefix for Clarify
+
+### Bug Fixes and Other Changes
+
+ * Add configuration option with headers for Clarify Explainability
+ * jsonGet interpolation issue 2426 + allow step depends on pass in step instance
+ * add default retries to feature group ingestion.
+ * Update using_pytorch.rst
+ * kms key does not propapate in register model step
+ * Correctly interpolate Callback output parameters
+
+## v2.46.1 (2021-06-22)
+
+### Bug Fixes and Other Changes
+
+ * Register model step tags
+
+### Documentation Changes
+
+ * update to include new batch_get_record api call
+ * Correct type annotation for TrainingStep inputs
+ * introduce input mode FastFile
+ * update hf transformer version
+
+## v2.46.0 (2021-06-15)
+
+### Features
+
+ * Add HF transformer version 4.6.1
+
+### Bug Fixes and Other Changes
+
+ * encode localmode payload to UTF-8
+ * call DescribeDomain as fallback in get_execution_role
+ * parameterize PT and TF version for HuggingFace tests
+
+### Documentation Changes
+
+ * Add import statement in Batch Transform Overview doc
+
 ## v2.45.0 (2021-06-07)
 
 ### Features
