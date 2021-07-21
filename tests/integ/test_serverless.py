@@ -24,6 +24,8 @@ IMAGE_URI = "142577830533.dkr.ecr.us-west-2.amazonaws.com/serverless-integ-test:
 ROLE = "arn:aws:iam::142577830533:role/lambda_basic_execution"
 URL = "https://c.files.bbci.co.uk/12A9B/production/_111434467_gettyimages-1143489763.jpg"
 
+print('"CODEBUILD_BUILD_ID" in os.environ =', "CODEBUILD_BUILD_ID" in os.environ)
+
 
 @pytest.mark.skipif(
     "CODEBUILD_BUILD_ID" not in os.environ,
@@ -39,5 +41,5 @@ def test_lambda():
 
     assert prediction == {"class": "tabby"}
 
-    model.destroy()
-    predictor.destroy()
+    model.delete_model()
+    predictor.delete_predictor()
