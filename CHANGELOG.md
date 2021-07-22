@@ -1,5 +1,12 @@
 # Changelog
 
+## v2.49.2 (2021-07-21)
+
+### Bug Fixes and Other Changes
+
+ * order of populating container list
+ * upgrade Adobe Analytics cookie to 3.0
+
 ## v2.49.1 (2021-07-19)
 
 ### Bug Fixes and Other Changes
