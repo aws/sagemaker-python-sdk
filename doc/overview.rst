@@ -703,6 +703,8 @@ Alternatively, if you already have a SageMaker model, you can create an instance
 
 .. code:: python
 
+    from sagemaker.transformer import Transformer
+
     transformer = Transformer(model_name='my-previously-trained-model',
                               instance_count=1,
                               instance_type='ml.m4.xlarge')
