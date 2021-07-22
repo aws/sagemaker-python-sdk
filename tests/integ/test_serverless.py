@@ -12,8 +12,7 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-import os
-
+import boto3
 import pytest
 
 from sagemaker.serverless import LambdaModel
