@@ -88,7 +88,7 @@ def test_pipeline_interpolates_callback_outputs():
         name="MyCallbackStep2",
         depends_on=["TestStep"],
         sqs_queue_url="https://sqs.us-east-2.amazonaws.com/123456789012/MyQueue",
-        inputs={"arg1": cb_step1.properties.Outputs["output1"]},
+        inputs={"arg1": outputParam1},
         outputs=[outputParam2],
     )
 

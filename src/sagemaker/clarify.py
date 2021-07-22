@@ -88,21 +88,34 @@ class BiasConfig:
         Args:
             label_values_or_threshold (Any): List of label values or threshold to indicate positive
                 outcome used for bias metrics.
-            facet_name (str): Sensitive attribute in the input data for which we like to compare
-                metrics.
+            facet_name (str or [str]): String or List of strings of sensitive attribute(s) in the
+            input data for which we like to compare metrics.
             facet_values_or_threshold (list): Optional list of values to form a sensitive group or
                 threshold for a numeric facet column that defines the lower bound of a sensitive
                 group. Defaults to considering each possible value as sensitive group and
                 computing metrics vs all the other examples.
+                If facet_name is a list, this needs to be None or a List consisting of lists or None
+                with the same length as facet_name list.
             group_name (str): Optional column name or index to indicate a group column to be used
                 for the bias metric 'Conditional Demographic Disparity in Labels - CDDL' or
                 'Conditional Demographic Disparity in Predicted Labels - CDDPL'.
         """
-        facet = {"name_or_index": facet_name}
-        _set(facet_values_or_threshold, "value_or_threshold", facet)
+        if isinstance(facet_name, str):
+            facet = {"name_or_index": facet_name}
+            _set(facet_values_or_threshold, "value_or_threshold", facet)
+            facet_list = [facet]
+        elif facet_values_or_threshold is None or len(facet_name) == len(facet_values_or_threshold):
+            facet_list = []
+            for i, single_facet_name in enumerate(facet_name):
+                facet = {"name_or_index": single_facet_name}
+                if facet_values_or_threshold is not None:
+                    _set(facet_values_or_threshold[i], "value_or_threshold", facet)
+                facet_list.append(facet)
+        else:
+            raise ValueError("Wrong combination of argument values passed")
         self.analysis_config = {
             "label_values_or_threshold": label_values_or_threshold,
-            "facet": [facet],
+            "facet": facet_list,
         }
         _set(group_name, "group_variable", self.analysis_config)
 
@@ -350,6 +363,7 @@ class SageMakerClarifyProcessor(Processor):
         env=None,
         tags=None,
         network_config=None,
+        job_name_prefix=None,
         version=None,
     ):
         """Initializes a ``Processor`` instance, computing bias metrics and model explanations.
@@ -384,9 +398,11 @@ class SageMakerClarifyProcessor(Processor):
                 A :class:`~sagemaker.network.NetworkConfig`
                 object that configures network isolation, encryption of
                 inter-container traffic, security group IDs, and subnets.
+            job_name_prefix (str): Processing job name prefix.
             version (str): Clarify version want to be used.
         """
         container_uri = image_uris.retrieve("clarify", sagemaker_session.boto_region_name, version)
+        self.job_name_prefix = job_name_prefix
         super(SageMakerClarifyProcessor, self).__init__(
             role,
             container_uri,
@@ -500,13 +516,22 @@ class SageMakerClarifyProcessor(Processor):
             data_config (:class:`~sagemaker.clarify.DataConfig`): Config of the input/output data.
             data_bias_config (:class:`~sagemaker.clarify.BiasConfig`): Config of sensitive groups.
             methods (str or list[str]): Selector of a subset of potential metrics:
-                ["CI", "DPL", "KL", "JS", "LP", "TVD", "KS", "CDDL"]. Defaults to computing all.
-                # TODO: Provide a pointer to the official documentation of those.
+                ["`CI <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-ci.html>`_",
+                "`DPL <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-dpl.html>`_",
+                "`KL <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-kl.html>`_",
+                "`JS <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-js.html>`_",
+                "`LP <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-lp.html>`_",
+                "`TVD <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-tvd.html>`_",
+                "`KS <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-ks.html>`_",
+                "`CDDL <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-cdd.html>`_"].
+                Defaults to computing all.
             wait (bool): Whether the call should wait until the job completes (default: True).
             logs (bool): Whether to show the logs produced by the job.
                 Only meaningful when ``wait`` is True (default: True).
-            job_name (str): Processing job name. If not specified, a name is composed of
-                "Clarify-Pretraining-Bias" and current timestamp.
+            job_name (str): Processing job name. When ``job_name`` is not specified, if
+                ``job_name_prefix`` in :class:`SageMakerClarifyProcessor` specified, the job name
+                will be composed of ``job_name_prefix`` and current timestamp; otherwise use
+                "Clarify-Pretraining-Bias" as prefix.
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 user code file (default: None).
             experiment_config (dict[str, str]): Experiment management configuration.
@@ -517,7 +542,10 @@ class SageMakerClarifyProcessor(Processor):
         analysis_config.update(data_bias_config.get_config())
         analysis_config["methods"] = {"pre_training_bias": {"methods": methods}}
         if job_name is None:
-            job_name = utils.name_from_base("Clarify-Pretraining-Bias")
+            if self.job_name_prefix:
+                job_name = utils.name_from_base(self.job_name_prefix)
+            else:
+                job_name = utils.name_from_base("Clarify-Pretraining-Bias")
         self._run(data_config, analysis_config, wait, logs, job_name, kms_key, experiment_config)
 
     def run_post_training_bias(
@@ -548,14 +576,25 @@ class SageMakerClarifyProcessor(Processor):
             model_predicted_label_config (:class:`~sagemaker.clarify.ModelPredictedLabelConfig`):
                 Config of how to extract the predicted label from the model output.
             methods (str or list[str]): Selector of a subset of potential metrics:
-                # TODO: Provide a pointer to the official documentation of those.
-                ["DPPL", "DI", "DCA", "DCR", "RD", "DAR", "DRR", "AD", "CDDPL", "TE", "FT"].
+                ["`DPPL <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-dppl.html>`_"
+                , "`DI <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-di.html>`_",
+                "`DCA <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-dca.html>`_",
+                "`DCR <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-dcr.html>`_",
+                "`RD <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-rd.html>`_",
+                "`DAR <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-dar.html>`_",
+                "`DRR <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-drr.html>`_",
+                "`AD <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-ad.html>`_",
+                "`CDDPL <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-cddpl.html>`_
+                ", "`TE <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-te.html>`_",
+                "`FT <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-ft.html>`_"].
                 Defaults to computing all.
             wait (bool): Whether the call should wait until the job completes (default: True).
             logs (bool): Whether to show the logs produced by the job.
                 Only meaningful when ``wait`` is True (default: True).
-            job_name (str): Processing job name. If not specified, a name is composed of
-                "Clarify-Posttraining-Bias" and current timestamp.
+            job_name (str): Processing job name. When ``job_name`` is not specified, if
+                ``job_name_prefix`` in :class:`SageMakerClarifyProcessor` specified, the job name
+                will be composed of ``job_name_prefix`` and current timestamp; otherwise use
+                "Clarify-Posttraining-Bias" as prefix.
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 user code file (default: None).
             experiment_config (dict[str, str]): Experiment management configuration.
@@ -573,7 +612,10 @@ class SageMakerClarifyProcessor(Processor):
         analysis_config["predictor"] = predictor_config
         _set(probability_threshold, "probability_threshold", analysis_config)
         if job_name is None:
-            job_name = utils.name_from_base("Clarify-Posttraining-Bias")
+            if self.job_name_prefix:
+                job_name = utils.name_from_base(self.job_name_prefix)
+            else:
+                job_name = utils.name_from_base("Clarify-Posttraining-Bias")
         self._run(data_config, analysis_config, wait, logs, job_name, kms_key, experiment_config)
 
     def run_bias(
@@ -605,18 +647,35 @@ class SageMakerClarifyProcessor(Processor):
             model_predicted_label_config (:class:`~sagemaker.clarify.ModelPredictedLabelConfig`):
                 Config of how to extract the predicted label from the model output.
             pre_training_methods (str or list[str]): Selector of a subset of potential metrics:
-                # TODO: Provide a pointer to the official documentation of those.
-                ["DPPL", "DI", "DCA", "DCR", "RD", "DAR", "DRR", "AD", "CDDPL", "TE", "FT"].
+                ["`CI <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-ci.html>`_",
+                "`DPL <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-dpl.html>`_",
+                "`KL <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-kl.html>`_",
+                "`JS <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-js.html>`_",
+                "`LP <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-lp.html>`_",
+                "`TVD <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-tvd.html>`_",
+                "`KS <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-ks.html>`_",
+                "`CDDL <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-cdd.html>`_"].
                 Defaults to computing all.
             post_training_methods (str or list[str]): Selector of a subset of potential metrics:
-                # TODO: Provide a pointer to the official documentation of those.
-                ["DPPL", "DI", "DCA", "DCR", "RD", "DAR", "DRR", "AD", "CDDPL", "TE", "FT"].
+                ["`DPPL <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-dppl.html>`_"
+                , "`DI <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-di.html>`_",
+                "`DCA <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-dca.html>`_",
+                "`DCR <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-dcr.html>`_",
+                "`RD <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-rd.html>`_",
+                "`DAR <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-dar.html>`_",
+                "`DRR <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-drr.html>`_",
+                "`AD <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-ad.html>`_",
+                "`CDDPL <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-cddpl.html>`_
+                ", "`TE <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-te.html>`_",
+                "`FT <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-ft.html>`_"].
                 Defaults to computing all.
             wait (bool): Whether the call should wait until the job completes (default: True).
             logs (bool): Whether to show the logs produced by the job.
                 Only meaningful when ``wait`` is True (default: True).
-            job_name (str): Processing job name. If not specified, a name is composed of
-                "Clarify-Bias" and current timestamp.
+            job_name (str): Processing job name. When ``job_name`` is not specified, if
+                ``job_name_prefix`` in :class:`SageMakerClarifyProcessor` specified, the job name
+                will be composed of ``job_name_prefix`` and current timestamp; otherwise use
+                "Clarify-Bias" as prefix.
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 user code file (default: None).
             experiment_config (dict[str, str]): Experiment management configuration.
@@ -641,7 +700,10 @@ class SageMakerClarifyProcessor(Processor):
             "post_training_bias": {"methods": post_training_methods},
         }
         if job_name is None:
-            job_name = utils.name_from_base("Clarify-Bias")
+            if self.job_name_prefix:
+                job_name = utils.name_from_base(self.job_name_prefix)
+            else:
+                job_name = utils.name_from_base("Clarify-Bias")
         self._run(data_config, analysis_config, wait, logs, job_name, kms_key, experiment_config)
 
     def run_explainability(
@@ -674,13 +736,17 @@ class SageMakerClarifyProcessor(Processor):
                 endpoint to be created.
             explainability_config (:class:`~sagemaker.clarify.ExplainabilityConfig`): Config of the
                 specific explainability method. Currently, only SHAP is supported.
-            model_scores:  Index or JSONPath location in the model output for the predicted scores
-                to be explained. This is not required if the model output is a single score.
+            model_scores(str|int|ModelPredictedLabelConfig):  Index or JSONPath location in the
+                model output for the predicted scores to be explained. This is not required if the
+                model output is a single score. Alternatively, an instance of
+                ModelPredictedLabelConfig can be provided.
             wait (bool): Whether the call should wait until the job completes (default: True).
             logs (bool): Whether to show the logs produced by the job.
                 Only meaningful when ``wait`` is True (default: True).
-            job_name (str): Processing job name. If not specified, a name is composed of
-                "Clarify-Explainability" and current timestamp.
+            job_name (str): Processing job name. When ``job_name`` is not specified, if
+                ``job_name_prefix`` in :class:`SageMakerClarifyProcessor` specified, the job name
+                will be composed of ``job_name_prefix`` and current timestamp; otherwise use
+                "Clarify-Explainability" as prefix.
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 user code file (default: None).
             experiment_config (dict[str, str]): Experiment management configuration.
@@ -689,11 +755,19 @@ class SageMakerClarifyProcessor(Processor):
         """
         analysis_config = data_config.get_config()
         predictor_config = model_config.get_predictor_config()
-        _set(model_scores, "label", predictor_config)
+        if isinstance(model_scores, ModelPredictedLabelConfig):
+            probability_threshold, predicted_label_config = model_scores.get_predictor_config()
+            _set(probability_threshold, "probability_threshold", analysis_config)
+            predictor_config.update(predicted_label_config)
+        else:
+            _set(model_scores, "label", predictor_config)
         analysis_config["methods"] = explainability_config.get_explainability_config()
         analysis_config["predictor"] = predictor_config
         if job_name is None:
-            job_name = utils.name_from_base("Clarify-Explainability")
+            if self.job_name_prefix:
+                job_name = utils.name_from_base(self.job_name_prefix)
+            else:
+                job_name = utils.name_from_base("Clarify-Explainability")
         self._run(data_config, analysis_config, wait, logs, job_name, kms_key, experiment_config)
 
 
