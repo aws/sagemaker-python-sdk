@@ -21,6 +21,7 @@ list feature groups APIs can be used to manage feature groups.
 
 from __future__ import absolute_import
 
+import copy
 import logging
 import math
 import os
@@ -193,6 +194,10 @@ class IngestionManagerPandas:
         Returns:
             List of row indices that failed to be ingested.
         """
+        retry_config = client_config.retries
+        if "max_attempts" not in retry_config and "total_max_attempts" not in retry_config:
+            client_config = copy.deepcopy(client_config)
+            client_config.retries = {"max_attempts": 10, "mode": "standard"}
         sagemaker_featurestore_runtime_client = boto3.Session().client(
             service_name="sagemaker-featurestore-runtime", config=client_config
         )

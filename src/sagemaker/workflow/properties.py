@@ -13,7 +13,7 @@
 """The properties definitions for workflow."""
 from __future__ import absolute_import
 
-from typing import Dict, Union
+from typing import Dict, Union, List
 
 import attr
 
@@ -40,27 +40,35 @@ class PropertiesMeta(type):
 class Properties(metaclass=PropertiesMeta):
     """Properties for use in workflow expressions."""
 
-    def __init__(self, path: str, shape_name: str = None):
+    def __init__(
+        self,
+        path: str,
+        shape_name: str = None,
+        shape_names: List[str] = None,
+    ):
         """Create a Properties instance representing the given shape.
 
         Args:
             path (str): The parent path of the Properties instance.
             shape_name (str): The botocore sagemaker service model shape name.
+            shape_names (str): A List of the botocore sagemaker service model shape name.
         """
         self._path = path
-        self._shape_name = shape_name
+        shape_names = [] if shape_names is None else shape_names
+        self._shape_names = shape_names if shape_name is None else [shape_name] + shape_names
 
-        shape = Properties._shapes.get(self._shape_name, {})
-        shape_type = shape.get("type")
-        if shape_type in Properties._primitive_types:
-            self.__str__ = shape_name
-        elif shape_type == "structure":
-            members = shape["members"]
-            for key, info in members.items():
-                if Properties._shapes.get(info["shape"], {}).get("type") == "list":
-                    self.__dict__[key] = PropertiesList(f"{path}.{key}", info["shape"])
-                else:
-                    self.__dict__[key] = Properties(f"{path}.{key}", info["shape"])
+        for name in self._shape_names:
+            shape = Properties._shapes.get(name, {})
+            shape_type = shape.get("type")
+            if shape_type in Properties._primitive_types:
+                self.__str__ = name
+            elif shape_type == "structure":
+                members = shape["members"]
+                for key, info in members.items():
+                    if Properties._shapes.get(info["shape"], {}).get("type") == "list":
+                        self.__dict__[key] = PropertiesList(f"{path}.{key}", info["shape"])
+                    else:
+                        self.__dict__[key] = Properties(f"{path}.{key}", info["shape"])
 
     @property
     def expr(self):
@@ -77,8 +85,10 @@ class PropertiesList(Properties):
         Args:
             path (str): The parent path of the PropertiesList instance.
             shape_name (str): The botocore sagemaker service model shape name.
+            root_shape_name (str): The botocore sagemaker service model shape name.
         """
         super(PropertiesList, self).__init__(path, shape_name)
+        self.shape_name = shape_name
         self._items: Dict[Union[int, str], Properties] = dict()
 
     def __getitem__(self, item: Union[int, str]):
@@ -88,7 +98,7 @@ class PropertiesList(Properties):
             item (Union[int, str]): The index of the item in sequence.
         """
         if item not in self._items.keys():
-            shape = Properties._shapes.get(self._shape_name)
+            shape = Properties._shapes.get(self.shape_name)
             member = shape["member"]["shape"]
             if isinstance(item, str):
                 property_item = Properties(f"{self._path}['{item}']", member)
