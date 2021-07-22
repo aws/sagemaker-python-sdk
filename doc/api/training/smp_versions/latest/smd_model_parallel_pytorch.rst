@@ -6,7 +6,7 @@
 PyTorch API
 ===========
 
-**Supported versions: 1.6.0, 1.7.1, 1.8.0**
+**Supported versions: 1.7.1, 1.8.1**
 
 This API document assumes you use the following import statements in your training scripts.
 
@@ -268,7 +268,7 @@ This API document assumes you use the following import statements in your traini
 
    .. function:: register_comm_hook( state, callable )
 
-      **Available for PyTorch 1.8.0 only**
+      **Available for PyTorch 1.8.1 only**
       Registers a communication hook which is an enhancement that provides
       a flexible hook ``callable`` to users where they can specify how
       gradients are aggregated across multiple workers. This method will be called on the wrapped ``DistributedDataParallel`` instance.

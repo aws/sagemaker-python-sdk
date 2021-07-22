@@ -157,10 +157,7 @@ TensorFlow API
 
 .. rubric:: Supported versions
 
-TensorFlow is supported in version 1.0.0 of ``sagemakerdistributed.dataparallel``.
-Reference version 1.0.0 `TensorFlow API documentation
-<https://sagemaker.readthedocs.io/en/stable/api/training/sdp_versions/latest/smd_data_parallel_tensorflow.html#tensorflow-sdp-api>`_
-for supported TensorFlow versions.
+**TensorFlow 2.3.1, 2.4.1, 2.5.0**
 
 .. function:: smdistributed.dataparallel.tensorflow.init()
 
@@ -446,7 +443,7 @@ for supported TensorFlow versions.
 
       *   Supported compression types - ``none``, ``fp16``
 
-   - ``sparse_as_dense:`` Not supported. Raises not supported error.
+   - ``sparse_as_dense:`` Treats sparse gradient tensor as dense tensor. Defaults to ``False``.
 
    - ``op (smdistributed.dataparallel.tensorflow.ReduceOp)(optional)``: The reduction operation to combine tensors across different ranks. Defaults to ``Average`` if None is given.
 
@@ -484,6 +481,8 @@ for supported TensorFlow versions.
    - ``compression (smdistributed.dataparallel.tensorflow.Compression)(optional)``: Compression algorithm used to reduce the amount of data sent and received by each worker node. Defaults to not using compression.
 
       *   Supported compression types - ``none``, ``fp16``
+
+   - ``sparse_as_dense:`` Treats sparse gradient tensor as dense tensor. Defaults to ``False``.
 
    - ``op (smdistributed.dataparallel.tensorflow.ReduceOp)(optional)``: The reduction operation to combine tensors across different ranks. Defaults to ``Average`` if None is given.
 

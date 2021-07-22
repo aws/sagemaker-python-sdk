@@ -1,7 +1,7 @@
 TensorFlow API
 ==============
 
-**Supported version: 2.4.1, 2.3.1**
+**Supported version: 2.3.1, 2.4.1, 2.5.0**
 
 **Important**: This API document assumes you use the following import statement in your training scripts.
 
@@ -164,5 +164,3 @@ TensorFlow API
           if step == 0:
               ckpt_manager.restore()
           loss = train_step(inputs)
-
-

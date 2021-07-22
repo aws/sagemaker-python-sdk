@@ -16,21 +16,23 @@ from __future__ import absolute_import
 import json
 
 from copy import deepcopy
-from typing import Any, Dict, List, Sequence, Union
+from typing import Any, Dict, List, Sequence, Union, Optional
 
 import attr
 import botocore
-
 from botocore.exceptions import ClientError
 
 from sagemaker._studio import _append_project_tags
 from sagemaker.session import Session
+from sagemaker.workflow.callback_step import CallbackOutput, CallbackStep
 from sagemaker.workflow.entities import (
     Entity,
     Expression,
     RequestType,
 )
+from sagemaker.workflow.execution_variables import ExecutionVariables
 from sagemaker.workflow.parameters import Parameter
+from sagemaker.workflow.pipeline_experiment_config import PipelineExperimentConfig
 from sagemaker.workflow.properties import Properties
 from sagemaker.workflow.steps import Step
 from sagemaker.workflow.step_collections import StepCollection
@@ -44,6 +46,12 @@ class Pipeline(Entity):
     Attributes:
         name (str): The name of the pipeline.
         parameters (Sequence[Parameters]): The list of the parameters.
+        pipeline_experiment_config (Optional[PipelineExperimentConfig]): If set,
+            the workflow will attempt to create an experiment and trial before
+            executing the steps. Creation will be skipped if an experiment or a trial with
+            the same name already exists. By default, pipeline name is used as
+            experiment name and execution id is used as the trial name.
+            If set to None, no experiment or trial will be created automatically.
         steps (Sequence[Steps]): The list of the non-conditional steps associated with the pipeline.
             Any steps that are within the
             `if_steps` or `else_steps` of a `ConditionStep` cannot be listed in the steps of a
@@ -57,6 +65,11 @@ class Pipeline(Entity):
 
     name: str = attr.ib(factory=str)
     parameters: Sequence[Parameter] = attr.ib(factory=list)
+    pipeline_experiment_config: Optional[PipelineExperimentConfig] = attr.ib(
+        default=PipelineExperimentConfig(
+            ExecutionVariables.PIPELINE_NAME, ExecutionVariables.PIPELINE_EXECUTION_ID
+        )
+    )
     steps: Sequence[Union[Step, StepCollection]] = attr.ib(factory=list)
     sagemaker_session: Session = attr.ib(factory=Session)
 
@@ -69,6 +82,9 @@ class Pipeline(Entity):
             "Version": self._version,
             "Metadata": self._metadata,
             "Parameters": list_to_request(self.parameters),
+            "PipelineExperimentConfig": self.pipeline_experiment_config.to_request()
+            if self.pipeline_experiment_config is not None
+            else None,
             "Steps": list_to_request(self.steps),
         }
 
@@ -76,7 +92,6 @@ class Pipeline(Entity):
         self,
         role_arn: str,
         description: str = None,
-        experiment_name: str = None,
         tags: List[Dict[str, str]] = None,
     ) -> Dict[str, Any]:
         """Creates a Pipeline in the Pipelines service.
@@ -84,7 +99,6 @@ class Pipeline(Entity):
         Args:
             role_arn (str): The role arn that is assumed by the pipeline to create step artifacts.
             description (str): A description of the pipeline.
-            experiment_name (str): The name of the experiment.
             tags (List[Dict[str, str]]): A list of {"Key": "string", "Value": "string"} dicts as
                 tags.
 
@@ -96,7 +110,6 @@ class Pipeline(Entity):
         kwargs = self._create_args(role_arn, description)
         update_args(
             kwargs,
-            ExperimentName=experiment_name,
             Tags=tags,
         )
         return self.sagemaker_session.sagemaker_client.create_pipeline(**kwargs)
@@ -106,7 +119,7 @@ class Pipeline(Entity):
 
         Args:
             role_arn (str): The role arn that is assumed by pipelines to create step artifacts.
-            pipeline_description (str): A description of the pipeline.
+            description (str): A description of the pipeline.
 
         Returns:
             A keyword argument dict for calling create_pipeline.
@@ -147,15 +160,13 @@ class Pipeline(Entity):
         self,
         role_arn: str,
         description: str = None,
-        experiment_name: str = None,
         tags: List[Dict[str, str]] = None,
     ) -> Dict[str, Any]:
         """Creates a pipeline or updates it, if it already exists.
 
         Args:
             role_arn (str): The role arn that is assumed by workflow to create step artifacts.
-            pipeline_description (str): A description of the pipeline.
-            experiment_name (str): The name of the experiment.
+            description (str): A description of the pipeline.
             tags (List[Dict[str, str]]): A list of {"Key": "string", "Value": "string"} dicts as
                 tags.
 
@@ -163,7 +174,7 @@ class Pipeline(Entity):
             response dict from service
         """
         try:
-            response = self.create(role_arn, description, experiment_name, tags)
+            response = self.create(role_arn, description, tags)
         except ClientError as e:
             error = e.response["Error"]
             if (
@@ -171,6 +182,19 @@ class Pipeline(Entity):
                 and "Pipeline names must be unique within" in error["Message"]
             ):
                 response = self.update(role_arn, description)
+                if tags is not None:
+                    old_tags = self.sagemaker_session.sagemaker_client.list_tags(
+                        ResourceArn=response["PipelineArn"]
+                    )["Tags"]
+
+                    tag_keys = [tag["Key"] for tag in tags]
+                    for old_tag in old_tags:
+                        if old_tag["Key"] not in tag_keys:
+                            tags.append(old_tag)
+
+                    self.sagemaker_session.sagemaker_client.add_tags(
+                        ResourceArn=response["PipelineArn"], Tags=tags
+                    )
             else:
                 raise
         return response
@@ -186,6 +210,7 @@ class Pipeline(Entity):
     def start(
         self,
         parameters: Dict[str, Any] = None,
+        execution_display_name: str = None,
         execution_description: str = None,
     ):
         """Starts a Pipeline execution in the Workflow service.
@@ -193,6 +218,7 @@ class Pipeline(Entity):
         Args:
             parameters (List[Dict[str, str]]): A list of parameter dicts of the form
                 {"Name": "string", "Value": "string"}.
+            execution_display_name (str): The display name of the pipeline execution.
             execution_description (str): A description of the execution.
 
         Returns:
@@ -209,11 +235,13 @@ class Pipeline(Entity):
                 "This pipeline is not associated with a Pipeline in SageMaker. "
                 "Please invoke create() first before attempting to invoke start()."
             )
+
         kwargs = dict(PipelineName=self.name)
         update_args(
             kwargs,
             PipelineParameters=format_start_parameters(parameters),
             PipelineExecutionDescription=execution_description,
+            PipelineExecutionDisplayName=execution_display_name,
         )
         response = self.sagemaker_session.sagemaker_client.start_pipeline_execution(**kwargs)
         return _PipelineExecution(
@@ -224,7 +252,13 @@ class Pipeline(Entity):
     def definition(self) -> str:
         """Converts a request structure to string representation for workflow service calls."""
         request_dict = self.to_request()
-        request_dict["Steps"] = interpolate(request_dict["Steps"])
+        request_dict["PipelineExperimentConfig"] = interpolate(
+            request_dict["PipelineExperimentConfig"], {}
+        )
+        callback_output_to_step_map = _map_callback_outputs(self.steps)
+        request_dict["Steps"] = interpolate(
+            request_dict["Steps"], callback_output_to_step_map=callback_output_to_step_map
+        )
 
         return json.dumps(request_dict)
 
@@ -245,36 +279,60 @@ def format_start_parameters(parameters: Dict[str, Any]) -> List[Dict[str, Any]]:
     return [{"Name": name, "Value": str(value)} for name, value in parameters.items()]
 
 
-def interpolate(request_obj: RequestType) -> RequestType:
+def interpolate(
+    request_obj: RequestType, callback_output_to_step_map: Dict[str, str]
+) -> RequestType:
     """Replaces Parameter values in a list of nested Dict[str, Any] with their workflow expression.
 
     Args:
         request_obj (RequestType): The request dict.
+        callback_output_to_step_map (Dict[str, str]): A dict of output name -> step name.
 
     Returns:
         RequestType: The request dict with Parameter values replaced by their expression.
     """
     request_obj_copy = deepcopy(request_obj)
-    return _interpolate(request_obj_copy)
+    return _interpolate(request_obj_copy, callback_output_to_step_map=callback_output_to_step_map)
 
 
-def _interpolate(obj: Union[RequestType, Any]):
+def _interpolate(obj: Union[RequestType, Any], callback_output_to_step_map: Dict[str, str]):
     """Walks the nested request dict, replacing Parameter type values with workflow expressions.
 
     Args:
         obj (Union[RequestType, Any]): The request dict.
+        callback_output_to_step_map (Dict[str, str]): A dict of output name -> step name.
     """
     if isinstance(obj, (Expression, Parameter, Properties)):
         return obj.expr
+    if isinstance(obj, CallbackOutput):
+        step_name = callback_output_to_step_map[obj.output_name]
+        return obj.expr(step_name)
     if isinstance(obj, dict):
         new = obj.__class__()
         for key, value in obj.items():
-            new[key] = interpolate(value)
+            new[key] = interpolate(value, callback_output_to_step_map)
     elif isinstance(obj, (list, set, tuple)):
-        new = obj.__class__(interpolate(value) for value in obj)
+        new = obj.__class__(interpolate(value, callback_output_to_step_map) for value in obj)
     else:
         return obj
     return new
+
+
+def _map_callback_outputs(steps: List[Step]):
+    """Iterate over the provided steps, building a map of callback output parameters to step names.
+
+    Args:
+        step (List[Step]): The steps list.
+    """
+
+    callback_output_map = {}
+    for step in steps:
+        if isinstance(step, CallbackStep):
+            if step.outputs:
+                for output in step.outputs:
+                    callback_output_map[output.output_name] = step.name
+
+    return callback_output_map
 
 
 def update_args(args: Dict[str, Any], **kwargs):

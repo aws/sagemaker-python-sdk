@@ -29,6 +29,7 @@ from sagemaker import git_utils, image_uris
 from sagemaker.analytics import TrainingJobAnalytics
 from sagemaker.debugger import TensorBoardOutputConfig  # noqa: F401 # pylint: disable=unused-import
 from sagemaker.debugger import (
+    DEBUGGER_FLAG,
     DebuggerHookConfig,
     FrameworkProfile,
     get_default_profiler_rule,
@@ -124,6 +125,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         profiler_config=None,
         disable_profiler=False,
         environment=None,
+        max_retry_attempts=None,
         **kwargs,
     ):
         """Initialize an ``EstimatorBase`` instance.
@@ -269,6 +271,13 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 will be disabled (default: ``False``).
             environment (dict[str, str]) : Environment variables to be set for
                 use during training job (default: ``None``)
+             max_retry_attempts (int): The number of times to move a job to the STARTING status.
+                You can specify between 1 and 30 attempts.
+                If the value of attempts is greater than zero,
+                the job is retried on InternalServerFailure
+                the same number of attempts as the value.
+                You can cap the total duration for your job by setting ``max_wait`` and ``max_run``
+                (default: ``None``)
 
         """
         instance_count = renamed_kwargs(
@@ -356,6 +365,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self.disable_profiler = disable_profiler
 
         self.environment = environment
+
+        self.max_retry_attempts = max_retry_attempts
 
         if not _region_supports_profiler(self.sagemaker_session.boto_region_name):
             self.disable_profiler = True
@@ -708,7 +719,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 'onnx', 'xgboost'
             framework_version (str): The version of the framework
             compile_max_run (int): Timeout in seconds for compilation (default:
-                3 * 60). After this amount of time Amazon SageMaker Neo
+                15 * 60). After this amount of time Amazon SageMaker Neo
                 terminates the compilation job regardless of its current status.
             tags (list[dict]): List of tags for labeling a compilation job. For
                 more, see
@@ -997,6 +1008,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         if compile_model_family is not None:
             model = self._compiled_models[compile_model_family]
         else:
+            if "model_kms_key" not in kwargs:
+                kwargs["model_kms_key"] = self.output_kms_key
             model = self.create_model(image_uri=image_uri, **kwargs)
         model.name = model_name
         return model.register(
@@ -1114,6 +1127,13 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             if max_wait:
                 init_params["max_wait"] = max_wait
 
+        if job_details.get("RetryStrategy", False):
+            init_params["max_retry_attempts"] = job_details.get("RetryStrategy", {}).get(
+                "MaximumRetryAttempts"
+            )
+            max_wait = job_details.get("StoppingCondition", {}).get("MaxWaitTimeInSeconds")
+            if max_wait:
+                init_params["max_wait"] = max_wait
         return init_params
 
     def transformer(
@@ -1489,6 +1509,11 @@ class _TrainingJob(_Job):
         if estimator.enable_network_isolation():
             train_args["enable_network_isolation"] = True
 
+        if estimator.max_retry_attempts is not None:
+            train_args["retry_strategy"] = {"MaximumRetryAttempts": estimator.max_retry_attempts}
+        else:
+            train_args["retry_strategy"] = None
+
         if estimator.encrypt_inter_container_traffic:
             train_args["encrypt_inter_container_traffic"] = True
 
@@ -1666,6 +1691,7 @@ class Estimator(EstimatorBase):
         profiler_config=None,
         disable_profiler=False,
         environment=None,
+        max_retry_attempts=None,
         **kwargs,
     ):
         """Initialize an ``Estimator`` instance.
@@ -1816,6 +1842,13 @@ class Estimator(EstimatorBase):
                 will be disabled (default: ``False``).
             environment (dict[str, str]) : Environment variables to be set for
                 use during training job (default: ``None``)
+            max_retry_attempts (int): The number of times to move a job to the STARTING status.
+                You can specify between 1 and 30 attempts.
+                If the value of attempts is greater than zero,
+                the job is retried on InternalServerFailure
+                the same number of attempts as the value.
+                You can cap the total duration for your job by setting ``max_wait`` and ``max_run``
+                (default: ``None``)
         """
         self.image_uri = image_uri
         self.hyperparam_dict = hyperparameters.copy() if hyperparameters else {}
@@ -1850,6 +1883,7 @@ class Estimator(EstimatorBase):
             profiler_config=profiler_config,
             disable_profiler=disable_profiler,
             environment=environment,
+            max_retry_attempts=max_retry_attempts,
             **kwargs,
         )
 
@@ -2235,6 +2269,11 @@ class Framework(EstimatorBase):
                         Distributed Training Jobs With Checkpointing Enabled"
                     )
                     self.debugger_hook_config = False
+
+        if self.debugger_hook_config is False:
+            if self.environment is None:
+                self.environment = {}
+            self.environment[DEBUGGER_FLAG] = "0"
 
     def _stage_user_code_in_s3(self):
         """Upload the user training script to s3 and return the location.

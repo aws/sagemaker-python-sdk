@@ -85,6 +85,7 @@ Select a version to see the API documentation for version.
    :maxdepth: 1
 
    sdp_versions/latest.rst
+   sdp_versions/v1_1_x.rst
    sdp_versions/v1_0_0.rst
 
 .. important::
@@ -100,8 +101,10 @@ Select a version to see the API documentation for version.
 Release Notes
 =============
 
-New features, bug fixes, and improvements are regularly made to the SageMaker distributed data parallel library.
+New features, bug fixes, and improvements are regularly made to the SageMaker
+distributed data parallel library.
 
-To see the the latest changes made to the library, refer to the library
-`Release Notes
-<https://github.com/aws/sagemaker-python-sdk/blob/master/doc/api/training/smd_data_parallel_release_notes/>`_.
+.. toctree::
+   :maxdepth: 1
+
+   smd_data_parallel_release_notes/smd_data_parallel_change_log

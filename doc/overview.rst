@@ -374,7 +374,7 @@ Here are examples of how to use Amazon FSx for Lustre as input for training:
 
         file_system_input = FileSystemInput(file_system_id='fs-2',
                                             file_system_type='FSxLustre',
-                                            directory_path='/fsx/tensorflow',
+                                            directory_path='/<mount-id>/tensorflow',
                                             file_system_access_mode='ro')
 
         # Start an Amazon SageMaker training job with FSx using the FileSystemInput class
@@ -394,7 +394,7 @@ Here are examples of how to use Amazon FSx for Lustre as input for training:
 
         records = FileSystemRecordSet(file_system_id='fs-=2,
                                       file_system_type='FSxLustre',
-                                      directory_path='/fsx/kmeans',
+                                      directory_path='/<mount-id>/kmeans',
                                       num_records=784,
                                       feature_dim=784)
 
@@ -702,6 +702,8 @@ you can invoke the estimator's ``transformer()`` method to create a transform jo
 Alternatively, if you already have a SageMaker model, you can create an instance of the ``Transformer`` class by calling its constructor:
 
 .. code:: python
+
+    from sagemaker.transformer import Transformer
 
     transformer = Transformer(model_name='my-previously-trained-model',
                               instance_count=1,

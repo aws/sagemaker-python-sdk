@@ -1,5 +1,237 @@
 # Changelog
 
+## v2.49.2 (2021-07-21)
+
+### Bug Fixes and Other Changes
+
+ * order of populating container list
+ * upgrade Adobe Analytics cookie to 3.0
+
+## v2.49.1 (2021-07-19)
+
+### Bug Fixes and Other Changes
+
+ * Set flag when debugger is disabled
+ * KMS Key fix for kwargs
+ * Update BiasConfig to accept multiple facet params
+
+### Documentation Changes
+
+ * Update huggingface estimator documentation
+
+## v2.49.0 (2021-07-15)
+
+### Features
+
+ * Adding serial inference pipeline support to RegisterModel Step
+
+### Documentation Changes
+
+ * add tuning step get_top_model_s3_uri and callback step to doc
+ * links for HF in sdk
+ * Add Clarify module to Model Monitoring API docs
+
+## v2.48.2 (2021-07-12)
+
+### Bug Fixes and Other Changes
+
+ * default time for compilation jobs
+ * skip hf inference test
+
+## v2.48.1 (2021-07-08)
+
+### Bug Fixes and Other Changes
+
+ * skip HF inference test
+ * remove upsert from test_workflow
+
+### Documentation Changes
+
+ * Add Hugging Face docs
+ * add tuning step to doc
+
+## v2.48.0 (2021-07-07)
+
+### Features
+
+ * HuggingFace Inference
+
+### Bug Fixes and Other Changes
+
+ * add support for SageMaker workflow tuning step
+
+## v2.47.2.post0 (2021-07-01)
+
+### Documentation Changes
+
+ * smddp 1.2.1 release note / convert md to rst
+ * add smd model parallel 1.4.0 release note / restructure doc files
+
+## v2.47.2 (2021-06-30)
+
+### Bug Fixes and Other Changes
+
+ * handle tags when upsert pipeine
+
+## v2.47.1 (2021-06-27)
+
+### Bug Fixes and Other Changes
+
+ * revert "fix: jsonGet interpolation issue 2426 + allow step depends on pass in step instance (#2477)"
+
+## v2.47.0 (2021-06-25)
+
+### Features
+
+ * support job_name_prefix for Clarify
+
+### Bug Fixes and Other Changes
+
+ * Add configuration option with headers for Clarify Explainability
+ * jsonGet interpolation issue 2426 + allow step depends on pass in step instance
+ * add default retries to feature group ingestion.
+ * Update using_pytorch.rst
+ * kms key does not propapate in register model step
+ * Correctly interpolate Callback output parameters
+
+## v2.46.1 (2021-06-22)
+
+### Bug Fixes and Other Changes
+
+ * Register model step tags
+
+### Documentation Changes
+
+ * update to include new batch_get_record api call
+ * Correct type annotation for TrainingStep inputs
+ * introduce input mode FastFile
+ * update hf transformer version
+
+## v2.46.0 (2021-06-15)
+
+### Features
+
+ * Add HF transformer version 4.6.1
+
+### Bug Fixes and Other Changes
+
+ * encode localmode payload to UTF-8
+ * call DescribeDomain as fallback in get_execution_role
+ * parameterize PT and TF version for HuggingFace tests
+
+### Documentation Changes
+
+ * Add import statement in Batch Transform Overview doc
+
+## v2.45.0 (2021-06-07)
+
+### Features
+
+ * Add support for Callback steps in model building pipelines
+
+## v2.44.0 (2021-06-01)
+
+### Features
+
+ * support endpoint_name_prefix, seed and version for Clarify
+
+## v2.43.0 (2021-05-31)
+
+### Features
+
+ * add xgboost framework version 1.3-1
+
+### Bug Fixes and Other Changes
+
+ * remove duplicated tags in _append_project_tags
+
+## v2.42.1 (2021-05-27)
+
+### Bug Fixes and Other Changes
+
+ * default value removed if zero for integer param
+
+## v2.42.0 (2021-05-24)
+
+### Features
+
+ * support for custom pipeline execution name
+ * Add data ingestion only data-wrangler flow recipe generation helper function
+
+### Bug Fixes and Other Changes
+
+ * add kms key for processing job code upload
+ * remove failing notebooks from notebook pr test
+ * fix in and not in condition bug
+ * Update overview.rst
+
+### Documentation Changes
+
+ * Update "Ask a question" contact link
+ * Update smdp docs with sparse_as_dense support
+
+## v2.41.0 (2021-05-17)
+
+### Features
+
+ * add pipeline experiment config
+ * add data wrangler processor
+ * support RetryStrategy for training jobs
+
+### Bug Fixes and Other Changes
+
+ * fix repack pipeline step by putting inference.py in "code" sub dir
+ * add data wrangler image uri
+ * fix black-check errors
+
+## v2.40.0 (2021-05-11)
+
+### Features
+
+ * add xgboost framework version 1.2-2
+
+### Bug Fixes and Other Changes
+
+ * fix get_execution_role on Studio
+ * [fix] Check py_version existence in RegisterModel step
+
+### Documentation Changes
+
+ * SM Distributed EFA Launch
+
+## v2.39.1 (2021-05-05)
+
+### Bug Fixes and Other Changes
+
+ * RegisterModel step and custom dependency support
+
+### Documentation Changes
+
+ * reverting SageMaker distributed data parallel EFA doc updates
+ * adding new version, SM dist. data parallel 1.2.0.
+ * add current Hugging Face supported versions
+ * SMDDP 1.2.0 release notes
+
+## v2.39.0.post0 (2021-05-04)
+
+### Testing and Release Infrastructure
+
+ * disable smdataparallel tests
+
+## v2.39.0 (2021-04-28)
+
+### Features
+
+ * Add HF transformer version 4.5.0
+
+### Bug Fixes and Other Changes
+
+ * Allow hyperparameters in Tensorflow estimator to be parameterized
+
+### Testing and Release Infrastructure
+
+ * black format unit tests
+
 ## v2.38.0 (2021-04-21)
 
 ### Features
