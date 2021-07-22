@@ -20,19 +20,18 @@ from sagemaker.serverless import LambdaModel
 from sagemaker.utils import unique_name_from_base
 
 # See tests/data/serverless for the image source code.
-IMAGE_URI = "142577830533.dkr.ecr.us-west-2.amazonaws.com/serverless-integ-test:latest"
-ROLE = "arn:aws:iam::142577830533:role/lambda_basic_execution"
-URL = "https://c.files.bbci.co.uk/12A9B/production/_111434467_gettyimages-1143489763.jpg"
+ACCOUNT_ID = 142577830533
+IMAGE_URI = f"{ACCOUNT_ID}.dkr.ecr.us-west-2.amazonaws.com/serverless-integ-test:latest"
+ROLE = f"arn:aws:iam::{ACCOUNT_ID}:role/lambda_basic_execution"
+URL = "https://sagemaker-integ-tests-data.s3.us-east-1.amazonaws.com/cat.jpeg"
 
-print('"CODEBUILD_BUILD_ID" in os.environ =', "CODEBUILD_BUILD_ID" in os.environ)
 
-
-@pytest.mark.skipif(
-    "CODEBUILD_BUILD_ID" not in os.environ,
-    reason="The container image is private to the CI account.",
-)
 def test_lambda():
-    model = LambdaModel(image_uri=IMAGE_URI, role=ROLE)
+    client = boto3.client("lambda")
+    if client.get_caller_identity().get("Account") != ACCOUNT_ID:
+        pytest.skip("The container image is private to the CI account.")
+
+    model = LambdaModel(image_uri=IMAGE_URI, role=ROLE, client=client)
 
     predictor = model.deploy(
         unique_name_from_base("my-lambda-function"), timeout=60, memory_size=4092
