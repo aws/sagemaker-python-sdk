@@ -146,7 +146,7 @@ class RegisterModel(StepCollection):
                 else:
                     sagemaker_session = model_entity.sagemaker_session
                     role = model_entity.role
-                if hasattr(model_entity, "entry_point"):
+                if hasattr(model_entity, "entry_point") and model_entity.entry_point is not None:
                     repack_model = True
                     entry_point = model_entity.entry_point
                     source_dir = model_entity.source_dir
