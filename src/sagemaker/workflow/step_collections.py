@@ -112,8 +112,8 @@ class RegisterModel(StepCollection):
         if "entry_point" in kwargs:
             repack_model = True
             entry_point = kwargs.pop("entry_point", None)
-            source_dir = kwargs.get("source_dir")
-            dependencies = kwargs.get("dependencies")
+            source_dir = kwargs.pop("source_dir", None)
+            dependencies = kwargs.pop("dependencies", None)
             kwargs = dict(**kwargs, output_kms_key=kwargs.pop("model_kms_key", None))
 
             repack_model_step = _RepackModelStep(
@@ -130,13 +130,10 @@ class RegisterModel(StepCollection):
             steps.append(repack_model_step)
             model_data = repack_model_step.properties.ModelArtifacts.S3ModelArtifacts
 
-        # remove kwargs consumed by model repacking step
-        kwargs.pop("entry_point", None)
-        kwargs.pop("source_dir", None)
-        kwargs.pop("dependencies", None)
-        kwargs.pop("output_kms_key", None)
+            # remove kwargs consumed by model repacking step
+            kwargs.pop("output_kms_key", None)
 
-        if model is not None:
+        elif model is not None:
             if isinstance(model, PipelineModel):
                 self.model_list = model.models
             elif isinstance(model, Model):
@@ -154,7 +151,9 @@ class RegisterModel(StepCollection):
                     entry_point = model_entity.entry_point
                     source_dir = model_entity.source_dir
                     dependencies = model_entity.dependencies
+                    kwargs = dict(**kwargs, output_kms_key=model_entity.model_kms_key)
                     model_name = model_entity.name or model_entity._framework_name
+
                     repack_model_step = _RepackModelStep(
                         name=f"{model_name}RepackModel",
                         depends_on=depends_on,
@@ -164,11 +163,16 @@ class RegisterModel(StepCollection):
                         entry_point=entry_point,
                         source_dir=source_dir,
                         dependencies=dependencies,
+                        **kwargs,
                     )
                     steps.append(repack_model_step)
                     model_entity.model_data = (
                         repack_model_step.properties.ModelArtifacts.S3ModelArtifacts
                     )
+
+                    # remove kwargs consumed by model repacking step
+                    kwargs.pop("output_kms_key", None)
+
             if isinstance(model, PipelineModel):
                 self.container_def_list = model.pipeline_container_def(inference_instances[0])
             elif isinstance(model, Model):
