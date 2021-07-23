@@ -744,6 +744,83 @@ def test_processing_job_inputs_and_output_config(
     )
 
 
+def test_processor_with_custom_prefix(
+    image_uri,
+    cpu_instance_type,
+    output_kms_key,
+    input_kms_key,
+    prefix,
+):
+    script_path = os.path.join(DATA_DIR, "dummy_script.py")
+
+    processor = Processor(
+        role=ROLE,
+        image_uri=image_uri,
+        instance_count=1,
+        instance_type=cpu_instance_type,
+        entrypoint=["python3", "/opt/ml/processing/input/code/dummy_script.py"],
+        volume_size_in_gb=100,
+        volume_kms_key=None,
+        output_kms_key=output_kms_key,
+        max_runtime_in_seconds=3600,
+        base_job_name="test-processor",
+        env={"DUMMY_ENVIRONMENT_VARIABLE": "dummy-value"},
+        tags=[{"Key": "dummy-tag", "Value": "dummy-tag-value"}],
+        sagemaker_session=sagemaker_session_with_custom_bucket,
+    )
+
+    processor.run(
+        inputs=[
+            ProcessingInput(
+                source=script_path, destination="/opt/ml/processing/input/code/", input_name="code"
+            )
+        ],
+        kms_key=input_kms_key,
+        outputs=[
+            ProcessingOutput(
+                source="/opt/ml/processing/output/container/path/",
+                output_name="dummy_output",
+                s3_upload_mode="EndOfJob",
+            )
+        ],
+        arguments=["-v"],
+        wait=True,
+        logs=True,
+        prefix=prefix,
+    )
+
+    job_description = processor.latest_job.describe()
+
+    assert job_description["ProcessingInputs"][0]["InputName"] == "code"
+    assert prefix in job_description["ProcessingOutputs"][0]["S3Output"]["S3Uri"]
+
+    assert job_description["ProcessingJobName"].startswith("test-processor")
+
+    assert job_description["ProcessingJobStatus"] == "Completed"
+
+    assert job_description["ProcessingOutputConfig"]["KmsKeyId"] == output_kms_key
+    assert job_description["ProcessingOutputConfig"]["Outputs"][0]["OutputName"] == "dummy_output"
+
+    assert job_description["ProcessingResources"]["ClusterConfig"]["InstanceCount"] == 1
+    assert (
+        job_description["ProcessingResources"]["ClusterConfig"]["InstanceType"] == cpu_instance_type
+    )
+    assert job_description["ProcessingResources"]["ClusterConfig"]["VolumeSizeInGB"] == 100
+
+    assert job_description["AppSpecification"]["ContainerArguments"] == ["-v"]
+    assert job_description["AppSpecification"]["ContainerEntrypoint"] == [
+        "python3",
+        "/opt/ml/processing/input/code/dummy_script.py",
+    ]
+    assert job_description["AppSpecification"]["ImageUri"] == image_uri
+
+    assert job_description["Environment"] == {"DUMMY_ENVIRONMENT_VARIABLE": "dummy-value"}
+
+    assert ROLE in job_description["RoleArn"]
+
+    assert job_description["StoppingCondition"] == {"MaxRuntimeInSeconds": 3600}
+
+
 def _get_processing_inputs_with_all_parameters(bucket):
     return [
         ProcessingInput(
