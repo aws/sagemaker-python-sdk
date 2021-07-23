@@ -1,5 +1,36 @@
 # Changelog
 
+## v2.49.2 (2021-07-21)
+
+### Bug Fixes and Other Changes
+
+ * order of populating container list
+ * upgrade Adobe Analytics cookie to 3.0
+
+## v2.49.1 (2021-07-19)
+
+### Bug Fixes and Other Changes
+
+ * Set flag when debugger is disabled
+ * KMS Key fix for kwargs
+ * Update BiasConfig to accept multiple facet params
+
+### Documentation Changes
+
+ * Update huggingface estimator documentation
+
+## v2.49.0 (2021-07-15)
+
+### Features
+
+ * Adding serial inference pipeline support to RegisterModel Step
+
+### Documentation Changes
+
+ * add tuning step get_top_model_s3_uri and callback step to doc
+ * links for HF in sdk
+ * Add Clarify module to Model Monitoring API docs
+
 ## v2.48.2 (2021-07-12)
 
 ### Bug Fixes and Other Changes
