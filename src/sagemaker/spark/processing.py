@@ -753,9 +753,9 @@ class PySparkProcessor(_SparkProcessorBase):
     ):
         """Returns a RunArgs object.
 
-        This object contains the normalized inputs, outputs
-            and arguments needed when using a ``PySparkProcessor``
-            in a :class:`~sagemaker.workflow.steps.ProcessingStep`.
+        This object contains the normalized inputs, outputs and arguments
+        needed when using a ``PySparkProcessor`` in a
+        :class:`~sagemaker.workflow.steps.ProcessingStep`.
 
         Args:
             submit_app (str): Path (local or S3) to Python file to submit to Spark
@@ -1002,9 +1002,9 @@ class SparkJarProcessor(_SparkProcessorBase):
     ):
         """Returns a RunArgs object.
 
-        This object contains the normalized inputs, outputs
-            and arguments needed when using a ``SparkJarProcessor``
-            in a :class:`~sagemaker.workflow.steps.ProcessingStep`.
+        This object contains the normalized inputs, outputs and arguments
+        needed when using a ``SparkJarProcessor`` in a
+        :class:`~sagemaker.workflow.steps.ProcessingStep`.
 
         Args:
             submit_app (str): Path (local or S3) to Python file to submit to Spark
