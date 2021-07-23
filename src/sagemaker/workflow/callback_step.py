@@ -49,7 +49,7 @@ class CallbackOutput:
     """
 
     output_name: str = attr.ib(default=None)
-    output_type: CallbackOutputTypeEnum = attr.ib(default=CallbackOutputTypeEnum.String.value)
+    output_type: CallbackOutputTypeEnum = attr.ib(default=CallbackOutputTypeEnum.String)
 
     def to_request(self) -> RequestType:
         """Get the request structure for workflow service calls."""
