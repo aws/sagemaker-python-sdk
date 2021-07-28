@@ -48,7 +48,7 @@ def test_predict(mock_client):
 def test_delete_endpoint(mock_client):
     predictor = LambdaPredictor(FUNCTION_NAME, client=mock_client)
 
-    predictor.delete_endpoint()
+    predictor.delete_predictor()
 
     mock_client.delete_function.assert_called_once()
     _, kwargs = mock_client.delete_function.call_args
