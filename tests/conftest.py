@@ -98,6 +98,16 @@ def boto_session(request):
 
 
 @pytest.fixture(scope="session")
+def account(boto_session):
+    return boto_session.client("sts").get_caller_identity()["Account"]
+
+
+@pytest.fixture(scope="session")
+def region(boto_session):
+    return os.environ.get("TEST_AWS_REGION_NAME", boto_session.region_name)
+
+
+@pytest.fixture(scope="session")
 def sagemaker_session(sagemaker_client_config, sagemaker_runtime_config, boto_session):
     sagemaker_client_config.setdefault("config", Config(retries=dict(max_attempts=10)))
     sagemaker_client = (
@@ -127,7 +137,7 @@ def sagemaker_local_session(boto_session):
 def custom_bucket_name(boto_session):
     region = boto_session.region_name
     account = boto_session.client(
-        "sts", region_name=region, endpoint_url=utils.sts_regional_endpoint(region)
+        "sts", region_name=region
     ).get_caller_identity()["Account"]
     return "{}-{}-{}".format(CUSTOM_BUCKET_NAME_PREFIX, region, account)
 

@@ -12,25 +12,73 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import os
+import subprocess
+
 import boto3
+import botocore
 import pytest
 
 from sagemaker.serverless import LambdaModel
 from sagemaker.utils import unique_name_from_base
 
-# See tests/data/serverless for the image source code.
-ACCOUNT_ID = 142577830533
-IMAGE_URI = f"{ACCOUNT_ID}.dkr.ecr.us-west-2.amazonaws.com/serverless-integ-test:latest"
-ROLE = f"arn:aws:iam::{ACCOUNT_ID}:role/lambda_basic_execution"
+from tests.integ import DATA_DIR
+
 URL = "https://sagemaker-integ-tests-data.s3.us-east-1.amazonaws.com/cat.jpeg"
 
+IMAGE_NAME = "my-lambda-function"
+REPOSITORY_NAME = "my-lambda-repository"
+BUILD_CONTEXT = os.path.join(DATA_DIR, "serverless")
 
-def test_lambda():
-    client = boto3.client("lambda")
-    if client.get_caller_identity().get("Account") != ACCOUNT_ID:
-        pytest.skip("The container image is private to the CI account.")
+ROLE_NAME = "LambdaExecutionRole"
+POLICY_DOCUMENT = '{"Version": "2012-10-17","Statement": [{ "Effect": "Allow", "Principal": {"Service": "lambda.amazonaws.com"}, "Action": "sts:AssumeRole"}]}'
+POLICY_ARN = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 
-    model = LambdaModel(image_uri=IMAGE_URI, role=ROLE, client=client)
+
+@pytest.fixture(name="tag", scope="module")
+def fixture_tag():
+    return unique_name_from_base("tag")
+
+
+@pytest.fixture(name="image_uri", scope="module")
+def fixture_image_uri(account, region, tag, boto_session):
+    client = boto_session.client("ecr")
+    try:
+        client.describe_repositories(repositoryNames=[REPOSITORY_NAME])["repositories"]
+    except client.exceptions.RepositoryNotFoundException:
+        client.create_repository(repositoryName=REPOSITORY_NAME)
+
+    process = subprocess.Popen(["aws", "ecr", "get-login-password", "--region", region], stdout=subprocess.PIPE)
+    subprocess.check_call(["docker", "login", "--username", "AWS", "--password-stdin", f"{account}.dkr.ecr.{region}.amazonaws.com"], stdin=process.stdout)
+    process.wait()
+
+    subprocess.check_call(["docker", "build", "-t", IMAGE_NAME, BUILD_CONTEXT])
+
+    image_uri = f"{account}.dkr.ecr.us-west-2.amazonaws.com/{REPOSITORY_NAME}:{tag}"
+    subprocess.check_call(["docker", "tag", f"{IMAGE_NAME}:latest", image_uri])
+    subprocess.check_call(["docker", "push", image_uri])
+
+    yield image_uri
+
+    client.batch_delete_image(repositoryName=REPOSITORY_NAME, imageIds=[{"imageTag": tag}])
+    subprocess.check_call(["docker", "rmi", IMAGE_NAME, image_uri])
+
+
+@pytest.fixture(name="role", scope="module")
+def fixture_role(boto_session):
+    client = boto_session.client("iam")
+    try:
+        response = client.get_role(RoleName=ROLE_NAME)
+        return response["Role"]["Arn"]
+    except client.exceptions.NoSuchEntityException:
+        response = client.create_role(RoleName=ROLE_NAME, AssumeRolePolicyDocument=POLICY_DOCUMENT)
+        client.attach_role_policy(RoleName=ROLE_NAME, PolicyArn=POLICY_ARN)
+        return response["Role"]["Arn"]
+
+
+def test_lambda(image_uri, role, boto_session):
+    client = boto_session.client("lambda")
+    model = LambdaModel(image_uri=image_uri, role=role, client=client)
 
     predictor = model.deploy(
         unique_name_from_base("my-lambda-function"), timeout=60, memory_size=4092
