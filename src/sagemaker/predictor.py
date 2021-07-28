@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -12,6 +12,9 @@
 # language governing permissions and limitations under the License.
 """Placeholder docstring"""
 from __future__ import print_function, absolute_import
+
+import abc
+from typing import Any, Tuple
 
 from sagemaker.deprecations import (
     deprecated_class,
@@ -51,7 +54,29 @@ from sagemaker.model_monitor.model_monitoring import DEFAULT_REPOSITORY_NAME
 from sagemaker.lineage.context import EndpointContext
 
 
-class Predictor(object):
+class PredictorBase(abc.ABC):
+    """An object that encapsulates a deployed model."""
+
+    @abc.abstractmethod
+    def predict(self, *args, **kwargs) -> Any:
+        """Perform inference on the provided data and return a prediction."""
+
+    @abc.abstractmethod
+    def delete_endpoint(self, *args, **kwargs) -> None:
+        """Destroy resources associated with this predictor."""
+
+    @property
+    @abc.abstractmethod
+    def content_type(self) -> str:
+        """The MIME type of the data sent to the inference server."""
+
+    @property
+    @abc.abstractmethod
+    def accept(self) -> Tuple[str]:
+        """The content type(s) that are expected from the inference server."""
+
+
+class Predictor(PredictorBase):
     """Make prediction requests to an Amazon SageMaker endpoint."""
 
     def __init__(
