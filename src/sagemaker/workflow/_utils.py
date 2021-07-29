@@ -276,9 +276,7 @@ class _RegisterModelStep(Step):
         self.description = description
         self.kwargs = kwargs
 
-        self._properties = Properties(
-            path=f"Steps.{name}", shape_name="DescribeModelPackageResponse"
-        )
+        self._properties = Properties(path=f"Steps.{name}", shape_name="DescribeModelPackageOutput")
 
     @property
     def arguments(self) -> RequestType:
@@ -344,5 +342,5 @@ class _RegisterModelStep(Step):
 
     @property
     def properties(self):
-        """A Properties object representing the DescribeTrainingJobResponse data model."""
+        """A Properties object representing the DescribeModelPackageOutput data model."""
         return self._properties

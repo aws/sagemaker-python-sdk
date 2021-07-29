@@ -36,3 +36,14 @@ def test_properties_describe_processing_job_response():
     assert prop.ProcessingOutputConfig.Outputs["MyOutputName"].S3Output.S3Uri.expr == {
         "Get": "Steps.MyStep.ProcessingOutputConfig.Outputs['MyOutputName'].S3Output.S3Uri"
     }
+
+
+def test_properties_describe_model_package_output():
+    prop = Properties("Steps.MyStep", "DescribeModelPackageOutput")
+    some_prop_names = ["ModelPackageName", "ModelPackageGroupName", "ModelPackageArn"]
+    for name in some_prop_names:
+        assert name in prop.__dict__.keys()
+    assert prop.ModelPackageName.expr == {"Get": "Steps.MyStep.ModelPackageName"}
+    assert prop.ValidationSpecification.ValidationRole.expr == {
+        "Get": "Steps.MyStep.ValidationSpecification.ValidationRole"
+    }
