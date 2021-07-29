@@ -135,3 +135,24 @@ def test_pipeline_interpolates_lambda_outputs():
             },
         ],
     }
+
+
+def test_lambda_step_no_inputs_outputs():
+    lambda_step = LambdaStep(
+        name="MyLambdaStep",
+        depends_on=["TestStep"],
+        lambda_func=Lambda(
+            function_arn="arn:aws:lambda:us-west-2:123456789012:function:sagemaker_test_lambda"
+        ),
+        inputs={},
+        outputs=[],
+    )
+    lambda_step.add_depends_on(["SecondTestStep"])
+    assert lambda_step.to_request() == {
+        "Name": "MyLambdaStep",
+        "Type": "Lambda",
+        "DependsOn": ["TestStep", "SecondTestStep"],
+        "FunctionArn": "arn:aws:lambda:us-west-2:123456789012:function:sagemaker_test_lambda",
+        "OutputParameters": [],
+        "Arguments": {},
+    }
