@@ -82,8 +82,8 @@ class LambdaStep(Step):
         self,
         name: str,
         lambda_func: Lambda,
-        inputs: dict = {},
-        outputs: List[LambdaOutput] = [],
+        inputs: dict = None,
+        outputs: List[LambdaOutput] = None,
         cache_config: CacheConfig = None,
         depends_on: List[str] = None,
     ):
@@ -103,15 +103,15 @@ class LambdaStep(Step):
         """
         super(LambdaStep, self).__init__(name, StepTypeEnum.LAMBDA, depends_on)
         self.lambda_func = lambda_func
-        self.outputs = outputs
+        self.outputs = outputs if outputs is not None else []
         self.cache_config = cache_config
-        self.inputs = inputs
+        self.inputs = inputs if inputs is not None else {}
 
         root_path = f"Steps.{name}"
         root_prop = Properties(path=root_path)
 
         property_dict = {}
-        for output in outputs:
+        for output in self.outputs:
             property_dict[output.output_name] = Properties(
                 f"{root_path}.OutputParameters['{output.output_name}']"
             )
@@ -150,7 +150,7 @@ class LambdaStep(Step):
         """
         account_id = self.lambda_func.session.account_id()
         region = self.lambda_func.session.boto_region_name
-        if "cn" in region.lower():
+        if region.lower() == "cn-north-1" or region.lower() == "cn-northwest-1":
             partition = "aws-cn"
         else:
             partition = "aws"
