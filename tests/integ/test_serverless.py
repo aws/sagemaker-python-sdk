@@ -12,11 +12,10 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import json
 import os
 import subprocess
 
-import boto3
-import botocore
 import pytest
 
 from sagemaker.serverless import LambdaModel
@@ -31,7 +30,18 @@ REPOSITORY_NAME = "my-lambda-repository"
 BUILD_CONTEXT = os.path.join(DATA_DIR, "serverless")
 
 ROLE_NAME = "LambdaExecutionRole"
-POLICY_DOCUMENT = '{"Version": "2012-10-17","Statement": [{ "Effect": "Allow", "Principal": {"Service": "lambda.amazonaws.com"}, "Action": "sts:AssumeRole"}]}'
+POLICY_DOCUMENT = json.dumps(
+    {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Principal": {"Service": "lambda.amazonaws.com"},
+                "Action": "sts:AssumeRole",
+            }
+        ],
+    }
+)
 POLICY_ARN = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 
 
@@ -48,8 +58,20 @@ def fixture_image_uri(account, region, tag, boto_session):
     except client.exceptions.RepositoryNotFoundException:
         client.create_repository(repositoryName=REPOSITORY_NAME)
 
-    process = subprocess.Popen(["aws", "ecr", "get-login-password", "--region", region], stdout=subprocess.PIPE)
-    subprocess.check_call(["docker", "login", "--username", "AWS", "--password-stdin", f"{account}.dkr.ecr.{region}.amazonaws.com"], stdin=process.stdout)
+    process = subprocess.Popen(
+        ["aws", "ecr", "get-login-password", "--region", region], stdout=subprocess.PIPE
+    )
+    subprocess.check_call(
+        [
+            "docker",
+            "login",
+            "--username",
+            "AWS",
+            "--password-stdin",
+            f"{account}.dkr.ecr.{region}.amazonaws.com",
+        ],
+        stdin=process.stdout,
+    )
     process.wait()
 
     subprocess.check_call(["docker", "build", "-t", IMAGE_NAME, BUILD_CONTEXT])

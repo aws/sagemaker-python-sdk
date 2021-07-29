@@ -137,7 +137,7 @@ def sagemaker_local_session(boto_session):
 def custom_bucket_name(boto_session):
     region = boto_session.region_name
     account = boto_session.client(
-        "sts", region_name=region
+        "sts", region_name=region, endpoint_url=utils.sts_regional_endpoint(region)
     ).get_caller_identity()["Account"]
     return "{}-{}-{}".format(CUSTOM_BUCKET_NAME_PREFIX, region, account)
 
