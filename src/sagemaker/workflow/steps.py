@@ -54,6 +54,7 @@ class StepTypeEnum(Enum, metaclass=DefaultEnumMeta):
     TRANSFORM = "Transform"
     CALLBACK = "Callback"
     TUNING = "Tuning"
+    LAMBDA = "Lambda"
 
 
 @attr.s
