@@ -1,5 +1,25 @@
 # Changelog
 
+## v2.50.0 (2021-07-28)
+
+### Features
+
+ * add KIX region to image_uris
+
+### Bug Fixes and Other Changes
+
+ * Rename `PredictorBase.delete_endpoint` as `PredictorBase.delete_predictor`
+ * incorrect default argument for callback output parameter
+
+### Documentation Changes
+
+ * Remove years from copyright boilerplate
+ * Fix documentation formatting for PySpark and SparkJar processors
+
+### Testing and Release Infrastructure
+
+ * enable py38 tox env
+
 ## v2.49.2 (2021-07-21)
 
 ### Bug Fixes and Other Changes
