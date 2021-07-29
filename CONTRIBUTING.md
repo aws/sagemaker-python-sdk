@@ -11,7 +11,6 @@ information to effectively respond to your bug report or contribution.
 
 * [Report Bugs/Feature Requests](#report-bugsfeature-requests)
 * [Contribute via Pull Requests (PRs)](#contribute-via-pull-requests-prs)
-  * [Set up Your Development Environment *[Optional, but Recommended]*](#set-up-your-development-environment-optional-but-recommended)
   * [Pull Down the Code](#pull-down-the-code)
   * [Run the Unit Tests](#run-the-unit-tests)
   * [Run the Integration Tests](#run-the-integration-tests)
@@ -49,18 +48,6 @@ Before sending us a pull request, please ensure that:
 * You are working against the latest source on the *master* branch.
 * You check the existing open and recently merged pull requests to make sure someone else hasn't already addressed the problem.
 * You open an issue to discuss any significant work - we would hate for your time to be wasted.
-
-
-### Set up Your Development Environment *[Optional, but Recommended]*
-
-1. Set up the Cloud9 environment:
-   1. Instance type: You'll need at least 4 GB of RAM to avoid running into memory issues. We recommend at least a t3.medium to run the unit tests. A larger host will reduce the chance of encountering resource limits.
-   1. Follow the instructions at [Creating a Cloud9 EC2 Environment](https://docs.aws.amazon.com/cloud9/latest/user-guide/create-environment.html#create-environment-main) to set up a Cloud9 EC2 environment.
-1. Expand the storage of the EC2 instance from 10GB to 20GB:
-   1. Because you'll need a minimum of 11GB of disk storage on the EC2 instance to run the repository's unit tests, you'll need to expand your EC2 volume size. We recommend at least 20GB. A larger volume will reduce the chance of encountering resource limits.
-   1. Follow the instructions at [Modifying an EBS Volume Using Elastic Volumes (Console)](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/requesting-ebs-volume-modifications.html#modify-ebs-volume) to increase the EBS volume size associated with the newly created EC2 instance.
-   1. Wait 5-10min for the new EBS volume increase to finalize.
-   1. Allow EC2 to claim the additional space by stopping and then starting your EC2 host.
 
 
 ### Pull Down the Code
