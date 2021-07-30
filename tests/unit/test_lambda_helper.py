@@ -53,7 +53,7 @@ def s3_client(sagemaker_session):
 
 
 def test_lambda_object_with_arn_happycase():
-    lambda_obj = lambda_helper.Lambda(function_arn=LAMBDA_ARN)
+    lambda_obj = lambda_helper.Lambda(function_arn=LAMBDA_ARN, session=sagemaker_session)
     assert lambda_obj.function_arn == LAMBDA_ARN
 
 

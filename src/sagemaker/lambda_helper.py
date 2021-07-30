@@ -31,7 +31,7 @@ class Lambda:
         s3_bucket: str = None,
         script: str = None,
         handler: str = None,
-        session: Session = Session(),
+        session: Session = None,
         timeout: int = 120,
         memory_size: int = 128,
         runtime: str = "python3.8",
@@ -73,7 +73,7 @@ class Lambda:
         self.script = script
         self.handler = handler
         self.execution_role_arn = execution_role_arn
-        self.session = session
+        self.session = session if session is not None else Session()
         self.timeout = timeout
         self.memory_size = memory_size
         self.runtime = runtime
