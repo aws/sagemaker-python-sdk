@@ -106,7 +106,8 @@ def test_pipeline_interpolates_lambda_outputs(sagemaker_session):
         name="MyLambdaStep2",
         depends_on=["TestStep"],
         lambda_func=Lambda(
-            function_arn="arn:aws:lambda:us-west-2:123456789012:function:sagemaker_test_lambda"
+            function_arn="arn:aws:lambda:us-west-2:123456789012:function:sagemaker_test_lambda",
+            session=sagemaker_session,
         ),
         inputs={"arg1": outputParam1},
         outputs=[outputParam2],
