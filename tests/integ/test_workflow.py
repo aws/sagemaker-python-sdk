@@ -845,7 +845,8 @@ def test_two_step_lambda_pipeline_with_output_reference(
     step_lambda2 = LambdaStep(
         name="lambda-step2",
         lambda_func=Lambda(
-            function_arn="arn:aws:lambda:us-west-2:123456789012:function:sagemaker_test_lambda"
+            function_arn="arn:aws:lambda:us-west-2:123456789012:function:sagemaker_test_lambda",
+            session=sagemaker_session
         ),
         inputs={"arg1": outputParam1},
         outputs=[],
