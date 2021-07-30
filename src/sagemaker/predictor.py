@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -62,7 +62,7 @@ class PredictorBase(abc.ABC):
         """Perform inference on the provided data and return a prediction."""
 
     @abc.abstractmethod
-    def delete_endpoint(self, *args, **kwargs) -> None:
+    def delete_predictor(self, *args, **kwargs) -> None:
         """Destroy resources associated with this predictor."""
 
     @property
@@ -329,6 +329,8 @@ class Predictor(PredictorBase):
             self._delete_endpoint_config()
 
         self.sagemaker_session.delete_endpoint(self.endpoint_name)
+
+    delete_predictor = delete_endpoint
 
     def delete_model(self):
         """Deletes the Amazon SageMaker models backing this predictor."""
