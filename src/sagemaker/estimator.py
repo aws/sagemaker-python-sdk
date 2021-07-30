@@ -166,7 +166,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             output_kms_key (str): Optional. KMS key ID for encrypting the
                 training output (default: Your IAM role's KMS key for Amazon S3).
                 If you don't provide a KMS key ID, Amazon SageMaker uses the
-                default KMS key for Amazon S3 for the account linked to your
+                default KMS key for Amazon S3 of the account linked to your
                 IAM role.
             base_job_name (str): Prefix for training job name when the
                 :meth:`~sagemaker.estimator.EstimatorBase.fit` method launches.
