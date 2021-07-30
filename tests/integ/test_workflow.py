@@ -791,7 +791,7 @@ def test_one_step_lambda_pipeline(sagemaker_session, role, pipeline_name, region
         name="lambda-step",
         lambda_func=Lambda(
             function_arn="arn:aws:lambda:us-west-2:123456789012:function:sagemaker_test_lambda",
-            session=sagemaker_session
+            session=sagemaker_session,
         ),
         inputs={"arg1": "foo"},
         outputs=[outputParam1],
@@ -836,7 +836,7 @@ def test_two_step_lambda_pipeline_with_output_reference(
         name="lambda-step1",
         lambda_func=Lambda(
             function_arn="arn:aws:lambda:us-west-2:123456789012:function:sagemaker_test_lambda",
-            session=sagemaker_session
+            session=sagemaker_session,
         ),
         inputs={"arg1": "foo"},
         outputs=[outputParam1],
@@ -846,7 +846,7 @@ def test_two_step_lambda_pipeline_with_output_reference(
         name="lambda-step2",
         lambda_func=Lambda(
             function_arn="arn:aws:lambda:us-west-2:123456789012:function:sagemaker_test_lambda",
-            session=sagemaker_session
+            session=sagemaker_session,
         ),
         inputs={"arg1": outputParam1},
         outputs=[],
