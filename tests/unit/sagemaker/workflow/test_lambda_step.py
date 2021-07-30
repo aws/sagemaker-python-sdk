@@ -24,12 +24,20 @@ from sagemaker.workflow.lambda_step import LambdaStep, LambdaOutput, LambdaOutpu
 from sagemaker.lambda_helper import Lambda
 
 
-@pytest.fixture
-def sagemaker_session_mock():
-    return Mock()
+@pytest.fixture()
+def sagemaker_session():
+    boto_mock = Mock(name="boto_session", region_name="us-west-2")
+    session_mock = Mock(
+        name="sagemaker_session",
+        boto_session=boto_mock,
+        boto_region_name="us-west-2",
+        config=None,
+        local_mode=False,
+    )
+    return session_mock
 
 
-def test_lambda_step():
+def test_lambda_step(sagemaker_session):
     param = ParameterInteger(name="MyInt")
     outputParam1 = LambdaOutput(output_name="output1", output_type=LambdaOutputTypeEnum.String)
     outputParam2 = LambdaOutput(output_name="output2", output_type=LambdaOutputTypeEnum.Boolean)
@@ -37,7 +45,8 @@ def test_lambda_step():
         name="MyLambdaStep",
         depends_on=["TestStep"],
         lambda_func=Lambda(
-            function_arn="arn:aws:lambda:us-west-2:123456789012:function:sagemaker_test_lambda"
+            function_arn="arn:aws:lambda:us-west-2:123456789012:function:sagemaker_test_lambda",
+            session=sagemaker_session,
         ),
         inputs={"arg1": "foo", "arg2": 5, "arg3": param},
         outputs=[outputParam1, outputParam2],
@@ -56,7 +65,7 @@ def test_lambda_step():
     }
 
 
-def test_lambda_step_output_expr():
+def test_lambda_step_output_expr(sagemaker_session):
     param = ParameterInteger(name="MyInt")
     outputParam1 = LambdaOutput(output_name="output1", output_type=LambdaOutputTypeEnum.String)
     outputParam2 = LambdaOutput(output_name="output2", output_type=LambdaOutputTypeEnum.Boolean)
@@ -64,7 +73,8 @@ def test_lambda_step_output_expr():
         name="MyLambdaStep",
         depends_on=["TestStep"],
         lambda_func=Lambda(
-            function_arn="arn:aws:lambda:us-west-2:123456789012:function:sagemaker_test_lambda"
+            function_arn="arn:aws:lambda:us-west-2:123456789012:function:sagemaker_test_lambda",
+            session=sagemaker_session,
         ),
         inputs={"arg1": "foo", "arg2": 5, "arg3": param},
         outputs=[outputParam1, outputParam2],
@@ -78,7 +88,7 @@ def test_lambda_step_output_expr():
     }
 
 
-def test_pipeline_interpolates_lambda_outputs():
+def test_pipeline_interpolates_lambda_outputs(sagemaker_session):
     parameter = ParameterString("MyStr")
     outputParam1 = LambdaOutput(output_name="output1", output_type=LambdaOutputTypeEnum.String)
     outputParam2 = LambdaOutput(output_name="output2", output_type=LambdaOutputTypeEnum.String)
@@ -86,7 +96,8 @@ def test_pipeline_interpolates_lambda_outputs():
         name="MyLambdaStep1",
         depends_on=["TestStep"],
         lambda_func=Lambda(
-            function_arn="arn:aws:lambda:us-west-2:123456789012:function:sagemaker_test_lambda"
+            function_arn="arn:aws:lambda:us-west-2:123456789012:function:sagemaker_test_lambda",
+            session=sagemaker_session,
         ),
         inputs={"arg1": "foo"},
         outputs=[outputParam1],
@@ -105,7 +116,7 @@ def test_pipeline_interpolates_lambda_outputs():
         name="MyPipeline",
         parameters=[parameter],
         steps=[lambda_step1, lambda_step2],
-        sagemaker_session=sagemaker_session_mock,
+        sagemaker_session=sagemaker_session,
     )
 
     assert json.loads(pipeline.definition()) == {
@@ -137,12 +148,13 @@ def test_pipeline_interpolates_lambda_outputs():
     }
 
 
-def test_lambda_step_no_inputs_outputs():
+def test_lambda_step_no_inputs_outputs(sagemaker_session):
     lambda_step = LambdaStep(
         name="MyLambdaStep",
         depends_on=["TestStep"],
         lambda_func=Lambda(
-            function_arn="arn:aws:lambda:us-west-2:123456789012:function:sagemaker_test_lambda"
+            function_arn="arn:aws:lambda:us-west-2:123456789012:function:sagemaker_test_lambda",
+            session=sagemaker_session,
         ),
         inputs={},
         outputs=[],
