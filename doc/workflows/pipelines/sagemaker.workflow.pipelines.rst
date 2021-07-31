@@ -121,6 +121,8 @@ Steps
 
 .. autoclass:: sagemaker.workflow.callback_step.CallbackStep
 
+.. autoclass:: sagemaker.workflow.lambda_step.LambdaStep
+
 Utilities
 ---------
 
