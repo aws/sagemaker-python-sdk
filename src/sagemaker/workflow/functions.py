@@ -24,9 +24,19 @@ from sagemaker.workflow.entities import Expression
 class Join(Expression):
     """Join together properties.
 
+    Examples:
+    Build a Amazon S3 Uri with bucket name parameter and pipeline execution Id and use it
+    as training input::
+
+        bucket = ParameterString('bucket', default_value='my-bucket')
+
+        TrainingInput(
+            s3_data=Join(on='/', ['s3:/', bucket, ExecutionVariables.PIPELINE_EXECUTION_ID]),
+            content_type="text/csv")
+
     Attributes:
-        values (List[Union[PrimitiveType, Parameter]]): The primitive types
-            and parameters to join.
+        values (List[Union[PrimitiveType, Parameter, Expression]]):
+            The primitive type values, parameters, step properties, expressions to join.
         on_str (str): The string to join the values on (Defaults to "").
     """
 
