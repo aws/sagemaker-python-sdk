@@ -1,4 +1,4 @@
-# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -102,20 +102,36 @@ def test_pipeline_upsert(sagemaker_session_mock, role_arn):
                 }
             },
         ),
+        {"PipelineArn": "mock_pipeline_arn"},
+        [{"Key": "dummy", "Value": "dummy_tag"}],
         {},
     ]
+
     pipeline = Pipeline(
         name="MyPipeline",
         parameters=[],
         steps=[],
         sagemaker_session=sagemaker_session_mock,
     )
-    pipeline.update(role_arn=role_arn)
+
+    tags = [
+        {"Key": "foo", "Value": "abc"},
+        {"Key": "bar", "Value": "xyz"},
+    ]
+    pipeline.upsert(role_arn=role_arn, tags=tags)
     assert sagemaker_session_mock.sagemaker_client.create_pipeline.called_with(
         PipelineName="MyPipeline", PipelineDefinition=pipeline.definition(), RoleArn=role_arn
     )
     assert sagemaker_session_mock.sagemaker_client.update_pipeline.called_with(
         PipelineName="MyPipeline", PipelineDefinition=pipeline.definition(), RoleArn=role_arn
+    )
+    assert sagemaker_session_mock.sagemaker_client.list_tags.called_with(
+        ResourceArn="mock_pipeline_arn"
+    )
+
+    tags.append({"Key": "dummy", "Value": "dummy_tag"})
+    assert sagemaker_session_mock.sagemaker_client.add_tags.called_with(
+        ResourceArn="mock_pipeline_arn", Tags=tags
     )
 
 

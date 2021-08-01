@@ -1,4 +1,4 @@
-# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -67,16 +67,15 @@ def retrieve(
         ValueError: If the combination of arguments specified is not supported.
     """
     config = _config_for_framework_and_scope(framework, image_scope, accelerator_type)
-
     original_version = version
     version = _validate_version_and_set_if_needed(version, config, framework)
     version_config = config["versions"][_version_for_config(version, config)]
-
     if framework == HUGGING_FACE_FRAMEWORK:
         if version_config.get("version_aliases"):
             full_base_framework_version = version_config["version_aliases"].get(
                 base_framework_version, base_framework_version
             )
+
         _validate_arg(full_base_framework_version, list(version_config.keys()), "base framework")
         version_config = version_config.get(full_base_framework_version)
 
@@ -106,7 +105,6 @@ def retrieve(
         py_version,
         container_version,
     )
-
     if _should_auto_select_container_version(instance_type, distribution):
         container_versions = {
             "tensorflow-2.3-gpu-py37": "cu110-ubuntu18.04-v3",

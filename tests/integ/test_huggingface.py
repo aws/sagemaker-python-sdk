@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -17,9 +17,11 @@ import os
 import pytest
 
 from sagemaker.huggingface import HuggingFace
+from sagemaker.huggingface.model import HuggingFaceModel, HuggingFacePredictor
+from sagemaker.utils import unique_name_from_base
 from tests import integ
 from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
-from tests.integ.timeout import timeout
+from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 
 
 @pytest.mark.release
@@ -31,7 +33,7 @@ def test_huggingface_training(
     sagemaker_session,
     gpu_instance_type,
     huggingface_training_latest_version,
-    huggingface_pytorch_latest_version,
+    huggingface_training_pytorch_latest_version,
 ):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         data_path = os.path.join(DATA_DIR, "huggingface")
@@ -41,7 +43,7 @@ def test_huggingface_training(
             entry_point=os.path.join(data_path, "run_glue.py"),
             role="SageMakerRole",
             transformers_version=huggingface_training_latest_version,
-            pytorch_version=huggingface_pytorch_latest_version,
+            pytorch_version=huggingface_training_pytorch_latest_version,
             instance_count=1,
             instance_type=gpu_instance_type,
             hyperparameters={
@@ -74,7 +76,7 @@ def test_huggingface_training_tf(
     sagemaker_session,
     gpu_instance_type,
     huggingface_training_latest_version,
-    huggingface_tensorflow_latest_version,
+    huggingface_training_tensorflow_latest_version,
 ):
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         data_path = os.path.join(DATA_DIR, "huggingface")
@@ -84,7 +86,7 @@ def test_huggingface_training_tf(
             entry_point=os.path.join(data_path, "run_tf.py"),
             role="SageMakerRole",
             transformers_version=huggingface_training_latest_version,
-            tensorflow_version=huggingface_tensorflow_latest_version,
+            tensorflow_version=huggingface_training_tensorflow_latest_version,
             instance_count=1,
             instance_type=gpu_instance_type,
             hyperparameters={
@@ -104,3 +106,40 @@ def test_huggingface_training_tf(
         )
 
         hf.fit(train_input)
+
+
+@pytest.mark.skip(
+    reason="need to re enable it later",
+)
+def test_huggingface_inference(
+    sagemaker_session,
+    gpu_instance_type,
+    huggingface_inference_latest_version,
+    huggingface_inference_pytorch_latest_version,
+):
+    env = {
+        "HF_MODEL_ID": "sshleifer/tiny-distilbert-base-uncased-finetuned-sst-2-english",
+        "HF_TASK": "text-classification",
+    }
+    endpoint_name = unique_name_from_base("test-hf-inference")
+
+    model = HuggingFaceModel(
+        sagemaker_session=sagemaker_session,
+        role="SageMakerRole",
+        env=env,
+        py_version="py36",
+        transformers_version=huggingface_inference_latest_version,
+        pytorch_version=huggingface_inference_pytorch_latest_version,
+    )
+    with timeout_and_delete_endpoint_by_name(endpoint_name, sagemaker_session):
+        model.deploy(
+            instance_type=gpu_instance_type, initial_instance_count=1, endpoint_name=endpoint_name
+        )
+
+        predictor = HuggingFacePredictor(endpoint_name=endpoint_name)
+        data = {
+            "inputs": "Camera - You are awarded a SiPix Digital Camera!"
+            "call 09061221066 fromm landline. Delivery within 28 days."
+        }
+        output = predictor.predict(data)
+        assert "score" in output[0]

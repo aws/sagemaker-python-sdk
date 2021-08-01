@@ -1,4 +1,4 @@
-# Copyright 2019-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -18,6 +18,7 @@ import uuid
 import pytest
 
 from sagemaker.debugger.debugger import (
+    DEBUGGER_FLAG,
     DebuggerHookConfig,
     Rule,
     rule_configs,
@@ -748,6 +749,7 @@ def test_mxnet_with_debugger_hook_config_disabled(
         job_description = mx.latest_training_job.describe()
 
         assert job_description.get("DebugHookConfig") is None
+        assert job_description.get("Environment", {}).get(DEBUGGER_FLAG) == "0"
 
 
 def _get_rule_evaluation_statuses(job_description):

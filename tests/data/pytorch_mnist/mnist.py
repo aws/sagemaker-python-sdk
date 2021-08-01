@@ -182,7 +182,7 @@ def train(args):
         accuracy = test(model, test_loader, device)
     save_model(model, args.model_dir)
 
-    logger.debug("Overall test accuracy: {}".format(accuracy))
+    logger.debug("Overall test accuracy: {};".format(accuracy))
 
 
 def test(model, test_loader, device):

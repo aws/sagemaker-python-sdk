@@ -1,4 +1,4 @@
-# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -23,7 +23,7 @@ from mock import (
     patch,
 )
 
-from sagemaker.debugger import ProfilerConfig
+from sagemaker.debugger import DEBUGGER_FLAG, ProfilerConfig
 from sagemaker.estimator import Estimator
 from sagemaker.tensorflow import TensorFlow
 from sagemaker.inputs import TrainingInput, TransformInput, CreateModelInput
@@ -33,6 +33,12 @@ from sagemaker.processing import (
     ProcessingInput,
     ProcessingOutput,
     ScriptProcessor,
+)
+from sagemaker.tuner import (
+    HyperparameterTuner,
+    ContinuousParameter,
+    WarmStartConfig,
+    WarmStartTypes,
 )
 from sagemaker.network import NetworkConfig
 from sagemaker.transformer import Transformer
@@ -45,6 +51,7 @@ from sagemaker.workflow.steps import (
     TrainingStep,
     TransformStep,
     CreateModelStep,
+    TuningStep,
     CacheConfig,
 )
 from tests.unit import DATA_DIR
@@ -268,6 +275,7 @@ def test_training_step_tensorflow(sagemaker_session):
                 "sagemaker_distributed_dataparallel_custom_mpi_options": '""',
             },
             "ProfilerConfig": {"S3OutputPath": "s3://my-bucket/"},
+            "Environment": {DEBUGGER_FLAG: "0"},
         },
         "CacheConfig": {"Enabled": True, "ExpireAfter": "PT1H"},
     }
@@ -487,4 +495,368 @@ def test_properties_describe_processing_job_response():
     assert prop.ProcessingJobName.expr == {"Get": "Steps.MyStep.ProcessingJobName"}
     assert prop.ProcessingOutputConfig.Outputs["MyOutputName"].S3Output.S3Uri.expr == {
         "Get": "Steps.MyStep.ProcessingOutputConfig.Outputs['MyOutputName'].S3Output.S3Uri"
+    }
+
+
+def test_single_algo_tuning_step(sagemaker_session):
+    data_source_uri_parameter = ParameterString(
+        name="DataSourceS3Uri", default_value=f"s3://{BUCKET}/train_manifest"
+    )
+    estimator = Estimator(
+        image_uri=IMAGE_URI,
+        role=ROLE,
+        instance_count=1,
+        instance_type="ml.c5.4xlarge",
+        profiler_config=ProfilerConfig(system_monitor_interval_millis=500),
+        rules=[],
+        sagemaker_session=sagemaker_session,
+    )
+    estimator.set_hyperparameters(
+        num_layers=18,
+        image_shape="3,224,224",
+        num_classes=257,
+        num_training_samples=15420,
+        mini_batch_size=128,
+        epochs=10,
+        optimizer="sgd",
+        top_k="2",
+        precision_dtype="float32",
+        augmentation_type="crop",
+    )
+
+    hyperparameter_ranges = {
+        "learning_rate": ContinuousParameter(0.0001, 0.05),
+        "momentum": ContinuousParameter(0.0, 0.99),
+        "weight_decay": ContinuousParameter(0.0, 0.99),
+    }
+
+    tuner = HyperparameterTuner(
+        estimator=estimator,
+        objective_metric_name="val:accuracy",
+        hyperparameter_ranges=hyperparameter_ranges,
+        objective_type="Maximize",
+        max_jobs=5,
+        max_parallel_jobs=2,
+        early_stopping_type="OFF",
+        strategy="Bayesian",
+        warm_start_config=WarmStartConfig(
+            warm_start_type=WarmStartTypes.IDENTICAL_DATA_AND_ALGORITHM,
+            parents=set(["parent-hpo"]),
+        ),
+    )
+
+    inputs = TrainingInput(s3_data=data_source_uri_parameter)
+
+    tuning_step = TuningStep(
+        name="MyTuningStep",
+        tuner=tuner,
+        inputs=inputs,
+    )
+
+    assert tuning_step.to_request() == {
+        "Name": "MyTuningStep",
+        "Type": "Tuning",
+        "Arguments": {
+            "HyperParameterTuningJobConfig": {
+                "Strategy": "Bayesian",
+                "ResourceLimits": {"MaxNumberOfTrainingJobs": 5, "MaxParallelTrainingJobs": 2},
+                "TrainingJobEarlyStoppingType": "OFF",
+                "HyperParameterTuningJobObjective": {
+                    "Type": "Maximize",
+                    "MetricName": "val:accuracy",
+                },
+                "ParameterRanges": {
+                    "ContinuousParameterRanges": [
+                        {
+                            "Name": "learning_rate",
+                            "MinValue": "0.0001",
+                            "MaxValue": "0.05",
+                            "ScalingType": "Auto",
+                        },
+                        {
+                            "Name": "momentum",
+                            "MinValue": "0.0",
+                            "MaxValue": "0.99",
+                            "ScalingType": "Auto",
+                        },
+                        {
+                            "Name": "weight_decay",
+                            "MinValue": "0.0",
+                            "MaxValue": "0.99",
+                            "ScalingType": "Auto",
+                        },
+                    ],
+                    "CategoricalParameterRanges": [],
+                    "IntegerParameterRanges": [],
+                },
+            },
+            "TrainingJobDefinition": {
+                "StaticHyperParameters": {
+                    "num_layers": "18",
+                    "image_shape": "3,224,224",
+                    "num_classes": "257",
+                    "num_training_samples": "15420",
+                    "mini_batch_size": "128",
+                    "epochs": "10",
+                    "optimizer": "sgd",
+                    "top_k": "2",
+                    "precision_dtype": "float32",
+                    "augmentation_type": "crop",
+                },
+                "RoleArn": "DummyRole",
+                "OutputDataConfig": {"S3OutputPath": "s3://my-bucket/"},
+                "ResourceConfig": {
+                    "InstanceCount": 1,
+                    "InstanceType": "ml.c5.4xlarge",
+                    "VolumeSizeInGB": 30,
+                },
+                "StoppingCondition": {"MaxRuntimeInSeconds": 86400},
+                "AlgorithmSpecification": {
+                    "TrainingInputMode": "File",
+                    "TrainingImage": "fakeimage",
+                },
+                "InputDataConfig": [
+                    {
+                        "DataSource": {
+                            "S3DataSource": {
+                                "S3DataType": "S3Prefix",
+                                "S3Uri": data_source_uri_parameter,
+                                "S3DataDistributionType": "FullyReplicated",
+                            }
+                        },
+                        "ChannelName": "training",
+                    }
+                ],
+            },
+            "WarmStartConfig": {
+                "WarmStartType": "IdenticalDataAndAlgorithm",
+                "ParentHyperParameterTuningJobs": [
+                    {
+                        "HyperParameterTuningJobName": "parent-hpo",
+                    }
+                ],
+            },
+        },
+    }
+
+    assert tuning_step.properties.HyperParameterTuningJobName.expr == {
+        "Get": "Steps.MyTuningStep.HyperParameterTuningJobName"
+    }
+    assert tuning_step.properties.TrainingJobSummaries[0].TrainingJobName.expr == {
+        "Get": "Steps.MyTuningStep.TrainingJobSummaries[0].TrainingJobName"
+    }
+    assert tuning_step.get_top_model_s3_uri(0, "my-bucket", "my-prefix").expr == {
+        "Std:Join": {
+            "On": "/",
+            "Values": [
+                "s3:/",
+                "my-bucket",
+                "my-prefix",
+                {"Get": "Steps.MyTuningStep.TrainingJobSummaries[0].TrainingJobName"},
+                "output/model.tar.gz",
+            ],
+        }
+    }
+
+
+def test_multi_algo_tuning_step(sagemaker_session):
+    data_source_uri_parameter = ParameterString(
+        name="DataSourceS3Uri", default_value=f"s3://{BUCKET}/train_manifest"
+    )
+    estimator = Estimator(
+        image_uri=IMAGE_URI,
+        role=ROLE,
+        instance_count=1,
+        instance_type="ml.c5.4xlarge",
+        profiler_config=ProfilerConfig(system_monitor_interval_millis=500),
+        rules=[],
+        sagemaker_session=sagemaker_session,
+    )
+
+    estimator.set_hyperparameters(
+        num_layers=18,
+        image_shape="3,224,224",
+        num_classes=257,
+        num_training_samples=15420,
+        mini_batch_size=128,
+        epochs=10,
+        optimizer="sgd",
+        top_k="2",
+        precision_dtype="float32",
+        augmentation_type="crop",
+    )
+
+    hyperparameter_ranges = {
+        "learning_rate": ContinuousParameter(0.0001, 0.05),
+        "momentum": ContinuousParameter(0.0, 0.99),
+        "weight_decay": ContinuousParameter(0.0, 0.99),
+    }
+
+    tuner = HyperparameterTuner.create(
+        estimator_dict={
+            "estimator-1": estimator,
+            "estimator-2": estimator,
+        },
+        objective_type="Minimize",
+        objective_metric_name_dict={
+            "estimator-1": "val:loss",
+            "estimator-2": "val:loss",
+        },
+        hyperparameter_ranges_dict={
+            "estimator-1": hyperparameter_ranges,
+            "estimator-2": hyperparameter_ranges,
+        },
+    )
+
+    inputs = TrainingInput(s3_data=data_source_uri_parameter)
+
+    tuning_step = TuningStep(
+        name="MyTuningStep",
+        tuner=tuner,
+        inputs={
+            "estimator-1": inputs,
+            "estimator-2": inputs,
+        },
+    )
+
+    assert tuning_step.to_request() == {
+        "Name": "MyTuningStep",
+        "Type": "Tuning",
+        "Arguments": {
+            "HyperParameterTuningJobConfig": {
+                "Strategy": "Bayesian",
+                "ResourceLimits": {"MaxNumberOfTrainingJobs": 1, "MaxParallelTrainingJobs": 1},
+                "TrainingJobEarlyStoppingType": "Off",
+            },
+            "TrainingJobDefinitions": [
+                {
+                    "StaticHyperParameters": {
+                        "num_layers": "18",
+                        "image_shape": "3,224,224",
+                        "num_classes": "257",
+                        "num_training_samples": "15420",
+                        "mini_batch_size": "128",
+                        "epochs": "10",
+                        "optimizer": "sgd",
+                        "top_k": "2",
+                        "precision_dtype": "float32",
+                        "augmentation_type": "crop",
+                    },
+                    "RoleArn": "DummyRole",
+                    "OutputDataConfig": {"S3OutputPath": "s3://my-bucket/"},
+                    "ResourceConfig": {
+                        "InstanceCount": 1,
+                        "InstanceType": "ml.c5.4xlarge",
+                        "VolumeSizeInGB": 30,
+                    },
+                    "StoppingCondition": {"MaxRuntimeInSeconds": 86400},
+                    "AlgorithmSpecification": {
+                        "TrainingInputMode": "File",
+                        "TrainingImage": "fakeimage",
+                    },
+                    "InputDataConfig": [
+                        {
+                            "DataSource": {
+                                "S3DataSource": {
+                                    "S3DataType": "S3Prefix",
+                                    "S3Uri": data_source_uri_parameter,
+                                    "S3DataDistributionType": "FullyReplicated",
+                                }
+                            },
+                            "ChannelName": "training",
+                        }
+                    ],
+                    "DefinitionName": "estimator-1",
+                    "TuningObjective": {"Type": "Minimize", "MetricName": "val:loss"},
+                    "HyperParameterRanges": {
+                        "ContinuousParameterRanges": [
+                            {
+                                "Name": "learning_rate",
+                                "MinValue": "0.0001",
+                                "MaxValue": "0.05",
+                                "ScalingType": "Auto",
+                            },
+                            {
+                                "Name": "momentum",
+                                "MinValue": "0.0",
+                                "MaxValue": "0.99",
+                                "ScalingType": "Auto",
+                            },
+                            {
+                                "Name": "weight_decay",
+                                "MinValue": "0.0",
+                                "MaxValue": "0.99",
+                                "ScalingType": "Auto",
+                            },
+                        ],
+                        "CategoricalParameterRanges": [],
+                        "IntegerParameterRanges": [],
+                    },
+                },
+                {
+                    "StaticHyperParameters": {
+                        "num_layers": "18",
+                        "image_shape": "3,224,224",
+                        "num_classes": "257",
+                        "num_training_samples": "15420",
+                        "mini_batch_size": "128",
+                        "epochs": "10",
+                        "optimizer": "sgd",
+                        "top_k": "2",
+                        "precision_dtype": "float32",
+                        "augmentation_type": "crop",
+                    },
+                    "RoleArn": "DummyRole",
+                    "OutputDataConfig": {"S3OutputPath": "s3://my-bucket/"},
+                    "ResourceConfig": {
+                        "InstanceCount": 1,
+                        "InstanceType": "ml.c5.4xlarge",
+                        "VolumeSizeInGB": 30,
+                    },
+                    "StoppingCondition": {"MaxRuntimeInSeconds": 86400},
+                    "AlgorithmSpecification": {
+                        "TrainingInputMode": "File",
+                        "TrainingImage": "fakeimage",
+                    },
+                    "InputDataConfig": [
+                        {
+                            "DataSource": {
+                                "S3DataSource": {
+                                    "S3DataType": "S3Prefix",
+                                    "S3Uri": data_source_uri_parameter,
+                                    "S3DataDistributionType": "FullyReplicated",
+                                }
+                            },
+                            "ChannelName": "training",
+                        }
+                    ],
+                    "DefinitionName": "estimator-2",
+                    "TuningObjective": {"Type": "Minimize", "MetricName": "val:loss"},
+                    "HyperParameterRanges": {
+                        "ContinuousParameterRanges": [
+                            {
+                                "Name": "learning_rate",
+                                "MinValue": "0.0001",
+                                "MaxValue": "0.05",
+                                "ScalingType": "Auto",
+                            },
+                            {
+                                "Name": "momentum",
+                                "MinValue": "0.0",
+                                "MaxValue": "0.99",
+                                "ScalingType": "Auto",
+                            },
+                            {
+                                "Name": "weight_decay",
+                                "MinValue": "0.0",
+                                "MaxValue": "0.99",
+                                "ScalingType": "Auto",
+                            },
+                        ],
+                        "CategoricalParameterRanges": [],
+                        "IntegerParameterRanges": [],
+                    },
+                },
+            ],
+        },
     }

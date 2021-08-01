@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -29,6 +29,7 @@ from sagemaker import git_utils, image_uris
 from sagemaker.analytics import TrainingJobAnalytics
 from sagemaker.debugger import TensorBoardOutputConfig  # noqa: F401 # pylint: disable=unused-import
 from sagemaker.debugger import (
+    DEBUGGER_FLAG,
     DebuggerHookConfig,
     FrameworkProfile,
     get_default_profiler_rule,
@@ -718,7 +719,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 'onnx', 'xgboost'
             framework_version (str): The version of the framework
             compile_max_run (int): Timeout in seconds for compilation (default:
-                3 * 60). After this amount of time Amazon SageMaker Neo
+                15 * 60). After this amount of time Amazon SageMaker Neo
                 terminates the compilation job regardless of its current status.
             tags (list[dict]): List of tags for labeling a compilation job. For
                 more, see
@@ -1007,6 +1008,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         if compile_model_family is not None:
             model = self._compiled_models[compile_model_family]
         else:
+            if "model_kms_key" not in kwargs:
+                kwargs["model_kms_key"] = self.output_kms_key
             model = self.create_model(image_uri=image_uri, **kwargs)
         model.name = model_name
         return model.register(
@@ -2267,6 +2270,11 @@ class Framework(EstimatorBase):
                     )
                     self.debugger_hook_config = False
 
+        if self.debugger_hook_config is False:
+            if self.environment is None:
+                self.environment = {}
+            self.environment[DEBUGGER_FLAG] = "0"
+
     def _stage_user_code_in_s3(self):
         """Upload the user training script to s3 and return the location.
 
@@ -2311,9 +2319,13 @@ class Framework(EstimatorBase):
             str: Either a local or an S3 path pointing to the ``source_dir`` to be
                 used for code by the model to be deployed
         """
-        return (
-            self.source_dir if self.sagemaker_session.local_mode else self.uploaded_code.s3_prefix
-        )
+        if self.sagemaker_session.local_mode:
+            return self.source_dir
+
+        if self.uploaded_code is not None:
+            return self.uploaded_code.s3_prefix
+
+        return None
 
     def _model_entry_point(self):
         """Get the appropriate value to pass as ``entry_point`` to a model constructor.
@@ -2325,7 +2337,10 @@ class Framework(EstimatorBase):
         if self.sagemaker_session.local_mode or (self._model_source_dir() is None):
             return self.entry_point
 
-        return self.uploaded_code.script_name
+        if self.uploaded_code is not None:
+            return self.uploaded_code.script_name
+
+        return None
 
     def hyperparameters(self):
         """Return the hyperparameters as a dictionary to use for training.

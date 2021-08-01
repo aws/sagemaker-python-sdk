@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -469,6 +469,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 a directory in the Docker container.
                 * 'Pipe' - Amazon SageMaker streams data directly from S3 to the container via a
                 Unix-named pipe.
+                * 'FastFile' - Amazon SageMaker streams data from S3 on demand instead of
+                downloading the entire dataset before training begins.
             input_config (list): A list of Channel objects. Each channel is a named input source.
                 Please refer to the format details described:
                 https://botocore.readthedocs.io/en/latest/reference/services/sagemaker.html#SageMaker.Client.create_training_job
@@ -611,6 +613,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 a directory in the Docker container.
                 * 'Pipe' - Amazon SageMaker streams data directly from S3 to the container via a
                 Unix-named pipe.
+                * 'FastFile' - Amazon SageMaker streams data from S3 on demand instead of
+                downloading the entire dataset before training begins.
             input_config (list): A list of Channel objects. Each channel is a named input source.
                 Please refer to the format details described:
                 https://botocore.readthedocs.io/en/latest/reference/services/sagemaker.html#SageMaker.Client.create_training_job
@@ -1899,6 +1903,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 a directory in the Docker container.
                 * 'Pipe' - Amazon SageMaker streams data directly from S3 to the container via a
                 Unix-named pipe.
+                * 'FastFile' - Amazon SageMaker streams data from S3 on demand instead of
+                downloading the entire dataset before training begins.
             metric_definitions (list[dict]): A list of dictionaries that defines the metric(s)
                 used to evaluate the training jobs. Each dictionary contains two keys: 'Name' for
                 the name of the metric, and 'Regex' for the regular expression used to extract the
@@ -2029,6 +2035,45 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 "Only one of training_config and training_config_list should be provided."
             )
 
+        tune_request = self._get_tuning_request(
+            job_name=job_name,
+            tuning_config=tuning_config,
+            training_config=training_config,
+            training_config_list=training_config_list,
+            warm_start_config=warm_start_config,
+            tags=tags,
+        )
+
+        LOGGER.info("Creating hyperparameter tuning job with name: %s", job_name)
+        LOGGER.debug("tune request: %s", json.dumps(tune_request, indent=4))
+        self.sagemaker_client.create_hyper_parameter_tuning_job(**tune_request)
+
+    def _get_tuning_request(
+        self,
+        job_name,
+        tuning_config,
+        training_config=None,
+        training_config_list=None,
+        warm_start_config=None,
+        tags=None,
+    ):
+        """Construct CreateHyperParameterTuningJob request
+
+        Args:
+            job_name (str): Name of the tuning job being created.
+            tuning_config (dict): Configuration to launch the tuning job.
+            training_config (dict): Configuration to launch training jobs under the tuning job
+                using a single algorithm.
+            training_config_list (list[dict]): A list of configurations to launch training jobs
+                under the tuning job using one or multiple algorithms. Either training_config
+                or training_config_list should be provided, but not both.
+            warm_start_config (dict): Configuration defining the type of warm start and
+                other required configurations.
+            tags (list[dict]): List of tags for labeling the tuning job. For more, see
+                https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
+        Returns:
+            dict: A dictionary for CreateHyperParameterTuningJob request
+        """
         tune_request = {
             "HyperParameterTuningJobName": job_name,
             "HyperParameterTuningJobConfig": self._map_tuning_config(**tuning_config),
@@ -2049,9 +2094,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if tags is not None:
             tune_request["Tags"] = tags
 
-        LOGGER.info("Creating hyperparameter tuning job with name: %s", job_name)
-        LOGGER.debug("tune request: %s", json.dumps(tune_request, indent=4))
-        self.sagemaker_client.create_hyper_parameter_tuning_job(**tune_request)
+        return tune_request
 
     def describe_tuning_job(self, job_name):
         """Calls DescribeHyperParameterTuningJob API for the given job name, returns the response.
@@ -2182,6 +2225,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
                     a directory in the Docker container.
                 * 'Pipe' - Amazon SageMaker streams data directly from S3 to the container via a
                     Unix-named pipe.
+                * 'FastFile' - Amazon SageMaker streams data from S3 on demand instead of
+                    downloading the entire dataset before training begins.
             role (str): An AWS IAM role (either name or full ARN). The Amazon SageMaker training
                 jobs and APIs that create Amazon SageMaker endpoints use this role to access
                 training data and model artifacts. You must grant sufficient permissions to
@@ -2478,8 +2523,11 @@ class Session(object):  # pylint: disable=too-many-public-methods
         request = {"ModelName": name, "ExecutionRoleArn": role}
         if isinstance(container_definition, list):
             request["Containers"] = container_definition
+        elif "ModelPackageName" in container_definition:
+            request["Containers"] = [container_definition]
         else:
             request["PrimaryContainer"] = container_definition
+
         if tags:
             request["Tags"] = tags
 
@@ -2688,7 +2736,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             description (str): Model Package description (default: None).
         """
 
-        request = self._get_create_model_package_request(
+        request = get_create_model_package_request(
             model_package_name,
             model_package_group_name,
             containers,
@@ -2703,79 +2751,6 @@ class Session(object):  # pylint: disable=too-many-public-methods
             description,
         )
         return self.sagemaker_client.create_model_package(**request)
-
-    def _get_create_model_package_request(
-        self,
-        model_package_name=None,
-        model_package_group_name=None,
-        containers=None,
-        content_types=None,
-        response_types=None,
-        inference_instances=None,
-        transform_instances=None,
-        model_metrics=None,
-        metadata_properties=None,
-        marketplace_cert=False,
-        approval_status="PendingManualApproval",
-        description=None,
-    ):
-        """Get request dictionary for CreateModelPackage API.
-
-        Args:
-            model_package_name (str): Model Package name, exclusive to `model_package_group_name`,
-                using `model_package_name` makes the Model Package un-versioned (default: None).
-            model_package_group_name (str): Model Package Group name, exclusive to
-                `model_package_name`, using `model_package_group_name` makes the Model Package
-                versioned (default: None).
-            containers (list): A list of inference containers that can be used for inference
-                specifications of Model Package (default: None).
-            content_types (list): The supported MIME types for the input data (default: None).
-            response_types (list): The supported MIME types for the output data (default: None).
-            inference_instances (list): A list of the instance types that are used to
-                generate inferences in real-time (default: None).
-            transform_instances (list): A list of the instance types on which a transformation
-                job can be run or on which an endpoint can be deployed (default: None).
-            model_metrics (ModelMetrics): ModelMetrics object (default: None).
-            metadata_properties (MetadataProperties): MetadataProperties object (default: None).
-            marketplace_cert (bool): A boolean value indicating if the Model Package is certified
-                for AWS Marketplace (default: False).
-            approval_status (str): Model Approval Status, values can be "Approved", "Rejected",
-                or "PendingManualApproval" (default: "PendingManualApproval").
-            description (str): Model Package description (default: None).
-        """
-        if all([model_package_name, model_package_group_name]):
-            raise ValueError(
-                "model_package_name and model_package_group_name cannot be present at the "
-                "same time."
-            )
-        request_dict = {}
-        if model_package_name is not None:
-            request_dict["ModelPackageName"] = model_package_name
-        if model_package_group_name is not None:
-            request_dict["ModelPackageGroupName"] = model_package_group_name
-        if description is not None:
-            request_dict["ModelPackageDescription"] = description
-        if model_metrics:
-            request_dict["ModelMetrics"] = model_metrics
-        if metadata_properties:
-            request_dict["MetadataProperties"] = metadata_properties
-        if containers is not None:
-            if not all([content_types, response_types, inference_instances, transform_instances]):
-                raise ValueError(
-                    "content_types, response_types, inference_inferences and transform_instances "
-                    "must be provided if containers is present."
-                )
-            inference_specification = {
-                "Containers": containers,
-                "SupportedContentTypes": content_types,
-                "SupportedResponseMIMETypes": response_types,
-                "SupportedRealtimeInferenceInstanceTypes": inference_instances,
-                "SupportedTransformInstanceTypes": transform_instances,
-            }
-            request_dict["InferenceSpecification"] = inference_specification
-        request_dict["CertifyForMarketplace"] = marketplace_cert
-        request_dict["ModelApprovalStatus"] = approval_status
-        return request_dict
 
     def wait_for_model_package(self, model_package_name, poll=5):
         """Wait for an Amazon SageMaker endpoint deployment to complete.
@@ -4049,6 +4024,160 @@ class Session(object):  # pylint: disable=too-many-public-methods
             "sts", region_name=region, endpoint_url=sts_regional_endpoint(region)
         )
         return sts_client.get_caller_identity()["Account"]
+
+
+def get_model_package_args(
+    content_types,
+    response_types,
+    inference_instances,
+    transform_instances,
+    model_package_name=None,
+    model_package_group_name=None,
+    model_data=None,
+    image_uri=None,
+    model_metrics=None,
+    metadata_properties=None,
+    marketplace_cert=False,
+    approval_status=None,
+    description=None,
+    tags=None,
+    container_def_list=None,
+):
+    """Get arguments for create_model_package method.
+
+    Args:
+        content_types (list): The supported MIME types for the input data.
+        response_types (list): The supported MIME types for the output data.
+        inference_instances (list): A list of the instance types that are used to
+        generate inferences in real-time.
+        transform_instances (list): A list of the instance types on which a transformation
+        job can be run or on which an endpoint can be deployed.
+        model_package_name (str): Model Package name, exclusive to `model_package_group_name`,
+        using `model_package_name` makes the Model Package un-versioned (default: None).
+        model_package_group_name (str): Model Package Group name, exclusive to
+        `model_package_name`, using `model_package_group_name` makes the Model Package
+        versioned (default: None).
+        image_uri (str): Inference image uri for the container. Model class' self.image will
+        be used if it is None (default: None).
+        model_metrics (ModelMetrics): ModelMetrics object (default: None).
+        metadata_properties (MetadataProperties): MetadataProperties object (default: None).
+        marketplace_cert (bool): A boolean value indicating if the Model Package is certified
+        for AWS Marketplace (default: False).
+        approval_status (str): Model Approval Status, values can be "Approved", "Rejected",
+        or "PendingManualApproval" (default: "PendingManualApproval").
+        description (str): Model Package description (default: None).
+        container_def_list (list): A list of container defintiions.
+    Returns:
+        dict: A dictionary of method argument names and values.
+    """
+    if container_def_list is not None:
+        containers = container_def_list
+    else:
+        container = {
+            "Image": image_uri,
+            "ModelDataUrl": model_data,
+        }
+        containers = [container]
+
+    model_package_args = {
+        "containers": containers,
+        "content_types": content_types,
+        "response_types": response_types,
+        "inference_instances": inference_instances,
+        "transform_instances": transform_instances,
+        "marketplace_cert": marketplace_cert,
+    }
+
+    if model_package_name is not None:
+        model_package_args["model_package_name"] = model_package_name
+    if model_package_group_name is not None:
+        model_package_args["model_package_group_name"] = model_package_group_name
+    if model_metrics is not None:
+        model_package_args["model_metrics"] = model_metrics._to_request_dict()
+    if metadata_properties is not None:
+        model_package_args["metadata_properties"] = metadata_properties._to_request_dict()
+    if approval_status is not None:
+        model_package_args["approval_status"] = approval_status
+    if description is not None:
+        model_package_args["description"] = description
+    if tags is not None:
+        model_package_args["tags"] = tags
+    return model_package_args
+
+
+def get_create_model_package_request(
+    model_package_name=None,
+    model_package_group_name=None,
+    containers=None,
+    content_types=None,
+    response_types=None,
+    inference_instances=None,
+    transform_instances=None,
+    model_metrics=None,
+    metadata_properties=None,
+    marketplace_cert=False,
+    approval_status="PendingManualApproval",
+    description=None,
+    tags=None,
+):
+    """Get request dictionary for CreateModelPackage API.
+
+    Args:
+        model_package_name (str): Model Package name, exclusive to `model_package_group_name`,
+        using `model_package_name` makes the Model Package un-versioned (default: None).
+        model_package_group_name (str): Model Package Group name, exclusive to
+        `model_package_name`, using `model_package_group_name` makes the Model Package
+        versioned (default: None).
+        containers (list): A list of inference containers that can be used for inference
+        specifications of Model Package (default: None).
+        content_types (list): The supported MIME types for the input data (default: None).
+        response_types (list): The supported MIME types for the output data (default: None).
+        inference_instances (list): A list of the instance types that are used to
+        generate inferences in real-time (default: None).
+        transform_instances (list): A list of the instance types on which a transformation
+        job can be run or on which an endpoint can be deployed (default: None).
+        model_metrics (ModelMetrics): ModelMetrics object (default: None).
+        metadata_properties (MetadataProperties): MetadataProperties object (default: None).
+        marketplace_cert (bool): A boolean value indicating if the Model Package is certified
+        for AWS Marketplace (default: False).
+        approval_status (str): Model Approval Status, values can be "Approved", "Rejected",
+        or "PendingManualApproval" (default: "PendingManualApproval").
+        description (str): Model Package description (default: None).
+    """
+    if all([model_package_name, model_package_group_name]):
+        raise ValueError(
+            "model_package_name and model_package_group_name cannot be present at the " "same time."
+        )
+    request_dict = {}
+    if model_package_name is not None:
+        request_dict["ModelPackageName"] = model_package_name
+    if model_package_group_name is not None:
+        request_dict["ModelPackageGroupName"] = model_package_group_name
+    if description is not None:
+        request_dict["ModelPackageDescription"] = description
+    if tags is not None:
+        request_dict["Tags"] = tags
+    if model_metrics:
+        request_dict["ModelMetrics"] = model_metrics
+    if metadata_properties:
+        request_dict["MetadataProperties"] = metadata_properties
+    if containers is not None:
+        if not all([content_types, response_types, inference_instances, transform_instances]):
+            raise ValueError(
+                "content_types, response_types, inference_inferences and transform_instances "
+                "must be provided if containers is present."
+            )
+        inference_specification = {
+            "Containers": containers,
+            "SupportedContentTypes": content_types,
+            "SupportedResponseMIMETypes": response_types,
+            "SupportedRealtimeInferenceInstanceTypes": inference_instances,
+            "SupportedTransformInstanceTypes": transform_instances,
+        }
+        request_dict["InferenceSpecification"] = inference_specification
+    request_dict["CertifyForMarketplace"] = marketplace_cert
+    request_dict["ModelApprovalStatus"] = approval_status
+    return request_dict
 
 
 def update_args(args: Dict[str, Any], **kwargs):
