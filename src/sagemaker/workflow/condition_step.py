@@ -17,6 +17,7 @@ from typing import List, Union
 
 import attr
 
+from sagemaker.deprecations import deprecated_class
 from sagemaker.workflow.conditions import Condition
 from sagemaker.workflow.steps import (
     Step,
@@ -114,3 +115,6 @@ class JsonGet(Expression):
                 "Path": self.json_path,
             }
         }
+
+
+JsonGet = deprecated_class(JsonGet, "JsonGet")
