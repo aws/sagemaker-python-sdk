@@ -164,7 +164,10 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 file:// urls are used for local mode. For example: 'file://model/'
                 will save to the model folder in the current directory.
             output_kms_key (str): Optional. KMS key ID for encrypting the
-                training output (default: None).
+                training output (default: Your IAM role's KMS key for Amazon S3).
+                If you don't provide a KMS key ID, Amazon SageMaker uses the
+                default KMS key for Amazon S3 of the account linked to your
+                IAM role.
             base_job_name (str): Prefix for training job name when the
                 :meth:`~sagemaker.estimator.EstimatorBase.fit` method launches.
                 If not specified, the estimator generates a default job name
