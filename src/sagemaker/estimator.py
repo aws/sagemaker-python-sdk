@@ -164,7 +164,10 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 file:// urls are used for local mode. For example: 'file://model/'
                 will save to the model folder in the current directory.
             output_kms_key (str): Optional. KMS key ID for encrypting the
-                training output (default: None).
+                training output (default: Your IAM role's KMS key for Amazon S3).
+                If you don't provide a KMS key ID, Amazon SageMaker uses the
+                default KMS key for Amazon S3 of the account linked to your
+                IAM role.
             base_job_name (str): Prefix for training job name when the
                 :meth:`~sagemaker.estimator.EstimatorBase.fit` method launches.
                 If not specified, the estimator generates a default job name
@@ -2319,9 +2322,13 @@ class Framework(EstimatorBase):
             str: Either a local or an S3 path pointing to the ``source_dir`` to be
                 used for code by the model to be deployed
         """
-        return (
-            self.source_dir if self.sagemaker_session.local_mode else self.uploaded_code.s3_prefix
-        )
+        if self.sagemaker_session.local_mode:
+            return self.source_dir
+
+        if self.uploaded_code is not None:
+            return self.uploaded_code.s3_prefix
+
+        return None
 
     def _model_entry_point(self):
         """Get the appropriate value to pass as ``entry_point`` to a model constructor.
@@ -2333,7 +2340,10 @@ class Framework(EstimatorBase):
         if self.sagemaker_session.local_mode or (self._model_source_dir() is None):
             return self.entry_point
 
-        return self.uploaded_code.script_name
+        if self.uploaded_code is not None:
+            return self.uploaded_code.script_name
+
+        return None
 
     def hyperparameters(self):
         """Return the hyperparameters as a dictionary to use for training.
