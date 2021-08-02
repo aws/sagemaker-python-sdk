@@ -305,10 +305,11 @@ class SHAPConfig(ExplainabilityConfig):
         """Initializes config for SHAP.
 
         Args:
-            baseline (str or list): A list of rows (at least one) or S3 object URI to be used as
-                the baseline dataset in the Kernel SHAP algorithm. The format should be the same
-                as the dataset format. Each row should contain only the feature columns/values
-                and omit the label column/values.
+            baseline (None or str or list): None or S3 object Uri or A list of rows (at least one)
+                to be used asthe baseline dataset in the Kernel SHAP algorithm. The format should
+                be the same as the dataset format. Each row should contain only the feature
+                columns/values and omit the label column/values. If None a baseline will be
+                calculated automatically by using K-means or K-prototypes in the input dataset.
             num_samples (int): Number of samples to be used in the Kernel SHAP algorithm.
                 This number determines the size of the generated synthetic dataset to compute the
                 SHAP values.
