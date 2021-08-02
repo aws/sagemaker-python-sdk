@@ -46,15 +46,15 @@ class Pipeline(Entity):
 
     Attributes:
         name (str): The name of the pipeline.
-        parameters (Sequence[Parameters]): The list of the parameters.
+        parameters (Sequence[Parameter]): The list of the parameters.
         pipeline_experiment_config (Optional[PipelineExperimentConfig]): If set,
             the workflow will attempt to create an experiment and trial before
             executing the steps. Creation will be skipped if an experiment or a trial with
             the same name already exists. By default, pipeline name is used as
             experiment name and execution id is used as the trial name.
             If set to None, no experiment or trial will be created automatically.
-        steps (Sequence[Steps]): The list of the non-conditional steps associated with the pipeline.
-            Any steps that are within the
+        steps (Sequence[Union[Step, StepCollection]]): The list of the non-conditional steps
+            associated with the pipeline. Any steps that are within the
             `if_steps` or `else_steps` of a `ConditionStep` cannot be listed in the steps of a
             pipeline. Of particular note, the workflow service rejects any pipeline definitions that
             specify a step in the list of steps of a pipeline and that step in the `if_steps` or
@@ -140,7 +140,9 @@ class Pipeline(Entity):
         """Describes a Pipeline in the Workflow service.
 
         Returns:
-            Response dict from the service.
+            Response dict from the service. See `boto3 client documentation
+            <https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/\
+sagemaker.html#SageMaker.Client.describe_pipeline>`_
         """
         return self.sagemaker_session.sagemaker_client.describe_pipeline(PipelineName=self.name)
 
@@ -210,15 +212,15 @@ class Pipeline(Entity):
 
     def start(
         self,
-        parameters: Dict[str, Any] = None,
+        parameters: Dict[str, Union[str, bool, int, float]] = None,
         execution_display_name: str = None,
         execution_description: str = None,
     ):
         """Starts a Pipeline execution in the Workflow service.
 
         Args:
-            parameters (List[Dict[str, str]]): A list of parameter dicts of the form
-                {"Name": "string", "Value": "string"}.
+            parameters (Dict[str, Union[str, bool, int, float]]): values to override
+                pipeline parameters.
             execution_display_name (str): The display name of the pipeline execution.
             execution_description (str): A description of the execution.
 
@@ -407,13 +409,27 @@ class _PipelineExecution:
         )
 
     def describe(self):
-        """Describes a pipeline execution."""
+        """Describes a pipeline execution.
+
+        Returns:
+             Information about the pipeline execution. See
+             `boto3 client describe_pipeline_execution
+             <https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/\
+sagemaker.html#SageMaker.Client.describe_pipeline_execution>`_.
+        """
         return self.sagemaker_session.sagemaker_client.describe_pipeline_execution(
             PipelineExecutionArn=self.arn
         )
 
     def list_steps(self):
-        """Describes a pipeline execution's steps."""
+        """Describes a pipeline execution's steps.
+
+        Returns:
+             Information about the steps of the pipeline execution. See
+             `boto3 client list_pipeline_execution_steps
+             <https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/\
+sagemaker.html#SageMaker.Client.list_pipeline_execution_steps>`_.
+        """
         response = self.sagemaker_session.sagemaker_client.list_pipeline_execution_steps(
             PipelineExecutionArn=self.arn
         )

@@ -66,13 +66,13 @@ class ConditionComparison(Condition):
     """Generic comparison condition that can be used to derive specific condition comparisons.
 
     Attributes:
-        left (ConditionValueType): The execution variable, parameter, or
-            property to use in the comparison.
+        left (Union[ConditionValueType, PrimitiveType]): The execution variable, parameter,
+            property, or Python primitive value to use in the comparison.
         right (Union[ConditionValueType, PrimitiveType]): The execution variable,
             parameter, property, or Python primitive value to compare to.
     """
 
-    left: ConditionValueType = attr.ib(default=None)
+    left: Union[ConditionValueType, PrimitiveType] = attr.ib(default=None)
     right: Union[ConditionValueType, PrimitiveType] = attr.ib(default=None)
 
     def to_request(self) -> RequestType:
@@ -87,12 +87,16 @@ class ConditionComparison(Condition):
 class ConditionEquals(ConditionComparison):
     """A condition for equality comparisons."""
 
-    def __init__(self, left: ConditionValueType, right: Union[ConditionValueType, PrimitiveType]):
+    def __init__(
+        self,
+        left: Union[ConditionValueType, PrimitiveType],
+        right: Union[ConditionValueType, PrimitiveType],
+    ):
         """Construct A condition for equality comparisons.
 
         Args:
-            left (ConditionValueType): The execution variable, parameter,
-                or property to use in the comparison.
+            left (Union[ConditionValueType, PrimitiveType]): The execution variable,
+                parameter, property, or Python primitive value to use in the comparison.
             right (Union[ConditionValueType, PrimitiveType]): The execution
                 variable, parameter, property, or Python primitive value to compare to.
         """
@@ -103,12 +107,16 @@ class ConditionEquals(ConditionComparison):
 class ConditionGreaterThan(ConditionComparison):
     """A condition for greater than comparisons."""
 
-    def __init__(self, left: ConditionValueType, right: Union[ConditionValueType, PrimitiveType]):
+    def __init__(
+        self,
+        left: Union[ConditionValueType, PrimitiveType],
+        right: Union[ConditionValueType, PrimitiveType],
+    ):
         """Construct an instance of ConditionGreaterThan for greater than comparisons.
 
         Args:
-            left (ConditionValueType): The execution variable, parameter,
-                or property to use in the comparison.
+            left (Union[ConditionValueType, PrimitiveType]): The execution variable,
+                parameter, property, or Python primitive value to use in the comparison.
             right (Union[ConditionValueType, PrimitiveType]): The execution
                 variable, parameter, property, or Python primitive value to compare to.
         """
@@ -119,12 +127,16 @@ class ConditionGreaterThan(ConditionComparison):
 class ConditionGreaterThanOrEqualTo(ConditionComparison):
     """A condition for greater than or equal to comparisons."""
 
-    def __init__(self, left: ConditionValueType, right: Union[ConditionValueType, PrimitiveType]):
+    def __init__(
+        self,
+        left: Union[ConditionValueType, PrimitiveType],
+        right: Union[ConditionValueType, PrimitiveType],
+    ):
         """Construct of ConditionGreaterThanOrEqualTo for greater than or equal to comparisons.
 
         Args:
-            left (ConditionValueType): The execution variable, parameter,
-                or property to use in the comparison.
+            left (Union[ConditionValueType, PrimitiveType]): The execution variable,
+                parameter, property, or Python primitive value to use in the comparison.
             right (Union[ConditionValueType, PrimitiveType]): The execution
                 variable, parameter, property, or Python primitive value to compare to.
         """
@@ -135,12 +147,16 @@ class ConditionGreaterThanOrEqualTo(ConditionComparison):
 class ConditionLessThan(ConditionComparison):
     """A condition for less than comparisons."""
 
-    def __init__(self, left: ConditionValueType, right: Union[ConditionValueType, PrimitiveType]):
+    def __init__(
+        self,
+        left: Union[ConditionValueType, PrimitiveType],
+        right: Union[ConditionValueType, PrimitiveType],
+    ):
         """Construct an instance of ConditionLessThan for less than comparisons.
 
         Args:
-            left (ConditionValueType): The execution variable, parameter,
-                or property to use in the comparison.
+            left (Union[ConditionValueType, PrimitiveType]): The execution variable,
+                parameter, property, or Python primitive value to use in the comparison.
             right (Union[ConditionValueType, PrimitiveType]): The execution
                 variable, parameter, property, or Python primitive value to compare to.
         """
@@ -151,12 +167,16 @@ class ConditionLessThan(ConditionComparison):
 class ConditionLessThanOrEqualTo(ConditionComparison):
     """A condition for less than or equal to comparisons."""
 
-    def __init__(self, left: ConditionValueType, right: Union[ConditionValueType, PrimitiveType]):
+    def __init__(
+        self,
+        left: Union[ConditionValueType, PrimitiveType],
+        right: Union[ConditionValueType, PrimitiveType],
+    ):
         """Construct ConditionLessThanOrEqualTo for less than or equal to comparisons.
 
         Args:
-            left (ConditionValueType): The execution variable, parameter,
-                or property to use in the comparison.
+            left (Union[ConditionValueType, PrimitiveType]): The execution variable,
+                parameter, property, or Python primitive value to use in the comparison.
             right (Union[ConditionValueType, PrimitiveType]): The execution
                 variable, parameter, property, or Python primitive value to compare to.
         """
@@ -168,13 +188,15 @@ class ConditionIn(Condition):
     """A condition to check membership."""
 
     def __init__(
-        self, value: ConditionValueType, in_values: List[Union[ConditionValueType, PrimitiveType]]
+        self,
+        value: Union[ConditionValueType, PrimitiveType],
+        in_values: List[Union[ConditionValueType, PrimitiveType]],
     ):
         """Construct a `ConditionIn` condition to check membership.
 
         Args:
-            value (ConditionValueType): The execution variable,
-                parameter, or property to use for the in comparison.
+            value (Union[ConditionValueType, PrimitiveType]): The execution variable,
+                parameter, property or primitive value to check for membership.
             in_values (List[Union[ConditionValueType, PrimitiveType]]): The list
                 of values to check for membership in.
         """
