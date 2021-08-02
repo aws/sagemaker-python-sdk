@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -61,7 +61,7 @@ class LambdaPredictor(PredictorBase):
             response["ResponseMetadata"]["HTTPHeaders"]["content-type"],
         )
 
-    def delete_endpoint(self) -> None:
+    def delete_predictor(self) -> None:
         """Destroy the Lambda function specified in the constructor."""
         self._client.delete_function(FunctionName=self._function_name)
 
