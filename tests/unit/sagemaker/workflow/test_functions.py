@@ -14,13 +14,13 @@
 from __future__ import absolute_import
 
 from sagemaker.workflow.execution_variables import ExecutionVariables
-from sagemaker.workflow.functions import Join
+from sagemaker.workflow.functions import Join, JsonGet
 from sagemaker.workflow.parameters import (
     ParameterFloat,
     ParameterInteger,
     ParameterString,
 )
-from sagemaker.workflow.properties import Properties
+from sagemaker.workflow.properties import Properties, PropertyFile
 
 
 def test_join_primitives_default_on():
@@ -64,5 +64,36 @@ def test_join_expressions():
                 {"Get": "Execution.PipelineExecutionId"},
                 {"Std:Join": {"On": ",", "Values": [1, "a", False, 1.1]}},
             ],
+        },
+    }
+
+
+def test_json_get_expressions():
+
+    assert JsonGet(
+        step_name="my-step",
+        property_file="my-property-file",
+        json_path="my-json-path",
+    ).expr == {
+        "Std:JsonGet": {
+            "PropertyFile": {"Get": "Steps.my-step.PropertyFiles.my-property-file"},
+            "Path": "my-json-path",
+        },
+    }
+
+    property_file = PropertyFile(
+        name="name",
+        output_name="result",
+        path="output",
+    )
+
+    assert JsonGet(
+        step_name="my-step",
+        property_file=property_file,
+        json_path="my-json-path",
+    ).expr == {
+        "Std:JsonGet": {
+            "PropertyFile": {"Get": "Steps.my-step.PropertyFiles.name"},
+            "Path": "my-json-path",
         },
     }
