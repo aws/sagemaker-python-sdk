@@ -1,4 +1,4 @@
-# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -136,10 +136,8 @@ class RegisterModel(StepCollection):
         elif model is not None:
             if isinstance(model, PipelineModel):
                 self.model_list = model.models
-                self.container_def_list = model.pipeline_container_def(inference_instances[0])
             elif isinstance(model, Model):
                 self.model_list = [model]
-                self.container_def_list = [model.prepare_container_def(inference_instances[0])]
 
             for model_entity in self.model_list:
                 if estimator is not None:
@@ -148,16 +146,16 @@ class RegisterModel(StepCollection):
                 else:
                     sagemaker_session = model_entity.sagemaker_session
                     role = model_entity.role
-                if hasattr(model_entity, "entry_point"):
+                if hasattr(model_entity, "entry_point") and model_entity.entry_point is not None:
                     repack_model = True
                     entry_point = model_entity.entry_point
                     source_dir = model_entity.source_dir
                     dependencies = model_entity.dependencies
                     kwargs = dict(**kwargs, output_kms_key=model_entity.model_kms_key)
-                    name = model_entity.name or model_entity._framework_name
+                    model_name = model_entity.name or model_entity._framework_name
 
                     repack_model_step = _RepackModelStep(
-                        name=f"{name}RepackModel",
+                        name=f"{model_name}RepackModel",
                         depends_on=depends_on,
                         sagemaker_session=sagemaker_session,
                         role=role,
@@ -174,6 +172,11 @@ class RegisterModel(StepCollection):
 
                     # remove kwargs consumed by model repacking step
                     kwargs.pop("output_kms_key", None)
+
+            if isinstance(model, PipelineModel):
+                self.container_def_list = model.pipeline_container_def(inference_instances[0])
+            elif isinstance(model, Model):
+                self.container_def_list = [model.prepare_container_def(inference_instances[0])]
 
         register_model_step = _RegisterModelStep(
             name=name,

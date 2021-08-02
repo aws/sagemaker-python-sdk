@@ -1,4 +1,4 @@
-# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -138,6 +138,12 @@ class CacheConfig:
         expire_after (str): If step caching is enabled, a timeout also needs to defined.
             It defines how old a previous execution can be to be considered for reuse.
             Value should be an ISO 8601 duration string. Defaults to `None`.
+
+            Examples::
+
+                'p30d' # 30 days
+                'P4DT12H' # 4 days and 12 hours
+                'T12H' # 12 hours
     """
 
     enable_caching: bool = attr.ib(default=False)
@@ -173,22 +179,21 @@ class TrainingStep(Step):
         Args:
             name (str): The name of the training step.
             estimator (EstimatorBase): A `sagemaker.estimator.EstimatorBase` instance.
-            inputs (str or dict or sagemaker.inputs.TrainingInput
-                or sagemaker.inputs.FileSystemInput): Information
+            inputs (Union[str, dict, TrainingInput, FileSystemInput]): Information
                 about the training data. This can be one of three types:
 
                 * (str) the S3 location where training data is saved, or a file:// path in
-                    local mode.
+                  local mode.
                 * (dict[str, str] or dict[str, sagemaker.inputs.TrainingInput]) If using multiple
-                    channels for training data, you can specify a dict mapping channel names to
-                    strings or :func:`~sagemaker.inputs.TrainingInput` objects.
+                  channels for training data, you can specify a dict mapping channel names to
+                  strings or :func:`~sagemaker.inputs.TrainingInput` objects.
                 * (sagemaker.inputs.TrainingInput) - channel configuration for S3 data sources
-                    that can provide additional information as well as the path to the training
-                    dataset.
-                    See :func:`sagemaker.inputs.TrainingInput` for full details.
+                  that can provide additional information as well as the path to the training
+                  dataset.
+                  See :func:`sagemaker.inputs.TrainingInput` for full details.
                 * (sagemaker.inputs.FileSystemInput) - channel configuration for
-                    a file system data source that can provide additional information as well as
-                    the path to the training dataset.
+                  a file system data source that can provide additional information as well as
+                  the path to the training dataset.
 
             cache_config (CacheConfig):  A `sagemaker.workflow.steps.CacheConfig` instance.
             depends_on (List[str] or List[Step]): A list of step names or step instances

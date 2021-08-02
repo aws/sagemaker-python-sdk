@@ -1,4 +1,4 @@
-# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -55,10 +55,10 @@ class ConditionStep(Step):
             conditions (List[Condition]): A list of `sagemaker.workflow.conditions.Condition`
                 instances.
             if_steps (List[Union[Step, StepCollection]]): A list of `sagemaker.workflow.steps.Step`
-                and `sagemaker.workflow.step_collections.StepCollection` instances that are
+                or `sagemaker.workflow.step_collections.StepCollection` instances that are
                 marked as ready for execution if the list of conditions evaluates to True.
             else_steps (List[Union[Step, StepCollection]]): A list of `sagemaker.workflow.steps.Step`
-                and `sagemaker.workflow.step_collections.StepCollection` instances that are
+                or `sagemaker.workflow.step_collections.StepCollection` instances that are
                 marked as ready for execution if the list of conditions evaluates to False.
         """
         super(ConditionStep, self).__init__(name, StepTypeEnum.CONDITION, depends_on)

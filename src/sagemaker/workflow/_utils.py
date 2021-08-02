@@ -1,4 +1,4 @@
-# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -315,6 +315,9 @@ class _RegisterModelStep(Step):
                 else:
                     model = self.estimator.create_model(**self.kwargs)
                     self.image_uri = model.image_uri
+
+                if self.model_data is None:
+                    self.model_data = model.model_data
 
                 # reset placeholder
                 self.estimator.output_path = output_path
