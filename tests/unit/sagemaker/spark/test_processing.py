@@ -200,7 +200,7 @@ def test_configuration_validation(config, expected, sagemaker_session) -> None:
 def test_spark_processor_base_run(mock_super_run, spark_processor_base):
     spark_processor_base.run(submit_app="app")
 
-    mock_super_run.assert_called_with("app", None, None, None, True, True, None, None, None, None)
+    mock_super_run.assert_called_with("app", None, None, None, True, True, None, None, None, "test-prefix")
 
 
 @pytest.mark.parametrize(
