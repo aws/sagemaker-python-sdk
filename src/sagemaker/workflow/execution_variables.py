@@ -37,10 +37,7 @@ class ExecutionVariable(Expression):
 
 
 class ExecutionVariables:
-    """Enum-like class for all ExecutionVariable instances.
-
-    Considerations to move these as module-level constants should be made.
-    """
+    """All available ExecutionVariable."""
 
     START_DATETIME = ExecutionVariable("StartDateTime")
     CURRENT_DATETIME = ExecutionVariable("CurrentDateTime")
