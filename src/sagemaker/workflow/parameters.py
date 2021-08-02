@@ -54,7 +54,7 @@ class Parameter(Entity):
     Attributes:
         name (str): The name of the parameter.
         parameter_type (ParameterTypeEnum): The type of the parameter.
-        default_value (PrimitiveType): The default Python value of the parameter.
+        default_value (PrimitiveType): The default value of the parameter.
     """
 
     name: str = attr.ib(factory=str)
@@ -143,7 +143,7 @@ ParameterBoolean = partial(Parameter, parameter_type=ParameterTypeEnum.BOOLEAN)
 
 
 class ParameterString(Parameter, str):
-    """Pipeline string parameter for workflow."""
+    """String parameter for pipelines."""
 
     def __new__(cls, *args, **kwargs):  # pylint: disable=unused-argument
         """Subclass str"""
@@ -155,7 +155,11 @@ class ParameterString(Parameter, str):
 
         Args:
             name (str): The name of the parameter.
-            default_value (str): The default Python value of the parameter. Defaults to None.
+            default_value (str): The default value of the parameter.
+                The default value could be overridden at start of an execution.
+                If not set or it is set to None, a value must be provided
+                at the start of the execution.
+            enum_values (List[str]): Enum values for this parameter.
         """
         super(ParameterString, self).__init__(
             name=name, parameter_type=ParameterTypeEnum.STRING, default_value=default_value
@@ -175,7 +179,7 @@ class ParameterString(Parameter, str):
 
 
 class ParameterInteger(Parameter, int):
-    """Pipeline string parameter for workflow."""
+    """Integer parameter for pipelines."""
 
     def __new__(cls, *args, **kwargs):
         """Subclass int"""
@@ -187,7 +191,10 @@ class ParameterInteger(Parameter, int):
 
         Args:
             name (str): The name of the parameter.
-            default_value (int): The default Python value of the parameter.
+            default_value (int): The default value of the parameter.
+                The default value could be overridden at start of an execution.
+                If not set or it is set to None, a value must be provided
+                at the start of the execution.
         """
         super(ParameterInteger, self).__init__(
             name=name, parameter_type=ParameterTypeEnum.INTEGER, default_value=default_value
@@ -195,7 +202,7 @@ class ParameterInteger(Parameter, int):
 
 
 class ParameterFloat(Parameter, float):
-    """Pipeline float parameter for workflow."""
+    """Float parameter for pipelines."""
 
     def __new__(cls, *args, **kwargs):
         """Subclass float"""
@@ -207,7 +214,10 @@ class ParameterFloat(Parameter, float):
 
         Args:
             name (str): The name of the parameter.
-            default_value (float): The default Python value of the parameter.
+            default_value (float): The default value of the parameter.
+                The default value could be overridden at start of an execution.
+                If not set or it is set to None, a value must be provided
+                at the start of the execution.
         """
         super(ParameterFloat, self).__init__(
             name=name, parameter_type=ParameterTypeEnum.FLOAT, default_value=default_value
