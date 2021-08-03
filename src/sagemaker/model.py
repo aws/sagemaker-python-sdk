@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -13,6 +13,7 @@
 """Placeholder docstring"""
 from __future__ import absolute_import
 
+import abc
 import json
 import logging
 import os
@@ -29,6 +30,7 @@ from sagemaker import (
     git_utils,
 )
 from sagemaker.deprecations import removed_kwargs
+from sagemaker.predictor import PredictorBase
 from sagemaker.transformer import Transformer
 
 LOGGER = logging.getLogger("sagemaker")
@@ -38,7 +40,23 @@ NEO_ALLOWED_FRAMEWORKS = set(
 )
 
 
-class Model(object):
+class ModelBase(abc.ABC):
+    """An object that encapsulates a trained model.
+
+    Models can be deployed to compute services like a SageMaker ``Endpoint``
+    or Lambda. Deployed models can be used to perform real-time inference.
+    """
+
+    @abc.abstractmethod
+    def deploy(self, *args, **kwargs) -> PredictorBase:
+        """Deploy this model to a compute service."""
+
+    @abc.abstractmethod
+    def delete_model(self, *args, **kwargs) -> None:
+        """Destroy resources associated with this model."""
+
+
+class Model(ModelBase):
     """A SageMaker ``Model`` that can be deployed to an ``Endpoint``."""
 
     def __init__(
