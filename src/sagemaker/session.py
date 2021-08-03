@@ -355,6 +355,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
     def default_bucket(self):
         """Return the name of the default bucket to use in relevant Amazon SageMaker interactions.
+
         This function will create the s3 bucket if it does not exist.
 
         Returns:
