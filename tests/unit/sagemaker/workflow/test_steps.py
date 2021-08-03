@@ -49,9 +49,9 @@ from sagemaker.workflow.steps import (
     Step,
     StepTypeEnum,
     TrainingStep,
+    TuningStep,
     TransformStep,
     CreateModelStep,
-    TuningStep,
     CacheConfig,
 )
 from tests.unit import DATA_DIR
@@ -496,6 +496,59 @@ def test_properties_describe_processing_job_response():
     assert prop.ProcessingOutputConfig.Outputs["MyOutputName"].S3Output.S3Uri.expr == {
         "Get": "Steps.MyStep.ProcessingOutputConfig.Outputs['MyOutputName'].S3Output.S3Uri"
     }
+
+
+def test_add_depends_on(sagemaker_session):
+    processing_input_data_uri_parameter = ParameterString(
+        name="ProcessingInputDataUri", default_value=f"s3://{BUCKET}/processing_manifest"
+    )
+    instance_type_parameter = ParameterString(name="InstanceType", default_value="ml.m4.4xlarge")
+    instance_count_parameter = ParameterInteger(name="InstanceCount", default_value=1)
+    processor = Processor(
+        image_uri=IMAGE_URI,
+        role=ROLE,
+        instance_count=instance_count_parameter,
+        instance_type=instance_type_parameter,
+        sagemaker_session=sagemaker_session,
+    )
+    inputs = [
+        ProcessingInput(
+            source=processing_input_data_uri_parameter,
+            destination="processing_manifest",
+        )
+    ]
+    cache_config = CacheConfig(enable_caching=True, expire_after="PT1H")
+
+    step_1 = ProcessingStep(
+        name="MyProcessingStep-1",
+        processor=processor,
+        inputs=inputs,
+        outputs=[],
+        cache_config=cache_config,
+    )
+
+    step_2 = ProcessingStep(
+        name="MyProcessingStep-2",
+        depends_on=[step_1],
+        processor=processor,
+        inputs=inputs,
+        outputs=[],
+        cache_config=cache_config,
+    )
+
+    step_3 = ProcessingStep(
+        name="MyProcessingStep-3",
+        depends_on=[step_1],
+        processor=processor,
+        inputs=inputs,
+        outputs=[],
+        cache_config=cache_config,
+    )
+    step_3.add_depends_on([step_2.name])
+
+    assert "DependsOn" not in step_1.to_request()
+    assert step_2.to_request()["DependsOn"] == ["MyProcessingStep-1"]
+    assert step_3.to_request()["DependsOn"] == ["MyProcessingStep-1", "MyProcessingStep-2"]
 
 
 def test_single_algo_tuning_step(sagemaker_session):
