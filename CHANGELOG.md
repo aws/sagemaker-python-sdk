@@ -1,5 +1,12 @@
 # Changelog
 
+## v2.51.0 (2021-08-03)
+
+### Features
+
+ * add LambdaStep support for SageMaker Pipelines
+ * support JsonGet for all step types
+
 ## v2.50.1 (2021-08-02)
 
 ### Bug Fixes and Other Changes
