@@ -1,4 +1,4 @@
-# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -23,7 +23,7 @@ from mock import (
     patch,
 )
 
-from sagemaker.debugger import ProfilerConfig
+from sagemaker.debugger import DEBUGGER_FLAG, ProfilerConfig
 from sagemaker.estimator import Estimator
 from sagemaker.tensorflow import TensorFlow
 from sagemaker.inputs import TrainingInput, TransformInput, CreateModelInput
@@ -275,6 +275,7 @@ def test_training_step_tensorflow(sagemaker_session):
                 "sagemaker_distributed_dataparallel_custom_mpi_options": '""',
             },
             "ProfilerConfig": {"S3OutputPath": "s3://my-bucket/"},
+            "Environment": {DEBUGGER_FLAG: "0"},
         },
         "CacheConfig": {"Enabled": True, "ExpireAfter": "PT1H"},
     }

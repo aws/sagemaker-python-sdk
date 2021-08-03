@@ -1,4 +1,4 @@
-# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -84,6 +84,54 @@ def test_data_bias_config():
     expected_config = {
         "label_values_or_threshold": label_values,
         "facet": [{"name_or_index": facet_name, "value_or_threshold": facet_threshold}],
+        "group_variable": group_name,
+    }
+    assert expected_config == data_bias_config.get_config()
+
+
+def test_data_bias_config_multi_facet():
+    label_values = [1]
+    facet_name = ["Facet1", "Facet2"]
+    facet_threshold = [[0], [1, 2]]
+    group_name = "A151"
+
+    data_bias_config = BiasConfig(
+        label_values_or_threshold=label_values,
+        facet_name=facet_name,
+        facet_values_or_threshold=facet_threshold,
+        group_name=group_name,
+    )
+
+    expected_config = {
+        "label_values_or_threshold": label_values,
+        "facet": [
+            {"name_or_index": facet_name[0], "value_or_threshold": facet_threshold[0]},
+            {"name_or_index": facet_name[1], "value_or_threshold": facet_threshold[1]},
+        ],
+        "group_variable": group_name,
+    }
+    assert expected_config == data_bias_config.get_config()
+
+
+def test_data_bias_config_multi_facet_not_all_with_value():
+    label_values = [1]
+    facet_name = ["Facet1", "Facet2"]
+    facet_threshold = [[0], None]
+    group_name = "A151"
+
+    data_bias_config = BiasConfig(
+        label_values_or_threshold=label_values,
+        facet_name=facet_name,
+        facet_values_or_threshold=facet_threshold,
+        group_name=group_name,
+    )
+
+    expected_config = {
+        "label_values_or_threshold": label_values,
+        "facet": [
+            {"name_or_index": facet_name[0], "value_or_threshold": facet_threshold[0]},
+            {"name_or_index": facet_name[1]},
+        ],
         "group_variable": group_name,
     }
     assert expected_config == data_bias_config.get_config()

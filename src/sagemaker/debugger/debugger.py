@@ -1,4 +1,4 @@
-# Copyright 2019-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -32,6 +32,7 @@ from sagemaker import image_uris
 from sagemaker.utils import build_dict
 
 framework_name = "debugger"
+DEBUGGER_FLAG = "USE_SMDEBUG"
 
 
 def get_rule_container_image_uri(region):

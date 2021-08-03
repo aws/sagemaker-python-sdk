@@ -1,4 +1,4 @@
-# Copyright 2019-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -70,10 +70,10 @@ class HuggingFace(Framework):
                 ``image_uri`` is provided. The current supported version is ``4.6.1``.
             tensorflow_version (str): TensorFlow version you want to use for
                 executing your model training code. Defaults to ``None``. Required unless
-                ``pytorch_version`` is provided. The current supported version is ``1.6.0``.
+                ``pytorch_version`` is provided. The current supported version is ``2.4.1``.
             pytorch_version (str): PyTorch version you want to use for
                 executing your model training code. Defaults to ``None``. Required unless
-                ``tensorflow_version`` is provided. The current supported version is ``2.4.1``.
+                ``tensorflow_version`` is provided. The current supported versions are ``1.7.1`` and ``1.6.0``.
             source_dir (str): Path (absolute, relative or an S3 URI) to a directory
                 with any other training source code dependencies aside from the entry
                 point file (default: None). If ``source_dir`` is an S3 URI, it must

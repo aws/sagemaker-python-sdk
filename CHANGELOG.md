@@ -1,5 +1,74 @@
 # Changelog
 
+## v2.51.0 (2021-08-03)
+
+### Features
+
+ * add LambdaStep support for SageMaker Pipelines
+ * support JsonGet for all step types
+
+## v2.50.1 (2021-08-02)
+
+### Bug Fixes and Other Changes
+
+ * null checks for uploaded_code and entry_point
+
+### Documentation Changes
+
+ * update sagemaker.estimator.EstimatorBase
+ * Mark baseline as optional in KernelSHAP.
+
+## v2.50.0 (2021-07-28)
+
+### Features
+
+ * add KIX region to image_uris
+
+### Bug Fixes and Other Changes
+
+ * Rename `PredictorBase.delete_endpoint` as `PredictorBase.delete_predictor`
+ * incorrect default argument for callback output parameter
+
+### Documentation Changes
+
+ * Remove years from copyright boilerplate
+ * Fix documentation formatting for PySpark and SparkJar processors
+
+### Testing and Release Infrastructure
+
+ * enable py38 tox env
+
+## v2.49.2 (2021-07-21)
+
+### Bug Fixes and Other Changes
+
+ * order of populating container list
+ * upgrade Adobe Analytics cookie to 3.0
+
+## v2.49.1 (2021-07-19)
+
+### Bug Fixes and Other Changes
+
+ * Set flag when debugger is disabled
+ * KMS Key fix for kwargs
+ * Update BiasConfig to accept multiple facet params
+
+### Documentation Changes
+
+ * Update huggingface estimator documentation
+
+## v2.49.0 (2021-07-15)
+
+### Features
+
+ * Adding serial inference pipeline support to RegisterModel Step
+
+### Documentation Changes
+
+ * add tuning step get_top_model_s3_uri and callback step to doc
+ * links for HF in sdk
+ * Add Clarify module to Model Monitoring API docs
+
 ## v2.48.2 (2021-07-12)
 
 ### Bug Fixes and Other Changes

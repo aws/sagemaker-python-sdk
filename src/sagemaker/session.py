@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -116,6 +116,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         self.s3_resource = None
         self.s3_client = None
         self.config = None
+        self.lambda_client = None
 
         self._initialize(
             boto_session=boto_session,
