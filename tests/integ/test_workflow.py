@@ -1691,7 +1691,7 @@ def test_two_processing_job_depends_on(
 
     step_pyspark_2 = ProcessingStep(
         name="pyspark-process-2",
-        depends_on=[step_pyspark_1.name],
+        depends_on=[step_pyspark_1],
         processor=pyspark_processor,
         inputs=spark_run_args.inputs,
         outputs=spark_run_args.outputs,
