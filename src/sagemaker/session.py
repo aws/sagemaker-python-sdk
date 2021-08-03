@@ -116,6 +116,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         self.s3_resource = None
         self.s3_client = None
         self.config = None
+        self.lambda_client = None
 
         self._initialize(
             boto_session=boto_session,
