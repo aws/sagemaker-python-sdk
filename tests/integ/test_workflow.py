@@ -885,7 +885,7 @@ def test_conditional_pytorch_training_model_registration(
             pass
 
 
-def test_tuning(
+def test_tuning_single_algo(
     sagemaker_session,
     role,
     cpu_instance_type,
@@ -908,14 +908,17 @@ def test_tuning(
         role=role,
         framework_version="1.5.0",
         py_version="py3",
-        instance_count=1,
-        instance_type="ml.m5.xlarge",
+        instance_count=instance_count,
+        instance_type=instance_type,
         sagemaker_session=sagemaker_session,
         enable_sagemaker_metrics=True,
+        max_retry_attempts=3,
     )
 
+    min_batch_size = ParameterString(name="MinBatchSize", default_value="64")
+    max_batch_size = ParameterString(name="MaxBatchSize", default_value="128")
     hyperparameter_ranges = {
-        "batch-size": IntegerParameter(64, 128),
+        "batch-size": IntegerParameter(min_batch_size, max_batch_size),
     }
 
     tuner = HyperparameterTuner(
@@ -971,8 +974,95 @@ def test_tuning(
 
     pipeline = Pipeline(
         name=pipeline_name,
-        parameters=[instance_count, instance_type],
+        parameters=[instance_count, instance_type, min_batch_size, max_batch_size],
         steps=[step_tune, step_best_model, step_second_best_model],
+        sagemaker_session=sagemaker_session,
+    )
+
+    try:
+        response = pipeline.create(role)
+        create_arn = response["PipelineArn"]
+        assert re.match(
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}", create_arn
+        )
+
+        execution = pipeline.start(parameters={})
+        assert re.match(
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
+            execution.arn,
+        )
+    finally:
+        try:
+            pipeline.delete()
+        except Exception:
+            pass
+
+
+def test_tuning_multi_algos(
+    sagemaker_session,
+    role,
+    cpu_instance_type,
+    pipeline_name,
+    region_name,
+):
+    base_dir = os.path.join(DATA_DIR, "pytorch_mnist")
+    entry_point = os.path.join(base_dir, "mnist.py")
+    input_path = sagemaker_session.upload_data(
+        path=os.path.join(base_dir, "training"),
+        key_prefix="integ-test-data/pytorch_mnist/training",
+    )
+
+    instance_count = ParameterInteger(name="InstanceCount", default_value=1)
+    instance_type = ParameterString(name="InstanceType", default_value="ml.m5.xlarge")
+
+    pytorch_estimator = PyTorch(
+        entry_point=entry_point,
+        role=role,
+        framework_version="1.5.0",
+        py_version="py3",
+        instance_count=instance_count,
+        instance_type=instance_type,
+        sagemaker_session=sagemaker_session,
+        enable_sagemaker_metrics=True,
+        max_retry_attempts=3,
+    )
+
+    min_batch_size = ParameterString(name="MinBatchSize", default_value="64")
+    max_batch_size = ParameterString(name="MaxBatchSize", default_value="128")
+
+    tuner = HyperparameterTuner.create(
+        estimator_dict={
+            "estimator-1": pytorch_estimator,
+            "estimator-2": pytorch_estimator,
+        },
+        objective_metric_name_dict={
+            "estimator-1": "test:acc",
+            "estimator-2": "test:acc",
+        },
+        hyperparameter_ranges_dict={
+            "estimator-1": {"batch-size": IntegerParameter(min_batch_size, max_batch_size)},
+            "estimator-2": {"batch-size": IntegerParameter(min_batch_size, max_batch_size)},
+        },
+        metric_definitions_dict={
+            "estimator-1": [{"Name": "test:acc", "Regex": "Overall test accuracy: (.*?);"}],
+            "estimator-2": [{"Name": "test:acc", "Regex": "Overall test accuracy: (.*?);"}],
+        },
+    )
+    inputs = {
+        "estimator-1": TrainingInput(s3_data=input_path),
+        "estimator-2": TrainingInput(s3_data=input_path),
+    }
+
+    step_tune = TuningStep(
+        name="my-tuning-step",
+        tuner=tuner,
+        inputs=inputs,
+    )
+
+    pipeline = Pipeline(
+        name=pipeline_name,
+        parameters=[instance_count, instance_type, min_batch_size, max_batch_size],
+        steps=[step_tune],
         sagemaker_session=sagemaker_session,
     )
 

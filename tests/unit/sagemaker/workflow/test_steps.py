@@ -715,14 +715,16 @@ def test_multi_algo_tuning_step(sagemaker_session):
     data_source_uri_parameter = ParameterString(
         name="DataSourceS3Uri", default_value=f"s3://{BUCKET}/train_manifest"
     )
+    instance_count = ParameterInteger(name="InstanceCount", default_value=1)
     estimator = Estimator(
         image_uri=IMAGE_URI,
         role=ROLE,
-        instance_count=1,
+        instance_count=instance_count,
         instance_type="ml.c5.4xlarge",
         profiler_config=ProfilerConfig(system_monitor_interval_millis=500),
         rules=[],
         sagemaker_session=sagemaker_session,
+        max_retry_attempts=10,
     )
 
     estimator.set_hyperparameters(
@@ -738,8 +740,9 @@ def test_multi_algo_tuning_step(sagemaker_session):
         augmentation_type="crop",
     )
 
+    initial_lr_param = ParameterString(name="InitialLR", default_value="0.0001")
     hyperparameter_ranges = {
-        "learning_rate": ContinuousParameter(0.0001, 0.05),
+        "learning_rate": ContinuousParameter(initial_lr_param, 0.05),
         "momentum": ContinuousParameter(0.0, 0.99),
         "weight_decay": ContinuousParameter(0.0, 0.99),
     }
@@ -824,7 +827,7 @@ def test_multi_algo_tuning_step(sagemaker_session):
                         "ContinuousParameterRanges": [
                             {
                                 "Name": "learning_rate",
-                                "MinValue": "0.0001",
+                                "MinValue": initial_lr_param,
                                 "MaxValue": "0.05",
                                 "ScalingType": "Auto",
                             },
@@ -843,6 +846,9 @@ def test_multi_algo_tuning_step(sagemaker_session):
                         ],
                         "CategoricalParameterRanges": [],
                         "IntegerParameterRanges": [],
+                    },
+                    "RetryStrategy": {
+                        "MaximumRetryAttempts": 10,
                     },
                 },
                 {
@@ -888,7 +894,7 @@ def test_multi_algo_tuning_step(sagemaker_session):
                         "ContinuousParameterRanges": [
                             {
                                 "Name": "learning_rate",
-                                "MinValue": "0.0001",
+                                "MinValue": initial_lr_param,
                                 "MaxValue": "0.05",
                                 "ScalingType": "Auto",
                             },
@@ -907,6 +913,9 @@ def test_multi_algo_tuning_step(sagemaker_session):
                         ],
                         "CategoricalParameterRanges": [],
                         "IntegerParameterRanges": [],
+                    },
+                    "RetryStrategy": {
+                        "MaximumRetryAttempts": 10,
                     },
                 },
             ],

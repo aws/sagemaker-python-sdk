@@ -304,6 +304,7 @@ def _interpolate(obj: Union[RequestType, Any], callback_output_to_step_map: Dict
     """
     if isinstance(obj, (Expression, Parameter, Properties)):
         return obj.expr
+
     if isinstance(obj, CallbackOutput):
         step_name = callback_output_to_step_map[obj.output_name]
         return obj.expr(step_name)
