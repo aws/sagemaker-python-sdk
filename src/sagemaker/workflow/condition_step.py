@@ -19,6 +19,12 @@ import attr
 
 from sagemaker.deprecations import deprecated_class
 from sagemaker.workflow.conditions import Condition
+from sagemaker.workflow.steps import (
+    Step,
+    StepTypeEnum,
+)
+from sagemaker.workflow.step_collections import StepCollection
+from sagemaker.workflow.utilities import list_to_request
 from sagemaker.workflow.entities import (
     Expression,
     RequestType,
@@ -27,12 +33,6 @@ from sagemaker.workflow.properties import (
     Properties,
     PropertyFile,
 )
-from sagemaker.workflow.steps import (
-    Step,
-    StepTypeEnum,
-)
-from sagemaker.workflow.step_collections import StepCollection
-from sagemaker.workflow.utilities import list_to_request
 
 
 class ConditionStep(Step):
@@ -41,7 +41,7 @@ class ConditionStep(Step):
     def __init__(
         self,
         name: str,
-        depends_on: List[str] = None,
+        depends_on: Union[List[str], List[Step]] = None,
         conditions: List[Condition] = None,
         if_steps: List[Union[Step, StepCollection]] = None,
         else_steps: List[Union[Step, StepCollection]] = None,

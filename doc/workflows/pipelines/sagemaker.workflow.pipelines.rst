@@ -127,3 +127,5 @@ Steps
 .. autoclass:: sagemaker.workflow.callback_step.CallbackStep
 
 .. autoclass:: sagemaker.workflow.steps.CacheConfig
+
+.. autoclass:: sagemaker.workflow.lambda_step.LambdaStep
