@@ -67,3 +67,14 @@ def test_properties_tuning_job():
     assert prop.TrainingJobSummaries[0].TrainingJobName.expr == {
         "Get": "Steps.MyStep.TrainingJobSummaries[0].TrainingJobName"
     }
+
+
+def test_properties_describe_model_package_output():
+    prop = Properties("Steps.MyStep", "DescribeModelPackageOutput")
+    some_prop_names = ["ModelPackageName", "ModelPackageGroupName", "ModelPackageArn"]
+    for name in some_prop_names:
+        assert name in prop.__dict__.keys()
+    assert prop.ModelPackageName.expr == {"Get": "Steps.MyStep.ModelPackageName"}
+    assert prop.ValidationSpecification.ValidationRole.expr == {
+        "Get": "Steps.MyStep.ValidationSpecification.ValidationRole"
+    }
