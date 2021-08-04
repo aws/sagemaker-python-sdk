@@ -1,4 +1,4 @@
-# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -37,10 +37,7 @@ class ExecutionVariable(Expression):
 
 
 class ExecutionVariables:
-    """Enum-like class for all ExecutionVariable instances.
-
-    Considerations to move these as module-level constants should be made.
-    """
+    """All available ExecutionVariable."""
 
     START_DATETIME = ExecutionVariable("StartDateTime")
     CURRENT_DATETIME = ExecutionVariable("CurrentDateTime")
