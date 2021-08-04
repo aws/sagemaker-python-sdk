@@ -1,5 +1,23 @@
 # Changelog
 
+## v2.51.0 (2021-08-03)
+
+### Features
+
+ * add LambdaStep support for SageMaker Pipelines
+ * support JsonGet for all step types
+
+## v2.50.1 (2021-08-02)
+
+### Bug Fixes and Other Changes
+
+ * null checks for uploaded_code and entry_point
+
+### Documentation Changes
+
+ * update sagemaker.estimator.EstimatorBase
+ * Mark baseline as optional in KernelSHAP.
+
 ## v2.50.0 (2021-07-28)
 
 ### Features
