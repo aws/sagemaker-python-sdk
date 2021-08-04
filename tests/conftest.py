@@ -98,6 +98,16 @@ def boto_session(request):
 
 
 @pytest.fixture(scope="session")
+def account(boto_session):
+    return boto_session.client("sts").get_caller_identity()["Account"]
+
+
+@pytest.fixture(scope="session")
+def region(boto_session):
+    return boto_session.region_name
+
+
+@pytest.fixture(scope="session")
 def sagemaker_session(sagemaker_client_config, sagemaker_runtime_config, boto_session):
     sagemaker_client_config.setdefault("config", Config(retries=dict(max_attempts=10)))
     sagemaker_client = (
