@@ -103,11 +103,6 @@ def account(boto_session):
 
 
 @pytest.fixture(scope="session")
-def region(boto_session):
-    return os.environ.get("TEST_AWS_REGION_NAME", boto_session.region_name)
-
-
-@pytest.fixture(scope="session")
 def sagemaker_session(sagemaker_client_config, sagemaker_runtime_config, boto_session):
     sagemaker_client_config.setdefault("config", Config(retries=dict(max_attempts=10)))
     sagemaker_client = (

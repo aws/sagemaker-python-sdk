@@ -18,13 +18,15 @@ from sagemaker.serverless import LambdaModel
 from sagemaker.utils import unique_name_from_base
 
 URL = "https://sagemaker-integ-tests-data.s3.us-east-1.amazonaws.com/cat.jpeg"
-REPOSITORY_NAME = "my-lambda-repository"
+
+REPOSITORY_NAME = "serverless-integ-test"
 ROLE_NAME = "LambdaExecutionRole"
+REGION = "us-west-2"
 
 
 @pytest.fixture(name="image_uri", scope="module")
-def fixture_image_uri(account, region):
-    return f"{account}.dkr.ecr.{region}.amazonaws.com/{REPOSITORY_NAME}:latest"
+def fixture_image_uri(account):
+    return f"{account}.dkr.ecr.{REGION}.amazonaws.com/{REPOSITORY_NAME}:latest"
 
 
 @pytest.fixture(name="role", scope="module")
@@ -32,12 +34,25 @@ def fixture_role(account):
     return f"arn:aws:iam::{account}:role/{ROLE_NAME}"
 
 
-@pytest.fixture(name="client")
+@pytest.fixture(name="client", scope="module")
 def fixture_client(boto_session):
     return boto_session.client("lambda")
 
 
-def test_lambda(image_uri, role, client):
+@pytest.fixture(name="repository_exists", scope="module")
+def fixture_repository_exists(boto_session):
+    client = boto_session.client("ecr")
+    try:
+        client.describe_repositories(repositoryNames=[REPOSITORY_NAME])
+        return True
+    except client.exceptions.RepositoryNotFoundException:
+        return False
+
+
+def test_lambda(image_uri, role, client, repository_exists):
+    if not repository_exists:
+        pytest.skip("The container image required to run this test does not exist.")
+
     model = LambdaModel(image_uri=image_uri, role=role, client=client)
 
     predictor = model.deploy(
