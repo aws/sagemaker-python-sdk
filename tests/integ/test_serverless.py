@@ -53,8 +53,6 @@ def test_lambda(image_uri, role, client, repository_exists):
     if not repository_exists:
         pytest.skip("The container image required to run this test does not exist.")
 
-    pytest.fail("This test should fail!")
-
     model = LambdaModel(image_uri=image_uri, role=role, client=client)
 
     predictor = model.deploy(
