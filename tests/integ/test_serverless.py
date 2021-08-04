@@ -42,11 +42,8 @@ def fixture_client(boto_session):
 @pytest.fixture(name="repository_exists", scope="module")
 def fixture_repository_exists(boto_session):
     client = boto_session.client("ecr")
-    try:
-        client.describe_repositories(repositoryNames=[REPOSITORY_NAME])
-        return True
-    except client.exceptions.RepositoryNotFoundException:
-        return False
+    client.describe_repositories(repositoryNames=[REPOSITORY_NAME])
+    return True
 
 
 def test_lambda(image_uri, role, client, repository_exists):
