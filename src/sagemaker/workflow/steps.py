@@ -62,11 +62,15 @@ class Step(Entity):
 
     Attributes:
         name (str): The name of the step.
+        display_name (str): The display name of the step.
+        description (str): The description of the step.
         step_type (StepTypeEnum): The type of the step.
         depends_on (List[str]): The list of step names the current step depends on
     """
 
     name: str = attr.ib(factory=str)
+    display_name: str = attr.ib(default=None)
+    description: str = attr.ib(default=None)
     step_type: StepTypeEnum = attr.ib(factory=StepTypeEnum.factory)
     depends_on: List[str] = attr.ib(default=None)
 
@@ -89,6 +93,10 @@ class Step(Entity):
         }
         if self.depends_on:
             request_dict["DependsOn"] = self.depends_on
+        if self.display_name:
+            request_dict["DisplayName"] = self.display_name
+        if self.description:
+            request_dict["Description"] = self.description
         return request_dict
 
     def add_depends_on(self, step_names: List[str]):
@@ -151,6 +159,8 @@ class TrainingStep(Step):
         self,
         name: str,
         estimator: EstimatorBase,
+        display_name: str = None,
+        description: str = None,
         inputs: Union[TrainingInput, dict, str, FileSystemInput] = None,
         cache_config: CacheConfig = None,
         depends_on: List[str] = None,
@@ -163,6 +173,8 @@ class TrainingStep(Step):
         Args:
             name (str): The name of the training step.
             estimator (EstimatorBase): A `sagemaker.estimator.EstimatorBase` instance.
+            display_name (str): The display name of the training step.
+            description (str): The description of the training step.
             inputs (Union[str, dict, TrainingInput, FileSystemInput]): Information
                 about the training data. This can be one of three types:
 
@@ -183,7 +195,9 @@ class TrainingStep(Step):
             depends_on (List[str]): A list of step names this `sagemaker.workflow.steps.TrainingStep`
                 depends on
         """
-        super(TrainingStep, self).__init__(name, StepTypeEnum.TRAINING, depends_on)
+        super(TrainingStep, self).__init__(
+            name, display_name, description, StepTypeEnum.TRAINING, depends_on
+        )
         self.estimator = estimator
         self.inputs = inputs
         self._properties = Properties(
@@ -226,7 +240,13 @@ class CreateModelStep(Step):
     """CreateModel step for workflow."""
 
     def __init__(
-        self, name: str, model: Model, inputs: CreateModelInput, depends_on: List[str] = None
+        self,
+        name: str,
+        model: Model,
+        inputs: CreateModelInput,
+        display_name: str = None,
+        description: str = None,
+        depends_on: List[str] = None,
     ):
         """Construct a CreateModelStep, given an `sagemaker.model.Model` instance.
 
@@ -238,10 +258,14 @@ class CreateModelStep(Step):
             model (Model): A `sagemaker.model.Model` instance.
             inputs (CreateModelInput): A `sagemaker.inputs.CreateModelInput` instance.
                 Defaults to `None`.
+            display_name (str): The display name of the CreateModel step.
+            description (str): The description of the CreateModel step.
             depends_on (List[str]): A list of step names this `sagemaker.workflow.steps.CreateModelStep`
                 depends on
         """
-        super(CreateModelStep, self).__init__(name, StepTypeEnum.CREATE_MODEL, depends_on)
+        super(CreateModelStep, self).__init__(
+            name, display_name, description, StepTypeEnum.CREATE_MODEL, depends_on
+        )
         self.model = model
         self.inputs = inputs or CreateModelInput()
 
@@ -283,6 +307,8 @@ class TransformStep(Step):
         name: str,
         transformer: Transformer,
         inputs: TransformInput,
+        display_name: str = None,
+        description: str = None,
         cache_config: CacheConfig = None,
         depends_on: List[str] = None,
     ):
@@ -296,10 +322,14 @@ class TransformStep(Step):
             transformer (Transformer): A `sagemaker.transformer.Transformer` instance.
             inputs (TransformInput): A `sagemaker.inputs.TransformInput` instance.
             cache_config (CacheConfig):  A `sagemaker.workflow.steps.CacheConfig` instance.
+            display_name (str): The display name of the transform step.
+            description (str): The description of the transform step.
             depends_on (List[str]): A list of step names this `sagemaker.workflow.steps.TransformStep`
                 depends on
         """
-        super(TransformStep, self).__init__(name, StepTypeEnum.TRANSFORM, depends_on)
+        super(TransformStep, self).__init__(
+            name, display_name, description, StepTypeEnum.TRANSFORM, depends_on
+        )
         self.transformer = transformer
         self.inputs = inputs
         self.cache_config = cache_config
@@ -354,6 +384,8 @@ class ProcessingStep(Step):
         self,
         name: str,
         processor: Processor,
+        display_name: str = None,
+        description: str = None,
         inputs: List[ProcessingInput] = None,
         outputs: List[ProcessingOutput] = None,
         job_arguments: List[str] = None,
@@ -370,6 +402,8 @@ class ProcessingStep(Step):
         Args:
             name (str): The name of the processing step.
             processor (Processor): A `sagemaker.processing.Processor` instance.
+            display_name (str): The display name of the processing step.
+            description (str): The description of the processing step.
             inputs (List[ProcessingInput]): A list of `sagemaker.processing.ProcessorInput`
                 instances. Defaults to `None`.
             outputs (List[ProcessingOutput]): A list of `sagemaker.processing.ProcessorOutput`
@@ -384,7 +418,9 @@ class ProcessingStep(Step):
             depends_on (List[str]): A list of step names this `sagemaker.workflow.steps.ProcessingStep`
                 depends on
         """
-        super(ProcessingStep, self).__init__(name, StepTypeEnum.PROCESSING, depends_on)
+        super(ProcessingStep, self).__init__(
+            name, display_name, description, StepTypeEnum.PROCESSING, depends_on
+        )
         self.processor = processor
         self.inputs = inputs
         self.outputs = outputs
@@ -447,6 +483,8 @@ class TuningStep(Step):
         self,
         name: str,
         tuner: HyperparameterTuner,
+        display_name: str = None,
+        description: str = None,
         inputs=None,
         job_arguments: List[str] = None,
         cache_config: CacheConfig = None,
@@ -460,6 +498,8 @@ class TuningStep(Step):
         Args:
             name (str): The name of the tuning step.
             tuner (HyperparameterTuner): A `sagemaker.tuner.HyperparameterTuner` instance.
+            display_name (str): The display name of the tuning step.
+            description (str): The description of the tuning step.
             inputs: Information about the training data. Please refer to the
                 ``fit()`` method of the associated estimator, as this can take
                 any of the following forms:
@@ -493,7 +533,9 @@ class TuningStep(Step):
             depends_on (List[str]): A list of step names this `sagemaker.workflow.steps.ProcessingStep`
                 depends on
         """
-        super(TuningStep, self).__init__(name, StepTypeEnum.TUNING, depends_on)
+        super(TuningStep, self).__init__(
+            name, display_name, description, StepTypeEnum.TUNING, depends_on
+        )
         self.tuner = tuner
         self.inputs = inputs
         self.job_arguments = job_arguments

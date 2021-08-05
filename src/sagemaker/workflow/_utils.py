@@ -59,6 +59,8 @@ class _RepackModelStep(TrainingStep):
         role,
         model_data: str,
         entry_point: str,
+        display_name: str = None,
+        description: str = None,
         source_dir: str = None,
         dependencies: List = None,
         depends_on: List[str] = None,
@@ -109,7 +111,12 @@ class _RepackModelStep(TrainingStep):
 
         # super!
         super(_RepackModelStep, self).__init__(
-            name=name, depends_on=depends_on, estimator=repacker, inputs=inputs
+            name=name,
+            display_name=display_name,
+            description=description,
+            depends_on=depends_on,
+            estimator=repacker,
+            inputs=inputs,
         )
 
     def _prepare_for_repacking(self):
@@ -229,6 +236,7 @@ class _RegisterModelStep(Step):
         approval_status="PendingManualApproval",
         image_uri=None,
         compile_model_family=None,
+        display_name: str = None,
         description=None,
         depends_on: List[str] = None,
         tags=None,
@@ -265,7 +273,9 @@ class _RegisterModelStep(Step):
             container_def_list (list): A list of containers.
             **kwargs: additional arguments to `create_model`.
         """
-        super(_RegisterModelStep, self).__init__(name, StepTypeEnum.REGISTER_MODEL, depends_on)
+        super(_RegisterModelStep, self).__init__(
+            name, display_name, description, StepTypeEnum.REGISTER_MODEL, depends_on
+        )
         self.estimator = estimator
         self.model_data = model_data
         self.content_types = content_types

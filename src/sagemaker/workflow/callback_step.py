@@ -83,6 +83,8 @@ class CallbackStep(Step):
         sqs_queue_url: str,
         inputs: dict,
         outputs: List[CallbackOutput],
+        display_name: str = None,
+        description: str = None,
         cache_config: CacheConfig = None,
         depends_on: List[str] = None,
     ):
@@ -94,11 +96,15 @@ class CallbackStep(Step):
             inputs (dict): Input arguments that will be provided
                 in the SQS message body of callback messages.
             outputs (List[CallbackOutput]): Outputs that can be provided when completing a callback.
+            display_name (str): The display name of the callback step.
+            description (str): The description of the callback step.
             cache_config (CacheConfig):  A `sagemaker.workflow.steps.CacheConfig` instance.
             depends_on (List[str]): A list of step names this `sagemaker.workflow.steps.TransformStep`
                 depends on
         """
-        super(CallbackStep, self).__init__(name, StepTypeEnum.CALLBACK, depends_on)
+        super(CallbackStep, self).__init__(
+            name, display_name, description, StepTypeEnum.CALLBACK, depends_on
+        )
         self.sqs_queue_url = sqs_queue_url
         self.outputs = outputs
         self.cache_config = cache_config
