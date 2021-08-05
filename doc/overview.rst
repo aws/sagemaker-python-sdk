@@ -523,7 +523,7 @@ That is, you can bring your own model:
 
 First, package the files for the trained model into a ``.tar.gz`` file, and upload the archive to S3.
 
-Next, create a ``Model`` object that corresponds to the framework that you are using: `MXNetModel <https://sagemaker.readthedocs.io/en/stable/sagemaker.mxnet.html#mxnet-model>`__ or `TensorFlowModel <https://sagemaker.readthedocs.io/en/stable/sagemaker.tensorflow.html#tensorflow-model>`__.
+Next, create a ``Model`` object that corresponds to the framework that you are using: `MXNetModel <file:///Users/bvveeram/Documents/GitHub/sagemaker-python-sdk/doc/_build/html/sagemaker.mxnet.html#mxnet-model>`__ or `TensorFlowModel <file:///Users/bvveeram/Documents/GitHub/sagemaker-python-sdk/doc/_build/html/sagemaker.tensorflow.html#tensorflow-model>`__.
 
 Example code using ``MXNetModel``:
 
@@ -681,8 +681,8 @@ in the AWS documentation.
 
 For more detailed explanations of the classes that this library provides for automatic model tuning, see:
 
-- `API docs for HyperparameterTuner and parameter range classes <https://sagemaker.readthedocs.io/en/stable/tuner.html>`__
-- `API docs for analytics classes <https://sagemaker.readthedocs.io/en/stable/analytics.html>`__
+- `API docs for HyperparameterTuner and parameter range classes <file:///Users/bvveeram/Documents/GitHub/sagemaker-python-sdk/doc/_build/html/tuner.html>`__
+- `API docs for analytics classes <file:///Users/bvveeram/Documents/GitHub/sagemaker-python-sdk/doc/_build/html/analytics.html>`__
 
 *************************
 SageMaker Batch Transform
@@ -709,7 +709,7 @@ Alternatively, if you already have a SageMaker model, you can create an instance
                               instance_count=1,
                               instance_type='ml.m4.xlarge')
 
-For a full list of the possible options to configure by using either of these methods, see the API docs for `Estimator <https://sagemaker.readthedocs.io/en/stable/estimators.html#sagemaker.estimator.Estimator.transformer>`__ or `Transformer <https://sagemaker.readthedocs.io/en/stable/transformer.html#sagemaker.transformer.Transformer>`__.
+For a full list of the possible options to configure by using either of these methods, see the API docs for `Estimator <file:///Users/bvveeram/Documents/GitHub/sagemaker-python-sdk/doc/_build/html/estimators.html#sagemaker.estimator.Estimator.transformer>`__ or `Transformer <file:///Users/bvveeram/Documents/GitHub/sagemaker-python-sdk/doc/_build/html/transformer.html#sagemaker.transformer.Transformer>`__.
 
 After you create a ``Transformer`` object, you can invoke ``transform()`` to start a batch transform job with the S3 location of your data.
 You can also specify other attributes of your data, such as the content type.
@@ -718,7 +718,7 @@ You can also specify other attributes of your data, such as the content type.
 
     transformer.transform('s3://my-bucket/batch-transform-input')
 
-For more details about what can be specified here, see `API docs <https://sagemaker.readthedocs.io/en/stable/transformer.html#sagemaker.transformer.Transformer.transform>`__.
+For more details about what can be specified here, see `API docs <file:///Users/bvveeram/Documents/GitHub/sagemaker-python-sdk/doc/_build/html/transformer.html#sagemaker.transformer.Transformer.transform>`__.
 
 **********
 Local Mode
@@ -1063,47 +1063,49 @@ You can also find these notebooks in the **Advanced Functionality** section of t
 For information about using sample notebooks in a SageMaker notebook instance, see `Use Example Notebooks <https://docs.aws.amazon.com/sagemaker/latest/dg/howitworks-nbexamples.html>`__
 in the AWS documentation.
 
-*******************
+********************
 Serverless Inference
-*******************
+********************
 
 You can use the SageMaker Python SDK to perform serverless inference on Lambda.
 
 To deploy models to Lambda, you must complete the following prerequisites:
-1. `Package your model and inference code as a container image. <https://docs.aws.amazon.com/lambda/latest/dg/images-create.html>`_
-2. `Create a role that lists Lambda as a trusted entity. <https://docs.aws.amazon.com/lambda/latest/dg/lambda-intro-execution-role.html#permissions-executionrole-console>`_
 
-After completing the prerequisites, you can deploy your model to Lambda with
-the ``LambdaModel`` class.
+- `Package your model and inference code as a container image. <https://docs.aws.amazon.com/lambda/latest/dg/images-create.html>`_
+- `Create a role that lists Lambda as a trusted entity. <https://docs.aws.amazon.com/lambda/latest/dg/lambda-intro-execution-role.html#permissions-executionrole-console>`_
+
+After completing the prerequisites, you can deploy your model to Lambda using
+the `LambdaModel`_ class.
 
 .. code:: python
 
    from sagemaker.serverless import LambdaModel
 
-   image_uri = f"{account}.dkr.ecr.{region}.amazonaws.com/{repository}:latest"
-   role = f"arn:aws:iam::{account}:role/{role}"
+   image_uri = "123456789012.dkr.ecr.us-west-2.amazonaws.com/my-lambda-repository:latest"
+   role = "arn:aws:iam::123456789012:role/MyLambdaExecutionRole"
 
    model = LambdaModel(image_uri=image_uri, role=role)
    predictor = model.deploy("my-lambda-function", timeout=20, memory_size=4092)
 
-The ``LambdaModel.deploy`` method returns a ``LambdaPredictor`` instance. Use
-the ``LambdaPredictor`` instance to perform inference on Lambda.
+The ``deploy`` method returns a `LambdaPredictor`_  instance. Use the
+`LambdaPredictor`_ ``predict`` method to perform inference on Lambda.
 
 .. code:: python
 
    url = "https://c.files.bbci.co.uk/12A9B/production/_111434467_gettyimages-1143489763.jpg"
    predictor.predict({"url": url})  # {'class': 'tabby'}
 
-Once you are done performing inference on Lambda, delete the ``LambdaModel``
-and ``LambdaPredictor`` instances.
+Once you are done performing inference on Lambda, free the `LambdaModel`_ and
+`LambdaPredictor`_ resources using the ``delete_model`` and ``delete_predictor``
+methods.
 
 .. code:: python
 
    model.delete_model()
    predictor.delete_predictor()
 
-For more details, see the API reference for `LambdaModel <https://sagemaker.readthedocs.io/en/stable/api/inference/model.html#sagemaker.serverless.model.LambdaModel>`_
-and `LambdaPredictor <https://sagemaker.readthedocs.io/en/stable/api/inference/predictor.html#sagemaker.serverless.predictor.LambdaPredictor>`_.
+.. _LambdaModel : file:///Users/bvveeram/Documents/GitHub/sagemaker-python-sdk/doc/_build/html/api/inference/model.html#sagemaker.serverless.model.LambdaModel
+.. _LambdaPredictor : file:///Users/bvveeram/Documents/GitHub/sagemaker-python-sdk/doc/_build/html/api/inference/predictors.html#sagemaker.serverless.predictor.LambdaPredictor
 
 ******************
 SageMaker Workflow
