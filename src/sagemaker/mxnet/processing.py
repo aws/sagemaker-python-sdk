@@ -10,35 +10,21 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""This module contains code related to SKLearn Processors which are used for Processing jobs.
+"""This module contains code related to MXNet Processors which are used for Processing jobs.
 
 These jobs let customers perform data pre-processing, post-processing, feature engineering,
 data validation, and model evaluation and interpretation on SageMaker.
 """
 from __future__ import absolute_import
 
+from sagemaker.mxnet.estimator import MXNet
 from sagemaker.processing import FrameworkProcessor
-from sagemaker.sklearn.estimator import SKLearn
 
 
-class SKLearnProcessor(FrameworkProcessor):
-    """Initialize an ``SKLearnProcessor`` instance.
+class MXNetProcessor(FrameworkProcessor):
+    """Handles Amazon SageMaker processing tasks for jobs using MXNet containers."""
 
-    The SKLearnProcessor handles Amazon SageMaker processing tasks for jobs using scikit-learn.
-
-    Unless ``image_uri`` is specified, the scikit-learn environment is an
-    Amazon-built Docker container that executes functions defined in the supplied
-    ``code`` Python script.
-
-    The arguments have the exact same meaning as in ``FrameworkProcessor``.
-
-    .. tip::
-
-        You can find additional parameters for initializing this class at
-        :class:`~sagemaker.processing.FrameworkProcessor`.
-    """
-
-    estimator_cls = SKLearn
+    estimator_cls = MXNet
 
     def __init__(
         self,
@@ -60,7 +46,19 @@ class SKLearnProcessor(FrameworkProcessor):
         tags=None,
         network_config=None,
     ):
-        """This processor executes a Python script in a scikit-learn execution environment."""
+        """This processor executes a Python script in a managed MXNet execution environment.
+
+        Unless ``image_uri`` is specified, the MXNet environment is an
+        Amazon-built Docker container that executes functions defined in the supplied
+        ``code`` Python script.
+
+        The arguments have the exact same meaning as in ``FrameworkProcessor``.
+
+        .. tip::
+
+            You can find additional parameters for initializing this class at
+            :class:`~sagemaker.processing.FrameworkProcessor`.
+        """
         super().__init__(
             self.estimator_cls,
             framework_version,
