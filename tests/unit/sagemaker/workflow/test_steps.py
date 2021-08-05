@@ -67,8 +67,8 @@ MODEL_NAME = "gisele"
 
 
 class CustomStep(Step):
-    def __init__(self, name):
-        super(CustomStep, self).__init__(name, StepTypeEnum.TRAINING)
+    def __init__(self, name, display_name=None, description=None):
+        super(CustomStep, self).__init__(name, display_name, description, StepTypeEnum.TRAINING)
         self._properties = Properties(path=f"Steps.{name}")
 
     @property
@@ -121,8 +121,36 @@ def sagemaker_session(boto_session, client):
 
 
 def test_custom_step():
-    step = CustomStep("MyStep")
-    assert step.to_request() == {"Name": "MyStep", "Type": "Training", "Arguments": dict()}
+    step = CustomStep(
+        name="MyStep", display_name="CustomStepDisplayName", description="CustomStepDescription"
+    )
+    assert step.to_request() == {
+        "Name": "MyStep",
+        "DisplayName": "CustomStepDisplayName",
+        "Description": "CustomStepDescription",
+        "Type": "Training",
+        "Arguments": dict(),
+    }
+
+
+def test_custom_step_without_display_name():
+    step = CustomStep(name="MyStep", description="CustomStepDescription")
+    assert step.to_request() == {
+        "Name": "MyStep",
+        "Description": "CustomStepDescription",
+        "Type": "Training",
+        "Arguments": dict(),
+    }
+
+
+def test_custom_step_without_description():
+    step = CustomStep(name="MyStep", display_name="CustomStepDisplayName")
+    assert step.to_request() == {
+        "Name": "MyStep",
+        "DisplayName": "CustomStepDisplayName",
+        "Type": "Training",
+        "Arguments": dict(),
+    }
 
 
 def test_training_step_base_estimator(sagemaker_session):
@@ -151,6 +179,8 @@ def test_training_step_base_estimator(sagemaker_session):
     step = TrainingStep(
         name="MyTrainingStep",
         depends_on=["TestStep"],
+        description="TrainingStep description",
+        display_name="MyTrainingStep",
         estimator=estimator,
         inputs=inputs,
         cache_config=cache_config,
@@ -159,6 +189,8 @@ def test_training_step_base_estimator(sagemaker_session):
     assert step.to_request() == {
         "Name": "MyTrainingStep",
         "Type": "Training",
+        "Description": "TrainingStep description",
+        "DisplayName": "MyTrainingStep",
         "DependsOn": ["TestStep", "AnotherTestStep"],
         "Arguments": {
             "AlgorithmSpecification": {"TrainingImage": IMAGE_URI, "TrainingInputMode": "File"},
@@ -304,6 +336,8 @@ def test_processing_step(sagemaker_session):
     cache_config = CacheConfig(enable_caching=True, expire_after="PT1H")
     step = ProcessingStep(
         name="MyProcessingStep",
+        description="ProcessingStep description",
+        display_name="MyProcessingStep",
         depends_on=["TestStep", "SecondTestStep"],
         processor=processor,
         inputs=inputs,
@@ -313,6 +347,8 @@ def test_processing_step(sagemaker_session):
     step.add_depends_on(["ThirdTestStep"])
     assert step.to_request() == {
         "Name": "MyProcessingStep",
+        "Description": "ProcessingStep description",
+        "DisplayName": "MyProcessingStep",
         "Type": "Processing",
         "DependsOn": ["TestStep", "SecondTestStep", "ThirdTestStep"],
         "Arguments": {
@@ -415,6 +451,8 @@ def test_create_model_step(sagemaker_session):
     step = CreateModelStep(
         name="MyCreateModelStep",
         depends_on=["TestStep"],
+        display_name="MyCreateModelStep",
+        description="TestDescription",
         model=model,
         inputs=inputs,
     )
@@ -423,6 +461,8 @@ def test_create_model_step(sagemaker_session):
     assert step.to_request() == {
         "Name": "MyCreateModelStep",
         "Type": "Model",
+        "Description": "TestDescription",
+        "DisplayName": "MyCreateModelStep",
         "DependsOn": ["TestStep", "SecondTestStep"],
         "Arguments": {
             "ExecutionRoleArn": "DummyRole",
@@ -445,6 +485,8 @@ def test_transform_step(sagemaker_session):
         name="MyTransformStep",
         depends_on=["TestStep"],
         transformer=transformer,
+        display_name="TransformStep",
+        description="TestDescription",
         inputs=inputs,
         cache_config=cache_config,
     )
@@ -452,6 +494,8 @@ def test_transform_step(sagemaker_session):
     assert step.to_request() == {
         "Name": "MyTransformStep",
         "Type": "Transform",
+        "Description": "TestDescription",
+        "DisplayName": "TransformStep",
         "DependsOn": ["TestStep", "SecondTestStep"],
         "Arguments": {
             "ModelName": "gisele",

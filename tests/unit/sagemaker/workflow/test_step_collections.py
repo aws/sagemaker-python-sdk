@@ -59,8 +59,8 @@ MODEL_REPACKING_IMAGE_URI = (
 
 
 class CustomStep(Step):
-    def __init__(self, name):
-        super(CustomStep, self).__init__(name, StepTypeEnum.TRAINING)
+    def __init__(self, name, display_name=None, description=None):
+        super(CustomStep, self).__init__(name, display_name, description, StepTypeEnum.TRAINING)
         self._properties = Properties(path=f"Steps.{name}")
 
     @property
@@ -183,6 +183,7 @@ def test_register_model(estimator, model_metrics):
         model_metrics=model_metrics,
         approval_status="Approved",
         description="description",
+        display_name="RegisterModelStep",
         depends_on=["TestStep"],
         tags=[{"Key": "myKey", "Value": "myValue"}],
     )
@@ -192,6 +193,8 @@ def test_register_model(estimator, model_metrics):
                 "Name": "RegisterModelStep",
                 "Type": "RegisterModel",
                 "DependsOn": ["TestStep"],
+                "DisplayName": "RegisterModelStep",
+                "Description": "description",
                 "Arguments": {
                     "InferenceSpecification": {
                         "Containers": [
@@ -240,6 +243,7 @@ def test_register_model_tf(estimator_tf, model_metrics):
             {
                 "Name": "RegisterModelStep",
                 "Type": "RegisterModel",
+                "Description": "description",
                 "Arguments": {
                     "InferenceSpecification": {
                         "Containers": [
@@ -297,6 +301,7 @@ def test_register_model_sip(estimator, model_metrics):
             {
                 "Name": "RegisterModelStep",
                 "Type": "RegisterModel",
+                "Description": "description",
                 "DependsOn": ["TestStep"],
                 "Arguments": {
                     "InferenceSpecification": {
