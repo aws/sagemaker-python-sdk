@@ -1,5 +1,18 @@
 # Changelog
 
+## v2.52.0 (2021-08-05)
+
+### Features
+
+ * processors that support multiple Python files, requirements.txt, and dependencies.
+ * support step object in step depends on list
+
+### Bug Fixes and Other Changes
+
+ * enable isolation while creating model from job
+ * update `sagemaker.serverless` integration test
+ * Use correct boto model name for RegisterModelStep properties
+
 ## v2.51.0 (2021-08-03)
 
 ### Features
