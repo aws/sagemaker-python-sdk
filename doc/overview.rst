@@ -1063,6 +1063,48 @@ You can also find these notebooks in the **Advanced Functionality** section of t
 For information about using sample notebooks in a SageMaker notebook instance, see `Use Example Notebooks <https://docs.aws.amazon.com/sagemaker/latest/dg/howitworks-nbexamples.html>`__
 in the AWS documentation.
 
+*******************
+Serverless Inference
+*******************
+
+You can use the SageMaker Python SDK to perform serverless inference on Lambda.
+
+To deploy models to Lambda, you must complete the following prerequisites:
+1. `Package your model and inference code as a container image. <https://docs.aws.amazon.com/lambda/latest/dg/images-create.html>`_
+2. `Create a role that lists Lambda as a trusted entity. <https://docs.aws.amazon.com/lambda/latest/dg/lambda-intro-execution-role.html#permissions-executionrole-console>`_
+
+After completing the prerequisites, you can deploy your model to Lambda with
+the ``LambdaModel`` class.
+
+.. code:: python
+
+   from sagemaker.serverless import LambdaModel
+
+   image_uri = f"{account}.dkr.ecr.{region}.amazonaws.com/{repository}:latest"
+   role = f"arn:aws:iam::{account}:role/{role}"
+
+   model = LambdaModel(image_uri=image_uri, role=role)
+   predictor = model.deploy("my-lambda-function", timeout=20, memory_size=4092)
+
+The ``LambdaModel.deploy`` method returns a ``LambdaPredictor`` instance. Use
+the ``LambdaPredictor`` instance to perform inference on Lambda.
+
+.. code:: python
+
+   url = "https://c.files.bbci.co.uk/12A9B/production/_111434467_gettyimages-1143489763.jpg"
+   predictor.predict({"url": url})  # {'class': 'tabby'}
+
+Once you are done performing inference on Lambda, delete the ``LambdaModel``
+and ``LambdaPredictor`` instances.
+
+.. code:: python
+
+   model.delete_model()
+   predictor.delete_predictor()
+
+For more details, see the API reference for `LambdaModel <https://sagemaker.readthedocs.io/en/stable/api/inference/model.html#sagemaker.serverless.model.LambdaModel>`_
+and `LambdaPredictor <https://sagemaker.readthedocs.io/en/stable/api/inference/predictor.html#sagemaker.serverless.predictor.LambdaPredictor>`_.
+
 ******************
 SageMaker Workflow
 ******************
