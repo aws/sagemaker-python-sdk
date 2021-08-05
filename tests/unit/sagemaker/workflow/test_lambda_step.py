@@ -48,6 +48,7 @@ def test_lambda_step(sagemaker_session):
             function_arn="arn:aws:lambda:us-west-2:123456789012:function:sagemaker_test_lambda",
             session=sagemaker_session,
         ),
+        display_name="MyLambdaStep", description="MyLambdaStepDescription",
         inputs={"arg1": "foo", "arg2": 5, "arg3": param},
         outputs=[outputParam1, outputParam2],
     )
@@ -56,6 +57,8 @@ def test_lambda_step(sagemaker_session):
         "Name": "MyLambdaStep",
         "Type": "Lambda",
         "DependsOn": ["TestStep", "SecondTestStep"],
+        "DisplayName": "MyLambdaStep",
+        "Description": "MyLambdaStepDescription",
         "FunctionArn": "arn:aws:lambda:us-west-2:123456789012:function:sagemaker_test_lambda",
         "OutputParameters": [
             {"OutputName": "output1", "OutputType": "String"},

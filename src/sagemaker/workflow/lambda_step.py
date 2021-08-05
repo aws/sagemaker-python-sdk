@@ -82,6 +82,8 @@ class LambdaStep(Step):
         self,
         name: str,
         lambda_func: Lambda,
+        display_name: str = None,
+        description: str = None,
         inputs: dict = None,
         outputs: List[LambdaOutput] = None,
         cache_config: CacheConfig = None,
@@ -91,6 +93,8 @@ class LambdaStep(Step):
 
         Args:
             name (str): The name of the lambda step.
+            display_name (str): The display name of the Lambda step.
+            description (str): The description of the Lambda step.
             lambda_func (str): An instance of sagemaker.lambda_helper.Lambda.
                 If lambda arn is specified in the instance, LambdaStep just invokes the function,
                 else lambda function will be created while creating the pipeline.
@@ -101,7 +105,7 @@ class LambdaStep(Step):
             depends_on (List[str]): A list of step names this `sagemaker.workflow.steps.LambdaStep`
                 depends on
         """
-        super(LambdaStep, self).__init__(name, StepTypeEnum.LAMBDA, depends_on)
+        super(LambdaStep, self).__init__(name,display_name, description, StepTypeEnum.LAMBDA, depends_on)
         self.lambda_func = lambda_func
         self.outputs = outputs if outputs is not None else []
         self.cache_config = cache_config
