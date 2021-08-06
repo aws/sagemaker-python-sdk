@@ -46,20 +46,6 @@ def sklearn_training_job(
     sagemaker_session.boto_region_name
 
 
-def test_framework_processing_job_with_deps(
-    sagemaker_session,
-    sklearn_latest_version,
-    sklearn_latest_py_version,
-    cpu_instance_type,
-):
-    return _run_processing_job(
-        sagemaker_session,
-        cpu_instance_type,
-        sklearn_latest_version,
-        sklearn_latest_py_version,
-    )
-
-
 def test_training_with_additional_hyperparameters(
     sagemaker_session,
     sklearn_latest_version,
