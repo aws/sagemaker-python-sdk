@@ -523,7 +523,7 @@ That is, you can bring your own model:
 
 First, package the files for the trained model into a ``.tar.gz`` file, and upload the archive to S3.
 
-Next, create a ``Model`` object that corresponds to the framework that you are using: `MXNetModel <file:///Users/bvveeram/Documents/GitHub/sagemaker-python-sdk/doc/_build/html/sagemaker.mxnet.html#mxnet-model>`__ or `TensorFlowModel <file:///Users/bvveeram/Documents/GitHub/sagemaker-python-sdk/doc/_build/html/sagemaker.tensorflow.html#tensorflow-model>`__.
+Next, create a ``Model`` object that corresponds to the framework that you are using: `MXNetModel <https://sagemaker.readthedocs.io/en/stable/sagemaker.mxnet.html#mxnet-model>`__ or `TensorFlowModel <https://sagemaker.readthedocs.io/en/stable/sagemaker.tensorflow.html#tensorflow-model>`__.
 
 Example code using ``MXNetModel``:
 
@@ -681,8 +681,8 @@ in the AWS documentation.
 
 For more detailed explanations of the classes that this library provides for automatic model tuning, see:
 
-- `API docs for HyperparameterTuner and parameter range classes <file:///Users/bvveeram/Documents/GitHub/sagemaker-python-sdk/doc/_build/html/tuner.html>`__
-- `API docs for analytics classes <file:///Users/bvveeram/Documents/GitHub/sagemaker-python-sdk/doc/_build/html/analytics.html>`__
+- `API docs for HyperparameterTuner and parameter range classes <https://sagemaker.readthedocs.io/en/stable/tuner.html>`__
+- `API docs for analytics classes <https://sagemaker.readthedocs.io/en/stable/analytics.html>`__
 
 *************************
 SageMaker Batch Transform
@@ -709,7 +709,7 @@ Alternatively, if you already have a SageMaker model, you can create an instance
                               instance_count=1,
                               instance_type='ml.m4.xlarge')
 
-For a full list of the possible options to configure by using either of these methods, see the API docs for `Estimator <file:///Users/bvveeram/Documents/GitHub/sagemaker-python-sdk/doc/_build/html/estimators.html#sagemaker.estimator.Estimator.transformer>`__ or `Transformer <file:///Users/bvveeram/Documents/GitHub/sagemaker-python-sdk/doc/_build/html/transformer.html#sagemaker.transformer.Transformer>`__.
+For a full list of the possible options to configure by using either of these methods, see the API docs for `Estimator <https://sagemaker.readthedocs.io/en/stable/estimators.html#sagemaker.estimator.Estimator.transformer>`__ or `Transformer <https://sagemaker.readthedocs.io/en/stable/transformer.html#sagemaker.transformer.Transformer>`__.
 
 After you create a ``Transformer`` object, you can invoke ``transform()`` to start a batch transform job with the S3 location of your data.
 You can also specify other attributes of your data, such as the content type.
@@ -718,7 +718,7 @@ You can also specify other attributes of your data, such as the content type.
 
     transformer.transform('s3://my-bucket/batch-transform-input')
 
-For more details about what can be specified here, see `API docs <file:///Users/bvveeram/Documents/GitHub/sagemaker-python-sdk/doc/_build/html/transformer.html#sagemaker.transformer.Transformer.transform>`__.
+For more details about what can be specified here, see `API docs <https://sagemaker.readthedocs.io/en/stable/transformer.html#sagemaker.transformer.Transformer.transform>`__.
 
 **********
 Local Mode
@@ -1104,8 +1104,8 @@ methods.
    model.delete_model()
    predictor.delete_predictor()
 
-.. _LambdaModel : file:///Users/bvveeram/Documents/GitHub/sagemaker-python-sdk/doc/_build/html/api/inference/model.html#sagemaker.serverless.model.LambdaModel
-.. _LambdaPredictor : file:///Users/bvveeram/Documents/GitHub/sagemaker-python-sdk/doc/_build/html/api/inference/predictors.html#sagemaker.serverless.predictor.LambdaPredictor
+.. _LambdaModel : https://sagemaker.readthedocs.io/en/stable/api/inference/model.html#sagemaker.serverless.model.LambdaModel
+.. _LambdaPredictor : https://sagemaker.readthedocs.io/en/stable/api/inference/predictors.html#sagemaker.serverless.predictor.LambdaPredictor
 
 ******************
 SageMaker Workflow
