@@ -1092,7 +1092,7 @@ The ``deploy`` method returns a `LambdaPredictor`_  instance. Use the
 
 .. code:: python
 
-   url = "https://c.files.bbci.co.uk/12A9B/production/_111434467_gettyimages-1143489763.jpg"
+   url = "https://example.com/cat.jpeg"
    predictor.predict({"url": url})  # {'class': 'tabby'}
 
 Once you are done performing inference on Lambda, free the `LambdaModel`_ and
