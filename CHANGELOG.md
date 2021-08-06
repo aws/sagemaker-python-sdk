@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.52.1 (2021-08-06)
+
+### Bug Fixes and Other Changes
+
+ * revert #2251 changes for sklearn processor
+
 ## v2.52.0 (2021-08-05)
 
 ### Features
