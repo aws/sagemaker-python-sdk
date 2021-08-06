@@ -45,6 +45,7 @@ class SKLearnProcessor(ScriptProcessor):
         """Initialize an ``SKLearnProcessor`` instance.
 
         The SKLearnProcessor handles Amazon SageMaker processing tasks for jobs using scikit-learn.
+
         Args:
             framework_version (str): The version of scikit-learn.
             role (str): An AWS IAM role name or ARN. The Amazon SageMaker training jobs
