@@ -1235,7 +1235,7 @@ class FeatureStoreOutput(ApiObject):
 class FrameworkProcessor(ScriptProcessor):
     """Handles Amazon SageMaker processing tasks for jobs using a machine learning framework."""
 
-    framework_entrypoint_command = ["/bin/bash"]
+    framework_entrypoint_command = ["python3"]
 
     # Added new (kw)args for estimator. The rest are from ScriptProcessor with same defaults.
     def __init__(
@@ -1436,12 +1436,12 @@ class FrameworkProcessor(ScriptProcessor):
         """
         # When job_name is None, the job_name to upload code (+payload) will
         # differ from job_name used by run().
-        s3_runproc_sh, inputs, job_name = self._pack_and_upload_code(
+        s3_runproc_py, inputs, job_name = self._pack_and_upload_code(
             code, source_dir, dependencies, git_config, job_name, inputs
         )
 
         return RunArgs(
-            s3_runproc_sh,
+            s3_runproc_py,
             inputs=inputs,
             outputs=outputs,
             arguments=arguments,
@@ -1551,13 +1551,13 @@ class FrameworkProcessor(ScriptProcessor):
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 user code file (default: None).
         """
-        s3_runproc_sh, inputs, job_name = self._pack_and_upload_code(
+        s3_runproc_py, inputs, job_name = self._pack_and_upload_code(
             code, source_dir, dependencies, git_config, job_name, inputs
         )
 
         # Submit a processing job.
         super().run(
-            code=s3_runproc_sh,
+            code=s3_runproc_py,
             inputs=inputs,
             outputs=outputs,
             arguments=arguments,
@@ -1597,20 +1597,20 @@ class FrameworkProcessor(ScriptProcessor):
                 "automatically."
             )
 
-        # Upload the bootstrapping code as s3://.../jobname/source/runproc.sh.
+        # Upload the bootstrapping code as s3://.../jobname/source/runproc.py.
         entrypoint_s3_uri = estimator.uploaded_code.s3_prefix.replace(
             "sourcedir.tar.gz",
-            "runproc.sh",
+            "runproc.py",
         )
         script = estimator.uploaded_code.script_name
-        s3_runproc_sh = S3Uploader.upload_string_as_file_body(
+        s3_runproc_py = S3Uploader.upload_string_as_file_body(
             self._generate_framework_script(script),
             desired_s3_uri=entrypoint_s3_uri,
             sagemaker_session=self.sagemaker_session,
         )
-        logger.info("runproc.sh uploaded to %s", s3_runproc_sh)
+        logger.info("runproc.py uploaded to %s", s3_runproc_py)
 
-        return s3_runproc_sh, inputs, job_name
+        return s3_runproc_py, inputs, job_name
 
     def _generate_framework_script(self, user_script: str) -> str:
         """Generate the framework entrypoint file (as text) for a processing job.
@@ -1626,22 +1626,27 @@ class FrameworkProcessor(ScriptProcessor):
         """
         return dedent(
             """\
-            #!/bin/bash
+            import os
+            import subprocess
+            import sys
+            import tarfile
 
-            cd /opt/ml/processing/input/code/
-            tar -xzf sourcedir.tar.gz
 
-            # Exit on any error. SageMaker uses error code to mark failed job.
-            set -e
+            if __name__ == "__main__":
+                os.chdir("/opt/ml/processing/input/code")
 
-            if [[ -f 'requirements.txt' ]]; then
-                # Some py3 containers has typing, which may breaks pip install
-                pip uninstall --yes typing
+                with tarfile.open("sourcedir.tar.gz", "r:gz") as tar:
+                    tar.extractall()
 
-                pip install -r requirements.txt
-            fi
+                if os.path.isfile("requirements.txt"):
+                    # Some py3 containers has typing, which may breaks pip install
+                    subprocess.run(["pip", "uninstall", "--yes", "typing"])
 
-            {entry_point_command} {entry_point} "$@"
+                    subprocess.run(["pip", "install", "-r", "requirements.txt"])
+
+                cmd = ["{entry_point_command}", "{entry_point}"] + sys.argv[1:]
+                print(' '.join(cmd))
+                subprocess.run(cmd)
         """
         ).format(
             entry_point_command=" ".join(self.command),
@@ -1683,7 +1688,7 @@ class FrameworkProcessor(ScriptProcessor):
         # Follow the exact same mechanism that ScriptProcessor does, which
         # is to inject the S3 code artifact as a processing input. Note that
         # framework processor take-over /opt/ml/processing/input/code for
-        # sourcedir.tar.gz, and let ScriptProcessor to place runproc.sh under
+        # sourcedir.tar.gz, and let ScriptProcessor to place runproc.py under
         # /opt/ml/processing/input/{self._CODE_CONTAINER_INPUT_NAME}.
         #
         # See:
