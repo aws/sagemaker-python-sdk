@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import json
 import pytest
 from mock import Mock, patch, MagicMock
 from packaging import version
@@ -98,7 +99,7 @@ def test_sklearn_processor_with_required_parameters(
 
     processor.run(code="/local/path/to/processing_code.py")
 
-    expected_args = _get_expected_args(processor._current_job_name)
+    expected_args = _get_expected_args_modular_code(processor._current_job_name)
 
     sklearn_image_uri = (
         "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:{}-cpu-py3"
@@ -111,18 +112,20 @@ def test_sklearn_processor_with_required_parameters(
 @patch("os.path.exists", return_value=True)
 @patch("os.path.isfile", return_value=True)
 def test_sklearn_with_all_parameters(
-    exists_mock, isfile_mock, botocore_resolver, sklearn_version, sagemaker_session
+    exists_mock, isfile_mock, botocore_resolver, sklearn_version, sagemaker_session, uploaded_code
 ):
     botocore_resolver.return_value.construct_endpoint.return_value = {"hostname": ECR_HOSTNAME}
 
     processor = SKLearnProcessor(
         role=ROLE,
         framework_version=sklearn_version,
+        command=["Rscript"],
         instance_type="ml.m4.xlarge",
         instance_count=1,
         volume_size_in_gb=100,
         volume_kms_key="arn:aws:kms:us-west-2:012345678901:key/volume-kms-key",
         output_kms_key="arn:aws:kms:us-west-2:012345678901:key/output-kms-key",
+        code_location=MOCKED_S3_URI,
         max_runtime_in_seconds=3600,
         base_job_name="my_sklearn_processor",
         env={"my_env_variable": "my_env_variable_value"},
@@ -136,18 +139,21 @@ def test_sklearn_with_all_parameters(
         sagemaker_session=sagemaker_session,
     )
 
-    processor.run(
-        code="/local/path/to/processing_code.py",
-        inputs=_get_data_inputs_all_parameters(),
-        outputs=_get_data_outputs_all_parameters(),
-        arguments=["--drop-columns", "'SelfEmployed'"],
-        wait=True,
-        logs=False,
-        job_name="my_job_name",
-        experiment_config={"ExperimentName": "AnExperiment"},
-    )
+    with patch("sagemaker.estimator.tar_and_upload_dir", return_value=uploaded_code):
+        processor.run(
+            code="processing_code.py",
+            source_dir="/local/path/to/source_dir",
+            dependencies=["/local/path/to/dep_01"],
+            inputs=_get_data_inputs_all_parameters(),
+            outputs=_get_data_outputs_all_parameters(),
+            arguments=["--drop-columns", "'SelfEmployed'"],
+            wait=True,
+            logs=False,
+            job_name="my_job_name",
+            experiment_config={"ExperimentName": "AnExperiment"},
+        )
 
-    expected_args = _get_expected_args_all_parameters(processor._current_job_name)
+    expected_args = _get_expected_args_all_parameters_modular_code(processor._current_job_name)
     sklearn_image_uri = (
         "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:{}-cpu-py3"
     ).format(sklearn_version)
@@ -174,18 +180,21 @@ def test_local_mode_disables_local_code_by_default(localsession_mock):
 @patch("os.path.exists", return_value=True)
 @patch("os.path.isfile", return_value=True)
 def test_sklearn_with_all_parameters_via_run_args(
-    exists_mock, isfile_mock, botocore_resolver, sklearn_version, sagemaker_session
+    exists_mock, isfile_mock, botocore_resolver, sklearn_version, sagemaker_session, uploaded_code
 ):
     botocore_resolver.return_value.construct_endpoint.return_value = {"hostname": ECR_HOSTNAME}
+    custom_command = ["Rscript"]
 
     processor = SKLearnProcessor(
         role=ROLE,
         framework_version=sklearn_version,
+        command=custom_command,
         instance_type="ml.m4.xlarge",
-        instance_count=1,
+        instance_count=2,
         volume_size_in_gb=100,
         volume_kms_key="arn:aws:kms:us-west-2:012345678901:key/volume-kms-key",
         output_kms_key="arn:aws:kms:us-west-2:012345678901:key/output-kms-key",
+        code_location=MOCKED_S3_URI,
         max_runtime_in_seconds=3600,
         base_job_name="my_sklearn_processor",
         env={"my_env_variable": "my_env_variable_value"},
@@ -199,24 +208,32 @@ def test_sklearn_with_all_parameters_via_run_args(
         sagemaker_session=sagemaker_session,
     )
 
-    run_args = processor.get_run_args(
-        code="/local/path/to/processing_code.py",
-        inputs=_get_data_inputs_all_parameters(),
-        outputs=_get_data_outputs_all_parameters(),
-        arguments=["--drop-columns", "'SelfEmployed'"],
-    )
+    with patch("sagemaker.estimator.tar_and_upload_dir", return_value=uploaded_code):
+        run_args = processor.get_run_args(
+            code="processing_code.py",
+            source_dir="/local/path/to/source_dir",
+            dependencies=["/local/path/to/dep_01"],
+            git_config=None,
+            inputs=_get_data_inputs_all_parameters(),
+            outputs=_get_data_outputs_all_parameters(),
+            arguments=["--drop-columns", "'SelfEmployed'"],
+        )
 
-    processor.run(
-        code=run_args.code,
-        inputs=run_args.inputs,
-        outputs=run_args.outputs,
-        arguments=run_args.arguments,
-        wait=True,
-        logs=False,
-        experiment_config={"ExperimentName": "AnExperiment"},
-    )
+        processor.run(
+            code=run_args.code,
+            inputs=run_args.inputs,
+            outputs=run_args.outputs,
+            arguments=run_args.arguments,
+            wait=True,
+            logs=False,
+            experiment_config={"ExperimentName": "AnExperiment"},
+        )
 
-    expected_args = _get_expected_args_all_parameters(processor._current_job_name)
+    expected_args = _get_expected_args_all_parameters_modular_code(
+        processor._current_job_name,
+        instance_count=2,
+        code_s3_prefix=run_args.code.replace("/runproc.py", ""),
+    )
     sklearn_image_uri = (
         "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:{}-cpu-py3"
     ).format(sklearn_version)
@@ -224,12 +241,23 @@ def test_sklearn_with_all_parameters_via_run_args(
 
     sagemaker_session.process.assert_called_with(**expected_args)
 
+    # Verify the alternate command was applied successfully:
+    framework_script = processor._generate_framework_script("processing_code.py")
+    # expected_invocation = f"{' '.join(custom_command)} processing_code.py"
+    expected_invocation = json.dumps([*custom_command, "processing_code.py"])
+    assert (
+        expected_invocation in framework_script
+    ), "Framework script should contain customized invocation:\n{}\n\nGot:\n{}".format(
+        expected_invocation,
+        framework_script,
+    )
+
 
 @patch("sagemaker.utils._botocore_resolver")
 @patch("os.path.exists", return_value=True)
 @patch("os.path.isfile", return_value=True)
 def test_sklearn_with_all_parameters_via_run_args_called_twice(
-    exists_mock, isfile_mock, botocore_resolver, sklearn_version, sagemaker_session
+    exists_mock, isfile_mock, botocore_resolver, sklearn_version, sagemaker_session, uploaded_code
 ):
     botocore_resolver.return_value.construct_endpoint.return_value = {"hostname": ECR_HOSTNAME}
 
@@ -241,6 +269,7 @@ def test_sklearn_with_all_parameters_via_run_args_called_twice(
         volume_size_in_gb=100,
         volume_kms_key="arn:aws:kms:us-west-2:012345678901:key/volume-kms-key",
         output_kms_key="arn:aws:kms:us-west-2:012345678901:key/output-kms-key",
+        code_location=MOCKED_S3_URI,
         max_runtime_in_seconds=3600,
         base_job_name="my_sklearn_processor",
         env={"my_env_variable": "my_env_variable_value"},
@@ -254,8 +283,22 @@ def test_sklearn_with_all_parameters_via_run_args_called_twice(
         sagemaker_session=sagemaker_session,
     )
 
+    with patch("sagemaker.estimator.tar_and_upload_dir", return_value=uploaded_code):
+        run_args = processor.get_run_args(
+            code="processing_code.py",
+            source_dir="/local/path/to/source_dir",
+            dependencies=["/local/path/to/dep_01"],
+            git_config=None,
+            inputs=_get_data_inputs_all_parameters(),
+            outputs=_get_data_outputs_all_parameters(),
+            arguments=["--drop-columns", "'SelfEmployed'"],
+        )
+
     run_args = processor.get_run_args(
         code="/local/path/to/processing_code.py",
+        source_dir=None,
+        dependencies=None,
+        git_config=None,
         inputs=_get_data_inputs_all_parameters(),
         outputs=_get_data_outputs_all_parameters(),
         arguments=["--drop-columns", "'SelfEmployed'"],
@@ -270,7 +313,10 @@ def test_sklearn_with_all_parameters_via_run_args_called_twice(
         experiment_config={"ExperimentName": "AnExperiment"},
     )
 
-    expected_args = _get_expected_args_all_parameters(processor._current_job_name)
+    expected_args = _get_expected_args_all_parameters_modular_code(
+        processor._current_job_name,
+        code_s3_prefix=run_args.code.replace("/runproc.py", ""),
+    )
 
     sklearn_image_uri = (
         "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:{}-cpu-py3"
@@ -807,7 +853,7 @@ def _get_script_processor(sagemaker_session):
     )
 
 
-def _get_expected_args(job_name, code_s3_uri="s3://mocked_s3_uri_from_upload_data"):
+def _get_expected_args(job_name, code_s3_uri=f"s3://{BUCKET_NAME}"):
     return {
         "inputs": [
             {
@@ -864,7 +910,7 @@ def _get_expected_args_modular_code(job_name, code_s3_uri=f"s3://{BUCKET_NAME}")
                 "InputName": "entrypoint",
                 "AppManaged": False,
                 "S3Input": {
-                    "S3Uri": f"{code_s3_uri}/{job_name}/source/runproc.sh",
+                    "S3Uri": f"{code_s3_uri}/{job_name}/source/runproc.py",
                     "LocalPath": "/opt/ml/processing/input/entrypoint",
                     "S3DataType": "S3Prefix",
                     "S3InputMode": "File",
@@ -887,8 +933,8 @@ def _get_expected_args_modular_code(job_name, code_s3_uri=f"s3://{BUCKET_NAME}")
         "app_specification": {
             "ImageUri": CUSTOM_IMAGE_URI,
             "ContainerEntrypoint": [
-                "/bin/bash",
-                "/opt/ml/processing/input/entrypoint/runproc.sh",
+                "python3",
+                "/opt/ml/processing/input/entrypoint/runproc.py",
             ],
         },
         "environment": None,
@@ -1085,7 +1131,7 @@ def _get_expected_args_all_parameters_modular_code(
                 "InputName": "entrypoint",
                 "AppManaged": False,
                 "S3Input": {
-                    "S3Uri": f"{code_s3_prefix}/runproc.sh",
+                    "S3Uri": f"{code_s3_prefix}/runproc.py",
                     "LocalPath": "/opt/ml/processing/input/entrypoint",
                     "S3DataType": "S3Prefix",
                     "S3InputMode": "File",
@@ -1128,8 +1174,8 @@ def _get_expected_args_all_parameters_modular_code(
             "ImageUri": "012345678901.dkr.ecr.us-west-2.amazonaws.com/my-custom-image-uri",
             "ContainerArguments": ["--drop-columns", "'SelfEmployed'"],
             "ContainerEntrypoint": [
-                "/bin/bash",
-                "/opt/ml/processing/input/entrypoint/runproc.sh",
+                "python3",
+                "/opt/ml/processing/input/entrypoint/runproc.py",
             ],
         },
         "environment": {"my_env_variable": "my_env_variable_value"},

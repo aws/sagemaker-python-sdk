@@ -139,7 +139,7 @@ def test_sklearn(sagemaker_session, sklearn_latest_version, cpu_instance_type):
 
     job_description = sklearn_processor.latest_job.describe()
 
-    assert len(job_description["ProcessingInputs"]) == 2
+    assert len(job_description["ProcessingInputs"]) == 3
     assert job_description["ProcessingResources"]["ClusterConfig"]["InstanceCount"] == 1
     assert (
         job_description["ProcessingResources"]["ClusterConfig"]["InstanceType"] == cpu_instance_type
@@ -148,7 +148,7 @@ def test_sklearn(sagemaker_session, sklearn_latest_version, cpu_instance_type):
     assert job_description["StoppingCondition"] == {"MaxRuntimeInSeconds": 86400}
     assert job_description["AppSpecification"]["ContainerEntrypoint"] == [
         "python3",
-        "/opt/ml/processing/input/code/dummy_script.py",
+        "/opt/ml/processing/input/entrypoint/runproc.py",
     ]
     assert ROLE in job_description["RoleArn"]
 
@@ -204,6 +204,7 @@ def test_sklearn_with_customizations(
     assert job_description["ProcessingInputs"][0]["InputName"] == "dummy_input"
 
     assert job_description["ProcessingInputs"][1]["InputName"] == "code"
+    assert job_description["ProcessingInputs"][2]["InputName"] == "entrypoint"
 
     assert job_description["ProcessingJobName"].startswith("test-sklearn-with-customizations")
 
@@ -221,7 +222,7 @@ def test_sklearn_with_customizations(
     assert job_description["AppSpecification"]["ContainerArguments"] == ["-v"]
     assert job_description["AppSpecification"]["ContainerEntrypoint"] == [
         "python3",
-        "/opt/ml/processing/input/code/dummy_script.py",
+        "/opt/ml/processing/input/entrypoint/runproc.py",
     ]
     assert job_description["AppSpecification"]["ImageUri"] == image_uri
 
@@ -288,6 +289,9 @@ def test_sklearn_with_custom_default_bucket(
     assert job_description["ProcessingInputs"][0]["InputName"] == "dummy_input"
     assert custom_bucket_name in job_description["ProcessingInputs"][0]["S3Input"]["S3Uri"]
 
+    assert job_description["ProcessingInputs"][1]["InputName"] == "code"
+    assert custom_bucket_name in job_description["ProcessingInputs"][1]["S3Input"]["S3Uri"]
+
     assert job_description["ProcessingInputs"][2]["InputName"] == "entrypoint"
     assert custom_bucket_name in job_description["ProcessingInputs"][2]["S3Input"]["S3Uri"]
 
@@ -307,7 +311,7 @@ def test_sklearn_with_custom_default_bucket(
     assert job_description["AppSpecification"]["ContainerArguments"] == ["-v"]
     assert job_description["AppSpecification"]["ContainerEntrypoint"] == [
         "python3",
-        "/opt/ml/processing/input/code/dummy_script.py",
+        "/opt/ml/processing/input/entrypoint/runproc.py",
     ]
     assert job_description["AppSpecification"]["ImageUri"] == image_uri
 
@@ -343,6 +347,7 @@ def test_sklearn_with_no_inputs_or_outputs(
     job_description = sklearn_processor.latest_job.describe()
 
     assert job_description["ProcessingInputs"][0]["InputName"] == "code"
+    assert job_description["ProcessingInputs"][1]["InputName"] == "entrypoint"
 
     assert job_description["ProcessingJobName"].startswith("test-sklearn-with-no-inputs")
 
@@ -357,7 +362,7 @@ def test_sklearn_with_no_inputs_or_outputs(
     assert job_description["AppSpecification"]["ContainerArguments"] == ["-v"]
     assert job_description["AppSpecification"]["ContainerEntrypoint"] == [
         "python3",
-        "/opt/ml/processing/input/code/dummy_script.py",
+        "/opt/ml/processing/input/entrypoint/runproc.py",
     ]
     assert job_description["AppSpecification"]["ImageUri"] == image_uri
 
