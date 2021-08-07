@@ -681,6 +681,7 @@ def test_sklearn_with_network_config(sagemaker_session, sklearn_latest_version, 
     sklearn_processor = SKLearnProcessor(
         framework_version=sklearn_latest_version,
         role=ROLE,
+        command=["python3"],
         instance_type=cpu_instance_type,
         instance_count=1,
         sagemaker_session=sagemaker_session,
