@@ -111,7 +111,7 @@ def _get_expected_args_modular_code(job_name, code_s3_uri=f"s3://{BUCKET_NAME}")
                 "InputName": "entrypoint",
                 "AppManaged": False,
                 "S3Input": {
-                    "S3Uri": f"{code_s3_uri}/{job_name}/source/runproc.sh",
+                    "S3Uri": f"{code_s3_uri}/{job_name}/source/runproc.py",
                     "LocalPath": "/opt/ml/processing/input/entrypoint",
                     "S3DataType": "S3Prefix",
                     "S3InputMode": "File",
@@ -134,8 +134,8 @@ def _get_expected_args_modular_code(job_name, code_s3_uri=f"s3://{BUCKET_NAME}")
         "app_specification": {
             "ImageUri": CUSTOM_IMAGE_URI,
             "ContainerEntrypoint": [
-                "/bin/bash",
-                "/opt/ml/processing/input/entrypoint/runproc.sh",
+                "python3",
+                "/opt/ml/processing/input/entrypoint/runproc.py",
             ],
         },
         "environment": None,
