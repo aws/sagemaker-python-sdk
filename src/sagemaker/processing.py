@@ -18,6 +18,7 @@ and interpretation on Amazon SageMaker.
 """
 from __future__ import print_function, absolute_import
 
+import json
 import os
 import pathlib
 import logging
@@ -1313,7 +1314,7 @@ class FrameworkProcessor(ScriptProcessor):
                 inter-container traffic, security group IDs, and subnets (default: None).
         """
         if not command:
-            command = ["python"]
+            command = ["python3"]
 
         self.estimator_cls = estimator_cls
         self.framework_version = framework_version
@@ -1644,14 +1645,11 @@ class FrameworkProcessor(ScriptProcessor):
 
                     subprocess.run(["pip", "install", "-r", "requirements.txt"])
 
-                cmd = ["{entry_point_command}", "{entry_point}"] + sys.argv[1:]
+                cmd = {entry_point_command} + sys.argv[1:]
                 print(' '.join(cmd))
                 subprocess.run(cmd)
         """
-        ).format(
-            entry_point_command=" ".join(self.command),
-            entry_point=user_script,
-        )
+        ).format(entry_point_command=json.dumps(self.command + [user_script]))
 
     def _upload_payload(
         self,
