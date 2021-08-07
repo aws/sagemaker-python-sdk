@@ -162,7 +162,6 @@ def test_sklearn_with_customizations(
     sklearn_processor = SKLearnProcessor(
         framework_version=sklearn_latest_version,
         role=ROLE,
-        command=["python3"],
         instance_type=cpu_instance_type,
         instance_count=1,
         volume_size_in_gb=100,
@@ -289,8 +288,8 @@ def test_sklearn_with_custom_default_bucket(
     assert job_description["ProcessingInputs"][0]["InputName"] == "dummy_input"
     assert custom_bucket_name in job_description["ProcessingInputs"][0]["S3Input"]["S3Uri"]
 
-    assert job_description["ProcessingInputs"][1]["InputName"] == "code"
-    assert custom_bucket_name in job_description["ProcessingInputs"][1]["S3Input"]["S3Uri"]
+    assert job_description["ProcessingInputs"][2]["InputName"] == "entrypoint"
+    assert custom_bucket_name in job_description["ProcessingInputs"][2]["S3Input"]["S3Uri"]
 
     assert job_description["ProcessingJobName"].startswith("test-sklearn-with-customizations")
 
@@ -683,7 +682,6 @@ def test_sklearn_with_network_config(sagemaker_session, sklearn_latest_version, 
         role=ROLE,
         instance_type=cpu_instance_type,
         instance_count=1,
-        command=["python3"],
         sagemaker_session=sagemaker_session,
         base_job_name="test-sklearn-with-network-config",
         network_config=NetworkConfig(

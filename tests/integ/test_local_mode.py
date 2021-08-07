@@ -59,6 +59,11 @@ class LocalNoS3Session(LocalSession):
 
 
 @pytest.fixture(scope="module")
+def sagemaker_local_session_no_local_code(boto_session):
+    return LocalSession(boto_session=boto_session, disable_local_code=True)
+
+
+@pytest.fixture(scope="module")
 def sklearn_image_uri(
     sklearn_latest_version,
     sklearn_latest_py_version,
@@ -322,7 +327,7 @@ def test_local_transform_mxnet(
 
 
 @pytest.mark.local_mode
-def test_local_processing_sklearn(sagemaker_local_session, sklearn_latest_version):
+def test_local_processing_sklearn(sagemaker_local_session_no_local_code, sklearn_latest_version):
     script_path = os.path.join(DATA_DIR, "dummy_script.py")
     input_file_path = os.path.join(DATA_DIR, "dummy_input.txt")
 
@@ -332,7 +337,7 @@ def test_local_processing_sklearn(sagemaker_local_session, sklearn_latest_versio
         instance_type="local",
         instance_count=1,
         command=["python3"],
-        sagemaker_session=sagemaker_local_session,
+        sagemaker_session=sagemaker_local_session_no_local_code,
     )
 
     sklearn_processor.run(

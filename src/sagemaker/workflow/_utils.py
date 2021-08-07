@@ -17,8 +17,7 @@ import os
 import shutil
 import tarfile
 import tempfile
-from typing import List
-
+from typing import List, Union
 from sagemaker import image_uris
 from sagemaker.inputs import TrainingInput
 from sagemaker.s3 import (
@@ -61,7 +60,7 @@ class _RepackModelStep(TrainingStep):
         entry_point: str,
         source_dir: str = None,
         dependencies: List = None,
-        depends_on: List[str] = None,
+        depends_on: Union[List[str], List[Step]] = None,
         **kwargs,
     ):
         """Constructs a TrainingStep, given an `EstimatorBase` instance.
@@ -230,7 +229,7 @@ class _RegisterModelStep(Step):
         image_uri=None,
         compile_model_family=None,
         description=None,
-        depends_on: List[str] = None,
+        depends_on: Union[List[str], List[Step]] = None,
         tags=None,
         container_def_list=None,
         **kwargs,
@@ -239,30 +238,35 @@ class _RegisterModelStep(Step):
 
         Args:
             name (str): The name of the training step.
-            step_type (StepTypeEnum): The type of the step with value `StepTypeEnum.Training`.
+            step_type (StepTypeEnum): The type of the step with value
+                `StepTypeEnum.Training`.
             estimator (EstimatorBase): A `sagemaker.estimator.EstimatorBase` instance.
             model_data: the S3 URI to the model data from training.
-            content_types (list): The supported MIME types for the input data (default: None).
-            response_types (list): The supported MIME types for the output data (default: None).
+            content_types (list): The supported MIME types for the
+                input data (default: None).
+            response_types (list): The supported MIME types for
+                the output data (default: None).
             inference_instances (list): A list of the instance types that are used to
                 generate inferences in real-time (default: None).
-            transform_instances (list): A list of the instance types on which a transformation
-                job can be run or on which an endpoint can be deployed (default: None).
+            transform_instances (list): A list of the instance types on which a
+                transformation job can be run or on which an endpoint
+                can be deployed (default: None).
             model_package_group_name (str): Model Package Group name, exclusive to
-                `model_package_name`, using `model_package_group_name` makes the Model Package
-                versioned (default: None).
+                `model_package_name`, using `model_package_group_name`
+                makes the Model Package versioned (default: None).
             model_metrics (ModelMetrics): ModelMetrics object (default: None).
-            metadata_properties (MetadataProperties): MetadataProperties object (default: None).
-            approval_status (str): Model Approval Status, values can be "Approved", "Rejected",
-                or "PendingManualApproval" (default: "PendingManualApproval").
+            metadata_properties (MetadataProperties): MetadataProperties object
+                (default: None).
+            approval_status (str): Model Approval Status, values can be "Approved",
+                "Rejected", or "PendingManualApproval"
+                (default: "PendingManualApproval").
             image_uri (str): The container image uri for Model Package, if not specified,
                 Estimator's training container image will be used (default: None).
-            compile_model_family (str): Instance family for compiled model, if specified, a compiled
-                model will be used (default: None).
+            compile_model_family (str): Instance family for compiled model,
+                if specified, a compiled model will be used (default: None).
             description (str): Model Package description (default: None).
-            depends_on (List[str]): A list of step names this `sagemaker.workflow.steps.TrainingStep`
-                depends on
-            container_def_list (list): A list of containers.
+            depends_on (List[str] or List[Step]): A list of step names or instances
+                this step depends on
             **kwargs: additional arguments to `create_model`.
         """
         super(_RegisterModelStep, self).__init__(name, StepTypeEnum.REGISTER_MODEL, depends_on)
@@ -284,9 +288,7 @@ class _RegisterModelStep(Step):
         self.kwargs = kwargs
         self.container_def_list = container_def_list
 
-        self._properties = Properties(
-            path=f"Steps.{name}", shape_name="DescribeModelPackageResponse"
-        )
+        self._properties = Properties(path=f"Steps.{name}", shape_name="DescribeModelPackageOutput")
 
     @property
     def arguments(self) -> RequestType:
@@ -362,5 +364,5 @@ class _RegisterModelStep(Step):
 
     @property
     def properties(self):
-        """A Properties object representing the DescribeTrainingJobResponse data model."""
+        """A Properties object representing the DescribeModelPackageOutput data model."""
         return self._properties
