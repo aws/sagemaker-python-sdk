@@ -98,6 +98,16 @@ def boto_session(request):
 
 
 @pytest.fixture(scope="session")
+def account(boto_session):
+    return boto_session.client("sts").get_caller_identity()["Account"]
+
+
+@pytest.fixture(scope="session")
+def region(boto_session):
+    return boto_session.region_name
+
+
+@pytest.fixture(scope="session")
 def sagemaker_session(sagemaker_client_config, sagemaker_runtime_config, boto_session):
     sagemaker_client_config.setdefault("config", Config(retries=dict(max_attempts=10)))
     sagemaker_client = (
@@ -427,4 +437,8 @@ def _parametrize_framework_version_fixtures(metafunc, fixture_prefix, config):
     if fixture_name in metafunc.fixturenames:
         config = config["versions"]
         py_versions = config[latest_version].get("py_versions", config[latest_version].keys())
-        metafunc.parametrize(fixture_name, (sorted(py_versions)[-1],), scope="session")
+        if "repository" in py_versions or "registries" in py_versions:
+            # Config did not specify `py_versions` and is not arranged by py_version. Assume py3
+            metafunc.parametrize(fixture_name, ("py3",), scope="session")
+        else:
+            metafunc.parametrize(fixture_name, (sorted(py_versions)[-1],), scope="session")

@@ -10,9 +10,27 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Classes for using MXNet with Amazon SageMaker."""
-from __future__ import absolute_import  # noqa: F401
+from __future__ import absolute_import
 
-from sagemaker.mxnet.estimator import MXNet  # noqa: F401
-from sagemaker.mxnet.model import MXNetModel, MXNetPredictor  # noqa: F401
-from sagemaker.mxnet.processing import MXNetProcessor  # noqa: F401
+from sagemaker import image_uris
+
+REGION = "us-east-1"
+GPU_INSTANCE_TYPE = "ml.p2.xlarge"
+
+
+def get_full_gpu_image_uri(
+    version,
+    base_framework_version,
+    region=REGION,
+    instance_type=GPU_INSTANCE_TYPE,
+):
+    return image_uris.retrieve(
+        "huggingface",
+        region,
+        version=version,
+        py_version="py36",
+        instance_type=instance_type,
+        image_scope="training",
+        base_framework_version=base_framework_version,
+        container_version="cu110-ubuntu18.04",
+    )
