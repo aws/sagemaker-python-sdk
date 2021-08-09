@@ -288,10 +288,6 @@ def test_sklearn_with_custom_default_bucket(
 
     assert job_description["ProcessingInputs"][0]["InputName"] == "dummy_input"
     assert custom_bucket_name in job_description["ProcessingInputs"][0]["S3Input"]["S3Uri"]
-
-    assert job_description["ProcessingInputs"][2]["InputName"] == "entrypoint"
-    assert custom_bucket_name in job_description["ProcessingInputs"][2]["S3Input"]["S3Uri"]
-
     assert job_description["ProcessingJobName"].startswith("test-sklearn-with-customizations")
 
     assert job_description["ProcessingJobStatus"] == "Completed"
