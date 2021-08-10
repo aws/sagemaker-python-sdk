@@ -1,4 +1,4 @@
-# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -52,6 +52,7 @@ from sagemaker.spark.processing import PySparkProcessor, SparkJarProcessor
 from sagemaker.workflow.conditions import ConditionGreaterThanOrEqualTo, ConditionIn
 from sagemaker.workflow.condition_step import ConditionStep
 from sagemaker.workflow.callback_step import CallbackStep, CallbackOutput, CallbackOutputTypeEnum
+from sagemaker.workflow.lambda_step import LambdaStep, LambdaOutput, LambdaOutputTypeEnum
 from sagemaker.wrangler.processing import DataWranglerProcessor
 from sagemaker.dataset_definition.inputs import DatasetDefinition, AthenaDatasetDefinition
 from sagemaker.workflow.execution_variables import ExecutionVariables
@@ -70,6 +71,7 @@ from sagemaker.workflow.steps import (
 )
 from sagemaker.workflow.step_collections import RegisterModel
 from sagemaker.workflow.pipeline import Pipeline
+from sagemaker.lambda_helper import Lambda
 from sagemaker.feature_store.feature_group import FeatureGroup, FeatureDefinition, FeatureTypeEnum
 from tests.integ import DATA_DIR
 from tests.integ.kms_utils import get_or_create_kms_key
@@ -501,6 +503,104 @@ def test_one_step_sklearn_processing_pipeline(
             pass
 
 
+def test_one_step_framework_processing_pipeline(
+    sagemaker_session,
+    role,
+    sklearn_latest_version,
+    cpu_instance_type,
+    pipeline_name,
+    region_name,
+    athena_dataset_definition,
+):
+    """Use `SKLearnProcessor` to test `FrameworkProcessor`."""
+    instance_count = ParameterInteger(name="InstanceCount", default_value=2)
+    script_path = os.path.join(DATA_DIR, "dummy_script.py")
+    input_file_path = os.path.join(DATA_DIR, "dummy_input.txt")
+
+    inputs = [
+        ProcessingInput(source=input_file_path, destination="/opt/ml/processing/inputs/"),
+        ProcessingInput(dataset_definition=athena_dataset_definition),
+    ]
+
+    cache_config = CacheConfig(enable_caching=True, expire_after="T30m")
+
+    sklearn_processor = SKLearnProcessor(
+        framework_version=sklearn_latest_version,
+        role=role,
+        instance_type=cpu_instance_type,
+        instance_count=instance_count,
+        sagemaker_session=sagemaker_session,
+        base_job_name="test-sklearn",
+    )
+
+    run_args = sklearn_processor.get_run_args(code=script_path, inputs=inputs)
+
+    step_sklearn = ProcessingStep(
+        name="sklearn-process",
+        processor=sklearn_processor,
+        inputs=run_args.inputs,
+        outputs=run_args.outputs,
+        job_arguments=run_args.arguments,
+        code=run_args.code,
+        cache_config=cache_config,
+    )
+    pipeline = Pipeline(
+        name=pipeline_name,
+        parameters=[instance_count],
+        steps=[step_sklearn],
+        sagemaker_session=sagemaker_session,
+    )
+
+    try:
+        # NOTE: We should exercise the case when role used in the pipeline execution is
+        # different than that required of the steps in the pipeline itself. The role in
+        # the pipeline definition needs to create training and processing jobs and other
+        # sagemaker entities. However, the jobs created in the steps themselves execute
+        # under a potentially different role, often requiring access to S3 and other
+        # artifacts not required to during creation of the jobs in the pipeline steps.
+        response = pipeline.create(role)
+        create_arn = response["PipelineArn"]
+        assert re.match(
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            create_arn,
+        )
+
+        pipeline.parameters = [ParameterInteger(name="InstanceCount", default_value=1)]
+        response = pipeline.update(role)
+        update_arn = response["PipelineArn"]
+        assert re.match(
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            update_arn,
+        )
+
+        execution = pipeline.start(parameters={})
+        assert re.match(
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
+            execution.arn,
+        )
+
+        response = execution.describe()
+        assert response["PipelineArn"] == create_arn
+
+        # Check CacheConfig
+        response = json.loads(pipeline.describe()["PipelineDefinition"])["Steps"][0]["CacheConfig"]
+        assert response["Enabled"] == cache_config.enable_caching
+        assert response["ExpireAfter"] == cache_config.expire_after
+
+        try:
+            execution.wait(delay=30, max_attempts=3)
+        except WaiterError:
+            pass
+        execution_steps = execution.list_steps()
+        assert len(execution_steps) == 1
+        assert execution_steps[0]["StepName"] == "sklearn-process"
+    finally:
+        try:
+            pipeline.delete()
+        except Exception:
+            pass
+
+
 def test_one_step_pyspark_processing_pipeline(
     sagemaker_session,
     role,
@@ -764,6 +864,96 @@ def test_two_step_callback_pipeline_with_output_reference(
         name=pipeline_name,
         parameters=[instance_count],
         steps=[step_callback1, step_callback2],
+        sagemaker_session=sagemaker_session,
+    )
+
+    try:
+        response = pipeline.create(role)
+        create_arn = response["PipelineArn"]
+        assert re.match(
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            create_arn,
+        )
+    finally:
+        try:
+            pipeline.delete()
+        except Exception:
+            pass
+
+
+def test_one_step_lambda_pipeline(sagemaker_session, role, pipeline_name, region_name):
+    instance_count = ParameterInteger(name="InstanceCount", default_value=2)
+
+    outputParam1 = LambdaOutput(output_name="output1", output_type=LambdaOutputTypeEnum.String)
+    step_lambda = LambdaStep(
+        name="lambda-step",
+        lambda_func=Lambda(
+            function_arn="arn:aws:lambda:us-west-2:123456789012:function:sagemaker_test_lambda",
+            session=sagemaker_session,
+        ),
+        inputs={"arg1": "foo"},
+        outputs=[outputParam1],
+    )
+
+    pipeline = Pipeline(
+        name=pipeline_name,
+        parameters=[instance_count],
+        steps=[step_lambda],
+        sagemaker_session=sagemaker_session,
+    )
+
+    try:
+        response = pipeline.create(role)
+        create_arn = response["PipelineArn"]
+        assert re.match(
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            create_arn,
+        )
+
+        pipeline.parameters = [ParameterInteger(name="InstanceCount", default_value=1)]
+        response = pipeline.update(role)
+        update_arn = response["PipelineArn"]
+        assert re.match(
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            update_arn,
+        )
+    finally:
+        try:
+            pipeline.delete()
+        except Exception:
+            pass
+
+
+def test_two_step_lambda_pipeline_with_output_reference(
+    sagemaker_session, role, pipeline_name, region_name
+):
+    instance_count = ParameterInteger(name="InstanceCount", default_value=2)
+
+    outputParam1 = LambdaOutput(output_name="output1", output_type=LambdaOutputTypeEnum.String)
+    step_lambda1 = LambdaStep(
+        name="lambda-step1",
+        lambda_func=Lambda(
+            function_arn="arn:aws:lambda:us-west-2:123456789012:function:sagemaker_test_lambda",
+            session=sagemaker_session,
+        ),
+        inputs={"arg1": "foo"},
+        outputs=[outputParam1],
+    )
+
+    step_lambda2 = LambdaStep(
+        name="lambda-step2",
+        lambda_func=Lambda(
+            function_arn="arn:aws:lambda:us-west-2:123456789012:function:sagemaker_test_lambda",
+            session=sagemaker_session,
+        ),
+        inputs={"arg1": outputParam1},
+        outputs=[],
+    )
+
+    pipeline = Pipeline(
+        name=pipeline_name,
+        parameters=[instance_count],
+        steps=[step_lambda1, step_lambda2],
         sagemaker_session=sagemaker_session,
     )
 
@@ -1501,7 +1691,7 @@ def test_two_processing_job_depends_on(
 
     step_pyspark_2 = ProcessingStep(
         name="pyspark-process-2",
-        depends_on=[step_pyspark_1.name],
+        depends_on=[step_pyspark_1],
         processor=pyspark_processor,
         inputs=spark_run_args.inputs,
         outputs=spark_run_args.outputs,

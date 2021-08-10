@@ -1,4 +1,4 @@
-# Copyright 2019-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -288,10 +288,6 @@ def test_sklearn_with_custom_default_bucket(
 
     assert job_description["ProcessingInputs"][0]["InputName"] == "dummy_input"
     assert custom_bucket_name in job_description["ProcessingInputs"][0]["S3Input"]["S3Uri"]
-
-    assert job_description["ProcessingInputs"][1]["InputName"] == "code"
-    assert custom_bucket_name in job_description["ProcessingInputs"][1]["S3Input"]["S3Uri"]
-
     assert job_description["ProcessingJobName"].startswith("test-sklearn-with-customizations")
 
     assert job_description["ProcessingJobStatus"] == "Completed"
@@ -681,9 +677,9 @@ def test_sklearn_with_network_config(sagemaker_session, sklearn_latest_version, 
     sklearn_processor = SKLearnProcessor(
         framework_version=sklearn_latest_version,
         role=ROLE,
+        command=["python3"],
         instance_type=cpu_instance_type,
         instance_count=1,
-        command=["python3"],
         sagemaker_session=sagemaker_session,
         base_job_name="test-sklearn-with-network-config",
         network_config=NetworkConfig(
