@@ -68,6 +68,15 @@ def test_data_config():
     assert "FullyReplicated" == data_config.s3_data_distribution_type
 
 
+def test_invalid_data_config():
+    with pytest.raises(ValueError, match=r"^Invalid dataset_type"):
+        DataConfig(
+            s3_data_input_path="s3://bucket/inputpath",
+            s3_output_path="s3://bucket/outputpath",
+            dataset_type="whatnot_type",
+        )
+
+
 def test_data_bias_config():
     label_values = [1]
     facet_name = "F1"
