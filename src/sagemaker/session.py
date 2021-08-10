@@ -2627,6 +2627,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         image_uri=None,
         model_data_url=None,
         env=None,
+        enable_network_isolation=False,
         vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT,
         tags=None,
     ):
@@ -2644,6 +2645,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             model_data_url (str): S3 location of the model data (default: None). If None, defaults
                 to the ``ModelS3Artifacts`` of ``training_job_name``.
             env (dict[string,string]): Model environment variables (default: {}).
+            enable_network_isolation (bool): Whether the model requires network isolation or not.
             vpc_config_override (dict[str, list[str]]): Optional override for VpcConfig set on the
                 model.
                 Default: use VpcConfig from training job.
@@ -2667,7 +2669,14 @@ class Session(object):  # pylint: disable=too-many-public-methods
             env=env,
         )
         vpc_config = _vpc_config_from_training_job(training_job, vpc_config_override)
-        return self.create_model(name, role, primary_container, vpc_config=vpc_config, tags=tags)
+        return self.create_model(
+            name,
+            role,
+            primary_container,
+            enable_network_isolation=enable_network_isolation,
+            vpc_config=vpc_config,
+            tags=tags,
+        )
 
     def create_model_package_from_algorithm(self, name, description, algorithm_arn, model_data):
         """Create a SageMaker Model Package from the results of training with an Algorithm Package.

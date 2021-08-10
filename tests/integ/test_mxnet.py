@@ -22,6 +22,7 @@ import tests.integ
 from sagemaker import ModelPackage
 from sagemaker.mxnet.estimator import MXNet
 from sagemaker.mxnet.model import MXNetModel
+from sagemaker.mxnet.processing import MXNetProcessor
 from sagemaker.utils import sagemaker_timestamp
 from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.kms_utils import get_or_create_kms_key
@@ -63,6 +64,35 @@ def mxnet_training_job(
 
         mx.fit({"train": train_input, "test": test_input})
         return mx.latest_training_job.name
+
+
+@pytest.mark.release
+def test_framework_processing_job_with_deps(
+    sagemaker_session,
+    mxnet_training_latest_version,
+    mxnet_training_latest_py_version,
+    cpu_instance_type,
+):
+    with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
+        code_path = os.path.join(DATA_DIR, "dummy_code_bundle_with_reqs")
+        entry_point = "main_script.py"
+
+        processor = MXNetProcessor(
+            framework_version=mxnet_training_latest_version,
+            py_version=mxnet_training_latest_py_version,
+            role="SageMakerRole",
+            instance_count=1,
+            instance_type=cpu_instance_type,
+            sagemaker_session=sagemaker_session,
+            base_job_name="test-mxnet",
+        )
+
+        processor.run(
+            code=entry_point,
+            source_dir=code_path,
+            inputs=[],
+            wait=True,
+        )
 
 
 @pytest.mark.release
@@ -156,7 +186,7 @@ def test_deploy_model(
         result = predictor.predict(data)
         assert result is not None
 
-    predictor.delete_model()
+    model.delete_model()
     with pytest.raises(Exception) as exception:
         sagemaker_session.sagemaker_client.describe_model(ModelName=model.name)
         assert "Could not find model" in str(exception.value)
