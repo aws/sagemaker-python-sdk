@@ -1,4 +1,4 @@
-# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -53,6 +53,29 @@ def test_callback_step():
     }
 
 
+def test_callback_step_default_values():
+    param = ParameterInteger(name="MyInt")
+    outputParam1 = CallbackOutput(output_name="output1")
+    cb_step = CallbackStep(
+        name="MyCallbackStep",
+        depends_on=["TestStep"],
+        sqs_queue_url="https://sqs.us-east-2.amazonaws.com/123456789012/MyQueue",
+        inputs={"arg1": "foo", "arg2": 5, "arg3": param},
+        outputs=[outputParam1],
+    )
+    cb_step.add_depends_on(["SecondTestStep"])
+    assert cb_step.to_request() == {
+        "Name": "MyCallbackStep",
+        "Type": "Callback",
+        "DependsOn": ["TestStep", "SecondTestStep"],
+        "SqsQueueUrl": "https://sqs.us-east-2.amazonaws.com/123456789012/MyQueue",
+        "OutputParameters": [
+            {"OutputName": "output1", "OutputType": "String"},
+        ],
+        "Arguments": {"arg1": "foo", "arg2": 5, "arg3": param},
+    }
+
+
 def test_callback_step_output_expr():
     param = ParameterInteger(name="MyInt")
     outputParam1 = CallbackOutput(output_name="output1", output_type=CallbackOutputTypeEnum.String)
@@ -88,7 +111,7 @@ def test_pipeline_interpolates_callback_outputs():
         name="MyCallbackStep2",
         depends_on=["TestStep"],
         sqs_queue_url="https://sqs.us-east-2.amazonaws.com/123456789012/MyQueue",
-        inputs={"arg1": cb_step1.properties.Outputs["output1"]},
+        inputs={"arg1": outputParam1},
         outputs=[outputParam2],
     )
 

@@ -1,4 +1,4 @@
-# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -99,9 +99,9 @@ class DatasetDefinition(ApiObject):
             Definition inputs to run a processing job. LocalPath is an absolute path to the input
             data. This is a required parameter when `AppManaged` is False (default).
         redshift_dataset_definition
-            (:class:`~sagemaker.dataset_definition.RedshiftDatasetDefinition`): Redshift
+            (:class:`~sagemaker.dataset_definition.inputs.RedshiftDatasetDefinition`): Redshift
             dataset definition.
-        athena_dataset_definition (:class:`~sagemaker.dataset_definition.AthenaDatasetDefinition`):
+        athena_dataset_definition (:class:`~sagemaker.dataset_definition.inputs.AthenaDatasetDefinition`):
             Configuration for Athena Dataset Definition input.
     """
 

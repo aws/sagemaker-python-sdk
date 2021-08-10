@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -56,6 +56,11 @@ class LocalNoS3Session(LocalSession):
         self.sagemaker_client = LocalSagemakerClient(self)
         self.sagemaker_runtime_client = LocalSagemakerRuntimeClient(self.config)
         self.local_mode = True
+
+
+@pytest.fixture(scope="module")
+def sagemaker_local_session_no_local_code(boto_session):
+    return LocalSession(boto_session=boto_session, disable_local_code=True)
 
 
 @pytest.fixture(scope="module")
@@ -322,7 +327,7 @@ def test_local_transform_mxnet(
 
 
 @pytest.mark.local_mode
-def test_local_processing_sklearn(sagemaker_local_session, sklearn_latest_version):
+def test_local_processing_sklearn(sagemaker_local_session_no_local_code, sklearn_latest_version):
     script_path = os.path.join(DATA_DIR, "dummy_script.py")
     input_file_path = os.path.join(DATA_DIR, "dummy_input.txt")
 
@@ -332,7 +337,7 @@ def test_local_processing_sklearn(sagemaker_local_session, sklearn_latest_versio
         instance_type="local",
         instance_count=1,
         command=["python3"],
-        sagemaker_session=sagemaker_local_session,
+        sagemaker_session=sagemaker_local_session_no_local_code,
     )
 
     sklearn_processor.run(

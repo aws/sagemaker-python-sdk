@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -469,16 +469,39 @@ class LocalSagemakerRuntimeClient(object):
         if InferenceId is not None:
             headers["X-Amzn-SageMaker-Inference-Id"] = InferenceId
 
+        # The http client encodes all strings using latin-1, which is not what we want.
+        if isinstance(Body, str):
+            Body = Body.encode("utf-8")
         r = self.http.request("POST", url, body=Body, preload_content=False, headers=headers)
 
         return {"Body": r, "ContentType": Accept}
 
 
 class LocalSession(Session):
-    """A LocalSession class definition."""
+    """A SageMaker ``Session`` class for Local Mode.
 
-    def __init__(self, boto_session=None, s3_endpoint_url=None):
+    This class provides alternative Local Mode implementations for the functionality of
+    :class:`~sagemaker.session.Session`.
+    """
+
+    def __init__(self, boto_session=None, s3_endpoint_url=None, disable_local_code=False):
+        """Create a Local SageMaker Session.
+
+        Args:
+            boto_session (boto3.session.Session): The underlying Boto3 session which AWS service
+                calls are delegated to (default: None). If not provided, one is created with
+                default AWS configuration chain.
+            s3_endpoint_url (str): Override the default endpoint URL for Amazon S3, if set
+                (default: None).
+            disable_local_code (bool): Set ``True`` to override the default AWS configuration
+                chain to disable the ``local.local_code`` setting, which may not be supported for
+                some SDK features (default: False).
+        """
         self.s3_endpoint_url = s3_endpoint_url
+        # We use this local variable to avoid disrupting the __init__->_initialize API of the
+        # parent class... But overwriting it after constructor won't do anything, so prefix _ to
+        # discourage external use:
+        self._disable_local_code = disable_local_code
 
         super(LocalSession, self).__init__(boto_session)
 
@@ -530,6 +553,8 @@ class LocalSession(Session):
                 raise e
 
             self.config = yaml.load(open(sagemaker_config_file, "r"))
+            if self._disable_local_code and "local" in self.config:
+                self.config["local"]["local_code"] = False
 
     def logs_for_job(self, job_name, wait=False, poll=5, log_type="All"):
         """A no-op method meant to override the sagemaker client.

@@ -703,6 +703,8 @@ Alternatively, if you already have a SageMaker model, you can create an instance
 
 .. code:: python
 
+    from sagemaker.transformer import Transformer
+
     transformer = Transformer(model_name='my-previously-trained-model',
                               instance_count=1,
                               instance_type='ml.m4.xlarge')
@@ -1060,6 +1062,50 @@ For comprehensive examples on how to use Inference Pipelines please refer to the
 You can also find these notebooks in the **Advanced Functionality** section of the **SageMaker Examples** section in a notebook instance.
 For information about using sample notebooks in a SageMaker notebook instance, see `Use Example Notebooks <https://docs.aws.amazon.com/sagemaker/latest/dg/howitworks-nbexamples.html>`__
 in the AWS documentation.
+
+********************
+Serverless Inference
+********************
+
+You can use the SageMaker Python SDK to perform serverless inference on Lambda.
+
+To deploy models to Lambda, you must complete the following prerequisites:
+
+- `Package your model and inference code as a container image. <https://docs.aws.amazon.com/lambda/latest/dg/images-create.html>`_
+- `Create a role that lists Lambda as a trusted entity. <https://docs.aws.amazon.com/lambda/latest/dg/lambda-intro-execution-role.html#permissions-executionrole-console>`_
+
+After completing the prerequisites, you can deploy your model to Lambda using
+the `LambdaModel`_ class.
+
+.. code:: python
+
+   from sagemaker.serverless import LambdaModel
+
+   image_uri = "123456789012.dkr.ecr.us-west-2.amazonaws.com/my-lambda-repository:latest"
+   role = "arn:aws:iam::123456789012:role/MyLambdaExecutionRole"
+
+   model = LambdaModel(image_uri=image_uri, role=role)
+   predictor = model.deploy("my-lambda-function", timeout=20, memory_size=4092)
+
+The ``deploy`` method returns a `LambdaPredictor`_  instance. Use the
+`LambdaPredictor`_ ``predict`` method to perform inference on Lambda.
+
+.. code:: python
+
+   url = "https://example.com/cat.jpeg"
+   predictor.predict({"url": url})  # {'class': 'tabby'}
+
+Once you are done performing inference on Lambda, free the `LambdaModel`_ and
+`LambdaPredictor`_ resources using the ``delete_model`` and ``delete_predictor``
+methods.
+
+.. code:: python
+
+   model.delete_model()
+   predictor.delete_predictor()
+
+.. _LambdaModel : https://sagemaker.readthedocs.io/en/stable/api/inference/model.html#sagemaker.serverless.model.LambdaModel
+.. _LambdaPredictor : https://sagemaker.readthedocs.io/en/stable/api/inference/predictors.html#sagemaker.serverless.predictor.LambdaPredictor
 
 ******************
 SageMaker Workflow

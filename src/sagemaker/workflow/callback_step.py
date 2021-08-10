@@ -1,4 +1,4 @@
-# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -13,7 +13,7 @@
 """The step definitions for workflow."""
 from __future__ import absolute_import
 
-from typing import List, Dict
+from typing import List, Dict, Union
 from enum import Enum
 
 import attr
@@ -49,7 +49,7 @@ class CallbackOutput:
     """
 
     output_name: str = attr.ib(default=None)
-    output_type: CallbackOutputTypeEnum = attr.ib(default=CallbackOutputTypeEnum.String.value)
+    output_type: CallbackOutputTypeEnum = attr.ib(default=CallbackOutputTypeEnum.String)
 
     def to_request(self) -> RequestType:
         """Get the request structure for workflow service calls."""
@@ -58,19 +58,20 @@ class CallbackOutput:
             "OutputType": self.output_type.value,
         }
 
-    @property
-    def expr(self) -> Dict[str, str]:
-        """The 'Get' expression dict for a `Parameter`."""
-        return CallbackOutput._expr(self.output_name)
+    def expr(self, step_name) -> Dict[str, str]:
+        """The 'Get' expression dict for a `CallbackOutput`."""
+        return CallbackOutput._expr(self.output_name, step_name)
 
     @classmethod
-    def _expr(cls, name):
+    def _expr(cls, name, step_name):
         """An internal classmethod for the 'Get' expression dict for a `CallbackOutput`.
 
         Args:
             name (str): The name of the callback output.
+            step_name (str): The name of the step the callback step associated
+                with this output belongs to.
         """
-        return {"Get": f"Steps.{name}.OutputParameters['{name}']"}
+        return {"Get": f"Steps.{step_name}.OutputParameters['{name}']"}
 
 
 class CallbackStep(Step):
@@ -83,7 +84,7 @@ class CallbackStep(Step):
         inputs: dict,
         outputs: List[CallbackOutput],
         cache_config: CacheConfig = None,
-        depends_on: List[str] = None,
+        depends_on: Union[List[str], List[Step]] = None,
     ):
         """Constructs a CallbackStep.
 
@@ -94,8 +95,8 @@ class CallbackStep(Step):
                 in the SQS message body of callback messages.
             outputs (List[CallbackOutput]): Outputs that can be provided when completing a callback.
             cache_config (CacheConfig):  A `sagemaker.workflow.steps.CacheConfig` instance.
-            depends_on (List[str]): A list of step names this `sagemaker.workflow.steps.TransformStep`
-                depends on
+            depends_on (List[str] or List[Step]): A list of step names or step instances
+                this `sagemaker.workflow.steps.CallbackStep` depends on
         """
         super(CallbackStep, self).__init__(name, StepTypeEnum.CALLBACK, depends_on)
         self.sqs_queue_url = sqs_queue_url

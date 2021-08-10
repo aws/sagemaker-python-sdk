@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -98,6 +98,16 @@ def boto_session(request):
 
 
 @pytest.fixture(scope="session")
+def account(boto_session):
+    return boto_session.client("sts").get_caller_identity()["Account"]
+
+
+@pytest.fixture(scope="session")
+def region(boto_session):
+    return boto_session.region_name
+
+
+@pytest.fixture(scope="session")
 def sagemaker_session(sagemaker_client_config, sagemaker_runtime_config, boto_session):
     sagemaker_client_config.setdefault("config", Config(retries=dict(max_attempts=10)))
     sagemaker_client = (
@@ -191,8 +201,10 @@ def pytorch_inference_py_version(pytorch_inference_version, request):
 
 
 @pytest.fixture(scope="module")
-def huggingface_pytorch_version(huggingface_training_version):
-    return _huggingface_base_fm_version(huggingface_training_version, "pytorch")[0]
+def huggingface_pytorch_training_version(huggingface_training_version):
+    return _huggingface_base_fm_version(
+        huggingface_training_version, "pytorch", "huggingface_training"
+    )[0]
 
 
 @pytest.fixture(scope="module")
@@ -368,16 +380,20 @@ def _generate_all_framework_version_fixtures(metafunc):
                 )
 
 
-def _huggingface_base_fm_version(huggingface_vesion, base_fw):
+def _huggingface_base_fm_version(huggingface_version, base_fw, fixture_prefix):
     config = image_uris.config_for_framework("huggingface")
-    training_config = config.get("training")
-    original_version = huggingface_vesion
-    if "version_aliases" in training_config:
-        huggingface_vesion = training_config.get("version_aliases").get(
-            huggingface_vesion, huggingface_vesion
+    if fixture_prefix == "huggingface_training":
+        hf_config = config.get("training")
+    else:
+        hf_config = config.get("inference")
+    original_version = huggingface_version
+    if "version_aliases" in hf_config:
+        huggingface_version = hf_config.get("version_aliases").get(
+            huggingface_version, huggingface_version
         )
-    version_config = training_config.get("versions").get(huggingface_vesion)
+    version_config = hf_config.get("versions").get(huggingface_version)
     versions = list()
+
     for key in list(version_config.keys()):
         if key.startswith(base_fw):
             base_fw_version = key[len(base_fw) :]
@@ -387,9 +403,12 @@ def _huggingface_base_fm_version(huggingface_vesion, base_fw):
     return versions
 
 
-def _generate_huggingface_base_fw_latest_versions(metafunc, huggingface_version, base_fw):
-    versions = _huggingface_base_fm_version(huggingface_version, base_fw)
-    fixture_name = f"huggingface_{base_fw}_latest_version"
+def _generate_huggingface_base_fw_latest_versions(
+    metafunc, fixture_prefix, huggingface_version, base_fw
+):
+    versions = _huggingface_base_fm_version(huggingface_version, base_fw, fixture_prefix)
+    fixture_name = f"{fixture_prefix}_{base_fw}_latest_version"
+
     if fixture_name in metafunc.fixturenames:
         metafunc.parametrize(fixture_name, versions, scope="session")
 
@@ -407,11 +426,19 @@ def _parametrize_framework_version_fixtures(metafunc, fixture_prefix, config):
         metafunc.parametrize(fixture_name, (latest_version,), scope="session")
 
     if "huggingface" in fixture_prefix:
-        _generate_huggingface_base_fw_latest_versions(metafunc, latest_version, "pytorch")
-        _generate_huggingface_base_fw_latest_versions(metafunc, latest_version, "tensorflow")
+        _generate_huggingface_base_fw_latest_versions(
+            metafunc, fixture_prefix, latest_version, "pytorch"
+        )
+        _generate_huggingface_base_fw_latest_versions(
+            metafunc, fixture_prefix, latest_version, "tensorflow"
+        )
 
     fixture_name = "{}_latest_py_version".format(fixture_prefix)
     if fixture_name in metafunc.fixturenames:
         config = config["versions"]
         py_versions = config[latest_version].get("py_versions", config[latest_version].keys())
-        metafunc.parametrize(fixture_name, (sorted(py_versions)[-1],), scope="session")
+        if "repository" in py_versions or "registries" in py_versions:
+            # Config did not specify `py_versions` and is not arranged by py_version. Assume py3
+            metafunc.parametrize(fixture_name, ("py3",), scope="session")
+        else:
+            metafunc.parametrize(fixture_name, (sorted(py_versions)[-1],), scope="session")

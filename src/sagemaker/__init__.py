@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -55,6 +55,7 @@ from sagemaker.predictor import Predictor  # noqa: F401
 from sagemaker.processing import Processor, ScriptProcessor  # noqa: F401
 from sagemaker.session import Session  # noqa: F401
 from sagemaker.session import container_def, pipeline_container_def  # noqa: F401
+from sagemaker.session import get_model_package_args  # noqa: F401
 from sagemaker.session import production_variant  # noqa: F401
 from sagemaker.session import get_execution_role  # noqa: F401
 

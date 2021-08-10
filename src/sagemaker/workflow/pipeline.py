@@ -1,4 +1,4 @@
-# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -24,7 +24,8 @@ from botocore.exceptions import ClientError
 
 from sagemaker._studio import _append_project_tags
 from sagemaker.session import Session
-from sagemaker.workflow.callback_step import CallbackOutput
+from sagemaker.workflow.callback_step import CallbackOutput, CallbackStep
+from sagemaker.workflow.lambda_step import LambdaOutput, LambdaStep
 from sagemaker.workflow.entities import (
     Entity,
     Expression,
@@ -45,15 +46,15 @@ class Pipeline(Entity):
 
     Attributes:
         name (str): The name of the pipeline.
-        parameters (Sequence[Parameters]): The list of the parameters.
+        parameters (Sequence[Parameter]): The list of the parameters.
         pipeline_experiment_config (Optional[PipelineExperimentConfig]): If set,
             the workflow will attempt to create an experiment and trial before
             executing the steps. Creation will be skipped if an experiment or a trial with
             the same name already exists. By default, pipeline name is used as
             experiment name and execution id is used as the trial name.
             If set to None, no experiment or trial will be created automatically.
-        steps (Sequence[Steps]): The list of the non-conditional steps associated with the pipeline.
-            Any steps that are within the
+        steps (Sequence[Union[Step, StepCollection]]): The list of the non-conditional steps
+            associated with the pipeline. Any steps that are within the
             `if_steps` or `else_steps` of a `ConditionStep` cannot be listed in the steps of a
             pipeline. Of particular note, the workflow service rejects any pipeline definitions that
             specify a step in the list of steps of a pipeline and that step in the `if_steps` or
@@ -139,7 +140,9 @@ class Pipeline(Entity):
         """Describes a Pipeline in the Workflow service.
 
         Returns:
-            Response dict from the service.
+            Response dict from the service. See `boto3 client documentation
+            <https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/\
+sagemaker.html#SageMaker.Client.describe_pipeline>`_
         """
         return self.sagemaker_session.sagemaker_client.describe_pipeline(PipelineName=self.name)
 
@@ -182,6 +185,19 @@ class Pipeline(Entity):
                 and "Pipeline names must be unique within" in error["Message"]
             ):
                 response = self.update(role_arn, description)
+                if tags is not None:
+                    old_tags = self.sagemaker_session.sagemaker_client.list_tags(
+                        ResourceArn=response["PipelineArn"]
+                    )["Tags"]
+
+                    tag_keys = [tag["Key"] for tag in tags]
+                    for old_tag in old_tags:
+                        if old_tag["Key"] not in tag_keys:
+                            tags.append(old_tag)
+
+                    self.sagemaker_session.sagemaker_client.add_tags(
+                        ResourceArn=response["PipelineArn"], Tags=tags
+                    )
             else:
                 raise
         return response
@@ -196,15 +212,15 @@ class Pipeline(Entity):
 
     def start(
         self,
-        parameters: Dict[str, Any] = None,
+        parameters: Dict[str, Union[str, bool, int, float]] = None,
         execution_display_name: str = None,
         execution_description: str = None,
     ):
         """Starts a Pipeline execution in the Workflow service.
 
         Args:
-            parameters (List[Dict[str, str]]): A list of parameter dicts of the form
-                {"Name": "string", "Value": "string"}.
+            parameters (Dict[str, Union[str, bool, int, float]]): values to override
+                pipeline parameters.
             execution_display_name (str): The display name of the pipeline execution.
             execution_description (str): A description of the execution.
 
@@ -240,9 +256,15 @@ class Pipeline(Entity):
         """Converts a request structure to string representation for workflow service calls."""
         request_dict = self.to_request()
         request_dict["PipelineExperimentConfig"] = interpolate(
-            request_dict["PipelineExperimentConfig"]
+            request_dict["PipelineExperimentConfig"], {}, {}
         )
-        request_dict["Steps"] = interpolate(request_dict["Steps"])
+        callback_output_to_step_map = _map_callback_outputs(self.steps)
+        lambda_output_to_step_name = _map_lambda_outputs(self.steps)
+        request_dict["Steps"] = interpolate(
+            request_dict["Steps"],
+            callback_output_to_step_map=callback_output_to_step_map,
+            lambda_output_to_step_map=lambda_output_to_step_name,
+        )
 
         return json.dumps(request_dict)
 
@@ -263,36 +285,93 @@ def format_start_parameters(parameters: Dict[str, Any]) -> List[Dict[str, Any]]:
     return [{"Name": name, "Value": str(value)} for name, value in parameters.items()]
 
 
-def interpolate(request_obj: RequestType) -> RequestType:
+def interpolate(
+    request_obj: RequestType,
+    callback_output_to_step_map: Dict[str, str],
+    lambda_output_to_step_map: Dict[str, str],
+) -> RequestType:
     """Replaces Parameter values in a list of nested Dict[str, Any] with their workflow expression.
 
     Args:
         request_obj (RequestType): The request dict.
+        callback_output_to_step_map (Dict[str, str]): A dict of output name -> step name.
 
     Returns:
         RequestType: The request dict with Parameter values replaced by their expression.
     """
     request_obj_copy = deepcopy(request_obj)
-    return _interpolate(request_obj_copy)
+    return _interpolate(
+        request_obj_copy,
+        callback_output_to_step_map=callback_output_to_step_map,
+        lambda_output_to_step_map=lambda_output_to_step_map,
+    )
 
 
-def _interpolate(obj: Union[RequestType, Any]):
+def _interpolate(
+    obj: Union[RequestType, Any],
+    callback_output_to_step_map: Dict[str, str],
+    lambda_output_to_step_map: Dict[str, str],
+):
     """Walks the nested request dict, replacing Parameter type values with workflow expressions.
 
     Args:
         obj (Union[RequestType, Any]): The request dict.
+        callback_output_to_step_map (Dict[str, str]): A dict of output name -> step name.
     """
-    if isinstance(obj, (Expression, Parameter, Properties, CallbackOutput)):
+    if isinstance(obj, (Expression, Parameter, Properties)):
         return obj.expr
+    if isinstance(obj, CallbackOutput):
+        step_name = callback_output_to_step_map[obj.output_name]
+        return obj.expr(step_name)
+    if isinstance(obj, LambdaOutput):
+        step_name = lambda_output_to_step_map[obj.output_name]
+        return obj.expr(step_name)
     if isinstance(obj, dict):
         new = obj.__class__()
         for key, value in obj.items():
-            new[key] = interpolate(value)
+            new[key] = interpolate(value, callback_output_to_step_map, lambda_output_to_step_map)
     elif isinstance(obj, (list, set, tuple)):
-        new = obj.__class__(interpolate(value) for value in obj)
+        new = obj.__class__(
+            interpolate(value, callback_output_to_step_map, lambda_output_to_step_map)
+            for value in obj
+        )
     else:
         return obj
     return new
+
+
+def _map_callback_outputs(steps: List[Step]):
+    """Iterate over the provided steps, building a map of callback output parameters to step names.
+
+    Args:
+        step (List[Step]): The steps list.
+    """
+
+    callback_output_map = {}
+    for step in steps:
+        if isinstance(step, CallbackStep):
+            if step.outputs:
+                for output in step.outputs:
+                    callback_output_map[output.output_name] = step.name
+
+    return callback_output_map
+
+
+def _map_lambda_outputs(steps: List[Step]):
+    """Iterate over the provided steps, building a map of lambda output parameters to step names.
+
+    Args:
+        step (List[Step]): The steps list.
+    """
+
+    lambda_output_map = {}
+    for step in steps:
+        if isinstance(step, LambdaStep):
+            if step.outputs:
+                for output in step.outputs:
+                    lambda_output_map[output.output_name] = step.name
+
+    return lambda_output_map
 
 
 def update_args(args: Dict[str, Any], **kwargs):
@@ -330,13 +409,27 @@ class _PipelineExecution:
         )
 
     def describe(self):
-        """Describes a pipeline execution."""
+        """Describes a pipeline execution.
+
+        Returns:
+             Information about the pipeline execution. See
+             `boto3 client describe_pipeline_execution
+             <https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/\
+sagemaker.html#SageMaker.Client.describe_pipeline_execution>`_.
+        """
         return self.sagemaker_session.sagemaker_client.describe_pipeline_execution(
             PipelineExecutionArn=self.arn
         )
 
     def list_steps(self):
-        """Describes a pipeline execution's steps."""
+        """Describes a pipeline execution's steps.
+
+        Returns:
+             Information about the steps of the pipeline execution. See
+             `boto3 client list_pipeline_execution_steps
+             <https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/\
+sagemaker.html#SageMaker.Client.list_pipeline_execution_steps>`_.
+        """
         response = self.sagemaker_session.sagemaker_client.list_pipeline_execution_steps(
             PipelineExecutionArn=self.arn
         )

@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -70,6 +70,8 @@ class TrainingInput(object):
                         a local directory.
                     * 'Pipe' - Amazon SageMaker streams data directly from S3 to the container via
                         a Unix-named pipe.
+                    * 'FastFile' - Amazon SageMaker streams data from S3 on demand instead of
+                        downloading the entire dataset before training begins.
 
             attribute_names (list[str]): A list of one or more attribute names to use that are
                 found in a specified AugmentedManifestFile.
