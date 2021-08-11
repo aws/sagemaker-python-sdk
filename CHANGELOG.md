@@ -1,5 +1,12 @@
 # Changelog
 
+## v2.52.2.post0 (2021-08-11)
+
+### Documentation Changes
+
+ * clarify that default_bucket creates a bucket
+ * Minor updates to Clarify API documentation
+
 ## v2.52.2 (2021-08-10)
 
 ### Bug Fixes and Other Changes
