@@ -1,0 +1,3 @@
+# As a test dependency, we'll use the AWS Step Functions Data Science SDK - since it's more of a
+# notebook environment tool than a training/processing job library, so shouldn't be in base images
+stepfunctions
