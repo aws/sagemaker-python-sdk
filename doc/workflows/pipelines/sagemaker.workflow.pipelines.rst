@@ -5,7 +5,6 @@ ConditionStep
 -------------
 
 .. autoclass:: sagemaker.workflow.condition_step.ConditionStep
-
 .. deprecated:: sagemaker.workflow.condition_step.JsonGet
 
 Conditions
