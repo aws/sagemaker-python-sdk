@@ -1,5 +1,17 @@
 # Changelog
 
+## v2.52.2 (2021-08-10)
+
+### Bug Fixes and Other Changes
+
+ * sklearn integ tests, remove swallowing exception on feature group delete attempt
+ * sklearn integ test for custom bucket
+
+### Documentation Changes
+
+ * Fix dataset_definition links
+ * Document LambdaModel and LambdaPredictor classes
+
 ## v2.52.1 (2021-08-06)
 
 ### Bug Fixes and Other Changes
