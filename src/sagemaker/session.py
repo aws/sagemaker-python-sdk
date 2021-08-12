@@ -357,6 +357,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
     def default_bucket(self):
         """Return the name of the default bucket to use in relevant Amazon SageMaker interactions.
 
+        This function will create the s3 bucket if it does not exist.
+
         Returns:
             str: The name of the default bucket, which is of the form:
                 ``sagemaker-{region}-{AWS account ID}``.
@@ -2211,6 +2213,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         use_spot_instances=False,
         checkpoint_s3_uri=None,
         checkpoint_local_path=None,
+        max_retry_attempts=None,
     ):
         """Construct a dictionary of training job configuration from the arguments.
 
@@ -2264,6 +2267,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             objective_metric_name (str): Name of the metric for evaluating training jobs.
             parameter_ranges (dict): Dictionary of parameter ranges. These parameter ranges can
                 be one of three types: Continuous, Integer, or Categorical.
+            max_retry_attempts (int): The number of times to retry the job.
 
         Returns:
             A dictionary of training job configuration. For format details, please refer to
@@ -2320,6 +2324,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if parameter_ranges is not None:
             training_job_definition["HyperParameterRanges"] = parameter_ranges
 
+        if max_retry_attempts is not None:
+            training_job_definition["RetryStrategy"] = {"MaximumRetryAttempts": max_retry_attempts}
         return training_job_definition
 
     def stop_tuning_job(self, name):

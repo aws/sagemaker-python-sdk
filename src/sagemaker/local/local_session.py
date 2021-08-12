@@ -571,6 +571,21 @@ class LocalSession(Session):
         # on local mode.
         pass  # pylint: disable=unnecessary-pass
 
+    def logs_for_processing_job(self, job_name, wait=False, poll=10):
+        """A no-op method meant to override the sagemaker client.
+
+        Args:
+          job_name:
+          wait:  (Default value = False)
+          poll:  (Default value = 10)
+
+        Returns:
+
+        """
+        # override logs_for_job() as it doesn't need to perform any action
+        # on local mode.
+        pass  # pylint: disable=unnecessary-pass
+
 
 class file_input(object):
     """Amazon SageMaker channel configuration for FILE data sources, used in local mode."""
