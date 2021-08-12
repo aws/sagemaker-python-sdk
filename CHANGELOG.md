@@ -1,5 +1,49 @@
 # Changelog
 
+## v2.53.0 (2021-08-12)
+
+### Features
+
+ * support tuning step parameter range parameterization + support retry strategy in tuner
+
+## v2.52.2.post0 (2021-08-11)
+
+### Documentation Changes
+
+ * clarify that default_bucket creates a bucket
+ * Minor updates to Clarify API documentation
+
+## v2.52.2 (2021-08-10)
+
+### Bug Fixes and Other Changes
+
+ * sklearn integ tests, remove swallowing exception on feature group delete attempt
+ * sklearn integ test for custom bucket
+
+### Documentation Changes
+
+ * Fix dataset_definition links
+ * Document LambdaModel and LambdaPredictor classes
+
+## v2.52.1 (2021-08-06)
+
+### Bug Fixes and Other Changes
+
+ * revert #2251 changes for sklearn processor
+
+## v2.52.0 (2021-08-05)
+
+### Features
+
+ * processors that support multiple Python files, requirements.txt, and dependencies.
+ * support step object in step depends on list
+
+### Bug Fixes and Other Changes
+
+ * enable isolation while creating model from job
+ * update `sagemaker.serverless` integration test
+ * Use correct boto model name for RegisterModelStep properties
+
 ## v2.51.0 (2021-08-03)
 
 ### Features

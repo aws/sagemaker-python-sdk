@@ -15,3 +15,8 @@ Model
     :members:
     :undoc-members:
     :show-inheritance:
+
+.. autoclass:: sagemaker.serverless.model.LambdaModel
+    :members:
+    :undoc-members:
+    :show-inheritance:

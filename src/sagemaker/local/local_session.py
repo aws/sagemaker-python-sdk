@@ -478,10 +478,30 @@ class LocalSagemakerRuntimeClient(object):
 
 
 class LocalSession(Session):
-    """A LocalSession class definition."""
+    """A SageMaker ``Session`` class for Local Mode.
 
-    def __init__(self, boto_session=None, s3_endpoint_url=None):
+    This class provides alternative Local Mode implementations for the functionality of
+    :class:`~sagemaker.session.Session`.
+    """
+
+    def __init__(self, boto_session=None, s3_endpoint_url=None, disable_local_code=False):
+        """Create a Local SageMaker Session.
+
+        Args:
+            boto_session (boto3.session.Session): The underlying Boto3 session which AWS service
+                calls are delegated to (default: None). If not provided, one is created with
+                default AWS configuration chain.
+            s3_endpoint_url (str): Override the default endpoint URL for Amazon S3, if set
+                (default: None).
+            disable_local_code (bool): Set ``True`` to override the default AWS configuration
+                chain to disable the ``local.local_code`` setting, which may not be supported for
+                some SDK features (default: False).
+        """
         self.s3_endpoint_url = s3_endpoint_url
+        # We use this local variable to avoid disrupting the __init__->_initialize API of the
+        # parent class... But overwriting it after constructor won't do anything, so prefix _ to
+        # discourage external use:
+        self._disable_local_code = disable_local_code
 
         super(LocalSession, self).__init__(boto_session)
 
@@ -533,6 +553,8 @@ class LocalSession(Session):
                 raise e
 
             self.config = yaml.load(open(sagemaker_config_file, "r"))
+            if self._disable_local_code and "local" in self.config:
+                self.config["local"]["local_code"] = False
 
     def logs_for_job(self, job_name, wait=False, poll=5, log_type="All"):
         """A no-op method meant to override the sagemaker client.
@@ -541,6 +563,21 @@ class LocalSession(Session):
           job_name:
           wait:  (Default value = False)
           poll:  (Default value = 5)
+
+        Returns:
+
+        """
+        # override logs_for_job() as it doesn't need to perform any action
+        # on local mode.
+        pass  # pylint: disable=unnecessary-pass
+
+    def logs_for_processing_job(self, job_name, wait=False, poll=10):
+        """A no-op method meant to override the sagemaker client.
+
+        Args:
+          job_name:
+          wait:  (Default value = False)
+          poll:  (Default value = 10)
 
         Returns:
 

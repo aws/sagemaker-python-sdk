@@ -357,6 +357,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
     def default_bucket(self):
         """Return the name of the default bucket to use in relevant Amazon SageMaker interactions.
 
+        This function will create the s3 bucket if it does not exist.
+
         Returns:
             str: The name of the default bucket, which is of the form:
                 ``sagemaker-{region}-{AWS account ID}``.
@@ -2211,6 +2213,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         use_spot_instances=False,
         checkpoint_s3_uri=None,
         checkpoint_local_path=None,
+        max_retry_attempts=None,
     ):
         """Construct a dictionary of training job configuration from the arguments.
 
@@ -2264,6 +2267,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             objective_metric_name (str): Name of the metric for evaluating training jobs.
             parameter_ranges (dict): Dictionary of parameter ranges. These parameter ranges can
                 be one of three types: Continuous, Integer, or Categorical.
+            max_retry_attempts (int): The number of times to retry the job.
 
         Returns:
             A dictionary of training job configuration. For format details, please refer to
@@ -2320,6 +2324,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if parameter_ranges is not None:
             training_job_definition["HyperParameterRanges"] = parameter_ranges
 
+        if max_retry_attempts is not None:
+            training_job_definition["RetryStrategy"] = {"MaximumRetryAttempts": max_retry_attempts}
         return training_job_definition
 
     def stop_tuning_job(self, name):
@@ -2625,6 +2631,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         image_uri=None,
         model_data_url=None,
         env=None,
+        enable_network_isolation=False,
         vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT,
         tags=None,
     ):
@@ -2642,6 +2649,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             model_data_url (str): S3 location of the model data (default: None). If None, defaults
                 to the ``ModelS3Artifacts`` of ``training_job_name``.
             env (dict[string,string]): Model environment variables (default: {}).
+            enable_network_isolation (bool): Whether the model requires network isolation or not.
             vpc_config_override (dict[str, list[str]]): Optional override for VpcConfig set on the
                 model.
                 Default: use VpcConfig from training job.
@@ -2665,7 +2673,14 @@ class Session(object):  # pylint: disable=too-many-public-methods
             env=env,
         )
         vpc_config = _vpc_config_from_training_job(training_job, vpc_config_override)
-        return self.create_model(name, role, primary_container, vpc_config=vpc_config, tags=tags)
+        return self.create_model(
+            name,
+            role,
+            primary_container,
+            enable_network_isolation=enable_network_isolation,
+            vpc_config=vpc_config,
+            tags=tags,
+        )
 
     def create_model_package_from_algorithm(self, name, description, algorithm_arn, model_data):
         """Create a SageMaker Model Package from the results of training with an Algorithm Package.

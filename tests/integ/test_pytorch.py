@@ -18,6 +18,7 @@ import pytest
 
 from sagemaker.pytorch.estimator import PyTorch
 from sagemaker.pytorch.model import PyTorchModel
+from sagemaker.pytorch.processing import PyTorchProcessor
 from sagemaker.utils import sagemaker_timestamp
 from tests.integ import (
     test_region,
@@ -93,6 +94,35 @@ def fixture_training_job_with_latest_inference_version(
         )
         pytorch.fit({"training": _upload_training_data(pytorch)})
         return pytorch.latest_training_job.name
+
+
+@pytest.mark.release
+def test_framework_processing_job_with_deps(
+    sagemaker_session,
+    pytorch_training_latest_version,
+    pytorch_training_latest_py_version,
+    cpu_instance_type,
+):
+    with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
+        code_path = os.path.join(DATA_DIR, "dummy_code_bundle_with_reqs")
+        entry_point = "main_script.py"
+
+        processor = PyTorchProcessor(
+            framework_version=pytorch_training_latest_version,
+            py_version=pytorch_training_latest_py_version,
+            role="SageMakerRole",
+            instance_count=1,
+            instance_type=cpu_instance_type,
+            sagemaker_session=sagemaker_session,
+            base_job_name="test-pytorch",
+        )
+
+        processor.run(
+            code=entry_point,
+            source_dir=code_path,
+            inputs=[],
+            wait=True,
+        )
 
 
 @pytest.mark.release
