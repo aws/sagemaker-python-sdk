@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.53.0 (2021-08-12)
+
+### Features
+
+ * support tuning step parameter range parameterization + support retry strategy in tuner
+
 ## v2.52.2.post0 (2021-08-11)
 
 ### Documentation Changes
