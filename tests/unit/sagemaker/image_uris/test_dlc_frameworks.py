@@ -399,7 +399,7 @@ def test_pytorch_eia(pytorch_eia_version, pytorch_eia_py_version):
         expected = expected_uris.framework_uri(
             "pytorch-inference-eia",
             pytorch_eia_version,
-            DLC_ALTERNATE_REGION_ACCOUNTS.get(region, DLC_ACCOUNT)
+            DLC_ALTERNATE_REGION_ACCOUNTS.get(region, DLC_ACCOUNT),
             py_version=pytorch_eia_py_version,
             region=region,
         )
