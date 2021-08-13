@@ -395,11 +395,12 @@ def test_pytorch_eia(pytorch_eia_version, pytorch_eia_py_version):
 
     for region in ELASTIC_INFERENCE_REGIONS:
         uri = image_uris.retrieve(region=region, **base_args)
+        account = DLC_ALTERNATE_REGION_ACCOUNTS.get(region, DLC_ACCOUNT)
 
         expected = expected_uris.framework_uri(
             "pytorch-inference-eia",
             pytorch_eia_version,
-            DLC_ALTERNATE_REGION_ACCOUNTS.get(region, DLC_ACCOUNT),
+            account,
             py_version=pytorch_eia_py_version,
             region=region,
         )
