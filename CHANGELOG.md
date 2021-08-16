@@ -1,5 +1,15 @@
 # Changelog
 
+## v2.54.0 (2021-08-16)
+
+### Features
+
+ * add pytorch 1.5.1 eia configuration
+
+### Bug Fixes and Other Changes
+
+ * issue #2253 where Processing job in Local mode would call Describe…
+
 ## v2.53.0 (2021-08-12)
 
 ### Features
