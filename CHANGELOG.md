@@ -1,5 +1,30 @@
 # Changelog
 
+## v2.53.0 (2021-08-12)
+
+### Features
+
+ * support tuning step parameter range parameterization + support retry strategy in tuner
+
+## v2.52.2.post0 (2021-08-11)
+
+### Documentation Changes
+
+ * clarify that default_bucket creates a bucket
+ * Minor updates to Clarify API documentation
+
+## v2.52.2 (2021-08-10)
+
+### Bug Fixes and Other Changes
+
+ * sklearn integ tests, remove swallowing exception on feature group delete attempt
+ * sklearn integ test for custom bucket
+
+### Documentation Changes
+
+ * Fix dataset_definition links
+ * Document LambdaModel and LambdaPredictor classes
+
 ## v2.52.1 (2021-08-06)
 
 ### Bug Fixes and Other Changes
