@@ -1,5 +1,21 @@
 # Changelog
 
+## v2.54.0 (2021-08-16)
+
+### Features
+
+ * add pytorch 1.5.1 eia configuration
+
+### Bug Fixes and Other Changes
+
+ * issue #2253 where Processing job in Local mode would call Describe…
+
+## v2.53.0 (2021-08-12)
+
+### Features
+
+ * support tuning step parameter range parameterization + support retry strategy in tuner
+
 ## v2.52.2.post0 (2021-08-11)
 
 ### Documentation Changes
