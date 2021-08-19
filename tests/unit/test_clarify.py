@@ -1,4 +1,4 @@
-# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -66,6 +66,15 @@ def test_data_config():
     assert s3_output_path == data_config.s3_output_path
     assert "None" == data_config.s3_compression_type
     assert "FullyReplicated" == data_config.s3_data_distribution_type
+
+
+def test_invalid_data_config():
+    with pytest.raises(ValueError, match=r"^Invalid dataset_type"):
+        DataConfig(
+            s3_data_input_path="s3://bucket/inputpath",
+            s3_output_path="s3://bucket/outputpath",
+            dataset_type="whatnot_type",
+        )
 
 
 def test_data_bias_config():

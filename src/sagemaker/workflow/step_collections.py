@@ -1,4 +1,4 @@
-# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -13,7 +13,7 @@
 """The step definitions for workflow."""
 from __future__ import absolute_import
 
-from typing import List
+from typing import List, Union
 
 import attr
 
@@ -61,7 +61,7 @@ class RegisterModel(StepCollection):
         transform_instances,
         estimator: EstimatorBase = None,
         model_data=None,
-        depends_on: List[str] = None,
+        depends_on: Union[List[str], List[Step]] = None,
         model_package_group_name=None,
         model_metrics=None,
         approval_status=None,
@@ -84,8 +84,8 @@ class RegisterModel(StepCollection):
                 generate inferences in real-time (default: None).
             transform_instances (list): A list of the instance types on which a transformation
                 job can be run or on which an endpoint can be deployed (default: None).
-            depends_on (List[str]): The list of step names the first step in the collection
-                depends on
+            depends_on (List[str] or List[Step]): The list of step names or step instances
+                the first step in the collection depends on
             model_package_group_name (str): The Model Package Group name, exclusive to
                 `model_package_name`, using `model_package_group_name` makes the Model Package
                 versioned (default: None).
@@ -146,7 +146,7 @@ class RegisterModel(StepCollection):
                 else:
                     sagemaker_session = model_entity.sagemaker_session
                     role = model_entity.role
-                if hasattr(model_entity, "entry_point"):
+                if hasattr(model_entity, "entry_point") and model_entity.entry_point is not None:
                     repack_model = True
                     entry_point = model_entity.entry_point
                     source_dir = model_entity.source_dir
@@ -229,7 +229,7 @@ class EstimatorTransformer(StepCollection):
         max_payload=None,
         tags=None,
         volume_kms_key=None,
-        depends_on: List[str] = None,
+        depends_on: Union[List[str], List[Step]] = None,
         **kwargs,
     ):
         """Construct steps required for a Transformer step collection:
@@ -266,8 +266,8 @@ class EstimatorTransformer(StepCollection):
                 it will be the format of the batch transform output.
             env (dict): The Environment variables to be set for use during the
                 transform job (default: None).
-            depends_on (List[str]): The list of step names the first step in
-                the collection depends on
+            depends_on (List[str] or List[Step]): The list of step names or step instances
+                the first step in the collection depends on
         """
         steps = []
         if "entry_point" in kwargs:

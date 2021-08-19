@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -1507,7 +1507,10 @@ class _TuningJob(_Job):
 
         if tuner.estimator is not None:
             tuner_args["training_config"] = cls._prepare_training_config(
-                inputs, tuner.estimator, tuner.static_hyperparameters, tuner.metric_definitions
+                inputs=inputs,
+                estimator=tuner.estimator,
+                static_hyperparameters=tuner.static_hyperparameters,
+                metric_definitions=tuner.metric_definitions,
             )
 
         if tuner.estimator_dict is not None:
@@ -1579,6 +1582,9 @@ class _TuningJob(_Job):
 
         if parameter_ranges is not None:
             training_config["parameter_ranges"] = parameter_ranges
+
+        if estimator.max_retry_attempts is not None:
+            training_config["max_retry_attempts"] = estimator.max_retry_attempts
 
         return training_config
 

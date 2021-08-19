@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -1097,6 +1097,8 @@ class FrameworkModel(Model):
 
     def _framework_env_vars(self):
         """Placeholder docstring"""
+        script_name = None
+        dir_name = None
         if self.uploaded_code:
             script_name = self.uploaded_code.script_name
             if self.enable_network_isolation():
@@ -1105,10 +1107,8 @@ class FrameworkModel(Model):
                 dir_name = self.uploaded_code.s3_prefix
         elif self.entry_point is not None:
             script_name = self.entry_point
-            dir_name = "file://" + self.source_dir
-        else:
-            script_name = None
-            dir_name = None
+            if self.source_dir is not None:
+                dir_name = "file://" + self.source_dir
 
         return {
             SCRIPT_PARAM_NAME.upper(): script_name or str(),
