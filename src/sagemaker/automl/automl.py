@@ -328,6 +328,7 @@ class AutoML(object):
             predictor_cls=predictor_cls,
             name=name,
             vpc_config=vpc_config,
+            enable_network_isolation=enable_network_isolation,
             sagemaker_session=sagemaker_session or self.sagemaker_session,
         )
         return pipeline
