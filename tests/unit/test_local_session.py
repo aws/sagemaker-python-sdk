@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -549,6 +549,20 @@ def test_describe_transform_job_does_not_exist(LocalSession, _LocalTransformJob)
 
     with pytest.raises(ClientError):
         local_sagemaker_client.describe_transform_job("transform-job-does-not-exist")
+
+
+@patch("sagemaker.local.image._SageMakerContainer.process")
+@patch("sagemaker.local.local_session.LocalSession")
+def test_logs_for_job(process, LocalSession):
+    local_job_logs = LocalSession.logs_for_job("my-processing-job")
+    assert local_job_logs is not None
+
+
+@patch("sagemaker.local.image._SageMakerContainer.process")
+@patch("sagemaker.local.local_session.LocalSession")
+def test_logs_for_processing_job(process, LocalSession):
+    local_processing_job_logs = LocalSession.logs_for_processing_job("my-processing-job")
+    assert local_processing_job_logs is not None
 
 
 @patch("sagemaker.local.local_session.LocalSession")
