@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -96,7 +96,7 @@ def test_all_hyperparameters(sagemaker_session):
         num_trees=NUM_TREES,
         num_samples_per_tree=NUM_SAMPLES_PER_TREE,
         eval_metrics=EVAL_METRICS,
-        **ALL_REQ_ARGS
+        **ALL_REQ_ARGS,
     )
     assert randomcutforest.hyperparameters() == dict(
         num_samples_per_tree=str(NUM_SAMPLES_PER_TREE),

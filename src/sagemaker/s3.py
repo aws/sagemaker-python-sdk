@@ -1,4 +1,4 @@
-# Copyright 2019-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -23,8 +23,7 @@ logger = logging.getLogger("sagemaker")
 
 
 def parse_s3_url(url):
-    """Returns an (s3 bucket, key name/prefix) tuple from a url with an s3
-    scheme.
+    """Returns an (s3 bucket, key name/prefix) tuple from a url with an s3 scheme.
 
     Args:
         url (str):

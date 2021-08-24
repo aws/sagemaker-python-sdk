@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -25,7 +25,7 @@ from tests.integ import DATA_DIR
 from tests.integ.timeout import timeout_and_delete_endpoint_by_name
 
 
-@pytest.mark.canary_quick
+@pytest.mark.release
 def test_sparkml_model_deploy(sagemaker_session, cpu_instance_type):
     # Uploads an MLeap serialized MLeap model to S3 and use that to deploy
     # a SparkML model to perform inference

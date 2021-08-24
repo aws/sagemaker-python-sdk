@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -15,10 +15,7 @@ from __future__ import absolute_import
 
 
 def gt(minimum):
-    """
-    Args:
-        minimum:
-    """
+    """Placeholder docstring"""
 
     def validate(value):
         return value > minimum
@@ -27,10 +24,7 @@ def gt(minimum):
 
 
 def ge(minimum):
-    """
-    Args:
-        minimum:
-    """
+    """Placeholder docstring"""
 
     def validate(value):
         return value >= minimum
@@ -39,10 +33,7 @@ def ge(minimum):
 
 
 def lt(maximum):
-    """
-    Args:
-        maximum:
-    """
+    """Placeholder docstring"""
 
     def validate(value):
         return value < maximum
@@ -51,10 +42,7 @@ def lt(maximum):
 
 
 def le(maximum):
-    """
-    Args:
-        maximum:
-    """
+    """Placeholder docstring"""
 
     def validate(value):
         return value <= maximum
@@ -63,10 +51,7 @@ def le(maximum):
 
 
 def isin(*expected):
-    """
-    Args:
-        *expected:
-    """
+    """Placeholder docstring"""
 
     def validate(value):
         return value in expected
@@ -75,10 +60,7 @@ def isin(*expected):
 
 
 def istype(expected):
-    """
-    Args:
-        expected:
-    """
+    """Placeholder docstring"""
 
     def validate(value):
         return isinstance(value, expected)

@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -84,10 +84,10 @@ class FactorizationMachines(AmazonAlgorithmEstimatorBase):
     def __init__(
         self,
         role,
-        instance_count,
-        instance_type,
-        num_factors,
-        predictor_type,
+        instance_count=None,
+        instance_type=None,
+        num_factors=None,
+        predictor_type=None,
         epochs=None,
         clip_gradient=None,
         eps=None,
@@ -112,8 +112,7 @@ class FactorizationMachines(AmazonAlgorithmEstimatorBase):
         factors_init_value=None,
         **kwargs
     ):
-        """Factorization Machines is :class:`Estimator` for general-purpose
-        supervised learning.
+        """Factorization Machines is :class:`Estimator` for general-purpose supervised learning.
 
         Amazon SageMaker Factorization Machines is a general-purpose
         supervised learning algorithm that you can use for both classification
@@ -247,8 +246,9 @@ class FactorizationMachines(AmazonAlgorithmEstimatorBase):
         self.factors_init_value = factors_init_value
 
     def create_model(self, vpc_config_override=VPC_CONFIG_DEFAULT, **kwargs):
-        """Return a :class:`~sagemaker.amazon.FactorizationMachinesModel`
-        referencing the latest s3 model data produced by this Estimator.
+        """Return a :class:`~sagemaker.amazon.FactorizationMachinesModel`.
+
+        It references the latest s3 model data produced by this Estimator.
 
         Args:
             vpc_config_override (dict[str, list[str]]): Optional override for VpcConfig set on
@@ -267,8 +267,7 @@ class FactorizationMachines(AmazonAlgorithmEstimatorBase):
 
 
 class FactorizationMachinesPredictor(Predictor):
-    """Performs binary-classification or regression prediction from input
-    vectors.
+    """Performs binary-classification or regression prediction from input vectors.
 
     The implementation of
     :meth:`~sagemaker.predictor.Predictor.predict` in this
@@ -277,14 +276,22 @@ class FactorizationMachinesPredictor(Predictor):
     to fit the model this Predictor performs inference on.
 
     :meth:`predict()` returns a list of
-    :class:`~sagemaker.amazon.record_pb2.Record` objects, one for each row in
+    :class:`~sagemaker.amazon.record_pb2.Record` objects (assuming the default
+    recordio-protobuf ``deserializer`` is used), one for each row in
     the input ``ndarray``. The prediction is stored in the ``"score"`` key of
     the ``Record.label`` field. Please refer to the formats details described:
     https://docs.aws.amazon.com/sagemaker/latest/dg/fm-in-formats.html
     """
 
-    def __init__(self, endpoint_name, sagemaker_session=None):
-        """
+    def __init__(
+        self,
+        endpoint_name,
+        sagemaker_session=None,
+        serializer=RecordSerializer(),
+        deserializer=RecordDeserializer(),
+    ):
+        """Initialization for FactorizationMachinesPredictor class.
+
         Args:
             endpoint_name (str): Name of the Amazon SageMaker endpoint to which
                 requests are sent.
@@ -292,23 +299,29 @@ class FactorizationMachinesPredictor(Predictor):
                 object, used for SageMaker interactions (default: None). If not
                 specified, one is created using the default AWS configuration
                 chain.
+            serializer (sagemaker.serializers.BaseSerializer): Optional. Default
+                serializes input data to x-recordio-protobuf format.
+            deserializer (sagemaker.deserializers.BaseDeserializer): Optional.
+                Default parses responses from x-recordio-protobuf format.
         """
         super(FactorizationMachinesPredictor, self).__init__(
             endpoint_name,
             sagemaker_session,
-            serializer=RecordSerializer(),
-            deserializer=RecordDeserializer(),
+            serializer=serializer,
+            deserializer=deserializer,
         )
 
 
 class FactorizationMachinesModel(Model):
     """Reference S3 model data created by FactorizationMachines estimator.
+
     Calling :meth:`~sagemaker.model.Model.deploy` creates an Endpoint and
     returns :class:`FactorizationMachinesPredictor`.
     """
 
     def __init__(self, model_data, role, sagemaker_session=None, **kwargs):
-        """
+        """Initialization for FactorizationMachinesModel class.
+
         Args:
             model_data (str): The S3 location of a SageMaker model data
                 ``.tar.gz`` file.

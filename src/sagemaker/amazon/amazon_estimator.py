@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -32,8 +32,9 @@ logger = logging.getLogger(__name__)
 
 
 class AmazonAlgorithmEstimatorBase(EstimatorBase):
-    """Base class for Amazon first-party Estimator implementations. This class
-    isn't intended to be instantiated directly.
+    """Base class for Amazon first-party Estimator implementations.
+
+    This class isn't intended to be instantiated directly.
     """
 
     feature_dim = hp("feature_dim", validation.gt(0), data_type=int)
@@ -44,8 +45,8 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
     def __init__(
         self,
         role,
-        instance_count,
-        instance_type,
+        instance_count=None,
+        instance_type=None,
         data_location=None,
         enable_network_isolation=False,
         **kwargs
@@ -59,9 +60,9 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
                 artifacts. After the endpoint is created, the inference code
                 might use the IAM role, if it needs to access an AWS resource.
             instance_count (int): Number of Amazon EC2 instances to use
-                for training.
+                for training. Required.
             instance_type (str): Type of EC2 instance to use for training,
-                for example, 'ml.c4.xlarge'.
+                for example, 'ml.c4.xlarge'. Required.
             data_location (str or None): The s3 prefix to upload RecordSet
                 objects to, expressed as an S3 url. For example
                 "s3://example-bucket/some-key-prefix/". Objects will be saved in
@@ -86,7 +87,6 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
             enable_network_isolation=enable_network_isolation,
             **kwargs
         )
-
         data_location = data_location or "s3://{}/sagemaker-record-sets/".format(
             self.sagemaker_session.default_bucket()
         )
@@ -111,10 +111,7 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
 
     @data_location.setter
     def data_location(self, data_location):
-        """
-        Args:
-            data_location:
-        """
+        """Placeholder docstring"""
         if not data_location.startswith("s3://"):
             raise ValueError(
                 'Expecting an S3 URL beginning with "s3://". Got "{}"'.format(data_location)
@@ -125,8 +122,7 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
 
     @classmethod
     def _prepare_init_params_from_job_description(cls, job_details, model_channel_name=None):
-        """Convert the job description to init params that can be handled by the
-        class constructor
+        """Convert the job description to init params that can be handled by the class constructor.
 
         Args:
             job_details: the returned job details from a describe_training_job
@@ -246,8 +242,7 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
             self.latest_training_job.wait(logs=logs)
 
     def record_set(self, train, labels=None, channel="train", encrypt=False):
-        """Build a :class:`~RecordSet` from a numpy :class:`~ndarray` matrix and
-        label vector.
+        """Build a :class:`~RecordSet` from a numpy :class:`~ndarray` matrix and label vector.
 
         For the 2D ``ndarray`` ``train``, each row is converted to a
         :class:`~Record` object. The vector is stored in the "values" entry of
@@ -302,8 +297,7 @@ class RecordSet(object):
     def __init__(
         self, s3_data, num_records, feature_dim, s3_data_type="ManifestFile", channel="train"
     ):
-        """A collection of Amazon :class:~`Record` objects serialized and stored
-        in S3.
+        """A collection of Amazon :class:~`Record` objects serialized and stored in S3.
 
         Args:
             s3_data (str): The S3 location of the training data
@@ -329,9 +323,8 @@ class RecordSet(object):
         return str((RecordSet, self.__dict__))
 
     def data_channel(self):
-        """Return a dictionary to represent the training data in a channel for
-        use with ``fit()``
-        """
+        """Returns dictionary to represent the training data in a channel to use with ``fit()``."""
+
         return {self.channel: self.records_s3_input()}
 
     def records_s3_input(self):
@@ -342,9 +335,7 @@ class RecordSet(object):
 
 
 class FileSystemRecordSet(object):
-    """Amazon SageMaker channel configuration for a file system data source
-    for Amazon algorithms.
-    """
+    """Amazon SageMaker channel configuration for file system data source for Amazon algorithms."""
 
     def __init__(
         self,
@@ -391,11 +382,7 @@ class FileSystemRecordSet(object):
 
 
 def _build_shards(num_shards, array):
-    """
-    Args:
-        num_shards:
-        array:
-    """
+    """Placeholder docstring"""
     if num_shards < 1:
         raise ValueError("num_shards must be >= 1")
     shard_size = int(array.shape[0] / num_shards)
@@ -409,8 +396,9 @@ def _build_shards(num_shards, array):
 def upload_numpy_to_s3_shards(
     num_shards, s3, bucket, key_prefix, array, labels=None, encrypt=False
 ):
-    """Upload the training ``array`` and ``labels`` arrays to ``num_shards`` S3
-    objects, stored in "s3:// ``bucket`` / ``key_prefix`` /". Optionally
+    """Upload the training ``array`` and ``labels`` arrays to ``num_shards``.
+
+    S3 objects, stored in "s3:// ``bucket`` / ``key_prefix`` /". Optionally
     ``encrypt`` the S3 objects using AES-256.
 
     Args:

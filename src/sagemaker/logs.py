@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -26,9 +26,9 @@ import sys
 
 
 class ColorWrap(object):
-    """A callable that will print text in a different color depending on the
-    instance (up to 6 if standard output is a terminal or a Jupyter notebook
-    cell).
+    """A callable that will print text in a different color depending on the instance.
+
+    Up to 6 if standard output is a terminal or a Jupyter notebook cell.
     """
 
     # For what color each number represents, see
@@ -57,11 +57,7 @@ class ColorWrap(object):
             print(s)
 
     def _color_wrap(self, index, s):
-        """
-        Args:
-            index:
-            s:
-        """
+        """Placeholder docstring"""
         print("\x1b[{}m{}\x1b[0m".format(self._stream_colors[index % len(self._stream_colors)], s))
 
 
@@ -83,7 +79,7 @@ def argmin(arr, f):
 
 
 def some(arr):
-    """Return True iff there is an element, a, of arr such that a is not None
+    """Return True iff there is an element, a, of arr such that a is not None.
 
     Args:
         arr:
@@ -97,8 +93,10 @@ Position = collections.namedtuple("Position", ["timestamp", "skip"])
 
 
 def multi_stream_iter(client, log_group, streams, positions=None):
-    """Iterate over the available events coming from a set of log streams in a single log group
-    interleaving the events from each stream so they're yielded in timestamp order.
+    """Iterate over the available events coming from a set of log streams.
+
+    Log streams are in a single log group interleaving the events from each stream
+    so they're yielded in timestamp order.
 
     Args:
         client (boto3 client): The boto client for logs.
@@ -135,8 +133,9 @@ def multi_stream_iter(client, log_group, streams, positions=None):
 
 
 def log_stream(client, log_group, stream_name, start_time=0, skip=0):
-    """A generator for log items in a single stream. This will yield all the
-    items that are available at the current moment.
+    """A generator for log items in a single stream.
+
+    This will yield all the items that are available at the current moment.
 
     Args:
         client (boto3.CloudWatchLogs.Client): The Boto client for CloudWatch logs.

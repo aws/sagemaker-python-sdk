@@ -1,4 +1,4 @@
-# Copyright 2018-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -29,8 +29,9 @@ import sagemaker.utils
 
 
 def get_data_source_instance(data_source, sagemaker_session):
-    """Return an Instance of :class:`sagemaker.local.data.DataSource` that can
-    handle the provided data_source URI.
+    """Return an Instance of :class:`sagemaker.local.data.DataSource`.
+
+    The instance can handle the provided data_source URI.
 
     data_source can be either file:// or s3://
 
@@ -57,8 +58,9 @@ def get_data_source_instance(data_source, sagemaker_session):
 
 
 def get_splitter_instance(split_type):
-    """Return an Instance of :class:`sagemaker.local.data.Splitter` according to
-    the specified `split_type` .
+    """Return an Instance of :class:`sagemaker.local.data.Splitter`.
+
+    The instance returned is according to the specified `split_type`.
 
     Args:
         split_type (str): either 'Line' or 'RecordIO'. Can be left as None to
@@ -98,8 +100,7 @@ class DataSource(with_metaclass(ABCMeta, object)):
 
     @abstractmethod
     def get_file_list(self):
-        """Retrieve the list of absolute paths to all the files in this data
-        source.
+        """Retrieve the list of absolute paths to all the files in this data source.
 
         Returns:
             List[str]: List of absolute paths.
@@ -118,10 +119,6 @@ class LocalFileDataSource(DataSource):
     """Represents a data source within the local filesystem."""
 
     def __init__(self, root_path):
-        """
-        Args:
-            root_path:
-        """
         super(LocalFileDataSource, self).__init__()
 
         self.root_path = os.path.abspath(root_path)
@@ -129,8 +126,7 @@ class LocalFileDataSource(DataSource):
             raise RuntimeError("Invalid data source: %s does not exist." % self.root_path)
 
     def get_file_list(self):
-        """Retrieve the list of absolute paths to all the files in this data
-        source.
+        """Retrieve the list of absolute paths to all the files in this data source.
 
         Returns:
             List[str] List of absolute paths.
@@ -155,12 +151,13 @@ class LocalFileDataSource(DataSource):
 
 
 class S3DataSource(DataSource):
-    """Defines a data source given by a bucket and S3 prefix. The contents will
-    be downloaded and then processed as local data.
+    """Defines a data source given by a bucket and S3 prefix.
+
+    The contents will be downloaded and then processed as local data.
     """
 
     def __init__(self, bucket, prefix, sagemaker_session):
-        """Create an S3DataSource instance
+        """Create an S3DataSource instance.
 
         Args:
             bucket (str): S3 bucket name
@@ -189,8 +186,7 @@ class S3DataSource(DataSource):
         self.files = LocalFileDataSource(working_dir)
 
     def get_file_list(self):
-        """Retrieve the list of absolute paths to all the files in this data
-        source.
+        """Retrieve the list of absolute paths to all the files in this data source.
 
         Returns:
             List[str]: List of absolute paths.
@@ -315,8 +311,7 @@ class BatchStrategy(with_metaclass(ABCMeta, object)):
 
     @abstractmethod
     def pad(self, file, size):
-        """Group together as many records as possible to fit in the specified
-        size
+        """Group together as many records as possible to fit in the specified size.
 
         Args:
             file (str): file path to read the records from.
@@ -335,8 +330,7 @@ class MultiRecordStrategy(BatchStrategy):
     """
 
     def pad(self, file, size=6):
-        """Group together as many records as possible to fit in the specified
-        size
+        """Group together as many records as possible to fit in the specified size.
 
         Args:
             file (str): file path to read the records from.
@@ -366,8 +360,7 @@ class SingleRecordStrategy(BatchStrategy):
     """
 
     def pad(self, file, size=6):
-        """Group together as many records as possible to fit in the specified
-        size
+        """Group together as many records as possible to fit in the specified size.
 
         This SingleRecordStrategy will not group any record and will return
         them one by one as long as they are within the maximum size.
@@ -386,11 +379,7 @@ class SingleRecordStrategy(BatchStrategy):
 
 
 def _payload_size_within_limit(payload, size):
-    """
-    Args:
-        payload:
-        size:
-    """
+    """Placeholder docstring."""
     size_in_bytes = size * 1024 * 1024
     if size == 0:
         return True

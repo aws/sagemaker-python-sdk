@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -21,8 +21,7 @@ from sagemaker.local import file_input
 
 
 class _Job(object):
-    """Handle creating, starting and waiting for Amazon SageMaker jobs to
-    finish.
+    """Handle creating, starting and waiting for Amazon SageMaker jobs to finish.
 
     This class shouldn't be directly instantiated.
 
@@ -31,11 +30,7 @@ class _Job(object):
     """
 
     def __init__(self, sagemaker_session, job_name):
-        """
-        Args:
-            sagemaker_session:
-            job_name:
-        """
+        """Placeholder docstring"""
         self.sagemaker_session = sagemaker_session
         self.job_name = job_name
 
@@ -68,13 +63,7 @@ class _Job(object):
 
     @staticmethod
     def _load_config(inputs, estimator, expand_role=True, validate_uri=True):
-        """
-        Args:
-            inputs:
-            estimator:
-            expand_role:
-            validate_uri:
-        """
+        """Placeholder docstring"""
         input_config = _Job._format_inputs_to_input_config(inputs, validate_uri)
         role = (
             estimator.sagemaker_session.expand_role(estimator.role)
@@ -123,11 +112,7 @@ class _Job(object):
 
     @staticmethod
     def _format_inputs_to_input_config(inputs, validate_uri=True):
-        """
-        Args:
-            inputs:
-            validate_uri:
-        """
+        """Placeholder docstring"""
         if inputs is None:
             return None
 
@@ -167,11 +152,7 @@ class _Job(object):
 
     @staticmethod
     def _convert_input_to_channel(channel_name, channel_s3_input):
-        """
-        Args:
-            channel_name:
-            channel_s3_input:
-        """
+        """Placeholder docstring"""
         channel_config = channel_s3_input.config.copy()
         channel_config["ChannelName"] = channel_name
         return channel_config
@@ -185,15 +166,7 @@ class _Job(object):
         compression=None,
         target_attribute_name=None,
     ):
-        """
-        Args:
-            uri_input:
-            validate_uri:
-            content_type:
-            input_mode:
-            compression:
-            target_attribute_name:
-        """
+        """Placeholder docstring"""
         if isinstance(uri_input, str) and validate_uri and uri_input.startswith("s3://"):
             s3_input_result = TrainingInput(
                 uri_input,
@@ -236,15 +209,7 @@ class _Job(object):
         content_type=None,
         input_mode=None,
     ):
-        """
-        Args:
-            input_config:
-            channel_uri:
-            channel_name:
-            validate_uri:
-            content_type:
-            input_mode:
-        """
+        """Placeholder docstring"""
         if not channel_uri:
             return None
         if not channel_name:
@@ -266,11 +231,7 @@ class _Job(object):
 
     @staticmethod
     def _format_model_uri_input(model_uri, validate_uri=True):
-        """
-        Args:
-            model_uri:
-            validate_uri:
-        """
+        """Placeholder docstring"""
         if isinstance(model_uri, string_types) and validate_uri and model_uri.startswith("s3://"):
             return TrainingInput(
                 model_uri,
@@ -295,10 +256,7 @@ class _Job(object):
 
     @staticmethod
     def _format_record_set_list_input(inputs):
-        """
-        Args:
-            inputs:
-        """
+        """Placeholder docstring"""
         # Deferred import due to circular dependency
         from sagemaker.amazon.amazon_estimator import FileSystemRecordSet, RecordSet
 
@@ -318,11 +276,7 @@ class _Job(object):
 
     @staticmethod
     def _prepare_output_config(s3_path, kms_key_id):
-        """
-        Args:
-            s3_path:
-            kms_key_id:
-        """
+        """Placeholder docstring"""
         config = {"S3OutputPath": s3_path}
         if kms_key_id is not None:
             config["KmsKeyId"] = kms_key_id
@@ -330,13 +284,7 @@ class _Job(object):
 
     @staticmethod
     def _prepare_resource_config(instance_count, instance_type, volume_size, volume_kms_key):
-        """
-        Args:
-            instance_count:
-            instance_type:
-            volume_size:
-            volume_kms_key:
-        """
+        """Placeholder docstring"""
         resource_config = {
             "InstanceCount": instance_count,
             "InstanceType": instance_type,
@@ -349,11 +297,7 @@ class _Job(object):
 
     @staticmethod
     def _prepare_stop_condition(max_run, max_wait):
-        """
-        Args:
-            max_run:
-            max_wait:
-        """
+        """Placeholder docstring"""
         if max_wait:
             return {"MaxRuntimeInSeconds": max_run, "MaxWaitTimeInSeconds": max_wait}
         return {"MaxRuntimeInSeconds": max_run}

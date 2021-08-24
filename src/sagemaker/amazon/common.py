@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -22,15 +22,22 @@ import numpy as np
 
 from sagemaker.amazon.record_pb2 import Record
 from sagemaker.deprecations import deprecated_class
-from sagemaker.deserializers import BaseDeserializer
-from sagemaker.serializers import BaseSerializer
+from sagemaker.deserializers import SimpleBaseDeserializer
+from sagemaker.serializers import SimpleBaseSerializer
 from sagemaker.utils import DeferredError
 
 
-class RecordSerializer(BaseSerializer):
+class RecordSerializer(SimpleBaseSerializer):
     """Serialize a NumPy array for an inference request."""
 
-    CONTENT_TYPE = "application/x-recordio-protobuf"
+    def __init__(self, content_type="application/x-recordio-protobuf"):
+        """Initialize a ``RecordSerializer`` instance.
+
+        Args:
+            content_type (str): The MIME type to signal to the inference endpoint when sending
+                request data (default: "application/x-recordio-protobuf").
+        """
+        super(RecordSerializer, self).__init__(content_type=content_type)
 
     def serialize(self, data):
         """Serialize a NumPy array into a buffer containing RecordIO records.
@@ -56,10 +63,18 @@ class RecordSerializer(BaseSerializer):
         return buffer
 
 
-class RecordDeserializer(BaseDeserializer):
+class RecordDeserializer(SimpleBaseDeserializer):
     """Deserialize RecordIO Protobuf data from an inference endpoint."""
 
-    ACCEPT = ("application/x-recordio-protobuf",)
+    def __init__(self, accept="application/x-recordio-protobuf"):
+        """Initialize a ``RecordDeserializer`` instance.
+
+        Args:
+            accept (union[str, tuple[str]]): The MIME type (or tuple of allowable MIME types) that
+                is expected from the inference endpoint (default:
+                "application/x-recordio-protobuf").
+        """
+        super(RecordDeserializer, self).__init__(accept=accept)
 
     def deserialize(self, data, content_type):
         """Deserialize RecordIO Protobuf data from an inference endpoint.
@@ -77,12 +92,7 @@ class RecordDeserializer(BaseDeserializer):
 
 
 def _write_feature_tensor(resolved_type, record, vector):
-    """
-    Args:
-        resolved_type:
-        record:
-        vector:
-    """
+    """Placeholder Docstring"""
     if resolved_type == "Int32":
         record.features["values"].int32_tensor.values.extend(vector)
     elif resolved_type == "Float64":
@@ -92,12 +102,7 @@ def _write_feature_tensor(resolved_type, record, vector):
 
 
 def _write_label_tensor(resolved_type, record, scalar):
-    """
-    Args:
-        resolved_type:
-        record:
-        scalar:
-    """
+    """Placeholder Docstring"""
     if resolved_type == "Int32":
         record.label["values"].int32_tensor.values.extend([scalar])
     elif resolved_type == "Float64":
@@ -107,12 +112,7 @@ def _write_label_tensor(resolved_type, record, scalar):
 
 
 def _write_keys_tensor(resolved_type, record, vector):
-    """
-    Args:
-        resolved_type:
-        record:
-        vector:
-    """
+    """Placeholder Docstring"""
     if resolved_type == "Int32":
         record.features["values"].int32_tensor.keys.extend(vector)
     elif resolved_type == "Float64":
@@ -122,12 +122,7 @@ def _write_keys_tensor(resolved_type, record, vector):
 
 
 def _write_shape(resolved_type, record, scalar):
-    """
-    Args:
-        resolved_type:
-        record:
-        scalar:
-    """
+    """Placeholder Docstring"""
     if resolved_type == "Int32":
         record.features["values"].int32_tensor.shape.extend([scalar])
     elif resolved_type == "Float64":
@@ -270,10 +265,7 @@ def _write_recordio(f, data):
 
 
 def read_recordio(f):
-    """
-    Args:
-        f:
-    """
+    """Placeholder Docstring"""
     while True:
         try:
             (read_kmagic,) = struct.unpack("I", f.read(4))
@@ -288,10 +280,7 @@ def read_recordio(f):
 
 
 def _resolve_type(dtype):
-    """
-    Args:
-        dtype:
-    """
+    """Placeholder Docstring"""
     if dtype == np.dtype(int):
         return "Int32"
     if dtype == np.dtype(float):

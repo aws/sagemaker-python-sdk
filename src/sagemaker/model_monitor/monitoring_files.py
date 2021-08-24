@@ -1,4 +1,4 @@
-# Copyright 2019-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -10,8 +10,9 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""This module contains code related to the ModelMonitoringFile class, which is used
-for managing the constraints and statistics JSON files generated and consumed by
+"""This module contains code related to the ModelMonitoringFile class.
+
+Codes are used for managing the constraints and statistics JSON files generated and consumed by
 Amazon SageMaker Model Monitoring Schedules.
 """
 from __future__ import print_function, absolute_import
@@ -51,6 +52,7 @@ class ModelMonitoringFile(object):
 
     def save(self, new_save_location_s3_uri=None):
         """Save the current instance's body to s3 using the instance's s3 path.
+
         The S3 path can be overridden by providing one. This also overrides the
         default save location for this object.
 
@@ -328,6 +330,7 @@ class Constraints(ModelMonitoringFile):
 
     def set_monitoring(self, enable_monitoring, feature_name=None):
         """Sets the monitoring flags on this Constraints object.
+
         If feature-name is provided, modify the feature-level override.
         Else, modify the top-level monitoring flag.
 

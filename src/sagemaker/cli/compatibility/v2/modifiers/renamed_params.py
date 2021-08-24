@@ -1,4 +1,4 @@
-# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -21,7 +21,9 @@ from sagemaker.cli.compatibility.v2.modifiers.modifier import Modifier
 
 
 class ParamRenamer(Modifier):
-    """Abstract class to take in an AST node, check if it is a function call with
+    """Abstract class to take in an AST node to check if it needs to be renamed.
+
+    It checks if AST node is a function call with
     an argument that needs to be renamed, and rename the argument if needed.
     """
 
@@ -41,7 +43,9 @@ class ParamRenamer(Modifier):
         """The parameter name used in version 2.0 and later of the SageMaker Python SDK."""
 
     def node_should_be_modified(self, node):
-        """Checks if the node matches any of the relevant functions and
+        """Checks node for matches and also contains certain parameter, returns boolean.
+
+        If the node matches any of the relevant functions and
         contains the parameter to be renamed.
 
         Args:
@@ -78,8 +82,10 @@ class MethodParamRenamer(ParamRenamer):
     """
 
     def node_should_be_modified(self, node):
-        """Checks if the node matches any of the relevant functions and
-        contains the parameter to be renamed.
+        """Checks node for matches and also contains certain parameter, returns boolean.
+
+        If the ``ast.Call`` node matches any of the relevant functions and
+        contains the parameter to be renamed returns True.
 
         This looks for a call of the form ``<object>.<method>``, and
         assumes the method cannot be called on its own.
@@ -99,8 +105,9 @@ class MethodParamRenamer(ParamRenamer):
 
 
 class DistributionParameterRenamer(ParamRenamer):
-    """A class to rename the ``distributions`` attribute to ``distrbution`` in
-    MXNet and TensorFlow estimators.
+    """A class to rename the ``distributions`` attribute to ``distrbution``.
+
+     Rename takes place in MXNet and TensorFlow estimators.
 
     This looks for the following calls:
 
@@ -131,8 +138,9 @@ class DistributionParameterRenamer(ParamRenamer):
 
 
 class S3SessionRenamer(MethodParamRenamer):
-    """A class to rename the ``session`` attribute to ``sagemaker_session`` in
-    ``S3Uploader`` and ``S3Downloader``.
+    """A class to rename the ``session`` attribute to ``sagemaker_session``.
+
+    Rename takes place in ``S3Uploader`` and ``S3Downloader``.
 
     This looks for the following calls:
 
@@ -175,8 +183,9 @@ class EstimatorImageURIRenamer(ParamRenamer):
 
     @property
     def calls_to_modify(self):
-        """A dictionary mapping estimators with the ``image_name`` attribute to their
-        respective namespaces.
+        """A dictionary mapping estimators with the ``image_name`` attribute.
+
+        It maps to their respective namespaces.
         """
         return {
             "Chainer": ("sagemaker.chainer", "sagemaker.chainer.estimator"),
@@ -206,8 +215,9 @@ class ModelImageURIRenamer(ParamRenamer):
 
     @property
     def calls_to_modify(self):
-        """A dictionary mapping models with the ``image`` attribute to their
-        respective namespaces.
+        """A dictionary mapping models with the ``image`` attribute.
+
+        It maps to their respective namespaces.
         """
         return {
             "ChainerModel": ("sagemaker.chainer", "sagemaker.chainer.model"),

@@ -1,4 +1,4 @@
-# Copyright 2019-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -60,7 +60,6 @@ ROLE = "SageMakerRole"
 SINGLE_INSTANCE_COUNT = 1
 
 
-@pytest.mark.canary_quick
 def test_byo_airflow_config_uploads_data_source_to_s3_when_inputs_provided(
     sagemaker_session, cpu_instance_type
 ):
@@ -92,7 +91,6 @@ def test_byo_airflow_config_uploads_data_source_to_s3_when_inputs_provided(
         )
 
 
-@pytest.mark.canary_quick
 def test_kmeans_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_instance_type):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         kmeans = KMeans(
@@ -153,7 +151,6 @@ def test_fm_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_inst
         )
 
 
-@pytest.mark.canary_quick
 def test_ipinsights_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_instance_type):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         data_path = os.path.join(DATA_DIR, "ipinsights")
@@ -214,7 +211,6 @@ def test_knn_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_ins
     tests.integ.test_region() in tests.integ.NO_LDA_REGIONS,
     reason="LDA image is not supported in certain regions",
 )
-@pytest.mark.canary_quick
 def test_lda_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_instance_type):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         data_path = os.path.join(DATA_DIR, "lda")
@@ -247,7 +243,6 @@ def test_lda_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_ins
         )
 
 
-@pytest.mark.canary_quick
 def test_linearlearner_airflow_config_uploads_data_source_to_s3(
     sagemaker_session, cpu_instance_type
 ):
@@ -312,7 +307,6 @@ def test_linearlearner_airflow_config_uploads_data_source_to_s3(
         )
 
 
-@pytest.mark.canary_quick
 def test_ntm_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_instance_type):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         data_path = os.path.join(DATA_DIR, "ntm")
@@ -346,7 +340,6 @@ def test_ntm_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_ins
         )
 
 
-@pytest.mark.canary_quick
 def test_pca_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_instance_type):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         pca = PCA(
@@ -373,7 +366,6 @@ def test_pca_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_ins
         )
 
 
-@pytest.mark.canary_quick
 def test_rcf_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_instance_type):
     with timeout(seconds=AIRFLOW_CONFIG_TIMEOUT_IN_SECONDS):
         # Generate a thousand 14-dimensional datapoints.
@@ -402,7 +394,6 @@ def test_rcf_airflow_config_uploads_data_source_to_s3(sagemaker_session, cpu_ins
         )
 
 
-@pytest.mark.canary_quick
 def test_chainer_airflow_config_uploads_data_source_to_s3(
     sagemaker_local_session, cpu_instance_type, chainer_latest_version, chainer_latest_py_version
 ):
@@ -440,7 +431,6 @@ def test_chainer_airflow_config_uploads_data_source_to_s3(
         )
 
 
-@pytest.mark.canary_quick
 def test_mxnet_airflow_config_uploads_data_source_to_s3(
     sagemaker_session,
     cpu_instance_type,
@@ -476,7 +466,6 @@ def test_mxnet_airflow_config_uploads_data_source_to_s3(
         )
 
 
-@pytest.mark.canary_quick
 def test_sklearn_airflow_config_uploads_data_source_to_s3(
     sagemaker_session,
     cpu_instance_type,
@@ -516,7 +505,6 @@ def test_sklearn_airflow_config_uploads_data_source_to_s3(
         )
 
 
-@pytest.mark.canary_quick
 def test_tf_airflow_config_uploads_data_source_to_s3(
     sagemaker_session,
     cpu_instance_type,
@@ -550,7 +538,6 @@ def test_tf_airflow_config_uploads_data_source_to_s3(
         )
 
 
-@pytest.mark.canary_quick
 def test_xgboost_airflow_config_uploads_data_source_to_s3(
     sagemaker_session, cpu_instance_type, xgboost_latest_version
 ):
@@ -576,7 +563,6 @@ def test_xgboost_airflow_config_uploads_data_source_to_s3(
         )
 
 
-@pytest.mark.canary_quick
 def test_pytorch_airflow_config_uploads_data_source_to_s3_when_inputs_not_provided(
     sagemaker_session,
     cpu_instance_type,

@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -50,10 +50,7 @@ def determine_prefix(user_agent=""):
 
 
 def prepend_user_agent(client):
-    """
-    Args:
-        client:
-    """
+    """Placeholder docstring"""
     prefix = determine_prefix(client._client_config.user_agent)
 
     if client._client_config.user_agent is None:

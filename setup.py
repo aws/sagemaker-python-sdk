@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -33,21 +33,23 @@ def read_version():
 
 # Declare minimal set for installation
 required_packages = [
-    "boto3>=1.14.12",
+    "attrs",
+    "boto3>=1.16.32",
     "google-pasta",
     "numpy>=1.9.0",
     "protobuf>=3.1",
     "protobuf3-to-dict>=0.1.5",
-    "smdebug-rulesconfig==0.1.5",
+    "smdebug_rulesconfig==1.0.1",
     "importlib-metadata>=1.4.0",
     "packaging>=20.0",
+    "pandas",
+    "pathos",
 ]
 
 # Specific use case dependencies
 extras = {
-    "analytics": ["pandas"],
     "local": [
-        "urllib3>=1.21.1,<1.26,!=1.25.0,!=1.25.1",
+        "urllib3>=1.21.1,!=1.25,!=1.25.1",
         "docker-compose>=1.25.2",
         "PyYAML>=5.3, <6",  # PyYAML version has to match docker-compose requirements
     ],
@@ -64,6 +66,7 @@ extras["test"] = (
         "pytest<6.1.0",
         "pytest-cov",
         "pytest-rerunfailures",
+        "pytest-timeout",
         "pytest-xdist",
         "mock",
         "contextlib2",
@@ -73,6 +76,7 @@ extras["test"] = (
         "apache-airflow==1.10.11",
         "fabric>=2.0",
         "requests>=2.20.0, <3",
+        "sagemaker-experiments",
     ],
 )
 

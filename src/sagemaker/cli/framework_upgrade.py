@@ -1,4 +1,4 @@
-# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -166,7 +166,9 @@ def add_version(
     py_versions,
     tag_prefix,
 ):
-    """Read framework image uri information from json file to a dictionary, update it with new
+    """Read, update and write framework image uri.
+
+    Read framework image uri information from json file to a dictionary, update it with new
     framework version information, then write the dictionary back to json file.
 
     Args:

@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -115,7 +115,7 @@ def test_all_hyperparameters(sagemaker_session):
         factors_init_scale=1.101,
         factors_init_sigma=1.202,
         factors_init_value=1.303,
-        **ALL_REQ_ARGS
+        **ALL_REQ_ARGS,
     )
     assert fm.hyperparameters() == dict(
         num_factors=str(ALL_REQ_ARGS["num_factors"]),
@@ -330,3 +330,27 @@ def test_predictor_type(sagemaker_session):
     predictor = model.deploy(1, INSTANCE_TYPE)
 
     assert isinstance(predictor, FactorizationMachinesPredictor)
+
+
+def test_predictor_custom_serialization(sagemaker_session):
+    fm = FactorizationMachines(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
+    data = RecordSet(
+        "s3://{}/{}".format(BUCKET_NAME, PREFIX),
+        num_records=1,
+        feature_dim=FEATURE_DIM,
+        channel="train",
+    )
+    fm.fit(data, MINI_BATCH_SIZE)
+    model = fm.create_model()
+    custom_serializer = Mock()
+    custom_deserializer = Mock()
+    predictor = model.deploy(
+        1,
+        INSTANCE_TYPE,
+        serializer=custom_serializer,
+        deserializer=custom_deserializer,
+    )
+
+    assert isinstance(predictor, FactorizationMachinesPredictor)
+    assert predictor.serializer is custom_serializer
+    assert predictor.deserializer is custom_deserializer

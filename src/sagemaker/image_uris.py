@@ -1,4 +1,4 @@
-# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -24,6 +24,7 @@ from sagemaker.spark import defaults
 logger = logging.getLogger(__name__)
 
 ECR_URI_TEMPLATE = "{registry}.dkr.{hostname}/{repository}"
+HUGGING_FACE_FRAMEWORK = "huggingface"
 
 
 def retrieve(
@@ -35,6 +36,8 @@ def retrieve(
     accelerator_type=None,
     image_scope=None,
     container_version=None,
+    distribution=None,
+    base_framework_version=None,
 ):
     """Retrieves the ECR URI for the Docker image matching the given arguments.
 
@@ -54,6 +57,8 @@ def retrieve(
             Valid values: "training", "inference", "eia". If ``accelerator_type`` is set,
             ``image_scope`` is ignored.
         container_version (str): the version of docker image
+        distribution (dict): A dictionary with information on how to run distributed training
+            (default: None).
 
     Returns:
         str: the ECR URI for the corresponding SageMaker Docker image.
@@ -62,9 +67,17 @@ def retrieve(
         ValueError: If the combination of arguments specified is not supported.
     """
     config = _config_for_framework_and_scope(framework, image_scope, accelerator_type)
-
+    original_version = version
     version = _validate_version_and_set_if_needed(version, config, framework)
     version_config = config["versions"][_version_for_config(version, config)]
+    if framework == HUGGING_FACE_FRAMEWORK:
+        if version_config.get("version_aliases"):
+            full_base_framework_version = version_config["version_aliases"].get(
+                base_framework_version, base_framework_version
+            )
+
+        _validate_arg(full_base_framework_version, list(version_config.keys()), "base framework")
+        version_config = version_config.get(full_base_framework_version)
 
     py_version = _validate_py_version_and_set_if_needed(py_version, version_config, framework)
     version_config = version_config.get(py_version) or version_config
@@ -77,9 +90,39 @@ def retrieve(
     processor = _processor(
         instance_type, config.get("processors") or version_config.get("processors")
     )
+
+    if framework == HUGGING_FACE_FRAMEWORK:
+        pt_or_tf_version = (
+            re.compile("^(pytorch|tensorflow)(.*)$").match(base_framework_version).group(2)
+        )
+        tag_prefix = f"{pt_or_tf_version}-transformers{original_version}"
+    else:
+        tag_prefix = version_config.get("tag_prefix", version)
+
     tag = _format_tag(
-        version_config.get("tag_prefix", version), processor, py_version, container_version
+        tag_prefix,
+        processor,
+        py_version,
+        container_version,
     )
+    if _should_auto_select_container_version(instance_type, distribution):
+        container_versions = {
+            "tensorflow-2.3-gpu-py37": "cu110-ubuntu18.04-v3",
+            "tensorflow-2.3.1-gpu-py37": "cu110-ubuntu18.04",
+            "tensorflow-2.3.2-gpu-py37": "cu110-ubuntu18.04",
+            "tensorflow-1.15-gpu-py37": "cu110-ubuntu18.04-v8",
+            "tensorflow-1.15.4-gpu-py37": "cu110-ubuntu18.04",
+            "tensorflow-1.15.5-gpu-py37": "cu110-ubuntu18.04",
+            "mxnet-1.8-gpu-py37": "cu110-ubuntu16.04-v1",
+            "mxnet-1.8.0-gpu-py37": "cu110-ubuntu16.04",
+            "pytorch-1.6-gpu-py36": "cu110-ubuntu18.04-v3",
+            "pytorch-1.6.0-gpu-py36": "cu110-ubuntu18.04",
+            "pytorch-1.6-gpu-py3": "cu110-ubuntu18.04-v3",
+            "pytorch-1.6.0-gpu-py3": "cu110-ubuntu18.04",
+        }
+        key = "-".join([framework, tag])
+        if key in container_versions:
+            tag = "-".join([tag, container_versions[key]])
 
     if tag:
         repo += ":{}".format(tag)
@@ -101,8 +144,9 @@ def _config_for_framework_and_scope(framework, image_scope, accelerator_type=Non
         image_scope = "eia"
 
     available_scopes = config.get("scope", config.keys())
+
     if len(available_scopes) == 1:
-        if image_scope and image_scope != available_scopes[0]:
+        if image_scope and image_scope != list(available_scopes)[0]:
             logger.warning(
                 "Defaulting to only supported image scope: %s. Ignoring image scope: %s.",
                 available_scopes[0],
@@ -215,6 +259,23 @@ def _processor(instance_type, available_processors):
 
     _validate_arg(processor, available_processors, "processor")
     return processor
+
+
+def _should_auto_select_container_version(instance_type, distribution):
+    """Returns a boolean that indicates whether to use an auto-selected container version."""
+    p4d = False
+    if instance_type:
+        # looks for either "ml.<family>.<size>" or "ml_<family>"
+        match = re.match(r"^ml[\._]([a-z\d]+)\.?\w*$", instance_type)
+        if match:
+            family = match[1]
+            p4d = family == "p4d"
+
+    smdistributed = False
+    if distribution:
+        smdistributed = "smdistributed" in distribution
+
+    return p4d or smdistributed
 
 
 def _validate_py_version_and_set_if_needed(py_version, version_config, framework):

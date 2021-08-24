@@ -1,4 +1,4 @@
-# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -42,9 +42,25 @@ SAGEMAKER_ALTERNATE_REGION_ACCOUNTS = {
     "us-gov-west-1": "246785580436",
     "us-iso-east-1": "744548109606",
 }
+ELASTIC_INFERENCE_REGIONS = [
+    "ap-northeast-1",
+    "ap-northeast-2",
+    "eu-west-1",
+    "us-east-1",
+    "us-east-2",
+    "us-west-2",
+]
 
 
-def _test_image_uris(framework, fw_version, py_version, scope, expected_fn, expected_fn_args):
+def _test_image_uris(
+    framework,
+    fw_version,
+    py_version,
+    scope,
+    expected_fn,
+    expected_fn_args,
+    base_framework_version=None,
+):
     base_args = {
         "framework": framework,
         "version": fw_version,
@@ -130,11 +146,11 @@ def _expected_tf_training_uri(tf_training_version, py_version, processor="cpu", 
     )
 
 
-def test_tensorflow_inference(tensorflow_inference_version):
+def test_tensorflow_inference(tensorflow_inference_version, tensorflow_inference_py_version):
     _test_image_uris(
         "tensorflow",
         tensorflow_inference_version,
-        "py2",
+        tensorflow_inference_py_version,
         "inference",
         _expected_tf_inference_uri,
         {"tf_inference_version": tensorflow_inference_version},
@@ -377,8 +393,9 @@ def test_pytorch_eia(pytorch_eia_version, pytorch_eia_py_version):
     )
     assert expected == uri
 
-    for region, account in DLC_ALTERNATE_REGION_ACCOUNTS.items():
+    for region in ELASTIC_INFERENCE_REGIONS:
         uri = image_uris.retrieve(region=region, **base_args)
+        account = DLC_ALTERNATE_REGION_ACCOUNTS.get(region, DLC_ACCOUNT)
 
         expected = expected_uris.framework_uri(
             "pytorch-inference-eia",

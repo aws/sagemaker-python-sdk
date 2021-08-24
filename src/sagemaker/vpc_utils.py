@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -24,10 +24,10 @@ VPC_CONFIG_DEFAULT = "VPC_CONFIG_DEFAULT"
 
 
 def to_dict(subnets, security_group_ids):
-    """Prepares a VpcConfig dict containing keys 'Subnets' and
-    'SecurityGroupIds' This is the dict format expected by SageMaker
-    CreateTrainingJob and CreateModel APIs See
-    https://docs.aws.amazon.com/sagemaker/latest/dg/API_VpcConfig.html
+    """Prepares a VpcConfig dict containing keys 'Subnets' and 'SecurityGroupIds'.
+
+    This is the dict format expected by SageMaker CreateTrainingJob and CreateModel APIs.
+    See https://docs.aws.amazon.com/sagemaker/latest/dg/API_VpcConfig.html
 
     Args:
         subnets (list): list of subnet IDs to use in VpcConfig
@@ -69,9 +69,11 @@ def from_dict(vpc_config, do_sanitize=False):
 
 
 def sanitize(vpc_config):
-    """Checks that an instance of VpcConfig has the expected keys and values,
+    """Checks and removes unexpected keys from VpcConfig or raises error for violations.
+
+    Checks that an instance of VpcConfig has the expected keys and values,
     removes unexpected keys, and raises ValueErrors if any expectations are
-    violated
+    violated.
 
     Args:
         vpc_config (dict): a VpcConfig dict containing 'Subnets' and

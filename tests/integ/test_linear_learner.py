@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -28,7 +28,7 @@ def training_set():
     return datasets.one_p_mnist()
 
 
-@pytest.mark.canary_quick
+@pytest.mark.release
 def test_linear_learner(sagemaker_session, cpu_instance_type, training_set):
     job_name = unique_name_from_base("linear-learner")
 

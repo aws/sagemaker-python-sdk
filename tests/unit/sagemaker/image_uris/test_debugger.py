@@ -1,4 +1,4 @@
-# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -36,6 +36,7 @@ ACCOUNTS = {
     "sa-east-1": "818342061345",
     "us-east-1": "503895931360",
     "us-east-2": "915447279597",
+    "us-gov-west-1": "515509971035",
     "us-west-1": "685455198987",
     "us-west-2": "895741380848",
 }

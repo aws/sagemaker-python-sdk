@@ -1,4 +1,4 @@
-# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -225,8 +225,9 @@ class SerdeObjectRenamer(Modifier):
         return name in OLD_OBJECT_NAMES
 
     def modify_node(self, node):
-        """Replaces the ``ast.Name`` node with a ``ast.Call`` node that
-        instantiates a class available in version 2.0 and later of the Python SDK:
+        """Replaces the ``ast.Name`` node with a ``ast.Call`` node.
+
+        Replaced node instantiates a class available in version 2.0 and later of the Python SDK.
 
         - ``sagemaker.serializers.CSVSerializer()``
         - ``sagemaker.serializers.JSONSerializer()``
@@ -258,8 +259,7 @@ class SerdeImportFromPredictorRenamer(Modifier):
     """A class to update import statements starting with ``from sagemaker.predictor``."""
 
     def node_should_be_modified(self, node):
-        """Checks if the import statement imports a SerDe from the
-        ``sagemaker.predictor`` module.
+        """Checks if the import statement imports a SerDe from the ``sagemaker.predictor`` module.
 
         Args:
             node (ast.ImportFrom): a node that represents a ``from ... import ... `` statement.
@@ -300,8 +300,7 @@ class SerdeImportFromAmazonCommonRenamer(Modifier):
     """A class to update import statements starting with ``from sagemaker.amazon.common``."""
 
     def node_should_be_modified(self, node):
-        """Checks if the import statement imports a SerDe from the
-        ``sagemaker.amazon.common`` module.
+        """Checks if the import statement imports a SerDe from the ``sagemaker.amazon.common``.
 
         This checks for:
         - ``sagemaker.amazon.common.numpy_to_record_serializer``
@@ -320,10 +319,9 @@ class SerdeImportFromAmazonCommonRenamer(Modifier):
         )
 
     def modify_node(self, node):
-        """Upgrades the ``numpy_to_record_serializer`` and ``record_deserializer``
-        imports, as applicable.
+        """Upgrades the ``numpy_to_record_serializer`` and ``record_deserializer`` imports.
 
-        This upgrades the classes to:
+        This upgrades the classes to (if applicable):
         - ``sagemaker.amazon.common.RecordSerializer``
         - ``sagemaker.amazon.common.RecordDeserializer``
 
@@ -356,8 +354,7 @@ class _ImportInserter(Modifier):
         self.import_node = import_node
 
     def node_should_be_modified(self, module):
-        """Checks if the ``ast.Module`` node contains references to the
-        specified class names.
+        """Checks if the ``ast.Module`` node contains references to the specified class names.
 
         Args:
             node (ast.Module): a node that represents a Python module. For more,

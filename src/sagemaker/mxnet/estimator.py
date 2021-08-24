@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -50,9 +50,9 @@ class MXNet(Framework):
         distribution=None,
         **kwargs
     ):
-        """This ``Estimator`` executes an MXNet script in a managed MXNet
-        execution environment, within a SageMaker Training Job. The managed
-        MXNet environment is an Amazon-built Docker container that executes
+        """This ``Estimator`` executes an MXNet script in a managed MXNet execution environment.
+
+        The managed MXNet environment is an Amazon-built Docker container that executes
         functions defined in the supplied ``entry_point`` Python script.
 
         Training is started by calling
@@ -178,10 +178,7 @@ class MXNet(Framework):
         self._configure_distribution(distribution)
 
     def _configure_distribution(self, distribution):
-        """
-        Args:
-            distribution:
-        """
+        """Placeholder docstring"""
         if distribution is None:
             return
 
@@ -224,8 +221,7 @@ class MXNet(Framework):
         image_uri=None,
         **kwargs
     ):
-        """Create a SageMaker ``MXNetModel`` object that can be deployed to an
-        ``Endpoint``.
+        """Create a SageMaker ``MXNetModel`` object that can be deployed to an ``Endpoint``.
 
         Args:
             model_server_workers (int): Optional. The number of worker processes
@@ -296,8 +292,7 @@ class MXNet(Framework):
 
     @classmethod
     def _prepare_init_params_from_job_description(cls, job_details, model_channel_name=None):
-        """Convert the job description to init params that can be handled by the
-        class constructor
+        """Convert the job description to init params that can be handled by the class constructor.
 
         Args:
             job_details: the returned job details from a describe_training_job

@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -93,7 +93,7 @@ def test_all_hyperparameters(sagemaker_session):
         algorithm_mode="regular",
         subtract_mean="True",
         extra_components=1,
-        **ALL_REQ_ARGS
+        **ALL_REQ_ARGS,
     )
     assert pca.hyperparameters() == dict(
         num_components=str(ALL_REQ_ARGS["num_components"]),
@@ -252,3 +252,27 @@ def test_predictor_type(sagemaker_session):
     predictor = model.deploy(1, INSTANCE_TYPE)
 
     assert isinstance(predictor, PCAPredictor)
+
+
+def test_predictor_custom_serialization(sagemaker_session):
+    pca = PCA(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
+    data = RecordSet(
+        "s3://{}/{}".format(BUCKET_NAME, PREFIX),
+        num_records=1,
+        feature_dim=FEATURE_DIM,
+        channel="train",
+    )
+    pca.fit(data, MINI_BATCH_SIZE)
+    model = pca.create_model()
+    custom_serializer = Mock()
+    custom_deserializer = Mock()
+    predictor = model.deploy(
+        1,
+        INSTANCE_TYPE,
+        serializer=custom_serializer,
+        deserializer=custom_deserializer,
+    )
+
+    assert isinstance(predictor, PCAPredictor)
+    assert predictor.serializer is custom_serializer
+    assert predictor.deserializer is custom_deserializer

@@ -1,4 +1,4 @@
-# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -53,7 +53,8 @@ class ImageURIRetrieveRefactor(Modifier):
 
     def modify_node(self, node):
         """Modifies the ``ast.Call`` node to call ``image_uris.retrieve`` instead.
-        And switch the first two parameters from (region, repo) to (framework, region)
+
+        And also switch the first two parameters from (region, repo) to (framework, region).
 
         Args:
             node (ast.Call): a node that represents a *image_uris.retrieve call.

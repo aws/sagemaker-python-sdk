@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -26,6 +26,7 @@ from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 from tests.integ.record_set import prepare_record_set_from_local_files
 
 
+@pytest.mark.slow_test
 @pytest.mark.skipif(
     tests.integ.test_region() in tests.integ.NO_LDA_REGIONS,
     reason="LDA image is not supported in certain regions",

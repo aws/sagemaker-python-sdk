@@ -1,4 +1,4 @@
-# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -23,10 +23,9 @@ class TensorFlowScriptModeParameterRemover(Modifier):
     """A class to remove ``script_mode`` from TensorFlow estimators (because it's the only mode)."""
 
     def node_should_be_modified(self, node):
-        """Checks if the ``ast.Call`` node instantiates a TensorFlow estimator with
-        ``script_mode`` set.
+        """Checks if the ``ast.Call`` node instantiates a TensorFlow estimator.
 
-        This looks for the following formats:
+        TensorFlow estimator would use``script_mode`` set. This looks for the following formats:
 
         - ``TensorFlow``
         - ``sagemaker.tensorflow.TensorFlow``

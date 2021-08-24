@@ -1,4 +1,4 @@
-# Copyright 2019-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -17,12 +17,20 @@ import uuid
 
 import pytest
 
-from sagemaker.debugger import DebuggerHookConfig, Rule, rule_configs, TensorBoardOutputConfig
+from sagemaker.debugger.debugger import (
+    DEBUGGER_FLAG,
+    DebuggerHookConfig,
+    Rule,
+    rule_configs,
+    TensorBoardOutputConfig,
+)
 from sagemaker.mxnet.estimator import MXNet
+from sagemaker.pytorch.estimator import PyTorch
+from sagemaker.tensorflow.estimator import TensorFlow
+from sagemaker.xgboost.estimator import XGBoost
 from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
 from tests.integ.retry import retries
 from tests.integ.timeout import timeout
-
 
 _NON_ERROR_TERMINAL_RULE_JOB_STATUSES = ["NoIssuesFound", "IssuesFound", "Stopped"]
 
@@ -54,6 +62,15 @@ CUSTOM_RULE_CONTAINERS_ACCOUNTS_MAP = {
 }
 
 # TODO-reinvent-2019: test get_debugger_artifacts_path and get_tensorboard_artifacts_path
+
+
+@pytest.fixture
+def actions():
+    return rule_configs.ActionList(
+        rule_configs.StopTraining(),
+        rule_configs.Email("abc@abc.com"),
+        rule_configs.SMS("+01234567890"),
+    )
 
 
 def test_mxnet_with_rules(
@@ -112,8 +129,77 @@ def test_mxnet_with_rules(
                 ]
                 == rule.rule_parameters["rule_to_invoke"]
             )
+
         assert (
-            job_description["DebugRuleEvaluationStatuses"]
+            _get_rule_evaluation_statuses(job_description)
+            == mx.latest_training_job.rule_job_summary()
+        )
+
+        _wait_and_assert_that_no_rule_jobs_errored(training_job=mx.latest_training_job)
+
+
+def test_mxnet_with_rules_and_actions(
+    sagemaker_session,
+    mxnet_training_latest_version,
+    mxnet_training_latest_py_version,
+    cpu_instance_type,
+    actions,
+):
+    with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
+        rules = [
+            Rule.sagemaker(rule_configs.vanishing_gradient(), actions=actions),
+            Rule.sagemaker(
+                base_config=rule_configs.all_zero(),
+                rule_parameters={"tensor_regex": ".*"},
+                actions=actions,
+            ),
+            Rule.sagemaker(rule_configs.loss_not_decreasing(), actions=actions),
+        ]
+
+        script_path = os.path.join(DATA_DIR, "mxnet_mnist", "mnist_gluon.py")
+        data_path = os.path.join(DATA_DIR, "mxnet_mnist")
+
+        mx = MXNet(
+            entry_point=script_path,
+            role="SageMakerRole",
+            framework_version=mxnet_training_latest_version,
+            py_version=mxnet_training_latest_py_version,
+            instance_count=1,
+            instance_type=cpu_instance_type,
+            sagemaker_session=sagemaker_session,
+            rules=rules,
+        )
+
+        train_input = mx.sagemaker_session.upload_data(
+            path=os.path.join(data_path, "train"), key_prefix="integ-test-data/mxnet_mnist/train"
+        )
+        test_input = mx.sagemaker_session.upload_data(
+            path=os.path.join(data_path, "test"), key_prefix="integ-test-data/mxnet_mnist/test"
+        )
+
+        mx.fit({"train": train_input, "test": test_input})
+
+        job_description = mx.latest_training_job.describe()
+
+        for index, rule in enumerate(rules):
+            assert (
+                job_description["DebugRuleConfigurations"][index]["RuleConfigurationName"]
+                == rule.name
+            )
+            assert (
+                job_description["DebugRuleConfigurations"][index]["RuleEvaluatorImage"]
+                == rule.image_uri
+            )
+            assert job_description["DebugRuleConfigurations"][index]["VolumeSizeInGB"] == 0
+            assert (
+                job_description["DebugRuleConfigurations"][index]["RuleParameters"][
+                    "rule_to_invoke"
+                ]
+                == rule.rule_parameters["rule_to_invoke"]
+            )
+
+        assert (
+            _get_rule_evaluation_statuses(job_description)
             == mx.latest_training_job.rule_job_summary()
         )
 
@@ -164,8 +250,63 @@ def test_mxnet_with_custom_rule(
                 == rule.image_uri
             )
             assert job_description["DebugRuleConfigurations"][index]["VolumeSizeInGB"] == 30
+
         assert (
-            job_description["DebugRuleEvaluationStatuses"]
+            _get_rule_evaluation_statuses(job_description)
+            == mx.latest_training_job.rule_job_summary()
+        )
+
+        _wait_and_assert_that_no_rule_jobs_errored(training_job=mx.latest_training_job)
+
+
+def test_mxnet_with_custom_rule_and_actions(
+    sagemaker_session,
+    mxnet_training_latest_version,
+    mxnet_training_latest_py_version,
+    cpu_instance_type,
+    actions,
+):
+    with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
+        rules = [_get_custom_rule(sagemaker_session, actions)]
+
+        script_path = os.path.join(DATA_DIR, "mxnet_mnist", "mnist_gluon.py")
+        data_path = os.path.join(DATA_DIR, "mxnet_mnist")
+
+        mx = MXNet(
+            entry_point=script_path,
+            role="SageMakerRole",
+            framework_version=mxnet_training_latest_version,
+            py_version=mxnet_training_latest_py_version,
+            instance_count=1,
+            instance_type=cpu_instance_type,
+            sagemaker_session=sagemaker_session,
+            rules=rules,
+        )
+
+        train_input = mx.sagemaker_session.upload_data(
+            path=os.path.join(data_path, "train"), key_prefix="integ-test-data/mxnet_mnist/train"
+        )
+        test_input = mx.sagemaker_session.upload_data(
+            path=os.path.join(data_path, "test"), key_prefix="integ-test-data/mxnet_mnist/test"
+        )
+
+        mx.fit({"train": train_input, "test": test_input})
+
+        job_description = mx.latest_training_job.describe()
+
+        for index, rule in enumerate(rules):
+            assert (
+                job_description["DebugRuleConfigurations"][index]["RuleConfigurationName"]
+                == rule.name
+            )
+            assert (
+                job_description["DebugRuleConfigurations"][index]["RuleEvaluatorImage"]
+                == rule.image_uri
+            )
+            assert job_description["DebugRuleConfigurations"][index]["VolumeSizeInGB"] == 30
+
+        assert (
+            _get_rule_evaluation_statuses(job_description)
             == mx.latest_training_job.rule_job_summary()
         )
 
@@ -212,6 +353,115 @@ def test_mxnet_with_debugger_hook_config(
         assert job_description["DebugHookConfig"] == debugger_hook_config._to_request_dict()
 
         _wait_and_assert_that_no_rule_jobs_errored(training_job=mx.latest_training_job)
+
+
+def test_debug_hook_disabled_with_checkpointing(
+    sagemaker_session,
+    mxnet_training_latest_version,
+    mxnet_training_latest_py_version,
+    cpu_instance_type,
+):
+    with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
+        s3_output_path = os.path.join(
+            "s3://", sagemaker_session.default_bucket(), str(uuid.uuid4())
+        )
+        debugger_hook_config = DebuggerHookConfig(
+            s3_output_path=os.path.join(s3_output_path, "tensors")
+        )
+
+        script_path = os.path.join(DATA_DIR, "mxnet_mnist", "mnist_gluon.py")
+
+        # Estimator with checkpointing enabled
+        mx = MXNet(
+            entry_point=script_path,
+            role="SageMakerRole",
+            framework_version=mxnet_training_latest_version,
+            py_version=mxnet_training_latest_py_version,
+            instance_count=1,
+            instance_type=cpu_instance_type,
+            sagemaker_session=sagemaker_session,
+            debugger_hook_config=debugger_hook_config,
+            checkpoint_local_path="/opt/ml/checkpoints",
+            checkpoint_s3_uri=os.path.join(s3_output_path, "checkpoints"),
+        )
+        mx._prepare_for_training()
+
+        # Debug Hook should be enabled
+        assert mx.debugger_hook_config is not None
+
+        # Estimator with checkpointing enabled and Instance Count>1
+        mx = MXNet(
+            entry_point=script_path,
+            role="SageMakerRole",
+            framework_version=mxnet_training_latest_version,
+            py_version=mxnet_training_latest_py_version,
+            instance_count=2,
+            instance_type=cpu_instance_type,
+            sagemaker_session=sagemaker_session,
+            debugger_hook_config=debugger_hook_config,
+            checkpoint_local_path="/opt/ml/checkpoints",
+            checkpoint_s3_uri=os.path.join(s3_output_path, "checkpoints"),
+        )
+        mx._prepare_for_training()
+        # Debug Hook should be disabled
+        assert mx.debugger_hook_config is False
+
+        # Estimator with checkpointing enabled and SMDataParallel Enabled
+        pt = PyTorch(
+            base_job_name="pytorch-smdataparallel-mnist",
+            entry_point=script_path,
+            role="SageMakerRole",
+            framework_version="1.8.0",
+            py_version="py36",
+            instance_count=1,
+            # For training with p3dn instance use - ml.p3dn.24xlarge, with p4dn instance use - ml.p4d.24xlarge
+            instance_type="ml.p3.16xlarge",
+            sagemaker_session=sagemaker_session,
+            # Training using SMDataParallel Distributed Training Framework
+            distribution={"smdistributed": {"dataparallel": {"enabled": True}}},
+            checkpoint_local_path="/opt/ml/checkpoints",
+            checkpoint_s3_uri=os.path.join(s3_output_path, "checkpoints"),
+        )
+        pt._prepare_for_training()
+        # Debug Hook should be disabled
+        assert pt.debugger_hook_config is False
+
+        # Estimator with checkpointing enabled and SMModelParallel Enabled
+        tf = TensorFlow(
+            base_job_name="tf-smdataparallel-mnist",
+            entry_point=script_path,
+            role="SageMakerRole",
+            framework_version="2.4.1",
+            py_version="py36",
+            instance_count=1,
+            # For training with p3dn instance use - ml.p3dn.24xlarge, with p4dn instance use - ml.p4d.24xlarge
+            instance_type="ml.p3.16xlarge",
+            sagemaker_session=sagemaker_session,
+            # Training using SMDataParallel Distributed Training Framework
+            distribution={"smdistributed": {"modelparallel": {"enabled": True}}},
+            checkpoint_local_path="/opt/ml/checkpoints",
+            checkpoint_s3_uri=os.path.join(s3_output_path, "checkpoints"),
+        )
+        tf._prepare_for_training()
+        # Debug Hook should be disabled
+        assert tf.debugger_hook_config is False
+
+        # Estimator with checkpointing enabled with Xgboost Estimator
+        xg = XGBoost(
+            base_job_name="test_xgboost",
+            entry_point=script_path,
+            role="SageMakerRole",
+            framework_version="1.2-1",
+            py_version="py3",
+            instance_count=2,
+            # For training with p3dn instance use - ml.p3dn.24xlarge, with p4dn instance use - ml.p4d.24xlarge
+            instance_type="ml.p3.16xlarge",
+            sagemaker_session=sagemaker_session,
+            # Training using SMDataParallel Distributed Training Framework
+        )
+        xg._prepare_for_training()
+        # Debug Hook should be enabled
+        assert xg.debugger_hook_config is not None
 
 
 def test_mxnet_with_rules_and_debugger_hook_config(
@@ -277,8 +527,9 @@ def test_mxnet_with_rules_and_debugger_hook_config(
                 == rule.rule_parameters["rule_to_invoke"]
             )
         assert job_description["DebugHookConfig"] == debugger_hook_config._to_request_dict()
+
         assert (
-            job_description["DebugRuleEvaluationStatuses"]
+            _get_rule_evaluation_statuses(job_description)
             == mx.latest_training_job.rule_job_summary()
         )
 
@@ -336,8 +587,9 @@ def test_mxnet_with_custom_rule_and_debugger_hook_config(
             )
             assert job_description["DebugRuleConfigurations"][index]["VolumeSizeInGB"] == 30
         assert job_description["DebugHookConfig"] == debugger_hook_config._to_request_dict()
+
         assert (
-            job_description["DebugRuleEvaluationStatuses"]
+            _get_rule_evaluation_statuses(job_description)
             == mx.latest_training_job.rule_job_summary()
         )
 
@@ -389,7 +641,6 @@ def test_mxnet_with_tensorboard_output_config(
         _wait_and_assert_that_no_rule_jobs_errored(training_job=mx.latest_training_job)
 
 
-@pytest.mark.canary_quick
 def test_mxnet_with_all_rules_and_configs(
     sagemaker_session,
     mxnet_training_latest_version,
@@ -458,7 +709,7 @@ def test_mxnet_with_all_rules_and_configs(
             == tensorboard_output_config._to_request_dict()
         )
         assert (
-            job_description["DebugRuleEvaluationStatuses"]
+            _get_rule_evaluation_statuses(job_description)
             == mx.latest_training_job.rule_job_summary()
         )
 
@@ -498,9 +749,16 @@ def test_mxnet_with_debugger_hook_config_disabled(
         job_description = mx.latest_training_job.describe()
 
         assert job_description.get("DebugHookConfig") is None
+        assert job_description.get("Environment", {}).get(DEBUGGER_FLAG) == "0"
 
 
-def _get_custom_rule(session):
+def _get_rule_evaluation_statuses(job_description):
+    debug_rule_eval_statuses = job_description.get("DebugRuleEvaluationStatuses") or []
+    profiler_rule_eval_statuses = job_description.get("ProfilerRuleEvaluationStatuses") or []
+    return debug_rule_eval_statuses + profiler_rule_eval_statuses
+
+
+def _get_custom_rule(session, actions=None):
     script_path = os.path.join(DATA_DIR, "mxnet_mnist", "my_custom_rule.py")
 
     return Rule.custom(
@@ -512,6 +770,7 @@ def _get_custom_rule(session):
         image_uri=CUSTOM_RULE_REPO_WITH_PLACEHOLDERS.format(
             CUSTOM_RULE_CONTAINERS_ACCOUNTS_MAP[session.boto_region_name], session.boto_region_name
         ),
+        actions=actions,
     )
 
 

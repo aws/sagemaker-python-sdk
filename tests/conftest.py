@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -17,12 +17,13 @@ import os
 
 import boto3
 import pytest
+import tests.integ
+
 from botocore.config import Config
 from packaging.version import Version
 
 from sagemaker import Session, image_uris, utils
 from sagemaker.local import LocalSession
-import tests.integ
 
 DEFAULT_REGION = "us-west-2"
 CUSTOM_BUCKET_NAME_PREFIX = "sagemaker-custom-bucket"
@@ -57,6 +58,7 @@ FRAMEWORKS_FOR_GENERATED_VERSION_FIXTURES = (
     "vw",
     "xgboost",
     "spark",
+    "huggingface",
 )
 
 
@@ -93,6 +95,16 @@ def boto_session(request):
         return boto3.Session(**json.loads(config))
     else:
         return boto3.Session(region_name=DEFAULT_REGION)
+
+
+@pytest.fixture(scope="session")
+def account(boto_session):
+    return boto_session.client("sts").get_caller_identity()["Account"]
+
+
+@pytest.fixture(scope="session")
+def region(boto_session):
+    return boto_session.region_name
 
 
 @pytest.fixture(scope="session")
@@ -139,6 +151,8 @@ def chainer_py_version(request):
 def mxnet_inference_py_version(mxnet_inference_version, request):
     if Version(mxnet_inference_version) < Version("1.7.0"):
         return request.param
+    elif Version(mxnet_inference_version) == Version("1.8.0"):
+        return "py37"
     else:
         return "py3"
 
@@ -147,19 +161,31 @@ def mxnet_inference_py_version(mxnet_inference_version, request):
 def mxnet_training_py_version(mxnet_training_version, request):
     if Version(mxnet_training_version) < Version("1.7.0"):
         return request.param
+    elif Version(mxnet_training_version) == Version("1.8.0"):
+        return "py37"
     else:
         return "py3"
 
 
 @pytest.fixture(scope="module", params=["py2", "py3"])
-def mxnet_eia_py_version(request):
-    return request.param
+def mxnet_eia_py_version(mxnet_eia_version, request):
+    if Version(mxnet_eia_version) < Version("1.7.0"):
+        return request.param
+    else:
+        return "py3"
+
+
+@pytest.fixture(scope="module")
+def mxnet_eia_latest_py_version():
+    return "py3"
 
 
 @pytest.fixture(scope="module", params=["py2", "py3"])
 def pytorch_training_py_version(pytorch_training_version, request):
     if Version(pytorch_training_version) < Version("1.5.0"):
         return request.param
+    elif Version(pytorch_training_version) == Version("1.7.1"):
+        return "py36"
     else:
         return "py3"
 
@@ -168,13 +194,42 @@ def pytorch_training_py_version(pytorch_training_version, request):
 def pytorch_inference_py_version(pytorch_inference_version, request):
     if Version(pytorch_inference_version) < Version("1.4.0"):
         return request.param
+    elif Version(pytorch_inference_version) == Version("1.7.1"):
+        return "py36"
     else:
         return "py3"
 
 
 @pytest.fixture(scope="module")
+def huggingface_pytorch_training_version(huggingface_training_version):
+    return _huggingface_base_fm_version(
+        huggingface_training_version, "pytorch", "huggingface_training"
+    )[0]
+
+
+@pytest.fixture(scope="module")
 def pytorch_eia_py_version():
     return "py3"
+
+
+@pytest.fixture(scope="module")
+def neo_pytorch_latest_py_version():
+    return "py3"
+
+
+@pytest.fixture(scope="module")
+def neo_pytorch_compilation_job_name():
+    return utils.name_from_base("pytorch-neo-model")
+
+
+@pytest.fixture(scope="module")
+def neo_pytorch_target_device():
+    return "ml_c5"
+
+
+@pytest.fixture(scope="module")
+def neo_pytorch_cpu_instance_type():
+    return "ml.c5.xlarge"
 
 
 @pytest.fixture(scope="module")
@@ -200,13 +255,22 @@ def tensorflow_training_py_version(tensorflow_training_version, request):
 
 @pytest.fixture(scope="module", params=["py2", "py3"])
 def tensorflow_inference_py_version(tensorflow_inference_version, request):
+    version = Version(tensorflow_inference_version)
+    if version == Version("1.15") or Version("1.15.4") <= version < Version("1.16"):
+        return "py36"
     return _tf_py_version(tensorflow_inference_version, request)
 
 
 def _tf_py_version(tf_version, request):
     version = Version(tf_version)
+    if version == Version("1.15") or Version("1.15.4") <= version < Version("1.16"):
+        return "py3"
     if version < Version("1.11"):
         return "py2"
+    if version == Version("2.0") or Version("2.0.3") <= version < Version("2.1"):
+        return "py3"
+    if version == Version("2.1") or Version("2.1.2") <= version < Version("2.2"):
+        return "py3"
     if version < Version("2.2"):
         return request.param
     return "py37"
@@ -316,6 +380,39 @@ def _generate_all_framework_version_fixtures(metafunc):
                 )
 
 
+def _huggingface_base_fm_version(huggingface_version, base_fw, fixture_prefix):
+    config = image_uris.config_for_framework("huggingface")
+    if fixture_prefix == "huggingface_training":
+        hf_config = config.get("training")
+    else:
+        hf_config = config.get("inference")
+    original_version = huggingface_version
+    if "version_aliases" in hf_config:
+        huggingface_version = hf_config.get("version_aliases").get(
+            huggingface_version, huggingface_version
+        )
+    version_config = hf_config.get("versions").get(huggingface_version)
+    versions = list()
+
+    for key in list(version_config.keys()):
+        if key.startswith(base_fw):
+            base_fw_version = key[len(base_fw) :]
+            if len(original_version.split(".")) == 2:
+                base_fw_version = ".".join(base_fw_version.split(".")[:-1])
+            versions.append(base_fw_version)
+    return versions
+
+
+def _generate_huggingface_base_fw_latest_versions(
+    metafunc, fixture_prefix, huggingface_version, base_fw
+):
+    versions = _huggingface_base_fm_version(huggingface_version, base_fw, fixture_prefix)
+    fixture_name = f"{fixture_prefix}_{base_fw}_latest_version"
+
+    if fixture_name in metafunc.fixturenames:
+        metafunc.parametrize(fixture_name, versions, scope="session")
+
+
 def _parametrize_framework_version_fixtures(metafunc, fixture_prefix, config):
     fixture_name = "{}_version".format(fixture_prefix)
     if fixture_name in metafunc.fixturenames:
@@ -328,8 +425,20 @@ def _parametrize_framework_version_fixtures(metafunc, fixture_prefix, config):
     if fixture_name in metafunc.fixturenames:
         metafunc.parametrize(fixture_name, (latest_version,), scope="session")
 
+    if "huggingface" in fixture_prefix:
+        _generate_huggingface_base_fw_latest_versions(
+            metafunc, fixture_prefix, latest_version, "pytorch"
+        )
+        _generate_huggingface_base_fw_latest_versions(
+            metafunc, fixture_prefix, latest_version, "tensorflow"
+        )
+
     fixture_name = "{}_latest_py_version".format(fixture_prefix)
     if fixture_name in metafunc.fixturenames:
         config = config["versions"]
         py_versions = config[latest_version].get("py_versions", config[latest_version].keys())
-        metafunc.parametrize(fixture_name, (sorted(py_versions)[-1],), scope="session")
+        if "repository" in py_versions or "registries" in py_versions:
+            # Config did not specify `py_versions` and is not arranged by py_version. Assume py3
+            metafunc.parametrize(fixture_name, ("py3",), scope="session")
+        else:
+            metafunc.parametrize(fixture_name, (sorted(py_versions)[-1],), scope="session")

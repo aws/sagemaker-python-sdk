@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -12,6 +12,9 @@
 # language governing permissions and limitations under the License.
 """Placeholder docstring"""
 from __future__ import print_function, absolute_import
+
+import abc
+from typing import Any, Tuple
 
 from sagemaker.deprecations import (
     deprecated_class,
@@ -29,7 +32,14 @@ from sagemaker.deserializers import (  # noqa: F401 # pylint: disable=unused-imp
     StreamDeserializer,
     StringDeserializer,
 )
-from sagemaker.model_monitor import DataCaptureConfig
+from sagemaker.model_monitor import (
+    DataCaptureConfig,
+    DefaultModelMonitor,
+    ModelBiasMonitor,
+    ModelExplainabilityMonitor,
+    ModelMonitor,
+    ModelQualityMonitor,
+)
 from sagemaker.serializers import (
     CSVSerializer,
     IdentitySerializer,
@@ -39,14 +49,34 @@ from sagemaker.serializers import (
 from sagemaker.session import production_variant, Session
 from sagemaker.utils import name_from_base
 
-from sagemaker.model_monitor.model_monitoring import (
-    DEFAULT_REPOSITORY_NAME,
-    ModelMonitor,
-    DefaultModelMonitor,
-)
+from sagemaker.model_monitor.model_monitoring import DEFAULT_REPOSITORY_NAME
+
+from sagemaker.lineage.context import EndpointContext
 
 
-class Predictor(object):
+class PredictorBase(abc.ABC):
+    """An object that encapsulates a deployed model."""
+
+    @abc.abstractmethod
+    def predict(self, *args, **kwargs) -> Any:
+        """Perform inference on the provided data and return a prediction."""
+
+    @abc.abstractmethod
+    def delete_predictor(self, *args, **kwargs) -> None:
+        """Destroy resources associated with this predictor."""
+
+    @property
+    @abc.abstractmethod
+    def content_type(self) -> str:
+        """The MIME type of the data sent to the inference server."""
+
+    @property
+    @abc.abstractmethod
+    def accept(self) -> Tuple[str]:
+        """The content type(s) that are expected from the inference server."""
+
+
+class Predictor(PredictorBase):
     """Make prediction requests to an Amazon SageMaker endpoint."""
 
     def __init__(
@@ -86,10 +116,18 @@ class Predictor(object):
         self.sagemaker_session = sagemaker_session or Session()
         self.serializer = serializer
         self.deserializer = deserializer
-        self._endpoint_config_name = self._get_endpoint_config_name()
-        self._model_names = self._get_model_names()
+        self._endpoint_config_name = None
+        self._model_names = None
+        self._context = None
 
-    def predict(self, data, initial_args=None, target_model=None, target_variant=None):
+    def predict(
+        self,
+        data,
+        initial_args=None,
+        target_model=None,
+        target_variant=None,
+        inference_id=None,
+    ):
         """Return the inference from the specified endpoint.
 
         Args:
@@ -105,8 +143,10 @@ class Predictor(object):
                 in case of a multi model endpoint. Does not apply to endpoints hosting
                 single model (Default: None)
             target_variant (str): The name of the production variant to run an inference
-            request on (Default: None). Note that the ProductionVariant identifies the model
-            you want to host and the resources you want to deploy for hosting it.
+                request on (Default: None). Note that the ProductionVariant identifies the
+                model you want to host and the resources you want to deploy for hosting it.
+            inference_id (str): If you provide a value, it is added to the captured data
+                when you enable data capture on the endpoint (Default: None).
 
         Returns:
             object: Inference for the given input. If a deserializer was specified when creating
@@ -115,27 +155,27 @@ class Predictor(object):
                 as is.
         """
 
-        request_args = self._create_request_args(data, initial_args, target_model, target_variant)
+        request_args = self._create_request_args(
+            data, initial_args, target_model, target_variant, inference_id
+        )
         response = self.sagemaker_session.sagemaker_runtime_client.invoke_endpoint(**request_args)
         return self._handle_response(response)
 
     def _handle_response(self, response):
-        """
-        Args:
-            response:
-        """
+        """Placeholder docstring"""
         response_body = response["Body"]
         content_type = response.get("ContentType", "application/octet-stream")
         return self.deserializer.deserialize(response_body, content_type)
 
-    def _create_request_args(self, data, initial_args=None, target_model=None, target_variant=None):
-        """
-        Args:
-            data:
-            initial_args:
-            target_model:
-            target_variant:
-        """
+    def _create_request_args(
+        self,
+        data,
+        initial_args=None,
+        target_model=None,
+        target_variant=None,
+        inference_id=None,
+    ):
+        """Placeholder docstring"""
         args = dict(initial_args) if initial_args else {}
 
         if "EndpointName" not in args:
@@ -152,6 +192,9 @@ class Predictor(object):
 
         if target_variant:
             args["TargetVariant"] = target_variant
+
+        if inference_id:
+            args["InferenceId"] = inference_id
 
         data = self.serializer.serialize(data)
 
@@ -215,6 +258,7 @@ class Predictor(object):
                   associated with the endpoint.
         """
         production_variants = None
+        current_model_names = self._get_model_names()
 
         if initial_instance_count or instance_type or accelerator_type or model_name:
             if instance_type is None or initial_instance_count is None:
@@ -222,17 +266,22 @@ class Predictor(object):
                     "Missing initial_instance_count and/or instance_type. Provided values: "
                     "initial_instance_count={}, instance_type={}, accelerator_type={}, "
                     "model_name={}.".format(
-                        initial_instance_count, instance_type, accelerator_type, model_name
+                        initial_instance_count,
+                        instance_type,
+                        accelerator_type,
+                        model_name,
                     )
                 )
 
             if model_name is None:
-                if len(self._model_names) > 1:
+                if len(current_model_names) > 1:
                     raise ValueError(
                         "Unable to choose a default model for a new EndpointConfig because "
-                        "the endpoint has multiple models: {}".format(", ".join(self._model_names))
+                        "the endpoint has multiple models: {}".format(
+                            ", ".join(current_model_names)
+                        )
                     )
-                model_name = self._model_names[0]
+                model_name = current_model_names[0]
             else:
                 self._model_names = [model_name]
 
@@ -244,9 +293,10 @@ class Predictor(object):
             )
             production_variants = [production_variant_config]
 
-        new_endpoint_config_name = name_from_base(self._endpoint_config_name)
+        current_endpoint_config_name = self._get_endpoint_config_name()
+        new_endpoint_config_name = name_from_base(current_endpoint_config_name)
         self.sagemaker_session.create_endpoint_config_from_existing(
-            self._endpoint_config_name,
+            current_endpoint_config_name,
             new_endpoint_config_name,
             new_tags=tags,
             new_kms_key=kms_key,
@@ -260,11 +310,13 @@ class Predictor(object):
 
     def _delete_endpoint_config(self):
         """Delete the Amazon SageMaker endpoint configuration"""
-        self.sagemaker_session.delete_endpoint_config(self._endpoint_config_name)
+        current_endpoint_config_name = self._get_endpoint_config_name()
+        self.sagemaker_session.delete_endpoint_config(current_endpoint_config_name)
 
     def delete_endpoint(self, delete_endpoint_config=True):
-        """Delete the Amazon SageMaker endpoint backing this predictor. Also
-        delete the endpoint configuration attached to it if
+        """Delete the Amazon SageMaker endpoint backing this predictor.
+
+        This also delete the endpoint configuration attached to it if
         delete_endpoint_config is True.
 
         Args:
@@ -278,11 +330,14 @@ class Predictor(object):
 
         self.sagemaker_session.delete_endpoint(self.endpoint_name)
 
+    delete_predictor = delete_endpoint
+
     def delete_model(self):
         """Deletes the Amazon SageMaker models backing this predictor."""
         request_failed = False
         failed_models = []
-        for model_name in self._model_names:
+        current_model_names = self._get_model_names()
+        for model_name in current_model_names:
             try:
                 self.sagemaker_session.delete_model(model_name)
             except Exception:  # pylint: disable=broad-except
@@ -296,8 +351,10 @@ class Predictor(object):
             )
 
     def enable_data_capture(self):
-        """Updates the DataCaptureConfig for the Predictor's associated Amazon SageMaker Endpoint
-        to enable data capture. For a more customized experience, refer to
+        """Enables data capture by updating DataCaptureConfig.
+
+        This function updates the DataCaptureConfig for the Predictor's associated Amazon SageMaker
+        Endpoint to enable data capture. For a more customized experience, refer to
         update_data_capture_config, instead.
         """
         self.update_data_capture_config(
@@ -307,8 +364,10 @@ class Predictor(object):
         )
 
     def disable_data_capture(self):
-        """Updates the DataCaptureConfig for the Predictor's associated Amazon SageMaker Endpoint
-        to disable data capture. For a more customized experience, refer to
+        """Disables data capture by updating DataCaptureConfig.
+
+        This function updates the DataCaptureConfig for the Predictor's associated Amazon SageMaker
+        Endpoint to disable data capture. For a more customized experience, refer to
         update_data_capture_config, instead.
         """
         self.update_data_capture_config(
@@ -318,8 +377,9 @@ class Predictor(object):
         )
 
     def update_data_capture_config(self, data_capture_config):
-        """Updates the DataCaptureConfig for the Predictor's associated Amazon SageMaker Endpoint
-        with the provided DataCaptureConfig.
+        """Updates the DataCaptureConfig for the Predictor's associated Amazon SageMaker Endpoint.
+
+        Update is done using the provided DataCaptureConfig.
 
         Args:
             data_capture_config (sagemaker.model_monitor.DataCaptureConfig): The
@@ -346,8 +406,10 @@ class Predictor(object):
         )
 
     def list_monitors(self):
-        """Generates ModelMonitor objects (or DefaultModelMonitors) based on the schedule(s)
-        associated with the endpoint that this predictor refers to.
+        """Generates ModelMonitor objects (or DefaultModelMonitors).
+
+        Objects are generated based on the schedule(s) associated with the endpoint
+        that this predictor refers to.
 
         Returns:
             [sagemaker.model_monitor.model_monitoring.ModelMonitor]: A list of
@@ -364,44 +426,113 @@ class Predictor(object):
         monitors = []
         for schedule_dict in monitoring_schedules_dict["MonitoringScheduleSummaries"]:
             schedule_name = schedule_dict["MonitoringScheduleName"]
-            schedule = self.sagemaker_session.describe_monitoring_schedule(
-                monitoring_schedule_name=schedule_name
+            monitoring_type = schedule_dict.get("MonitoringType")
+            clazz = self._get_model_monitor_class(schedule_name, monitoring_type)
+            monitors.append(
+                clazz.attach(
+                    monitor_schedule_name=schedule_name,
+                    sagemaker_session=self.sagemaker_session,
+                )
             )
-            image_uri = schedule["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-                "MonitoringAppSpecification"
-            ]["ImageUri"]
-            if image_uri.endswith(DEFAULT_REPOSITORY_NAME):
-                monitors.append(
-                    DefaultModelMonitor.attach(
-                        monitor_schedule_name=schedule_name,
-                        sagemaker_session=self.sagemaker_session,
-                    )
-                )
-            else:
-                monitors.append(
-                    ModelMonitor.attach(
-                        monitor_schedule_name=schedule_name,
-                        sagemaker_session=self.sagemaker_session,
-                    )
-                )
 
         return monitors
 
+    def _get_model_monitor_class(self, schedule_name, monitoring_type):
+        """Decide which ModelMonitor class the given schedule should attach to
+
+        Args:
+            schedule_name (str): The schedule to be attached.
+            monitoring_type (str): The monitoring type of the schedule
+
+        Returns:
+            sagemaker.model_monitor.ModelMonitor: ModelMonitor or a subclass of ModelMonitor.
+
+        Raises:
+            TypeError: If the class could not be decided (due to unknown monitoring type).
+        """
+        if monitoring_type == "ModelBias":
+            clazz = ModelBiasMonitor
+        elif monitoring_type == "ModelExplainability":
+            clazz = ModelExplainabilityMonitor
+        else:
+            schedule = self.sagemaker_session.describe_monitoring_schedule(
+                monitoring_schedule_name=schedule_name
+            )
+            embedded_job_definition = schedule["MonitoringScheduleConfig"].get(
+                "MonitoringJobDefinition"
+            )
+            if embedded_job_definition is not None:  # legacy v1 schedule
+                image_uri = embedded_job_definition["MonitoringAppSpecification"]["ImageUri"]
+                if image_uri.endswith(DEFAULT_REPOSITORY_NAME):
+                    clazz = DefaultModelMonitor
+                else:
+                    clazz = ModelMonitor
+            elif monitoring_type == "DataQuality":
+                clazz = DefaultModelMonitor
+            elif monitoring_type == "ModelQuality":
+                clazz = ModelQualityMonitor
+            else:
+                raise TypeError("Unknown monitoring type: {}".format(monitoring_type))
+        return clazz
+
+    def endpoint_context(self):
+        """Retrieves the lineage context object representing the endpoint.
+
+        Examples:
+            .. code-block:: python
+
+            predictor = Predictor()
+            ...
+            context = predictor.endpoint_context()
+            models = context.models()
+
+        Returns:
+            ContextEndpoint: The context for the endpoint.
+        """
+        if self._context:
+            return self._context
+
+        # retrieve endpoint by name to get arn
+        response = self.sagemaker_session.sagemaker_client.describe_endpoint(
+            EndpointName=self.endpoint_name
+        )
+        endpoint_arn = response["EndpointArn"]
+
+        # list context by source uri using arn
+        contexts = list(
+            EndpointContext.list(sagemaker_session=self.sagemaker_session, source_uri=endpoint_arn)
+        )
+
+        if len(contexts) != 0:
+            # create endpoint context object
+            self._context = EndpointContext.load(
+                sagemaker_session=self.sagemaker_session,
+                context_name=contexts[0].context_name,
+            )
+
+        return self._context
+
     def _get_endpoint_config_name(self):
         """Placeholder docstring"""
+        if self._endpoint_config_name is not None:
+            return self._endpoint_config_name
         endpoint_desc = self.sagemaker_session.sagemaker_client.describe_endpoint(
             EndpointName=self.endpoint_name
         )
-        endpoint_config_name = endpoint_desc["EndpointConfigName"]
-        return endpoint_config_name
+        self._endpoint_config_name = endpoint_desc["EndpointConfigName"]
+        return self._endpoint_config_name
 
     def _get_model_names(self):
         """Placeholder docstring"""
+        if self._model_names is not None:
+            return self._model_names
+        current_endpoint_config_name = self._get_endpoint_config_name()
         endpoint_config = self.sagemaker_session.sagemaker_client.describe_endpoint_config(
-            EndpointConfigName=self._endpoint_config_name
+            EndpointConfigName=current_endpoint_config_name
         )
         production_variants = endpoint_config["ProductionVariants"]
-        return [d["ModelName"] for d in production_variants]
+        self._model_names = [d["ModelName"] for d in production_variants]
+        return self._model_names
 
     @property
     def content_type(self):

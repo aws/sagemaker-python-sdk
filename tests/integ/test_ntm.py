@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -25,7 +25,7 @@ from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
 from tests.integ.record_set import prepare_record_set_from_local_files
 
 
-@pytest.mark.canary_quick
+@pytest.mark.release
 @pytest.mark.skip(
     reason="This test has always failed, but the failure was masked by a bug. "
     "This test should be fixed. Details in https://github.com/aws/sagemaker-python-sdk/pull/968"

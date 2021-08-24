@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -31,10 +31,17 @@ class SparkMLPredictor(Predictor):
     list.
     """
 
-    def __init__(self, endpoint_name, sagemaker_session=None, **kwargs):
-        """Initializes a SparkMLPredictor which should be used with SparkMLModel
-        to perform predictions against SparkML models serialized via MLeap. The
-        response is returned in text/csv format which is the default response
+    def __init__(
+        self,
+        endpoint_name,
+        sagemaker_session=None,
+        serializer=CSVSerializer(),
+        **kwargs,
+    ):
+        """Initializes a SparkMLPredictor which should be used with SparkMLModel.
+
+        It is used to perform predictions against SparkML models serialized via MLeap.
+        The response is returned in text/csv format which is the default response
         format for SparkML Serving container.
 
         Args:
@@ -43,24 +50,29 @@ class SparkMLPredictor(Predictor):
                 manages interactions with Amazon SageMaker APIs and any other
                 AWS services needed. If not specified, the estimator creates one
                 using the default AWS configuration chain.
+            serializer (sagemaker.serializers.BaseSerializer): Optional. Default
+                serializes input data to text/csv.
         """
         sagemaker_session = sagemaker_session or Session()
         super(SparkMLPredictor, self).__init__(
             endpoint_name=endpoint_name,
             sagemaker_session=sagemaker_session,
-            serializer=CSVSerializer(),
+            serializer=serializer,
             **kwargs,
         )
 
 
 class SparkMLModel(Model):
     """Model data and S3 location holder for MLeap serialized SparkML model.
+
     Calling :meth:`~sagemaker.model.Model.deploy` creates an Endpoint and return
     a Predictor to performs predictions against an MLeap serialized SparkML
     model .
     """
 
-    def __init__(self, model_data, role=None, spark_version=2.4, sagemaker_session=None, **kwargs):
+    def __init__(
+        self, model_data, role=None, spark_version="2.4", sagemaker_session=None, **kwargs
+    ):
         """Initialize a SparkMLModel.
 
         Args:

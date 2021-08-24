@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -20,6 +20,7 @@ import io
 import json
 
 import numpy as np
+from six import with_metaclass
 
 from sagemaker.utils import DeferredError
 
@@ -53,10 +54,46 @@ class BaseSerializer(abc.ABC):
         """The MIME type of the data sent to the inference endpoint."""
 
 
-class CSVSerializer(BaseSerializer):
+class SimpleBaseSerializer(with_metaclass(abc.ABCMeta, BaseSerializer)):
+    """Abstract base class for creation of new serializers.
+
+    This class extends the API of :class:~`sagemaker.serializers.BaseSerializer` with more
+    user-friendly options for setting the Content-Type header, in situations where it can be
+    provided at init and freely updated.
+    """
+
+    def __init__(self, content_type="application/json"):
+        """Initialize a ``SimpleBaseSerializer`` instance.
+
+        Args:
+            content_type (str): The MIME type to signal to the inference endpoint when sending
+            request data (default: "application/json").
+        """
+        super(SimpleBaseSerializer, self).__init__()
+        if not isinstance(content_type, str):
+            raise ValueError(
+                "content_type must be a string specifying the MIME type of the data sent in "
+                "requests: e.g. 'application/json', 'text/csv', etc. Got %s" % content_type
+            )
+        self.content_type = content_type
+
+    @property
+    def CONTENT_TYPE(self):
+        """The data MIME type set in the Content-Type header on prediction endpoint requests."""
+        return self.content_type
+
+
+class CSVSerializer(SimpleBaseSerializer):
     """Serialize data of various formats to a CSV-formatted string."""
 
-    CONTENT_TYPE = "text/csv"
+    def __init__(self, content_type="text/csv"):
+        """Initialize a ``CSVSerializer`` instance.
+
+        Args:
+            content_type (str): The MIME type to signal to the inference endpoint when sending
+                request data (default: "text/csv").
+        """
+        super(CSVSerializer, self).__init__(content_type=content_type)
 
     def serialize(self, data):
         """Serialize data of various formats to a CSV-formatted string.
@@ -109,17 +146,18 @@ class CSVSerializer(BaseSerializer):
         return hasattr(data, "__iter__") and hasattr(data, "__getitem__")
 
 
-class NumpySerializer(BaseSerializer):
+class NumpySerializer(SimpleBaseSerializer):
     """Serialize data to a buffer using the .npy format."""
 
-    CONTENT_TYPE = "application/x-npy"
-
-    def __init__(self, dtype=None):
-        """Initialize the dtype.
+    def __init__(self, dtype=None, content_type="application/x-npy"):
+        """Initialize a ``NumpySerializer`` instance.
 
         Args:
+            content_type (str): The MIME type to signal to the inference endpoint when sending
+                request data (default: "application/x-npy").
             dtype (str): The dtype of the data.
         """
+        super(NumpySerializer, self).__init__(content_type=content_type)
         self.dtype = dtype
 
     def serialize(self, data):
@@ -162,10 +200,8 @@ class NumpySerializer(BaseSerializer):
         return buffer.getvalue()
 
 
-class JSONSerializer(BaseSerializer):
+class JSONSerializer(SimpleBaseSerializer):
     """Serialize data to a JSON formatted string."""
-
-    CONTENT_TYPE = "application/json"
 
     def serialize(self, data):
         """Serialize data of various formats to a JSON formatted string.
@@ -193,17 +229,21 @@ class JSONSerializer(BaseSerializer):
         return json.dumps(data)
 
 
-class IdentitySerializer(BaseSerializer):
-    """Serialize data by returning data without modification."""
+class IdentitySerializer(SimpleBaseSerializer):
+    """Serialize data by returning data without modification.
+
+    This serializer may be useful if, for example, you're sending raw bytes such as from an image
+    file's .read() method.
+    """
 
     def __init__(self, content_type="application/octet-stream"):
-        """Initialize the ``content_type`` attribute.
+        """Initialize an ``IdentitySerializer`` instance.
 
         Args:
-            content_type (str): The MIME type of the serialized data (default:
-                "application/octet-stream").
+            content_type (str): The MIME type to signal to the inference endpoint when sending
+                request data (default: "application/octet-stream").
         """
-        self.content_type = content_type
+        super(IdentitySerializer, self).__init__(content_type=content_type)
 
     def serialize(self, data):
         """Return data without modification.
@@ -216,16 +256,18 @@ class IdentitySerializer(BaseSerializer):
         """
         return data
 
-    @property
-    def CONTENT_TYPE(self):
-        """The MIME type of the data sent to the inference endpoint."""
-        return self.content_type
 
-
-class JSONLinesSerializer(BaseSerializer):
+class JSONLinesSerializer(SimpleBaseSerializer):
     """Serialize data to a JSON Lines formatted string."""
 
-    CONTENT_TYPE = "application/jsonlines"
+    def __init__(self, content_type="application/jsonlines"):
+        """Initialize a ``JSONLinesSerializer`` instance.
+
+        Args:
+            content_type (str): The MIME type to signal to the inference endpoint when sending
+                request data (default: "application/jsonlines").
+        """
+        super(JSONLinesSerializer, self).__init__(content_type=content_type)
 
     def serialize(self, data):
         """Serialize data of various formats to a JSON Lines formatted string.
@@ -250,10 +292,17 @@ class JSONLinesSerializer(BaseSerializer):
         raise ValueError("Object of type %s is not JSON Lines serializable." % type(data))
 
 
-class SparseMatrixSerializer(BaseSerializer):
+class SparseMatrixSerializer(SimpleBaseSerializer):
     """Serialize a sparse matrix to a buffer using the .npz format."""
 
-    CONTENT_TYPE = "application/x-npz"
+    def __init__(self, content_type="application/x-npz"):
+        """Initialize a ``SparseMatrixSerializer`` instance.
+
+        Args:
+            content_type (str): The MIME type to signal to the inference endpoint when sending
+                request data (default: "application/x-npz").
+        """
+        super(SparseMatrixSerializer, self).__init__(content_type=content_type)
 
     def serialize(self, data):
         """Serialize a sparse matrix to a buffer using the .npz format.
@@ -272,7 +321,7 @@ class SparseMatrixSerializer(BaseSerializer):
         return buffer.getvalue()
 
 
-class LibSVMSerializer(BaseSerializer):
+class LibSVMSerializer(SimpleBaseSerializer):
     """Serialize data of various formats to a LibSVM-formatted string.
 
     The data must already be in LIBSVM file format:
@@ -282,7 +331,14 @@ class LibSVMSerializer(BaseSerializer):
     features.
     """
 
-    CONTENT_TYPE = "text/libsvm"
+    def __init__(self, content_type="text/libsvm"):
+        """Initialize a ``LibSVMSerializer`` instance.
+
+        Args:
+            content_type (str): The MIME type to signal to the inference endpoint when sending
+                request data (default: "text/libsvm").
+        """
+        super(LibSVMSerializer, self).__init__(content_type=content_type)
 
     def serialize(self, data):
         """Serialize data of various formats to a LibSVM-formatted string.

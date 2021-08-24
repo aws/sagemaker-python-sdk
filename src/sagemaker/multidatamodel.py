@@ -1,4 +1,4 @@
-# Copyright 2019-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -27,9 +27,9 @@ MULTI_MODEL_CONTAINER_MODE = "MultiModel"
 
 
 class MultiDataModel(Model):
-    """A SageMaker ``MultiDataModel`` that can be used to deploy multiple models to the same
-    SageMaker ``Endpoint``, and also deploy additional models to an existing SageMaker
-    multi-model ``Endpoint``
+    """SageMaker ``MultiDataModel`` can be used to deploy multiple models to the same ``Endpoint``.
+
+    And also deploy additional models to an existing SageMaker multi-model ``Endpoint``
     """
 
     def __init__(
@@ -42,8 +42,9 @@ class MultiDataModel(Model):
         sagemaker_session=None,
         **kwargs,
     ):
-        """Initialize a ``MultiDataModel``. In addition to these arguments, it supports all
-           arguments supported by ``Model`` constructor
+        """Initialize a ``MultiDataModel``.
+
+        Addition to these arguments, it supports all arguments supported by ``Model`` constructor.
 
         Args:
             name (str): The model name.
@@ -115,8 +116,10 @@ class MultiDataModel(Model):
             )
 
     def prepare_container_def(self, instance_type=None, accelerator_type=None):
-        """Return a container definition set with MultiModel mode,
-        model data and other parameters from the model (if available).
+        """Return a container definition set.
+
+        Definition set includes MultiModel mode, model data and other parameters
+        from the model (if available).
 
         Subclasses can override this to provide custom container definitions
         for deployment to a specific instance type. Called by ``deploy()``.
@@ -271,8 +274,10 @@ class MultiDataModel(Model):
         return None
 
     def add_model(self, model_data_source, model_data_path=None):
-        """Adds a model to the ``MultiDataModel`` by uploading or copying the model_data_source
-         artifact to the given S3 path model_data_path relative to model_data_prefix
+        """Adds a model to the ``MultiDataModel``.
+
+        It is done by uploading or copying the model_data_source artifact to the given
+        S3 path model_data_path relative to model_data_prefix
 
         Args:
             model_source: Valid local file path or S3 path of the trained model artifact
@@ -320,8 +325,9 @@ class MultiDataModel(Model):
         )
 
     def list_models(self):
-        """Generates and returns relative paths to model archives stored at model_data_prefix
-        S3 location.
+        """Generates and returns relative paths to model archives.
+
+        Archives are stored at model_data_prefix S3 location.
 
         Yields: Paths to model archives relative to model_data_prefix path.
         """

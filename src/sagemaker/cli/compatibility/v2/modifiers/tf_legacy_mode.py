@@ -1,4 +1,4 @@
-# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -10,8 +10,9 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Classes to modify TensorFlow legacy mode code to be compatible
-with version 2.0 and later of the SageMaker Python SDK.
+"""Classes to modify TensorFlow legacy mode code to be compatible with version 2.0 and later.
+
+Classes to be used for the SageMaker Python SDK.
 """
 from __future__ import absolute_import
 
@@ -34,8 +35,10 @@ LEGACY_MODE_PARAMETERS = (
 
 
 class TensorFlowLegacyModeConstructorUpgrader(Modifier):
-    """A class to turn legacy mode parameters into hyperparameters, disable the ``model_dir``
-    hyperparameter, and set the image URI when instantiating a TensorFlow estimator.
+    """A class to turn legacy mode parameters into hyperparameters.
+
+    It also disables the ``model_dir`` hyperparameter, and set the
+    image URI when instantiating a TensorFlow estimator.
     """
 
     def __init__(self):
@@ -88,7 +91,9 @@ class TensorFlowLegacyModeConstructorUpgrader(Modifier):
         return not (py_version.startswith("py3") or script_mode)
 
     def modify_node(self, node):
-        """Modifies the ``ast.Call`` node's keywords to turn TensorFlow legacy mode parameters
+        """Modifies the ``ast.Call`` node's keywords.
+
+        The keywords are modified to turn TensorFlow legacy mode parameters
         into hyperparameters and sets ``model_dir=False``.
 
         The parameters that are converted into hyperparameters:
@@ -189,8 +194,10 @@ class TensorBoardParameterRemover(Modifier):
     """A class for removing the ``run_tensorboard_locally`` parameter from ``fit()``."""
 
     def node_should_be_modified(self, node):
-        """Checks if the ``ast.Call`` node invokes a function named "fit" and
-        contains a keyword argument named "run_tensorboard_locally".
+        """Checks ``ast.Call`` node and returns boolean.
+
+        If the ``ast.Call`` node invokes a function named "fit" and
+        contains a keyword argument named "run_tensorboard_locally" returns boolean.
 
         Args:
             node (ast.Call): a node that represents a function call. For more,

@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -23,13 +23,14 @@ from sagemaker import s3
 
 
 def copy_directory_structure(destination_directory, relative_path):
-    """Create all the intermediate directories required for relative_path to
+    """Creates intermediate directory structure for relative_path.
+
+    Create all the intermediate directories required for relative_path to
     exist within destination_directory. This assumes that relative_path is a
     directory located within root_dir.
 
     Examples:
         destination_directory: /tmp/destination relative_path: test/unit/
-
         will create: /tmp/destination/test/unit
 
     Args:
@@ -77,8 +78,9 @@ def move_to_destination(source, destination, job_name, sagemaker_session):
 
 
 def recursive_copy(source, destination):
-    """A wrapper around distutils.dir_util.copy_tree but won't throw any
-    exception when the source directory does not exist.
+    """A wrapper around distutils.dir_util.copy_tree.
+
+    This won't throw any exception when the source directory does not exist.
 
     Args:
         source (str): source path

@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -83,7 +83,7 @@ def test_all_hyperparameters(sagemaker_session):
         max_restarts=3,
         max_iterations=10,
         tol=3.3,
-        **ALL_REQ_ARGS
+        **ALL_REQ_ARGS,
     )
     assert lda.hyperparameters() == dict(
         num_topics=str(ALL_REQ_ARGS["num_topics"]),
@@ -232,3 +232,27 @@ def test_predictor_type(sagemaker_session):
     predictor = model.deploy(1, INSTANCE_TYPE)
 
     assert isinstance(predictor, LDAPredictor)
+
+
+def test_predictor_custom_serialization(sagemaker_session):
+    lda = LDA(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
+    data = RecordSet(
+        "s3://{}/{}".format(BUCKET_NAME, PREFIX),
+        num_records=1,
+        feature_dim=FEATURE_DIM,
+        channel="train",
+    )
+    lda.fit(data, MINI_BATCH_SZIE)
+    model = lda.create_model()
+    custom_serializer = Mock()
+    custom_deserializer = Mock()
+    predictor = model.deploy(
+        1,
+        INSTANCE_TYPE,
+        serializer=custom_serializer,
+        deserializer=custom_deserializer,
+    )
+
+    assert isinstance(predictor, LDAPredictor)
+    assert predictor.serializer is custom_serializer
+    assert predictor.deserializer is custom_deserializer

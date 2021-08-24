@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -56,7 +56,7 @@ class DummyFrameworkModel(FrameworkModel):
             ROLE,
             ENTRY_POINT,
             sagemaker_session=sagemaker_session,
-            **kwargs
+            **kwargs,
         )
 
     def create_predictor(self, endpoint_name):
@@ -71,7 +71,7 @@ class DummyFrameworkModelForGit(FrameworkModel):
             ROLE,
             entry_point=entry_point,
             sagemaker_session=sagemaker_session,
-            **kwargs
+            **kwargs,
         )
 
     def create_predictor(self, endpoint_name):

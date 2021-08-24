@@ -7,3 +7,8 @@ Make real-time predictions against SageMaker endpoints with Python objects
     :members:
     :undoc-members:
     :show-inheritance:
+
+.. autoclass:: sagemaker.serverless.predictor.LambdaPredictor
+    :members:
+    :undoc-members:
+    :show-inheritance:

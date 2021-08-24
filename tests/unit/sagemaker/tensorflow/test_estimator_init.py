@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -20,6 +20,8 @@ from sagemaker.tensorflow import TensorFlow
 
 REGION = "us-west-2"
 
+ENV_INPUT = {"env_key1": "env_val1", "env_key2": "env_val2", "env_key3": "env_val3"}
+
 
 @pytest.fixture()
 def sagemaker_session():
@@ -33,7 +35,7 @@ def _build_tf(sagemaker_session, **kwargs):
         role="dummy-role",
         instance_count=1,
         instance_type="ml.c4.xlarge",
-        **kwargs
+        **kwargs,
     )
 
 
@@ -66,6 +68,26 @@ def test_py2_version_is_not_deprecated(sagemaker_session):
 def test_framework_name(sagemaker_session):
     tf = _build_tf(sagemaker_session, framework_version="1.15.2", py_version="py3")
     assert tf._framework_name == "tensorflow"
+
+
+def test_tf_add_environment_variables(sagemaker_session):
+    tf = _build_tf(
+        sagemaker_session,
+        framework_version="1.15.2",
+        py_version="py3",
+        environment=ENV_INPUT,
+    )
+    assert tf.environment == ENV_INPUT
+
+
+def test_tf_miss_environment_variables(sagemaker_session):
+    tf = _build_tf(
+        sagemaker_session,
+        framework_version="1.15.2",
+        py_version="py3",
+        environment=None,
+    )
+    assert not tf.environment
 
 
 def test_enable_sm_metrics(sagemaker_session):

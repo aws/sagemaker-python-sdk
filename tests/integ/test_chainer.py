@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -70,7 +70,6 @@ def test_training_with_additional_hyperparameters(
     chainer.fit({"train": train_input, "test": test_input})
 
 
-@pytest.mark.canary_quick
 def test_attach_deploy(
     sagemaker_session, chainer_latest_version, chainer_latest_py_version, cpu_instance_type
 ):

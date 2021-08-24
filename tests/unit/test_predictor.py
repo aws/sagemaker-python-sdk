@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -19,6 +19,7 @@ import pytest
 from mock import Mock, call, patch
 
 from sagemaker.deserializers import CSVDeserializer, PandasDeserializer
+from sagemaker.model_monitor.model_monitoring import DEFAULT_REPOSITORY_NAME
 from sagemaker.predictor import Predictor
 from sagemaker.serializers import JSONSerializer, CSVSerializer
 
@@ -30,8 +31,9 @@ DEFAULT_ACCEPT = "*/*"
 RETURN_VALUE = 0
 CSV_RETURN_VALUE = "1,2,3\r\n"
 PRODUCTION_VARIANT_1 = "PRODUCTION_VARIANT_1"
+INFERENCE_ID = "inference-id"
 
-ENDPOINT_DESC = {"EndpointConfigName": ENDPOINT}
+ENDPOINT_DESC = {"EndpointArn": "foo", "EndpointConfigName": ENDPOINT}
 
 ENDPOINT_CONFIG_DESC = {"ProductionVariants": [{"ModelName": "model-1"}, {"ModelName": "model-2"}]}
 
@@ -60,6 +62,8 @@ def test_predict_call_pass_through():
     result = predictor.predict(data)
 
     assert sagemaker_session.sagemaker_runtime_client.invoke_endpoint.called
+    assert sagemaker_session.sagemaker_client.describe_endpoint.not_called
+    assert sagemaker_session.sagemaker_client.describe_endpoint_config.not_called
 
     expected_request_args = {
         "Accept": DEFAULT_ACCEPT,
@@ -89,6 +93,29 @@ def test_predict_call_with_target_variant():
         "ContentType": DEFAULT_CONTENT_TYPE,
         "EndpointName": ENDPOINT,
         "TargetVariant": PRODUCTION_VARIANT_1,
+    }
+
+    call_args, kwargs = sagemaker_session.sagemaker_runtime_client.invoke_endpoint.call_args
+    assert kwargs == expected_request_args
+
+    assert result == RETURN_VALUE
+
+
+def test_predict_call_with_inference_id():
+    sagemaker_session = empty_sagemaker_session()
+    predictor = Predictor(ENDPOINT, sagemaker_session)
+
+    data = "untouched"
+    result = predictor.predict(data, inference_id=INFERENCE_ID)
+
+    assert sagemaker_session.sagemaker_runtime_client.invoke_endpoint.called
+
+    expected_request_args = {
+        "Accept": DEFAULT_ACCEPT,
+        "Body": data,
+        "ContentType": DEFAULT_CONTENT_TYPE,
+        "EndpointName": ENDPOINT,
+        "InferenceId": INFERENCE_ID,
     }
 
     call_args, kwargs = sagemaker_session.sagemaker_runtime_client.invoke_endpoint.call_args
@@ -417,3 +444,153 @@ def test_delete_model_fail():
     with pytest.raises(Exception) as exception:
         predictor.delete_model()
         assert expected_error_message in str(exception.val)
+
+
+def context_sagemaker_session(summaries=True):
+    ims = Mock(name="sagemaker_session")
+    ims.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)
+    ims.sagemaker_client.describe_endpoint_config = Mock(return_value=ENDPOINT_CONFIG_DESC)
+
+    if summaries:
+        ims.sagemaker_client.list_contexts = Mock(
+            return_value={"ContextSummaries": [{"ContextName": "bar"}]}
+        )
+    else:
+        ims.sagemaker_client.list_contexts = Mock(return_value={"ContextSummaries": []})
+
+    ims.sagemaker_client.describe_context = Mock(
+        return_value={
+            "ContextArn": "foo",
+            "ContextName": "bar",
+        }
+    )
+
+    response_body = Mock("body")
+    response_body.read = Mock("read", return_value=json.dumps([RETURN_VALUE]))
+    response_body.close = Mock("close", return_value=None)
+    ims.sagemaker_runtime_client.invoke_endpoint = Mock(
+        name="invoke_endpoint",
+        return_value={"Body": response_body, "ContentType": "application/json"},
+    )
+    return ims
+
+
+def test_endpoint_context_success():
+    session = context_sagemaker_session()
+    pdctr = Predictor(ENDPOINT, sagemaker_session=session)
+
+    context = pdctr.endpoint_context()
+
+    assert context
+
+
+def test_endpoint_context_fail():
+    session = context_sagemaker_session(summaries=False)
+    pdctr = Predictor(ENDPOINT, sagemaker_session=session)
+
+    context = pdctr.endpoint_context()
+
+    assert not context
+
+
+@patch("sagemaker.predictor.ModelExplainabilityMonitor.attach")
+@patch("sagemaker.predictor.ModelBiasMonitor.attach")
+@patch("sagemaker.predictor.ModelQualityMonitor.attach")
+@patch("sagemaker.predictor.ModelMonitor.attach")
+@patch("sagemaker.predictor.DefaultModelMonitor.attach")
+def test_list_monitors(default_model_monitor_attach, *attach_methods):
+    sagemaker_session = empty_sagemaker_session()
+    sagemaker_session.list_monitoring_schedules = Mock(
+        return_value={
+            "MonitoringScheduleSummaries": [
+                {
+                    "MonitoringScheduleName": "default-monitor",
+                },
+                {
+                    "MonitoringScheduleName": "byoc-monitor",
+                },
+                {
+                    "MonitoringScheduleName": "data-quality-monitor",
+                    "MonitoringType": "DataQuality",
+                },
+                {
+                    "MonitoringScheduleName": "model-quality-monitor",
+                    "MonitoringType": "ModelQuality",
+                },
+                {
+                    "MonitoringScheduleName": "model-bias-monitor",
+                    "MonitoringType": "ModelBias",
+                },
+                {
+                    "MonitoringScheduleName": "model-explainability-monitor",
+                    "MonitoringType": "ModelExplainability",
+                },
+            ]
+        }
+    )
+    sagemaker_session.describe_monitoring_schedule = Mock(
+        side_effect=[
+            {
+                "MonitoringScheduleConfig": {
+                    "MonitoringJobDefinition": {
+                        "MonitoringAppSpecification": {
+                            "ImageUri": DEFAULT_REPOSITORY_NAME,
+                        }
+                    }
+                }
+            },
+            {
+                "MonitoringScheduleConfig": {
+                    "MonitoringJobDefinition": {
+                        "MonitoringAppSpecification": {
+                            "ImageUri": "byoc-image",
+                        }
+                    }
+                }
+            },
+            {
+                "MonitoringScheduleConfig": {
+                    "MonitoringType": "DataQuality",
+                    "MonitoringJobDefinitionName": "data-quality-job-definition",
+                }
+            },
+            {
+                "MonitoringScheduleConfig": {
+                    "MonitoringType": "ModelQuality",
+                    "MonitoringJobDefinitionName": "model-quality-job-definition",
+                }
+            },
+        ]
+    )
+    predictor = Predictor(ENDPOINT, sagemaker_session=sagemaker_session)
+    predictor.list_monitors()
+    for attach_method in attach_methods:
+        attach_method.assert_called_once()
+    assert default_model_monitor_attach.call_count == 2
+
+
+def test_list_monitors_unknown_monitoring_type():
+    sagemaker_session = empty_sagemaker_session()
+    sagemaker_session.list_monitoring_schedules = Mock(
+        return_value={
+            "MonitoringScheduleSummaries": [
+                {
+                    "MonitoringScheduleName": "model-explainability-monitor",
+                    "MonitoringType": "UnknownType",
+                },
+            ]
+        }
+    )
+    sagemaker_session.describe_monitoring_schedule = Mock(
+        side_effect=[
+            {
+                "MonitoringScheduleConfig": {
+                    "MonitoringType": "UnknownType",
+                    "MonitoringJobDefinitionName": "unknown-job-definition",
+                }
+            },
+        ]
+    )
+    predictor = Predictor(ENDPOINT, sagemaker_session=sagemaker_session)
+    with pytest.raises(TypeError):
+        predictor.list_monitors()

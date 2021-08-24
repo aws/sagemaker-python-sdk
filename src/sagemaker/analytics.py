@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -22,6 +22,7 @@ from six import with_metaclass
 
 from sagemaker.session import Session
 from sagemaker.utils import DeferredError
+from sagemaker.lineage import artifact
 
 logger = logging.getLogger(__name__)
 
@@ -36,11 +37,13 @@ METRICS_PERIOD_DEFAULT = 60  # seconds
 
 
 class AnalyticsMetricsBase(with_metaclass(ABCMeta, object)):
-    """Base class for tuning job or training job analytics classes. Understands
-    common functionality like persistence and caching.
+    """Base class for tuning job or training job analytics classes.
+
+    Understands common functionality like persistence and caching.
     """
 
     def __init__(self):
+        """Initializes ``AnalyticsMetricsBase`` instance."""
         self._dataframe = None
 
     def export_csv(self, filename):
@@ -52,9 +55,10 @@ class AnalyticsMetricsBase(with_metaclass(ABCMeta, object)):
         self.dataframe().to_csv(filename)
 
     def dataframe(self, force_refresh=False):
-        """A pandas dataframe with lots of interesting results about this
-        object. Created by calling SageMaker List and Describe APIs and
-        converting them into a convenient tabular summary.
+        """A pandas dataframe with lots of interesting results about this object.
+
+        Created by calling SageMaker List and Describe APIs and converting them into a
+        convenient tabular summary.
 
         Args:
             force_refresh (bool): Set to True to fetch the latest data from
@@ -71,17 +75,15 @@ class AnalyticsMetricsBase(with_metaclass(ABCMeta, object)):
         """Sub-class must calculate the dataframe and return it."""
 
     def clear_cache(self):
-        """Clear the object of all local caches of API methods, so that the next
-        time any properties are accessed they will be refreshed from the
-        service.
+        """Clear the object of all local caches of API methods.
+
+        So that the next time any properties are accessed they will be refreshed from the service.
         """
         self._dataframe = None
 
 
 class HyperparameterTuningJobAnalytics(AnalyticsMetricsBase):
-    """Fetch results about a hyperparameter tuning job and make them accessible
-    for analytics.
-    """
+    """Fetch results about a hyperparameter tuning job and make them accessible for analytics."""
 
     def __init__(self, hyperparameter_tuning_job_name, sagemaker_session=None):
         """Initialize a ``HyperparameterTuningJobAnalytics`` instance.
@@ -156,8 +158,9 @@ class HyperparameterTuningJobAnalytics(AnalyticsMetricsBase):
 
     @property
     def tuning_ranges(self):
-        """A dictionary describing the ranges of all tuned hyperparameters. The
-        keys are the names of the hyperparameter, and the values are the ranges.
+        """A dictionary describing the ranges of all tuned hyperparameters.
+
+        The keys are the names of the hyperparameter, and the values are the ranges.
 
         The output can take one of two forms:
 
@@ -216,8 +219,7 @@ class HyperparameterTuningJobAnalytics(AnalyticsMetricsBase):
         return out
 
     def description(self, force_refresh=False):
-        """Call ``DescribeHyperParameterTuningJob`` for the hyperparameter
-        tuning job.
+        """Call ``DescribeHyperParameterTuningJob`` for the hyperparameter tuning job.
 
         Args:
             force_refresh (bool): Set to True to fetch the latest data from
@@ -236,8 +238,7 @@ class HyperparameterTuningJobAnalytics(AnalyticsMetricsBase):
         return self._tuning_job_describe_result
 
     def training_job_summaries(self, force_refresh=False):
-        """A (paginated) list of everything from
-        ``ListTrainingJobsForTuningJob``.
+        """A (paginated) list of everything from ``ListTrainingJobsForTuningJob``.
 
         Args:
             force_refresh (bool): Set to True to fetch the latest data from
@@ -270,9 +271,7 @@ class HyperparameterTuningJobAnalytics(AnalyticsMetricsBase):
 
 
 class TrainingJobAnalytics(AnalyticsMetricsBase):
-    """Fetch training curve data from CloudWatch Metrics for a specific training
-    job.
-    """
+    """Fetch training curve data from CloudWatch Metrics for a specific training job."""
 
     CLOUDWATCH_NAMESPACE = "/aws/sagemaker/TrainingJobs"
 
@@ -425,6 +424,75 @@ class TrainingJobAnalytics(AnalyticsMetricsBase):
         return metric_names
 
 
+class ArtifactAnalytics(AnalyticsMetricsBase):
+    """Fetch artifact data and make them accessible for analytics."""
+
+    def __init__(
+        self,
+        sort_by=None,
+        sort_order=None,
+        source_uri=None,
+        artifact_type=None,
+        sagemaker_session=None,
+    ):
+        """Initialize a ``ArtifactAnalytics`` instance.
+
+        Args:
+            sort_by (str, optional): The name of the resource property used to sort
+                the set of artifacts. Currently only support for sort by Name
+            sort_order(str optional): How trial components are ordered, valid values are Ascending
+                and Descending. The default is Descending.
+            source_uri(dict optional): The artifact source uri for filtering.
+            artifact_type(dict optional): The artifact type for filtering.
+            sagemaker_session (obj, optional): Sagemaker session. Defaults to None.
+        """
+        self._sort_by = sort_by if sort_by == "Name" else None
+        self._sort_order = sort_order
+        self._source_uri = source_uri
+        self._artifact_type = artifact_type
+        self._sagemaker_session = sagemaker_session
+        super(ArtifactAnalytics, self).__init__()
+        self.clear_cache()
+
+    def __repr__(self):
+        """Human-readable representation override."""
+        return "<sagemaker.ArtifactAnalytics>"
+
+    def _reshape_source_type(self, artifact_source_types):
+        """Reshape artifact source type."""
+        out = OrderedDict()
+        for artifact_source_type in artifact_source_types:
+            out["ArtifactSourceType"] = artifact_source_type
+        return out
+
+    def _reshape(self, artifact_summary):
+        """Reshape artifact summary."""
+        out = OrderedDict()
+        out["ArtifactName"] = artifact_summary.artifact_name
+        out["ArtifactArn"] = artifact_summary.artifact_arn
+        out["ArtifactType"] = artifact_summary.artifact_type
+        out["ArtifactSourceUri"] = artifact_summary.source.source_uri
+        out["CreationTime"] = artifact_summary.creation_time
+        out["LastModifiedTime"] = artifact_summary.last_modified_time
+        return out
+
+    def _fetch_dataframe(self):
+        """Return a pandas dataframe with all artifacts."""
+        df = pd.DataFrame([self._reshape(artifact) for artifact in self._get_list_artifacts()])
+        return df
+
+    def _get_list_artifacts(self):
+        """List artifacts."""
+        artifacts = artifact.Artifact.list(
+            source_uri=self._source_uri,
+            artifact_type=self._artifact_type,
+            sort_by=self._sort_by,
+            sort_order=self._sort_order,
+            sagemaker_session=self._sagemaker_session,
+        )
+        return artifacts
+
+
 class ExperimentAnalytics(AnalyticsMetricsBase):
     """Fetch trial component data and make them accessible for analytics."""
 
@@ -486,7 +554,7 @@ class ExperimentAnalytics(AnalyticsMetricsBase):
 
     @property
     def name(self):
-        """Name of the Experiment being analyzed"""
+        """Name of the Experiment being analyzed."""
         return self._experiment_name
 
     def __repr__(self):
@@ -499,7 +567,8 @@ class ExperimentAnalytics(AnalyticsMetricsBase):
         self._trial_components = None
 
     def _reshape_parameters(self, parameters):
-        """Reshape trial component parameters to a pandas column
+        """Reshape trial component parameters to a pandas column.
+
         Args:
             parameters: trial component parameters
         Returns:
@@ -513,7 +582,8 @@ class ExperimentAnalytics(AnalyticsMetricsBase):
         return out
 
     def _reshape_metrics(self, metrics):
-        """Reshape trial component metrics to a pandas column
+        """Reshape trial component metrics to a pandas column.
+
         Args:
             metrics: trial component metrics
         Returns:
@@ -533,7 +603,8 @@ class ExperimentAnalytics(AnalyticsMetricsBase):
         return out
 
     def _reshape_artifacts(self, artifacts, _artifact_names):
-        """Reshape trial component input/output artifacts to a pandas column
+        """Reshape trial component input/output artifacts to a pandas column.
+
         Args:
             artifacts: trial component input/output artifacts
         Returns:
@@ -548,7 +619,8 @@ class ExperimentAnalytics(AnalyticsMetricsBase):
         return out
 
     def _reshape_parents(self, parents):
-        """Reshape trial component parents to a pandas column
+        """Reshape trial component parents to a pandas column.
+
         Args:
             parents: trial component parents (trials and experiments)
         Returns:
@@ -565,7 +637,8 @@ class ExperimentAnalytics(AnalyticsMetricsBase):
         return out
 
     def _reshape(self, trial_component):
-        """Reshape trial component data to pandas columns
+        """Reshape trial component data to pandas columns.
+
         Args:
             trial_component: dict representing a trial component
         Returns:
@@ -595,9 +668,8 @@ class ExperimentAnalytics(AnalyticsMetricsBase):
         return out
 
     def _fetch_dataframe(self):
-        """Return a pandas dataframe with all the trial_components,
-        along with their parameters and metrics.
-        """
+        """Return a pandas dataframe includes all the trial_components."""
+
         df = pd.DataFrame([self._reshape(component) for component in self._get_trial_components()])
         return df
 
@@ -633,8 +705,7 @@ class ExperimentAnalytics(AnalyticsMetricsBase):
         return self._search(self._search_expression, self._sort_by, self._sort_order)
 
     def _search(self, search_expression, sort_by, sort_order):
-        """
-        Perform a search query using SageMaker Search and return the matching trial components
+        """Perform a search query using SageMaker Search and return the matching trial components.
 
         Args:
             search_expression: Search expression to filter trial components.

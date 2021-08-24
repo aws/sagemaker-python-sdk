@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -86,7 +86,7 @@ def test_init_enable_network_isolation(sagemaker_session):
         num_components=55,
         sagemaker_session=sagemaker_session,
         enable_network_isolation=True,
-        **COMMON_ARGS
+        **COMMON_ARGS,
     )
     assert pca.num_components == 55
     assert pca.enable_network_isolation() is True
@@ -99,7 +99,7 @@ def test_init_all_pca_hyperparameters(sagemaker_session):
         subtract_mean=True,
         extra_components=33,
         sagemaker_session=sagemaker_session,
-        **COMMON_ARGS
+        **COMMON_ARGS,
     )
     assert pca.num_components == 55
     assert pca.algorithm_mode == "randomized"
@@ -112,7 +112,7 @@ def test_init_estimator_args(sagemaker_session):
         max_run=1234,
         sagemaker_session=sagemaker_session,
         data_location="s3://some-bucket/some-key/",
-        **COMMON_ARGS
+        **COMMON_ARGS,
     )
     assert pca.instance_type == COMMON_ARGS["instance_type"]
     assert pca.instance_count == COMMON_ARGS["instance_count"]
@@ -133,7 +133,7 @@ def test_data_location_does_not_call_default_bucket(sagemaker_session):
         num_components=2,
         sagemaker_session=sagemaker_session,
         data_location=data_location,
-        **COMMON_ARGS
+        **COMMON_ARGS,
     )
     assert pca.data_location == data_location
     assert not sagemaker_session.default_bucket.called
@@ -205,7 +205,7 @@ def test_fit_ndarray(time, sagemaker_session):
         num_components=55,
         sagemaker_session=sagemaker_session,
         data_location="s3://{}/key-prefix/".format(BUCKET_NAME),
-        **kwargs
+        **kwargs,
     )
     train = [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 8.0], [44.0, 55.0, 66.0]]
     labels = [99, 85, 87, 2]
@@ -233,7 +233,7 @@ def test_fit_pass_experiment_config(sagemaker_session):
         num_components=55,
         sagemaker_session=sagemaker_session,
         data_location="s3://{}/key-prefix/".format(BUCKET_NAME),
-        **kwargs
+        **kwargs,
     )
     train = [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 8.0], [44.0, 55.0, 66.0]]
     labels = [99, 85, 87, 2]

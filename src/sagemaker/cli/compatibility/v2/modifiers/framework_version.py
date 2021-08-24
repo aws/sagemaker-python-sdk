@@ -1,4 +1,4 @@
-# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -49,13 +49,12 @@ MODELS = {
 
 
 class FrameworkVersionEnforcer(Modifier):
-    """A class to ensure that ``framework_version`` is defined when
-    instantiating a framework estimator or model.
-    """
+    """Ensures that ``framework_version`` is defined when instantiating a framework estimator."""
 
     def node_should_be_modified(self, node):
-        """Checks if the ast.Call node instantiates a framework estimator or model,
-        but doesn't specify the ``framework_version`` and ``py_version`` parameter,
+        """Checks if the ast.Call node instantiates a framework estimator or model.
+
+        It doesn't specify the ``framework_version`` and ``py_version`` parameter,
         as appropriate.
 
         This looks for the following formats:

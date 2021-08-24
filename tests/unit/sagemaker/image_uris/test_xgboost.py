@@ -1,4 +1,4 @@
-# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -46,7 +46,7 @@ ALGO_REGISTRIES = {
 }
 ALGO_VERSIONS = ("1", "latest")
 XGBOOST_FRAMEWORK_CPU_ONLY_VERSIONS = ("0.90-2", "0.90-1", "1.0-1")
-XGBOOST_FRAMEWORK_CPU_GPU_VERSIONS = ("1.2-1",)
+XGBOOST_FRAMEWORK_CPU_GPU_VERSIONS = ("1.2-1", "1.2-2", "1.3-1")
 
 FRAMEWORK_REGISTRIES = {
     "af-south-1": "510948584623",

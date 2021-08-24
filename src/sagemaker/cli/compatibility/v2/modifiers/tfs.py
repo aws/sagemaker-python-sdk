@@ -1,4 +1,4 @@
-# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -10,9 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Classes to modify TensorFlow Serving code to be compatible
-with version 2.0 and later of the SageMaker Python SDK.
-"""
+"""Classes to modify TensorFlow Serving code to be compatible with version 2.0 and later."""
 from __future__ import absolute_import
 
 import ast
@@ -53,8 +51,9 @@ class TensorFlowServingConstructorRenamer(Modifier):
         return matching.matches_any(node, TFS_CLASSES)
 
     def modify_node(self, node):
-        """Modifies the ``ast.Call`` node to use the classes for TensorFlow Serving available in
-        version 2.0 and later of the Python SDK:
+        """Modifies the ``ast.Call`` node to use the classes for TensorFlow Serving.
+
+        Modification is available in version 2.0 and later of the Python SDK:
 
         - ``sagemaker.tensorflow.TensorFlowModel``
         - ``sagemaker.tensorflow.TensorFlowPredictor``
@@ -93,7 +92,9 @@ class TensorFlowServingImportFromRenamer(Modifier):
         return node.module == "sagemaker.tensorflow.serving"
 
     def modify_node(self, node):
-        """Changes the ``ast.ImportFrom`` node's module to ``sagemaker.tensorflow`` and updates the
+        """Changes and updates the imported class names as applicable.
+
+        Changes the ``ast.ImportFrom`` node's module to ``sagemaker.tensorflow`` and updates the
         imported class names to ``TensorFlowModel`` and ``TensorFlowPredictor``, as applicable.
 
         Args:
@@ -114,8 +115,10 @@ class TensorFlowServingImportRenamer(Modifier):
     """A class to update ``import sagemaker.tensorflow.serving``."""
 
     def check_and_modify_node(self, node):
-        """Checks if the ``ast.Import`` node imports the ``sagemaker.tensorflow.serving`` module
-        and, if so, changes it to ``sagemaker.tensorflow``.
+        """Checks if the ``ast.Import`` node imports the ``sagemaker.tensorflow.serving`` module.
+
+        If ``ast.Import`` node imports the ``sagemaker.tensorflow.serving`` module,
+        this function changes it to ``sagemaker.tensorflow``.
 
         Args:
             node (ast.Import): a node that represents an import statement. For more,

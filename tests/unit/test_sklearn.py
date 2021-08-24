@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -20,14 +20,14 @@ import pytest
 from mock import Mock
 from mock import patch
 
-from sagemaker.sklearn import SKLearn, SKLearnModel, SKLearnPredictor
 from sagemaker.fw_utils import UploadedCode
+from sagemaker.sklearn import SKLearn, SKLearnModel, SKLearnPredictor
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 SCRIPT_PATH = os.path.join(DATA_DIR, "dummy_script.py")
 SERVING_SCRIPT_FILE = "another_dummy_script.py"
 TIMESTAMP = "2017-11-06-14:14:15.672"
-TIME = 1507167947
+TIME = 1510006209.073025
 BUCKET_NAME = "mybucket"
 INSTANCE_COUNT = 1
 DIST_INSTANCE_COUNT = 2
@@ -92,7 +92,7 @@ def _sklearn_estimator(
         instance_type=instance_type if instance_type else INSTANCE_TYPE,
         base_job_name=base_job_name,
         py_version=PYTHON_VERSION,
-        **kwargs
+        **kwargs,
     )
 
 
@@ -129,12 +129,24 @@ def _create_train_job(version):
             "sagemaker_region": '"us-west-2"',
         },
         "stop_condition": {"MaxRuntimeInSeconds": 24 * 60 * 60},
+        "retry_strategy": None,
         "metric_definitions": None,
         "tags": None,
         "vpc_config": None,
+        "environment": None,
         "experiment_config": None,
         "debugger_hook_config": {
             "CollectionConfigurations": [],
+            "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
+        },
+        "profiler_rule_configs": [
+            {
+                "RuleConfigurationName": "ProfilerReport-1510006209",
+                "RuleEvaluatorImage": "895741380848.dkr.ecr.us-west-2.amazonaws.com/sagemaker-debugger-rules:latest",
+                "RuleParameters": {"rule_to_invoke": "ProfilerReport"},
+            }
+        ],
+        "profiler_config": {
             "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
         },
     }
@@ -300,7 +312,8 @@ def test_create_model_with_custom_image(sagemaker_session):
 
 
 @patch("time.strftime", return_value=TIMESTAMP)
-def test_sklearn(strftime, sagemaker_session, sklearn_version):
+@patch("time.time", return_value=TIME)
+def test_sklearn(time, strftime, sagemaker_session, sklearn_version):
     sklearn = SKLearn(
         entry_point=SCRIPT_PATH,
         role=ROLE,
@@ -406,6 +419,27 @@ def test_model(sagemaker_session, sklearn_version):
     )
     predictor = model.deploy(1, CPU)
     assert isinstance(predictor, SKLearnPredictor)
+
+
+def test_model_custom_serialization(sagemaker_session, sklearn_version):
+    model = SKLearnModel(
+        "s3://some/data.tar.gz",
+        role=ROLE,
+        entry_point=SCRIPT_PATH,
+        framework_version=sklearn_version,
+        sagemaker_session=sagemaker_session,
+    )
+    custom_serializer = Mock()
+    custom_deserializer = Mock()
+    predictor = model.deploy(
+        1,
+        CPU,
+        serializer=custom_serializer,
+        deserializer=custom_deserializer,
+    )
+    assert isinstance(predictor, SKLearnPredictor)
+    assert predictor.serializer is custom_serializer
+    assert predictor.deserializer is custom_deserializer
 
 
 def test_attach(sagemaker_session, sklearn_version):

@@ -1,4 +1,4 @@
-# Copyright 2019-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -24,6 +24,16 @@ from sagemaker.model_monitor.model_monitoring import BaseliningJob  # noqa: F401
 from sagemaker.model_monitor.model_monitoring import MonitoringExecution  # noqa: F401
 from sagemaker.model_monitor.model_monitoring import EndpointInput  # noqa: F401
 from sagemaker.model_monitor.model_monitoring import MonitoringOutput  # noqa: F401
+from sagemaker.model_monitor.model_monitoring import ModelQualityMonitor  # noqa: F401
+
+from sagemaker.model_monitor.clarify_model_monitoring import BiasAnalysisConfig  # noqa: F401
+from sagemaker.model_monitor.clarify_model_monitoring import (  # noqa: F401
+    ExplainabilityAnalysisConfig,
+)
+from sagemaker.model_monitor.clarify_model_monitoring import ModelBiasMonitor  # noqa: F401
+from sagemaker.model_monitor.clarify_model_monitoring import (  # noqa: F401
+    ModelExplainabilityMonitor,
+)
 
 from sagemaker.model_monitor.cron_expression_generator import CronExpressionGenerator  # noqa: F401
 from sagemaker.model_monitor.monitoring_files import Statistics  # noqa: F401

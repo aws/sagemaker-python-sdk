@@ -1,4 +1,4 @@
-# Copyright 2019-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -10,16 +10,16 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""This module contains code related to the CronExpressionGenerator class, which is used
-for generating cron expressions compatible with Amazon SageMaker Model Monitoring Schedules.
+"""This module contains code related to the CronExpressionGenerator class.
+
+Codes are used for generating cron expressions compatible with Amazon SageMaker Model
+Monitoring Schedules.
 """
 from __future__ import print_function, absolute_import
 
 
 class CronExpressionGenerator(object):
-    """Generates cron expression strings for use with the Amazon SageMaker Model Monitoring Schedule
-    API.
-    """
+    """Generates cron expression strings for the SageMaker Model Monitoring Schedule API."""
 
     @staticmethod
     def hourly():
@@ -53,8 +53,10 @@ class CronExpressionGenerator(object):
 
     @staticmethod
     def daily_every_x_hours(hour_interval, starting_hour=0):
-        """Generates "daily every x hours" cron expression that denotes that a job runs every day
-        at the specified hour, and then every x hours, as specified in hour_interval.
+        """Generates "daily every x hours" cron expression.
+
+        That denotes that a job runs every day at the specified hour, and then every x hours,
+        as specified in hour_interval.
 
          Example:
              >>> daily_every_x_hours(hour_interval=2, starting_hour=0)

@@ -1,4 +1,4 @@
-# Copyright 2018-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -38,7 +38,13 @@ class ChainerPredictor(Predictor):
     multidimensional tensors for Chainer inference.
     """
 
-    def __init__(self, endpoint_name, sagemaker_session=None):
+    def __init__(
+        self,
+        endpoint_name,
+        sagemaker_session=None,
+        serializer=NumpySerializer(),
+        deserializer=NumpyDeserializer(),
+    ):
         """Initialize an ``ChainerPredictor``.
 
         Args:
@@ -48,16 +54,22 @@ class ChainerPredictor(Predictor):
                 manages interactions with Amazon SageMaker APIs and any other
                 AWS services needed. If not specified, the estimator creates one
                 using the default AWS configuration chain.
+            serializer (sagemaker.serializers.BaseSerializer): Optional. Default
+                serializes input data to .npy format. Handles lists and numpy
+                arrays.
+            deserializer (sagemaker.deserializers.BaseDeserializer): Optional.
+                Default parses the response from .npy format to numpy array.
         """
         super(ChainerPredictor, self).__init__(
-            endpoint_name, sagemaker_session, NumpySerializer(), NumpyDeserializer()
+            endpoint_name,
+            sagemaker_session,
+            serializer=serializer,
+            deserializer=deserializer,
         )
 
 
 class ChainerModel(FrameworkModel):
-    """An Chainer SageMaker ``Model`` that can be deployed to a SageMaker
-    ``Endpoint``.
-    """
+    """An Chainer SageMaker ``Model`` that can be deployed to a SageMaker ``Endpoint``."""
 
     _framework_name = "chainer"
 
@@ -128,8 +140,7 @@ class ChainerModel(FrameworkModel):
         self.model_server_workers = model_server_workers
 
     def prepare_container_def(self, instance_type=None, accelerator_type=None):
-        """Return a container definition with framework configuration set in
-        model environment variables.
+        """Return a container definition with framework configuration set in model environment.
 
         Args:
             instance_type (str): The EC2 instance type to deploy this Model to.

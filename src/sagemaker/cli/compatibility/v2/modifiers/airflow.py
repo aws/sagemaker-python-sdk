@@ -1,4 +1,4 @@
-# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -27,10 +27,10 @@ class ModelConfigArgModifier(Modifier):
     """A class to handle argument changes for Airflow model config functions."""
 
     def node_should_be_modified(self, node):
-        """Checks if the ``ast.Call`` node creates an Airflow model config and
-        contains positional arguments.
+        """Function to check Airflow model config and if it contains positional arguments.
 
-        This looks for the following formats:
+        Checks if the ``ast.Call`` node creates an Airflow model config and
+        contains positional arguments. This looks for the following formats:
 
         - ``model_config``
         - ``airflow.model_config``

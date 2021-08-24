@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -118,6 +118,18 @@ NO_AUTO_ML_REGIONS = [
     "eu-south-1",
 ]
 NO_MODEL_MONITORING_REGIONS = ["me-south-1", "af-south-1", "eu-south-1"]
+EDGE_PACKAGING_SUPPORTED_REGIONS = [
+    "us-east-2",
+    "us-west-2",
+    "us-east-1",
+    "eu-west-1",
+    "ap-northeast-1",
+    "eu-central-1",
+]
+# Data parallelism need to be tested with p3.16xlarge.
+# The instance type is expensive and not supported in all the regions.
+# Limiting the test to run in IAD and CMH
+DATA_PARALLEL_TESTING_REGIONS = ["us-east-2", "us-east-1"]
 
 
 EFS_TEST_ENABLED_REGION = []

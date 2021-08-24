@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -47,7 +47,7 @@ class DummyFrameworkModel(FrameworkModel):
             ROLE,
             ENTRY_POINT,
             sagemaker_session=sagemaker_session,
-            **kwargs
+            **kwargs,
         )
 
     def create_predictor(self, endpoint_name):
@@ -97,7 +97,7 @@ def test_prepare_container_def(tfo, time, sagemaker_session):
         {
             "Environment": {"SAGEMAKER_DEFAULT_INVOCATIONS_ACCEPT": "text/csv"},
             "Image": "246618743249.dkr.ecr.us-west-2.amazonaws.com"
-            + "/sagemaker-sparkml-serving:2.2",
+            + "/sagemaker-sparkml-serving:2.4",
             "ModelDataUrl": "s3://bucket/model_2.tar.gz",
         },
     ]
@@ -335,7 +335,7 @@ def test_network_isolation(tfo, time, sagemaker_session):
                 "ModelDataUrl": "s3://bucket/model_1.tar.gz",
             },
             {
-                "Image": "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-sparkml-serving:2.2",
+                "Image": "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-sparkml-serving:2.4",
                 "Environment": {},
                 "ModelDataUrl": "s3://bucket/model_2.tar.gz",
             },

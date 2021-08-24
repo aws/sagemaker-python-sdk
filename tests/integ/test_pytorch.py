@@ -1,4 +1,4 @@
-# Copyright 2018-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -18,6 +18,7 @@ import pytest
 
 from sagemaker.pytorch.estimator import PyTorch
 from sagemaker.pytorch.model import PyTorchModel
+from sagemaker.pytorch.processing import PyTorchProcessor
 from sagemaker.utils import sagemaker_timestamp
 from tests.integ import (
     test_region,
@@ -34,6 +35,28 @@ PACKED_MODEL = os.path.join(MNIST_DIR, "packed_model.tar.gz")
 EIA_DIR = os.path.join(DATA_DIR, "pytorch_eia")
 EIA_MODEL = os.path.join(EIA_DIR, "model_mnist.tar.gz")
 EIA_SCRIPT = os.path.join(EIA_DIR, "empty_inference_script.py")
+
+
+@pytest.fixture(scope="module", name="pytorch_mpi_training_job")
+def fixture_mpi_training_job(
+    sagemaker_session,
+    pytorch_training_latest_version,
+    pytorch_training_latest_py_version,
+    cpu_instance_type,
+):
+
+    distribution_dict = {"mpi": {"enabled": True}}
+    with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
+        pytorch = _get_pytorch_estimator(
+            sagemaker_session,
+            pytorch_training_latest_version,
+            pytorch_training_latest_py_version,
+            cpu_instance_type,
+            distributions_dict=distribution_dict,
+        )
+
+        pytorch.fit({"training": _upload_training_data(pytorch)})
+        return pytorch.latest_training_job.name
 
 
 @pytest.fixture(scope="module", name="pytorch_training_job")
@@ -73,7 +96,36 @@ def fixture_training_job_with_latest_inference_version(
         return pytorch.latest_training_job.name
 
 
-@pytest.mark.canary_quick
+@pytest.mark.release
+def test_framework_processing_job_with_deps(
+    sagemaker_session,
+    pytorch_training_latest_version,
+    pytorch_training_latest_py_version,
+    cpu_instance_type,
+):
+    with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
+        code_path = os.path.join(DATA_DIR, "dummy_code_bundle_with_reqs")
+        entry_point = "main_script.py"
+
+        processor = PyTorchProcessor(
+            framework_version=pytorch_training_latest_version,
+            py_version=pytorch_training_latest_py_version,
+            role="SageMakerRole",
+            instance_count=1,
+            instance_type=cpu_instance_type,
+            sagemaker_session=sagemaker_session,
+            base_job_name="test-pytorch",
+        )
+
+        processor.run(
+            code=entry_point,
+            source_dir=code_path,
+            inputs=[],
+            wait=True,
+        )
+
+
+@pytest.mark.release
 def test_fit_deploy(
     pytorch_training_job_with_latest_infernce_version, sagemaker_session, cpu_instance_type
 ):
@@ -220,7 +272,12 @@ def _upload_training_data(pytorch):
 
 
 def _get_pytorch_estimator(
-    sagemaker_session, pytorch_version, py_version, instance_type, entry_point=MNIST_SCRIPT
+    sagemaker_session,
+    pytorch_version,
+    py_version,
+    instance_type,
+    entry_point=MNIST_SCRIPT,
+    distributions_dict={},
 ):
     return PyTorch(
         entry_point=entry_point,
@@ -230,6 +287,7 @@ def _get_pytorch_estimator(
         instance_count=1,
         instance_type=instance_type,
         sagemaker_session=sagemaker_session,
+        distributions=distributions_dict,
     )
 
 

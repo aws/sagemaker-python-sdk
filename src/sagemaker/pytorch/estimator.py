@@ -1,4 +1,4 @@
-# Copyright 2018-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -17,12 +17,15 @@ import logging
 
 from packaging.version import Version
 
+from sagemaker.deprecations import renamed_kwargs
 from sagemaker.estimator import Framework
 from sagemaker.fw_utils import (
     framework_name_from_image,
     framework_version_from_tag,
     python_deprecation_warning,
     validate_version_or_image_args,
+    warn_if_parameter_server_with_multi_gpu,
+    validate_smdistributed,
 )
 from sagemaker.pytorch import defaults
 from sagemaker.pytorch.model import PyTorchModel
@@ -44,12 +47,13 @@ class PyTorch(Framework):
         source_dir=None,
         hyperparameters=None,
         image_uri=None,
+        distribution=None,
         **kwargs
     ):
-        """This ``Estimator`` executes an PyTorch script in a managed PyTorch
-        execution environment, within a SageMaker Training Job. The managed
-        PyTorch environment is an Amazon-built Docker container that executes
-        functions defined in the supplied ``entry_point`` Python script.
+        """This ``Estimator`` executes a PyTorch script in a managed PyTorch execution environment.
+
+        The managed PyTorch environment is an Amazon-built Docker container that executes functions
+        defined in the supplied ``entry_point`` Python script within a SageMaker Training Job.
 
         Training is started by calling
         :meth:`~sagemaker.amazon.estimator.Framework.fit` on this Estimator.
@@ -71,7 +75,7 @@ class PyTorch(Framework):
             framework_version (str): PyTorch version you want to use for
                 executing your model training code. Defaults to ``None``. Required unless
                 ``image_uri`` is provided. List of supported versions:
-                https://github.com/aws/sagemaker-python-sdk#pytorch-sagemaker-estimators.
+                https://github.com/aws/deep-learning-containers/blob/master/available_images.md.
             py_version (str): Python version you want to use for executing your
                 model training code. One of 'py2' or 'py3'. Defaults to ``None``. Required
                 unless ``image_uri`` is provided.
@@ -90,7 +94,6 @@ class PyTorch(Framework):
                 for training and hosting, instead of selecting the appropriate
                 SageMaker official image based on framework_version and
                 py_version. It can be an ECR url or dockerhub image and tag.
-
                 Examples:
                     * ``123412341234.dkr.ecr.us-west-2.amazonaws.com/my-custom-image:1.0``
                     * ``custom-image:latest``
@@ -98,6 +101,46 @@ class PyTorch(Framework):
                 If ``framework_version`` or ``py_version`` are ``None``, then
                 ``image_uri`` is required. If also ``None``, then a ``ValueError``
                 will be raised.
+            distribution (dict): A dictionary with information on how to run distributed training
+                (default: None).  Currently, the following are supported:
+                distributed training with parameter servers, SageMaker Distributed (SMD) Data
+                and Model Parallelism, and MPI. SMD Model Parallelism can only be used with MPI.
+                To enable parameter server use the following setup:
+
+                .. code:: python
+
+                    {
+                        "parameter_server": {
+                            "enabled": True
+                        }
+                    }
+
+                To enable MPI:
+
+                .. code:: python
+
+                    {
+                        "mpi": {
+                            "enabled": True
+                        }
+                    }
+
+                To enable SMDistributed Data Parallel or Model Parallel:
+
+                .. code:: python
+
+                    {
+                        "smdistributed": {
+                            "dataparallel": {
+                                "enabled": True
+                            },
+                            "modelparallel": {
+                                "enabled": True,
+                                "parameters": {}
+                            }
+                        }
+                    }
+
             **kwargs: Additional kwargs passed to the :class:`~sagemaker.estimator.Framework`
                 constructor.
 
@@ -115,6 +158,24 @@ class PyTorch(Framework):
         self.framework_version = framework_version
         self.py_version = py_version
 
+        if distribution is not None:
+            instance_type = renamed_kwargs(
+                "train_instance_type", "instance_type", kwargs.get("instance_type"), kwargs
+            )
+
+            validate_smdistributed(
+                instance_type=instance_type,
+                framework_name=self._framework_name,
+                framework_version=framework_version,
+                py_version=py_version,
+                distribution=distribution,
+                image_uri=image_uri,
+            )
+
+            warn_if_parameter_server_with_multi_gpu(
+                training_instance_type=instance_type, distribution=distribution
+            )
+
         if "enable_sagemaker_metrics" not in kwargs:
             # enable sagemaker metrics for PT v1.3 or greater:
             if self.framework_version and Version(self.framework_version) >= Version("1.3"):
@@ -123,6 +184,16 @@ class PyTorch(Framework):
         super(PyTorch, self).__init__(
             entry_point, source_dir, hyperparameters, image_uri=image_uri, **kwargs
         )
+        self.distribution = distribution or {}
+
+    def hyperparameters(self):
+        """Return hyperparameters used by your custom PyTorch code during model training."""
+        hyperparameters = super(PyTorch, self).hyperparameters()
+        additional_hyperparameters = self._distribution_configuration(
+            distribution=self.distribution
+        )
+        hyperparameters.update(Framework._json_encode_hyperparameters(additional_hyperparameters))
+        return hyperparameters
 
     def create_model(
         self,
@@ -134,8 +205,7 @@ class PyTorch(Framework):
         dependencies=None,
         **kwargs
     ):
-        """Create a SageMaker ``PyTorchModel`` object that can be deployed to an
-        ``Endpoint``.
+        """Create a SageMaker ``PyTorchModel`` object that can be deployed to an ``Endpoint``.
 
         Args:
             model_server_workers (int): Optional. The number of worker processes
@@ -189,8 +259,7 @@ class PyTorch(Framework):
 
     @classmethod
     def _prepare_init_params_from_job_description(cls, job_details, model_channel_name=None):
-        """Convert the job description to init params that can be handled by the
-        class constructor
+        """Convert the job description to init params that can be handled by the class constructor.
 
         Args:
             job_details: the returned job details from a describe_training_job

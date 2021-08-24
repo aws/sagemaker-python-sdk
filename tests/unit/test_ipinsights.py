@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -103,7 +103,7 @@ def test_all_hyperparameters(sagemaker_session):
         random_negative_sampling_rate=5,
         shuffled_negative_sampling_rate=5,
         weight_decay=5.0,
-        **ALL_REQ_ARGS
+        **ALL_REQ_ARGS,
     )
     assert ipinsights.hyperparameters() == dict(
         num_entity_vectors=str(ALL_REQ_ARGS["num_entity_vectors"]),
@@ -305,3 +305,27 @@ def test_predictor_type(sagemaker_session):
     predictor = model.deploy(1, INSTANCE_TYPE)
 
     assert isinstance(predictor, IPInsightsPredictor)
+
+
+def test_predictor_custom_serialization(sagemaker_session):
+    ipinsights = IPInsights(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
+    data = RecordSet(
+        "s3://{}/{}".format(BUCKET_NAME, PREFIX),
+        num_records=1,
+        feature_dim=FEATURE_DIM,
+        channel="train",
+    )
+    ipinsights.fit(data, MINI_BATCH_SIZE)
+    model = ipinsights.create_model()
+    custom_serializer = Mock()
+    custom_deserializer = Mock()
+    predictor = model.deploy(
+        1,
+        INSTANCE_TYPE,
+        serializer=custom_serializer,
+        deserializer=custom_deserializer,
+    )
+
+    assert isinstance(predictor, IPInsightsPredictor)
+    assert predictor.serializer is custom_serializer
+    assert predictor.deserializer is custom_deserializer

@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -18,11 +18,11 @@ import time
 
 import pytest
 
-from sagemaker.tensorflow import TensorFlow
+from sagemaker.tensorflow import TensorFlow, TensorFlowProcessor
 from sagemaker.utils import unique_name_from_base, sagemaker_timestamp
 
 import tests.integ
-from tests.integ import kms_utils, timeout
+from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES, kms_utils, timeout
 from tests.integ.retry import retries
 from tests.integ.s3_utils import assert_s3_files_exist
 
@@ -36,6 +36,36 @@ SCRIPT = os.path.join(MNIST_RESOURCE_PATH, "mnist.py")
 PARAMETER_SERVER_DISTRIBUTION = {"parameter_server": {"enabled": True}}
 MPI_DISTRIBUTION = {"mpi": {"enabled": True}}
 TAGS = [{"Key": "some-key", "Value": "some-value"}]
+ENV_INPUT = {"env_key1": "env_val1", "env_key2": "env_val2", "env_key3": "env_val3"}
+
+
+@pytest.mark.release
+def test_framework_processing_job_with_deps(
+    sagemaker_session,
+    instance_type,
+    tensorflow_training_latest_version,
+    tensorflow_training_latest_py_version,
+):
+    with timeout.timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
+        code_path = os.path.join(DATA_DIR, "dummy_code_bundle_with_reqs")
+        entry_point = "main_script.py"
+
+        processor = TensorFlowProcessor(
+            framework_version=tensorflow_training_latest_version,
+            py_version=tensorflow_training_latest_py_version,
+            role=ROLE,
+            instance_count=1,
+            instance_type=instance_type,
+            sagemaker_session=sagemaker_session,
+            base_job_name="test-tensorflow",
+        )
+
+        processor.run(
+            code=entry_point,
+            source_dir=code_path,
+            inputs=[],
+            wait=True,
+        )
 
 
 def test_mnist_with_checkpoint_config(
@@ -50,7 +80,7 @@ def test_mnist_with_checkpoint_config(
     checkpoint_local_path = "/test/checkpoint/path"
     estimator = TensorFlow(
         entry_point=SCRIPT,
-        role="SageMakerRole",
+        role=ROLE,
         instance_count=1,
         instance_type=instance_type,
         sagemaker_session=sagemaker_session,
@@ -59,6 +89,9 @@ def test_mnist_with_checkpoint_config(
         metric_definitions=[{"Name": "train:global_steps", "Regex": r"global_step\/sec:\s(.*)"}],
         checkpoint_s3_uri=checkpoint_s3_uri,
         checkpoint_local_path=checkpoint_local_path,
+        environment=ENV_INPUT,
+        max_wait=24 * 60 * 60,
+        max_retry_attempts=2,
     )
     inputs = estimator.sagemaker_session.upload_data(
         path=os.path.join(MNIST_RESOURCE_PATH, "data"), key_prefix="scriptmode/mnist"
@@ -82,7 +115,21 @@ def test_mnist_with_checkpoint_config(
     actual_training_checkpoint_config = sagemaker_session.sagemaker_client.describe_training_job(
         TrainingJobName=training_job_name
     )["CheckpointConfig"]
+    actual_training_environment_variable_config = (
+        sagemaker_session.sagemaker_client.describe_training_job(TrainingJobName=training_job_name)[
+            "Environment"
+        ]
+    )
+
+    expected_retry_strategy = {
+        "MaximumRetryAttempts": 2,
+    }
+    actual_retry_strategy = sagemaker_session.sagemaker_client.describe_training_job(
+        TrainingJobName=training_job_name
+    )["RetryStrategy"]
     assert actual_training_checkpoint_config == expected_training_checkpoint_config
+    assert actual_training_environment_variable_config == ENV_INPUT
+    assert actual_retry_strategy == expected_retry_strategy
 
 
 def test_server_side_encryption(sagemaker_session, tf_full_version, tf_full_py_version):
@@ -125,7 +172,7 @@ def test_server_side_encryption(sagemaker_session, tf_full_version, tf_full_py_v
             )
 
 
-@pytest.mark.canary_quick
+@pytest.mark.release
 def test_mnist_distributed(
     sagemaker_session,
     instance_type,
@@ -141,6 +188,7 @@ def test_mnist_distributed(
         framework_version=tensorflow_training_latest_version,
         py_version=tensorflow_training_latest_py_version,
         distribution=PARAMETER_SERVER_DISTRIBUTION,
+        disable_profiler=True,
     )
     inputs = estimator.sagemaker_session.upload_data(
         path=os.path.join(MNIST_RESOURCE_PATH, "data"), key_prefix="scriptmode/distributed_mnist"
@@ -155,6 +203,7 @@ def test_mnist_distributed(
     )
 
 
+@pytest.mark.slow_test
 def test_mnist_async(sagemaker_session, cpu_instance_type, tf_full_version, tf_full_py_version):
     estimator = TensorFlow(
         entry_point=SCRIPT,

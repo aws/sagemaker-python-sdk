@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -15,7 +15,7 @@ from __future__ import absolute_import
 import pytest
 import os
 import subprocess
-from mock import patch
+from mock import patch, ANY
 
 from sagemaker import git_utils
 
@@ -180,7 +180,7 @@ def test_git_clone_repo_dependencies_not_exist(exists, isdir, isfile, mkdtemp, c
 @patch("subprocess.check_call")
 @patch("tempfile.mkdtemp", return_value=REPO_DIR)
 @patch("os.path.isfile", return_value=True)
-def test_git_clone_repo_with_username_password_no_2fa(sfile, mkdtemp, check_call):
+def test_git_clone_repo_with_username_password_no_2fa(isfile, mkdtemp, check_call):
     git_config = {
         "repo": PRIVATE_GIT_REPO,
         "branch": PRIVATE_BRANCH,
@@ -262,12 +262,14 @@ def test_git_clone_repo_with_token_2fa(isfile, mkdtemp, check_call):
 
 
 @patch("subprocess.check_call")
+@patch("os.chmod")
 @patch("tempfile.mkdtemp", return_value=REPO_DIR)
 @patch("os.path.isfile", return_value=True)
-def test_git_clone_repo_ssh(isfile, mkdtemp, check_call):
+def test_git_clone_repo_ssh(isfile, mkdtemp, chmod, check_call):
     git_config = {"repo": PRIVATE_GIT_REPO_SSH, "branch": PRIVATE_BRANCH, "commit": PRIVATE_COMMIT}
     entry_point = "entry_point"
     ret = git_utils.git_clone_repo(git_config, entry_point)
+    chmod.assert_any_call(ANY, 0o511)
     assert ret["entry_point"] == "/tmp/repo_dir/entry_point"
     assert ret["source_dir"] is None
     assert ret["dependencies"] is None

@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -18,7 +18,6 @@ import logging
 from packaging import version
 
 from sagemaker import image_uris, s3, utils
-from sagemaker.debugger import DebuggerHookConfig
 from sagemaker.deprecations import renamed_kwargs
 from sagemaker.estimator import Framework
 import sagemaker.fw_utils as fw
@@ -61,7 +60,7 @@ class TensorFlow(Framework):
                 the command line arguments. If not specified, one is provided based on
                 your training configuration:
 
-                * *distributed training with MPI* - ``/opt/ml/model``
+                * *distributed training with SMDistributed or MPI with Horovod* - ``/opt/ml/model``
                 * *single-machine training or distributed training without MPI* - \
                     ``s3://{output_path}/model``
                 * *Local Mode with local sources (file:// instead of s3://)* - \
@@ -81,16 +80,16 @@ class TensorFlow(Framework):
                 ``image_uri`` is required. If also ``None``, then a ``ValueError``
                 will be raised.
             distribution (dict): A dictionary with information on how to run distributed training
-                (default: None). Currently we support distributed training with parameter servers
-                and MPI.
+                (default: None). Currently, the following are supported:
+                distributed training with parameter servers, SageMaker Distributed (SMD) Data
+                and Model Parallelism, and MPI. SMD Model Parallelism can only be used with MPI.
                 To enable parameter server use the following setup:
 
                 .. code:: python
 
                     {
-                        'parameter_server':
-                        {
-                            'enabled': True
+                        "parameter_server": {
+                            "enabled": True
                         }
                     }
 
@@ -99,9 +98,24 @@ class TensorFlow(Framework):
                 .. code:: python
 
                     {
-                        'mpi':
-                        {
-                            'enabled': True
+                        "mpi": {
+                            "enabled": True
+                        }
+                    }
+
+                To enable SMDistributed Data Parallel or Model Parallel:
+
+                .. code:: python
+
+                    {
+                        "smdistributed": {
+                            "dataparallel": {
+                                "enabled": True
+                            },
+                            "modelparallel": {
+                                "enabled": True,
+                                "parameters": {}
+                            }
                         }
                     }
 
@@ -113,6 +127,7 @@ class TensorFlow(Framework):
             :class:`~sagemaker.estimator.Framework` and
             :class:`~sagemaker.estimator.EstimatorBase`.
         """
+        distribution = renamed_kwargs("distributions", "distribution", distribution, kwargs)
         instance_type = renamed_kwargs(
             "train_instance_type", "instance_type", kwargs.get("instance_type"), kwargs
         )
@@ -123,10 +138,19 @@ class TensorFlow(Framework):
             )
         self.framework_version = framework_version
         self.py_version = py_version
+        self.instance_type = instance_type
 
         if distribution is not None:
             fw.warn_if_parameter_server_with_multi_gpu(
                 training_instance_type=instance_type, distribution=distribution
+            )
+            fw.validate_smdistributed(
+                instance_type=instance_type,
+                framework_name=self._framework_name,
+                framework_version=framework_version,
+                py_version=py_version,
+                distribution=distribution,
+                image_uri=image_uri,
             )
 
         if "enable_sagemaker_metrics" not in kwargs:
@@ -240,9 +264,10 @@ class TensorFlow(Framework):
         dependencies=None,
         **kwargs
     ):
-        """Create a ``TensorFlowModel`` object that can be used for creating
-        SageMaker model entities, deploying to a SageMaker endpoint, or
-        starting SageMaker Batch Transform jobs.
+        """Creates ``TensorFlowModel`` object to be used for creating SageMaker model entities.
+
+        This can be done by deploying it to a SageMaker endpoint,
+        or starting SageMaker Batch Transform jobs.
 
         Args:
             role (str): The ``TensorFlowModel``, which is also used during transform jobs.
@@ -294,29 +319,12 @@ class TensorFlow(Framework):
     def hyperparameters(self):
         """Return hyperparameters used by your custom TensorFlow code during model training."""
         hyperparameters = super(TensorFlow, self).hyperparameters()
-        additional_hyperparameters = {}
-
-        if "parameter_server" in self.distribution:
-            ps_enabled = self.distribution["parameter_server"].get("enabled", False)
-            additional_hyperparameters[self.LAUNCH_PS_ENV_NAME] = ps_enabled
-
-        mpi_enabled = False
-        if "mpi" in self.distribution:
-            mpi_dict = self.distribution["mpi"]
-            mpi_enabled = mpi_dict.get("enabled", False)
-            additional_hyperparameters[self.LAUNCH_MPI_ENV_NAME] = mpi_enabled
-
-            if mpi_dict.get("processes_per_host"):
-                additional_hyperparameters[self.MPI_NUM_PROCESSES_PER_HOST] = mpi_dict.get(
-                    "processes_per_host"
-                )
-
-            additional_hyperparameters[self.MPI_CUSTOM_MPI_OPTIONS] = mpi_dict.get(
-                "custom_mpi_options", ""
-            )
+        additional_hyperparameters = self._distribution_configuration(self.distribution)
 
         if self.model_dir is not False:
-            self.model_dir = self.model_dir or self._default_s3_path("model", mpi=mpi_enabled)
+            self.model_dir = self.model_dir or self._default_s3_path(
+                "model", mpi=additional_hyperparameters.get(self.LAUNCH_MPI_ENV_NAME, False)
+            )
             additional_hyperparameters["model_dir"] = self.model_dir
 
         hyperparameters.update(Framework._json_encode_hyperparameters(additional_hyperparameters))
@@ -334,11 +342,11 @@ class TensorFlow(Framework):
         return None
 
     def _validate_and_set_debugger_configs(self):
-        """Disable Debugger Hook Config for ParameterServer (PS) as it is not
-        supported in smdebug.
+        """Disable Debugger Hook Config for ParameterServer (PS) as it is not supported in smdebug.
 
         Else, set default HookConfig
         """
+        super(TensorFlow, self)._validate_and_set_debugger_configs()
         ps_enabled = "parameter_server" in self.distribution and self.distribution[
             "parameter_server"
         ].get("enabled", False)
@@ -350,11 +358,6 @@ class TensorFlow(Framework):
                 )
             self.debugger_hook_config = None
             self.debugger_rule_configs = None
-        elif self.debugger_hook_config is None and fw._region_supports_debugger(
-            self.sagemaker_session.boto_session.region_name
-        ):
-            # Set defaults for debugging.
-            self.debugger_hook_config = DebuggerHookConfig(s3_output_path=self.output_path)
 
     def transformer(
         self,
@@ -376,8 +379,9 @@ class TensorFlow(Framework):
         enable_network_isolation=None,
         model_name=None,
     ):
-        """Return a ``Transformer`` that uses a SageMaker Model based on the training job. It
-        reuses the SageMaker Session and base job name used by the Estimator.
+        """Return a ``Transformer`` that uses a SageMaker Model based on the training job.
+
+        It reuses the SageMaker Session and base job name used by the Estimator.
 
         Args:
             instance_count (int): Number of EC2 instances to use.

@@ -1,4 +1,4 @@
-# Copyright 2019-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -10,9 +10,10 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""This module contains code related to the DataCaptureConfig class, which is used
-for configuring capture, collection, and storage, for prediction requests and responses
-for models hosted on SageMaker Endpoints.
+"""This module contains code related to the DataCaptureConfig class.
+
+Codes are used for configuring capture, collection, and storage, for prediction requests and
+responses for models hosted on SageMaker Endpoints.
 """
 from __future__ import print_function, absolute_import
 
@@ -25,6 +26,7 @@ _DATA_CAPTURE_S3_PATH = "data-capture"
 
 class DataCaptureConfig(object):
     """Configuration object passed in when deploying models to Amazon SageMaker Endpoints.
+
     This object specifies configuration related to endpoint data capture for use with
     Amazon SageMaker Model Monitoring.
     """

@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -90,7 +90,10 @@ def tfs_predictor_with_model_and_entry_point_and_dependencies(
         tests.integ.DATA_DIR, "tfs/tfs-test-entrypoint-and-dependencies/inference.py"
     )
     dependencies = [
-        os.path.join(tests.integ.DATA_DIR, "tfs/tfs-test-entrypoint-and-dependencies/dependency.py")
+        os.path.join(
+            tests.integ.DATA_DIR,
+            "tfs/tfs-test-entrypoint-and-dependencies/dependency.py",
+        )
     ]
 
     model_data = "file://" + os.path.join(
@@ -133,12 +136,15 @@ def tfs_predictor_with_accelerator(
             name=endpoint_name,
         )
         predictor = model.deploy(
-            1, cpu_instance_type, endpoint_name=endpoint_name, accelerator_type="ml.eia1.medium"
+            1,
+            cpu_instance_type,
+            endpoint_name=endpoint_name,
+            accelerator_type="ml.eia1.medium",
         )
         yield predictor
 
 
-@pytest.mark.canary_quick
+@pytest.mark.release
 def test_predict(tfs_predictor):
     input_data = {"instances": [1.0, 2.0, 5.0]}
     expected_result = {"predictions": [3.5, 4.0, 5.5]}
@@ -151,7 +157,7 @@ def test_predict(tfs_predictor):
     tests.integ.test_region() not in tests.integ.EI_SUPPORTED_REGIONS,
     reason="EI is not supported in region {}".format(tests.integ.test_region()),
 )
-@pytest.mark.canary_quick
+@pytest.mark.release
 def test_predict_with_accelerator(tfs_predictor_with_accelerator):
     input_data = {"instances": [1.0, 2.0, 5.0]}
     expected_result = {"predictions": [3.5, 4.0, 5.5]}

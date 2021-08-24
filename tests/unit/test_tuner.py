@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -889,7 +889,7 @@ def test_deploy_optional_params(_get_best_training_job, best_estimator, tuner):
         wait=False,
         model_name=model_name,
         kms_key=kms_key,
-        **kwargs
+        **kwargs,
     )
 
     best_estimator.assert_called_with(training_job)
@@ -905,7 +905,7 @@ def test_deploy_optional_params(_get_best_training_job, best_estimator, tuner):
         model_name=model_name,
         kms_key=kms_key,
         data_capture_config=None,
-        **kwargs
+        **kwargs,
     )
 
 

@@ -1,4 +1,4 @@
-# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -112,6 +112,16 @@ def test_update(ast_transformer, pasta_parse, pasta_dump, json_dump):
          {
           "cell_type": "code",
           "execution_count": 3,
+          "metadata": {},
+          "outputs": [],
+          "source": [
+           "%%cd\\n",
+           "echo ignore this too"
+          ]
+         },
+         {
+          "cell_type": "code",
+          "execution_count": 4,
           "metadata": {},
           "outputs": [],
           "source": [

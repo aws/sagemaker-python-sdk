@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -49,6 +49,20 @@ def test_prepare_container_def_with_model_data_and_env():
 
     container_def = model.prepare_container_def(INSTANCE_TYPE, "ml.eia.medium")
     assert expected == container_def
+
+    container_def = model.prepare_container_def()
+    assert expected == container_def
+
+
+def test_prepare_container_def_with_image_config():
+    image_config = {"RepositoryAccessMode": "Vpc"}
+    model = Model(MODEL_IMAGE, image_config=image_config)
+
+    expected = {
+        "Image": MODEL_IMAGE,
+        "ImageConfig": {"RepositoryAccessMode": "Vpc"},
+        "Environment": {},
+    }
 
     container_def = model.prepare_container_def()
     assert expected == container_def

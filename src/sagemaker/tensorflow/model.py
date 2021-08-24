@@ -1,4 +1,4 @@
-# Copyright 2018-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -24,9 +24,7 @@ from sagemaker.serializers import JSONSerializer
 
 
 class TensorFlowPredictor(Predictor):
-    """A ``Predictor`` implementation for inference against TensorFlow
-    Serving endpoints.
-    """
+    """A ``Predictor`` implementation for inference against TensorFlow Serving endpoints."""
 
     def __init__(
         self,
@@ -77,25 +75,15 @@ class TensorFlowPredictor(Predictor):
         self._model_attributes = ",".join(attributes) if attributes else None
 
     def classify(self, data):
-        """
-        Args:
-            data:
-        """
+        """Placeholder docstring."""
         return self._classify_or_regress(data, "classify")
 
     def regress(self, data):
-        """
-        Args:
-            data:
-        """
+        """Placeholder docstring."""
         return self._classify_or_regress(data, "regress")
 
     def _classify_or_regress(self, data, method):
-        """
-        Args:
-            data:
-            method:
-        """
+        """Placeholder docstring."""
         if method not in ["classify", "regress"]:
             raise ValueError("invalid TensorFlow Serving method: {}".format(method))
 
@@ -107,11 +95,7 @@ class TensorFlowPredictor(Predictor):
         return self.predict(data, args)
 
     def predict(self, data, initial_args=None):
-        """
-        Args:
-            data:
-            initial_args:
-        """
+        """Placeholder docstring."""
         args = dict(initial_args) if initial_args else {}
         if self._model_attributes:
             if "CustomAttributes" in args:
@@ -134,7 +118,7 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
         logging.ERROR: "error",
         logging.CRITICAL: "crit",
     }
-    LATEST_EIA_VERSION = [2, 0]
+    LATEST_EIA_VERSION = [2, 3]
 
     def __init__(
         self,
@@ -202,6 +186,73 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
         )
         self._container_log_level = container_log_level
 
+    def register(
+        self,
+        content_types,
+        response_types,
+        inference_instances,
+        transform_instances,
+        model_package_name=None,
+        model_package_group_name=None,
+        image_uri=None,
+        model_metrics=None,
+        metadata_properties=None,
+        marketplace_cert=False,
+        approval_status=None,
+        description=None,
+    ):
+        """Creates a model package for creating SageMaker models or listing on Marketplace.
+
+        Args:
+            content_types (list): The supported MIME types for the input data.
+            response_types (list): The supported MIME types for the output data.
+            inference_instances (list): A list of the instance types that are used to
+                generate inferences in real-time.
+            transform_instances (list): A list of the instance types on which a transformation
+                job can be run or on which an endpoint can be deployed.
+            model_package_name (str): Model Package name, exclusive to `model_package_group_name`,
+                using `model_package_name` makes the Model Package un-versioned (default: None).
+            model_package_group_name (str): Model Package Group name, exclusive to
+                `model_package_name`, using `model_package_group_name` makes the Model Package
+                versioned (default: None).
+            image_uri (str): Inference image uri for the container. Model class' self.image will
+                be used if it is None (default: None).
+            model_metrics (ModelMetrics): ModelMetrics object (default: None).
+            metadata_properties (MetadataProperties): MetadataProperties object (default: None).
+            marketplace_cert (bool): A boolean value indicating if the Model Package is certified
+                for AWS Marketplace (default: False).
+            approval_status (str): Model Approval Status, values can be "Approved", "Rejected",
+                or "PendingManualApproval" (default: "PendingManualApproval").
+            description (str): Model Package description (default: None).
+
+        Returns:
+            A `sagemaker.model.ModelPackage` instance.
+        """
+        instance_type = inference_instances[0]
+        self._init_sagemaker_session_if_does_not_exist(instance_type)
+
+        if image_uri:
+            self.image_uri = image_uri
+        if not self.image_uri:
+            self.image_uri = self.serving_image_uri(
+                region_name=self.sagemaker_session.boto_session.region_name,
+                instance_type=instance_type,
+            )
+        return super(TensorFlowModel, self).register(
+            content_types,
+            response_types,
+            inference_instances,
+            transform_instances,
+            model_package_name,
+            model_package_group_name,
+            image_uri,
+            model_metrics,
+            metadata_properties,
+            marketplace_cert,
+            approval_status,
+            description,
+        )
+
     def deploy(
         self,
         initial_instance_count,
@@ -238,7 +289,12 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
 
     def _eia_supported(self):
         """Return true if TF version is EIA enabled"""
-        return [int(s) for s in self.framework_version.split(".")][:2] <= self.LATEST_EIA_VERSION
+        framework_version = [int(s) for s in self.framework_version.split(".")][:2]
+        return (
+            framework_version != [2, 1]
+            and framework_version != [2, 2]
+            and framework_version <= self.LATEST_EIA_VERSION
+        )
 
     def prepare_container_def(self, instance_type=None, accelerator_type=None):
         """Prepare the container definition.
@@ -281,7 +337,7 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
         return sagemaker.container_def(image_uri, model_data, env)
 
     def _get_container_env(self):
-        """Placeholder docstring"""
+        """Placeholder docstring."""
         if not self._container_log_level:
             return self.env
 
@@ -294,11 +350,7 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
         return env
 
     def _get_image_uri(self, instance_type, accelerator_type=None):
-        """
-        Args:
-            instance_type:
-            accelerator_type:
-        """
+        """Placeholder docstring."""
         if self.image_uri:
             return self.image_uri
 

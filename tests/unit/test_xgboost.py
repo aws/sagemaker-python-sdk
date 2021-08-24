@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -29,7 +29,7 @@ DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 SCRIPT_PATH = os.path.join(DATA_DIR, "dummy_script.py")
 SERVING_SCRIPT_FILE = "another_dummy_script.py"
 TIMESTAMP = "2017-11-06-14:14:15.672"
-TIME = 1507167947
+TIME = 1510006209.073025
 BUCKET_NAME = "mybucket"
 INSTANCE_COUNT = 1
 DIST_INSTANCE_COUNT = 2
@@ -93,7 +93,7 @@ def _xgboost_estimator(
     instance_type=None,
     instance_count=1,
     base_job_name=None,
-    **kwargs
+    **kwargs,
 ):
 
     return XGBoost(
@@ -105,7 +105,7 @@ def _xgboost_estimator(
         instance_count=instance_count,
         base_job_name=base_job_name,
         py_version=PYTHON_VERSION,
-        **kwargs
+        **kwargs,
     )
 
 
@@ -142,12 +142,24 @@ def _create_train_job(version, instance_count=1, instance_type="ml.c4.4xlarge"):
             "sagemaker_region": '"us-west-2"',
         },
         "stop_condition": {"MaxRuntimeInSeconds": 24 * 60 * 60},
+        "retry_strategy": None,
         "metric_definitions": None,
         "tags": None,
         "vpc_config": None,
+        "environment": None,
         "experiment_config": None,
         "debugger_hook_config": {
             "CollectionConfigurations": [],
+            "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
+        },
+        "profiler_rule_configs": [
+            {
+                "RuleConfigurationName": "ProfilerReport-1510006209",
+                "RuleEvaluatorImage": "895741380848.dkr.ecr.us-west-2.amazonaws.com/sagemaker-debugger-rules:latest",
+                "RuleParameters": {"rule_to_invoke": "ProfilerReport"},
+            }
+        ],
+        "profiler_config": {
             "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
         },
     }
@@ -277,7 +289,8 @@ def test_create_model_with_custom_image(sagemaker_session, xgboost_framework_ver
 
 
 @patch("time.strftime", return_value=TIMESTAMP)
-def test_xgboost_cpu(strftime, sagemaker_session, xgboost_framework_version):
+@patch("time.time", return_value=TIME)
+def test_xgboost_cpu(time, strftime, sagemaker_session, xgboost_framework_version):
     xgboost = XGBoost(
         entry_point=SCRIPT_PATH,
         role=ROLE,
@@ -324,7 +337,8 @@ def test_xgboost_cpu(strftime, sagemaker_session, xgboost_framework_version):
 
 
 @patch("time.strftime", return_value=TIMESTAMP)
-def test_xgboost_gpu(strftime, sagemaker_session, xgboost_gpu_framework_version):
+@patch("time.time", return_value=TIME)
+def test_xgboost_gpu(time, strftime, sagemaker_session, xgboost_gpu_framework_version):
     xgboost = XGBoost(
         entry_point=SCRIPT_PATH,
         role=ROLE,
@@ -372,7 +386,8 @@ def test_xgboost_gpu(strftime, sagemaker_session, xgboost_gpu_framework_version)
 
 
 @patch("time.strftime", return_value=TIMESTAMP)
-def test_distributed_training(strftime, sagemaker_session, xgboost_framework_version):
+@patch("time.time", return_value=TIME)
+def test_distributed_training(time, strftime, sagemaker_session, xgboost_framework_version):
     xgboost = XGBoost(
         entry_point=SCRIPT_PATH,
         role=ROLE,
@@ -427,6 +442,27 @@ def test_model(sagemaker_session, xgboost_framework_version):
     )
     predictor = model.deploy(1, CPU)
     assert isinstance(predictor, XGBoostPredictor)
+
+
+def test_model_custom_serialization(sagemaker_session, xgboost_framework_version):
+    model = XGBoostModel(
+        "s3://some/data.tar.gz",
+        role=ROLE,
+        framework_version=xgboost_framework_version,
+        entry_point=SCRIPT_PATH,
+        sagemaker_session=sagemaker_session,
+    )
+    custom_serializer = Mock()
+    custom_deserializer = Mock()
+    predictor = model.deploy(
+        1,
+        CPU,
+        serializer=custom_serializer,
+        deserializer=custom_deserializer,
+    )
+    assert isinstance(predictor, XGBoostPredictor)
+    assert predictor.serializer is custom_serializer
+    assert predictor.deserializer is custom_deserializer
 
 
 def test_training_image_uri(sagemaker_session, xgboost_framework_version):

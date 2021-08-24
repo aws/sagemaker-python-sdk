@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -30,7 +30,7 @@ SERVING_SCRIPT_FILE = "another_dummy_script.py"
 MODEL_DATA = "s3://some/data.tar.gz"
 ENV = {"DUMMY_ENV_VAR": "dummy_value"}
 TIMESTAMP = "2017-11-06-14:14:15.672"
-TIME = 1507167947
+TIME = 1510006209.073025
 BUCKET_NAME = "mybucket"
 INSTANCE_COUNT = 1
 INSTANCE_TYPE = "ml.c4.4xlarge"
@@ -45,6 +45,8 @@ CPU = "ml.c4.xlarge"
 ENDPOINT_DESC = {"EndpointConfigName": "test-endpoint"}
 
 ENDPOINT_CONFIG_DESC = {"ProductionVariants": [{"ModelName": "model-1"}, {"ModelName": "model-2"}]}
+
+ENV_INPUT = {"env_key1": "env_val1", "env_key2": "env_val2", "env_key3": "env_val3"}
 
 LIST_TAGS_RESULT = {"Tags": [{"Key": "TagtestKey", "Value": "TagtestValue"}]}
 
@@ -146,9 +148,21 @@ def _create_train_job(version, py_version):
         "tags": None,
         "vpc_config": None,
         "metric_definitions": None,
+        "environment": None,
+        "retry_strategy": None,
         "experiment_config": None,
         "debugger_hook_config": {
             "CollectionConfigurations": [],
+            "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
+        },
+        "profiler_rule_configs": [
+            {
+                "RuleConfigurationName": "ProfilerReport-1510006209",
+                "RuleEvaluatorImage": "895741380848.dkr.ecr.us-west-2.amazonaws.com/sagemaker-debugger-rules:latest",
+                "RuleParameters": {"rule_to_invoke": "ProfilerReport"},
+            }
+        ],
+        "profiler_config": {
             "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
         },
     }
@@ -287,8 +301,9 @@ def test_create_model_with_custom_image(name_from_base, sagemaker_session):
 @patch("sagemaker.utils.repack_model", MagicMock())
 @patch("sagemaker.utils.create_tar_file", MagicMock())
 @patch("sagemaker.estimator.name_from_base", return_value=JOB_NAME)
+@patch("time.time", return_value=TIME)
 def test_pytorch(
-    name_from_base, sagemaker_session, pytorch_inference_version, pytorch_inference_py_version
+    time, name_from_base, sagemaker_session, pytorch_inference_version, pytorch_inference_py_version
 ):
     pytorch = PyTorch(
         entry_point=SCRIPT_PATH,
@@ -406,6 +421,34 @@ def test_model_image_accelerator(sagemaker_session):
         )
         model.deploy(1, CPU, accelerator_type=ACCELERATOR_TYPE)
     assert "Unsupported Python version: py2." in str(error)
+
+
+@patch("sagemaker.utils.create_tar_file", MagicMock())
+@patch("sagemaker.utils.repack_model", MagicMock())
+def test_model_custom_serialization(
+    sagemaker_session,
+    pytorch_inference_version,
+    pytorch_inference_py_version,
+):
+    model = PyTorchModel(
+        MODEL_DATA,
+        role=ROLE,
+        entry_point=SCRIPT_PATH,
+        framework_version=pytorch_inference_version,
+        py_version=pytorch_inference_py_version,
+        sagemaker_session=sagemaker_session,
+    )
+    custom_serializer = Mock()
+    custom_deserializer = Mock()
+    predictor = model.deploy(
+        1,
+        GPU,
+        serializer=custom_serializer,
+        deserializer=custom_deserializer,
+    )
+    assert isinstance(predictor, PyTorchPredictor)
+    assert predictor.serializer is custom_serializer
+    assert predictor.deserializer is custom_deserializer
 
 
 def test_model_prepare_container_def_no_instance_type_or_image():
@@ -596,6 +639,30 @@ def test_pt_disable_sm_metrics(
         enable_sagemaker_metrics=False,
     )
     assert not pytorch.enable_sagemaker_metrics
+
+
+def test_pt_add_environment_variables(
+    sagemaker_session, pytorch_training_version, pytorch_training_py_version
+):
+    pytorch = _pytorch_estimator(
+        sagemaker_session,
+        framework_version=pytorch_training_version,
+        py_version=pytorch_training_py_version,
+        environment=ENV_INPUT,
+    )
+    assert pytorch.environment
+
+
+def test_pt_miss_environment_variables(
+    sagemaker_session, pytorch_training_version, pytorch_training_py_version
+):
+    pytorch = _pytorch_estimator(
+        sagemaker_session,
+        framework_version=pytorch_training_version,
+        py_version=pytorch_training_py_version,
+        environment=None,
+    )
+    assert not pytorch.environment
 
 
 def test_pt_default_sm_metrics(

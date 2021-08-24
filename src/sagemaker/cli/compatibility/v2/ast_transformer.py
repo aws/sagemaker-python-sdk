@@ -1,4 +1,4 @@
-# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -62,8 +62,9 @@ IMPORT_FROM_MODIFIERS = [
 
 
 class ASTTransformer(ast.NodeTransformer):
-    """An ``ast.NodeTransformer`` subclass that walks the abstract syntax tree and
-    modifies nodes to upgrade the given SageMaker Python SDK code.
+    """An ``ast.NodeTransformer`` subclass that walks the abstract syntax tree.
+
+    It modifies nodes to upgrade the given SageMaker Python SDK code.
     """
 
     def visit_Call(self, node):

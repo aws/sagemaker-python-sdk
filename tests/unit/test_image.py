@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -19,6 +19,7 @@ import string
 from botocore.credentials import Credentials
 
 import base64
+import logging
 import json
 import os
 import subprocess
@@ -332,11 +333,13 @@ def test_check_output():
 @patch("sagemaker.local.data.get_data_source_instance")
 @patch("subprocess.Popen")
 def test_train(
-    popen, get_data_source_instance, retrieve_artifacts, cleanup, tmpdir, sagemaker_session
+    popen, get_data_source_instance, retrieve_artifacts, cleanup, tmpdir, sagemaker_session, caplog
 ):
     data_source = Mock()
     data_source.get_root_dir.return_value = "foo"
     get_data_source_instance.return_value = data_source
+
+    caplog.set_level(logging.INFO)
 
     directories = [str(tmpdir.mkdir("container-root")), str(tmpdir.mkdir("data"))]
     with patch(
@@ -388,6 +391,7 @@ def test_train(
 
     retrieve_artifacts.assert_called_once()
     cleanup.assert_called_once()
+    assert "[Masked]" in caplog.text
 
 
 @patch("sagemaker.local.local_session.LocalSession", Mock())
@@ -579,7 +583,8 @@ def test_container_does_not_enable_nvidia_docker_for_cpu_containers(sagemaker_se
 @patch("sagemaker.local.image._SageMakerContainer._prepare_serving_volumes", Mock(return_value=[]))
 @patch("shutil.copy", Mock())
 @patch("shutil.copytree", Mock())
-def test_serve(tmpdir, sagemaker_session):
+def test_serve(tmpdir, sagemaker_session, caplog):
+    caplog.set_level(logging.INFO)
     with patch(
         "sagemaker.local.image._SageMakerContainer._create_tmp_folder",
         return_value=str(tmpdir.mkdir("container-root")),
@@ -601,6 +606,7 @@ def test_serve(tmpdir, sagemaker_session):
             for h in sagemaker_container.hosts:
                 assert config["services"][h]["image"] == image
                 assert config["services"][h]["command"] == "serve"
+    assert "[Masked]" in caplog.text
 
 
 @patch("sagemaker.local.image._HostingContainer.run", Mock())
@@ -745,10 +751,10 @@ def test_ecr_login_needed(check_output):
     token_response = "AWS:%s" % token
     b64_token = base64.b64encode(token_response.encode("utf-8"))
     response = {
-        u"authorizationData": [
+        "authorizationData": [
             {
-                u"authorizationToken": b64_token,
-                u"proxyEndpoint": u"https://520713654638.dkr.ecr.us-east-1.amazonaws.com",
+                "authorizationToken": b64_token,
+                "proxyEndpoint": "https://520713654638.dkr.ecr.us-east-1.amazonaws.com",
             }
         ],
         "ResponseMetadata": {
@@ -765,7 +771,7 @@ def test_ecr_login_needed(check_output):
         "docker login -u AWS -p %s https://520713654638.dkr.ecr.us-east-1.amazonaws.com" % token
     )
 
-    check_output.assert_called_with(expected_command, shell=True)
+    check_output.assert_called_with(expected_command.split())
     session_mock.client("ecr").get_authorization_token.assert_called_with(
         registryIds=["520713654638"]
     )
@@ -781,7 +787,7 @@ def test_pull_image(check_output):
 
     expected_command = "docker pull %s" % image
 
-    check_output.assert_called_once_with(expected_command, shell=True)
+    check_output.assert_called_once_with(expected_command.split())
 
 
 def test__aws_credentials_with_long_lived_credentials():

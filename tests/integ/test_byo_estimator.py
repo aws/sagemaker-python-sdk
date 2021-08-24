@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -20,7 +20,7 @@ import pytest
 import sagemaker
 from sagemaker import image_uris
 from sagemaker.estimator import Estimator
-from sagemaker.serializers import BaseSerializer
+from sagemaker.serializers import SimpleBaseSerializer
 from sagemaker.utils import unique_name_from_base
 from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES, datasets
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
@@ -36,9 +36,8 @@ def training_set():
     return datasets.one_p_mnist()
 
 
-class _FactorizationMachineSerializer(BaseSerializer):
-
-    CONTENT_TYPE = "application/json"
+class _FactorizationMachineSerializer(SimpleBaseSerializer):
+    # SimpleBaseSerializer already uses "application/json" CONTENT_TYPE by default
 
     def serialize(self, data):
         js = {"instances": []}
@@ -47,7 +46,7 @@ class _FactorizationMachineSerializer(BaseSerializer):
         return json.dumps(js)
 
 
-@pytest.mark.canary_quick
+@pytest.mark.release
 def test_byo_estimator(sagemaker_session, region, cpu_instance_type, training_set):
     """Use Factorization Machines algorithm as an example here.
 

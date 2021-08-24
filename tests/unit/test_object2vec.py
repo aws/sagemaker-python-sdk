@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -36,7 +36,7 @@ COMMON_TRAIN_ARGS = {
 }
 ALL_REQ_ARGS = dict(
     {"epochs": EPOCHS, "enc0_max_seq_len": ENC0_MAX_SEQ_LEN, "enc0_vocab_size": ENC0_VOCAB_SIZE},
-    **COMMON_TRAIN_ARGS
+    **COMMON_TRAIN_ARGS,
 )
 
 REGION = "us-west-2"
@@ -134,7 +134,7 @@ def test_all_hyperparameters(sagemaker_session):
         enc1_layers=3,
         enc0_freeze_pretrained_embedding=True,
         enc1_freeze_pretrained_embedding=False,
-        **ALL_REQ_ARGS
+        **ALL_REQ_ARGS,
     )
 
     hp = object2vec.hyperparameters()

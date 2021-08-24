@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -186,22 +186,14 @@ def _clone_command_for_github_like(git_config, dest_dir):
 
 
 def _clone_command_for_ssh(git_config, dest_dir):
-    """
-    Args:
-        git_config:
-        dest_dir:
-    """
+    """Placeholder docstring"""
     if "username" in git_config or "password" in git_config or "token" in git_config:
         warnings.warn("SSH cloning, authentication information in git config will be ignored.")
     _run_clone_command(git_config["repo"], dest_dir)
 
 
 def _clone_command_for_github_like_https_2fa_disabled(git_config, dest_dir):
-    """
-    Args:
-        git_config:
-        dest_dir:
-    """
+    """Placeholder docstring"""
     updated_url = git_config["repo"]
     if "token" in git_config:
         if "username" in git_config or "password" in git_config:
@@ -217,11 +209,7 @@ def _clone_command_for_github_like_https_2fa_disabled(git_config, dest_dir):
 
 
 def _clone_command_for_github_like_https_2fa_enabled(git_config, dest_dir):
-    """
-    Args:
-        git_config:
-        dest_dir:
-    """
+    """Placeholder docstring"""
     updated_url = git_config["repo"]
     if "token" in git_config:
         if "username" in git_config or "password" in git_config:
@@ -276,8 +264,7 @@ def _clone_command_for_codecommit_https(git_config, dest_dir):
 
 
 def _run_clone_command(repo_url, dest_dir):
-    """Run the 'git clone' command with the repo url and the directory to clone
-    the repo into.
+    """Run the 'git clone' command with the repo url and the directory to clone the repo into.
 
     Args:
         repo_url (str): Git repo url to be cloned.
@@ -295,15 +282,15 @@ def _run_clone_command(repo_url, dest_dir):
             write_pipe = open(sshnoprompt.name, "w")
             write_pipe.write("ssh -oBatchMode=yes $@")
             write_pipe.close()
-            # 511 in decimal is same as 777 in octal
-            os.chmod(sshnoprompt.name, 511)
+            os.chmod(sshnoprompt.name, 0o511)
             my_env["GIT_SSH"] = sshnoprompt.name
             subprocess.check_call(["git", "clone", repo_url, dest_dir], env=my_env)
 
 
 def _insert_token_to_repo_url(url, token):
-    """Insert the token to the Git repo url, to make a component of the git
-    clone command. This method can only be called when repo_url is an https url.
+    """Insert the token to the Git repo url, to make a component of the git clone command.
+
+    This method can only be called when repo_url is an https url.
 
     Args:
         url (str): Git repo url where the token should be inserted into.
@@ -319,9 +306,9 @@ def _insert_token_to_repo_url(url, token):
 
 
 def _insert_username_and_password_to_repo_url(url, username, password):
-    """Insert the username and the password to the Git repo url, to make a
-    component of the git clone command. This method can only be called when
-    repo_url is an https url.
+    """Insert username and password to the Git repo url to make a component of git clone command.
+
+    This method can only be called when repo_url is an https url.
 
     Args:
         url (str): Git repo url where the token should be inserted into.

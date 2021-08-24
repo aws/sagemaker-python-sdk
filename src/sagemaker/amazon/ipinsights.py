@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -60,10 +60,10 @@ class IPInsights(AmazonAlgorithmEstimatorBase):
     def __init__(
         self,
         role,
-        instance_count,
-        instance_type,
-        num_entity_vectors,
-        vector_dim,
+        instance_count=None,
+        instance_type=None,
+        num_entity_vectors=None,
+        vector_dim=None,
         batch_metrics_publish_interval=None,
         epochs=None,
         learning_rate=None,
@@ -73,8 +73,9 @@ class IPInsights(AmazonAlgorithmEstimatorBase):
         weight_decay=None,
         **kwargs
     ):
-        """This estimator is for IP Insights, an unsupervised algorithm that
-        learns usage patterns of IP addresses.
+        """This estimator is for IP Insights.
+
+        An unsupervised algorithm that learns usage patterns of IP addresses.
 
         This Estimator may be fit via calls to
         :meth:`~sagemaker.amazon.amazon_estimator.AmazonAlgorithmEstimatorBase.fit`.
@@ -167,12 +168,7 @@ class IPInsights(AmazonAlgorithmEstimatorBase):
         )
 
     def _prepare_for_training(self, records, mini_batch_size=None, job_name=None):
-        """
-        Args:
-            records:
-            mini_batch_size:
-            job_name:
-        """
+        """Placeholder docstring"""
         if mini_batch_size is not None and (mini_batch_size < 1 or mini_batch_size > 500000):
             raise ValueError("mini_batch_size must be in [1, 500000]")
         super(IPInsights, self)._prepare_for_training(
@@ -181,8 +177,7 @@ class IPInsights(AmazonAlgorithmEstimatorBase):
 
 
 class IPInsightsPredictor(Predictor):
-    """Returns dot product of entity and IP address embeddings as a score for
-    compatibility.
+    """Returns dot product of entity and IP address embeddings as a score for compatibility.
 
     The implementation of
     :meth:`~sagemaker.predictor.Predictor.predict` in this
@@ -191,8 +186,15 @@ class IPInsightsPredictor(Predictor):
     second column should contain the IPv4 address in dot notation.
     """
 
-    def __init__(self, endpoint_name, sagemaker_session=None):
-        """
+    def __init__(
+        self,
+        endpoint_name,
+        sagemaker_session=None,
+        serializer=CSVSerializer(),
+        deserializer=JSONDeserializer(),
+    ):
+        """Creates object to be used to get dot product of entity nad IP address.
+
         Args:
             endpoint_name (str): Name of the Amazon SageMaker endpoint to which
                 requests are sent.
@@ -200,23 +202,29 @@ class IPInsightsPredictor(Predictor):
                 object, used for SageMaker interactions (default: None). If not
                 specified, one is created using the default AWS configuration
                 chain.
+            serializer (sagemaker.serializers.BaseSerializer): Optional. Default
+                serializes input data to text/csv.
+            deserializer (callable): Optional. Default parses JSON responses
+                using ``json.load(...)``.
         """
         super(IPInsightsPredictor, self).__init__(
             endpoint_name,
             sagemaker_session,
-            serializer=CSVSerializer(),
-            deserializer=JSONDeserializer(),
+            serializer=serializer,
+            deserializer=deserializer,
         )
 
 
 class IPInsightsModel(Model):
-    """Reference IPInsights s3 model data. Calling
-    :meth:`~sagemaker.model.Model.deploy` creates an Endpoint and returns a
+    """Reference IPInsights s3 model data.
+
+    Calling :meth:`~sagemaker.model.Model.deploy` creates an Endpoint and returns a
     Predictor that calculates anomaly scores for data points.
     """
 
     def __init__(self, model_data, role, sagemaker_session=None, **kwargs):
-        """
+        """Creates object to get insights on S3 model data.
+
         Args:
             model_data (str): The S3 location of a SageMaker model data
                 ``.tar.gz`` file.

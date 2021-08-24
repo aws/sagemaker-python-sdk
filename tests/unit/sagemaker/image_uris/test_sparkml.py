@@ -1,4 +1,4 @@
-# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -11,6 +11,8 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
+
+import pytest
 
 from sagemaker import image_uris
 from tests.unit.sagemaker.image_uris import expected_uris, regions
@@ -41,14 +43,15 @@ ACCOUNTS = {
     "us-west-1": "746614075791",
     "us-west-2": "246618743249",
 }
-VERSION = "2.2"
+VERSIONS = ["2.2", "2.4"]
 
 
-def test_sparkml():
+@pytest.mark.parametrize("version", VERSIONS)
+def test_sparkml(version):
     for region in regions.regions():
-        uri = image_uris.retrieve("sparkml-serving", region=region, version=VERSION)
+        uri = image_uris.retrieve("sparkml-serving", region=region, version=version)
 
         expected = expected_uris.algo_uri(
-            "sagemaker-sparkml-serving", ACCOUNTS[region], region, version=VERSION
+            "sagemaker-sparkml-serving", ACCOUNTS[region], region, version=version
         )
         assert expected == uri

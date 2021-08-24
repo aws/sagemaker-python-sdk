@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -93,7 +93,7 @@ def test_all_hyperparameters(sagemaker_session):
         epochs=10,
         center_factor=2,
         eval_metrics=["msd", "ssd"],
-        **ALL_REQ_ARGS
+        **ALL_REQ_ARGS,
     )
     assert kmeans.hyperparameters() == dict(
         k=str(ALL_REQ_ARGS["k"]),
@@ -272,3 +272,27 @@ def test_predictor_type(sagemaker_session):
     predictor = model.deploy(1, INSTANCE_TYPE)
 
     assert isinstance(predictor, KMeansPredictor)
+
+
+def test_predictor_custom_serialization(sagemaker_session):
+    kmeans = KMeans(sagemaker_session=sagemaker_session, **ALL_REQ_ARGS)
+    data = RecordSet(
+        "s3://{}/{}".format(BUCKET_NAME, PREFIX),
+        num_records=1,
+        feature_dim=FEATURE_DIM,
+        channel="train",
+    )
+    kmeans.fit(data, MINI_BATCH_SIZE)
+    model = kmeans.create_model()
+    custom_serializer = Mock()
+    custom_deserializer = Mock()
+    predictor = model.deploy(
+        1,
+        INSTANCE_TYPE,
+        serializer=custom_serializer,
+        deserializer=custom_deserializer,
+    )
+
+    assert isinstance(predictor, KMeansPredictor)
+    assert predictor.serializer is custom_serializer
+    assert predictor.deserializer is custom_deserializer

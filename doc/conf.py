@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -55,11 +55,27 @@ autodoc_member_order = "bysource"
 
 html_theme = "sphinx_rtd_theme"
 
+html_theme_options = {
+    "collapse_navigation": True,
+    "sticky_navigation": True,
+    "navigation_depth": 6,
+    "includehidden": True,
+    "titles_only": False,
+}
+
+
 html_static_path = ["_static"]
 
 htmlhelp_basename = "%sdoc" % project
 
-html_js_files = ["https://a0.awsstatic.com/s_code/js/1.0/awshome_s_code.js", "js/analytics.js"]
+# For Adobe Analytics
+html_js_files = [
+    "https://a0.awsstatic.com/s_code/js/3.0/awshome_s_code.js",
+    "aws-ux-shortbread/index.js",
+    "aws-ux-shortbread/init.js",
+]
+
+html_context = {"css_files": ["_static/theme_overrides.css"]}
 
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {"http://docs.python.org/": None}

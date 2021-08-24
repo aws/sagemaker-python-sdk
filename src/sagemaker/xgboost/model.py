@@ -1,4 +1,4 @@
-# Copyright 2018-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -35,7 +35,13 @@ class XGBoostPredictor(Predictor):
     for XGBoost inference.
     """
 
-    def __init__(self, endpoint_name, sagemaker_session=None):
+    def __init__(
+        self,
+        endpoint_name,
+        sagemaker_session=None,
+        serializer=LibSVMSerializer(),
+        deserializer=CSVDeserializer(),
+    ):
         """Initialize an ``XGBoostPredictor``.
 
         Args:
@@ -44,9 +50,16 @@ class XGBoostPredictor(Predictor):
                 interactions with Amazon SageMaker APIs and any other AWS services needed.
                 If not specified, the estimator creates one using the default AWS configuration
                 chain.
+            serializer (sagemaker.serializers.BaseSerializer): Optional. Default
+                serializes input data to LibSVM format
+            deserializer (sagemaker.deserializers.BaseDeserializer): Optional.
+                Default parses the response from text/csv to a Python list.
         """
         super(XGBoostPredictor, self).__init__(
-            endpoint_name, sagemaker_session, LibSVMSerializer(), CSVDeserializer()
+            endpoint_name,
+            sagemaker_session,
+            serializer=serializer,
+            deserializer=deserializer,
         )
 
 
@@ -112,8 +125,9 @@ class XGBoostModel(FrameworkModel):
         validate_framework_version(framework_version)
 
     def prepare_container_def(self, instance_type=None, accelerator_type=None):
-        """Return a container definition with framework configuration
-        set in model environment variables.
+        """Return a container definition with framework configuration.
+
+        The framework configuration is set in model environment variables.
 
         Args:
             instance_type (str): The EC2 instance type to deploy this Model to.

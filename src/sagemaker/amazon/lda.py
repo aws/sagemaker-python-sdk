@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -45,16 +45,15 @@ class LDA(AmazonAlgorithmEstimatorBase):
     def __init__(
         self,
         role,
-        instance_type,
-        num_topics,
+        instance_type=None,
+        num_topics=None,
         alpha0=None,
         max_restarts=None,
         max_iterations=None,
         tol=None,
         **kwargs
     ):
-        """Latent Dirichlet Allocation (LDA) is :class:`Estimator` used for
-        unsupervised learning.
+        """Latent Dirichlet Allocation (LDA) is :class:`Estimator` used for unsupervised learning.
 
         Amazon SageMaker Latent Dirichlet Allocation is an unsupervised
         learning algorithm that attempts to describe a set of observations as a
@@ -136,8 +135,9 @@ class LDA(AmazonAlgorithmEstimatorBase):
         self.tol = tol
 
     def create_model(self, vpc_config_override=VPC_CONFIG_DEFAULT, **kwargs):
-        """Return a :class:`~sagemaker.amazon.LDAModel` referencing the latest
-        s3 model data produced by this Estimator.
+        """Return a :class:`~sagemaker.amazon.LDAModel`.
+
+        It references the latest s3 model data produced by this Estimator.
 
         Args:
             vpc_config_override (dict[str, list[str]]): Optional override for
@@ -159,12 +159,7 @@ class LDA(AmazonAlgorithmEstimatorBase):
         self, records, mini_batch_size, job_name=None
     ):
         # mini_batch_size is required, prevent explicit calls with None
-        """
-        Args:
-            records:
-            mini_batch_size:
-            job_name:
-        """
+        """Placeholder docstring"""
         if mini_batch_size is None:
             raise ValueError("mini_batch_size must be set")
 
@@ -183,13 +178,21 @@ class LDAPredictor(Predictor):
     to fit the model this Predictor performs inference on.
 
     :meth:`predict()` returns a list of
-    :class:`~sagemaker.amazon.record_pb2.Record` objects, one for each row in
+    :class:`~sagemaker.amazon.record_pb2.Record` objects (assuming the default
+    recordio-protobuf ``deserializer`` is used), one for each row in
     the input ``ndarray``. The lower dimension vector result is stored in the
     ``projection`` key of the ``Record.label`` field.
     """
 
-    def __init__(self, endpoint_name, sagemaker_session=None):
-        """
+    def __init__(
+        self,
+        endpoint_name,
+        sagemaker_session=None,
+        serializer=RecordSerializer(),
+        deserializer=RecordDeserializer(),
+    ):
+        """Creates "LDAPredictor" object to be used for transforming input vectors.
+
         Args:
             endpoint_name (str): Name of the Amazon SageMaker endpoint to which
                 requests are sent.
@@ -197,23 +200,29 @@ class LDAPredictor(Predictor):
                 object, used for SageMaker interactions (default: None). If not
                 specified, one is created using the default AWS configuration
                 chain.
+            serializer (sagemaker.serializers.BaseSerializer): Optional. Default
+                serializes input data to x-recordio-protobuf format.
+            deserializer (sagemaker.deserializers.BaseDeserializer): Optional.
+                Default parses responses from x-recordio-protobuf format.
         """
         super(LDAPredictor, self).__init__(
             endpoint_name,
             sagemaker_session,
-            serializer=RecordSerializer(),
-            deserializer=RecordDeserializer(),
+            serializer=serializer,
+            deserializer=deserializer,
         )
 
 
 class LDAModel(Model):
-    """Reference LDA s3 model data. Calling
-    :meth:`~sagemaker.model.Model.deploy` creates an Endpoint and return a
+    """Reference LDA s3 model data.
+
+    Calling :meth:`~sagemaker.model.Model.deploy` creates an Endpoint and return a
     Predictor that transforms vectors to a lower-dimensional representation.
     """
 
     def __init__(self, model_data, role, sagemaker_session=None, **kwargs):
-        """
+        """Initialization for LDAModel class.
+
         Args:
             model_data (str): The S3 location of a SageMaker model data
                 ``.tar.gz`` file.

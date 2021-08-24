@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -35,6 +35,8 @@ from sagemaker.tuner import WarmStartConfig, WarmStartTypes
 STATIC_HPs = {"feature_dim": "784"}
 
 SAMPLE_PARAM_RANGES = [{"Name": "mini_batch_size", "MinValue": "10", "MaxValue": "100"}]
+
+ENV_INPUT = {"env_key1": "env_val1", "env_key2": "env_val2", "env_key3": "env_val3"}
 
 REGION = "us-west-2"
 STS_ENDPOINT = "sts.us-west-2.amazonaws.com"
@@ -313,6 +315,58 @@ def test_get_caller_identity_arn_from_describe_notebook_instance(boto_session):
     )
 
 
+@patch(
+    "six.moves.builtins.open",
+    mock_open(
+        read_data='{"ResourceName": "SageMakerInstance", '
+        '"DomainId": "d-kbnw5yk6tg8j", '
+        '"UserProfileName": "default-1617915559064"}'
+    ),
+)
+@patch("os.path.exists", side_effect=mock_exists(NOTEBOOK_METADATA_FILE, True))
+def test_get_caller_identity_arn_from_describe_user_profile(boto_session):
+    sess = Session(boto_session)
+    expected_role = "arn:aws:iam::369233609183:role/service-role/SageMakerRole-20171129T072388"
+    sess.sagemaker_client.describe_user_profile.return_value = {
+        "UserSettings": {"ExecutionRole": expected_role}
+    }
+
+    actual = sess.get_caller_identity_arn()
+
+    assert actual == expected_role
+    sess.sagemaker_client.describe_user_profile.assert_called_once_with(
+        DomainId="d-kbnw5yk6tg8j",
+        UserProfileName="default-1617915559064",
+    )
+
+
+@patch(
+    "six.moves.builtins.open",
+    mock_open(
+        read_data='{"ResourceName": "SageMakerInstance", '
+        '"DomainId": "d-kbnw5yk6tg8j", '
+        '"UserProfileName": "default-1617915559064"}'
+    ),
+)
+@patch("os.path.exists", side_effect=mock_exists(NOTEBOOK_METADATA_FILE, True))
+def test_get_caller_identity_arn_from_describe_domain(boto_session):
+    sess = Session(boto_session)
+    expected_role = "arn:aws:iam::369233609183:role/service-role/SageMakerRole-20171129T072388"
+    sess.sagemaker_client.describe_user_profile.return_value = {}
+    sess.sagemaker_client.describe_domain.return_value = {
+        "DefaultUserSettings": {"ExecutionRole": expected_role}
+    }
+
+    actual = sess.get_caller_identity_arn()
+
+    assert actual == expected_role
+    sess.sagemaker_client.describe_user_profile.assert_called_once_with(
+        DomainId="d-kbnw5yk6tg8j",
+        UserProfileName="default-1617915559064",
+    )
+    sess.sagemaker_client.describe_domain.assert_called_once_with(DomainId="d-kbnw5yk6tg8j")
+
+
 @patch("six.moves.builtins.open", mock_open(read_data='{"ResourceName": "SageMakerInstance"}'))
 @patch("os.path.exists", side_effect=mock_exists(NOTEBOOK_METADATA_FILE, True))
 @patch("sagemaker.session.sts_regional_endpoint", return_value=STS_ENDPOINT)
@@ -399,11 +453,29 @@ def test_get_caller_identity_arn_from_a_role(sts_regional_endpoint, boto_session
 @patch("sagemaker.session.sts_regional_endpoint", return_value=STS_ENDPOINT)
 def test_get_caller_identity_arn_from_an_execution_role(sts_regional_endpoint, boto_session):
     sess = Session(boto_session)
+    sts_arn = "arn:aws:sts::369233609183:assumed-role/AmazonSageMaker-ExecutionRole-20171129T072388/SageMaker"
+    sess.boto_session.client("sts", endpoint_url=STS_ENDPOINT).get_caller_identity.return_value = {
+        "Arn": sts_arn
+    }
+    iam_arn = "arn:aws:iam::369233609183:role/AmazonSageMaker-ExecutionRole-20171129T072388"
+    sess.boto_session.client("iam").get_role.return_value = {"Role": {"Arn": iam_arn}}
+
+    actual = sess.get_caller_identity_arn()
+    assert actual == iam_arn
+
+
+@patch("os.path.exists", side_effect=mock_exists(NOTEBOOK_METADATA_FILE, False))
+@patch("sagemaker.session.sts_regional_endpoint", return_value=STS_ENDPOINT)
+def test_get_caller_identity_arn_from_a_sagemaker_execution_role_with_iam_client_error(
+    sts_regional_endpoint, boto_session
+):
+    sess = Session(boto_session)
     arn = "arn:aws:sts::369233609183:assumed-role/AmazonSageMaker-ExecutionRole-20171129T072388/SageMaker"
     sess.boto_session.client("sts", endpoint_url=STS_ENDPOINT).get_caller_identity.return_value = {
         "Arn": arn
     }
-    sess.boto_session.client("iam").get_role.return_value = {"Role": {"Arn": arn}}
+
+    sess.boto_session.client("iam").get_role.side_effect = ClientError({}, {})
 
     actual = sess.get_caller_identity_arn()
     assert (
@@ -1188,6 +1260,7 @@ def test_train_pack_to_request_with_optional_params(sagemaker_session):
     }
 
     stop_cond = {"MaxRuntimeInSeconds": MAX_TIME}
+    RETRY_STRATEGY = {"MaximumRetryAttempts": 2}
     hyperparameters = {"foo": "bar"}
 
     sagemaker_session.train(
@@ -1208,6 +1281,8 @@ def test_train_pack_to_request_with_optional_params(sagemaker_session):
         checkpoint_s3_uri="s3://mybucket/checkpoints/",
         checkpoint_local_path="/tmp/checkpoints",
         enable_sagemaker_metrics=True,
+        environment=ENV_INPUT,
+        retry_strategy=RETRY_STRATEGY,
     )
 
     _, _, actual_train_args = sagemaker_session.sagemaker_client.method_calls[0]
@@ -1221,6 +1296,8 @@ def test_train_pack_to_request_with_optional_params(sagemaker_session):
     assert actual_train_args["EnableManagedSpotTraining"] is True
     assert actual_train_args["CheckpointConfig"]["S3Uri"] == "s3://mybucket/checkpoints/"
     assert actual_train_args["CheckpointConfig"]["LocalPath"] == "/tmp/checkpoints"
+    assert actual_train_args["Environment"] == ENV_INPUT
+    assert actual_train_args["RetryStrategy"] == RETRY_STRATEGY
 
 
 def test_transform_pack_to_request(sagemaker_session):
@@ -2134,9 +2211,197 @@ def test_list_candidates_for_auto_ml_job_with_optional_args(sagemaker_session):
     )
 
 
-def test_describe_tuning_Job(sagemaker_session):
+def test_describe_tuning_job(sagemaker_session):
     job_name = "hyper-parameter-tuning"
     sagemaker_session.describe_tuning_job(job_name=job_name)
     sagemaker_session.sagemaker_client.describe_hyper_parameter_tuning_job.assert_called_with(
         HyperParameterTuningJobName=job_name
     )
+
+
+@pytest.fixture
+def pipeline_empty_definition():
+    return '{"Version": "2020-12-01", ' '"Metadata": {}, ' '"Parameters": [], ' '"Steps": []}'
+
+
+@pytest.fixture
+def pipeline_role_arn():
+    return "my:pipeline:role:arn"
+
+
+def test_describe_model(sagemaker_session):
+    model_name = "sagemaker-model-name"
+    sagemaker_session.describe_model(name=model_name)
+    sagemaker_session.sagemaker_client.describe_model.assert_called_with(ModelName=model_name)
+
+
+def test_create_model_package_from_containers(sagemaker_session):
+    model_package_name = "sagemaker-model-package"
+    sagemaker_session.create_model_package_from_containers(model_package_name=model_package_name)
+    sagemaker_session.sagemaker_client.create_model_package.assert_called_once()
+
+
+def test_create_model_package_from_containers_name_conflict(sagemaker_session):
+    model_package_name = "sagemaker-model-package"
+    model_package_group_name = "sagemaker-model-package-group"
+    with pytest.raises(ValueError) as error:
+        sagemaker_session.create_model_package_from_containers(
+            model_package_name=model_package_name,
+            model_package_group_name=model_package_group_name,
+        )
+        assert (
+            "model_package_name and model_package_group_name cannot be present at the same "
+            "time." == str(error)
+        )
+
+
+def test_create_model_package_from_containers_incomplete_args(sagemaker_session):
+    model_package_name = "sagemaker-model-package"
+    containers = ["dummy-container"]
+    with pytest.raises(ValueError) as error:
+        sagemaker_session.create_model_package_from_containers(
+            model_package_name=model_package_name,
+            containers=containers,
+        )
+        assert (
+            "content_types, response_types, inference_inferences and transform_instances "
+            "must be provided if containers is present." == str(error)
+        )
+
+
+def test_create_model_package_from_containers_all_args(sagemaker_session):
+    model_package_name = "sagemaker-model-package"
+    containers = ["dummy-container"]
+    content_types = ["application/json"]
+    response_types = ["application/json"]
+    inference_instances = ["ml.m4.xlarge"]
+    transform_instances = ["ml.m4.xlarget"]
+    model_metrics = {
+        "Bias": {
+            "ContentType": "content-type",
+            "S3Uri": "s3://...",
+        }
+    }
+    metadata_properties = {
+        "CommitId": "test-commit-id",
+        "Repository": "test-repository",
+        "GeneratedBy": "sagemaker-python-sdk",
+        "ProjectId": "unit-test",
+    }
+    marketplace_cert = (True,)
+    approval_status = ("Approved",)
+    description = "description"
+    sagemaker_session.create_model_package_from_containers(
+        containers=containers,
+        content_types=content_types,
+        response_types=response_types,
+        inference_instances=inference_instances,
+        transform_instances=transform_instances,
+        model_package_name=model_package_name,
+        model_metrics=model_metrics,
+        metadata_properties=metadata_properties,
+        marketplace_cert=marketplace_cert,
+        approval_status=approval_status,
+        description=description,
+    )
+    expected_args = {
+        "ModelPackageName": model_package_name,
+        "InferenceSpecification": {
+            "Containers": containers,
+            "SupportedContentTypes": content_types,
+            "SupportedResponseMIMETypes": response_types,
+            "SupportedRealtimeInferenceInstanceTypes": inference_instances,
+            "SupportedTransformInstanceTypes": transform_instances,
+        },
+        "ModelPackageDescription": description,
+        "ModelMetrics": model_metrics,
+        "MetadataProperties": metadata_properties,
+        "CertifyForMarketplace": marketplace_cert,
+        "ModelApprovalStatus": approval_status,
+    }
+    sagemaker_session.sagemaker_client.create_model_package.assert_called_with(**expected_args)
+
+
+@pytest.fixture
+def feature_group_dummy_definitions():
+    return [{"FeatureName": "feature1", "FeatureType": "String"}]
+
+
+def test_feature_group_create(sagemaker_session, feature_group_dummy_definitions):
+    sagemaker_session.create_feature_group(
+        feature_group_name="MyFeatureGroup",
+        record_identifier_name="feature1",
+        event_time_feature_name="feature2",
+        feature_definitions=feature_group_dummy_definitions,
+        role_arn="dummy_role",
+    )
+    assert sagemaker_session.sagemaker_client.create_feature_group.called_with(
+        FeatureGroupName="MyFeatureGroup",
+        RecordIdentifierFeatureName="feature1",
+        EventTimeFeatureName="feature2",
+        FeatureDefinitions=feature_group_dummy_definitions,
+        RoleArn="dummy_role",
+    )
+
+
+def test_feature_group_delete(sagemaker_session):
+    sagemaker_session.delete_feature_group(feature_group_name="MyFeatureGroup")
+    assert sagemaker_session.sagemaker_client.delete_feature_group.called_with(
+        FeatureGroupName="MyFeatureGroup",
+    )
+
+
+def test_feature_group_describe(sagemaker_session):
+    sagemaker_session.describe_feature_group(feature_group_name="MyFeatureGroup")
+    assert sagemaker_session.sagemaker_client.describe_feature_group.called_with(
+        FeatureGroupName="MyFeatureGroup",
+    )
+
+
+def test_start_query_execution(sagemaker_session):
+    athena_mock = Mock()
+    sagemaker_session.boto_session.client(
+        "athena", region_name=sagemaker_session.boto_region_name
+    ).return_value = athena_mock
+    sagemaker_session.start_query_execution(
+        catalog="catalog",
+        database="database",
+        query_string="query",
+        output_location="s3://results",
+    )
+    assert athena_mock.start_query_execution.called_once_with(
+        QueryString="query",
+        QueryExecutionContext={"Catalog": "catalog", "Database": "database"},
+        OutputLocation="s3://results",
+    )
+
+
+def test_get_query_execution(sagemaker_session):
+    athena_mock = Mock()
+    sagemaker_session.boto_session.client(
+        "athena", region_name=sagemaker_session.boto_region_name
+    ).return_value = athena_mock
+    sagemaker_session.get_query_execution(query_execution_id="query_id")
+    assert athena_mock.get_query_execution.called_with(QueryExecutionId="query_id")
+
+
+def test_download_athena_query_result(sagemaker_session):
+    sagemaker_session.s3_client = Mock()
+    sagemaker_session.download_athena_query_result(
+        bucket="bucket",
+        prefix="prefix",
+        query_execution_id="query_id",
+        filename="filename",
+    )
+    assert sagemaker_session.s3_client.download_file.called_with(
+        Bucket="bucket",
+        Key="prefix/query_id.csv",
+        Filename="filename",
+    )
+
+
+@patch("sagemaker.session.Session.get_query_execution")
+def test_wait_for_athena_query(query_execution, sagemaker_session):
+    query_execution.return_value = {"QueryExecution": {"Status": {"State": "SUCCEEDED"}}}
+    sagemaker_session.wait_for_athena_query(query_execution_id="query_id")
+    assert query_execution.called_with(query_execution_id="query_id")

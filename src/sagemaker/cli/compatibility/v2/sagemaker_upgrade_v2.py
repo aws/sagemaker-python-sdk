@@ -1,4 +1,4 @@
-# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -22,8 +22,9 @@ _EXT_TO_UPDATER_CLS = {".py": files.PyFileUpdater, ".ipynb": files.JupyterNotebo
 
 
 def _update_file(input_file, output_file):
-    """Updates a file to be compatible with version 2.0 and later of the SageMaker Python SDK,
-    and write the updated source to the output file.
+    """Updates a file to be compatible with version 2.0 and later of the SageMaker Python SDK.
+
+    It also writes the updated source to the output file.
 
     Args:
         input_file (str): The path to the file to be updated.
