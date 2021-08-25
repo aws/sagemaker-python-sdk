@@ -1,5 +1,24 @@
 # Changelog
 
+## v2.55.0 (2021-08-25)
+
+### Features
+
+ * Add information of Amazon-provided analysis image used by Mo…
+
+### Bug Fixes and Other Changes
+
+ * Update Changelog to fix release
+ * Fixing the order of populating container list
+ * pass network isolation config to pipelineModel
+ * Deference symbolic link when create tar file
+ * multiprocess issue in feature_group.py
+ * deprecate tag logic on Association
+
+### Documentation Changes
+
+ * add dataset_definition to processing page
+
 ## v2.54.0 (2021-08-16)
 
 ### Features
