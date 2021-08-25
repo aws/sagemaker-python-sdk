@@ -4,7 +4,7 @@
 
 ### Features
 
- * Add information of Amazon-provided analysis image used by Mo…
+ * Add information of Amazon-provided analysis image used by Model Monitor
 
 ### Bug Fixes and Other Changes
 
