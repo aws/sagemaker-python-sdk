@@ -8,7 +8,7 @@
 
 ### Bug Fixes and Other Changes
 
- * issue #2253 where Processing job in Local mode would call Describe…
+ * issue #2253 where Processing job in Local mode would call Describe API
 
 ## v2.53.0 (2021-08-12)
 
