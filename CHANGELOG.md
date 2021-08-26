@@ -1,5 +1,16 @@
 # Changelog
 
+## v2.56.0 (2021-08-26)
+
+### Features
+
+ * Add NEO KIX Configuration
+ * Algorithms region launch on KIX
+
+### Bug Fixes and Other Changes
+
+ * remove dots from CHANGELOG
+
 ## v2.55.0 (2021-08-25)
 
 ### Features
