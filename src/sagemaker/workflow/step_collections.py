@@ -69,7 +69,7 @@ class RegisterModel(StepCollection):
         compile_model_family=None,
         description=None,
         tags=None,
-        model=None,
+        model: Union[Model, PipelineModel] = None,
         **kwargs,
     ):
         """Construct steps `_RepackModelStep` and `_RegisterModelStep` based on the estimator.
@@ -109,6 +109,16 @@ class RegisterModel(StepCollection):
         repack_model = False
         self.model_list = None
         self.container_def_list = None
+        subnets = None
+        security_group_ids = None
+
+        if estimator is not None:
+            subnets = estimator.subnets
+            security_group_ids = estimator.security_group_ids
+        elif model is not None and model.vpc_config is not None:
+            subnets = model.vpc_config["Subnets"]
+            security_group_ids = model.vpc_config["SecurityGroupIds"]
+
         if "entry_point" in kwargs:
             repack_model = True
             entry_point = kwargs.pop("entry_point", None)
@@ -125,6 +135,9 @@ class RegisterModel(StepCollection):
                 entry_point=entry_point,
                 source_dir=source_dir,
                 dependencies=dependencies,
+                tags=tags,
+                subnets=subnets,
+                security_group_ids=security_group_ids,
                 **kwargs,
             )
             steps.append(repack_model_step)
@@ -163,6 +176,9 @@ class RegisterModel(StepCollection):
                         entry_point=entry_point,
                         source_dir=source_dir,
                         dependencies=dependencies,
+                        tags=tags,
+                        subnets=subnets,
+                        security_group_ids=security_group_ids,
                         **kwargs,
                     )
                     steps.append(repack_model_step)
@@ -283,6 +299,9 @@ class EstimatorTransformer(StepCollection):
                 entry_point=entry_point,
                 source_dir=source_dir,
                 dependencies=dependencies,
+                tags=tags,
+                subnets=estimator.subnets,
+                security_group_ids=estimator.security_group_ids,
             )
             steps.append(repack_model_step)
             model_data = repack_model_step.properties.ModelArtifacts.S3ModelArtifacts
