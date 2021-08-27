@@ -541,6 +541,7 @@ def test_deploy(sagemaker_session, candidate_mock):
         initial_instance_count=INSTANCE_COUNT,
         instance_type=INSTANCE_TYPE,
         sagemaker_session=sagemaker_session,
+        model_kms_key=OUTPUT_KMS_KEY,
     )
     auto_ml.create_model.assert_called_once()
     mock_pipeline.deploy.assert_called_once()
