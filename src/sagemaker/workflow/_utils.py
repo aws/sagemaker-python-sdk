@@ -42,13 +42,10 @@ REPACK_SCRIPT = "_repack_model.py"
 
 
 class _RepackModelStep(TrainingStep):
-    """Repacks model artifacts with inference entry point.
+    """Repacks model artifacts with custom inference entry points.
 
-    Attributes:
-        name (str): The name of the training step.
-        step_type (StepTypeEnum): The type of the step with value `StepTypeEnum.Training`.
-        estimator (EstimatorBase): A `sagemaker.estimator.EstimatorBase` instance.
-        inputs (TrainingInput): A `sagemaker.inputs.TrainingInput` instance. Defaults to `None`.
+    The SDK automatically adds this step to pipelines that have RegisterModelSteps with models
+    that have a custom entry point.
     """
 
     def __init__(
@@ -61,19 +58,77 @@ class _RepackModelStep(TrainingStep):
         source_dir: str = None,
         dependencies: List = None,
         depends_on: Union[List[str], List[Step]] = None,
+        subnets=None,
+        security_group_ids=None,
         **kwargs,
     ):
-        """Constructs a TrainingStep, given an `EstimatorBase` instance.
-
-        In addition to the estimator instance, the other arguments are those that are supplied to
-        the `fit` method of the `sagemaker.estimator.Estimator`.
+        """Base class initializer.
 
         Args:
             name (str): The name of the training step.
-            estimator (EstimatorBase): A `sagemaker.estimator.EstimatorBase` instance.
-            inputs (TrainingInput): A `sagemaker.inputs.TrainingInput` instance. Defaults to `None`.
+            sagemaker_session (sagemaker.session.Session): Session object which manages
+                    interactions with Amazon SageMaker APIs and any other AWS services needed. If
+                    not specified, the estimator creates one using the default
+                    AWS configuration chain.
+            role (str): An AWS IAM role (either name or full ARN). The Amazon
+                    SageMaker training jobs and APIs that create Amazon SageMaker
+                    endpoints use this role to access training data and model
+                    artifacts. After the endpoint is created, the inference code
+                    might use the IAM role, if it needs to access an AWS resource.
+            model_data (str): The S3 location of a SageMaker model data
+                    ``.tar.gz`` file (default: None).
+            entry_point (str): Path (absolute or relative) to the local Python
+                    source file which should be executed as the entry point to
+                    inference. If ``source_dir`` is specified, then ``entry_point``
+                    must point to a file located at the root of ``source_dir``.
+                    If 'git_config' is provided, 'entry_point' should be
+                    a relative location to the Python source file in the Git repo.
+
+                    Example:
+                        With the following GitHub repo directory structure:
+
+                        >>> |----- README.md
+                        >>> |----- src
+                        >>>         |----- train.py
+                        >>>         |----- test.py
+
+                        You can assign entry_point='src/train.py'.
+            source_dir (str): A relative location to a directory with other training
+                or model hosting source code dependencies aside from the entry point
+                file in the Git repo (default: None). Structure within this
+                directory are preserved when training on Amazon SageMaker.
+            dependencies (list[str]): A list of paths to directories (absolute
+                    or relative) with any additional libraries that will be exported
+                    to the container (default: []). The library folders will be
+                    copied to SageMaker in the same folder where the entrypoint is
+                    copied. If 'git_config' is provided, 'dependencies' should be a
+                    list of relative locations to directories with any additional
+                    libraries needed in the Git repo.
+
+                    .. admonition:: Example
+
+                        The following call
+
+                        >>> Estimator(entry_point='train.py',
+                        ...           dependencies=['my/libs/common', 'virtual-env'])
+
+                        results in the following inside the container:
+
+                        >>> $ ls
+
+                        >>> opt/ml/code
+                        >>>     |------ train.py
+                        >>>     |------ common
+                        >>>     |------ virtual-env
+
+                    This is not supported with "local code" in Local Mode.
+            depends_on (List[str] or List[Step]): A list of step names or instances
+                    this step depends on
+            subnets (list[str]): List of subnet ids. If not specified, the re-packing
+                    job will be created without VPC config.
+            security_group_ids (list[str]): List of security group ids. If not
+                specified, the re-packing job will be created without VPC config.
         """
-        # yeah, go ahead and save the originals for now
         self._model_data = model_data
         self.sagemaker_session = sagemaker_session
         self.role = role
@@ -101,6 +156,8 @@ class _RepackModelStep(TrainingStep):
                 "inference_script": self._entry_point_basename,
                 "model_archive": self._model_archive,
             },
+            subnets=subnets,
+            security_group_ids=security_group_ids,
             **kwargs,
         )
         repacker.disable_profiler = True
