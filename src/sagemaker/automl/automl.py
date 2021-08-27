@@ -420,7 +420,7 @@ class AutoML(object):
             serializer=serializer,
             deserializer=deserializer,
             endpoint_name=endpoint_name,
-            model_kms_key=model_kms_key,
+            kms_key=model_kms_key,
             tags=tags,
             wait=wait,
         )
