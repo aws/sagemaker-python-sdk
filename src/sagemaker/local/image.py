@@ -31,7 +31,10 @@ import tarfile
 import tempfile
 
 from distutils.spawn import find_executable
+from signal import SIGTERM
 from threading import Thread
+
+import psutil
 from six.moves.urllib.parse import urlparse
 
 import sagemaker
@@ -840,6 +843,8 @@ class _HostingContainer(Thread):
 
     def down(self):
         """Placeholder docstring"""
+        for process in psutil.Process(self.process.pid).children():
+            process.send_signal(SIGTERM)
         self.process.terminate()
 
 
