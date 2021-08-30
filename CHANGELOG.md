@@ -1,5 +1,20 @@
 # Changelog
 
+## v2.57.0 (2021-08-30)
+
+### Deprecations and Removals
+
+ * Remove stale S3DownloadMode from test_session.py
+
+### Features
+
+ * update clarify imageURI for KIX
+
+### Bug Fixes and Other Changes
+
+ * propagate KMS key to model.deploy
+ * Propagate tags and VPC configs to repack model steps
+
 ## v2.56.0 (2021-08-26)
 
 ### Features
