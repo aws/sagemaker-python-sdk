@@ -3,6 +3,7 @@
     "versions": {
         "latest": {
             "registries": {
+                "ap-northeast-3": "479947661362",
                 "af-south-1": "314341159256",
                 "ap-east-1": "199566480951",
                 "ap-northeast-1": "430734990657",
