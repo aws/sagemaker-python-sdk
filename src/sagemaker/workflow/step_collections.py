@@ -67,6 +67,7 @@ class RegisterModel(StepCollection):
         approval_status=None,
         image_uri=None,
         compile_model_family=None,
+        display_name=None,
         description=None,
         tags=None,
         model: Union[Model, PipelineModel] = None,
@@ -138,6 +139,8 @@ class RegisterModel(StepCollection):
                 tags=tags,
                 subnets=subnets,
                 security_group_ids=security_group_ids,
+                description=description,
+                display_name=display_name,
                 **kwargs,
             )
             steps.append(repack_model_step)
@@ -179,6 +182,8 @@ class RegisterModel(StepCollection):
                         tags=tags,
                         subnets=subnets,
                         security_group_ids=security_group_ids,
+                        description=description,
+                        display_name=display_name,
                         **kwargs,
                     )
                     steps.append(repack_model_step)
@@ -208,6 +213,7 @@ class RegisterModel(StepCollection):
             image_uri=image_uri,
             compile_model_family=compile_model_family,
             description=description,
+            display_name=display_name,
             tags=tags,
             container_def_list=self.container_def_list,
             **kwargs,
@@ -231,6 +237,8 @@ class EstimatorTransformer(StepCollection):
         instance_count,
         instance_type,
         transform_inputs,
+        description: str = None,
+        display_name: str = None,
         # model arguments
         image_uri=None,
         predictor_cls=None,
@@ -302,6 +310,8 @@ class EstimatorTransformer(StepCollection):
                 tags=tags,
                 subnets=estimator.subnets,
                 security_group_ids=estimator.security_group_ids,
+                description=description,
+                display_name=display_name,
             )
             steps.append(repack_model_step)
             model_data = repack_model_step.properties.ModelArtifacts.S3ModelArtifacts
@@ -324,6 +334,8 @@ class EstimatorTransformer(StepCollection):
             name=f"{name}CreateModelStep",
             model=model,
             inputs=model_inputs,
+            description=description,
+            display_name=display_name,
         )
         if "entry_point" not in kwargs and depends_on:
             # if the CreateModelStep is the first step in the collection
@@ -351,6 +363,8 @@ class EstimatorTransformer(StepCollection):
             name=f"{name}TransformStep",
             transformer=transformer,
             inputs=transform_inputs,
+            description=description,
+            display_name=display_name,
         )
         steps.append(transform_step)
 

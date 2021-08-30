@@ -285,6 +285,8 @@ def test_three_step_definition(
     )
     step_process = ProcessingStep(
         name="my-process",
+        display_name="ProcessingStep",
+        description="description for Processing step",
         processor=sklearn_processor,
         inputs=[
             ProcessingInput(source=input_data, destination="/opt/ml/processing/input"),
@@ -319,6 +321,8 @@ def test_three_step_definition(
     )
     step_train = TrainingStep(
         name="my-train",
+        display_name="TrainingStep",
+        description="description for Training step",
         estimator=sklearn_train,
         inputs=TrainingInput(
             s3_data=step_process.properties.ProcessingOutputConfig.Outputs[
@@ -339,6 +343,8 @@ def test_three_step_definition(
     )
     step_model = CreateModelStep(
         name="my-model",
+        display_name="ModelStep",
+        description="description for Model step",
         model=model,
         inputs=model_inputs,
     )
@@ -367,10 +373,12 @@ def test_three_step_definition(
     assert len(steps) == 3
 
     names_and_types = []
+    display_names_and_desc = []
     processing_args = {}
     training_args = {}
     for step in steps:
         names_and_types.append((step["Name"], step["Type"]))
+        display_names_and_desc.append((step["DisplayName"], step["Description"]))
         if step["Type"] == "Processing":
             processing_args = step["Arguments"]
         if step["Type"] == "Training":
@@ -386,6 +394,13 @@ def test_three_step_definition(
         ]
     )
 
+    assert set(display_names_and_desc) == set(
+        [
+            ("ProcessingStep", "description for Processing step"),
+            ("TrainingStep", "description for Training step"),
+            ("ModelStep", "description for Model step"),
+        ]
+    )
     assert processing_args["ProcessingResources"]["ClusterConfig"] == {
         "InstanceType": {"Get": "Parameters.InstanceType"},
         "InstanceCount": {"Get": "Parameters.InstanceCount"},
