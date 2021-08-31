@@ -1,5 +1,16 @@
 # Changelog
 
+## v2.58.0 (2021-08-31)
+
+### Features
+
+ * update debugger for KIX
+ * support displayName and description for pipeline steps
+
+### Bug Fixes and Other Changes
+
+ * localmode subprocess parent process not sending SIGTERM to child
+
 ## v2.57.0 (2021-08-30)
 
 ### Deprecations and Removals
