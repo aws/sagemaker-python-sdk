@@ -15,6 +15,7 @@ from __future__ import absolute_import
 
 import os
 import shutil
+import subprocess
 
 from distutils.dir_util import copy_tree
 from six.moves.urllib.parse import urlparse
@@ -88,3 +89,24 @@ def recursive_copy(source, destination):
     """
     if os.path.isdir(source):
         copy_tree(source, destination)
+
+
+def kill_child_processes(pid):
+    child_pids = get_child_process_ids(pid)
+    for pid in child_pids:
+        os.kill(pid, 15)
+
+
+def get_child_process_ids(pid):
+    cmd = f"pgrep -P {pid}".split()
+    output, err = subprocess.Popen(
+        cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    ).communicate()
+    if err:
+        return []
+    pids = [int(pid) for pid in output.decode('utf-8').split()]
+    if pids:
+        for pid in pids:
+            return pids + get_child_process_ids(pid)
+    else:
+        return []

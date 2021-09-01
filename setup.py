@@ -52,7 +52,6 @@ extras = {
         "urllib3>=1.21.1,!=1.25,!=1.25.1",
         "docker-compose>=1.25.2",
         "PyYAML>=5.3, <6",  # PyYAML version has to match docker-compose requirements
-        "psutil",
     ],
     "scipy": ["scipy>=0.19.0"],
 }
