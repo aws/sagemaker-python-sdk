@@ -51,6 +51,7 @@ extras = {
     "local": [
         "urllib3>=1.21.1,!=1.25,!=1.25.1",
         "docker-compose>=1.25.2",
+        "docker!=5.0.1",
         "PyYAML>=5.3, <6",  # PyYAML version has to match docker-compose requirements
         "psutil",
     ],
