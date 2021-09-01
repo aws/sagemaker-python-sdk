@@ -53,7 +53,6 @@ extras = {
         "docker-compose>=1.25.2",
         "docker!=5.0.1",
         "PyYAML>=5.3, <6",  # PyYAML version has to match docker-compose requirements
-        "psutil",
     ],
     "scipy": ["scipy>=0.19.0"],
 }
