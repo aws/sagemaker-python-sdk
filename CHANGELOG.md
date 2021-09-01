@@ -1,5 +1,77 @@
 # Changelog
 
+## v2.58.0 (2021-08-31)
+
+### Features
+
+ * update debugger for KIX
+ * support displayName and description for pipeline steps
+
+### Bug Fixes and Other Changes
+
+ * localmode subprocess parent process not sending SIGTERM to child
+
+## v2.57.0 (2021-08-30)
+
+### Deprecations and Removals
+
+ * Remove stale S3DownloadMode from test_session.py
+
+### Features
+
+ * update clarify imageURI for KIX
+
+### Bug Fixes and Other Changes
+
+ * propagate KMS key to model.deploy
+ * Propagate tags and VPC configs to repack model steps
+
+## v2.56.0 (2021-08-26)
+
+### Features
+
+ * Add NEO KIX Configuration
+ * Algorithms region launch on KIX
+
+### Bug Fixes and Other Changes
+
+ * remove dots from CHANGELOG
+
+## v2.55.0 (2021-08-25)
+
+### Features
+
+ * Add information of Amazon-provided analysis image used by Model Monitor
+
+### Bug Fixes and Other Changes
+
+ * Update Changelog to fix release
+ * Fixing the order of populating container list
+ * pass network isolation config to pipelineModel
+ * Deference symbolic link when create tar file
+ * multiprocess issue in feature_group.py
+ * deprecate tag logic on Association
+
+### Documentation Changes
+
+ * add dataset_definition to processing page
+
+## v2.54.0 (2021-08-16)
+
+### Features
+
+ * add pytorch 1.5.1 eia configuration
+
+### Bug Fixes and Other Changes
+
+ * issue #2253 where Processing job in Local mode would call Describe API
+
+## v2.53.0 (2021-08-12)
+
+### Features
+
+ * support tuning step parameter range parameterization + support retry strategy in tuner
+
 ## v2.52.2.post0 (2021-08-11)
 
 ### Documentation Changes

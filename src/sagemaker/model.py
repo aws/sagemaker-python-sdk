@@ -1097,6 +1097,8 @@ class FrameworkModel(Model):
 
     def _framework_env_vars(self):
         """Placeholder docstring"""
+        script_name = None
+        dir_name = None
         if self.uploaded_code:
             script_name = self.uploaded_code.script_name
             if self.enable_network_isolation():
@@ -1105,10 +1107,8 @@ class FrameworkModel(Model):
                 dir_name = self.uploaded_code.s3_prefix
         elif self.entry_point is not None:
             script_name = self.entry_point
-            dir_name = "file://" + self.source_dir
-        else:
-            script_name = None
-            dir_name = None
+            if self.source_dir is not None:
+                dir_name = "file://" + self.source_dir
 
         return {
             SCRIPT_PARAM_NAME.upper(): script_name or str(),
