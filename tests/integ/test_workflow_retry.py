@@ -29,7 +29,12 @@ from sagemaker.workflow.parameters import (
 )
 from sagemaker.pytorch.estimator import PyTorch
 from sagemaker.workflow.pipeline import Pipeline
-from sagemaker.workflow.retry import RetryPolicy, RetryExceptionTypeEnum
+from sagemaker.workflow.retry import (
+    StepRetryPolicy,
+    StepExceptionTypeEnum,
+    SageMakerJobStepRetryPolicy,
+    SageMakerJobExceptionTypeEnum,
+)
 from sagemaker.inputs import TrainingInput, CreateModelInput
 from sagemaker.workflow.steps import (
     CreateModelStep,
@@ -119,12 +124,18 @@ def test_pipeline_execution_processing_step_with_retry(
         inputs=inputs,
         code=script_path,
         retry_policies=[
-            RetryPolicy(
-                retry_exception_type=RetryExceptionTypeEnum.ALL,
+            StepRetryPolicy(
+                exception_types=[
+                    StepExceptionTypeEnum.SERVICE_FAULT,
+                    StepExceptionTypeEnum.THROTTLING,
+                ],
                 backoff_rate=2.0,
                 interval_seconds=30,
                 expire_after_mins=5,
-            )
+            ),
+            SageMakerJobStepRetryPolicy(
+                exception_types=[SageMakerJobExceptionTypeEnum.CAPACITY_ERROR], max_attempts=10
+            ),
         ],
     )
     pipeline = Pipeline(
@@ -184,7 +195,9 @@ def test_model_registration_with_model_repack(
         name="pytorch-train",
         estimator=pytorch_estimator,
         inputs=inputs,
-        retry_policies=[RetryPolicy(max_attempts=3)],
+        retry_policies=[
+            StepRetryPolicy(exception_types=[StepExceptionTypeEnum.THROTTLING], max_attempts=3)
+        ],
     )
 
     step_register = RegisterModel(
@@ -197,8 +210,12 @@ def test_model_registration_with_model_repack(
         transform_instances=["ml.m5.large"],
         description="test-description",
         entry_point=entry_point,
-        register_model_step_retry_policies=[RetryPolicy(max_attempts=3)],
-        repack_model_step_retry_policies=[RetryPolicy(max_attempts=3)],
+        register_model_step_retry_policies=[
+            StepRetryPolicy(exception_types=[StepExceptionTypeEnum.THROTTLING], max_attempts=3)
+        ],
+        repack_model_step_retry_policies=[
+            StepRetryPolicy(exception_types=[StepExceptionTypeEnum.THROTTLING], max_attempts=3)
+        ],
     )
 
     model = Model(

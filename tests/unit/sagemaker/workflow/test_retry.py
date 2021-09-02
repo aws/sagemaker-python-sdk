@@ -13,67 +13,111 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-from sagemaker.workflow.retry import RetryPolicy, RetryExceptionTypeEnum
+
+from sagemaker.workflow.retry import (
+    RetryPolicy,
+    StepRetryPolicy,
+    SageMakerJobStepRetryPolicy,
+    StepExceptionTypeEnum,
+    SageMakerJobExceptionTypeEnum,
+)
 
 
-def test_valid_retry_policy():
-    retry_policy = RetryPolicy(RetryExceptionTypeEnum.ALL, interval_seconds=5, max_attempts=3)
+def test_valid_step_retry_policy():
+    retry_policy = StepRetryPolicy(
+        exception_types=[StepExceptionTypeEnum.SERVICE_FAULT, StepExceptionTypeEnum.THROTTLING],
+        interval_seconds=5,
+        max_attempts=3,
+    )
     assert retry_policy.to_request() == {
-        "ALL": {
-            "IntervalSeconds": 5,
-            "BackoffRate": 0.0,
-            "RetryUntil": {"MetricType": "MAX_ATTEMPTS", "MetricValue": 3},
-        }
+        "ExceptionType": ["Step.SERVICE_FAULT", "Step.THROTTLING"],
+        "IntervalSeconds": 5,
+        "BackoffRate": 2.0,
+        "MaxAttempts": 3,
     }
 
-    retry_policy = RetryPolicy(
-        RetryExceptionTypeEnum.SERVICE_FAULT,
+    retry_policy = StepRetryPolicy(
+        exception_types=[StepExceptionTypeEnum.SERVICE_FAULT, StepExceptionTypeEnum.THROTTLING],
         interval_seconds=5,
         backoff_rate=2.0,
         expire_after_mins=30,
     )
     assert retry_policy.to_request() == {
-        "SERVICE_FAULT": {
-            "IntervalSeconds": 5,
-            "BackoffRate": 2.0,
-            "RetryUntil": {"MetricType": "EXPIRE_AFTER_MIN", "MetricValue": 30},
-        }
+        "ExceptionType": ["Step.SERVICE_FAULT", "Step.THROTTLING"],
+        "IntervalSeconds": 5,
+        "BackoffRate": 2.0,
+        "ExpireAfterMin": 30,
     }
 
-    retry_policy = RetryPolicy(expire_after_mins=30)
+
+def test_invalid_step_retry_policy():
+    try:
+        StepRetryPolicy(
+            exception_types=[SageMakerJobExceptionTypeEnum.INTERNAL_ERROR],
+            interval_seconds=5,
+            max_attempts=3,
+        )
+        assert False
+    except Exception:
+        assert True
+
+
+def test_valid_sagemaker_job_step_retry_policy():
+    retry_policy = SageMakerJobStepRetryPolicy(
+        exception_types=[SageMakerJobExceptionTypeEnum.RESOURCE_LIMIT],
+        failure_reason_types=[
+            SageMakerJobExceptionTypeEnum.INTERNAL_ERROR,
+            SageMakerJobExceptionTypeEnum.CAPACITY_ERROR,
+        ],
+        interval_seconds=5,
+        max_attempts=3,
+    )
     assert retry_policy.to_request() == {
-        "ALL": {
-            "IntervalSeconds": 1,
-            "BackoffRate": 0.0,
-            "RetryUntil": {"MetricType": "EXPIRE_AFTER_MIN", "MetricValue": 30},
-        }
+        "ExceptionType": [
+            "SageMaker.RESOURCE_LIMIT",
+            "SageMaker.JOB_INTERNAL_ERROR",
+            "SageMaker.CAPACITY_ERROR",
+        ],
+        "IntervalSeconds": 5,
+        "BackoffRate": 2.0,
+        "MaxAttempts": 3,
     }
 
-    retry_policy = RetryPolicy(max_attempts=10)
+    retry_policy = SageMakerJobStepRetryPolicy(
+        exception_types=[SageMakerJobExceptionTypeEnum.RESOURCE_LIMIT],
+        failure_reason_types=[
+            SageMakerJobExceptionTypeEnum.INTERNAL_ERROR,
+            SageMakerJobExceptionTypeEnum.CAPACITY_ERROR,
+        ],
+        interval_seconds=5,
+        max_attempts=3,
+    )
     assert retry_policy.to_request() == {
-        "ALL": {
-            "IntervalSeconds": 1,
-            "BackoffRate": 0.0,
-            "RetryUntil": {"MetricType": "MAX_ATTEMPTS", "MetricValue": 10},
-        }
+        "ExceptionType": [
+            "SageMaker.RESOURCE_LIMIT",
+            "SageMaker.JOB_INTERNAL_ERROR",
+            "SageMaker.CAPACITY_ERROR",
+        ],
+        "IntervalSeconds": 5,
+        "BackoffRate": 2.0,
+        "MaxAttempts": 3,
     }
 
 
 def test_invalid_retry_policy():
     retry_policies = [
-        (RetryExceptionTypeEnum.ALL, -5, 2.0, 3, None),
-        (RetryExceptionTypeEnum.ALL, 5, -2.0, 3, None),
-        (RetryExceptionTypeEnum.ALL, 5, 2.0, -3, None),
-        (RetryExceptionTypeEnum.ALL, 5, 2.0, 21, None),
-        (RetryExceptionTypeEnum.ALL, 5, 2.0, None, -1),
-        (RetryExceptionTypeEnum.ALL, 5, 2.0, None, 14401),
-        (RetryExceptionTypeEnum.SERVICE_FAULT, 5, 2.0, 10, 30),
+        (-5, 2.0, 3, None),
+        (5, -2.0, 3, None),
+        (5, 2.0, -3, None),
+        (5, 2.0, 21, None),
+        (5, 2.0, None, -1),
+        (5, 2.0, None, 14401),
+        (5, 2.0, 10, 30),
     ]
 
-    for (ret, interval_sec, backoff_rate, max_attempts, expire_after) in retry_policies:
+    for (interval_sec, backoff_rate, max_attempts, expire_after) in retry_policies:
         try:
             RetryPolicy(
-                retry_exception_type=ret,
                 interval_seconds=interval_sec,
                 backoff_rate=backoff_rate,
                 max_attempts=max_attempts,

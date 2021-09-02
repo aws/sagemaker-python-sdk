@@ -14,7 +14,7 @@
 from __future__ import absolute_import
 
 from enum import Enum
-
+from typing import List
 import attr
 
 from sagemaker.workflow.entities import Entity, DefaultEnumMeta, RequestType
@@ -23,60 +23,56 @@ MAX_ATTEMPTS_CAP = 20
 MAX_EXPIRE_AFTER_MIN = 14400
 
 
-class RetryExceptionTypeEnum(Enum, metaclass=DefaultEnumMeta):
-    """Parameter type enum."""
+class StepExceptionTypeEnum(Enum, metaclass=DefaultEnumMeta):
+    """Step ExceptionType enum."""
 
-    ALL = "ALL"
-    SERVICE_FAULT = "SERVICE_FAULT"
-    THROTTLING = "THROTTLING"
-    RESOURCE_LIMIT = "RESOURCE_LIMIT"
-    CAPACITY_ERROR = "CAPACITY_ERROR"
+    SERVICE_FAULT = "Step.SERVICE_FAULT"
+    THROTTLING = "Step.THROTTLING"
+
+
+class SageMakerJobExceptionTypeEnum(Enum, metaclass=DefaultEnumMeta):
+    """SageMaker Job ExceptionType enum."""
+
+    INTERNAL_ERROR = "SageMaker.JOB_INTERNAL_ERROR"
+    CAPACITY_ERROR = "SageMaker.CAPACITY_ERROR"
+    RESOURCE_LIMIT = "SageMaker.RESOURCE_LIMIT"
 
 
 @attr.s
 class RetryPolicy(Entity):
-    """RetryPolicy for workflow pipeline execution step.
+    """RetryPolicy base class
 
     Attributes:
-        retry_exception_type (RetryExceptionTypeEnum): The exception type to
-            initiate the retry. (default: RetryExceptionTypeEnum.ALL)
-        interval_seconds (int): An integer that represents the number of seconds before the
-            first retry attempt (default: 5)
         backoff_rate (float): The multiplier by which the retry interval increases
-            during each attempt, the default 0.0 is
-            equivalent to linear backoff (default: 0.0)
+            during each attempt (default: 2.0)
+        interval_seconds (int): An integer that represents the number of seconds before the
+            first retry attempt (default: 1)
         max_attempts (int): A positive integer that represents the maximum
             number of retry attempts. (default: None)
         expire_after_mins (int): A positive integer that represents the maximum minute
             to expire any further retry attempt (default: None)
     """
 
-    retry_exception_type: RetryExceptionTypeEnum = attr.ib(factory=RetryExceptionTypeEnum.factory)
-    backoff_rate: float = attr.ib(default=0.0)
+    backoff_rate: float = attr.ib(default=2.0)
     interval_seconds: int = attr.ib(default=1.0)
     max_attempts: int = attr.ib(default=None)
     expire_after_mins: int = attr.ib(default=None)
 
-    @retry_exception_type.validator
-    def validate_retry_exception_type(self, _, value):
-        """validate the input retry exception type"""
-        assert isinstance(
-            value, RetryExceptionTypeEnum
-        ), "retry_exception_type should be of type RetryExceptionTypeEnum"
-
     @backoff_rate.validator
     def validate_backoff_rate(self, _, value):
-        """validate the input back off rate type"""
-        assert value >= 0.0, "backoff_rate should be non-negative"
+        """Validate the input back off rate type"""
+        if value:
+            assert value >= 0.0, "backoff_rate should be non-negative"
 
     @interval_seconds.validator
     def validate_interval_seconds(self, _, value):
-        """validate the input interval seconds"""
-        assert value >= 0.0, "interval_seconds rate should be non-negative"
+        """Validate the input interval seconds"""
+        if value:
+            assert value >= 0.0, "interval_seconds rate should be non-negative"
 
     @max_attempts.validator
     def validate_max_attempts(self, _, value):
-        """validate the input max attempts"""
+        """Validate the input max attempts"""
         if value:
             assert (
                 MAX_ATTEMPTS_CAP >= value >= 1
@@ -84,7 +80,7 @@ class RetryPolicy(Entity):
 
     @expire_after_mins.validator
     def validate_expire_after_mins(self, _, value):
-        """validate expire after mins"""
+        """Validate expire after mins"""
         if value:
             assert (
                 MAX_EXPIRE_AFTER_MIN >= value >= 0
@@ -95,17 +91,111 @@ class RetryPolicy(Entity):
         if (self.max_attempts is None) == self.expire_after_mins is None:
             raise ValueError("Only one of [max_attempts] and [expire_after_mins] can be given.")
 
-        return {
-            self.retry_exception_type.value: {
-                "IntervalSeconds": self.interval_seconds,
-                "BackoffRate": self.backoff_rate,
-                "RetryUntil": {
-                    "MetricType": "MAX_ATTEMPTS"
-                    if self.max_attempts is not None
-                    else "EXPIRE_AFTER_MIN",
-                    "MetricValue": self.max_attempts
-                    if self.max_attempts is not None
-                    else self.expire_after_mins,
-                },
-            }
+        request = {
+            "BackoffRate": self.backoff_rate,
+            "IntervalSeconds": self.interval_seconds,
         }
+
+        if self.max_attempts:
+            request["MaxAttempts"] = self.max_attempts
+
+        if self.expire_after_mins:
+            request["ExpireAfterMin"] = self.expire_after_mins
+
+        return request
+
+
+class StepRetryPolicy(RetryPolicy):
+    """RetryPolicy for a retryable step. The pipeline service will retry
+
+        `sagemaker.workflow.retry.StepRetryExceptionTypeEnum.SERVICE_FAULT` and
+        `sagemaker.workflow.retry.StepRetryExceptionTypeEnum.THROTTLING` regardless of
+        pipeline step type by default. However, for step defined as retryable, you can override them
+        by specifying a StepRetryPolicy.
+
+    Attributes:
+        exception_types (List[StepExceptionTypeEnum]): the exception types to match for this policy
+        backoff_rate (float): The multiplier by which the retry interval increases
+            during each attempt (default: 2.0)
+        interval_seconds (int): An integer that represents the number of seconds before the
+            first retry attempt (default: 1)
+        max_attempts (int): A positive integer that represents the maximum
+            number of retry attempts. (default: None)
+        expire_after_mins (int): A positive integer that represents the maximum minute
+            to expire any further retry attempt (default: None)
+    """
+
+    def __init__(
+        self,
+        exception_types: List[StepExceptionTypeEnum],
+        backoff_rate: float = 2.0,
+        interval_seconds: int = 1,
+        max_attempts: int = None,
+        expire_after_mins: int = None,
+    ):
+        super().__init__(backoff_rate, interval_seconds, max_attempts, expire_after_mins)
+        for exception_type in exception_types:
+            if not isinstance(exception_type, StepExceptionTypeEnum):
+                raise ValueError(f"{exception_type} is not of StepExceptionTypeEnum.")
+        self.exception_types = exception_types
+
+    def to_request(self) -> RequestType:
+        """Gets the request structure for retry policy."""
+        request = super().to_request()
+        request["ExceptionType"] = [e.value for e in self.exception_types]
+        return request
+
+
+class SageMakerJobStepRetryPolicy(RetryPolicy):
+    """RetryPolicy for exception thrown by SageMaker Job.
+
+    Attributes:
+        exception_types (List[SageMakerJobExceptionTypeEnum]):
+            The SageMaker exception to match for this policy. The SageMaker exceptions
+            captured here are the exceptions thrown by synchronously
+            creating the job. For instance the resource limit exception.
+        failure_reason_types (List[SageMakerJobExceptionTypeEnum]): the SageMaker
+            failure reason types to match for this policy. The failure reason type
+            is presented in FailureReason field of the Describe response, it indicates
+            the runtime failure reason for a job.
+        backoff_rate (float): The multiplier by which the retry interval increases
+            during each attempt (default: 2.0)
+        interval_seconds (int): An integer that represents the number of seconds before the
+            first retry attempt (default: 1)
+        max_attempts (int): A positive integer that represents the maximum
+            number of retry attempts. (default: None)
+        expire_after_mins (int): A positive integer that represents the maximum minute
+            to expire any further retry attempt (default: None)
+    """
+
+    def __init__(
+        self,
+        exception_types: List[SageMakerJobExceptionTypeEnum] = None,
+        failure_reason_types: List[SageMakerJobExceptionTypeEnum] = None,
+        backoff_rate: float = 2.0,
+        interval_seconds: int = 1,
+        max_attempts: int = None,
+        expire_after_mins: int = None,
+    ):
+        super().__init__(backoff_rate, interval_seconds, max_attempts, expire_after_mins)
+
+        if not exception_types and not failure_reason_types:
+            raise ValueError(
+                "At least one of the [exception_types, failure_reason_types] needs to be given."
+            )
+
+        self.exception_type_list: List[SageMakerJobExceptionTypeEnum] = []
+        if exception_types:
+            self.exception_type_list += exception_types
+        if failure_reason_types:
+            self.exception_type_list += failure_reason_types
+
+        for exception_type in self.exception_type_list:
+            if not isinstance(exception_type, SageMakerJobExceptionTypeEnum):
+                raise ValueError(f"{exception_type} is not of SageMakerJobExceptionTypeEnum.")
+
+    def to_request(self) -> RequestType:
+        """Gets the request structure for retry policy."""
+        request = super().to_request()
+        request["ExceptionType"] = [e.value for e in self.exception_type_list]
+        return request

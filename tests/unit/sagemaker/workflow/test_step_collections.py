@@ -46,7 +46,7 @@ from sagemaker.workflow.step_collections import (
     StepCollection,
     RegisterModel,
 )
-from sagemaker.workflow.retry import RetryPolicy, RetryExceptionTypeEnum
+from sagemaker.workflow.retry import StepRetryPolicy, StepExceptionTypeEnum
 from tests.unit.sagemaker.workflow.helpers import ordered
 
 REGION = "us-west-2"
@@ -185,16 +185,6 @@ def source_dir(request):
     request.addfinalizer(fin)
 
     return tmp
-
-
-def get_default_retry_policy():
-    return {
-        "ALL": {
-            "IntervalSeconds": 1,
-            "BackoffRate": 0.0,
-            "RetryUntil": {"MetricType": "MAX_ATTEMPTS", "MetricValue": 10},
-        }
-    }
 
 
 def test_step_collection():
@@ -605,6 +595,9 @@ def test_register_model_with_model_repack_with_model(model, model_metrics):
 
 def test_register_model_with_model_repack_with_pipeline_model(pipeline_model, model_metrics):
     model_data = f"s3://{BUCKET}/model.tar.gz"
+    service_fault_retry_policy = StepRetryPolicy(
+        exception_types=[StepExceptionTypeEnum.SERVICE_FAULT], max_attempts=10
+    )
     register_model = RegisterModel(
         name="RegisterModelStep",
         model=pipeline_model,
@@ -618,8 +611,8 @@ def test_register_model_with_model_repack_with_pipeline_model(pipeline_model, mo
         approval_status="Approved",
         description="description",
         depends_on=["TestStep"],
-        repack_model_step_retry_policies=[RetryPolicy(max_attempts=10)],
-        register_model_step_retry_policies=[RetryPolicy(max_attempts=10)],
+        repack_model_step_retry_policies=[service_fault_retry_policy],
+        register_model_step_retry_policies=[service_fault_retry_policy],
         tags=[{"Key": "myKey", "Value": "myValue"}],
     )
 
@@ -631,7 +624,6 @@ def test_register_model_with_model_repack_with_pipeline_model(pipeline_model, mo
             assert request_dict["Name"] == "modelNameRepackModel"
             assert len(request_dict["DependsOn"]) == 1
             assert request_dict["DependsOn"][0] == "TestStep"
-            assert request_dict["RetryPolicies"] == get_default_retry_policy()
             arguments = request_dict["Arguments"]
             repacker_job_name = arguments["HyperParameters"]["sagemaker_job_name"]
             assert ordered(arguments) == ordered(
@@ -727,6 +719,9 @@ def test_estimator_transformer(estimator):
         instance_type="c4.4xlarge",
         accelerator_type="ml.eia1.medium",
     )
+    service_fault_retry_policy = StepRetryPolicy(
+        exception_types=[StepExceptionTypeEnum.SERVICE_FAULT], max_attempts=10
+    )
     transform_inputs = TransformInput(data=f"s3://{BUCKET}/transform_manifest")
     estimator_transformer = EstimatorTransformer(
         name="EstimatorTransformerStep",
@@ -737,9 +732,9 @@ def test_estimator_transformer(estimator):
         instance_type="ml.c4.4xlarge",
         transform_inputs=transform_inputs,
         depends_on=["TestStep"],
-        model_step_retry_policies=[RetryPolicy(max_attempts=10)],
-        transform_step_retry_policies=[RetryPolicy(max_attempts=10)],
-        repack_model_step_retry_policies=[RetryPolicy(max_attempts=10)],
+        model_step_retry_policies=[service_fault_retry_policy],
+        transform_step_retry_policies=[service_fault_retry_policy],
+        repack_model_step_retry_policies=[service_fault_retry_policy],
     )
     request_dicts = estimator_transformer.request_dicts()
     assert len(request_dicts) == 2
@@ -750,7 +745,7 @@ def test_estimator_transformer(estimator):
                 "Name": "EstimatorTransformerStepCreateModelStep",
                 "Type": "Model",
                 "DependsOn": ["TestStep"],
-                "RetryPolicies": get_default_retry_policy(),
+                "RetryPolicies": [service_fault_retry_policy.to_request()],
                 "Arguments": {
                     "ExecutionRoleArn": "DummyRole",
                     "PrimaryContainer": {
@@ -762,7 +757,7 @@ def test_estimator_transformer(estimator):
             }
         elif request_dict["Type"] == "Transform":
             assert request_dict["Name"] == "EstimatorTransformerStepTransformStep"
-            assert request_dict["RetryPolicies"] == get_default_retry_policy()
+            assert request_dict["RetryPolicies"] == [service_fault_retry_policy.to_request()]
             arguments = request_dict["Arguments"]
             assert isinstance(arguments["ModelName"], Properties)
             arguments.pop("ModelName")

@@ -28,13 +28,12 @@ from sagemaker.estimator import EstimatorBase
 from sagemaker.sklearn.estimator import SKLearn
 from sagemaker.workflow.entities import RequestType
 from sagemaker.workflow.properties import Properties
-from sagemaker.session import get_create_model_package_request
-from sagemaker.session import get_model_package_args
+from sagemaker.session import get_create_model_package_request, get_model_package_args
 from sagemaker.workflow.steps import (
     StepTypeEnum,
     TrainingStep,
     Step,
-    RetryableStep,
+    ConfigurableRetryStep,
 )
 from sagemaker.workflow.retry import RetryPolicy
 
@@ -257,7 +256,7 @@ class _RepackModelStep(TrainingStep):
         return self._properties
 
 
-class _RegisterModelStep(RetryableStep):
+class _RegisterModelStep(ConfigurableRetryStep):
     """Register model step in workflow that creates a model package.
 
     Attributes:

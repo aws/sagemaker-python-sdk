@@ -16,7 +16,7 @@ from __future__ import absolute_import
 import abc
 
 from enum import Enum
-from typing import Dict, List, Union, Any
+from typing import Dict, List, Union
 
 import attr
 
@@ -171,8 +171,8 @@ class CacheConfig:
         return {"CacheConfig": config}
 
 
-class RetryableStep(Step):
-    """RetryableStep step for workflow."""
+class ConfigurableRetryStep(Step):
+    """ConfigurableRetryStep step for workflow."""
 
     def __init__(
         self,
@@ -180,7 +180,7 @@ class RetryableStep(Step):
         step_type: StepTypeEnum,
         display_name: str = None,
         description: str = None,
-        depends_on: Union[List[str], List["Step"]] = None,
+        depends_on: Union[List[str], List[Step]] = None,
         retry_policies: List[RetryPolicy] = None,
     ):
         super().__init__(
@@ -193,41 +193,28 @@ class RetryableStep(Step):
         self.retry_policies = [] if not retry_policies else retry_policies
 
     def add_retry_policy(self, retry_policy: RetryPolicy):
-        """Add a retry policy to the current step retry policies list,
-        new policy with the same retry exception type will override the old one.
-        """
+        """Add a retry policy to the current step retry policies list."""
         if not retry_policy:
             return
 
         if not self.retry_policies:
             self.retry_policies = []
-
-        for existing_retry_policy in self.retry_policies:
-            if retry_policy.retry_exception_type == existing_retry_policy.retry_exception_type:
-                self.retry_policies.remove(existing_retry_policy)
         self.retry_policies.append(retry_policy)
 
     def to_request(self) -> RequestType:
+        """Gets the request structure for ConfigurableRetryStep"""
         step_dict = super().to_request()
         if self.retry_policies:
             step_dict["RetryPolicies"] = self._resolve_retry_policy(self.retry_policies)
         return step_dict
 
     @staticmethod
-    def _resolve_retry_policy(retry_policy_list: List[RetryPolicy]) -> Dict[str, Any]:
+    def _resolve_retry_policy(retry_policy_list: List[RetryPolicy]) -> List[RequestType]:
         """Resolve the step retry policy list"""
-        retry_policies = {}
-        for retry_policy in retry_policy_list:
-            if retry_policy.retry_exception_type.value in retry_policies:
-                raise ValueError(
-                    f"retry policy for retry exception type: "
-                    f"{retry_policy.retry_exception_type} already exists."
-                )
-            retry_policies.update(retry_policy.to_request())
-        return retry_policies
+        return [retry_policy.to_request() for retry_policy in retry_policy_list]
 
 
-class TrainingStep(RetryableStep):
+class TrainingStep(ConfigurableRetryStep):
     """Training step for workflow."""
 
     def __init__(
@@ -313,7 +300,7 @@ class TrainingStep(RetryableStep):
         return request_dict
 
 
-class CreateModelStep(RetryableStep):
+class CreateModelStep(ConfigurableRetryStep):
     """CreateModel step for workflow."""
 
     def __init__(
@@ -378,7 +365,7 @@ class CreateModelStep(RetryableStep):
         return self._properties
 
 
-class TransformStep(RetryableStep):
+class TransformStep(ConfigurableRetryStep):
     """Transform step for workflow."""
 
     def __init__(
@@ -458,7 +445,7 @@ class TransformStep(RetryableStep):
         return request_dict
 
 
-class ProcessingStep(RetryableStep):
+class ProcessingStep(ConfigurableRetryStep):
     """Processing step for workflow."""
 
     def __init__(
@@ -559,7 +546,7 @@ class ProcessingStep(RetryableStep):
         return request_dict
 
 
-class TuningStep(RetryableStep):
+class TuningStep(ConfigurableRetryStep):
     """Tuning step for workflow."""
 
     def __init__(
