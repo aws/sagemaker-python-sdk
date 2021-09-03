@@ -71,8 +71,7 @@ class AlgorithmEstimator(EstimatorBase):
                 access training data and model artifacts. After the endpoint
                 is created, the inference code might use the IAM role, if it
                 needs to access an AWS resource.
-            instance_count (int): Number of Amazon EC2 instances to
-                use for training.
+            instance_count (int): Number of Amazon EC2 instances to use for training.
             instance_type (str): Type of EC2 instance to use for training, for example, 'ml.c4.xlarge'.
             volume_size (int): Size in GB of the EBS volume to use for
                 storing input data during training (default: 30). Must be large enough to store
