@@ -1,5 +1,21 @@
 # Changelog
 
+## v2.59.1 (2021-09-02)
+
+### Bug Fixes and Other Changes
+
+ * pin docker to 5.0.0
+
+## v2.59.0 (2021-09-01)
+
+### Features
+
+ * Add KIX account for SM XGBoost 1.2-2 and 1.3-1
+
+### Bug Fixes and Other Changes
+
+ * revert #2572 and address #2611
+
 ## v2.58.0 (2021-08-31)
 
 ### Features
