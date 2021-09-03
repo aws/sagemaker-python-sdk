@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.59.1 (2021-09-02)
+
+### Bug Fixes and Other Changes
+
+ * pin docker to 5.0.0
+
 ## v2.59.0 (2021-09-01)
 
 ### Features
