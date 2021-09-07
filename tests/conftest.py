@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -95,6 +95,16 @@ def boto_session(request):
         return boto3.Session(**json.loads(config))
     else:
         return boto3.Session(region_name=DEFAULT_REGION)
+
+
+@pytest.fixture(scope="session")
+def account(boto_session):
+    return boto_session.client("sts").get_caller_identity()["Account"]
+
+
+@pytest.fixture(scope="session")
+def region(boto_session):
+    return boto_session.region_name
 
 
 @pytest.fixture(scope="session")

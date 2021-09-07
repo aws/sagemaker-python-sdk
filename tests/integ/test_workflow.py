@@ -1,4 +1,4 @@
-# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -52,6 +52,7 @@ from sagemaker.spark.processing import PySparkProcessor, SparkJarProcessor
 from sagemaker.workflow.conditions import ConditionGreaterThanOrEqualTo, ConditionIn
 from sagemaker.workflow.condition_step import ConditionStep
 from sagemaker.workflow.callback_step import CallbackStep, CallbackOutput, CallbackOutputTypeEnum
+from sagemaker.workflow.lambda_step import LambdaStep, LambdaOutput, LambdaOutputTypeEnum
 from sagemaker.wrangler.processing import DataWranglerProcessor
 from sagemaker.dataset_definition.inputs import DatasetDefinition, AthenaDatasetDefinition
 from sagemaker.workflow.execution_variables import ExecutionVariables
@@ -70,6 +71,7 @@ from sagemaker.workflow.steps import (
 )
 from sagemaker.workflow.step_collections import RegisterModel
 from sagemaker.workflow.pipeline import Pipeline
+from sagemaker.lambda_helper import Lambda
 from sagemaker.feature_store.feature_group import FeatureGroup, FeatureDefinition, FeatureTypeEnum
 from tests.integ import DATA_DIR
 from tests.integ.kms_utils import get_or_create_kms_key
@@ -879,6 +881,96 @@ def test_two_step_callback_pipeline_with_output_reference(
             pass
 
 
+def test_one_step_lambda_pipeline(sagemaker_session, role, pipeline_name, region_name):
+    instance_count = ParameterInteger(name="InstanceCount", default_value=2)
+
+    outputParam1 = LambdaOutput(output_name="output1", output_type=LambdaOutputTypeEnum.String)
+    step_lambda = LambdaStep(
+        name="lambda-step",
+        lambda_func=Lambda(
+            function_arn="arn:aws:lambda:us-west-2:123456789012:function:sagemaker_test_lambda",
+            session=sagemaker_session,
+        ),
+        inputs={"arg1": "foo"},
+        outputs=[outputParam1],
+    )
+
+    pipeline = Pipeline(
+        name=pipeline_name,
+        parameters=[instance_count],
+        steps=[step_lambda],
+        sagemaker_session=sagemaker_session,
+    )
+
+    try:
+        response = pipeline.create(role)
+        create_arn = response["PipelineArn"]
+        assert re.match(
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            create_arn,
+        )
+
+        pipeline.parameters = [ParameterInteger(name="InstanceCount", default_value=1)]
+        response = pipeline.update(role)
+        update_arn = response["PipelineArn"]
+        assert re.match(
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            update_arn,
+        )
+    finally:
+        try:
+            pipeline.delete()
+        except Exception:
+            pass
+
+
+def test_two_step_lambda_pipeline_with_output_reference(
+    sagemaker_session, role, pipeline_name, region_name
+):
+    instance_count = ParameterInteger(name="InstanceCount", default_value=2)
+
+    outputParam1 = LambdaOutput(output_name="output1", output_type=LambdaOutputTypeEnum.String)
+    step_lambda1 = LambdaStep(
+        name="lambda-step1",
+        lambda_func=Lambda(
+            function_arn="arn:aws:lambda:us-west-2:123456789012:function:sagemaker_test_lambda",
+            session=sagemaker_session,
+        ),
+        inputs={"arg1": "foo"},
+        outputs=[outputParam1],
+    )
+
+    step_lambda2 = LambdaStep(
+        name="lambda-step2",
+        lambda_func=Lambda(
+            function_arn="arn:aws:lambda:us-west-2:123456789012:function:sagemaker_test_lambda",
+            session=sagemaker_session,
+        ),
+        inputs={"arg1": outputParam1},
+        outputs=[],
+    )
+
+    pipeline = Pipeline(
+        name=pipeline_name,
+        parameters=[instance_count],
+        steps=[step_lambda1, step_lambda2],
+        sagemaker_session=sagemaker_session,
+    )
+
+    try:
+        response = pipeline.create(role)
+        create_arn = response["PipelineArn"]
+        assert re.match(
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            create_arn,
+        )
+    finally:
+        try:
+            pipeline.delete()
+        except Exception:
+            pass
+
+
 def test_conditional_pytorch_training_model_registration(
     sagemaker_session,
     role,
@@ -983,7 +1075,7 @@ def test_conditional_pytorch_training_model_registration(
             pass
 
 
-def test_tuning(
+def test_tuning_single_algo(
     sagemaker_session,
     role,
     cpu_instance_type,
@@ -1006,14 +1098,17 @@ def test_tuning(
         role=role,
         framework_version="1.5.0",
         py_version="py3",
-        instance_count=1,
-        instance_type="ml.m5.xlarge",
+        instance_count=instance_count,
+        instance_type=instance_type,
         sagemaker_session=sagemaker_session,
         enable_sagemaker_metrics=True,
+        max_retry_attempts=3,
     )
 
+    min_batch_size = ParameterString(name="MinBatchSize", default_value="64")
+    max_batch_size = ParameterString(name="MaxBatchSize", default_value="128")
     hyperparameter_ranges = {
-        "batch-size": IntegerParameter(64, 128),
+        "batch-size": IntegerParameter(min_batch_size, max_batch_size),
     }
 
     tuner = HyperparameterTuner(
@@ -1069,8 +1164,95 @@ def test_tuning(
 
     pipeline = Pipeline(
         name=pipeline_name,
-        parameters=[instance_count, instance_type],
+        parameters=[instance_count, instance_type, min_batch_size, max_batch_size],
         steps=[step_tune, step_best_model, step_second_best_model],
+        sagemaker_session=sagemaker_session,
+    )
+
+    try:
+        response = pipeline.create(role)
+        create_arn = response["PipelineArn"]
+        assert re.match(
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}", create_arn
+        )
+
+        execution = pipeline.start(parameters={})
+        assert re.match(
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
+            execution.arn,
+        )
+    finally:
+        try:
+            pipeline.delete()
+        except Exception:
+            pass
+
+
+def test_tuning_multi_algos(
+    sagemaker_session,
+    role,
+    cpu_instance_type,
+    pipeline_name,
+    region_name,
+):
+    base_dir = os.path.join(DATA_DIR, "pytorch_mnist")
+    entry_point = os.path.join(base_dir, "mnist.py")
+    input_path = sagemaker_session.upload_data(
+        path=os.path.join(base_dir, "training"),
+        key_prefix="integ-test-data/pytorch_mnist/training",
+    )
+
+    instance_count = ParameterInteger(name="InstanceCount", default_value=1)
+    instance_type = ParameterString(name="InstanceType", default_value="ml.m5.xlarge")
+
+    pytorch_estimator = PyTorch(
+        entry_point=entry_point,
+        role=role,
+        framework_version="1.5.0",
+        py_version="py3",
+        instance_count=instance_count,
+        instance_type=instance_type,
+        sagemaker_session=sagemaker_session,
+        enable_sagemaker_metrics=True,
+        max_retry_attempts=3,
+    )
+
+    min_batch_size = ParameterString(name="MinBatchSize", default_value="64")
+    max_batch_size = ParameterString(name="MaxBatchSize", default_value="128")
+
+    tuner = HyperparameterTuner.create(
+        estimator_dict={
+            "estimator-1": pytorch_estimator,
+            "estimator-2": pytorch_estimator,
+        },
+        objective_metric_name_dict={
+            "estimator-1": "test:acc",
+            "estimator-2": "test:acc",
+        },
+        hyperparameter_ranges_dict={
+            "estimator-1": {"batch-size": IntegerParameter(min_batch_size, max_batch_size)},
+            "estimator-2": {"batch-size": IntegerParameter(min_batch_size, max_batch_size)},
+        },
+        metric_definitions_dict={
+            "estimator-1": [{"Name": "test:acc", "Regex": "Overall test accuracy: (.*?);"}],
+            "estimator-2": [{"Name": "test:acc", "Regex": "Overall test accuracy: (.*?);"}],
+        },
+    )
+    inputs = {
+        "estimator-1": TrainingInput(s3_data=input_path),
+        "estimator-2": TrainingInput(s3_data=input_path),
+    }
+
+    step_tune = TuningStep(
+        name="my-tuning-step",
+        tuner=tuner,
+        inputs=inputs,
+    )
+
+    pipeline = Pipeline(
+        name=pipeline_name,
+        parameters=[instance_count, instance_type, min_batch_size, max_batch_size],
+        steps=[step_tune],
         sagemaker_session=sagemaker_session,
     )
 
@@ -1599,7 +1781,7 @@ def test_two_processing_job_depends_on(
 
     step_pyspark_2 = ProcessingStep(
         name="pyspark-process-2",
-        depends_on=[step_pyspark_1.name],
+        depends_on=[step_pyspark_1],
         processor=pyspark_processor,
         inputs=spark_run_args.inputs,
         outputs=spark_run_args.outputs,

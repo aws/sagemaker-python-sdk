@@ -1,4 +1,4 @@
-# Copyright 2019-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -12,25 +12,47 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-import os
-
 import pytest
 
 from sagemaker.serverless import LambdaModel
 from sagemaker.utils import unique_name_from_base
 
-# See tests/data/serverless for the image source code.
-IMAGE_URI = "142577830533.dkr.ecr.us-west-2.amazonaws.com/serverless-integ-test:latest"
-ROLE = "arn:aws:iam::142577830533:role/lambda_basic_execution"
-URL = "https://c.files.bbci.co.uk/12A9B/production/_111434467_gettyimages-1143489763.jpg"
+URL = "https://sagemaker-integ-tests-data.s3.us-east-1.amazonaws.com/cat.jpeg"
+
+REPOSITORY_NAME = "serverless-integ-test"
+ROLE_NAME = "LambdaExecutionRole"
 
 
-@pytest.mark.skipif(
-    "CODEBUILD_BUILD_ID" not in os.environ,
-    reason="The container image is private to the CI account.",
-)
-def test_lambda():
-    model = LambdaModel(image_uri=IMAGE_URI, role=ROLE)
+@pytest.fixture(name="image_uri", scope="module")
+def fixture_image_uri(account, region):
+    return f"{account}.dkr.ecr.{region}.amazonaws.com/{REPOSITORY_NAME}:latest"
+
+
+@pytest.fixture(name="role", scope="module")
+def fixture_role(account):
+    return f"arn:aws:iam::{account}:role/{ROLE_NAME}"
+
+
+@pytest.fixture(name="client", scope="module")
+def fixture_client(boto_session):
+    return boto_session.client("lambda")
+
+
+@pytest.fixture(name="repository_exists", scope="module")
+def fixture_repository_exists(boto_session):
+    client = boto_session.client("ecr")
+    try:
+        client.describe_repositories(repositoryNames=[REPOSITORY_NAME])
+        return True
+    except client.exceptions.RepositoryNotFoundException:
+        return False
+
+
+def test_lambda(image_uri, role, client, repository_exists):
+    if not repository_exists:
+        pytest.skip("The container image required to run this test does not exist.")
+
+    model = LambdaModel(image_uri=image_uri, role=role, client=client)
 
     predictor = model.deploy(
         unique_name_from_base("my-lambda-function"), timeout=60, memory_size=4092
@@ -39,5 +61,5 @@ def test_lambda():
 
     assert prediction == {"class": "tabby"}
 
-    model.destroy()
-    predictor.destroy()
+    model.delete_model()
+    predictor.delete_predictor()

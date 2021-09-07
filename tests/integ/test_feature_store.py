@@ -1,4 +1,4 @@
-# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -312,4 +312,4 @@ def cleanup_feature_group(feature_group: FeatureGroup):
         try:
             feature_group.delete()
         except Exception:
-            pass
+            raise RuntimeError(f"Failed to delete feature group with name {feature_group.name}")

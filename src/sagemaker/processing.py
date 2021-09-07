@@ -1,4 +1,4 @@
-# Copyright 2019-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -1065,9 +1065,9 @@ class ProcessingInput(object):
             s3_data_distribution_type (str): Valid options are "FullyReplicated"
                 or "ShardedByS3Key".
             s3_compression_type (str): Valid options are "None" or "Gzip".
-            s3_input (:class:`~sagemaker.dataset_definition.S3Input`)
+            s3_input (:class:`~sagemaker.dataset_definition.inputs.S3Input`)
                 Metadata of data objects stored in S3
-            dataset_definition (:class:`~sagemaker.dataset_definition.DatasetDefinition`)
+            dataset_definition (:class:`~sagemaker.dataset_definition.inputs.DatasetDefinition`)
                 DatasetDefinition input
             app_managed (bool): Whether the input are managed by SageMaker or application
         """

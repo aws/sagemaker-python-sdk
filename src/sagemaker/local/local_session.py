@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -563,6 +563,21 @@ class LocalSession(Session):
           job_name:
           wait:  (Default value = False)
           poll:  (Default value = 5)
+
+        Returns:
+
+        """
+        # override logs_for_job() as it doesn't need to perform any action
+        # on local mode.
+        pass  # pylint: disable=unnecessary-pass
+
+    def logs_for_processing_job(self, job_name, wait=False, poll=10):
+        """A no-op method meant to override the sagemaker client.
+
+        Args:
+          job_name:
+          wait:  (Default value = False)
+          poll:  (Default value = 10)
 
         Returns:
 

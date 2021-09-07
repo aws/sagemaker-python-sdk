@@ -1,4 +1,4 @@
-# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -49,9 +49,9 @@ from sagemaker.workflow.steps import (
     Step,
     StepTypeEnum,
     TrainingStep,
+    TuningStep,
     TransformStep,
     CreateModelStep,
-    TuningStep,
     CacheConfig,
 )
 from tests.unit import DATA_DIR
@@ -498,6 +498,59 @@ def test_properties_describe_processing_job_response():
     }
 
 
+def test_add_depends_on(sagemaker_session):
+    processing_input_data_uri_parameter = ParameterString(
+        name="ProcessingInputDataUri", default_value=f"s3://{BUCKET}/processing_manifest"
+    )
+    instance_type_parameter = ParameterString(name="InstanceType", default_value="ml.m4.4xlarge")
+    instance_count_parameter = ParameterInteger(name="InstanceCount", default_value=1)
+    processor = Processor(
+        image_uri=IMAGE_URI,
+        role=ROLE,
+        instance_count=instance_count_parameter,
+        instance_type=instance_type_parameter,
+        sagemaker_session=sagemaker_session,
+    )
+    inputs = [
+        ProcessingInput(
+            source=processing_input_data_uri_parameter,
+            destination="processing_manifest",
+        )
+    ]
+    cache_config = CacheConfig(enable_caching=True, expire_after="PT1H")
+
+    step_1 = ProcessingStep(
+        name="MyProcessingStep-1",
+        processor=processor,
+        inputs=inputs,
+        outputs=[],
+        cache_config=cache_config,
+    )
+
+    step_2 = ProcessingStep(
+        name="MyProcessingStep-2",
+        depends_on=[step_1],
+        processor=processor,
+        inputs=inputs,
+        outputs=[],
+        cache_config=cache_config,
+    )
+
+    step_3 = ProcessingStep(
+        name="MyProcessingStep-3",
+        depends_on=[step_1],
+        processor=processor,
+        inputs=inputs,
+        outputs=[],
+        cache_config=cache_config,
+    )
+    step_3.add_depends_on([step_2.name])
+
+    assert "DependsOn" not in step_1.to_request()
+    assert step_2.to_request()["DependsOn"] == ["MyProcessingStep-1"]
+    assert step_3.to_request()["DependsOn"] == ["MyProcessingStep-1", "MyProcessingStep-2"]
+
+
 def test_single_algo_tuning_step(sagemaker_session):
     data_source_uri_parameter = ParameterString(
         name="DataSourceS3Uri", default_value=f"s3://{BUCKET}/train_manifest"
@@ -663,14 +716,16 @@ def test_multi_algo_tuning_step(sagemaker_session):
     data_source_uri_parameter = ParameterString(
         name="DataSourceS3Uri", default_value=f"s3://{BUCKET}/train_manifest"
     )
+    instance_count = ParameterInteger(name="InstanceCount", default_value=1)
     estimator = Estimator(
         image_uri=IMAGE_URI,
         role=ROLE,
-        instance_count=1,
+        instance_count=instance_count,
         instance_type="ml.c5.4xlarge",
         profiler_config=ProfilerConfig(system_monitor_interval_millis=500),
         rules=[],
         sagemaker_session=sagemaker_session,
+        max_retry_attempts=10,
     )
 
     estimator.set_hyperparameters(
@@ -686,8 +741,9 @@ def test_multi_algo_tuning_step(sagemaker_session):
         augmentation_type="crop",
     )
 
+    initial_lr_param = ParameterString(name="InitialLR", default_value="0.0001")
     hyperparameter_ranges = {
-        "learning_rate": ContinuousParameter(0.0001, 0.05),
+        "learning_rate": ContinuousParameter(initial_lr_param, 0.05),
         "momentum": ContinuousParameter(0.0, 0.99),
         "weight_decay": ContinuousParameter(0.0, 0.99),
     }
@@ -772,7 +828,7 @@ def test_multi_algo_tuning_step(sagemaker_session):
                         "ContinuousParameterRanges": [
                             {
                                 "Name": "learning_rate",
-                                "MinValue": "0.0001",
+                                "MinValue": initial_lr_param,
                                 "MaxValue": "0.05",
                                 "ScalingType": "Auto",
                             },
@@ -791,6 +847,9 @@ def test_multi_algo_tuning_step(sagemaker_session):
                         ],
                         "CategoricalParameterRanges": [],
                         "IntegerParameterRanges": [],
+                    },
+                    "RetryStrategy": {
+                        "MaximumRetryAttempts": 10,
                     },
                 },
                 {
@@ -836,7 +895,7 @@ def test_multi_algo_tuning_step(sagemaker_session):
                         "ContinuousParameterRanges": [
                             {
                                 "Name": "learning_rate",
-                                "MinValue": "0.0001",
+                                "MinValue": initial_lr_param,
                                 "MaxValue": "0.05",
                                 "ScalingType": "Auto",
                             },
@@ -855,6 +914,9 @@ def test_multi_algo_tuning_step(sagemaker_session):
                         ],
                         "CategoricalParameterRanges": [],
                         "IntegerParameterRanges": [],
+                    },
+                    "RetryStrategy": {
+                        "MaximumRetryAttempts": 10,
                     },
                 },
             ],

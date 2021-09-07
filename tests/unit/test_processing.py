@@ -1,4 +1,4 @@
-# Copyright 2019-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -88,7 +88,6 @@ def test_sklearn_processor_with_required_parameters(
     exists_mock, isfile_mock, botocore_resolver, sagemaker_session, sklearn_version
 ):
     botocore_resolver.return_value.construct_endpoint.return_value = {"hostname": ECR_HOSTNAME}
-
     processor = SKLearnProcessor(
         role=ROLE,
         instance_type="ml.m4.xlarge",
@@ -105,7 +104,6 @@ def test_sklearn_processor_with_required_parameters(
         "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:{}-cpu-py3"
     ).format(sklearn_version)
     expected_args["app_specification"]["ImageUri"] = sklearn_image_uri
-
     sagemaker_session.process.assert_called_with(**expected_args)
 
 
@@ -293,16 +291,6 @@ def test_sklearn_with_all_parameters_via_run_args_called_twice(
             outputs=_get_data_outputs_all_parameters(),
             arguments=["--drop-columns", "'SelfEmployed'"],
         )
-
-    run_args = processor.get_run_args(
-        code="/local/path/to/processing_code.py",
-        source_dir=None,
-        dependencies=None,
-        git_config=None,
-        inputs=_get_data_inputs_all_parameters(),
-        outputs=_get_data_outputs_all_parameters(),
-        arguments=["--drop-columns", "'SelfEmployed'"],
-    )
 
     processor.run(
         code=run_args.code,
