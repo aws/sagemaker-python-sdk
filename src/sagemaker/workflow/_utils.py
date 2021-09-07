@@ -34,7 +34,9 @@ from sagemaker.workflow.steps import (
     StepTypeEnum,
     TrainingStep,
     Step,
+    RetryableStep,
 )
+from sagemaker.workflow.retry import RetryPolicy
 
 FRAMEWORK_VERSION = "0.23-1"
 INSTANCE_TYPE = "ml.m5.large"
@@ -60,6 +62,7 @@ class _RepackModelStep(TrainingStep):
         source_dir: str = None,
         dependencies: List = None,
         depends_on: Union[List[str], List[Step]] = None,
+        retry_policies: List[RetryPolicy] = None,
         subnets=None,
         security_group_ids=None,
         **kwargs,
@@ -126,6 +129,7 @@ class _RepackModelStep(TrainingStep):
                     This is not supported with "local code" in Local Mode.
             depends_on (List[str] or List[Step]): A list of step names or instances
                     this step depends on
+            retry_policies (List[RetryPolicy]): The list of retry policies for the current step
             subnets (list[str]): List of subnet ids. If not specified, the re-packing
                     job will be created without VPC config.
             security_group_ids (list[str]): List of security group ids. If not
@@ -171,6 +175,7 @@ class _RepackModelStep(TrainingStep):
             display_name=display_name,
             description=description,
             depends_on=depends_on,
+            retry_policies=retry_policies,
             estimator=repacker,
             inputs=inputs,
         )
@@ -252,7 +257,7 @@ class _RepackModelStep(TrainingStep):
         return self._properties
 
 
-class _RegisterModelStep(Step):
+class _RegisterModelStep(RetryableStep):
     """Register model step in workflow that creates a model package.
 
     Attributes:
@@ -295,6 +300,7 @@ class _RegisterModelStep(Step):
         display_name: str = None,
         description=None,
         depends_on: Union[List[str], List[Step]] = None,
+        retry_policies: List[RetryPolicy] = None,
         tags=None,
         container_def_list=None,
         **kwargs,
@@ -332,10 +338,11 @@ class _RegisterModelStep(Step):
             description (str): Model Package description (default: None).
             depends_on (List[str] or List[Step]): A list of step names or instances
                 this step depends on
+            retry_policies (List[RetryPolicy]): The list of retry policies for the current step
             **kwargs: additional arguments to `create_model`.
         """
         super(_RegisterModelStep, self).__init__(
-            name, display_name, description, StepTypeEnum.REGISTER_MODEL, depends_on
+            name, StepTypeEnum.REGISTER_MODEL, display_name, description, depends_on, retry_policies
         )
         self.estimator = estimator
         self.model_data = model_data

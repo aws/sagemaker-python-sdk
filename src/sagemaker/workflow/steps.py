@@ -16,7 +16,7 @@ from __future__ import absolute_import
 import abc
 
 from enum import Enum
-from typing import Dict, List, Union
+from typing import Dict, List, Union, Any
 
 import attr
 
@@ -41,6 +41,11 @@ from sagemaker.workflow.properties import (
     Properties,
 )
 from sagemaker.workflow.functions import Join
+from sagemaker.workflow.retry import (
+    RetryPolicy,
+    RetryExceptionTypeEnum,
+    get_default_throttling_retry_policy
+)
 
 
 class StepTypeEnum(Enum, metaclass=DefaultEnumMeta):
@@ -68,6 +73,7 @@ class Step(Entity):
         step_type (StepTypeEnum): The type of the step.
         depends_on (List[str] or List[Step]): The list of step names or step
             instances the current step depends on
+        retry_policies (List[RetryPolicy]): The custom retry policy configuration
     """
 
     name: str = attr.ib(factory=str)
@@ -99,6 +105,7 @@ class Step(Entity):
             request_dict["DisplayName"] = self.display_name
         if self.description:
             request_dict["Description"] = self.description
+
         return request_dict
 
     def add_depends_on(self, step_names: Union[List[str], List["Step"]]):
@@ -117,8 +124,8 @@ class Step(Entity):
         return {"Name": self.name}
 
     @staticmethod
-    def _resolve_depends_on(depends_on_list: Union[List[str], List["Step"]]):
-        """Resolver the step depends on list"""
+    def _resolve_depends_on(depends_on_list: Union[List[str], List["Step"]]) -> List[str]:
+        """Resolve the step depends on list"""
         depends_on = []
         for step in depends_on_list:
             if isinstance(step, Step):
@@ -128,7 +135,6 @@ class Step(Entity):
             else:
                 raise ValueError(f"Invalid input step name: {step}")
         return depends_on
-
 
 @attr.s
 class CacheConfig:
@@ -168,7 +174,65 @@ class CacheConfig:
         return {"CacheConfig": config}
 
 
-class TrainingStep(Step):
+class RetryableStep(Step):
+    """RetryableStep step for workflow."""
+
+    def __init__(
+            self,
+            name: str,
+            step_type: StepTypeEnum,
+            display_name: str = None,
+            description: str = None,
+            depends_on: Union[List[str], List["Step"]] = None,
+            retry_policies: List[RetryPolicy] = None,
+    ):
+        super().__init__(
+            name=name,
+            display_name=display_name,
+            step_type=step_type,
+            description=description,
+            depends_on=depends_on,
+        )
+        self.retry_policies = [] if not retry_policies else retry_policies
+        for retry_policy in self.retry_policies:
+            if retry_policy.retry_exception_type == RetryExceptionTypeEnum.THROTTLING:
+                return
+        # append default throttling retry policy if not found
+        self.retry_policies.append(get_default_throttling_retry_policy())
+
+    def add_retry_policy(self, retry_policy: RetryPolicy):
+        """Add a retry policy to the current step retry policies list, existing policy with the same retry exception type
+            will be overrode.
+        """
+        if not retry_policy:
+            return
+
+        if not self.retry_policies:
+            self.retry_policies = []
+
+        for i, existing_retry_policy in enumerate(self.retry_policies):
+            if retry_policy.retry_exception_type == existing_retry_policy.retry_exception_type:
+                self.retry_policies.remove(existing_retry_policy)
+        self.retry_policies.append(retry_policy)
+
+    def to_request(self) -> RequestType:
+        step_dict = super().to_request()
+        step_dict['RetryPolicies'] = self._resolve_retry_policy(self.retry_policies)
+        return step_dict
+
+    @staticmethod
+    def _resolve_retry_policy(retry_policy_list: List[RetryPolicy]) -> Dict[str, Any]:
+        """Resolve the step retry policy list"""
+        retry_policies = {}
+        for retry_policy in retry_policy_list:
+            if retry_policy.retry_exception_type.value in retry_policies:
+                raise ValueError(f"retry policy for retry exception type: "
+                                 f"{retry_policy.retry_exception_type} already exists.")
+            retry_policies.update(retry_policy.to_request())
+        return retry_policies
+
+
+class TrainingStep(RetryableStep):
     """Training step for workflow."""
 
     def __init__(
@@ -180,6 +244,7 @@ class TrainingStep(Step):
         inputs: Union[TrainingInput, dict, str, FileSystemInput] = None,
         cache_config: CacheConfig = None,
         depends_on: Union[List[str], List[Step]] = None,
+        retry_policies: List[RetryPolicy] = None,
     ):
         """Construct a TrainingStep, given an `EstimatorBase` instance.
 
@@ -210,9 +275,10 @@ class TrainingStep(Step):
             cache_config (CacheConfig):  A `sagemaker.workflow.steps.CacheConfig` instance.
             depends_on (List[str] or List[Step]): A list of step names or step instances
                 this `sagemaker.workflow.steps.TrainingStep` depends on
+            retry_policies (List[RetryPolicy]):  A list of retry policy
         """
         super(TrainingStep, self).__init__(
-            name, display_name, description, StepTypeEnum.TRAINING, depends_on
+            name, StepTypeEnum.TRAINING, display_name, description, depends_on, retry_policies
         )
         self.estimator = estimator
         self.inputs = inputs
@@ -252,7 +318,7 @@ class TrainingStep(Step):
         return request_dict
 
 
-class CreateModelStep(Step):
+class CreateModelStep(RetryableStep):
     """CreateModel step for workflow."""
 
     def __init__(
@@ -261,6 +327,7 @@ class CreateModelStep(Step):
         model: Model,
         inputs: CreateModelInput,
         depends_on: Union[List[str], List[Step]] = None,
+        retry_policies: List[RetryPolicy] = None,
         display_name: str = None,
         description: str = None,
     ):
@@ -276,11 +343,12 @@ class CreateModelStep(Step):
                 Defaults to `None`.
             depends_on (List[str] or List[Step]): A list of step names or step instances
                 this `sagemaker.workflow.steps.CreateModelStep` depends on
+            retry_policies (List[RetryPolicy]):  A list of retry policy
             display_name (str): The display name of the CreateModel step.
             description (str): The description of the CreateModel step.
         """
         super(CreateModelStep, self).__init__(
-            name, display_name, description, StepTypeEnum.CREATE_MODEL, depends_on
+            name, StepTypeEnum.CREATE_MODEL, display_name, description, depends_on, retry_policies
         )
         self.model = model
         self.inputs = inputs or CreateModelInput()
@@ -315,7 +383,7 @@ class CreateModelStep(Step):
         return self._properties
 
 
-class TransformStep(Step):
+class TransformStep(RetryableStep):
     """Transform step for workflow."""
 
     def __init__(
@@ -327,6 +395,7 @@ class TransformStep(Step):
         description: str = None,
         cache_config: CacheConfig = None,
         depends_on: Union[List[str], List[Step]] = None,
+        retry_policies: List[RetryPolicy] = None,
     ):
         """Constructs a TransformStep, given an `Transformer` instance.
 
@@ -342,9 +411,10 @@ class TransformStep(Step):
             description (str): The description of the transform step.
             depends_on (List[str]): A list of step names this `sagemaker.workflow.steps.TransformStep`
                 depends on
+            retry_policies (List[RetryPolicy]):  A list of retry policy
         """
         super(TransformStep, self).__init__(
-            name, display_name, description, StepTypeEnum.TRANSFORM, depends_on
+            name, StepTypeEnum.TRANSFORM, display_name, description, depends_on, retry_policies
         )
         self.transformer = transformer
         self.inputs = inputs
@@ -393,7 +463,7 @@ class TransformStep(Step):
         return request_dict
 
 
-class ProcessingStep(Step):
+class ProcessingStep(RetryableStep):
     """Processing step for workflow."""
 
     def __init__(
@@ -409,6 +479,7 @@ class ProcessingStep(Step):
         property_files: List[PropertyFile] = None,
         cache_config: CacheConfig = None,
         depends_on: Union[List[str], List[Step]] = None,
+        retry_policies: List[RetryPolicy] = None,
     ):
         """Construct a ProcessingStep, given a `Processor` instance.
 
@@ -433,9 +504,10 @@ class ProcessingStep(Step):
             cache_config (CacheConfig):  A `sagemaker.workflow.steps.CacheConfig` instance.
             depends_on (List[str] or List[Step]): A list of step names or step instance
                 this `sagemaker.workflow.steps.ProcessingStep` depends on
+            retry_policies (List[RetryPolicy]):  A list of retry policy
         """
         super(ProcessingStep, self).__init__(
-            name, display_name, description, StepTypeEnum.PROCESSING, depends_on
+            name, StepTypeEnum.PROCESSING, display_name, description, depends_on, retry_policies
         )
         self.processor = processor
         self.inputs = inputs
@@ -492,7 +564,7 @@ class ProcessingStep(Step):
         return request_dict
 
 
-class TuningStep(Step):
+class TuningStep(RetryableStep):
     """Tuning step for workflow."""
 
     def __init__(
@@ -505,6 +577,7 @@ class TuningStep(Step):
         job_arguments: List[str] = None,
         cache_config: CacheConfig = None,
         depends_on: Union[List[str], List[Step]] = None,
+        retry_policies: List[RetryPolicy] = None,
     ):
         """Construct a TuningStep, given a `HyperparameterTuner` instance.
 
@@ -548,9 +621,10 @@ class TuningStep(Step):
             cache_config (CacheConfig):  A `sagemaker.workflow.steps.CacheConfig` instance.
             depends_on (List[str] or List[Step]): A list of step names or step instance
                 this `sagemaker.workflow.steps.ProcessingStep` depends on
+            retry_policies (List[RetryPolicy]):  A list of retry policy
         """
         super(TuningStep, self).__init__(
-            name, display_name, description, StepTypeEnum.TUNING, depends_on
+            name, StepTypeEnum.TUNING, display_name, description, depends_on, retry_policies
         )
         self.tuner = tuner
         self.inputs = inputs

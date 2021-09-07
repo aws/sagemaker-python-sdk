@@ -27,6 +27,7 @@ from mock import (
 
 from sagemaker.estimator import Estimator
 from sagemaker.workflow._utils import _RepackModelStep
+from sagemaker.workflow.retry import get_default_throttling_retry_policy
 from tests.unit import DATA_DIR
 
 REGION = "us-west-2"
@@ -125,6 +126,7 @@ def test_repack_model_step(estimator):
         "Name": "MyRepackModelStep",
         "Type": "Training",
         "DependsOn": ["TestStep"],
+        "RetryPolicies": get_default_throttling_retry_policy().to_request(),
         "Arguments": {
             "AlgorithmSpecification": {"TrainingInputMode": "File"},
             "DebugHookConfig": {"CollectionConfigurations": [], "S3OutputPath": "s3://my-bucket/"},
@@ -179,6 +181,7 @@ def test_repack_model_step_with_source_dir(estimator, source_dir):
     assert request_dict == {
         "Name": "MyRepackModelStep",
         "Type": "Training",
+        "RetryPolicies": get_default_throttling_retry_policy().to_request(),
         "Arguments": {
             "AlgorithmSpecification": {"TrainingInputMode": "File"},
             "DebugHookConfig": {"CollectionConfigurations": [], "S3OutputPath": "s3://my-bucket/"},

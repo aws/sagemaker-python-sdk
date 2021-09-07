@@ -46,6 +46,7 @@ from sagemaker.workflow.step_collections import (
     StepCollection,
     RegisterModel,
 )
+from sagemaker.workflow.retry import RetryPolicy, RetryExceptionTypeEnum
 from tests.unit.sagemaker.workflow.helpers import ordered
 
 REGION = "us-west-2"
@@ -186,6 +187,32 @@ def source_dir(request):
     return tmp
 
 
+def get_default_throttling_retry_policies():
+    return {
+            "THROTTLING": {
+                "IntervalSeconds": 1,
+                "BackoffRate": 2.0,
+                "RetryUntil": {
+                    "MetricType": "MAX_ATTEMPTS",
+                    "MetricValue": 10
+                }
+            }
+        }
+
+
+def get_default_retry_policy():
+    return {
+        "ALL": {
+            "IntervalSeconds": 1,
+            "BackoffRate": 0.0,
+            "RetryUntil": {
+                "MetricType": "MAX_ATTEMPTS",
+                "MetricValue": 10
+            }
+        }
+    }
+
+
 def test_step_collection():
     step_collection = StepCollection(steps=[CustomStep("MyStep1"), CustomStep("MyStep2")])
     assert step_collection.request_dicts() == [
@@ -220,6 +247,7 @@ def test_register_model(estimator, model_metrics):
                 "DependsOn": ["TestStep"],
                 "DisplayName": "RegisterModelStep",
                 "Description": "description",
+                "RetryPolicies": get_default_throttling_retry_policies(),
                 "Arguments": {
                     "InferenceSpecification": {
                         "Containers": [
@@ -269,6 +297,7 @@ def test_register_model_tf(estimator_tf, model_metrics):
                 "Name": "RegisterModelStep",
                 "Type": "RegisterModel",
                 "Description": "description",
+                "RetryPolicies": get_default_throttling_retry_policies(),
                 "Arguments": {
                     "InferenceSpecification": {
                         "Containers": [
@@ -327,6 +356,7 @@ def test_register_model_sip(estimator, model_metrics):
                 "Name": "RegisterModelStep",
                 "Type": "RegisterModel",
                 "Description": "description",
+                "RetryPolicies": get_default_throttling_retry_policies(),
                 "DependsOn": ["TestStep"],
                 "Arguments": {
                     "InferenceSpecification": {
@@ -607,17 +637,23 @@ def test_register_model_with_model_repack_with_pipeline_model(pipeline_model, mo
         approval_status="Approved",
         description="description",
         depends_on=["TestStep"],
+        repack_model_step_retry_policies=[RetryPolicy(max_attempts=10)],
+        register_model_step_retry_policies=[RetryPolicy(max_attempts=10)],
         tags=[{"Key": "myKey", "Value": "myValue"}],
     )
 
     request_dicts = register_model.request_dicts()
     assert len(request_dicts) == 2
 
+    retry_policies = get_default_retry_policy()
+    retry_policies.update(get_default_throttling_retry_policies())
+
     for request_dict in request_dicts:
         if request_dict["Type"] == "Training":
             assert request_dict["Name"] == "modelNameRepackModel"
             assert len(request_dict["DependsOn"]) == 1
             assert request_dict["DependsOn"][0] == "TestStep"
+            assert request_dict['RetryPolicies'] == retry_policies
             arguments = request_dict["Arguments"]
             repacker_job_name = arguments["HyperParameters"]["sagemaker_job_name"]
             assert ordered(arguments) == ordered(
@@ -723,15 +759,23 @@ def test_estimator_transformer(estimator):
         instance_type="ml.c4.4xlarge",
         transform_inputs=transform_inputs,
         depends_on=["TestStep"],
+        model_step_retry_policies=[RetryPolicy(max_attempts=10)],
+        transform_step_retry_policies=[RetryPolicy(max_attempts=10)],
+        repack_model_step_retry_policies=[RetryPolicy(max_attempts=10)],
     )
     request_dicts = estimator_transformer.request_dicts()
     assert len(request_dicts) == 2
+
+    retry_policies = get_default_retry_policy()
+    retry_policies.update(get_default_throttling_retry_policies())
+
     for request_dict in request_dicts:
         if request_dict["Type"] == "Model":
             assert request_dict == {
                 "Name": "EstimatorTransformerStepCreateModelStep",
                 "Type": "Model",
                 "DependsOn": ["TestStep"],
+                "RetryPolicies": retry_policies,
                 "Arguments": {
                     "ExecutionRoleArn": "DummyRole",
                     "PrimaryContainer": {
@@ -743,6 +787,7 @@ def test_estimator_transformer(estimator):
             }
         elif request_dict["Type"] == "Transform":
             assert request_dict["Name"] == "EstimatorTransformerStepTransformStep"
+            assert request_dict["RetryPolicies"] == retry_policies
             arguments = request_dict["Arguments"]
             assert isinstance(arguments["ModelName"], Properties)
             arguments.pop("ModelName")

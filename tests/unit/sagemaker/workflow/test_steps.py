@@ -44,9 +44,10 @@ from sagemaker.network import NetworkConfig
 from sagemaker.transformer import Transformer
 from sagemaker.workflow.properties import Properties
 from sagemaker.workflow.parameters import ParameterString, ParameterInteger
+from sagemaker.workflow.retry import RetryPolicy, RetryExceptionTypeEnum
 from sagemaker.workflow.steps import (
     ProcessingStep,
-    Step,
+    RetryableStep,
     StepTypeEnum,
     TrainingStep,
     TuningStep,
@@ -66,9 +67,9 @@ ROLE = "DummyRole"
 MODEL_NAME = "gisele"
 
 
-class CustomStep(Step):
-    def __init__(self, name, display_name=None, description=None):
-        super(CustomStep, self).__init__(name, display_name, description, StepTypeEnum.TRAINING)
+class CustomStep(RetryableStep):
+    def __init__(self, name, display_name=None, description=None, retry_policies=None):
+        super(CustomStep, self).__init__(name, StepTypeEnum.TRAINING, display_name, description, None, retry_policies)
         self._properties = Properties(path=f"Steps.{name}")
 
     @property
@@ -120,6 +121,19 @@ def sagemaker_session(boto_session, client):
     )
 
 
+def get_default_throttling_retry_policies():
+    return {
+            "THROTTLING": {
+                "IntervalSeconds": 1,
+                "BackoffRate": 2.0,
+                "RetryUntil": {
+                    "MetricType": "MAX_ATTEMPTS",
+                    "MetricValue": 10
+                }
+            }
+        }
+
+
 def test_custom_step():
     step = CustomStep(
         name="MyStep", display_name="CustomStepDisplayName", description="CustomStepDescription"
@@ -129,6 +143,7 @@ def test_custom_step():
         "DisplayName": "CustomStepDisplayName",
         "Description": "CustomStepDescription",
         "Type": "Training",
+        "RetryPolicies": get_default_throttling_retry_policies(),
         "Arguments": dict(),
     }
 
@@ -139,6 +154,7 @@ def test_custom_step_without_display_name():
         "Name": "MyStep",
         "Description": "CustomStepDescription",
         "Type": "Training",
+        "RetryPolicies": get_default_throttling_retry_policies(),
         "Arguments": dict(),
     }
 
@@ -149,8 +165,125 @@ def test_custom_step_without_description():
         "Name": "MyStep",
         "DisplayName": "CustomStepDisplayName",
         "Type": "Training",
+        "RetryPolicies": get_default_throttling_retry_policies(),
         "Arguments": dict(),
     }
+
+
+def test_custom_step_without_retry_policy():
+    step = CustomStep(name="MyStep", retry_policies=[
+        RetryPolicy(RetryExceptionTypeEnum.SERVICE_FAULT, expire_after_mins=30),
+        RetryPolicy(RetryExceptionTypeEnum.THROTTLING, max_attempts=10),
+    ])
+    assert step.to_request() == {
+        "Name": "MyStep",
+        "Type": "Training",
+        "RetryPolicies": {
+            "SERVICE_FAULT": {
+                "IntervalSeconds": 1,
+                "BackoffRate": 0.0,
+                "RetryUntil": {
+                    "MetricType": "EXPIRE_AFTER_MIN",
+                    "MetricValue": 30
+                }
+            },
+            "THROTTLING": {
+                "IntervalSeconds": 1,
+                "BackoffRate": 0.0,
+                "RetryUntil": {
+                    "MetricType": "MAX_ATTEMPTS",
+                    "MetricValue": 10
+                }
+            }
+        },
+        "Arguments": dict(),
+    }
+    step.add_retry_policy(
+        RetryPolicy(RetryExceptionTypeEnum.CAPACITY_ERROR, interval_seconds=5, backoff_rate=2.0, expire_after_mins=5)
+    )
+    assert step.to_request() == {
+        "Name": "MyStep",
+        "Type": "Training",
+        "RetryPolicies": {
+            "SERVICE_FAULT": {
+                "IntervalSeconds": 1,
+                "BackoffRate": 0.0,
+                "RetryUntil": {
+                    "MetricType": "EXPIRE_AFTER_MIN",
+                    "MetricValue": 30
+                }
+            },
+            "THROTTLING": {
+                "IntervalSeconds": 1,
+                "BackoffRate": 0.0,
+                "RetryUntil": {
+                    "MetricType": "MAX_ATTEMPTS",
+                    "MetricValue": 10
+                }
+            },
+            "CAPACITY_ERROR": {
+                "IntervalSeconds": 5,
+                "BackoffRate": 2.0,
+                "RetryUntil": {
+                    "MetricType": "EXPIRE_AFTER_MIN",
+                    "MetricValue": 5
+                }
+            },
+        },
+        "Arguments": dict(),
+    }
+    step.add_retry_policy(
+        RetryPolicy(RetryExceptionTypeEnum.CAPACITY_ERROR, interval_seconds=3, backoff_rate=2.0, expire_after_mins=5)
+    )
+    assert step.to_request() == {
+        "Name": "MyStep",
+        "Type": "Training",
+        "RetryPolicies": {
+            "SERVICE_FAULT": {
+                "IntervalSeconds": 1,
+                "BackoffRate": 0.0,
+                "RetryUntil": {
+                    "MetricType": "EXPIRE_AFTER_MIN",
+                    "MetricValue": 30
+                }
+            },
+            "THROTTLING": {
+                "IntervalSeconds": 1,
+                "BackoffRate": 0.0,
+                "RetryUntil": {
+                    "MetricType": "MAX_ATTEMPTS",
+                    "MetricValue": 10
+                }
+            },
+            "CAPACITY_ERROR": {
+                "IntervalSeconds": 3,
+                "BackoffRate": 2.0,
+                "RetryUntil": {
+                    "MetricType": "EXPIRE_AFTER_MIN",
+                    "MetricValue": 5
+                }
+            },
+        },
+        "Arguments": dict(),
+    }
+
+    step = CustomStep(name="MyStep")
+    assert step.to_request() == {
+        "Name": "MyStep",
+        "Type": "Training",
+        "RetryPolicies": get_default_throttling_retry_policies(),
+        "Arguments": dict(),
+    }
+
+    step = CustomStep(name="MyStep", retry_policies=[
+        RetryPolicy(RetryExceptionTypeEnum.SERVICE_FAULT, expire_after_mins=30),
+        RetryPolicy(RetryExceptionTypeEnum.SERVICE_FAULT, max_attempts=10),
+    ])
+    try:
+        step.to_request()
+        assert False
+    except Exception:
+        assert True
 
 
 def test_training_step_base_estimator(sagemaker_session):
@@ -192,6 +325,7 @@ def test_training_step_base_estimator(sagemaker_session):
         "Description": "TrainingStep description",
         "DisplayName": "MyTrainingStep",
         "DependsOn": ["TestStep", "AnotherTestStep"],
+        "RetryPolicies": get_default_throttling_retry_policies(),
         "Arguments": {
             "AlgorithmSpecification": {"TrainingImage": IMAGE_URI, "TrainingInputMode": "File"},
             "HyperParameters": {
@@ -270,6 +404,7 @@ def test_training_step_tensorflow(sagemaker_session):
     assert step_request == {
         "Name": "MyTrainingStep",
         "Type": "Training",
+        "RetryPolicies": get_default_throttling_retry_policies(),
         "Arguments": {
             "AlgorithmSpecification": {
                 "TrainingInputMode": "File",
@@ -350,6 +485,7 @@ def test_processing_step(sagemaker_session):
         "Description": "ProcessingStep description",
         "DisplayName": "MyProcessingStep",
         "Type": "Processing",
+        "RetryPolicies": get_default_throttling_retry_policies(),
         "DependsOn": ["TestStep", "SecondTestStep", "ThirdTestStep"],
         "Arguments": {
             "AppSpecification": {"ImageUri": "fakeimage"},
@@ -464,6 +600,16 @@ def test_create_model_step(sagemaker_session):
         "Description": "TestDescription",
         "DisplayName": "MyCreateModelStep",
         "DependsOn": ["TestStep", "SecondTestStep"],
+        "RetryPolicies": {
+            "THROTTLING": {
+                "IntervalSeconds": 1,
+                "BackoffRate": 2.0,
+                "RetryUntil": {
+                    "MetricType": "MAX_ATTEMPTS",
+                    "MetricValue": 10
+                }
+            }
+        },
         "Arguments": {
             "ExecutionRoleArn": "DummyRole",
             "PrimaryContainer": {"Environment": {}, "Image": "fakeimage"},
@@ -497,6 +643,7 @@ def test_transform_step(sagemaker_session):
         "Description": "TestDescription",
         "DisplayName": "TransformStep",
         "DependsOn": ["TestStep", "SecondTestStep"],
+        "RetryPolicies": get_default_throttling_retry_policies(),
         "Arguments": {
             "ModelName": "gisele",
             "TransformInput": {
@@ -653,6 +800,7 @@ def test_single_algo_tuning_step(sagemaker_session):
     assert tuning_step.to_request() == {
         "Name": "MyTuningStep",
         "Type": "Tuning",
+        "RetryPolicies": get_default_throttling_retry_policies(),
         "Arguments": {
             "HyperParameterTuningJobConfig": {
                 "Strategy": "Bayesian",
@@ -822,6 +970,7 @@ def test_multi_algo_tuning_step(sagemaker_session):
     assert tuning_step.to_request() == {
         "Name": "MyTuningStep",
         "Type": "Tuning",
+        "RetryPolicies": get_default_throttling_retry_policies(),
         "Arguments": {
             "HyperParameterTuningJobConfig": {
                 "Strategy": "Bayesian",
