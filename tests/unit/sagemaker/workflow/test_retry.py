@@ -13,7 +13,7 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-from sagemaker.workflow.retry import RetryPolicy, RetryExceptionTypeEnum, get_default_throttling_retry_policy
+from sagemaker.workflow.retry import RetryPolicy, RetryExceptionTypeEnum
 
 
 def test_valid_retry_policy():
@@ -90,18 +90,3 @@ def test_invalid_retry_policy():
             assert False
         except Exception:
             assert True
-
-
-def test_default_throttling_retry_policy():
-    assert get_default_throttling_retry_policy().to_request() == {
-         "THROTTLING": {
-            "IntervalSeconds": 1,
-            "BackoffRate": 2.0,
-            "RetryUntil": {
-                "MetricType": "MAX_ATTEMPTS",
-                "MetricValue": 10
-            }
-        }
-    }
-
-

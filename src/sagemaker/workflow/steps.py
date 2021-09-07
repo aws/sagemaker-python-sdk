@@ -44,7 +44,6 @@ from sagemaker.workflow.functions import Join
 from sagemaker.workflow.retry import (
     RetryPolicy,
     RetryExceptionTypeEnum,
-    get_default_throttling_retry_policy
 )
 
 
@@ -194,15 +193,10 @@ class RetryableStep(Step):
             depends_on=depends_on,
         )
         self.retry_policies = [] if not retry_policies else retry_policies
-        for retry_policy in self.retry_policies:
-            if retry_policy.retry_exception_type == RetryExceptionTypeEnum.THROTTLING:
-                return
-        # append default throttling retry policy if not found
-        self.retry_policies.append(get_default_throttling_retry_policy())
 
     def add_retry_policy(self, retry_policy: RetryPolicy):
-        """Add a retry policy to the current step retry policies list, existing policy with the same retry exception type
-            will be overrode.
+        """Add a retry policy to the current step retry policies list,
+            new policy with the same retry exception type will override the old one.
         """
         if not retry_policy:
             return
@@ -217,7 +211,8 @@ class RetryableStep(Step):
 
     def to_request(self) -> RequestType:
         step_dict = super().to_request()
-        step_dict['RetryPolicies'] = self._resolve_retry_policy(self.retry_policies)
+        if self.retry_policies:
+            step_dict['RetryPolicies'] = self._resolve_retry_policy(self.retry_policies)
         return step_dict
 
     @staticmethod

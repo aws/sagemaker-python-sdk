@@ -97,12 +97,3 @@ class RetryPolicy(Entity):
                 }
             }
         }
-
-
-def get_default_throttling_retry_policy() -> RetryPolicy:
-    return RetryPolicy(
-        retry_exception_type=RetryExceptionTypeEnum.THROTTLING,
-        interval_seconds=1,
-        backoff_rate=2.0,
-        max_attempts=10,
-    )
