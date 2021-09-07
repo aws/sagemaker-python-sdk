@@ -41,10 +41,7 @@ from sagemaker.workflow.properties import (
     Properties,
 )
 from sagemaker.workflow.functions import Join
-from sagemaker.workflow.retry import (
-    RetryPolicy,
-    RetryExceptionTypeEnum,
-)
+from sagemaker.workflow.retry import RetryPolicy
 
 
 class StepTypeEnum(Enum, metaclass=DefaultEnumMeta):
@@ -135,6 +132,7 @@ class Step(Entity):
                 raise ValueError(f"Invalid input step name: {step}")
         return depends_on
 
+
 @attr.s
 class CacheConfig:
     """Configuration class to enable caching in pipeline workflow.
@@ -177,13 +175,13 @@ class RetryableStep(Step):
     """RetryableStep step for workflow."""
 
     def __init__(
-            self,
-            name: str,
-            step_type: StepTypeEnum,
-            display_name: str = None,
-            description: str = None,
-            depends_on: Union[List[str], List["Step"]] = None,
-            retry_policies: List[RetryPolicy] = None,
+        self,
+        name: str,
+        step_type: StepTypeEnum,
+        display_name: str = None,
+        description: str = None,
+        depends_on: Union[List[str], List["Step"]] = None,
+        retry_policies: List[RetryPolicy] = None,
     ):
         super().__init__(
             name=name,
@@ -196,7 +194,7 @@ class RetryableStep(Step):
 
     def add_retry_policy(self, retry_policy: RetryPolicy):
         """Add a retry policy to the current step retry policies list,
-            new policy with the same retry exception type will override the old one.
+        new policy with the same retry exception type will override the old one.
         """
         if not retry_policy:
             return
@@ -204,7 +202,7 @@ class RetryableStep(Step):
         if not self.retry_policies:
             self.retry_policies = []
 
-        for i, existing_retry_policy in enumerate(self.retry_policies):
+        for existing_retry_policy in self.retry_policies:
             if retry_policy.retry_exception_type == existing_retry_policy.retry_exception_type:
                 self.retry_policies.remove(existing_retry_policy)
         self.retry_policies.append(retry_policy)
@@ -212,7 +210,7 @@ class RetryableStep(Step):
     def to_request(self) -> RequestType:
         step_dict = super().to_request()
         if self.retry_policies:
-            step_dict['RetryPolicies'] = self._resolve_retry_policy(self.retry_policies)
+            step_dict["RetryPolicies"] = self._resolve_retry_policy(self.retry_policies)
         return step_dict
 
     @staticmethod
@@ -221,8 +219,10 @@ class RetryableStep(Step):
         retry_policies = {}
         for retry_policy in retry_policy_list:
             if retry_policy.retry_exception_type.value in retry_policies:
-                raise ValueError(f"retry policy for retry exception type: "
-                                 f"{retry_policy.retry_exception_type} already exists.")
+                raise ValueError(
+                    f"retry policy for retry exception type: "
+                    f"{retry_policy.retry_exception_type} already exists."
+                )
             retry_policies.update(retry_policy.to_request())
         return retry_policies
 

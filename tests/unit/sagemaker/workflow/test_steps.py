@@ -69,7 +69,9 @@ MODEL_NAME = "gisele"
 
 class CustomStep(RetryableStep):
     def __init__(self, name, display_name=None, description=None, retry_policies=None):
-        super(CustomStep, self).__init__(name, StepTypeEnum.TRAINING, display_name, description, None, retry_policies)
+        super(CustomStep, self).__init__(
+            name, StepTypeEnum.TRAINING, display_name, description, None, retry_policies
+        )
         self._properties = Properties(path=f"Steps.{name}")
 
     @property
@@ -155,35 +157,12 @@ def test_custom_step_without_description():
 
 
 def test_custom_step_without_retry_policy():
-    step = CustomStep(name="MyStep", retry_policies=[
-        RetryPolicy(RetryExceptionTypeEnum.SERVICE_FAULT, expire_after_mins=30),
-        RetryPolicy(RetryExceptionTypeEnum.THROTTLING, max_attempts=10),
-    ])
-    assert step.to_request() == {
-        "Name": "MyStep",
-        "Type": "Training",
-        "RetryPolicies": {
-            "SERVICE_FAULT": {
-                "IntervalSeconds": 1,
-                "BackoffRate": 0.0,
-                "RetryUntil": {
-                    "MetricType": "EXPIRE_AFTER_MIN",
-                    "MetricValue": 30
-                }
-            },
-            "THROTTLING": {
-                "IntervalSeconds": 1,
-                "BackoffRate": 0.0,
-                "RetryUntil": {
-                    "MetricType": "MAX_ATTEMPTS",
-                    "MetricValue": 10
-                }
-            }
-        },
-        "Arguments": dict(),
-    }
-    step.add_retry_policy(
-        RetryPolicy(RetryExceptionTypeEnum.CAPACITY_ERROR, interval_seconds=5, backoff_rate=2.0, expire_after_mins=5)
+    step = CustomStep(
+        name="MyStep",
+        retry_policies=[
+            RetryPolicy(RetryExceptionTypeEnum.SERVICE_FAULT, expire_after_mins=30),
+            RetryPolicy(RetryExceptionTypeEnum.THROTTLING, max_attempts=10),
+        ],
     )
     assert step.to_request() == {
         "Name": "MyStep",
@@ -192,32 +171,53 @@ def test_custom_step_without_retry_policy():
             "SERVICE_FAULT": {
                 "IntervalSeconds": 1,
                 "BackoffRate": 0.0,
-                "RetryUntil": {
-                    "MetricType": "EXPIRE_AFTER_MIN",
-                    "MetricValue": 30
-                }
+                "RetryUntil": {"MetricType": "EXPIRE_AFTER_MIN", "MetricValue": 30},
             },
             "THROTTLING": {
                 "IntervalSeconds": 1,
                 "BackoffRate": 0.0,
-                "RetryUntil": {
-                    "MetricType": "MAX_ATTEMPTS",
-                    "MetricValue": 10
-                }
+                "RetryUntil": {"MetricType": "MAX_ATTEMPTS", "MetricValue": 10},
+            },
+        },
+        "Arguments": dict(),
+    }
+    step.add_retry_policy(
+        RetryPolicy(
+            RetryExceptionTypeEnum.CAPACITY_ERROR,
+            interval_seconds=5,
+            backoff_rate=2.0,
+            expire_after_mins=5,
+        )
+    )
+    assert step.to_request() == {
+        "Name": "MyStep",
+        "Type": "Training",
+        "RetryPolicies": {
+            "SERVICE_FAULT": {
+                "IntervalSeconds": 1,
+                "BackoffRate": 0.0,
+                "RetryUntil": {"MetricType": "EXPIRE_AFTER_MIN", "MetricValue": 30},
+            },
+            "THROTTLING": {
+                "IntervalSeconds": 1,
+                "BackoffRate": 0.0,
+                "RetryUntil": {"MetricType": "MAX_ATTEMPTS", "MetricValue": 10},
             },
             "CAPACITY_ERROR": {
                 "IntervalSeconds": 5,
                 "BackoffRate": 2.0,
-                "RetryUntil": {
-                    "MetricType": "EXPIRE_AFTER_MIN",
-                    "MetricValue": 5
-                }
+                "RetryUntil": {"MetricType": "EXPIRE_AFTER_MIN", "MetricValue": 5},
             },
         },
         "Arguments": dict(),
     }
     step.add_retry_policy(
-        RetryPolicy(RetryExceptionTypeEnum.CAPACITY_ERROR, interval_seconds=3, backoff_rate=2.0, expire_after_mins=5)
+        RetryPolicy(
+            RetryExceptionTypeEnum.CAPACITY_ERROR,
+            interval_seconds=3,
+            backoff_rate=2.0,
+            expire_after_mins=5,
+        )
     )
     assert step.to_request() == {
         "Name": "MyStep",
@@ -226,26 +226,17 @@ def test_custom_step_without_retry_policy():
             "SERVICE_FAULT": {
                 "IntervalSeconds": 1,
                 "BackoffRate": 0.0,
-                "RetryUntil": {
-                    "MetricType": "EXPIRE_AFTER_MIN",
-                    "MetricValue": 30
-                }
+                "RetryUntil": {"MetricType": "EXPIRE_AFTER_MIN", "MetricValue": 30},
             },
             "THROTTLING": {
                 "IntervalSeconds": 1,
                 "BackoffRate": 0.0,
-                "RetryUntil": {
-                    "MetricType": "MAX_ATTEMPTS",
-                    "MetricValue": 10
-                }
+                "RetryUntil": {"MetricType": "MAX_ATTEMPTS", "MetricValue": 10},
             },
             "CAPACITY_ERROR": {
                 "IntervalSeconds": 3,
                 "BackoffRate": 2.0,
-                "RetryUntil": {
-                    "MetricType": "EXPIRE_AFTER_MIN",
-                    "MetricValue": 5
-                }
+                "RetryUntil": {"MetricType": "EXPIRE_AFTER_MIN", "MetricValue": 5},
             },
         },
         "Arguments": dict(),
@@ -258,10 +249,13 @@ def test_custom_step_without_retry_policy():
         "Arguments": dict(),
     }
 
-    step = CustomStep(name="MyStep", retry_policies=[
-        RetryPolicy(RetryExceptionTypeEnum.SERVICE_FAULT, expire_after_mins=30),
-        RetryPolicy(RetryExceptionTypeEnum.SERVICE_FAULT, max_attempts=10),
-    ])
+    step = CustomStep(
+        name="MyStep",
+        retry_policies=[
+            RetryPolicy(RetryExceptionTypeEnum.SERVICE_FAULT, expire_after_mins=30),
+            RetryPolicy(RetryExceptionTypeEnum.SERVICE_FAULT, max_attempts=10),
+        ],
+    )
     try:
         step.to_request()
         assert False

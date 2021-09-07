@@ -123,9 +123,9 @@ def test_pipeline_execution_processing_step_with_retry(
                 retry_exception_type=RetryExceptionTypeEnum.ALL,
                 backoff_rate=2.0,
                 interval_seconds=30,
-                expire_after_mins=5
+                expire_after_mins=5,
             )
-        ]
+        ],
     )
     pipeline = Pipeline(
         name=pipeline_name,
@@ -184,9 +184,7 @@ def test_model_registration_with_model_repack(
         name="pytorch-train",
         estimator=pytorch_estimator,
         inputs=inputs,
-        retry_policies=[
-            RetryPolicy(max_attempts=3)
-        ]
+        retry_policies=[RetryPolicy(max_attempts=3)],
     )
 
     step_register = RegisterModel(
@@ -256,7 +254,3 @@ def test_model_registration_with_model_repack(
             pipeline.delete()
         except Exception:
             pass
-
-
-
-

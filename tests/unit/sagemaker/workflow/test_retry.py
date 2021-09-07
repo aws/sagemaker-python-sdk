@@ -22,23 +22,21 @@ def test_valid_retry_policy():
         "ALL": {
             "IntervalSeconds": 5,
             "BackoffRate": 0.0,
-            "RetryUntil": {
-                "MetricType": "MAX_ATTEMPTS",
-                "MetricValue": 3
-            }
+            "RetryUntil": {"MetricType": "MAX_ATTEMPTS", "MetricValue": 3},
         }
     }
 
-    retry_policy = RetryPolicy(RetryExceptionTypeEnum.SERVICE_FAULT, interval_seconds=5, backoff_rate=2.0,
-                               expire_after_mins=30)
+    retry_policy = RetryPolicy(
+        RetryExceptionTypeEnum.SERVICE_FAULT,
+        interval_seconds=5,
+        backoff_rate=2.0,
+        expire_after_mins=30,
+    )
     assert retry_policy.to_request() == {
         "SERVICE_FAULT": {
             "IntervalSeconds": 5,
             "BackoffRate": 2.0,
-            "RetryUntil": {
-                "MetricType": "EXPIRE_AFTER_MIN",
-                "MetricValue": 30
-            }
+            "RetryUntil": {"MetricType": "EXPIRE_AFTER_MIN", "MetricValue": 30},
         }
     }
 
@@ -47,10 +45,7 @@ def test_valid_retry_policy():
         "ALL": {
             "IntervalSeconds": 1,
             "BackoffRate": 0.0,
-            "RetryUntil": {
-                "MetricType": "EXPIRE_AFTER_MIN",
-                "MetricValue": 30
-            }
+            "RetryUntil": {"MetricType": "EXPIRE_AFTER_MIN", "MetricValue": 30},
         }
     }
 
@@ -59,10 +54,7 @@ def test_valid_retry_policy():
         "ALL": {
             "IntervalSeconds": 1,
             "BackoffRate": 0.0,
-            "RetryUntil": {
-                "MetricType": "MAX_ATTEMPTS",
-                "MetricValue": 10
-            }
+            "RetryUntil": {"MetricType": "MAX_ATTEMPTS", "MetricValue": 10},
         }
     }
 
@@ -85,7 +77,7 @@ def test_invalid_retry_policy():
                 interval_seconds=interval_sec,
                 backoff_rate=backoff_rate,
                 max_attempts=max_attempts,
-                expire_after_mins=expire_after
+                expire_after_mins=expire_after,
             ).to_request()
             assert False
         except Exception:

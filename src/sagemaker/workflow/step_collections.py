@@ -90,8 +90,10 @@ class RegisterModel(StepCollection):
                 job can be run or on which an endpoint can be deployed (default: None).
             depends_on (List[str] or List[Step]): The list of step names or step instances
                 the first step in the collection depends on
-            repack_model_step_retry_policies (List[RetryPolicy]): The list of retry policies for the repack model step
-            register_model_step_retry_policies (List[RetryPolicy]): The list of retry policies for register model step
+            repack_model_step_retry_policies (List[RetryPolicy]): The list of retry policies
+                for the repack model step
+            register_model_step_retry_policies (List[RetryPolicy]): The list of retry policies
+                for register model step
             model_package_group_name (str): The Model Package Group name, exclusive to
                 `model_package_name`, using `model_package_group_name` makes the Model Package
                 versioned (default: None).
@@ -304,9 +306,12 @@ class EstimatorTransformer(StepCollection):
                 transform job (default: None).
             depends_on (List[str] or List[Step]): The list of step names or step instances
                 the first step in the collection depends on
-            repack_model_step_retry_policies (List[RetryPolicy]): The list of retry policies for the repack model step
-            model_step_retry_policies (List[RetryPolicy]): The list of retry policies for model step
-            transform_step_retry_policies (List[RetryPolicy]): The list of retry policies for transform step
+            repack_model_step_retry_policies (List[RetryPolicy]): The list of retry policies
+                for the repack model step
+            model_step_retry_policies (List[RetryPolicy]): The list of retry policies for
+                model step
+            transform_step_retry_policies (List[RetryPolicy]): The list of retry policies for
+                transform step
         """
         steps = []
         if "entry_point" in kwargs:
@@ -352,7 +357,7 @@ class EstimatorTransformer(StepCollection):
             inputs=model_inputs,
             description=description,
             display_name=display_name,
-            retry_policies=model_step_retry_policies
+            retry_policies=model_step_retry_policies,
         )
         if "entry_point" not in kwargs and depends_on:
             # if the CreateModelStep is the first step in the collection

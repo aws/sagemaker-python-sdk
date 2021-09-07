@@ -15,9 +15,9 @@ from __future__ import absolute_import
 
 from enum import Enum
 
-from sagemaker.workflow.entities import Entity, DefaultEnumMeta, RequestType
-
 import attr
+
+from sagemaker.workflow.entities import Entity, DefaultEnumMeta, RequestType
 
 MAX_ATTEMPTS_CAP = 20
 MAX_EXPIRE_AFTER_MIN = 14400
@@ -42,13 +42,15 @@ class RetryPolicy(Entity):
             initiate the retry. (default: RetryExceptionTypeEnum.ALL)
         interval_seconds (int): An integer that represents the number of seconds before the
             first retry attempt (default: 5)
-        backoff_rate (float): The multiplier by which the retry interval increases during each attempt,
-            the default 0.0 is equivalent to linear backoff (default: 0.0)
+        backoff_rate (float): The multiplier by which the retry interval increases
+            during each attempt, the default 0.0 is
+            equivalent to linear backoff (default: 0.0)
         max_attempts (int): A positive integer that represents the maximum
             number of retry attempts. (default: None)
         expire_after_mins (int): A positive integer that represents the maximum minute
             to expire any further retry attempt (default: None)
     """
+
     retry_exception_type: RetryExceptionTypeEnum = attr.ib(factory=RetryExceptionTypeEnum.factory)
     backoff_rate: float = attr.ib(default=0.0)
     interval_seconds: int = attr.ib(default=1.0)
@@ -56,35 +58,41 @@ class RetryPolicy(Entity):
     expire_after_mins: int = attr.ib(default=None)
 
     @retry_exception_type.validator
-    def validate_retry_exception_type(self, attribute, value):
-        assert isinstance(value, RetryExceptionTypeEnum), \
-            f"retry_exception_type should be of type RetryExceptionTypeEnum"
+    def validate_retry_exception_type(self, _, value):
+        """validate the input retry exception type"""
+        assert isinstance(
+            value, RetryExceptionTypeEnum
+        ), "retry_exception_type should be of type RetryExceptionTypeEnum"
 
     @backoff_rate.validator
-    def validate_backoff_rate(self, attribute, value):
-        assert value >= 0.0, \
-            f"backoff_rate should be non-negative"
+    def validate_backoff_rate(self, _, value):
+        """validate the input back off rate type"""
+        assert value >= 0.0, "backoff_rate should be non-negative"
 
     @interval_seconds.validator
-    def validate_interval_seconds(self, attribute, value):
-        assert value >= 0.0, \
-            f"interval_seconds rate should be non-negative"
+    def validate_interval_seconds(self, _, value):
+        """validate the input interval seconds"""
+        assert value >= 0.0, "interval_seconds rate should be non-negative"
 
     @max_attempts.validator
-    def validate_max_attempts(self, attribute, value):
+    def validate_max_attempts(self, _, value):
+        """validate the input max attempts"""
         if value:
-            assert MAX_ATTEMPTS_CAP >= value >= 1, \
-                f"max_attempts must in range of (0, {MAX_ATTEMPTS_CAP}] attempts"
+            assert (
+                MAX_ATTEMPTS_CAP >= value >= 1
+            ), f"max_attempts must in range of (0, {MAX_ATTEMPTS_CAP}] attempts"
 
     @expire_after_mins.validator
-    def validate_expire_after_mins(self, attribute, value):
+    def validate_expire_after_mins(self, _, value):
+        """validate expire after mins"""
         if value:
-            assert MAX_EXPIRE_AFTER_MIN >= value >= 0, \
-                f"expire_after_mins must in range of (0, {MAX_EXPIRE_AFTER_MIN}] minutes"
+            assert (
+                MAX_EXPIRE_AFTER_MIN >= value >= 0
+            ), f"expire_after_mins must in range of (0, {MAX_EXPIRE_AFTER_MIN}] minutes"
 
     def to_request(self) -> RequestType:
         """Get the request structure for workflow service calls."""
-        if not ((self.max_attempts is None) ^ (self.expire_after_mins is None)):
+        if (self.max_attempts is None) == self.expire_after_mins is None:
             raise ValueError("Only one of [max_attempts] and [expire_after_mins] can be given.")
 
         return {
@@ -92,8 +100,12 @@ class RetryPolicy(Entity):
                 "IntervalSeconds": self.interval_seconds,
                 "BackoffRate": self.backoff_rate,
                 "RetryUntil": {
-                    "MetricType": "MAX_ATTEMPTS" if self.max_attempts is not None else "EXPIRE_AFTER_MIN",
-                    "MetricValue": self.max_attempts if self.max_attempts is not None else self.expire_after_mins
-                }
+                    "MetricType": "MAX_ATTEMPTS"
+                    if self.max_attempts is not None
+                    else "EXPIRE_AFTER_MIN",
+                    "MetricValue": self.max_attempts
+                    if self.max_attempts is not None
+                    else self.expire_after_mins,
+                },
             }
         }

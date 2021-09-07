@@ -192,10 +192,7 @@ def get_default_retry_policy():
         "ALL": {
             "IntervalSeconds": 1,
             "BackoffRate": 0.0,
-            "RetryUntil": {
-                "MetricType": "MAX_ATTEMPTS",
-                "MetricValue": 10
-            }
+            "RetryUntil": {"MetricType": "MAX_ATTEMPTS", "MetricValue": 10},
         }
     }
 
@@ -634,7 +631,7 @@ def test_register_model_with_model_repack_with_pipeline_model(pipeline_model, mo
             assert request_dict["Name"] == "modelNameRepackModel"
             assert len(request_dict["DependsOn"]) == 1
             assert request_dict["DependsOn"][0] == "TestStep"
-            assert request_dict['RetryPolicies'] == get_default_retry_policy()
+            assert request_dict["RetryPolicies"] == get_default_retry_policy()
             arguments = request_dict["Arguments"]
             repacker_job_name = arguments["HyperParameters"]["sagemaker_job_name"]
             assert ordered(arguments) == ordered(
@@ -784,4 +781,3 @@ def test_estimator_transformer(estimator):
             }
         else:
             raise Exception("A step exists in the collection of an invalid type.")
-
