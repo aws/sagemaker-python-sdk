@@ -127,7 +127,7 @@ class ShuffleConfig(object):
 class CreateModelInput(object):
     """A class containing parameters which can be used to create a SageMaker Model
 
-    Attributes:
+    Parameters:
         instance_type (str): type or EC2 instance will be used for model deployment.
         accelerator_type (str): elastic inference accelerator type.
     """

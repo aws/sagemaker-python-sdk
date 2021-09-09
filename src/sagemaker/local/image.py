@@ -32,6 +32,7 @@ import tempfile
 
 from distutils.spawn import find_executable
 from threading import Thread
+
 from six.moves.urllib.parse import urlparse
 
 import sagemaker
