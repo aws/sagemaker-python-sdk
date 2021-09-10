@@ -455,8 +455,16 @@ class SageMakerClarifyProcessor(Processor):
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 user code file (default: None).
             experiment_config (dict[str, str]): Experiment management configuration.
-                Dictionary contains three optional keys:
+                Optionally, the dict can contain three keys:
                 'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+                The behavior of setting these keys is as follows:
+                * If `ExperimentName` is supplied but `TrialName` is not a Trial will be
+                automatically created and the job's Trial Component associated with the Trial.
+                * If `TrialName` is supplied and the Trial already exists the job's Trial Component
+                will be associated with the Trial.
+                * If both `ExperimentName` and `TrialName` are not supplied the trial component
+                will be unassociated.
+                * `TrialComponentDisplayName` is used for display in Studio.
         """
         analysis_config["methods"]["report"] = {"name": "report", "title": "Analysis Report"}
         with tempfile.TemporaryDirectory() as tmpdirname:
@@ -541,8 +549,16 @@ class SageMakerClarifyProcessor(Processor):
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 user code file (default: None).
             experiment_config (dict[str, str]): Experiment management configuration.
-                Dictionary contains three optional keys:
+                Optionally, the dict can contain three keys:
                 'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+                The behavior of setting these keys is as follows:
+                * If `ExperimentName` is supplied but `TrialName` is not a Trial will be
+                automatically created and the job's Trial Component associated with the Trial.
+                * If `TrialName` is supplied and the Trial already exists the job's Trial Component
+                will be associated with the Trial.
+                * If both `ExperimentName` and `TrialName` are not supplied the trial component
+                will be unassociated.
+                * `TrialComponentDisplayName` is used for display in Studio.
         """  # noqa E501
         analysis_config = data_config.get_config()
         analysis_config.update(data_bias_config.get_config())
@@ -604,8 +620,16 @@ class SageMakerClarifyProcessor(Processor):
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 user code file (default: None).
             experiment_config (dict[str, str]): Experiment management configuration.
-                Dictionary contains three optional keys:
+                Optionally, the dict can contain three keys:
                 'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+                The behavior of setting these keys is as follows:
+                * If `ExperimentName` is supplied but `TrialName` is not a Trial will be
+                automatically created and the job's Trial Component associated with the Trial.
+                * If `TrialName` is supplied and the Trial already exists the job's Trial Component
+                will be associated with the Trial.
+                * If both `ExperimentName` and `TrialName` are not supplied the trial component
+                will be unassociated.
+                * `TrialComponentDisplayName` is used for display in Studio.
         """
         analysis_config = data_config.get_config()
         analysis_config.update(data_bias_config.get_config())
@@ -684,8 +708,16 @@ class SageMakerClarifyProcessor(Processor):
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 user code file (default: None).
             experiment_config (dict[str, str]): Experiment management configuration.
-                Dictionary contains three optional keys:
+                Optionally, the dict can contain three keys:
                 'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+                The behavior of setting these keys is as follows:
+                * If `ExperimentName` is supplied but `TrialName` is not a Trial will be
+                automatically created and the job's Trial Component associated with the Trial.
+                * If `TrialName` is supplied and the Trial already exists the job's Trial Component
+                will be associated with the Trial.
+                * If both `ExperimentName` and `TrialName` are not supplied the trial component
+                will be unassociated.
+                * `TrialComponentDisplayName` is used for display in Studio.
         """  # noqa E501
         analysis_config = data_config.get_config()
         analysis_config.update(bias_config.get_config())
@@ -755,8 +787,16 @@ class SageMakerClarifyProcessor(Processor):
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 user code file (default: None).
             experiment_config (dict[str, str]): Experiment management configuration.
-                Dictionary contains three optional keys:
+                Optionally, the dict can contain three keys:
                 'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+                The behavior of setting these keys is as follows:
+                * If `ExperimentName` is supplied but `TrialName` is not a Trial will be
+                automatically created and the job's Trial Component associated with the Trial.
+                * If `TrialName` is supplied and the Trial already exists the job's Trial Component
+                will be associated with the Trial.
+                * If both `ExperimentName` and `TrialName` are not supplied the trial component
+                will be unassociated.
+                * `TrialComponentDisplayName` is used for display in Studio.
         """
         analysis_config = data_config.get_config()
         predictor_config = model_config.get_predictor_config()

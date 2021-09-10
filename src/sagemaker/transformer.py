@@ -168,9 +168,16 @@ class Transformer(object):
                 to select the useful portion before uploading to S3. (default:
                 None). Valid values: Input, None.
             experiment_config (dict[str, str]): Experiment management configuration.
-                Dictionary contains three optional keys,
+                Optionally, the dict can contain three keys:
                 'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
-                (default: ``None``).
+                The behavior of setting these keys is as follows:
+                * If `ExperimentName` is supplied but `TrialName` is not a Trial will be
+                automatically created and the job's Trial Component associated with the Trial.
+                * If `TrialName` is supplied and the Trial already exists the job's Trial Component
+                will be associated with the Trial.
+                * If both `ExperimentName` and `TrialName` are not supplied the trial component
+                will be unassociated.
+                * `TrialComponentDisplayName` is used for display in Studio.
             model_client_config (dict[str, str]): Model configuration.
                 Dictionary contains two optional keys,
                 'InvocationsTimeoutInSeconds', and 'InvocationsMaxRetries'.
