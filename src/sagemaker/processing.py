@@ -161,8 +161,16 @@ class Processor(object):
             job_name (str): Processing job name. If not specified, the processor generates
                 a default job name, based on the base job name and current timestamp.
             experiment_config (dict[str, str]): Experiment management configuration.
-                Dictionary contains three optional keys:
+                Optionally, the dict can contain three keys:
                 'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+                The behavior of setting these keys is as follows:
+                * If `ExperimentName` is supplied but `TrialName` is not a Trial will be
+                automatically created and the job's Trial Component associated with the Trial.
+                * If `TrialName` is supplied and the Trial already exists the job's Trial Component
+                will be associated with the Trial.
+                * If both `ExperimentName` and `TrialName` are not supplied the trial component
+                will be unassociated.
+                * `TrialComponentDisplayName` is used for display in Studio.
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 user code file (default: None).
 
@@ -514,10 +522,16 @@ class ScriptProcessor(Processor):
             job_name (str): Processing job name. If not specified, the processor generates
                 a default job name, based on the base job name and current timestamp.
             experiment_config (dict[str, str]): Experiment management configuration.
-                Dictionary contains three optional keys:
+                Optionally, the dict can contain three keys:
                 'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
-            kms_key (str): The ARN of the KMS key that is used to encrypt the
-                user code file (default: None).
+                The behavior of setting these keys is as follows:
+                * If `ExperimentName` is supplied but `TrialName` is not a Trial will be
+                automatically created and the job's Trial Component associated with the Trial.
+                * If `TrialName` is supplied and the Trial already exists the job's Trial Component
+                will be associated with the Trial.
+                * If both `ExperimentName` and `TrialName` are not supplied the trial component
+                will be unassociated.
+                * `TrialComponentDisplayName` is used for display in Studio.
         """
         normalized_inputs, normalized_outputs = self._normalize_args(
             job_name=job_name,
@@ -728,8 +742,16 @@ class ProcessingJob(_Job):
             outputs (list[:class:`~sagemaker.processing.ProcessingOutput`]): A list of
                 :class:`~sagemaker.processing.ProcessingOutput` objects.
             experiment_config (dict[str, str]): Experiment management configuration.
-                Dictionary contains three optional keys:
+                Optionally, the dict can contain three keys:
                 'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+                The behavior of setting these keys is as follows:
+                * If `ExperimentName` is supplied but `TrialName` is not a Trial will be
+                automatically created and the job's Trial Component associated with the Trial.
+                * If `TrialName` is supplied and the Trial already exists the job's Trial Component
+                will be associated with the Trial.
+                * If both `ExperimentName` and `TrialName` are not supplied the trial component
+                will be unassociated.
+                * `TrialComponentDisplayName` is used for display in Studio.
 
         Returns:
             :class:`~sagemaker.processing.ProcessingJob`: The instance of ``ProcessingJob`` created
@@ -766,8 +788,16 @@ class ProcessingJob(_Job):
             outputs (list[:class:`~sagemaker.processing.ProcessingOutput`]): A list of
                 :class:`~sagemaker.processing.ProcessingOutput` objects.
             experiment_config (dict[str, str]): Experiment management configuration.
-                Dictionary contains three optional keys:
+                Optionally, the dict can contain three keys:
                 'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+                The behavior of setting these keys is as follows:
+                * If `ExperimentName` is supplied but `TrialName` is not a Trial will be
+                automatically created and the job's Trial Component associated with the Trial.
+                * If `TrialName` is supplied and the Trial already exists the job's Trial Component
+                will be associated with the Trial.
+                * If both `ExperimentName` and `TrialName` are not supplied the trial component
+                will be unassociated.
+                * `TrialComponentDisplayName` is used for display in Studio.
 
         Returns:
             Dict: dict for `sagemaker.session.Session.process` method
@@ -1546,8 +1576,16 @@ class FrameworkProcessor(ScriptProcessor):
             job_name (str): Processing job name. If not specified, the processor generates
                 a default job name, based on the base job name and current timestamp.
             experiment_config (dict[str, str]): Experiment management configuration.
-                Dictionary contains three optional keys:
+                Optionally, the dict can contain three keys:
                 'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+                The behavior of setting these keys is as follows:
+                * If `ExperimentName` is supplied but `TrialName` is not a Trial will be
+                automatically created and the job's Trial Component associated with the Trial.
+                * If `TrialName` is supplied and the Trial already exists the job's Trial Component
+                will be associated with the Trial.
+                * If both `ExperimentName` and `TrialName` are not supplied the trial component
+                will be unassociated.
+                * `TrialComponentDisplayName` is used for display in Studio.
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 user code file (default: None).
         """
