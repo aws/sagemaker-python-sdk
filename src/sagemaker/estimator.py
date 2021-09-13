@@ -674,9 +674,16 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             job_name (str): Training job name. If not specified, the estimator generates
                 a default job name based on the training image name and current timestamp.
             experiment_config (dict[str, str]): Experiment management configuration.
-                Dictionary contains three optional keys,
+                Optionally, the dict can contain three keys:
                 'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
-
+                The behavior of setting these keys is as follows:
+                * If `ExperimentName` is supplied but `TrialName` is not a Trial will be
+                automatically created and the job's Trial Component associated with the Trial.
+                * If `TrialName` is supplied and the Trial already exists the job's Trial Component
+                will be associated with the Trial.
+                * If both `ExperimentName` and `TrialName` are not supplied the trial component
+                will be unassociated.
+                * `TrialComponentDisplayName` is used for display in Studio.
         """
         self._prepare_for_training(job_name=job_name)
 
@@ -1443,10 +1450,17 @@ class _TrainingJob(_Job):
                 created by the user.
             inputs (str): Parameters used when called
                 :meth:`~sagemaker.estimator.EstimatorBase.fit`.
-            experiment_config (dict[str, str]): Experiment management configuration used when called
-                :meth:`~sagemaker.estimator.EstimatorBase.fit`.  Dictionary contains
-                three optional keys, 'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
-
+            experiment_config (dict[str, str]): Experiment management configuration.
+                Optionally, the dict can contain three keys:
+                'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+                The behavior of setting these keys is as follows:
+                * If `ExperimentName` is supplied but `TrialName` is not a Trial will be
+                automatically created and the job's Trial Component associated with the Trial.
+                * If `TrialName` is supplied and the Trial already exists the job's Trial Component
+                will be associated with the Trial.
+                * If both `ExperimentName` and `TrialName` are not supplied the trial component
+                will be unassociated.
+                * `TrialComponentDisplayName` is used for display in Studio.
         Returns:
             sagemaker.estimator._TrainingJob: Constructed object that captures
             all information about the started training job.
@@ -1465,9 +1479,17 @@ class _TrainingJob(_Job):
                 created by the user.
             inputs (str): Parameters used when called
                 :meth:`~sagemaker.estimator.EstimatorBase.fit`.
-            experiment_config (dict[str, str]): Experiment management configuration used when called
-                :meth:`~sagemaker.estimator.EstimatorBase.fit`.  Dictionary contains
-                three optional keys, 'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+            experiment_config (dict[str, str]): Experiment management configuration.
+                Optionally, the dict can contain three keys:
+                'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+                The behavior of setting these keys is as follows:
+                * If `ExperimentName` is supplied but `TrialName` is not a Trial will be
+                automatically created and the job's Trial Component associated with the Trial.
+                * If `TrialName` is supplied and the Trial already exists the job's Trial Component
+                will be associated with the Trial.
+                * If both `ExperimentName` and `TrialName` are not supplied the trial component
+                will be unassociated.
+                * `TrialComponentDisplayName` is used for display in Studio.
 
         Returns:
             Dict: dict for `sagemaker.session.Session.train` method
