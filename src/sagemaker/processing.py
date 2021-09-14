@@ -707,9 +707,11 @@ class ScriptProcessor(Processor):
             code_location_url = urlparse(self.code_location)
             upload_bucket = code_location_url.netloc
             upload_prefix = code_location_url.path  # May or may not have trailing slash
+            if upload_prefix.endswith("/"):
+                upload_prefix = upload_prefix[:-1]
         else:
             upload_bucket = self.sagemaker_session.default_bucket()
-            upload_prefix = "/"
+            upload_prefix = ""
 
         desired_s3_uri = s3.s3_path_join(
             "s3://",
