@@ -529,7 +529,8 @@ def test_one_step_framework_processing_pipeline(
 ):
     """Use `SKLearnProcessor` to test `FrameworkProcessor`."""
     instance_count = ParameterInteger(name="InstanceCount", default_value=2)
-    script_path = os.path.join(DATA_DIR, "dummy_script.py")
+    source_dir = os.path.join(DATA_DIR, "dummy_code_bundle_with_reqs")
+    code = "main_script.py"
     input_file_path = os.path.join(DATA_DIR, "dummy_input.txt")
 
     inputs = [
@@ -548,7 +549,8 @@ def test_one_step_framework_processing_pipeline(
         base_job_name="test-sklearn",
     )
 
-    run_args = sklearn_processor.get_run_args(code=script_path, inputs=inputs)
+    # Shouldn't *need* to go via run_args, but check we can since other tests go direct:
+    run_args = sklearn_processor.get_run_args(code=code, source_dir=source_dir, inputs=inputs)
 
     step_sklearn = ProcessingStep(
         name="sklearn-process",
@@ -557,6 +559,7 @@ def test_one_step_framework_processing_pipeline(
         outputs=run_args.outputs,
         job_arguments=run_args.arguments,
         code=run_args.code,
+        source_dir=source_dir,
         cache_config=cache_config,
     )
     pipeline = Pipeline(

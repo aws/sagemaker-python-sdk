@@ -406,6 +406,7 @@ class ProcessingStep(Step):
         outputs: List[ProcessingOutput] = None,
         job_arguments: List[str] = None,
         code: str = None,
+        source_dir: str = None,
         property_files: List[PropertyFile] = None,
         cache_config: CacheConfig = None,
         depends_on: Union[List[str], List[Step]] = None,
@@ -426,8 +427,13 @@ class ProcessingStep(Step):
                 instances. Defaults to `None`.
             job_arguments (List[str]): A list of strings to be passed into the processing job.
                 Defaults to `None`.
-            code (str): This can be an S3 URI or a local path to a file with the framework
-                script to run. Defaults to `None`.
+            code (str): S3 URI or local path to a file with the user script to run. If
+                ``source_dir`` is specified, then ``code`` must be a path relative to the root of
+                ``source_dir``. Defaults to `None`.
+            source_dir (str): S3 URI or local path to a folder with any other containing processing
+                source code dependencies aside from the entry point ``code`` file. This parameter
+                is only supported when using a 'processor' based on ``FrameworkProcessor``. If
+                an S3 URI is provided, it must point to a tar.gz file. Defaults to `None`.
             property_files (List[PropertyFile]): A list of property files that workflow looks
                 for and resolves from the configured processing output list.
             cache_config (CacheConfig):  A `sagemaker.workflow.steps.CacheConfig` instance.
@@ -442,6 +448,7 @@ class ProcessingStep(Step):
         self.outputs = outputs
         self.job_arguments = job_arguments
         self.code = code
+        self.source_dir = source_dir
         self.property_files = property_files
 
         # Examine why run method in sagemaker.processing.Processor mutates the processor instance
@@ -465,6 +472,7 @@ class ProcessingStep(Step):
             inputs=self.inputs,
             outputs=self.outputs,
             code=self.code,
+            source_dir=self.source_dir,
         )
 
         process_args = ProcessingJob._get_process_args(

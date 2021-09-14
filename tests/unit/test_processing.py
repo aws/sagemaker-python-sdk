@@ -211,8 +211,6 @@ def test_sklearn_with_all_parameters_via_run_args(
         run_args = processor.get_run_args(
             code="processing_code.py",
             source_dir="/local/path/to/source_dir",
-            dependencies=["/local/path/to/dep_01"],
-            git_config=None,
             inputs=_get_data_inputs_all_parameters(),
             outputs=_get_data_outputs_all_parameters(),
             arguments=["--drop-columns", "'SelfEmployed'"],
@@ -223,6 +221,8 @@ def test_sklearn_with_all_parameters_via_run_args(
             inputs=run_args.inputs,
             outputs=run_args.outputs,
             arguments=run_args.arguments,
+            dependencies=["/local/path/to/dep_01"],
+            git_config=None,
             wait=True,
             logs=False,
             experiment_config={"ExperimentName": "AnExperiment"},
@@ -231,7 +231,7 @@ def test_sklearn_with_all_parameters_via_run_args(
     expected_args = _get_expected_args_all_parameters_modular_code(
         processor._current_job_name,
         instance_count=2,
-        code_s3_prefix=run_args.code.replace("/runproc.sh", ""),
+        code_s3_prefix=uploaded_code.s3_prefix.rpartition("/")[0],
     )
     sklearn_image_uri = (
         "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:{}-cpu-py3"
@@ -285,26 +285,26 @@ def test_sklearn_with_all_parameters_via_run_args_called_twice(
         run_args = processor.get_run_args(
             code="processing_code.py",
             source_dir="/local/path/to/source_dir",
-            dependencies=["/local/path/to/dep_01"],
-            git_config=None,
             inputs=_get_data_inputs_all_parameters(),
             outputs=_get_data_outputs_all_parameters(),
             arguments=["--drop-columns", "'SelfEmployed'"],
         )
 
-    processor.run(
-        code=run_args.code,
-        inputs=run_args.inputs,
-        outputs=run_args.outputs,
-        arguments=run_args.arguments,
-        wait=True,
-        logs=False,
-        experiment_config={"ExperimentName": "AnExperiment"},
-    )
+        processor.run(
+            code=run_args.code,
+            inputs=run_args.inputs,
+            outputs=run_args.outputs,
+            arguments=run_args.arguments,
+            dependencies=["/local/path/to/dep_01"],
+            git_config=None,
+            wait=True,
+            logs=False,
+            experiment_config={"ExperimentName": "AnExperiment"},
+        )
 
     expected_args = _get_expected_args_all_parameters_modular_code(
         processor._current_job_name,
-        code_s3_prefix=run_args.code.replace("/runproc.sh", ""),
+        code_s3_prefix=uploaded_code.s3_prefix.rpartition("/")[0],
     )
     sklearn_image_uri = (
         "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:{}-cpu-py3"
@@ -887,7 +887,7 @@ def _get_expected_args_modular_code(job_name, code_s3_uri=f"s3://{BUCKET_NAME}")
                 "AppManaged": False,
                 "S3Input": {
                     "S3Uri": f"{code_s3_uri}/{job_name}/source/sourcedir.tar.gz",
-                    "LocalPath": "/opt/ml/processing/input/code/",
+                    "LocalPath": "/opt/ml/processing/input/code",
                     "S3DataType": "S3Prefix",
                     "S3InputMode": "File",
                     "S3DataDistributionType": "FullyReplicated",
@@ -1108,7 +1108,7 @@ def _get_expected_args_all_parameters_modular_code(
                 "AppManaged": False,
                 "S3Input": {
                     "S3Uri": f"{code_s3_prefix}/sourcedir.tar.gz",
-                    "LocalPath": "/opt/ml/processing/input/code/",
+                    "LocalPath": "/opt/ml/processing/input/code",
                     "S3DataType": "S3Prefix",
                     "S3InputMode": "File",
                     "S3DataDistributionType": "FullyReplicated",

@@ -212,6 +212,7 @@ class Processor(object):
         inputs=None,
         outputs=None,
         code=None,
+        source_dir=None,
         kms_key=None,
     ):
         """Normalizes the arguments so that they can be passed to the job run
@@ -228,31 +229,37 @@ class Processor(object):
             outputs (list[:class:`~sagemaker.processing.ProcessingOutput`]): Outputs for
                 the processing job. These can be specified as either path strings or
                 :class:`~sagemaker.processing.ProcessingOutput` objects (default: None).
-            code (str): This can be an S3 URI or a local path to a file with the framework
-                script to run (default: None). A no op in the base class.
+            code (str): An S3 URI or a local path to a file with the user script to run.
+                This is ignored in the base class (default: None).
+            source_dir (str): An S3 URI or a local path to a folder whose full contents
+                should be uploaded to the processing job as code. This is ignored in the
+                base class (default: None).
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 user code file (default: None).
         """
         self._current_job_name = self._generate_current_job_name(job_name=job_name)
 
-        inputs_with_code = self._include_code_in_inputs(inputs, code, kms_key)
+        inputs_with_code = self._include_code_in_inputs(inputs, code, source_dir, kms_key)
         normalized_inputs = self._normalize_inputs(inputs_with_code, kms_key)
         normalized_outputs = self._normalize_outputs(outputs)
         self.arguments = arguments
 
         return normalized_inputs, normalized_outputs
 
-    def _include_code_in_inputs(self, inputs, _code, _kms_key):
+    def _include_code_in_inputs(self, inputs, _code, _source_dir, _kms_key):
         """A no op in the base class to include code in the processing job inputs.
 
         Args:
             inputs (list[:class:`~sagemaker.processing.ProcessingInput`]): Input files for
                 the processing job. These must be provided as
                 :class:`~sagemaker.processing.ProcessingInput` objects.
-            _code (str): This can be an S3 URI or a local path to a file with the framework
-                script to run (default: None). A no op in the base class.
-            kms_key (str): The ARN of the KMS key that is used to encrypt the
-                user code file (default: None).
+            _code (str): An S3 URI or a local path to a file with the user script to run.
+                This is ignored in the base class (default: None).
+            _source_dir (str): An S3 URI or a local path to a folder whose full contents
+                should be uploaded to the processing job as code. This is ignored in the
+                base class (default: None).
+            _kms_key (str): The ARN of the KMS key that is used to encrypt the user code
+                file. This is ignored in the base class (default: None).
 
         Returns:
             list[:class:`~sagemaker.processing.ProcessingInput`]: inputs
@@ -392,6 +399,7 @@ class ScriptProcessor(Processor):
         volume_size_in_gb=30,
         volume_kms_key=None,
         output_kms_key=None,
+        code_location=None,
         max_runtime_in_seconds=None,
         base_job_name=None,
         sagemaker_session=None,
@@ -422,6 +430,10 @@ class ScriptProcessor(Processor):
             volume_kms_key (str): A KMS key for the processing
                 volume (default: None).
             output_kms_key (str): The KMS key ID for processing job outputs (default: None).
+            code_location (str): The S3 prefix URI where custom code will be
+                uploaded (default: None). The code file uploaded to S3 is
+                'code_location/job-name/source/sourcedir.tar.gz'. If not specified, the
+                default ``code location`` is 's3://{sagemaker-default-bucket}'
             max_runtime_in_seconds (int): Timeout in seconds (default: None).
                 After this amount of time, Amazon SageMaker terminates the job,
                 regardless of its current status. If `max_runtime_in_seconds` is not
@@ -447,6 +459,10 @@ class ScriptProcessor(Processor):
         self._CODE_CONTAINER_INPUT_NAME = "code"
         self.command = command
 
+        self.code_location = (
+            code_location[:-1] if (code_location and code_location.endswith("/")) else code_location
+        )
+
         super(ScriptProcessor, self).__init__(
             role=role,
             image_uri=image_uri,
@@ -466,6 +482,7 @@ class ScriptProcessor(Processor):
     def get_run_args(
         self,
         code,
+        source_dir=None,
         inputs=None,
         outputs=None,
         arguments=None,
@@ -478,8 +495,13 @@ class ScriptProcessor(Processor):
         :class:`~sagemaker.workflow.steps.ProcessingStep`.
 
         Args:
-            code (str): This can be an S3 URI or a local path to a file with the framework
-                script to run.
+            code (str): S3 URI or local path to a file with the user script to run. If
+                ``source_dir`` is specified, then ``code`` must be a path relative to the
+                root of ``source_dir`` (default: None).
+            source_dir (str): S3 URI or local path to a folder with any other containing
+                processing source code dependencies aside from the entry point ``code``
+                file. If provided, the whole folder will be loaded to the SageMaker
+                processing job (default: None).
             inputs (list[:class:`~sagemaker.processing.ProcessingInput`]): Input files for
                 the processing job. These must be provided as
                 :class:`~sagemaker.processing.ProcessingInput` objects (default: None).
@@ -494,6 +516,7 @@ class ScriptProcessor(Processor):
     def run(
         self,
         code,
+        source_dir=None,
         inputs=None,
         outputs=None,
         arguments=None,
@@ -506,8 +529,13 @@ class ScriptProcessor(Processor):
         """Runs a processing job.
 
         Args:
-            code (str): This can be an S3 URI or a local path to
-                a file with the framework script to run.
+            code (str): S3 URI or local path to a file with the user script to run. If
+                ``source_dir`` is specified, then ``code`` must be a path relative to the
+                root of ``source_dir`` (default: None).
+            source_dir (str): S3 URI or local path to a folder with any other containing
+                processing source code dependencies aside from the entry point ``code``
+                file. If provided, the whole folder will be loaded to the SageMaker
+                processing job (default: None).
             inputs (list[:class:`~sagemaker.processing.ProcessingInput`]): Input files for
                 the processing job. These must be provided as
                 :class:`~sagemaker.processing.ProcessingInput` objects (default: None).
@@ -539,6 +567,7 @@ class ScriptProcessor(Processor):
             inputs=inputs,
             outputs=outputs,
             code=code,
+            source_dir=source_dir,
             kms_key=kms_key,
         )
 
@@ -552,8 +581,8 @@ class ScriptProcessor(Processor):
         if wait:
             self.latest_job.wait(logs=logs)
 
-    def _include_code_in_inputs(self, inputs, code, kms_key=None):
-        """Converts code to appropriate input and includes in input list.
+    def _include_code_in_inputs(self, inputs, code, source_dir=None, kms_key=None):
+        """Converts code to a processing job input and includes in inputs list.
 
         Side effects include:
             * uploads code to S3 if the code is a local file.
@@ -563,8 +592,13 @@ class ScriptProcessor(Processor):
             inputs (list[:class:`~sagemaker.processing.ProcessingInput`]): Input files for
                 the processing job. These must be provided as
                 :class:`~sagemaker.processing.ProcessingInput` objects.
-            code (str): This can be an S3 URI or a local path to a file with the framework
-                script to run (default: None).
+            code (str): S3 URI or local path to a file with the user script to run. If
+                ``source_dir`` is specified, then ``code`` must be a path relative to the
+                root of ``source_dir`` (default: None).
+            source_dir (str): S3 URI or local path to a folder with any other containing
+                processing source code dependencies aside from the entry point ``code``
+                file. If provided, the whole folder will be loaded to the SageMaker
+                processing job (default: None).
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 user code file (default: None).
 
@@ -572,73 +606,90 @@ class ScriptProcessor(Processor):
             list[:class:`~sagemaker.processing.ProcessingInput`]: inputs together with the
                 code as `ProcessingInput`.
         """
-        user_code_s3_uri = self._handle_user_code_url(code, kms_key)
-        user_script_name = self._get_user_code_name(code)
+        user_code_s3_uri, entry_point = self._handle_user_code_url(code, source_dir, kms_key)
 
         inputs_with_code = self._convert_code_and_add_to_inputs(inputs, user_code_s3_uri)
 
-        self._set_entrypoint(self.command, user_script_name)
+        self._set_entrypoint(self.command, entry_point)
         return inputs_with_code
 
-    def _get_user_code_name(self, code):
-        """Gets the basename of the user's code from the URL the customer provided.
+    def _handle_user_code_url(self, code, source_dir=None, kms_key=None):
+        """Normalize user code inputs to an S3 URI and entry point (uploading if necessary)
+
+        Inspects the scheme of the code parameter(s) the customer passed in ("s3:// for code in S3,
+        "file://" or nothing for absolute paths). Uploads the code to S3 if passed in as a local
+        file.
 
         Args:
-            code (str): A URL to the user's code.
-
-        Returns:
-            str: The basename of the user's code.
-
-        """
-        code_url = urlparse(code)
-        return os.path.basename(code_url.path)
-
-    def _handle_user_code_url(self, code, kms_key=None):
-        """Gets the S3 URL containing the user's code.
-
-           Inspects the scheme the customer passed in ("s3://" for code in S3, "file://" or nothing
-           for absolute or local file paths. Uploads the code to S3 if the code is a local file.
-
-        Args:
-            code (str): A URL to the customer's code.
+            code (str): S3 URI or local path to a file with the user script to run. If
+                ``source_dir`` is specified, then ``code`` must be a path relative to the
+                root of ``source_dir`` (default: None).
+            source_dir (str): S3 URI or local path to a folder with any other containing
+                processing source code dependencies aside from the entry point ``code``
+                file. If provided, the whole folder will be loaded to the SageMaker
+                processing job (default: None).
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 user code file (default: None).
 
         Returns:
-            str: The S3 URL to the customer's code.
+            str: The S3 URI to the customer's code.
+            str: The base path entry point to the customer's code.
 
         Raises:
             ValueError: if the code isn't found, is a directory, or
                 does not have a valid URL scheme.
         """
         code_url = urlparse(code)
+        source_url = urlparse(source_dir or "")
         if code_url.scheme == "s3":
             user_code_s3_uri = code
+            entry_point = os.path.basename(code_url.path)
+            if source_dir:
+                raise ValueError(
+                    "If source_dir is provided, code should be a path relative to the folder. "
+                    "Got S3 URI {}".format(code)
+                )
         elif code_url.scheme == "" or code_url.scheme == "file":
-            # Validate that the file exists locally and is not a directory.
-            code_path = url2pathname(code_url.path)
-            if not os.path.exists(code_path):
+            if source_url.scheme == "s3":
+                user_code_s3_uri = source_dir
+                entry_point = code
+                # We could consider validating here that source_dir ends with .tar.gz, but don't
+                # since that's an implementation detail of FrameworkProcessor subclass
+            elif source_url.scheme == "" or source_url.scheme == "file":
+                # Validate that the file exists locally and is not a directory.
+                source_path = url2pathname(source_url.path)
+                rel_code_path = url2pathname(code_url.path)
+                code_path = os.path.join(source_path, rel_code_path)
+                if not os.path.exists(code_path):
+                    raise ValueError(
+                        """code {} wasn't found. Please make sure that the file exists.
+                        """.format(
+                            code
+                        )
+                    )
+                if not os.path.isfile(code_path):
+                    raise ValueError(
+                        """code {} must be a file, not a directory. Please pass a path to a file.
+                        """.format(
+                            code
+                        )
+                    )
+                user_code_s3_uri = self._upload_code(source_path or code_path, kms_key)
+                entry_point = rel_code_path if source_path else os.path.basename(rel_code_path)
+            else:
                 raise ValueError(
-                    """code {} wasn't found. Please make sure that the file exists.
+                    """source_dir {} url scheme {} is not recognized. Please pass a file path or S3 url
                     """.format(
-                        code
+                        code, code_url.scheme
                     )
                 )
-            if not os.path.isfile(code_path):
-                raise ValueError(
-                    """code {} must be a file, not a directory. Please pass a path to a file.
-                    """.format(
-                        code
-                    )
-                )
-            user_code_s3_uri = self._upload_code(code_path, kms_key)
         else:
             raise ValueError(
                 "code {} url scheme {} is not recognized. Please pass a file path or S3 url".format(
                     code, code_url.scheme
                 )
             )
-        return user_code_s3_uri
+        return user_code_s3_uri, entry_point
 
     def _upload_code(self, code, kms_key=None):
         """Uploads a code file or directory specified as a string and returns the S3 URI.
@@ -652,9 +703,18 @@ class ScriptProcessor(Processor):
             str: The S3 URI of the uploaded file or directory.
 
         """
+        if self.code_location:
+            code_location_url = urlparse(self.code_location)
+            upload_bucket = code_location_url.netloc
+            upload_prefix = code_location_url.path  # May or may not have trailing slash
+        else:
+            upload_bucket = self.sagemaker_session.default_bucket()
+            upload_prefix = "/"
+
         desired_s3_uri = s3.s3_path_join(
             "s3://",
-            self.sagemaker_session.default_bucket(),
+            upload_bucket,
+            upload_prefix,
             self._current_job_name,
             "input",
             self._CODE_CONTAINER_INPUT_NAME,
@@ -1342,6 +1402,8 @@ class FrameworkProcessor(ScriptProcessor):
                 object that configures network isolation, encryption of
                 inter-container traffic, security group IDs, and subnets (default: None).
         """
+        self._FRAMEWORK_ENTRYPOINT_CONTAINER_INPUT_NAME = "entrypoint"
+        self._FRAMEWORK_ENTRYPOINT_SCRIPT_NAME = "runproc.sh"
         if not command:
             command = ["python"]
 
@@ -1367,20 +1429,13 @@ class FrameworkProcessor(ScriptProcessor):
             volume_size_in_gb=volume_size_in_gb,
             volume_kms_key=volume_kms_key,
             output_kms_key=output_kms_key,
+            code_location=code_location,
             max_runtime_in_seconds=max_runtime_in_seconds,
             base_job_name=base_job_name,
             sagemaker_session=sagemaker_session,
             env=env,
             tags=tags,
             network_config=network_config,
-        )
-
-        # This subclass uses the "code" input for actual payload and the ScriptProcessor parent's
-        # functionality for uploading just a small entrypoint script to invoke it.
-        self._CODE_CONTAINER_INPUT_NAME = "entrypoint"
-
-        self.code_location = (
-            code_location[:-1] if (code_location and code_location.endswith("/")) else code_location
         )
 
         if image_uri is None or base_job_name is None:
@@ -1399,6 +1454,8 @@ class FrameworkProcessor(ScriptProcessor):
         source_dir=None,
         dependencies=None,
         git_config=None,
+        output_kms_key=None,
+        volume_kms_key=None,
     ):
         """Instantiate the Framework Estimator that backs this Processor"""
         return self.estimator_cls(
@@ -1409,6 +1466,8 @@ class FrameworkProcessor(ScriptProcessor):
             dependencies=dependencies,
             git_config=git_config,
             code_location=self.code_location,
+            output_kms_key=output_kms_key,
+            volume_kms_key=volume_kms_key,
             enable_network_isolation=False,  # True -> uploads to input channel. Not what we want!
             image_uri=self.image_uri,
             role=self.role,
@@ -1421,60 +1480,6 @@ class FrameworkProcessor(ScriptProcessor):
             sagemaker_session=self.sagemaker_session,
             debugger_hook_config=False,
             disable_profiler=True,
-        )
-
-    def get_run_args(
-        self,
-        code,
-        source_dir=None,
-        dependencies=None,
-        git_config=None,
-        inputs=None,
-        outputs=None,
-        arguments=None,
-        job_name=None,
-    ):
-        """Returns a RunArgs object.
-
-        This object contains the normalized inputs, outputs and arguments needed
-        when using a ``FrameworkProcessor`` in a :class:`~sagemaker.workflow.steps.ProcessingStep`.
-
-        Args:
-            code (str): This can be an S3 URI or a local path to a file with the framework
-                script to run. See the ``code`` argument in
-                `sagemaker.processing.FrameworkProcessor.run()`.
-            source_dir (str): Path (absolute, relative, or an S3 URI) to a directory wit
-                any other processing source code dependencies aside from the entrypoint
-                file (default: None). See the ``source_dir`` argument in
-                `sagemaker.processing.FrameworkProcessor.run()`
-            dependencies (list[str]): A list of paths to directories (absolute or relative)
-                with any additional libraries that will be exported to the container
-                (default: []). See the ``dependencies`` argument in
-                `sagemaker.processing.FrameworkProcessor.run()`.
-            git_config (dict[str, str]): Git configurations used for cloning files. See the
-                `git_config` argument in `sagemaker.processing.FrameworkProcessor.run()`.
-            inputs (list[:class:`~sagemaker.processing.ProcessingInput`]): Input files for
-                the processing job. These must be provided as
-                :class:`~sagemaker.processing.ProcessingInput` objects (default: None).
-            outputs (list[:class:`~sagemaker.processing.ProcessingOutput`]): Outputs for
-                the processing job. These can be specified as either path strings or
-                :class:`~sagemaker.processing.ProcessingOutput` objects (default: None).
-            arguments (list[str]): A list of string arguments to be passed to a
-                processing job (default: None).
-            job_name (str): Processing job name. If not specified, the processor generates
-                a default job name, based on the base job name and current timestamp.
-        """
-        # When job_name is None, the job_name to upload code (+payload) will
-        # differ from job_name used by run().
-        s3_runproc_sh, inputs, job_name = self._pack_and_upload_code(
-            code, source_dir, dependencies, git_config, job_name, inputs
-        )
-
-        return RunArgs(
-            s3_runproc_sh,
-            inputs=inputs,
-            outputs=outputs,
-            arguments=arguments,
         )
 
     def run(  # type: ignore[override]
@@ -1495,17 +1500,16 @@ class FrameworkProcessor(ScriptProcessor):
         """Runs a processing job.
 
         Args:
-            code (str): This can be an S3 URI or a local path to a file with the
-                framework script to run.Path (absolute or relative) to the local
-                Python source file which should be executed as the entry point
-                to training. When `code` is an S3 URI, ignore `source_dir`,
-                `dependencies, and `git_config`. If ``source_dir`` is specified,
-                then ``code`` must point to a file located at the root of ``source_dir``.
-            source_dir (str): Path (absolute, relative or an S3 URI) to a directory
-                with any other processing source code dependencies aside from the entry
-                point file (default: None). If ``source_dir`` is an S3 URI, it must
-                point to a tar.gz file. Structure within this directory are preserved
-                when processing on Amazon SageMaker (default: None).
+            code (str): S3 URI or local path to a file with the user script to run. If
+                ``source_dir`` is specified, then ``code`` must be a path relative to the
+                root of ``source_dir``. When ``code`` is already an S3 URI, then
+                ``source_dir``, ``dependencies``, and ``git_config`` are ignored. (default:
+                None).
+            source_dir (str): S3 URI or local path to a folder with any other containing
+                processing source code dependencies aside from the entry point ``code``
+                file. If provided, the whole folder will be bundled and loaded to the
+                SageMaker processing job. If ``source_dir`` is an S3 URI, it must point to
+                a tar.gz file. (default: None).
             dependencies (list[str]): A list of paths to directories (absolute
                 or relative) with any additional libraries that will be exported
                 to the container (default: []). The library folders will be
@@ -1517,7 +1521,7 @@ class FrameworkProcessor(ScriptProcessor):
                 files, including ``repo``, ``branch``, ``commit``,
                 ``2FA_enabled``, ``username``, ``password`` and ``token``. The
                 ``repo`` field is required. All other fields are optional.
-                ``repo`` specifies the Git repository where your training script
+                ``repo`` specifies the Git repository where your processing script
                 is stored. If you don't provide ``branch``, the default value
                 'master' is used. If you don't provide ``commit``, the latest
                 commit in the specified branch is used. .. admonition:: Example
@@ -1589,41 +1593,167 @@ class FrameworkProcessor(ScriptProcessor):
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 user code file (default: None).
         """
-        s3_runproc_sh, inputs, job_name = self._pack_and_upload_code(
-            code, source_dir, dependencies, git_config, job_name, inputs
-        )
-
-        # Submit a processing job.
-        super().run(
-            code=s3_runproc_sh,
+        if logs and not wait:
+            raise ValueError(
+                """Logs can only be shown if wait is set to True.
+                Please either set wait to True or set logs to False."""
+            )
+        normalized_inputs, normalized_outputs = self._normalize_args(
+            job_name=job_name,
+            arguments=arguments,
             inputs=inputs,
             outputs=outputs,
-            arguments=arguments,
-            wait=wait,
-            logs=logs,
-            job_name=job_name,
-            experiment_config=experiment_config,
+            code=code,
+            source_dir=source_dir,
             kms_key=kms_key,
+            dependencies=dependencies,
+            git_config=git_config,
         )
 
-    def _pack_and_upload_code(self, code, source_dir, dependencies, git_config, job_name, inputs):
-        """Pack local code bundle and upload to Amazon S3."""
-        if code.startswith("s3://"):
-            return code, inputs, job_name
-
-        if job_name is None:
-            job_name = self._generate_current_job_name(job_name)
-
-        estimator = self._upload_payload(
-            code,
-            source_dir,
-            dependencies,
-            git_config,
-            job_name,
+        self.latest_job = ProcessingJob.start_new(
+            processor=self,
+            inputs=normalized_inputs,
+            outputs=normalized_outputs,
+            experiment_config=experiment_config,
         )
-        inputs = self._patch_inputs_with_payload(
+        self.jobs.append(self.latest_job)
+        if wait:
+            self.latest_job.wait(logs=logs)
+
+    def _normalize_args(
+        self,
+        job_name=None,
+        arguments=None,
+        inputs=None,
+        outputs=None,
+        code=None,
+        source_dir=None,
+        kms_key=None,
+        dependencies=None,
+        git_config=None,
+    ):
+        """Normalizes the arguments so that they can be passed to the job run
+
+        Args:
+            job_name (str): Name of the processing job to be created. If not specified, one
+                is generated, using the base name given to the constructor, if applicable
+                (default: None).
+            arguments (list[str]): A list of string arguments to be passed to a
+                processing job (default: None).
+            inputs (list[:class:`~sagemaker.processing.ProcessingInput`]): Input files for
+                the processing job. These must be provided as
+                :class:`~sagemaker.processing.ProcessingInput` objects (default: None).
+            outputs (list[:class:`~sagemaker.processing.ProcessingOutput`]): Outputs for
+                the processing job. These can be specified as either path strings or
+                :class:`~sagemaker.processing.ProcessingOutput` objects (default: None).
+            code (str): S3 URI or local path to a file with the user script to run. If
+                ``source_dir`` is specified, then ``code`` must be a path relative to the
+                root of ``source_dir``. When ``code`` is already an S3 URI, then
+                ``source_dir``, ``dependencies``, and ``git_config`` are ignored. (default:
+                None).
+            source_dir (str): S3 URI or local path to a folder with any other containing
+                processing source code dependencies aside from the entry point ``code``
+                file. If provided, the whole folder will be bundled and loaded to the
+                SageMaker processing job. If ``source_dir`` is an S3 URI, it must point to
+                a tar.gz file. (default: None).
+            kms_key (str): The ARN of the KMS key that is used to encrypt the
+                user code file (default: None).
+            dependencies (list[str]): A list of path sto directories (absolute or relative)
+                with any additional libraries that should be exported to the container
+                (default: []).
+            git_config (dict[str, str]): Git configurations used for cloning files to
+                retrieve your processing script.
+        """
+        self._current_job_name = self._generate_current_job_name(job_name=job_name)
+
+        inputs_with_code = self._include_code_in_inputs(
             inputs,
-            estimator._hyperparameters["sagemaker_submit_directory"],
+            code,
+            source_dir=source_dir,
+            kms_key=kms_key,
+            dependencies=dependencies,
+            git_config=git_config,
+        )
+        normalized_inputs = self._normalize_inputs(inputs_with_code, kms_key)
+        normalized_outputs = self._normalize_outputs(outputs)
+        self.arguments = arguments
+
+        return normalized_inputs, normalized_outputs
+
+    def _convert_code_and_add_to_inputs(self, inputs, user_s3_uri, entrypoint_s3_uri):
+        """Creates a ``ProcessingInput`` object from an S3 URI and adds it to the list of inputs.
+
+        Args:
+            inputs (list[sagemaker.processing.ProcessingInput]):
+                List of ``ProcessingInput`` objects.
+            user_s3_uri (str): S3 URI of the uploaded user code to be added to inputs.
+            entrypoint_s3_uri (str): S3 URI of the uploaded framework entrypoint script to be added
+                to the inputs.
+
+        Returns:
+            list[sagemaker.processing.ProcessingInput]: A new list of ``ProcessingInput`` objects,
+                with additional ``ProcessingInput`` objects appended for the user code and
+                framework bootstrap script.
+
+        """
+
+        code_file_input = ProcessingInput(
+            source=user_s3_uri,
+            destination=str(
+                pathlib.PurePosixPath(
+                    self._CODE_CONTAINER_BASE_PATH, self._CODE_CONTAINER_INPUT_NAME
+                )
+            ),
+            input_name=self._CODE_CONTAINER_INPUT_NAME,
+        )
+        framework_script_file_input = ProcessingInput(
+            source=entrypoint_s3_uri,
+            destination=str(
+                pathlib.PurePosixPath(
+                    self._CODE_CONTAINER_BASE_PATH,
+                    self._FRAMEWORK_ENTRYPOINT_CONTAINER_INPUT_NAME,
+                )
+            ),
+            input_name=self._FRAMEWORK_ENTRYPOINT_CONTAINER_INPUT_NAME,
+        )
+        return (inputs or []) + [code_file_input, framework_script_file_input]
+
+    def _include_code_in_inputs(
+        self,
+        inputs,
+        code,
+        source_dir=None,
+        kms_key=None,
+        dependencies=None,
+        git_config=None,
+    ):
+        """Converts code to appropriate input and includes in input list.
+
+        Side effects include:
+            * uploads code to S3 if the code is a local file.
+            * sets the entrypoint attribute based on the command and user script name from code.
+
+        Args:
+            inputs (list[:class:`~sagemaker.processing.ProcessingInput`]): Input files for
+                the processing job. These must be provided as
+                :class:`~sagemaker.processing.ProcessingInput` objects.
+            code (str): This can be an S3 URI or a local path to a file with the framework
+                script to run (default: None).
+            kms_key (str): The ARN of the KMS key that is used to encrypt the
+                user code file (default: None).
+
+        Returns:
+            list[:class:`~sagemaker.processing.ProcessingInput`]: inputs together with the
+                code as `ProcessingInput`.
+        """
+
+        estimator = self._create_estimator(
+            entry_point=code,
+            source_dir=source_dir,
+            dependencies=dependencies,
+            git_config=git_config,
+            output_kms_key=kms_key,
+            volume_kms_key=kms_key,
         )
 
         local_code = get_config_value("local.local_code", self.sagemaker_session.config)
@@ -1635,20 +1765,44 @@ class FrameworkProcessor(ScriptProcessor):
                 "automatically."
             )
 
-        # Upload the bootstrapping code as s3://.../jobname/source/runproc.sh.
-        entrypoint_s3_uri = estimator.uploaded_code.s3_prefix.replace(
-            "sourcedir.tar.gz",
-            "runproc.sh",
+        if not self._current_job_name:
+            self._current_job_name = self._generate_current_job_name()
+        estimator._prepare_for_training(job_name=self._current_job_name)
+        user_code_s3_uri = estimator._hyperparameters["sagemaker_submit_directory"]
+        user_code_entrypoint = estimator._hyperparameters["sagemaker_program"]
+        logger.info(
+            "Uploaded %s to %s",
+            estimator.source_dir,
+            user_code_s3_uri,
         )
-        script = estimator.uploaded_code.script_name
-        s3_runproc_sh = S3Uploader.upload_string_as_file_body(
-            self._generate_framework_script(script),
-            desired_s3_uri=entrypoint_s3_uri,
+
+        user_code_s3_uri_parsed = urlparse(user_code_s3_uri)
+        user_code_s3_bucket = user_code_s3_uri_parsed.netloc
+        user_code_s3_folder = os.path.dirname(user_code_s3_uri_parsed.path)  # Incl. leading slash
+        framework_entrypoint_s3_uri = "s3://{}{}/{}".format(
+            user_code_s3_bucket,
+            user_code_s3_folder[:-1] if user_code_s3_folder.endswith("/") else user_code_s3_folder,
+            self._FRAMEWORK_ENTRYPOINT_SCRIPT_NAME,
+        )
+        framework_entrypoint_s3_uri = S3Uploader.upload_string_as_file_body(
+            self._generate_framework_script(user_code_entrypoint),
+            desired_s3_uri=framework_entrypoint_s3_uri,
+            kms_key=kms_key,
             sagemaker_session=self.sagemaker_session,
         )
-        logger.info("runproc.sh uploaded to %s", s3_runproc_sh)
+        logger.info(
+            "Framework entrypoint script %s uploaded to %s",
+            self._FRAMEWORK_ENTRYPOINT_SCRIPT_NAME,
+            framework_entrypoint_s3_uri,
+        )
 
-        return s3_runproc_sh, inputs, job_name
+        inputs_with_code_and_entrypoint = self._convert_code_and_add_to_inputs(
+            inputs,
+            user_code_s3_uri,
+            framework_entrypoint_s3_uri,
+        )
+        self._set_entrypoint(self.command, user_code_entrypoint)
+        return inputs_with_code_and_entrypoint
 
     def _generate_framework_script(self, user_script: str) -> str:
         """Generate the framework entrypoint file (as text) for a processing job.
@@ -1686,70 +1840,23 @@ class FrameworkProcessor(ScriptProcessor):
             entry_point=user_script,
         )
 
-    def _upload_payload(
-        self,
-        entry_point: str,
-        source_dir: Optional[str],
-        dependencies: Optional[List[str]],
-        git_config: Optional[Dict[str, str]],
-        job_name: str,
-    ) -> "sagemaker.estimator.Framework":  # type: ignore[name-defined]   # noqa: F821
-        """Upload payload sourcedir.tar.gz to S3."""
-        # A new estimator instance is required, because each call to ScriptProcessor.run() can
-        # use different codes.
-        estimator = self._create_estimator(
-            entry_point=entry_point,
-            source_dir=source_dir,
-            dependencies=dependencies,
-            git_config=git_config,
-        )
-
-        estimator._prepare_for_training(job_name=job_name)
-        logger.info(
-            "Uploaded %s to %s",
-            estimator.source_dir,
-            estimator._hyperparameters["sagemaker_submit_directory"],
-        )
-
-        return estimator
-
-    def _patch_inputs_with_payload(self, inputs, s3_payload) -> List[ProcessingInput]:
-        """Add payload sourcedir.tar.gz to processing input.
-
-        This method follows the same mechanism in ScriptProcessor.
-        """
-        # Follow the exact same mechanism that ScriptProcessor does, which
-        # is to inject the S3 code artifact as a processing input. Note that
-        # framework processor take-over /opt/ml/processing/input/code for
-        # sourcedir.tar.gz, and let ScriptProcessor to place runproc.sh under
-        # /opt/ml/processing/input/{self._CODE_CONTAINER_INPUT_NAME}.
-        #
-        # See:
-        # - ScriptProcessor._CODE_CONTAINER_BASE_PATH, ScriptProcessor._CODE_CONTAINER_INPUT_NAME.
-        # - https://github.com/aws/sagemaker-python-sdk/blob/ \
-        #   a7399455f5386d83ddc5cb15c0db00c04bd518ec/src/sagemaker/processing.py#L425-L426
-        if inputs is None:
-            inputs = []
-        inputs.append(
-            ProcessingInput(
-                input_name="code",
-                source=s3_payload,
-                destination="/opt/ml/processing/input/code/",
-            )
-        )
-        return inputs
-
     def _set_entrypoint(self, command, user_script_name):
         """Framework processor override for setting processing job entrypoint.
 
+        Because the FrameworkProcessor uses a bootstrap 'entry point' script to unzip user code
+        bundle and install dependencies before starting the user script, this entrypoint is
+        independent of the user-provided command & script.
+
         Args:
             command ([str]): Ignored in favor of self.framework_entrypoint_command
-            user_script_name (str): A filename with an extension.
+            user_script_name (str): Inored in favor of generated framework entrypoint script
         """
 
-        user_script_location = str(
+        entrypoint_script_location = str(
             pathlib.PurePosixPath(
-                self._CODE_CONTAINER_BASE_PATH, self._CODE_CONTAINER_INPUT_NAME, user_script_name
+                self._CODE_CONTAINER_BASE_PATH,
+                self._FRAMEWORK_ENTRYPOINT_CONTAINER_INPUT_NAME,
+                self._FRAMEWORK_ENTRYPOINT_SCRIPT_NAME,
             )
         )
-        self.entrypoint = self.framework_entrypoint_command + [user_script_location]
+        self.entrypoint = self.framework_entrypoint_command + [entrypoint_script_location]
