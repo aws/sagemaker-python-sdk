@@ -15,7 +15,7 @@ from __future__ import absolute_import
 import pytest
 
 from sagemaker import image_uris
-from tests.unit.sagemaker.image_uris import expected_uris, regions
+from tests.unit.sagemaker.image_uris import expected_uris
 
 ALGO_NAMES = (
     "blazingtext",
@@ -33,6 +33,7 @@ ALGO_NAMES = (
     "randomcutforest",
     "semantic-segmentation",
     "seq2seq",
+    "lda"
 )
 ALGO_REGIONS_AND_ACCOUNTS = (
     {
@@ -176,21 +177,6 @@ def _accounts_for_algo(algo):
 @pytest.mark.parametrize("algo", ALGO_NAMES)
 def test_algo_uris(algo):
     accounts = _accounts_for_algo(algo)
-
-    for region in regions.regions():
+    for region in accounts:
         uri = image_uris.retrieve(algo, region)
         assert expected_uris.algo_uri(algo, accounts[region], region) == uri
-
-
-def test_lda():
-    algo = "lda"
-    accounts = _accounts_for_algo(algo)
-
-    for region in regions.regions():
-        if region in accounts:
-            uri = image_uris.retrieve(algo, region)
-            assert expected_uris.algo_uri(algo, accounts[region], region) == uri
-        else:
-            with pytest.raises(ValueError) as e:
-                image_uris.retrieve(algo, region)
-            assert "Unsupported region: {}.".format(region) in str(e.value)

@@ -13,7 +13,7 @@
 from __future__ import absolute_import
 
 from sagemaker import image_uris
-from tests.unit.sagemaker.image_uris import expected_uris, regions
+from tests.unit.sagemaker.image_uris import expected_uris
 
 DATA_WRANGLER_ACCOUNTS = {
     "af-south-1": "143210264188",
@@ -42,10 +42,8 @@ DATA_WRANGLER_ACCOUNTS = {
 
 
 def test_data_wrangler_ecr_uri():
-    for region in regions.regions():
-        if region in DATA_WRANGLER_ACCOUNTS.keys():
+    for region in DATA_WRANGLER_ACCOUNTS.keys():
             actual_uri = image_uris.retrieve("data-wrangler", region=region)
-
             expected_uri = expected_uris.algo_uri(
                 "sagemaker-data-wrangler-container",
                 DATA_WRANGLER_ACCOUNTS[region],
