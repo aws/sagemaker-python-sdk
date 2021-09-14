@@ -28,17 +28,17 @@ class TensorFlowProcessor(FrameworkProcessor):
 
     def __init__(
         self,
-        framework_version,  # New arg
+        framework_version,
         role,
         instance_count,
         instance_type,
-        py_version="py3",  # New kwarg
+        py_version="py3",
         image_uri=None,
         command=None,
         volume_size_in_gb=30,
         volume_kms_key=None,
         output_kms_key=None,
-        code_location=None,  # New arg
+        code_location=None,
         max_runtime_in_seconds=None,
         base_job_name=None,
         sagemaker_session=None,
