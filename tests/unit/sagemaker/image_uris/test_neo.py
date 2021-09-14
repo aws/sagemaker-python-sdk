@@ -95,6 +95,7 @@ def _test_inferentia_framework_uris(framework, version):
         )
         assert expected == uri
 
+
 def test_inferentia_mxnet(inferentia_mxnet_version):
     _test_inferentia_framework_uris("mxnet", inferentia_mxnet_version)
 

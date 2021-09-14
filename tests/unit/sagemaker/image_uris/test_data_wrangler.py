@@ -43,11 +43,11 @@ DATA_WRANGLER_ACCOUNTS = {
 
 def test_data_wrangler_ecr_uri():
     for region in DATA_WRANGLER_ACCOUNTS.keys():
-            actual_uri = image_uris.retrieve("data-wrangler", region=region)
-            expected_uri = expected_uris.algo_uri(
-                "sagemaker-data-wrangler-container",
-                DATA_WRANGLER_ACCOUNTS[region],
-                region,
-                version="1.x",
-            )
-            assert expected_uri == actual_uri
+        actual_uri = image_uris.retrieve("data-wrangler", region=region)
+        expected_uri = expected_uris.algo_uri(
+            "sagemaker-data-wrangler-container",
+            DATA_WRANGLER_ACCOUNTS[region],
+            region,
+            version="1.x",
+        )
+        assert expected_uri == actual_uri

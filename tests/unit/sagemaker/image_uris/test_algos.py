@@ -33,7 +33,7 @@ ALGO_NAMES = (
     "randomcutforest",
     "semantic-segmentation",
     "seq2seq",
-    "lda"
+    "lda",
 )
 ALGO_REGIONS_AND_ACCOUNTS = (
     {
