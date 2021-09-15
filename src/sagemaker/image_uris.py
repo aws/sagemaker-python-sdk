@@ -17,12 +17,9 @@ import json
 import logging
 import os
 import re
-import pdb
 
 from sagemaker import utils
 from sagemaker.spark import defaults
-from sagemaker.spark import defaults
-
 
 logger = logging.getLogger(__name__)
 
@@ -106,7 +103,7 @@ def retrieve(
         instance_type, config.get("processors") or version_config.get("processors")
     )
     #if container version is available in .json file, utilize that
-    if "container_version" in version_config.keys():
+    if version_config.get("container_version"):
         container_version = version_config['container_version'][processor]
 
     if framework == HUGGING_FACE_FRAMEWORK:
