@@ -1,4 +1,4 @@
-# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -15,13 +15,14 @@ from __future__ import absolute_import
 import pytest
 
 from sagemaker import image_uris
-from tests.unit.sagemaker.image_uris import expected_uris, regions
+from tests.unit.sagemaker.image_uris import expected_uris
 
 ACCOUNTS = {
     "af-south-1": "510948584623",
     "ap-east-1": "651117190479",
     "ap-northeast-1": "354813040037",
     "ap-northeast-2": "366743142698",
+    "ap-northeast-3": "867004704886",
     "ap-south-1": "720646828776",
     "ap-southeast-1": "121021644041",
     "ap-southeast-2": "783357654285",
@@ -46,7 +47,7 @@ ACCOUNTS = {
 
 
 def test_valid_uris(sklearn_version):
-    for region in regions.regions():
+    for region in ACCOUNTS.keys():
         uri = image_uris.retrieve(
             "sklearn",
             region=region,

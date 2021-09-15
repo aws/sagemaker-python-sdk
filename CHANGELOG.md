@@ -1,5 +1,175 @@
 # Changelog
 
+## v2.59.1.post0 (2021-09-13)
+
+### Documentation Changes
+
+ * update experiment config doc on fit method
+
+## v2.59.1 (2021-09-02)
+
+### Bug Fixes and Other Changes
+
+ * pin docker to 5.0.0
+
+## v2.59.0 (2021-09-01)
+
+### Features
+
+ * Add KIX account for SM XGBoost 1.2-2 and 1.3-1
+
+### Bug Fixes and Other Changes
+
+ * revert #2572 and address #2611
+
+## v2.58.0 (2021-08-31)
+
+### Features
+
+ * update debugger for KIX
+ * support displayName and description for pipeline steps
+
+### Bug Fixes and Other Changes
+
+ * localmode subprocess parent process not sending SIGTERM to child
+
+## v2.57.0 (2021-08-30)
+
+### Deprecations and Removals
+
+ * Remove stale S3DownloadMode from test_session.py
+
+### Features
+
+ * update clarify imageURI for KIX
+
+### Bug Fixes and Other Changes
+
+ * propagate KMS key to model.deploy
+ * Propagate tags and VPC configs to repack model steps
+
+## v2.56.0 (2021-08-26)
+
+### Features
+
+ * Add NEO KIX Configuration
+ * Algorithms region launch on KIX
+
+### Bug Fixes and Other Changes
+
+ * remove dots from CHANGELOG
+
+## v2.55.0 (2021-08-25)
+
+### Features
+
+ * Add information of Amazon-provided analysis image used by Model Monitor
+
+### Bug Fixes and Other Changes
+
+ * Update Changelog to fix release
+ * Fixing the order of populating container list
+ * pass network isolation config to pipelineModel
+ * Deference symbolic link when create tar file
+ * multiprocess issue in feature_group.py
+ * deprecate tag logic on Association
+
+### Documentation Changes
+
+ * add dataset_definition to processing page
+
+## v2.54.0 (2021-08-16)
+
+### Features
+
+ * add pytorch 1.5.1 eia configuration
+
+### Bug Fixes and Other Changes
+
+ * issue #2253 where Processing job in Local mode would call Describe API
+
+## v2.53.0 (2021-08-12)
+
+### Features
+
+ * support tuning step parameter range parameterization + support retry strategy in tuner
+
+## v2.52.2.post0 (2021-08-11)
+
+### Documentation Changes
+
+ * clarify that default_bucket creates a bucket
+ * Minor updates to Clarify API documentation
+
+## v2.52.2 (2021-08-10)
+
+### Bug Fixes and Other Changes
+
+ * sklearn integ tests, remove swallowing exception on feature group delete attempt
+ * sklearn integ test for custom bucket
+
+### Documentation Changes
+
+ * Fix dataset_definition links
+ * Document LambdaModel and LambdaPredictor classes
+
+## v2.52.1 (2021-08-06)
+
+### Bug Fixes and Other Changes
+
+ * revert #2251 changes for sklearn processor
+
+## v2.52.0 (2021-08-05)
+
+### Features
+
+ * processors that support multiple Python files, requirements.txt, and dependencies.
+ * support step object in step depends on list
+
+### Bug Fixes and Other Changes
+
+ * enable isolation while creating model from job
+ * update `sagemaker.serverless` integration test
+ * Use correct boto model name for RegisterModelStep properties
+
+## v2.51.0 (2021-08-03)
+
+### Features
+
+ * add LambdaStep support for SageMaker Pipelines
+ * support JsonGet for all step types
+
+## v2.50.1 (2021-08-02)
+
+### Bug Fixes and Other Changes
+
+ * null checks for uploaded_code and entry_point
+
+### Documentation Changes
+
+ * update sagemaker.estimator.EstimatorBase
+ * Mark baseline as optional in KernelSHAP.
+
+## v2.50.0 (2021-07-28)
+
+### Features
+
+ * add KIX region to image_uris
+
+### Bug Fixes and Other Changes
+
+ * Rename `PredictorBase.delete_endpoint` as `PredictorBase.delete_predictor`
+ * incorrect default argument for callback output parameter
+
+### Documentation Changes
+
+ * Remove years from copyright boilerplate
+ * Fix documentation formatting for PySpark and SparkJar processors
+
+### Testing and Release Infrastructure
+
+ * enable py38 tox env
+
 ## v2.49.2 (2021-07-21)
 
 ### Bug Fixes and Other Changes

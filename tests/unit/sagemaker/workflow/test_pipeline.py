@@ -1,4 +1,4 @@
-# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -37,9 +37,9 @@ from tests.unit.sagemaker.workflow.helpers import ordered
 
 
 class CustomStep(Step):
-    def __init__(self, name, input_data):
+    def __init__(self, name, input_data, display_name=None, description=None):
         self.input_data = input_data
-        super(CustomStep, self).__init__(name, StepTypeEnum.TRAINING)
+        super(CustomStep, self).__init__(name, display_name, description, StepTypeEnum.TRAINING)
 
         path = f"Steps.{name}"
         prop = Properties(path=path)

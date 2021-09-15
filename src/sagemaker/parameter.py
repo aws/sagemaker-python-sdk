@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -12,7 +12,9 @@
 # language governing permissions and limitations under the License.
 """Placeholder docstring"""
 from __future__ import absolute_import
+
 import json
+from sagemaker.workflow.parameters import Parameter as PipelineParameter
 
 
 class ParameterRange(object):
@@ -68,8 +70,12 @@ class ParameterRange(object):
         """
         return {
             "Name": name,
-            "MinValue": str(self.min_value),
-            "MaxValue": str(self.max_value),
+            "MinValue": str(self.min_value)
+            if not isinstance(self.min_value, PipelineParameter)
+            else self.min_value,
+            "MaxValue": str(self.max_value)
+            if not isinstance(self.max_value, PipelineParameter)
+            else self.max_value,
             "ScalingType": self.scaling_type,
         }
 
@@ -103,9 +109,9 @@ class CategoricalParameter(ParameterRange):
                 This input will be converted into a list of strings.
         """
         if isinstance(values, list):
-            self.values = [str(v) for v in values]
+            self.values = [str(v) if not isinstance(v, PipelineParameter) else v for v in values]
         else:
-            self.values = [str(values)]
+            self.values = [str(values) if not isinstance(values, PipelineParameter) else values]
 
     def as_tuning_range(self, name):
         """Represent the parameter range as a dictionary.

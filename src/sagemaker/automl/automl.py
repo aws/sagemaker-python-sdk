@@ -1,4 +1,4 @@
-# Copyright 2019-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -328,6 +328,7 @@ class AutoML(object):
             predictor_cls=predictor_cls,
             name=name,
             vpc_config=vpc_config,
+            enable_network_isolation=enable_network_isolation,
             sagemaker_session=sagemaker_session or self.sagemaker_session,
         )
         return pipeline
@@ -419,6 +420,7 @@ class AutoML(object):
             serializer=serializer,
             deserializer=deserializer,
             endpoint_name=endpoint_name,
+            kms_key=model_kms_key,
             tags=tags,
             wait=wait,
         )

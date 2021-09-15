@@ -1,4 +1,4 @@
-# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -15,7 +15,7 @@ from __future__ import absolute_import
 import pytest
 
 from sagemaker import image_uris
-from tests.unit.sagemaker.image_uris import expected_uris, regions
+from tests.unit.sagemaker.image_uris import expected_uris
 
 ALGO_NAMES = (
     "blazingtext",
@@ -33,6 +33,7 @@ ALGO_NAMES = (
     "randomcutforest",
     "semantic-segmentation",
     "seq2seq",
+    "lda",
 )
 ALGO_REGIONS_AND_ACCOUNTS = (
     {
@@ -52,6 +53,7 @@ ALGO_REGIONS_AND_ACCOUNTS = (
             "ap-east-1": "286214385809",
             "ap-northeast-1": "351501993468",
             "ap-northeast-2": "835164637446",
+            "ap-northeast-3": "867004704886",
             "ap-south-1": "991648021394",
             "ap-southeast-1": "475088953585",
             "ap-southeast-2": "712309505854",
@@ -136,6 +138,7 @@ ALGO_REGIONS_AND_ACCOUNTS = (
             "ap-east-1": "286214385809",
             "ap-northeast-1": "501404015308",
             "ap-northeast-2": "306986355934",
+            "ap-northeast-3": "867004704886",
             "ap-south-1": "991648021394",
             "ap-southeast-1": "475088953585",
             "ap-southeast-2": "544295431143",
@@ -174,21 +177,6 @@ def _accounts_for_algo(algo):
 @pytest.mark.parametrize("algo", ALGO_NAMES)
 def test_algo_uris(algo):
     accounts = _accounts_for_algo(algo)
-
-    for region in regions.regions():
+    for region in accounts:
         uri = image_uris.retrieve(algo, region)
         assert expected_uris.algo_uri(algo, accounts[region], region) == uri
-
-
-def test_lda():
-    algo = "lda"
-    accounts = _accounts_for_algo(algo)
-
-    for region in regions.regions():
-        if region in accounts:
-            uri = image_uris.retrieve(algo, region)
-            assert expected_uris.algo_uri(algo, accounts[region], region) == uri
-        else:
-            with pytest.raises(ValueError) as e:
-                image_uris.retrieve(algo, region)
-            assert "Unsupported region: {}.".format(region) in str(e.value)

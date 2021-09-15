@@ -1,4 +1,4 @@
-# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -49,9 +49,9 @@ from sagemaker.workflow.steps import (
     Step,
     StepTypeEnum,
     TrainingStep,
+    TuningStep,
     TransformStep,
     CreateModelStep,
-    TuningStep,
     CacheConfig,
 )
 from tests.unit import DATA_DIR
@@ -67,8 +67,8 @@ MODEL_NAME = "gisele"
 
 
 class CustomStep(Step):
-    def __init__(self, name):
-        super(CustomStep, self).__init__(name, StepTypeEnum.TRAINING)
+    def __init__(self, name, display_name=None, description=None):
+        super(CustomStep, self).__init__(name, display_name, description, StepTypeEnum.TRAINING)
         self._properties = Properties(path=f"Steps.{name}")
 
     @property
@@ -121,8 +121,36 @@ def sagemaker_session(boto_session, client):
 
 
 def test_custom_step():
-    step = CustomStep("MyStep")
-    assert step.to_request() == {"Name": "MyStep", "Type": "Training", "Arguments": dict()}
+    step = CustomStep(
+        name="MyStep", display_name="CustomStepDisplayName", description="CustomStepDescription"
+    )
+    assert step.to_request() == {
+        "Name": "MyStep",
+        "DisplayName": "CustomStepDisplayName",
+        "Description": "CustomStepDescription",
+        "Type": "Training",
+        "Arguments": dict(),
+    }
+
+
+def test_custom_step_without_display_name():
+    step = CustomStep(name="MyStep", description="CustomStepDescription")
+    assert step.to_request() == {
+        "Name": "MyStep",
+        "Description": "CustomStepDescription",
+        "Type": "Training",
+        "Arguments": dict(),
+    }
+
+
+def test_custom_step_without_description():
+    step = CustomStep(name="MyStep", display_name="CustomStepDisplayName")
+    assert step.to_request() == {
+        "Name": "MyStep",
+        "DisplayName": "CustomStepDisplayName",
+        "Type": "Training",
+        "Arguments": dict(),
+    }
 
 
 def test_training_step_base_estimator(sagemaker_session):
@@ -151,6 +179,8 @@ def test_training_step_base_estimator(sagemaker_session):
     step = TrainingStep(
         name="MyTrainingStep",
         depends_on=["TestStep"],
+        description="TrainingStep description",
+        display_name="MyTrainingStep",
         estimator=estimator,
         inputs=inputs,
         cache_config=cache_config,
@@ -159,6 +189,8 @@ def test_training_step_base_estimator(sagemaker_session):
     assert step.to_request() == {
         "Name": "MyTrainingStep",
         "Type": "Training",
+        "Description": "TrainingStep description",
+        "DisplayName": "MyTrainingStep",
         "DependsOn": ["TestStep", "AnotherTestStep"],
         "Arguments": {
             "AlgorithmSpecification": {"TrainingImage": IMAGE_URI, "TrainingInputMode": "File"},
@@ -304,6 +336,8 @@ def test_processing_step(sagemaker_session):
     cache_config = CacheConfig(enable_caching=True, expire_after="PT1H")
     step = ProcessingStep(
         name="MyProcessingStep",
+        description="ProcessingStep description",
+        display_name="MyProcessingStep",
         depends_on=["TestStep", "SecondTestStep"],
         processor=processor,
         inputs=inputs,
@@ -313,6 +347,8 @@ def test_processing_step(sagemaker_session):
     step.add_depends_on(["ThirdTestStep"])
     assert step.to_request() == {
         "Name": "MyProcessingStep",
+        "Description": "ProcessingStep description",
+        "DisplayName": "MyProcessingStep",
         "Type": "Processing",
         "DependsOn": ["TestStep", "SecondTestStep", "ThirdTestStep"],
         "Arguments": {
@@ -415,6 +451,8 @@ def test_create_model_step(sagemaker_session):
     step = CreateModelStep(
         name="MyCreateModelStep",
         depends_on=["TestStep"],
+        display_name="MyCreateModelStep",
+        description="TestDescription",
         model=model,
         inputs=inputs,
     )
@@ -423,6 +461,8 @@ def test_create_model_step(sagemaker_session):
     assert step.to_request() == {
         "Name": "MyCreateModelStep",
         "Type": "Model",
+        "Description": "TestDescription",
+        "DisplayName": "MyCreateModelStep",
         "DependsOn": ["TestStep", "SecondTestStep"],
         "Arguments": {
             "ExecutionRoleArn": "DummyRole",
@@ -445,6 +485,8 @@ def test_transform_step(sagemaker_session):
         name="MyTransformStep",
         depends_on=["TestStep"],
         transformer=transformer,
+        display_name="TransformStep",
+        description="TestDescription",
         inputs=inputs,
         cache_config=cache_config,
     )
@@ -452,6 +494,8 @@ def test_transform_step(sagemaker_session):
     assert step.to_request() == {
         "Name": "MyTransformStep",
         "Type": "Transform",
+        "Description": "TestDescription",
+        "DisplayName": "TransformStep",
         "DependsOn": ["TestStep", "SecondTestStep"],
         "Arguments": {
             "ModelName": "gisele",
@@ -496,6 +540,59 @@ def test_properties_describe_processing_job_response():
     assert prop.ProcessingOutputConfig.Outputs["MyOutputName"].S3Output.S3Uri.expr == {
         "Get": "Steps.MyStep.ProcessingOutputConfig.Outputs['MyOutputName'].S3Output.S3Uri"
     }
+
+
+def test_add_depends_on(sagemaker_session):
+    processing_input_data_uri_parameter = ParameterString(
+        name="ProcessingInputDataUri", default_value=f"s3://{BUCKET}/processing_manifest"
+    )
+    instance_type_parameter = ParameterString(name="InstanceType", default_value="ml.m4.4xlarge")
+    instance_count_parameter = ParameterInteger(name="InstanceCount", default_value=1)
+    processor = Processor(
+        image_uri=IMAGE_URI,
+        role=ROLE,
+        instance_count=instance_count_parameter,
+        instance_type=instance_type_parameter,
+        sagemaker_session=sagemaker_session,
+    )
+    inputs = [
+        ProcessingInput(
+            source=processing_input_data_uri_parameter,
+            destination="processing_manifest",
+        )
+    ]
+    cache_config = CacheConfig(enable_caching=True, expire_after="PT1H")
+
+    step_1 = ProcessingStep(
+        name="MyProcessingStep-1",
+        processor=processor,
+        inputs=inputs,
+        outputs=[],
+        cache_config=cache_config,
+    )
+
+    step_2 = ProcessingStep(
+        name="MyProcessingStep-2",
+        depends_on=[step_1],
+        processor=processor,
+        inputs=inputs,
+        outputs=[],
+        cache_config=cache_config,
+    )
+
+    step_3 = ProcessingStep(
+        name="MyProcessingStep-3",
+        depends_on=[step_1],
+        processor=processor,
+        inputs=inputs,
+        outputs=[],
+        cache_config=cache_config,
+    )
+    step_3.add_depends_on([step_2.name])
+
+    assert "DependsOn" not in step_1.to_request()
+    assert step_2.to_request()["DependsOn"] == ["MyProcessingStep-1"]
+    assert step_3.to_request()["DependsOn"] == ["MyProcessingStep-1", "MyProcessingStep-2"]
 
 
 def test_single_algo_tuning_step(sagemaker_session):
@@ -663,14 +760,16 @@ def test_multi_algo_tuning_step(sagemaker_session):
     data_source_uri_parameter = ParameterString(
         name="DataSourceS3Uri", default_value=f"s3://{BUCKET}/train_manifest"
     )
+    instance_count = ParameterInteger(name="InstanceCount", default_value=1)
     estimator = Estimator(
         image_uri=IMAGE_URI,
         role=ROLE,
-        instance_count=1,
+        instance_count=instance_count,
         instance_type="ml.c5.4xlarge",
         profiler_config=ProfilerConfig(system_monitor_interval_millis=500),
         rules=[],
         sagemaker_session=sagemaker_session,
+        max_retry_attempts=10,
     )
 
     estimator.set_hyperparameters(
@@ -686,8 +785,9 @@ def test_multi_algo_tuning_step(sagemaker_session):
         augmentation_type="crop",
     )
 
+    initial_lr_param = ParameterString(name="InitialLR", default_value="0.0001")
     hyperparameter_ranges = {
-        "learning_rate": ContinuousParameter(0.0001, 0.05),
+        "learning_rate": ContinuousParameter(initial_lr_param, 0.05),
         "momentum": ContinuousParameter(0.0, 0.99),
         "weight_decay": ContinuousParameter(0.0, 0.99),
     }
@@ -772,7 +872,7 @@ def test_multi_algo_tuning_step(sagemaker_session):
                         "ContinuousParameterRanges": [
                             {
                                 "Name": "learning_rate",
-                                "MinValue": "0.0001",
+                                "MinValue": initial_lr_param,
                                 "MaxValue": "0.05",
                                 "ScalingType": "Auto",
                             },
@@ -791,6 +891,9 @@ def test_multi_algo_tuning_step(sagemaker_session):
                         ],
                         "CategoricalParameterRanges": [],
                         "IntegerParameterRanges": [],
+                    },
+                    "RetryStrategy": {
+                        "MaximumRetryAttempts": 10,
                     },
                 },
                 {
@@ -836,7 +939,7 @@ def test_multi_algo_tuning_step(sagemaker_session):
                         "ContinuousParameterRanges": [
                             {
                                 "Name": "learning_rate",
-                                "MinValue": "0.0001",
+                                "MinValue": initial_lr_param,
                                 "MaxValue": "0.05",
                                 "ScalingType": "Auto",
                             },
@@ -855,6 +958,9 @@ def test_multi_algo_tuning_step(sagemaker_session):
                         ],
                         "CategoricalParameterRanges": [],
                         "IntegerParameterRanges": [],
+                    },
+                    "RetryStrategy": {
+                        "MaximumRetryAttempts": 10,
                     },
                 },
             ],

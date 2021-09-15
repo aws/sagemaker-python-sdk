@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -127,7 +127,7 @@ class ShuffleConfig(object):
 class CreateModelInput(object):
     """A class containing parameters which can be used to create a SageMaker Model
 
-    Attributes:
+    Parameters:
         instance_type (str): type or EC2 instance will be used for model deployment.
         accelerator_type (str): elastic inference accelerator type.
     """

@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -164,7 +164,10 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 file:// urls are used for local mode. For example: 'file://model/'
                 will save to the model folder in the current directory.
             output_kms_key (str): Optional. KMS key ID for encrypting the
-                training output (default: None).
+                training output (default: Your IAM role's KMS key for Amazon S3).
+                If you don't provide a KMS key ID, Amazon SageMaker uses the
+                default KMS key for Amazon S3 of the account linked to your
+                IAM role.
             base_job_name (str): Prefix for training job name when the
                 :meth:`~sagemaker.estimator.EstimatorBase.fit` method launches.
                 If not specified, the estimator generates a default job name
@@ -671,9 +674,16 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             job_name (str): Training job name. If not specified, the estimator generates
                 a default job name based on the training image name and current timestamp.
             experiment_config (dict[str, str]): Experiment management configuration.
-                Dictionary contains three optional keys,
+                Optionally, the dict can contain three keys:
                 'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
-
+                The behavior of setting these keys is as follows:
+                * If `ExperimentName` is supplied but `TrialName` is not a Trial will be
+                automatically created and the job's Trial Component associated with the Trial.
+                * If `TrialName` is supplied and the Trial already exists the job's Trial Component
+                will be associated with the Trial.
+                * If both `ExperimentName` and `TrialName` are not supplied the trial component
+                will be unassociated.
+                * `TrialComponentDisplayName` is used for display in Studio.
         """
         self._prepare_for_training(job_name=job_name)
 
@@ -1440,10 +1450,17 @@ class _TrainingJob(_Job):
                 created by the user.
             inputs (str): Parameters used when called
                 :meth:`~sagemaker.estimator.EstimatorBase.fit`.
-            experiment_config (dict[str, str]): Experiment management configuration used when called
-                :meth:`~sagemaker.estimator.EstimatorBase.fit`.  Dictionary contains
-                three optional keys, 'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
-
+            experiment_config (dict[str, str]): Experiment management configuration.
+                Optionally, the dict can contain three keys:
+                'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+                The behavior of setting these keys is as follows:
+                * If `ExperimentName` is supplied but `TrialName` is not a Trial will be
+                automatically created and the job's Trial Component associated with the Trial.
+                * If `TrialName` is supplied and the Trial already exists the job's Trial Component
+                will be associated with the Trial.
+                * If both `ExperimentName` and `TrialName` are not supplied the trial component
+                will be unassociated.
+                * `TrialComponentDisplayName` is used for display in Studio.
         Returns:
             sagemaker.estimator._TrainingJob: Constructed object that captures
             all information about the started training job.
@@ -1462,9 +1479,17 @@ class _TrainingJob(_Job):
                 created by the user.
             inputs (str): Parameters used when called
                 :meth:`~sagemaker.estimator.EstimatorBase.fit`.
-            experiment_config (dict[str, str]): Experiment management configuration used when called
-                :meth:`~sagemaker.estimator.EstimatorBase.fit`.  Dictionary contains
-                three optional keys, 'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+            experiment_config (dict[str, str]): Experiment management configuration.
+                Optionally, the dict can contain three keys:
+                'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+                The behavior of setting these keys is as follows:
+                * If `ExperimentName` is supplied but `TrialName` is not a Trial will be
+                automatically created and the job's Trial Component associated with the Trial.
+                * If `TrialName` is supplied and the Trial already exists the job's Trial Component
+                will be associated with the Trial.
+                * If both `ExperimentName` and `TrialName` are not supplied the trial component
+                will be unassociated.
+                * `TrialComponentDisplayName` is used for display in Studio.
 
         Returns:
             Dict: dict for `sagemaker.session.Session.train` method
@@ -2319,9 +2344,13 @@ class Framework(EstimatorBase):
             str: Either a local or an S3 path pointing to the ``source_dir`` to be
                 used for code by the model to be deployed
         """
-        return (
-            self.source_dir if self.sagemaker_session.local_mode else self.uploaded_code.s3_prefix
-        )
+        if self.sagemaker_session.local_mode:
+            return self.source_dir
+
+        if self.uploaded_code is not None:
+            return self.uploaded_code.s3_prefix
+
+        return None
 
     def _model_entry_point(self):
         """Get the appropriate value to pass as ``entry_point`` to a model constructor.
@@ -2333,7 +2362,10 @@ class Framework(EstimatorBase):
         if self.sagemaker_session.local_mode or (self._model_source_dir() is None):
             return self.entry_point
 
-        return self.uploaded_code.script_name
+        if self.uploaded_code is not None:
+            return self.uploaded_code.script_name
+
+        return None
 
     def hyperparameters(self):
         """Return the hyperparameters as a dictionary to use for training.

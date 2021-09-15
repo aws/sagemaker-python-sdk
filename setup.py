@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -51,6 +51,7 @@ extras = {
     "local": [
         "urllib3>=1.21.1,!=1.25,!=1.25.1",
         "docker-compose>=1.25.2",
+        "docker==5.0.0",
         "PyYAML>=5.3, <6",  # PyYAML version has to match docker-compose requirements
     ],
     "scipy": ["scipy>=0.19.0"],

@@ -1,4 +1,4 @@
-# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -20,6 +20,7 @@ ACCOUNTS = {
     "ap-east-1": "001633400207",
     "ap-northeast-1": "574779866223",
     "ap-northeast-2": "709848358524",
+    "ap-northeast-3": "990339680094",
     "ap-south-1": "126357580389",
     "ap-southeast-1": "245545462676",
     "ap-southeast-2": "563025443158",

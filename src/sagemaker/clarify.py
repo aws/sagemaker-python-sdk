@@ -1,4 +1,4 @@
-# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -48,12 +48,17 @@ class DataConfig:
             headers (list[str]): A list of column names in the input dataset.
             features (str): JSONPath for locating the feature columns for bias metrics if the
                 dataset format is JSONLines.
-            dataset_type (str): Format of the dataset. Valid values are "text/csv" for CSV
-                and "application/jsonlines" for JSONLines.
+            dataset_type (str): Format of the dataset. Valid values are "text/csv" for CSV,
+                "application/jsonlines" for JSONLines, and "application/x-parquet" for Parquet.
             s3_data_distribution_type (str): Valid options are "FullyReplicated" or
                 "ShardedByS3Key".
             s3_compression_type (str): Valid options are "None" or "Gzip".
         """
+        if dataset_type not in ["text/csv", "application/jsonlines", "application/x-parquet"]:
+            raise ValueError(
+                f"Invalid dataset_type '{dataset_type}'."
+                f" Please check the API documentation for the supported dataset types."
+            )
         self.s3_data_input_path = s3_data_input_path
         self.s3_output_path = s3_output_path
         self.s3_data_distribution_type = s3_data_distribution_type
@@ -305,10 +310,11 @@ class SHAPConfig(ExplainabilityConfig):
         """Initializes config for SHAP.
 
         Args:
-            baseline (str or list): A list of rows (at least one) or S3 object URI to be used as
-                the baseline dataset in the Kernel SHAP algorithm. The format should be the same
-                as the dataset format. Each row should contain only the feature columns/values
-                and omit the label column/values.
+            baseline (None or str or list): None or S3 object Uri or A list of rows (at least one)
+                to be used asthe baseline dataset in the Kernel SHAP algorithm. The format should
+                be the same as the dataset format. Each row should contain only the feature
+                columns/values and omit the label column/values. If None a baseline will be
+                calculated automatically by using K-means or K-prototypes in the input dataset.
             num_samples (int): Number of samples to be used in the Kernel SHAP algorithm.
                 This number determines the size of the generated synthetic dataset to compute the
                 SHAP values.
@@ -449,8 +455,16 @@ class SageMakerClarifyProcessor(Processor):
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 user code file (default: None).
             experiment_config (dict[str, str]): Experiment management configuration.
-                Dictionary contains three optional keys:
+                Optionally, the dict can contain three keys:
                 'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+                The behavior of setting these keys is as follows:
+                * If `ExperimentName` is supplied but `TrialName` is not a Trial will be
+                automatically created and the job's Trial Component associated with the Trial.
+                * If `TrialName` is supplied and the Trial already exists the job's Trial Component
+                will be associated with the Trial.
+                * If both `ExperimentName` and `TrialName` are not supplied the trial component
+                will be unassociated.
+                * `TrialComponentDisplayName` is used for display in Studio.
         """
         analysis_config["methods"]["report"] = {"name": "report", "title": "Analysis Report"}
         with tempfile.TemporaryDirectory() as tmpdirname:
@@ -507,7 +521,7 @@ class SageMakerClarifyProcessor(Processor):
         kms_key=None,
         experiment_config=None,
     ):
-        """Runs a ProcessingJob to compute the requested bias 'methods' of the input data.
+        """Runs a ProcessingJob to compute the pre-training bias methods of the input data.
 
         Computes the requested methods that compare 'methods' (e.g. fraction of examples) for the
         sensitive group vs the other examples.
@@ -516,14 +530,14 @@ class SageMakerClarifyProcessor(Processor):
             data_config (:class:`~sagemaker.clarify.DataConfig`): Config of the input/output data.
             data_bias_config (:class:`~sagemaker.clarify.BiasConfig`): Config of sensitive groups.
             methods (str or list[str]): Selector of a subset of potential metrics:
-                ["`CI <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-ci.html>`_",
-                "`DPL <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-dpl.html>`_",
-                "`KL <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-kl.html>`_",
-                "`JS <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-js.html>`_",
-                "`LP <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-lp.html>`_",
-                "`TVD <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-tvd.html>`_",
-                "`KS <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-ks.html>`_",
-                "`CDDL <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-cdd.html>`_"].
+                ["`CI <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-bias-metric-class-imbalance.html>`_",
+                "`DPL <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-data-bias-metric-true-label-imbalance.html>`_",
+                "`KL <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-data-bias-metric-kl-divergence.html>`_",
+                "`JS <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-data-bias-metric-jensen-shannon-divergence.html>`_",
+                "`LP <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-data-bias-metric-lp-norm.html>`_",
+                "`TVD <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-data-bias-metric-total-variation-distance.html>`_",
+                "`KS <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-data-bias-metric-kolmogorov-smirnov.html>`_",
+                "`CDDL <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-data-bias-metric-cddl.html>`_"].
                 Defaults to computing all.
             wait (bool): Whether the call should wait until the job completes (default: True).
             logs (bool): Whether to show the logs produced by the job.
@@ -535,9 +549,17 @@ class SageMakerClarifyProcessor(Processor):
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 user code file (default: None).
             experiment_config (dict[str, str]): Experiment management configuration.
-                Dictionary contains three optional keys:
+                Optionally, the dict can contain three keys:
                 'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
-        """
+                The behavior of setting these keys is as follows:
+                * If `ExperimentName` is supplied but `TrialName` is not a Trial will be
+                automatically created and the job's Trial Component associated with the Trial.
+                * If `TrialName` is supplied and the Trial already exists the job's Trial Component
+                will be associated with the Trial.
+                * If both `ExperimentName` and `TrialName` are not supplied the trial component
+                will be unassociated.
+                * `TrialComponentDisplayName` is used for display in Studio.
+        """  # noqa E501
         analysis_config = data_config.get_config()
         analysis_config.update(data_bias_config.get_config())
         analysis_config["methods"] = {"pre_training_bias": {"methods": methods}}
@@ -561,7 +583,7 @@ class SageMakerClarifyProcessor(Processor):
         kms_key=None,
         experiment_config=None,
     ):
-        """Runs a ProcessingJob to compute the requested bias 'methods' of the model predictions.
+        """Runs a ProcessingJob to compute the post-training bias methods of the model predictions.
 
         Spins up a model endpoint, runs inference over the input example in the
         's3_data_input_path' to obtain predicted labels. Computes a the requested methods that
@@ -598,8 +620,16 @@ class SageMakerClarifyProcessor(Processor):
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 user code file (default: None).
             experiment_config (dict[str, str]): Experiment management configuration.
-                Dictionary contains three optional keys:
+                Optionally, the dict can contain three keys:
                 'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+                The behavior of setting these keys is as follows:
+                * If `ExperimentName` is supplied but `TrialName` is not a Trial will be
+                automatically created and the job's Trial Component associated with the Trial.
+                * If `TrialName` is supplied and the Trial already exists the job's Trial Component
+                will be associated with the Trial.
+                * If both `ExperimentName` and `TrialName` are not supplied the trial component
+                will be unassociated.
+                * `TrialComponentDisplayName` is used for display in Studio.
         """
         analysis_config = data_config.get_config()
         analysis_config.update(data_bias_config.get_config())
@@ -632,12 +662,11 @@ class SageMakerClarifyProcessor(Processor):
         kms_key=None,
         experiment_config=None,
     ):
-        """Runs a ProcessingJob to compute the requested bias 'methods' of the model predictions.
+        """Runs a ProcessingJob to compute the requested bias methods.
 
-        Spins up a model endpoint, runs inference over the input example in the
-        's3_data_input_path' to obtain predicted labels. Computes a the requested methods that
-        compare 'methods' (e.g. accuracy, precision, recall) for the sensitive group vs the other
-        examples.
+        It computes the metrics of both the pre-training methods and the post-training methods.
+        To calculate post-training methods, it needs to spin up a model endpoint, runs inference
+        over the input example in the 's3_data_input_path' to obtain predicted labels.
 
         Args:
             data_config (:class:`~sagemaker.clarify.DataConfig`): Config of the input/output data.
@@ -647,14 +676,14 @@ class SageMakerClarifyProcessor(Processor):
             model_predicted_label_config (:class:`~sagemaker.clarify.ModelPredictedLabelConfig`):
                 Config of how to extract the predicted label from the model output.
             pre_training_methods (str or list[str]): Selector of a subset of potential metrics:
-                ["`CI <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-ci.html>`_",
-                "`DPL <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-dpl.html>`_",
-                "`KL <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-kl.html>`_",
-                "`JS <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-js.html>`_",
-                "`LP <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-lp.html>`_",
-                "`TVD <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-tvd.html>`_",
-                "`KS <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-ks.html>`_",
-                "`CDDL <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-cdd.html>`_"].
+                ["`CI <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-bias-metric-class-imbalance.html>`_",
+                "`DPL <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-data-bias-metric-true-label-imbalance.html>`_",
+                "`KL <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-data-bias-metric-kl-divergence.html>`_",
+                "`JS <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-data-bias-metric-jensen-shannon-divergence.html>`_",
+                "`LP <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-data-bias-metric-lp-norm.html>`_",
+                "`TVD <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-data-bias-metric-total-variation-distance.html>`_",
+                "`KS <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-data-bias-metric-kolmogorov-smirnov.html>`_",
+                "`CDDL <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-data-bias-metric-cddl.html>`_"].
                 Defaults to computing all.
             post_training_methods (str or list[str]): Selector of a subset of potential metrics:
                 ["`DPPL <https://docs.aws.amazon.com/sagemaker/latest/dg/clarify-post-training-bias-metric-dppl.html>`_"
@@ -679,9 +708,17 @@ class SageMakerClarifyProcessor(Processor):
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 user code file (default: None).
             experiment_config (dict[str, str]): Experiment management configuration.
-                Dictionary contains three optional keys:
+                Optionally, the dict can contain three keys:
                 'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
-        """
+                The behavior of setting these keys is as follows:
+                * If `ExperimentName` is supplied but `TrialName` is not a Trial will be
+                automatically created and the job's Trial Component associated with the Trial.
+                * If `TrialName` is supplied and the Trial already exists the job's Trial Component
+                will be associated with the Trial.
+                * If both `ExperimentName` and `TrialName` are not supplied the trial component
+                will be unassociated.
+                * `TrialComponentDisplayName` is used for display in Studio.
+        """  # noqa E501
         analysis_config = data_config.get_config()
         analysis_config.update(bias_config.get_config())
         analysis_config["predictor"] = model_config.get_predictor_config()
@@ -750,8 +787,16 @@ class SageMakerClarifyProcessor(Processor):
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 user code file (default: None).
             experiment_config (dict[str, str]): Experiment management configuration.
-                Dictionary contains three optional keys:
+                Optionally, the dict can contain three keys:
                 'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+                The behavior of setting these keys is as follows:
+                * If `ExperimentName` is supplied but `TrialName` is not a Trial will be
+                automatically created and the job's Trial Component associated with the Trial.
+                * If `TrialName` is supplied and the Trial already exists the job's Trial Component
+                will be associated with the Trial.
+                * If both `ExperimentName` and `TrialName` are not supplied the trial component
+                will be unassociated.
+                * `TrialComponentDisplayName` is used for display in Studio.
         """
         analysis_config = data_config.get_config()
         predictor_config = model_config.get_predictor_config()

@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -116,6 +116,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         self.s3_resource = None
         self.s3_client = None
         self.config = None
+        self.lambda_client = None
 
         self._initialize(
             boto_session=boto_session,
@@ -356,6 +357,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
     def default_bucket(self):
         """Return the name of the default bucket to use in relevant Amazon SageMaker interactions.
 
+        This function will create the s3 bucket if it does not exist.
+
         Returns:
             str: The name of the default bucket, which is of the form:
                 ``sagemaker-{region}-{AWS account ID}``.
@@ -519,9 +522,17 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 started. If the path is unset then SageMaker assumes the
                 checkpoints will be provided under `/opt/ml/checkpoints/`.
                 (default: ``None``).
-            experiment_config (dict): Experiment management configuration. Dictionary contains
-                three optional keys, 'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
-                (default: ``None``)
+            experiment_config (dict[str, str]): Experiment management configuration.
+                Optionally, the dict can contain three keys:
+                'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+                The behavior of setting these keys is as follows:
+                * If `ExperimentName` is supplied but `TrialName` is not a Trial will be
+                automatically created and the job's Trial Component associated with the Trial.
+                * If `TrialName` is supplied and the Trial already exists the job's Trial Component
+                will be associated with the Trial.
+                * If both `ExperimentName` and `TrialName` are not supplied the trial component
+                will be unassociated.
+                * `TrialComponentDisplayName` is used for display in Studio.
             enable_sagemaker_metrics (bool): enable SageMaker Metrics Time
                 Series. For more information see:
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_AlgorithmSpecification.html#SageMaker-Type-AlgorithmSpecification-EnableSageMakerMetricsTimeSeries
@@ -663,9 +674,17 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 started. If the path is unset then SageMaker assumes the
                 checkpoints will be provided under `/opt/ml/checkpoints/`.
                 (default: ``None``).
-            experiment_config (dict): Experiment management configuration. Dictionary contains
-                three optional keys, 'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
-                (default: ``None``)
+            experiment_config (dict[str, str]): Experiment management configuration.
+                Optionally, the dict can contain three keys:
+                'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+                The behavior of setting these keys is as follows:
+                * If `ExperimentName` is supplied but `TrialName` is not a Trial will be
+                automatically created and the job's Trial Component associated with the Trial.
+                * If `TrialName` is supplied and the Trial already exists the job's Trial Component
+                will be associated with the Trial.
+                * If both `ExperimentName` and `TrialName` are not supplied the trial component
+                will be unassociated.
+                * `TrialComponentDisplayName` is used for display in Studio.
             enable_sagemaker_metrics (bool): enable SageMaker Metrics Time
                 Series. For more information see:
                 https://docs.aws.amazon.com/sagemaker/latest/dg/API_AlgorithmSpecification.html#SageMaker-Type-AlgorithmSpecification-EnableSageMakerMetricsTimeSeries
@@ -860,9 +879,17 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 Amazon SageMaker can assume to perform tasks on your behalf.
             tags ([dict[str,str]]): A list of dictionaries containing key-value
                 pairs.
-            experiment_config (dict): Experiment management configuration. Dictionary contains
-                three optional keys, 'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
-                (default: ``None``)
+            experiment_config (dict[str, str]): Experiment management configuration.
+                Optionally, the dict can contain three keys:
+                'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+                The behavior of setting these keys is as follows:
+                * If `ExperimentName` is supplied but `TrialName` is not a Trial will be
+                automatically created and the job's Trial Component associated with the Trial.
+                * If `TrialName` is supplied and the Trial already exists the job's Trial Component
+                will be associated with the Trial.
+                * If both `ExperimentName` and `TrialName` are not supplied the trial component
+                will be unassociated.
+                * `TrialComponentDisplayName` is used for display in Studio.
         """
         tags = _append_project_tags(tags)
         process_request = self._get_process_request(
@@ -923,9 +950,17 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 Amazon SageMaker can assume to perform tasks on your behalf.
             tags ([dict[str,str]]): A list of dictionaries containing key-value
                 pairs.
-            experiment_config (dict): Experiment management configuration. Dictionary contains
-                three optional keys, 'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
-                (default: ``None``)
+            experiment_config (dict[str, str]): Experiment management configuration.
+                Optionally, the dict can contain three keys:
+                'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+                The behavior of setting these keys is as follows:
+                * If `ExperimentName` is supplied but `TrialName` is not a Trial will be
+                automatically created and the job's Trial Component associated with the Trial.
+                * If `TrialName` is supplied and the Trial already exists the job's Trial Component
+                will be associated with the Trial.
+                * If both `ExperimentName` and `TrialName` are not supplied the trial component
+                will be unassociated.
+                * `TrialComponentDisplayName` is used for display in Studio.
 
         Returns:
             Dict: a processing job request dict
@@ -2210,6 +2245,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         use_spot_instances=False,
         checkpoint_s3_uri=None,
         checkpoint_local_path=None,
+        max_retry_attempts=None,
     ):
         """Construct a dictionary of training job configuration from the arguments.
 
@@ -2263,6 +2299,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             objective_metric_name (str): Name of the metric for evaluating training jobs.
             parameter_ranges (dict): Dictionary of parameter ranges. These parameter ranges can
                 be one of three types: Continuous, Integer, or Categorical.
+            max_retry_attempts (int): The number of times to retry the job.
 
         Returns:
             A dictionary of training job configuration. For format details, please refer to
@@ -2319,6 +2356,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if parameter_ranges is not None:
             training_job_definition["HyperParameterRanges"] = parameter_ranges
 
+        if max_retry_attempts is not None:
+            training_job_definition["RetryStrategy"] = {"MaximumRetryAttempts": max_retry_attempts}
         return training_job_definition
 
     def stop_tuning_job(self, name):
@@ -2377,9 +2416,17 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 job.
             output_config (dict): A dictionary describing the output location for the job.
             resource_config (dict): A dictionary describing the resources to complete the job.
-            experiment_config (dict): A dictionary describing the experiment configuration for the
-                job. Dictionary contains three optional keys,
+            experiment_config (dict[str, str]): Experiment management configuration.
+                Optionally, the dict can contain three keys:
                 'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+                The behavior of setting these keys is as follows:
+                * If `ExperimentName` is supplied but `TrialName` is not a Trial will be
+                automatically created and the job's Trial Component associated with the Trial.
+                * If `TrialName` is supplied and the Trial already exists the job's Trial Component
+                will be associated with the Trial.
+                * If both `ExperimentName` and `TrialName` are not supplied the trial component
+                will be unassociated.
+                * `TrialComponentDisplayName` is used for display in Studio.
             tags (list[dict]): List of tags for labeling a transform job.
             data_processing(dict): A dictionary describing config for combining the input data and
                 transformed data. For more, see
@@ -2457,9 +2504,17 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 job.
             output_config (dict): A dictionary describing the output location for the job.
             resource_config (dict): A dictionary describing the resources to complete the job.
-            experiment_config (dict): A dictionary describing the experiment configuration for the
-                job. Dictionary contains three optional keys,
+            experiment_config (dict[str, str]): Experiment management configuration.
+                Optionally, the dict can contain three keys:
                 'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
+                The behavior of setting these keys is as follows:
+                * If `ExperimentName` is supplied but `TrialName` is not a Trial will be
+                automatically created and the job's Trial Component associated with the Trial.
+                * If `TrialName` is supplied and the Trial already exists the job's Trial Component
+                will be associated with the Trial.
+                * If both `ExperimentName` and `TrialName` are not supplied the trial component
+                will be unassociated.
+                * `TrialComponentDisplayName` is used for display in Studio.
             tags (list[dict]): List of tags for labeling a transform job.
             data_processing(dict): A dictionary describing config for combining the input data and
                 transformed data. For more, see
@@ -2624,6 +2679,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         image_uri=None,
         model_data_url=None,
         env=None,
+        enable_network_isolation=False,
         vpc_config_override=vpc_utils.VPC_CONFIG_DEFAULT,
         tags=None,
     ):
@@ -2641,6 +2697,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             model_data_url (str): S3 location of the model data (default: None). If None, defaults
                 to the ``ModelS3Artifacts`` of ``training_job_name``.
             env (dict[string,string]): Model environment variables (default: {}).
+            enable_network_isolation (bool): Whether the model requires network isolation or not.
             vpc_config_override (dict[str, list[str]]): Optional override for VpcConfig set on the
                 model.
                 Default: use VpcConfig from training job.
@@ -2664,7 +2721,14 @@ class Session(object):  # pylint: disable=too-many-public-methods
             env=env,
         )
         vpc_config = _vpc_config_from_training_job(training_job, vpc_config_override)
-        return self.create_model(name, role, primary_container, vpc_config=vpc_config, tags=tags)
+        return self.create_model(
+            name,
+            role,
+            primary_container,
+            enable_network_isolation=enable_network_isolation,
+            vpc_config=vpc_config,
+            tags=tags,
+        )
 
     def create_model_package_from_algorithm(self, name, description, algorithm_arn, model_data):
         """Create a SageMaker Model Package from the results of training with an Algorithm Package.

@@ -1,4 +1,4 @@
-# Copyright 2019-2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -541,6 +541,7 @@ def test_deploy(sagemaker_session, candidate_mock):
         initial_instance_count=INSTANCE_COUNT,
         instance_type=INSTANCE_TYPE,
         sagemaker_session=sagemaker_session,
+        model_kms_key=OUTPUT_KMS_KEY,
     )
     auto_ml.create_model.assert_called_once()
     mock_pipeline.deploy.assert_called_once()
@@ -594,6 +595,7 @@ def test_deploy_optional_args(candidate_estimator, sagemaker_session, candidate_
         serializer=None,
         deserializer=None,
         endpoint_name=JOB_NAME,
+        kms_key=OUTPUT_KMS_KEY,
         tags=TAGS,
         wait=False,
     )

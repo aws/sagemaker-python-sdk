@@ -1,4 +1,4 @@
-# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -27,7 +27,7 @@ class RedshiftDatasetDefinition(ApiObject):
 
     With this input, SQL queries will be executed using Redshift to generate datasets to S3.
 
-    Attributes:
+    Parameters:
         cluster_id (str): The Redshift cluster Identifier.
         database (str): The name of the Redshift database used in Redshift query execution.
         db_user (str): The database user name used in Redshift query execution.
@@ -60,7 +60,7 @@ class AthenaDatasetDefinition(ApiObject):
 
     With this input, SQL queries will be executed using Athena to generate datasets to S3.
 
-    Attributes:
+    Parameters:
         catalog (str): The name of the data catalog used in Athena query execution.
         database (str): The name of the database used in the Athena query execution.
         query_string (str): The SQL query statements, to be executed.
@@ -87,7 +87,7 @@ class AthenaDatasetDefinition(ApiObject):
 class DatasetDefinition(ApiObject):
     """DatasetDefinition input.
 
-    Attributes:
+    Parameters:
         data_distribution_type (str): Whether the generated dataset is FullyReplicated or
             ShardedByS3Key (default).
         input_mode (str): Whether to use File or Pipe input mode. In File (default) mode, Amazon
@@ -98,10 +98,9 @@ class DatasetDefinition(ApiObject):
         local_path (str): The local path where you want Amazon SageMaker to download the Dataset
             Definition inputs to run a processing job. LocalPath is an absolute path to the input
             data. This is a required parameter when `AppManaged` is False (default).
-        redshift_dataset_definition
-            (:class:`~sagemaker.dataset_definition.RedshiftDatasetDefinition`): Redshift
-            dataset definition.
-        athena_dataset_definition (:class:`~sagemaker.dataset_definition.AthenaDatasetDefinition`):
+        redshift_dataset_definition (:class:`~sagemaker.dataset_definition.inputs.RedshiftDatasetDefinition`):
+            Configuration for Redshift Dataset Definition input.
+        athena_dataset_definition (:class:`~sagemaker.dataset_definition.inputs.AthenaDatasetDefinition`):
             Configuration for Athena Dataset Definition input.
     """
 
@@ -126,7 +125,7 @@ class S3Input(ApiObject):
     S3 list operations are not strongly consistent.
     Use ManifestFile if strong consistency is required.
 
-    Attributes:
+    Parameters:
         s3_uri (str): the path to a specific S3 object or a S3 prefix
         local_path (str): the path to a local directory. If not provided, skips data download
             by SageMaker platform.
