@@ -400,7 +400,7 @@ def _huggingface_base_fm_version(huggingface_version, base_fw, fixture_prefix):
             if len(original_version.split(".")) == 2:
                 base_fw_version = ".".join(base_fw_version.split(".")[:-1])
             versions.append(base_fw_version)
-    return sorted(versions,reverse=True)
+    return sorted(versions, reverse=True)
 
 
 def _generate_huggingface_base_fw_latest_versions(

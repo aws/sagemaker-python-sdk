@@ -41,6 +41,7 @@ def retrieve(
 ):
 
     """Retrieves the ECR URI for the Docker image matching the given arguments.
+
     Ideally this function should not be called directly, rather it should be called from the
     fit() function inside framework estimator.
 
@@ -88,12 +89,8 @@ def retrieve(
         _validate_arg(full_base_framework_version, list(version_config.keys()), "base framework")
         version_config = version_config.get(full_base_framework_version)
 
-
     py_version = _validate_py_version_and_set_if_needed(py_version, version_config, framework)
     version_config = version_config.get(py_version) or version_config
-
-
-
     registry = _registry_from_region(region, version_config["registries"])
     hostname = utils._botocore_resolver().construct_endpoint("ecr", region)["hostname"]
 
@@ -102,7 +99,8 @@ def retrieve(
     processor = _processor(
         instance_type, config.get("processors") or version_config.get("processors")
     )
-    #if container version is available in .json file, utilize that
+
+    # if container version is available in .json file, utilize that
     if version_config.get("container_version"):
         container_version = version_config['container_version'][processor]
 
@@ -137,7 +135,6 @@ def retrieve(
             "pytorch-1.6-gpu-py3": "cu110-ubuntu18.04-v3",
             "pytorch-1.6.0-gpu-py3": "cu110-ubuntu18.04"
         }
-
 
         key = "-".join([framework, tag])
 
