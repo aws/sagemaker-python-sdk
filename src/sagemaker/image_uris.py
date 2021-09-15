@@ -39,7 +39,6 @@ def retrieve(
     distribution=None,
     base_framework_version=None,
 ):
-
     """Retrieves the ECR URI for the Docker image matching the given arguments.
 
     Ideally this function should not be called directly, rather it should be called from the
