@@ -122,7 +122,6 @@ def retrieve(
         container_version,
     )
 
-
     if _should_auto_select_container_version(instance_type, distribution):
         container_versions = {
             "tensorflow-2.3-gpu-py37": "cu110-ubuntu18.04-v3",
@@ -136,8 +135,7 @@ def retrieve(
             "pytorch-1.6-gpu-py36": "cu110-ubuntu18.04-v3",
             "pytorch-1.6.0-gpu-py36": "cu110-ubuntu18.04",
             "pytorch-1.6-gpu-py3": "cu110-ubuntu18.04-v3",
-            "pytorch-1.6.0-gpu-py3": "cu110-ubuntu18.04",
-            "pytorch-1.8.1-gpu-py3": "cu111-ubuntu18.04"
+            "pytorch-1.6.0-gpu-py3": "cu110-ubuntu18.04"
         }
 
 
