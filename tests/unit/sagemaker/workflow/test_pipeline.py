@@ -37,9 +37,9 @@ from tests.unit.sagemaker.workflow.helpers import ordered
 
 
 class CustomStep(Step):
-    def __init__(self, name, input_data):
+    def __init__(self, name, input_data, display_name=None, description=None):
         self.input_data = input_data
-        super(CustomStep, self).__init__(name, StepTypeEnum.TRAINING)
+        super(CustomStep, self).__init__(name, display_name, description, StepTypeEnum.TRAINING)
 
         path = f"Steps.{name}"
         prop = Properties(path=path)

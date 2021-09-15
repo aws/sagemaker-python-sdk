@@ -11,17 +11,16 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
-
 import pytest
-
 from sagemaker import image_uris
-from tests.unit.sagemaker.image_uris import expected_uris, regions
+from tests.unit.sagemaker.image_uris import expected_uris
 
 ALGO_REGISTRIES = {
     "af-south-1": "455444449433",
     "ap-east-1": "286214385809",
     "ap-northeast-1": "501404015308",
     "ap-northeast-2": "306986355934",
+    "ap-northeast-3": "867004704886",
     "ap-south-1": "991648021394",
     "ap-southeast-1": "475088953585",
     "ap-southeast-2": "544295431143",
@@ -52,6 +51,7 @@ FRAMEWORK_REGISTRIES = {
     "ap-east-1": "651117190479",
     "ap-northeast-1": "354813040037",
     "ap-northeast-2": "366743142698",
+    "ap-northeast-3": "867004704886",
     "ap-south-1": "720646828776",
     "ap-southeast-1": "121021644041",
     "ap-southeast-2": "783357654285",
@@ -77,7 +77,7 @@ FRAMEWORK_REGISTRIES = {
 
 @pytest.mark.parametrize("xgboost_framework_version", XGBOOST_FRAMEWORK_CPU_GPU_VERSIONS)
 def test_xgboost_framework(xgboost_framework_version):
-    for region in regions.regions():
+    for region in FRAMEWORK_REGISTRIES.keys():
         uri = image_uris.retrieve(
             framework="xgboost",
             region=region,
@@ -97,7 +97,7 @@ def test_xgboost_framework(xgboost_framework_version):
 
 @pytest.mark.parametrize("xgboost_framework_version", XGBOOST_FRAMEWORK_CPU_ONLY_VERSIONS)
 def test_xgboost_framework_cpu_only(xgboost_framework_version):
-    for region in regions.regions():
+    for region in FRAMEWORK_REGISTRIES.keys():
         uri = image_uris.retrieve(
             framework="xgboost",
             region=region,
@@ -117,7 +117,7 @@ def test_xgboost_framework_cpu_only(xgboost_framework_version):
 
 @pytest.mark.parametrize("xgboost_algo_version", ALGO_VERSIONS)
 def test_xgboost_algo(xgboost_algo_version):
-    for region in regions.regions():
+    for region in ALGO_REGISTRIES.keys():
         uri = image_uris.retrieve(framework="xgboost", region=region, version=xgboost_algo_version)
 
         expected = expected_uris.algo_uri(
