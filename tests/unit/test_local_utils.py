@@ -13,6 +13,7 @@
 from __future__ import absolute_import
 
 import os
+import errno
 import pytest
 from mock import patch, Mock
 
@@ -92,3 +93,20 @@ def test_get_child_process_ids(m_subprocess):
     m_subprocess.Popen.return_value = process_mock
     sagemaker.local.utils.get_child_process_ids("pid")
     m_subprocess.Popen.assert_called_with(cmd, stdout=m_subprocess.PIPE, stderr=m_subprocess.PIPE)
+
+
+def raise_os_error(args):
+    err = OSError()
+    err.errno = errno.EACCES
+    raise err
+
+
+@patch("shutil.rmtree", side_effect=raise_os_error)
+@patch("sagemaker.local.utils.recursive_copy")
+def test_move_to_destination_local_root_failure(recursive_copy, mock_rmtree):
+    # This should not raise, in case root owns files, make sure it doesn't
+    sagemaker.local.utils.move_to_destination("/tmp/data", "file:///target/dir/", "job", None)
+    mock_rmtree.assert_called_once()
+    recursive_copy.assert_called_with(
+        "/tmp/data", os.path.abspath(os.path.join(os.sep, "target", "dir"))
+    )
