@@ -18,7 +18,6 @@ import os
 
 import pytest
 from mock import MagicMock, Mock, patch
-
 from sagemaker.huggingface import HuggingFace
 
 from .huggingface_utils import get_full_gpu_image_uri, GPU_INSTANCE_TYPE, REGION
@@ -219,6 +218,7 @@ def test_huggingface(
     huggingface_training_version,
     huggingface_pytorch_training_version,
 ):
+
     hf = HuggingFace(
         py_version="py36",
         entry_point=SCRIPT_PATH,

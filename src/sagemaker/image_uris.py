@@ -101,7 +101,7 @@ def retrieve(
 
     # if container version is available in .json file, utilize that
     if version_config.get("container_version"):
-        container_version = version_config['container_version'][processor]
+        container_version = version_config["container_version"][processor]
 
     if framework == HUGGING_FACE_FRAMEWORK:
         pt_or_tf_version = (
@@ -132,7 +132,7 @@ def retrieve(
             "pytorch-1.6-gpu-py36": "cu110-ubuntu18.04-v3",
             "pytorch-1.6.0-gpu-py36": "cu110-ubuntu18.04",
             "pytorch-1.6-gpu-py3": "cu110-ubuntu18.04-v3",
-            "pytorch-1.6.0-gpu-py3": "cu110-ubuntu18.04"
+            "pytorch-1.6.0-gpu-py3": "cu110-ubuntu18.04",
         }
 
         key = "-".join([framework, tag])
