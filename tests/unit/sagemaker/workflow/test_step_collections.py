@@ -407,7 +407,7 @@ def test_register_model_with_model_repack_with_estimator(estimator, model_metric
                     },
                     "HyperParameters": {
                         "inference_script": '"dummy_script.py"',
-                        "dependencies": f"\"{dummy_requirements}\"",
+                        "dependencies": f'"{dummy_requirements}"',
                         "model_archive": '"model.tar.gz"',
                         "sagemaker_submit_directory": '"s3://{}/{}/source/sourcedir.tar.gz"'.format(
                             BUCKET, repacker_job_name.replace('"', "")
@@ -416,7 +416,7 @@ def test_register_model_with_model_repack_with_estimator(estimator, model_metric
                         "sagemaker_container_log_level": "20",
                         "sagemaker_job_name": repacker_job_name,
                         "sagemaker_region": f'"{REGION}"',
-                        "source_dir": 'null'
+                        "source_dir": "null",
                     },
                     "InputDataConfig": [
                         {
@@ -635,7 +635,7 @@ def test_register_model_with_model_repack_with_pipeline_model(pipeline_model, mo
                         "S3OutputPath": f"s3://{BUCKET}/",
                     },
                     "HyperParameters": {
-                        "dependencies": 'null',
+                        "dependencies": "null",
                         "inference_script": '"dummy_script.py"',
                         "model_archive": '"model.tar.gz"',
                         "sagemaker_submit_directory": '"s3://{}/{}/source/sourcedir.tar.gz"'.format(
@@ -645,7 +645,7 @@ def test_register_model_with_model_repack_with_pipeline_model(pipeline_model, mo
                         "sagemaker_container_log_level": "20",
                         "sagemaker_job_name": repacker_job_name,
                         "sagemaker_region": f'"{REGION}"',
-                        "source_dir": 'null',
+                        "source_dir": "null",
                     },
                     "InputDataConfig": [
                         {
