@@ -21,10 +21,13 @@ import os
 import pytest
 import time
 
-@pytest.mark.skip(reason="""This test operates on the root file system 
+
+@pytest.mark.skip(
+    reason="""This test operates on the root file system
                             and will likely fail due to permission errors.
                             Temporarily remove this skip decorator and run
-                            the test after making changes to _repack_model.py""")
+                            the test after making changes to _repack_model.py"""
+)
 def test_repack_entry_point_only(tmp):
     model_name = "xg-boost-model"
     fake_model_path = os.path.join(tmp, model_name)
@@ -51,19 +54,19 @@ def test_repack_entry_point_only(tmp):
     )
 
     # repack
-    _repack_model.repack(
-        inference_script="inference.py",
-        model_archive=model_tar_name
-    )
+    _repack_model.repack(inference_script="inference.py", model_archive=model_tar_name)
 
     # /opt/ml/model should now have the original model and the inference script
     assert os.path.exists(os.path.join("/opt/ml/model", model_name))
     assert os.path.exists(os.path.join("/opt/ml/model/code", "inference.py"))
 
-@pytest.mark.skip(reason="""This test operates on the root file system 
+
+@pytest.mark.skip(
+    reason="""This test operates on the root file system
                             and will likely fail due to permission errors.
                             Temporarily remove this skip decorator and run
-                            the test after making changes to _repack_model.py""")
+                            the test after making changes to _repack_model.py"""
+)
 def test_repack_with_dependencies(tmp):
     model_name = "xg-boost-model"
     fake_model_path = os.path.join(tmp, model_name)
@@ -84,19 +87,14 @@ def test_repack_with_dependencies(tmp):
     # create files that will be added to model.tar.gz
     create_file_tree(
         "/opt/ml/code",
-        [
-            "inference.py",
-            "dependencies/a",
-            "bb",
-            "dependencies/some/dir/b"
-        ],
+        ["inference.py", "dependencies/a", "bb", "dependencies/some/dir/b"],
     )
 
     # repack
     _repack_model.repack(
         inference_script="inference.py",
         model_archive=model_tar_name,
-        dependencies=["dependencies/a", "bb", "dependencies/some/dir"]
+        dependencies=["dependencies/a", "bb", "dependencies/some/dir"],
     )
 
     # /opt/ml/model should now have the original model and the inference script
@@ -106,10 +104,13 @@ def test_repack_with_dependencies(tmp):
     assert os.path.exists(os.path.join("/opt/ml/model/code/lib", "bb"))
     assert os.path.exists(os.path.join("/opt/ml/model/code/lib/dir", "b"))
 
-@pytest.mark.skip(reason="""This test operates on the root file system 
+
+@pytest.mark.skip(
+    reason="""This test operates on the root file system
                             and will likely fail due to permission errors.
                             Temporarily remove this skip decorator and run
-                            the test after making changes to _repack_model.py""")
+                            the test after making changes to _repack_model.py"""
+)
 def test_repack_with_source_dir_and_dependencies(tmp):
     model_name = "xg-boost-model"
     fake_model_path = os.path.join(tmp, model_name)
@@ -136,7 +137,7 @@ def test_repack_with_source_dir_and_dependencies(tmp):
             "bb",
             "dependencies/some/dir/b",
             "sourcedir/foo.py",
-            "sourcedir/some/dir/a"
+            "sourcedir/some/dir/a",
         ],
     )
 
@@ -145,7 +146,7 @@ def test_repack_with_source_dir_and_dependencies(tmp):
         inference_script="inference.py",
         model_archive=model_tar_name,
         dependencies=["dependencies/a", "bb", "dependencies/some/dir"],
-        source_dir="sourcedir"
+        source_dir="sourcedir",
     )
 
     # /opt/ml/model should now have the original model and the inference script

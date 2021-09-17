@@ -148,7 +148,7 @@ class _RepackModelStep(TrainingStep):
         # convert dependencies array into space-delimited string
         dependencies_hyperparameter = None
         if self._dependencies:
-            dependencies_hyperparameter = ' '.join(self._dependencies)
+            dependencies_hyperparameter = " ".join(self._dependencies)
 
         # the real estimator and inputs
         repacker = SKLearn(
@@ -163,7 +163,7 @@ class _RepackModelStep(TrainingStep):
                 "inference_script": self._entry_point_basename,
                 "model_archive": self._model_archive,
                 "dependencies": dependencies_hyperparameter,
-                "source_dir": self._source_dir
+                "source_dir": self._source_dir,
             },
             subnets=subnets,
             security_group_ids=security_group_ids,
