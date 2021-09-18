@@ -1,5 +1,63 @@
 # Changelog
 
+## v2.59.2 (2021-09-15)
+
+### Bug Fixes and Other Changes
+
+ * unit tests for KIX and remove regional calls to boto
+
+### Documentation Changes
+
+ * Remove Shortbread
+
+## v2.59.1.post0 (2021-09-13)
+
+### Documentation Changes
+
+ * update experiment config doc on fit method
+
+## v2.59.1 (2021-09-02)
+
+### Bug Fixes and Other Changes
+
+ * pin docker to 5.0.0
+
+## v2.59.0 (2021-09-01)
+
+### Features
+
+ * Add KIX account for SM XGBoost 1.2-2 and 1.3-1
+
+### Bug Fixes and Other Changes
+
+ * revert #2572 and address #2611
+
+## v2.58.0 (2021-08-31)
+
+### Features
+
+ * update debugger for KIX
+ * support displayName and description for pipeline steps
+
+### Bug Fixes and Other Changes
+
+ * localmode subprocess parent process not sending SIGTERM to child
+
+## v2.57.0 (2021-08-30)
+
+### Deprecations and Removals
+
+ * Remove stale S3DownloadMode from test_session.py
+
+### Features
+
+ * update clarify imageURI for KIX
+
+### Bug Fixes and Other Changes
+
+ * propagate KMS key to model.deploy
+ * Propagate tags and VPC configs to repack model steps
+
 ## v2.56.0 (2021-08-26)
 
 ### Features
