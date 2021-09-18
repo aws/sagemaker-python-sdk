@@ -532,8 +532,8 @@ def test_register_model_with_model_repack_with_model(model, model_metrics):
                         "sagemaker_container_log_level": "20",
                         "sagemaker_job_name": repacker_job_name,
                         "sagemaker_region": f'"{REGION}"',
-                        "dependencies": 'null',
-                        "source_dir": 'null'
+                        "dependencies": "null",
+                        "source_dir": "null",
                     },
                     "InputDataConfig": [
                         {
