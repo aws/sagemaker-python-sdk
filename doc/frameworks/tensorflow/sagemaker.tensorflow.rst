@@ -25,3 +25,11 @@ TensorFlow Serving Predictor
     :members:
     :undoc-members:
     :show-inheritance:
+
+TensorFlow Processor
+--------------------
+
+.. autoclass:: sagemaker.tensorflow.processing.TensorFlowProcessor
+    :members:
+    :undoc-members:
+    :show-inheritance:

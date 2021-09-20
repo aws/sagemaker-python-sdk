@@ -17,10 +17,18 @@ Hugging Face Model
     :undoc-members:
     :show-inheritance:
 
-HuggingFace Predictor
----------------------
+Hugging Face Predictor
+----------------------
 
 .. autoclass:: sagemaker.huggingface.model.HuggingFacePredictor
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+Hugging Face Processor
+----------------------
+
+.. autoclass:: sagemaker.huggingface.processing.HuggingFaceProcessor
     :members:
     :undoc-members:
     :show-inheritance:

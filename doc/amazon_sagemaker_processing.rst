@@ -62,6 +62,22 @@ Then you can run a scikit-learn script ``preprocessing.py`` in a processing job.
 
     preprocessing_job_description = sklearn_processor.jobs[-1].describe()
 
+Instead of a single script file, you can submit an entire folder of code for a processing job, and optionally specify additional dependencies to be installed at job start-up by including a `requirements.txt` file.
+
+To do this, also specify the ``source_dir`` parameter in ``.run()`` calls for :class:`SKLearnProcessor` or any other :class:`FrameworkProcessor`-based processor:
+
+.. code:: python
+
+    sklearn_processor.run(
+        code="run.py",  # 'processing/run.py' is the main script to run
+        source_dir="processing",  # Upload the whole contents of 'processing/'
+
+        # If 'processing/requirements.txt' exists, the dependencies it specifies
+        # will be automatically installed before 'run.py' is started.
+        inputs=[...],
+        outputs=[...],
+    )
+
 For an in-depth look, please see the `Scikit-learn Data Processing and Model Evaluation`_ example notebook.
 
 .. _Scikit-learn Data Processing and Model Evaluation: https://github.com/awslabs/amazon-sagemaker-examples/blob/master/sagemaker_processing/scikit_learn_data_processing_and_model_evaluation/scikit_learn_data_processing_and_model_evaluation.ipynb
@@ -220,6 +236,13 @@ For an in-depth look, please see the `Feature Transformation with Spark`_ exampl
 
 .. _Feature Transformation with Spark: https://github.com/awslabs/amazon-sagemaker-examples/blob/master/sagemaker_processing/feature_transformation_with_sagemaker_processing/feature_transformation_with_sagemaker_processing.ipynb
 
+Data Processing with Other Frameworks
+=====================================
+
+:class:`FrameworkProcessor`-based classes are also provided for a range of other ML frameworks: For example PyTorch, TensorFlow, and MXNet.
+
+You can use these to run data processing jobs in pre-built container environments, similarly to model training with :class:`Framework`-based Estimators.
+
 
 Learn More
 ==========
@@ -229,12 +252,18 @@ Processing class documentation
 
 - :class:`sagemaker.processing.Processor`
 - :class:`sagemaker.processing.ScriptProcessor`
+- :class:`sagemaker.processing.FrameworkProcessor`
 - :class:`sagemaker.sklearn.processing.SKLearnProcessor`
 - :class:`sagemaker.spark.processing.PySparkProcessor`
 - :class:`sagemaker.spark.processing.SparkJarProcessor`
 - :class:`sagemaker.processing.ProcessingInput`
 - :class:`sagemaker.processing.ProcessingOutput`
 - :class:`sagemaker.processing.ProcessingJob`
+- :class:`sagemaker.huggingface.processing.HuggingFaceProcessor`
+- :class:`sagemaker.mxnet.processing.MXNetProcessor`
+- :class:`sagemaker.pytorch.processing.PyTorchProcessor`
+- :class:`sagemaker.tensorflow.processing.TensorFlowProcessor`
+- :class:`sagemaker.xgboost.processing.XGBoostProcessor`
 
 
 Further documentation
