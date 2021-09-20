@@ -250,15 +250,15 @@ class _SparkProcessorBase(ScriptProcessor):
         self._current_job_name = self._generate_current_job_name(job_name=job_name)
 
         super().run(
-            submit_app,
-            inputs,
-            outputs,
-            arguments,
-            wait,
-            logs,
-            job_name,
-            experiment_config,
-            kms_key,
+            code=submit_app,
+            inputs=inputs,
+            outputs=outputs,
+            arguments=arguments,
+            wait=wait,
+            logs=logs,
+            job_name=job_name,
+            experiment_config=experiment_config,
+            kms_key=kms_key,
         )
 
     def _extend_processing_args(self, inputs, outputs, **kwargs):
