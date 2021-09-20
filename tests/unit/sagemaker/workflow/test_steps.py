@@ -435,6 +435,7 @@ def test_processing_step_normalizes_args(mock_normalize_args, sagemaker_session)
         inputs=step.inputs,
         outputs=step.outputs,
         code=step.code,
+        source_dir=None,
     )
 
 
