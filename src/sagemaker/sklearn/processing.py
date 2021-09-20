@@ -22,20 +22,9 @@ from sagemaker.sklearn.estimator import SKLearn
 
 
 class SKLearnProcessor(FrameworkProcessor):
-    """Initialize an ``SKLearnProcessor`` instance.
+    """Handles Amazon SageMaker processing tasks for jobs using scikit-learn.
 
-    The SKLearnProcessor handles Amazon SageMaker processing tasks for jobs using scikit-learn.
-
-    Unless ``image_uri`` is specified, the scikit-learn environment is an
-    Amazon-built Docker container that executes functions defined in the supplied
-    ``code`` Python script.
-
-    The arguments have the exact same meaning as in ``FrameworkProcessor``.
-
-    .. tip::
-
-        You can find additional parameters for initializing this class at
-        :class:`~sagemaker.processing.FrameworkProcessor`.
+    This processor executes a Python script in a scikit-learn execution environment.
     """
 
     estimator_cls = SKLearn
@@ -44,8 +33,8 @@ class SKLearnProcessor(FrameworkProcessor):
         self,
         framework_version,
         role,
-        instance_count,
         instance_type,
+        instance_count,
         py_version="py3",
         image_uri=None,
         command=None,
@@ -60,24 +49,36 @@ class SKLearnProcessor(FrameworkProcessor):
         tags=None,
         network_config=None,
     ):
-        """This processor executes a Python script in a scikit-learn execution environment."""
-        super().__init__(
-            self.estimator_cls,
-            framework_version,
-            role,
-            instance_count,
-            instance_type,
-            py_version,
-            image_uri,
-            command,
-            volume_size_in_gb,
-            volume_kms_key,
-            output_kms_key,
-            code_location,
-            max_runtime_in_seconds,
-            base_job_name,
-            sagemaker_session,
-            env,
-            tags,
-            network_config,
+        """Initialize an ``SKLearnProcessor`` instance.
+
+        Unless ``image_uri`` is specified, the SKLearn environment is an
+        Amazon-built Docker container that executes functions defined in the supplied
+        ``code`` Python script.
+
+        The arguments have the exact same meaning as in ``FrameworkProcessor``.
+
+        .. tip::
+
+            You can find additional parameters for initializing this class at
+            :class:`~sagemaker.processing.FrameworkProcessor`.
+        """
+        super(SKLearnProcessor).__init__(
+            estimator_cls=self.estimator_cls,
+            framework_version=framework_version,
+            role=role,
+            image_uri=image_uri,
+            instance_count=instance_count,
+            instance_type=instance_type,
+            py_version=py_version,
+            command=command,
+            volume_size_in_gb=volume_size_in_gb,
+            volume_kms_key=volume_kms_key,
+            output_kms_key=output_kms_key,
+            code_location=code_location,
+            max_runtime_in_seconds=max_runtime_in_seconds,
+            base_job_name=base_job_name,
+            sagemaker_session=sagemaker_session,
+            env=env,
+            tags=tags,
+            network_config=network_config,
         )
