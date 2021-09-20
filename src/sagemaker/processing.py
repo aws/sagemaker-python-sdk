@@ -22,7 +22,6 @@ import os
 import pathlib
 import logging
 from textwrap import dedent
-from typing import Dict, List, Optional
 
 import attr
 
