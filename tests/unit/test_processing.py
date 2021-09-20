@@ -161,6 +161,59 @@ def test_sklearn_with_all_parameters(
     sagemaker_session.process.assert_called_with(**expected_args)
 
 
+@patch("sagemaker.utils._botocore_resolver")
+@patch("os.path.exists", return_value=True)
+@patch("os.path.isfile", return_value=True)
+def test_normalize_args_prepares_frameworkprocessor(
+    exists_mock, isfile_mock, botocore_resolver, sklearn_version, sagemaker_session, uploaded_code
+):
+    botocore_resolver.return_value.construct_endpoint.return_value = {"hostname": ECR_HOSTNAME}
+
+    processor = SKLearnProcessor(
+        role=ROLE,
+        framework_version=sklearn_version,
+        instance_type="ml.m4.xlarge",
+        instance_count=1,
+        sagemaker_session=sagemaker_session,
+    )
+
+    raw_job_inputs = _get_data_inputs_all_parameters()
+    raw_job_outputs = _get_data_outputs_all_parameters()
+    with patch("sagemaker.estimator.tar_and_upload_dir", return_value=uploaded_code):
+        # sagemaker.workflow.steps.ProcessingStep assumes that calling _normalize_args() on a
+        # Processor is sufficient to ensure it packages whatever code might be to S3 and prepares
+        # final ProcessingInputs for the job:
+        normalized_inputs, normalized_outputs = processor._normalize_args(
+            inputs=raw_job_inputs,
+            outputs=raw_job_outputs,
+            code="processing_code.py",
+            source_dir="/local/path/to/source_dir",
+        )
+        process_args = ProcessingJob._get_process_args(
+            processor, normalized_inputs, normalized_outputs, experiment_config=dict()
+        )
+
+    # Code and entrypoint inputs should *both* have been added to the inputs:
+    assert len(normalized_inputs) == len(raw_job_inputs) + 2
+    normalized_inputs[0].input_name == "code"
+    code_inputs = list(filter(lambda i: i.input_name == "code", normalized_inputs))
+    assert len(code_inputs) == 1
+    assert code_inputs[0].source == uploaded_code.s3_prefix
+    entrypoint_inputs = list(filter(lambda i: i.input_name == "entrypoint", normalized_inputs))
+    assert len(entrypoint_inputs) == 1
+
+    # Outputs should be as per raw:
+    assert len(normalized_outputs) == len(raw_job_outputs)
+
+    # Job "entrypoint" should be the framework bootstrap script, *not* the user's script
+    job_command = process_args["app_specification"]["ContainerEntrypoint"]
+    assert (
+        job_command[0 : len(processor.framework_entrypoint_command)]
+        == processor.framework_entrypoint_command
+    )
+    assert "processing_code.py" not in job_command[1]
+
+
 @patch("sagemaker.local.LocalSession.__init__", return_value=None)
 def test_local_mode_disables_local_code_by_default(localsession_mock):
     Processor(

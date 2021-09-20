@@ -395,7 +395,7 @@ def test_processing_step_normalizes_args(mock_normalize_args, sagemaker_session)
         volume_kms_key="arn:aws:kms:us-west-2:012345678901:key/volume-kms-key",
         output_kms_key="arn:aws:kms:us-west-2:012345678901:key/output-kms-key",
         max_runtime_in_seconds=3600,
-        base_job_name="my_sklearn_processor",
+        base_job_name="my_script_processor",
         env={"my_env_variable": "my_env_variable_value"},
         tags=[{"Key": "my-tag", "Value": "my-tag-value"}],
         network_config=NetworkConfig(
