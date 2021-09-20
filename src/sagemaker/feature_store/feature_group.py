@@ -457,8 +457,8 @@ class FeatureGroup:
             online_store_kms_key_id (str): KMS key id for online store.
             enable_online_store (bool): whether to enable online store or not.
             offline_store_kms_key_id (str): KMS key id for offline store.
-                If KMS encryption key is not specified, by default we encrypt all data at 
-                rest using AWS KMS key. By defining your bucket-level key for SSE, you can 
+                If KMS encryption key is not specified, by default we encrypt all data at
+                rest using AWS KMS key. By defining your bucket-level key for SSE, you can
                 reduce AWS KMS requests costs by up to 99 percent.
                 For more information, see the S3 documentation for
                 `Bucket Key
