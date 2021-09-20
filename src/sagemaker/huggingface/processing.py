@@ -105,6 +105,8 @@ class HuggingFaceProcessor(FrameworkProcessor):
         source_dir=None,
         dependencies=None,
         git_config=None,
+        output_kms_key=None,
+        volume_kms_key=None,
     ):
         """Override default estimator factory function for HuggingFace's different parameters
 
@@ -121,6 +123,8 @@ class HuggingFaceProcessor(FrameworkProcessor):
             dependencies=dependencies,
             git_config=git_config,
             code_location=self.code_location,
+            output_kms_key=output_kms_key,
+            volume_kms_key=volume_kms_key,
             enable_network_isolation=False,
             image_uri=self.image_uri,
             role=self.role,
