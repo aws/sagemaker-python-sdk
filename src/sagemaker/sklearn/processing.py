@@ -62,7 +62,7 @@ class SKLearnProcessor(FrameworkProcessor):
             You can find additional parameters for initializing this class at
             :class:`~sagemaker.processing.FrameworkProcessor`.
         """
-        super(SKLearnProcessor).__init__(
+        super(SKLearnProcessor, self).__init__(
             estimator_cls=self.estimator_cls,
             framework_version=framework_version,
             role=role,
