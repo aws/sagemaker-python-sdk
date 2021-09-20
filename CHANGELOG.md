@@ -1,5 +1,15 @@
 # Changelog
 
+## v2.59.2 (2021-09-15)
+
+### Bug Fixes and Other Changes
+
+ * unit tests for KIX and remove regional calls to boto
+
+### Documentation Changes
+
+ * Remove Shortbread
+
 ## v2.59.1.post0 (2021-09-13)
 
 ### Documentation Changes
