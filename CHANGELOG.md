@@ -1,5 +1,7 @@
 # Changelog
 
+## v2.59.3 (2021-09-20)
+
 ## v2.59.2 (2021-09-15)
 
 ### Bug Fixes and Other Changes
