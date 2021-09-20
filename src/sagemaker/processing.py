@@ -481,7 +481,7 @@ class ScriptProcessor(Processor):
     def get_run_args(
         self,
         code,
-        source_dir=None,
+        source_dir=None,  # pylint: disable=W0613
         inputs=None,
         outputs=None,
         arguments=None,
@@ -646,7 +646,7 @@ class ScriptProcessor(Processor):
             if source_dir:
                 raise ValueError(
                     "If source_dir is provided, code should be a path relative to the folder. "
-                    "Got S3 URI {}".format(code)
+                    "Got S3 URI %s" % code
                 )
         elif code_url.scheme == "" or code_url.scheme == "file":
             if source_url.scheme == "s3":
@@ -661,32 +661,24 @@ class ScriptProcessor(Processor):
                 code_path = os.path.join(source_path, rel_code_path)
                 if not os.path.exists(code_path):
                     raise ValueError(
-                        """code {} wasn't found. Please make sure that the file exists.
-                        """.format(
-                            code
-                        )
+                        "code %s wasn't found. Please make sure that the file exists." % code
                     )
                 if not os.path.isfile(code_path):
                     raise ValueError(
-                        """code {} must be a file, not a directory. Please pass a path to a file.
-                        """.format(
-                            code
-                        )
+                        "code %s must be a file, not a directory. Please pass a path to a file"
+                        % code
                     )
                 user_code_s3_uri = self._upload_code(source_path or code_path, kms_key)
                 entry_point = rel_code_path if source_path else os.path.basename(rel_code_path)
             else:
                 raise ValueError(
-                    """source_dir {} url scheme {} is not recognized. Please pass a file path or S3 url
-                    """.format(
-                        code, code_url.scheme
-                    )
+                    "source_dir %s url scheme %s is not recognized. Please pass a file path or S3 "
+                    "URI." % (source_dir, source_url.scheme)
                 )
         else:
             raise ValueError(
-                "code {} url scheme {} is not recognized. Please pass a file path or S3 url".format(
-                    code, code_url.scheme
-                )
+                "code %s url scheme %s is not recognized. Please pass a file path or S3 URI"
+                % (code, code_url.scheme)
             )
         return user_code_s3_uri, entry_point
 
