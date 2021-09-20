@@ -291,6 +291,7 @@
             "4.6.1": {
                 "version_aliases": {
                     "pytorch1.7": "pytorch1.7.1",
+                    "pytorch1.8": "pytorch1.8.1",
                     "tensorflow2.4": "tensorflow2.4.1"
                 },
                 "pytorch1.7.1": {
