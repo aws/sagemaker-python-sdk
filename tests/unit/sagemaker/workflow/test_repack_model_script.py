@@ -155,8 +155,8 @@ def test_repack_with_source_dir_and_dependencies(tmp):
     assert os.path.exists(os.path.join("/opt/ml/model/code/lib", "a"))
     assert os.path.exists(os.path.join("/opt/ml/model/code/lib", "bb"))
     assert os.path.exists(os.path.join("/opt/ml/model/code/lib/dir", "b"))
-    assert os.path.exists(os.path.join("/opt/ml/model/code/sourcedir", "foo.py"))
-    assert os.path.exists(os.path.join("/opt/ml/model/code/sourcedir/some/dir", "a"))
+    assert os.path.exists(os.path.join("/opt/ml/model/code/", "foo.py"))
+    assert os.path.exists(os.path.join("/opt/ml/model/code/some/dir", "a"))
 
 
 def create_file_tree(root, tree):
