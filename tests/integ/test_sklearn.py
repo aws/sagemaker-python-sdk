@@ -43,7 +43,6 @@ def sklearn_training_job(
         sklearn_latest_version,
         sklearn_latest_py_version,
     )
-    sagemaker_session.boto_region_name
 
 
 def test_framework_processing_job_with_deps(
