@@ -15,7 +15,7 @@ from __future__ import absolute_import
 import pytest
 
 from sagemaker import image_uris
-from tests.unit.sagemaker.image_uris import expected_uris, regions
+from tests.unit.sagemaker.image_uris import expected_uris
 
 ACCOUNTS = {
     "af-south-1": "510948584623",
@@ -47,7 +47,7 @@ ACCOUNTS = {
 
 
 def test_valid_uris(sklearn_version):
-    for region in regions.regions():
+    for region in ACCOUNTS.keys():
         uri = image_uris.retrieve(
             "sklearn",
             region=region,
