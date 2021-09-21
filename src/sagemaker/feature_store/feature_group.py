@@ -457,12 +457,13 @@ class FeatureGroup:
             online_store_kms_key_id (str): KMS key id for online store.
             enable_online_store (bool): whether to enable online store or not.
             offline_store_kms_key_id (str): KMS key id for offline store.
-                If KMS encryption key is not specified, by default we encrypt all data at
-                rest using AWS KMS key. By defining your bucket-level key for SSE, you can
-                reduce AWS KMS requests costs by up to 99 percent.
-                For more information, see the S3 documentation for
+                If a KMS encryption key is not specified, SageMaker encrypts all data at
+                rest using the default AWS KMS key. By defining your bucket-level key for
+                SSE, you can reduce the cost of AWS KMS requests.
+                For more information, see
                 `Bucket Key
-                <https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucket-key.html>`_.
+                <https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucket-key.html>`_
+                in the Amazon S3 User Guide.
             disable_glue_table_creation (bool): whether to turn off Glue table creation no not.
             data_catalog_config (DataCatalogConfig): configuration for Metadata store.
             description (str): description of the FeatureGroup.
