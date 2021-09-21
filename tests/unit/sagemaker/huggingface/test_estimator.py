@@ -19,7 +19,6 @@ import os
 import pytest
 from mock import MagicMock, Mock, patch
 from sagemaker.huggingface import HuggingFace
-
 from .huggingface_utils import get_full_gpu_image_uri, GPU_INSTANCE_TYPE, REGION
 
 
