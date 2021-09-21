@@ -25,32 +25,22 @@ from sagemaker.workflow.entities import Expression
 class PropertiesMeta(type):
     """Load an internal shapes attribute from the botocore service model
 
-<<<<<<< HEAD
-    _shapes = None
-    _emr_shapes = None
-=======
     for sagemaker and emr service.
     """
 
     _shapes_map = dict()
->>>>>>> feature: Add EMRStep support in Sagemaker pipeline
     _primitive_types = {"string", "boolean", "integer", "float"}
 
     def __new__(mcs, *args, **kwargs):
         """Loads up the shapes from the botocore sagemaker service model."""
         if len(mcs._shapes_map.keys()) == 0:
             loader = botocore.loaders.Loader()
-<<<<<<< HEAD
-            model = loader.load_service_model("sagemaker", "service-2")
-            emr_model = loader.load_service_model("emr", "service-2")
-            mcs._shapes = model["shapes"]
-            mcs._emr_shapes = emr_model["shapes"]
-=======
+
             sagemaker_model = loader.load_service_model("sagemaker", "service-2")
             emr_model = loader.load_service_model("emr", "service-2")
             mcs._shapes_map["sagemaker"] = sagemaker_model["shapes"]
             mcs._shapes_map["emr"] = emr_model["shapes"]
->>>>>>> feature: Add EMRStep support in Sagemaker pipeline
+
         return super().__new__(mcs, *args, **kwargs)
 
 
@@ -62,11 +52,7 @@ class Properties(metaclass=PropertiesMeta):
         path: str,
         shape_name: str = None,
         shape_names: List[str] = None,
-<<<<<<< HEAD
-        external_service_name: str = None,
-=======
         service_name: str = "sagemaker",
->>>>>>> feature: Add EMRStep support in Sagemaker pipeline
     ):
         """Create a Properties instance representing the given shape.
 
@@ -79,13 +65,7 @@ class Properties(metaclass=PropertiesMeta):
         shape_names = [] if shape_names is None else shape_names
         self._shape_names = shape_names if shape_name is None else [shape_name] + shape_names
 
-<<<<<<< HEAD
-        shapes = Properties._shapes
-        if external_service_name == "emr":
-            shapes = Properties._emr_shapes
-=======
         shapes = Properties._shapes_map.get(service_name, {})
->>>>>>> feature: Add EMRStep support in Sagemaker pipeline
 
         for name in self._shape_names:
             shape = shapes.get(name, {})

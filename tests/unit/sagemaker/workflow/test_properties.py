@@ -71,14 +71,6 @@ def test_properties_tuning_job():
 
 
 def test_properties_emr_step():
-<<<<<<< HEAD
-    prop = Properties("Steps.MyStep", "DescribeStepOutput", external_service_name="emr")
-    some_prop_names = ["Step"]
-    for name in some_prop_names:
-        assert name in prop.__dict__.keys()
-
-    assert prop.Step.expr == {"Get": "Steps.MyStep.Step"}
-=======
     prop = Properties("Steps.MyStep", "Step", service_name="emr")
     some_prop_names = ["Id", "Name", "Config", "ActionOnFailure", "Status"]
     for name in some_prop_names:
@@ -89,7 +81,6 @@ def test_properties_emr_step():
     assert prop.ActionOnFailure.expr == {"Get": "Steps.MyStep.ActionOnFailure"}
     assert prop.Config.Jar.expr == {"Get": "Steps.MyStep.Config.Jar"}
     assert prop.Status.State.expr == {"Get": "Steps.MyStep.Status.State"}
->>>>>>> feature: Add EMRStep support in Sagemaker pipeline
 
 
 def test_properties_describe_model_package_output():

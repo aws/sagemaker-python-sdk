@@ -19,10 +19,6 @@ import pytest
 from mock import Mock
 
 from sagemaker.workflow.emr_step import EMRStep, EMRStepConfig
-<<<<<<< HEAD
-from sagemaker.workflow.properties import Properties
-=======
->>>>>>> feature: Add EMRStep support in Sagemaker pipeline
 from sagemaker.workflow.steps import CacheConfig
 from sagemaker.workflow.pipeline import Pipeline
 from sagemaker.workflow.parameters import ParameterString
@@ -53,11 +49,7 @@ def test_emr_step_with_one_step_config(sagemaker_session):
         name="MyEMRStep",
         display_name="MyEMRStep",
         description="MyEMRStepDescription",
-<<<<<<< HEAD
-        job_flow_id="MyClusterID",
-=======
         cluster_id="MyClusterID",
->>>>>>> feature: Add EMRStep support in Sagemaker pipeline
         step_config=emr_step_config,
         depends_on=["TestStep"],
         cache_config=CacheConfig(enable_caching=True, expire_after="PT1H"),
@@ -67,11 +59,7 @@ def test_emr_step_with_one_step_config(sagemaker_session):
         "Name": "MyEMRStep",
         "Type": "EMR",
         "Arguments": {
-<<<<<<< HEAD
-            "JobFlowId": "MyClusterID",
-=======
             "ClusterId": "MyClusterID",
->>>>>>> feature: Add EMRStep support in Sagemaker pipeline
             "StepConfig": {
                 "HadoopJarStep": {
                     "Args": ["--arg_0", "arg_0_value"],
@@ -89,12 +77,7 @@ def test_emr_step_with_one_step_config(sagemaker_session):
         "Description": "MyEMRStepDescription",
         "CacheConfig": {"Enabled": True, "ExpireAfter": "PT1H"},
     }
-<<<<<<< HEAD
-    assert emr_step.properties.Step.expr == {"Get": "Steps.MyEMRStep.Step"}
 
-
-def test_pipeline_interpolates_lambda_outputs(sagemaker_session):
-=======
     assert emr_step.properties.ClusterId == "MyClusterID"
     assert emr_step.properties.ActionOnFailure.expr == {"Get": "Steps.MyEMRStep.ActionOnFailure"}
     assert emr_step.properties.Config.Args.expr == {"Get": "Steps.MyEMRStep.Config.Args"}
@@ -109,7 +92,6 @@ def test_pipeline_interpolates_lambda_outputs(sagemaker_session):
 
 
 def test_pipeline_interpolates_emr_outputs(sagemaker_session):
->>>>>>> feature: Add EMRStep support in Sagemaker pipeline
     parameter = ParameterString("MyStr")
 
     emr_step_config_1 = EMRStepConfig(
@@ -121,11 +103,7 @@ def test_pipeline_interpolates_emr_outputs(sagemaker_session):
 
     step_emr_1 = EMRStep(
         name="emr_step_1",
-<<<<<<< HEAD
-        job_flow_id="MyClusterID",
-=======
         cluster_id="MyClusterID",
->>>>>>> feature: Add EMRStep support in Sagemaker pipeline
         display_name="emr_step_1",
         description="MyEMRStepDescription",
         depends_on=["TestStep"],
@@ -136,11 +114,7 @@ def test_pipeline_interpolates_emr_outputs(sagemaker_session):
 
     step_emr_2 = EMRStep(
         name="emr_step_2",
-<<<<<<< HEAD
-        job_flow_id="MyClusterID",
-=======
         cluster_id="MyClusterID",
->>>>>>> feature: Add EMRStep support in Sagemaker pipeline
         display_name="emr_step_2",
         description="MyEMRStepDescription",
         depends_on=["TestStep"],
@@ -167,11 +141,7 @@ def test_pipeline_interpolates_emr_outputs(sagemaker_session):
                 "Name": "emr_step_1",
                 "Type": "EMR",
                 "Arguments": {
-<<<<<<< HEAD
-                    "JobFlowId": "MyClusterID",
-=======
                     "ClusterId": "MyClusterID",
->>>>>>> feature: Add EMRStep support in Sagemaker pipeline
                     "StepConfig": {
                         "HadoopJarStep": {
                             "Args": ["--arg_0", "arg_0_value"],
@@ -192,11 +162,7 @@ def test_pipeline_interpolates_emr_outputs(sagemaker_session):
                 "Name": "emr_step_2",
                 "Type": "EMR",
                 "Arguments": {
-<<<<<<< HEAD
-                    "JobFlowId": "MyClusterID",
-=======
                     "ClusterId": "MyClusterID",
->>>>>>> feature: Add EMRStep support in Sagemaker pipeline
                     "StepConfig": {
                         "HadoopJarStep": {"Jar": "s3:/script-runner/script-runner_2.jar"}
                     },
@@ -207,15 +173,3 @@ def test_pipeline_interpolates_emr_outputs(sagemaker_session):
             },
         ],
     }
-<<<<<<< HEAD
-
-
-def test_properties_describe_step_output():
-    prop = Properties("Steps.MyStep", "DescribeStepOutput", external_service_name="emr")
-    some_prop_names = ["Step"]
-    print(prop.__dict__.keys())
-    for name in some_prop_names:
-        assert name in prop.__dict__.keys()
-    assert prop.Step.expr == {"Get": "Steps.MyStep.Step"}
-=======
->>>>>>> feature: Add EMRStep support in Sagemaker pipeline
