@@ -60,7 +60,7 @@ def retrieve(
             Valid values: "training", "inference", "eia". If ``accelerator_type`` is set,
             ``image_scope`` is ignored.
         container_version (str): the version of docker image.
-            Ideally the value of parameter is should be created inside the framework.
+            Ideally the value of parameter should be created inside the framework.
             For custom use, see the list of supported container versions:
             https://github.com/aws/deep-learning-containers/blob/master/available_images.md
             (default: None).
