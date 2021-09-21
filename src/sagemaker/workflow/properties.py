@@ -26,6 +26,7 @@ class PropertiesMeta(type):
     """Load an internal shapes attribute from the botocore sagemaker service model."""
 
     _shapes = None
+    _emr_shapes = None
     _primitive_types = {"string", "boolean", "integer", "float"}
 
     def __new__(mcs, *args, **kwargs):
@@ -33,7 +34,9 @@ class PropertiesMeta(type):
         if mcs._shapes is None:
             loader = botocore.loaders.Loader()
             model = loader.load_service_model("sagemaker", "service-2")
+            emr_model = loader.load_service_model("emr", "service-2")
             mcs._shapes = model["shapes"]
+            mcs._emr_shapes = emr_model["shapes"]
         return super().__new__(mcs, *args, **kwargs)
 
 
@@ -45,6 +48,7 @@ class Properties(metaclass=PropertiesMeta):
         path: str,
         shape_name: str = None,
         shape_names: List[str] = None,
+        external_service_name: str = None,
     ):
         """Create a Properties instance representing the given shape.
 
@@ -57,15 +61,19 @@ class Properties(metaclass=PropertiesMeta):
         shape_names = [] if shape_names is None else shape_names
         self._shape_names = shape_names if shape_name is None else [shape_name] + shape_names
 
+        shapes = Properties._shapes
+        if external_service_name == "emr":
+            shapes = Properties._emr_shapes
+
         for name in self._shape_names:
-            shape = Properties._shapes.get(name, {})
+            shape = shapes.get(name, {})
             shape_type = shape.get("type")
             if shape_type in Properties._primitive_types:
                 self.__str__ = name
             elif shape_type == "structure":
                 members = shape["members"]
                 for key, info in members.items():
-                    if Properties._shapes.get(info["shape"], {}).get("type") == "list":
+                    if shapes.get(info["shape"], {}).get("type") == "list":
                         self.__dict__[key] = PropertiesList(f"{path}.{key}", info["shape"])
                     elif Properties._shapes.get(info["shape"], {}).get("type") == "map":
                         self.__dict__[key] = PropertiesMap(f"{path}.{key}", info["shape"])

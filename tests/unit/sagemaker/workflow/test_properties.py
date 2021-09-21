@@ -70,6 +70,15 @@ def test_properties_tuning_job():
     }
 
 
+def test_properties_emr_step():
+    prop = Properties("Steps.MyStep", "DescribeStepOutput", external_service_name="emr")
+    some_prop_names = ["Step"]
+    for name in some_prop_names:
+        assert name in prop.__dict__.keys()
+
+    assert prop.Step.expr == {"Get": "Steps.MyStep.Step"}
+
+
 def test_properties_describe_model_package_output():
     prop = Properties("Steps.MyStep", "DescribeModelPackageOutput")
     some_prop_names = ["ModelPackageName", "ModelPackageGroupName", "ModelPackageArn"]

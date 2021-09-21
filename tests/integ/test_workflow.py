@@ -70,6 +70,7 @@ from sagemaker.workflow.condition_step import ConditionStep, JsonGet
 from sagemaker.workflow.callback_step import CallbackStep, CallbackOutput, CallbackOutputTypeEnum
 from sagemaker.workflow.lambda_step import LambdaStep, LambdaOutput, LambdaOutputTypeEnum
 from sagemaker.workflow.properties import PropertyFile
+from sagemaker.workflow.emr_step import EMRStep, EMRStepConfig
 from sagemaker.wrangler.processing import DataWranglerProcessor
 from sagemaker.dataset_definition.inputs import DatasetDefinition, AthenaDatasetDefinition
 from sagemaker.workflow.execution_variables import ExecutionVariables
@@ -1140,6 +1141,112 @@ def test_two_step_lambda_pipeline_with_output_reference(
         assert re.match(
             fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
             create_arn,
+        )
+    finally:
+        try:
+            pipeline.delete()
+        except Exception:
+            pass
+
+
+def test_one_step_emr_pipeline(sagemaker_session, role, pipeline_name, region_name):
+    instance_count = ParameterInteger(name="InstanceCount", default_value=2)
+
+    emr_step_config = EMRStepConfig(
+        jar="s3:/script-runner/script-runner.jar",
+        args=["--arg_0", "arg_0_value"],
+        main_class="com.my.main",
+        properties=[{"Key": "Foo", "Value": "Foo_value"}, {"Key": "Bar", "Value": "Bar_value"}],
+    )
+
+    step_emr = EMRStep(
+        name="emr-step1",
+        job_flow_id="MyClusterID",
+        display_name="emr_step_1",
+        description="MyEMRStepDescription",
+        step_config=emr_step_config,
+    )
+
+    pipeline = Pipeline(
+        name=pipeline_name,
+        parameters=[instance_count],
+        steps=[step_emr],
+        sagemaker_session=sagemaker_session,
+    )
+
+    try:
+        response = pipeline.create(role)
+        create_arn = response["PipelineArn"]
+        assert re.match(
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            create_arn,
+        )
+
+        pipeline.parameters = [ParameterInteger(name="InstanceCount", default_value=1)]
+        response = pipeline.update(role)
+        update_arn = response["PipelineArn"]
+        assert re.match(
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            update_arn,
+        )
+    finally:
+        try:
+            pipeline.delete()
+        except Exception:
+            pass
+
+
+def test_two_steps_emr_pipeline_without_nullable_config_fields(
+    sagemaker_session, role, pipeline_name, region_name
+):
+    instance_count = ParameterInteger(name="InstanceCount", default_value=2)
+
+    emr_step_config_1 = EMRStepConfig(
+        jar="s3:/script-runner/script-runner_1.jar",
+        args=["--arg_0", "arg_0_value"],
+        main_class="com.my.main",
+        properties=[{"Key": "Foo", "Value": "Foo_value"}, {"Key": "Bar", "Value": "Bar_value"}],
+    )
+
+    step_emr_1 = EMRStep(
+        name="emr_step_1",
+        job_flow_id="MyClusterID",
+        display_name="emr_step_1",
+        description="MyEMRStepDescription",
+        step_config=emr_step_config_1,
+    )
+
+    emr_step_config_2 = EMRStepConfig(jar="s3:/script-runner/script-runner_2.jar")
+
+    step_emr_2 = EMRStep(
+        name="emr_step_2",
+        job_flow_id="MyClusterID",
+        display_name="emr_step_2",
+        description="MyEMRStepDescription",
+        step_config=emr_step_config_2,
+    )
+
+    pipeline = Pipeline(
+        name=pipeline_name,
+        parameters=[instance_count],
+        steps=[step_emr_1, step_emr_2],
+        sagemaker_session=sagemaker_session,
+    )
+
+    try:
+        response = pipeline.create(role)
+        create_arn = response["PipelineArn"]
+        assert re.match(
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            create_arn,
+        )
+
+        pipeline.parameters = [ParameterInteger(name="InstanceCount", default_value=1)]
+        response = pipeline.update(role)
+        update_arn = response["PipelineArn"]
+        assert re.match(
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            update_arn,
         )
     finally:
         try:

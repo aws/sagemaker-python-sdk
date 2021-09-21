@@ -59,6 +59,7 @@ class StepTypeEnum(Enum, metaclass=DefaultEnumMeta):
     LAMBDA = "Lambda"
     QUALITY_CHECK = "QualityCheck"
     CLARIFY_CHECK = "ClarifyCheck"
+    EMR = "EMR"
 
 
 @attr.s
