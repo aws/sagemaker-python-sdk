@@ -146,7 +146,7 @@ def test_sklearn(sagemaker_session, sklearn_latest_version, cpu_instance_type):
     assert job_description["ProcessingResources"]["ClusterConfig"]["VolumeSizeInGB"] == 30
     assert job_description["StoppingCondition"] == {"MaxRuntimeInSeconds": 86400}
     assert job_description["AppSpecification"]["ContainerEntrypoint"] == [
-        "/bin/bash",
+        "/bin/sh",
         "/opt/ml/processing/input/entrypoint/runproc.sh",
     ]
     assert ROLE in job_description["RoleArn"]
@@ -157,6 +157,7 @@ def test_sklearn_with_customizations(
     sagemaker_session, image_uri, sklearn_latest_version, cpu_instance_type, output_kms_key
 ):
     input_file_path = os.path.join(DATA_DIR, "dummy_input.txt")
+    code_bundle_path = os.path.join(DATA_DIR, "dummy_code_bundle_with_reqs")
 
     sklearn_processor = SKLearnProcessor(
         framework_version=sklearn_latest_version,
@@ -175,7 +176,8 @@ def test_sklearn_with_customizations(
     )
 
     sklearn_processor.run(
-        code=os.path.join(DATA_DIR, "dummy_script.py"),
+        code="main_script.py",
+        source_dir=code_bundle_path,
         inputs=[
             ProcessingInput(
                 source=input_file_path,
@@ -221,7 +223,7 @@ def test_sklearn_with_customizations(
 
     assert job_description["AppSpecification"]["ContainerArguments"] == ["-v"]
     assert job_description["AppSpecification"]["ContainerEntrypoint"] == [
-        "/bin/bash",
+        "/bin/sh",
         "/opt/ml/processing/input/entrypoint/runproc.sh",
     ]
     assert job_description["AppSpecification"]["ImageUri"] == image_uri
@@ -309,7 +311,7 @@ def test_sklearn_with_custom_default_bucket(
 
     assert job_description["AppSpecification"]["ContainerArguments"] == ["-v"]
     assert job_description["AppSpecification"]["ContainerEntrypoint"] == [
-        "/bin/bash",
+        "/bin/sh",
         "/opt/ml/processing/input/entrypoint/runproc.sh",
     ]
     assert job_description["AppSpecification"]["ImageUri"] == image_uri
@@ -362,7 +364,7 @@ def test_sklearn_with_no_inputs_or_outputs(
 
     assert job_description["AppSpecification"]["ContainerArguments"] == ["-v"]
     assert job_description["AppSpecification"]["ContainerEntrypoint"] == [
-        "/bin/bash",
+        "/bin/sh",
         "/opt/ml/processing/input/entrypoint/runproc.sh",
     ]
     assert job_description["AppSpecification"]["ImageUri"] == image_uri
@@ -450,6 +452,80 @@ def test_script_processor(sagemaker_session, image_uri, cpu_instance_type, outpu
     assert ROLE in job_description["RoleArn"]
 
     assert job_description["StoppingCondition"] == {"MaxRuntimeInSeconds": 3600}
+
+
+@pytest.mark.release
+def test_script_processor_with_source_dir(sagemaker_session, image_uri, cpu_instance_type, output_kms_key):
+    input_file_path = os.path.join(DATA_DIR, "dummy_input.txt")
+    source_dir=os.path.join(DATA_DIR, "dummy_code_bundle_no_reqs")
+
+    script_processor = ScriptProcessor(
+        role=ROLE,
+        image_uri=image_uri,
+        command=["python3"],
+        instance_count=1,
+        instance_type=cpu_instance_type,
+        volume_kms_key=None,
+        output_kms_key=output_kms_key,
+        max_runtime_in_seconds=600,
+        base_job_name="test-script-processor",
+        sagemaker_session=sagemaker_session,
+    )
+
+    script_processor.run(
+        code="main_script.py",
+        source_dir=source_dir,
+        inputs=[
+            ProcessingInput(
+                source=input_file_path,
+                destination="/opt/ml/processing/input/container/path/",
+                input_name="dummy_input",
+                s3_data_type="S3Prefix",
+                s3_input_mode="File",
+                s3_data_distribution_type="FullyReplicated",
+                s3_compression_type="None",
+            )
+        ],
+        outputs=[
+            ProcessingOutput(
+                source="/opt/ml/processing/output/container/path/",
+                output_name="dummy_output",
+                s3_upload_mode="EndOfJob",
+            )
+        ],
+        arguments=["-v"],
+        wait=True,
+        logs=True,
+    )
+
+    job_description = script_processor.latest_job.describe()
+
+    assert job_description["ProcessingInputs"][0]["InputName"] == "dummy_input"
+
+    assert job_description["ProcessingInputs"][1]["InputName"] == "code"
+
+    assert job_description["ProcessingJobName"].startswith("test-script-processor")
+
+    assert job_description["ProcessingJobStatus"] == "Completed"
+
+    assert job_description["ProcessingOutputConfig"]["KmsKeyId"] == output_kms_key
+    assert job_description["ProcessingOutputConfig"]["Outputs"][0]["OutputName"] == "dummy_output"
+
+    assert job_description["ProcessingResources"]["ClusterConfig"]["InstanceCount"] == 1
+    assert (
+        job_description["ProcessingResources"]["ClusterConfig"]["InstanceType"] == cpu_instance_type
+    )
+
+    assert job_description["AppSpecification"]["ContainerArguments"] == ["-v"]
+    assert job_description["AppSpecification"]["ContainerEntrypoint"] == [
+        "python3",
+        "/opt/ml/processing/input/code/main_script.py",
+    ]
+    assert job_description["AppSpecification"]["ImageUri"] == image_uri
+
+    assert ROLE in job_description["RoleArn"]
+
+    assert job_description["StoppingCondition"] == {"MaxRuntimeInSeconds": 600}
 
 
 def test_script_processor_with_no_inputs_or_outputs(
@@ -680,7 +756,7 @@ def test_processor_with_custom_bucket(
 
 
 def test_sklearn_with_network_config(sagemaker_session, sklearn_latest_version, cpu_instance_type):
-    script_path = os.path.join(DATA_DIR, "dummy_script.py")
+    code_bundle_path = os.path.join(DATA_DIR, "dummy_code_bundle_no_reqs")
     input_file_path = os.path.join(DATA_DIR, "dummy_input.txt")
 
     sklearn_processor = SKLearnProcessor(
@@ -697,13 +773,17 @@ def test_sklearn_with_network_config(sagemaker_session, sklearn_latest_version, 
     )
 
     sklearn_processor.run(
-        code=script_path,
+        code="main_script.py",
+        source_dir=code_bundle_path,
         inputs=[ProcessingInput(source=input_file_path, destination="/opt/ml/processing/inputs/")],
-        wait=False,
+        wait=True,
         logs=False,
     )
 
     job_description = sklearn_processor.latest_job.describe()
+
+    assert job_description["ProcessingJobStatus"] == "Completed"
+
     network_config = job_description["NetworkConfig"]
     assert network_config["EnableInterContainerTrafficEncryption"]
     assert network_config["EnableNetworkIsolation"]

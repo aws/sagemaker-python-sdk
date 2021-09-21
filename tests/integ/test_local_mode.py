@@ -353,7 +353,7 @@ def test_local_processing_sklearn(sagemaker_local_session_no_local_code, sklearn
     assert job_description["ProcessingResources"]["ClusterConfig"]["InstanceCount"] == 1
     assert job_description["ProcessingResources"]["ClusterConfig"]["InstanceType"] == "local"
     assert job_description["AppSpecification"]["ContainerEntrypoint"] == [
-        "/bin/bash",
+        "/bin/sh",
         "/opt/ml/processing/input/entrypoint/runproc.sh",
     ]
     assert job_description["RoleArn"] == "<no_role>"

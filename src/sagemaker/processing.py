@@ -1318,7 +1318,7 @@ class FeatureStoreOutput(ApiObject):
 class FrameworkProcessor(ScriptProcessor):
     """Handles Amazon SageMaker processing tasks for jobs using a machine learning framework."""
 
-    framework_entrypoint_command = ["/bin/bash"]
+    framework_entrypoint_command = ["/bin/sh"]
 
     # Added new (kw)args for estimator. The rest are from ScriptProcessor with same defaults.
     def __init__(
@@ -1811,7 +1811,7 @@ class FrameworkProcessor(ScriptProcessor):
         """
         return dedent(
             """\
-            #!/bin/bash
+            #!/bin/sh
 
             cd /opt/ml/processing/input/code/
             tar -xzf sourcedir.tar.gz
@@ -1819,7 +1819,7 @@ class FrameworkProcessor(ScriptProcessor):
             # Exit on any error. SageMaker uses error code to mark failed job.
             set -e
 
-            if [[ -f 'requirements.txt' ]]; then
+            if [ -f 'requirements.txt' ]; then
                 # Some py3 containers has typing, which may breaks pip install
                 pip uninstall --yes typing
 

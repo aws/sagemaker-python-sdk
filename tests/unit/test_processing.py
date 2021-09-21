@@ -271,6 +271,7 @@ def test_sklearn_with_all_parameters_via_run_args(
 
         processor.run(
             code=run_args.code,
+            source_dir="/local/path/to/source_dir",
             inputs=run_args.inputs,
             outputs=run_args.outputs,
             arguments=run_args.arguments,
@@ -345,6 +346,7 @@ def test_sklearn_with_all_parameters_via_run_args_called_twice(
 
         processor.run(
             code=run_args.code,
+            source_dir="/local/path/to/source_dir",
             inputs=run_args.inputs,
             outputs=run_args.outputs,
             arguments=run_args.arguments,
@@ -974,7 +976,7 @@ def _get_expected_args_modular_code(job_name, code_s3_uri=f"s3://{BUCKET_NAME}")
         "app_specification": {
             "ImageUri": CUSTOM_IMAGE_URI,
             "ContainerEntrypoint": [
-                "/bin/bash",
+                "/bin/sh",
                 "/opt/ml/processing/input/entrypoint/runproc.sh",
             ],
         },
@@ -1215,7 +1217,7 @@ def _get_expected_args_all_parameters_modular_code(
             "ImageUri": "012345678901.dkr.ecr.us-west-2.amazonaws.com/my-custom-image-uri",
             "ContainerArguments": ["--drop-columns", "'SelfEmployed'"],
             "ContainerEntrypoint": [
-                "/bin/bash",
+                "/bin/sh",
                 "/opt/ml/processing/input/entrypoint/runproc.sh",
             ],
         },
