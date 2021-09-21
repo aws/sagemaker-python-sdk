@@ -455,9 +455,11 @@ def test_script_processor(sagemaker_session, image_uri, cpu_instance_type, outpu
 
 
 @pytest.mark.release
-def test_script_processor_with_source_dir(sagemaker_session, image_uri, cpu_instance_type, output_kms_key):
+def test_script_processor_with_source_dir(
+    sagemaker_session, image_uri, cpu_instance_type, output_kms_key
+):
     input_file_path = os.path.join(DATA_DIR, "dummy_input.txt")
-    source_dir=os.path.join(DATA_DIR, "dummy_code_bundle_no_reqs")
+    source_dir = os.path.join(DATA_DIR, "dummy_code_bundle_no_reqs")
 
     script_processor = ScriptProcessor(
         role=ROLE,
