@@ -1160,9 +1160,9 @@ def test_one_step_emr_pipeline(sagemaker_session, role, pipeline_name, region_na
     )
 
     step_emr = EMRStep(
-        name="emr-step1",
-        job_flow_id="MyClusterID",
-        display_name="emr_step_1",
+        name="emr-step",
+        cluster_id="MyClusterID",
+        display_name="emr_step",
         description="MyEMRStepDescription",
         step_config=emr_step_config,
     )
@@ -1177,18 +1177,19 @@ def test_one_step_emr_pipeline(sagemaker_session, role, pipeline_name, region_na
     try:
         response = pipeline.create(role)
         create_arn = response["PipelineArn"]
-        assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
-            create_arn,
-        )
 
-        pipeline.parameters = [ParameterInteger(name="InstanceCount", default_value=1)]
-        response = pipeline.update(role)
-        update_arn = response["PipelineArn"]
-        assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
-            update_arn,
-        )
+        execution = pipeline.start()
+        response = execution.describe()
+        assert response["PipelineArn"] == create_arn
+
+        try:
+            execution.wait(delay=60, max_attempts=10)
+        except WaiterError:
+            pass
+
+        execution_steps = execution.list_steps()
+        assert len(execution_steps) == 1
+        assert execution_steps[0]["StepName"] == "emr-step"
     finally:
         try:
             pipeline.delete()
@@ -1209,9 +1210,9 @@ def test_two_steps_emr_pipeline_without_nullable_config_fields(
     )
 
     step_emr_1 = EMRStep(
-        name="emr_step_1",
-        job_flow_id="MyClusterID",
-        display_name="emr_step_1",
+        name="emr-step-1",
+        cluster_id="MyClusterID",
+        display_name="emr-step-1",
         description="MyEMRStepDescription",
         step_config=emr_step_config_1,
     )
@@ -1219,9 +1220,9 @@ def test_two_steps_emr_pipeline_without_nullable_config_fields(
     emr_step_config_2 = EMRStepConfig(jar="s3:/script-runner/script-runner_2.jar")
 
     step_emr_2 = EMRStep(
-        name="emr_step_2",
-        job_flow_id="MyClusterID",
-        display_name="emr_step_2",
+        name="emr-step-2",
+        cluster_id="MyClusterID",
+        display_name="emr-step-2",
         description="MyEMRStepDescription",
         step_config=emr_step_config_2,
     )
@@ -1236,10 +1237,20 @@ def test_two_steps_emr_pipeline_without_nullable_config_fields(
     try:
         response = pipeline.create(role)
         create_arn = response["PipelineArn"]
-        assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
-            create_arn,
-        )
+
+        execution = pipeline.start()
+        response = execution.describe()
+        assert response["PipelineArn"] == create_arn
+
+        try:
+            execution.wait(delay=60, max_attempts=10)
+        except WaiterError:
+            pass
+
+        execution_steps = execution.list_steps()
+        assert len(execution_steps) == 2
+        assert execution_steps[0]["StepName"] == "emr-step-1"
+        assert execution_steps[1]["StepName"] == "emr-step-2"
 
         pipeline.parameters = [ParameterInteger(name="InstanceCount", default_value=1)]
         response = pipeline.update(role)

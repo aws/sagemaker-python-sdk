@@ -68,7 +68,11 @@ class EMRStep(Step):
         name: str,
         display_name: str,
         description: str,
+<<<<<<< HEAD
         job_flow_id: str,
+=======
+        cluster_id: str,
+>>>>>>> feature: Add EMRStep support in Sagemaker pipeline
         step_config: EMRStepConfig,
         depends_on: List[str] = None,
         cache_config: CacheConfig = None,
@@ -79,7 +83,11 @@ class EMRStep(Step):
             name(str): The name of the EMR step.
             display_name(str): The display name of the EMR step.
             description(str): The description of the EMR step.
+<<<<<<< HEAD
             job_flow_id(str): A string that uniquely identifies the job flow(cluster).
+=======
+            cluster_id(str): A string that uniquely identifies the cluster.
+>>>>>>> feature: Add EMRStep support in Sagemaker pipeline
             step_config(EMRStepConfig): One StepConfig to be executed by the job flow.
             depends_on(List[str]):
                 A list of step names this `sagemaker.workflow.steps.EMRStep` depends on
@@ -88,6 +96,7 @@ class EMRStep(Step):
         """
         super(EMRStep, self).__init__(name, display_name, description, StepTypeEnum.EMR, depends_on)
 
+<<<<<<< HEAD
         emr_step_args = {"JobFlowId": job_flow_id, "StepConfig": step_config.to_request()}
         self.args = emr_step_args
         self.cache_config = cache_config
@@ -95,6 +104,15 @@ class EMRStep(Step):
         self._properties = Properties(
             path=f"Steps.{name}", external_service_name="emr", shape_name="DescribeStepOutput"
         )
+=======
+        emr_step_args = {"ClusterId": cluster_id, "StepConfig": step_config.to_request()}
+        self.args = emr_step_args
+        self.cache_config = cache_config
+
+        root_property = Properties(path=f"Steps.{name}", shape_name="Step", service_name="emr")
+        root_property.__dict__["ClusterId"] = cluster_id
+        self._properties = root_property
+>>>>>>> feature: Add EMRStep support in Sagemaker pipeline
 
     @property
     def arguments(self) -> RequestType:
