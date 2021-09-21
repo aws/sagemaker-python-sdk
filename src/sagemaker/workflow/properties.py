@@ -32,7 +32,7 @@ class PropertiesMeta(type):
     _primitive_types = {"string", "boolean", "integer", "float"}
 
     def __new__(mcs, *args, **kwargs):
-        """Loads up the shapes from the botocore sagemaker service model."""
+        """Loads up the shapes from the botocore service model."""
         if len(mcs._shapes_map.keys()) == 0:
             loader = botocore.loaders.Loader()
 
@@ -58,8 +58,8 @@ class Properties(metaclass=PropertiesMeta):
 
         Args:
             path (str): The parent path of the Properties instance.
-            shape_name (str): The botocore sagemaker service model shape name.
-            shape_names (str): A List of the botocore sagemaker service model shape name.
+            shape_name (str): The botocore service model shape name.
+            shape_names (str): A List of the botocore service model shape name.
         """
         self._path = path
         shape_names = [] if shape_names is None else shape_names
