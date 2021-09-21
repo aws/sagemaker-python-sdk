@@ -218,7 +218,6 @@ def test_huggingface(
     huggingface_training_version,
     huggingface_pytorch_training_version,
 ):
-
     hf = HuggingFace(
         py_version="py36",
         entry_point=SCRIPT_PATH,
