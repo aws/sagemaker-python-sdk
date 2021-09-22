@@ -60,7 +60,7 @@ SM_DATAPARALLEL_SUPPORTED_INSTANCE_TYPES = (
 )
 SM_DATAPARALLEL_SUPPORTED_FRAMEWORK_VERSIONS = {
     "tensorflow": ["2.3", "2.3.1", "2.3.2", "2.4", "2.4.1"],
-    "pytorch": ["1.6", "1.6.0", "1.7", "1.7.1", "1.8", "1.8.0", "1.8.1"],
+    "pytorch": ["1.6", "1.6.0", "1.7", "1.7.1", "1.8", "1.8.0", "1.8.1", "1.9", "1.9.0"],
 }
 SMDISTRIBUTED_SUPPORTED_STRATEGIES = ["dataparallel", "modelparallel"]
 
