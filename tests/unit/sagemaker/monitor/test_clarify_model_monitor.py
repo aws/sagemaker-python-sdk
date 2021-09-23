@@ -318,6 +318,7 @@ EXPLAINABILITY_ANALYSIS_CONFIG = {
             "baseline": SHAP_BASELINE,
             "num_samples": SHAP_NUM_SAMPLES,
             "agg_method": SHAP_AGG_METHOD,
+            "num_clusters": None,
             "use_logit": SHAP_USE_LOGIT,
             "save_local_shap_values": True,
         },
