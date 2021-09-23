@@ -303,6 +303,7 @@ class SHAPConfig(ExplainabilityConfig):
         baseline,
         num_samples,
         agg_method,
+        num_clusters=None,
         use_logit=False,
         save_local_shap_values=True,
         seed=None,
@@ -322,6 +323,9 @@ class SHAPConfig(ExplainabilityConfig):
                 "mean_abs" (mean of absolute SHAP values for all instances),
                 "median" (median of SHAP values for all instances) and
                 "mean_sq" (mean of squared SHAP values for all instances).
+            num_clusters (int): If a baseline is not provided, Clarify automatically computes a
+                baseline dataset using K-means clustering. num_clusters is a parameter for K-means.
+                Default is None.
             use_logit (bool): Indicator of whether the logit function is to be applied to the model
                 predictions. Default is False. If "use_logit" is true then the SHAP values will
                 have log-odds units.
@@ -338,6 +342,7 @@ class SHAPConfig(ExplainabilityConfig):
             "baseline": baseline,
             "num_samples": num_samples,
             "agg_method": agg_method,
+            "num_clusters": num_clusters,
             "use_logit": use_logit,
             "save_local_shap_values": save_local_shap_values,
         }
