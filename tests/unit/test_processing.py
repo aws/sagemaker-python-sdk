@@ -284,7 +284,12 @@ def test_sklearn_with_all_parameters_via_run_args_called_twice(
 @patch("os.path.exists", return_value=True)
 @patch("os.path.isfile", return_value=True)
 def test_pytorch_processor_with_required_parameters(
-    exists_mock, isfile_mock, botocore_resolver, sagemaker_session, pytorch_training_version
+    exists_mock,
+    isfile_mock,
+    botocore_resolver,
+    sagemaker_session,
+    pytorch_training_version,
+    pytorch_training_py_version,
 ):
     botocore_resolver.return_value.construct_endpoint.return_value = {"hostname": ECR_HOSTNAME}
 
@@ -292,6 +297,7 @@ def test_pytorch_processor_with_required_parameters(
         role=ROLE,
         instance_type="ml.m4.xlarge",
         framework_version=pytorch_training_version,
+        py_version=pytorch_training_py_version,
         instance_count=1,
         sagemaker_session=sagemaker_session,
     )
