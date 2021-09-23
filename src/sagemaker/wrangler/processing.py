@@ -114,6 +114,7 @@ class DataWranglerProcessor(Processor):
         inputs=None,
         outputs=None,
         code=None,
+        source_dir=None,
         kms_key=None,
     ):
         """Normalizes the arguments so that they can be passed to the job run
@@ -130,8 +131,11 @@ class DataWranglerProcessor(Processor):
             outputs (list[:class:`~sagemaker.processing.ProcessingOutput`]): Outputs for
                 the processing job. These can be specified as either path strings or
                 :class:`~sagemaker.processing.ProcessingOutput` objects (default: None).
-            code (str): This can be an S3 URI or a local path to a file with the framework
-                script to run (default: None). A no op in the base class.
+            code (str): An S3 URI or a local path to a file with the user script to run.
+                This is ignored in the base class (default: None).
+            source_dir (str): An S3 URI or a local path to a folder whose full contents
+                should be uploaded to the processing job as code. This is ignored in the
+                base class (default: None).
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 user code file (default: None).
         """
@@ -139,7 +143,15 @@ class DataWranglerProcessor(Processor):
         found = any(element.input_name == "flow" for element in inputs)
         if not found:
             inputs.append(self._get_recipe_input())
-        return super()._normalize_args(job_name, arguments, inputs, outputs, code, kms_key)
+        return super()._normalize_args(
+            job_name=job_name,
+            arguments=arguments,
+            inputs=inputs,
+            outputs=outputs,
+            code=code,
+            source_dir=source_dir,
+            kms_key=kms_key,
+        )
 
     def _get_recipe_input(self):
         """Creates a ProcessingInput with Data Wrangler recipe uri and appends it to inputs"""
