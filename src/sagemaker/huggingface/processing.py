@@ -121,6 +121,8 @@ class HuggingFaceProcessor(FrameworkProcessor):
             dependencies=dependencies,
             git_config=git_config,
             code_location=self.code_location,
+            output_kms_key=self.output_kms_key,
+            volume_kms_key=self.volume_kms_key,
             enable_network_isolation=False,
             image_uri=self.image_uri,
             role=self.role,

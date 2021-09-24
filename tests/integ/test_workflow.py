@@ -50,6 +50,7 @@ from sagemaker.processing import (
     ScriptProcessor,
 )
 from sagemaker.pytorch.estimator import PyTorch
+from sagemaker.pytorch.processing import PyTorchProcessor
 from sagemaker.tuner import HyperparameterTuner, IntegerParameter
 from sagemaker.s3 import S3Uploader
 from sagemaker.session import get_execution_role
@@ -570,48 +571,53 @@ def test_one_step_sklearn_processing_pipeline(
 def test_one_step_framework_processing_pipeline(
     sagemaker_session,
     role,
-    sklearn_latest_version,
+    pytorch_training_latest_version,
+    pytorch_training_latest_py_version,
     cpu_instance_type,
     pipeline_name,
     region_name,
-    athena_dataset_definition,
 ):
-    """Use `SKLearnProcessor` to test `FrameworkProcessor`."""
+    """Use `PyTorchProcessor` to test `FrameworkProcessor`."""
     instance_count = ParameterInteger(name="InstanceCount", default_value=2)
-    script_path = os.path.join(DATA_DIR, "dummy_script.py")
+
+    source_dir = os.path.join(DATA_DIR, "dummy_code_bundle_with_reqs")
+    user_script = "main_script.py"
     input_file_path = os.path.join(DATA_DIR, "dummy_input.txt")
 
     inputs = [
-        ProcessingInput(source=input_file_path, destination="/opt/ml/processing/inputs/"),
-        ProcessingInput(dataset_definition=athena_dataset_definition),
+        ProcessingInput(source=input_file_path, destination="/opt/ml/processing/inputs/dummy_file"),
     ]
 
     cache_config = CacheConfig(enable_caching=True, expire_after="T30m")
 
-    sklearn_processor = SKLearnProcessor(
-        framework_version=sklearn_latest_version,
+    processor = PyTorchProcessor(
+        framework_version=pytorch_training_latest_version,
+        py_version=pytorch_training_latest_py_version,
         role=role,
         instance_type=cpu_instance_type,
         instance_count=instance_count,
         sagemaker_session=sagemaker_session,
-        base_job_name="test-sklearn",
+        base_job_name="test-framework",
     )
 
-    run_args = sklearn_processor.get_run_args(code=script_path, inputs=inputs)
+    # (get_run_args should not be necessary here, but we keep it in to check it works for backward
+    # compatibility)
+    run_args = processor.get_run_args(code=user_script, inputs=inputs)
 
-    step_sklearn = ProcessingStep(
-        name="sklearn-process",
-        processor=sklearn_processor,
+    proc_step = ProcessingStep(
+        name="framework-process",
+        processor=processor,
         inputs=run_args.inputs,
         outputs=run_args.outputs,
         job_arguments=run_args.arguments,
         code=run_args.code,
+        source_dir=source_dir,
         cache_config=cache_config,
     )
     pipeline = Pipeline(
         name=pipeline_name,
         parameters=[instance_count],
-        steps=[step_sklearn],
+        steps=[proc_step],
         sagemaker_session=sagemaker_session,
     )
 
@@ -652,12 +658,13 @@ def test_one_step_framework_processing_pipeline(
         assert response["ExpireAfter"] == cache_config.expire_after
 
         try:
-            execution.wait(delay=30, max_attempts=3)
+            execution.wait(delay=30, max_attempts=20)
         except WaiterError:
             pass
         execution_steps = execution.list_steps()
         assert len(execution_steps) == 1
-        assert execution_steps[0]["StepName"] == "sklearn-process"
+        assert execution_steps[0]["StepName"] == "framework-process"
+        assert execution_steps[0]["StepStatus"] == "Succeeded"
     finally:
         try:
             pipeline.delete()

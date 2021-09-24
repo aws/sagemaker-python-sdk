@@ -14,6 +14,7 @@
 from __future__ import absolute_import
 
 import abc
+import os
 import warnings
 
 from enum import Enum
@@ -484,6 +485,7 @@ class ProcessingStep(ConfigurableRetryStep):
         outputs: List[ProcessingOutput] = None,
         job_arguments: List[str] = None,
         code: str = None,
+        source_dir: str = None,
         property_files: List[PropertyFile] = None,
         cache_config: CacheConfig = None,
         depends_on: Union[List[str], List[Step]] = None,
@@ -506,8 +508,13 @@ class ProcessingStep(ConfigurableRetryStep):
                 instances. Defaults to `None`.
             job_arguments (List[str]): A list of strings to be passed into the processing job.
                 Defaults to `None`.
-            code (str): This can be an S3 URI or a local path to a file with the framework
-                script to run. Defaults to `None`.
+            code (str): S3 URI or local path to a file with the user script to run. If
+                ``source_dir`` is specified (for ``processor``s that support it), then ``code``
+                must be a path relative to the root of ``source_dir``. Defaults to `None`.
+            source_dir (str): S3 URI or local path to a folder with any other containing processing
+                source code dependencies aside from the entry point ``code`` file. This parameter
+                is only supported when using a 'processor' based on ``FrameworkProcessor``. If
+                an S3 URI is provided, it must point to a tar.gz file. Defaults to `None`.
             property_files (List[PropertyFile]): A list of property files that workflow looks
                 for and resolves from the configured processing output list.
             cache_config (CacheConfig):  A `sagemaker.workflow.steps.CacheConfig` instance.
@@ -525,9 +532,9 @@ class ProcessingStep(ConfigurableRetryStep):
         self.outputs = outputs
         self.job_arguments = job_arguments
         self.code = code
+        self.processor_kwargs = dict(kms_key=kms_key, source_dir=source_dir)
         self.property_files = property_files
         self.job_name = None
-        self.kms_key = kms_key
 
         # Examine why run method in sagemaker.processing.Processor mutates the processor instance
         # by setting the instance's arguments attribute. Refactor Processor.run, if possible.
@@ -562,7 +569,7 @@ class ProcessingStep(ConfigurableRetryStep):
             inputs=self.inputs,
             outputs=self.outputs,
             code=self.code,
-            kms_key=self.kms_key,
+            **self.processor_kwargs,
         )
         process_args = ProcessingJob._get_process_args(
             self.processor, normalized_inputs, normalized_outputs, experiment_config=dict()
@@ -592,7 +599,11 @@ class ProcessingStep(ConfigurableRetryStep):
         """Generate an upload path for local processing scripts based on its contents"""
         from sagemaker.workflow.utilities import hash_file
 
-        code_hash = hash_file(self.code)
+        code_path = os.path.join(
+            self.processor_kwargs.get("source_dir", ""),
+            self.code,
+        )
+        code_hash = hash_file(code_path)
         return f"{self.name}-{code_hash}"[:1024]
 
 

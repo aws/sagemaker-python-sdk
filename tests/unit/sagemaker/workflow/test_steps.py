@@ -159,7 +159,7 @@ def script_processor(sagemaker_session):
         volume_kms_key="arn:aws:kms:us-west-2:012345678901:key/volume-kms-key",
         output_kms_key="arn:aws:kms:us-west-2:012345678901:key/output-kms-key",
         max_runtime_in_seconds=3600,
-        base_job_name="my_sklearn_processor",
+        base_job_name="my_script_processor",
         env={"my_env_variable": "my_env_variable_value"},
         tags=[{"Key": "my-tag", "Value": "my-tag-value"}],
         network_config=NetworkConfig(
@@ -635,6 +635,8 @@ def test_processing_step_normalizes_args_with_s3_code(mock_normalize_args, scrip
             destination="processing_manifest",
         )
     ]
+    kms_key = "arn:aws:kms:us-west-2:012345678901:key/s3-kms-key"
+
     step = ProcessingStep(
         name="MyProcessingStep",
         processor=script_processor,
@@ -643,7 +645,7 @@ def test_processing_step_normalizes_args_with_s3_code(mock_normalize_args, scrip
         outputs=outputs,
         job_arguments=["arg1", "arg2"],
         cache_config=cache_config,
-        kms_key="arn:aws:kms:us-west-2:012345678901:key/s3-kms-key",
+        kms_key=kms_key,
     )
     mock_normalize_args.return_value = [step.inputs, step.outputs]
     step.to_request()
@@ -653,7 +655,7 @@ def test_processing_step_normalizes_args_with_s3_code(mock_normalize_args, scrip
         inputs=step.inputs,
         outputs=step.outputs,
         code=step.code,
-        kms_key=step.kms_key,
+        kms_key=kms_key,
     )
 
 
