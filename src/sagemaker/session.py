@@ -3554,12 +3554,12 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 user_profile_desc = self.sagemaker_client.describe_user_profile(
                     DomainId=domain_id, UserProfileName=user_profile_name
                 )
-                if (
-                    user_profile_desc.get("UserSettings") is not None
-                    and "ExecutionRole" in user_profile_desc.get("UserSettings").keys()
-                ):
+
+                # First, try to find role in userSettings
+                if user_profile_desc.get("UserSettings", {}).get("ExecutionRole", None):
                     return user_profile_desc["UserSettings"]["ExecutionRole"]
 
+                # If not found, fallback to the domain
                 domain_desc = self.sagemaker_client.describe_domain(DomainId=domain_id)
                 return domain_desc["DefaultUserSettings"]["ExecutionRole"]
             except ClientError:
