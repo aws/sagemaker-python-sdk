@@ -1580,6 +1580,7 @@ class FrameworkProcessor(ScriptProcessor):
         git_config=None,
     ):
         """Normalizes the arguments so that they can be passed to the job run
+
         Args:
             job_name (str): Name of the processing job to be created. If not specified, one
                 is generated, using the base name given to the constructor, if applicable
@@ -1628,6 +1629,7 @@ class FrameworkProcessor(ScriptProcessor):
 
     def _convert_code_and_add_to_inputs(self, inputs, user_s3_uri, entrypoint_s3_uri):
         """Creates a ``ProcessingInput`` object from an S3 URI and adds it to the list of inputs.
+
         Args:
             inputs (list[sagemaker.processing.ProcessingInput]):
                 List of ``ProcessingInput`` objects.
@@ -1671,6 +1673,7 @@ class FrameworkProcessor(ScriptProcessor):
         git_config=None,
     ):
         """Converts code to appropriate input and includes in input list.
+
         Side effects include:
             * uploads code to S3 if the code is a local file.
             * sets the entrypoint attribute based on the command and user script name from code.
