@@ -221,6 +221,14 @@ For an in-depth look, please see the `Feature Transformation with Spark`_ exampl
 .. _Feature Transformation with Spark: https://github.com/awslabs/amazon-sagemaker-examples/blob/master/sagemaker_processing/feature_transformation_with_sagemaker_processing/feature_transformation_with_sagemaker_processing.ipynb
 
 
+Data Processing with Other Frameworks
+=====================================
+
+:class:`FrameworkProcessor`-based classes are also provided for a range of other ML frameworks: For example PyTorch, TensorFlow, and MXNet.
+
+You can use these to run data processing jobs in pre-built container environments, similarly to model training with :class:`Framework`-based Estimators.
+
+
 Learn More
 ==========
 
@@ -229,12 +237,18 @@ Processing class documentation
 
 - :class:`sagemaker.processing.Processor`
 - :class:`sagemaker.processing.ScriptProcessor`
+- :class:`sagemaker.processing.FrameworkProcessor`
 - :class:`sagemaker.sklearn.processing.SKLearnProcessor`
 - :class:`sagemaker.spark.processing.PySparkProcessor`
 - :class:`sagemaker.spark.processing.SparkJarProcessor`
 - :class:`sagemaker.processing.ProcessingInput`
 - :class:`sagemaker.processing.ProcessingOutput`
 - :class:`sagemaker.processing.ProcessingJob`
+- :class:`sagemaker.huggingface.processing.HuggingFaceProcessor`
+- :class:`sagemaker.mxnet.processing.MXNetProcessor`
+- :class:`sagemaker.pytorch.processing.PyTorchProcessor`
+- :class:`sagemaker.tensorflow.processing.TensorFlowProcessor`
+- :class:`sagemaker.xgboost.processing.XGBoostProcessor`
 
 
 Further documentation

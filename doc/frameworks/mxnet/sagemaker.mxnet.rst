@@ -25,3 +25,11 @@ MXNet Predictor
     :members:
     :undoc-members:
     :show-inheritance:
+
+MXNet Processor
+---------------------------
+
+.. autoclass:: sagemaker.mxnet.processing.MXNetProcessor
+    :members:
+    :undoc-members:
+    :show-inheritance:

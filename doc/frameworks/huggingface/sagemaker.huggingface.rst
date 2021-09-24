@@ -32,3 +32,11 @@ Hugging Face Predictor
     :members:
     :undoc-members:
     :show-inheritance:
+
+Hugging Face Processor
+----------------------
+
+.. autoclass:: sagemaker.huggingface.processing.HuggingFaceProcessor
+    :members:
+    :undoc-members:
+    :show-inheritance:
