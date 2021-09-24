@@ -136,7 +136,7 @@ def _get_expected_args_modular_code(job_name, code_s3_uri=f"s3://{BUCKET_NAME}")
         "app_specification": {
             "ImageUri": CUSTOM_IMAGE_URI,
             "ContainerEntrypoint": [
-                "/bin/bash",
+                "/bin/sh",
                 "/opt/ml/processing/input/entrypoint/runproc.sh",
             ],
         },
