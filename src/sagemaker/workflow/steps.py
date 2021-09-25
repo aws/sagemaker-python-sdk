@@ -532,9 +532,13 @@ class ProcessingStep(ConfigurableRetryStep):
         self.outputs = outputs
         self.job_arguments = job_arguments
         self.code = code
-        self.processor_kwargs = dict(kms_key=kms_key, source_dir=source_dir)
         self.property_files = property_files
         self.job_name = None
+
+        self.processor_kwargs = dict(kms_key=kms_key)
+        # Optional args supported by only a subset of Processor classes:
+        if source_dir is not None:
+            self.processor_kwargs["source_dir"] = source_dir
 
         # Examine why run method in sagemaker.processing.Processor mutates the processor instance
         # by setting the instance's arguments attribute. Refactor Processor.run, if possible.
