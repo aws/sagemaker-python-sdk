@@ -3556,7 +3556,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 )
 
                 # First, try to find role in userSettings
-                if user_profile_desc.get("UserSettings", {}).get("ExecutionRole", None):
+                if user_profile_desc.get("UserSettings", {}).get("ExecutionRole"):
                     return user_profile_desc["UserSettings"]["ExecutionRole"]
 
                 # If not found, fallback to the domain
