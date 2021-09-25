@@ -102,7 +102,7 @@ def _get_expected_args_modular_code(job_name, code_s3_uri=f"s3://{BUCKET_NAME}")
                 "AppManaged": False,
                 "S3Input": {
                     "S3Uri": f"{code_s3_uri}/{job_name}/source/sourcedir.tar.gz",
-                    "LocalPath": "/opt/ml/processing/input/code/",
+                    "LocalPath": "/opt/ml/processing/input/code",
                     "S3DataType": "S3Prefix",
                     "S3InputMode": "File",
                     "S3DataDistributionType": "FullyReplicated",
