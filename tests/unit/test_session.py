@@ -372,7 +372,7 @@ def test_get_caller_identity_arn_from_describe_domain_if_no_user_settings(boto_s
 @patch("os.path.exists", side_effect=mock_exists(NOTEBOOK_METADATA_FILE, True))
 def test_fallback_to_domain_if_role_unavailable_in_user_settings(boto_session):
     sess = Session(boto_session)
-    expected_role = "arn:aws:iam::369233609183:role/service-role/SageMakerRole-20171129T072388"
+    expected_role = "expected_role"
     sess.sagemaker_client.describe_user_profile.return_value = {
         "DomainId": "d-kbnw5yk6tg8j",
         "UserSettings": {
