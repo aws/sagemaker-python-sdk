@@ -438,6 +438,47 @@ def test_processing_step_normalizes_args(mock_normalize_args, sagemaker_session)
     )
 
 
+@patch("sagemaker.processing.ScriptProcessor._include_code_in_inputs")
+def test_processing_steps_arguments_twice(mock_include_code_in_inputs, sagemaker_session):
+    processor = ScriptProcessor(
+        role=ROLE,
+        image_uri="012345678901.dkr.ecr.us-west-2.amazonaws.com/my-custom-image-uri",
+        command=["python3"],
+        instance_type="ml.m4.xlarge",
+        instance_count=1,
+        volume_size_in_gb=100,
+        volume_kms_key="arn:aws:kms:us-west-2:012345678901:key/volume-kms-key",
+        output_kms_key="arn:aws:kms:us-west-2:012345678901:key/output-kms-key",
+        max_runtime_in_seconds=3600,
+        base_job_name="my_sklearn_processor",
+        env={"my_env_variable": "my_env_variable_value"},
+        tags=[{"Key": "my-tag", "Value": "my-tag-value"}],
+        network_config=NetworkConfig(
+            subnets=["my_subnet_id"],
+            security_group_ids=["my_security_group_id"],
+            enable_network_isolation=True,
+            encrypt_inter_container_traffic=True,
+        ),
+        sagemaker_session=sagemaker_session,
+    )
+    cache_config = CacheConfig(enable_caching=True, expire_after="PT1H")
+    inputs = []
+    outputs = []
+    step = ProcessingStep(
+        name="MyProcessingStep",
+        processor=processor,
+        code="foo.py",
+        inputs=inputs,
+        outputs=outputs,
+        job_arguments=["arg1", "arg2"],
+        cache_config=cache_config,
+    )
+
+    step.arguments
+    step.arguments
+    mock_include_code_in_inputs.assert_called_once()
+
+
 def test_create_model_step(sagemaker_session):
     model = Model(
         image_uri=IMAGE_URI,
