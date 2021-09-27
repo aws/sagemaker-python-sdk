@@ -460,20 +460,27 @@ class ProcessingStep(Step):
         NOTE: The CreateProcessingJob request is not quite the args list that workflow needs.
         ProcessingJobName and ExperimentConfig cannot be included in the arguments.
         """
-        normalized_inputs, normalized_outputs = self.processor._normalize_args(
-            arguments=self.job_arguments,
-            inputs=self.inputs,
-            outputs=self.outputs,
-            code=self.code,
-        )
+        if not hasattr(self, "_request_dict"):
+            # ScriptProcessor._normalize_args() has side-effects:
+            # 1. It creates a unique S3 prefix based on a newly generated job name, and uploaded
+            #    the processing code to this prefix. Always occur on every normalization attempt.
+            # 2. Convert local inputs and local outputs to S3 inputs and S3 outputs. Effectively,
+            #    occur only on the first normalization attempt.
+            normalized_inputs, normalized_outputs = self.processor._normalize_args(
+                arguments=self.job_arguments,
+                inputs=self.inputs,
+                outputs=self.outputs,
+                code=self.code,
+            )
 
-        process_args = ProcessingJob._get_process_args(
-            self.processor, normalized_inputs, normalized_outputs, experiment_config=dict()
-        )
-        request_dict = self.processor.sagemaker_session._get_process_request(**process_args)
-        request_dict.pop("ProcessingJobName")
+            process_args = ProcessingJob._get_process_args(
+                self.processor, normalized_inputs, normalized_outputs, experiment_config=dict()
+            )
+            request_dict = self.processor.sagemaker_session._get_process_request(**process_args)
+            request_dict.pop("ProcessingJobName")
 
-        return request_dict
+            self._request_dict = request_dict
+        return self._request_dict
 
     @property
     def properties(self):
