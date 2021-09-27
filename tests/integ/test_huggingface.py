@@ -44,7 +44,7 @@ def test_framework_processing_job_with_deps(
         processor = HuggingFaceProcessor(
             transformers_version=huggingface_training_latest_version,
             pytorch_version=huggingface_training_pytorch_latest_version,
-            py_version="py36",
+            py_version="py38",
             role=ROLE,
             instance_count=1,
             instance_type=gpu_instance_type,
@@ -75,7 +75,7 @@ def test_huggingface_training(
         data_path = os.path.join(DATA_DIR, "huggingface")
 
         hf = HuggingFace(
-            py_version="py36",
+            py_version="py38",
             entry_point=os.path.join(data_path, "run_glue.py"),
             role="SageMakerRole",
             transformers_version=huggingface_training_latest_version,
@@ -144,8 +144,9 @@ def test_huggingface_training_tf(
         hf.fit(train_input)
 
 
-@pytest.mark.skip(
-    reason="need to re enable it later",
+@pytest.mark.release
+@pytest.mark.skipif(
+    integ.test_region() in integ.TRAINING_NO_P2_REGIONS, reason="no ml.p2 instances in this region"
 )
 def test_huggingface_inference(
     sagemaker_session,
@@ -163,7 +164,7 @@ def test_huggingface_inference(
         sagemaker_session=sagemaker_session,
         role="SageMakerRole",
         env=env,
-        py_version="py36",
+        py_version="py38",
         transformers_version=huggingface_inference_latest_version,
         pytorch_version=huggingface_inference_pytorch_latest_version,
     )
