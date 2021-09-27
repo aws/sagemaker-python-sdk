@@ -19,6 +19,9 @@ import attr
 
 from sagemaker.workflow.entities import Entity, DefaultEnumMeta, RequestType
 
+
+DEFAULT_BACKOFF_RATE = 2.0
+DEFAULT_INTERVAL_SECONDS = 1
 MAX_ATTEMPTS_CAP = 20
 MAX_EXPIRE_AFTER_MIN = 14400
 
@@ -53,8 +56,8 @@ class RetryPolicy(Entity):
             to expire any further retry attempt (default: None)
     """
 
-    backoff_rate: float = attr.ib(default=2.0)
-    interval_seconds: int = attr.ib(default=1.0)
+    backoff_rate: float = attr.ib(default=DEFAULT_BACKOFF_RATE)
+    interval_seconds: int = attr.ib(default=DEFAULT_INTERVAL_SECONDS)
     max_attempts: int = attr.ib(default=None)
     expire_after_mins: int = attr.ib(default=None)
 
