@@ -485,44 +485,39 @@ class ProcessingStep(ConfigurableRetryStep):
         outputs: List[ProcessingOutput] = None,
         job_arguments: List[str] = None,
         code: str = None,
-        source_dir: str = None,
         property_files: List[PropertyFile] = None,
         cache_config: CacheConfig = None,
         depends_on: Union[List[str], List[Step]] = None,
         retry_policies: List[RetryPolicy] = None,
-        kms_key=None,
+        **kwargs,
     ):
         """Construct a ProcessingStep, given a `Processor` instance.
 
         In addition to the processor instance, the other arguments are those that are supplied to
-        the `process` method of the `sagemaker.processing.Processor`.
+        the `run()` method of the :class:`~sagemaker.processing.Processor`.
 
         Args:
             name (str): The name of the processing step.
-            processor (Processor): A `sagemaker.processing.Processor` instance.
+            processor (Processor): A :class:`~sagemaker.processing.Processor` instance.
             display_name (str): The display name of the processing step.
             description (str): The description of the processing step.
-            inputs (List[ProcessingInput]): A list of `sagemaker.processing.ProcessorInput`
-                instances. Defaults to `None`.
-            outputs (List[ProcessingOutput]): A list of `sagemaker.processing.ProcessorOutput`
-                instances. Defaults to `None`.
-            job_arguments (List[str]): A list of strings to be passed into the processing job.
-                Defaults to `None`.
-            code (str): S3 URI or local path to a file with the user script to run. If
-                ``source_dir`` is specified (for ``processor``s that support it), then ``code``
-                must be a path relative to the root of ``source_dir``. Defaults to `None`.
-            source_dir (str): S3 URI or local path to a folder with any other containing processing
-                source code dependencies aside from the entry point ``code`` file. This parameter
-                is only supported when using a 'processor' based on ``FrameworkProcessor``. If
-                an S3 URI is provided, it must point to a tar.gz file. Defaults to `None`.
+            inputs (List[ProcessingInput]): A list of inputs to the processing job. Defaults to
+                `None`.
+            outputs (List[ProcessingOutput]): A list of outputs from the processing job. Defaults
+                to `None`.
+            job_arguments (List[str]): A list of command line arguments to be passed into the
+                processing job. Defaults to `None`.
+            code (str): This can be an S3 URI or a local path to a file with the framework
+                script to run. Defaults to `None`.
             property_files (List[PropertyFile]): A list of property files that workflow looks
                 for and resolves from the configured processing output list.
-            cache_config (CacheConfig):  A `sagemaker.workflow.steps.CacheConfig` instance.
-            depends_on (List[str] or List[Step]): A list of step names or step instance
-                this `sagemaker.workflow.steps.ProcessingStep` depends on
+            cache_config (CacheConfig): Step result caching configuration.
+            depends_on (List[str] or List[Step]): A list of step names or step instances this
+                `sagemaker.workflow.steps.ProcessingStep` depends on.
             retry_policies (List[RetryPolicy]):  A list of retry policy
-            kms_key (str): The ARN of the KMS key that is used to encrypt the
-                user code file. Defaults to `None`.
+            **kwargs: Additional arguments as per ``processor.run()``, depending on your processor
+                type. For example may include ``source_dir`` for processors based on
+                :class:`~sagemaker.processing.FrameworkProcessor`.
         """
         super(ProcessingStep, self).__init__(
             name, StepTypeEnum.PROCESSING, display_name, description, depends_on, retry_policies
@@ -534,11 +529,7 @@ class ProcessingStep(ConfigurableRetryStep):
         self.code = code
         self.property_files = property_files
         self.job_name = None
-
-        self.processor_kwargs = dict(kms_key=kms_key)
-        # Optional args supported by only a subset of Processor classes:
-        if source_dir is not None:
-            self.processor_kwargs["source_dir"] = source_dir
+        self.processor_kwargs = kwargs
 
         # Examine why run method in sagemaker.processing.Processor mutates the processor instance
         # by setting the instance's arguments attribute. Refactor Processor.run, if possible.

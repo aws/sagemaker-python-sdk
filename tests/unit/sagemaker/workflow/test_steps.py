@@ -616,7 +616,6 @@ def test_processing_step_normalizes_args_with_local_code(mock_normalize_args, sc
         inputs=step.inputs,
         outputs=step.outputs,
         code=step.code,
-        kms_key=None,
     )
 
 
@@ -690,7 +689,6 @@ def test_processing_step_normalizes_args_with_no_code(mock_normalize_args, scrip
         inputs=step.inputs,
         outputs=step.outputs,
         code=None,
-        kms_key=None,
     )
 
 
