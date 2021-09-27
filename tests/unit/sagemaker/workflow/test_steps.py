@@ -45,7 +45,6 @@ from sagemaker.transformer import Transformer
 from sagemaker.workflow.properties import Properties
 from sagemaker.workflow.parameters import ParameterString, ParameterInteger
 from sagemaker.workflow.retry import (
-    RetryPolicy,
     StepRetryPolicy,
     StepExceptionTypeEnum,
     SageMakerJobStepRetryPolicy,
