@@ -343,10 +343,44 @@ def test_get_caller_identity_arn_from_describe_user_profile(boto_session):
     ),
 )
 @patch("os.path.exists", side_effect=mock_exists(NOTEBOOK_METADATA_FILE, True))
-def test_get_caller_identity_arn_from_describe_domain(boto_session):
+def test_get_caller_identity_arn_from_describe_domain_if_no_user_settings(boto_session):
     sess = Session(boto_session)
     expected_role = "arn:aws:iam::369233609183:role/service-role/SageMakerRole-20171129T072388"
     sess.sagemaker_client.describe_user_profile.return_value = {}
+    sess.sagemaker_client.describe_domain.return_value = {
+        "DefaultUserSettings": {"ExecutionRole": expected_role}
+    }
+
+    actual = sess.get_caller_identity_arn()
+
+    assert actual == expected_role
+    sess.sagemaker_client.describe_user_profile.assert_called_once_with(
+        DomainId="d-kbnw5yk6tg8j",
+        UserProfileName="default-1617915559064",
+    )
+    sess.sagemaker_client.describe_domain.assert_called_once_with(DomainId="d-kbnw5yk6tg8j")
+
+
+@patch(
+    "six.moves.builtins.open",
+    mock_open(
+        read_data='{"ResourceName": "SageMakerInstance", '
+        '"DomainId": "d-kbnw5yk6tg8j", '
+        '"UserProfileName": "default-1617915559064"}'
+    ),
+)
+@patch("os.path.exists", side_effect=mock_exists(NOTEBOOK_METADATA_FILE, True))
+def test_fallback_to_domain_if_role_unavailable_in_user_settings(boto_session):
+    sess = Session(boto_session)
+    expected_role = "expected_role"
+    sess.sagemaker_client.describe_user_profile.return_value = {
+        "DomainId": "d-kbnw5yk6tg8j",
+        "UserSettings": {
+            "JupyterServerAppSettings": {},
+            "KernelGatewayAppSettings": {},
+        },
+    }
+
     sess.sagemaker_client.describe_domain.return_value = {
         "DefaultUserSettings": {"ExecutionRole": expected_role}
     }

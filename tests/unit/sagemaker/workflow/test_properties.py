@@ -22,6 +22,7 @@ def test_properties_describe_training_job_response():
     for name in some_prop_names:
         assert name in prop.__dict__.keys()
     assert prop.CreationTime.expr == {"Get": "Steps.MyStep.CreationTime"}
+    assert prop.HyperParameters.expr == {"Get": "Steps.MyStep.HyperParameters"}
     assert prop.OutputDataConfig.S3OutputPath.expr == {
         "Get": "Steps.MyStep.OutputDataConfig.S3OutputPath"
     }
