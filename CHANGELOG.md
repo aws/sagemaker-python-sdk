@@ -1,5 +1,20 @@
 # Changelog
 
+## v2.59.4 (2021-09-27)
+
+### Bug Fixes and Other Changes
+
+ * add checks for ExecutionRole in UserSettings, adds more unit tests
+ * add pytorch 1.8.1 for huggingface
+
+## v2.59.3.post0 (2021-09-22)
+
+### Documentation Changes
+
+ * Info about offline s3 bucket key when creating feature group
+
+## v2.59.3 (2021-09-20)
+
 ## v2.59.2 (2021-09-15)
 
 ### Bug Fixes and Other Changes
