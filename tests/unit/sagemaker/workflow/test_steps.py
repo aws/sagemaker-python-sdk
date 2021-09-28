@@ -226,6 +226,7 @@ def test_training_step_base_estimator(sagemaker_session):
         "CacheConfig": {"Enabled": True, "ExpireAfter": "PT1H"},
     }
     assert step.properties.TrainingJobName.expr == {"Get": "Steps.MyTrainingStep.TrainingJobName"}
+    assert step.properties.HyperParameters.expr == {"Get": "Steps.MyTrainingStep.HyperParameters"}
 
 
 def test_training_step_tensorflow(sagemaker_session):
