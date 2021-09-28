@@ -451,6 +451,7 @@ class ProcessingStep(Step):
         self._properties = Properties(
             path=f"Steps.{name}", shape_name="DescribeProcessingJobResponse"
         )
+        self._request_dict = None
         self.cache_config = cache_config
 
     @property
@@ -460,7 +461,7 @@ class ProcessingStep(Step):
         NOTE: The CreateProcessingJob request is not quite the args list that workflow needs.
         ProcessingJobName and ExperimentConfig cannot be included in the arguments.
         """
-        if not hasattr(self, "_request_dict"):
+        if self._request_dict is None:
             # ScriptProcessor._normalize_args() has side-effects:
             # 1. It creates a unique S3 prefix based on a newly generated job name, and uploaded
             #    the processing code to this prefix. Always occur on every normalization attempt.
