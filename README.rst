@@ -225,3 +225,4 @@ For more information about the different ``content-type`` and ``Accept`` formats
 ``schema`` that SageMaker SparkML Serving recognizes, please see `SageMaker SparkML Serving Container`_.
 
 .. _SageMaker SparkML Serving Container: https://github.com/aws/sagemaker-sparkml-serving-container
+
