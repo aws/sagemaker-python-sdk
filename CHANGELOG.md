@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.59.5 (2021-09-29)
+
+### Bug Fixes and Other Changes
+
+ * support maps in step parameters
+
 ## v2.59.4 (2021-09-27)
 
 ### Bug Fixes and Other Changes
