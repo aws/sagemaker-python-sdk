@@ -228,7 +228,7 @@ class ModelPredictedLabelConfig:
         probability_threshold=None,
         label_headers=None,
     ):
-        """Initializes a model output config to extract the predicted label.
+        """Initializes a model output config to extract the predicted label or predicted score(s).
 
         The following examples show different parameter configurations depending on the endpoint:
             * Regression Task: The model returns the score, e.g. 1.2. we don't need to specify
@@ -255,11 +255,11 @@ class ModelPredictedLabelConfig:
                     'label_headers=['cat','dog','fish']' and infer the predicted label to be 'fish.'
 
         Args:
-            label (str or int or list[int]): Optional index or JSONPath location in the model
-                output for the prediction. In case, this is a predicted label of the same type as
-                the label in the dataset no further arguments need to be specified.
-            probability (str or int or list[int]): Optional index or JSONPath location in the model
-                output for the predicted scores.
+            label (str or int): Index or JSONPath location in the model output for the prediction.
+                In case, this is a predicted label of the same type as the label in the dataset,
+                no further arguments need to be specified.
+            probability (str or int): Index or JSONPath location in the model output
+                for the predicted score(s).
             probability_threshold (float): An optional value for binary prediction tasks in which
                 the model returns a probability, to indicate the threshold to convert the
                 prediction to a boolean value. Default is 0.5.
