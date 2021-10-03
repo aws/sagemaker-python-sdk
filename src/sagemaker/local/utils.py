@@ -104,7 +104,7 @@ def get_child_process_ids(pid):
     ).communicate()
     if err:
         return []
-    pids = [int(pid) for pid in output.decode('utf-8').split()]
+    pids = [int(pid) for pid in output.decode("utf-8").split()]
     if pids:
         for pid in pids:
             return pids + get_child_process_ids(pid)
