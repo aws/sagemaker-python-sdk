@@ -310,9 +310,13 @@ def test_pytorch_processor_with_required_parameters(
         pytorch_image_uri = (
             "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-pytorch:{}-cpu-py3"
         ).format(pytorch_training_version)
-    else:
+    elif version.parse(pytorch_training_version) < version.parse("1.9"):
         pytorch_image_uri = (
             "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:{}-cpu-py3"
+        ).format(pytorch_training_version)
+    else:
+        pytorch_image_uri = (
+            "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:{}-cpu-py38"
         ).format(pytorch_training_version)
 
     expected_args["app_specification"]["ImageUri"] = pytorch_image_uri
