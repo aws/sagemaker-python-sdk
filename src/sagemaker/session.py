@@ -3292,17 +3292,22 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 actual_status=status,
             )
 
-    def wait_for_endpoint(self, endpoint, poll=30):
+    def wait_for_endpoint(self, endpoint, poll=30, timeout_seconds=1800.0):
         """Wait for an Amazon SageMaker endpoint deployment to complete.
 
         Args:
             endpoint (str): Name of the ``Endpoint`` to wait for.
-            poll (int): Polling interval in seconds (default: 5).
+            poll (float): Polling interval in seconds (default: 30).
+            timeout_seconds (float): Timeout in seconds (default: 1800).
 
         Returns:
-            dict: Return value from the ``DescribeEndpoint`` API.
+            dict: Return value from the ``DescribeEndpoint`` API or None if timeout_seconds passed
         """
-        desc = _wait_until(lambda: _deploy_done(self.sagemaker_client, endpoint), poll)
+        desc = _wait_until(
+            lambda: _deploy_done(self.sagemaker_client, endpoint), poll, timeout_seconds
+        )
+        if not desc:
+            return desc
         status = desc["EndpointStatus"]
 
         if status != "InService":
@@ -4658,12 +4663,29 @@ def _wait_until_training_done(callable_fn, desc, poll=5):
     return job_desc
 
 
-def _wait_until(callable_fn, poll=5):
-    """Placeholder docstring"""
+def _wait_until(callable_fn, poll_seconds=5, timeout_seconds=None):
+    """
+    Args:
+        callable_fn: callable to wait for which returns None to keep polling
+        poll_seconds (float): time to sleep between calls to callable_fn
+        timeout_seconds (float): Optional stop polling after timeout_seconds elapsed.
+
+    Returns:
+        Result of the callable_fn
+    """
+    waited_seconds = 0.0
+    last_time = time.time()
     result = callable_fn()
-    while result is None:
-        time.sleep(poll)
+    waited_seconds += time.time() - last_time
+    last_time = time.time()
+    while result is None and timeout_seconds and waited_seconds < timeout_seconds:
+        sleep_s = (
+            min(poll_seconds, timeout_seconds - waited_seconds) if timeout_seconds else poll_seconds
+        )
+        time.sleep(sleep_s)
         result = callable_fn()
+        waited_seconds += time.time() - last_time
+        last_time = time.time()
     return result
 
 

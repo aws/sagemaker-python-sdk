@@ -13,8 +13,9 @@
 from __future__ import absolute_import
 
 import pytest
-from mock import Mock, MagicMock
+from mock import Mock, MagicMock, DEFAULT
 import sagemaker
+import time
 
 EXPANDED_ROLE = "arn:aws:iam::111111111111:role/ExpandedRole"
 REGION = "us-west-2"
@@ -23,13 +24,23 @@ JOB_NAME = "my_job_name"
 ENDPOINT_NAME = "the_point_of_end"
 
 
-def get_sagemaker_session(returns_status):
+def get_sagemaker_session_mock_endpoint_status(returns_status, block_seconds=None):
     boto_mock = MagicMock(name="boto_session", region_name=REGION)
     client_mock = MagicMock()
     client_mock.describe_model_package = MagicMock(
         return_value={"ModelPackageStatus": returns_status}
     )
-    client_mock.describe_endpoint = MagicMock(return_value={"EndpointStatus": returns_status})
+    side_effect = None
+
+    def side_effect_fn(*args, **kwargs):
+        time.sleep(block_seconds)
+        return DEFAULT
+
+    if block_seconds:
+        side_effect = side_effect_fn
+    client_mock.describe_endpoint = MagicMock(
+        return_value={"EndpointStatus": returns_status}, side_effect=side_effect
+    )
     ims = sagemaker.Session(boto_session=boto_mock, sagemaker_client=client_mock)
     ims.expand_role = Mock(return_value=EXPANDED_ROLE)
     return ims
@@ -37,7 +48,7 @@ def get_sagemaker_session(returns_status):
 
 def test_does_not_raise_when_successfully_created_package():
     try:
-        sagemaker_session = get_sagemaker_session(returns_status="Completed")
+        sagemaker_session = get_sagemaker_session_mock_endpoint_status(returns_status="Completed")
         sagemaker_session.wait_for_model_package(MODEL_PACKAGE_NAME)
     except sagemaker.exceptions.UnexpectedStatusException:
         pytest.fail("UnexpectedStatusException was thrown while it should not")
@@ -45,7 +56,7 @@ def test_does_not_raise_when_successfully_created_package():
 
 def test_raise_when_failed_created_package():
     try:
-        sagemaker_session = get_sagemaker_session(returns_status="EnRoute")
+        sagemaker_session = get_sagemaker_session_mock_endpoint_status(returns_status="EnRoute")
         sagemaker_session.wait_for_model_package(MODEL_PACKAGE_NAME)
         assert (
             False
@@ -59,7 +70,7 @@ def test_raise_when_failed_created_package():
 def test_does_not_raise_when_correct_job_status():
     try:
         job = Mock()
-        sagemaker_session = get_sagemaker_session(returns_status="Stopped")
+        sagemaker_session = get_sagemaker_session_mock_endpoint_status(returns_status="Stopped")
         sagemaker_session._check_job_status(
             job, {"TransformationJobStatus": "Stopped"}, "TransformationJobStatus"
         )
@@ -70,7 +81,7 @@ def test_does_not_raise_when_correct_job_status():
 def test_does_raise_when_incorrect_job_status():
     try:
         job = Mock()
-        sagemaker_session = get_sagemaker_session(returns_status="Failed")
+        sagemaker_session = get_sagemaker_session_mock_endpoint_status(returns_status="Failed")
         sagemaker_session._check_job_status(
             job, {"TransformationJobStatus": "Failed"}, "TransformationJobStatus"
         )
@@ -86,7 +97,7 @@ def test_does_raise_when_incorrect_job_status():
 
 def test_does_not_raise_when_successfully_deployed_endpoint():
     try:
-        sagemaker_session = get_sagemaker_session(returns_status="InService")
+        sagemaker_session = get_sagemaker_session_mock_endpoint_status(returns_status="InService")
         sagemaker_session.wait_for_endpoint(ENDPOINT_NAME)
     except sagemaker.exceptions.UnexpectedStatusException:
         pytest.fail("UnexpectedStatusException was thrown while it should not")
@@ -94,7 +105,7 @@ def test_does_not_raise_when_successfully_deployed_endpoint():
 
 def test_raise_when_failed_to_deploy_endpoint():
     try:
-        sagemaker_session = get_sagemaker_session(returns_status="Failed")
+        sagemaker_session = get_sagemaker_session_mock_endpoint_status(returns_status="Failed")
         assert sagemaker_session.wait_for_endpoint(ENDPOINT_NAME)
         assert (
             False
@@ -103,3 +114,15 @@ def test_raise_when_failed_to_deploy_endpoint():
         assert type(e) == sagemaker.exceptions.UnexpectedStatusException
         assert e.actual_status == "Failed"
         assert "InService" in e.allowed_statuses
+
+
+def test_wait_for_endpoint_timeout():
+    timeout_seconds = 2
+    block_seconds = timeout_seconds + 3
+    sagemaker_session = get_sagemaker_session_mock_endpoint_status(
+        returns_status="InService", block_seconds=block_seconds
+    )
+    start_time = time.time()
+    sagemaker_session.wait_for_endpoint(ENDPOINT_NAME, 0.1, timeout_seconds)
+    elapsed_time = time.time() - start_time
+    assert elapsed_time >= timeout_seconds
