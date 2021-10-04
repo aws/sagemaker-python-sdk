@@ -650,8 +650,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         model using the Amazon SageMaker hosting services.
 
         Args:
-            inputs (str or dict or sagemaker.inputs.TrainingInput): Information
-                about the training data. This can be one of four types:
+            inputs (str or dict or sagemaker.inputs.TrainingInput or
+                sagemaker.inputs.FileSystemInput): Information about the training data.
+                This can be one of four types:
 
                 * (str) the S3 location where training data is saved, or a file:// path in
                     local mode.
