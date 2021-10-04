@@ -651,7 +651,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
 
         Args:
             inputs (str or dict or sagemaker.inputs.TrainingInput): Information
-                about the training data. This can be one of three types:
+                about the training data. This can be one of four types:
 
                 * (str) the S3 location where training data is saved, or a file:// path in
                     local mode.
@@ -662,7 +662,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                     that can provide additional information as well as the path to the training
                     dataset.
                     See :func:`sagemaker.inputs.TrainingInput` for full details.
-                * (sagemaker.session.FileSystemInput) - channel configuration for
+                * (sagemaker.inputs.FileSystemInput) - channel configuration for
                     a file system data source that can provide additional information as well as
                     the path to the training dataset.
 
