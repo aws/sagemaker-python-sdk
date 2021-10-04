@@ -16,6 +16,8 @@ import os
 
 import pytest
 
+from packaging.version import Version
+
 from sagemaker.huggingface import HuggingFace, HuggingFaceProcessor
 from sagemaker.huggingface.model import HuggingFaceModel, HuggingFacePredictor
 from sagemaker.utils import unique_name_from_base
@@ -74,8 +76,10 @@ def test_huggingface_training(
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         data_path = os.path.join(DATA_DIR, "huggingface")
 
+        py_version = "py38" if Version(huggingface_training_pytorch_latest_version) >= Version("1.9") else "py36"
+
         hf = HuggingFace(
-            py_version="py36",
+            py_version=py_version,
             entry_point=os.path.join(data_path, "run_glue.py"),
             role="SageMakerRole",
             transformers_version=huggingface_training_latest_version,
