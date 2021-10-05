@@ -76,7 +76,11 @@ def test_huggingface_training(
     with timeout(minutes=TRAINING_DEFAULT_TIMEOUT_MINUTES):
         data_path = os.path.join(DATA_DIR, "huggingface")
 
-        py_version = "py38" if Version(huggingface_training_pytorch_latest_version) >= Version("1.9") else "py36"
+        py_version = (
+            "py38"
+            if Version(huggingface_training_pytorch_latest_version) >= Version("1.9")
+            else "py36"
+        )
 
         hf = HuggingFace(
             py_version=py_version,
