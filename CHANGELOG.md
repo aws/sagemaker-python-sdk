@@ -1,5 +1,24 @@
 # Changelog
 
+## v2.59.7 (2021-10-04)
+
+### Bug Fixes and Other Changes
+
+ * update feature request label
+ * update bug template
+
+## v2.59.6 (2021-09-30)
+
+### Bug Fixes and Other Changes
+
+ * ParamValidationError when scheduling a Clarify model monitor
+
+## v2.59.5 (2021-09-29)
+
+### Bug Fixes and Other Changes
+
+ * support maps in step parameters
+
 ## v2.59.4 (2021-09-27)
 
 ### Bug Fixes and Other Changes
