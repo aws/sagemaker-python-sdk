@@ -298,7 +298,7 @@ def framework_name_from_image(image_uri):
         (tensorflow|mxnet|chainer|pytorch|scikit-learn|xgboost
         |huggingface-tensorflow|huggingface-pytorch)(?:-)?
         (scriptmode|training)?
-        :(.*)-(.*?)-(py2|py3[67]?)(?:.*)$""",
+        :(.*)-(.*?)-(py2|py3\d*)(?:.*)$""",
         re.VERBOSE,
     )
     name_match = name_pattern.match(sagemaker_match.group(9))
@@ -329,7 +329,7 @@ def framework_version_from_tag(image_tag):
     Returns:
         str: The framework version.
     """
-    tag_pattern = re.compile("^(.*)-(cpu|gpu)-(py2|py3[67]?)$")
+    tag_pattern = re.compile("^(.*)-(cpu|gpu)-(py2|py3\d*)$")
     tag_match = tag_pattern.match(image_tag)
     return None if tag_match is None else tag_match.group(1)
 
