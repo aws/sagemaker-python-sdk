@@ -329,7 +329,7 @@ def framework_version_from_tag(image_tag):
     Returns:
         str: The framework version.
     """
-    tag_pattern = re.compile("^(.*)-(cpu|gpu)-(py2|py3\d*)$")
+    tag_pattern = re.compile(r"^(.*)-(cpu|gpu)-(py2|py3\d*)$")
     tag_match = tag_pattern.match(image_tag)
     return None if tag_match is None else tag_match.group(1)
 
