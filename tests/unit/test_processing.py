@@ -100,9 +100,9 @@ def test_sklearn_processor_with_required_parameters(
 
     expected_args = _get_expected_args(processor._current_job_name)
 
-    sklearn_image_uri = (
-        "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:{}-cpu-py3"
-    ).format(sklearn_version)
+    sklearn_image_uri = ("246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:{}-cpu-py3").format(
+        sklearn_version
+    )
     expected_args["app_specification"]["ImageUri"] = sklearn_image_uri
     sagemaker_session.process.assert_called_with(**expected_args)
 
@@ -110,9 +110,7 @@ def test_sklearn_processor_with_required_parameters(
 @patch("sagemaker.utils._botocore_resolver")
 @patch("os.path.exists", return_value=True)
 @patch("os.path.isfile", return_value=True)
-def test_sklearn_with_all_parameters(
-    exists_mock, isfile_mock, botocore_resolver, sklearn_version, sagemaker_session
-):
+def test_sklearn_with_all_parameters(exists_mock, isfile_mock, botocore_resolver, sklearn_version, sagemaker_session):
     botocore_resolver.return_value.construct_endpoint.return_value = {"hostname": ECR_HOSTNAME}
 
     processor = SKLearnProcessor(
@@ -148,9 +146,9 @@ def test_sklearn_with_all_parameters(
     )
 
     expected_args = _get_expected_args_all_parameters(processor._current_job_name)
-    sklearn_image_uri = (
-        "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:{}-cpu-py3"
-    ).format(sklearn_version)
+    sklearn_image_uri = ("246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:{}-cpu-py3").format(
+        sklearn_version
+    )
     expected_args["app_specification"]["ImageUri"] = sklearn_image_uri
 
     sagemaker_session.process.assert_called_with(**expected_args)
@@ -217,9 +215,9 @@ def test_sklearn_with_all_parameters_via_run_args(
     )
 
     expected_args = _get_expected_args_all_parameters(processor._current_job_name)
-    sklearn_image_uri = (
-        "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:{}-cpu-py3"
-    ).format(sklearn_version)
+    sklearn_image_uri = ("246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:{}-cpu-py3").format(
+        sklearn_version
+    )
     expected_args["app_specification"]["ImageUri"] = sklearn_image_uri
 
     sagemaker_session.process.assert_called_with(**expected_args)
@@ -272,9 +270,9 @@ def test_sklearn_with_all_parameters_via_run_args_called_twice(
 
     expected_args = _get_expected_args_all_parameters(processor._current_job_name)
 
-    sklearn_image_uri = (
-        "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:{}-cpu-py3"
-    ).format(sklearn_version)
+    sklearn_image_uri = ("246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:{}-cpu-py3").format(
+        sklearn_version
+    )
     expected_args["app_specification"]["ImageUri"] = sklearn_image_uri
 
     sagemaker_session.process.assert_called_with(**expected_args)
@@ -307,17 +305,13 @@ def test_pytorch_processor_with_required_parameters(
     expected_args = _get_expected_args_modular_code(processor._current_job_name)
 
     if version.parse(pytorch_training_version) < version.parse("1.2"):
-        pytorch_image_uri = (
-            "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-pytorch:{}-cpu-py3"
-        ).format(pytorch_training_version)
-    elif version.parse(pytorch_training_version) < version.parse("1.9"):
-        pytorch_image_uri = (
-            "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:{}-cpu-py3"
-        ).format(pytorch_training_version)
+        pytorch_image_uri = "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-pytorch:{}-cpu-{}".format(
+            pytorch_training_version, pytorch_training_py_version
+        )
     else:
-        pytorch_image_uri = (
-            "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:{}-cpu-py38"
-        ).format(pytorch_training_version)
+        pytorch_image_uri = "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:{}-cpu-{}".format(
+            pytorch_training_version, pytorch_training_py_version
+        )
 
     expected_args["app_specification"]["ImageUri"] = pytorch_image_uri
 
@@ -345,13 +339,13 @@ def test_xgboost_processor_with_required_parameters(
     expected_args = _get_expected_args_modular_code(processor._current_job_name)
 
     if version.parse(xgboost_framework_version) < version.parse("1.2-1"):
-        xgboost_image_uri = (
-            "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost:{}-cpu-py3"
-        ).format(xgboost_framework_version)
+        xgboost_image_uri = ("246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost:{}-cpu-py3").format(
+            xgboost_framework_version
+        )
     else:
-        xgboost_image_uri = (
-            "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost:{}"
-        ).format(xgboost_framework_version)
+        xgboost_image_uri = ("246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-xgboost:{}").format(
+            xgboost_framework_version
+        )
 
     expected_args["app_specification"]["ImageUri"] = xgboost_image_uri
 
@@ -387,19 +381,19 @@ def test_mxnet_processor_with_required_parameters(
     if (mxnet_training_py_version == "py3") & (
         mxnet_training_version == "1.4"
     ):  # probably there is a better way to handle this
-        mxnet_image_uri = (
-            "763104351884.dkr.ecr.us-west-2.amazonaws.com/mxnet-training:{}-cpu-{}"
-        ).format(mxnet_training_version, mxnet_training_py_version)
+        mxnet_image_uri = ("763104351884.dkr.ecr.us-west-2.amazonaws.com/mxnet-training:{}-cpu-{}").format(
+            mxnet_training_version, mxnet_training_py_version
+        )
     elif version.parse(mxnet_training_version) > version.parse(
         "1.4.1" if mxnet_training_py_version == "py2" else "1.4"
     ):
-        mxnet_image_uri = (
-            "763104351884.dkr.ecr.us-west-2.amazonaws.com/mxnet-training:{}-cpu-{}"
-        ).format(mxnet_training_version, mxnet_training_py_version)
+        mxnet_image_uri = ("763104351884.dkr.ecr.us-west-2.amazonaws.com/mxnet-training:{}-cpu-{}").format(
+            mxnet_training_version, mxnet_training_py_version
+        )
     else:
-        mxnet_image_uri = (
-            "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet:{}-cpu-{}"
-        ).format(mxnet_training_version, mxnet_training_py_version)
+        mxnet_image_uri = ("520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-mxnet:{}-cpu-{}").format(
+            mxnet_training_version, mxnet_training_py_version
+        )
 
     expected_args["app_specification"]["ImageUri"] = mxnet_image_uri
 
@@ -448,13 +442,13 @@ def test_tensorflow_processor_with_required_parameters(
     expected_args = _get_expected_args_modular_code(processor._current_job_name)
 
     if version.parse(tensorflow_training_version) <= version.parse("1.13.1"):
-        tensorflow_image_uri = (
-            "520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-tensorflow:{}-cpu-{}"
-        ).format(tensorflow_training_version, tensorflow_training_py_version)
+        tensorflow_image_uri = ("520713654638.dkr.ecr.us-west-2.amazonaws.com/sagemaker-tensorflow:{}-cpu-{}").format(
+            tensorflow_training_version, tensorflow_training_py_version
+        )
     else:
-        tensorflow_image_uri = (
-            "763104351884.dkr.ecr.us-west-2.amazonaws.com/tensorflow-training:{}-cpu-{}"
-        ).format(tensorflow_training_version, tensorflow_training_py_version)
+        tensorflow_image_uri = ("763104351884.dkr.ecr.us-west-2.amazonaws.com/tensorflow-training:{}-cpu-{}").format(
+            tensorflow_training_version, tensorflow_training_py_version
+        )
 
     expected_args["app_specification"]["ImageUri"] = tensorflow_image_uri
 
@@ -478,9 +472,7 @@ def test_script_processor_errors_with_code_directory(exists_mock, isfile_mock, s
 
 @patch("os.path.exists", return_value=True)
 @patch("os.path.isfile", return_value=True)
-def test_script_processor_errors_with_invalid_code_url_scheme(
-    exists_mock, isfile_mock, sagemaker_session
-):
+def test_script_processor_errors_with_invalid_code_url_scheme(exists_mock, isfile_mock, sagemaker_session):
     processor = _get_script_processor(sagemaker_session)
     with pytest.raises(ValueError):
         processor.run(code="hdfs:///path/to/processing_code.py")
@@ -488,9 +480,7 @@ def test_script_processor_errors_with_invalid_code_url_scheme(
 
 @patch("os.path.exists", return_value=True)
 @patch("os.path.isfile", return_value=True)
-def test_script_processor_works_with_absolute_local_path(
-    exists_mock, isfile_mock, sagemaker_session
-):
+def test_script_processor_works_with_absolute_local_path(exists_mock, isfile_mock, sagemaker_session):
     processor = _get_script_processor(sagemaker_session)
     processor.run(code="/local/path/to/processing_code.py")
 
@@ -501,9 +491,7 @@ def test_script_processor_works_with_absolute_local_path(
 
 @patch("os.path.exists", return_value=True)
 @patch("os.path.isfile", return_value=True)
-def test_script_processor_works_with_relative_local_path(
-    exists_mock, isfile_mock, sagemaker_session
-):
+def test_script_processor_works_with_relative_local_path(exists_mock, isfile_mock, sagemaker_session):
     processor = _get_script_processor(sagemaker_session)
     processor.run(code="processing_code.py")
 
@@ -513,9 +501,7 @@ def test_script_processor_works_with_relative_local_path(
 
 @patch("os.path.exists", return_value=True)
 @patch("os.path.isfile", return_value=True)
-def test_script_processor_works_with_relative_local_path_with_directories(
-    exists_mock, isfile_mock, sagemaker_session
-):
+def test_script_processor_works_with_relative_local_path_with_directories(exists_mock, isfile_mock, sagemaker_session):
     processor = _get_script_processor(sagemaker_session)
     processor.run(code="path/to/processing_code.py")
     expected_args = _get_expected_args(processor._current_job_name, code_s3_uri=MOCKED_S3_URI)
@@ -524,9 +510,7 @@ def test_script_processor_works_with_relative_local_path_with_directories(
 
 @patch("os.path.exists", return_value=True)
 @patch("os.path.isfile", return_value=True)
-def test_script_processor_works_with_file_code_url_scheme(
-    exists_mock, isfile_mock, sagemaker_session
-):
+def test_script_processor_works_with_file_code_url_scheme(exists_mock, isfile_mock, sagemaker_session):
     processor = _get_script_processor(sagemaker_session)
     processor.run(code="file:///path/to/processing_code.py")
 
@@ -540,9 +524,7 @@ def test_script_processor_works_with_s3_code_url(exists_mock, isfile_mock, sagem
     processor = _get_script_processor(sagemaker_session)
     processor.run(code="s3://bucket/path/to/processing_code.py")
 
-    expected_args = _get_expected_args(
-        processor._current_job_name, "s3://bucket/path/to/processing_code.py"
-    )
+    expected_args = _get_expected_args(processor._current_job_name, "s3://bucket/path/to/processing_code.py")
     sagemaker_session.process.assert_called_with(**expected_args)
 
 
@@ -552,9 +534,7 @@ def test_script_processor_with_one_input(exists_mock, isfile_mock, sagemaker_ses
     processor = _get_script_processor(sagemaker_session)
     processor.run(
         code="/local/path/to/processing_code.py",
-        inputs=[
-            ProcessingInput(source="/local/path/to/my/dataset/census.csv", destination="/data/")
-        ],
+        inputs=[ProcessingInput(source="/local/path/to/my/dataset/census.csv", destination="/data/")],
     )
 
     expected_args = _get_expected_args(processor._current_job_name, code_s3_uri=MOCKED_S3_URI)
@@ -618,9 +598,7 @@ def test_script_processor_with_all_parameters(exists_mock, isfile_mock, sagemake
 
 @patch("os.path.exists", return_value=True)
 @patch("os.path.isfile", return_value=True)
-def test_script_processor_with_all_parameters_via_run_args(
-    exists_mock, isfile_mock, sagemaker_session
-):
+def test_script_processor_with_all_parameters_via_run_args(exists_mock, isfile_mock, sagemaker_session):
     processor = ScriptProcessor(
         role=ROLE,
         image_uri=CUSTOM_IMAGE_URI,
