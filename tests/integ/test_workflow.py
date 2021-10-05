@@ -95,7 +95,11 @@ from sagemaker.lambda_helper import Lambda
 from sagemaker.feature_store.feature_group import FeatureGroup, FeatureDefinition, FeatureTypeEnum
 from tests.integ import DATA_DIR
 from tests.integ.kms_utils import get_or_create_kms_key
+<<<<<<< HEAD
 from tests.integ.retry import retries
+=======
+from tests.integ.vpc_test_utils import get_or_create_vpc_resources
+>>>>>>> 48cd0d8f (feature: Add EMRStep support in Sagemaker pipeline)
 
 
 def ordered(obj):
@@ -279,6 +283,75 @@ def build_jar():
     yield
     subprocess.run(["rm", os.path.join(jar_file_path, "hello-spark-java.jar")])
     subprocess.run(["rm", os.path.join(jar_file_path, java_file_path, "HelloJavaSparkApp.class")])
+
+
+@pytest.fixture(scope="module")
+def emr_script_path(sagemaker_session):
+    input_path = sagemaker_session.upload_data(
+        path=os.path.join(DATA_DIR, "workflow", "emr-script.sh"),
+        key_prefix="integ-test-data/workflow",
+    )
+    return input_path
+
+
+@pytest.fixture(scope="module")
+def emr_cluster_id(sagemaker_session, role):
+    emr_client = sagemaker_session.boto_session.client("emr")
+    cluster_name = "emr-step-test-cluster"
+    cluster_id = get_existing_emr_cluster_id(emr_client, cluster_name)
+
+    if cluster_id is None:
+        create_new_emr_cluster(sagemaker_session, emr_client, cluster_name)
+    return cluster_id
+
+
+def get_existing_emr_cluster_id(emr_client, cluster_name):
+    try:
+        response = emr_client.list_clusters(ClusterStates=["RUNNING", "WAITING"])
+        for cluster in response["Clusters"]:
+            if cluster["Name"].startswith(cluster_name):
+                cluster_id = cluster["Id"]
+                print("Using existing cluster: {}".format(cluster_id))
+                return cluster_id
+    except Exception:
+        raise
+
+
+def create_new_emr_cluster(sagemaker_session, emr_client, cluster_name):
+    ec2_client = sagemaker_session.boto_session.client("ec2")
+    subnet_ids, security_group_id = get_or_create_vpc_resources(ec2_client)
+    try:
+        response = emr_client.run_job_flow(
+            Name="emr-step-test-cluster",
+            LogUri="s3://{}/{}".format(sagemaker_session.default_bucket(), "emr-test-logs"),
+            ReleaseLabel="emr-6.3.0",
+            Applications=[
+                {"Name": "Hadoop"},
+                {"Name": "Spark"},
+            ],
+            Instances={
+                "InstanceGroups": [
+                    {
+                        "Name": "Master nodes",
+                        "Market": "ON_DEMAND",
+                        "InstanceRole": "MASTER",
+                        "InstanceType": "m4.large",
+                        "InstanceCount": 1,
+                    }
+                ],
+                "KeepJobFlowAliveWhenNoSteps": True,
+                "TerminationProtected": False,
+                "Ec2SubnetId": subnet_ids[0],
+            },
+            VisibleToAllUsers=True,
+            JobFlowRole="EMR_EC2_DefaultRole",
+            ServiceRole="EMR_DefaultRole",
+        )
+        cluster_id = response["JobFlowId"]
+        print("Created new cluster: {}".format(cluster_id))
+        return cluster_id
+    except Exception:
+        raise
 
 
 def test_three_step_definition(
@@ -1149,82 +1222,30 @@ def test_two_step_lambda_pipeline_with_output_reference(
             pass
 
 
-def test_one_step_emr_pipeline(sagemaker_session, role, pipeline_name, region_name):
-    instance_count = ParameterInteger(name="InstanceCount", default_value=2)
-
-    emr_step_config = EMRStepConfig(
-        jar="s3:/script-runner/script-runner.jar",
-        args=["--arg_0", "arg_0_value"],
-        main_class="com.my.main",
-        properties=[{"Key": "Foo", "Value": "Foo_value"}, {"Key": "Bar", "Value": "Bar_value"}],
-    )
-
-    step_emr = EMRStep(
-        name="emr-step",
-        cluster_id="MyClusterID",
-        display_name="emr_step",
-        description="MyEMRStepDescription",
-        step_config=emr_step_config,
-    )
-
-    pipeline = Pipeline(
-        name=pipeline_name,
-        parameters=[instance_count],
-        steps=[step_emr],
-        sagemaker_session=sagemaker_session,
-    )
-
-    try:
-        response = pipeline.create(role)
-        create_arn = response["PipelineArn"]
-
-        execution = pipeline.start()
-        response = execution.describe()
-        assert response["PipelineArn"] == create_arn
-
-        try:
-            execution.wait(delay=60, max_attempts=10)
-        except WaiterError:
-            pass
-
-        execution_steps = execution.list_steps()
-        assert len(execution_steps) == 1
-        assert execution_steps[0]["StepName"] == "emr-step"
-    finally:
-        try:
-            pipeline.delete()
-        except Exception:
-            pass
-
-
-def test_two_steps_emr_pipeline_without_nullable_config_fields(
-    sagemaker_session, role, pipeline_name, region_name
+def test_two_steps_emr_pipeline(
+    sagemaker_session, role, pipeline_name, region_name, emr_cluster_id, emr_script_path
 ):
     instance_count = ParameterInteger(name="InstanceCount", default_value=2)
 
-    emr_step_config_1 = EMRStepConfig(
-        jar="s3:/script-runner/script-runner_1.jar",
-        args=["--arg_0", "arg_0_value"],
-        main_class="com.my.main",
-        properties=[{"Key": "Foo", "Value": "Foo_value"}, {"Key": "Bar", "Value": "Bar_value"}],
+    emr_step_config = EMRStepConfig(
+        jar="s3://us-west-2.elasticmapreduce/libs/script-runner/script-runner.jar",
+        args=[emr_script_path],
     )
 
     step_emr_1 = EMRStep(
         name="emr-step-1",
-        cluster_id="MyClusterID",
-        display_name="emr-step-1",
+        cluster_id=emr_cluster_id,
+        display_name="emr_step_1",
         description="MyEMRStepDescription",
-        step_config=emr_step_config_1,
+        step_config=emr_step_config,
     )
-
-    emr_step_config_2 = EMRStepConfig(jar="s3:/script-runner/script-runner_2.jar")
 
     step_emr_2 = EMRStep(
         name="emr-step-2",
-        cluster_id="MyClusterID",
-        display_name="emr-step-2",
+        cluster_id=step_emr_1.properties.ClusterId,
+        display_name="emr_step_2",
         description="MyEMRStepDescription",
-        step_config=emr_step_config_2,
+        step_config=emr_step_config,
     )
 
     pipeline = Pipeline(
@@ -1237,20 +1258,24 @@ def test_two_steps_emr_pipeline_without_nullable_config_fields(
     try:
         response = pipeline.create(role)
         create_arn = response["PipelineArn"]
+        assert re.match(
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}", create_arn
+        )
 
         execution = pipeline.start()
-        response = execution.describe()
-        assert response["PipelineArn"] == create_arn
-
         try:
-            execution.wait(delay=60, max_attempts=10)
+            execution.wait(delay=60, max_attempts=5)
         except WaiterError:
             pass
 
         execution_steps = execution.list_steps()
         assert len(execution_steps) == 2
         assert execution_steps[0]["StepName"] == "emr-step-1"
+        assert execution_steps[0].get("FailureReason", "") == ""
+        assert execution_steps[0]["StepStatus"] == "Succeeded"
         assert execution_steps[1]["StepName"] == "emr-step-2"
+        assert execution_steps[1].get("FailureReason", "") == ""
+        assert execution_steps[1]["StepStatus"] == "Succeeded"
 
         pipeline.parameters = [ParameterInteger(name="InstanceCount", default_value=1)]
         response = pipeline.update(role)
