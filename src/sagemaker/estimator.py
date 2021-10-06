@@ -656,9 +656,11 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
 
                 * (str) the S3 location where training data is saved, or a file:// path in
                     local mode.
-                * (dict[str, str] or dict[str, sagemaker.inputs.TrainingInput]) If using multiple
-                    channels for training data, you can specify a dict mapping channel names to
-                    strings or :func:`~sagemaker.inputs.TrainingInput` objects.
+                * (dict[str, str] or dict[str, sagemaker.inputs.TrainingInput] or
+                    dict[str, sagemaker.inputs.FileSystemInput]) If using multiple channels for
+                    training data, you can specify a dict mapping channel names to strings or
+                    :func:`~sagemaker.inputs.TrainingInput` objects or
+                    :func:`~sagemaker.inputs.FileSystemInput` objects.
                 * (sagemaker.inputs.TrainingInput) - channel configuration for S3 data sources
                     that can provide additional information as well as the path to the training
                     dataset.
