@@ -16,8 +16,6 @@ import os
 
 import pytest
 
-from packaging.version import Version
-
 from sagemaker.huggingface import HuggingFace, HuggingFaceProcessor
 from sagemaker.huggingface.model import HuggingFaceModel, HuggingFacePredictor
 from sagemaker.utils import unique_name_from_base
