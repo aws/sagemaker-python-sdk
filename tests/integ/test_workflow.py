@@ -2116,6 +2116,7 @@ def test_one_step_ingestion_pipeline(
     input_data_uri = os.path.join(
         "s3://", sagemaker_session.default_bucket(), "py-sdk-ingestion-test-input/features.csv"
     )
+
     with open(input_file_path, "r") as data:
         body = data.read()
         S3Uploader.upload_string_as_file_body(
@@ -2152,6 +2153,10 @@ def test_one_step_ingestion_pipeline(
         )
     ]
 
+    output_content_type = "CSV"
+    output_config = {output_name: {"content_type": output_content_type}}
+    job_argument = [f"--output-config '{json.dumps(output_config)}'"]
+
     temp_flow_path = "./ingestion.flow"
     with cleanup_feature_group(feature_group):
         json.dump(ingestion_only_flow, open(temp_flow_path, "w"))
@@ -2166,7 +2171,11 @@ def test_one_step_ingestion_pipeline(
         )
 
         data_wrangler_step = ProcessingStep(
-            name="ingestion-step", processor=data_wrangler_processor, inputs=inputs, outputs=outputs
+            name="ingestion-step",
+            processor=data_wrangler_processor,
+            inputs=inputs,
+            outputs=outputs,
+            job_arguments=job_argument,
         )
 
         pipeline = Pipeline(
