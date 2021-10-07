@@ -46,7 +46,7 @@ def test_framework_processing_job_with_deps(
         processor = HuggingFaceProcessor(
             transformers_version=huggingface_training_latest_version,
             pytorch_version=huggingface_training_pytorch_latest_version,
-            py_version="py36",
+            py_version="py38",
             role=ROLE,
             instance_count=1,
             instance_type=gpu_instance_type,
