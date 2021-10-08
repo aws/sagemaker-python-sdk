@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.59.8 (2021-10-07)
+
+### Bug Fixes and Other Changes
+
+ * fix feature store ingestion via data wrangler test
+
 ## v2.59.7 (2021-10-04)
 
 ### Bug Fixes and Other Changes

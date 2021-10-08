@@ -178,6 +178,8 @@ class HuggingFace(Framework):
         if "enable_sagemaker_metrics" not in kwargs:
             kwargs["enable_sagemaker_metrics"] = True
 
+        kwargs["py_version"] = self.py_version
+
         super(HuggingFace, self).__init__(
             entry_point, source_dir, hyperparameters, image_uri=image_uri, **kwargs
         )
