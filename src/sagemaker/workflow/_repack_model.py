@@ -71,15 +71,6 @@ def repack(inference_script, model_archive, dependencies=None, source_dir=None):
             if os.path.exists(code_dir):
                 shutil.rmtree(code_dir)
                 shutil.copytree(source_dir, code_dir)
-            # actual_source_dir_path = os.path.join("/opt/ml/code", source_dir)
-            # if os.path.exists(actual_source_dir_path):
-            #     for item in os.listdir(actual_source_dir_path):
-            #         s = os.path.join(actual_source_dir_path, item)
-            #         d = os.path.join(os.path.join(code_dir, source_dir), item)
-            #         if os.path.isdir(s):
-            #             shutil.copytree(s, d)
-            #         else:
-            #             shutil.copy2(s, d)
 
         # copy any dependencies to code/lib/
         if dependencies:
