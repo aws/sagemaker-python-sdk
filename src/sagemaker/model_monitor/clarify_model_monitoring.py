@@ -476,9 +476,15 @@ class ModelBiasMonitor(ClarifyModelMonitor):
             features_attribute=data_config.features,
         )
         if model_predicted_label_config is not None:
-            latest_baselining_job_config.inference_attribute = model_predicted_label_config.label
+            latest_baselining_job_config.inference_attribute = (
+                model_predicted_label_config.label
+                if model_predicted_label_config.label is None
+                else str(model_predicted_label_config.label)
+            )
             latest_baselining_job_config.probability_attribute = (
                 model_predicted_label_config.probability
+                if model_predicted_label_config.probability is None
+                else str(model_predicted_label_config.probability)
             )
             latest_baselining_job_config.probability_threshold_attribute = (
                 model_predicted_label_config.probability_threshold
@@ -827,8 +833,9 @@ class ModelExplainabilityMonitor(ClarifyModelMonitor):
                 specific explainability method. Currently, only SHAP is supported.
             model_config (:class:`~sagemaker.clarify.ModelConfig`): Config of the model and its
                 endpoint to be created.
-            model_scores:  Index or JSONPath location in the model output for the predicted scores
-                to be explained. This is not required if the model output is a single score.
+            model_scores (int or str): Index or JSONPath location in the model output for the
+                predicted scores to be explained. This is not required if the model output is
+                a single score.
             wait (bool): Whether the call should wait until the job completes (default: False).
             logs (bool): Whether to show the logs produced by the job.
                 Only meaningful when wait is True (default: False).
@@ -865,7 +872,7 @@ class ModelExplainabilityMonitor(ClarifyModelMonitor):
                 headers=headers,
             ),
             features_attribute=data_config.features,
-            inference_attribute=model_scores,
+            inference_attribute=model_scores if model_scores is None else str(model_scores),
         )
         self.latest_baselining_job_name = baselining_job_name
         self.latest_baselining_job = ClarifyBaseliningJob(
