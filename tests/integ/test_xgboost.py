@@ -77,9 +77,10 @@ def test_training_with_network_isolation(
             path=os.path.join(DATA_DIR, "xgboost_abalone", "abalone"),
             key_prefix="integ-test-data/xgboost_abalone/abalone"
         )
+        job_name = unique_name_from_base(base_job_name)
         xgboost.fit(
             inputs={"train": train_input},
-            job_name=unique_name_from_base(base_job_name)
+            job_name=job_name
         )
         assert sagemaker_session.sagemaker_client.describe_training_job(TrainingJobName=job_name)[
             "EnableNetworkIsolation"
