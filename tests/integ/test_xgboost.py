@@ -14,6 +14,7 @@ from __future__ import absolute_import
 
 import os
 import pytest
+from sagemaker.utils import unique_name_from_base
 from sagemaker.xgboost import XGBoost
 from sagemaker.xgboost.processing import XGBoostProcessor
 from tests.integ import DATA_DIR, TRAINING_DEFAULT_TIMEOUT_MINUTES
