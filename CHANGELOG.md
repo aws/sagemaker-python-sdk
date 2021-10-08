@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.60.0 (2021-10-08)
+
+### Features
+
+ * Add support for Hugging Face 4.10.2
+
 ## v2.59.8 (2021-10-07)
 
 ### Bug Fixes and Other Changes
