@@ -28,7 +28,6 @@ def get_full_gpu_image_uri(
         "huggingface",
         region,
         version=version,
-        py_version="py36",
         instance_type=instance_type,
         image_scope="training",
         base_framework_version=base_framework_version,
