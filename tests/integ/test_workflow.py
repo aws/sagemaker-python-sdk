@@ -858,6 +858,148 @@ def test_one_step_callback_pipeline(sagemaker_session, role, pipeline_name, regi
             pass
 
 
+def test_steps_with_map_params_pipeline(
+    sagemaker_session, role, script_dir, pipeline_name, region_name, athena_dataset_definition
+):
+    instance_count = ParameterInteger(name="InstanceCount", default_value=2)
+    framework_version = "0.20.0"
+    instance_type = ParameterString(name="InstanceType", default_value="ml.m5.xlarge")
+    output_prefix = ParameterString(name="OutputPrefix", default_value="output")
+    input_data = f"s3://sagemaker-sample-data-{region_name}/processing/census/census-income.csv"
+
+    sklearn_processor = SKLearnProcessor(
+        framework_version=framework_version,
+        instance_type=instance_type,
+        instance_count=instance_count,
+        base_job_name="test-sklearn",
+        sagemaker_session=sagemaker_session,
+        role=role,
+    )
+    step_process = ProcessingStep(
+        name="my-process",
+        display_name="ProcessingStep",
+        description="description for Processing step",
+        processor=sklearn_processor,
+        inputs=[
+            ProcessingInput(source=input_data, destination="/opt/ml/processing/input"),
+            ProcessingInput(dataset_definition=athena_dataset_definition),
+        ],
+        outputs=[
+            ProcessingOutput(output_name="train_data", source="/opt/ml/processing/train"),
+            ProcessingOutput(
+                output_name="test_data",
+                source="/opt/ml/processing/test",
+                destination=Join(
+                    on="/",
+                    values=[
+                        "s3:/",
+                        sagemaker_session.default_bucket(),
+                        "test-sklearn",
+                        output_prefix,
+                        ExecutionVariables.PIPELINE_EXECUTION_ID,
+                    ],
+                ),
+            ),
+        ],
+        code=os.path.join(script_dir, "preprocessing.py"),
+    )
+
+    sklearn_train = SKLearn(
+        framework_version=framework_version,
+        entry_point=os.path.join(script_dir, "train.py"),
+        instance_type=instance_type,
+        sagemaker_session=sagemaker_session,
+        role=role,
+        hyperparameters={
+            "batch-size": 500,
+            "epochs": 5,
+        },
+    )
+    step_train = TrainingStep(
+        name="my-train",
+        display_name="TrainingStep",
+        description="description for Training step",
+        estimator=sklearn_train,
+        inputs=TrainingInput(
+            s3_data=step_process.properties.ProcessingOutputConfig.Outputs[
+                "train_data"
+            ].S3Output.S3Uri
+        ),
+    )
+
+    model = Model(
+        image_uri=sklearn_train.image_uri,
+        model_data=step_train.properties.ModelArtifacts.S3ModelArtifacts,
+        sagemaker_session=sagemaker_session,
+        role=role,
+    )
+    model_inputs = CreateModelInput(
+        instance_type="ml.m5.large",
+        accelerator_type="ml.eia1.medium",
+    )
+    step_model = CreateModelStep(
+        name="my-model",
+        display_name="ModelStep",
+        description="description for Model step",
+        model=model,
+        inputs=model_inputs,
+    )
+
+    # Condition step for evaluating model quality and branching execution
+    cond_lte = ConditionGreaterThanOrEqualTo(
+        left=step_train.properties.HyperParameters["batch-size"],
+        right=6.0,
+    )
+
+    step_cond = ConditionStep(
+        name="CustomerChurnAccuracyCond",
+        conditions=[cond_lte],
+        if_steps=[],
+        else_steps=[step_model],
+    )
+
+    pipeline = Pipeline(
+        name=pipeline_name,
+        parameters=[instance_type, instance_count, output_prefix],
+        steps=[step_process, step_train, step_cond],
+        sagemaker_session=sagemaker_session,
+    )
+
+    definition = json.loads(pipeline.definition())
+    assert definition["Version"] == "2020-12-01"
+
+    steps = definition["Steps"]
+    assert len(steps) == 3
+    training_args = {}
+    condition_args = {}
+    for step in steps:
+        if step["Type"] == "Training":
+            training_args = step["Arguments"]
+        if step["Type"] == "Condition":
+            condition_args = step["Arguments"]
+
+    assert training_args["InputDataConfig"][0]["DataSource"]["S3DataSource"]["S3Uri"] == {
+        "Get": "Steps.my-process.ProcessingOutputConfig.Outputs['train_data'].S3Output.S3Uri"
+    }
+    assert condition_args["Conditions"][0]["LeftValue"] == {
+        "Get": "Steps.my-train.HyperParameters['batch-size']"
+    }
+
+    try:
+        response = pipeline.create(role)
+        create_arn = response["PipelineArn"]
+        assert re.match(
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            create_arn,
+        )
+
+    finally:
+        try:
+            pipeline.delete()
+        except Exception:
+            pass
+
+
 def test_two_step_callback_pipeline_with_output_reference(
     sagemaker_session, role, pipeline_name, region_name
 ):
@@ -1977,6 +2119,7 @@ def test_one_step_ingestion_pipeline(
     input_data_uri = os.path.join(
         "s3://", sagemaker_session.default_bucket(), "py-sdk-ingestion-test-input/features.csv"
     )
+
     with open(input_file_path, "r") as data:
         body = data.read()
         S3Uploader.upload_string_as_file_body(
@@ -2013,6 +2156,10 @@ def test_one_step_ingestion_pipeline(
         )
     ]
 
+    output_content_type = "CSV"
+    output_config = {output_name: {"content_type": output_content_type}}
+    job_argument = [f"--output-config '{json.dumps(output_config)}'"]
+
     temp_flow_path = "./ingestion.flow"
     with cleanup_feature_group(feature_group):
         json.dump(ingestion_only_flow, open(temp_flow_path, "w"))
@@ -2027,7 +2174,11 @@ def test_one_step_ingestion_pipeline(
         )
 
         data_wrangler_step = ProcessingStep(
-            name="ingestion-step", processor=data_wrangler_processor, inputs=inputs, outputs=outputs
+            name="ingestion-step",
+            processor=data_wrangler_processor,
+            inputs=inputs,
+            outputs=outputs,
+            job_arguments=job_argument,
         )
 
         pipeline = Pipeline(
