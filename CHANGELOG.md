@@ -1,5 +1,16 @@
 # Changelog
 
+## v2.61.0 (2021-10-11)
+
+### Features
+
+ * add support for PyTorch 1.9.0
+
+### Bug Fixes and Other Changes
+
+ * Update TRAINING_DEFAULT_TIMEOUT_MINUTES to 40 min
+ * notebook test for parallel PRs
+
 ## v2.60.0 (2021-10-08)
 
 ### Features
