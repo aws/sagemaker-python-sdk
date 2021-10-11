@@ -50,6 +50,45 @@ def renamed_warning(phrase):
     _warn(f"{phrase} has been renamed")
 
 
+def deprecation_warn(name, date, msg=None):
+    """Raise a warning for soon to be deprecated feature
+    in sagemaker>=2
+
+    Args:
+        name (str): Name of the feature
+        date (str): the date when the feature will be deprecated
+        msg (str): the prefix phrase of the warning message.
+    """
+    _warn(f"{name} will be deprecated on {date}.{msg}")
+
+
+def deprecation_warning(date, msg=None):
+    """Decorator for raising deprecation warning for a feature
+    in sagemaker>=2
+
+    Args:
+        date (str): the date when the feature will be deprecated
+        msg (str): the prefix phrase of the warning message.
+
+    Usage:
+        @deprecation_warning(msg="message", date="date")
+        def sample_function():
+            print("xxxx....")
+
+        @deprecation_warning(msg="message", date="date")
+        class SampleClass():
+            def __init__(self):
+                print("xxxx....")
+
+    """
+    def deprecate(obj):
+        def wrapper(*args, **kwargs):
+            deprecation_warn(obj.__name__, date, msg)
+            return obj(*args, **kwargs)
+        return wrapper
+    return deprecate
+
+
 def renamed_kwargs(old_name, new_name, value, kwargs):
     """Checks if the deprecated argument is in kwargs
 

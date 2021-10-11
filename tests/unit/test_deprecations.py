@@ -23,6 +23,7 @@ from sagemaker.deprecations import (
     removed_function,
     removed_kwargs,
     renamed_kwargs,
+    deprecation_warning,
 )
 
 
@@ -58,6 +59,50 @@ def test_removed_kwargs():
     with pytest.warns(DeprecationWarning):
         kwarg = {"a": 1, "b": 3}
         removed_kwargs("b", kwarg)
+
+
+def test_deprecation_warning_for_function():
+    @deprecation_warning(msg="message", date="date")
+    def sample_function():
+        return "xxxx...."
+
+    with pytest.warns(DeprecationWarning) as w:
+        output = sample_function()
+        assert output == "xxxx...."
+        msg = "sample_function will be deprecated on date.message in sagemaker>=2.\n" \
+              "See: https://sagemaker.readthedocs.io/en/stable/v2.html for details."
+        assert str(w[-1].message) == msg
+
+
+def test_deprecation_warning_for_class():
+    @deprecation_warning(msg="message", date="date")
+    class SampleClass():
+        def __init__(self):
+            pass
+
+    with pytest.warns(DeprecationWarning) as w:
+        SampleClass()
+        msg = "SampleClass will be deprecated on date.message in sagemaker>=2.\n" \
+              "See: https://sagemaker.readthedocs.io/en/stable/v2.html for details."
+        assert str(w[-1].message) == msg
+
+
+def test_deprecation_warning_for_class_method():
+    class SampleClass():
+        def __init__(self):
+            pass
+
+        @deprecation_warning(msg="message", date="date")
+        def sample_method(self):
+            return "xxxx...."
+
+    s = SampleClass()
+    with pytest.warns(DeprecationWarning) as w:
+        output = s.sample_method()
+        assert output == "xxxx...."
+        msg = "sample_method will be deprecated on date.message in sagemaker>=2.\n" \
+              "See: https://sagemaker.readthedocs.io/en/stable/v2.html for details."
+        assert str(w[-1].message) == msg
 
 
 def test_removed_function():

@@ -20,10 +20,15 @@ import boto3
 import botocore
 
 from sagemaker.model import ModelBase
-
+from sagemaker.deprecations import deprecation_warning
 from .predictor import LambdaPredictor
 
 
+@deprecation_warning(
+    msg="Based on customer experience and feedback an"
+    " alternative support will be added in near future",
+    date="10/29/2021",
+)
 class LambdaModel(ModelBase):
     """A model that can be deployed to Lambda."""
 
