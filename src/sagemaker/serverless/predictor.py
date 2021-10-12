@@ -26,7 +26,7 @@ from sagemaker.deprecations import deprecation_warning
 @deprecation_warning(
     msg="Based on customer experience and feedback an"
     " alternative support will be added in near future",
-    date="10/29/2021",
+    date="10/27/2021",
 )
 class LambdaPredictor(PredictorBase):
     """A deployed model hosted on Lambda."""
