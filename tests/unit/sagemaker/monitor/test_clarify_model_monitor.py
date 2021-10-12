@@ -93,8 +93,8 @@ END_TIME_OFFSET = "-PT0H"
 OUTPUT_S3_URI = "s3://bucket/output"
 CONSTRAINTS = Constraints("", "s3://bucket/analysis.json")
 FEATURES_ATTRIBUTE = "features"
-INFERENCE_ATTRIBUTE = "predicted_label"
-PROBABILITY_ATTRIBUTE = "probabilities"
+INFERENCE_ATTRIBUTE = 0
+PROBABILITY_ATTRIBUTE = 1
 PROBABILITY_THRESHOLD_ATTRIBUTE = 0.6
 APP_SPECIFICATION = {
     "ConfigUri": ANALYSIS_CONFIG_S3_URI,
@@ -131,8 +131,8 @@ BIAS_JOB_INPUT = {
         "StartTimeOffset": START_TIME_OFFSET,
         "EndTimeOffset": END_TIME_OFFSET,
         "FeaturesAttribute": FEATURES_ATTRIBUTE,
-        "InferenceAttribute": INFERENCE_ATTRIBUTE,
-        "ProbabilityAttribute": PROBABILITY_ATTRIBUTE,
+        "InferenceAttribute": str(INFERENCE_ATTRIBUTE),
+        "ProbabilityAttribute": str(PROBABILITY_ATTRIBUTE),
         "ProbabilityThresholdAttribute": PROBABILITY_THRESHOLD_ATTRIBUTE,
     },
     "GroundTruthS3Input": {"S3Uri": GROUND_TRUTH_S3_URI},
@@ -155,7 +155,7 @@ EXPLAINABILITY_JOB_INPUT = {
         "S3InputMode": S3_INPUT_MODE,
         "S3DataDistributionType": S3_DATA_DISTRIBUTION_TYPE,
         "FeaturesAttribute": FEATURES_ATTRIBUTE,
-        "InferenceAttribute": INFERENCE_ATTRIBUTE,
+        "InferenceAttribute": str(INFERENCE_ATTRIBUTE),
     }
 }
 EXPLAINABILITY_JOB_DEFINITION = {
@@ -666,6 +666,13 @@ def test_model_bias_monitor_suggest_baseline(
         sagemaker_session=sagemaker_session,
         analysis_config=None,  # will pick up config from baselining job
         baseline_job_name=BASELINING_JOB_NAME,
+        endpoint_input=EndpointInput(
+            endpoint_name=ENDPOINT_NAME,
+            destination=ENDPOINT_INPUT_LOCAL_PATH,
+            start_time_offset=START_TIME_OFFSET,
+            end_time_offset=END_TIME_OFFSET,
+            #  will pick up attributes from baselining job
+        ),
     )
 
     # update schedule
@@ -838,8 +845,8 @@ def _test_model_bias_monitor_create_schedule(
         start_time_offset=START_TIME_OFFSET,
         end_time_offset=END_TIME_OFFSET,
         features_attribute=FEATURES_ATTRIBUTE,
-        inference_attribute=INFERENCE_ATTRIBUTE,
-        probability_attribute=PROBABILITY_ATTRIBUTE,
+        inference_attribute=str(INFERENCE_ATTRIBUTE),
+        probability_attribute=str(PROBABILITY_ATTRIBUTE),
         probability_threshold_attribute=PROBABILITY_THRESHOLD_ATTRIBUTE,
     ),
 ):
@@ -1075,6 +1082,7 @@ def test_model_explainability_monitor_suggest_baseline(
         analysis_config=None,  # will pick up config from baselining job
         baseline_job_name=BASELINING_JOB_NAME,
         endpoint_input=ENDPOINT_NAME,
+        #  will pick up attributes from baselining job
     )
 
     # update schedule
@@ -1254,7 +1262,7 @@ def _test_model_explainability_monitor_create_schedule(
         endpoint_name=ENDPOINT_NAME,
         destination=ENDPOINT_INPUT_LOCAL_PATH,
         features_attribute=FEATURES_ATTRIBUTE,
-        inference_attribute=INFERENCE_ATTRIBUTE,
+        inference_attribute=str(INFERENCE_ATTRIBUTE),
     ),
 ):
     # create schedule

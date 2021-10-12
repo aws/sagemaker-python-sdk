@@ -218,9 +218,10 @@ def test_huggingface(
     sagemaker_session,
     huggingface_training_version,
     huggingface_pytorch_training_version,
+    huggingface_pytorch_training_py_version,
 ):
     hf = HuggingFace(
-        py_version="py36",
+        py_version=huggingface_pytorch_training_py_version,
         entry_point=SCRIPT_PATH,
         role=ROLE,
         sagemaker_session=sagemaker_session,
