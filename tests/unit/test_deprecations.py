@@ -24,6 +24,7 @@ from sagemaker.deprecations import (
     removed_kwargs,
     renamed_kwargs,
     deprecation_warning,
+    deprecated,
 )
 
 
@@ -69,26 +70,30 @@ def test_deprecation_warning_for_function():
     with pytest.warns(DeprecationWarning) as w:
         output = sample_function()
         assert output == "xxxx...."
-        msg = "sample_function will be deprecated on date.message in sagemaker>=2.\n" \
-              "See: https://sagemaker.readthedocs.io/en/stable/v2.html for details."
+        msg = (
+            "sample_function will be deprecated on date.message in sagemaker>=2.\n"
+            "See: https://sagemaker.readthedocs.io/en/stable/v2.html for details."
+        )
         assert str(w[-1].message) == msg
 
 
 def test_deprecation_warning_for_class():
     @deprecation_warning(msg="message", date="date")
-    class SampleClass():
+    class SampleClass:
         def __init__(self):
             pass
 
     with pytest.warns(DeprecationWarning) as w:
         SampleClass()
-        msg = "SampleClass will be deprecated on date.message in sagemaker>=2.\n" \
-              "See: https://sagemaker.readthedocs.io/en/stable/v2.html for details."
+        msg = (
+            "SampleClass will be deprecated on date.message in sagemaker>=2.\n"
+            "See: https://sagemaker.readthedocs.io/en/stable/v2.html for details."
+        )
         assert str(w[-1].message) == msg
 
 
 def test_deprecation_warning_for_class_method():
-    class SampleClass():
+    class SampleClass:
         def __init__(self):
             pass
 
@@ -100,8 +105,60 @@ def test_deprecation_warning_for_class_method():
     with pytest.warns(DeprecationWarning) as w:
         output = s.sample_method()
         assert output == "xxxx...."
-        msg = "sample_method will be deprecated on date.message in sagemaker>=2.\n" \
-              "See: https://sagemaker.readthedocs.io/en/stable/v2.html for details."
+        msg = (
+            "sample_method will be deprecated on date.message in sagemaker>=2.\n"
+            "See: https://sagemaker.readthedocs.io/en/stable/v2.html for details."
+        )
+        assert str(w[-1].message) == msg
+
+
+def test_deprecated_for_function():
+    @deprecated
+    def sample_function():
+        return "xxxx...."
+
+    with pytest.warns(DeprecationWarning) as w:
+        output = sample_function()
+        assert output == "xxxx...."
+        msg = (
+            "sample_function is a no-op in sagemaker>=2.\n"
+            "See: https://sagemaker.readthedocs.io/en/stable/v2.html for details."
+        )
+        assert str(w[-1].message) == msg
+
+
+def test_deprecated_for_class():
+    @deprecated
+    class SampleClass:
+        def __init__(self):
+            pass
+
+    with pytest.warns(DeprecationWarning) as w:
+        SampleClass()
+        msg = (
+            "SampleClass is a no-op in sagemaker>=2.\n"
+            "See: https://sagemaker.readthedocs.io/en/stable/v2.html for details."
+        )
+        assert str(w[-1].message) == msg
+
+
+def test_deprecated_for_class_method():
+    class SampleClass:
+        def __init__(self):
+            pass
+
+        @deprecated
+        def sample_method(self):
+            return "xxxx...."
+
+    s = SampleClass()
+    with pytest.warns(DeprecationWarning) as w:
+        output = s.sample_method()
+        assert output == "xxxx...."
+        msg = (
+            "sample_method is a no-op in sagemaker>=2.\n"
+            "See: https://sagemaker.readthedocs.io/en/stable/v2.html for details."
+        )
         assert str(w[-1].message) == msg
 
 

@@ -51,8 +51,7 @@ def renamed_warning(phrase):
 
 
 def deprecation_warn(name, date, msg=None):
-    """Raise a warning for soon to be deprecated feature
-    in sagemaker>=2
+    """Raise a warning for soon to be deprecated feature in sagemaker>=2
 
     Args:
         name (str): Name of the feature
@@ -63,8 +62,7 @@ def deprecation_warn(name, date, msg=None):
 
 
 def deprecation_warning(date, msg=None):
-    """Decorator for raising deprecation warning for a feature
-    in sagemaker>=2
+    """Decorator for raising deprecation warning for a feature in sagemaker>=2
 
     Args:
         date (str): the date when the feature will be deprecated
@@ -81,11 +79,14 @@ def deprecation_warning(date, msg=None):
                 print("xxxx....")
 
     """
+
     def deprecate(obj):
         def wrapper(*args, **kwargs):
             deprecation_warn(obj.__name__, date, msg)
             return obj(*args, **kwargs)
+
         return wrapper
+
     return deprecate
 
 
@@ -143,6 +144,31 @@ def removed_function(name):
         removed_warning(f"The function {name}")
 
     return func
+
+
+def deprecated(obj):
+    """Decorator for raising deprecated warning for a feature in sagemaker>=2
+
+    Args:
+        msg (str): the prefix phrase of the warning message.
+
+    Usage:
+        @deprecated(msg="message")
+        def sample_function():
+            print("xxxx....")
+
+        @deprecated(msg="message")
+        class SampleClass():
+            def __init__(self):
+                print("xxxx....")
+
+    """
+
+    def wrapper(*args, **kwargs):
+        removed_warning(obj.__name__)
+        return obj(*args, **kwargs)
+
+    return wrapper
 
 
 def deprecated_function(func, name):
