@@ -1,5 +1,47 @@
 # Changelog
 
+## v2.61.0 (2021-10-11)
+
+### Features
+
+ * add support for PyTorch 1.9.0
+
+### Bug Fixes and Other Changes
+
+ * Update TRAINING_DEFAULT_TIMEOUT_MINUTES to 40 min
+ * notebook test for parallel PRs
+
+## v2.60.0 (2021-10-08)
+
+### Features
+
+ * Add support for Hugging Face 4.10.2
+
+## v2.59.8 (2021-10-07)
+
+### Bug Fixes and Other Changes
+
+ * fix feature store ingestion via data wrangler test
+
+## v2.59.7 (2021-10-04)
+
+### Bug Fixes and Other Changes
+
+ * update feature request label
+ * update bug template
+
+## v2.59.6 (2021-09-30)
+
+### Bug Fixes and Other Changes
+
+ * ParamValidationError when scheduling a Clarify model monitor
+
+## v2.59.5 (2021-09-29)
+
+### Bug Fixes and Other Changes
+
+ * support maps in step parameters
+
 ## v2.59.4 (2021-09-27)
 
 ### Bug Fixes and Other Changes
