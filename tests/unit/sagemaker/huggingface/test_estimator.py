@@ -253,12 +253,16 @@ def test_huggingface(
 
 
 def test_attach(
-    sagemaker_session, huggingface_training_version, huggingface_pytorch_training_version
+    sagemaker_session,
+    huggingface_training_version,
+    huggingface_pytorch_training_version,
+    huggingface_pytorch_training_py_version,
 ):
     training_image = (
         f"1.dkr.ecr.us-east-1.amazonaws.com/huggingface-pytorch-training:"
         f"{huggingface_pytorch_training_version}-"
-        f"transformers{huggingface_training_version}-gpu-py36-cu110-ubuntu18.04"
+        f"transformers{huggingface_training_version}-gpu-"
+        f"{huggingface_pytorch_training_py_version}-cu110-ubuntu20.04"
     )
     returned_job_description = {
         "AlgorithmSpecification": {"TrainingInputMode": "File", "TrainingImage": training_image},
