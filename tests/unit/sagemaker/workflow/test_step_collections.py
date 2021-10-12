@@ -366,6 +366,7 @@ def test_register_model_sip(estimator, model_metrics):
 
 def test_register_model_with_model_repack_with_estimator(estimator, model_metrics):
     model_data = f"s3://{BUCKET}/model.tar.gz"
+    dummy_requirements = f"{DATA_DIR}/dummy_requirements.txt"
     register_model = RegisterModel(
         name="RegisterModelStep",
         estimator=estimator,
@@ -379,6 +380,7 @@ def test_register_model_with_model_repack_with_estimator(estimator, model_metric
         approval_status="Approved",
         description="description",
         entry_point=f"{DATA_DIR}/dummy_script.py",
+        dependencies=[dummy_requirements],
         depends_on=["TestStep"],
         tags=[{"Key": "myKey", "Value": "myValue"}],
     )
@@ -405,6 +407,7 @@ def test_register_model_with_model_repack_with_estimator(estimator, model_metric
                     },
                     "HyperParameters": {
                         "inference_script": '"dummy_script.py"',
+                        "dependencies": f'"{dummy_requirements}"',
                         "model_archive": '"model.tar.gz"',
                         "sagemaker_submit_directory": '"s3://{}/{}/source/sourcedir.tar.gz"'.format(
                             BUCKET, repacker_job_name.replace('"', "")
@@ -413,6 +416,7 @@ def test_register_model_with_model_repack_with_estimator(estimator, model_metric
                         "sagemaker_container_log_level": "20",
                         "sagemaker_job_name": repacker_job_name,
                         "sagemaker_region": f'"{REGION}"',
+                        "source_dir": "null",
                     },
                     "InputDataConfig": [
                         {
@@ -528,6 +532,8 @@ def test_register_model_with_model_repack_with_model(model, model_metrics):
                         "sagemaker_container_log_level": "20",
                         "sagemaker_job_name": repacker_job_name,
                         "sagemaker_region": f'"{REGION}"',
+                        "dependencies": "null",
+                        "source_dir": "null",
                     },
                     "InputDataConfig": [
                         {
@@ -631,6 +637,7 @@ def test_register_model_with_model_repack_with_pipeline_model(pipeline_model, mo
                         "S3OutputPath": f"s3://{BUCKET}/",
                     },
                     "HyperParameters": {
+                        "dependencies": "null",
                         "inference_script": '"dummy_script.py"',
                         "model_archive": '"model.tar.gz"',
                         "sagemaker_submit_directory": '"s3://{}/{}/source/sourcedir.tar.gz"'.format(
@@ -640,6 +647,7 @@ def test_register_model_with_model_repack_with_pipeline_model(pipeline_model, mo
                         "sagemaker_container_log_level": "20",
                         "sagemaker_job_name": repacker_job_name,
                         "sagemaker_region": f'"{REGION}"',
+                        "source_dir": "null",
                     },
                     "InputDataConfig": [
                         {
