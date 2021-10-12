@@ -2277,3 +2277,45 @@ def cleanup_feature_group(feature_group: FeatureGroup):
         except Exception as e:
             print(f"Delete FeatureGroup failed with error: {e}.")
             pass
+
+
+def test_large_pipeline(sagemaker_session, role, pipeline_name, region_name):
+    instance_count = ParameterInteger(name="InstanceCount", default_value=2)
+
+    outputParam = CallbackOutput(output_name="output", output_type=CallbackOutputTypeEnum.String)
+
+    callback_steps = [
+        CallbackStep(
+            name=f"callback-step{count}",
+            sqs_queue_url="https://sqs.us-east-2.amazonaws.com/123456789012/MyQueue",
+            inputs={"arg1": "foo"},
+            outputs=[outputParam],
+        ) for count in range(500)
+    ]
+    pipeline = Pipeline(
+        name=pipeline_name,
+        parameters=[instance_count],
+        steps=callback_steps,
+        sagemaker_session=sagemaker_session,
+    )
+
+    try:
+        response = pipeline.create(role)
+        create_arn = response["PipelineArn"]
+        assert re.match(
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            create_arn,
+        )
+
+        pipeline.parameters = [ParameterInteger(name="InstanceCount", default_value=1)]
+        response = pipeline.update(role)
+        update_arn = response["PipelineArn"]
+        assert re.match(
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            update_arn,
+        )
+    finally:
+        try:
+            pipeline.delete()
+        except Exception:
+            pass
