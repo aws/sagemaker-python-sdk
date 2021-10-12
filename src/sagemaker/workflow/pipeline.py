@@ -22,6 +22,7 @@ import attr
 import botocore
 from botocore.exceptions import ClientError
 
+from sagemaker import s3
 from sagemaker._studio import _append_project_tags
 from sagemaker.session import Session
 from sagemaker.workflow.callback_step import CallbackOutput, CallbackStep
@@ -125,11 +126,30 @@ class Pipeline(Entity):
         Returns:
             A keyword argument dict for calling create_pipeline.
         """
+        pipeline_definition = self.definition()
         kwargs = dict(
             PipelineName=self.name,
-            PipelineDefinition=self.definition(),
             RoleArn=role_arn,
         )
+
+        # If pipeline definition is large, upload to S3 bucket and
+        # provide PipelineDefinitionS3Location to request instead.
+        if len(pipeline_definition.encode("utf-8")) < 1024*100:
+            kwargs["PipelineDefinition"] = self.definition()
+        else:
+            desired_s3_uri = s3.s3_path_join(
+                "s3://", self.sagemaker_session.default_bucket(), self.name
+            )
+            s3.S3Uploader.upload_string_as_file_body(
+                body=pipeline_definition,
+                desired_s3_uri=desired_s3_uri,
+                sagemaker_session=self.sagemaker_session,
+            )
+            kwargs["PipelineDefinitionS3Location"] = {
+                "Bucket": self.sagemaker_session.default_bucket(),
+                "ObjectKey": self.name,
+            }
+
         update_args(
             kwargs,
             PipelineDescription=description,
