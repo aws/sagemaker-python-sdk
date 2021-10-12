@@ -294,7 +294,7 @@ def test_attach(
 
     estimator = HuggingFace.attach(training_job_name="neo", sagemaker_session=sagemaker_session)
     assert estimator.latest_training_job.job_name == "neo"
-    assert estimator.py_version == "py36"
+    assert estimator.py_version == huggingface_pytorch_training_py_version
     assert estimator.framework_version == huggingface_training_version
     assert estimator.pytorch_version == huggingface_pytorch_training_version
     assert estimator.role == "arn:aws:iam::366:role/SageMakerRole"
