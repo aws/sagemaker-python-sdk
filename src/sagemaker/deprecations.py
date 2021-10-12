@@ -149,15 +149,12 @@ def removed_function(name):
 def deprecated(obj):
     """Decorator for raising deprecated warning for a feature in sagemaker>=2
 
-    Args:
-        msg (str): the prefix phrase of the warning message.
-
     Usage:
-        @deprecated(msg="message")
+        @deprecated
         def sample_function():
             print("xxxx....")
 
-        @deprecated(msg="message")
+        @deprecated
         class SampleClass():
             def __init__(self):
                 print("xxxx....")
