@@ -300,9 +300,10 @@ class SHAPConfig(ExplainabilityConfig):
 
     def __init__(
         self,
-        baseline,
         num_samples,
         agg_method,
+        baseline=None,
+        num_clusters=None,
         use_logit=False,
         save_local_shap_values=True,
         seed=None,
@@ -310,11 +311,6 @@ class SHAPConfig(ExplainabilityConfig):
         """Initializes config for SHAP.
 
         Args:
-            baseline (None or str or list): None or S3 object Uri or A list of rows (at least one)
-                to be used asthe baseline dataset in the Kernel SHAP algorithm. The format should
-                be the same as the dataset format. Each row should contain only the feature
-                columns/values and omit the label column/values. If None a baseline will be
-                calculated automatically by using K-means or K-prototypes in the input dataset.
             num_samples (int): Number of samples to be used in the Kernel SHAP algorithm.
                 This number determines the size of the generated synthetic dataset to compute the
                 SHAP values.
@@ -322,6 +318,14 @@ class SHAPConfig(ExplainabilityConfig):
                 "mean_abs" (mean of absolute SHAP values for all instances),
                 "median" (median of SHAP values for all instances) and
                 "mean_sq" (mean of squared SHAP values for all instances).
+            baseline (None or str or list): None or S3 object Uri or A list of rows (at least one)
+                to be used asthe baseline dataset in the Kernel SHAP algorithm. The format should
+                be the same as the dataset format. Each row should contain only the feature
+                columns/values and omit the label column/values. If None a baseline will be
+                calculated automatically by using K-means or K-prototypes in the input dataset.
+            num_clusters (None or int): If a baseline is not provided, Clarify automatically computes a
+                baseline dataset via a clustering algorithm. num_clusters is a parameter for K-means/K-prototypes.
+                Default is None.
             use_logit (bool): Indicator of whether the logit function is to be applied to the model
                 predictions. Default is False. If "use_logit" is true then the SHAP values will
                 have log-odds units.
@@ -333,14 +337,20 @@ class SHAPConfig(ExplainabilityConfig):
             raise ValueError(
                 f"Invalid agg_method {agg_method}." f" Please choose mean_abs, median, or mean_sq."
             )
-
+        if num_clusters is not None and baseline is not None:
+            raise ValueError(
+                "Baseline and num_clusters cannot both be provided. Please specify one of the two."
+            )
         self.shap_config = {
-            "baseline": baseline,
             "num_samples": num_samples,
             "agg_method": agg_method,
             "use_logit": use_logit,
             "save_local_shap_values": save_local_shap_values,
         }
+        if baseline is not None:
+            self.shap_config["baseline"] = baseline
+        if num_clusters is not None:
+            self.shap_config["num_clusters"] = num_clusters
         if seed is not None:
             self.shap_config["seed"] = seed
 

@@ -268,6 +268,31 @@ def test_shap_config():
     assert expected_config == shap_config.get_explainability_config()
 
 
+def test_shap_config_no_baseline():
+    num_samples = 100
+    agg_method = "mean_sq"
+    use_logit = True
+    seed = 123
+    shap_config = SHAPConfig(
+        num_samples=num_samples,
+        agg_method=agg_method,
+        num_clusters=2,
+        use_logit=use_logit,
+        seed=seed,
+    )
+    expected_config = {
+        "shap": {
+            "num_samples": num_samples,
+            "agg_method": agg_method,
+            "num_clusters": 2,
+            "use_logit": use_logit,
+            "save_local_shap_values": True,
+            "seed": seed,
+        }
+    }
+    assert expected_config == shap_config.get_explainability_config()
+
+
 def test_invalid_shap_config():
     with pytest.raises(ValueError) as error:
         SHAPConfig(
