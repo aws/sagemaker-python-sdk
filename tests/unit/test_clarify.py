@@ -252,6 +252,7 @@ def test_shap_config():
         baseline=baseline,
         num_samples=num_samples,
         agg_method=agg_method,
+        num_clusters=2,
         use_logit=use_logit,
         seed=seed,
     )
@@ -260,6 +261,7 @@ def test_shap_config():
             "baseline": baseline,
             "num_samples": num_samples,
             "agg_method": agg_method,
+            "num_clusters": 2,
             "use_logit": use_logit,
             "save_local_shap_values": True,
             "seed": seed,
@@ -539,6 +541,7 @@ def _run_test_shap(
                     ],
                     "num_samples": 100,
                     "agg_method": "mean_sq",
+                    "num_clusters": None,
                     "use_logit": False,
                     "save_local_shap_values": True,
                 }
