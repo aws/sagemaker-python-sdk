@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.63.0 (2021-10-13)
+
+### Features
+
+ * support configurable retry for pipeline steps
+
 ## v2.62.0 (2021-10-12)
 
 ### Features
