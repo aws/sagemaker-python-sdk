@@ -1,5 +1,21 @@
 # Changelog
 
+## v2.63.0 (2021-10-13)
+
+### Features
+
+ * support configurable retry for pipeline steps
+
+## v2.62.0 (2021-10-12)
+
+### Features
+
+ * Hugging Face Transformers 4.10 for Pt1.8/TF2.4 & Transformers 4.11 for PT1.9&TF2.5
+
+### Bug Fixes and Other Changes
+
+ * repack_model script used in pipelines to support source_dir and dependencies
+
 ## v2.61.0 (2021-10-11)
 
 ### Features
