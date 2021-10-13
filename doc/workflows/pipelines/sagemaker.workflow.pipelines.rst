@@ -82,6 +82,12 @@ Pipeline
 .. autoclass:: sagemaker.workflow.pipeline._PipelineExecution
     :members:
 
+Parallelism Configuration
+-------------------------
+
+.. autoclass:: sagemaker.workflow.parallelism_config.ParallelismConfiguration
+    :members:
+
 Pipeline Experiment Config
 --------------------------
 
