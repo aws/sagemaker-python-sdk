@@ -56,6 +56,8 @@ EXPERIMENT_CONFIG = {
     "TrialComponentDisplayName": "tc",
 }
 
+DISTRIBUTION_TORCH_DDP_ENABLED = {"torch_ddp": {"enabled": True, "processes_per_host": 2}}
+
 
 @pytest.fixture(name="sagemaker_session")
 def fixture_sagemaker_session():
@@ -691,3 +693,19 @@ def test_custom_image_estimator_deploy(
     pytorch.fit(inputs="s3://mybucket/train", job_name="new_name")
     model = pytorch.create_model(image_uri=custom_image)
     assert model.image_uri == custom_image
+
+
+def test_torch_ddp_distribution_configuration(
+    sagemaker_session, pytorch_training_version, pytorch_training_py_version
+):
+    pytorch = _pytorch_estimator(
+        sagemaker_session,
+        framework_version=pytorch_training_version,
+        py_version=pytorch_training_py_version,
+        distribution=DISTRIBUTION_TORCH_DDP_ENABLED
+    )
+    actual_torch_ddp = pytorch._pytorch_distribution_configuration()
+    expected_torch_ddp = {
+        "sagemaker_torch_ddp_enabled": True,
+        "sagemaker_torch_dpp_num_of_processes_per_host": 2}
+    assert actual_torch_ddp == expected_torch_ddp

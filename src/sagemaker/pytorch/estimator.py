@@ -38,6 +38,8 @@ class PyTorch(Framework):
     """Handle end-to-end training and deployment of custom PyTorch code."""
 
     _framework_name = "pytorch"
+    LAUNCH_TORCH_DDP_ENV_NAME = "sagemaker_torch_ddp_enabled"
+    TORCH_DDP_NUM_PROCESSES_PER_HOST = "sagemaker_torch_dpp_num_of_processes_per_host"
 
     def __init__(
         self,
@@ -114,7 +116,14 @@ class PyTorch(Framework):
                             "enabled": True
                         }
                     }
+                To enable vanilla Torch DDP:
 
+                .. code:: python
+                    {
+                        "torch_ddp": {
+                            "enabled": True
+                        }
+                    }
                 To enable MPI:
 
                 .. code:: python
@@ -186,12 +195,34 @@ class PyTorch(Framework):
         )
         self.distribution = distribution or {}
 
+    def _pytorch_distribution_configuration(self):
+        """Returns a dict of distribution config
+
+        Args:
+            None
+
+        Returns:
+            dict containing torch ddp config
+        """
+        distribution_config = {}
+        if "torch_ddp" in self.distribution:
+            torch_ddp_dict = self.distribution["torch_ddp"]
+            torch_ddp_enabled = self.distribution.get("torch_ddp").get("enabled", False)
+            distribution_config[self.LAUNCH_TORCH_DDP_ENV_NAME] = torch_ddp_enabled
+
+            if torch_ddp_dict.get("processes_per_host"):
+                distribution_config[self.TORCH_DDP_NUM_PROCESSES_PER_HOST] = torch_ddp_dict.get(
+                    "processes_per_host"
+                )
+        else:
+            distribution_config = self._distribution_configuration(distribution=self.distribution)
+        return distribution_config
+
     def hyperparameters(self):
         """Return hyperparameters used by your custom PyTorch code during model training."""
         hyperparameters = super(PyTorch, self).hyperparameters()
-        additional_hyperparameters = self._distribution_configuration(
-            distribution=self.distribution
-        )
+        additional_hyperparameters = self._pytorch_distribution_configuration()
+
         hyperparameters.update(Framework._json_encode_hyperparameters(additional_hyperparameters))
         return hyperparameters
 
