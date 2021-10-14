@@ -702,10 +702,11 @@ def test_torch_ddp_distribution_configuration(
         sagemaker_session,
         framework_version=pytorch_training_version,
         py_version=pytorch_training_py_version,
-        distribution=DISTRIBUTION_TORCH_DDP_ENABLED
+        distribution=DISTRIBUTION_TORCH_DDP_ENABLED,
     )
     actual_torch_ddp = pytorch._pytorch_distribution_configuration()
     expected_torch_ddp = {
         "sagemaker_torch_ddp_enabled": True,
-        "sagemaker_torch_dpp_num_of_processes_per_host": 2}
+        "sagemaker_torch_dpp_num_of_processes_per_host": 2,
+    }
     assert actual_torch_ddp == expected_torch_ddp
