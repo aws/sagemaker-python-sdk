@@ -28,7 +28,7 @@ from sagemaker.utils import sagemaker_timestamp
 from sagemaker.utils import _aws_partition
 from tests.integ import DATA_DIR
 from tests.integ.timeout import timeout, timeout_and_delete_endpoint_by_name
-from tests.integ.marketplace_utils import REGION_ACCOUNT_MAP
+from tests.integ.marketplace_utils import REGION_ACCOUNT_MAP, random_8_digit_alpha_numeric_gen
 
 
 # All these tests require a manual 1 time subscription to the following Marketplace items:
@@ -117,7 +117,7 @@ def test_marketplace_attach(sagemaker_session, cpu_instance_type):
             instance_count=1,
             instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
-            base_job_name="test-marketplace",
+            base_job_name="test-marketplace" + random_8_digit_alpha_numeric_gen(),
         )
 
         train_input = mktplace.sagemaker_session.upload_data(
@@ -205,7 +205,7 @@ def test_marketplace_tuning_job(sagemaker_session, cpu_instance_type):
         instance_count=1,
         instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
-        base_job_name="test-marketplace",
+        base_job_name="test-marketplace" + random_8_digit_alpha_numeric_gen(),
     )
 
     train_input = mktplace.sagemaker_session.upload_data(
@@ -218,7 +218,7 @@ def test_marketplace_tuning_job(sagemaker_session, cpu_instance_type):
 
     tuner = HyperparameterTuner(
         estimator=mktplace,
-        base_tuning_job_name="byo",
+        base_tuning_job_name="byo" + random_8_digit_alpha_numeric_gen(),
         objective_metric_name="validation:accuracy",
         hyperparameter_ranges=hyperparameter_ranges,
         max_jobs=2,
@@ -248,7 +248,7 @@ def test_marketplace_transform_job(sagemaker_session, cpu_instance_type):
         instance_count=1,
         instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
-        base_job_name="test-marketplace",
+        base_job_name="test-marketplace" + random_8_digit_alpha_numeric_gen(),
     )
 
     train_input = algo.sagemaker_session.upload_data(

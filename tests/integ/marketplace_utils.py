@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
+import uuid
 
 REGION_ACCOUNT_MAP = {
     "us-east-1": "865070037744",
@@ -34,3 +35,7 @@ REGION_ACCOUNT_MAP = {
     "cn-north-1": "295401494951",
     "cn-northwest-1": "304690803264",
 }
+
+
+def random_8_digit_alpha_numeric_gen():
+    return str(uuid.uuid4().hex.upper()[0:8])
