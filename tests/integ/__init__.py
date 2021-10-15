@@ -20,7 +20,7 @@ import boto3
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 TRAINING_DEFAULT_TIMEOUT_MINUTES = 40
 TUNING_DEFAULT_TIMEOUT_MINUTES = 40
-TRANSFORM_DEFAULT_TIMEOUT_MINUTES = 20
+TRANSFORM_DEFAULT_TIMEOUT_MINUTES = 40
 AUTO_ML_DEFAULT_TIMEMOUT_MINUTES = 60
 
 # these regions have some p2 and p3 instances, but not enough for continuous testing
