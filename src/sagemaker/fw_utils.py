@@ -59,7 +59,7 @@ SM_DATAPARALLEL_SUPPORTED_INSTANCE_TYPES = (
     "local_gpu",
 )
 SM_DATAPARALLEL_SUPPORTED_FRAMEWORK_VERSIONS = {
-    "tensorflow": ["2.3", "2.3.1", "2.3.2", "2.4", "2.4.1"],
+    "tensorflow": ["2.3", "2.3.1", "2.3.2", "2.4", "2.4.1", "2.4.3", "2.5", "2.5.0", "2.5.1", "2.6", "2.6.0"],
     "pytorch": ["1.6", "1.6.0", "1.7", "1.7.1", "1.8", "1.8.0", "1.8.1", "1.9", "1.9.0"],
 }
 SMDISTRIBUTED_SUPPORTED_STRATEGIES = ["dataparallel", "modelparallel"]
@@ -533,7 +533,7 @@ def _validate_smdataparallel_args(
         if "py3" not in py_version:
             err_msg += (
                 f"Provided py_version {py_version} is not supported by smdataparallel.\n"
-                "Please specify py_version=py3"
+                "Please specify py_version>=py3"
             )
 
     if err_msg:
