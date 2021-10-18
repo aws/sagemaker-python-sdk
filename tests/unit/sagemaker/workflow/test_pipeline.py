@@ -14,12 +14,11 @@
 from __future__ import absolute_import
 
 import json
+from unittest.mock import Mock
 
 import pytest
 
 from botocore.exceptions import ClientError
-
-from mock import Mock
 
 from sagemaker.workflow.execution_variables import ExecutionVariables
 from sagemaker.workflow.parameters import ParameterString
@@ -209,7 +208,10 @@ def test_pipeline_basic():
     )
     assert pipeline.to_request() == {
         "Version": "2020-12-01",
-        "Metadata": {},
+        "Metadata": {
+            "CommitId": pipeline.headcommit.hexsha,
+            "BranchName": pipeline.repo.head.name,
+        },
         "Parameters": [{"Name": "MyStr", "Type": "String"}],
         "PipelineExperimentConfig": {
             "ExperimentName": ExecutionVariables.PIPELINE_NAME,
@@ -220,7 +222,10 @@ def test_pipeline_basic():
     assert ordered(json.loads(pipeline.definition())) == ordered(
         {
             "Version": "2020-12-01",
-            "Metadata": {},
+            "Metadata": {
+                "CommitId": pipeline.headcommit.hexsha,
+                "BranchName": pipeline.repo.head.name,
+            },
             "Parameters": [{"Name": "MyStr", "Type": "String"}],
             "PipelineExperimentConfig": {
                 "ExperimentName": {"Get": "Execution.PipelineName"},
@@ -256,7 +261,10 @@ def test_pipeline_two_step(sagemaker_session_mock):
     )
     assert pipeline.to_request() == {
         "Version": "2020-12-01",
-        "Metadata": {},
+        "Metadata": {
+            "CommitId": pipeline.headcommit.hexsha,
+            "BranchName": pipeline.repo.head.name,
+        },
         "Parameters": [{"Name": "MyStr", "Type": "String"}],
         "PipelineExperimentConfig": {
             "ExperimentName": ExecutionVariables.PIPELINE_NAME,
@@ -284,7 +292,10 @@ def test_pipeline_two_step(sagemaker_session_mock):
     assert ordered(json.loads(pipeline.definition())) == ordered(
         {
             "Version": "2020-12-01",
-            "Metadata": {},
+            "Metadata": {
+                "CommitId": pipeline.headcommit.hexsha,
+                "BranchName": pipeline.repo.head.name,
+            },
             "Parameters": [{"Name": "MyStr", "Type": "String"}],
             "PipelineExperimentConfig": {
                 "ExperimentName": {"Get": "Execution.PipelineName"},
@@ -322,7 +333,10 @@ def test_pipeline_override_experiment_config():
     assert ordered(json.loads(pipeline.definition())) == ordered(
         {
             "Version": "2020-12-01",
-            "Metadata": {},
+            "Metadata": {
+                "CommitId": pipeline.headcommit.hexsha,
+                "BranchName": pipeline.repo.head.name,
+            },
             "Parameters": [],
             "PipelineExperimentConfig": {"ExperimentName": "MyExperiment", "TrialName": "MyTrial"},
             "Steps": [
@@ -346,7 +360,10 @@ def test_pipeline_disable_experiment_config():
     assert ordered(json.loads(pipeline.definition())) == ordered(
         {
             "Version": "2020-12-01",
-            "Metadata": {},
+            "Metadata": {
+                "CommitId": pipeline.headcommit.hexsha,
+                "BranchName": pipeline.repo.head.name,
+            },
             "Parameters": [],
             "PipelineExperimentConfig": None,
             "Steps": [

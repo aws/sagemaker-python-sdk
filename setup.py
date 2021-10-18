@@ -35,6 +35,7 @@ def read_version():
 required_packages = [
     "attrs",
     "boto3>=1.16.32",
+    "git-python",
     "google-pasta",
     "numpy>=1.9.0",
     "protobuf>=3.1",

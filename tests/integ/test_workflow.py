@@ -361,6 +361,11 @@ def test_three_step_definition(
     definition = json.loads(pipeline.definition())
     assert definition["Version"] == "2020-12-01"
 
+    assert definition["Metadata"] == dict(
+        CommitId=pipeline.headcommit.hexsha,
+        BranchName=pipeline.repo.head.name,
+    )
+
     assert set(tuple(param.items()) for param in definition["Parameters"]) == set(
         [
             tuple(
@@ -966,6 +971,11 @@ def test_steps_with_map_params_pipeline(
 
     definition = json.loads(pipeline.definition())
     assert definition["Version"] == "2020-12-01"
+
+    assert definition["Metadata"] == dict(
+        CommitId=pipeline.headcommit.hexsha,
+        BranchName=pipeline.repo.head.name,
+    )
 
     steps = definition["Steps"]
     assert len(steps) == 3

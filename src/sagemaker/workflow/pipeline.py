@@ -14,12 +14,14 @@
 from __future__ import absolute_import
 
 import json
+import os
 
 from copy import deepcopy
 from typing import Any, Dict, List, Sequence, Union, Optional
 
 import attr
 import botocore
+import git
 from botocore.exceptions import ClientError
 
 from sagemaker._studio import _append_project_tags
@@ -38,6 +40,13 @@ from sagemaker.workflow.properties import Properties
 from sagemaker.workflow.steps import Step
 from sagemaker.workflow.step_collections import StepCollection
 from sagemaker.workflow.utilities import list_to_request
+
+
+def get_git_root(path):
+    """Gets the root path of the current git repository"""
+    git_repo = git.Repo(path, search_parent_directories=True)
+    git_root = git_repo.git.rev_parse("--show-toplevel")
+    print(git_root)
 
 
 @attr.s
@@ -73,9 +82,15 @@ class Pipeline(Entity):
     )
     steps: Sequence[Union[Step, StepCollection]] = attr.ib(factory=list)
     sagemaker_session: Session = attr.ib(factory=Session)
+    repo = git.Repo(get_git_root(os.getcwd()))
+    assert not repo.bare
+    headcommit = repo.head.commit
 
     _version: str = "2020-12-01"
-    _metadata: Dict[str, Any] = dict()
+    _metadata: Dict[str, Any] = dict(
+        CommitId=headcommit.hexsha,
+        BranchName=repo.head.name,
+    )
 
     def to_request(self) -> RequestType:
         """Gets the request structure for workflow service calls."""
