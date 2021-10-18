@@ -323,9 +323,9 @@ class SHAPConfig(ExplainabilityConfig):
                 be the same as the dataset format. Each row should contain only the feature
                 columns/values and omit the label column/values. If None a baseline will be
                 calculated automatically by using K-means or K-prototypes in the input dataset.
-            num_clusters (None or int): If a baseline is not provided, Clarify automatically computes a
-                baseline dataset via a clustering algorithm. num_clusters is a parameter for K-means/K-prototypes.
-                Default is None.
+            num_clusters (None or int): If a baseline is not provided, Clarify automatically
+                computes a baseline dataset via a clustering algorithm. num_clusters is a parameter
+                for K-means/K-prototypes. Default is None.
             use_logit (bool): Indicator of whether the logit function is to be applied to the model
                 predictions. Default is False. If "use_logit" is true then the SHAP values will
                 have log-odds units.
