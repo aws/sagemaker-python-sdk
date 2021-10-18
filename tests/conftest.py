@@ -289,23 +289,17 @@ def tensorflow_inference_py_version(tensorflow_inference_version, request):
 
 def _tf_py_version(tf_version, request):
     version = Version(tf_version)
-    if version < Version("1.11"):
-        return "py2"
-    # Some versions of TF 1.15.x, TF 2.0.x, TF 2.1.x do not support py2, while others do.
     if version == Version("1.15") or Version("1.15.4") <= version < Version("1.16"):
         return "py3"
+    if version < Version("1.11"):
+        return "py2"
     if version == Version("2.0") or Version("2.0.3") <= version < Version("2.1"):
         return "py3"
     if version == Version("2.1") or Version("2.1.2") <= version < Version("2.2"):
         return "py3"
-    # Test both py2 and py3 for TF 2.1 and below
     if version < Version("2.2"):
         return request.param
-    # Test py37 for TF 2.2 to TF 2.5
-    if Version("2.2") <= version < Version("2.6"):
-        return "py37"
-    # Test py38 for TF 2.6 and above
-    return "py38"
+    return "py37"
 
 
 @pytest.fixture(scope="module")
@@ -335,9 +329,7 @@ def tf_full_py_version(tf_full_version):
         return "py2"
     if version < Version("2.2"):
         return "py3"
-    if version < Version("2.6"):
-        return "py37"
-    return "py38"
+    return "py37"
 
 
 @pytest.fixture(scope="session")
