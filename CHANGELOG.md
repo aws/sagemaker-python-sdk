@@ -1,5 +1,17 @@
 # Changelog
 
+## v2.63.1 (2021-10-14)
+
+### Bug Fixes and Other Changes
+
+ * HF estimator attach modified to work with py38
+
+## v2.63.0 (2021-10-13)
+
+### Features
+
+ * support configurable retry for pipeline steps
+
 ## v2.62.0 (2021-10-12)
 
 ### Features
