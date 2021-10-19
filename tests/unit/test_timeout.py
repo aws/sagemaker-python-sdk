@@ -182,7 +182,7 @@ def test_timeout_and_delete_endpoint_by_name_retries_resource_deletion_on_failur
     return_value=None,
     autospec=True,
 )
-@patch('tests.integ.timeout.sleep', return_value=None)
+@patch("tests.integ.timeout.sleep", return_value=None)
 def test_timeout_and_delete_endpoint_by_name_retries_resource_deletion_on_failure_with_exp_sleep(
     mock_sleep, _show_logs, _cleanup_logs, _delete_schedules_associated_with_endpoint, session
 ):

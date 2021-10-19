@@ -85,7 +85,9 @@ def timeout_and_delete_endpoint_by_name(
                         pass
                 # trying to delete the resource again in 10 seconds
                 if exponential_sleep:
-                    _sleep_between_cleanup_attempts = (sleep_between_cleanup_attempts * (3 - attempts))
+                    _sleep_between_cleanup_attempts = sleep_between_cleanup_attempts * (
+                        3 - attempts
+                    )
                 else:
                     _sleep_between_cleanup_attempts = sleep_between_cleanup_attempts
                 sleep(_sleep_between_cleanup_attempts)
@@ -155,7 +157,9 @@ def _delete_schedules_associated_with_endpoint(sagemaker_session, endpoint_name)
             monitor.delete_monitoring_schedule()
         except Exception as e:
             LOGGER.warning(
-                "Failed to delete monitor {},\nError: {}".format(monitor.monitoring_schedule_name, e)
+                "Failed to delete monitor {},\nError: {}".format(
+                    monitor.monitoring_schedule_name, e
+                )
             )
 
 
