@@ -1,5 +1,17 @@
 # Changelog
 
+## v2.63.2 (2021-10-18)
+
+### Bug Fixes and Other Changes
+
+ * Update timeouts for integ tests from 20 to 40
+
+## v2.63.1 (2021-10-14)
+
+### Bug Fixes and Other Changes
+
+ * HF estimator attach modified to work with py38
+
 ## v2.63.0 (2021-10-13)
 
 ### Features
