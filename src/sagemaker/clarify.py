@@ -300,40 +300,40 @@ class SHAPConfig(ExplainabilityConfig):
 
     def __init__(
         self,
-        num_samples,
-        agg_method,
         baseline=None,
-        num_clusters=None,
+        num_samples=None,
+        agg_method=None,
         use_logit=False,
         save_local_shap_values=True,
         seed=None,
+        num_clusters=None
     ):
         """Initializes config for SHAP.
 
         Args:
-            num_samples (int): Number of samples to be used in the Kernel SHAP algorithm.
-                This number determines the size of the generated synthetic dataset to compute the
-                SHAP values.
-            agg_method (str): Aggregation method for global SHAP values. Valid values are
-                "mean_abs" (mean of absolute SHAP values for all instances),
-                "median" (median of SHAP values for all instances) and
-                "mean_sq" (mean of squared SHAP values for all instances).
             baseline (None or str or list): None or S3 object Uri or A list of rows (at least one)
                 to be used asthe baseline dataset in the Kernel SHAP algorithm. The format should
                 be the same as the dataset format. Each row should contain only the feature
                 columns/values and omit the label column/values. If None a baseline will be
                 calculated automatically by using K-means or K-prototypes in the input dataset.
-            num_clusters (None or int): If a baseline is not provided, Clarify automatically
-                computes a baseline dataset via a clustering algorithm. num_clusters is a parameter
-                for K-means/K-prototypes. Default is None.
+            num_samples (None or int): Number of samples to be used in the Kernel SHAP algorithm.
+                This number determines the size of the generated synthetic dataset to compute the
+                SHAP values.
+            agg_method (None or str): Aggregation method for global SHAP values. Valid values are
+                "mean_abs" (mean of absolute SHAP values for all instances),
+                "median" (median of SHAP values for all instances) and
+                "mean_sq" (mean of squared SHAP values for all instances).
             use_logit (bool): Indicator of whether the logit function is to be applied to the model
                 predictions. Default is False. If "use_logit" is true then the SHAP values will
                 have log-odds units.
             save_local_shap_values (bool): Indicator of whether to save the local SHAP values
                 in the output location. Default is True.
             seed (int): seed value to get deterministic SHAP values. Default is None.
+            num_clusters (None or int): If a baseline is not provided, Clarify automatically
+                computes a baseline dataset via a clustering algorithm. num_clusters is a parameter
+                for K-means/K-prototypes. Default is None.
         """
-        if agg_method not in ["mean_abs", "median", "mean_sq"]:
+        if agg_method is not None and agg_method not in ["mean_abs", "median", "mean_sq"]:
             raise ValueError(
                 f"Invalid agg_method {agg_method}." f" Please choose mean_abs, median, or mean_sq."
             )
