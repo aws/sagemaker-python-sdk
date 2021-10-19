@@ -379,13 +379,9 @@ def data_config():
         s3_data_input_path="s3://input/train.csv",
         s3_output_path="s3://output/analysis_test_result",
         label="Label",
-        headers=[
-            "Label",
-            "F1",
-            "F2",
-            "F3",
-        ],
+        headers=["Label", "F1", "F2", "F3", "F4"],
         dataset_type="text/csv",
+        joinsource="F4",
     )
 
 
@@ -455,7 +451,9 @@ def test_pre_training_bias(
                 "F1",
                 "F2",
                 "F3",
+                "F4",
             ],
+            "joinsource_name_or_index": "F4",
             "label": "Label",
             "label_values_or_threshold": [1],
             "facet": [{"name_or_index": "F1"}],
@@ -516,9 +514,11 @@ def test_post_training_bias(
                 "F1",
                 "F2",
                 "F3",
+                "F4",
             ],
             "label": "Label",
             "label_values_or_threshold": [1],
+            "joinsource_name_or_index": "F4",
             "facet": [{"name_or_index": "F1"}],
             "group_variable": "F2",
             "methods": {"post_training_bias": {"methods": "all"}},
@@ -646,8 +646,25 @@ def _run_test_explain(
                 "F1",
                 "F2",
                 "F3",
+                "F4",
             ],
             "label": "Label",
+            "joinsource_name_or_index": "F4",
+            "methods": {
+                "shap": {
+                    "baseline": [
+                        [
+                            0.26124998927116394,
+                            0.2824999988079071,
+                            0.06875000149011612,
+                        ]
+                    ],
+                    "num_samples": 100,
+                    "agg_method": "mean_sq",
+                    "use_logit": False,
+                    "save_local_shap_values": True,
+                }
+            },
             "predictor": expected_predictor_config,
         }
         expected_explanation_configs = {}
