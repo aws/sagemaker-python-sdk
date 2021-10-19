@@ -40,7 +40,7 @@
                 "us-west-2": "462105765813"
             },
             "repository": "sagemaker-rl-ray-container",
-            "tag_prefix": "ray-1.6.0-torch-1.8.1"
+            "tag_prefix": "ray-1.6.0-torch"
         }
     }
 }

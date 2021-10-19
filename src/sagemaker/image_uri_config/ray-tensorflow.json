@@ -184,7 +184,7 @@
                 "us-west-2": "462105765813"
             },
             "repository": "sagemaker-rl-ray-container",
-            "tag_prefix": "ray-1.6.0-tf-2.5.0"
+            "tag_prefix": "ray-1.6.0-tf"
         }
     }
 }
