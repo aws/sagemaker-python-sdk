@@ -105,8 +105,9 @@ class Pipeline(Entity):
             description (str): A description of the pipeline.
             tags (List[Dict[str, str]]): A list of {"Key": "string", "Value": "string"} dicts as
                 tags.
-            parallelism_config (Optional[Config for parallel steps, Parallelism configuration that
-                is applied to each of. the executions
+            parallelism_config (Optional[ParallelismConfiguration]): Parallelism configuration
+                that is applied to each of the executions of the pipeline. It takes precedence
+                over the parallelism configuration of the parent pipeline.
 
         Returns:
             A response dict from the service.
@@ -130,8 +131,9 @@ class Pipeline(Entity):
         Args:
             role_arn (str): The role arn that is assumed by pipelines to create step artifacts.
             description (str): A description of the pipeline.
-            parallelism_config (Optional[ParallelismConfiguration]): Config for parallel steps, that
-                is applied to each of the executions.
+            parallelism_config (Optional[ParallelismConfiguration]): Parallelism configuration
+                that is applied to each of the executions of the pipeline. It takes precedence
+                over the parallelism configuration of the parent pipeline.
 
         Returns:
             A keyword argument dict for calling create_pipeline.
@@ -188,8 +190,9 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
         Args:
             role_arn (str): The role arn that is assumed by pipelines to create step artifacts.
             description (str): A description of the pipeline.
-            parallelism_config (Optional[ParallelismConfiguration]): Config for parallel steps, that
-                is applied to each of the executions.
+            parallelism_config (Optional[ParallelismConfiguration]): Parallelism configuration
+                that is applied to each of the executions of the pipeline. It takes precedence
+                over the parallelism configuration of the parent pipeline.
 
         Returns:
             A response dict from the service.
@@ -265,8 +268,9 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
                 pipeline parameters.
             execution_display_name (str): The display name of the pipeline execution.
             execution_description (str): A description of the execution.
-            parallelism_config (Optional[ParallelismConfiguration]): Config for parallel steps, that
-                is applied to each of the executions.
+            parallelism_config (Optional[ParallelismConfiguration]): Parallelism configuration
+                that is applied to each of the executions of the pipeline. It takes precedence
+                over the parallelism configuration of the parent pipeline.
 
         Returns:
             A `_PipelineExecution` instance, if successful.
