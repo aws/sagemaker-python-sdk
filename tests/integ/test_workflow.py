@@ -2787,6 +2787,8 @@ def test_large_pipeline(sagemaker_session, role, pipeline_name, region_name):
             fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
             create_arn,
         )
+        response = pipeline.describe()
+        assert len(json.loads(pipeline.describe()["PipelineDefinition"])["Steps"]) == 2000
 
         pipeline.parameters = [ParameterInteger(name="InstanceCount", default_value=1)]
         response = pipeline.update(role)
@@ -2801,7 +2803,7 @@ def test_large_pipeline(sagemaker_session, role, pipeline_name, region_name):
         except Exception:
             pass
 
-def test_create_parallelism_config(sagemaker_session, role, pipeline_name, region_name):
+def test_create_and_update_with_parallelism_config(sagemaker_session, role, pipeline_name, region_name):
     instance_count = ParameterInteger(name="InstanceCount", default_value=2)
 
     outputParam = CallbackOutput(output_name="output", output_type=CallbackOutputTypeEnum.String)
@@ -2822,6 +2824,7 @@ def test_create_parallelism_config(sagemaker_session, role, pipeline_name, regio
         sagemaker_session=sagemaker_session,
     )
 
+
     try:
         response = pipeline.create(role, parallelism_config={"MaxParallelExecutionSteps": 50})
         create_arn = response["PipelineArn"]
@@ -2829,14 +2832,20 @@ def test_create_parallelism_config(sagemaker_session, role, pipeline_name, regio
             fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
             create_arn,
         )
+        response = pipeline.describe()
+        assert response["ParallelismConfiguration"]["MaxParallelExecutionSteps"] == 50
 
         pipeline.parameters = [ParameterInteger(name="InstanceCount", default_value=1)]
-        response = pipeline.update(role, parallelism_config={"MaxParallelExecutionSteps": 50})
+        response = pipeline.update(role, parallelism_config={"MaxParallelExecutionSteps": 55})
         update_arn = response["PipelineArn"]
         assert re.match(
             fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
             update_arn,
         )
+
+        response = pipeline.describe()
+        assert response["ParallelismConfiguration"]["MaxParallelExecutionSteps"] == 55
+
     finally:
         try:
             pipeline.delete()
