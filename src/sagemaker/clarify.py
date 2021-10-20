@@ -31,6 +31,7 @@ class DataConfig:
         self,
         s3_data_input_path,
         s3_output_path,
+        s3_analysis_config_output_path=None,
         label=None,
         headers=None,
         features=None,
@@ -43,6 +44,9 @@ class DataConfig:
         Args:
             s3_data_input_path (str): Dataset S3 prefix/object URI.
             s3_output_path (str): S3 prefix to store the output.
+            s3_analysis_config_output_path (str): S3 prefix to store the analysis_config output
+                If this field is None, then the s3_output_path will be used
+                to store the analysis_config output
             label (str): Target attribute of the model required by bias metrics (optional for SHAP)
                 Specified as column name or index for CSV dataset, or as JSONPath for JSONLines.
             headers (list[str]): A list of column names in the input dataset.
@@ -61,6 +65,7 @@ class DataConfig:
             )
         self.s3_data_input_path = s3_data_input_path
         self.s3_output_path = s3_output_path
+        self.s3_analysis_config_output_path = s3_analysis_config_output_path
         self.s3_data_distribution_type = s3_data_distribution_type
         self.s3_compression_type = s3_compression_type
         self.label = label
@@ -473,7 +478,7 @@ class SageMakerClarifyProcessor(Processor):
                 json.dump(analysis_config, f)
             s3_analysis_config_file = _upload_analysis_config(
                 analysis_config_file,
-                data_config.s3_output_path,
+                data_config.s3_analysis_config_output_path or data_config.s3_output_path,
                 self.sagemaker_session,
                 kms_key,
             )
