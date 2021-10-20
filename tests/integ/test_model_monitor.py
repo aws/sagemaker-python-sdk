@@ -92,7 +92,11 @@ def predictor(sagemaker_session, tensorflow_inference_latest_version):
         key_prefix="tensorflow-serving/models",
     )
     with tests.integ.timeout.timeout_and_delete_endpoint_by_name(
-        endpoint_name=endpoint_name, sagemaker_session=sagemaker_session, hours=2
+        endpoint_name=endpoint_name,
+        sagemaker_session=sagemaker_session,
+        hours=2,
+        sleep_between_cleanup_attempts=20,
+        exponential_sleep=True,
     ):
         model = TensorFlowModel(
             model_data=model_data,
