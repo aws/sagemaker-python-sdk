@@ -306,7 +306,7 @@ class SHAPConfig(ExplainabilityConfig):
         use_logit=False,
         save_local_shap_values=True,
         seed=None,
-        num_clusters=None
+        num_clusters=None,
     ):
         """Initializes config for SHAP.
 
