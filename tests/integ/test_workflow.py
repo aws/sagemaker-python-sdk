@@ -1890,7 +1890,8 @@ def test_training_job_with_debugger_and_profiler(
                 assert config["RuleEvaluatorImage"] == rule.image_uri
                 assert config["VolumeSizeInGB"] == 0
                 assert (
-                    config["RuleParameters"]["rule_to_invoke"] == rule.rule_parameters["rule_to_invoke"]
+                    config["RuleParameters"]["rule_to_invoke"]
+                    == rule.rule_parameters["rule_to_invoke"]
                 )
             assert job_description["DebugHookConfig"] == debugger_hook_config._to_request_dict()
 
