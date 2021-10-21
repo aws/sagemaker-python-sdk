@@ -95,11 +95,7 @@ from sagemaker.lambda_helper import Lambda
 from sagemaker.feature_store.feature_group import FeatureGroup, FeatureDefinition, FeatureTypeEnum
 from tests.integ import DATA_DIR
 from tests.integ.kms_utils import get_or_create_kms_key
-<<<<<<< HEAD
 from tests.integ.retry import retries
-=======
-from tests.integ.vpc_test_utils import get_or_create_vpc_resources
->>>>>>> 48cd0d8f (feature: Add EMRStep support in Sagemaker pipeline)
 
 
 def ordered(obj):
