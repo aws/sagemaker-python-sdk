@@ -155,8 +155,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 'Pipe' - Amazon SageMaker streams data directly from S3 to the
                 container via a Unix-named pipe.
                 'FastFile' - Amazon SageMaker streams data from S3 on demand instead of
-                downloading the entire dataset before training begins. This argument can be overriden
-                on a per-channel basis using ``sagemaker.inputs.TrainingInput.input_mode``.
+                downloading the entire dataset before training begins. This argument can
+                be overriden on a per-channel basis using
+                ``sagemaker.inputs.TrainingInput.input_mode``.
             output_path (str): S3 location for saving the training result (model
                 artifacts and output files). If not specified, results are
                 stored to a default bucket. If the bucket with the specific name
