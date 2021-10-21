@@ -318,11 +318,13 @@ class SHAPConfig(ExplainabilityConfig):
                 calculated automatically by using K-means or K-prototypes in the input dataset.
             num_samples (None or int): Number of samples to be used in the Kernel SHAP algorithm.
                 This number determines the size of the generated synthetic dataset to compute the
-                SHAP values.
+                SHAP values. If not provided then Clarify job will choose a proper value according
+                to the count of features.
             agg_method (None or str): Aggregation method for global SHAP values. Valid values are
                 "mean_abs" (mean of absolute SHAP values for all instances),
                 "median" (median of SHAP values for all instances) and
                 "mean_sq" (mean of squared SHAP values for all instances).
+                If not provided then Clarify job uses method "mean_abs"
             use_logit (bool): Indicator of whether the logit function is to be applied to the model
                 predictions. Default is False. If "use_logit" is true then the SHAP values will
                 have log-odds units.
@@ -330,8 +332,9 @@ class SHAPConfig(ExplainabilityConfig):
                 in the output location. Default is True.
             seed (int): seed value to get deterministic SHAP values. Default is None.
             num_clusters (None or int): If a baseline is not provided, Clarify automatically
-                computes a baseline dataset via a clustering algorithm. num_clusters is a parameter
-                for K-means/K-prototypes. Default is None.
+                computes a baseline dataset via a clustering algorithm (K-means/K-prototypes).
+                num_clusters is a parameter for this algorithm. num_clusters will be the resulting
+                size of the baseline dataset. If not provided, Clarify job will use a default value.
         """
         if agg_method is not None and agg_method not in ["mean_abs", "median", "mean_sq"]:
             raise ValueError(
@@ -342,17 +345,19 @@ class SHAPConfig(ExplainabilityConfig):
                 "Baseline and num_clusters cannot both be provided. Please specify one of the two."
             )
         self.shap_config = {
-            "num_samples": num_samples,
-            "agg_method": agg_method,
             "use_logit": use_logit,
             "save_local_shap_values": save_local_shap_values,
         }
         if baseline is not None:
             self.shap_config["baseline"] = baseline
-        if num_clusters is not None:
-            self.shap_config["num_clusters"] = num_clusters
+        if num_samples is not None:
+            self.shap_config["num_samples"] = num_samples
+        if agg_method is not None:
+            self.shap_config["agg_method"] = agg_method
         if seed is not None:
             self.shap_config["seed"] = seed
+        if num_clusters is not None:
+            self.shap_config["num_clusters"] = num_clusters
 
     def get_explainability_config(self):
         """Returns config."""

@@ -292,6 +292,15 @@ def test_shap_config_no_baseline():
     }
     assert expected_config == shap_config.get_explainability_config()
 
+def test_shap_config_no_parameters():
+    shap_config = SHAPConfig()
+    expected_config = {
+        "shap": {
+            "use_logit": False,
+            "save_local_shap_values": True,
+        }
+    }
+    assert expected_config == shap_config.get_explainability_config()
 
 def test_invalid_shap_config():
     with pytest.raises(ValueError) as error:
@@ -302,6 +311,12 @@ def test_invalid_shap_config():
         )
     assert "Invalid agg_method invalid. Please choose mean_abs, median, or mean_sq." in str(
         error.value
+    )
+    with pytest.raises(ValueError) as error:
+        SHAPConfig(baseline=[[1]], num_samples=1, agg_method="mean_abs", num_clusters=2)
+    assert (
+        "Baseline and num_clusters cannot both be provided. Please specify one of the two."
+        in str(error.value)
     )
 
 
