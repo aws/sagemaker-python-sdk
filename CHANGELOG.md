@@ -1,5 +1,62 @@
 # Changelog
 
+## v2.65.0 (2021-10-21)
+
+### Features
+
+ * modify RLEstimator to use newly generated Ray image (1.6.0)
+ * network isolation mode for xgboost
+ * update clarify imageURI for PDT
+
+### Bug Fixes and Other Changes
+
+ * retry downstream_trials test
+ * Add retries to pipeline execution
+
+## v2.64.0 (2021-10-20)
+
+### Deprecations and Removals
+
+ * warn for deprecation - Lambda model-predictor
+
+### Features
+
+ * Add support for TF 2.5
+ * Add a pre-push git hook
+
+### Bug Fixes and Other Changes
+
+ * add s3_analysis_config_output_path field in DataConfig constructor
+ * make marketplace jobnames random
+
+## v2.63.2 (2021-10-18)
+
+### Bug Fixes and Other Changes
+
+ * Update timeouts for integ tests from 20 to 40
+
+## v2.63.1 (2021-10-14)
+
+### Bug Fixes and Other Changes
+
+ * HF estimator attach modified to work with py38
+
+## v2.63.0 (2021-10-13)
+
+### Features
+
+ * support configurable retry for pipeline steps
+
+## v2.62.0 (2021-10-12)
+
+### Features
+
+ * Hugging Face Transformers 4.10 for Pt1.8/TF2.4 & Transformers 4.11 for PT1.9&TF2.5
+
+### Bug Fixes and Other Changes
+
+ * repack_model script used in pipelines to support source_dir and dependencies
+
 ## v2.61.0 (2021-10-11)
 
 ### Features
