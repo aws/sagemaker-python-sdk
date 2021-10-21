@@ -1,5 +1,18 @@
 # Changelog
 
+## v2.65.0 (2021-10-21)
+
+### Features
+
+ * modify RLEstimator to use newly generated Ray image (1.6.0)
+ * network isolation mode for xgboost
+ * update clarify imageURI for PDT
+
+### Bug Fixes and Other Changes
+
+ * retry downstream_trials test
+ * Add retries to pipeline execution
+
 ## v2.64.0 (2021-10-20)
 
 ### Deprecations and Removals
