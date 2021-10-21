@@ -292,6 +292,7 @@ def test_shap_config_no_baseline():
     }
     assert expected_config == shap_config.get_explainability_config()
 
+
 def test_shap_config_no_parameters():
     shap_config = SHAPConfig()
     expected_config = {
@@ -301,6 +302,7 @@ def test_shap_config_no_parameters():
         }
     }
     assert expected_config == shap_config.get_explainability_config()
+
 
 def test_invalid_shap_config():
     with pytest.raises(ValueError) as error:
