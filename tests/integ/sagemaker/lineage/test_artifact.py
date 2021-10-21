@@ -20,6 +20,7 @@ import time
 import pytest
 
 from sagemaker.lineage import artifact
+from tests.integ.sagemaker.lineage.helpers import retry
 
 
 def test_create_delete(artifact_obj):
@@ -103,14 +104,20 @@ def test_list_by_type(artifact_objs, sagemaker_session):
 
 def test_downstream_trials(trial_associated_artifact, trial_obj, sagemaker_session):
     # allow trial components to index, 30 seconds max
-    for i in range(3):
-        time.sleep(10)
-        trials = trial_associated_artifact.downstream_trials(sagemaker_session=sagemaker_session)
-        if len(trials) > 0:
-            break
+    def validate():
+        for i in range(3):
+            time.sleep(10)
+            trials = trial_associated_artifact.downstream_trials(
+                sagemaker_session=sagemaker_session
+            )
+            logging.info(f"Found {len(trials)} downstream trials.")
+            if len(trials) > 0:
+                break
 
-    assert len(trials) == 1
-    assert trial_obj.trial_name in trials
+        assert len(trials) == 1
+        assert trial_obj.trial_name in trials
+
+    retry(validate, num_attempts=3)
 
 
 @pytest.mark.timeout(30)
