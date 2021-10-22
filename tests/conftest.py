@@ -59,6 +59,7 @@ FRAMEWORKS_FOR_GENERATED_VERSION_FIXTURES = (
     "xgboost",
     "spark",
     "huggingface",
+    "autogluon",
 )
 
 
