@@ -650,19 +650,22 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         model using the Amazon SageMaker hosting services.
 
         Args:
-            inputs (str or dict or sagemaker.inputs.TrainingInput): Information
-                about the training data. This can be one of three types:
+            inputs (str or dict or sagemaker.inputs.TrainingInput or
+                sagemaker.inputs.FileSystemInput): Information about the training data.
+                This can be one of four types:
 
                 * (str) the S3 location where training data is saved, or a file:// path in
                     local mode.
-                * (dict[str, str] or dict[str, sagemaker.inputs.TrainingInput]) If using multiple
-                    channels for training data, you can specify a dict mapping channel names to
-                    strings or :func:`~sagemaker.inputs.TrainingInput` objects.
+                * (dict[str, str] or dict[str, sagemaker.inputs.TrainingInput] or
+                    dict[str, sagemaker.inputs.FileSystemInput]) If using multiple channels for
+                    training data, you can specify a dict mapping channel names to strings or
+                    :func:`~sagemaker.inputs.TrainingInput` objects or
+                    :func:`~sagemaker.inputs.FileSystemInput` objects.
                 * (sagemaker.inputs.TrainingInput) - channel configuration for S3 data sources
                     that can provide additional information as well as the path to the training
                     dataset.
                     See :func:`sagemaker.inputs.TrainingInput` for full details.
-                * (sagemaker.session.FileSystemInput) - channel configuration for
+                * (sagemaker.inputs.FileSystemInput) - channel configuration for
                     a file system data source that can provide additional information as well as
                     the path to the training dataset.
 
