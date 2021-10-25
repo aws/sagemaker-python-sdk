@@ -317,7 +317,7 @@ def test_invalid_shap_config():
     with pytest.raises(ValueError) as error:
         SHAPConfig(baseline=[[1]], num_samples=1, agg_method="mean_abs", num_clusters=2)
     assert (
-        "Baseline and num_clusters cannot both be provided. Please specify one of the two."
+        "Baseline and num_clusters cannot be provided together. Please specify one of the two."
         in str(error.value)
     )
 
