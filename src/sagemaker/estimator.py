@@ -150,8 +150,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 60 * 60). After this amount of time Amazon SageMaker terminates
                 the job regardless of its current status.
             input_mode (str): The input mode that the algorithm supports
-                (default: 'File'). Valid modes: 'File' - Amazon SageMaker copies
-                the training dataset from the S3 location to a local directory.
+                (default: 'File'). Valid modes:
+                'File' - Amazon SageMaker copiesthe training dataset from the
+                 S3 location to a local directory.
                 'Pipe' - Amazon SageMaker streams data directly from S3 to the
                 container via a Unix-named pipe.
                 'FastFile' - Amazon SageMaker streams data from S3 on demand instead of
