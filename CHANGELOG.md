@@ -1,5 +1,45 @@
 # Changelog
 
+## v2.66.0 (2021-10-25)
+
+### Features
+
+ * Add image_uris.retrieve() support for AutoGluon
+
+### Documentation Changes
+
+ * fix documentation for input types in estimator.fit
+ * Add JsonGet v2 deprecation
+
+## v2.65.0 (2021-10-21)
+
+### Features
+
+ * modify RLEstimator to use newly generated Ray image (1.6.0)
+ * network isolation mode for xgboost
+ * update clarify imageURI for PDT
+
+### Bug Fixes and Other Changes
+
+ * retry downstream_trials test
+ * Add retries to pipeline execution
+
+## v2.64.0 (2021-10-20)
+
+### Deprecations and Removals
+
+ * warn for deprecation - Lambda model-predictor
+
+### Features
+
+ * Add support for TF 2.5
+ * Add a pre-push git hook
+
+### Bug Fixes and Other Changes
+
+ * add s3_analysis_config_output_path field in DataConfig constructor
+ * make marketplace jobnames random
+
 ## v2.63.2 (2021-10-18)
 
 ### Bug Fixes and Other Changes

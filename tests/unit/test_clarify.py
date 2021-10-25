@@ -24,7 +24,7 @@ from sagemaker.clarify import (
     ModelPredictedLabelConfig,
     SHAPConfig,
 )
-from sagemaker import image_uris
+from sagemaker import image_uris, Processor
 
 JOB_NAME_PREFIX = "my-prefix"
 TIMESTAMP = "2021-06-17-22-29-54-685"
@@ -538,6 +538,59 @@ def test_post_training_bias(
             JOB_NAME,
             None,
             {"ExperimentName": "AnExperiment"},
+        )
+
+
+@patch.object(Processor, "run")
+def test_run_on_s3_analysis_config_file(
+    processor_run, sagemaker_session, clarify_processor, data_config
+):
+    analysis_config = {
+        "methods": {"post_training_bias": {"methods": "all"}},
+    }
+    with patch("sagemaker.clarify._upload_analysis_config", return_value=None) as mock_method:
+        clarify_processor._run(
+            data_config,
+            analysis_config,
+            True,
+            True,
+            "test",
+            None,
+            {"ExperimentName": "AnExperiment"},
+        )
+        analysis_config_file = mock_method.call_args[0][0]
+        mock_method.assert_called_with(
+            analysis_config_file, data_config.s3_output_path, sagemaker_session, None
+        )
+
+        data_config_with_analysis_config_output = DataConfig(
+            s3_data_input_path="s3://input/train.csv",
+            s3_output_path="s3://output/analysis_test_result",
+            s3_analysis_config_output_path="s3://analysis_config_output",
+            label="Label",
+            headers=[
+                "Label",
+                "F1",
+                "F2",
+                "F3",
+            ],
+            dataset_type="text/csv",
+        )
+        clarify_processor._run(
+            data_config_with_analysis_config_output,
+            analysis_config,
+            True,
+            True,
+            "test",
+            None,
+            {"ExperimentName": "AnExperiment"},
+        )
+        analysis_config_file = mock_method.call_args[0][0]
+        mock_method.assert_called_with(
+            analysis_config_file,
+            data_config_with_analysis_config_output.s3_analysis_config_output_path,
+            sagemaker_session,
+            None,
         )
 
 
