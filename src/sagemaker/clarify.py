@@ -342,7 +342,8 @@ class SHAPConfig(ExplainabilityConfig):
             )
         if num_clusters is not None and baseline is not None:
             raise ValueError(
-                "Baseline and num_clusters cannot be provided together. Please specify one of the two."
+                "Baseline and num_clusters cannot be provided together. "
+                "Please specify one of the two."
             )
         self.shap_config = {
             "use_logit": use_logit,
