@@ -11,63 +11,54 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Placeholder docstring"""
-from __future__ import print_function, absolute_import
+from __future__ import absolute_import, print_function
 
 import json
 import logging
 import os
 import uuid
+from abc import ABCMeta, abstractmethod
 
-from abc import ABCMeta
-from abc import abstractmethod
-
-from six import with_metaclass
-from six import string_types
+from six import string_types, with_metaclass
 from six.moves.urllib.parse import urlparse
+
 import sagemaker
-from sagemaker import git_utils, image_uris
+from sagemaker import git_utils, image_uris, vpc_utils
 from sagemaker.analytics import TrainingJobAnalytics
-from sagemaker.debugger import TensorBoardOutputConfig  # noqa: F401 # pylint: disable=unused-import
-from sagemaker.debugger import (
+from sagemaker.debugger import (  # noqa: F401 # pylint: disable=unused-import
     DEBUGGER_FLAG,
     DebuggerHookConfig,
     FrameworkProfile,
-    get_default_profiler_rule,
-    get_rule_container_image_uri,
     ProfilerConfig,
     ProfilerRule,
     Rule,
+    TensorBoardOutputConfig,
+    get_default_profiler_rule,
+    get_rule_container_image_uri,
 )
-from sagemaker.deprecations import (
-    removed_kwargs,
-    removed_function,
-    renamed_kwargs,
-)
-from sagemaker.s3 import S3Uploader, parse_s3_url
-
+from sagemaker.deprecations import removed_function, removed_kwargs, renamed_kwargs
 from sagemaker.fw_utils import (
-    tar_and_upload_dir,
     UploadedCode,
-    validate_source_dir,
     _region_supports_debugger,
     _region_supports_profiler,
     get_mp_parameters,
+    tar_and_upload_dir,
+    validate_source_dir,
 )
-from sagemaker.workflow.properties import Properties
-from sagemaker.workflow.parameters import Parameter
-from sagemaker.workflow.entities import Expression
 from sagemaker.inputs import TrainingInput
 from sagemaker.job import _Job
 from sagemaker.local import LocalSession
-from sagemaker.model import Model, NEO_ALLOWED_FRAMEWORKS
 from sagemaker.model import (
-    SCRIPT_PARAM_NAME,
-    DIR_PARAM_NAME,
     CONTAINER_LOG_LEVEL_PARAM_NAME,
+    DIR_PARAM_NAME,
     JOB_NAME_PARAM_NAME,
+    NEO_ALLOWED_FRAMEWORKS,
     SAGEMAKER_REGION_PARAM_NAME,
+    SCRIPT_PARAM_NAME,
+    Model,
 )
 from sagemaker.predictor import Predictor
+from sagemaker.s3 import S3Uploader, parse_s3_url
 from sagemaker.session import Session
 from sagemaker.transformer import Transformer
 from sagemaker.utils import (
@@ -77,7 +68,9 @@ from sagemaker.utils import (
     get_config_value,
     name_from_base,
 )
-from sagemaker import vpc_utils
+from sagemaker.workflow.entities import Expression
+from sagemaker.workflow.parameters import Parameter
+from sagemaker.workflow.properties import Properties
 
 logger = logging.getLogger(__name__)
 
@@ -152,7 +145,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             input_mode (str): The input mode that the algorithm supports
                 (default: 'File'). Valid modes:
                 'File' - Amazon SageMaker copiesthe training dataset from the
-                 S3 location to a local directory.
+                S3 location to a local directory.
                 'Pipe' - Amazon SageMaker streams data directly from S3 to the
                 container via a Unix-named pipe.
                 'FastFile' - Amazon SageMaker streams data from S3 on demand instead of
