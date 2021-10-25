@@ -1,5 +1,16 @@
 # Changelog
 
+## v2.66.0 (2021-10-25)
+
+### Features
+
+ * Add image_uris.retrieve() support for AutoGluon
+
+### Documentation Changes
+
+ * fix documentation for input types in estimator.fit
+ * Add JsonGet v2 deprecation
+
 ## v2.65.0 (2021-10-21)
 
 ### Features
