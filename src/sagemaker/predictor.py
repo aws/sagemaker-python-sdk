@@ -10,7 +10,6 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Placeholder docstring"""
 from __future__ import print_function, absolute_import
 
 import abc
@@ -162,7 +161,6 @@ class Predictor(PredictorBase):
         return self._handle_response(response)
 
     def _handle_response(self, response):
-        """Placeholder docstring"""
         response_body = response["Body"]
         content_type = response.get("ContentType", "application/octet-stream")
         return self.deserializer.deserialize(response_body, content_type)
@@ -175,7 +173,6 @@ class Predictor(PredictorBase):
         target_variant=None,
         inference_id=None,
     ):
-        """Placeholder docstring"""
         args = dict(initial_args) if initial_args else {}
 
         if "EndpointName" not in args:
@@ -513,7 +510,6 @@ class Predictor(PredictorBase):
         return self._context
 
     def _get_endpoint_config_name(self):
-        """Placeholder docstring"""
         if self._endpoint_config_name is not None:
             return self._endpoint_config_name
         endpoint_desc = self.sagemaker_session.sagemaker_client.describe_endpoint(
@@ -523,7 +519,6 @@ class Predictor(PredictorBase):
         return self._endpoint_config_name
 
     def _get_model_names(self):
-        """Placeholder docstring"""
         if self._model_names is not None:
             return self._model_names
         current_endpoint_config_name = self._get_endpoint_config_name()

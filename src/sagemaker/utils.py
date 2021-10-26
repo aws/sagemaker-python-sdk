@@ -10,7 +10,6 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Placeholder docstring"""
 from __future__ import absolute_import
 
 import contextlib
@@ -77,7 +76,6 @@ def name_from_base(base, max_length=63, short=False):
 
 
 def unique_name_from_base(base, max_length=63):
-    """Placeholder Docstring"""
     unique = "%04x" % random.randrange(16 ** 4)  # 4-digit hex
     ts = str(int(time.time()))
     available_length = max_length - 2 - len(ts) - len(unique)
@@ -143,7 +141,6 @@ def build_dict(key, value):
 
 
 def get_config_value(key_path, config):
-    """Placeholder Docstring"""
     if config is None:
         return None
 
@@ -423,7 +420,6 @@ def repack_model(
 
 
 def _save_model(repacked_model_uri, tmp_model_path, sagemaker_session, kms_key):
-    """Placeholder docstring"""
     if repacked_model_uri.lower().startswith("s3://"):
         url = parse.urlparse(repacked_model_uri)
         bucket, key = url.netloc, url.path.lstrip("/")
@@ -443,7 +439,6 @@ def _save_model(repacked_model_uri, tmp_model_path, sagemaker_session, kms_key):
 def _create_or_update_code_dir(
     model_dir, inference_script, source_directory, dependencies, sagemaker_session, tmp
 ):
-    """Placeholder docstring"""
     code_dir = os.path.join(model_dir, "code")
     if source_directory and source_directory.lower().startswith("s3://"):
         local_code_path = os.path.join(tmp, "local_code.tar.gz")
@@ -478,7 +473,6 @@ def _create_or_update_code_dir(
 
 
 def _extract_model(model_uri, sagemaker_session, tmp):
-    """Placeholder docstring"""
     tmp_model_dir = os.path.join(tmp, "model")
     os.mkdir(tmp_model_dir)
     if model_uri.lower().startswith("s3://"):
@@ -492,7 +486,6 @@ def _extract_model(model_uri, sagemaker_session, tmp):
 
 
 def download_file_from_url(url, dst, sagemaker_session):
-    """Placeholder docstring"""
     url = parse.urlparse(url)
     bucket, key = url.netloc, url.path.lstrip("/")
 
@@ -599,7 +592,6 @@ class DeferredError(object):
     """
 
     def __init__(self, exception):
-        """Placeholder docstring"""
         self.exc = exception
 
     def __getattr__(self, name):

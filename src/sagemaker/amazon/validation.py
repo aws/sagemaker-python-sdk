@@ -10,12 +10,10 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Placeholder docstring"""
 from __future__ import absolute_import
 
 
 def gt(minimum):
-    """Placeholder docstring"""
 
     def validate(value):
         return value > minimum
@@ -24,7 +22,6 @@ def gt(minimum):
 
 
 def ge(minimum):
-    """Placeholder docstring"""
 
     def validate(value):
         return value >= minimum
@@ -33,7 +30,6 @@ def ge(minimum):
 
 
 def lt(maximum):
-    """Placeholder docstring"""
 
     def validate(value):
         return value < maximum
@@ -42,7 +38,6 @@ def lt(maximum):
 
 
 def le(maximum):
-    """Placeholder docstring"""
 
     def validate(value):
         return value <= maximum
@@ -51,7 +46,6 @@ def le(maximum):
 
 
 def isin(*expected):
-    """Placeholder docstring"""
 
     def validate(value):
         return value in expected
@@ -60,7 +54,6 @@ def isin(*expected):
 
 
 def istype(expected):
-    """Placeholder docstring"""
 
     def validate(value):
         return isinstance(value, expected)

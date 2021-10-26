@@ -10,7 +10,6 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Placeholder docstring"""
 from __future__ import absolute_import
 
 import json
@@ -93,7 +92,6 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
         self._data_location = data_location
 
     def training_image_uri(self):
-        """Placeholder docstring"""
         return image_uris.retrieve(
             self.repo_name,
             self.sagemaker_session.boto_region_name,
@@ -101,17 +99,14 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
         )
 
     def hyperparameters(self):
-        """Placeholder docstring"""
         return hp.serialize_all(self)
 
     @property
     def data_location(self):
-        """Placeholder docstring"""
         return self._data_location
 
     @data_location.setter
     def data_location(self, data_location):
-        """Placeholder docstring"""
         if not data_location.startswith("s3://"):
             raise ValueError(
                 'Expecting an S3 URL beginning with "s3://". Got "{}"'.format(data_location)
@@ -299,7 +294,6 @@ class AmazonAlgorithmEstimatorBase(EstimatorBase):
 
 
 class RecordSet(object):
-    """Placeholder docstring"""
 
     def __init__(
         self, s3_data, num_records, feature_dim, s3_data_type="ManifestFile", channel="train"
@@ -389,7 +383,6 @@ class FileSystemRecordSet(object):
 
 
 def _build_shards(num_shards, array):
-    """Placeholder docstring"""
     if num_shards < 1:
         raise ValueError("num_shards must be >= 1")
     shard_size = int(array.shape[0] / num_shards)

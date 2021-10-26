@@ -10,7 +10,6 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Placeholder docstring"""
 from __future__ import absolute_import
 
 import os
@@ -186,14 +185,12 @@ def _clone_command_for_github_like(git_config, dest_dir):
 
 
 def _clone_command_for_ssh(git_config, dest_dir):
-    """Placeholder docstring"""
     if "username" in git_config or "password" in git_config or "token" in git_config:
         warnings.warn("SSH cloning, authentication information in git config will be ignored.")
     _run_clone_command(git_config["repo"], dest_dir)
 
 
 def _clone_command_for_github_like_https_2fa_disabled(git_config, dest_dir):
-    """Placeholder docstring"""
     updated_url = git_config["repo"]
     if "token" in git_config:
         if "username" in git_config or "password" in git_config:
@@ -209,7 +206,6 @@ def _clone_command_for_github_like_https_2fa_disabled(git_config, dest_dir):
 
 
 def _clone_command_for_github_like_https_2fa_enabled(git_config, dest_dir):
-    """Placeholder docstring"""
     updated_url = git_config["repo"]
     if "token" in git_config:
         if "username" in git_config or "password" in git_config:

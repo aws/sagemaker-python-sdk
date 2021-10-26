@@ -10,7 +10,6 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Placeholder docstring"""
 from __future__ import absolute_import
 
 import datetime
@@ -175,7 +174,6 @@ class _LocalProcessingJob:
 
 
 class _LocalTrainingJob(object):
-    """Placeholder docstring"""
 
     _STARTING = "Starting"
     _TRAINING = "Training"
@@ -190,7 +188,6 @@ class _LocalTrainingJob(object):
         self.end_time = None
 
     def start(self, input_data_config, output_data_config, hyperparameters, job_name):
-        """Placeholder docstring."""
         for channel in input_data_config:
             if channel["DataSource"] and "S3DataSource" in channel["DataSource"]:
                 data_distribution = channel["DataSource"]["S3DataSource"]["S3DataDistributionType"]
@@ -224,7 +221,6 @@ class _LocalTrainingJob(object):
         self.state = self._COMPLETED
 
     def describe(self):
-        """Placeholder docstring"""
         response = {
             "ResourceConfig": {"InstanceCount": self.container.instance_count},
             "TrainingJobStatus": self.state,
@@ -236,7 +232,6 @@ class _LocalTrainingJob(object):
 
 
 class _LocalTransformJob(object):
-    """Placeholder docstring"""
 
     _CREATING = "Creating"
     _COMPLETED = "Completed"
@@ -413,7 +408,6 @@ class _LocalTransformJob(object):
         return defaults
 
     def _get_working_directory(self):
-        """Placeholder docstring"""
         # Root dir to use for intermediate data location. To make things simple we will write here
         # regardless of the final destination. At the end the files will either be moved or
         # uploaded to S3 and deleted.
@@ -492,7 +486,6 @@ class _LocalTransformJob(object):
 
 
 class _LocalModel(object):
-    """Placeholder docstring"""
 
     def __init__(self, model_name, primary_container):
         self.model_name = model_name
@@ -500,7 +493,6 @@ class _LocalModel(object):
         self.creation_time = datetime.datetime.now()
 
     def describe(self):
-        """Placeholder docstring"""
         response = {
             "ModelName": self.model_name,
             "CreationTime": self.creation_time,
@@ -512,7 +504,6 @@ class _LocalModel(object):
 
 
 class _LocalEndpointConfig(object):
-    """Placeholder docstring"""
 
     def __init__(self, config_name, production_variants, tags=None):
         self.name = config_name
@@ -521,7 +512,6 @@ class _LocalEndpointConfig(object):
         self.creation_time = datetime.datetime.now()
 
     def describe(self):
-        """Placeholder docstring"""
         response = {
             "EndpointConfigName": self.name,
             "EndpointConfigArn": _UNUSED_ARN,
@@ -533,7 +523,6 @@ class _LocalEndpointConfig(object):
 
 
 class _LocalEndpoint(object):
-    """Placeholder docstring"""
 
     _CREATING = "Creating"
     _IN_SERVICE = "InService"
@@ -559,7 +548,6 @@ class _LocalEndpoint(object):
         self.state = _LocalEndpoint._CREATING
 
     def serve(self):
-        """Placeholder docstring"""
         image = self.primary_container["Image"]
         instance_type = self.production_variant["InstanceType"]
         instance_count = self.production_variant["InitialInstanceCount"]
@@ -584,12 +572,10 @@ class _LocalEndpoint(object):
         self.state = _LocalEndpoint._IN_SERVICE
 
     def stop(self):
-        """Placeholder docstring"""
         if self.container:
             self.container.stop_serving()
 
     def describe(self):
-        """Placeholder docstring"""
         response = {
             "EndpointConfigName": self.endpoint_config["EndpointConfigName"],
             "CreationTime": self.create_time,
@@ -603,7 +589,6 @@ class _LocalEndpoint(object):
 
 
 def _wait_for_serving_container(serving_port):
-    """Placeholder docstring."""
     i = 0
     http = urllib3.PoolManager()
 
@@ -624,7 +609,6 @@ def _wait_for_serving_container(serving_port):
 
 
 def _perform_request(endpoint_url, pool_manager=None):
-    """Placeholder docstring."""
     http = pool_manager or urllib3.PoolManager()
     try:
         r = http.request("GET", endpoint_url)

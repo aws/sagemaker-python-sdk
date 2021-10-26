@@ -10,7 +10,6 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Placeholder docstring"""
 from __future__ import absolute_import
 
 import abc
@@ -290,11 +289,9 @@ class Model(ModelBase):
             self.name = utils.name_from_base(self._base_name)
 
     def _framework(self):
-        """Placeholder docstring"""
         return getattr(self, "_framework_name", None)
 
     def _get_framework_version(self):
-        """Placeholder docstring"""
         return getattr(self, "framework_version", None)
 
     def _edge_packaging_job_config(
@@ -357,7 +354,6 @@ class Model(ModelBase):
         compiler_options=None,
         framework_version=None,
     ):
-        """Placeholder Docstring"""
         input_model_config = {
             "S3Uri": self.model_data,
             "DataInputConfig": json.dumps(input_shape)
@@ -1057,7 +1053,6 @@ class FrameworkModel(Model):
         return sagemaker.container_def(self.image_uri, self.model_data, deploy_env)
 
     def _upload_code(self, key_prefix, repack=False):
-        """Placeholder Docstring"""
         local_code = utils.get_config_value("local.local_code", self.sagemaker_session.config)
         if (self.sagemaker_session.local_mode and local_code) or self.entry_point is None:
             self.uploaded_code = None
@@ -1096,7 +1091,6 @@ class FrameworkModel(Model):
             )
 
     def _framework_env_vars(self):
-        """Placeholder docstring"""
         script_name = None
         dir_name = None
         if self.uploaded_code:
@@ -1166,7 +1160,6 @@ class ModelPackage(Model):
         self._created_model_package_name = None
 
     def _create_sagemaker_model_package(self):
-        """Placeholder docstring"""
         if self.algorithm_arn is None:
             raise ValueError("No algorithm_arn was provided to create a SageMaker Model Pacakge")
 
@@ -1186,7 +1179,6 @@ class ModelPackage(Model):
         return self._is_marketplace()
 
     def _is_marketplace(self):
-        """Placeholder docstring"""
         model_package_name = self.model_package_arn or self._created_model_package_name
         if model_package_name is None:
             return True

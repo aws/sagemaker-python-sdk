@@ -10,7 +10,6 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Placeholder docstring"""
 from __future__ import absolute_import
 
 from botocore import exceptions
@@ -229,7 +228,6 @@ class Transformer(object):
         self.sagemaker_session.delete_model(self.model_name)
 
     def _retrieve_base_name(self):
-        """Placeholder docstring"""
         image_uri = self._retrieve_image_uri()
 
         if image_uri:
@@ -238,7 +236,6 @@ class Transformer(object):
         return self.model_name
 
     def _retrieve_image_uri(self):
-        """Placeholder docstring"""
         try:
             model_desc = self.sagemaker_session.sagemaker_client.describe_model(
                 ModelName=self.model_name
@@ -262,7 +259,6 @@ class Transformer(object):
             )
 
     def wait(self, logs=True):
-        """Placeholder docstring"""
         self._ensure_last_transform_job()
         self.latest_transform_job.wait(logs=logs)
 
@@ -274,7 +270,6 @@ class Transformer(object):
             self.latest_transform_job.wait()
 
     def _ensure_last_transform_job(self):
-        """Placeholder docstring"""
         if self.latest_transform_job is None:
             raise ValueError("No transform job available")
 
@@ -338,7 +333,6 @@ class Transformer(object):
 
 
 class _TransformJob(_Job):
-    """Placeholder docstring"""
 
     @classmethod
     def start_new(
@@ -355,7 +349,6 @@ class _TransformJob(_Job):
         experiment_config,
         model_client_config,
     ):
-        """Placeholder docstring"""
 
         transform_args = cls._get_transform_args(
             transformer,
@@ -389,7 +382,6 @@ class _TransformJob(_Job):
         experiment_config,
         model_client_config,
     ):
-        """Placeholder docstring"""
 
         config = _TransformJob._load_config(
             data, data_type, content_type, compression_type, split_type, transformer
@@ -423,12 +415,10 @@ class _TransformJob(_Job):
             self.sagemaker_session.wait_for_transform_job(self.job_name)
 
     def stop(self):
-        """Placeholder docstring"""
         self.sagemaker_session.stop_transform_job(name=self.job_name)
 
     @staticmethod
     def _load_config(data, data_type, content_type, compression_type, split_type, transformer):
-        """Placeholder docstring"""
         input_config = _TransformJob._format_inputs_to_input_config(
             data, data_type, content_type, compression_type, split_type
         )
@@ -452,7 +442,6 @@ class _TransformJob(_Job):
 
     @staticmethod
     def _format_inputs_to_input_config(data, data_type, content_type, compression_type, split_type):
-        """Placeholder docstring"""
         config = {"DataSource": {"S3DataSource": {"S3DataType": data_type, "S3Uri": data}}}
 
         if content_type is not None:
@@ -468,7 +457,6 @@ class _TransformJob(_Job):
 
     @staticmethod
     def _prepare_output_config(s3_path, kms_key_id, assemble_with, accept):
-        """Placeholder docstring"""
         config = super(_TransformJob, _TransformJob)._prepare_output_config(s3_path, kms_key_id)
 
         if assemble_with is not None:
@@ -481,7 +469,6 @@ class _TransformJob(_Job):
 
     @staticmethod
     def _prepare_resource_config(instance_count, instance_type, volume_kms_key):
-        """Placeholder docstring"""
         config = {"InstanceCount": instance_count, "InstanceType": instance_type}
 
         if volume_kms_key is not None:
@@ -491,7 +478,6 @@ class _TransformJob(_Job):
 
     @staticmethod
     def _prepare_data_processing(input_filter, output_filter, join_source):
-        """Placeholder docstring"""
         config = {}
 
         if input_filter is not None:

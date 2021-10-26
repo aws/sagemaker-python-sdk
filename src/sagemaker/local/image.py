@@ -10,7 +10,6 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Placeholder docstring"""
 from __future__ import absolute_import
 
 import base64
@@ -756,7 +755,6 @@ class _SageMakerContainer(object):
         return host_config
 
     def _create_tmp_folder(self):
-        """Placeholder docstring"""
         root_dir = sagemaker.utils.get_config_value(
             "local.container_root", self.sagemaker_session.config
         )
@@ -814,7 +812,6 @@ class _SageMakerContainer(object):
 
 
 class _HostingContainer(Thread):
-    """Placeholder docstring."""
 
     def __init__(self, command):
         """Creates a new threaded hosting container.
@@ -827,7 +824,6 @@ class _HostingContainer(Thread):
         self.process = None
 
     def run(self):
-        """Placeholder docstring"""
         self.process = subprocess.Popen(
             self.command, stdout=subprocess.PIPE, stderr=subprocess.PIPE
         )
@@ -840,7 +836,6 @@ class _HostingContainer(Thread):
             raise RuntimeError(msg)
 
     def down(self):
-        """Placeholder docstring"""
         self.process.terminate()
 
 
@@ -1015,7 +1010,6 @@ def _aws_credentials(session):
 
 
 def _aws_credentials_available_in_metadata_service():
-    """Placeholder docstring"""
     import botocore
     from botocore.credentials import InstanceMetadataProvider
     from botocore.utils import InstanceMetadataFetcher

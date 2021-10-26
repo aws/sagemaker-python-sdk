@@ -10,7 +10,6 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Test docstring"""
 from __future__ import absolute_import
 
 import sagemaker
@@ -179,7 +178,6 @@ class AlgorithmEstimator(EstimatorBase):
             self.set_hyperparameters(**hyperparameters)
 
     def validate_train_spec(self):
-        """Placeholder docstring"""
         train_spec = self.algorithm_spec["TrainingSpecification"]
         algorithm_name = self.algorithm_spec["AlgorithmName"]
 
@@ -212,7 +210,6 @@ class AlgorithmEstimator(EstimatorBase):
             )
 
     def set_hyperparameters(self, **kwargs):
-        """Placeholder docstring"""
         for k, v in kwargs.items():
             value = self._validate_and_cast_hyperparameter(k, v)
             self.hyperparam_dict[k] = value
@@ -398,7 +395,6 @@ class AlgorithmEstimator(EstimatorBase):
         )
 
     def _is_marketplace(self):
-        """Placeholder docstring"""
         return "ProductId" in self.algorithm_spec
 
     def _ensure_base_job_name(self):
@@ -415,14 +411,12 @@ class AlgorithmEstimator(EstimatorBase):
         super(AlgorithmEstimator, self)._prepare_for_training(job_name)
 
     def fit(self, inputs=None, wait=True, logs=True, job_name=None):
-        """Placeholder docstring"""
         if inputs:
             self._validate_input_channels(inputs)
 
         super(AlgorithmEstimator, self).fit(inputs, wait, logs, job_name)
 
     def _validate_input_channels(self, channels):
-        """Placeholder docstring"""
         train_spec = self.algorithm_spec["TrainingSpecification"]
         algorithm_name = self.algorithm_spec["AlgorithmName"]
         training_channels = {c["Name"]: c for c in train_spec["TrainingChannels"]}
@@ -440,7 +434,6 @@ class AlgorithmEstimator(EstimatorBase):
                 raise ValueError("Required input channel: %s Was not provided." % (name))
 
     def _validate_and_cast_hyperparameter(self, name, v):
-        """Placeholder docstring"""
         algorithm_name = self.algorithm_spec["AlgorithmName"]
 
         if name not in self.hyperparameter_definitions:
@@ -460,7 +453,6 @@ class AlgorithmEstimator(EstimatorBase):
         return value
 
     def _validate_and_set_default_hyperparameters(self):
-        """Placeholder docstring"""
         # Check if all the required hyperparameters are set. If there is a default value
         # for one, set it.
         for name, definition in self.hyperparameter_definitions.items():
@@ -472,7 +464,6 @@ class AlgorithmEstimator(EstimatorBase):
                     raise ValueError("Required hyperparameter: %s is not set" % name)
 
     def _parse_hyperparameters(self):
-        """Placeholder docstring"""
         definitions = {}
 
         training_spec = self.algorithm_spec["TrainingSpecification"]
@@ -494,7 +485,6 @@ class AlgorithmEstimator(EstimatorBase):
         return definitions
 
     def _hyperparameter_range_and_class(self, parameter_type, hyperparameter):
-        """Placeholder docstring."""
         if parameter_type in self._hyperpameters_with_range:
             range_name = parameter_type + "ParameterRangeSpecification"
 
@@ -535,7 +525,6 @@ class AlgorithmEstimator(EstimatorBase):
         return parameter_class, parameter_range
 
     def _algorithm_training_input_modes(self, training_channels):
-        """Placeholder docstring"""
         current_input_modes = {"File", "Pipe"}
         for channel in training_channels:
             supported_input_modes = set(channel["SupportedInputModes"])

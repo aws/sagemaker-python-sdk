@@ -10,20 +10,17 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Placeholder docstring"""
 from __future__ import absolute_import
 
 from sagemaker.xgboost import defaults
 
 
 def validate_py_version(py_version):
-    """Placeholder docstring"""
     if py_version != "py3":
         raise ValueError("Unsupported Python version: {}.".format(py_version))
 
 
 def validate_framework_version(framework_version):
-    """Placeholder docstring"""
 
     xgboost_version = framework_version.split("-")[0]
     if xgboost_version in defaults.XGBOOST_UNSUPPORTED_VERSIONS:

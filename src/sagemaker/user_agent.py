@@ -10,7 +10,6 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Placeholder docstring"""
 from __future__ import absolute_import
 
 import platform
@@ -28,7 +27,6 @@ PYTHON_VERSION = "Python/{}.{}.{}".format(
 
 
 def determine_prefix(user_agent=""):
-    """Placeholder docstring"""
     prefix = "AWS-SageMaker-Python-SDK/{}".format(SDK_VERSION)
 
     if PYTHON_VERSION not in user_agent:
@@ -50,7 +48,6 @@ def determine_prefix(user_agent=""):
 
 
 def prepend_user_agent(client):
-    """Placeholder docstring"""
     prefix = determine_prefix(client._client_config.user_agent)
 
     if client._client_config.user_agent is None:

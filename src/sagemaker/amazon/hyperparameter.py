@@ -10,7 +10,6 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Placeholder docstring"""
 from __future__ import absolute_import
 
 import json
@@ -51,7 +50,6 @@ class Hyperparameter(object):
             self.validation = [self.validation]
 
     def validate(self, value):
-        """Placeholder docstring"""
         if value is None:  # We allow assignment from None, but Nones are not sent to training.
             return
 
@@ -63,7 +61,6 @@ class Hyperparameter(object):
                 raise ValueError(error_message)
 
     def __get__(self, obj, objtype):
-        """Placeholder docstring"""
         if "_hyperparameters" not in dir(obj) or self.name not in obj._hyperparameters:
             raise AttributeError()
         return obj._hyperparameters[self.name]

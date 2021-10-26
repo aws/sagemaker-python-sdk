@@ -253,7 +253,6 @@ def tar_and_upload_dir(
 
 
 def _list_files_to_compress(script, directory):
-    """Placeholder docstring"""
     if directory is None:
         return [script]
 
@@ -541,7 +540,6 @@ def _validate_smdataparallel_args(
 
 
 def python_deprecation_warning(framework, latest_supported_version):
-    """Placeholder docstring"""
     return PYTHON_2_DEPRECATION_WARNING.format(
         framework=framework, latest_supported_version=latest_supported_version
     )

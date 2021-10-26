@@ -10,7 +10,6 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Placeholder docstring"""
 from __future__ import absolute_import
 
 import json
@@ -53,7 +52,6 @@ class ParameterRange(object):
 
     @classmethod
     def cast_to_type(cls, value):
-        """Placeholder docstring"""
         return float(value)
 
     def as_tuning_range(self, name):
@@ -92,7 +90,6 @@ class ContinuousParameter(ParameterRange):
 
     @classmethod
     def cast_to_type(cls, value):
-        """Placeholder docstring"""
         return float(value)
 
 
@@ -146,12 +143,10 @@ class CategoricalParameter(ParameterRange):
         return {"Name": name, "Values": [json.dumps(v) for v in self.values]}
 
     def is_valid(self, value):
-        """Placeholder docstring"""
         return value in self.values
 
     @classmethod
     def cast_to_type(cls, value):
-        """Placeholder docstring"""
         return str(value)
 
 
@@ -167,5 +162,4 @@ class IntegerParameter(ParameterRange):
 
     @classmethod
     def cast_to_type(cls, value):
-        """Placeholder docstring"""
         return int(value)

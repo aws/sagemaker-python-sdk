@@ -10,7 +10,6 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Placeholder docstring"""
 from __future__ import absolute_import
 
 from sagemaker import image_uris
@@ -159,7 +158,6 @@ class LDA(AmazonAlgorithmEstimatorBase):
         self, records, mini_batch_size, job_name=None
     ):
         # mini_batch_size is required, prevent explicit calls with None
-        """Placeholder docstring"""
         if mini_batch_size is None:
             raise ValueError("mini_batch_size must be set")
 

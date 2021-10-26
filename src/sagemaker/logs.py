@@ -10,7 +10,6 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Placeholder docstring"""
 from __future__ import absolute_import
 
 import collections
@@ -57,7 +56,6 @@ class ColorWrap(object):
             print(s)
 
     def _color_wrap(self, index, s):
-        """Placeholder docstring"""
         print("\x1b[{}m{}\x1b[0m".format(self._stream_colors[index % len(self._stream_colors)], s))
 
 

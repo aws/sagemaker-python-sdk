@@ -10,7 +10,6 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Placeholder docstring"""
 from __future__ import absolute_import
 
 import logging
@@ -259,7 +258,6 @@ class SKLearn(Framework):
 
 
 def _validate_not_gpu_instance_type(training_instance_type):
-    """Placeholder docstring."""
     gpu_instance_types = [
         "ml.p2.xlarge",
         "ml.p2.8xlarge",

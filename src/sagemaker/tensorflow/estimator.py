@@ -165,7 +165,6 @@ class TensorFlow(Framework):
         self._validate_args(py_version=py_version)
 
     def _validate_args(self, py_version):
-        """Placeholder docstring"""
 
         if py_version == "py2" and self._only_python_3_supported():
             msg = (
@@ -195,11 +194,9 @@ class TensorFlow(Framework):
             raise ValueError(msg)
 
     def _only_legacy_mode_supported(self):
-        """Placeholder docstring"""
         return version.Version(self.framework_version) <= self._HIGHEST_LEGACY_MODE_ONLY_VERSION
 
     def _only_python_3_supported(self):
-        """Placeholder docstring"""
         return version.Version(self.framework_version) > self._HIGHEST_PYTHON_2_VERSION
 
     @classmethod
@@ -331,7 +328,6 @@ class TensorFlow(Framework):
         return hyperparameters
 
     def _default_s3_path(self, directory, mpi=False):
-        """Placeholder docstring"""
         local_code = utils.get_config_value("local.local_code", self.sagemaker_session.config)
         if self.sagemaker_session.local_mode and local_code:
             return "/opt/ml/shared/{}".format(directory)

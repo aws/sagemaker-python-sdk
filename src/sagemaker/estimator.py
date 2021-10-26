@@ -10,7 +10,6 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Placeholder docstring"""
 from __future__ import print_function, absolute_import
 
 import json
@@ -696,7 +695,6 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             self.latest_training_job.wait(logs=logs)
 
     def _compilation_job_name(self):
-        """Placeholder docstring"""
         base_name = self.base_job_name or base_name_from_image(self.training_image_uri())
         return name_from_base("compilation-" + base_name)
 
@@ -1289,7 +1287,6 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
     def _ensure_latest_training_job(
         self, error_message="Estimator is not associated with a training job"
     ):
-        """Placeholder docstring"""
         if self.latest_training_job is None:
             raise ValueError(error_message)
 
@@ -1442,7 +1439,6 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
 
 
 class _TrainingJob(_Job):
-    """Placeholder docstring"""
 
     @classmethod
     def start_new(cls, estimator, inputs, experiment_config):
@@ -1577,7 +1573,6 @@ class _TrainingJob(_Job):
 
     @classmethod
     def _add_spot_checkpoint_args(cls, local_mode, estimator, train_args):
-        """Placeholder docstring"""
         if estimator.use_spot_instances:
             if local_mode:
                 raise ValueError("Spot training is not supported in local mode.")
@@ -1595,7 +1590,6 @@ class _TrainingJob(_Job):
 
     @classmethod
     def _is_local_channel(cls, input_uri):
-        """Placeholder docstring"""
         return isinstance(input_uri, string_types) and input_uri.startswith("file://")
 
     @classmethod
@@ -1640,8 +1634,7 @@ class _TrainingJob(_Job):
         return update_args
 
     def wait(self, logs="All"):
-        """Placeholder docstring.
-
+        """
         Args:
             logs ([str]): A list of strings specifying which logs to print. Acceptable
                 strings are "All", "None", "Training", or "Rules". To maintain backwards
@@ -1924,7 +1917,6 @@ class Estimator(EstimatorBase):
         return self.image_uri
 
     def set_hyperparameters(self, **kwargs):
-        """Placeholder docstring"""
         for k, v in kwargs.items():
             self.hyperparam_dict[k] = v
 
@@ -2516,7 +2508,6 @@ class Framework(EstimatorBase):
 
     @staticmethod
     def _json_encode_hyperparameters(hyperparameters):
-        """Placeholder docstring"""
         current_hyperparameters = hyperparameters
         if current_hyperparameters is not None:
             hyperparameters = {
@@ -2527,7 +2518,6 @@ class Framework(EstimatorBase):
 
     @classmethod
     def _update_init_params(cls, hp, tf_arguments):
-        """Placeholder docstring"""
         updated_params = {}
         for argument in tf_arguments:
             value = hp.pop(argument, None)
@@ -2719,7 +2709,6 @@ class Framework(EstimatorBase):
 
 
 def _s3_uri_prefix(channel_name, s3_data):
-    """Placeholder docstring"""
     if isinstance(s3_data, TrainingInput):
         s3_uri = s3_data.config["DataSource"]["S3DataSource"]["S3Uri"]
     else:
@@ -2733,7 +2722,6 @@ def _s3_uri_prefix(channel_name, s3_data):
 # Also accepts other valid input types, e.g. dict and TrainingInput.
 def _s3_uri_without_prefix_from_input(input_data):
     # Unpack an input_config object from a dict if a dict was passed in.
-    """Placeholder docstring"""
     if isinstance(input_data, dict):
         response = {}
         for channel_name, channel_s3_uri in input_data.items():

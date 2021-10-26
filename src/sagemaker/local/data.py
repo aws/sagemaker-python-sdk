@@ -10,7 +10,6 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Placeholder docstring"""
 from __future__ import absolute_import
 
 import os
@@ -96,7 +95,6 @@ def get_batch_strategy_instance(strategy, splitter):
 
 
 class DataSource(with_metaclass(ABCMeta, object)):
-    """Placeholder docstring"""
 
     @abstractmethod
     def get_file_list(self):
@@ -203,7 +201,6 @@ class S3DataSource(DataSource):
 
 
 class Splitter(with_metaclass(ABCMeta, object)):
-    """Placeholder docstring"""
 
     @abstractmethod
     def split(self, file):
@@ -298,7 +295,6 @@ class RecordIOSplitter(Splitter):
 
 
 class BatchStrategy(with_metaclass(ABCMeta, object)):
-    """Placeholder docstring"""
 
     def __init__(self, splitter):
         """Create a Batch Strategy Instance
@@ -379,7 +375,6 @@ class SingleRecordStrategy(BatchStrategy):
 
 
 def _payload_size_within_limit(payload, size):
-    """Placeholder docstring."""
     size_in_bytes = size * 1024 * 1024
     if size == 0:
         return True

@@ -10,7 +10,6 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Placeholder docstring"""
 from __future__ import absolute_import
 
 import importlib
@@ -858,7 +857,6 @@ class HyperparameterTuner(object):
             )
 
     def _ensure_last_tuning_job(self):
-        """Placeholder docstring"""
         if self.latest_tuning_job is None:
             raise ValueError("No tuning job available")
 
@@ -875,7 +873,6 @@ class HyperparameterTuner(object):
     @classmethod
     def _prepare_estimator_cls(cls, estimator_cls, training_details):
         # Check for customer-specified estimator first
-        """Placeholder docstring"""
         if estimator_cls is not None:
             module, cls_name = estimator_cls.rsplit(".", 1)
             return getattr(importlib.import_module(module), cls_name)
@@ -906,7 +903,6 @@ class HyperparameterTuner(object):
     def _prepare_estimator_from_job_description(
         cls, estimator_cls, training_details, parameter_ranges, sagemaker_session
     ):
-        """Placeholder docstring"""
         # Swap name for static hyperparameters to what an estimator would expect
         training_details["HyperParameters"] = training_details["StaticHyperParameters"]
         del training_details["StaticHyperParameters"]
@@ -934,7 +930,6 @@ class HyperparameterTuner(object):
 
     @classmethod
     def _prepare_init_params_from_job_description(cls, job_details):
-        """Placeholder docstring"""
         tuning_config = job_details["HyperParameterTuningJobConfig"]
 
         params = {
@@ -973,7 +968,6 @@ class HyperparameterTuner(object):
 
     @classmethod
     def _prepare_parameter_ranges_from_job_description(cls, parameter_ranges):
-        """Placeholder docstring"""
         ranges = {}
 
         for parameter in parameter_ranges["CategoricalParameterRanges"]:
@@ -993,7 +987,6 @@ class HyperparameterTuner(object):
 
     @classmethod
     def _extract_hyperparameters_from_parameter_ranges(cls, parameter_ranges):
-        """Placeholder docstring"""
         hyperparameters = {}
 
         for parameter in parameter_ranges["CategoricalParameterRanges"]:
@@ -1090,7 +1083,6 @@ class HyperparameterTuner(object):
                         pass
 
     def _validate_parameter_range(self, value_hp, parameter_range):
-        """Placeholder docstring"""
         for (parameter_range_key, parameter_range_value) in parameter_range.__dict__.items():
             if parameter_range_key == "scaling_type":
                 continue
@@ -1443,7 +1435,6 @@ class HyperparameterTuner(object):
 
 
 class _TuningJob(_Job):
-    """Placeholder docstring"""
 
     @classmethod
     def start_new(cls, tuner, inputs):
@@ -1589,11 +1580,9 @@ class _TuningJob(_Job):
         return training_config
 
     def stop(self):
-        """Placeholder docstring."""
         self.sagemaker_session.stop_tuning_job(name=self.name)
 
     def wait(self):
-        """Placeholder docstring."""
         self.sagemaker_session.wait_for_tuning_job(self.name)
 
 

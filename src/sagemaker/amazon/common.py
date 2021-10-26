@@ -10,7 +10,6 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Placeholder docstring"""
 from __future__ import absolute_import
 
 import io
@@ -92,7 +91,6 @@ class RecordDeserializer(SimpleBaseDeserializer):
 
 
 def _write_feature_tensor(resolved_type, record, vector):
-    """Placeholder Docstring"""
     if resolved_type == "Int32":
         record.features["values"].int32_tensor.values.extend(vector)
     elif resolved_type == "Float64":
@@ -102,7 +100,6 @@ def _write_feature_tensor(resolved_type, record, vector):
 
 
 def _write_label_tensor(resolved_type, record, scalar):
-    """Placeholder Docstring"""
     if resolved_type == "Int32":
         record.label["values"].int32_tensor.values.extend([scalar])
     elif resolved_type == "Float64":
@@ -112,7 +109,6 @@ def _write_label_tensor(resolved_type, record, scalar):
 
 
 def _write_keys_tensor(resolved_type, record, vector):
-    """Placeholder Docstring"""
     if resolved_type == "Int32":
         record.features["values"].int32_tensor.keys.extend(vector)
     elif resolved_type == "Float64":
@@ -122,7 +118,6 @@ def _write_keys_tensor(resolved_type, record, vector):
 
 
 def _write_shape(resolved_type, record, scalar):
-    """Placeholder Docstring"""
     if resolved_type == "Int32":
         record.features["values"].int32_tensor.shape.extend([scalar])
     elif resolved_type == "Float64":
@@ -265,7 +260,6 @@ def _write_recordio(f, data):
 
 
 def read_recordio(f):
-    """Placeholder Docstring"""
     while True:
         try:
             (read_kmagic,) = struct.unpack("I", f.read(4))
@@ -280,7 +274,6 @@ def read_recordio(f):
 
 
 def _resolve_type(dtype):
-    """Placeholder Docstring"""
     if dtype == np.dtype(int):
         return "Int32"
     if dtype == np.dtype(float):
