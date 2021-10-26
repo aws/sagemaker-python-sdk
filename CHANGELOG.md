@@ -1,5 +1,12 @@
 # Changelog
 
+## v2.66.1 (2021-10-26)
+
+### Bug Fixes and Other Changes
+
+ * HuggingFace image_uri generation for inference
+ * Update '_' and '/' with '-' in filename creation
+
 ## v2.66.0 (2021-10-25)
 
 ### Features
