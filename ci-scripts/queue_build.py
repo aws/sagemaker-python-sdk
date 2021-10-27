@@ -99,14 +99,23 @@ def last_in_progress_elapsed_time_check():
 
 def _cleanup_tickets_with_terminal_states():
     files = _list_tickets()
+    build_ids = []
     for file in files:
         _, build_id, _ = _build_info_from_file(file)
-        client = boto3.client("codebuild")
-        response = client.batch_get_builds(ids=[build_id])
-        build_status = response["builds"][0]["buildStatus"]
+        build_ids.append(build_id)
 
-        if build_status != "IN_PROGRESS":
-            print("Build %s in terminal state: %s, deleting lock" % (build_id, build_status))
+    client = boto3.client("codebuild")
+    response = client.batch_get_builds(ids=build_ids)
+
+    for file, build_details in zip(files, response["builds"]):
+        _, _build_id_from_file, _ = _build_info_from_file(file)
+        build_status = build_details["buildStatus"]
+
+        if build_status != "IN_PROGRESS" and _build_id_from_file == build_details["id"]:
+            print(
+                "Build %s in terminal state: %s, deleting lock"
+                % (_build_id_from_file, build_status)
+            )
             file.delete()
 
 
