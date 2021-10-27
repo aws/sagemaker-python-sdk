@@ -1,5 +1,65 @@
 # Changelog
 
+## v2.66.2 (2021-10-27)
+
+### Bug Fixes and Other Changes
+
+ * expose num_clusters parameter for clarify shap in shapconfig
+ * Update cron job to run hourly
+
+## v2.66.1 (2021-10-26)
+
+### Bug Fixes and Other Changes
+
+ * HuggingFace image_uri generation for inference
+ * Update '_' and '/' with '-' in filename creation
+
+## v2.66.0 (2021-10-25)
+
+### Features
+
+ * Add image_uris.retrieve() support for AutoGluon
+
+### Documentation Changes
+
+ * fix documentation for input types in estimator.fit
+ * Add JsonGet v2 deprecation
+
+## v2.65.0 (2021-10-21)
+
+### Features
+
+ * modify RLEstimator to use newly generated Ray image (1.6.0)
+ * network isolation mode for xgboost
+ * update clarify imageURI for PDT
+
+### Bug Fixes and Other Changes
+
+ * retry downstream_trials test
+ * Add retries to pipeline execution
+
+## v2.64.0 (2021-10-20)
+
+### Deprecations and Removals
+
+ * warn for deprecation - Lambda model-predictor
+
+### Features
+
+ * Add support for TF 2.5
+ * Add a pre-push git hook
+
+### Bug Fixes and Other Changes
+
+ * add s3_analysis_config_output_path field in DataConfig constructor
+ * make marketplace jobnames random
+
+## v2.63.2 (2021-10-18)
+
+### Bug Fixes and Other Changes
+
+ * Update timeouts for integ tests from 20 to 40
+
 ## v2.63.1 (2021-10-14)
 
 ### Bug Fixes and Other Changes
