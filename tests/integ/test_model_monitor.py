@@ -81,7 +81,7 @@ CUSTOM_JSON_CONTENT_TYPES = ["application/jsontype1", "application/jsontype2"]
 
 INTEG_TEST_MONITORING_OUTPUT_BUCKET = "integ-test-monitoring-output-bucket"
 
-FIVE_MIN_CRON_EXPRESSION = "cron(0/5 * ? * * *)"
+HOURLY_CRON_EXPRESSION = "cron(0 * ? * * *)"
 
 
 @pytest.fixture(scope="module")
@@ -151,7 +151,7 @@ def default_monitoring_schedule_name(sagemaker_session, output_kms_key, volume_k
         output_s3_uri=output_s3_uri,
         statistics=statistics,
         constraints=constraints,
-        schedule_cron_expression=FIVE_MIN_CRON_EXPRESSION,
+        schedule_cron_expression=HOURLY_CRON_EXPRESSION,
         enable_cloudwatch_metrics=ENABLE_CLOUDWATCH_METRICS,
     )
 
@@ -211,7 +211,7 @@ def byoc_monitoring_schedule_name(sagemaker_session, output_kms_key, volume_kms_
         output=MonitoringOutput(source="/opt/ml/processing/output", destination=output_s3_uri),
         statistics=statistics,
         constraints=constraints,
-        schedule_cron_expression=FIVE_MIN_CRON_EXPRESSION,
+        schedule_cron_expression=HOURLY_CRON_EXPRESSION,
     )
 
     _wait_for_schedule_changes_to_apply(monitor=my_byoc_monitor)
