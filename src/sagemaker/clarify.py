@@ -11,17 +11,20 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """This module configures the SageMaker Clarify bias and model explainability processor job."""
-from __future__ import print_function, absolute_import
+from __future__ import absolute_import, print_function
 
 import copy
-
-from abc import ABC, abstractmethod
 import json
+import logging
 import os
-import tempfile
 import re
-from sagemaker.processing import ProcessingInput, ProcessingOutput, Processor
+import tempfile
+from abc import ABC, abstractmethod
+
 from sagemaker import image_uris, s3, utils
+from sagemaker.processing import ProcessingInput, ProcessingOutput, Processor
+
+logger = logging.getLogger(__name__)
 
 
 class DataConfig:
@@ -338,6 +341,121 @@ class PDPConfig(ExplainabilityConfig):
         return copy.deepcopy({"pdp": self.pdp_config})
 
 
+class TextConfig:
+    """Config object to handle text features.
+
+    The SHAP analysis will break down longer text into chunks (e.g. tokens, sentences, or paragraphs
+    ) and replace them with the strings specified in the baseline for that feature. The shap value
+    of a chunk then captures how much replacing it affects the prediction.
+    """
+
+    _SUPPORTED_GRANULARITIES = ["token", "sentence", "paragraph"]
+    _SUPPORTED_LANGUAGES = [
+        "chinese",
+        "danish",
+        "dutch",
+        "english",
+        "french",
+        "german",
+        "greek",
+        "italian",
+        "japanese",
+        "lithuanian",
+        "multi-language",
+        "norwegian bokmål",
+        "polish",
+        "portuguese",
+        "romanian",
+        "russian",
+        "spanish",
+        "afrikaans",
+        "albanian",
+        "arabic",
+        "armenian",
+        "basque",
+        "bengali",
+        "bulgarian",
+        "catalan",
+        "croatian",
+        "czech",
+        "estonian",
+        "finnish",
+        "gujarati",
+        "hebrew",
+        "hindi",
+        "hungarian",
+        "icelandic",
+        "indonesian",
+        "irish",
+        "kannada",
+        "kyrgyz",
+        "latvian",
+        "ligurian",
+        "luxembourgish",
+        "macedonian",
+        "malayalam",
+        "marathi",
+        "nepali",
+        "persian",
+        "sanskrit",
+        "serbian",
+        "setswana",
+        "sinhala",
+        "slovak",
+        "slovenian",
+        "swedish",
+        "tagalog",
+        "tamil",
+        "tatar",
+        "telugu",
+        "thai",
+        "turkish",
+        "ukrainian",
+        "urdu",
+        "vietnamese",
+        "yoruba",
+    ]
+
+    def __init__(
+        self,
+        granularity,
+        language,
+    ):
+        """Initializes a text configuration.
+
+        Args: granularity (str): Determines the granularity in which text features are broken down
+        to, can be "token", "sentence", or "paragraph". Shap values are computed for these units.
+        language (str): Specifies the language of the text features, can be "chinese", "danish",
+        "dutch", "english", "french", "german", "greek", "italian", "japanese", "lithuanian",
+        "multi-language", "norwegian bokmål", "polish", "portuguese", "romanian", "russian",
+        "spanish", "afrikaans", "albanian", "arabic", "armenian", "basque", "bengali", "bulgarian",
+        "catalan", "croatian", "czech", "estonian", "finnish", "gujarati", "hebrew", "hindi",
+        "hungarian", "icelandic", "indonesian", "irish", "kannada", "kyrgyz", "latvian", "ligurian",
+        "luxembourgish", "macedonian", "malayalam", "marathi", "nepali", "persian", "sanskrit",
+        "serbian", "setswana", "sinhala", "slovak", "slovenian", "swedish", "tagalog", "tamil",
+        "tatar", "telugu", "thai", "turkish", "ukrainian", "urdu", "vietnamese", "yoruba". Use
+        "multi-language" for a mix of mulitple languages.
+        """
+        if granularity not in TextConfig._SUPPORTED_GRANULARITIES:
+            raise ValueError(
+                f"Invalid granularity {granularity}. Please choose among "
+                f"{TextConfig._SUPPORTED_GRANULARITIES}"
+            )
+        if language not in TextConfig._SUPPORTED_LANGUAGES:
+            raise ValueError(
+                f"Invalid language {language}. Please choose among "
+                f"{TextConfig._SUPPORTED_LANGUAGES}"
+            )
+        self.text_config = {
+            "granularity": granularity,
+            "language": language,
+        }
+
+    def get_text_config(self):
+        """Returns part of an analysis config dictionary."""
+        return copy.deepcopy(self.text_config)
+
+
 class SHAPConfig(ExplainabilityConfig):
     """Config class of SHAP."""
 
@@ -350,6 +468,7 @@ class SHAPConfig(ExplainabilityConfig):
         save_local_shap_values=True,
         seed=None,
         num_clusters=None,
+        text_config=None,
     ):
         """Initializes config for SHAP.
 
@@ -378,6 +497,7 @@ class SHAPConfig(ExplainabilityConfig):
                 computes a baseline dataset via a clustering algorithm (K-means/K-prototypes).
                 num_clusters is a parameter for this algorithm. num_clusters will be the resulting
                 size of the baseline dataset. If not provided, Clarify job will use a default value.
+            text_config (:class:`~sagemaker.clarify.TextConfig`): Config to handle text features
         """
         if agg_method is not None and agg_method not in ["mean_abs", "median", "mean_sq"]:
             raise ValueError(
@@ -402,6 +522,15 @@ class SHAPConfig(ExplainabilityConfig):
             self.shap_config["seed"] = seed
         if num_clusters is not None:
             self.shap_config["num_clusters"] = num_clusters
+        _set(seed, "seed", self.shap_config)
+        if text_config:
+            _set(text_config.get_text_config(), "text_config", self.shap_config)
+            if not save_local_shap_values:
+                logger.warning(
+                    "Global aggregation is not yet supported for text features. "
+                    "Consider setting save_local_shap_values=True to inspect local text "
+                    "explanations."
+                )
 
     def get_explainability_config(self):
         """Returns config."""
@@ -525,7 +654,10 @@ class SageMakerClarifyProcessor(Processor):
                 will be unassociated.
                 * `TrialComponentDisplayName` is used for display in Studio.
         """
-        analysis_config["methods"]["report"] = {"name": "report", "title": "Analysis Report"}
+        analysis_config["methods"]["report"] = {
+            "name": "report",
+            "title": "Analysis Report",
+        }
         with tempfile.TemporaryDirectory() as tmpdirname:
             analysis_config_file = os.path.join(tmpdirname, "analysis_config.json")
             with open(analysis_config_file, "w") as f:
@@ -627,7 +759,15 @@ class SageMakerClarifyProcessor(Processor):
                 job_name = utils.name_from_base(self.job_name_prefix)
             else:
                 job_name = utils.name_from_base("Clarify-Pretraining-Bias")
-        self._run(data_config, analysis_config, wait, logs, job_name, kms_key, experiment_config)
+        self._run(
+            data_config,
+            analysis_config,
+            wait,
+            logs,
+            job_name,
+            kms_key,
+            experiment_config,
+        )
 
     def run_post_training_bias(
         self,
@@ -705,7 +845,15 @@ class SageMakerClarifyProcessor(Processor):
                 job_name = utils.name_from_base(self.job_name_prefix)
             else:
                 job_name = utils.name_from_base("Clarify-Posttraining-Bias")
-        self._run(data_config, analysis_config, wait, logs, job_name, kms_key, experiment_config)
+        self._run(
+            data_config,
+            analysis_config,
+            wait,
+            logs,
+            job_name,
+            kms_key,
+            experiment_config,
+        )
 
     def run_bias(
         self,
@@ -800,7 +948,15 @@ class SageMakerClarifyProcessor(Processor):
                 job_name = utils.name_from_base(self.job_name_prefix)
             else:
                 job_name = utils.name_from_base("Clarify-Bias")
-        self._run(data_config, analysis_config, wait, logs, job_name, kms_key, experiment_config)
+        self._run(
+            data_config,
+            analysis_config,
+            wait,
+            logs,
+            job_name,
+            kms_key,
+            experiment_config,
+        )
 
     def run_explainability(
         self,
@@ -861,7 +1017,10 @@ class SageMakerClarifyProcessor(Processor):
         analysis_config = data_config.get_config()
         predictor_config = model_config.get_predictor_config()
         if isinstance(model_scores, ModelPredictedLabelConfig):
-            probability_threshold, predicted_label_config = model_scores.get_predictor_config()
+            (
+                probability_threshold,
+                predicted_label_config,
+            ) = model_scores.get_predictor_config()
             _set(probability_threshold, "probability_threshold", analysis_config)
             predictor_config.update(predicted_label_config)
         else:
@@ -896,7 +1055,15 @@ class SageMakerClarifyProcessor(Processor):
                 job_name = utils.name_from_base(self.job_name_prefix)
             else:
                 job_name = utils.name_from_base("Clarify-Explainability")
-        self._run(data_config, analysis_config, wait, logs, job_name, kms_key, experiment_config)
+        self._run(
+            data_config,
+            analysis_config,
+            wait,
+            logs,
+            job_name,
+            kms_key,
+            experiment_config,
+        )
 
 
 def _upload_analysis_config(analysis_config_file, s3_output_path, sagemaker_session, kms_key):
