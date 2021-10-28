@@ -11,23 +11,24 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 
-from __future__ import print_function, absolute_import
+from __future__ import absolute_import, print_function
 
 import copy
 
-from mock import patch, Mock, MagicMock
 import pytest
+from mock import MagicMock, Mock, patch
 
+from sagemaker import Processor, image_uris
 from sagemaker.clarify import (
-    SageMakerClarifyProcessor,
     BiasConfig,
     DataConfig,
     ModelConfig,
     ModelPredictedLabelConfig,
-    SHAPConfig,
     PDPConfig,
+    SageMakerClarifyProcessor,
+    SHAPConfig,
+    TextConfig,
 )
-from sagemaker import image_uris, Processor
 
 JOB_NAME_PREFIX = "my-prefix"
 TIMESTAMP = "2021-06-17-22-29-54-685"
@@ -251,12 +252,19 @@ def test_shap_config():
     agg_method = "mean_sq"
     use_logit = True
     seed = 123
+    granularity = "sentence"
+    language = "german"
+    text_config = TextConfig(
+        granularity=granularity,
+        language=language,
+    )
     shap_config = SHAPConfig(
         baseline=baseline,
         num_samples=num_samples,
         agg_method=agg_method,
         use_logit=use_logit,
         seed=seed,
+        text_config=text_config,
     )
     expected_config = {
         "shap": {
@@ -266,6 +274,10 @@ def test_shap_config():
             "use_logit": use_logit,
             "save_local_shap_values": True,
             "seed": seed,
+            "text_config": {
+                "granularity": granularity,
+                "language": language,
+            },
         }
     }
     assert expected_config == shap_config.get_explainability_config()
@@ -313,6 +325,38 @@ def test_pdp_config():
         "pdp": {"features": ["f1", "f2"], "grid_resolution": 20, "top_k_features": 10}
     }
     assert expected_config == pdp_config.get_explainability_config()
+
+
+def test_text_config():
+    granularity = "sentence"
+    language = "german"
+    text_config = TextConfig(
+        granularity=granularity,
+        language=language,
+    )
+    expected_config = {
+        "granularity": granularity,
+        "language": language,
+    }
+    assert expected_config == text_config.get_text_config()
+
+
+def test_invalid_text_config():
+    with pytest.raises(ValueError) as error:
+        TextConfig(
+            granularity="invalid",
+            language="english",
+        )
+    assert (
+        "Invalid granularity invalid. Please choose among ['token', 'sentence', 'paragraph']"
+        in str(error.value)
+    )
+    with pytest.raises(ValueError) as error:
+        TextConfig(
+            granularity="token",
+            language="invalid",
+        )
+    assert "Invalid language invalid. Please choose among ['chinese'," in str(error.value)
 
 
 def test_invalid_shap_config():
@@ -620,6 +664,7 @@ def _run_test_explain(
     pdp_config,
     model_scores,
     expected_predictor_config,
+    expected_text_config=None,
 ):
     with patch.object(SageMakerClarifyProcessor, "_run", return_value=None) as mock_method:
         explanation_configs = None
@@ -639,6 +684,21 @@ def _run_test_explain(
             job_name="test",
             experiment_config={"ExperimentName": "AnExperiment"},
         )
+        expected_shap_config = {
+            "baseline": [
+                [
+                    0.26124998927116394,
+                    0.2824999988079071,
+                    0.06875000149011612,
+                ]
+            ],
+            "num_samples": 100,
+            "agg_method": "mean_sq",
+            "use_logit": False,
+            "save_local_shap_values": True,
+        }
+        if expected_text_config:
+            expected_shap_config["text_config"] = expected_text_config
         expected_analysis_config = {
             "dataset_type": "text/csv",
             "headers": [
@@ -651,19 +711,7 @@ def _run_test_explain(
             "label": "Label",
             "joinsource_name_or_index": "F4",
             "methods": {
-                "shap": {
-                    "baseline": [
-                        [
-                            0.26124998927116394,
-                            0.2824999988079071,
-                            0.06875000149011612,
-                        ]
-                    ],
-                    "num_samples": 100,
-                    "agg_method": "mean_sq",
-                    "use_logit": False,
-                    "save_local_shap_values": True,
-                }
+                "shap": expected_shap_config,
             },
             "predictor": expected_predictor_config,
         }
@@ -682,6 +730,8 @@ def _run_test_explain(
                 "use_logit": False,
                 "save_local_shap_values": True,
             }
+            if expected_text_config:
+                expected_explanation_configs["shap"]["text_config"] = expected_text_config
         if pdp_config:
             expected_explanation_configs["pdp"] = {
                 "features": ["F1", "F2"],
@@ -865,4 +915,51 @@ def test_shap_with_predicted_label(
         pdp_config,
         model_scores,
         expected_predictor_config,
+    )
+
+
+@patch("sagemaker.utils.name_from_base", return_value=JOB_NAME)
+def test_shap_with_text_config(
+    name_from_base,
+    clarify_processor,
+    clarify_processor_with_job_name_prefix,
+    data_config,
+    model_config,
+):
+    granularity = "paragraph"
+    language = "ukrainian"
+
+    shap_config = SHAPConfig(
+        baseline=[
+            [
+                0.26124998927116394,
+                0.2824999988079071,
+                0.06875000149011612,
+            ]
+        ],
+        num_samples=100,
+        agg_method="mean_sq",
+        text_config=TextConfig(granularity, language),
+    )
+
+    expected_text_config = {
+        "granularity": granularity,
+        "language": language,
+    }
+    expected_predictor_config = {
+        "model_name": "xgboost-model",
+        "instance_type": "ml.c5.xlarge",
+        "initial_instance_count": 1,
+    }
+    _run_test_explain(
+        name_from_base,
+        clarify_processor,
+        clarify_processor_with_job_name_prefix,
+        data_config,
+        model_config,
+        shap_config,
+        None,
+        None,
+        expected_predictor_config,
+        expected_text_config=expected_text_config,
     )
