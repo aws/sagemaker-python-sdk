@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.66.2.post0 (2021-10-28)
+
+### Documentation Changes
+
+ * Update estimator docstrings to add Fast File Mode
+
 ## v2.66.2 (2021-10-27)
 
 ### Bug Fixes and Other Changes
