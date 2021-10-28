@@ -18,6 +18,7 @@ import re
 import subprocess
 import time
 import uuid
+import logging
 
 from contextlib import contextmanager
 import pytest
@@ -75,6 +76,7 @@ from sagemaker.lambda_helper import Lambda
 from sagemaker.feature_store.feature_group import FeatureGroup, FeatureDefinition, FeatureTypeEnum
 from tests.integ import DATA_DIR
 from tests.integ.kms_utils import get_or_create_kms_key
+from tests.integ.retry import retries
 
 
 def ordered(obj):
@@ -848,6 +850,148 @@ def test_one_step_callback_pipeline(sagemaker_session, role, pipeline_name, regi
             fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
             update_arn,
         )
+    finally:
+        try:
+            pipeline.delete()
+        except Exception:
+            pass
+
+
+def test_steps_with_map_params_pipeline(
+    sagemaker_session, role, script_dir, pipeline_name, region_name, athena_dataset_definition
+):
+    instance_count = ParameterInteger(name="InstanceCount", default_value=2)
+    framework_version = "0.20.0"
+    instance_type = ParameterString(name="InstanceType", default_value="ml.m5.xlarge")
+    output_prefix = ParameterString(name="OutputPrefix", default_value="output")
+    input_data = f"s3://sagemaker-sample-data-{region_name}/processing/census/census-income.csv"
+
+    sklearn_processor = SKLearnProcessor(
+        framework_version=framework_version,
+        instance_type=instance_type,
+        instance_count=instance_count,
+        base_job_name="test-sklearn",
+        sagemaker_session=sagemaker_session,
+        role=role,
+    )
+    step_process = ProcessingStep(
+        name="my-process",
+        display_name="ProcessingStep",
+        description="description for Processing step",
+        processor=sklearn_processor,
+        inputs=[
+            ProcessingInput(source=input_data, destination="/opt/ml/processing/input"),
+            ProcessingInput(dataset_definition=athena_dataset_definition),
+        ],
+        outputs=[
+            ProcessingOutput(output_name="train_data", source="/opt/ml/processing/train"),
+            ProcessingOutput(
+                output_name="test_data",
+                source="/opt/ml/processing/test",
+                destination=Join(
+                    on="/",
+                    values=[
+                        "s3:/",
+                        sagemaker_session.default_bucket(),
+                        "test-sklearn",
+                        output_prefix,
+                        ExecutionVariables.PIPELINE_EXECUTION_ID,
+                    ],
+                ),
+            ),
+        ],
+        code=os.path.join(script_dir, "preprocessing.py"),
+    )
+
+    sklearn_train = SKLearn(
+        framework_version=framework_version,
+        entry_point=os.path.join(script_dir, "train.py"),
+        instance_type=instance_type,
+        sagemaker_session=sagemaker_session,
+        role=role,
+        hyperparameters={
+            "batch-size": 500,
+            "epochs": 5,
+        },
+    )
+    step_train = TrainingStep(
+        name="my-train",
+        display_name="TrainingStep",
+        description="description for Training step",
+        estimator=sklearn_train,
+        inputs=TrainingInput(
+            s3_data=step_process.properties.ProcessingOutputConfig.Outputs[
+                "train_data"
+            ].S3Output.S3Uri
+        ),
+    )
+
+    model = Model(
+        image_uri=sklearn_train.image_uri,
+        model_data=step_train.properties.ModelArtifacts.S3ModelArtifacts,
+        sagemaker_session=sagemaker_session,
+        role=role,
+    )
+    model_inputs = CreateModelInput(
+        instance_type="ml.m5.large",
+        accelerator_type="ml.eia1.medium",
+    )
+    step_model = CreateModelStep(
+        name="my-model",
+        display_name="ModelStep",
+        description="description for Model step",
+        model=model,
+        inputs=model_inputs,
+    )
+
+    # Condition step for evaluating model quality and branching execution
+    cond_lte = ConditionGreaterThanOrEqualTo(
+        left=step_train.properties.HyperParameters["batch-size"],
+        right=6.0,
+    )
+
+    step_cond = ConditionStep(
+        name="CustomerChurnAccuracyCond",
+        conditions=[cond_lte],
+        if_steps=[],
+        else_steps=[step_model],
+    )
+
+    pipeline = Pipeline(
+        name=pipeline_name,
+        parameters=[instance_type, instance_count, output_prefix],
+        steps=[step_process, step_train, step_cond],
+        sagemaker_session=sagemaker_session,
+    )
+
+    definition = json.loads(pipeline.definition())
+    assert definition["Version"] == "2020-12-01"
+
+    steps = definition["Steps"]
+    assert len(steps) == 3
+    training_args = {}
+    condition_args = {}
+    for step in steps:
+        if step["Type"] == "Training":
+            training_args = step["Arguments"]
+        if step["Type"] == "Condition":
+            condition_args = step["Arguments"]
+
+    assert training_args["InputDataConfig"][0]["DataSource"]["S3DataSource"]["S3Uri"] == {
+        "Get": "Steps.my-process.ProcessingOutputConfig.Outputs['train_data'].S3Output.S3Uri"
+    }
+    assert condition_args["Conditions"][0]["LeftValue"] == {
+        "Get": "Steps.my-train.HyperParameters['batch-size']"
+    }
+
+    try:
+        response = pipeline.create(role)
+        create_arn = response["PipelineArn"]
+        assert re.match(
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
+            create_arn,
+        )
+
     finally:
         try:
             pipeline.delete()
@@ -1708,47 +1852,57 @@ def test_training_job_with_debugger_and_profiler(
         sagemaker_session=sagemaker_session,
     )
 
-    try:
-        response = pipeline.create(role)
-        create_arn = response["PipelineArn"]
-
-        execution = pipeline.start()
-        response = execution.describe()
-        assert response["PipelineArn"] == create_arn
-
+    for _ in retries(
+        max_retry_count=5,
+        exception_message_prefix="Waiting for a successful execution of pipeline",
+        seconds_to_sleep=10,
+    ):
         try:
-            execution.wait(delay=10, max_attempts=60)
-        except WaiterError:
-            pass
-        execution_steps = execution.list_steps()
+            response = pipeline.create(role)
+            create_arn = response["PipelineArn"]
 
-        assert len(execution_steps) == 1
-        assert execution_steps[0].get("FailureReason", "") == ""
-        assert execution_steps[0]["StepName"] == "pytorch-train"
-        assert execution_steps[0]["StepStatus"] == "Succeeded"
+            execution = pipeline.start()
+            response = execution.describe()
+            assert response["PipelineArn"] == create_arn
 
-        training_job_arn = execution_steps[0]["Metadata"]["TrainingJob"]["Arn"]
-        job_description = sagemaker_session.sagemaker_client.describe_training_job(
-            TrainingJobName=training_job_arn.split("/")[1]
-        )
+            try:
+                execution.wait(delay=10, max_attempts=60)
+            except WaiterError:
+                pass
+            execution_steps = execution.list_steps()
 
-        for index, rule in enumerate(rules):
-            config = job_description["DebugRuleConfigurations"][index]
-            assert config["RuleConfigurationName"] == rule.name
-            assert config["RuleEvaluatorImage"] == rule.image_uri
-            assert config["VolumeSizeInGB"] == 0
-            assert (
-                config["RuleParameters"]["rule_to_invoke"] == rule.rule_parameters["rule_to_invoke"]
+            assert len(execution_steps) == 1
+            failure_reason = execution_steps[0].get("FailureReason", "")
+            if failure_reason != "":
+                logging.error(f"Pipeline execution failed with error: {failure_reason}.Retrying..")
+                continue
+            assert execution_steps[0]["StepName"] == "pytorch-train"
+            assert execution_steps[0]["StepStatus"] == "Succeeded"
+
+            training_job_arn = execution_steps[0]["Metadata"]["TrainingJob"]["Arn"]
+            job_description = sagemaker_session.sagemaker_client.describe_training_job(
+                TrainingJobName=training_job_arn.split("/")[1]
             )
-        assert job_description["DebugHookConfig"] == debugger_hook_config._to_request_dict()
 
-        assert job_description["ProfilingStatus"] == "Enabled"
-        assert job_description["ProfilerConfig"]["ProfilingIntervalInMilliseconds"] == 500
-    finally:
-        try:
-            pipeline.delete()
-        except Exception:
-            pass
+            for index, rule in enumerate(rules):
+                config = job_description["DebugRuleConfigurations"][index]
+                assert config["RuleConfigurationName"] == rule.name
+                assert config["RuleEvaluatorImage"] == rule.image_uri
+                assert config["VolumeSizeInGB"] == 0
+                assert (
+                    config["RuleParameters"]["rule_to_invoke"]
+                    == rule.rule_parameters["rule_to_invoke"]
+                )
+            assert job_description["DebugHookConfig"] == debugger_hook_config._to_request_dict()
+
+            assert job_description["ProfilingStatus"] == "Enabled"
+            assert job_description["ProfilerConfig"]["ProfilingIntervalInMilliseconds"] == 500
+            break
+        finally:
+            try:
+                pipeline.delete()
+            except Exception:
+                pass
 
 
 def test_two_processing_job_depends_on(
@@ -1974,6 +2128,7 @@ def test_one_step_ingestion_pipeline(
     input_data_uri = os.path.join(
         "s3://", sagemaker_session.default_bucket(), "py-sdk-ingestion-test-input/features.csv"
     )
+
     with open(input_file_path, "r") as data:
         body = data.read()
         S3Uploader.upload_string_as_file_body(
@@ -2010,6 +2165,10 @@ def test_one_step_ingestion_pipeline(
         )
     ]
 
+    output_content_type = "CSV"
+    output_config = {output_name: {"content_type": output_content_type}}
+    job_argument = [f"--output-config '{json.dumps(output_config)}'"]
+
     temp_flow_path = "./ingestion.flow"
     with cleanup_feature_group(feature_group):
         json.dump(ingestion_only_flow, open(temp_flow_path, "w"))
@@ -2024,7 +2183,11 @@ def test_one_step_ingestion_pipeline(
         )
 
         data_wrangler_step = ProcessingStep(
-            name="ingestion-step", processor=data_wrangler_processor, inputs=inputs, outputs=outputs
+            name="ingestion-step",
+            processor=data_wrangler_processor,
+            inputs=inputs,
+            outputs=outputs,
+            job_arguments=job_argument,
         )
 
         pipeline = Pipeline(

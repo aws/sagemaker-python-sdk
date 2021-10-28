@@ -67,6 +67,8 @@ class Properties(metaclass=PropertiesMeta):
                 for key, info in members.items():
                     if Properties._shapes.get(info["shape"], {}).get("type") == "list":
                         self.__dict__[key] = PropertiesList(f"{path}.{key}", info["shape"])
+                    elif Properties._shapes.get(info["shape"], {}).get("type") == "map":
+                        self.__dict__[key] = PropertiesMap(f"{path}.{key}", info["shape"])
                     else:
                         self.__dict__[key] = Properties(f"{path}.{key}", info["shape"])
 
@@ -100,6 +102,38 @@ class PropertiesList(Properties):
         if item not in self._items.keys():
             shape = Properties._shapes.get(self.shape_name)
             member = shape["member"]["shape"]
+            if isinstance(item, str):
+                property_item = Properties(f"{self._path}['{item}']", member)
+            else:
+                property_item = Properties(f"{self._path}[{item}]", member)
+            self._items[item] = property_item
+
+        return self._items.get(item)
+
+
+class PropertiesMap(Properties):
+    """PropertiesMap for use in workflow expressions."""
+
+    def __init__(self, path: str, shape_name: str = None):
+        """Create a PropertiesMap instance representing the given shape.
+
+        Args:
+            path (str): The parent path of the PropertiesMap instance.
+            shape_name (str): The botocore sagemaker service model shape name.
+        """
+        super(PropertiesMap, self).__init__(path, shape_name)
+        self.shape_name = shape_name
+        self._items: Dict[Union[int, str], Properties] = dict()
+
+    def __getitem__(self, item: Union[int, str]):
+        """Populate the indexing item with a Property, for both lists and dictionaries.
+
+        Args:
+            item (Union[int, str]): The index of the item in sequence.
+        """
+        if item not in self._items.keys():
+            shape = Properties._shapes.get(self.shape_name)
+            member = shape["value"]["shape"]
             if isinstance(item, str):
                 property_item = Properties(f"{self._path}['{item}']", member)
             else:

@@ -46,6 +46,7 @@ from sagemaker.workflow.step_collections import (
     StepCollection,
     RegisterModel,
 )
+from sagemaker.workflow.retry import StepRetryPolicy, StepExceptionTypeEnum
 from tests.unit.sagemaker.workflow.helpers import ordered
 
 REGION = "us-west-2"
@@ -366,6 +367,7 @@ def test_register_model_sip(estimator, model_metrics):
 
 def test_register_model_with_model_repack_with_estimator(estimator, model_metrics):
     model_data = f"s3://{BUCKET}/model.tar.gz"
+    dummy_requirements = f"{DATA_DIR}/dummy_requirements.txt"
     register_model = RegisterModel(
         name="RegisterModelStep",
         estimator=estimator,
@@ -379,6 +381,7 @@ def test_register_model_with_model_repack_with_estimator(estimator, model_metric
         approval_status="Approved",
         description="description",
         entry_point=f"{DATA_DIR}/dummy_script.py",
+        dependencies=[dummy_requirements],
         depends_on=["TestStep"],
         tags=[{"Key": "myKey", "Value": "myValue"}],
     )
@@ -405,6 +408,7 @@ def test_register_model_with_model_repack_with_estimator(estimator, model_metric
                     },
                     "HyperParameters": {
                         "inference_script": '"dummy_script.py"',
+                        "dependencies": f'"{dummy_requirements}"',
                         "model_archive": '"model.tar.gz"',
                         "sagemaker_submit_directory": '"s3://{}/{}/source/sourcedir.tar.gz"'.format(
                             BUCKET, repacker_job_name.replace('"', "")
@@ -413,6 +417,7 @@ def test_register_model_with_model_repack_with_estimator(estimator, model_metric
                         "sagemaker_container_log_level": "20",
                         "sagemaker_job_name": repacker_job_name,
                         "sagemaker_region": f'"{REGION}"',
+                        "source_dir": "null",
                     },
                     "InputDataConfig": [
                         {
@@ -528,6 +533,8 @@ def test_register_model_with_model_repack_with_model(model, model_metrics):
                         "sagemaker_container_log_level": "20",
                         "sagemaker_job_name": repacker_job_name,
                         "sagemaker_region": f'"{REGION}"',
+                        "dependencies": "null",
+                        "source_dir": "null",
                     },
                     "InputDataConfig": [
                         {
@@ -594,6 +601,9 @@ def test_register_model_with_model_repack_with_model(model, model_metrics):
 
 def test_register_model_with_model_repack_with_pipeline_model(pipeline_model, model_metrics):
     model_data = f"s3://{BUCKET}/model.tar.gz"
+    service_fault_retry_policy = StepRetryPolicy(
+        exception_types=[StepExceptionTypeEnum.SERVICE_FAULT], max_attempts=10
+    )
     register_model = RegisterModel(
         name="RegisterModelStep",
         model=pipeline_model,
@@ -607,6 +617,8 @@ def test_register_model_with_model_repack_with_pipeline_model(pipeline_model, mo
         approval_status="Approved",
         description="description",
         depends_on=["TestStep"],
+        repack_model_step_retry_policies=[service_fault_retry_policy],
+        register_model_step_retry_policies=[service_fault_retry_policy],
         tags=[{"Key": "myKey", "Value": "myValue"}],
     )
 
@@ -631,6 +643,7 @@ def test_register_model_with_model_repack_with_pipeline_model(pipeline_model, mo
                         "S3OutputPath": f"s3://{BUCKET}/",
                     },
                     "HyperParameters": {
+                        "dependencies": "null",
                         "inference_script": '"dummy_script.py"',
                         "model_archive": '"model.tar.gz"',
                         "sagemaker_submit_directory": '"s3://{}/{}/source/sourcedir.tar.gz"'.format(
@@ -640,6 +653,7 @@ def test_register_model_with_model_repack_with_pipeline_model(pipeline_model, mo
                         "sagemaker_container_log_level": "20",
                         "sagemaker_job_name": repacker_job_name,
                         "sagemaker_region": f'"{REGION}"',
+                        "source_dir": "null",
                     },
                     "InputDataConfig": [
                         {
@@ -713,6 +727,9 @@ def test_estimator_transformer(estimator):
         instance_type="c4.4xlarge",
         accelerator_type="ml.eia1.medium",
     )
+    service_fault_retry_policy = StepRetryPolicy(
+        exception_types=[StepExceptionTypeEnum.SERVICE_FAULT], max_attempts=10
+    )
     transform_inputs = TransformInput(data=f"s3://{BUCKET}/transform_manifest")
     estimator_transformer = EstimatorTransformer(
         name="EstimatorTransformerStep",
@@ -723,15 +740,20 @@ def test_estimator_transformer(estimator):
         instance_type="ml.c4.4xlarge",
         transform_inputs=transform_inputs,
         depends_on=["TestStep"],
+        model_step_retry_policies=[service_fault_retry_policy],
+        transform_step_retry_policies=[service_fault_retry_policy],
+        repack_model_step_retry_policies=[service_fault_retry_policy],
     )
     request_dicts = estimator_transformer.request_dicts()
     assert len(request_dicts) == 2
+
     for request_dict in request_dicts:
         if request_dict["Type"] == "Model":
             assert request_dict == {
                 "Name": "EstimatorTransformerStepCreateModelStep",
                 "Type": "Model",
                 "DependsOn": ["TestStep"],
+                "RetryPolicies": [service_fault_retry_policy.to_request()],
                 "Arguments": {
                     "ExecutionRoleArn": "DummyRole",
                     "PrimaryContainer": {
@@ -743,6 +765,7 @@ def test_estimator_transformer(estimator):
             }
         elif request_dict["Type"] == "Transform":
             assert request_dict["Name"] == "EstimatorTransformerStepTransformStep"
+            assert request_dict["RetryPolicies"] == [service_fault_retry_policy.to_request()]
             arguments = request_dict["Arguments"]
             assert isinstance(arguments["ModelName"], Properties)
             arguments.pop("ModelName")
