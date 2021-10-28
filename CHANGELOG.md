@@ -1,5 +1,36 @@
 # Changelog
 
+## v2.66.2.post0 (2021-10-28)
+
+### Documentation Changes
+
+ * Update estimator docstrings to add Fast File Mode
+
+## v2.66.2 (2021-10-27)
+
+### Bug Fixes and Other Changes
+
+ * expose num_clusters parameter for clarify shap in shapconfig
+ * Update cron job to run hourly
+
+## v2.66.1 (2021-10-26)
+
+### Bug Fixes and Other Changes
+
+ * HuggingFace image_uri generation for inference
+ * Update '_' and '/' with '-' in filename creation
+
+## v2.66.0 (2021-10-25)
+
+### Features
+
+ * Add image_uris.retrieve() support for AutoGluon
+
+### Documentation Changes
+
+ * fix documentation for input types in estimator.fit
+ * Add JsonGet v2 deprecation
+
 ## v2.65.0 (2021-10-21)
 
 ### Features
