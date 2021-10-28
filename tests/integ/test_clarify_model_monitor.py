@@ -64,7 +64,7 @@ SHAP_BASELINE = [[13, 17, 23, 24, 21, 21, 22]]
 SHAP_NUM_OF_SAMPLES = 5
 SHAP_AGG_METHOD = "mean_abs"
 
-CRON = "cron(*/5 * * * ? *)"
+CRON = "cron(0 * * * ? *)"
 UPDATED_CRON = CronExpressionGenerator.daily()
 MAX_RUNTIME_IN_SECONDS = 30 * 60
 UPDATED_MAX_RUNTIME_IN_SECONDS = 25 * 60
