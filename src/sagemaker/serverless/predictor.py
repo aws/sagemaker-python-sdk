@@ -20,8 +20,14 @@ import botocore
 
 from sagemaker import deserializers, serializers
 from sagemaker.predictor import PredictorBase
+from sagemaker.deprecations import deprecation_warning
 
 
+@deprecation_warning(
+    msg="Based on customer experience and feedback an"
+    " alternative support will be added in near future",
+    date="10/27/2021",
+)
 class LambdaPredictor(PredictorBase):
     """A deployed model hosted on Lambda."""
 

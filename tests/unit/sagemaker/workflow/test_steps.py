@@ -44,9 +44,15 @@ from sagemaker.network import NetworkConfig
 from sagemaker.transformer import Transformer
 from sagemaker.workflow.properties import Properties
 from sagemaker.workflow.parameters import ParameterString, ParameterInteger
+from sagemaker.workflow.retry import (
+    StepRetryPolicy,
+    StepExceptionTypeEnum,
+    SageMakerJobStepRetryPolicy,
+    SageMakerJobExceptionTypeEnum,
+)
 from sagemaker.workflow.steps import (
     ProcessingStep,
-    Step,
+    ConfigurableRetryStep,
     StepTypeEnum,
     TrainingStep,
     TuningStep,
@@ -66,9 +72,11 @@ ROLE = "DummyRole"
 MODEL_NAME = "gisele"
 
 
-class CustomStep(Step):
-    def __init__(self, name, display_name=None, description=None):
-        super(CustomStep, self).__init__(name, display_name, description, StepTypeEnum.TRAINING)
+class CustomStep(ConfigurableRetryStep):
+    def __init__(self, name, display_name=None, description=None, retry_policies=None):
+        super(CustomStep, self).__init__(
+            name, StepTypeEnum.TRAINING, display_name, description, None, retry_policies
+        )
         self._properties = Properties(path=f"Steps.{name}")
 
     @property
@@ -148,6 +156,85 @@ def test_custom_step_without_description():
     assert step.to_request() == {
         "Name": "MyStep",
         "DisplayName": "CustomStepDisplayName",
+        "Type": "Training",
+        "Arguments": dict(),
+    }
+
+
+def test_custom_step_with_retry_policy():
+    step = CustomStep(
+        name="MyStep",
+        retry_policies=[
+            StepRetryPolicy(
+                exception_types=[
+                    StepExceptionTypeEnum.SERVICE_FAULT,
+                    StepExceptionTypeEnum.THROTTLING,
+                ],
+                expire_after_mins=1,
+            ),
+            SageMakerJobStepRetryPolicy(
+                exception_types=[SageMakerJobExceptionTypeEnum.CAPACITY_ERROR],
+                max_attempts=3,
+            ),
+        ],
+    )
+    assert step.to_request() == {
+        "Name": "MyStep",
+        "Type": "Training",
+        "RetryPolicies": [
+            {
+                "ExceptionType": ["Step.SERVICE_FAULT", "Step.THROTTLING"],
+                "IntervalSeconds": 1,
+                "BackoffRate": 2.0,
+                "ExpireAfterMin": 1,
+            },
+            {
+                "ExceptionType": ["SageMaker.CAPACITY_ERROR"],
+                "IntervalSeconds": 1,
+                "BackoffRate": 2.0,
+                "MaxAttempts": 3,
+            },
+        ],
+        "Arguments": dict(),
+    }
+
+    step.add_retry_policy(
+        SageMakerJobStepRetryPolicy(
+            exception_types=[SageMakerJobExceptionTypeEnum.INTERNAL_ERROR],
+            interval_seconds=5,
+            backoff_rate=2.0,
+            expire_after_mins=5,
+        )
+    )
+    assert step.to_request() == {
+        "Name": "MyStep",
+        "Type": "Training",
+        "RetryPolicies": [
+            {
+                "ExceptionType": ["Step.SERVICE_FAULT", "Step.THROTTLING"],
+                "IntervalSeconds": 1,
+                "BackoffRate": 2.0,
+                "ExpireAfterMin": 1,
+            },
+            {
+                "ExceptionType": ["SageMaker.CAPACITY_ERROR"],
+                "IntervalSeconds": 1,
+                "BackoffRate": 2.0,
+                "MaxAttempts": 3,
+            },
+            {
+                "ExceptionType": ["SageMaker.JOB_INTERNAL_ERROR"],
+                "IntervalSeconds": 5,
+                "BackoffRate": 2.0,
+                "ExpireAfterMin": 5,
+            },
+        ],
+        "Arguments": dict(),
+    }
+
+    step = CustomStep(name="MyStep")
+    assert step.to_request() == {
+        "Name": "MyStep",
         "Type": "Training",
         "Arguments": dict(),
     }

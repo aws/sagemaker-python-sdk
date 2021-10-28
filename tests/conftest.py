@@ -59,6 +59,7 @@ FRAMEWORKS_FOR_GENERATED_VERSION_FIXTURES = (
     "xgboost",
     "spark",
     "huggingface",
+    "autogluon",
 )
 
 
@@ -184,8 +185,8 @@ def mxnet_eia_latest_py_version():
 def pytorch_training_py_version(pytorch_training_version, request):
     if Version(pytorch_training_version) < Version("1.5.0"):
         return request.param
-    elif Version(pytorch_training_version) == Version("1.7.1"):
-        return "py36"
+    elif Version(pytorch_training_version) >= Version("1.9"):
+        return "py38"
     else:
         return "py3"
 
@@ -194,8 +195,8 @@ def pytorch_training_py_version(pytorch_training_version, request):
 def pytorch_inference_py_version(pytorch_inference_version, request):
     if Version(pytorch_inference_version) < Version("1.4.0"):
         return request.param
-    elif Version(pytorch_inference_version) == Version("1.7.1"):
-        return "py36"
+    elif Version(pytorch_inference_version) >= Version("1.9"):
+        return "py38"
     else:
         return "py3"
 
@@ -205,6 +206,32 @@ def huggingface_pytorch_training_version(huggingface_training_version):
     return _huggingface_base_fm_version(
         huggingface_training_version, "pytorch", "huggingface_training"
     )[0]
+
+
+@pytest.fixture(scope="module")
+def huggingface_pytorch_training_py_version(huggingface_pytorch_training_version):
+    return "py38" if Version(huggingface_pytorch_training_version) >= Version("1.9") else "py36"
+
+
+@pytest.fixture(scope="module")
+def huggingface_pytorch_latest_training_py_version(huggingface_training_pytorch_latest_version):
+    return (
+        "py38" if Version(huggingface_training_pytorch_latest_version) >= Version("1.9") else "py36"
+    )
+
+
+@pytest.fixture(scope="module")
+def huggingface_pytorch_latest_inference_py_version(huggingface_inference_pytorch_latest_version):
+    return (
+        "py38"
+        if Version(huggingface_inference_pytorch_latest_version) >= Version("1.9")
+        else "py36"
+    )
+
+
+@pytest.fixture(scope="module")
+def huggingface_tensorflow_latest_training_py_version():
+    return "py37"
 
 
 @pytest.fixture(scope="module")
