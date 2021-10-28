@@ -15,9 +15,9 @@ from __future__ import absolute_import
 from sagemaker.deprecations import deprecated
 
 
-@deprecated
+@deprecated(sdk_version="v2.66.3")
 class LambdaModel:
     """A model that can be deployed to Lambda.
 
-    note:: Deprecated in versions > v2.66.0. An alternative support will be added in near future.
+    note:: Deprecated in versions >= v2.66.3. An alternative support will be added in near future.
     """

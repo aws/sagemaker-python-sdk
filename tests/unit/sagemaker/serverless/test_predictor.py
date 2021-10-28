@@ -22,7 +22,7 @@ def test_deprecated_for_class_lamda_predictor():
     with pytest.warns(DeprecationWarning) as w:
         LambdaPredictor()
         msg = (
-            "LambdaPredictor is a no-op in sagemaker>=2.\n"
+            "LambdaPredictor is a no-op in sagemaker>=v2.66.3.\n"
             "See: https://sagemaker.readthedocs.io/en/stable/v2.html for details."
         )
         assert str(w[-1].message) == msg

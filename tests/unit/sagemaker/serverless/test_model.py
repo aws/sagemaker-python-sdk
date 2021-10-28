@@ -20,7 +20,7 @@ def test_deprecated_for_class_lamda_model():
     with pytest.warns(DeprecationWarning) as w:
         LambdaModel()
         msg = (
-            "LambdaModel is a no-op in sagemaker>=2.\n"
+            "LambdaModel is a no-op in sagemaker>=v2.66.3.\n"
             "See: https://sagemaker.readthedocs.io/en/stable/v2.html for details."
         )
         assert str(w[-1].message) == msg
