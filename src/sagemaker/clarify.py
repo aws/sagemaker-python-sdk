@@ -300,17 +300,49 @@ class ExplainabilityConfig(ABC):
         return None
 
 
+class PDPConfig(ExplainabilityConfig):
+    """Config class for Partial Dependence Plots (PDP).
+
+    If PDP is requested, the Partial Dependence Plots will be included in the report, and the
+    corresponding values will be included in the analysis output.
+    """
+
+    def __init__(self, features=None, grid_resolution=15, top_k_features=10):
+        """Initializes config for PDP.
+
+        Args:
+            features (None or list): List of features names or indices for which partial dependence
+                plots must be computed and plotted. When ShapConfig is provided, this parameter is
+                optional as Clarify will try to compute the partial dependence plots for top
+                feature based on SHAP attributions. When ShapConfig is not provided, 'features'
+                must be provided.
+            grid_resolution (int): In case of numerical features, this number represents that
+                number of buckets that range of values must be divided into. This decides the
+                granularity of the grid in which the PDP are plotted.
+            top_k_features (int): Set the number of top SHAP attributes to be selected to compute
+                partial dependence plots.
+        """
+        self.pdp_config = {"grid_resolution": grid_resolution, "top_k_features": top_k_features}
+        if features is not None:
+            self.pdp_config["features"] = features
+
+    def get_explainability_config(self):
+        """Returns config."""
+        return copy.deepcopy({"pdp": self.pdp_config})
+
+
 class SHAPConfig(ExplainabilityConfig):
     """Config class of SHAP."""
 
     def __init__(
         self,
-        baseline,
-        num_samples,
-        agg_method,
+        baseline=None,
+        num_samples=None,
+        agg_method=None,
         use_logit=False,
         save_local_shap_values=True,
         seed=None,
+        num_clusters=None,
     ):
         """Initializes config for SHAP.
 
@@ -320,34 +352,49 @@ class SHAPConfig(ExplainabilityConfig):
                 be the same as the dataset format. Each row should contain only the feature
                 columns/values and omit the label column/values. If None a baseline will be
                 calculated automatically by using K-means or K-prototypes in the input dataset.
-            num_samples (int): Number of samples to be used in the Kernel SHAP algorithm.
+            num_samples (None or int): Number of samples to be used in the Kernel SHAP algorithm.
                 This number determines the size of the generated synthetic dataset to compute the
-                SHAP values.
-            agg_method (str): Aggregation method for global SHAP values. Valid values are
+                SHAP values. If not provided then Clarify job will choose a proper value according
+                to the count of features.
+            agg_method (None or str): Aggregation method for global SHAP values. Valid values are
                 "mean_abs" (mean of absolute SHAP values for all instances),
                 "median" (median of SHAP values for all instances) and
                 "mean_sq" (mean of squared SHAP values for all instances).
+                If not provided then Clarify job uses method "mean_abs"
             use_logit (bool): Indicator of whether the logit function is to be applied to the model
                 predictions. Default is False. If "use_logit" is true then the SHAP values will
                 have log-odds units.
             save_local_shap_values (bool): Indicator of whether to save the local SHAP values
                 in the output location. Default is True.
             seed (int): seed value to get deterministic SHAP values. Default is None.
+            num_clusters (None or int): If a baseline is not provided, Clarify automatically
+                computes a baseline dataset via a clustering algorithm (K-means/K-prototypes).
+                num_clusters is a parameter for this algorithm. num_clusters will be the resulting
+                size of the baseline dataset. If not provided, Clarify job will use a default value.
         """
-        if agg_method not in ["mean_abs", "median", "mean_sq"]:
+        if agg_method is not None and agg_method not in ["mean_abs", "median", "mean_sq"]:
             raise ValueError(
                 f"Invalid agg_method {agg_method}." f" Please choose mean_abs, median, or mean_sq."
             )
-
+        if num_clusters is not None and baseline is not None:
+            raise ValueError(
+                "Baseline and num_clusters cannot be provided together. "
+                "Please specify one of the two."
+            )
         self.shap_config = {
-            "baseline": baseline,
-            "num_samples": num_samples,
-            "agg_method": agg_method,
             "use_logit": use_logit,
             "save_local_shap_values": save_local_shap_values,
         }
+        if baseline is not None:
+            self.shap_config["baseline"] = baseline
+        if num_samples is not None:
+            self.shap_config["num_samples"] = num_samples
+        if agg_method is not None:
+            self.shap_config["agg_method"] = agg_method
         if seed is not None:
             self.shap_config["seed"] = seed
+        if num_clusters is not None:
+            self.shap_config["num_clusters"] = num_clusters
 
     def get_explainability_config(self):
         """Returns config."""
@@ -776,8 +823,9 @@ class SageMakerClarifyProcessor(Processor):
             data_config (:class:`~sagemaker.clarify.DataConfig`): Config of the input/output data.
             model_config (:class:`~sagemaker.clarify.ModelConfig`): Config of the model and its
                 endpoint to be created.
-            explainability_config (:class:`~sagemaker.clarify.ExplainabilityConfig`): Config of the
-                specific explainability method. Currently, only SHAP is supported.
+            explainability_config (:class:`~sagemaker.clarify.ExplainabilityConfig` or list):
+                Config of the specific explainability method or a list of ExplainabilityConfig
+                objects. Currently, SHAP and PDP are the two methods supported.
             model_scores(str|int|ModelPredictedLabelConfig):  Index or JSONPath location in the
                 model output for the predicted scores to be explained. This is not required if the
                 model output is a single score. Alternatively, an instance of
@@ -811,7 +859,30 @@ class SageMakerClarifyProcessor(Processor):
             predictor_config.update(predicted_label_config)
         else:
             _set(model_scores, "label", predictor_config)
-        analysis_config["methods"] = explainability_config.get_explainability_config()
+
+        explainability_methods = {}
+        if isinstance(explainability_config, list):
+            if len(explainability_config) == 0:
+                raise ValueError("Please provide at least one explainability config.")
+            for config in explainability_config:
+                explain_config = config.get_explainability_config()
+                explainability_methods.update(explain_config)
+            if not len(explainability_methods.keys()) == len(explainability_config):
+                raise ValueError("Duplicate explainability configs are provided")
+            if (
+                "shap" not in explainability_methods
+                and explainability_methods["pdp"].get("features", None) is None
+            ):
+                raise ValueError("PDP features must be provided when ShapConfig is not provided")
+        else:
+            if (
+                isinstance(explainability_config, PDPConfig)
+                and explainability_config.get_explainability_config()["pdp"].get("features", None)
+                is None
+            ):
+                raise ValueError("PDP features must be provided when ShapConfig is not provided")
+            explainability_methods = explainability_config.get_explainability_config()
+        analysis_config["methods"] = explainability_methods
         analysis_config["predictor"] = predictor_config
         if job_name is None:
             if self.job_name_prefix:

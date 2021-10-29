@@ -1,5 +1,18 @@
 # Changelog
 
+## v2.66.2.post0 (2021-10-28)
+
+### Documentation Changes
+
+ * Update estimator docstrings to add Fast File Mode
+
+## v2.66.2 (2021-10-27)
+
+### Bug Fixes and Other Changes
+
+ * expose num_clusters parameter for clarify shap in shapconfig
+ * Update cron job to run hourly
+
 ## v2.66.1 (2021-10-26)
 
 ### Bug Fixes and Other Changes
