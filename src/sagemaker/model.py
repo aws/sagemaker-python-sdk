@@ -412,12 +412,13 @@ class Model(ModelBase):
         }
 
     def _get_compilation_args(self, estimator, inputs):
-        """Constructs a dict of arguments for an Amazon SageMaker compilation job from the estimator.
-                Args:
-                    estimator (sagemaker.estimator.EstimatorBase): Estimator object
-                        created by the user.
-                    inputs (CompilationInput): class containing all the parameters that
-                        can be used when calling ``sagemaker.model.Model.compile_model()``
+        """Constructs a dict of arguments for an Amazon SageMaker compilation job from estimator.
+
+        Args:
+            estimator (sagemaker.estimator.EstimatorBase): Estimator object
+                created by the user.
+            inputs (CompilationInput): class containing all the parameters that
+                can be used when calling ``sagemaker.model.Model.compile_model()``
         """
 
         if not isinstance(inputs, CompilationInput):

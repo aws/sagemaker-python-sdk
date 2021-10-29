@@ -143,7 +143,6 @@ class CompilationInput(object):
     It can be used when calling ``sagemaker.model.Model.compile_model()``
 
     Parameters:
-
         target_instance_type(str): Identifies the device that you want to
                 run your model after compilation, for example: ml_c5. For allowed
                 strings see
@@ -191,6 +190,7 @@ class CompilationInput(object):
     target_platform_arch: str = attr.ib(default=None)
     target_platform_accelerator: str = attr.ib(default=None)
     compiler_options: dict = attr.ib(factory=dict)
+
 
 @attr.s
 class TransformInput(object):

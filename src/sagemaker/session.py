@@ -1848,7 +1848,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         role,
         stop_condition,
         tags=None,
-        vpc_config=None
+        vpc_config=None,
     ):
         """Construct CreateCompilationJob request
 

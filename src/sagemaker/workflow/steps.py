@@ -14,14 +14,19 @@
 from __future__ import absolute_import
 
 import abc
-
 from enum import Enum
 from typing import Dict, List, Union
 
 import attr
 
 from sagemaker.estimator import EstimatorBase, _TrainingJob
-from sagemaker.inputs import CreateModelInput, TrainingInput, TransformInput, FileSystemInput, CompilationInput
+from sagemaker.inputs import (
+    CompilationInput,
+    CreateModelInput,
+    FileSystemInput,
+    TrainingInput,
+    TransformInput,
+)
 from sagemaker.model import Model
 from sagemaker.processing import (
     ProcessingInput,
@@ -31,16 +36,9 @@ from sagemaker.processing import (
 )
 from sagemaker.transformer import Transformer, _TransformJob
 from sagemaker.tuner import HyperparameterTuner, _TuningJob
-from sagemaker.workflow.entities import (
-    DefaultEnumMeta,
-    Entity,
-    RequestType,
-)
-from sagemaker.workflow.properties import (
-    PropertyFile,
-    Properties,
-)
+from sagemaker.workflow.entities import DefaultEnumMeta, Entity, RequestType
 from sagemaker.workflow.functions import Join
+from sagemaker.workflow.properties import Properties, PropertyFile
 from sagemaker.workflow.retry import RetryPolicy
 
 
@@ -688,23 +686,24 @@ class CompilationStep(Step):
     """Compilation step for workflow."""
 
     def __init__(
-            self,
-            name: str,
-            estimator: EstimatorBase,
-            model: Model,
-            inputs: CompilationInput = None,
-            job_arguments: List[str] = None,
-            depends_on: Union[List[str], List[Step]] = None,
-            retry_policies: List[RetryPolicy] = None,
-            display_name: str = None,
-            description: str = None,
-            cache_config: CacheConfig = None
+        self,
+        name: str,
+        estimator: EstimatorBase,
+        model: Model,
+        inputs: CompilationInput = None,
+        job_arguments: List[str] = None,
+        depends_on: Union[List[str], List[Step]] = None,
+        retry_policies: List[RetryPolicy] = None,
+        display_name: str = None,
+        description: str = None,
+        cache_config: CacheConfig = None,
     ):
-        """Construct a CompilationStep, given an given an `EstimatorBase` instance and
-        a `sagemaker.model.Model` instance.
+        """Construct a CompilationStep.
 
-        In addition to the estimator and Model instances, the other arguments are those that are supplied to
-        the `compile_model` method of the `sagemaker.model.Model.compile_model`.
+        Given an `EstimatorBase` and a `sagemaker.model.Model` instance construct a CompilationStep.
+
+        In addition to the estimator and Model instances, the other arguments are those that are
+        supplied to the `compile_model` method of the `sagemaker.model.Model.compile_model`.
 
         Args:
             name (str): The name of the compilation step.
