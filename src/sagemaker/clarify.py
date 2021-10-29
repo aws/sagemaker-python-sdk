@@ -300,6 +300,37 @@ class ExplainabilityConfig(ABC):
         return None
 
 
+class PDPConfig(ExplainabilityConfig):
+    """Config class for Partial Dependence Plots (PDP).
+
+    If PDP is requested, the Partial Dependence Plots will be included in the report, and the
+    corresponding values will be included in the analysis output.
+    """
+
+    def __init__(self, features=None, grid_resolution=15, top_k_features=10):
+        """Initializes config for PDP.
+
+        Args:
+            features (None or list): List of features names or indices for which partial dependence
+                plots must be computed and plotted. When ShapConfig is provided, this parameter is
+                optional as Clarify will try to compute the partial dependence plots for top
+                feature based on SHAP attributions. When ShapConfig is not provided, 'features'
+                must be provided.
+            grid_resolution (int): In case of numerical features, this number represents that
+                number of buckets that range of values must be divided into. This decides the
+                granularity of the grid in which the PDP are plotted.
+            top_k_features (int): Set the number of top SHAP attributes to be selected to compute
+                partial dependence plots.
+        """
+        self.pdp_config = {"grid_resolution": grid_resolution, "top_k_features": top_k_features}
+        if features is not None:
+            self.pdp_config["features"] = features
+
+    def get_explainability_config(self):
+        """Returns config."""
+        return copy.deepcopy({"pdp": self.pdp_config})
+
+
 class SHAPConfig(ExplainabilityConfig):
     """Config class of SHAP."""
 
@@ -792,8 +823,9 @@ class SageMakerClarifyProcessor(Processor):
             data_config (:class:`~sagemaker.clarify.DataConfig`): Config of the input/output data.
             model_config (:class:`~sagemaker.clarify.ModelConfig`): Config of the model and its
                 endpoint to be created.
-            explainability_config (:class:`~sagemaker.clarify.ExplainabilityConfig`): Config of the
-                specific explainability method. Currently, only SHAP is supported.
+            explainability_config (:class:`~sagemaker.clarify.ExplainabilityConfig` or list):
+                Config of the specific explainability method or a list of ExplainabilityConfig
+                objects. Currently, SHAP and PDP are the two methods supported.
             model_scores(str|int|ModelPredictedLabelConfig):  Index or JSONPath location in the
                 model output for the predicted scores to be explained. This is not required if the
                 model output is a single score. Alternatively, an instance of
@@ -827,7 +859,30 @@ class SageMakerClarifyProcessor(Processor):
             predictor_config.update(predicted_label_config)
         else:
             _set(model_scores, "label", predictor_config)
-        analysis_config["methods"] = explainability_config.get_explainability_config()
+
+        explainability_methods = {}
+        if isinstance(explainability_config, list):
+            if len(explainability_config) == 0:
+                raise ValueError("Please provide at least one explainability config.")
+            for config in explainability_config:
+                explain_config = config.get_explainability_config()
+                explainability_methods.update(explain_config)
+            if not len(explainability_methods.keys()) == len(explainability_config):
+                raise ValueError("Duplicate explainability configs are provided")
+            if (
+                "shap" not in explainability_methods
+                and explainability_methods["pdp"].get("features", None) is None
+            ):
+                raise ValueError("PDP features must be provided when ShapConfig is not provided")
+        else:
+            if (
+                isinstance(explainability_config, PDPConfig)
+                and explainability_config.get_explainability_config()["pdp"].get("features", None)
+                is None
+            ):
+                raise ValueError("PDP features must be provided when ShapConfig is not provided")
+            explainability_methods = explainability_config.get_explainability_config()
+        analysis_config["methods"] = explainability_methods
         analysis_config["predictor"] = predictor_config
         if job_name is None:
             if self.job_name_prefix:
