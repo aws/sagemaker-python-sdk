@@ -137,6 +137,62 @@ class CreateModelInput(object):
 
 
 @attr.s
+class CompilationInput(object):
+    """Create a class containing all the parameters.
+
+    It can be used when calling ``sagemaker.model.Model.compile_model()``
+
+    Parameters:
+
+        target_instance_type(str): Identifies the device that you want to
+                run your model after compilation, for example: ml_c5. For allowed
+                strings see
+                https://docs.aws.amazon.com/sagemaker/latest/dg/API_OutputConfig.html.
+        input_shape(str): Specifies the name and shape of the expected
+                inputs for your trained model in json dictionary form, for
+                example: {'data': [1,3,1024,1024]}, or {'var1': [1,1,28,28],
+                'var2': [1,1,28,28]}
+        output_path(str): Specifies where to store the compiled model
+        framework (str): The framework that is used to train the original
+                model. Allowed values: 'mxnet', 'tensorflow', 'keras', 'pytorch',
+                'onnx', 'xgboost'
+        framework_version (str): The version of the framework
+        compile_max_run (int): Timeout in seconds for compilation (default:
+            15 * 60). After this amount of time Amazon SageMaker Neo
+            terminates the compilation job regardless of its current status.
+        tags (list[dict]): List of tags for labeling a compilation job. For
+            more, see
+            https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
+        target_platform_os (str): Target Platform OS, for example: 'LINUX'.
+            For allowed strings see
+            https://docs.aws.amazon.com/sagemaker/latest/dg/API_OutputConfig.html.
+            It can be used instead of target_instance_family.
+        target_platform_arch (str): Target Platform Architecture, for example: 'X86_64'.
+            For allowed strings see
+            https://docs.aws.amazon.com/sagemaker/latest/dg/API_OutputConfig.html.
+            It can be used instead of target_instance_family.
+        target_platform_accelerator (str, optional): Target Platform Accelerator,
+            for example: 'NVIDIA'. For allowed strings see
+            https://docs.aws.amazon.com/sagemaker/latest/dg/API_OutputConfig.html.
+            It can be used instead of target_instance_family.
+        compiler_options (dict, optional): Additional parameters for compiler.
+            Compiler Options are TargetPlatform / target_instance_family specific. See
+            https://docs.aws.amazon.com/sagemaker/latest/dg/API_OutputConfig.html for details.
+    """
+
+    target_instance_type: str = attr.ib(default=None)
+    input_shape: dict = attr.ib(factory=dict)
+    output_path: str = attr.ib(default=None)
+    framework: str = attr.ib(default=None)
+    framework_version: str = attr.ib(default=None)
+    compile_max_run: int = attr.ib(default=15 * 60)
+    tags: list = attr.ib(factory=list)
+    target_platform_os: str = attr.ib(default=None)
+    target_platform_arch: str = attr.ib(default=None)
+    target_platform_accelerator: str = attr.ib(default=None)
+    compiler_options: dict = attr.ib(factory=dict)
+
+@attr.s
 class TransformInput(object):
     """Create a class containing all the parameters.
 
