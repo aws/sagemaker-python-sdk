@@ -82,7 +82,7 @@ def test_invalid_data_config():
         )
 
 
-def test_data_bias_config():
+def test_bias_config():
     label_values = [1]
     facet_name = "F1"
     facet_threshold = 0.3
@@ -103,52 +103,122 @@ def test_data_bias_config():
     assert expected_config == data_bias_config.get_config()
 
 
-def test_data_bias_config_multi_facet():
-    label_values = [1]
-    facet_name = ["Facet1", "Facet2"]
-    facet_threshold = [[0], [1, 2]]
-    group_name = "A151"
+def test_invalid_bias_config():
+    # Empty facet list,
+    with pytest.raises(AssertionError, match="Please provide at least one facet"):
+        BiasConfig(
+            label_values_or_threshold=[1],
+            facet_name=[],
+        )
 
-    data_bias_config = BiasConfig(
+    # Two facets but only one value
+    with pytest.raises(
+        ValueError, match="The number of facet names doesn't match the number of facet values"
+    ):
+        BiasConfig(
+            label_values_or_threshold=[1],
+            facet_name=["Feature1", "Feature2"],
+            facet_values_or_threshold=[[1]],
+        )
+
+
+@pytest.mark.parametrize(
+    "facet_name,facet_values_or_threshold,expected_result",
+    [
+        # One facet, assume that it is binary and value 1 indicates the sensitive group
+        [
+            "Feature1",
+            [1],
+            {
+                "facet": [{"name_or_index": "Feature1", "value_or_threshold": [1]}],
+            },
+        ],
+        # The same facet as above, facet value is not specified. (Clarify will compute bias metrics
+        # for each binary value).
+        [
+            "Feature1",
+            None,
+            {
+                "facet": [{"name_or_index": "Feature1"}],
+            },
+        ],
+        # Assume that the 2nd column (index 1, zero-based) of the dataset as facet, it has
+        # four categories and two of them indicate the sensitive group.
+        [
+            1,
+            ["category1, category2"],
+            {
+                "facet": [{"name_or_index": 1, "value_or_threshold": ["category1, category2"]}],
+            },
+        ],
+        # The same facet as above, facet values are not specified. (Clarify will iterate
+        # the categories and compute bias metrics for each category).
+        [
+            1,
+            None,
+            {
+                "facet": [{"name_or_index": 1}],
+            },
+        ],
+        # Assume that the facet is numeric value in range [0.0, 1.0]. Given facet threshold 0.5,
+        # interval (0.5, 1.0] indicates the sensitive group.
+        [
+            "Feature3",
+            [0.5],
+            {
+                "facet": [{"name_or_index": "Feature3", "value_or_threshold": [0.5]}],
+            },
+        ],
+        # Multiple facets
+        [
+            ["Feature1", 1, "Feature3"],
+            [[1], ["category1, category2"], [0.5]],
+            {
+                "facet": [
+                    {"name_or_index": "Feature1", "value_or_threshold": [1]},
+                    {"name_or_index": 1, "value_or_threshold": ["category1, category2"]},
+                    {"name_or_index": "Feature3", "value_or_threshold": [0.5]},
+                ],
+            },
+        ],
+        # Multiple facets, no value or threshold
+        [
+            ["Feature1", 1, "Feature3"],
+            None,
+            {
+                "facet": [
+                    {"name_or_index": "Feature1"},
+                    {"name_or_index": 1},
+                    {"name_or_index": "Feature3"},
+                ],
+            },
+        ],
+        # Multiple facets, specify values or threshold for some of them
+        [
+            ["Feature1", 1, "Feature3"],
+            [[1], None, [0.5]],
+            {
+                "facet": [
+                    {"name_or_index": "Feature1", "value_or_threshold": [1]},
+                    {"name_or_index": 1},
+                    {"name_or_index": "Feature3", "value_or_threshold": [0.5]},
+                ],
+            },
+        ],
+    ],
+)
+def test_facet_of_bias_config(facet_name, facet_values_or_threshold, expected_result):
+    label_values = [1]
+    bias_config = BiasConfig(
         label_values_or_threshold=label_values,
         facet_name=facet_name,
-        facet_values_or_threshold=facet_threshold,
-        group_name=group_name,
+        facet_values_or_threshold=facet_values_or_threshold,
     )
-
     expected_config = {
         "label_values_or_threshold": label_values,
-        "facet": [
-            {"name_or_index": facet_name[0], "value_or_threshold": facet_threshold[0]},
-            {"name_or_index": facet_name[1], "value_or_threshold": facet_threshold[1]},
-        ],
-        "group_variable": group_name,
+        **expected_result,
     }
-    assert expected_config == data_bias_config.get_config()
-
-
-def test_data_bias_config_multi_facet_not_all_with_value():
-    label_values = [1]
-    facet_name = ["Facet1", "Facet2"]
-    facet_threshold = [[0], None]
-    group_name = "A151"
-
-    data_bias_config = BiasConfig(
-        label_values_or_threshold=label_values,
-        facet_name=facet_name,
-        facet_values_or_threshold=facet_threshold,
-        group_name=group_name,
-    )
-
-    expected_config = {
-        "label_values_or_threshold": label_values,
-        "facet": [
-            {"name_or_index": facet_name[0], "value_or_threshold": facet_threshold[0]},
-            {"name_or_index": facet_name[1]},
-        ],
-        "group_variable": group_name,
-    }
-    assert expected_config == data_bias_config.get_config()
+    assert bias_config.get_config() == expected_config
 
 
 def test_model_config():
