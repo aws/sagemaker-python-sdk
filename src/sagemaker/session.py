@@ -4664,14 +4664,15 @@ def _wait_until_training_done(callable_fn, desc, poll=5):
 
 
 def _wait_until(callable_fn, poll_seconds=5, timeout_seconds=None):
-    """
+    """Method to allow waiting for function execution to complete.
+
     Args:
-        callable_fn: callable to wait for which returns None to keep polling
-        poll_seconds (float): time to sleep between calls to callable_fn
+        callable_fn: callable to wait for which returns None to keep polling.
+        poll_seconds (float): time to sleep between calls to callable_fn.
         timeout_seconds (float): Optional stop polling after timeout_seconds elapsed.
 
     Returns:
-        Result of the callable_fn
+        Result of the callable_fn.
     """
     waited_seconds = 0.0
     last_time = time.time()
