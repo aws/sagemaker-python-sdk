@@ -38,6 +38,7 @@ class DataConfig:
         dataset_type="text/csv",
         s3_data_distribution_type="FullyReplicated",
         s3_compression_type="None",
+        joinsource=None,
     ):
         """Initializes a configuration of both input and output datasets.
 
@@ -57,6 +58,11 @@ class DataConfig:
             s3_data_distribution_type (str): Valid options are "FullyReplicated" or
                 "ShardedByS3Key".
             s3_compression_type (str): Valid options are "None" or "Gzip".
+            joinsource (str): The name or index of the column in the dataset that acts an
+                identifier column (for instance, while performing a join). This column is only
+                used as an identifier, and not used for any other computations. This is an
+                optional field in all cases except when the dataset contains more than one file,
+                and `save_local_shap_values` is set to true in SHAPConfig.
         """
         if dataset_type not in ["text/csv", "application/jsonlines", "application/x-parquet"]:
             raise ValueError(
@@ -77,6 +83,7 @@ class DataConfig:
         _set(features, "features", self.analysis_config)
         _set(headers, "headers", self.analysis_config)
         _set(label, "label", self.analysis_config)
+        _set(joinsource, "joinsource_name_or_index", self.analysis_config)
 
     def get_config(self):
         """Returns part of an analysis config dictionary."""
