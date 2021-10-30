@@ -82,19 +82,6 @@ def test_invalid_data_config():
         )
 
 
-def test_s3_data_distribution_type_ignorance():
-    data_config = DataConfig(
-        s3_data_input_path="s3://input/train.csv",
-        s3_output_path="s3://output/analysis_test_result",
-        label="Label",
-        headers=["Label", "F1", "F2", "F3", "F4"],
-        dataset_type="text/csv",
-        joinsource="F4",
-        s3_data_distribution_type="ShardedByS3Key",
-    )
-    assert data_config.s3_data_distribution_type == "FullyReplicated"
-
-
 def test_bias_config():
     label_values = [1]
     facet_name = "F1"
