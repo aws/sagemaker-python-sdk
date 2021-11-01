@@ -682,7 +682,7 @@ class TuningStep(ConfigurableRetryStep):
         )
 
 
-class CompilationStep(Step):
+class CompilationStep(ConfigurableRetryStep):
     """Compilation step for workflow."""
 
     def __init__(

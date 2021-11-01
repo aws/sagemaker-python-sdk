@@ -422,7 +422,7 @@ class Model(ModelBase):
         """
 
         if not isinstance(inputs, CompilationInput):
-            raise TypeError("Your inputs must be provided as ProcessingInput objects.")
+            raise TypeError("Your inputs must be provided as CompilationInput objects.")
         target_instance_family = inputs.target_instance_type
         input_shape = inputs.input_shape
         output_path = inputs.output_path
