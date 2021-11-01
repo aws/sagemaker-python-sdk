@@ -13,7 +13,9 @@
 from __future__ import absolute_import
 
 import os
+import re
 import time
+
 import boto3
 
 account = boto3.client(
@@ -23,9 +25,11 @@ bucket_name = "sagemaker-us-west-2-%s" % account
 
 
 def queue_build():
-    build_id = os.environ.get("CODEBUILD_BUILD_ID", "CODEBUILD-BUILD-ID")
-    source_version = os.environ.get("CODEBUILD_SOURCE_VERSION", "CODEBUILD-SOURCE-VERSION").replace(
-        "/", "-"
+    build_id = re.sub("[_/]", "-", os.environ.get("CODEBUILD_BUILD_ID", "CODEBUILD-BUILD-ID"))
+    source_version = re.sub(
+        "[_/]",
+        "-",
+        os.environ.get("CODEBUILD_SOURCE_VERSION", "CODEBUILD-SOURCE-VERSION"),
     )
     ticket_number = int(1000 * time.time())
     filename = "%s_%s_%s" % (ticket_number, build_id, source_version)

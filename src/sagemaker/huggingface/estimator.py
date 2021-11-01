@@ -178,6 +178,8 @@ class HuggingFace(Framework):
         if "enable_sagemaker_metrics" not in kwargs:
             kwargs["enable_sagemaker_metrics"] = True
 
+        kwargs["py_version"] = self.py_version
+
         super(HuggingFace, self).__init__(
             entry_point, source_dir, hyperparameters, image_uri=image_uri, **kwargs
         )
@@ -310,7 +312,7 @@ class HuggingFace(Framework):
             framework_version = None
         else:
             framework, pt_or_tf = framework.split("-")
-            tag_pattern = re.compile("^(.*)-transformers(.*)-(cpu|gpu)-(py2|py3[67]?)$")
+            tag_pattern = re.compile(r"^(.*)-transformers(.*)-(cpu|gpu)-(py2|py3\d*)$")
             tag_match = tag_pattern.match(tag)
             pt_or_tf_version = tag_match.group(1)
             framework_version = tag_match.group(2)

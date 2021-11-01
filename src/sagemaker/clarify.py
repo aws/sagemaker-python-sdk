@@ -31,6 +31,7 @@ class DataConfig:
         self,
         s3_data_input_path,
         s3_output_path,
+        s3_analysis_config_output_path=None,
         label=None,
         headers=None,
         features=None,
@@ -43,6 +44,9 @@ class DataConfig:
         Args:
             s3_data_input_path (str): Dataset S3 prefix/object URI.
             s3_output_path (str): S3 prefix to store the output.
+            s3_analysis_config_output_path (str): S3 prefix to store the analysis_config output
+                If this field is None, then the s3_output_path will be used
+                to store the analysis_config output
             label (str): Target attribute of the model required by bias metrics (optional for SHAP)
                 Specified as column name or index for CSV dataset, or as JSONPath for JSONLines.
             headers (list[str]): A list of column names in the input dataset.
@@ -61,6 +65,7 @@ class DataConfig:
             )
         self.s3_data_input_path = s3_data_input_path
         self.s3_output_path = s3_output_path
+        self.s3_analysis_config_output_path = s3_analysis_config_output_path
         self.s3_data_distribution_type = s3_data_distribution_type
         self.s3_compression_type = s3_compression_type
         self.label = label
@@ -300,12 +305,13 @@ class SHAPConfig(ExplainabilityConfig):
 
     def __init__(
         self,
-        baseline,
-        num_samples,
-        agg_method,
+        baseline=None,
+        num_samples=None,
+        agg_method=None,
         use_logit=False,
         save_local_shap_values=True,
         seed=None,
+        num_clusters=None,
     ):
         """Initializes config for SHAP.
 
@@ -315,34 +321,49 @@ class SHAPConfig(ExplainabilityConfig):
                 be the same as the dataset format. Each row should contain only the feature
                 columns/values and omit the label column/values. If None a baseline will be
                 calculated automatically by using K-means or K-prototypes in the input dataset.
-            num_samples (int): Number of samples to be used in the Kernel SHAP algorithm.
+            num_samples (None or int): Number of samples to be used in the Kernel SHAP algorithm.
                 This number determines the size of the generated synthetic dataset to compute the
-                SHAP values.
-            agg_method (str): Aggregation method for global SHAP values. Valid values are
+                SHAP values. If not provided then Clarify job will choose a proper value according
+                to the count of features.
+            agg_method (None or str): Aggregation method for global SHAP values. Valid values are
                 "mean_abs" (mean of absolute SHAP values for all instances),
                 "median" (median of SHAP values for all instances) and
                 "mean_sq" (mean of squared SHAP values for all instances).
+                If not provided then Clarify job uses method "mean_abs"
             use_logit (bool): Indicator of whether the logit function is to be applied to the model
                 predictions. Default is False. If "use_logit" is true then the SHAP values will
                 have log-odds units.
             save_local_shap_values (bool): Indicator of whether to save the local SHAP values
                 in the output location. Default is True.
             seed (int): seed value to get deterministic SHAP values. Default is None.
+            num_clusters (None or int): If a baseline is not provided, Clarify automatically
+                computes a baseline dataset via a clustering algorithm (K-means/K-prototypes).
+                num_clusters is a parameter for this algorithm. num_clusters will be the resulting
+                size of the baseline dataset. If not provided, Clarify job will use a default value.
         """
-        if agg_method not in ["mean_abs", "median", "mean_sq"]:
+        if agg_method is not None and agg_method not in ["mean_abs", "median", "mean_sq"]:
             raise ValueError(
                 f"Invalid agg_method {agg_method}." f" Please choose mean_abs, median, or mean_sq."
             )
-
+        if num_clusters is not None and baseline is not None:
+            raise ValueError(
+                "Baseline and num_clusters cannot be provided together. "
+                "Please specify one of the two."
+            )
         self.shap_config = {
-            "baseline": baseline,
-            "num_samples": num_samples,
-            "agg_method": agg_method,
             "use_logit": use_logit,
             "save_local_shap_values": save_local_shap_values,
         }
+        if baseline is not None:
+            self.shap_config["baseline"] = baseline
+        if num_samples is not None:
+            self.shap_config["num_samples"] = num_samples
+        if agg_method is not None:
+            self.shap_config["agg_method"] = agg_method
         if seed is not None:
             self.shap_config["seed"] = seed
+        if num_clusters is not None:
+            self.shap_config["num_clusters"] = num_clusters
 
     def get_explainability_config(self):
         """Returns config."""
@@ -473,7 +494,7 @@ class SageMakerClarifyProcessor(Processor):
                 json.dump(analysis_config, f)
             s3_analysis_config_file = _upload_analysis_config(
                 analysis_config_file,
-                data_config.s3_output_path,
+                data_config.s3_analysis_config_output_path or data_config.s3_output_path,
                 self.sagemaker_session,
                 kms_key,
             )
