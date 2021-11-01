@@ -93,6 +93,7 @@ def recursive_copy(source, destination):
 
 def kill_child_processes(pid):
     """Kill child processes
+
     Kills all nested child process ids for a specific pid
 
     Args:
@@ -105,6 +106,7 @@ def kill_child_processes(pid):
 
 def get_child_process_ids(pid):
     """Retrieve all child pids for a certain pid
+
     Recursively scan each childs process tree and add it to the output
 
     Args:
