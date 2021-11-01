@@ -1,5 +1,21 @@
 # Changelog
 
+## v2.67.0 (2021-11-01)
+
+### Deprecations and Removals
+
+ * deprecate Serverless Lambda model-predictor
+
+### Features
+
+ * add joinsource to DataConfig
+ * Add support for Partial Dependence Plots(PDP) in SageMaker Clarify
+
+### Bug Fixes and Other Changes
+
+ * localmode subprocess parent process not sending SIGTERM to child
+ * remove buildspec from repo
+
 ## v2.66.2.post0 (2021-10-28)
 
 ### Documentation Changes
