@@ -1,5 +1,47 @@
 # Changelog
 
+## v2.68.0 (2021-11-02)
+
+### Features
+
+ * CompilationStep support for Sagemaker Pipelines
+
+## v2.67.0 (2021-11-01)
+
+### Deprecations and Removals
+
+ * deprecate Serverless Lambda model-predictor
+
+### Features
+
+ * add joinsource to DataConfig
+ * Add support for Partial Dependence Plots(PDP) in SageMaker Clarify
+
+### Bug Fixes and Other Changes
+
+ * localmode subprocess parent process not sending SIGTERM to child
+ * remove buildspec from repo
+
+## v2.66.2.post0 (2021-10-28)
+
+### Documentation Changes
+
+ * Update estimator docstrings to add Fast File Mode
+
+## v2.66.2 (2021-10-27)
+
+### Bug Fixes and Other Changes
+
+ * expose num_clusters parameter for clarify shap in shapconfig
+ * Update cron job to run hourly
+
+## v2.66.1 (2021-10-26)
+
+### Bug Fixes and Other Changes
+
+ * HuggingFace image_uri generation for inference
+ * Update '_' and '/' with '-' in filename creation
+
 ## v2.66.0 (2021-10-25)
 
 ### Features

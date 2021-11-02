@@ -13,6 +13,8 @@
 
 from __future__ import print_function, absolute_import
 
+import copy
+
 from mock import patch, Mock, MagicMock
 import pytest
 
@@ -23,6 +25,7 @@ from sagemaker.clarify import (
     ModelConfig,
     ModelPredictedLabelConfig,
     SHAPConfig,
+    PDPConfig,
 )
 from sagemaker import image_uris, Processor
 
@@ -268,6 +271,50 @@ def test_shap_config():
     assert expected_config == shap_config.get_explainability_config()
 
 
+def test_shap_config_no_baseline():
+    num_samples = 100
+    agg_method = "mean_sq"
+    use_logit = True
+    seed = 123
+    shap_config = SHAPConfig(
+        num_samples=num_samples,
+        agg_method=agg_method,
+        num_clusters=2,
+        use_logit=use_logit,
+        seed=seed,
+    )
+    expected_config = {
+        "shap": {
+            "num_samples": num_samples,
+            "agg_method": agg_method,
+            "num_clusters": 2,
+            "use_logit": use_logit,
+            "save_local_shap_values": True,
+            "seed": seed,
+        }
+    }
+    assert expected_config == shap_config.get_explainability_config()
+
+
+def test_shap_config_no_parameters():
+    shap_config = SHAPConfig()
+    expected_config = {
+        "shap": {
+            "use_logit": False,
+            "save_local_shap_values": True,
+        }
+    }
+    assert expected_config == shap_config.get_explainability_config()
+
+
+def test_pdp_config():
+    pdp_config = PDPConfig(features=["f1", "f2"], grid_resolution=20)
+    expected_config = {
+        "pdp": {"features": ["f1", "f2"], "grid_resolution": 20, "top_k_features": 10}
+    }
+    assert expected_config == pdp_config.get_explainability_config()
+
+
 def test_invalid_shap_config():
     with pytest.raises(ValueError) as error:
         SHAPConfig(
@@ -277,6 +324,12 @@ def test_invalid_shap_config():
         )
     assert "Invalid agg_method invalid. Please choose mean_abs, median, or mean_sq." in str(
         error.value
+    )
+    with pytest.raises(ValueError) as error:
+        SHAPConfig(baseline=[[1]], num_samples=1, agg_method="mean_abs", num_clusters=2)
+    assert (
+        "Baseline and num_clusters cannot be provided together. Please specify one of the two."
+        in str(error.value)
     )
 
 
@@ -326,13 +379,9 @@ def data_config():
         s3_data_input_path="s3://input/train.csv",
         s3_output_path="s3://output/analysis_test_result",
         label="Label",
-        headers=[
-            "Label",
-            "F1",
-            "F2",
-            "F3",
-        ],
+        headers=["Label", "F1", "F2", "F3", "F4"],
         dataset_type="text/csv",
+        joinsource="F4",
     )
 
 
@@ -367,11 +416,16 @@ def shap_config():
                 0.26124998927116394,
                 0.2824999988079071,
                 0.06875000149011612,
-            ]
+            ],
         ],
         num_samples=100,
         agg_method="mean_sq",
     )
+
+
+@pytest.fixture(scope="module")
+def pdp_config():
+    return PDPConfig(features=["F1", "F2"], grid_resolution=20)
 
 
 @patch("sagemaker.utils.name_from_base", return_value=JOB_NAME)
@@ -397,7 +451,9 @@ def test_pre_training_bias(
                 "F1",
                 "F2",
                 "F3",
+                "F4",
             ],
+            "joinsource_name_or_index": "F4",
             "label": "Label",
             "label_values_or_threshold": [1],
             "facet": [{"name_or_index": "F1"}],
@@ -458,9 +514,11 @@ def test_post_training_bias(
                 "F1",
                 "F2",
                 "F3",
+                "F4",
             ],
             "label": "Label",
             "label_values_or_threshold": [1],
+            "joinsource_name_or_index": "F4",
             "facet": [{"name_or_index": "F1"}],
             "group_variable": "F2",
             "methods": {"post_training_bias": {"methods": "all"}},
@@ -552,21 +610,30 @@ def test_run_on_s3_analysis_config_file(
         )
 
 
-def _run_test_shap(
+def _run_test_explain(
     name_from_base,
     clarify_processor,
     clarify_processor_with_job_name_prefix,
     data_config,
     model_config,
     shap_config,
+    pdp_config,
     model_scores,
     expected_predictor_config,
 ):
     with patch.object(SageMakerClarifyProcessor, "_run", return_value=None) as mock_method:
+        explanation_configs = None
+        if shap_config and pdp_config:
+            explanation_configs = [shap_config, pdp_config]
+        elif shap_config:
+            explanation_configs = shap_config
+        elif pdp_config:
+            explanation_configs = pdp_config
+
         clarify_processor.run_explainability(
             data_config,
             model_config,
-            shap_config,
+            explanation_configs,
             model_scores=model_scores,
             wait=True,
             job_name="test",
@@ -579,8 +646,10 @@ def _run_test_shap(
                 "F1",
                 "F2",
                 "F3",
+                "F4",
             ],
             "label": "Label",
+            "joinsource_name_or_index": "F4",
             "methods": {
                 "shap": {
                     "baseline": [
@@ -598,6 +667,28 @@ def _run_test_shap(
             },
             "predictor": expected_predictor_config,
         }
+        expected_explanation_configs = {}
+        if shap_config:
+            expected_explanation_configs["shap"] = {
+                "baseline": [
+                    [
+                        0.26124998927116394,
+                        0.2824999988079071,
+                        0.06875000149011612,
+                    ]
+                ],
+                "num_samples": 100,
+                "agg_method": "mean_sq",
+                "use_logit": False,
+                "save_local_shap_values": True,
+            }
+        if pdp_config:
+            expected_explanation_configs["pdp"] = {
+                "features": ["F1", "F2"],
+                "grid_resolution": 20,
+                "top_k_features": 10,
+            }
+        expected_analysis_config["methods"] = expected_explanation_configs
         mock_method.assert_called_with(
             data_config,
             expected_analysis_config,
@@ -610,7 +701,7 @@ def _run_test_shap(
         clarify_processor_with_job_name_prefix.run_explainability(
             data_config,
             model_config,
-            shap_config,
+            explanation_configs,
             model_scores=model_scores,
             wait=True,
             experiment_config={"ExperimentName": "AnExperiment"},
@@ -628,6 +719,34 @@ def _run_test_shap(
 
 
 @patch("sagemaker.utils.name_from_base", return_value=JOB_NAME)
+def test_pdp(
+    name_from_base,
+    clarify_processor,
+    clarify_processor_with_job_name_prefix,
+    data_config,
+    model_config,
+    shap_config,
+    pdp_config,
+):
+    expected_predictor_config = {
+        "model_name": "xgboost-model",
+        "instance_type": "ml.c5.xlarge",
+        "initial_instance_count": 1,
+    }
+    _run_test_explain(
+        name_from_base,
+        clarify_processor,
+        clarify_processor_with_job_name_prefix,
+        data_config,
+        model_config,
+        None,
+        pdp_config,
+        None,
+        expected_predictor_config,
+    )
+
+
+@patch("sagemaker.utils.name_from_base", return_value=JOB_NAME)
 def test_shap(
     name_from_base,
     clarify_processor,
@@ -641,7 +760,7 @@ def test_shap(
         "instance_type": "ml.c5.xlarge",
         "initial_instance_count": 1,
     }
-    _run_test_shap(
+    _run_test_explain(
         name_from_base,
         clarify_processor,
         clarify_processor_with_job_name_prefix,
@@ -649,8 +768,68 @@ def test_shap(
         model_config,
         shap_config,
         None,
+        None,
         expected_predictor_config,
     )
+
+
+@patch("sagemaker.utils.name_from_base", return_value=JOB_NAME)
+def test_explainability_with_invalid_config(
+    name_from_base,
+    clarify_processor,
+    clarify_processor_with_job_name_prefix,
+    data_config,
+    model_config,
+):
+    expected_predictor_config = {
+        "model_name": "xgboost-model",
+        "instance_type": "ml.c5.xlarge",
+        "initial_instance_count": 1,
+    }
+    with pytest.raises(
+        AttributeError, match="'NoneType' object has no attribute 'get_explainability_config'"
+    ):
+        _run_test_explain(
+            name_from_base,
+            clarify_processor,
+            clarify_processor_with_job_name_prefix,
+            data_config,
+            model_config,
+            None,
+            None,
+            None,
+            expected_predictor_config,
+        )
+
+
+@patch("sagemaker.utils.name_from_base", return_value=JOB_NAME)
+def test_explainability_with_multiple_shap_config(
+    name_from_base,
+    clarify_processor,
+    clarify_processor_with_job_name_prefix,
+    data_config,
+    model_config,
+    shap_config,
+):
+    expected_predictor_config = {
+        "model_name": "xgboost-model",
+        "instance_type": "ml.c5.xlarge",
+        "initial_instance_count": 1,
+    }
+    with pytest.raises(ValueError, match="Duplicate explainability configs are provided"):
+        second_shap_config = copy.deepcopy(shap_config)
+        second_shap_config.shap_config["num_samples"] = 200
+        _run_test_explain(
+            name_from_base,
+            clarify_processor,
+            clarify_processor_with_job_name_prefix,
+            data_config,
+            model_config,
+            [shap_config, second_shap_config],
+            None,
+            None,
+            expected_predictor_config,
+        )
 
 
 @patch("sagemaker.utils.name_from_base", return_value=JOB_NAME)
@@ -661,6 +840,7 @@ def test_shap_with_predicted_label(
     data_config,
     model_config,
     shap_config,
+    pdp_config,
 ):
     probability = "pr"
     label_headers = ["success"]
@@ -675,13 +855,14 @@ def test_shap_with_predicted_label(
         "probability": probability,
         "label_headers": label_headers,
     }
-    _run_test_shap(
+    _run_test_explain(
         name_from_base,
         clarify_processor,
         clarify_processor_with_job_name_prefix,
         data_config,
         model_config,
         shap_config,
+        pdp_config,
         model_scores,
         expected_predictor_config,
     )

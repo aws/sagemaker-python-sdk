@@ -11,53 +11,16 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
-
-from mock import Mock
 import pytest
 
 from sagemaker.serverless import LambdaModel
 
-IMAGE_URI = "123456789012.dkr.ecr.us-west-2.amazonaws.com/my-lambda-image:latest"
-ROLE = "arn:aws:iam::123456789012:role/MyLambdaExecutionRole"
 
-
-@pytest.fixture
-def mock_client():
-    return Mock()
-
-
-@pytest.mark.parametrize("wait", [False, True])
-def test_deploy(mock_client, wait):
-    model = LambdaModel(IMAGE_URI, ROLE, client=mock_client)
-    mock_client.create_function = Mock(return_value={"State": "Pending"})
-    mock_client.get_function_configuration = Mock(return_value={"State": "Active"})
-
-    function_name, timeout, memory_size = "my-function", 3, 128
-    predictor = model.deploy(function_name, timeout=timeout, memory_size=memory_size, wait=wait)
-
-    mock_client.create_function.assert_called_once()
-    _, kwargs = mock_client.create_function.call_args
-    assert kwargs["FunctionName"] == function_name
-    assert kwargs["PackageType"] == "Image"
-    assert kwargs["Timeout"] == timeout
-    assert kwargs["MemorySize"] == memory_size
-    assert kwargs["Role"] == ROLE
-    assert kwargs["Code"] == {"ImageUri": IMAGE_URI}
-
-    assert predictor.function_name == function_name
-
-
-def test_deploy_raises_error_on_failure(mock_client):
-    model = LambdaModel(IMAGE_URI, ROLE, client=mock_client)
-    mock_client.create_function = Mock(return_value={"State": "Pending"})
-    mock_client.get_function_configuration = Mock(
-        return_value={"State": "Failed", "StateReason": "Resource limit"}
-    )
-
-    with pytest.raises(RuntimeError):
-        model.deploy("my-function", timeout=3, memory_size=128, wait=True)
-
-
-def test_delete_model():
-    model = LambdaModel(IMAGE_URI, ROLE, client=mock_client)
-    model.delete_model()  # NOTE: This method is a no-op.
+def test_deprecated_for_class_lamda_model():
+    with pytest.warns(DeprecationWarning) as w:
+        LambdaModel()
+        msg = (
+            "LambdaModel is a no-op in sagemaker>=v2.66.3.\n"
+            "See: https://sagemaker.readthedocs.io/en/stable/v2.html for details."
+        )
+        assert str(w[-1].message) == msg
