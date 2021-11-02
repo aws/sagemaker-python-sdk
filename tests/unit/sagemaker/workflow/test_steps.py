@@ -1081,13 +1081,10 @@ def test_compilation_step(sagemaker_session):
         compile_max_run=100,
         framework="tensorflow",
         job_name="compile-model",
-        compiler_options=None
+        compiler_options=None,
     )
     compilation_step = CompilationStep(
-        name="MyCompilationStep",
-        estimator=estimator,
-        model=model,
-        inputs=compilation_input
+        name="MyCompilationStep", estimator=estimator, model=model, inputs=compilation_input
     )
 
     assert compilation_step.to_request() == {
@@ -1097,16 +1094,11 @@ def test_compilation_step(sagemaker_session):
             "InputConfig": {
                 "DataInputConfig": '{"data": [1, 3, 1024, 1024]}',
                 "Framework": "TENSORFLOW",
-                "S3Uri": "s3://output/tensorflow.tar.gz"
+                "S3Uri": "s3://output/tensorflow.tar.gz",
             },
-            "OutputConfig": {
-               "S3OutputLocation": "s3://output",
-               "TargetDevice": "ml_inf"
-            },
+            "OutputConfig": {"S3OutputLocation": "s3://output", "TargetDevice": "ml_inf"},
             "RoleArn": ROLE,
-            "StoppingCondition": {
-                "MaxRuntimeInSeconds": 100
-            },
-            'Tags': []
+            "StoppingCondition": {"MaxRuntimeInSeconds": 100},
+            "Tags": [],
         },
     }
