@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.68.0 (2021-11-02)
+
+### Features
+
+ * CompilationStep support for Sagemaker Pipelines
+
 ## v2.67.0 (2021-11-01)
 
 ### Deprecations and Removals
