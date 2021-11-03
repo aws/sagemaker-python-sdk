@@ -10,11 +10,6 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Placeholder docstring"""
 from __future__ import absolute_import
 
-from sagemaker.huggingface.estimator import HuggingFace  # noqa: F401
-from sagemaker.huggingface.model import HuggingFaceModel, HuggingFacePredictor  # noqa: F401
-from sagemaker.huggingface.processing import HuggingFaceProcessor  # noqa:F401
-
-from sagemaker.training_compiler.config import TrainingCompilerConfig  # noqa: F401
+EC2_GPU_INSTANCE_CLASSES = {"p2", "g4dn", "g4ad", "p3", "p3dn", "p4dn"}

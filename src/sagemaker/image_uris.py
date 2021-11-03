@@ -38,6 +38,7 @@ def retrieve(
     container_version=None,
     distribution=None,
     base_framework_version=None,
+    training_compiler_config=None,
 ):
     """Retrieves the ECR URI for the Docker image matching the given arguments.
 
@@ -65,6 +66,8 @@ def retrieve(
             https://github.com/aws/deep-learning-containers/blob/master/available_images.md
             (default: None).
         distribution (dict): A dictionary with information on how to run distributed training
+        training_compiler_config (:class:`~sagemaker.training_compiler.TrainingCompilerConfig`):
+            A configuration class for the SageMaker Training Compiler
             (default: None).
 
     Returns:
@@ -73,8 +76,16 @@ def retrieve(
     Raises:
         ValueError: If the combination of arguments specified is not supported.
     """
-
-    config = _config_for_framework_and_scope(framework, image_scope, accelerator_type)
+    if training_compiler_config is None:
+        config = _config_for_framework_and_scope(framework, image_scope, accelerator_type)
+    elif framework == HUGGING_FACE_FRAMEWORK:
+        config = _config_for_framework_and_scope(
+            framework + "-training-compiler", image_scope, accelerator_type
+        )
+    else:
+        raise ValueError(
+            "Unsupported Configuration: Training Compiler is only supported with HuggingFace"
+        )
     original_version = version
     version = _validate_version_and_set_if_needed(version, config, framework)
     version_config = config["versions"][_version_for_config(version, config)]
@@ -108,7 +119,6 @@ def retrieve(
             re.compile("^(pytorch|tensorflow)(.*)$").match(base_framework_version).group(2)
         )
         tag_prefix = f"{pt_or_tf_version}-transformers{original_version}"
-
     else:
         tag_prefix = version_config.get("tag_prefix", version)
 
@@ -134,9 +144,7 @@ def retrieve(
             "pytorch-1.6-gpu-py3": "cu110-ubuntu18.04-v3",
             "pytorch-1.6.0-gpu-py3": "cu110-ubuntu18.04",
         }
-
         key = "-".join([framework, tag])
-
         if key in container_versions:
             tag = "-".join([tag, container_versions[key]])
 
