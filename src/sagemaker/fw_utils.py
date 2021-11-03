@@ -296,7 +296,8 @@ def framework_name_from_image(image_uri):
     name_pattern = re.compile(
         r"""^(?:sagemaker(?:-rl)?-)?
         (tensorflow|mxnet|chainer|pytorch|scikit-learn|xgboost
-        |huggingface-tensorflow|huggingface-pytorch)(?:-)?
+        |huggingface-tensorflow|huggingface-pytorch
+        |huggingface-tensorflow-trcomp|huggingface-pytorch-trcomp)(?:-)?
         (scriptmode|training)?
         :(.*)-(.*?)-(py2|py3\d*)(?:.*)$""",
         re.VERBOSE,
