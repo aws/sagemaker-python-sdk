@@ -15,6 +15,7 @@ from __future__ import print_function, absolute_import
 
 import abc
 from typing import Any, Tuple
+import inspect
 
 from sagemaker.deprecations import (
     deprecated_class,
@@ -111,6 +112,10 @@ class Predictor(PredictorBase):
         """
         removed_kwargs("content_type", kwargs)
         removed_kwargs("accept", kwargs)
+        if inspect.isclass(serializer):
+            raise ValueError("serializer should be an instance, not a class.")
+        if inspect.isclass(deserializer):
+            raise ValueError("deserializer should be an instance, not a class.")
         endpoint_name = renamed_kwargs("endpoint", "endpoint_name", endpoint_name, kwargs)
         self.endpoint_name = endpoint_name
         self.sagemaker_session = sagemaker_session or Session()
