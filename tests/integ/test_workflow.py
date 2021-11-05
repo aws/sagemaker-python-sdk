@@ -90,7 +90,6 @@ from sagemaker.workflow.steps import (
 )
 from sagemaker.workflow.step_collections import RegisterModel
 from sagemaker.workflow.pipeline import Pipeline
-from sagemaker.workflow.parallelism_config import ParallelismConfiguration
 from sagemaker.lambda_helper import Lambda
 from sagemaker.feature_store.feature_group import FeatureGroup, FeatureDefinition, FeatureTypeEnum
 from tests.integ import DATA_DIR
@@ -2771,7 +2770,8 @@ def test_large_pipeline(sagemaker_session, role, pipeline_name, region_name):
             sqs_queue_url="https://sqs.us-east-2.amazonaws.com/123456789012/MyQueue",
             inputs={"arg1": "foo"},
             outputs=[outputParam],
-        ) for count in range(2000)
+        )
+        for count in range(2000)
     ]
     pipeline = Pipeline(
         name=pipeline_name,
@@ -2803,7 +2803,10 @@ def test_large_pipeline(sagemaker_session, role, pipeline_name, region_name):
         except Exception:
             pass
 
-def test_create_and_update_with_parallelism_config(sagemaker_session, role, pipeline_name, region_name):
+
+def test_create_and_update_with_parallelism_config(
+    sagemaker_session, role, pipeline_name, region_name
+):
     instance_count = ParameterInteger(name="InstanceCount", default_value=2)
 
     outputParam = CallbackOutput(output_name="output", output_type=CallbackOutputTypeEnum.String)
@@ -2823,7 +2826,6 @@ def test_create_and_update_with_parallelism_config(sagemaker_session, role, pipe
         steps=callback_steps,
         sagemaker_session=sagemaker_session,
     )
-
 
     try:
         response = pipeline.create(role, parallelism_config={"MaxParallelExecutionSteps": 50})
