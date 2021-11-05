@@ -121,10 +121,7 @@ class Pipeline(Entity):
         return self.sagemaker_session.sagemaker_client.create_pipeline(**kwargs)
 
     def _create_args(
-        self,
-        role_arn: str,
-        description: str,
-        parallelism_config: ParallelismConfiguration
+        self, role_arn: str, description: str, parallelism_config: ParallelismConfiguration
     ):
         """Constructs the keyword argument dict for a create_pipeline call.
 
@@ -163,9 +160,7 @@ class Pipeline(Entity):
             }
 
         update_args(
-            kwargs,
-            PipelineDescription=description,
-            ParallelismConfiguration=parallelism_config
+            kwargs, PipelineDescription=description, ParallelismConfiguration=parallelism_config
         )
         return kwargs
 
