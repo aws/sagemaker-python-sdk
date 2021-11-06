@@ -2823,6 +2823,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         marketplace_cert=False,
         approval_status="PendingManualApproval",
         description=None,
+        drift_check_baselines=None,
     ):
         """Get request dictionary for CreateModelPackage API.
 
@@ -2847,6 +2848,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             approval_status (str): Model Approval Status, values can be "Approved", "Rejected",
                 or "PendingManualApproval" (default: "PendingManualApproval").
             description (str): Model Package description (default: None).
+            drift_check_baselines (DriftCheckBaselines): DriftCheckBaselines object (default: None).
         """
 
         request = get_create_model_package_request(
@@ -2862,6 +2864,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             marketplace_cert,
             approval_status,
             description,
+            drift_check_baselines=drift_check_baselines,
         )
         return self.sagemaker_client.create_model_package(**request)
 
@@ -4158,6 +4161,7 @@ def get_model_package_args(
     description=None,
     tags=None,
     container_def_list=None,
+    drift_check_baselines=None,
 ):
     """Get arguments for create_model_package method.
 
@@ -4165,24 +4169,26 @@ def get_model_package_args(
         content_types (list): The supported MIME types for the input data.
         response_types (list): The supported MIME types for the output data.
         inference_instances (list): A list of the instance types that are used to
-        generate inferences in real-time.
+            generate inferences in real-time.
         transform_instances (list): A list of the instance types on which a transformation
-        job can be run or on which an endpoint can be deployed.
+            job can be run or on which an endpoint can be deployed.
         model_package_name (str): Model Package name, exclusive to `model_package_group_name`,
-        using `model_package_name` makes the Model Package un-versioned (default: None).
+            using `model_package_name` makes the Model Package un-versioned (default: None).
         model_package_group_name (str): Model Package Group name, exclusive to
-        `model_package_name`, using `model_package_group_name` makes the Model Package
-        versioned (default: None).
+            `model_package_name`, using `model_package_group_name` makes the Model Package
+        model_data (str): s3 URI to the model artifacts from training (default: None).
         image_uri (str): Inference image uri for the container. Model class' self.image will
-        be used if it is None (default: None).
+            be used if it is None (default: None).
         model_metrics (ModelMetrics): ModelMetrics object (default: None).
         metadata_properties (MetadataProperties): MetadataProperties object (default: None).
         marketplace_cert (bool): A boolean value indicating if the Model Package is certified
-        for AWS Marketplace (default: False).
+            for AWS Marketplace (default: False).
         approval_status (str): Model Approval Status, values can be "Approved", "Rejected",
-        or "PendingManualApproval" (default: "PendingManualApproval").
+            or "PendingManualApproval" (default: "PendingManualApproval").
         description (str): Model Package description (default: None).
-        container_def_list (list): A list of container defintiions.
+        tags (List[dict[str, str]]): A list of dictionaries containing key-value pairs.
+        container_def_list (list): A list of container defintiions (default: None).
+        drift_check_baselines (DriftCheckBaselines): DriftCheckBaselines object (default: None).
     Returns:
         dict: A dictionary of method argument names and values.
     """
@@ -4210,6 +4216,8 @@ def get_model_package_args(
         model_package_args["model_package_group_name"] = model_package_group_name
     if model_metrics is not None:
         model_package_args["model_metrics"] = model_metrics._to_request_dict()
+    if drift_check_baselines is not None:
+        model_package_args["drift_check_baselines"] = drift_check_baselines._to_request_dict()
     if metadata_properties is not None:
         model_package_args["metadata_properties"] = metadata_properties._to_request_dict()
     if approval_status is not None:
@@ -4235,31 +4243,34 @@ def get_create_model_package_request(
     approval_status="PendingManualApproval",
     description=None,
     tags=None,
+    drift_check_baselines=None,
 ):
     """Get request dictionary for CreateModelPackage API.
 
     Args:
         model_package_name (str): Model Package name, exclusive to `model_package_group_name`,
-        using `model_package_name` makes the Model Package un-versioned (default: None).
+            using `model_package_name` makes the Model Package un-versioned (default: None).
         model_package_group_name (str): Model Package Group name, exclusive to
-        `model_package_name`, using `model_package_group_name` makes the Model Package
-        versioned (default: None).
+            `model_package_name`, using `model_package_group_name` makes the Model Package
         containers (list): A list of inference containers that can be used for inference
-        specifications of Model Package (default: None).
+            specifications of Model Package (default: None).
         content_types (list): The supported MIME types for the input data (default: None).
         response_types (list): The supported MIME types for the output data (default: None).
         inference_instances (list): A list of the instance types that are used to
-        generate inferences in real-time (default: None).
+            generate inferences in real-time (default: None).
         transform_instances (list): A list of the instance types on which a transformation
-        job can be run or on which an endpoint can be deployed (default: None).
+            job can be run or on which an endpoint can be deployed (default: None).
         model_metrics (ModelMetrics): ModelMetrics object (default: None).
         metadata_properties (MetadataProperties): MetadataProperties object (default: None).
         marketplace_cert (bool): A boolean value indicating if the Model Package is certified
-        for AWS Marketplace (default: False).
+            for AWS Marketplace (default: False).
         approval_status (str): Model Approval Status, values can be "Approved", "Rejected",
-        or "PendingManualApproval" (default: "PendingManualApproval").
+            or "PendingManualApproval" (default: "PendingManualApproval").
         description (str): Model Package description (default: None).
+        tags (List[dict[str, str]]): A list of dictionaries containing key-value pairs.
+        drift_check_baselines (DriftCheckBaselines): DriftCheckBaselines object (default: None).
     """
+
     if all([model_package_name, model_package_group_name]):
         raise ValueError(
             "model_package_name and model_package_group_name cannot be present at the " "same time."
@@ -4275,6 +4286,8 @@ def get_create_model_package_request(
         request_dict["Tags"] = tags
     if model_metrics:
         request_dict["ModelMetrics"] = model_metrics
+    if drift_check_baselines:
+        request_dict["DriftCheckBaselines"] = drift_check_baselines
     if metadata_properties:
         request_dict["MetadataProperties"] = metadata_properties
     if containers is not None:

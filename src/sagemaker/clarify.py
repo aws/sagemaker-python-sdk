@@ -58,7 +58,7 @@ class DataConfig:
             s3_data_distribution_type (str): Valid options are "FullyReplicated" or
                 "ShardedByS3Key".
             s3_compression_type (str): Valid options are "None" or "Gzip".
-            joinsource (str): The name or index of the column in the dataset that acts an
+            joinsource (str): The name or index of the column in the dataset that acts as an
                 identifier column (for instance, while performing a join). This column is only
                 used as an identifier, and not used for any other computations. This is an
                 optional field in all cases except when the dataset contains more than one file,
