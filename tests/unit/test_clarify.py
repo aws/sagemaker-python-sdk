@@ -28,6 +28,7 @@ from sagemaker.clarify import (
     SageMakerClarifyProcessor,
     SHAPConfig,
     TextConfig,
+    ImageConfig,
 )
 
 JOB_NAME_PREFIX = "my-prefix"
@@ -254,9 +255,25 @@ def test_shap_config():
     seed = 123
     granularity = "sentence"
     language = "german"
+    model_type = "IMAGE_CLASSIFICATION"
+    num_segments = 2
+    feature_extraction_method = "segmentation"
+    segment_compactness = 10
+    max_objects = 4
+    iou_threshold = 0.5
+    context = 1.0
     text_config = TextConfig(
         granularity=granularity,
         language=language,
+    )
+    image_config = ImageConfig(
+        model_type=model_type,
+        num_segments=num_segments,
+        feature_extraction_method=feature_extraction_method,
+        segment_compactness=segment_compactness,
+        max_objects=max_objects,
+        iou_threshold=iou_threshold,
+        context=context,
     )
     shap_config = SHAPConfig(
         baseline=baseline,
@@ -265,6 +282,7 @@ def test_shap_config():
         use_logit=use_logit,
         seed=seed,
         text_config=text_config,
+        image_config=image_config,
     )
     expected_config = {
         "shap": {
@@ -277,6 +295,15 @@ def test_shap_config():
             "text_config": {
                 "granularity": granularity,
                 "language": language,
+            },
+            "image_config": {
+                "model_type": model_type,
+                "num_segments": num_segments,
+                "feature_extraction_method": feature_extraction_method,
+                "segment_compactness": segment_compactness,
+                "max_objects": max_objects,
+                "iou_threshold": iou_threshold,
+                "context": context,
             },
         }
     }
@@ -357,6 +384,50 @@ def test_invalid_text_config():
             language="invalid",
         )
     assert "Invalid language invalid. Please choose among ['chinese'," in str(error.value)
+
+
+def test_image_config():
+    model_type = "IMAGE_CLASSIFICATION"
+    num_segments = 2
+    feature_extraction_method = "segmentation"
+    segment_compactness = 10
+    max_objects = 4
+    iou_threshold = 0.5
+    context = 1.0
+    image_config = ImageConfig(
+        model_type=model_type,
+        num_segments=num_segments,
+        feature_extraction_method=feature_extraction_method,
+        segment_compactness=segment_compactness,
+        max_objects=max_objects,
+        iou_threshold=iou_threshold,
+        context=context,
+    )
+    expected_config = {
+        "model_type": model_type,
+        "num_segments": num_segments,
+        "feature_extraction_method": feature_extraction_method,
+        "segment_compactness": segment_compactness,
+        "max_objects": max_objects,
+        "iou_threshold": iou_threshold,
+        "context": context,
+    }
+
+    assert expected_config == image_config.get_image_config()
+
+
+def test_invalid_image_config():
+    model_type = "OBJECT_SEGMENTATION"
+    num_segments = 2
+    with pytest.raises(ValueError) as error:
+        ImageConfig(
+            model_type=model_type,
+            num_segments=num_segments,
+        )
+    assert (
+        "Clarify SHAP only supports object detection and image classification methods. "
+        "Please set model_type to OBJECT_DETECTION or IMAGE_CLASSIFICATION." in str(error.value)
+    )
 
 
 def test_invalid_shap_config():
@@ -665,6 +736,7 @@ def _run_test_explain(
     model_scores,
     expected_predictor_config,
     expected_text_config=None,
+    expected_image_config=None,
 ):
     with patch.object(SageMakerClarifyProcessor, "_run", return_value=None) as mock_method:
         explanation_configs = None
@@ -684,21 +756,6 @@ def _run_test_explain(
             job_name="test",
             experiment_config={"ExperimentName": "AnExperiment"},
         )
-        expected_shap_config = {
-            "baseline": [
-                [
-                    0.26124998927116394,
-                    0.2824999988079071,
-                    0.06875000149011612,
-                ]
-            ],
-            "num_samples": 100,
-            "agg_method": "mean_sq",
-            "use_logit": False,
-            "save_local_shap_values": True,
-        }
-        if expected_text_config:
-            expected_shap_config["text_config"] = expected_text_config
         expected_analysis_config = {
             "dataset_type": "text/csv",
             "headers": [
@@ -710,9 +767,6 @@ def _run_test_explain(
             ],
             "label": "Label",
             "joinsource_name_or_index": "F4",
-            "methods": {
-                "shap": expected_shap_config,
-            },
             "predictor": expected_predictor_config,
         }
         expected_explanation_configs = {}
@@ -732,6 +786,8 @@ def _run_test_explain(
             }
             if expected_text_config:
                 expected_explanation_configs["shap"]["text_config"] = expected_text_config
+            if expected_image_config:
+                expected_explanation_configs["shap"]["image_config"] = expected_image_config
         if pdp_config:
             expected_explanation_configs["pdp"] = {
                 "features": ["F1", "F2"],
@@ -962,4 +1018,71 @@ def test_shap_with_text_config(
         None,
         expected_predictor_config,
         expected_text_config=expected_text_config,
+    )
+
+
+@patch("sagemaker.utils.name_from_base", return_value=JOB_NAME)
+def test_shap_with_image_config(
+    name_from_base,
+    clarify_processor,
+    clarify_processor_with_job_name_prefix,
+    data_config,
+    model_config,
+):
+    model_type = "IMAGE_CLASSIFICATION"
+    num_segments = 2
+    feature_extraction_method = "segmentation"
+    segment_compactness = 10
+    max_objects = 4
+    iou_threshold = 0.5
+    context = 1.0
+    image_config = ImageConfig(
+        model_type=model_type,
+        num_segments=num_segments,
+        feature_extraction_method=feature_extraction_method,
+        segment_compactness=segment_compactness,
+        max_objects=max_objects,
+        iou_threshold=iou_threshold,
+        context=context,
+    )
+
+    shap_config = SHAPConfig(
+        baseline=[
+            [
+                0.26124998927116394,
+                0.2824999988079071,
+                0.06875000149011612,
+            ]
+        ],
+        num_samples=100,
+        agg_method="mean_sq",
+        image_config=image_config,
+    )
+
+    expected_image_config = {
+        "model_type": model_type,
+        "num_segments": num_segments,
+        "feature_extraction_method": feature_extraction_method,
+        "segment_compactness": segment_compactness,
+        "max_objects": max_objects,
+        "iou_threshold": iou_threshold,
+        "context": context,
+    }
+    expected_predictor_config = {
+        "model_name": "xgboost-model",
+        "instance_type": "ml.c5.xlarge",
+        "initial_instance_count": 1,
+    }
+
+    _run_test_explain(
+        name_from_base,
+        clarify_processor,
+        clarify_processor_with_job_name_prefix,
+        data_config,
+        model_config,
+        shap_config,
+        None,
+        None,
+        expected_predictor_config,
+        expected_image_config=expected_image_config,
     )
