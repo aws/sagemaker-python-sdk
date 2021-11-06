@@ -55,6 +55,8 @@ class StepTypeEnum(Enum, metaclass=DefaultEnumMeta):
     TUNING = "Tuning"
     COMPILATION = "Compilation"
     LAMBDA = "Lambda"
+    QUALITY_CHECK = "QualityCheck"
+    CLARIFY_CHECK = "ClarifyCheck"
 
 
 @attr.s

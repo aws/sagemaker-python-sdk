@@ -200,6 +200,7 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
         marketplace_cert=False,
         approval_status=None,
         description=None,
+        drift_check_baselines=None,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
@@ -224,6 +225,7 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
             approval_status (str): Model Approval Status, values can be "Approved", "Rejected",
                 or "PendingManualApproval" (default: "PendingManualApproval").
             description (str): Model Package description (default: None).
+            drift_check_baselines (DriftCheckBaselines): DriftCheckBaselines object (default: None).
 
         Returns:
             A `sagemaker.model.ModelPackage` instance.
@@ -251,6 +253,7 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
             marketplace_cert,
             approval_status,
             description,
+            drift_check_baselines=drift_check_baselines,
         )
 
     def deploy(

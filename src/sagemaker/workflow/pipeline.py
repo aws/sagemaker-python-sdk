@@ -419,7 +419,7 @@ class _PipelineExecution:
 sagemaker.html#SageMaker.Client.describe_pipeline_execution>`_.
         """
         return self.sagemaker_session.sagemaker_client.describe_pipeline_execution(
-            PipelineExecutionArn=self.arn
+            PipelineExecutionArn=self.arn,
         )
 
     def list_steps(self):

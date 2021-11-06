@@ -309,6 +309,7 @@ class _RegisterModelStep(ConfigurableRetryStep):
         retry_policies: List[RetryPolicy] = None,
         tags=None,
         container_def_list=None,
+        drift_check_baselines=None,
         **kwargs,
     ):
         """Constructor of a register model step.
@@ -345,6 +346,7 @@ class _RegisterModelStep(ConfigurableRetryStep):
             depends_on (List[str] or List[Step]): A list of step names or instances
                 this step depends on
             retry_policies (List[RetryPolicy]): The list of retry policies for the current step
+            drift_check_baselines (DriftCheckBaselines): DriftCheckBaselines object (default: None).
             **kwargs: additional arguments to `create_model`.
         """
         super(_RegisterModelStep, self).__init__(
@@ -359,6 +361,7 @@ class _RegisterModelStep(ConfigurableRetryStep):
         self.model_package_group_name = model_package_group_name
         self.tags = tags
         self.model_metrics = model_metrics
+        self.drift_check_baselines = drift_check_baselines
         self.metadata_properties = metadata_properties
         self.approval_status = approval_status
         self.image_uri = image_uri
@@ -426,6 +429,7 @@ class _RegisterModelStep(ConfigurableRetryStep):
             model_data=self.model_data,
             image_uri=self.image_uri,
             model_metrics=self.model_metrics,
+            drift_check_baselines=self.drift_check_baselines,
             metadata_properties=self.metadata_properties,
             approval_status=self.approval_status,
             description=self.description,

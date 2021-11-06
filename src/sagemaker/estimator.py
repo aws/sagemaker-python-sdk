@@ -977,6 +977,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         description=None,
         compile_model_family=None,
         model_name=None,
+        drift_check_baselines=None,
         **kwargs,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
@@ -1005,6 +1006,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             compile_model_family (str): Instance family for compiled model, if specified, a compiled
                 model will be used (default: None).
             model_name (str): User defined model name (default: None).
+            drift_check_baselines (DriftCheckBaselines): DriftCheckBaselines object (default: None).
             **kwargs: Passed to invocation of ``create_model()``. Implementations may customize
                 ``create_model()`` to accept ``**kwargs`` to customize model creation during
                 deploy. For more, see the implementation docs.
@@ -1034,6 +1036,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             marketplace_cert,
             approval_status,
             description,
+            drift_check_baselines=drift_check_baselines,
         )
 
     @property
@@ -1920,7 +1923,13 @@ class Estimator(EstimatorBase):
         return self.image_uri
 
     def set_hyperparameters(self, **kwargs):
-        """Placeholder docstring"""
+        """Sets the hyperparameter dictionary to use for training.
+
+        The hyperparameters are made accessible as a dict[str, str] to the
+        training code on SageMaker. For convenience, this accepts other types
+        for keys and values, but ``str()`` will be called to convert them before
+        training.
+        """
         for k, v in kwargs.items():
             self.hyperparam_dict[k] = v
 

@@ -32,6 +32,11 @@ Conditions
 
 .. autoclass:: sagemaker.workflow.conditions.ConditionOr
 
+CheckJobConfig
+--------------
+
+.. autoclass:: sagemaker.workflow.check_job_config.CheckJobConfig
+
 Entities
 --------
 
@@ -128,3 +133,13 @@ Steps
 .. autoclass:: sagemaker.workflow.steps.CacheConfig
 
 .. autoclass:: sagemaker.workflow.lambda_step.LambdaStep
+
+.. autoclass:: sagemaker.workflow.steps.CompilationStep
+
+.. autoclass:: sagemaker.workflow.quality_check_step.QualityCheckConfig
+
+.. autoclass:: sagemaker.workflow.quality_check_step.QualityCheckStep
+
+.. autoclass:: sagemaker.workflow.clarify_check_step.ClarifyCheckConfig
+
+.. autoclass:: sagemaker.workflow.clarify_check_step.ClarifyCheckStep
