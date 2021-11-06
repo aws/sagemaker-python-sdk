@@ -25,6 +25,9 @@ import pytest
 
 from botocore.exceptions import WaiterError
 import pandas as pd
+
+import tests
+from sagemaker.drift_check_baselines import DriftCheckBaselines
 from tests.integ.timeout import timeout
 
 from sagemaker.debugger import (
@@ -34,7 +37,7 @@ from sagemaker.debugger import (
 )
 from datetime import datetime
 from sagemaker.session import Session
-from sagemaker import image_uris
+from sagemaker import image_uris, ModelMetrics, MetricsSource, FileSource, utils
 from sagemaker.inputs import CreateModelInput, TrainingInput
 from sagemaker.model import Model
 from sagemaker import PipelineModel
@@ -1690,6 +1693,198 @@ def test_sklearn_xgboost_sip_model_registration(
             fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}/execution/",
             execution.arn,
         )
+    finally:
+        try:
+            pipeline.delete()
+        except Exception:
+            pass
+
+
+@pytest.mark.skipif(
+    tests.integ.test_region() not in tests.integ.DRIFT_CHECK_BASELINES_SUPPORTED_REGIONS,
+    reason=f"DriftCheckBaselines changes are not fully deployed in {tests.integ.test_region()}.",
+)
+def test_model_registration_with_drift_check_baselines(
+    sagemaker_session,
+    role,
+    pipeline_name,
+):
+    instance_count = ParameterInteger(name="InstanceCount", default_value=1)
+    instance_type = ParameterString(name="InstanceType", default_value="ml.m5.xlarge")
+
+    # upload model data to s3
+    model_local_path = os.path.join(DATA_DIR, "mxnet_mnist/model.tar.gz")
+    model_base_uri = "s3://{}/{}/input/model/{}".format(
+        sagemaker_session.default_bucket(),
+        "register_model_test_with_drift_baseline",
+        utils.unique_name_from_base("model"),
+    )
+    model_uri = S3Uploader.upload(
+        model_local_path, model_base_uri, sagemaker_session=sagemaker_session
+    )
+    model_uri_param = ParameterString(name="model_uri", default_value=model_uri)
+
+    # upload metrics to s3
+    metrics_data = (
+        '{"regression_metrics": {"mse": {"value": 4.925353410353891, '
+        '"standard_deviation": 2.219186917819692}}}'
+    )
+    metrics_base_uri = "s3://{}/{}/input/metrics/{}".format(
+        sagemaker_session.default_bucket(),
+        "register_model_test_with_drift_baseline",
+        utils.unique_name_from_base("metrics"),
+    )
+    metrics_uri = S3Uploader.upload_string_as_file_body(
+        body=metrics_data, desired_s3_uri=metrics_base_uri, sagemaker_session=sagemaker_session
+    )
+    metrics_uri_param = ParameterString(name="metrics_uri", default_value=metrics_uri)
+
+    model_metrics = ModelMetrics(
+        bias=MetricsSource(
+            s3_uri=metrics_uri_param,
+            content_type="application/json",
+        ),
+        explainability=MetricsSource(
+            s3_uri=metrics_uri_param,
+            content_type="application/json",
+        ),
+        bias_pre_training=MetricsSource(
+            s3_uri=metrics_uri_param,
+            content_type="application/json",
+        ),
+        bias_post_training=MetricsSource(
+            s3_uri=metrics_uri_param,
+            content_type="application/json",
+        ),
+    )
+    drift_check_baselines = DriftCheckBaselines(
+        model_statistics=MetricsSource(
+            s3_uri=metrics_uri_param,
+            content_type="application/json",
+        ),
+        model_constraints=MetricsSource(
+            s3_uri=metrics_uri_param,
+            content_type="application/json",
+        ),
+        model_data_statistics=MetricsSource(
+            s3_uri=metrics_uri_param,
+            content_type="application/json",
+        ),
+        model_data_constraints=MetricsSource(
+            s3_uri=metrics_uri_param,
+            content_type="application/json",
+        ),
+        bias_config_file=FileSource(
+            s3_uri=metrics_uri_param,
+            content_type="application/json",
+        ),
+        bias_pre_training_constraints=MetricsSource(
+            s3_uri=metrics_uri_param,
+            content_type="application/json",
+        ),
+        bias_post_training_constraints=MetricsSource(
+            s3_uri=metrics_uri_param,
+            content_type="application/json",
+        ),
+        explainability_constraints=MetricsSource(
+            s3_uri=metrics_uri_param,
+            content_type="application/json",
+        ),
+        explainability_config_file=FileSource(
+            s3_uri=metrics_uri_param,
+            content_type="application/json",
+        ),
+    )
+    estimator = XGBoost(
+        entry_point="training.py",
+        source_dir=os.path.join(DATA_DIR, "sip"),
+        instance_type=instance_type,
+        instance_count=instance_count,
+        framework_version="0.90-2",
+        sagemaker_session=sagemaker_session,
+        py_version="py3",
+        role=role,
+    )
+    step_register = RegisterModel(
+        name="MyRegisterModelStep",
+        estimator=estimator,
+        model_data=model_uri_param,
+        content_types=["application/json"],
+        response_types=["application/json"],
+        inference_instances=["ml.t2.medium", "ml.m5.xlarge"],
+        transform_instances=["ml.m5.xlarge"],
+        model_package_group_name="testModelPackageGroup",
+        model_metrics=model_metrics,
+        drift_check_baselines=drift_check_baselines,
+    )
+
+    pipeline = Pipeline(
+        name=pipeline_name,
+        parameters=[
+            model_uri_param,
+            metrics_uri_param,
+            instance_type,
+            instance_count,
+        ],
+        steps=[step_register],
+        sagemaker_session=sagemaker_session,
+    )
+
+    try:
+        response = pipeline.create(role)
+        create_arn = response["PipelineArn"]
+
+        for _ in retries(
+            max_retry_count=5,
+            exception_message_prefix="Waiting for a successful execution of pipeline",
+            seconds_to_sleep=10,
+        ):
+            execution = pipeline.start(
+                parameters={"model_uri": model_uri, "metrics_uri": metrics_uri}
+            )
+            response = execution.describe()
+
+            assert response["PipelineArn"] == create_arn
+
+            try:
+                execution.wait(delay=30, max_attempts=60)
+            except WaiterError:
+                pass
+            execution_steps = execution.list_steps()
+
+            assert len(execution_steps) == 1
+            failure_reason = execution_steps[0].get("FailureReason", "")
+            if failure_reason != "":
+                logging.error(f"Pipeline execution failed with error: {failure_reason}. Retrying..")
+                continue
+            assert execution_steps[0]["StepStatus"] == "Succeeded"
+            assert execution_steps[0]["StepName"] == "MyRegisterModelStep"
+
+            response = sagemaker_session.sagemaker_client.describe_model_package(
+                ModelPackageName=execution_steps[0]["Metadata"]["RegisterModel"]["Arn"]
+            )
+
+            assert (
+                response["ModelMetrics"]["Explainability"]["Report"]["ContentType"]
+                == "application/json"
+            )
+            assert (
+                response["DriftCheckBaselines"]["Bias"]["PreTrainingConstraints"]["ContentType"]
+                == "application/json"
+            )
+            assert (
+                response["DriftCheckBaselines"]["Explainability"]["Constraints"]["ContentType"]
+                == "application/json"
+            )
+            assert (
+                response["DriftCheckBaselines"]["ModelQuality"]["Statistics"]["ContentType"]
+                == "application/json"
+            )
+            assert (
+                response["DriftCheckBaselines"]["ModelDataQuality"]["Statistics"]["ContentType"]
+                == "application/json"
+            )
+            break
     finally:
         try:
             pipeline.delete()

@@ -118,6 +118,23 @@ NO_AUTO_ML_REGIONS = [
     "eu-south-1",
 ]
 NO_MODEL_MONITORING_REGIONS = ["me-south-1", "af-south-1", "eu-south-1"]
+DRIFT_CHECK_BASELINES_SUPPORTED_REGIONS = [
+    "us-east-2",
+    "ca-central-1",
+    "me-south-1",
+    "us-west-2",
+    "ap-east-1",
+    "ap-northeast-2",
+    "ap-southeast-2",
+    "eu-west-2",
+    "us-east-1",
+]
+NO_SM_PIPELINE_MM_CLARIFY_CHECK_STEP_REGIONS = [
+    "ap-northeast-3",
+    "ap-south-1",
+    "eu-north-1",
+    "sa-east-1",
+]
 EDGE_PACKAGING_SUPPORTED_REGIONS = [
     "us-east-2",
     "us-west-2",
