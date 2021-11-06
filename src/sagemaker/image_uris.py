@@ -118,7 +118,16 @@ def retrieve(
         pt_or_tf_version = (
             re.compile("^(pytorch|tensorflow)(.*)$").match(base_framework_version).group(2)
         )
-        tag_prefix = f"{pt_or_tf_version}-transformers{original_version}"
+
+        _version = original_version
+        if repo in [
+            "huggingface-pytorch-trcomp-training",
+            "huggingface-tensorflow-trcomp-training",
+        ]:
+            _version = version
+
+        tag_prefix = f"{pt_or_tf_version}-transformers{_version}"
+
     else:
         tag_prefix = version_config.get("tag_prefix", version)
 
