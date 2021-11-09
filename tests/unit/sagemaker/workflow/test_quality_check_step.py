@@ -88,8 +88,7 @@ _expected_data_quality_dsl = {
             }
         },
         "AppSpecification": {
-            "ContainerEntrypoint": "user_specified_entrypoint",
-            "ImageUri": "user_specified_image_url",
+            "ImageUri": "159807026194.dkr.ecr.us-west-2.amazonaws.com/sagemaker-model-monitor-analyzer",
         },
         "RoleArn": "DummyRole",
         "ProcessingInputs": [
@@ -264,20 +263,11 @@ def check_job_config(sagemaker_session):
 
 def test_data_quality_check_step(
     sagemaker_session,
+    check_job_config,
     model_package_group_name,
     supplied_baseline_statistics_uri,
     supplied_baseline_constraints_uri,
 ):
-    data_quality_check_job_cfg = CheckJobConfig(
-        role=_ROLE,
-        instance_count=1,
-        instance_type="ml.m5.xlarge",
-        volume_size_in_gb=60,
-        max_runtime_in_seconds=1800,
-        sagemaker_session=sagemaker_session,
-        image_uri="user_specified_image_url",
-        entrypoint="user_specified_entrypoint",
-    )
     data_quality_check_config = DataQualityCheckConfig(
         baseline_dataset=ParameterString(name="BaselineDataset"),
         dataset_format=DatasetFormat.csv(header=True),
@@ -290,7 +280,7 @@ def test_data_quality_check_step(
         skip_check=False,
         register_new_baseline=False,
         quality_check_config=data_quality_check_config,
-        check_job_config=data_quality_check_job_cfg,
+        check_job_config=check_job_config,
         model_package_group_name=model_package_group_name,
         supplied_baseline_statistics=supplied_baseline_statistics_uri,
         supplied_baseline_constraints=supplied_baseline_constraints_uri,

@@ -4186,7 +4186,8 @@ def get_model_package_args(
         approval_status (str): Model Approval Status, values can be "Approved", "Rejected",
             or "PendingManualApproval" (default: "PendingManualApproval").
         description (str): Model Package description (default: None).
-        tags (List[dict[str, str]]): A list of dictionaries containing key-value pairs.
+        tags (List[dict[str, str]]): A list of dictionaries containing key-value pairs
+            (default: None).
         container_def_list (list): A list of container defintiions (default: None).
         drift_check_baselines (DriftCheckBaselines): DriftCheckBaselines object (default: None).
     Returns:
@@ -4267,7 +4268,8 @@ def get_create_model_package_request(
         approval_status (str): Model Approval Status, values can be "Approved", "Rejected",
             or "PendingManualApproval" (default: "PendingManualApproval").
         description (str): Model Package description (default: None).
-        tags (List[dict[str, str]]): A list of dictionaries containing key-value pairs.
+        tags (List[dict[str, str]]): A list of dictionaries containing key-value pairs
+            (default: None).
         drift_check_baselines (DriftCheckBaselines): DriftCheckBaselines object (default: None).
     """
 

@@ -22,6 +22,7 @@ from typing import List, Union
 
 import attr
 
+from sagemaker import s3
 from sagemaker.clarify import (
     DataConfig,
     BiasConfig,
@@ -33,6 +34,7 @@ from sagemaker.clarify import (
     _set,
 )
 from sagemaker.model_monitor import BiasAnalysisConfig, ExplainabilityAnalysisConfig
+from sagemaker.model_monitor.model_monitoring import _MODEL_MONITOR_S3_PATH
 from sagemaker.processing import ProcessingInput, ProcessingOutput, ProcessingJob
 from sagemaker.utils import name_from_base
 from sagemaker.workflow import PipelineNonPrimitiveInputTypes, ExecutionVariable, Parameter
@@ -44,8 +46,8 @@ from sagemaker.workflow.check_job_config import CheckJobConfig
 _DATA_BIAS_TYPE = "DATA_BIAS"
 _MODEL_BIAS_TYPE = "MODEL_BIAS"
 _MODEL_EXPLAINABILITY_TYPE = "MODEL_EXPLAINABILITY"
-_BIAS_JOB_DEFINITION_BASE_NAME = "model-bias-job-definition"
-_EXPLAINABILITY_JOB_DEFINITION_BASE_NAME = "model-explainability-job-definition"
+_BIAS_MONITORING_CFG_BASE_NAME = "bias-monitoring"
+_EXPLAINABILITY_MONITORING_CFG_BASE_NAME = "model-explainability-monitoring"
 
 
 @attr.s
@@ -248,10 +250,14 @@ class ClarifyCheckStep(Step):
     @property
     def arguments(self) -> RequestType:
         """The arguments dict that is used to define the ClarifyCheck step."""
+        normalized_inputs, normalized_outputs = self._baselining_processor._normalize_args(
+            inputs=[self._processing_params["config_input"], self._processing_params["data_input"]],
+            outputs=[self._processing_params["result_output"]],
+        )
         process_args = ProcessingJob._get_process_args(
             self._baselining_processor,
-            [self._processing_params["config_input"], self._processing_params["data_input"]],
-            [self._processing_params["result_output"]],
+            normalized_inputs,
+            normalized_outputs,
             experiment_config=dict(),
         )
         request_dict = self._baselining_processor.sagemaker_session._get_process_request(
@@ -392,10 +398,8 @@ class ClarifyCheckStep(Step):
         Returns:
             str: The S3 uri of the uploaded monitoring schedule analysis config
         """
-        monitor_schedule_name = self._model_monitor._generate_monitoring_schedule_name()
-        output_s3_uri = self._model_monitor._normalize_monitoring_output(
-            monitor_schedule_name
-        ).destination
+
+        output_s3_uri = self._get_s3_base_uri_for_monitoring_analysis_config()
 
         if isinstance(self.clarify_check_config, ModelExplainabilityCheckConfig):
             # Explainability analysis doesn't need label
@@ -410,7 +414,9 @@ class ClarifyCheckStep(Step):
             analysis_config = explainability_analysis_config._to_dict()
             if "predictor" in analysis_config and "model_name" in analysis_config["predictor"]:
                 analysis_config["predictor"].pop("model_name")
-            job_definition_name = name_from_base(_EXPLAINABILITY_JOB_DEFINITION_BASE_NAME)
+            job_definition_name = name_from_base(
+                f"{_EXPLAINABILITY_MONITORING_CFG_BASE_NAME}-config"
+            )
 
         else:
             bias_analysis_config = BiasAnalysisConfig(
@@ -419,8 +425,33 @@ class ClarifyCheckStep(Step):
                 label=self.clarify_check_config.data_config.label,
             )
             analysis_config = bias_analysis_config._to_dict()
-            job_definition_name = name_from_base(_BIAS_JOB_DEFINITION_BASE_NAME)
+            job_definition_name = name_from_base(f"{_BIAS_MONITORING_CFG_BASE_NAME}-config")
 
         return self._model_monitor._upload_analysis_config(
             analysis_config, output_s3_uri, job_definition_name
+        )
+
+    def _get_s3_base_uri_for_monitoring_analysis_config(self) -> str:
+        """Generate s3 base uri for monitoring schedule analysis config
+
+        Returns:
+            str: The S3 base uri of the monitoring schedule analysis config
+        """
+        s3_analysis_config_output_path = (
+            self.clarify_check_config.data_config.s3_analysis_config_output_path
+        )
+        monitoring_cfg_base_name = f"{_BIAS_MONITORING_CFG_BASE_NAME}-configuration"
+        if isinstance(self.clarify_check_config, ModelExplainabilityCheckConfig):
+            monitoring_cfg_base_name = f"{_EXPLAINABILITY_MONITORING_CFG_BASE_NAME}-configuration"
+
+        if s3_analysis_config_output_path:
+            return s3.s3_path_join(
+                s3_analysis_config_output_path,
+                monitoring_cfg_base_name,
+            )
+        return s3.s3_path_join(
+            "s3://",
+            self._model_monitor.sagemaker_session.default_bucket(),
+            _MODEL_MONITOR_S3_PATH,
+            monitoring_cfg_base_name,
         )

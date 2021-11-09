@@ -222,16 +222,21 @@ class QualityCheckStep(Step):
     @property
     def arguments(self) -> RequestType:
         """The arguments dict that is used to define the QualityCheck step."""
+        normalized_inputs, normalized_outputs = self._baselining_processor._normalize_args(
+            inputs=self._baseline_job_inputs,
+            outputs=[self._baseline_output],
+        )
         process_args = ProcessingJob._get_process_args(
             self._baselining_processor,
-            self._baseline_job_inputs,
-            [self._baseline_output],
+            normalized_inputs,
+            normalized_outputs,
             experiment_config=dict(),
         )
         request_dict = self._baselining_processor.sagemaker_session._get_process_request(
             **process_args
         )
-        request_dict.pop("ProcessingJobName")
+        if "ProcessingJobName" in request_dict:
+            request_dict.pop("ProcessingJobName")
 
         return request_dict
 

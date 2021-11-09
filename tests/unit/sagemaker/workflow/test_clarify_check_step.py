@@ -33,7 +33,10 @@ from sagemaker.workflow.clarify_check_step import (
     ModelBiasCheckConfig,
     ModelExplainabilityCheckConfig,
     ClarifyCheckConfig,
+    _EXPLAINABILITY_MONITORING_CFG_BASE_NAME,
+    _BIAS_MONITORING_CFG_BASE_NAME,
 )
+from sagemaker.model_monitor.model_monitoring import _MODEL_MONITOR_S3_PATH
 from sagemaker.workflow.parameters import ParameterString
 from sagemaker.workflow.pipeline import Pipeline
 from sagemaker.workflow.steps import CacheConfig
@@ -41,7 +44,10 @@ from sagemaker.workflow.check_job_config import CheckJobConfig
 
 _REGION = "us-west-2"
 _ROLE = "DummyRole"
-_BUCKET = "my-bucket"
+_DEFAULT_BUCKET = "my-bucket"
+_S3_INPUT_PATH = "s3://my_bucket/input"
+_S3_OUTPUT_PATH = "s3://my_bucket/output"
+_S3_ANALYSIS_CONFIG_OUTPUT_PATH = "s3://my_bucket/analysis_cfg_output"
 
 
 @pytest.fixture
@@ -80,7 +86,7 @@ def sagemaker_session(boto_session, client):
         boto_session=boto_session,
         sagemaker_client=client,
         sagemaker_runtime_client=client,
-        default_bucket=_BUCKET,
+        default_bucket=_DEFAULT_BUCKET,
     )
 
 
@@ -95,14 +101,16 @@ _expected_data_bias_dsl = {
                 "VolumeSizeInGB": 30,
             }
         },
-        "AppSpecification": {"ImageUri": "user_specified_image_url"},
+        "AppSpecification": {
+            "ImageUri": "306415355426.dkr.ecr.us-west-2.amazonaws.com/sagemaker-clarify-processing:1.0"
+        },
         "RoleArn": "DummyRole",
         "ProcessingInputs": [
             {
                 "InputName": "analysis_config",
                 "AppManaged": False,
                 "S3Input": {
-                    "S3Uri": "s3://my_bucket/input/analysis_config.json",
+                    "S3Uri": f"{_S3_ANALYSIS_CONFIG_OUTPUT_PATH}/analysis_config.json",
                     "LocalPath": "/opt/ml/processing/input/config",
                     "S3DataType": "S3Prefix",
                     "S3InputMode": "File",
@@ -114,7 +122,7 @@ _expected_data_bias_dsl = {
                 "InputName": "dataset",
                 "AppManaged": False,
                 "S3Input": {
-                    "S3Uri": "s3://...",
+                    "S3Uri": f"{_S3_INPUT_PATH}",
                     "LocalPath": "/opt/ml/processing/input/data",
                     "S3DataType": "S3Prefix",
                     "S3InputMode": "File",
@@ -129,7 +137,7 @@ _expected_data_bias_dsl = {
                     "OutputName": "analysis_result",
                     "AppManaged": False,
                     "S3Output": {
-                        "S3Uri": "s3://my_bucket/output",
+                        "S3Uri": f"{_S3_OUTPUT_PATH}",
                         "LocalPath": "/opt/ml/processing/output",
                         "S3UploadMode": "EndOfJob",
                     },
@@ -166,7 +174,7 @@ _expected_model_bias_dsl = {
                 "InputName": "analysis_config",
                 "AppManaged": False,
                 "S3Input": {
-                    "S3Uri": "s3://my_bucket/input/analysis_config.json",
+                    "S3Uri": f"{_S3_OUTPUT_PATH}/analysis_config.json",
                     "LocalPath": "/opt/ml/processing/input/config",
                     "S3DataType": "S3Prefix",
                     "S3InputMode": "File",
@@ -178,7 +186,7 @@ _expected_model_bias_dsl = {
                 "InputName": "dataset",
                 "AppManaged": False,
                 "S3Input": {
-                    "S3Uri": "s3://...",
+                    "S3Uri": f"{_S3_INPUT_PATH}",
                     "LocalPath": "/opt/ml/processing/input/data",
                     "S3DataType": "S3Prefix",
                     "S3InputMode": "File",
@@ -193,7 +201,7 @@ _expected_model_bias_dsl = {
                     "OutputName": "analysis_result",
                     "AppManaged": False,
                     "S3Output": {
-                        "S3Uri": "s3://my_bucket/output",
+                        "S3Uri": f"{_S3_OUTPUT_PATH}",
                         "LocalPath": "/opt/ml/processing/output",
                         "S3UploadMode": "EndOfJob",
                     },
@@ -230,7 +238,7 @@ _expected_model_explainability_dsl = {
                 "InputName": "analysis_config",
                 "AppManaged": False,
                 "S3Input": {
-                    "S3Uri": "s3://my_bucket/input/analysis_config.json",
+                    "S3Uri": f"{_S3_OUTPUT_PATH}/analysis_config.json",
                     "LocalPath": "/opt/ml/processing/input/config",
                     "S3DataType": "S3Prefix",
                     "S3InputMode": "File",
@@ -242,7 +250,7 @@ _expected_model_explainability_dsl = {
                 "InputName": "dataset",
                 "AppManaged": False,
                 "S3Input": {
-                    "S3Uri": "s3://...",
+                    "S3Uri": f"{_S3_INPUT_PATH}",
                     "LocalPath": "/opt/ml/processing/input/data",
                     "S3DataType": "S3Prefix",
                     "S3InputMode": "File",
@@ -257,7 +265,7 @@ _expected_model_explainability_dsl = {
                     "OutputName": "analysis_result",
                     "AppManaged": False,
                     "S3Output": {
-                        "S3Uri": "s3://my_bucket/output",
+                        "S3Uri": f"{_S3_OUTPUT_PATH}",
                         "LocalPath": "/opt/ml/processing/output",
                         "S3UploadMode": "EndOfJob",
                     },
@@ -294,9 +302,8 @@ def check_job_config(sagemaker_session):
 @pytest.fixture
 def data_config():
     return DataConfig(
-        s3_data_input_path="s3://...",
-        s3_output_path="s3://my_bucket/output",
-        s3_analysis_config_output_path="s3://my_bucket/input",  # This field is required
+        s3_data_input_path=_S3_INPUT_PATH,
+        s3_output_path=_S3_OUTPUT_PATH,
         label="fraud",
         dataset_type="text/csv",
     )
@@ -338,18 +345,17 @@ def shap_config():
 
 
 def test_data_bias_check_step(
-    sagemaker_session, model_package_group_name, data_config, bias_config
+    sagemaker_session, check_job_config, model_package_group_name, bias_config
 ):
-    data_bias_check_job_cfg = CheckJobConfig(
-        role=_ROLE,
-        instance_type="ml.m5.xlarge",
-        instance_count=1,
-        sagemaker_session=sagemaker_session,
-        output_kms_key="output_kms_key",
-        image_uri="user_specified_image_url",
+    data_bias_data_config = DataConfig(
+        s3_data_input_path=_S3_INPUT_PATH,
+        s3_output_path=_S3_OUTPUT_PATH,
+        s3_analysis_config_output_path=_S3_ANALYSIS_CONFIG_OUTPUT_PATH,
+        label="fraud",
+        dataset_type="text/csv",
     )
     data_bias_check_config = DataBiasCheckConfig(
-        data_config=data_config,
+        data_config=data_bias_data_config,
         data_bias_config=bias_config,
         methods="all",
         kms_key="kms_key",
@@ -357,7 +363,7 @@ def test_data_bias_check_step(
     data_bias_check_step = ClarifyCheckStep(
         name="DataBiasCheckStep",
         clarify_check_config=data_bias_check_config,
-        check_job_config=data_bias_check_job_cfg,
+        check_job_config=check_job_config,
         skip_check=False,
         register_new_baseline=False,
         model_package_group_name=model_package_group_name,
@@ -373,8 +379,8 @@ def test_data_bias_check_step(
 
     assert json.loads(pipeline.definition())["Steps"][0] == _expected_data_bias_dsl
     assert re.match(
-        "s3://my-bucket/model-monitor/monitoring/monitoring-schedule-.*/results"
-        + "/model-bias-job-definition-.*/analysis_config.json",
+        f"{_S3_ANALYSIS_CONFIG_OUTPUT_PATH}/{_BIAS_MONITORING_CFG_BASE_NAME}-configuration"
+        + f"/{_BIAS_MONITORING_CFG_BASE_NAME}-config.*/.*/analysis_config.json",
         data_bias_check_config.monitoring_analysis_config_uri,
     )
 
@@ -413,8 +419,9 @@ def test_model_bias_check_step(
 
     assert json.loads(pipeline.definition())["Steps"][0] == _expected_model_bias_dsl
     assert re.match(
-        "s3://my-bucket/model-monitor/monitoring/monitoring-schedule-.*/results"
-        + "/model-bias-job-definition-.*/analysis_config.json",
+        f"s3://{_DEFAULT_BUCKET}/{_MODEL_MONITOR_S3_PATH}"
+        + f"/{_BIAS_MONITORING_CFG_BASE_NAME}-configuration"
+        + f"/{_BIAS_MONITORING_CFG_BASE_NAME}-config.*/.*/analysis_config.json",
         model_bias_check_config.monitoring_analysis_config_uri,
     )
 
@@ -450,8 +457,9 @@ def test_model_explainability_check_step(
 
     assert json.loads(pipeline.definition())["Steps"][0] == _expected_model_explainability_dsl
     assert re.match(
-        "s3://my-bucket/model-monitor/monitoring/monitoring-schedule-.*/results"
-        + "/model-explainability-job-definition-.*/analysis_config.json",
+        f"s3://{_DEFAULT_BUCKET}/{_MODEL_MONITOR_S3_PATH}"
+        + f"/{_EXPLAINABILITY_MONITORING_CFG_BASE_NAME}-configuration"
+        + f"/{_EXPLAINABILITY_MONITORING_CFG_BASE_NAME}-config-.*/.*/analysis_config.json",
         model_explainability_check_config.monitoring_analysis_config_uri,
     )
 
@@ -517,8 +525,8 @@ def test_clarify_check_step_with_none_or_invalid_s3_analysis_config_output_uri(
 ):
     # s3_analysis_config_output is None and s3_output_path is valid s3 path str
     data_config = DataConfig(
-        s3_data_input_path="s3://...",
-        s3_output_path="s3://my_bucket/output",
+        s3_data_input_path=_S3_INPUT_PATH,
+        s3_output_path=_S3_OUTPUT_PATH,
         label="fraud",
         dataset_type="text/csv",
     )
@@ -539,8 +547,8 @@ def test_clarify_check_step_with_none_or_invalid_s3_analysis_config_output_uri(
 
     # s3_analysis_config_output is empty but s3_output_path is Parameter
     data_config = DataConfig(
-        s3_data_input_path="s3://...",
-        s3_output_path=ParameterString(name="S3OutputPath", default_value="s3://..."),
+        s3_data_input_path=_S3_INPUT_PATH,
+        s3_output_path=ParameterString(name="S3OutputPath", default_value=_S3_OUTPUT_PATH),
         s3_analysis_config_output_path="",
         label="fraud",
         dataset_type="text/csv",
@@ -569,8 +577,8 @@ def test_clarify_check_step_with_none_or_invalid_s3_analysis_config_output_uri(
 
     # s3_analysis_config_output is invalid
     data_config = DataConfig(
-        s3_data_input_path="s3://...",
-        s3_output_path=ParameterString(name="S3OutputPath", default_value="s3://..."),
+        s3_data_input_path=_S3_INPUT_PATH,
+        s3_output_path=ParameterString(name="S3OutputPath", default_value=_S3_OUTPUT_PATH),
         s3_analysis_config_output_path=ParameterString(name="S3OAnalysisCfgOutput"),
         label="fraud",
         dataset_type="text/csv",
@@ -594,4 +602,92 @@ def test_clarify_check_step_with_none_or_invalid_s3_analysis_config_output_uri(
     assert (
         str(error.value) == "s3_analysis_config_output_path cannot be of type "
         "ExecutionVariable/Expression/Parameter/Properties"
+    )
+
+
+def test_get_s3_base_uri_for_monitoring_analysis_config(
+    check_job_config,
+    data_config,
+    bias_config,
+    model_config,
+    shap_config,
+    predictions_config,
+):
+    # ModelExplainabilityCheckStep without specifying s3_analysis_config_output_path
+    model_explainability_check_config_1 = ModelExplainabilityCheckConfig(
+        data_config=data_config,
+        model_config=model_config,
+        explainability_config=shap_config,
+    )
+    model_explainability_check_step_1 = ClarifyCheckStep(
+        name="ModelExplainabilityCheckStep",
+        clarify_check_config=model_explainability_check_config_1,
+        check_job_config=check_job_config,
+    )
+
+    assert (
+        f"s3://{_DEFAULT_BUCKET}/{_MODEL_MONITOR_S3_PATH}"
+        + f"/{_EXPLAINABILITY_MONITORING_CFG_BASE_NAME}-configuration"
+        == model_explainability_check_step_1._get_s3_base_uri_for_monitoring_analysis_config()
+    )
+
+    # ModelExplainabilityCheckStep with specifying s3_analysis_config_output_path
+    model_explainability_data_config = DataConfig(
+        s3_data_input_path=_S3_INPUT_PATH,
+        s3_output_path=ParameterString(name="S3OutputPath", default_value=_S3_OUTPUT_PATH),
+        s3_analysis_config_output_path=_S3_ANALYSIS_CONFIG_OUTPUT_PATH,
+    )
+    model_explainability_check_config_2 = ModelExplainabilityCheckConfig(
+        data_config=model_explainability_data_config,
+        model_config=model_config,
+        explainability_config=shap_config,
+    )
+    model_explainability_check_step_2 = ClarifyCheckStep(
+        name="ModelExplainabilityCheckStep",
+        clarify_check_config=model_explainability_check_config_2,
+        check_job_config=check_job_config,
+    )
+
+    assert (
+        f"{_S3_ANALYSIS_CONFIG_OUTPUT_PATH}/{_EXPLAINABILITY_MONITORING_CFG_BASE_NAME}-configuration"
+        == model_explainability_check_step_2._get_s3_base_uri_for_monitoring_analysis_config()
+    )
+
+    # ModelBiasCheckStep with specifying s3_analysis_config_output_path
+    model_bias_data_config = DataConfig(
+        s3_data_input_path=_S3_INPUT_PATH,
+        s3_output_path=_S3_OUTPUT_PATH,
+        s3_analysis_config_output_path=_S3_ANALYSIS_CONFIG_OUTPUT_PATH,
+    )
+    model_bias_check_config = ModelBiasCheckConfig(
+        data_config=model_bias_data_config,
+        data_bias_config=bias_config,
+        model_config=model_config,
+        model_predicted_label_config=predictions_config,
+    )
+    model_bias_check_step = ClarifyCheckStep(
+        name="ModelBiasCheckStep",
+        clarify_check_config=model_bias_check_config,
+        check_job_config=check_job_config,
+    )
+
+    assert (
+        f"{_S3_ANALYSIS_CONFIG_OUTPUT_PATH}/{_BIAS_MONITORING_CFG_BASE_NAME}-configuration"
+        == model_bias_check_step._get_s3_base_uri_for_monitoring_analysis_config()
+    )
+
+    # DataBiasCheckStep without specifying s3_analysis_config_output_path
+    data_bias_check_config = DataBiasCheckConfig(
+        data_config=data_config,
+        data_bias_config=bias_config,
+    )
+    data_bias_check_step = ClarifyCheckStep(
+        name="DataBiasCheckStep",
+        clarify_check_config=data_bias_check_config,
+        check_job_config=check_job_config,
+    )
+    assert (
+        f"s3://{_DEFAULT_BUCKET}/{_MODEL_MONITOR_S3_PATH}"
+        + f"/{_BIAS_MONITORING_CFG_BASE_NAME}-configuration"
+        == data_bias_check_step._get_s3_base_uri_for_monitoring_analysis_config()
     )
