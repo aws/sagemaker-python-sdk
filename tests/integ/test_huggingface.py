@@ -158,7 +158,7 @@ def test_huggingface_inference(
     huggingface_pytorch_latest_inference_py_version,
 ):
     env = {
-        "HF_MODEL_ID": "sshleifer/tiny-distilbert-base-uncased-finetuned-sst-2-english",
+        "HF_MODEL_ID": "philschmid/tiny-distilbert-classification",
         "HF_TASK": "text-classification",
     }
     endpoint_name = unique_name_from_base("test-hf-inference")
