@@ -32,10 +32,8 @@ class CheckJobConfig:
     def __init__(
         self,
         role,
-        image_uri=None,
         instance_count=1,
         instance_type="ml.m5.xlarge",
-        entrypoint=None,
         volume_size_in_gb=30,
         volume_kms_key=None,
         output_kms_key=None,
@@ -50,14 +48,9 @@ class CheckJobConfig:
 
         Args:
             role (str): An AWS IAM role. The Amazon SageMaker jobs use this role.
-            image_uri (str): The uri of the image to use for the jobs
-                started by the QualityCheckStep/ClarifyCheckStep (default: None).
-                If not specified, the default auto-generated image_uri will be used.
             instance_count (int): The number of instances to run the jobs with (default: 1).
             instance_type (str): Type of EC2 instance to use for the job
                 (default: 'ml.m5.xlarge').
-            entrypoint ([str]): The entrypoint for the job (default: None).
-                Only the QualityCheckStep will take this input.
             volume_size_in_gb (int): Size in GB of the EBS volume
                 to use for storing data during processing (default: 30).
             volume_kms_key (str): A KMS key for the processing volume (default: None).
@@ -77,12 +70,11 @@ class CheckJobConfig:
             network_config (sagemaker.network.NetworkConfig): A NetworkConfig
                 object that configures network isolation, encryption of
                 inter-container traffic, security group IDs, and subnets (default: None).
+
         """
         self.role = role
-        self.image_uri = image_uri
         self.instance_count = instance_count
         self.instance_type = instance_type
-        self.entrypoint = entrypoint
         self.volume_size_in_gb = volume_size_in_gb
         self.volume_kms_key = volume_kms_key
         self.output_kms_key = output_kms_key
@@ -174,7 +166,4 @@ class CheckJobConfig:
                 '"ModelBiasMonitor", "ModelExplainabilityMonitor"'
             )
             return None
-
-        monitor.image_uri = self.image_uri or monitor.image_uri
-        monitor.entrypoint = self.entrypoint or monitor.entrypoint
         return monitor
