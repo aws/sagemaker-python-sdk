@@ -84,15 +84,11 @@ def repack(inference_script, model_archive, dependencies=None, source_dir=None):
                 else:
                     if os.path.exists(lib_dir):
                         shutil.rmtree(lib_dir)
-                    # a directory is in the dependencies. we have no choice but to copy
+                    # a directory is in the dependencies. we have to copy
                     # all of /opt/ml/code into the lib dir because the original directory
                     # was flattened by the SDK training job upload..
                     shutil.copytree("/opt/ml/code", lib_dir)
                     break
-                    # shutil.copytree(
-                    #     actual_dependency_path,
-                    #     os.path.join(lib_dir, os.path.basename(actual_dependency_path)),
-                    # )
 
         # copy the "src" dir, which includes the previous training job's model and the
         # custom inference script, to the output of this training job
