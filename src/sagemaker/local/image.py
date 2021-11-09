@@ -32,7 +32,6 @@ import tempfile
 
 from distutils.spawn import find_executable
 from threading import Thread
-
 from six.moves.urllib.parse import urlparse
 
 import sagemaker
@@ -841,6 +840,8 @@ class _HostingContainer(Thread):
 
     def down(self):
         """Placeholder docstring"""
+        if os.name != "nt":
+            sagemaker.local.utils.kill_child_processes(self.process.pid)
         self.process.terminate()
 
 

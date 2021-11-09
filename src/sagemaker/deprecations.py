@@ -21,24 +21,27 @@ logger = logging.getLogger(__name__)
 V2_URL = "https://sagemaker.readthedocs.io/en/stable/v2.html"
 
 
-def _warn(msg):
+def _warn(msg, sdk_version=None):
     """Generic warning raiser referencing V2
 
     Args:
         phrase: The phrase to include in the warning.
+        sdk_version: the sdk version of removal of support.
     """
-    full_msg = f"{msg} in sagemaker>=2.\nSee: {V2_URL} for details."
+    _sdk_version = sdk_version if sdk_version is not None else "2"
+    full_msg = f"{msg} in sagemaker>={_sdk_version}.\nSee: {V2_URL} for details."
     warnings.warn(full_msg, DeprecationWarning, stacklevel=2)
     logger.warning(full_msg)
 
 
-def removed_warning(phrase):
+def removed_warning(phrase, sdk_version=None):
     """Raise a warning for a no-op in sagemaker>=2
 
     Args:
         phrase: the prefix phrase of the warning message.
+        sdk_version: the sdk version of removal of support.
     """
-    _warn(f"{phrase} is a no-op")
+    _warn(f"{phrase} is a no-op", sdk_version)
 
 
 def renamed_warning(phrase):
@@ -146,26 +149,32 @@ def removed_function(name):
     return func
 
 
-def deprecated(obj):
+def deprecated(sdk_version=None):
     """Decorator for raising deprecated warning for a feature in sagemaker>=2
 
+    Args:
+        sdk_version (str): the sdk version of removal of support.
+
     Usage:
-        @deprecated
+        @deprecated()
         def sample_function():
             print("xxxx....")
 
-        @deprecated
+        @deprecated(sdk_version="2.66")
         class SampleClass():
             def __init__(self):
                 print("xxxx....")
 
     """
 
-    def wrapper(*args, **kwargs):
-        removed_warning(obj.__name__)
-        return obj(*args, **kwargs)
+    def deprecate(obj):
+        def wrapper(*args, **kwargs):
+            removed_warning(obj.__name__, sdk_version)
+            return obj(*args, **kwargs)
 
-    return wrapper
+        return wrapper
+
+    return deprecate
 
 
 def deprecated_function(func, name):
