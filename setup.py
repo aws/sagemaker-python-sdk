@@ -44,6 +44,7 @@ required_packages = [
     "packaging>=20.0",
     "pandas",
     "pathos",
+    "semantic-version",
 ]
 
 # Specific use case dependencies
