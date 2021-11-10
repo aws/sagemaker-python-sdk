@@ -37,26 +37,39 @@ from sagemaker.debugger import (
 )
 from datetime import datetime
 from sagemaker.session import Session
-from sagemaker import image_uris, ModelMetrics, MetricsSource, FileSource, utils
+from sagemaker import image_uris, PipelineModel
+from sagemaker.estimator import Estimator
+from sagemaker import FileSource, utils
 from sagemaker.inputs import CreateModelInput, TrainingInput
 from sagemaker.model import Model
-from sagemaker import PipelineModel
-from sagemaker.processing import ProcessingInput, ProcessingOutput, FeatureStoreOutput
+from sagemaker.model_metrics import MetricsSource, ModelMetrics
+from sagemaker.processing import (
+    ProcessingInput,
+    ProcessingOutput,
+    FeatureStoreOutput,
+    ScriptProcessor,
+)
 from sagemaker.pytorch.estimator import PyTorch
 from sagemaker.tuner import HyperparameterTuner, IntegerParameter
 from sagemaker.s3 import S3Uploader
 from sagemaker.session import get_execution_role
 from sagemaker.sklearn.estimator import SKLearn
 from sagemaker.sklearn import SKLearnModel
+from sagemaker.transformer import Transformer
 from sagemaker.mxnet.model import MXNetModel
 from sagemaker.xgboost import XGBoostModel
 from sagemaker.xgboost import XGBoost
 from sagemaker.sklearn.processing import SKLearnProcessor
 from sagemaker.spark.processing import PySparkProcessor, SparkJarProcessor
-from sagemaker.workflow.conditions import ConditionGreaterThanOrEqualTo, ConditionIn
-from sagemaker.workflow.condition_step import ConditionStep
+from sagemaker.workflow.conditions import (
+    ConditionGreaterThanOrEqualTo,
+    ConditionIn,
+    ConditionLessThanOrEqualTo,
+)
+from sagemaker.workflow.condition_step import ConditionStep, JsonGet
 from sagemaker.workflow.callback_step import CallbackStep, CallbackOutput, CallbackOutputTypeEnum
 from sagemaker.workflow.lambda_step import LambdaStep, LambdaOutput, LambdaOutputTypeEnum
+from sagemaker.workflow.properties import PropertyFile
 from sagemaker.wrangler.processing import DataWranglerProcessor
 from sagemaker.dataset_definition.inputs import DatasetDefinition, AthenaDatasetDefinition
 from sagemaker.workflow.execution_variables import ExecutionVariables
@@ -72,6 +85,8 @@ from sagemaker.workflow.steps import (
     TrainingStep,
     CacheConfig,
     TuningStep,
+    TransformStep,
+    TransformInput,
 )
 from sagemaker.workflow.step_collections import RegisterModel
 from sagemaker.workflow.pipeline import Pipeline
@@ -1505,11 +1520,7 @@ def test_mxnet_model_registration(
 
 
 def test_sklearn_xgboost_sip_model_registration(
-    sagemaker_session,
-    role,
-    cpu_instance_type,
-    pipeline_name,
-    region_name,
+    sagemaker_session, role, pipeline_name, region_name
 ):
     prefix = "sip"
     bucket_name = sagemaker_session.default_bucket()
@@ -1676,7 +1687,7 @@ def test_sklearn_xgboost_sip_model_registration(
     )
 
     try:
-        response = pipeline.create(role)
+        response = pipeline.upsert(role_arn=role)
         create_arn = response["PipelineArn"]
         assert re.match(
             fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}", create_arn
@@ -2442,6 +2453,268 @@ def test_one_step_ingestion_pipeline(
             except Exception as e:
                 print(f"Delete pipeline failed with error: {e}")
             os.remove(temp_flow_path)
+
+
+@pytest.mark.skip(
+    reason="""This test creates a long-running pipeline that
+                            runs actual training jobs, processing jobs, etc.
+                            All of the functionality in this test is covered in
+                            shallow tests in this suite; as such, this is disabled
+                            and only run as part of the 'lineage' test suite."""
+)
+def test_end_to_end_pipeline_successful_execution(
+    sagemaker_session, region_name, role, pipeline_name, wait=False
+):
+    model_package_group_name = f"{pipeline_name}ModelPackageGroup"
+    data_path = os.path.join(DATA_DIR, "workflow")
+    default_bucket = sagemaker_session.default_bucket()
+
+    # download the input data
+    local_input_path = os.path.join(data_path, "abalone-dataset.csv")
+    s3 = sagemaker_session.boto_session.resource("s3")
+    s3.Bucket(f"sagemaker-servicecatalog-seedcode-{region_name}").download_file(
+        "dataset/abalone-dataset.csv", local_input_path
+    )
+
+    # # upload the input data to our bucket
+    base_uri = f"s3://{default_bucket}/{pipeline_name}"
+    with open(local_input_path) as data:
+        body = data.read()
+        input_data_uri = S3Uploader.upload_string_as_file_body(
+            body=body,
+            desired_s3_uri=f"{base_uri}/abalone-dataset.csv",
+            sagemaker_session=sagemaker_session,
+        )
+
+    # download batch transform data
+    local_batch_path = os.path.join(data_path, "abalone-dataset-batch")
+    s3.Bucket(f"sagemaker-servicecatalog-seedcode-{region_name}").download_file(
+        "dataset/abalone-dataset-batch", local_batch_path
+    )
+
+    # upload the batch transform data
+    with open(local_batch_path) as data:
+        body = data.read()
+        batch_data_uri = S3Uploader.upload_string_as_file_body(
+            body=body,
+            desired_s3_uri=f"{base_uri}/abalone-dataset-batch",
+            sagemaker_session=sagemaker_session,
+        )
+
+    # define parameters
+    processing_instance_count = ParameterInteger(name="ProcessingInstanceCount", default_value=1)
+    processing_instance_type = ParameterString(
+        name="ProcessingInstanceType", default_value="ml.m5.xlarge"
+    )
+    training_instance_type = ParameterString(
+        name="TrainingInstanceType", default_value="ml.m5.xlarge"
+    )
+    model_approval_status = ParameterString(name="ModelApprovalStatus", default_value="Approved")
+    input_data = ParameterString(
+        name="InputData",
+        default_value=input_data_uri,
+    )
+    batch_data = ParameterString(
+        name="BatchData",
+        default_value=batch_data_uri,
+    )
+
+    # define processing step
+    framework_version = "0.23-1"
+    sklearn_processor = SKLearnProcessor(
+        framework_version=framework_version,
+        instance_type=processing_instance_type,
+        instance_count=processing_instance_count,
+        base_job_name=f"{pipeline_name}-process",
+        role=role,
+        sagemaker_session=sagemaker_session,
+    )
+    step_process = ProcessingStep(
+        name="AbaloneProcess",
+        processor=sklearn_processor,
+        inputs=[
+            ProcessingInput(source=input_data, destination="/opt/ml/processing/input"),
+        ],
+        outputs=[
+            ProcessingOutput(output_name="train", source="/opt/ml/processing/train"),
+            ProcessingOutput(output_name="validation", source="/opt/ml/processing/validation"),
+            ProcessingOutput(output_name="test", source="/opt/ml/processing/test"),
+        ],
+        code=os.path.join(data_path, "abalone/preprocessing.py"),
+    )
+
+    # define training step
+    model_path = f"s3://{default_bucket}/{pipeline_name}Train"
+    image_uri = image_uris.retrieve(
+        framework="xgboost",
+        region=region_name,
+        version="1.0-1",
+        py_version="py3",
+        instance_type=training_instance_type,
+    )
+    xgb_train = Estimator(
+        image_uri=image_uri,
+        instance_type=training_instance_type,
+        instance_count=1,
+        output_path=model_path,
+        role=role,
+        sagemaker_session=sagemaker_session,
+    )
+    xgb_train.set_hyperparameters(
+        objective="reg:linear",
+        num_round=50,
+        max_depth=5,
+        eta=0.2,
+        gamma=4,
+        min_child_weight=6,
+        subsample=0.7,
+        silent=0,
+    )
+    step_train = TrainingStep(
+        name="AbaloneTrain",
+        estimator=xgb_train,
+        inputs={
+            "train": TrainingInput(
+                s3_data=step_process.properties.ProcessingOutputConfig.Outputs[
+                    "train"
+                ].S3Output.S3Uri,
+                content_type="text/csv",
+            ),
+            "validation": TrainingInput(
+                s3_data=step_process.properties.ProcessingOutputConfig.Outputs[
+                    "validation"
+                ].S3Output.S3Uri,
+                content_type="text/csv",
+            ),
+        },
+    )
+
+    # define evaluation step
+    script_eval = ScriptProcessor(
+        image_uri=image_uri,
+        command=["python3"],
+        instance_type=processing_instance_type,
+        instance_count=1,
+        base_job_name=f"{pipeline_name}-eval",
+        role=role,
+        sagemaker_session=sagemaker_session,
+    )
+    evaluation_report = PropertyFile(
+        name="EvaluationReport", output_name="evaluation", path="evaluation.json"
+    )
+    step_eval = ProcessingStep(
+        name="AbaloneEval",
+        processor=script_eval,
+        inputs=[
+            ProcessingInput(
+                source=step_train.properties.ModelArtifacts.S3ModelArtifacts,
+                destination="/opt/ml/processing/model",
+            ),
+            ProcessingInput(
+                source=step_process.properties.ProcessingOutputConfig.Outputs[
+                    "test"
+                ].S3Output.S3Uri,
+                destination="/opt/ml/processing/test",
+            ),
+        ],
+        outputs=[
+            ProcessingOutput(output_name="evaluation", source="/opt/ml/processing/evaluation"),
+        ],
+        code=os.path.join(data_path, "abalone/evaluation.py"),
+        property_files=[evaluation_report],
+    )
+
+    # define create model step
+    model = Model(
+        image_uri=image_uri,
+        model_data=step_train.properties.ModelArtifacts.S3ModelArtifacts,
+        sagemaker_session=sagemaker_session,
+        role=role,
+    )
+    inputs = CreateModelInput(
+        instance_type="ml.m5.large",
+        accelerator_type="ml.eia1.medium",
+    )
+    step_create_model = CreateModelStep(
+        name="AbaloneCreateModel",
+        model=model,
+        inputs=inputs,
+    )
+
+    # define transform step
+    transformer = Transformer(
+        model_name=step_create_model.properties.ModelName,
+        instance_type="ml.m5.xlarge",
+        instance_count=1,
+        output_path=f"s3://{default_bucket}/{pipeline_name}Transform",
+        sagemaker_session=sagemaker_session,
+    )
+    step_transform = TransformStep(
+        name="AbaloneTransform", transformer=transformer, inputs=TransformInput(data=batch_data)
+    )
+
+    # define register model step
+    model_metrics = ModelMetrics(
+        model_statistics=MetricsSource(
+            s3_uri="{}/evaluation.json".format(
+                step_eval.arguments["ProcessingOutputConfig"]["Outputs"][0]["S3Output"]["S3Uri"]
+            ),
+            content_type="application/json",
+        )
+    )
+    step_register = RegisterModel(
+        name="AbaloneRegisterModel",
+        estimator=xgb_train,
+        model_data=step_train.properties.ModelArtifacts.S3ModelArtifacts,
+        content_types=["text/csv"],
+        response_types=["text/csv"],
+        inference_instances=["ml.t2.medium", "ml.m5.xlarge"],
+        transform_instances=["ml.m5.xlarge"],
+        model_package_group_name=model_package_group_name,
+        approval_status=model_approval_status,
+        model_metrics=model_metrics,
+    )
+
+    # define condition step
+    cond_lte = ConditionLessThanOrEqualTo(
+        left=JsonGet(
+            step=step_eval,
+            property_file=evaluation_report,
+            json_path="regression_metrics.mse.value",
+        ),
+        right=20.0,
+    )
+
+    step_cond = ConditionStep(
+        name="AbaloneMSECond",
+        conditions=[cond_lte],
+        if_steps=[step_register, step_create_model, step_transform],
+        else_steps=[],
+    )
+
+    # define pipeline
+    pipeline = Pipeline(
+        name=pipeline_name,
+        parameters=[
+            processing_instance_type,
+            processing_instance_count,
+            training_instance_type,
+            model_approval_status,
+            input_data,
+            batch_data,
+        ],
+        steps=[step_process, step_train, step_eval, step_cond],
+        sagemaker_session=sagemaker_session,
+    )
+
+    pipeline.create(role)
+    execution = pipeline.start()
+    execution_arn = execution.arn
+
+    if wait:
+        execution.wait()
+
+    return execution_arn
 
 
 def _wait_for_feature_group_create(feature_group: FeatureGroup):
