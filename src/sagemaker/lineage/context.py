@@ -14,7 +14,7 @@
 from __future__ import absolute_import
 
 from datetime import datetime
-from typing import Iterator, Optional
+from typing import Iterator, Optional, List
 
 from sagemaker.apiutils import _base_types
 from sagemaker.lineage import (
@@ -23,6 +23,14 @@ from sagemaker.lineage import (
     association,
 )
 from sagemaker.lineage._api_types import ContextSummary
+from sagemaker.lineage.query import (
+    LineageQuery,
+    LineageFilter,
+    LineageSourceEnum,
+    LineageEntityEnum,
+    LineageQueryDirectionEnum,
+)
+from sagemaker.lineage.artifact import Artifact
 
 
 class Context(_base_types.Record):
@@ -252,7 +260,7 @@ class Context(_base_types.Record):
 class EndpointContext(Context):
     """An Amazon SageMaker endpoint context, which is part of a SageMaker lineage."""
 
-    def models(self) -> list:
+    def models(self) -> List[association.Association]:
         """Get all models deployed by all endpoint versions of the endpoint.
 
         Returns:
@@ -274,3 +282,72 @@ class EndpointContext(Context):
             )
         ]
         return model_list
+
+    def dataset_artifacts(
+        self, direction: LineageQueryDirectionEnum = LineageQueryDirectionEnum.ASCENDANTS
+    ) -> List[Artifact]:
+        """Get artifacts representing datasets from the endpoint's lineage.
+
+        Args:
+            direction (LineageQueryDirectionEnum, optional): The query direction.
+
+        Returns:
+            list of Artifacts: Artifacts representing a dataset.
+        """
+        query_filter = LineageFilter(
+            entities=[LineageEntityEnum.ARTIFACT], sources=[LineageSourceEnum.DATASET]
+        )
+        query_result = LineageQuery(self.sagemaker_session).query(
+            start_arns=[self.context_arn],
+            query_filter=query_filter,
+            direction=direction,
+            include_edges=False,
+        )
+
+        return [vertex.to_lineage_object() for vertex in query_result.vertices]
+
+    def training_job_arns(
+        self, direction: LineageQueryDirectionEnum = LineageQueryDirectionEnum.ASCENDANTS
+    ) -> List[str]:
+        """Get ARNs for all training jobs that appear in the endpoint's lineage.
+
+        Returns:
+            list of str: Training job ARNs.
+        """
+        query_filter = LineageFilter(
+            entities=[LineageEntityEnum.TRIAL_COMPONENT], sources=[LineageSourceEnum.TRAINING_JOB]
+        )
+        query_result = LineageQuery(self.sagemaker_session).query(
+            start_arns=[self.context_arn],
+            query_filter=query_filter,
+            direction=direction,
+            include_edges=False,
+        )
+
+        training_job_arns = []
+        for vertex in query_result.vertices:
+            trial_component_name = _utils.get_resource_name_from_arn(vertex.arn)
+            trial_component = self.sagemaker_session.sagemaker_client.describe_trial_component(
+                TrialComponentName=trial_component_name
+            )
+            training_job_arns.append(trial_component["Source"]["SourceArn"])
+        return training_job_arns
+
+    def pipeline_execution_arn(
+        self, direction: LineageQueryDirectionEnum = LineageQueryDirectionEnum.ASCENDANTS
+    ) -> str:
+        """Get the ARN for the pipeline execution associated with this endpoint (if any).
+
+        Returns:
+            str: A pipeline execution ARN.
+        """
+        training_job_arns = self.training_job_arns(direction=direction)
+        for training_job_arn in training_job_arns:
+            tags = self.sagemaker_session.sagemaker_client.list_tags(ResourceArn=training_job_arn)[
+                "Tags"
+            ]
+            for tag in tags:
+                if tag["Key"] == "sagemaker:pipeline-execution-arn":
+                    return tag["Value"]
+
+        return None
