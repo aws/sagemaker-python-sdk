@@ -24,7 +24,7 @@ class TrainingCompilerConfig(object):
 
     """
 
-    DEBUG_PATH = "/opt/ml/output/compiler/"
+    DEBUG_PATH = "/opt/ml/output/data/compiler/"
     SUPPORTED_INSTANCE_CLASS_PREFIXES = ["p3", "g4dn", "p4"]
 
     HP_ENABLE_COMPILER = "sagemaker_training_compiler_enabled"
