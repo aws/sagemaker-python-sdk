@@ -25,12 +25,19 @@ from sagemaker.lineage import (
     association,
     artifact,
 )
-
+from sagemaker.model import ModelPackage
+from tests.integ.test_workflow import test_end_to_end_pipeline_successful_execution
+from sagemaker.workflow.pipeline import _PipelineExecution
+from sagemaker.session import get_execution_role
 from smexperiments import trial_component, trial, experiment
+from random import randint
+from botocore.exceptions import ClientError
 
 from tests.integ.sagemaker.lineage.helpers import name, names
 
 SLEEP_TIME_SECONDS = 1
+STATIC_PIPELINE_NAME = "SdkIntegTestStaticPipeline13"
+STATIC_ENDPOINT_NAME = "SdkIntegTestStaticEndpoint13"
 
 
 @pytest.fixture
@@ -461,3 +468,196 @@ def association_objs(sagemaker_session, context_obj, artifact_obj, association_o
     )
     yield [obj, association_obj]
     obj.delete()
+
+
+@pytest.fixture(scope="module")
+def static_pipeline_execution_arn(sagemaker_session):
+    # Lineage query tests require several SageMaker resources
+    # and their auto-created lineage entities. This method
+    # looks for and returns a successful pipeline execution
+    # for a static pipeline. If one doesn't exist, it starts
+    # an execution and waits for it. This execution takes
+    # approximately 25 minutes to run.
+    try:
+        sagemaker_session.sagemaker_client.describe_pipeline(PipelineName=STATIC_PIPELINE_NAME)
+        return _get_static_pipeline_execution_arn(sagemaker_session)
+    except sagemaker_session.sagemaker_client.exceptions.ResourceNotFound:
+        print("Static pipeline execution not found. Starting one.")
+        return create_and_execute_static_pipeline(sagemaker_session)
+
+
+def _get_static_pipeline_execution_arn(sagemaker_session):
+    pipeline_execution_arn = None
+    while pipeline_execution_arn is None:
+        time.sleep(randint(2, 5))
+        pipeline_executions = sagemaker_session.sagemaker_client.list_pipeline_executions(
+            PipelineName=STATIC_PIPELINE_NAME,
+            SortBy="CreationTime",
+            SortOrder="Ascending",
+        )
+
+        for pipeline_execution in pipeline_executions["PipelineExecutionSummaries"]:
+            if pipeline_execution["PipelineExecutionStatus"] == "Succeeded":
+                pipeline_execution_arn = pipeline_execution["PipelineExecutionArn"]
+            elif pipeline_execution["PipelineExecutionStatus"] == "Executing":
+                # wait on the execution to finish
+                _PipelineExecution(
+                    arn=pipeline_execution["PipelineExecutionArn"],
+                    sagemaker_session=sagemaker_session,
+                ).wait()
+                pipeline_execution_arn = pipeline_execution["PipelineExecutionArn"]
+
+        _deploy_static_endpoint(
+            execution_arn=pipeline_execution_arn, sagemaker_session=sagemaker_session
+        )
+
+    return pipeline_execution_arn
+
+
+@pytest.fixture
+def static_endpoint_context(sagemaker_session, static_pipeline_execution_arn):
+    endpoint_arn = get_endpoint_arn_from_static_pipeline(sagemaker_session)
+
+    contexts = sagemaker_session.sagemaker_client.list_contexts(SourceUri=endpoint_arn)[
+        "ContextSummaries"
+    ]
+    if len(contexts) != 1:
+        raise (
+            Exception(
+                f"Got an unexpected number of Contexts for \
+                endpoint {STATIC_ENDPOINT_NAME} from pipeline \
+                execution {static_pipeline_execution_arn}. \
+                Expected 1 but got {len(contexts)}"
+            )
+        )
+
+    yield context.EndpointContext.load(
+        contexts[0]["ContextName"], sagemaker_session=sagemaker_session
+    )
+
+
+@pytest.fixture
+def static_model_artifact(sagemaker_session, static_pipeline_execution_arn):
+    model_package_arn = get_model_package_arn_from_static_pipeline(
+        static_pipeline_execution_arn, sagemaker_session
+    )
+
+    artifacts = sagemaker_session.sagemaker_client.list_artifacts(SourceUri=model_package_arn)[
+        "ArtifactSummaries"
+    ]
+    if len(artifacts) != 1:
+        raise (
+            Exception(
+                f"Got an unexpected number of Artifacts for \
+                    model package {model_package_arn}. Expected 1 but got {len(artifacts)}"
+            )
+        )
+
+    yield artifact.ModelArtifact.load(
+        artifacts[0]["ArtifactArn"], sagemaker_session=sagemaker_session
+    )
+
+
+@pytest.fixture
+def static_dataset_artifact(static_model_artifact, sagemaker_session):
+    dataset_associations = sagemaker_session.sagemaker_client.list_associations(
+        DestinationArn=static_model_artifact.artifact_arn, SourceType="DataSet"
+    )
+    if len(dataset_associations["AssociationSummaries"]) == 0:
+        # no directly associated dataset. work backwards from the model
+        model_associations = sagemaker_session.sagemaker_client.list_associations(
+            DestinationArn=static_model_artifact.artifact_arn, SourceType="Model"
+        )
+        training_job_associations = sagemaker_session.sagemaker_client.list_associations(
+            DestinationArn=model_associations["AssociationSummaries"][0]["SourceArn"],
+            SourceType="SageMakerTrainingJob",
+        )
+        dataset_associations = sagemaker_session.sagemaker_client.list_associations(
+            DestinationArn=training_job_associations["AssociationSummaries"][0]["SourceArn"],
+            SourceType="DataSet",
+        )
+
+    yield artifact.DatasetArtifact.load(
+        dataset_associations["AssociationSummaries"][0]["SourceArn"],
+        sagemaker_session=sagemaker_session,
+    )
+
+
+def get_endpoint_arn_from_static_pipeline(sagemaker_session):
+    endpoint_arn = sagemaker_session.sagemaker_client.describe_endpoint(
+        EndpointName=STATIC_ENDPOINT_NAME
+    )["EndpointArn"]
+
+    return endpoint_arn
+
+
+def get_model_package_arn_from_static_pipeline(pipeline_execution_arn, sagemaker_session):
+    # get the model package ARN from the pipeline
+    pipeline_execution_steps = sagemaker_session.sagemaker_client.list_pipeline_execution_steps(
+        PipelineExecutionArn=pipeline_execution_arn
+    )["PipelineExecutionSteps"]
+
+    model_package_arn = None
+    for step in pipeline_execution_steps:
+        if "RegisterModel" in step["Metadata"]:
+            model_package_arn = step["Metadata"]["RegisterModel"]["Arn"]
+
+    if model_package_arn is None:
+        raise (
+            Exception(
+                f"Did not find a model package ARN in static pipeline execution {pipeline_execution_arn}"
+            )
+        )
+
+    return model_package_arn
+
+
+def create_and_execute_static_pipeline(sagemaker_session):
+    # start the execution and wait for success
+    print(f"Starting static execution of pipeline '{STATIC_PIPELINE_NAME}'")
+    try:
+        execution_arn = test_end_to_end_pipeline_successful_execution(
+            sagemaker_session=sagemaker_session,
+            region_name=sagemaker_session.boto_session.region_name,
+            role=get_execution_role(sagemaker_session),
+            pipeline_name=STATIC_PIPELINE_NAME,
+            wait=True,
+        )
+
+        # now deploy the model package to an endpoint
+        _deploy_static_endpoint(
+            execution_arn=execution_arn,
+            sagemaker_session=sagemaker_session,
+        )
+
+        return execution_arn
+    except Exception:
+        # Pipeline already exists, meaning an execution was started by
+        # tests in a different thread
+        execution_arn = _get_static_pipeline_execution_arn(sagemaker_session)
+        _deploy_static_endpoint(
+            execution_arn=execution_arn,
+            sagemaker_session=sagemaker_session,
+        )
+        return execution_arn
+
+
+def _deploy_static_endpoint(execution_arn, sagemaker_session):
+    try:
+        model_package_arn = get_model_package_arn_from_static_pipeline(
+            execution_arn, sagemaker_session
+        )
+
+        model_package = ModelPackage(
+            role=get_execution_role(sagemaker_session),
+            model_package_arn=model_package_arn,
+            sagemaker_session=sagemaker_session,
+        )
+        model_package.deploy(1, "ml.t2.medium", endpoint_name=STATIC_ENDPOINT_NAME)
+        time.sleep(60)
+    except ClientError as e:
+        if e.response["Error"]["Code"] == "ValidationException":
+            print(f"Endpoint {STATIC_ENDPOINT_NAME} already exists. Continuing.")
+            pass
+        else:
+            raise (e)
