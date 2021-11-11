@@ -65,8 +65,7 @@ if __name__ == "__main__":
             x: train_dataset[x].to_tensor(default_value=0, shape=[None, tokenizer.model_max_length])
             for x in ["input_ids", "attention_mask"]
         }
-        
-        
+
     tf_train_dataset = tf.data.Dataset.from_tensor_slices(
         (train_features, train_dataset["label"])
     ).batch(args.per_device_train_batch_size)
@@ -84,7 +83,6 @@ if __name__ == "__main__":
             x: test_dataset[x].to_tensor(default_value=0, shape=[None, tokenizer.model_max_length])
             for x in ["input_ids", "attention_mask"]
         }
-
 
     tf_test_dataset = tf.data.Dataset.from_tensor_slices(
         (test_features, test_dataset["label"])
