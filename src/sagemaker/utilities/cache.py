@@ -10,6 +10,9 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+"""This module defines a LRU cache class."""
+from __future__ import absolute_import
+
 import datetime
 import collections
 from typing import Any, TypeVar, Generic, Callable, Optional
@@ -20,14 +23,18 @@ ValType = TypeVar("ValType")
 
 class LRUCache(Generic[KeyType, ValType]):
     """Class that implements LRU cache with expiring items.
-    LRU caches remove items in a FIFO manner, such that the oldest items to be used are the first to be removed.
-    If you attempt to retrieve a cache item that is older than the expiration time, the item will be invalidated.
+
+    LRU caches remove items in a FIFO manner, such that the oldest
+    items to be used are the first to be removed.
+    If you attempt to retrieve a cache item that is older than the
+    expiration time, the item will be invalidated.
     """
 
     class Element:
         """Class describes the values in the cache.
-        This object stores the value itself as well as a timestamp so that this element can be invalidated if
-        it becomes too old.
+
+        This object stores the value itself as well as a timestamp so that this
+        element can be invalidated if it becomes too old.
         """
 
         def __init__(self, value: ValType, creation_time: datetime.datetime):
@@ -52,10 +59,10 @@ class LRUCache(Generic[KeyType, ValType]):
             max_cache_items (int): Maximum number of items to store in cache.
             expiration_time (datetime.timedelta): Maximum time duration a cache element can persist
                 before being invalidated.
-            retrieval_function (Callable[[KeyType, ValType], ValType]): Function which maps cache keys
-                and current values to new values. This function must have kwarg arguments ``key`` and
-                and ``value``. This function is called as a fallback when the key is not found in the
-                cache, or a key has expired.
+            retrieval_function (Callable[[KeyType, ValType], ValType]): Function which maps cache
+                keys and current values to new values. This function must have kwarg arguments
+                ``key`` and and ``value``. This function is called as a fallback when the key
+                is not found in the cache, or a key has expired.
 
         """
         self._max_cache_items = max_cache_items
@@ -84,8 +91,8 @@ class LRUCache(Generic[KeyType, ValType]):
 
         Args:
             key (KeyType): Key in cache to retrieve.
-            data_source_fallback (Optional[bool]): True if data should be retrieved if it's stale or not in cache.
-                Default: True.
+            data_source_fallback (Optional[bool]): True if data should be retrieved if
+                it's stale or not in cache. Default: True.
             Raises:
                 KeyError: If key is not found in cache or is outdated and
                 ``data_source_fallback`` is False.
@@ -93,15 +100,16 @@ class LRUCache(Generic[KeyType, ValType]):
         if data_source_fallback:
             if key in self._lru_cache:
                 return self._get_item(key, False)
-            else:
-                self.put(key)
-                return self._get_item(key, False)
+            self.put(key)
+            return self._get_item(key, False)
         return self._get_item(key, True)
 
     def put(self, key: KeyType, value: Optional[ValType] = None) -> None:
-        """Adds key to cache using retrieval_function. If value is provided, this is used instead.
-        If the key is already in cache, the old element is removed.
-        If the cache size exceeds the size limit, old elements are removed in order to meet the limit.
+        """Adds key to cache using ``retrieval_function``.
+
+        If value is provided, this is used instead. If the key is already in cache,
+        the old element is removed. If the cache size exceeds the size limit, old
+        elements are removed in order to meet the limit.
 
         Args:
             key (KeyType): Key in cache to retrieve.
@@ -124,12 +132,15 @@ class LRUCache(Generic[KeyType, ValType]):
         )
 
     def _get_item(self, key: KeyType, fail_on_old_value: bool) -> ValType:
-        """Returns value from cache corresponding to key. If ``fail_on_old_value``, a
-        KeyError is thrown instead of a new value getting fetched.
+        """Returns value from cache corresponding to key.
+
+        If ``fail_on_old_value``, a KeyError is thrown instead of a new value
+            getting fetched.
 
         Args:
             key (KeyType): Key in cache to retrieve.
-            fail_on_old_value (bool): True if a KeyError is thrown when the cache value is old.
+            fail_on_old_value (bool): True if a KeyError is thrown when the cache value
+                is old.
 
         Raises:
             KeyError: If key is not in cache or if key is old in cache
@@ -142,7 +153,9 @@ class LRUCache(Generic[KeyType, ValType]):
             if element_age > self._expiration_time:
                 if fail_on_old_value:
                     raise KeyError(f"{key} is old! Created at {element.creation_time}")
-                element.value = self._retrieval_function(key=key, value=element.value)  # type: ignore
+                element.value = self._retrieval_function(  # type: ignore
+                    key=key, value=element.value
+                )
                 element.creation_time = curr_time
             self._lru_cache[key] = element
             return element.value

@@ -10,6 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+from __future__ import absolute_import
 import copy
 from sagemaker.jumpstart.types import JumpStartModelSpecs, JumpStartModelHeader
 
@@ -84,8 +85,8 @@ def test_jumpstart_model_specs():
     assert specs1.model_id == "pytorch-ic-mobilenet-v2"
     assert specs1.version == "1.0.0"
     assert specs1.min_sdk_version == "2.49.0"
-    assert specs1.training_supported == True
-    assert specs1.incremental_training_supported == True
+    assert specs1.training_supported
+    assert specs1.incremental_training_supported
     assert specs1.hosting_ecr_specs == {
         "framework": "pytorch",
         "framework_version": "1.7.0",

@@ -10,19 +10,25 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+"""This module stores types related to SageMaker JumpStart."""
+from __future__ import absolute_import
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 
 
 class JumpStartDataHolderType:
-    """Base class for many JumpStart types. Allows objects to be added to dicts and sets,
+    """Base class for many JumpStart types.
+
+    Allows objects to be added to dicts and sets,
     and improves string representation. This class allows different objects with the same
     attributes and types to have equality.
     """
 
+    __slots__: List[str] = []
+
     def __eq__(self, other: Any) -> bool:
-        """Returns True if other object is of the same type
-        and has all attributes equal."""
+        """Returns True if ``other`` is of the same type and has all attributes equal."""
+
         if not isinstance(other, type(self)):
             return False
         for attribute in self.__slots__:
@@ -31,23 +37,30 @@ class JumpStartDataHolderType:
         return True
 
     def __hash__(self) -> int:
-        """Makes hash of object by first mapping to unique tuple, which then
-        gets hashed.
+        """Makes hash of object.
+
+        Maps object to unique tuple, which then gets hashed.
         """
+
         return hash((type(self),) + tuple([getattr(self, att) for att in self.__slots__]))
 
     def __str__(self) -> str:
         """Returns string representation of object. Example:
-        "JumpStartLaunchedRegionInfo: {'content_bucket': 'jumpstart-bucket-us-west-2', 'region_name': 'us-west-2'}"
+
+        "JumpStartLaunchedRegionInfo:
+        {'content_bucket': 'bucket', 'region_name': 'us-west-2'}"
         """
+
         att_dict = {att: getattr(self, att) for att in self.__slots__}
         return f"{type(self).__name__}: {str(att_dict)}"
 
     def __repr__(self) -> str:
-        """This is often called instead of __str__ and is the official string representation
-        of an object, typicaly used for debugging. Example:
-        "JumpStartLaunchedRegionInfo at 0x7f664529efa0: {'content_bucket': 'jumpstart-bucket-us-west-2', 'region_name': 'us-west-2'}"
+        """Returns ``__repr__`` string of object. Example:
+
+        "JumpStartLaunchedRegionInfo at 0x7f664529efa0:
+        {'content_bucket': 'bucket', 'region_name': 'us-west-2'}"
         """
+
         att_dict = {att: getattr(self, att) for att in self.__slots__}
         return f"{type(self).__name__} at {hex(id(self))}: {str(att_dict)}"
 

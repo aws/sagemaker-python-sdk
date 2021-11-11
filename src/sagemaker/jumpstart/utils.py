@@ -10,6 +10,8 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+"""This module contains utilities related to SageMaker JumpStart."""
+from __future__ import absolute_import
 from typing import Dict, List
 
 import semantic_version
@@ -31,11 +33,11 @@ def get_jumpstart_launched_regions_string() -> str:
         return f"JumpStart is available in {sorted_regions[0]} and {sorted_regions[1]} regions."
 
     formatted_launched_regions_list = []
-    for i in range(len(sorted_regions)):
+    for i, region in enumerate(sorted_regions):
         region_prefix = ""
         if i == len(sorted_regions) - 1:
             region_prefix = "and "
-        formatted_launched_regions_list.append(region_prefix + sorted_regions[i])
+        formatted_launched_regions_list.append(region_prefix + region)
     formatted_launched_regions_str = ", ".join(formatted_launched_regions_list)
     return f"JumpStart is available in {formatted_launched_regions_str} regions."
 
@@ -59,8 +61,11 @@ def get_jumpstart_content_bucket(region: str) -> str:
 def get_formatted_manifest(
     manifest: List[Dict],
 ) -> Dict[JumpStartVersionedModelId, JumpStartModelHeader]:
-    """Returns formatted manifest dictionary from raw manifest. Keys are JumpStartVersionedModelId objects,
-    values are JumpStartModelHeader objects."""
+    """Returns formatted manifest dictionary from raw manifest.
+
+    Keys are JumpStartVersionedModelId objects, values are
+    ``JumpStartModelHeader`` objects.
+    """
     manifest_dict = {}
     for header in manifest:
         header_obj = JumpStartModelHeader(header)
@@ -71,8 +76,10 @@ def get_formatted_manifest(
 
 
 def get_sagemaker_version() -> str:
-    """Returns sagemaker library version by reading __version__ variable
-    in module. In order to maintain compatibility with the ``semantic_version``
+    """Returns sagemaker library version.
+
+    Function reads ``__version__`` variable in ``sagemaker`` module.
+    In order to maintain compatibility with the ``semantic_version``
     library, versions with fewer than 2, or more than 3, periods are rejected.
     All versions that cannot be parsed with ``semantic_version`` are also
     rejected.

@@ -10,14 +10,14 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+from __future__ import absolute_import
 import copy
 import datetime
 import io
 import json
-from typing import Any, Dict, Tuple, Union
 import botocore
 
-from mock.mock import MagicMock, Mock
+from mock.mock import MagicMock
 import pytest
 from mock import patch
 
@@ -81,31 +81,36 @@ def patched_get_file_from_s3(
                 "model_id": "tensorflow-ic-imagenet-inception-v3-classification-4",
                 "version": "1.0.0",
                 "min_version": "2.49.0",
-                "spec_key": "community_models_specs/tensorflow-ic-imagenet-inception-v3-classification-4/specs_v1.0.0.json",
+                "spec_key": "community_models_specs/tensorflow-ic-imagenet"
+                "-inception-v3-classification-4/specs_v1.0.0.json",
             },
             {
                 "model_id": "tensorflow-ic-imagenet-inception-v3-classification-4",
                 "version": "2.0.0",
                 "min_version": "2.49.0",
-                "spec_key": "community_models_specs/tensorflow-ic-imagenet-inception-v3-classification-4/specs_v2.0.0.json",
+                "spec_key": "community_models_specs/tensorflow-ic-imagenet"
+                "-inception-v3-classification-4/specs_v2.0.0.json",
             },
             {
                 "model_id": "pytorch-ic-imagenet-inception-v3-classification-4",
                 "version": "1.0.0",
                 "min_version": "2.49.0",
-                "spec_key": "community_models_specs/pytorch-ic-imagenet-inception-v3-classification-4/specs_v1.0.0.json",
+                "spec_key": "community_models_specs/pytorch-ic-"
+                "imagenet-inception-v3-classification-4/specs_v1.0.0.json",
             },
             {
                 "model_id": "pytorch-ic-imagenet-inception-v3-classification-4",
                 "version": "2.0.0",
                 "min_version": "2.49.0",
-                "spec_key": "community_models_specs/pytorch-ic-imagenet-inception-v3-classification-4/specs_v2.0.0.json",
+                "spec_key": "community_models_specs/pytorch-ic-imagenet-"
+                "inception-v3-classification-4/specs_v2.0.0.json",
             },
             {
                 "model_id": "tensorflow-ic-imagenet-inception-v3-classification-4",
                 "version": "3.0.0",
                 "min_version": "4.49.0",
-                "spec_key": "community_models_specs/tensorflow-ic-imagenet-inception-v3-classification-4/specs_v3.0.0.json",
+                "spec_key": "community_models_specs/tensorflow-ic-"
+                "imagenet-inception-v3-classification-4/specs_v3.0.0.json",
             },
         ]
         return JumpStartCachedS3ContentValue(
@@ -134,7 +139,8 @@ def test_jumpstart_cache_get_header():
                 "model_id": "tensorflow-ic-imagenet-inception-v3-classification-4",
                 "version": "2.0.0",
                 "min_version": "2.49.0",
-                "spec_key": "community_models_specs/tensorflow-ic-imagenet-inception-v3-classification-4/specs_v2.0.0.json",
+                "spec_key": "community_models_specs/tensorflow-ic"
+                "-imagenet-inception-v3-classification-4/specs_v2.0.0.json",
             }
         )
         == cache.get_header(model_id="tensorflow-ic-imagenet-inception-v3-classification-4")
@@ -147,7 +153,8 @@ def test_jumpstart_cache_get_header():
                 "model_id": "tensorflow-ic-imagenet-inception-v3-classification-4",
                 "version": "2.0.0",
                 "min_version": "2.49.0",
-                "spec_key": "community_models_specs/tensorflow-ic-imagenet-inception-v3-classification-4/specs_v2.0.0.json",
+                "spec_key": "community_models_specs/tensorflow-ic"
+                "-imagenet-inception-v3-classification-4/specs_v2.0.0.json",
             }
         )
         == cache.get_header(model_id="tensorflow-ic-imagenet-inception-v3-classification-4")
@@ -158,10 +165,11 @@ def test_jumpstart_cache_get_header():
             "model_id": "tensorflow-ic-imagenet-inception-v3-classification-4",
             "version": "2.0.0",
             "min_version": "2.49.0",
-            "spec_key": "community_models_specs/tensorflow-ic-imagenet-inception-v3-classification-4/specs_v2.0.0.json",
+            "spec_key": "community_models_specs/tensorflow-ic"
+            "-imagenet-inception-v3-classification-4/specs_v2.0.0.json",
         }
     ) == cache.get_header(
-        model_id="tensorflow-ic-imagenet-inception-v3-classification-4", semantic_version="*"
+        model_id="tensorflow-ic-imagenet-inception-v3-classification-4", semantic_version_str="*"
     )
 
     assert JumpStartModelHeader(
@@ -169,10 +177,11 @@ def test_jumpstart_cache_get_header():
             "model_id": "tensorflow-ic-imagenet-inception-v3-classification-4",
             "version": "2.0.0",
             "min_version": "2.49.0",
-            "spec_key": "community_models_specs/tensorflow-ic-imagenet-inception-v3-classification-4/specs_v2.0.0.json",
+            "spec_key": "community_models_specs/tensorflow-ic-"
+            "imagenet-inception-v3-classification-4/specs_v2.0.0.json",
         }
     ) == cache.get_header(
-        model_id="tensorflow-ic-imagenet-inception-v3-classification-4", semantic_version="2.*"
+        model_id="tensorflow-ic-imagenet-inception-v3-classification-4", semantic_version_str="2.*"
     )
 
     assert JumpStartModelHeader(
@@ -180,10 +189,12 @@ def test_jumpstart_cache_get_header():
             "model_id": "tensorflow-ic-imagenet-inception-v3-classification-4",
             "version": "2.0.0",
             "min_version": "2.49.0",
-            "spec_key": "community_models_specs/tensorflow-ic-imagenet-inception-v3-classification-4/specs_v2.0.0.json",
+            "spec_key": "community_models_specs/tensorflow-ic-"
+            "imagenet-inception-v3-classification-4/specs_v2.0.0.json",
         }
     ) == cache.get_header(
-        model_id="tensorflow-ic-imagenet-inception-v3-classification-4", semantic_version="2.*.*"
+        model_id="tensorflow-ic-imagenet-inception-v3-classification-4",
+        semantic_version_str="2.*.*",
     )
 
     assert JumpStartModelHeader(
@@ -191,10 +202,12 @@ def test_jumpstart_cache_get_header():
             "model_id": "tensorflow-ic-imagenet-inception-v3-classification-4",
             "version": "2.0.0",
             "min_version": "2.49.0",
-            "spec_key": "community_models_specs/tensorflow-ic-imagenet-inception-v3-classification-4/specs_v2.0.0.json",
+            "spec_key": "community_models_specs/tensorflow-ic-"
+            "imagenet-inception-v3-classification-4/specs_v2.0.0.json",
         }
     ) == cache.get_header(
-        model_id="tensorflow-ic-imagenet-inception-v3-classification-4", semantic_version="2.0.0"
+        model_id="tensorflow-ic-imagenet-inception-v3-classification-4",
+        semantic_version_str="2.0.0",
     )
 
     assert JumpStartModelHeader(
@@ -202,10 +215,12 @@ def test_jumpstart_cache_get_header():
             "model_id": "tensorflow-ic-imagenet-inception-v3-classification-4",
             "version": "1.0.0",
             "min_version": "2.49.0",
-            "spec_key": "community_models_specs/tensorflow-ic-imagenet-inception-v3-classification-4/specs_v1.0.0.json",
+            "spec_key": "community_models_specs/tensorflow-ic-"
+            "imagenet-inception-v3-classification-4/specs_v1.0.0.json",
         }
     ) == cache.get_header(
-        model_id="tensorflow-ic-imagenet-inception-v3-classification-4", semantic_version="1.0.0"
+        model_id="tensorflow-ic-imagenet-inception-v3-classification-4",
+        semantic_version_str="1.0.0",
     )
 
     assert JumpStartModelHeader(
@@ -213,10 +228,11 @@ def test_jumpstart_cache_get_header():
             "model_id": "tensorflow-ic-imagenet-inception-v3-classification-4",
             "version": "1.0.0",
             "min_version": "2.49.0",
-            "spec_key": "community_models_specs/tensorflow-ic-imagenet-inception-v3-classification-4/specs_v1.0.0.json",
+            "spec_key": "community_models_specs/tensorflow-ic-"
+            "imagenet-inception-v3-classification-4/specs_v1.0.0.json",
         }
     ) == cache.get_header(
-        model_id="tensorflow-ic-imagenet-inception-v3-classification-4", semantic_version="1.*"
+        model_id="tensorflow-ic-imagenet-inception-v3-classification-4", semantic_version_str="1.*"
     )
 
     assert JumpStartModelHeader(
@@ -224,32 +240,36 @@ def test_jumpstart_cache_get_header():
             "model_id": "tensorflow-ic-imagenet-inception-v3-classification-4",
             "version": "1.0.0",
             "min_version": "2.49.0",
-            "spec_key": "community_models_specs/tensorflow-ic-imagenet-inception-v3-classification-4/specs_v1.0.0.json",
+            "spec_key": "community_models_specs/tensorflow-ic-"
+            "imagenet-inception-v3-classification-4/specs_v1.0.0.json",
         }
     ) == cache.get_header(
-        model_id="tensorflow-ic-imagenet-inception-v3-classification-4", semantic_version="1.*.*"
+        model_id="tensorflow-ic-imagenet-inception-v3-classification-4",
+        semantic_version_str="1.*.*",
     )
 
     with pytest.raises(KeyError) as e:
         cache.get_header(
-            model_id="tensorflow-ic-imagenet-inception-v3-classification-4", semantic_version="3.*"
+            model_id="tensorflow-ic-imagenet-inception-v3-classification-4",
+            semantic_version_str="3.*",
         )
     assert (
-        "Unable to find model manifest for tensorflow-ic-imagenet-inception-v3-classification-4 with version 3.* "
-        "compatible with your SageMaker version (2.68.3). Consider upgrading your SageMaker library to at least "
-        "version 4.49.0 so you can use version 3.0.0 of tensorflow-ic-imagenet-inception-v3-classification-4."
-        in str(e.value)
+        "Unable to find model manifest for tensorflow-ic-imagenet-inception-v3-classification-4 "
+        "with version 3.* compatible with your SageMaker version (2.68.3). Consider upgrading "
+        "your SageMaker library to at least version 4.49.0 so you can use version 3.0.0 of "
+        "tensorflow-ic-imagenet-inception-v3-classification-4." in str(e.value)
     )
 
     with pytest.raises(KeyError) as e:
         cache.get_header(
-            model_id="pytorch-ic-imagenet-inception-v3-classification-4", semantic_version="3.*"
+            model_id="pytorch-ic-imagenet-inception-v3-classification-4", semantic_version_str="3.*"
         )
     assert "Consider upgrading" not in str(e.value)
 
     with pytest.raises(ValueError):
         cache.get_header(
-            model_id="tensorflow-ic-imagenet-inception-v3-classification-4", semantic_version="BAD"
+            model_id="tensorflow-ic-imagenet-inception-v3-classification-4",
+            semantic_version_str="BAD",
         )
 
     with pytest.raises(KeyError):
@@ -338,7 +358,8 @@ def test_jumpstart_cache_evaluates_md5_hash(mock_boto3_client):
                 "model_id": "pytorch-ic-imagenet-inception-v3-classification-4",
                 "version": "2.0.0",
                 "min_version": "2.49.0",
-                "spec_key": "community_models_specs/pytorch-ic-imagenet-inception-v3-classification-4/specs_v2.0.0.json",
+                "spec_key": "community_models_specs/pytorch-ic-"
+                "imagenet-inception-v3-classification-4/specs_v2.0.0.json",
             }
         ]
     )
@@ -425,7 +446,8 @@ def test_jumpstart_cache_makes_correct_s3_calls(mock_boto3_client):
                 "model_id": "pytorch-ic-imagenet-inception-v3-classification-4",
                 "version": "2.0.0",
                 "min_version": "2.49.0",
-                "spec_key": "community_models_specs/pytorch-ic-imagenet-inception-v3-classification-4/specs_v2.0.0.json",
+                "spec_key": "community_models_specs/pytorch-ic-"
+                "imagenet-inception-v3-classification-4/specs_v2.0.0.json",
             }
         ]
     )
@@ -462,7 +484,8 @@ def test_jumpstart_cache_makes_correct_s3_calls(mock_boto3_client):
 
     mock_boto3_client.return_value.get_object.assert_called_with(
         Bucket=bucket_name,
-        Key="community_models_specs/pytorch-ic-imagenet-inception-v3-classification-4/specs_v2.0.0.json",
+        Key="community_models_specs/pytorch-ic-imagenet-"
+        "inception-v3-classification-4/specs_v2.0.0.json",
     )
     mock_boto3_client.return_value.head_object.assert_not_called()
 
@@ -485,7 +508,8 @@ def test_jumpstart_cache_handles_bad_semantic_version_manifest_key_cache():
             "model_id": "tensorflow-ic-imagenet-inception-v3-classification-4",
             "version": "1.0.0",
             "min_version": "2.49.0",
-            "spec_key": "community_models_specs/tensorflow-ic-imagenet-inception-v3-classification-4/specs_v1.0.0.json",
+            "spec_key": "community_models_specs/tensorflow-ic-"
+            "imagenet-inception-v3-classification-4/specs_v1.0.0.json",
         }
     ) == cache.get_header(
         model_id="tensorflow-ic-imagenet-inception-v3-classification-4",
@@ -515,17 +539,17 @@ def test_jumpstart_cache_get_specs():
 
     model_id, version = "tensorflow-ic-imagenet-inception-v3-classification-4", "2.0.0"
     assert get_spec_from_base_spec(model_id, version) == cache.get_specs(
-        model_id=model_id, semantic_version=version
+        model_id=model_id, semantic_version_str=version
     )
 
     model_id, version = "tensorflow-ic-imagenet-inception-v3-classification-4", "1.0.0"
     assert get_spec_from_base_spec(model_id, version) == cache.get_specs(
-        model_id=model_id, semantic_version=version
+        model_id=model_id, semantic_version_str=version
     )
 
     model_id = "pytorch-ic-imagenet-inception-v3-classification-4"
     assert get_spec_from_base_spec(model_id, "1.0.0") == cache.get_specs(
-        model_id=model_id, semantic_version="1.*"
+        model_id=model_id, semantic_version_str="1.*"
     )
 
     with pytest.raises(KeyError):
@@ -534,7 +558,7 @@ def test_jumpstart_cache_get_specs():
         )
 
     with pytest.raises(KeyError):
-        cache.get_specs(model_id=model_id, semantic_version="9.*")
+        cache.get_specs(model_id=model_id, semantic_version_str="9.*")
 
     with pytest.raises(ValueError):
-        cache.get_specs(model_id=model_id, semantic_version="BAD")
+        cache.get_specs(model_id=model_id, semantic_version_str="BAD")

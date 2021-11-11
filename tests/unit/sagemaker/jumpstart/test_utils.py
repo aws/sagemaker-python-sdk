@@ -10,12 +10,12 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+from __future__ import absolute_import
 from mock.mock import patch
 import pytest
 from sagemaker.jumpstart import utils
 from sagemaker.jumpstart.constants import REGION_NAME_SET
 from sagemaker.jumpstart.types import JumpStartModelHeader, JumpStartVersionedModelId
-from sagemaker.jumpstart.types import JumpStartLaunchedRegionInfo
 
 
 def test_get_jumpstart_content_bucket():

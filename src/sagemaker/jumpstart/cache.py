@@ -10,23 +10,23 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+"""This module defines the JumpStartModelsCache class."""
+from __future__ import absolute_import
 import datetime
 from typing import List, Optional
+import json
+import boto3
+import semantic_version
 from sagemaker.jumpstart.types import (
     JumpStartCachedS3ContentKey,
     JumpStartCachedS3ContentValue,
     JumpStartModelHeader,
-    JumpStartModelSpecs,
     JumpStartModelSpecs,
     JumpStartS3FileType,
     JumpStartVersionedModelId,
 )
 from sagemaker.jumpstart import utils
 from sagemaker.utilities.cache import LRUCache
-import boto3
-import json
-import semantic_version
-
 
 DEFAULT_REGION_NAME = boto3.session.Session().region_name
 
@@ -41,6 +41,7 @@ DEFAULT_MANIFEST_FILE_S3_KEY = "models_manifest.json"
 
 class JumpStartModelsCache:
     """Class that implements a cache for JumpStart models manifests and specs.
+
     The manifest and specs associated with JumpStart models provide the information necessary
     for launching JumpStart models from the SageMaker SDK.
     """
@@ -62,15 +63,16 @@ class JumpStartModelsCache:
         Args:
             region (Optional[str]): AWS region to associate with cache. Default: region associated
                 with botocore session.
-            max_s3_cache_items (Optional[int]): Maximum number of files to store in s3 cache. Default: 20.
-            s3_cache_expiration_time (Optional[datetime.timedelta]): Maximum time to hold items in s3
-                cache before invalidation. Default: 6 hours.
+            max_s3_cache_items (Optional[int]): Maximum number of files to store in s3 cache.
+                Default: 20.
+            s3_cache_expiration_time (Optional[datetime.timedelta]): Maximum time to hold items in
+                s3 cache before invalidation. Default: 6 hours.
             max_semantic_version_cache_items (Optional[int]): Maximum number of files to store in
                 semantic version cache. Default: 20.
-            semantic_version_cache_expiration_time (Optional[datetime.timedelta]): Maximum time to hold
-                items in semantic version cache before invalidation. Default: 6 hours.
-            bucket (Optional[str]): S3 bucket to associate with cache. Default: JumpStart-hosted content
-                bucket for region.
+            semantic_version_cache_expiration_time (Optional[datetime.timedelta]): Maximum time to
+                hold items in semantic version cache before invalidation. Default: 6 hours.
+            bucket (Optional[str]): S3 bucket to associate with cache. Default: JumpStart-hosted
+                content bucket for region.
         """
 
         self._region = region
@@ -120,15 +122,16 @@ class JumpStartModelsCache:
         return self._bucket
 
     def _get_manifest_key_from_model_id_semantic_version(
-        self, key: JumpStartVersionedModelId, value: Optional[JumpStartVersionedModelId]
+        self,
+        key: JumpStartVersionedModelId,
+        value: Optional[JumpStartVersionedModelId],  # pylint: disable=W0613
     ) -> JumpStartVersionedModelId:
-        """Return model id and version in manifest that matches semantic version/id
-        from customer request.
+        """Return model id and version in manifest that matches semantic version/id.
 
         Args:
             key (JumpStartVersionedModelId): Key for which to fetch versioned model id.
-            value (Optional[JumpStartVersionedModelId]): Unused variable for current value of old cached
-                model id/version.
+            value (Optional[JumpStartVersionedModelId]): Unused variable for current value of
+                old cached model id/version.
 
         Raises:
             KeyError: If the semantic version is not found in the manifest.
@@ -158,35 +161,34 @@ class JumpStartModelsCache:
         sm_compatible_model_version = spec.select(versions_compatible_with_sagemaker)
         if sm_compatible_model_version is not None:
             return JumpStartVersionedModelId(model_id, str(sm_compatible_model_version))
-        else:
-            versions_incompatible_with_sagemaker = [
-                semantic_version.Version(header.version)
+
+        versions_incompatible_with_sagemaker = [
+            semantic_version.Version(header.version)
+            for _, header in manifest.items()
+            if header.model_id == model_id
+        ]
+        sm_incompatible_model_version = spec.select(versions_incompatible_with_sagemaker)
+        if sm_incompatible_model_version is not None:
+            model_version_to_use_incompatible_with_sagemaker = str(sm_incompatible_model_version)
+            sm_version_to_use = [
+                header.min_version
                 for _, header in manifest.items()
                 if header.model_id == model_id
+                and header.version == model_version_to_use_incompatible_with_sagemaker
             ]
-            sm_incompatible_model_version = spec.select(versions_incompatible_with_sagemaker)
-            if sm_incompatible_model_version is not None:
-                model_version_to_use_incompatible_with_sagemaker = str(
-                    sm_incompatible_model_version
-                )
-                sm_version_to_use = [
-                    header.min_version
-                    for _, header in manifest.items()
-                    if header.model_id == model_id
-                    and header.version == model_version_to_use_incompatible_with_sagemaker
-                ]
-                assert len(sm_version_to_use) == 1
-                sm_version_to_use = sm_version_to_use[0]
+            assert len(sm_version_to_use) == 1
+            sm_version_to_use = sm_version_to_use[0]
 
-                error_msg = (
-                    f"Unable to find model manifest for {model_id} with version {version} compatible with your SageMaker version ({sm_version}). "
-                    f"Consider upgrading your SageMaker library to at least version {sm_version_to_use} so you can use version "
-                    f"{model_version_to_use_incompatible_with_sagemaker} of {model_id}."
-                )
-                raise KeyError(error_msg)
-            else:
-                error_msg = f"Unable to find model manifest for {model_id} with version {version}"
-                raise KeyError(error_msg)
+            error_msg = (
+                f"Unable to find model manifest for {model_id} with version {version} "
+                f"compatible with your SageMaker version ({sm_version}). "
+                f"Consider upgrading your SageMaker library to at least version "
+                f"{sm_version_to_use} so you can use version "
+                f"{model_version_to_use_incompatible_with_sagemaker} of {model_id}."
+            )
+            raise KeyError(error_msg)
+        error_msg = f"Unable to find model manifest for {model_id} with version {version}"
+        raise KeyError(error_msg)
 
     def _get_file_from_s3(
         self,
@@ -194,6 +196,7 @@ class JumpStartModelsCache:
         value: Optional[JumpStartCachedS3ContentValue],
     ) -> JumpStartCachedS3ContentValue:
         """Return s3 content given a file type and s3_key in ``JumpStartCachedS3ContentKey``.
+
         If a manifest file is being fetched, we only download the object if the md5 hash in
         ``head_object`` does not match the current md5 hash for the stored value. This prevents
         unnecessarily downloading the full manifest when it hasn't changed.
@@ -228,18 +231,18 @@ class JumpStartModelsCache:
         raise RuntimeError(f"Bad value for key: {key}")
 
     def get_header(
-        self, model_id: str, semantic_version: Optional[str] = None
+        self, model_id: str, semantic_version_str: Optional[str] = None
     ) -> List[JumpStartModelHeader]:
         """Return list of headers for a given JumpStart model id and semantic version.
 
         Args:
             model_id (str): model id for which to get a header.
-            semantic_version (Optional[str]): The semantic version for which to get a header.
-                If None, the highest compatible version is returned.
+            semantic_version_str (Optional[str]): The semantic version for which to get a
+                header. If None, the highest compatible version is returned.
         """
 
         versioned_model_id = self._model_id_semantic_version_manifest_key_cache.get(
-            JumpStartVersionedModelId(model_id, semantic_version)
+            JumpStartVersionedModelId(model_id, semantic_version_str)
         )
         manifest = self._s3_cache.get(
             JumpStartCachedS3ContentKey(JumpStartS3FileType.MANIFEST, self._manifest_file_s3_key)
@@ -258,16 +261,17 @@ class JumpStartModelsCache:
             return self.get_header(model_id, semantic_version)
 
     def get_specs(
-        self, model_id: str, semantic_version: Optional[str] = None
+        self, model_id: str, semantic_version_str: Optional[str] = None
     ) -> JumpStartModelSpecs:
         """Return specs for a given JumpStart model id and semantic version.
 
         Args:
             model_id (str): model id for which to get specs.
-            semantic_version (Optional[str]): The semantic version for which to get specs.
-                If None, the highest compatible version is returned.
+            semantic_version_str (Optional[str]): The semantic version for which to get
+                specs. If None, the highest compatible version is returned.
         """
-        header = self.get_header(model_id, semantic_version)
+
+        header = self.get_header(model_id, semantic_version_str)
         spec_key = header.spec_key
         return self._s3_cache.get(
             JumpStartCachedS3ContentKey(JumpStartS3FileType.SPECS, spec_key)
