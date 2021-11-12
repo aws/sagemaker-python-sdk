@@ -4,10 +4,21 @@ import sys
 import time
 
 import tensorflow as tf
-from datasets import load_dataset
-
-from transformers import AutoTokenizer, TFAutoModelForSequenceClassification
 import transformers
+from datasets import load_dataset
+from transformers import AutoTokenizer, TFAutoModelForSequenceClassification
+
+
+def _get_dataset_features(dataset, tokenizer, columns=[]):
+    if transformers.__version__ > "4.12.0":
+        features = {x: dataset[x] for x in columns}
+    else:
+        features = {
+            x: dataset[x].to_tensor(default_value=0, shape=[None, tokenizer.model_max_length])
+            for x in columns
+        }
+
+    return features
 
 
 if __name__ == "__main__":
@@ -58,13 +69,9 @@ if __name__ == "__main__":
     )
     train_dataset.set_format(type="tensorflow", columns=["input_ids", "attention_mask", "label"])
 
-    if transformers.__version__ > "4.12.0":
-        train_features = {x: train_dataset[x] for x in ["input_ids", "attention_mask"]}
-    else:
-        train_features = {
-            x: train_dataset[x].to_tensor(default_value=0, shape=[None, tokenizer.model_max_length])
-            for x in ["input_ids", "attention_mask"]
-        }
+    train_features = _get_dataset_features(
+        train_dataset, tokenizer, columns=["input_ids", "attention_mask"]
+    )
 
     tf_train_dataset = tf.data.Dataset.from_tensor_slices(
         (train_features, train_dataset["label"])
@@ -76,13 +83,9 @@ if __name__ == "__main__":
     )
     test_dataset.set_format(type="tensorflow", columns=["input_ids", "attention_mask", "label"])
 
-    if transformers.__version__ > "4.12.0":
-        test_features = {x: test_dataset[x] for x in ["input_ids", "attention_mask"]}
-    else:
-        test_features = {
-            x: test_dataset[x].to_tensor(default_value=0, shape=[None, tokenizer.model_max_length])
-            for x in ["input_ids", "attention_mask"]
-        }
+    test_features = _get_dataset_features(
+        test_dataset, tokenizer, columns=["input_ids", "attention_mask"]
+    )
 
     tf_test_dataset = tf.data.Dataset.from_tensor_slices(
         (test_features, test_dataset["label"])
