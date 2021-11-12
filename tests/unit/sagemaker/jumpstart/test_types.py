@@ -12,7 +12,7 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 import copy
-from sagemaker.jumpstart.types import JumpStartModelSpecs, JumpStartModelHeader
+from sagemaker.jumpstart.types import JumpStartECRSpecs, JumpStartModelSpecs, JumpStartModelHeader
 
 
 def test_jumpstart_model_header():
@@ -87,16 +87,20 @@ def test_jumpstart_model_specs():
     assert specs1.min_sdk_version == "2.49.0"
     assert specs1.training_supported
     assert specs1.incremental_training_supported
-    assert specs1.hosting_ecr_specs == {
-        "framework": "pytorch",
-        "framework_version": "1.7.0",
-        "py_version": "py3",
-    }
-    assert specs1.training_ecr_specs == {
-        "framework": "pytorch",
-        "framework_version": "1.9.0",
-        "py_version": "py3",
-    }
+    assert specs1.hosting_ecr_specs == JumpStartECRSpecs(
+        {
+            "framework": "pytorch",
+            "framework_version": "1.7.0",
+            "py_version": "py3",
+        }
+    )
+    assert specs1.training_ecr_specs == JumpStartECRSpecs(
+        {
+            "framework": "pytorch",
+            "framework_version": "1.9.0",
+            "py_version": "py3",
+        }
+    )
     assert specs1.hosting_artifact_uri == "pytorch-infer/infer-pytorch-ic-mobilenet-v2.tar.gz"
     assert specs1.training_artifact_uri == "pytorch-training/train-pytorch-ic-mobilenet-v2.tar.gz"
     assert (

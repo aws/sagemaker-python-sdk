@@ -26,7 +26,7 @@ def retrieval_function(key: Optional[int] = None, value: Optional[str] = None) -
 def test_cache_retrieves_item():
     my_cache = cache.LRUCache[int, Union[int, str]](
         max_cache_items=10,
-        expiration_time=datetime.timedelta(hours=1),
+        expiration_horizon=datetime.timedelta(hours=1),
         retrieval_function=retrieval_function,
     )
 
@@ -48,11 +48,11 @@ def test_cache_retrieves_item():
 def test_cache_invalidates_old_item():
     my_cache = cache.LRUCache[int, Union[int, str]](
         max_cache_items=10,
-        expiration_time=datetime.timedelta(milliseconds=1),
+        expiration_horizon=datetime.timedelta(milliseconds=1),
         retrieval_function=retrieval_function,
     )
 
-    curr_time = datetime.datetime.now()
+    curr_time = datetime.datetime.fromtimestamp(1636730651.079551)
     with patch("datetime.datetime") as mock_datetime:
         mock_datetime.now.return_value = curr_time
         my_cache.put(5)
@@ -70,11 +70,11 @@ def test_cache_invalidates_old_item():
 def test_cache_fetches_new_item():
     my_cache = cache.LRUCache[int, Union[int, str]](
         max_cache_items=10,
-        expiration_time=datetime.timedelta(milliseconds=1),
+        expiration_horizon=datetime.timedelta(milliseconds=1),
         retrieval_function=retrieval_function,
     )
 
-    curr_time = datetime.datetime.now()
+    curr_time = datetime.datetime.fromtimestamp(1636730651.079551)
     with patch("datetime.datetime") as mock_datetime:
         mock_datetime.now.return_value = curr_time
         my_cache.put(5, 10)
@@ -94,7 +94,7 @@ def test_cache_fetches_new_item():
 def test_cache_removes_old_items_once_size_limit_reached():
     my_cache = cache.LRUCache[int, Union[int, str]](
         max_cache_items=5,
-        expiration_time=datetime.timedelta(hours=1),
+        expiration_horizon=datetime.timedelta(hours=1),
         retrieval_function=retrieval_function,
     )
 
@@ -113,7 +113,7 @@ def test_cache_removes_old_items_once_size_limit_reached():
 def test_cache_get_with_data_source_fallback():
     my_cache = cache.LRUCache[int, Union[int, str]](
         max_cache_items=5,
-        expiration_time=datetime.timedelta(hours=1),
+        expiration_horizon=datetime.timedelta(hours=1),
         retrieval_function=retrieval_function,
     )
 
@@ -127,7 +127,7 @@ def test_cache_get_with_data_source_fallback():
 def test_cache_gets_stored_value():
     my_cache = cache.LRUCache[int, Union[int, str]](
         max_cache_items=5,
-        expiration_time=datetime.timedelta(hours=1),
+        expiration_horizon=datetime.timedelta(hours=1),
         retrieval_function=retrieval_function,
     )
 
@@ -140,17 +140,47 @@ def test_cache_gets_stored_value():
 
     my_cache._retrieval_function.reset_mock()
     my_cache.get(5)
-    my_cache._retrieval_function.assert_called()
+    my_cache._retrieval_function.assert_called_with(key=5, value=None)
 
     my_cache._retrieval_function.reset_mock()
     my_cache.get(0)
-    my_cache._retrieval_function.assert_called()
+    my_cache._retrieval_function.assert_called_with(key=0, value=None)
+
+
+def test_cache_bad_retrieval_function():
+
+    cache_no_retrieval_fx = cache.LRUCache[int, Union[int, str]](
+        max_cache_items=5,
+        expiration_horizon=datetime.timedelta(hours=1),
+        retrieval_function=None,
+    )
+
+    with pytest.raises(TypeError):
+        cache_no_retrieval_fx.put(1)
+
+    cache_bad_retrieval_fx_signature = cache.LRUCache[int, Union[int, str]](
+        max_cache_items=5,
+        expiration_horizon=datetime.timedelta(hours=1),
+        retrieval_function=lambda: 1,
+    )
+
+    with pytest.raises(TypeError):
+        cache_bad_retrieval_fx_signature.put(1)
+
+    cache_retrieval_fx_throws = cache.LRUCache[int, Union[int, str]](
+        max_cache_items=5,
+        expiration_horizon=datetime.timedelta(hours=1),
+        retrieval_function=lambda key, value: exec("raise(RuntimeError())"),
+    )
+
+    with pytest.raises(RuntimeError):
+        cache_retrieval_fx_throws.put(1)
 
 
 def test_cache_clear_and_contains():
     my_cache = cache.LRUCache[int, Union[int, str]](
         max_cache_items=5,
-        expiration_time=datetime.timedelta(hours=1),
+        expiration_horizon=datetime.timedelta(hours=1),
         retrieval_function=retrieval_function,
     )
 

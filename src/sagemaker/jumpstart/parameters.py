@@ -10,20 +10,11 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""This module stores constants related to SageMaker JumpStart."""
+"""This module stores parameters related to SageMaker JumpStart."""
 from __future__ import absolute_import
-from typing import Set
-import boto3
-from sagemaker.jumpstart.types import JumpStartLaunchedRegionInfo
+import datetime
 
-
-JUMPSTART_LAUNCHED_REGIONS: Set[JumpStartLaunchedRegionInfo] = set()
-
-JUMPSTART_REGION_NAME_TO_LAUNCHED_REGION_DICT = {
-    region.region_name: region for region in JUMPSTART_LAUNCHED_REGIONS
-}
-JUMPSTART_REGION_NAME_SET = {region.region_name for region in JUMPSTART_LAUNCHED_REGIONS}
-
-JUMPSTART_DEFAULT_REGION_NAME = boto3.session.Session().region_name
-
-JUMPSTART_DEFAULT_MANIFEST_FILE_S3_KEY = "models_manifest.json"
+JUMPSTART_DEFAULT_MAX_S3_CACHE_ITEMS = 20
+JUMPSTART_DEFAULT_MAX_SEMANTIC_VERSION_CACHE_ITEMS = 20
+JUMPSTART_DEFAULT_S3_CACHE_EXPIRATION_HORIZON = datetime.timedelta(hours=6)
+JUMPSTART_DEFAULT_SEMANTIC_VERSION_CACHE_EXPIRATION_HORIZON = datetime.timedelta(hours=6)

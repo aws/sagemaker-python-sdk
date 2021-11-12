@@ -15,7 +15,7 @@ from __future__ import absolute_import
 
 import datetime
 import collections
-from typing import Any, TypeVar, Generic, Callable, Optional
+from typing import TypeVar, Generic, Callable, Optional
 
 KeyType = TypeVar("KeyType")
 ValType = TypeVar("ValType")
@@ -50,15 +50,15 @@ class LRUCache(Generic[KeyType, ValType]):
     def __init__(
         self,
         max_cache_items: int,
-        expiration_time: datetime.timedelta,
+        expiration_horizon: datetime.timedelta,
         retrieval_function: Callable[[KeyType, ValType], ValType],
     ) -> None:
         """Initialize an ``LRUCache`` instance.
 
         Args:
             max_cache_items (int): Maximum number of items to store in cache.
-            expiration_time (datetime.timedelta): Maximum time duration a cache element can persist
-                before being invalidated.
+            expiration_horizon (datetime.timedelta): Maximum time duration a cache element can
+                persist before being invalidated.
             retrieval_function (Callable[[KeyType, ValType], ValType]): Function which maps cache
                 keys and current values to new values. This function must have kwarg arguments
                 ``key`` and and ``value``. This function is called as a fallback when the key
@@ -67,7 +67,7 @@ class LRUCache(Generic[KeyType, ValType]):
         """
         self._max_cache_items = max_cache_items
         self._lru_cache: collections.OrderedDict = collections.OrderedDict()
-        self._expiration_time = expiration_time
+        self._expiration_horizon = expiration_horizon
         self._retrieval_function = retrieval_function
 
     def __len__(self) -> int:
@@ -147,12 +147,15 @@ class LRUCache(Generic[KeyType, ValType]):
                 and fail_on_old_value is True.
         """
         try:
-            element: Any = self._lru_cache.pop(key)
+            element = self._lru_cache.pop(key)
             curr_time = datetime.datetime.now(tz=datetime.timezone.utc)
             element_age = curr_time - element.creation_time
-            if element_age > self._expiration_time:
+            if element_age > self._expiration_horizon:
                 if fail_on_old_value:
-                    raise KeyError(f"{key} is old! Created at {element.creation_time}")
+                    raise KeyError(
+                        f"{key} has aged beyond allowed time {self._expiration_horizon}. "
+                        f"Element created at {element.creation_time}."
+                    )
                 element.value = self._retrieval_function(  # type: ignore
                     key=key, value=element.value
                 )

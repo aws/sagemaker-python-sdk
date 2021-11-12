@@ -20,8 +20,9 @@ class JumpStartDataHolderType:
     """Base class for many JumpStart types.
 
     Allows objects to be added to dicts and sets,
-    and improves string representation. This class allows different objects with the same
-    attributes and types to have equality.
+    and improves string representation. This class overrides the ``__eq__``
+    and ``__hash__`` methods so that different objects with the same attributes/types
+    can be compared.
     """
 
     __slots__: List[str] = []
@@ -32,6 +33,9 @@ class JumpStartDataHolderType:
         if not isinstance(other, type(self)):
             return False
         for attribute in self.__slots__:
+            if getattr(self, attribute) != getattr(other, attribute):
+                return False
+        for attribute in other.__slots__:
             if getattr(self, attribute) != getattr(other, attribute):
                 return False
         return True
@@ -66,7 +70,7 @@ class JumpStartDataHolderType:
 
 
 class JumpStartS3FileType(str, Enum):
-    """Simple enum for classifying S3 file type."""
+    """Type of files published in JumpStart S3 distribution buckets."""
 
     MANIFEST = "manifest"
     SPECS = "specs"
@@ -104,6 +108,32 @@ class JumpStartModelHeader(JumpStartDataHolderType):
         self.spec_key: str = json_obj["spec_key"]
 
 
+class JumpStartECRSpecs(JumpStartDataHolderType):
+    """Data class for JumpStart ECR specs."""
+
+    __slots__ = {
+        "framework",
+        "framework_version",
+        "py_version",
+    }
+
+    def __init__(self, spec: Dict[str, Any]):
+        """Initializes a JumpStartECRSpecs object from its json representation."""
+        self.from_json(spec)
+
+    def from_json(self, json_obj: Dict[str, Any]) -> None:
+        """Sets fields in object based on json."""
+
+        self.framework = json_obj["framework"]
+        self.framework_version = json_obj["framework_version"]
+        self.py_version = json_obj["py_version"]
+
+    def to_json(self) -> Dict[str, Any]:
+        """Returns json representation of JumpStartECRSpecs object."""
+        json_obj = {att: getattr(self, att) for att in self.__slots__}
+        return json_obj
+
+
 class JumpStartModelSpecs(JumpStartDataHolderType):
     """Data class JumpStart model specs."""
 
@@ -132,15 +162,17 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         self.version: str = json_obj["version"]
         self.min_sdk_version: str = json_obj["min_sdk_version"]
         self.incremental_training_supported: bool = bool(json_obj["incremental_training_supported"])
-        self.hosting_ecr_specs: dict = json_obj["hosting_ecr_specs"]
+        self.hosting_ecr_specs: JumpStartECRSpecs = JumpStartECRSpecs(json_obj["hosting_ecr_specs"])
         self.hosting_artifact_uri: str = json_obj["hosting_artifact_uri"]
         self.hosting_script_uri: str = json_obj["hosting_script_uri"]
         self.training_supported: bool = bool(json_obj["training_supported"])
         if self.training_supported:
-            self.training_ecr_specs: Optional[dict] = json_obj["training_ecr_specs"]
+            self.training_ecr_specs: Optional[JumpStartECRSpecs] = JumpStartECRSpecs(
+                json_obj["training_ecr_specs"]
+            )
             self.training_artifact_uri: Optional[str] = json_obj["training_artifact_uri"]
             self.training_script_uri: Optional[str] = json_obj["training_script_uri"]
-            self.hyperparameters: Optional[dict] = json_obj["hyperparameters"]
+            self.hyperparameters: Optional[Dict[str, Any]] = json_obj["hyperparameters"]
         else:
             self.training_ecr_specs = (
                 self.training_artifact_uri
@@ -148,7 +180,13 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
 
     def to_json(self) -> Dict[str, Any]:
         """Returns json representation of JumpStartModelSpecs object."""
-        json_obj = {att: getattr(self, att) for att in self.__slots__}
+        json_obj = {}
+        for att in self.__slots__:
+            cur_val = getattr(self, att)
+            if isinstance(cur_val, JumpStartECRSpecs):
+                json_obj[att] = cur_val.to_json()
+            else:
+                json_obj[att] = cur_val
         return json_obj
 
 

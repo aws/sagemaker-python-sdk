@@ -14,40 +14,42 @@ from __future__ import absolute_import
 from mock.mock import patch
 import pytest
 from sagemaker.jumpstart import utils
-from sagemaker.jumpstart.constants import REGION_NAME_SET
+from sagemaker.jumpstart.constants import JUMPSTART_REGION_NAME_SET
 from sagemaker.jumpstart.types import JumpStartModelHeader, JumpStartVersionedModelId
 
 
 def test_get_jumpstart_content_bucket():
     bad_region = "bad_region"
-    assert bad_region not in REGION_NAME_SET
-    with pytest.raises(RuntimeError):
+    assert bad_region not in JUMPSTART_REGION_NAME_SET
+    with pytest.raises(ValueError):
         utils.get_jumpstart_content_bucket(bad_region)
 
 
-def test_get_jumpstart_launched_regions_string():
+def test_get_jumpstart_launched_regions_message():
 
-    with patch("sagemaker.jumpstart.constants.REGION_NAME_SET", {}):
+    with patch("sagemaker.jumpstart.constants.JUMPSTART_REGION_NAME_SET", {}):
         assert (
-            utils.get_jumpstart_launched_regions_string()
+            utils.get_jumpstart_launched_regions_message()
             == "JumpStart is not available in any region."
         )
 
-    with patch("sagemaker.jumpstart.constants.REGION_NAME_SET", {"some_region"}):
+    with patch("sagemaker.jumpstart.constants.JUMPSTART_REGION_NAME_SET", {"some_region"}):
         assert (
-            utils.get_jumpstart_launched_regions_string()
+            utils.get_jumpstart_launched_regions_message()
             == "JumpStart is available in some_region region."
         )
 
-    with patch("sagemaker.jumpstart.constants.REGION_NAME_SET", {"some_region1", "some_region2"}):
+    with patch(
+        "sagemaker.jumpstart.constants.JUMPSTART_REGION_NAME_SET", {"some_region1", "some_region2"}
+    ):
         assert (
-            utils.get_jumpstart_launched_regions_string()
+            utils.get_jumpstart_launched_regions_message()
             == "JumpStart is available in some_region1 and some_region2 regions."
         )
 
-    with patch("sagemaker.jumpstart.constants.REGION_NAME_SET", {"a", "b", "c"}):
+    with patch("sagemaker.jumpstart.constants.JUMPSTART_REGION_NAME_SET", {"a", "b", "c"}):
         assert (
-            utils.get_jumpstart_launched_regions_string()
+            utils.get_jumpstart_launched_regions_message()
             == "JumpStart is available in a, b, and c regions."
         )
 
@@ -82,7 +84,7 @@ def test_get_sagemaker_version():
     with patch("sagemaker.__version__", "1.2.3."):
         assert utils.get_sagemaker_version() == "1.2.3"
 
-    with pytest.raises(RuntimeError):
+    with pytest.raises(ValueError):
         with patch("sagemaker.__version__", "1.2.3dfsdfs"):
             utils.get_sagemaker_version()
 

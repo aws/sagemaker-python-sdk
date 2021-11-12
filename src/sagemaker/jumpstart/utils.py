@@ -13,30 +13,27 @@
 """This module contains utilities related to SageMaker JumpStart."""
 from __future__ import absolute_import
 from typing import Dict, List
-
 import semantic_version
-from sagemaker.jumpstart import constants
 import sagemaker
+from sagemaker.jumpstart import constants
 from sagemaker.jumpstart.types import JumpStartModelHeader, JumpStartVersionedModelId
 
 
-def get_jumpstart_launched_regions_string() -> str:
+def get_jumpstart_launched_regions_message() -> str:
     """Returns formatted string indicating where JumpStart is launched."""
-    if len(constants.REGION_NAME_SET) == 0:
+    if len(constants.JUMPSTART_REGION_NAME_SET) == 0:
         return "JumpStart is not available in any region."
-    if len(constants.REGION_NAME_SET) == 1:
-        region = list(constants.REGION_NAME_SET)[0]
+    if len(constants.JUMPSTART_REGION_NAME_SET) == 1:
+        region = list(constants.JUMPSTART_REGION_NAME_SET)[0]
         return f"JumpStart is available in {region} region."
 
-    sorted_regions = sorted(list(constants.REGION_NAME_SET))
-    if len(constants.REGION_NAME_SET) == 2:
+    sorted_regions = sorted(list(constants.JUMPSTART_REGION_NAME_SET))
+    if len(constants.JUMPSTART_REGION_NAME_SET) == 2:
         return f"JumpStart is available in {sorted_regions[0]} and {sorted_regions[1]} regions."
 
     formatted_launched_regions_list = []
     for i, region in enumerate(sorted_regions):
-        region_prefix = ""
-        if i == len(sorted_regions) - 1:
-            region_prefix = "and "
+        region_prefix = "" if i < len(sorted_regions) - 1 else "and "
         formatted_launched_regions_list.append(region_prefix + region)
     formatted_launched_regions_str = ", ".join(formatted_launched_regions_list)
     return f"JumpStart is available in {formatted_launched_regions_str} regions."
@@ -49,10 +46,10 @@ def get_jumpstart_content_bucket(region: str) -> str:
         RuntimeError: If JumpStart is not launched in ``region``.
     """
     try:
-        return constants.REGION_NAME_TO_LAUNCHED_REGION_DICT[region].content_bucket
+        return constants.JUMPSTART_REGION_NAME_TO_LAUNCHED_REGION_DICT[region].content_bucket
     except KeyError:
-        formatted_launched_regions_str = get_jumpstart_launched_regions_string()
-        raise RuntimeError(
+        formatted_launched_regions_str = get_jumpstart_launched_regions_message()
+        raise ValueError(
             f"Unable to get content bucket for JumpStart in {region} region. "
             f"{formatted_launched_regions_str}"
         )
@@ -99,9 +96,6 @@ def get_sagemaker_version() -> str:
     else:
         raise RuntimeError(f"Bad value for SageMaker version: {sagemaker.__version__}")
 
-    try:
-        semantic_version.Version(parsed_version)
-    except ValueError:
-        raise RuntimeError(f"Bad value for SageMaker version: {sagemaker.__version__}")
+    semantic_version.Version(parsed_version)
 
     return parsed_version

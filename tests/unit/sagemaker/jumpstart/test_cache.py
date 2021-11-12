@@ -15,13 +15,14 @@ import copy
 import datetime
 import io
 import json
+from botocore.stub import Stubber
 import botocore
 
 from mock.mock import MagicMock
 import pytest
 from mock import patch
 
-from sagemaker.jumpstart.cache import DEFAULT_MANIFEST_FILE_S3_KEY, JumpStartModelsCache
+from sagemaker.jumpstart.cache import JUMPSTART_DEFAULT_MANIFEST_FILE_S3_KEY, JumpStartModelsCache
 from sagemaker.jumpstart.types import (
     JumpStartCachedS3ContentKey,
     JumpStartCachedS3ContentValue,
@@ -131,7 +132,7 @@ def patched_get_file_from_s3(
 @patch("sagemaker.jumpstart.utils.get_sagemaker_version", lambda: "2.68.3")
 def test_jumpstart_cache_get_header():
 
-    cache = JumpStartModelsCache(bucket="some_bucket")
+    cache = JumpStartModelsCache(s3_bucket_name="some_bucket")
 
     assert (
         JumpStartModelHeader(
@@ -283,7 +284,7 @@ def test_jumpstart_cache_handles_boto3_issues(mock_boto3_client):
 
     mock_boto3_client.return_value.get_object.side_effect = Exception()
 
-    cache = JumpStartModelsCache(bucket="some_bucket")
+    cache = JumpStartModelsCache(s3_bucket_name="some_bucket")
 
     with pytest.raises(Exception):
         cache.get_header(
@@ -294,7 +295,7 @@ def test_jumpstart_cache_handles_boto3_issues(mock_boto3_client):
 
     mock_boto3_client.return_value.head_object.side_effect = Exception()
 
-    cache = JumpStartModelsCache(bucket="some_bucket")
+    cache = JumpStartModelsCache(s3_bucket_name="some_bucket")
 
     with pytest.raises(Exception):
         cache.get_header(
@@ -302,36 +303,77 @@ def test_jumpstart_cache_handles_boto3_issues(mock_boto3_client):
         )
 
 
-def test_jumpstart_cache_gets_cleared_when_params_are_set():
-    cache = JumpStartModelsCache(bucket="some_bucket")
+@patch("boto3.client")
+def test_jumpstart_cache_gets_cleared_when_params_are_set(mock_boto3_client):
+    cache = JumpStartModelsCache(
+        s3_bucket_name="some_bucket", region="some_region", manifest_file_s3_key="some_key"
+    )
+
     cache.clear = MagicMock()
-    cache.set_bucket("some_bucket")
-    cache.clear.assert_called_once()
+    cache.set_s3_bucket_name("some_bucket")
+    cache.clear.assert_not_called()
     cache.clear.reset_mock()
     cache.set_region("some_region")
-    cache.clear.assert_called_once()
+    cache.clear.assert_not_called()
     cache.clear.reset_mock()
     cache.set_manifest_file_s3_key("some_key")
+    cache.clear.assert_not_called()
+
+    cache.clear.reset_mock()
+
+    cache.set_s3_bucket_name("some_bucket1")
     cache.clear.assert_called_once()
+    cache.clear.reset_mock()
+    cache.set_region("some_region1")
+    cache.clear.assert_called_once()
+    cache.clear.reset_mock()
+    cache.set_manifest_file_s3_key("some_key1")
+    cache.clear.assert_called_once()
+
+
+def test_jumpstart_cache_handles_boto3_client_errors():
+    cache = JumpStartModelsCache(s3_bucket_name="some_bucket")
+    stubbed_s3_client = Stubber(cache._s3_client)
+    stubbed_s3_client.add_client_error("head_object", http_status_code=404)
+    stubbed_s3_client.add_client_error("get_object", http_status_code=404)
+    stubbed_s3_client.activate()
+    with pytest.raises(botocore.exceptions.ClientError):
+        cache.get_header(model_id="tensorflow-ic-imagenet-inception-v3-classification-4")
+
+    cache = JumpStartModelsCache(s3_bucket_name="some_bucket")
+    stubbed_s3_client = Stubber(cache._s3_client)
+    stubbed_s3_client.add_client_error("head_object", service_error_code="AccessDenied")
+    stubbed_s3_client.add_client_error("get_object", service_error_code="AccessDenied")
+    stubbed_s3_client.activate()
+    with pytest.raises(botocore.exceptions.ClientError):
+        cache.get_header(model_id="tensorflow-ic-imagenet-inception-v3-classification-4")
+
+    cache = JumpStartModelsCache(s3_bucket_name="some_bucket")
+    stubbed_s3_client = Stubber(cache._s3_client)
+    stubbed_s3_client.add_client_error("head_object", service_error_code="EndpointConnectionError")
+    stubbed_s3_client.add_client_error("get_object", service_error_code="EndpointConnectionError")
+    stubbed_s3_client.activate()
+    with pytest.raises(botocore.exceptions.ClientError):
+        cache.get_header(model_id="tensorflow-ic-imagenet-inception-v3-classification-4")
 
 
 def test_jumpstart_cache_accepts_input_parameters():
 
     region = "us-east-1"
     max_s3_cache_items = 1
-    s3_cache_expiration_time = datetime.timedelta(weeks=2)
+    s3_cache_expiration_horizon = datetime.timedelta(weeks=2)
     max_semantic_version_cache_items = 3
-    semantic_version_cache_expiration_time = datetime.timedelta(microseconds=4)
+    semantic_version_cache_expiration_horizon = datetime.timedelta(microseconds=4)
     bucket = "my-amazing-bucket"
     manifest_file_key = "some_s3_key"
 
     cache = JumpStartModelsCache(
         region=region,
         max_s3_cache_items=max_s3_cache_items,
-        s3_cache_expiration_time=s3_cache_expiration_time,
+        s3_cache_expiration_horizon=s3_cache_expiration_horizon,
         max_semantic_version_cache_items=max_semantic_version_cache_items,
-        semantic_version_cache_expiration_time=semantic_version_cache_expiration_time,
-        bucket=bucket,
+        semantic_version_cache_expiration_horizon=semantic_version_cache_expiration_horizon,
+        s3_bucket_name=bucket,
         manifest_file_s3_key=manifest_file_key,
     )
 
@@ -339,14 +381,14 @@ def test_jumpstart_cache_accepts_input_parameters():
     assert cache.get_region() == region
     assert cache.get_bucket() == bucket
     assert cache._s3_cache._max_cache_items == max_s3_cache_items
-    assert cache._s3_cache._expiration_time == s3_cache_expiration_time
+    assert cache._s3_cache._expiration_horizon == s3_cache_expiration_horizon
     assert (
         cache._model_id_semantic_version_manifest_key_cache._max_cache_items
         == max_semantic_version_cache_items
     )
     assert (
-        cache._model_id_semantic_version_manifest_key_cache._expiration_time
-        == semantic_version_cache_expiration_time
+        cache._model_id_semantic_version_manifest_key_cache._expiration_horizon
+        == semantic_version_cache_expiration_horizon
     )
 
 
@@ -366,13 +408,13 @@ def test_jumpstart_cache_evaluates_md5_hash(mock_boto3_client):
     )
 
     bucket_name = "bucket_name"
-    now = datetime.datetime.now()
+    now = datetime.datetime.fromtimestamp(1636730651.079551)
 
     with patch("datetime.datetime") as mock_datetime:
         mock_datetime.now.return_value = now
 
         cache = JumpStartModelsCache(
-            bucket=bucket_name, s3_cache_expiration_time=datetime.timedelta(hours=1)
+            s3_bucket_name=bucket_name, s3_cache_expiration_horizon=datetime.timedelta(hours=1)
         )
 
         mock_boto3_client.return_value.get_object.return_value = {
@@ -386,10 +428,10 @@ def test_jumpstart_cache_evaluates_md5_hash(mock_boto3_client):
 
         # first time accessing cache should involve get_object and head_object
         mock_boto3_client.return_value.get_object.assert_called_with(
-            Bucket=bucket_name, Key=DEFAULT_MANIFEST_FILE_S3_KEY
+            Bucket=bucket_name, Key=JUMPSTART_DEFAULT_MANIFEST_FILE_S3_KEY
         )
         mock_boto3_client.return_value.head_object.assert_called_with(
-            Bucket=bucket_name, Key=DEFAULT_MANIFEST_FILE_S3_KEY
+            Bucket=bucket_name, Key=JUMPSTART_DEFAULT_MANIFEST_FILE_S3_KEY
         )
 
         mock_boto3_client.return_value.get_object.reset_mock()
@@ -409,7 +451,7 @@ def test_jumpstart_cache_evaluates_md5_hash(mock_boto3_client):
         cache.get_header(model_id="pytorch-ic-imagenet-inception-v3-classification-4")
 
         mock_boto3_client.return_value.head_object.assert_called_with(
-            Bucket=bucket_name, Key=DEFAULT_MANIFEST_FILE_S3_KEY
+            Bucket=bucket_name, Key=JUMPSTART_DEFAULT_MANIFEST_FILE_S3_KEY
         )
         mock_boto3_client.return_value.get_object.assert_not_called()
 
@@ -430,10 +472,10 @@ def test_jumpstart_cache_evaluates_md5_hash(mock_boto3_client):
         cache.get_header(model_id="pytorch-ic-imagenet-inception-v3-classification-4")
 
         mock_boto3_client.return_value.get_object.assert_called_with(
-            Bucket=bucket_name, Key=DEFAULT_MANIFEST_FILE_S3_KEY
+            Bucket=bucket_name, Key=JUMPSTART_DEFAULT_MANIFEST_FILE_S3_KEY
         )
         mock_boto3_client.return_value.head_object.assert_called_with(
-            Bucket=bucket_name, Key=DEFAULT_MANIFEST_FILE_S3_KEY
+            Bucket=bucket_name, Key=JUMPSTART_DEFAULT_MANIFEST_FILE_S3_KEY
         )
 
 
@@ -461,15 +503,19 @@ def test_jumpstart_cache_makes_correct_s3_calls(mock_boto3_client):
     mock_boto3_client.return_value.head_object.return_value = {"ETag": "some-hash"}
 
     bucket_name = "bucket_name"
-    cache = JumpStartModelsCache(bucket=bucket_name)
+    client_config = botocore.config.Config(signature_version="my_signature_version")
+    cache = JumpStartModelsCache(
+        s3_bucket_name=bucket_name, s3_client_config=client_config, region="my_region"
+    )
     cache.get_header(model_id="pytorch-ic-imagenet-inception-v3-classification-4")
 
     mock_boto3_client.return_value.get_object.assert_called_with(
-        Bucket=bucket_name, Key=DEFAULT_MANIFEST_FILE_S3_KEY
+        Bucket=bucket_name, Key=JUMPSTART_DEFAULT_MANIFEST_FILE_S3_KEY
     )
     mock_boto3_client.return_value.head_object.assert_called_with(
-        Bucket=bucket_name, Key=DEFAULT_MANIFEST_FILE_S3_KEY
+        Bucket=bucket_name, Key=JUMPSTART_DEFAULT_MANIFEST_FILE_S3_KEY
     )
+    mock_boto3_client.assert_called_with("s3", region_name="my_region", config=client_config)
 
     # test get_specs. manifest already in cache, so only s3 call will be to get specs.
     mock_json = json.dumps(BASE_SPEC)
@@ -493,7 +539,7 @@ def test_jumpstart_cache_makes_correct_s3_calls(mock_boto3_client):
 
 @patch.object(JumpStartModelsCache, "_get_file_from_s3", patched_get_file_from_s3)
 def test_jumpstart_cache_handles_bad_semantic_version_manifest_key_cache():
-    cache = JumpStartModelsCache(bucket="some_bucket")
+    cache = JumpStartModelsCache(s3_bucket_name="some_bucket")
 
     cache.clear = MagicMock()
     cache._model_id_semantic_version_manifest_key_cache = MagicMock()
@@ -536,7 +582,7 @@ def test_jumpstart_cache_handles_bad_semantic_version_manifest_key_cache():
 @patch.object(JumpStartModelsCache, "_get_file_from_s3", patched_get_file_from_s3)
 @patch("sagemaker.jumpstart.utils.get_sagemaker_version", lambda: "2.68.3")
 def test_jumpstart_cache_get_specs():
-    cache = JumpStartModelsCache(bucket="some_bucket")
+    cache = JumpStartModelsCache(s3_bucket_name="some_bucket")
 
     model_id, version = "tensorflow-ic-imagenet-inception-v3-classification-4", "2.0.0"
     assert get_spec_from_base_spec(model_id, version) == cache.get_specs(
