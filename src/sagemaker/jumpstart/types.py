@@ -32,10 +32,11 @@ class JumpStartDataHolderType:
 
         if not isinstance(other, type(self)):
             return False
+        if getattr(other, "__slots__", None) is None:
+            return False
+        if self.__slots__ != other.__slots__:
+            return False
         for attribute in self.__slots__:
-            if getattr(self, attribute) != getattr(other, attribute):
-                return False
-        for attribute in other.__slots__:
             if getattr(self, attribute) != getattr(other, attribute):
                 return False
         return True

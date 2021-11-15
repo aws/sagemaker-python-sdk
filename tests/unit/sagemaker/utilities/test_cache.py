@@ -14,6 +14,8 @@ from __future__ import absolute_import
 from typing import Optional, Union
 from mock.mock import MagicMock, patch
 import pytest
+import pickle
+
 
 from sagemaker.utilities import cache
 import datetime
@@ -192,3 +194,24 @@ def test_cache_clear_and_contains():
     assert len(my_cache) == 0
     with pytest.raises(KeyError):
         my_cache.get(1, False)
+
+
+def test_cache_memory_usage():
+    my_cache = cache.LRUCache[int, Union[int, str]](
+        max_cache_items=10,
+        expiration_horizon=datetime.timedelta(hours=1),
+        retrieval_function=retrieval_function,
+    )
+    cache_size_bytes = []
+    cache_size_bytes.append(len(pickle.dumps(my_cache)))
+    for i in range(50):
+        my_cache.put(i)
+        cache_size_bytes.append(len(pickle.dumps(my_cache)))
+
+    max_cache_items_iter_cache_size = cache_size_bytes[10]
+    past_capacity_iter_cache_size = cache_size_bytes[50]
+    percent_difference_cache_size = (
+        abs(past_capacity_iter_cache_size - max_cache_items_iter_cache_size)
+        / max_cache_items_iter_cache_size
+    ) * 100.0
+    assert percent_difference_cache_size < 1

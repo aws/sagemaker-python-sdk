@@ -60,6 +60,44 @@ BASE_SPEC = {
     },
 }
 
+BASE_MANIFEST = [
+    {
+        "model_id": "tensorflow-ic-imagenet-inception-v3-classification-4",
+        "version": "1.0.0",
+        "min_version": "2.49.0",
+        "spec_key": "community_models_specs/tensorflow-ic-imagenet"
+        "-inception-v3-classification-4/specs_v1.0.0.json",
+    },
+    {
+        "model_id": "tensorflow-ic-imagenet-inception-v3-classification-4",
+        "version": "2.0.0",
+        "min_version": "2.49.0",
+        "spec_key": "community_models_specs/tensorflow-ic-imagenet"
+        "-inception-v3-classification-4/specs_v2.0.0.json",
+    },
+    {
+        "model_id": "pytorch-ic-imagenet-inception-v3-classification-4",
+        "version": "1.0.0",
+        "min_version": "2.49.0",
+        "spec_key": "community_models_specs/pytorch-ic-"
+        "imagenet-inception-v3-classification-4/specs_v1.0.0.json",
+    },
+    {
+        "model_id": "pytorch-ic-imagenet-inception-v3-classification-4",
+        "version": "2.0.0",
+        "min_version": "2.49.0",
+        "spec_key": "community_models_specs/pytorch-ic-imagenet-"
+        "inception-v3-classification-4/specs_v2.0.0.json",
+    },
+    {
+        "model_id": "tensorflow-ic-imagenet-inception-v3-classification-4",
+        "version": "3.0.0",
+        "min_version": "4.49.0",
+        "spec_key": "community_models_specs/tensorflow-ic-"
+        "imagenet-inception-v3-classification-4/specs_v3.0.0.json",
+    },
+]
+
 
 def get_spec_from_base_spec(model_id: str, version: str) -> JumpStartModelSpecs:
     spec = copy.deepcopy(BASE_SPEC)
@@ -77,45 +115,9 @@ def patched_get_file_from_s3(
 
     filetype, s3_key = key.file_type, key.s3_key
     if filetype == JumpStartS3FileType.MANIFEST:
-        manifest = [
-            {
-                "model_id": "tensorflow-ic-imagenet-inception-v3-classification-4",
-                "version": "1.0.0",
-                "min_version": "2.49.0",
-                "spec_key": "community_models_specs/tensorflow-ic-imagenet"
-                "-inception-v3-classification-4/specs_v1.0.0.json",
-            },
-            {
-                "model_id": "tensorflow-ic-imagenet-inception-v3-classification-4",
-                "version": "2.0.0",
-                "min_version": "2.49.0",
-                "spec_key": "community_models_specs/tensorflow-ic-imagenet"
-                "-inception-v3-classification-4/specs_v2.0.0.json",
-            },
-            {
-                "model_id": "pytorch-ic-imagenet-inception-v3-classification-4",
-                "version": "1.0.0",
-                "min_version": "2.49.0",
-                "spec_key": "community_models_specs/pytorch-ic-"
-                "imagenet-inception-v3-classification-4/specs_v1.0.0.json",
-            },
-            {
-                "model_id": "pytorch-ic-imagenet-inception-v3-classification-4",
-                "version": "2.0.0",
-                "min_version": "2.49.0",
-                "spec_key": "community_models_specs/pytorch-ic-imagenet-"
-                "inception-v3-classification-4/specs_v2.0.0.json",
-            },
-            {
-                "model_id": "tensorflow-ic-imagenet-inception-v3-classification-4",
-                "version": "3.0.0",
-                "min_version": "4.49.0",
-                "spec_key": "community_models_specs/tensorflow-ic-"
-                "imagenet-inception-v3-classification-4/specs_v3.0.0.json",
-            },
-        ]
+
         return JumpStartCachedS3ContentValue(
-            formatted_file_content=get_formatted_manifest(manifest)
+            formatted_file_content=get_formatted_manifest(BASE_MANIFEST)
         )
 
     if filetype == JumpStartS3FileType.SPECS:
@@ -577,6 +579,15 @@ def test_jumpstart_cache_handles_bad_semantic_version_manifest_key_cache():
             model_id="tensorflow-ic-imagenet-inception-v3-classification-4",
         )
     cache.clear.assert_called_once()
+
+
+@patch.object(JumpStartModelsCache, "_get_file_from_s3", patched_get_file_from_s3)
+@patch("sagemaker.jumpstart.utils.get_sagemaker_version", lambda: "2.68.3")
+def test_jumpstart_get_full_manifest():
+    cache = JumpStartModelsCache(s3_bucket_name="some_bucket")
+    raw_manifest = [header.to_json() for header in cache.get_manifest()]
+
+    raw_manifest == BASE_MANIFEST
 
 
 @patch.object(JumpStartModelsCache, "_get_file_from_s3", patched_get_file_from_s3)

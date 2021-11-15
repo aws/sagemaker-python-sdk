@@ -13,7 +13,7 @@
 """This module defines the JumpStartModelsCache class."""
 from __future__ import absolute_import
 import datetime
-from typing import Optional
+from typing import List, Optional
 import json
 import boto3
 import botocore
@@ -252,6 +252,13 @@ class JumpStartModelsCache:
         raise ValueError(
             f"Bad value for key '{key}': must be in {[JumpStartS3FileType.MANIFEST, JumpStartS3FileType.SPECS]}"
         )
+
+    def get_manifest(self) -> List[JumpStartModelHeader]:
+        """Return entire JumpStart models manifest."""
+
+        return self._s3_cache.get(
+            JumpStartCachedS3ContentKey(JumpStartS3FileType.MANIFEST, self._manifest_file_s3_key)
+        ).formatted_file_content.values()
 
     def get_header(
         self, model_id: str, semantic_version_str: Optional[str] = None
