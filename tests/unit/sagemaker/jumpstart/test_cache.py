@@ -49,10 +49,10 @@ BASE_SPEC = {
         "framework_version": "1.9.0",
         "py_version": "py3",
     },
-    "hosting_artifact_uri": "pytorch-infer/infer-pytorch-ic-mobilenet-v2.tar.gz",
-    "training_artifact_uri": "pytorch-training/train-pytorch-ic-mobilenet-v2.tar.gz",
-    "hosting_script_uri": "source-directory-tarballs/pytorch/inference/ic/v1.0.0/sourcedir.tar.gz",
-    "training_script_uri": "source-directory-tarballs/pytorch/transfer_learning/ic/v1.0.0/sourcedir.tar.gz",
+    "hosting_artifact_key": "pytorch-infer/infer-pytorch-ic-mobilenet-v2.tar.gz",
+    "training_artifact_key": "pytorch-training/train-pytorch-ic-mobilenet-v2.tar.gz",
+    "hosting_script_key": "source-directory-tarballs/pytorch/inference/ic/v1.0.0/sourcedir.tar.gz",
+    "training_script_key": "source-directory-tarballs/pytorch/transfer_learning/ic/v1.0.0/sourcedir.tar.gz",
     "hyperparameters": {
         "adam-learning-rate": {"type": "float", "default": 0.05, "min": 1e-08, "max": 1},
         "epochs": {"type": "int", "default": 3, "min": 1, "max": 1000},
@@ -334,9 +334,9 @@ def test_jumpstart_cache_gets_cleared_when_params_are_set(mock_boto3_client):
 
 
 def test_jumpstart_cache_handles_boto3_client_errors():
+    # Testing get_object
     cache = JumpStartModelsCache(s3_bucket_name="some_bucket")
     stubbed_s3_client = Stubber(cache._s3_client)
-    stubbed_s3_client.add_client_error("head_object", http_status_code=404)
     stubbed_s3_client.add_client_error("get_object", http_status_code=404)
     stubbed_s3_client.activate()
     with pytest.raises(botocore.exceptions.ClientError):
@@ -344,7 +344,6 @@ def test_jumpstart_cache_handles_boto3_client_errors():
 
     cache = JumpStartModelsCache(s3_bucket_name="some_bucket")
     stubbed_s3_client = Stubber(cache._s3_client)
-    stubbed_s3_client.add_client_error("head_object", service_error_code="AccessDenied")
     stubbed_s3_client.add_client_error("get_object", service_error_code="AccessDenied")
     stubbed_s3_client.activate()
     with pytest.raises(botocore.exceptions.ClientError):
@@ -352,11 +351,82 @@ def test_jumpstart_cache_handles_boto3_client_errors():
 
     cache = JumpStartModelsCache(s3_bucket_name="some_bucket")
     stubbed_s3_client = Stubber(cache._s3_client)
-    stubbed_s3_client.add_client_error("head_object", service_error_code="EndpointConnectionError")
     stubbed_s3_client.add_client_error("get_object", service_error_code="EndpointConnectionError")
     stubbed_s3_client.activate()
     with pytest.raises(botocore.exceptions.ClientError):
         cache.get_header(model_id="tensorflow-ic-imagenet-inception-v3-classification-4")
+
+    # Testing head_object:
+    mock_now = datetime.datetime.fromtimestamp(1636730651.079551)
+    with patch("datetime.datetime") as mock_datetime:
+        mock_manifest_json = json.dumps(
+            [
+                {
+                    "model_id": "pytorch-ic-imagenet-inception-v3-classification-4",
+                    "version": "2.0.0",
+                    "min_version": "2.49.0",
+                    "spec_key": "community_models_specs/pytorch-ic-"
+                    "imagenet-inception-v3-classification-4/specs_v2.0.0.json",
+                }
+            ]
+        )
+
+        get_object_mocked_response = {
+            "Body": botocore.response.StreamingBody(
+                io.BytesIO(bytes(mock_manifest_json, "utf-8")),
+                content_length=len(mock_manifest_json),
+            ),
+            "ETag": "etag",
+        }
+
+        mock_datetime.now.return_value = mock_now
+
+        cache1 = JumpStartModelsCache(
+            s3_bucket_name="some_bucket", s3_cache_expiration_horizon=datetime.timedelta(hours=1)
+        )
+        stubbed_s3_client1 = Stubber(cache1._s3_client)
+
+        stubbed_s3_client1.add_response("get_object", copy.deepcopy(get_object_mocked_response))
+        stubbed_s3_client1.activate()
+        cache1.get_header(model_id="pytorch-ic-imagenet-inception-v3-classification-4")
+
+        mock_datetime.now.return_value += datetime.timedelta(weeks=1)
+
+        stubbed_s3_client1.add_client_error("head_object", http_status_code=404)
+        with pytest.raises(botocore.exceptions.ClientError):
+            cache1.get_header(model_id="pytorch-ic-imagenet-inception-v3-classification-4")
+
+        cache2 = JumpStartModelsCache(
+            s3_bucket_name="some_bucket", s3_cache_expiration_horizon=datetime.timedelta(hours=1)
+        )
+        stubbed_s3_client2 = Stubber(cache2._s3_client)
+
+        stubbed_s3_client2.add_response("get_object", copy.deepcopy(get_object_mocked_response))
+        stubbed_s3_client2.activate()
+        cache2.get_header(model_id="pytorch-ic-imagenet-inception-v3-classification-4")
+
+        mock_datetime.now.return_value += datetime.timedelta(weeks=1)
+
+        stubbed_s3_client2.add_client_error("head_object", service_error_code="AccessDenied")
+        with pytest.raises(botocore.exceptions.ClientError):
+            cache2.get_header(model_id="pytorch-ic-imagenet-inception-v3-classification-4")
+
+        cache3 = JumpStartModelsCache(
+            s3_bucket_name="some_bucket", s3_cache_expiration_horizon=datetime.timedelta(hours=1)
+        )
+        stubbed_s3_client3 = Stubber(cache3._s3_client)
+
+        stubbed_s3_client3.add_response("get_object", copy.deepcopy(get_object_mocked_response))
+        stubbed_s3_client3.activate()
+        cache3.get_header(model_id="pytorch-ic-imagenet-inception-v3-classification-4")
+
+        mock_datetime.now.return_value += datetime.timedelta(weeks=1)
+
+        stubbed_s3_client3.add_client_error(
+            "head_object", service_error_code="EndpointConnectionError"
+        )
+        with pytest.raises(botocore.exceptions.ClientError):
+            cache3.get_header(model_id="pytorch-ic-imagenet-inception-v3-classification-4")
 
 
 def test_jumpstart_cache_accepts_input_parameters():
@@ -422,19 +492,18 @@ def test_jumpstart_cache_evaluates_md5_hash(mock_boto3_client):
         mock_boto3_client.return_value.get_object.return_value = {
             "Body": botocore.response.StreamingBody(
                 io.BytesIO(bytes(mock_json, "utf-8")), content_length=len(mock_json)
-            )
+            ),
+            "ETag": "hash1",
         }
         mock_boto3_client.return_value.head_object.return_value = {"ETag": "hash1"}
 
         cache.get_header(model_id="pytorch-ic-imagenet-inception-v3-classification-4")
 
-        # first time accessing cache should involve get_object and head_object
+        # first time accessing cache should just involve get_object
         mock_boto3_client.return_value.get_object.assert_called_with(
             Bucket=bucket_name, Key=JUMPSTART_DEFAULT_MANIFEST_FILE_S3_KEY
         )
-        mock_boto3_client.return_value.head_object.assert_called_with(
-            Bucket=bucket_name, Key=JUMPSTART_DEFAULT_MANIFEST_FILE_S3_KEY
-        )
+        mock_boto3_client.return_value.head_object.assert_not_called()
 
         mock_boto3_client.return_value.get_object.reset_mock()
         mock_boto3_client.return_value.head_object.reset_mock()
@@ -443,7 +512,8 @@ def test_jumpstart_cache_evaluates_md5_hash(mock_boto3_client):
         mock_boto3_client.return_value.get_object.return_value = {
             "Body": botocore.response.StreamingBody(
                 io.BytesIO(bytes(mock_json, "utf-8")), content_length=len(mock_json)
-            )
+            ),
+            "ETag": "hash1",
         }
         mock_boto3_client.return_value.head_object.return_value = {"ETag": "hash1"}
 
@@ -465,7 +535,8 @@ def test_jumpstart_cache_evaluates_md5_hash(mock_boto3_client):
         mock_boto3_client.return_value.get_object.return_value = {
             "Body": botocore.response.StreamingBody(
                 io.BytesIO(bytes(mock_json, "utf-8")), content_length=len(mock_json)
-            )
+            ),
+            "ETag": "hash2",
         }
 
         # invalidate cache
@@ -499,7 +570,8 @@ def test_jumpstart_cache_makes_correct_s3_calls(mock_boto3_client):
     mock_boto3_client.return_value.get_object.return_value = {
         "Body": botocore.response.StreamingBody(
             io.BytesIO(bytes(mock_json, "utf-8")), content_length=len(mock_json)
-        )
+        ),
+        "ETag": "etag",
     }
 
     mock_boto3_client.return_value.head_object.return_value = {"ETag": "some-hash"}
@@ -514,9 +586,8 @@ def test_jumpstart_cache_makes_correct_s3_calls(mock_boto3_client):
     mock_boto3_client.return_value.get_object.assert_called_with(
         Bucket=bucket_name, Key=JUMPSTART_DEFAULT_MANIFEST_FILE_S3_KEY
     )
-    mock_boto3_client.return_value.head_object.assert_called_with(
-        Bucket=bucket_name, Key=JUMPSTART_DEFAULT_MANIFEST_FILE_S3_KEY
-    )
+    mock_boto3_client.return_value.head_object.assert_not_called()
+
     mock_boto3_client.assert_called_with("s3", region_name="my_region", config=client_config)
 
     # test get_specs. manifest already in cache, so only s3 call will be to get specs.
@@ -527,7 +598,8 @@ def test_jumpstart_cache_makes_correct_s3_calls(mock_boto3_client):
     mock_boto3_client.return_value.get_object.return_value = {
         "Body": botocore.response.StreamingBody(
             io.BytesIO(bytes(mock_json, "utf-8")), content_length=len(mock_json)
-        )
+        ),
+        "ETag": "etag",
     }
     cache.get_specs(model_id="pytorch-ic-imagenet-inception-v3-classification-4")
 

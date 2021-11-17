@@ -134,12 +134,12 @@ class LRUCache(Generic[KeyType, ValType]):
     def _get_item(self, key: KeyType, fail_on_old_value: bool) -> ValType:
         """Returns value from cache corresponding to key.
 
-        If ``fail_on_old_value``, a KeyError is thrown instead of a new value
+        If ``fail_on_old_value``, a KeyError is raised instead of a new value
             getting fetched.
 
         Args:
             key (KeyType): Key in cache to retrieve.
-            fail_on_old_value (bool): True if a KeyError is thrown when the cache value
+            fail_on_old_value (bool): True if a KeyError is raised when the cache value
                 is old.
 
         Raises:

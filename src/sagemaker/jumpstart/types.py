@@ -144,12 +144,12 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         "min_sdk_version",
         "incremental_training_supported",
         "hosting_ecr_specs",
-        "hosting_artifact_uri",
-        "hosting_script_uri",
+        "hosting_artifact_key",
+        "hosting_script_key",
         "training_supported",
         "training_ecr_specs",
-        "training_artifact_uri",
-        "training_script_uri",
+        "training_artifact_key",
+        "training_script_key",
         "hyperparameters",
     ]
 
@@ -164,20 +164,20 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         self.min_sdk_version: str = json_obj["min_sdk_version"]
         self.incremental_training_supported: bool = bool(json_obj["incremental_training_supported"])
         self.hosting_ecr_specs: JumpStartECRSpecs = JumpStartECRSpecs(json_obj["hosting_ecr_specs"])
-        self.hosting_artifact_uri: str = json_obj["hosting_artifact_uri"]
-        self.hosting_script_uri: str = json_obj["hosting_script_uri"]
+        self.hosting_artifact_key: str = json_obj["hosting_artifact_key"]
+        self.hosting_script_key: str = json_obj["hosting_script_key"]
         self.training_supported: bool = bool(json_obj["training_supported"])
         if self.training_supported:
             self.training_ecr_specs: Optional[JumpStartECRSpecs] = JumpStartECRSpecs(
                 json_obj["training_ecr_specs"]
             )
-            self.training_artifact_uri: Optional[str] = json_obj["training_artifact_uri"]
-            self.training_script_uri: Optional[str] = json_obj["training_script_uri"]
+            self.training_artifact_key: Optional[str] = json_obj["training_artifact_key"]
+            self.training_script_key: Optional[str] = json_obj["training_script_key"]
             self.hyperparameters: Optional[Dict[str, Any]] = json_obj["hyperparameters"]
         else:
             self.training_ecr_specs = (
-                self.training_artifact_uri
-            ) = self.training_script_uri = self.hyperparameters = None
+                self.training_artifact_key
+            ) = self.training_script_key = self.hyperparameters = None
 
     def to_json(self) -> Dict[str, Any]:
         """Returns json representation of JumpStartModelSpecs object."""

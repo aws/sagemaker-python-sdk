@@ -14,7 +14,6 @@ from __future__ import absolute_import
 from typing import Optional, Union
 from mock.mock import MagicMock, patch
 import pytest
-import pickle
 
 
 from sagemaker.utilities import cache
@@ -54,16 +53,16 @@ def test_cache_invalidates_old_item():
         retrieval_function=retrieval_function,
     )
 
-    curr_time = datetime.datetime.fromtimestamp(1636730651.079551)
+    mock_curr_time = datetime.datetime.fromtimestamp(1636730651.079551)
     with patch("datetime.datetime") as mock_datetime:
-        mock_datetime.now.return_value = curr_time
+        mock_datetime.now.return_value = mock_curr_time
         my_cache.put(5)
         mock_datetime.now.return_value += datetime.timedelta(milliseconds=2)
         with pytest.raises(KeyError):
             my_cache.get(5, False)
 
     with patch("datetime.datetime") as mock_datetime:
-        mock_datetime.now.return_value = curr_time
+        mock_datetime.now.return_value = mock_curr_time
         my_cache.put(5)
         mock_datetime.now.return_value += datetime.timedelta(milliseconds=0.5)
         assert my_cache.get(5, False) == retrieval_function(key=5)
@@ -76,15 +75,15 @@ def test_cache_fetches_new_item():
         retrieval_function=retrieval_function,
     )
 
-    curr_time = datetime.datetime.fromtimestamp(1636730651.079551)
+    mock_curr_time = datetime.datetime.fromtimestamp(1636730651.079551)
     with patch("datetime.datetime") as mock_datetime:
-        mock_datetime.now.return_value = curr_time
+        mock_datetime.now.return_value = mock_curr_time
         my_cache.put(5, 10)
         mock_datetime.now.return_value += datetime.timedelta(milliseconds=2)
         assert my_cache.get(5) == retrieval_function(key=5)
 
     with patch("datetime.datetime") as mock_datetime:
-        mock_datetime.now.return_value = curr_time
+        mock_datetime.now.return_value = mock_curr_time
         my_cache.put(5, 10)
         mock_datetime.now.return_value += datetime.timedelta(milliseconds=0.5)
         assert my_cache.get(5, False) == 10
@@ -194,24 +193,3 @@ def test_cache_clear_and_contains():
     assert len(my_cache) == 0
     with pytest.raises(KeyError):
         my_cache.get(1, False)
-
-
-def test_cache_memory_usage():
-    my_cache = cache.LRUCache[int, Union[int, str]](
-        max_cache_items=10,
-        expiration_horizon=datetime.timedelta(hours=1),
-        retrieval_function=retrieval_function,
-    )
-    cache_size_bytes = []
-    cache_size_bytes.append(len(pickle.dumps(my_cache)))
-    for i in range(50):
-        my_cache.put(i)
-        cache_size_bytes.append(len(pickle.dumps(my_cache)))
-
-    max_cache_items_iter_cache_size = cache_size_bytes[10]
-    past_capacity_iter_cache_size = cache_size_bytes[50]
-    percent_difference_cache_size = (
-        abs(past_capacity_iter_cache_size - max_cache_items_iter_cache_size)
-        / max_cache_items_iter_cache_size
-    ) * 100.0
-    assert percent_difference_cache_size < 1

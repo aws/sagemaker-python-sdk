@@ -69,10 +69,10 @@ def test_jumpstart_model_specs():
             "framework_version": "1.9.0",
             "py_version": "py3",
         },
-        "hosting_artifact_uri": "pytorch-infer/infer-pytorch-ic-mobilenet-v2.tar.gz",
-        "training_artifact_uri": "pytorch-training/train-pytorch-ic-mobilenet-v2.tar.gz",
-        "hosting_script_uri": "source-directory-tarballs/pytorch/inference/ic/v1.0.0/sourcedir.tar.gz",
-        "training_script_uri": "source-directory-tarballs/pytorch/transfer_learning/ic/v1.0.0/sourcedir.tar.gz",
+        "hosting_artifact_key": "pytorch-infer/infer-pytorch-ic-mobilenet-v2.tar.gz",
+        "training_artifact_key": "pytorch-training/train-pytorch-ic-mobilenet-v2.tar.gz",
+        "hosting_script_key": "source-directory-tarballs/pytorch/inference/ic/v1.0.0/sourcedir.tar.gz",
+        "training_script_key": "source-directory-tarballs/pytorch/transfer_learning/ic/v1.0.0/sourcedir.tar.gz",
         "hyperparameters": {
             "adam-learning-rate": {"type": "float", "default": 0.05, "min": 1e-08, "max": 1},
             "epochs": {"type": "int", "default": 3, "min": 1, "max": 1000},
@@ -101,14 +101,14 @@ def test_jumpstart_model_specs():
             "py_version": "py3",
         }
     )
-    assert specs1.hosting_artifact_uri == "pytorch-infer/infer-pytorch-ic-mobilenet-v2.tar.gz"
-    assert specs1.training_artifact_uri == "pytorch-training/train-pytorch-ic-mobilenet-v2.tar.gz"
+    assert specs1.hosting_artifact_key == "pytorch-infer/infer-pytorch-ic-mobilenet-v2.tar.gz"
+    assert specs1.training_artifact_key == "pytorch-training/train-pytorch-ic-mobilenet-v2.tar.gz"
     assert (
-        specs1.hosting_script_uri
+        specs1.hosting_script_key
         == "source-directory-tarballs/pytorch/inference/ic/v1.0.0/sourcedir.tar.gz"
     )
     assert (
-        specs1.training_script_uri
+        specs1.training_script_key
         == "source-directory-tarballs/pytorch/transfer_learning/ic/v1.0.0/sourcedir.tar.gz"
     )
     assert specs1.hyperparameters == {

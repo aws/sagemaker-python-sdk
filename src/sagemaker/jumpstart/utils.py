@@ -82,7 +82,8 @@ def get_sagemaker_version() -> str:
     rejected.
 
     Raises:
-        RuntimeError: If the SageMaker version is not readable.
+        RuntimeError: If the SageMaker version is not readable. An exception is also raised if
+        the version cannot be parsed by ``semantic_version``.
     """
     version = sagemaker.__version__
     parsed_version = None

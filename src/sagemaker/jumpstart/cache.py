@@ -234,11 +234,13 @@ class JumpStartModelsCache:
         file_type, s3_key = key.file_type, key.s3_key
 
         if file_type == JumpStartS3FileType.MANIFEST:
-            etag = self._s3_client.head_object(Bucket=self.s3_bucket_name, Key=s3_key)["ETag"]
-            if value is not None and etag == value.md5_hash:
-                return value
+            if value is not None:
+                etag = self._s3_client.head_object(Bucket=self.s3_bucket_name, Key=s3_key)["ETag"]
+                if etag == value.md5_hash:
+                    return value
             response = self._s3_client.get_object(Bucket=self.s3_bucket_name, Key=s3_key)
             formatted_body = json.loads(response["Body"].read().decode("utf-8"))
+            etag = response["ETag"]
             return JumpStartCachedS3ContentValue(
                 formatted_file_content=utils.get_formatted_manifest(formatted_body),
                 md5_hash=etag,
@@ -271,10 +273,10 @@ class JumpStartModelsCache:
                 header. If None, the highest compatible version is returned.
         """
 
-        return self._get_header_impl(model_id, 0, semantic_version_str)
+        return self._get_header_impl(model_id, semantic_version_str=semantic_version_str)
 
     def _get_header_impl(
-        self, model_id: str, attempt: int, semantic_version_str: Optional[str] = None
+        self, model_id: str, attempt: Optional[int] = 0, semantic_version_str: Optional[str] = None
     ) -> JumpStartModelHeader:
         """Lower-level function to return header.
 
