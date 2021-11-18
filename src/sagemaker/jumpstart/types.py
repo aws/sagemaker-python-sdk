@@ -173,7 +173,7 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
             )
             self.training_artifact_key: Optional[str] = json_obj["training_artifact_key"]
             self.training_script_key: Optional[str] = json_obj["training_script_key"]
-            self.hyperparameters: Optional[Dict[str, Any]] = json_obj["hyperparameters"]
+            self.hyperparameters: Optional[Dict[str, Any]] = json_obj.get("hyperparameters")
         else:
             self.training_ecr_specs = (
                 self.training_artifact_key
