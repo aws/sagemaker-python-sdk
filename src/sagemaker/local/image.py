@@ -659,7 +659,9 @@ class _SageMakerContainer(object):
             # Use version 2.3 as a minimum so that we can specify the runtime
             "version": "2.3",
             "services": services,
-            "networks": {"sagemaker-local": {"name": "sagemaker-local"}},
+            "networks": {
+                f"sagemaker-local-{self.hosts[0]}": {"name": f"sagemaker-local-{self.hosts[0]}"}
+            },
         }
 
         docker_compose_path = os.path.join(self.container_root, DOCKER_COMPOSE_FILENAME)
@@ -727,7 +729,7 @@ class _SageMakerContainer(object):
             "tty": True,
             "volumes": [v.map for v in optml_volumes],
             "environment": environment,
-            "networks": {"sagemaker-local": {"aliases": [host]}},
+            "networks": {f"sagemaker-local-{self.hosts[0]}": {"aliases": [host]}},
         }
 
         if command != "process":
