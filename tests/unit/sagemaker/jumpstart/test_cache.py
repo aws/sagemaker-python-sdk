@@ -136,33 +136,19 @@ def test_jumpstart_cache_get_header():
 
     cache = JumpStartModelsCache(s3_bucket_name="some_bucket")
 
-    assert (
-        JumpStartModelHeader(
-            {
-                "model_id": "tensorflow-ic-imagenet-inception-v3-classification-4",
-                "version": "2.0.0",
-                "min_version": "2.49.0",
-                "spec_key": "community_models_specs/tensorflow-ic"
-                "-imagenet-inception-v3-classification-4/specs_v2.0.0.json",
-            }
-        )
-        == cache.get_header(model_id="tensorflow-ic-imagenet-inception-v3-classification-4")
+    assert JumpStartModelHeader(
+        {
+            "model_id": "tensorflow-ic-imagenet-inception-v3-classification-4",
+            "version": "2.0.0",
+            "min_version": "2.49.0",
+            "spec_key": "community_models_specs/tensorflow-ic"
+            "-imagenet-inception-v3-classification-4/specs_v2.0.0.json",
+        }
+    ) == cache.get_header(
+        model_id="tensorflow-ic-imagenet-inception-v3-classification-4", semantic_version_str="*"
     )
 
     # See if we can make the same query 2 times consecutively
-    assert (
-        JumpStartModelHeader(
-            {
-                "model_id": "tensorflow-ic-imagenet-inception-v3-classification-4",
-                "version": "2.0.0",
-                "min_version": "2.49.0",
-                "spec_key": "community_models_specs/tensorflow-ic"
-                "-imagenet-inception-v3-classification-4/specs_v2.0.0.json",
-            }
-        )
-        == cache.get_header(model_id="tensorflow-ic-imagenet-inception-v3-classification-4")
-    )
-
     assert JumpStartModelHeader(
         {
             "model_id": "tensorflow-ic-imagenet-inception-v3-classification-4",
@@ -278,6 +264,7 @@ def test_jumpstart_cache_get_header():
     with pytest.raises(KeyError):
         cache.get_header(
             model_id="tensorflow-ic-imagenet-inception-v3-classification-4-bak",
+            semantic_version_str="*",
         )
 
 
@@ -340,21 +327,30 @@ def test_jumpstart_cache_handles_boto3_client_errors():
     stubbed_s3_client.add_client_error("get_object", http_status_code=404)
     stubbed_s3_client.activate()
     with pytest.raises(botocore.exceptions.ClientError):
-        cache.get_header(model_id="tensorflow-ic-imagenet-inception-v3-classification-4")
+        cache.get_header(
+            model_id="tensorflow-ic-imagenet-inception-v3-classification-4",
+            semantic_version_str="*",
+        )
 
     cache = JumpStartModelsCache(s3_bucket_name="some_bucket")
     stubbed_s3_client = Stubber(cache._s3_client)
     stubbed_s3_client.add_client_error("get_object", service_error_code="AccessDenied")
     stubbed_s3_client.activate()
     with pytest.raises(botocore.exceptions.ClientError):
-        cache.get_header(model_id="tensorflow-ic-imagenet-inception-v3-classification-4")
+        cache.get_header(
+            model_id="tensorflow-ic-imagenet-inception-v3-classification-4",
+            semantic_version_str="*",
+        )
 
     cache = JumpStartModelsCache(s3_bucket_name="some_bucket")
     stubbed_s3_client = Stubber(cache._s3_client)
     stubbed_s3_client.add_client_error("get_object", service_error_code="EndpointConnectionError")
     stubbed_s3_client.activate()
     with pytest.raises(botocore.exceptions.ClientError):
-        cache.get_header(model_id="tensorflow-ic-imagenet-inception-v3-classification-4")
+        cache.get_header(
+            model_id="tensorflow-ic-imagenet-inception-v3-classification-4",
+            semantic_version_str="*",
+        )
 
     # Testing head_object:
     mock_now = datetime.datetime.fromtimestamp(1636730651.079551)
@@ -388,13 +384,18 @@ def test_jumpstart_cache_handles_boto3_client_errors():
 
         stubbed_s3_client1.add_response("get_object", copy.deepcopy(get_object_mocked_response))
         stubbed_s3_client1.activate()
-        cache1.get_header(model_id="pytorch-ic-imagenet-inception-v3-classification-4")
+        cache1.get_header(
+            model_id="pytorch-ic-imagenet-inception-v3-classification-4", semantic_version_str="*"
+        )
 
         mock_datetime.now.return_value += datetime.timedelta(weeks=1)
 
         stubbed_s3_client1.add_client_error("head_object", http_status_code=404)
         with pytest.raises(botocore.exceptions.ClientError):
-            cache1.get_header(model_id="pytorch-ic-imagenet-inception-v3-classification-4")
+            cache1.get_header(
+                model_id="pytorch-ic-imagenet-inception-v3-classification-4",
+                semantic_version_str="*",
+            )
 
         cache2 = JumpStartModelsCache(
             s3_bucket_name="some_bucket", s3_cache_expiration_horizon=datetime.timedelta(hours=1)
@@ -403,13 +404,18 @@ def test_jumpstart_cache_handles_boto3_client_errors():
 
         stubbed_s3_client2.add_response("get_object", copy.deepcopy(get_object_mocked_response))
         stubbed_s3_client2.activate()
-        cache2.get_header(model_id="pytorch-ic-imagenet-inception-v3-classification-4")
+        cache2.get_header(
+            model_id="pytorch-ic-imagenet-inception-v3-classification-4", semantic_version_str="*"
+        )
 
         mock_datetime.now.return_value += datetime.timedelta(weeks=1)
 
         stubbed_s3_client2.add_client_error("head_object", service_error_code="AccessDenied")
         with pytest.raises(botocore.exceptions.ClientError):
-            cache2.get_header(model_id="pytorch-ic-imagenet-inception-v3-classification-4")
+            cache2.get_header(
+                model_id="pytorch-ic-imagenet-inception-v3-classification-4",
+                semantic_version_str="*",
+            )
 
         cache3 = JumpStartModelsCache(
             s3_bucket_name="some_bucket", s3_cache_expiration_horizon=datetime.timedelta(hours=1)
@@ -418,7 +424,9 @@ def test_jumpstart_cache_handles_boto3_client_errors():
 
         stubbed_s3_client3.add_response("get_object", copy.deepcopy(get_object_mocked_response))
         stubbed_s3_client3.activate()
-        cache3.get_header(model_id="pytorch-ic-imagenet-inception-v3-classification-4")
+        cache3.get_header(
+            model_id="pytorch-ic-imagenet-inception-v3-classification-4", semantic_version_str="*"
+        )
 
         mock_datetime.now.return_value += datetime.timedelta(weeks=1)
 
@@ -426,7 +434,10 @@ def test_jumpstart_cache_handles_boto3_client_errors():
             "head_object", service_error_code="EndpointConnectionError"
         )
         with pytest.raises(botocore.exceptions.ClientError):
-            cache3.get_header(model_id="pytorch-ic-imagenet-inception-v3-classification-4")
+            cache3.get_header(
+                model_id="pytorch-ic-imagenet-inception-v3-classification-4",
+                semantic_version_str="*",
+            )
 
 
 def test_jumpstart_cache_accepts_input_parameters():
@@ -497,7 +508,9 @@ def test_jumpstart_cache_evaluates_md5_hash(mock_boto3_client):
         }
         mock_boto3_client.return_value.head_object.return_value = {"ETag": "hash1"}
 
-        cache.get_header(model_id="pytorch-ic-imagenet-inception-v3-classification-4")
+        cache.get_header(
+            model_id="pytorch-ic-imagenet-inception-v3-classification-4", semantic_version_str="*"
+        )
 
         # first time accessing cache should just involve get_object
         mock_boto3_client.return_value.get_object.assert_called_with(
@@ -520,7 +533,9 @@ def test_jumpstart_cache_evaluates_md5_hash(mock_boto3_client):
         # invalidate cache
         mock_datetime.now.return_value += datetime.timedelta(hours=2)
 
-        cache.get_header(model_id="pytorch-ic-imagenet-inception-v3-classification-4")
+        cache.get_header(
+            model_id="pytorch-ic-imagenet-inception-v3-classification-4", semantic_version_str="*"
+        )
 
         mock_boto3_client.return_value.head_object.assert_called_with(
             Bucket=bucket_name, Key=JUMPSTART_DEFAULT_MANIFEST_FILE_S3_KEY
@@ -542,7 +557,9 @@ def test_jumpstart_cache_evaluates_md5_hash(mock_boto3_client):
         # invalidate cache
         mock_datetime.now.return_value += datetime.timedelta(hours=2)
 
-        cache.get_header(model_id="pytorch-ic-imagenet-inception-v3-classification-4")
+        cache.get_header(
+            model_id="pytorch-ic-imagenet-inception-v3-classification-4", semantic_version_str="*"
+        )
 
         mock_boto3_client.return_value.get_object.assert_called_with(
             Bucket=bucket_name, Key=JUMPSTART_DEFAULT_MANIFEST_FILE_S3_KEY
@@ -581,7 +598,9 @@ def test_jumpstart_cache_makes_correct_s3_calls(mock_boto3_client):
     cache = JumpStartModelsCache(
         s3_bucket_name=bucket_name, s3_client_config=client_config, region="my_region"
     )
-    cache.get_header(model_id="pytorch-ic-imagenet-inception-v3-classification-4")
+    cache.get_header(
+        model_id="pytorch-ic-imagenet-inception-v3-classification-4", semantic_version_str="*"
+    )
 
     mock_boto3_client.return_value.get_object.assert_called_with(
         Bucket=bucket_name, Key=JUMPSTART_DEFAULT_MANIFEST_FILE_S3_KEY
@@ -601,7 +620,9 @@ def test_jumpstart_cache_makes_correct_s3_calls(mock_boto3_client):
         ),
         "ETag": "etag",
     }
-    cache.get_specs(model_id="pytorch-ic-imagenet-inception-v3-classification-4")
+    cache.get_specs(
+        model_id="pytorch-ic-imagenet-inception-v3-classification-4", semantic_version_str="*"
+    )
 
     mock_boto3_client.return_value.get_object.assert_called_with(
         Bucket=bucket_name,
@@ -633,7 +654,7 @@ def test_jumpstart_cache_handles_bad_semantic_version_manifest_key_cache():
             "imagenet-inception-v3-classification-4/specs_v1.0.0.json",
         }
     ) == cache.get_header(
-        model_id="tensorflow-ic-imagenet-inception-v3-classification-4",
+        model_id="tensorflow-ic-imagenet-inception-v3-classification-4", semantic_version_str="*"
     )
     cache.clear.assert_called_once()
     cache.clear.reset_mock()
@@ -649,6 +670,7 @@ def test_jumpstart_cache_handles_bad_semantic_version_manifest_key_cache():
     with pytest.raises(KeyError):
         cache.get_header(
             model_id="tensorflow-ic-imagenet-inception-v3-classification-4",
+            semantic_version_str="*",
         )
     cache.clear.assert_called_once()
 
@@ -683,9 +705,7 @@ def test_jumpstart_cache_get_specs():
     )
 
     with pytest.raises(KeyError):
-        cache.get_specs(
-            model_id=model_id + "bak",
-        )
+        cache.get_specs(model_id=model_id + "bak", semantic_version_str="*")
 
     with pytest.raises(KeyError):
         cache.get_specs(model_id=model_id, semantic_version_str="9.*")

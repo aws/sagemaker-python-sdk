@@ -262,21 +262,22 @@ class JumpStartModelsCache:
             JumpStartCachedS3ContentKey(JumpStartS3FileType.MANIFEST, self._manifest_file_s3_key)
         ).formatted_file_content.values()
 
-    def get_header(
-        self, model_id: str, semantic_version_str: Optional[str] = None
-    ) -> JumpStartModelHeader:
+    def get_header(self, model_id: str, semantic_version_str: str) -> JumpStartModelHeader:
         """Return header for a given JumpStart model id and semantic version.
 
         Args:
             model_id (str): model id for which to get a header.
-            semantic_version_str (Optional[str]): The semantic version for which to get a
-                header. If None, the highest compatible version is returned.
+            semantic_version_str (str): The semantic version for which to get a
+                header.
         """
 
         return self._get_header_impl(model_id, semantic_version_str=semantic_version_str)
 
     def _get_header_impl(
-        self, model_id: str, attempt: Optional[int] = 0, semantic_version_str: Optional[str] = None
+        self,
+        model_id: str,
+        semantic_version_str: str,
+        attempt: Optional[int] = 0,
     ) -> JumpStartModelHeader:
         """Lower-level function to return header.
 
@@ -284,9 +285,9 @@ class JumpStartModelsCache:
 
         Args:
             model_id (str): model id for which to get a header.
-            attempt (int): attempt number at retrieving a header.
-            semantic_version_str (Optional[str]): The semantic version for which to get a
-                header. If None, the highest compatible version is returned.
+            semantic_version_str (str): The semantic version for which to get a
+                header.
+            attempt (Optional[int]): attempt number at retrieving a header.
         """
 
         versioned_model_id = self._model_id_semantic_version_manifest_key_cache.get(
@@ -301,17 +302,15 @@ class JumpStartModelsCache:
             if attempt > 0:
                 raise
             self.clear()
-            return self._get_header_impl(model_id, attempt + 1, semantic_version_str)
+            return self._get_header_impl(model_id, semantic_version_str, attempt + 1)
 
-    def get_specs(
-        self, model_id: str, semantic_version_str: Optional[str] = None
-    ) -> JumpStartModelSpecs:
+    def get_specs(self, model_id: str, semantic_version_str: str) -> JumpStartModelSpecs:
         """Return specs for a given JumpStart model id and semantic version.
 
         Args:
             model_id (str): model id for which to get specs.
-            semantic_version_str (Optional[str]): The semantic version for which to get
-                specs. If None, the highest compatible version is returned.
+            semantic_version_str (str): The semantic version for which to get
+                specs.
         """
 
         header = self.get_header(model_id, semantic_version_str)
