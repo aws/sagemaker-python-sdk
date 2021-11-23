@@ -11,7 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
-from mock.mock import patch
+from mock.mock import Mock, patch
 import pytest
 from sagemaker.jumpstart import utils
 from sagemaker.jumpstart.constants import JUMPSTART_REGION_NAME_SET
@@ -73,33 +73,42 @@ def test_get_formatted_manifest():
     assert utils.get_formatted_manifest([]) == {}
 
 
-def test_get_sagemaker_version():
+def test_parse_sagemaker_version():
 
     with patch("sagemaker.__version__", "1.2.3"):
-        assert utils.get_sagemaker_version() == "1.2.3"
+        assert utils.parse_sagemaker_version() == "1.2.3"
 
     with patch("sagemaker.__version__", "1.2.3.3332j"):
-        assert utils.get_sagemaker_version() == "1.2.3"
+        assert utils.parse_sagemaker_version() == "1.2.3"
 
     with patch("sagemaker.__version__", "1.2.3."):
-        assert utils.get_sagemaker_version() == "1.2.3"
+        assert utils.parse_sagemaker_version() == "1.2.3"
 
     with pytest.raises(ValueError):
         with patch("sagemaker.__version__", "1.2.3dfsdfs"):
-            utils.get_sagemaker_version()
+            utils.parse_sagemaker_version()
 
     with pytest.raises(RuntimeError):
         with patch("sagemaker.__version__", "1.2"):
-            utils.get_sagemaker_version()
+            utils.parse_sagemaker_version()
 
     with pytest.raises(RuntimeError):
         with patch("sagemaker.__version__", "1"):
-            utils.get_sagemaker_version()
+            utils.parse_sagemaker_version()
 
     with pytest.raises(RuntimeError):
         with patch("sagemaker.__version__", ""):
-            utils.get_sagemaker_version()
+            utils.parse_sagemaker_version()
 
     with pytest.raises(RuntimeError):
         with patch("sagemaker.__version__", "1.2.3.4.5"):
-            utils.get_sagemaker_version()
+            utils.parse_sagemaker_version()
+
+
+@patch("sagemaker.jumpstart.utils.parse_sagemaker_version")
+@patch("sagemaker.jumpstart.constants.PARSED_SAGEMAKER_VERSION", "")
+def test_get_sagemaker_version(patched_parse_sm_version: Mock):
+    utils.get_sagemaker_version()
+    utils.get_sagemaker_version()
+    utils.get_sagemaker_version()
+    assert patched_parse_sm_version.called_only_once()

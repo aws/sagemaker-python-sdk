@@ -75,6 +75,17 @@ def get_formatted_manifest(
 def get_sagemaker_version() -> str:
     """Returns sagemaker library version.
 
+    If the sagemaker library version has not been set yet, this function
+    calls ``parse_sagemaker_version`` to retrive the version.
+    """
+    if constants.PARSED_SAGEMAKER_VERSION == "":
+        constants.PARSED_SAGEMAKER_VERSION = parse_sagemaker_version()
+    return constants.PARSED_SAGEMAKER_VERSION
+
+
+def parse_sagemaker_version() -> str:
+    """Returns sagemaker library version. This should only be called once.
+
     Function reads ``__version__`` variable in ``sagemaker`` module.
     In order to maintain compatibility with the ``semantic_version``
     library, versions with fewer than 2, or more than 3, periods are rejected.
