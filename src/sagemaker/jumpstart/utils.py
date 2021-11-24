@@ -19,6 +19,22 @@ from sagemaker.jumpstart import constants
 from sagemaker.jumpstart.types import JumpStartModelHeader, JumpStartVersionedModelId
 
 
+class SageMakerSettings(object):
+    """Static class for storing the SageMaker settings."""
+
+    _PARSED_SAGEMAKER_VERSION = ""
+
+    @staticmethod
+    def set_sagemaker_version(version: str) -> None:
+        """Set SageMaker version."""
+        SageMakerSettings._PARSED_SAGEMAKER_VERSION = version
+
+    @staticmethod
+    def get_sagemaker_version() -> str:
+        """Return SageMaker version."""
+        return SageMakerSettings._PARSED_SAGEMAKER_VERSION
+
+
 def get_jumpstart_launched_regions_message() -> str:
     """Returns formatted string indicating where JumpStart is launched."""
     if len(constants.JUMPSTART_REGION_NAME_SET) == 0:
@@ -79,9 +95,9 @@ def get_sagemaker_version() -> str:
     calls ``parse_sagemaker_version`` to retrieve the version and set
     the constant.
     """
-    if constants.PARSED_SAGEMAKER_VERSION == "":
-        constants.PARSED_SAGEMAKER_VERSION = parse_sagemaker_version()
-    return constants.PARSED_SAGEMAKER_VERSION
+    if SageMakerSettings.get_sagemaker_version() == "":
+        SageMakerSettings.set_sagemaker_version(parse_sagemaker_version())
+    return SageMakerSettings.get_sagemaker_version()
 
 
 def parse_sagemaker_version() -> str:
