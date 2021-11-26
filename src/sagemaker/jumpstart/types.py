@@ -28,7 +28,11 @@ class JumpStartDataHolderType:
     __slots__: List[str] = []
 
     def __eq__(self, other: Any) -> bool:
-        """Returns True if ``other`` is of the same type and has all attributes equal."""
+        """Returns True if ``other`` is of the same type and has all attributes equal.
+
+        Args:
+            other (Any): Other object to which to compare this object.
+        """
 
         if not isinstance(other, type(self)):
             return False
@@ -83,6 +87,12 @@ class JumpStartLaunchedRegionInfo(JumpStartDataHolderType):
     __slots__ = ["content_bucket", "region_name"]
 
     def __init__(self, content_bucket: str, region_name: str):
+        """Instantiates JumpStartLaunchedRegionInfo object.
+
+        Args:
+            content_bucket (str): Name of JumpStart s3 content bucket associated with region.
+            region_name (str): Name of JumpStart launched region.
+        """
         self.content_bucket = content_bucket
         self.region_name = region_name
 
@@ -93,7 +103,11 @@ class JumpStartModelHeader(JumpStartDataHolderType):
     __slots__ = ["model_id", "version", "min_version", "spec_key"]
 
     def __init__(self, header: Dict[str, str]):
-        """Initializes a JumpStartModelHeader object from its json representation."""
+        """Initializes a JumpStartModelHeader object from its json representation.
+
+        Args:
+            header (Dict[str, str]): Dictionary representation of header.
+        """
         self.from_json(header)
 
     def to_json(self) -> Dict[str, str]:
@@ -102,7 +116,11 @@ class JumpStartModelHeader(JumpStartDataHolderType):
         return json_obj
 
     def from_json(self, json_obj: Dict[str, str]) -> None:
-        """Sets fields in object based on json of header."""
+        """Sets fields in object based on json of header.
+
+        Args:
+            json_obj (Dict[str, str]): Dictionary representation of header.
+        """
         self.model_id: str = json_obj["model_id"]
         self.version: str = json_obj["version"]
         self.min_version: str = json_obj["min_version"]
@@ -119,11 +137,19 @@ class JumpStartECRSpecs(JumpStartDataHolderType):
     }
 
     def __init__(self, spec: Dict[str, Any]):
-        """Initializes a JumpStartECRSpecs object from its json representation."""
+        """Initializes a JumpStartECRSpecs object from its json representation.
+
+        Args:
+            spec (Dict[str, Any]): Dictionary representation of spec.
+        """
         self.from_json(spec)
 
     def from_json(self, json_obj: Dict[str, Any]) -> None:
-        """Sets fields in object based on json."""
+        """Sets fields in object based on json.
+
+        Args:
+            json_obj (Dict[str, Any]): Dictionary representation of spec.
+        """
 
         self.framework = json_obj["framework"]
         self.framework_version = json_obj["framework_version"]
@@ -154,11 +180,19 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
     ]
 
     def __init__(self, spec: Dict[str, Any]):
-        """Initializes a JumpStartModelSpecs object from its json representation."""
+        """Initializes a JumpStartModelSpecs object from its json representation.
+
+        Args:
+            spec (Dict[str, Any]): Dictionary representation of spec.
+        """
         self.from_json(spec)
 
     def from_json(self, json_obj: Dict[str, Any]) -> None:
-        """Sets fields in object based on json of header."""
+        """Sets fields in object based on json of header.
+
+        Args:
+            json_obj (Dict[str, Any]): Dictionary representation of spec.
+        """
         self.model_id: str = json_obj["model_id"]
         self.version: str = json_obj["version"]
         self.min_sdk_version: str = json_obj["min_sdk_version"]
@@ -201,6 +235,12 @@ class JumpStartVersionedModelId(JumpStartDataHolderType):
         model_id: str,
         version: str,
     ) -> None:
+        """Instantiates JumpStartVersionedModelId object.
+
+        Args:
+            model_id (str): JumpStart model id.
+            version (str): JumpStart model version.
+        """
         self.model_id = model_id
         self.version = version
 
@@ -215,6 +255,12 @@ class JumpStartCachedS3ContentKey(JumpStartDataHolderType):
         file_type: JumpStartS3FileType,
         s3_key: str,
     ) -> None:
+        """Instantiates JumpStartCachedS3ContentKey object.
+
+        Args:
+            file_type (JumpStartS3FileType): JumpStart file type.
+            s3_key (str): object key in s3.
+        """
         self.file_type = file_type
         self.s3_key = s3_key
 
@@ -222,15 +268,24 @@ class JumpStartCachedS3ContentKey(JumpStartDataHolderType):
 class JumpStartCachedS3ContentValue(JumpStartDataHolderType):
     """Data class for the s3 cached content values."""
 
-    __slots__ = ["formatted_file_content", "md5_hash"]
+    __slots__ = ["formatted_content", "md5_hash"]
 
     def __init__(
         self,
-        formatted_file_content: Union[
+        formatted_content: Union[
             Dict[JumpStartVersionedModelId, JumpStartModelHeader],
             List[JumpStartModelSpecs],
         ],
         md5_hash: Optional[str] = None,
     ) -> None:
-        self.formatted_file_content = formatted_file_content
+        """Instantiates JumpStartCachedS3ContentValue object.
+
+        Args:
+            formatted_content (Union[Dict[JumpStartVersionedModelId, JumpStartModelHeader],
+            List[JumpStartModelSpecs]]):
+                Formatted content for model specs and mappings from
+                versioned model ids to specs.
+            md5_hash (str): md5_hash for stored file content from s3.
+        """
+        self.formatted_content = formatted_content
         self.md5_hash = md5_hash

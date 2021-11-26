@@ -117,14 +117,14 @@ def patched_get_file_from_s3(
     if filetype == JumpStartS3FileType.MANIFEST:
 
         return JumpStartCachedS3ContentValue(
-            formatted_file_content=get_formatted_manifest(BASE_MANIFEST)
+            formatted_content=get_formatted_manifest(BASE_MANIFEST)
         )
 
     if filetype == JumpStartS3FileType.SPECS:
         _, model_id, specs_version = s3_key.split("/")
         version = specs_version.replace("specs_v", "").replace(".json", "")
         return JumpStartCachedS3ContentValue(
-            formatted_file_content=get_spec_from_base_spec(model_id, version)
+            formatted_content=get_spec_from_base_spec(model_id, version)
         )
 
     raise ValueError(f"Bad value for filetype: {filetype}")

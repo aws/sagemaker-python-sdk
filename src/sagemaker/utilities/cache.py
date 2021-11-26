@@ -61,7 +61,7 @@ class LRUCache(Generic[KeyType, ValType]):
                 persist before being invalidated.
             retrieval_function (Callable[[KeyType, ValType], ValType]): Function which maps cache
                 keys and current values to new values. This function must have kwarg arguments
-                ``key`` and and ``value``. This function is called as a fallback when the key
+                ``key`` and ``value``. This function is called as a fallback when the key
                 is not found in the cache, or a key has expired.
 
         """
