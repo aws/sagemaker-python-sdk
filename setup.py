@@ -69,6 +69,7 @@ extras["test"] = (
         "pytest-rerunfailures",
         "pytest-timeout",
         "pytest-xdist",
+        "coverage<6.2",
         "mock",
         "contextlib2",
         "awslogs",
