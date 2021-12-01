@@ -475,6 +475,7 @@ class ProcessingStep(ConfigurableRetryStep):
         cache_config: CacheConfig = None,
         depends_on: Union[List[str], List[Step]] = None,
         retry_policies: List[RetryPolicy] = None,
+        kms_key=None,
     ):
         """Construct a ProcessingStep, given a `Processor` instance.
 
@@ -500,6 +501,8 @@ class ProcessingStep(ConfigurableRetryStep):
             depends_on (List[str] or List[Step]): A list of step names or step instance
                 this `sagemaker.workflow.steps.ProcessingStep` depends on
             retry_policies (List[RetryPolicy]):  A list of retry policy
+            kms_key (str): The ARN of the KMS key that is used to encrypt the
+                user code file. Defaults to `None`.
         """
         super(ProcessingStep, self).__init__(
             name, StepTypeEnum.PROCESSING, display_name, description, depends_on, retry_policies
@@ -511,6 +514,7 @@ class ProcessingStep(ConfigurableRetryStep):
         self.code = code
         self.property_files = property_files
         self.job_name = None
+        self.kms_key = kms_key
 
         # Examine why run method in sagemaker.processing.Processor mutates the processor instance
         # by setting the instance's arguments attribute. Refactor Processor.run, if possible.
@@ -545,8 +549,8 @@ class ProcessingStep(ConfigurableRetryStep):
             inputs=self.inputs,
             outputs=self.outputs,
             code=self.code,
+            kms_key=self.kms_key,
         )
-
         process_args = ProcessingJob._get_process_args(
             self.processor, normalized_inputs, normalized_outputs, experiment_config=dict()
         )

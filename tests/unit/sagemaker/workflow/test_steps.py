@@ -598,6 +598,7 @@ def test_processing_step_normalizes_args_with_local_code(mock_normalize_args, sc
         inputs=step.inputs,
         outputs=step.outputs,
         code=step.code,
+        kms_key=None,
     )
 
 
@@ -624,6 +625,7 @@ def test_processing_step_normalizes_args_with_s3_code(mock_normalize_args, scrip
         outputs=outputs,
         job_arguments=["arg1", "arg2"],
         cache_config=cache_config,
+        kms_key="arn:aws:kms:us-west-2:012345678901:key/s3-kms-key",
     )
     mock_normalize_args.return_value = [step.inputs, step.outputs]
     step.to_request()
@@ -633,6 +635,7 @@ def test_processing_step_normalizes_args_with_s3_code(mock_normalize_args, scrip
         inputs=step.inputs,
         outputs=step.outputs,
         code=step.code,
+        kms_key=step.kms_key,
     )
 
 
@@ -667,6 +670,7 @@ def test_processing_step_normalizes_args_with_no_code(mock_normalize_args, scrip
         inputs=step.inputs,
         outputs=step.outputs,
         code=None,
+        kms_key=None,
     )
 
 
