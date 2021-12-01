@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.69.0 (2021-11-12)
+
+### Features
+
+ * Hugging Face Transformers 4.12 for Pt1.9/TF2.5
+
 ## v2.68.0 (2021-11-02)
 
 ### Features
