@@ -18,6 +18,7 @@ import tempfile
 import shutil
 import pytest
 
+from sagemaker.drift_check_baselines import DriftCheckBaselines
 from tests.unit import DATA_DIR
 
 import sagemaker
@@ -173,6 +174,16 @@ def model_metrics():
 
 
 @pytest.fixture
+def drift_check_baselines():
+    return DriftCheckBaselines(
+        model_constraints=MetricsSource(
+            s3_uri=f"s3://{BUCKET}/constraints_metrics.csv",
+            content_type="text/csv",
+        )
+    )
+
+
+@pytest.fixture
 def source_dir(request):
     wf = os.path.join(DATA_DIR, "workflow")
     tmp = tempfile.mkdtemp()
@@ -195,7 +206,7 @@ def test_step_collection():
     ]
 
 
-def test_register_model(estimator, model_metrics):
+def test_register_model(estimator, model_metrics, drift_check_baselines):
     model_data = f"s3://{BUCKET}/model.tar.gz"
     register_model = RegisterModel(
         name="RegisterModelStep",
@@ -207,6 +218,7 @@ def test_register_model(estimator, model_metrics):
         transform_instances=["transform_instance"],
         model_package_group_name="mpg",
         model_metrics=model_metrics,
+        drift_check_baselines=drift_check_baselines,
         approval_status="Approved",
         description="description",
         display_name="RegisterModelStep",
@@ -233,12 +245,22 @@ def test_register_model(estimator, model_metrics):
                     },
                     "ModelApprovalStatus": "Approved",
                     "ModelMetrics": {
+                        "Bias": {},
+                        "Explainability": {},
                         "ModelQuality": {
                             "Statistics": {
                                 "ContentType": "text/csv",
                                 "S3Uri": f"s3://{BUCKET}/metrics.csv",
                             },
                         },
+                    },
+                    "DriftCheckBaselines": {
+                        "ModelQuality": {
+                            "Constraints": {
+                                "ContentType": "text/csv",
+                                "S3Uri": f"s3://{BUCKET}/constraints_metrics.csv",
+                            }
+                        }
                     },
                     "ModelPackageDescription": "description",
                     "ModelPackageGroupName": "mpg",
@@ -249,7 +271,7 @@ def test_register_model(estimator, model_metrics):
     )
 
 
-def test_register_model_tf(estimator_tf, model_metrics):
+def test_register_model_tf(estimator_tf, model_metrics, drift_check_baselines):
     model_data = f"s3://{BUCKET}/model.tar.gz"
     register_model = RegisterModel(
         name="RegisterModelStep",
@@ -261,6 +283,7 @@ def test_register_model_tf(estimator_tf, model_metrics):
         transform_instances=["transform_instance"],
         model_package_group_name="mpg",
         model_metrics=model_metrics,
+        drift_check_baselines=drift_check_baselines,
         approval_status="Approved",
         description="description",
     )
@@ -285,12 +308,22 @@ def test_register_model_tf(estimator_tf, model_metrics):
                     },
                     "ModelApprovalStatus": "Approved",
                     "ModelMetrics": {
+                        "Bias": {},
+                        "Explainability": {},
                         "ModelQuality": {
                             "Statistics": {
                                 "ContentType": "text/csv",
                                 "S3Uri": f"s3://{BUCKET}/metrics.csv",
                             },
                         },
+                    },
+                    "DriftCheckBaselines": {
+                        "ModelQuality": {
+                            "Constraints": {
+                                "ContentType": "text/csv",
+                                "S3Uri": f"s3://{BUCKET}/constraints_metrics.csv",
+                            }
+                        }
                     },
                     "ModelPackageDescription": "description",
                     "ModelPackageGroupName": "mpg",
@@ -300,7 +333,7 @@ def test_register_model_tf(estimator_tf, model_metrics):
     )
 
 
-def test_register_model_sip(estimator, model_metrics):
+def test_register_model_sip(estimator, model_metrics, drift_check_baselines):
     model_list = [
         Model(image_uri="fakeimage1", model_data="Url1", env=[{"k1": "v1"}, {"k2": "v2"}]),
         Model(image_uri="fakeimage2", model_data="Url2", env=[{"k3": "v3"}, {"k4": "v4"}]),
@@ -317,6 +350,7 @@ def test_register_model_sip(estimator, model_metrics):
         transform_instances=["transform_instance"],
         model_package_group_name="mpg",
         model_metrics=model_metrics,
+        drift_check_baselines=drift_check_baselines,
         approval_status="Approved",
         description="description",
         model=pipeline_model,
@@ -350,12 +384,22 @@ def test_register_model_sip(estimator, model_metrics):
                     },
                     "ModelApprovalStatus": "Approved",
                     "ModelMetrics": {
+                        "Bias": {},
+                        "Explainability": {},
                         "ModelQuality": {
                             "Statistics": {
                                 "ContentType": "text/csv",
                                 "S3Uri": f"s3://{BUCKET}/metrics.csv",
                             },
                         },
+                    },
+                    "DriftCheckBaselines": {
+                        "ModelQuality": {
+                            "Constraints": {
+                                "ContentType": "text/csv",
+                                "S3Uri": f"s3://{BUCKET}/constraints_metrics.csv",
+                            }
+                        }
                     },
                     "ModelPackageDescription": "description",
                     "ModelPackageGroupName": "mpg",
@@ -365,7 +409,9 @@ def test_register_model_sip(estimator, model_metrics):
     )
 
 
-def test_register_model_with_model_repack_with_estimator(estimator, model_metrics):
+def test_register_model_with_model_repack_with_estimator(
+    estimator, model_metrics, drift_check_baselines
+):
     model_data = f"s3://{BUCKET}/model.tar.gz"
     dummy_requirements = f"{DATA_DIR}/dummy_requirements.txt"
     register_model = RegisterModel(
@@ -378,6 +424,7 @@ def test_register_model_with_model_repack_with_estimator(estimator, model_metric
         transform_instances=["transform_instance"],
         model_package_group_name="mpg",
         model_metrics=model_metrics,
+        drift_check_baselines=drift_check_baselines,
         approval_status="Approved",
         description="description",
         entry_point=f"{DATA_DIR}/dummy_script.py",
@@ -469,12 +516,22 @@ def test_register_model_with_model_repack_with_estimator(estimator, model_metric
                     },
                     "ModelApprovalStatus": "Approved",
                     "ModelMetrics": {
+                        "Bias": {},
+                        "Explainability": {},
                         "ModelQuality": {
                             "Statistics": {
                                 "ContentType": "text/csv",
                                 "S3Uri": f"s3://{BUCKET}/metrics.csv",
                             },
                         },
+                    },
+                    "DriftCheckBaselines": {
+                        "ModelQuality": {
+                            "Constraints": {
+                                "ContentType": "text/csv",
+                                "S3Uri": f"s3://{BUCKET}/constraints_metrics.csv",
+                            }
+                        }
                     },
                     "ModelPackageDescription": "description",
                     "ModelPackageGroupName": "mpg",
@@ -485,7 +542,7 @@ def test_register_model_with_model_repack_with_estimator(estimator, model_metric
             raise Exception("A step exists in the collection of an invalid type.")
 
 
-def test_register_model_with_model_repack_with_model(model, model_metrics):
+def test_register_model_with_model_repack_with_model(model, model_metrics, drift_check_baselines):
     model_data = f"s3://{BUCKET}/model.tar.gz"
     register_model = RegisterModel(
         name="RegisterModelStep",
@@ -497,6 +554,7 @@ def test_register_model_with_model_repack_with_model(model, model_metrics):
         transform_instances=["transform_instance"],
         model_package_group_name="mpg",
         model_metrics=model_metrics,
+        drift_check_baselines=drift_check_baselines,
         approval_status="Approved",
         description="description",
         depends_on=["TestStep"],
@@ -583,12 +641,22 @@ def test_register_model_with_model_repack_with_model(model, model_metrics):
                     },
                     "ModelApprovalStatus": "Approved",
                     "ModelMetrics": {
+                        "Bias": {},
+                        "Explainability": {},
                         "ModelQuality": {
                             "Statistics": {
                                 "ContentType": "text/csv",
                                 "S3Uri": f"s3://{BUCKET}/metrics.csv",
                             },
                         },
+                    },
+                    "DriftCheckBaselines": {
+                        "ModelQuality": {
+                            "Constraints": {
+                                "ContentType": "text/csv",
+                                "S3Uri": f"s3://{BUCKET}/constraints_metrics.csv",
+                            }
+                        }
                     },
                     "ModelPackageDescription": "description",
                     "ModelPackageGroupName": "mpg",
@@ -599,7 +667,9 @@ def test_register_model_with_model_repack_with_model(model, model_metrics):
             raise Exception("A step exists in the collection of an invalid type.")
 
 
-def test_register_model_with_model_repack_with_pipeline_model(pipeline_model, model_metrics):
+def test_register_model_with_model_repack_with_pipeline_model(
+    pipeline_model, model_metrics, drift_check_baselines
+):
     model_data = f"s3://{BUCKET}/model.tar.gz"
     service_fault_retry_policy = StepRetryPolicy(
         exception_types=[StepExceptionTypeEnum.SERVICE_FAULT], max_attempts=10
@@ -614,6 +684,7 @@ def test_register_model_with_model_repack_with_pipeline_model(pipeline_model, mo
         transform_instances=["transform_instance"],
         model_package_group_name="mpg",
         model_metrics=model_metrics,
+        drift_check_baselines=drift_check_baselines,
         approval_status="Approved",
         description="description",
         depends_on=["TestStep"],
@@ -705,12 +776,22 @@ def test_register_model_with_model_repack_with_pipeline_model(pipeline_model, mo
                     },
                     "ModelApprovalStatus": "Approved",
                     "ModelMetrics": {
+                        "Bias": {},
+                        "Explainability": {},
                         "ModelQuality": {
                             "Statistics": {
                                 "ContentType": "text/csv",
                                 "S3Uri": f"s3://{BUCKET}/metrics.csv",
                             },
                         },
+                    },
+                    "DriftCheckBaselines": {
+                        "ModelQuality": {
+                            "Constraints": {
+                                "ContentType": "text/csv",
+                                "S3Uri": f"s3://{BUCKET}/constraints_metrics.csv",
+                            }
+                        }
                     },
                     "ModelPackageDescription": "description",
                     "ModelPackageGroupName": "mpg",

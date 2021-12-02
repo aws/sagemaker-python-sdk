@@ -60,7 +60,7 @@ SM_DATAPARALLEL_SUPPORTED_INSTANCE_TYPES = (
 )
 SM_DATAPARALLEL_SUPPORTED_FRAMEWORK_VERSIONS = {
     "tensorflow": ["2.3", "2.3.1", "2.3.2", "2.4", "2.4.1", "2.4.3", "2.5", "2.5.0", "2.5.1"],
-    "pytorch": ["1.6", "1.6.0", "1.7", "1.7.1", "1.8", "1.8.0", "1.8.1", "1.9", "1.9.0"],
+    "pytorch": ["1.6", "1.6.0", "1.7", "1.7.1", "1.8", "1.8.0", "1.8.1", "1.9", "1.9.0", "1.9.1"],
 }
 SMDISTRIBUTED_SUPPORTED_STRATEGIES = ["dataparallel", "modelparallel"]
 
@@ -296,7 +296,8 @@ def framework_name_from_image(image_uri):
     name_pattern = re.compile(
         r"""^(?:sagemaker(?:-rl)?-)?
         (tensorflow|mxnet|chainer|pytorch|scikit-learn|xgboost
-        |huggingface-tensorflow|huggingface-pytorch)(?:-)?
+        |huggingface-tensorflow|huggingface-pytorch
+        |huggingface-tensorflow-trcomp|huggingface-pytorch-trcomp)(?:-)?
         (scriptmode|training)?
         :(.*)-(.*?)-(py2|py3\d*)(?:.*)$""",
         re.VERBOSE,

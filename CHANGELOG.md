@@ -1,5 +1,26 @@
 # Changelog
 
+## v2.70.0 (2021-12-02)
+
+### Features
+
+ * update boto3 minor version >= 1.20.18
+ * Add support for SageMaker lineage queries
+ * add CV shap explainability for SageMaker Clarify
+ * add NLP support for SageMaker Clarify
+ * Add support for ModelMonitor/Clarify integration in model building pipelines
+ * adding support for transformers 4.11 for SM Training Compiler
+ * SM Training Compiler with an UI to enable/disable compilation for HuggingFace DLCs to speedup training
+
+### Bug Fixes and Other Changes
+
+ * pin coveragepy
+ * Add support for PyTorch 1.9.1
+ * Update s3 path of scheduling analysis config on ClarifyCheckStep
+ * documentation/logging to indicate correct place for DEBUG artifacts from SM trcomp
+ * validate requested transformers version and use the best available version
+ * Install custom pkgs
+
 ## v2.69.0 (2021-11-12)
 
 ### Features
