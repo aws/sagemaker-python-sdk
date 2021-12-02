@@ -315,7 +315,9 @@ def _tf_py_version(tf_version, request):
         return "py3"
     if version < Version("2.2"):
         return request.param
-    return "py37"
+    if Version("2.2") <= version < Version("2.6"):
+        return "py37"
+    return "py38"
 
 
 @pytest.fixture(scope="module")
@@ -345,7 +347,9 @@ def tf_full_py_version(tf_full_version):
         return "py2"
     if version < Version("2.2"):
         return "py3"
-    return "py37"
+    if version < Version("2.6"):
+        return "py37"
+    return "py38"
 
 
 @pytest.fixture(scope="session")
