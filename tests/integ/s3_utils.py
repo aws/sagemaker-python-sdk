@@ -42,4 +42,4 @@ def assert_s3_file_patterns_exist(sagemaker_session, s3_url, file_patterns):
         search_pattern = re.compile(pattern)
         found = [x["Key"] for x in contents if search_pattern.search(x["Key"])]
         if not found:
-            raise ValueError("File {} is not found under {}".format(f, s3_url))
+            raise ValueError("File {} is not found under {}".format(pattern, s3_url))
