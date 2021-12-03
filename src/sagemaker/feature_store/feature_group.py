@@ -163,12 +163,15 @@ class IngestionManagerPandas:
         max_workers (int): number of threads to create.
         max_processes (int): number of processes to create. Each process spawns
             ``max_workers`` threads.
+        profile_name (str): the profile credential should be used for ``PutRecord``
+            (default: None).
     """
 
     feature_group_name: str = attr.ib()
     sagemaker_fs_runtime_client_config: Config = attr.ib()
     max_workers: int = attr.ib(default=1)
     max_processes: int = attr.ib(default=1)
+    profile_name: str = attr.ib(default=None)
     _async_result: AsyncResult = attr.ib(default=None)
     _processing_pool: ProcessingPool = attr.ib(default=None)
     _failed_indices: List[int] = attr.ib(factory=list)
@@ -180,6 +183,7 @@ class IngestionManagerPandas:
         client_config: Config,
         start_index: int,
         end_index: int,
+        profile_name: str = None,
     ) -> List[int]:
         """Ingest a single batch of DataFrame rows into FeatureStore.
 
@@ -190,6 +194,8 @@ class IngestionManagerPandas:
                 client to perform boto calls.
             start_index (int): starting position to ingest in this batch.
             end_index (int): ending position to ingest in this batch.
+            profile_name (str): the profile credential should be used for ``PutRecord``
+                (default: None).
 
         Returns:
             List of row indices that failed to be ingested.
@@ -198,7 +204,7 @@ class IngestionManagerPandas:
         if "max_attempts" not in retry_config and "total_max_attempts" not in retry_config:
             client_config = copy.deepcopy(client_config)
             client_config.retries = {"max_attempts": 10, "mode": "standard"}
-        sagemaker_featurestore_runtime_client = boto3.Session().client(
+        sagemaker_featurestore_runtime_client = boto3.Session(profile_name=profile_name).client(
             service_name="sagemaker-featurestore-runtime", config=client_config
         )
 
@@ -287,6 +293,7 @@ class IngestionManagerPandas:
                     data_frame[start_index:end_index],
                     start_index,
                     timeout,
+                    self.profile_name,
                 )
             ]
 
@@ -311,6 +318,7 @@ class IngestionManagerPandas:
         data_frame: DataFrame,
         row_offset=0,
         timeout=None,
+        profile_name=None,
     ) -> List[int]:
         """Start the ingestion process.
 
@@ -321,6 +329,8 @@ class IngestionManagerPandas:
             wait (bool): whether to wait for the ingestion to finish or not.
             timeout (Union[int, float]): ``concurrent.futures.TimeoutError`` will be raised
                 if timeout is reached.
+            profile_name (str): the profile credential should be used for ``PutRecord``
+                (default: None).
 
         Returns:
             List of row indices that failed to be ingested.
@@ -342,6 +352,7 @@ class IngestionManagerPandas:
                     start_index=start_index,
                     end_index=end_index,
                     client_config=sagemaker_fs_runtime_client_config,
+                    profile_name=profile_name,
                 )
             ] = (start_index + row_offset, end_index + row_offset)
 
@@ -581,6 +592,7 @@ class FeatureGroup:
         max_processes: int = 1,
         wait: bool = True,
         timeout: Union[int, float] = None,
+        profile_name: str = None,
     ) -> IngestionManagerPandas:
         """Ingest the content of a pandas DataFrame to feature store.
 
@@ -599,6 +611,11 @@ class FeatureGroup:
         They can also be found from the IngestionManagerPandas' ``failed_rows`` function after
         the exception is thrown.
 
+        `profile_name` argument is an optional one. It will use the default credential if None is
+        passed. This `profile_name` is used in the sagemaker_featurestore_runtime client only. See
+        https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html for more
+        about the default credential.
+
         Args:
             data_frame (DataFrame): data_frame to be ingested to feature store.
             max_workers (int): number of threads to be created.
@@ -607,6 +624,8 @@ class FeatureGroup:
             wait (bool): whether to wait for the ingestion to finish or not.
             timeout (Union[int, float]): ``concurrent.futures.TimeoutError`` will be raised
                 if timeout is reached.
+            profile_name (str): the profile credential should be used for ``PutRecord``
+                (default: None).
 
         Returns:
             An instance of IngestionManagerPandas.
@@ -622,6 +641,7 @@ class FeatureGroup:
             sagemaker_fs_runtime_client_config=self.sagemaker_session.sagemaker_featurestore_runtime_client.meta.config,
             max_workers=max_workers,
             max_processes=max_processes,
+            profile_name=profile_name,
         )
 
         manager.run(data_frame=data_frame, wait=wait, timeout=timeout)
