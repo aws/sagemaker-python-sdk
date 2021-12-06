@@ -16,3 +16,5 @@ from __future__ import absolute_import
 from sagemaker.huggingface.estimator import HuggingFace  # noqa: F401
 from sagemaker.huggingface.model import HuggingFaceModel, HuggingFacePredictor  # noqa: F401
 from sagemaker.huggingface.processing import HuggingFaceProcessor  # noqa:F401
+
+from sagemaker.training_compiler.config import TrainingCompilerConfig  # noqa: F401

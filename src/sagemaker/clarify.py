@@ -11,17 +11,20 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """This module configures the SageMaker Clarify bias and model explainability processor job."""
-from __future__ import print_function, absolute_import
+from __future__ import absolute_import, print_function
 
 import copy
-
-from abc import ABC, abstractmethod
 import json
+import logging
 import os
-import tempfile
 import re
-from sagemaker.processing import ProcessingInput, ProcessingOutput, Processor
+
+import tempfile
+from abc import ABC, abstractmethod
 from sagemaker import image_uris, s3, utils
+from sagemaker.processing import ProcessingInput, ProcessingOutput, Processor
+
+logger = logging.getLogger(__name__)
 
 
 class DataConfig:
@@ -38,6 +41,7 @@ class DataConfig:
         dataset_type="text/csv",
         s3_data_distribution_type="FullyReplicated",
         s3_compression_type="None",
+        joinsource=None,
     ):
         """Initializes a configuration of both input and output datasets.
 
@@ -57,8 +61,18 @@ class DataConfig:
             s3_data_distribution_type (str): Valid options are "FullyReplicated" or
                 "ShardedByS3Key".
             s3_compression_type (str): Valid options are "None" or "Gzip".
+            joinsource (str): The name or index of the column in the dataset that acts as an
+                identifier column (for instance, while performing a join). This column is only
+                used as an identifier, and not used for any other computations. This is an
+                optional field in all cases except when the dataset contains more than one file,
+                and `save_local_shap_values` is set to true in SHAPConfig.
         """
-        if dataset_type not in ["text/csv", "application/jsonlines", "application/x-parquet"]:
+        if dataset_type not in [
+            "text/csv",
+            "application/jsonlines",
+            "application/x-parquet",
+            "application/x-image",
+        ]:
             raise ValueError(
                 f"Invalid dataset_type '{dataset_type}'."
                 f" Please check the API documentation for the supported dataset types."
@@ -77,6 +91,7 @@ class DataConfig:
         _set(features, "features", self.analysis_config)
         _set(headers, "headers", self.analysis_config)
         _set(label, "label", self.analysis_config)
+        _set(joinsource, "joinsource_name_or_index", self.analysis_config)
 
     def get_config(self):
         """Returns part of an analysis config dictionary."""
@@ -202,7 +217,14 @@ class ModelConfig:
                 )
             self.predictor_config["accept_type"] = accept_type
         if content_type is not None:
-            if content_type not in ["text/csv", "application/jsonlines"]:
+            if content_type not in [
+                "text/csv",
+                "application/jsonlines",
+                "image/jpeg",
+                "image/jpg",
+                "image/png",
+                "application/x-npy",
+            ]:
                 raise ValueError(
                     f"Invalid content_type {content_type}."
                     f" Please choose text/csv or application/jsonlines."
@@ -300,6 +322,211 @@ class ExplainabilityConfig(ABC):
         return None
 
 
+class PDPConfig(ExplainabilityConfig):
+    """Config class for Partial Dependence Plots (PDP).
+
+    If PDP is requested, the Partial Dependence Plots will be included in the report, and the
+    corresponding values will be included in the analysis output.
+    """
+
+    def __init__(self, features=None, grid_resolution=15, top_k_features=10):
+        """Initializes config for PDP.
+
+        Args:
+            features (None or list): List of features names or indices for which partial dependence
+                plots must be computed and plotted. When ShapConfig is provided, this parameter is
+                optional as Clarify will try to compute the partial dependence plots for top
+                feature based on SHAP attributions. When ShapConfig is not provided, 'features'
+                must be provided.
+            grid_resolution (int): In case of numerical features, this number represents that
+                number of buckets that range of values must be divided into. This decides the
+                granularity of the grid in which the PDP are plotted.
+            top_k_features (int): Set the number of top SHAP attributes to be selected to compute
+                partial dependence plots.
+        """
+        self.pdp_config = {"grid_resolution": grid_resolution, "top_k_features": top_k_features}
+        if features is not None:
+            self.pdp_config["features"] = features
+
+    def get_explainability_config(self):
+        """Returns config."""
+        return copy.deepcopy({"pdp": self.pdp_config})
+
+
+class TextConfig:
+    """Config object to handle text features.
+
+    The SHAP analysis will break down longer text into chunks (e.g. tokens, sentences, or paragraphs
+    ) and replace them with the strings specified in the baseline for that feature. The shap value
+    of a chunk then captures how much replacing it affects the prediction.
+    """
+
+    _SUPPORTED_GRANULARITIES = ["token", "sentence", "paragraph"]
+    _SUPPORTED_LANGUAGES = [
+        "chinese",
+        "danish",
+        "dutch",
+        "english",
+        "french",
+        "german",
+        "greek",
+        "italian",
+        "japanese",
+        "lithuanian",
+        "multi-language",
+        "norwegian bokmål",
+        "polish",
+        "portuguese",
+        "romanian",
+        "russian",
+        "spanish",
+        "afrikaans",
+        "albanian",
+        "arabic",
+        "armenian",
+        "basque",
+        "bengali",
+        "bulgarian",
+        "catalan",
+        "croatian",
+        "czech",
+        "estonian",
+        "finnish",
+        "gujarati",
+        "hebrew",
+        "hindi",
+        "hungarian",
+        "icelandic",
+        "indonesian",
+        "irish",
+        "kannada",
+        "kyrgyz",
+        "latvian",
+        "ligurian",
+        "luxembourgish",
+        "macedonian",
+        "malayalam",
+        "marathi",
+        "nepali",
+        "persian",
+        "sanskrit",
+        "serbian",
+        "setswana",
+        "sinhala",
+        "slovak",
+        "slovenian",
+        "swedish",
+        "tagalog",
+        "tamil",
+        "tatar",
+        "telugu",
+        "thai",
+        "turkish",
+        "ukrainian",
+        "urdu",
+        "vietnamese",
+        "yoruba",
+    ]
+
+    def __init__(
+        self,
+        granularity,
+        language,
+    ):
+        """Initializes a text configuration.
+
+        Args: granularity (str): Determines the granularity in which text features are broken down
+        to, can be "token", "sentence", or "paragraph". Shap values are computed for these units.
+        language (str): Specifies the language of the text features, can be "chinese", "danish",
+        "dutch", "english", "french", "german", "greek", "italian", "japanese", "lithuanian",
+        "multi-language", "norwegian bokmål", "polish", "portuguese", "romanian", "russian",
+        "spanish", "afrikaans", "albanian", "arabic", "armenian", "basque", "bengali", "bulgarian",
+        "catalan", "croatian", "czech", "estonian", "finnish", "gujarati", "hebrew", "hindi",
+        "hungarian", "icelandic", "indonesian", "irish", "kannada", "kyrgyz", "latvian", "ligurian",
+        "luxembourgish", "macedonian", "malayalam", "marathi", "nepali", "persian", "sanskrit",
+        "serbian", "setswana", "sinhala", "slovak", "slovenian", "swedish", "tagalog", "tamil",
+        "tatar", "telugu", "thai", "turkish", "ukrainian", "urdu", "vietnamese", "yoruba". Use
+        "multi-language" for a mix of mulitple languages.
+        """
+        if granularity not in TextConfig._SUPPORTED_GRANULARITIES:
+            raise ValueError(
+                f"Invalid granularity {granularity}. Please choose among "
+                f"{TextConfig._SUPPORTED_GRANULARITIES}"
+            )
+        if language not in TextConfig._SUPPORTED_LANGUAGES:
+            raise ValueError(
+                f"Invalid language {language}. Please choose among "
+                f"{TextConfig._SUPPORTED_LANGUAGES}"
+            )
+        self.text_config = {
+            "granularity": granularity,
+            "language": language,
+        }
+
+    def get_text_config(self):
+        """Returns part of an analysis config dictionary."""
+        return copy.deepcopy(self.text_config)
+
+
+class ImageConfig:
+    """Config object for handling images"""
+
+    def __init__(
+        self,
+        model_type,
+        num_segments=None,
+        feature_extraction_method=None,
+        segment_compactness=None,
+        max_objects=None,
+        iou_threshold=None,
+        context=None,
+    ):
+        """Initializes all configuration parameters needed for SHAP CV explainability
+
+        Args:
+            model_type (str): Specifies the type of CV model. Options:
+            (IMAGE_CLASSIFICATION | OBJECT_DETECTION).
+            num_segments (None or int): Clarify uses SKLearn's SLIC method for image segmentation
+            to generate features/superpixels. num_segments specifies approximate
+            number of segments to be generated. Default is None. SLIC will default to
+            100 segments.
+            feature_extraction_method (None or str): method used for extracting features from the
+            image.ex. "segmentation". Default is segmentation.
+            segment_compactness (None or float): Balances color proximity and space proximity.
+            Higher values give more weight to space proximity, making superpixel
+            shapes more square/cubic. We recommend exploring possible values on a log
+            scale, e.g., 0.01, 0.1, 1, 10, 100, before refining around a chosen value.
+            max_objects (None or int): maximum number of objects displayed. Object detection
+            algorithm may detect more than max_objects number of objects in a single
+            image. The top max_objects number of objects according to confidence score
+            will be displayed.
+            iou_threshold (None or float): minimum intersection over union for the object
+            bounding box to consider its confidence score for computing SHAP values [0.0, 1.0].
+            This parameter is used for the object detection case.
+            context (None or float): refers to the portion of the image outside of the bounding box.
+            Scale is [0.0, 1.0]. If set to 1.0, whole image is considered, if set to
+            0.0 only the image inside bounding box is considered.
+        """
+        self.image_config = {}
+
+        if model_type not in ["OBJECT_DETECTION", "IMAGE_CLASSIFICATION"]:
+            raise ValueError(
+                "Clarify SHAP only supports object detection and image classification methods. "
+                "Please set model_type to OBJECT_DETECTION or IMAGE_CLASSIFICATION."
+            )
+        self.image_config["model_type"] = model_type
+        _set(num_segments, "num_segments", self.image_config)
+        _set(feature_extraction_method, "feature_extraction_method", self.image_config)
+        _set(segment_compactness, "segment_compactness", self.image_config)
+        _set(max_objects, "max_objects", self.image_config)
+        _set(iou_threshold, "iou_threshold", self.image_config)
+        _set(context, "context", self.image_config)
+
+    def get_image_config(self):
+        """Returns the image config part of an analysis config dictionary."""
+        return copy.deepcopy(self.image_config)
+
+
 class SHAPConfig(ExplainabilityConfig):
     """Config class of SHAP."""
 
@@ -312,6 +539,8 @@ class SHAPConfig(ExplainabilityConfig):
         save_local_shap_values=True,
         seed=None,
         num_clusters=None,
+        text_config=None,
+        image_config=None,
     ):
         """Initializes config for SHAP.
 
@@ -340,6 +569,10 @@ class SHAPConfig(ExplainabilityConfig):
                 computes a baseline dataset via a clustering algorithm (K-means/K-prototypes).
                 num_clusters is a parameter for this algorithm. num_clusters will be the resulting
                 size of the baseline dataset. If not provided, Clarify job will use a default value.
+            text_config (:class:`~sagemaker.clarify.TextConfig`): Config to handle text features.
+                Default is None
+            image_config (:class:`~sagemaker.clarify.ImageConfig`): Config to handle image features.
+                Default is None
         """
         if agg_method is not None and agg_method not in ["mean_abs", "median", "mean_sq"]:
             raise ValueError(
@@ -354,16 +587,21 @@ class SHAPConfig(ExplainabilityConfig):
             "use_logit": use_logit,
             "save_local_shap_values": save_local_shap_values,
         }
-        if baseline is not None:
-            self.shap_config["baseline"] = baseline
-        if num_samples is not None:
-            self.shap_config["num_samples"] = num_samples
-        if agg_method is not None:
-            self.shap_config["agg_method"] = agg_method
-        if seed is not None:
-            self.shap_config["seed"] = seed
-        if num_clusters is not None:
-            self.shap_config["num_clusters"] = num_clusters
+        _set(baseline, "baseline", self.shap_config)
+        _set(num_samples, "num_samples", self.shap_config)
+        _set(agg_method, "agg_method", self.shap_config)
+        _set(seed, "seed", self.shap_config)
+        _set(num_clusters, "num_clusters", self.shap_config)
+        if text_config:
+            _set(text_config.get_text_config(), "text_config", self.shap_config)
+            if not save_local_shap_values:
+                logger.warning(
+                    "Global aggregation is not yet supported for text features. "
+                    "Consider setting save_local_shap_values=True to inspect local text "
+                    "explanations."
+                )
+        if image_config:
+            _set(image_config.get_image_config(), "image_config", self.shap_config)
 
     def get_explainability_config(self):
         """Returns config."""
@@ -487,7 +725,10 @@ class SageMakerClarifyProcessor(Processor):
                 will be unassociated.
                 * `TrialComponentDisplayName` is used for display in Studio.
         """
-        analysis_config["methods"]["report"] = {"name": "report", "title": "Analysis Report"}
+        analysis_config["methods"]["report"] = {
+            "name": "report",
+            "title": "Analysis Report",
+        }
         with tempfile.TemporaryDirectory() as tmpdirname:
             analysis_config_file = os.path.join(tmpdirname, "analysis_config.json")
             with open(analysis_config_file, "w") as f:
@@ -589,7 +830,15 @@ class SageMakerClarifyProcessor(Processor):
                 job_name = utils.name_from_base(self.job_name_prefix)
             else:
                 job_name = utils.name_from_base("Clarify-Pretraining-Bias")
-        self._run(data_config, analysis_config, wait, logs, job_name, kms_key, experiment_config)
+        self._run(
+            data_config,
+            analysis_config,
+            wait,
+            logs,
+            job_name,
+            kms_key,
+            experiment_config,
+        )
 
     def run_post_training_bias(
         self,
@@ -667,7 +916,15 @@ class SageMakerClarifyProcessor(Processor):
                 job_name = utils.name_from_base(self.job_name_prefix)
             else:
                 job_name = utils.name_from_base("Clarify-Posttraining-Bias")
-        self._run(data_config, analysis_config, wait, logs, job_name, kms_key, experiment_config)
+        self._run(
+            data_config,
+            analysis_config,
+            wait,
+            logs,
+            job_name,
+            kms_key,
+            experiment_config,
+        )
 
     def run_bias(
         self,
@@ -762,7 +1019,15 @@ class SageMakerClarifyProcessor(Processor):
                 job_name = utils.name_from_base(self.job_name_prefix)
             else:
                 job_name = utils.name_from_base("Clarify-Bias")
-        self._run(data_config, analysis_config, wait, logs, job_name, kms_key, experiment_config)
+        self._run(
+            data_config,
+            analysis_config,
+            wait,
+            logs,
+            job_name,
+            kms_key,
+            experiment_config,
+        )
 
     def run_explainability(
         self,
@@ -792,8 +1057,9 @@ class SageMakerClarifyProcessor(Processor):
             data_config (:class:`~sagemaker.clarify.DataConfig`): Config of the input/output data.
             model_config (:class:`~sagemaker.clarify.ModelConfig`): Config of the model and its
                 endpoint to be created.
-            explainability_config (:class:`~sagemaker.clarify.ExplainabilityConfig`): Config of the
-                specific explainability method. Currently, only SHAP is supported.
+            explainability_config (:class:`~sagemaker.clarify.ExplainabilityConfig` or list):
+                Config of the specific explainability method or a list of ExplainabilityConfig
+                objects. Currently, SHAP and PDP are the two methods supported.
             model_scores(str|int|ModelPredictedLabelConfig):  Index or JSONPath location in the
                 model output for the predicted scores to be explained. This is not required if the
                 model output is a single score. Alternatively, an instance of
@@ -822,19 +1088,53 @@ class SageMakerClarifyProcessor(Processor):
         analysis_config = data_config.get_config()
         predictor_config = model_config.get_predictor_config()
         if isinstance(model_scores, ModelPredictedLabelConfig):
-            probability_threshold, predicted_label_config = model_scores.get_predictor_config()
+            (
+                probability_threshold,
+                predicted_label_config,
+            ) = model_scores.get_predictor_config()
             _set(probability_threshold, "probability_threshold", analysis_config)
             predictor_config.update(predicted_label_config)
         else:
             _set(model_scores, "label", predictor_config)
-        analysis_config["methods"] = explainability_config.get_explainability_config()
+
+        explainability_methods = {}
+        if isinstance(explainability_config, list):
+            if len(explainability_config) == 0:
+                raise ValueError("Please provide at least one explainability config.")
+            for config in explainability_config:
+                explain_config = config.get_explainability_config()
+                explainability_methods.update(explain_config)
+            if not len(explainability_methods.keys()) == len(explainability_config):
+                raise ValueError("Duplicate explainability configs are provided")
+            if (
+                "shap" not in explainability_methods
+                and explainability_methods["pdp"].get("features", None) is None
+            ):
+                raise ValueError("PDP features must be provided when ShapConfig is not provided")
+        else:
+            if (
+                isinstance(explainability_config, PDPConfig)
+                and explainability_config.get_explainability_config()["pdp"].get("features", None)
+                is None
+            ):
+                raise ValueError("PDP features must be provided when ShapConfig is not provided")
+            explainability_methods = explainability_config.get_explainability_config()
+        analysis_config["methods"] = explainability_methods
         analysis_config["predictor"] = predictor_config
         if job_name is None:
             if self.job_name_prefix:
                 job_name = utils.name_from_base(self.job_name_prefix)
             else:
                 job_name = utils.name_from_base("Clarify-Explainability")
-        self._run(data_config, analysis_config, wait, logs, job_name, kms_key, experiment_config)
+        self._run(
+            data_config,
+            analysis_config,
+            wait,
+            logs,
+            job_name,
+            kms_key,
+            experiment_config,
+        )
 
 
 def _upload_analysis_config(analysis_config_file, s3_output_path, sagemaker_session, kms_key):

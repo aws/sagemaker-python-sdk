@@ -29,6 +29,7 @@ from sagemaker import (
     utils,
     git_utils,
 )
+from sagemaker.inputs import CompilationInput
 from sagemaker.deprecations import removed_kwargs
 from sagemaker.predictor import PredictorBase
 from sagemaker.transformer import Transformer
@@ -145,6 +146,7 @@ class Model(ModelBase):
         marketplace_cert=False,
         approval_status=None,
         description=None,
+        drift_check_baselines=None,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
@@ -169,6 +171,7 @@ class Model(ModelBase):
             approval_status (str): Model Approval Status, values can be "Approved", "Rejected",
                 or "PendingManualApproval" (default: "PendingManualApproval").
             description (str): Model Package description (default: None).
+            drift_check_baselines (DriftCheckBaselines): DriftCheckBaselines object (default: None).
 
         Returns:
             A `sagemaker.model.ModelPackage` instance.
@@ -190,6 +193,7 @@ class Model(ModelBase):
             marketplace_cert,
             approval_status,
             description,
+            drift_check_baselines=drift_check_baselines,
         )
         model_package = self.sagemaker_session.create_model_package_from_containers(
             **model_pkg_args
@@ -409,6 +413,58 @@ class Model(ModelBase):
             "tags": tags,
             "job_name": job_name,
         }
+
+    def _get_compilation_args(self, estimator, inputs):
+        """Constructs a dict of arguments for an Amazon SageMaker compilation job from estimator.
+
+        Args:
+            estimator (sagemaker.estimator.EstimatorBase): Estimator object
+                created by the user.
+            inputs (CompilationInput): class containing all the parameters that
+                can be used when calling ``sagemaker.model.Model.compile_model()``
+        """
+
+        if not isinstance(inputs, CompilationInput):
+            raise TypeError("Your inputs must be provided as CompilationInput objects.")
+        target_instance_family = inputs.target_instance_type
+        input_shape = inputs.input_shape
+        output_path = inputs.output_path
+        role = estimator.role
+        compile_max_run = inputs.compile_max_run
+        job_name = estimator._compilation_job_name()
+        framework = inputs.framework or self._framework()
+        if framework is None:
+            raise ValueError(
+                "You must specify framework, allowed values {}".format(NEO_ALLOWED_FRAMEWORKS)
+            )
+        if framework not in NEO_ALLOWED_FRAMEWORKS:
+            raise ValueError(
+                "You must provide valid framework, allowed values {}".format(NEO_ALLOWED_FRAMEWORKS)
+            )
+        if self.model_data is None:
+            raise ValueError("You must provide an S3 path to the compressed model artifacts.")
+        tags = inputs.tags
+        target_platform_os = inputs.target_platform_os
+        target_platform_arch = inputs.target_platform_arch
+        target_platform_accelerator = inputs.target_platform_accelerator
+        compiler_options = inputs.compiler_options
+        framework_version = inputs.framework_version or self._get_framework_version()
+
+        return self._compilation_job_config(
+            target_instance_family,
+            input_shape,
+            output_path,
+            role,
+            compile_max_run,
+            job_name,
+            framework,
+            tags,
+            target_platform_os,
+            target_platform_arch,
+            target_platform_accelerator,
+            compiler_options,
+            framework_version,
+        )
 
     def _compilation_image_uri(self, region, target_instance_type, framework, framework_version):
         """Retrieve the Neo or Inferentia image URI.

@@ -361,7 +361,8 @@ def test_transform_tf_kms_network_isolation(
     data_path = os.path.join(DATA_DIR, "tensorflow_mnist")
 
     tf = TensorFlow(
-        entry_point=os.path.join(data_path, "mnist.py"),
+        entry_point="mnist.py",
+        source_dir=data_path,
         role="SageMakerRole",
         instance_count=1,
         instance_type=cpu_instance_type,
@@ -419,8 +420,12 @@ def test_transform_tf_kms_network_isolation(
 
         with open(os.path.join(tmpdir, "tf-batch-output", "data.csv.out")) as f:
             result = json.load(f)
-            assert len(result["predictions"][0]["probabilities"]) == 10
-            assert result["predictions"][0]["classes"] >= 1
+            prediction_0 = result["predictions"][0]
+            if type(prediction_0) is dict:
+                assert len(result["predictions"][0]["probabilities"]) == 10
+                assert result["predictions"][0]["classes"] >= 1
+            else:
+                assert len(result["predictions"][0]) == 10
 
 
 def _create_transformer_and_transform_job(

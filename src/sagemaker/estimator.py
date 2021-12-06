@@ -11,63 +11,54 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Placeholder docstring"""
-from __future__ import print_function, absolute_import
+from __future__ import absolute_import, print_function
 
 import json
 import logging
 import os
 import uuid
+from abc import ABCMeta, abstractmethod
 
-from abc import ABCMeta
-from abc import abstractmethod
-
-from six import with_metaclass
-from six import string_types
+from six import string_types, with_metaclass
 from six.moves.urllib.parse import urlparse
+
 import sagemaker
-from sagemaker import git_utils, image_uris
+from sagemaker import git_utils, image_uris, vpc_utils
 from sagemaker.analytics import TrainingJobAnalytics
-from sagemaker.debugger import TensorBoardOutputConfig  # noqa: F401 # pylint: disable=unused-import
-from sagemaker.debugger import (
+from sagemaker.debugger import (  # noqa: F401 # pylint: disable=unused-import
     DEBUGGER_FLAG,
     DebuggerHookConfig,
     FrameworkProfile,
-    get_default_profiler_rule,
-    get_rule_container_image_uri,
     ProfilerConfig,
     ProfilerRule,
     Rule,
+    TensorBoardOutputConfig,
+    get_default_profiler_rule,
+    get_rule_container_image_uri,
 )
-from sagemaker.deprecations import (
-    removed_kwargs,
-    removed_function,
-    renamed_kwargs,
-)
-from sagemaker.s3 import S3Uploader, parse_s3_url
-
+from sagemaker.deprecations import removed_function, removed_kwargs, renamed_kwargs
 from sagemaker.fw_utils import (
-    tar_and_upload_dir,
     UploadedCode,
-    validate_source_dir,
     _region_supports_debugger,
     _region_supports_profiler,
     get_mp_parameters,
+    tar_and_upload_dir,
+    validate_source_dir,
 )
-from sagemaker.workflow.properties import Properties
-from sagemaker.workflow.parameters import Parameter
-from sagemaker.workflow.entities import Expression
 from sagemaker.inputs import TrainingInput
 from sagemaker.job import _Job
 from sagemaker.local import LocalSession
-from sagemaker.model import Model, NEO_ALLOWED_FRAMEWORKS
 from sagemaker.model import (
-    SCRIPT_PARAM_NAME,
-    DIR_PARAM_NAME,
     CONTAINER_LOG_LEVEL_PARAM_NAME,
+    DIR_PARAM_NAME,
     JOB_NAME_PARAM_NAME,
+    NEO_ALLOWED_FRAMEWORKS,
     SAGEMAKER_REGION_PARAM_NAME,
+    SCRIPT_PARAM_NAME,
+    Model,
 )
 from sagemaker.predictor import Predictor
+from sagemaker.s3 import S3Uploader, parse_s3_url
 from sagemaker.session import Session
 from sagemaker.transformer import Transformer
 from sagemaker.utils import (
@@ -77,7 +68,9 @@ from sagemaker.utils import (
     get_config_value,
     name_from_base,
 )
-from sagemaker import vpc_utils
+from sagemaker.workflow.entities import Expression
+from sagemaker.workflow.parameters import Parameter
+from sagemaker.workflow.properties import Properties
 
 logger = logging.getLogger(__name__)
 
@@ -150,11 +143,14 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 60 * 60). After this amount of time Amazon SageMaker terminates
                 the job regardless of its current status.
             input_mode (str): The input mode that the algorithm supports
-                (default: 'File'). Valid modes: 'File' - Amazon SageMaker copies
-                the training dataset from the S3 location to a local directory.
+                (default: 'File'). Valid modes:
+                'File' - Amazon SageMaker copiesthe training dataset from the
+                S3 location to a local directory.
                 'Pipe' - Amazon SageMaker streams data directly from S3 to the
-                container via a Unix-named pipe. This argument can be overriden
-                on a per-channel basis using
+                container via a Unix-named pipe.
+                'FastFile' - Amazon SageMaker streams data from S3 on demand instead of
+                downloading the entire dataset before training begins. This argument can
+                be overriden on a per-channel basis using
                 ``sagemaker.inputs.TrainingInput.input_mode``.
             output_path (str): S3 location for saving the training result (model
                 artifacts and output files). If not specified, results are
@@ -981,6 +977,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         description=None,
         compile_model_family=None,
         model_name=None,
+        drift_check_baselines=None,
         **kwargs,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
@@ -1009,6 +1006,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             compile_model_family (str): Instance family for compiled model, if specified, a compiled
                 model will be used (default: None).
             model_name (str): User defined model name (default: None).
+            drift_check_baselines (DriftCheckBaselines): DriftCheckBaselines object (default: None).
             **kwargs: Passed to invocation of ``create_model()``. Implementations may customize
                 ``create_model()`` to accept ``**kwargs`` to customize model creation during
                 deploy. For more, see the implementation docs.
@@ -1038,6 +1036,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             marketplace_cert,
             approval_status,
             description,
+            drift_check_baselines=drift_check_baselines,
         )
 
     @property
@@ -1924,7 +1923,13 @@ class Estimator(EstimatorBase):
         return self.image_uri
 
     def set_hyperparameters(self, **kwargs):
-        """Placeholder docstring"""
+        """Sets the hyperparameter dictionary to use for training.
+
+        The hyperparameters are made accessible as a dict[str, str] to the
+        training code on SageMaker. For convenience, this accepts other types
+        for keys and values, but ``str()`` will be called to convert them before
+        training.
+        """
         for k, v in kwargs.items():
             self.hyperparam_dict[k] = v
 
@@ -2436,10 +2441,12 @@ class Framework(EstimatorBase):
             distribution = self.distribution  # pylint: disable=no-member
         else:
             distribution = None
+        compiler_config = getattr(self, "compiler_config", None)
 
         if hasattr(self, "tensorflow_version") or hasattr(self, "pytorch_version"):
             processor = image_uris._processor(self.instance_type, ["cpu", "gpu"])
-            container_version = "cu110-ubuntu18.04" if processor == "gpu" else None
+            is_native_huggingface_gpu = processor == "gpu" and not compiler_config
+            container_version = "cu110-ubuntu18.04" if is_native_huggingface_gpu else None
             if self.tensorflow_version is not None:  # pylint: disable=no-member
                 base_framework_version = (
                     f"tensorflow{self.tensorflow_version}"  # pylint: disable=no-member
@@ -2462,6 +2469,7 @@ class Framework(EstimatorBase):
             distribution=distribution,
             base_framework_version=base_framework_version,
             container_version=container_version,
+            training_compiler_config=compiler_config,
         )
 
     @classmethod
