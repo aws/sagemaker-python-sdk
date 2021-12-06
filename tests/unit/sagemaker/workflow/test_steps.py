@@ -520,6 +520,7 @@ def test_processing_step_normalizes_args(mock_normalize_args, sagemaker_session)
     mock_normalize_args.return_value = [step.inputs, step.outputs]
     step.to_request()
     mock_normalize_args.assert_called_with(
+        job_name=step.name,
         arguments=step.job_arguments,
         inputs=step.inputs,
         outputs=step.outputs,

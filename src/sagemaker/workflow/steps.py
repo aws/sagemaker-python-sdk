@@ -496,6 +496,7 @@ class ProcessingStep(ConfigurableRetryStep):
         self.job_arguments = job_arguments
         self.code = code
         self.property_files = property_files
+        self.job_name = name
 
         # Examine why run method in sagemaker.processing.Processor mutates the processor instance
         # by setting the instance's arguments attribute. Refactor Processor.run, if possible.
@@ -514,6 +515,7 @@ class ProcessingStep(ConfigurableRetryStep):
         ProcessingJobName and ExperimentConfig cannot be included in the arguments.
         """
         normalized_inputs, normalized_outputs = self.processor._normalize_args(
+            job_name=self.job_name,
             arguments=self.job_arguments,
             inputs=self.inputs,
             outputs=self.outputs,
