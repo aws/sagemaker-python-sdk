@@ -2310,6 +2310,15 @@ def test_create_model_package_from_containers_all_args(sagemaker_session):
             "S3Uri": "s3://...",
         }
     }
+    drift_check_baselines = {
+        "Bias": {
+            "ConfigFile": {
+                "ContentType": "content-type",
+                "S3Uri": "s3://...",
+            }
+        }
+    }
+
     metadata_properties = {
         "CommitId": "test-commit-id",
         "Repository": "test-repository",
@@ -2331,6 +2340,7 @@ def test_create_model_package_from_containers_all_args(sagemaker_session):
         marketplace_cert=marketplace_cert,
         approval_status=approval_status,
         description=description,
+        drift_check_baselines=drift_check_baselines,
     )
     expected_args = {
         "ModelPackageName": model_package_name,
@@ -2346,6 +2356,7 @@ def test_create_model_package_from_containers_all_args(sagemaker_session):
         "MetadataProperties": metadata_properties,
         "CertifyForMarketplace": marketplace_cert,
         "ModelApprovalStatus": approval_status,
+        "DriftCheckBaselines": drift_check_baselines,
     }
     sagemaker_session.sagemaker_client.create_model_package.assert_called_with(**expected_args)
 

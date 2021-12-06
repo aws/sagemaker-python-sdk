@@ -60,6 +60,7 @@ FRAMEWORKS_FOR_GENERATED_VERSION_FIXTURES = (
     "spark",
     "huggingface",
     "autogluon",
+    "huggingface_training_compiler",
 )
 
 
@@ -214,6 +215,20 @@ def huggingface_pytorch_training_py_version(huggingface_pytorch_training_version
 
 
 @pytest.fixture(scope="module")
+def huggingface_training_compiler_pytorch_version(huggingface_training_compiler_version):
+    return _huggingface_base_fm_version(
+        huggingface_training_compiler_version, "pytorch", "huggingface_training_compiler"
+    )[0]
+
+
+@pytest.fixture(scope="module")
+def huggingface_training_compiler_tensorflow_version(huggingface_training_compiler_version):
+    return _huggingface_base_fm_version(
+        huggingface_training_compiler_version, "tensorflow", "huggingface_training_compiler"
+    )[0]
+
+
+@pytest.fixture(scope="module")
 def huggingface_pytorch_latest_training_py_version(huggingface_training_pytorch_latest_version):
     return (
         "py38" if Version(huggingface_training_pytorch_latest_version) >= Version("1.9") else "py36"
@@ -300,7 +315,9 @@ def _tf_py_version(tf_version, request):
         return "py3"
     if version < Version("2.2"):
         return request.param
-    return "py37"
+    if Version("2.2") <= version < Version("2.6"):
+        return "py37"
+    return "py38"
 
 
 @pytest.fixture(scope="module")
@@ -330,7 +347,9 @@ def tf_full_py_version(tf_full_version):
         return "py2"
     if version < Version("2.2"):
         return "py3"
-    return "py37"
+    if version < Version("2.6"):
+        return "py37"
+    return "py38"
 
 
 @pytest.fixture(scope="session")
@@ -402,14 +421,18 @@ def _generate_all_framework_version_fixtures(metafunc):
             _parametrize_framework_version_fixtures(metafunc, fw, config)
         else:
             for image_scope in config.keys():
+                fixture_prefix = f"{fw}_{image_scope}" if image_scope not in fw else fw
                 _parametrize_framework_version_fixtures(
-                    metafunc, "{}_{}".format(fw, image_scope), config[image_scope]
+                    metafunc, fixture_prefix, config[image_scope]
                 )
 
 
 def _huggingface_base_fm_version(huggingface_version, base_fw, fixture_prefix):
-    config = image_uris.config_for_framework("huggingface")
-    if fixture_prefix == "huggingface_training":
+    config_name = (
+        "huggingface-training-compiler" if "training_compiler" in fixture_prefix else "huggingface"
+    )
+    config = image_uris.config_for_framework(config_name)
+    if "training" in fixture_prefix:
         hf_config = config.get("training")
     else:
         hf_config = config.get("inference")
