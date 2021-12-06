@@ -3556,19 +3556,17 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Returns:
             str: The name of the created ``Endpoint``.
         """
-        if not _deployment_entity_exists(
-            lambda: self.sagemaker_client.describe_endpoint_config(EndpointConfigName=name)
-        ):
-            config_options = {"EndpointConfigName": name, "ProductionVariants": production_variants}
-            tags = _append_project_tags(tags)
-            if tags:
-                config_options["Tags"] = tags
-            if kms_key:
-                config_options["KmsKeyId"] = kms_key
-            if data_capture_config_dict is not None:
-                config_options["DataCaptureConfig"] = data_capture_config_dict
+        config_options = {"EndpointConfigName": name, "ProductionVariants": production_variants}
+        tags = _append_project_tags(tags)
+        if tags:
+            config_options["Tags"] = tags
+        if kms_key:
+            config_options["KmsKeyId"] = kms_key
+        if data_capture_config_dict is not None:
+            config_options["DataCaptureConfig"] = data_capture_config_dict
 
-            self.sagemaker_client.create_endpoint_config(**config_options)
+        self.sagemaker_client.create_endpoint_config(**config_options)
+
         return self.create_endpoint(endpoint_name=name, config_name=name, tags=tags, wait=wait)
 
     def expand_role(self, role):
