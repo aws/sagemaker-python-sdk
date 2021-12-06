@@ -1,5 +1,19 @@
 # Changelog
 
+## v2.71.0 (2021-12-06)
+
+### Features
+
+ * Add support for TF 2.6
+ * Adding PT 17/18 Repo
+ * Add profile_name support for Feature Store ingestion
+
+### Bug Fixes and Other Changes
+
+ * Fix non-existent variable name
+ * Add TF 2.6.2 on training
+ * Recreate static lineage test data
+
 ## v2.70.0 (2021-12-02)
 
 ### Features
