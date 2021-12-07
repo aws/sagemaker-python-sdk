@@ -20,6 +20,7 @@ import re
 
 from sagemaker import utils
 from sagemaker.spark import defaults
+from sagemaker.jumpstart import accessors as jumpstart_accessors
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +40,8 @@ def retrieve(
     distribution=None,
     base_framework_version=None,
     training_compiler_config=None,
+    model_id=None,
+    model_version=None,
 ):
     """Retrieves the ECR URI for the Docker image matching the given arguments.
 
@@ -69,6 +72,8 @@ def retrieve(
         training_compiler_config (:class:`~sagemaker.training_compiler.TrainingCompilerConfig`):
             A configuration class for the SageMaker Training Compiler
             (default: None).
+        model_id (str): JumpStart model id for which to retrieve image URI.
+        model_version (str): JumpStart model version for which to retrieve image URI.
 
     Returns:
         str: the ECR URI for the corresponding SageMaker Docker image.
@@ -76,6 +81,47 @@ def retrieve(
     Raises:
         ValueError: If the combination of arguments specified is not supported.
     """
+    if model_id is not None or model_version is not None:
+        if model_id is None or model_version is None:
+            raise ValueError(
+                "Must specify `model_id` and `model_version` when getting image uri for "
+                "JumpStart models. "
+            )
+        model_specs = jumpstart_accessors.JumpStartModelsCache.get_model_specs(
+            region, model_id, model_version
+        )
+        if image_scope is None:
+            raise ValueError(
+                "Must specify `image_scope` argument to retrieve image uri for " "JumpStart models."
+            )
+        if image_scope == "inference":
+            ecr_specs = model_specs.hosting_ecr_specs
+        elif image_scope == "training":
+            if not model_specs.training_supported:
+                raise ValueError(f"JumpStart model id '{model_id}' does not support training.")
+            ecr_specs = model_specs.training_ecr_specs
+        else:
+            raise ValueError("JumpStart models only support inference and training.")
+
+        if framework != None and framework != ecr_specs.framework:
+            raise ValueError(
+                f"Bad value for container framework for JumpStart model: '{framework}'."
+            )
+
+        return retrieve(
+            framework=ecr_specs.framework,
+            region=region,
+            version=ecr_specs.framework_version,
+            py_version=ecr_specs.py_version,
+            instance_type=instance_type,
+            accelerator_type=accelerator_type,
+            image_scope=image_scope,
+            container_version=container_version,
+            distribution=distribution,
+            base_framework_version=base_framework_version,
+            training_compiler_config=training_compiler_config,
+        )
+
     if training_compiler_config is None:
         config = _config_for_framework_and_scope(framework, image_scope, accelerator_type)
     elif framework == HUGGING_FACE_FRAMEWORK:

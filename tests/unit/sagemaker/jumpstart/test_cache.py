@@ -24,110 +24,15 @@ from mock import patch
 
 from sagemaker.jumpstart.cache import JUMPSTART_DEFAULT_MANIFEST_FILE_S3_KEY, JumpStartModelsCache
 from sagemaker.jumpstart.types import (
-    JumpStartCachedS3ContentKey,
-    JumpStartCachedS3ContentValue,
     JumpStartModelHeader,
-    JumpStartModelSpecs,
-    JumpStartS3FileType,
     JumpStartVersionedModelId,
 )
-from sagemaker.jumpstart.utils import get_formatted_manifest
-
-BASE_SPEC = {
-    "model_id": "pytorch-ic-mobilenet-v2",
-    "version": "1.0.0",
-    "min_sdk_version": "2.49.0",
-    "training_supported": True,
-    "incremental_training_supported": True,
-    "hosting_ecr_specs": {
-        "framework": "pytorch",
-        "framework_version": "1.7.0",
-        "py_version": "py3",
-    },
-    "training_ecr_specs": {
-        "framework": "pytorch",
-        "framework_version": "1.9.0",
-        "py_version": "py3",
-    },
-    "hosting_artifact_key": "pytorch-infer/infer-pytorch-ic-mobilenet-v2.tar.gz",
-    "training_artifact_key": "pytorch-training/train-pytorch-ic-mobilenet-v2.tar.gz",
-    "hosting_script_key": "source-directory-tarballs/pytorch/inference/ic/v1.0.0/sourcedir.tar.gz",
-    "training_script_key": "source-directory-tarballs/pytorch/transfer_learning/ic/v1.0.0/sourcedir.tar.gz",
-    "hyperparameters": {
-        "adam-learning-rate": {"type": "float", "default": 0.05, "min": 1e-08, "max": 1},
-        "epochs": {"type": "int", "default": 3, "min": 1, "max": 1000},
-        "batch-size": {"type": "int", "default": 4, "min": 1, "max": 1024},
-    },
-}
-
-BASE_MANIFEST = [
-    {
-        "model_id": "tensorflow-ic-imagenet-inception-v3-classification-4",
-        "version": "1.0.0",
-        "min_version": "2.49.0",
-        "spec_key": "community_models_specs/tensorflow-ic-imagenet"
-        "-inception-v3-classification-4/specs_v1.0.0.json",
-    },
-    {
-        "model_id": "tensorflow-ic-imagenet-inception-v3-classification-4",
-        "version": "2.0.0",
-        "min_version": "2.49.0",
-        "spec_key": "community_models_specs/tensorflow-ic-imagenet"
-        "-inception-v3-classification-4/specs_v2.0.0.json",
-    },
-    {
-        "model_id": "pytorch-ic-imagenet-inception-v3-classification-4",
-        "version": "1.0.0",
-        "min_version": "2.49.0",
-        "spec_key": "community_models_specs/pytorch-ic-"
-        "imagenet-inception-v3-classification-4/specs_v1.0.0.json",
-    },
-    {
-        "model_id": "pytorch-ic-imagenet-inception-v3-classification-4",
-        "version": "2.0.0",
-        "min_version": "2.49.0",
-        "spec_key": "community_models_specs/pytorch-ic-imagenet-"
-        "inception-v3-classification-4/specs_v2.0.0.json",
-    },
-    {
-        "model_id": "tensorflow-ic-imagenet-inception-v3-classification-4",
-        "version": "3.0.0",
-        "min_version": "4.49.0",
-        "spec_key": "community_models_specs/tensorflow-ic-"
-        "imagenet-inception-v3-classification-4/specs_v3.0.0.json",
-    },
-]
-
-
-def get_spec_from_base_spec(model_id: str, version: str) -> JumpStartModelSpecs:
-    spec = copy.deepcopy(BASE_SPEC)
-
-    spec["version"] = version
-    spec["model_id"] = model_id
-    return JumpStartModelSpecs(spec)
-
-
-def patched_get_file_from_s3(
-    _modelCacheObj: JumpStartModelsCache,
-    key: JumpStartCachedS3ContentKey,
-    value: JumpStartCachedS3ContentValue,
-) -> JumpStartCachedS3ContentValue:
-
-    filetype, s3_key = key.file_type, key.s3_key
-    if filetype == JumpStartS3FileType.MANIFEST:
-
-        return JumpStartCachedS3ContentValue(
-            formatted_content=get_formatted_manifest(BASE_MANIFEST)
-        )
-
-    if filetype == JumpStartS3FileType.SPECS:
-        _, model_id, specs_version = s3_key.split("/")
-        version = specs_version.replace("specs_v", "").replace(".json", "")
-        return JumpStartCachedS3ContentValue(
-            formatted_content=get_spec_from_base_spec(model_id, version)
-        )
-
-    raise ValueError(f"Bad value for filetype: {filetype}")
+from tests.unit.sagemaker.jumpstart.utils import (
+    BASE_MANIFEST,
+    BASE_SPEC,
+    get_spec_from_base_spec,
+    patched_get_file_from_s3,
+)
 
 
 @patch.object(JumpStartModelsCache, "_get_file_from_s3", patched_get_file_from_s3)
@@ -690,17 +595,17 @@ def test_jumpstart_cache_get_specs():
     cache = JumpStartModelsCache(s3_bucket_name="some_bucket")
 
     model_id, version = "tensorflow-ic-imagenet-inception-v3-classification-4", "2.0.0"
-    assert get_spec_from_base_spec(model_id, version) == cache.get_specs(
+    assert get_spec_from_base_spec(model_id=model_id, version=version) == cache.get_specs(
         model_id=model_id, semantic_version_str=version
     )
 
     model_id, version = "tensorflow-ic-imagenet-inception-v3-classification-4", "1.0.0"
-    assert get_spec_from_base_spec(model_id, version) == cache.get_specs(
+    assert get_spec_from_base_spec(model_id=model_id, version=version) == cache.get_specs(
         model_id=model_id, semantic_version_str=version
     )
 
     model_id = "pytorch-ic-imagenet-inception-v3-classification-4"
-    assert get_spec_from_base_spec(model_id, "1.0.0") == cache.get_specs(
+    assert get_spec_from_base_spec(model_id=model_id, version="1.0.0") == cache.get_specs(
         model_id=model_id, semantic_version_str="1.*"
     )
 
