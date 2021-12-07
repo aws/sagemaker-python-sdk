@@ -18,7 +18,6 @@ from sagemaker import image_uris
 import pytest
 
 from tests.unit.sagemaker.jumpstart.utils import get_spec_from_base_spec
-from sagemaker.jumpstart.utils import get_jumpstart_content_bucket
 from sagemaker.jumpstart import constants as sagemaker_constants
 
 
@@ -63,7 +62,7 @@ def test_jumpstart_script_uri(patched_get_model_specs):
         sagemaker_constants.JUMPSTART_DEFAULT_REGION_NAME, "pytorch-ic-mobilenet-v2", "*"
     )
 
-    with pytest.raises(ValueError) as e:
+    with pytest.raises(ValueError):
         image_uris.retrieve(
             framework=None,
             region="us-west-2",
@@ -73,7 +72,7 @@ def test_jumpstart_script_uri(patched_get_model_specs):
             instance_type="ml.p2.xlarge",
         )
 
-    with pytest.raises(ValueError) as e:
+    with pytest.raises(ValueError):
         image_uris.retrieve(
             framework=None,
             region="mars-south-1",
@@ -83,7 +82,7 @@ def test_jumpstart_script_uri(patched_get_model_specs):
             instance_type="ml.p2.xlarge",
         )
 
-    with pytest.raises(ValueError) as e:
+    with pytest.raises(ValueError):
         image_uris.retrieve(
             framework=None,
             region="us-west-2",
@@ -92,7 +91,7 @@ def test_jumpstart_script_uri(patched_get_model_specs):
             instance_type="ml.p2.xlarge",
         )
 
-    with pytest.raises(ValueError) as e:
+    with pytest.raises(ValueError):
         image_uris.retrieve(
             framework=None,
             region="us-west-2",
@@ -101,7 +100,7 @@ def test_jumpstart_script_uri(patched_get_model_specs):
             instance_type="ml.p2.xlarge",
         )
 
-    with pytest.raises(ValueError) as e:
+    with pytest.raises(ValueError):
         image_uris.retrieve(
             region="us-west-2",
             framework=None,
