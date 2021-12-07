@@ -12,7 +12,7 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
-from mock.mock import Mock, patch
+from mock.mock import patch
 
 from sagemaker import model_uris
 from sagemaker.jumpstart import constants as sagemaker_constants
@@ -61,7 +61,7 @@ def test_jumpstart_model_uri(patched_get_model_specs):
         sagemaker_constants.JUMPSTART_DEFAULT_REGION_NAME, "pytorch-ic-mobilenet-v2", "*"
     )
 
-    with pytest.raises(ValueError) as e:
+    with pytest.raises(ValueError):
         model_uris.retrieve(
             region="us-west-2",
             model_scope="BAD_SCOPE",
@@ -69,7 +69,7 @@ def test_jumpstart_model_uri(patched_get_model_specs):
             model_version="*",
         )
 
-    with pytest.raises(ValueError) as e:
+    with pytest.raises(ValueError):
         model_uris.retrieve(
             region="mars-south-1",
             model_scope="training",
@@ -77,19 +77,19 @@ def test_jumpstart_model_uri(patched_get_model_specs):
             model_version="*",
         )
 
-    with pytest.raises(ValueError) as e:
+    with pytest.raises(ValueError):
         model_uris.retrieve(
             model_id="pytorch-ic-mobilenet-v2",
             model_version="*",
         )
 
-    with pytest.raises(ValueError) as e:
+    with pytest.raises(ValueError):
         model_uris.retrieve(
             model_scope="training",
             model_version="*",
         )
 
-    with pytest.raises(ValueError) as e:
+    with pytest.raises(ValueError):
         model_uris.retrieve(
             model_scope="training",
             model_id="pytorch-ic-mobilenet-v2",

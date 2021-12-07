@@ -13,10 +13,7 @@
 """Functions for generating S3 model artifact URIs for pre-built SageMaker models."""
 from __future__ import absolute_import
 
-import json
 import logging
-import os
-import re
 from typing import Optional
 
 from sagemaker.jumpstart import utils as jumpstart_utils
@@ -56,13 +53,15 @@ def retrieve(
     )
     if model_scope is None:
         raise ValueError(
-            "Must specify `model_scope` argument to retrieve model artifact uri for JumpStart models."
+            "Must specify `model_scope` argument to retrieve model "
+            "artifact uri for JumpStart models."
         )
     if model_scope == "inference":
         model_artifact_key = model_specs.hosting_artifact_key
     elif model_scope == "training":
         if not model_specs.training_supported:
             raise ValueError(f"JumpStart model id '{model_id}' does not support training.")
+        assert model_specs.training_artifact_key is not None
         model_artifact_key = model_specs.training_artifact_key
     else:
         raise ValueError("JumpStart models only support inference and training.")

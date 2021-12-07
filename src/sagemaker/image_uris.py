@@ -92,7 +92,7 @@ def retrieve(
         )
         if image_scope is None:
             raise ValueError(
-                "Must specify `image_scope` argument to retrieve image uri for " "JumpStart models."
+                "Must specify `image_scope` argument to retrieve image uri for JumpStart models."
             )
         if image_scope == "inference":
             ecr_specs = model_specs.hosting_ecr_specs
@@ -103,7 +103,7 @@ def retrieve(
         else:
             raise ValueError("JumpStart models only support inference and training.")
 
-        if framework != None and framework != ecr_specs.framework:
+        if framework is not None and framework != ecr_specs.framework:
             raise ValueError(
                 f"Bad value for container framework for JumpStart model: '{framework}'."
             )

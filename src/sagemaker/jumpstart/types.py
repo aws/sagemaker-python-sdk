@@ -274,7 +274,7 @@ class JumpStartCachedS3ContentValue(JumpStartDataHolderType):
         self,
         formatted_content: Union[
             Dict[JumpStartVersionedModelId, JumpStartModelHeader],
-            List[JumpStartModelSpecs],
+            JumpStartModelSpecs,
         ],
         md5_hash: Optional[str] = None,
     ) -> None:
@@ -282,7 +282,7 @@ class JumpStartCachedS3ContentValue(JumpStartDataHolderType):
 
         Args:
             formatted_content (Union[Dict[JumpStartVersionedModelId, JumpStartModelHeader],
-            List[JumpStartModelSpecs]]):
+            JumpStartModelSpecs]):
                 Formatted content for model specs and mappings from
                 versioned model ids to specs.
             md5_hash (str): md5_hash for stored file content from s3.

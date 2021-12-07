@@ -146,7 +146,7 @@ def test_jumpstart_models_cache_set_reset_fxs(mock_model_cache: Mock):
         {"some": "kwarg", "region": "us-west-2"}, "us-west-2"
     )
 
-    with pytest.raises(ValueError) as e:
+    with pytest.raises(ValueError):
         accessors.JumpStartModelsCache._validate_region_cache_kwargs(
             {"some": "kwarg", "region": "us-east-2"}, "us-west-2"
         )

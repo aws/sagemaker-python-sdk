@@ -13,10 +13,7 @@
 """Functions for generating S3 model script URIs for pre-built SageMaker models."""
 from __future__ import absolute_import
 
-import json
 import logging
-import os
-import re
 
 from sagemaker.jumpstart import utils as jumpstart_utils
 from sagemaker.jumpstart import accessors as jumpstart_accessors
