@@ -13,7 +13,7 @@
 """This module contains utilities related to SageMaker JumpStart."""
 from __future__ import absolute_import
 from typing import Dict, List
-import semantic_version
+from packaging.version import Version
 import sagemaker
 from sagemaker.jumpstart import constants
 from sagemaker.jumpstart import accessors
@@ -89,14 +89,14 @@ def parse_sagemaker_version() -> str:
     """Returns sagemaker library version. This should only be called once.
 
     Function reads ``__version__`` variable in ``sagemaker`` module.
-    In order to maintain compatibility with the ``semantic_version``
+    In order to maintain compatibility with the ``packaging.version``
     library, versions with fewer than 2, or more than 3, periods are rejected.
-    All versions that cannot be parsed with ``semantic_version`` are also
+    All versions that cannot be parsed with ``packaging.version`` are also
     rejected.
 
     Raises:
         RuntimeError: If the SageMaker version is not readable. An exception is also raised if
-        the version cannot be parsed by ``semantic_version``.
+        the version cannot be parsed by ``packaging.version``.
     """
     version = sagemaker.__version__
     parsed_version = None
@@ -110,6 +110,6 @@ def parse_sagemaker_version() -> str:
     else:
         raise RuntimeError(f"Bad value for SageMaker version: {sagemaker.__version__}")
 
-    semantic_version.Version(parsed_version)
+    Version(parsed_version)
 
     return parsed_version

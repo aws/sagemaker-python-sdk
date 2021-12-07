@@ -88,19 +88,6 @@ def test_jumpstart_cache_get_header():
         }
     ) == cache.get_header(
         model_id="tensorflow-ic-imagenet-inception-v3-classification-4",
-        semantic_version_str="2.*.*",
-    )
-
-    assert JumpStartModelHeader(
-        {
-            "model_id": "tensorflow-ic-imagenet-inception-v3-classification-4",
-            "version": "2.0.0",
-            "min_version": "2.49.0",
-            "spec_key": "community_models_specs/tensorflow-ic-"
-            "imagenet-inception-v3-classification-4/specs_v2.0.0.json",
-        }
-    ) == cache.get_header(
-        model_id="tensorflow-ic-imagenet-inception-v3-classification-4",
         semantic_version_str="2.0.0",
     )
 
@@ -129,19 +116,6 @@ def test_jumpstart_cache_get_header():
         model_id="tensorflow-ic-imagenet-inception-v3-classification-4", semantic_version_str="1.*"
     )
 
-    assert JumpStartModelHeader(
-        {
-            "model_id": "tensorflow-ic-imagenet-inception-v3-classification-4",
-            "version": "1.0.0",
-            "min_version": "2.49.0",
-            "spec_key": "community_models_specs/tensorflow-ic-"
-            "imagenet-inception-v3-classification-4/specs_v1.0.0.json",
-        }
-    ) == cache.get_header(
-        model_id="tensorflow-ic-imagenet-inception-v3-classification-4",
-        semantic_version_str="1.*.*",
-    )
-
     with pytest.raises(KeyError) as e:
         cache.get_header(
             model_id="tensorflow-ic-imagenet-inception-v3-classification-4",
@@ -160,7 +134,7 @@ def test_jumpstart_cache_get_header():
         )
     assert "Consider upgrading" not in str(e.value)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(KeyError):
         cache.get_header(
             model_id="tensorflow-ic-imagenet-inception-v3-classification-4",
             semantic_version_str="BAD",
@@ -615,5 +589,5 @@ def test_jumpstart_cache_get_specs():
     with pytest.raises(KeyError):
         cache.get_specs(model_id=model_id, semantic_version_str="9.*")
 
-    with pytest.raises(ValueError):
+    with pytest.raises(KeyError):
         cache.get_specs(model_id=model_id, semantic_version_str="BAD")

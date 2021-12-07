@@ -17,7 +17,8 @@ from typing import List, Optional
 import json
 import boto3
 import botocore
-import semantic_version
+from packaging.version import Version
+from packaging.specifiers import SpecifierSet
 from sagemaker.jumpstart.constants import (
     JUMPSTART_DEFAULT_MANIFEST_FILE_S3_KEY,
     JUMPSTART_DEFAULT_REGION_NAME,
@@ -146,7 +147,7 @@ class JumpStartModelsCache:
     ) -> JumpStartVersionedModelId:
         """Return model id and version in manifest that matches semantic version/id.
 
-        Uses ``semantic_version`` to perform version comparison. The highest model version
+        Uses ``packaging.version`` to perform version comparison. The highest model version
         matching the semantic version is used, which is compatible with the SageMaker
         version.
 
@@ -169,30 +170,27 @@ class JumpStartModelsCache:
         sm_version = utils.get_sagemaker_version()
 
         versions_compatible_with_sagemaker = [
-            semantic_version.Version(header.version)
+            Version(header.version)
             for header in manifest.values()
-            if header.model_id == model_id
-            and semantic_version.Version(header.min_version) <= semantic_version.Version(sm_version)
+            if header.model_id == model_id and Version(header.min_version) <= Version(sm_version)
         ]
 
-        spec = (
-            semantic_version.SimpleSpec("*")
-            if version is None
-            else semantic_version.SimpleSpec(version)
+        sm_compatible_model_version = self._select_version(
+            version, versions_compatible_with_sagemaker
         )
 
-        sm_compatible_model_version = spec.select(versions_compatible_with_sagemaker)
         if sm_compatible_model_version is not None:
-            return JumpStartVersionedModelId(model_id, str(sm_compatible_model_version))
+            return JumpStartVersionedModelId(model_id, sm_compatible_model_version)
 
         versions_incompatible_with_sagemaker = [
-            semantic_version.Version(header.version)
-            for header in manifest.values()
-            if header.model_id == model_id
+            Version(header.version) for header in manifest.values() if header.model_id == model_id
         ]
-        sm_incompatible_model_version = spec.select(versions_incompatible_with_sagemaker)
+        sm_incompatible_model_version = self._select_version(
+            version, versions_incompatible_with_sagemaker
+        )
+
         if sm_incompatible_model_version is not None:
-            model_version_to_use_incompatible_with_sagemaker = str(sm_incompatible_model_version)
+            model_version_to_use_incompatible_with_sagemaker = sm_incompatible_model_version
             sm_version_to_use = [
                 header.min_version
                 for header in manifest.values()
@@ -274,6 +272,29 @@ class JumpStartModelsCache:
         """
 
         return self._get_header_impl(model_id, semantic_version_str=semantic_version_str)
+
+    def _select_version(
+        self,
+        semantic_version_str: str,
+        available_versions: List[Version],
+    ) -> Optional[Version]:
+        """Utility to select appropriate version from available version given
+        a semantic version with which to filter.
+
+        Args:
+            semantic_version_str (str): the semantic version for which to filter
+                available versions.
+            available_versions (List[Version]): list of available versions.
+        """
+        if semantic_version_str == "*":
+            if len(available_versions) is 0:
+                return None
+            else:
+                return str(max(available_versions))
+        else:
+            spec = SpecifierSet(f"=={semantic_version_str}")
+            available_versions = list(spec.filter(available_versions))
+            return str(available_versions[0]) if available_versions != [] else None
 
     def _get_header_impl(
         self,
