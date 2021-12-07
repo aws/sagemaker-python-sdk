@@ -26,7 +26,7 @@ def retrieve(
     region=jumpstart_constants.JUMPSTART_DEFAULT_REGION_NAME,
     model_id=None,
     model_version=None,
-    model_scope=None,
+    script_scope=None,
 ):
     """Retrieves the model script s3 URI for the model matching the given arguments.
 
@@ -34,8 +34,8 @@ def retrieve(
         region (str): Region for which to retrieve model script S3 URI.
         model_id (str): JumpStart model id for which to retrieve model script S3 URI.
         model_version (str): JumpStart model version for which to retrieve model script S3 URI.
-        model_scope (str): The model type, i.e. what it is used for.
-            Valid values: "training", "inference", "eia".
+        script_scope (str): The script type, i.e. what it is used for.
+            Valid values: "training" and "inference".
     Returns:
         str: the model script URI for the corresponding model.
 
@@ -50,13 +50,14 @@ def retrieve(
     model_specs = jumpstart_accessors.JumpStartModelsCache.get_model_specs(
         region, model_id, model_version
     )
-    if model_scope is None:
+    if script_scope is None:
         raise ValueError(
-            "Must specify `model_scope` argument to retrieve model script uri for JumpStart models."
+            "Must specify `script_scope` argument to retrieve model script uri for "
+            "JumpStart models."
         )
-    if model_scope == "inference":
+    if script_scope == "inference":
         model_script_key = model_specs.hosting_script_key
-    elif model_scope == "training":
+    elif script_scope == "training":
         if not model_specs.training_supported:
             raise ValueError(f"JumpStart model id '{model_id}' does not support training.")
         model_script_key = model_specs.training_script_key

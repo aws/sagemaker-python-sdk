@@ -28,7 +28,7 @@ def test_jumpstart_script_uri(patched_get_model_specs):
     patched_get_model_specs.side_effect = get_spec_from_base_spec
     uri = script_uris.retrieve(
         region="us-west-2",
-        model_scope="inference",
+        script_scope="inference",
         model_id="pytorch-ic-mobilenet-v2",
         model_version="*",
     )
@@ -42,7 +42,7 @@ def test_jumpstart_script_uri(patched_get_model_specs):
 
     uri = script_uris.retrieve(
         region="us-west-2",
-        model_scope="training",
+        script_scope="training",
         model_id="pytorch-ic-mobilenet-v2",
         model_version="*",
     )
@@ -54,7 +54,7 @@ def test_jumpstart_script_uri(patched_get_model_specs):
     patched_get_model_specs.reset_mock()
 
     script_uris.retrieve(
-        model_scope="training",
+        script_scope="training",
         model_id="pytorch-ic-mobilenet-v2",
         model_version="*",
     )
@@ -65,7 +65,7 @@ def test_jumpstart_script_uri(patched_get_model_specs):
     with pytest.raises(ValueError):
         script_uris.retrieve(
             region="us-west-2",
-            model_scope="BAD_SCOPE",
+            script_scope="BAD_SCOPE",
             model_id="pytorch-ic-mobilenet-v2",
             model_version="*",
         )
@@ -73,7 +73,7 @@ def test_jumpstart_script_uri(patched_get_model_specs):
     with pytest.raises(ValueError):
         script_uris.retrieve(
             region="mars-south-1",
-            model_scope="training",
+            script_scope="training",
             model_id="pytorch-ic-mobilenet-v2",
             model_version="*",
         )
@@ -86,12 +86,12 @@ def test_jumpstart_script_uri(patched_get_model_specs):
 
     with pytest.raises(ValueError):
         script_uris.retrieve(
-            model_scope="training",
+            script_scope="training",
             model_version="*",
         )
 
     with pytest.raises(ValueError):
         script_uris.retrieve(
-            model_scope="training",
+            script_scope="training",
             model_id="pytorch-ic-mobilenet-v2",
         )

@@ -36,7 +36,7 @@ def retrieve(
         model_id (str): JumpStart model id for which to retrieve model S3 URI.
         model_version (str): JumpStart model version for which to retrieve model S3 URI.
         model_scope (str): The model type, i.e. what it is used for.
-            Valid values: "training", "inference", "eia".
+            Valid values: "training" and "inference".
     Returns:
         str: the model artifact URI for the corresponding model.
 
