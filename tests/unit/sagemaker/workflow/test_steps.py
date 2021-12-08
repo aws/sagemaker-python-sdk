@@ -497,32 +497,6 @@ def test_training_step_no_profiler_warning(sagemaker_session):
         assert len(w) == 0
 
 
-def test_training_step_profiler_not_explicitly_enabled(sagemaker_session):
-    estimator = TensorFlow(
-        entry_point=DUMMY_SCRIPT_PATH,
-        role=ROLE,
-        model_dir=False,
-        image_uri=IMAGE_URI,
-        source_dir="s3://mybucket/source",
-        framework_version="2.4.1",
-        py_version="py37",
-        instance_count=1,
-        instance_type="ml.p3.16xlarge",
-        sagemaker_session=sagemaker_session,
-        hyperparameters={
-            "batch-size": 500,
-            "epochs": 5,
-        },
-        debugger_hook_config=False,
-        distribution={"smdistributed": {"dataparallel": {"enabled": True}}},
-    )
-
-    inputs = TrainingInput(s3_data=f"s3://{BUCKET}/train_manifest")
-    step = TrainingStep(name="MyTrainingStep", estimator=estimator, inputs=inputs)
-    step_request = step.to_request()
-    assert step_request["Arguments"]["ProfilerRuleConfigurations"] is None
-
-
 def test_processing_step(sagemaker_session):
     processing_input_data_uri_parameter = ParameterString(
         name="ProcessingInputDataUri", default_value=f"s3://{BUCKET}/processing_manifest"
