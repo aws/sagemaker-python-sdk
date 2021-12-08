@@ -14,8 +14,10 @@
 from __future__ import absolute_import
 
 import abc
+import warnings
 from enum import Enum
 from typing import Dict, List, Union
+from urllib.parse import urlparse
 
 import attr
 
@@ -270,6 +272,16 @@ class TrainingStep(ConfigurableRetryStep):
         )
         self.cache_config = cache_config
 
+        if self.cache_config is not None and not self.estimator.disable_profiler:
+            msg = (
+                "Profiling is enabled on the provided estimator. "
+                "The default profiler rule includes a timestamp "
+                "which will change each time the pipeline is "
+                "upserted, causing cache misses. If profiling "
+                "is not needed, set disable_profiler to True on the estimator."
+            )
+            warnings.warn(msg)
+
     @property
     def arguments(self) -> RequestType:
         """The arguments dict that is used to call `create_training_job`.
@@ -498,6 +510,7 @@ class ProcessingStep(ConfigurableRetryStep):
         self.job_arguments = job_arguments
         self.code = code
         self.property_files = property_files
+        self.job_name = None
 
         # Examine why run method in sagemaker.processing.Processor mutates the processor instance
         # by setting the instance's arguments attribute. Refactor Processor.run, if possible.
@@ -508,6 +521,17 @@ class ProcessingStep(ConfigurableRetryStep):
         )
         self.cache_config = cache_config
 
+        if code:
+            code_url = urlparse(code)
+            if code_url.scheme == "" or code_url.scheme == "file":
+                # By default, Processor will upload the local code to an S3 path
+                # containing a timestamp. This causes cache misses whenever a
+                # pipeline is updated, even if the underlying script hasn't changed.
+                # To avoid this, hash the contents of the script and include it
+                # in the job_name passed to the Processor, which will be used
+                # instead of the timestamped path.
+                self.job_name = self._generate_code_upload_path()
+
     @property
     def arguments(self) -> RequestType:
         """The arguments dict that is used to call `create_processing_job`.
@@ -516,6 +540,7 @@ class ProcessingStep(ConfigurableRetryStep):
         ProcessingJobName and ExperimentConfig cannot be included in the arguments.
         """
         normalized_inputs, normalized_outputs = self.processor._normalize_args(
+            job_name=self.job_name,
             arguments=self.job_arguments,
             inputs=self.inputs,
             outputs=self.outputs,
@@ -545,6 +570,13 @@ class ProcessingStep(ConfigurableRetryStep):
                 property_file.expr for property_file in self.property_files
             ]
         return request_dict
+
+    def _generate_code_upload_path(self) -> str:
+        """Generate an upload path for local processing scripts based on its contents"""
+        from sagemaker.workflow.utilities import hash_file
+
+        code_hash = hash_file(self.code)
+        return f"{self.name}-{code_hash}"[:1024]
 
 
 class TuningStep(ConfigurableRetryStep):
