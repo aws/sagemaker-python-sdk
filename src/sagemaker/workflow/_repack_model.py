@@ -62,15 +62,15 @@ def repack(inference_script, model_archive, dependencies=None, source_dir=None):
         with tarfile.open(name=local_path, mode="r:gz") as tf:
             tf.extractall(path=src_dir)
 
-        # copy the custom inference script to code/
-        entry_point = os.path.join("/opt/ml/code", inference_script)
-        shutil.copy2(entry_point, os.path.join(src_dir, "code", inference_script))
-
-        # copy source_dir to code/
         if source_dir:
+            # copy /opt/ml/code to code/
             if os.path.exists(code_dir):
                 shutil.rmtree(code_dir)
-                shutil.copytree(source_dir, code_dir)
+            shutil.copytree("/opt/ml/code", code_dir)
+        else:
+            # copy the custom inference script to code/
+            entry_point = os.path.join("/opt/ml/code", inference_script)
+            shutil.copy2(entry_point, os.path.join(code_dir, inference_script))
 
         # copy any dependencies to code/lib/
         if dependencies:
@@ -79,13 +79,16 @@ def repack(inference_script, model_archive, dependencies=None, source_dir=None):
                 lib_dir = os.path.join(code_dir, "lib")
                 if not os.path.exists(lib_dir):
                     os.mkdir(lib_dir)
-                if os.path.isdir(actual_dependency_path):
-                    shutil.copytree(
-                        actual_dependency_path,
-                        os.path.join(lib_dir, os.path.basename(actual_dependency_path)),
-                    )
-                else:
+                if os.path.isfile(actual_dependency_path):
                     shutil.copy2(actual_dependency_path, lib_dir)
+                else:
+                    if os.path.exists(lib_dir):
+                        shutil.rmtree(lib_dir)
+                    # a directory is in the dependencies. we have to copy
+                    # all of /opt/ml/code into the lib dir because the original directory
+                    # was flattened by the SDK training job upload..
+                    shutil.copytree("/opt/ml/code", lib_dir)
+                    break
 
         # copy the "src" dir, which includes the previous training job's model and the
         # custom inference script, to the output of this training job
