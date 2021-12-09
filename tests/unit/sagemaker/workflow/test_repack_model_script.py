@@ -94,7 +94,7 @@ def test_repack_with_dependencies(tmp):
     _repack_model.repack(
         inference_script="inference.py",
         model_archive=model_tar_name,
-        dependencies=["dependencies/a", "bb", "dependencies/some/dir"],
+        dependencies="dependencies/a bb dependencies/some/dir",
     )
 
     # /opt/ml/model should now have the original model and the inference script
@@ -145,7 +145,7 @@ def test_repack_with_source_dir_and_dependencies(tmp):
     _repack_model.repack(
         inference_script="inference.py",
         model_archive=model_tar_name,
-        dependencies=["dependencies/a", "bb", "dependencies/some/dir"],
+        dependencies="dependencies/a bb dependencies/some/dir",
         source_dir="sourcedir",
     )
 
