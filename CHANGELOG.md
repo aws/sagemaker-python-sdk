@@ -1,5 +1,16 @@
 # Changelog
 
+## v2.72.0 (2021-12-13)
+
+### Features
+
+ * allow conditional parellel builds
+
+### Bug Fixes and Other Changes
+
+ * local mode - support relative file structure
+ * fix endpoint bug
+
 ## v2.71.0 (2021-12-06)
 
 ### Features
