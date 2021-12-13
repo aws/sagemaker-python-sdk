@@ -11,12 +11,12 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
+import pytest
 
 from mock.mock import patch
 
 from sagemaker import model_uris
 from sagemaker.jumpstart import constants as sagemaker_constants
-import pytest
 from tests.unit.sagemaker.jumpstart.utils import get_spec_from_base_spec
 from sagemaker.jumpstart.utils import get_jumpstart_content_bucket
 
@@ -59,6 +59,16 @@ def test_jumpstart_model_uri(patched_get_model_specs):
     )
     patched_get_model_specs.assert_called_once_with(
         sagemaker_constants.JUMPSTART_DEFAULT_REGION_NAME, "pytorch-ic-mobilenet-v2", "*"
+    )
+    patched_get_model_specs.reset_mock()
+
+    model_uris.retrieve(
+        model_scope="training",
+        model_id="pytorch-ic-mobilenet-v2",
+        model_version="1.*",
+    )
+    patched_get_model_specs.assert_called_once_with(
+        sagemaker_constants.JUMPSTART_DEFAULT_REGION_NAME, "pytorch-ic-mobilenet-v2", "1.*"
     )
 
     with pytest.raises(ValueError):
