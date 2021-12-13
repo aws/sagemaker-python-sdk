@@ -12,7 +12,7 @@
 # language governing permissions and limitations under the License.
 """This module contains utilities related to SageMaker JumpStart."""
 from __future__ import absolute_import
-from typing import Dict, List
+from typing import Dict, List, Optional
 from packaging.version import Version
 import sagemaker
 from sagemaker.jumpstart import constants
@@ -113,3 +113,26 @@ def parse_sagemaker_version() -> str:
     Version(parsed_version)
 
     return parsed_version
+
+
+def is_jumpstart_model_input(model_id: Optional[str], version: Optional[str]) -> bool:
+    """Determines if `model_id` and `version` input are for JumpStart.
+
+    This method returns True if both arguments are not None, false if both arguments
+    are None, and raises an exception if one argument is None but the other isn't.
+
+    Args:
+        model_id (str): Optional. Model id of JumpStart model.
+        version (str): Optional. Version for JumpStart model.
+
+    Raises:
+        ValueError: If only one of the two arguments is None.
+    """
+    if model_id is not None or version is not None:
+        if model_id is None or version is None:
+            raise ValueError(
+                "Must specify `model_id` and `model_version` when getting specs for "
+                "JumpStart models."
+            )
+        return True
+    return False

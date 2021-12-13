@@ -19,8 +19,10 @@ import os
 import re
 
 from sagemaker import utils
+from sagemaker.jumpstart.utils import is_jumpstart_model_input
 from sagemaker.spark import defaults
-from sagemaker.jumpstart import accessors as jumpstart_accessors
+from sagemaker.jumpstart import artifacts
+
 
 logger = logging.getLogger(__name__)
 
@@ -81,45 +83,23 @@ def retrieve(
     Raises:
         ValueError: If the combination of arguments specified is not supported.
     """
-    if model_id is not None or model_version is not None:
-        if model_id is None or model_version is None:
-            raise ValueError(
-                "Must specify `model_id` and `model_version` when getting image uri for "
-                "JumpStart models. "
-            )
-        model_specs = jumpstart_accessors.JumpStartModelsCache.get_model_specs(
-            region, model_id, model_version
-        )
-        if image_scope is None:
-            raise ValueError(
-                "Must specify `image_scope` argument to retrieve image uri for JumpStart models."
-            )
-        if image_scope == "inference":
-            ecr_specs = model_specs.hosting_ecr_specs
-        elif image_scope == "training":
-            if not model_specs.training_supported:
-                raise ValueError(f"JumpStart model id '{model_id}' does not support training.")
-            ecr_specs = model_specs.training_ecr_specs
-        else:
-            raise ValueError("JumpStart models only support inference and training.")
-
-        if framework is not None and framework != ecr_specs.framework:
-            raise ValueError(
-                f"Bad value for container framework for JumpStart model: '{framework}'."
-            )
-
-        return retrieve(
-            framework=ecr_specs.framework,
-            region=region,
-            version=ecr_specs.framework_version,
-            py_version=ecr_specs.py_version,
-            instance_type=instance_type,
-            accelerator_type=accelerator_type,
-            image_scope=image_scope,
-            container_version=container_version,
-            distribution=distribution,
-            base_framework_version=base_framework_version,
-            training_compiler_config=training_compiler_config,
+    if is_jumpstart_model_input(model_id, model_version):
+        assert model_id is not None
+        assert model_version is not None
+        return artifacts._retrieve_image_uri(
+            model_id,
+            model_version,
+            framework,
+            region,
+            version,
+            py_version,
+            instance_type,
+            accelerator_type,
+            image_scope,
+            container_version,
+            distribution,
+            base_framework_version,
+            training_compiler_config,
         )
 
     if training_compiler_config is None:

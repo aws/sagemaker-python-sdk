@@ -16,8 +16,8 @@ from __future__ import absolute_import
 import logging
 
 from sagemaker.jumpstart import utils as jumpstart_utils
-from sagemaker.jumpstart import accessors as jumpstart_accessors
 from sagemaker.jumpstart import constants as jumpstart_constants
+from sagemaker.jumpstart import artifacts
 
 logger = logging.getLogger(__name__)
 
@@ -42,30 +42,11 @@ def retrieve(
     Raises:
         ValueError: If the combination of arguments specified is not supported.
     """
-    if model_id is None or model_version is None:
+    if not jumpstart_utils.is_jumpstart_model_input(model_id, model_version):
         raise ValueError(
-            "Must specify `model_id` and `model_version` when getting model script uri for "
-            "JumpStart models. "
+            "Must specify `model_id` and `model_version` when retrieving script URIs."
         )
-    model_specs = jumpstart_accessors.JumpStartModelsCache.get_model_specs(
-        region, model_id, model_version
-    )
-    if script_scope is None:
-        raise ValueError(
-            "Must specify `script_scope` argument to retrieve model script uri for "
-            "JumpStart models."
-        )
-    if script_scope == "inference":
-        model_script_key = model_specs.hosting_script_key
-    elif script_scope == "training":
-        if not model_specs.training_supported:
-            raise ValueError(f"JumpStart model id '{model_id}' does not support training.")
-        model_script_key = model_specs.training_script_key
-    else:
-        raise ValueError("JumpStart models only support inference and training.")
 
-    bucket = jumpstart_utils.get_jumpstart_content_bucket(region)
-
-    script_s3_uri = f"s3://{bucket}/{model_script_key}"
-
-    return script_s3_uri
+    assert model_id is not None
+    assert model_version is not None
+    return artifacts._retrieve_script_uri(model_id, model_version, script_scope, region)

@@ -103,14 +103,14 @@ class JumpStartModelsCache(object):
 
     @staticmethod
     def set_cache_kwargs(cache_kwargs: Dict[str, Any], region: str = None) -> None:
-        """Sets cache kwargs. Clears the cache.
+        """Sets cache kwargs, clear the cache.
 
         Raises:
             ValueError: If region in `cache_kwargs` is inconsistent with `region` argument.
 
         Args:
             cache_kwargs (str): cache kwargs to validate.
-            region (str): The region to validate along with the kwargs.
+            region (str): Optional. The region to validate along with the kwargs.
         """
         cache_kwargs = JumpStartModelsCache._validate_region_cache_kwargs(cache_kwargs, region)
         JumpStartModelsCache._cache_kwargs = cache_kwargs

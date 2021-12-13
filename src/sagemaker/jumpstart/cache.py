@@ -282,7 +282,7 @@ class JumpStartModelsCache:
         semantic_version_str: str,
         available_versions: List[Version],
     ) -> Optional[str]:
-        """Utility to select appropriate version from available versions.
+        """Perform semantic version search on available versions.
 
         Args:
             semantic_version_str (str): the semantic version for which to filter

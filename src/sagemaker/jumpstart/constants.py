@@ -103,10 +103,6 @@ JUMPSTART_LAUNCHED_REGIONS: Set[JumpStartLaunchedRegionInfo] = set(
             region_name="cn-north-1",
             content_bucket="jumpstart-cache-prod-cn-north-1",
         ),
-        JumpStartLaunchedRegionInfo(
-            region_name="cn-northwest-1",
-            content_bucket="jumpstart-cache-prod-cn-northwest-1",
-        ),
     ]
 )
 
@@ -118,3 +114,7 @@ JUMPSTART_REGION_NAME_SET = {region.region_name for region in JUMPSTART_LAUNCHED
 JUMPSTART_DEFAULT_REGION_NAME = boto3.session.Session().region_name
 
 JUMPSTART_DEFAULT_MANIFEST_FILE_S3_KEY = "models_manifest.json"
+
+INFERENCE = "inference"
+TRAINING = "training"
+SUPPORTED_JUMPSTART_SCOPES = set([INFERENCE, TRAINING])
