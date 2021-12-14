@@ -3069,6 +3069,7 @@ def test_register_inference_image(sagemaker_session):
         "containers": [
             {
                 "Image": inference_image,
+                "Environment": {},
                 "ModelDataUrl": estimator.model_data,
             }
         ],
