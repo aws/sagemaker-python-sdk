@@ -3021,6 +3021,7 @@ def test_register_default_image(sagemaker_session):
         "containers": [
             {
                 "Image": estimator.image_uri,
+                "Environment": {},
                 "ModelDataUrl": estimator.model_data,
             }
         ],
