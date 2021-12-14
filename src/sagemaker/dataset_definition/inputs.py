@@ -48,8 +48,8 @@ class RedshiftDatasetDefinition(ApiObject):
                 The name of the Redshift database used in Redshift query execution.
             db_user (str, default=None): The database user name used in Redshift query execution.
             query_string (str, default=None): The SQL query statements to be executed.
-            cluster_role_arn (str, default=None): The IAM role attached to your Redshift cluster that
-                Amazon SageMaker uses to generate datasets.
+            cluster_role_arn (str, default=None): The IAM role attached to your Redshift cluster
+                that Amazon SageMaker uses to generate datasets.
             output_s3_uri (str, default=None): The location in Amazon S3 where the Redshift query
                 results are stored.
             kms_key_id (str, default=None): The AWS Key Management Service (AWS KMS) key that Amazon
@@ -92,8 +92,10 @@ class AthenaDatasetDefinition(ApiObject):
         """Initialize AthenaDatasetDefinition.
 
         Args:
-            catalog (str, default=None): The name of the data catalog used in Athena query execution.
-            database (str, default=None): The name of the database used in the Athena query execution.
+            catalog (str, default=None): The name of the data catalog used in Athena query
+                execution.
+            database (str, default=None): The name of the database used in the Athena query
+                execution.
             query_string (str, default=None): The SQL query statements, to be executed.
             output_s3_uri (str, default=None):
                 The location in Amazon S3 where Athena query results are stored.
@@ -147,13 +149,15 @@ class DatasetDefinition(ApiObject):
                 source directly to your algorithm without using the EBS volume.
             local_path (str, default=None):
                 The local path where you want Amazon SageMaker to download the Dataset
-                Definition inputs to run a processing job. LocalPath is an absolute path to the input
-                data. This is a required parameter when `AppManaged` is False (default).
+                Definition inputs to run a processing job. LocalPath is an absolute path to the
+                input data. This is a required parameter when `AppManaged` is False (default).
             redshift_dataset_definition
-                (:class:`~sagemaker.dataset_definition.inputs.RedshiftDatasetDefinition`,default=None):
+                (:class:`~sagemaker.dataset_definition.inputs.RedshiftDatasetDefinition`,
+                default=None):
                 Configuration for Redshift Dataset Definition input.
             athena_dataset_definition
-                (:class:`~sagemaker.dataset_definition.inputs.AthenaDatasetDefinition`, default=None):
+                (:class:`~sagemaker.dataset_definition.inputs.AthenaDatasetDefinition`,
+                default=None):
                 Configuration for Athena Dataset Definition input.
         """
         super(DatasetDefinition, self).__init__(
