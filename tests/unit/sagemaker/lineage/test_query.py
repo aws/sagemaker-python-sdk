@@ -13,6 +13,7 @@
 from __future__ import absolute_import
 from sagemaker.lineage.artifact import DatasetArtifact, ModelArtifact, Artifact
 from sagemaker.lineage.context import EndpointContext, Context
+from sagemaker.lineage.action import Action
 from sagemaker.lineage.query import LineageEntityEnum, LineageSourceEnum, Vertex, LineageQuery
 import pytest
 
@@ -240,10 +241,38 @@ def test_vertex_to_object_artifact(sagemaker_session):
     assert isinstance(artifact, Artifact)
 
 
+def test_vertex_to_object_action(sagemaker_session):
+    vertex = Vertex(
+        arn="arn:aws:sagemaker:us-west-2:0123456789012:action/cp-m5-20210424t041405868z-1619237657-1-aws-endpoint",
+        lineage_entity=LineageEntityEnum.ACTION.value,
+        lineage_source="A",
+        sagemaker_session=sagemaker_session,
+    )
+
+    sagemaker_session.sagemaker_client.describe_action.return_value = {
+        "ActionName": "cp-m5-20210424t041405868z-1619237657-1-aws-endpoint",
+        "Source": {
+            "SourceUri": "246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:0.23-1-cpu-py3",
+            "SourceTypes": [],
+        },
+        "ActionType": "A",
+        "Properties": {},
+        "CreationTime": 1608224704.149,
+        "CreatedBy": {},
+        "LastModifiedTime": 1608224704.149,
+        "LastModifiedBy": {},
+    }
+
+    action = vertex.to_lineage_object()
+
+    assert action.action_name == "cp-m5-20210424t041405868z-1619237657-1-aws-endpoint"
+    assert isinstance(action, Action)
+
+
 def test_vertex_to_object_unconvertable(sagemaker_session):
     vertex = Vertex(
         arn="arn:aws:sagemaker:us-west-2:0123456789012:artifact/e66eef7f19c05e75284089183491bd4f",
-        lineage_entity=LineageEntityEnum.ACTION.value,
+        lineage_entity=LineageEntityEnum.TRIAL_COMPONENT.value,
         lineage_source=LineageSourceEnum.TENSORBOARD.value,
         sagemaker_session=sagemaker_session,
     )
