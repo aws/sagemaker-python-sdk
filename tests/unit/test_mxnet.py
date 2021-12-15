@@ -22,8 +22,9 @@ from mock import patch
 from pkg_resources import parse_version
 
 from sagemaker.fw_utils import UploadedCode
+from sagemaker.drift_check_baselines import DriftCheckBaselines
 from sagemaker.metadata_properties import MetadataProperties
-from sagemaker.model_metrics import MetricsSource, ModelMetrics
+from sagemaker.model_metrics import FileSource, MetricsSource, ModelMetrics
 from sagemaker.mxnet import defaults
 from sagemaker.mxnet import MXNet
 from sagemaker.mxnet import MXNetPredictor, MXNetModel
@@ -460,13 +461,31 @@ def test_model(
         s3_uri="s3://b/c",
         content_digest="d",
     )
+    dummy_file_source = FileSource(
+        content_type="a",
+        s3_uri="s3://b/c",
+        content_digest="d",
+    )
     model_metrics = ModelMetrics(
         model_statistics=dummy_metrics_source,
         model_constraints=dummy_metrics_source,
         model_data_statistics=dummy_metrics_source,
         model_data_constraints=dummy_metrics_source,
         bias=dummy_metrics_source,
+        bias_pre_training=dummy_metrics_source,
+        bias_post_training=dummy_metrics_source,
         explainability=dummy_metrics_source,
+    )
+    drift_check_baselines = DriftCheckBaselines(
+        model_statistics=dummy_metrics_source,
+        model_constraints=dummy_metrics_source,
+        model_data_statistics=dummy_metrics_source,
+        model_data_constraints=dummy_metrics_source,
+        bias_config_file=dummy_file_source,
+        bias_pre_training_constraints=dummy_metrics_source,
+        bias_post_training_constraints=dummy_metrics_source,
+        explainability_constraints=dummy_metrics_source,
+        explainability_config_file=dummy_file_source,
     )
     model.register(
         content_types,
@@ -478,6 +497,7 @@ def test_model(
         marketplace_cert=True,
         approval_status="Approved",
         description="description",
+        drift_check_baselines=drift_check_baselines,
     )
     expected_create_model_package_request = {
         "containers": ANY,
@@ -490,6 +510,7 @@ def test_model(
         "marketplace_cert": True,
         "approval_status": "Approved",
         "description": "description",
+        "drift_check_baselines": drift_check_baselines._to_request_dict(),
     }
     sagemaker_session.create_model_package_from_containers.assert_called_with(
         **expected_create_model_package_request
@@ -555,13 +576,31 @@ def test_model_register_all_args(
         s3_uri="s3://b/c",
         content_digest="d",
     )
+    dummy_file_source = FileSource(
+        content_type="a",
+        s3_uri="s3://b/c",
+        content_digest="d",
+    )
     model_metrics = ModelMetrics(
         model_statistics=dummy_metrics_source,
         model_constraints=dummy_metrics_source,
         model_data_statistics=dummy_metrics_source,
         model_data_constraints=dummy_metrics_source,
         bias=dummy_metrics_source,
+        bias_pre_training=dummy_metrics_source,
+        bias_post_training=dummy_metrics_source,
         explainability=dummy_metrics_source,
+    )
+    drift_check_baselines = DriftCheckBaselines(
+        model_statistics=dummy_metrics_source,
+        model_constraints=dummy_metrics_source,
+        model_data_statistics=dummy_metrics_source,
+        model_data_constraints=dummy_metrics_source,
+        bias_config_file=dummy_file_source,
+        bias_pre_training_constraints=dummy_metrics_source,
+        bias_post_training_constraints=dummy_metrics_source,
+        explainability_constraints=dummy_metrics_source,
+        explainability_config_file=dummy_file_source,
     )
     metadata_properties = MetadataProperties(
         commit_id="test-commit-id",
@@ -580,6 +619,7 @@ def test_model_register_all_args(
         marketplace_cert=True,
         approval_status="Approved",
         description="description",
+        drift_check_baselines=drift_check_baselines,
     )
     expected_create_model_package_request = {
         "containers": ANY,
@@ -593,6 +633,7 @@ def test_model_register_all_args(
         "marketplace_cert": True,
         "approval_status": "Approved",
         "description": "description",
+        "drift_check_baselines": drift_check_baselines._to_request_dict(),
     }
     sagemaker_session.create_model_package_from_containers.assert_called_with(
         **expected_create_model_package_request

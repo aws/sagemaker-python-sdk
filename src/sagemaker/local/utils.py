@@ -64,7 +64,8 @@ def move_to_destination(source, destination, job_name, sagemaker_session):
     """
     parsed_uri = urlparse(destination)
     if parsed_uri.scheme == "file":
-        recursive_copy(source, parsed_uri.path)
+        dir_path = os.path.abspath(parsed_uri.netloc + parsed_uri.path)
+        recursive_copy(source, dir_path)
         final_uri = destination
     elif parsed_uri.scheme == "s3":
         bucket = parsed_uri.netloc
@@ -116,9 +117,8 @@ def get_child_process_ids(pid):
         (List[int]): Child process ids
     """
     cmd = f"pgrep -P {pid}".split()
-    output, err = subprocess.Popen(
-        cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE
-    ).communicate()
+    process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    output, err = process.communicate()
     if err:
         return []
     pids = [int(pid) for pid in output.decode("utf-8").split()]

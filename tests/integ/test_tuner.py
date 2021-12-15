@@ -586,10 +586,11 @@ def test_tuning_tf(
     tensorflow_training_latest_py_version,
 ):
     resource_path = os.path.join(DATA_DIR, "tensorflow_mnist")
-    script_path = os.path.join(resource_path, "mnist.py")
+    script_path = "mnist.py"
 
     estimator = TensorFlow(
         entry_point=script_path,
+        source_dir=resource_path,
         role="SageMakerRole",
         instance_count=1,
         instance_type=cpu_instance_type,
@@ -632,7 +633,7 @@ def test_tuning_tf_vpc_multi(
     instance_count = 2
 
     resource_path = os.path.join(DATA_DIR, "tensorflow_mnist")
-    script_path = os.path.join(resource_path, "mnist.py")
+    script_path = "mnist.py"
 
     ec2_client = sagemaker_session.boto_session.client("ec2")
     subnet_ids, security_group_id = vpc_test_utils.get_or_create_vpc_resources(ec2_client)
@@ -640,6 +641,7 @@ def test_tuning_tf_vpc_multi(
 
     estimator = TensorFlow(
         entry_point=script_path,
+        source_dir=resource_path,
         role="SageMakerRole",
         framework_version=tensorflow_training_latest_version,
         py_version=tensorflow_training_latest_py_version,

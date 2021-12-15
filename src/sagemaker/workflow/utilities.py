@@ -14,6 +14,7 @@
 from __future__ import absolute_import
 
 from typing import List, Sequence, Union
+import hashlib
 
 from sagemaker.workflow.entities import (
     Entity,
@@ -37,3 +38,23 @@ def list_to_request(entities: Sequence[Union[Entity, StepCollection]]) -> List[R
         elif isinstance(entity, StepCollection):
             request_dicts.extend(entity.request_dicts())
     return request_dicts
+
+
+def hash_file(path: str) -> str:
+    """Get the MD5 hash of a file.
+
+    Args:
+        path (str): The local path for the file.
+    Returns:
+        str: The MD5 hash of the file.
+    """
+    BUF_SIZE = 65536  # read in 64KiB chunks
+    md5 = hashlib.md5()
+    with open(path, "rb") as f:
+        while True:
+            data = f.read(BUF_SIZE)
+            if not data:
+                break
+            md5.update(data)
+
+    return md5.hexdigest()
