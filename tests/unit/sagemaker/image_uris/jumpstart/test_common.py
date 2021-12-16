@@ -23,7 +23,6 @@ from sagemaker.jumpstart import constants as sagemaker_constants
 
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
 def test_jumpstart_common_image_uri(patched_get_model_specs):
-
     patched_get_model_specs.side_effect = get_spec_from_base_spec
 
     image_uris.retrieve(
