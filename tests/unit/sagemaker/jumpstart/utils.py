@@ -22,80 +22,12 @@ from sagemaker.jumpstart.types import (
     JumpStartModelHeader,
 )
 from sagemaker.jumpstart.utils import get_formatted_manifest
-
-
-BASE_SPEC = {
-    "model_id": "pytorch-ic-mobilenet-v2",
-    "version": "1.0.0",
-    "min_sdk_version": "2.49.0",
-    "training_supported": True,
-    "incremental_training_supported": True,
-    "hosting_ecr_specs": {
-        "framework": "pytorch",
-        "framework_version": "1.5.0",
-        "py_version": "py3",
-    },
-    "training_ecr_specs": {
-        "framework": "pytorch",
-        "framework_version": "1.5.0",
-        "py_version": "py3",
-    },
-    "hosting_artifact_key": "pytorch-infer/infer-pytorch-ic-mobilenet-v2.tar.gz",
-    "training_artifact_key": "pytorch-training/train-pytorch-ic-mobilenet-v2.tar.gz",
-    "hosting_script_key": "source-directory-tarballs/pytorch/inference/ic/v1.0.0/sourcedir.tar.gz",
-    "training_script_key": "source-directory-tarballs/pytorch/transfer_learning/ic/v1.0.0/sourcedir.tar.gz",
-    "hyperparameters": {
-        "adam-learning-rate": {"type": "float", "default": 0.05, "min": 1e-08, "max": 1},
-        "epochs": {"type": "int", "default": 3, "min": 1, "max": 1000},
-        "batch-size": {"type": "int", "default": 4, "min": 1, "max": 1024},
-    },
-}
-
-BASE_HEADER = {
-    "model_id": "tensorflow-ic-imagenet-inception-v3-classification-4",
-    "version": "1.0.0",
-    "min_version": "2.49.0",
-    "spec_key": "community_models_specs/tensorflow-ic-imagenet"
-    "-inception-v3-classification-4/specs_v1.0.0.json",
-}
-
-BASE_MANIFEST = [
-    {
-        "model_id": "tensorflow-ic-imagenet-inception-v3-classification-4",
-        "version": "1.0.0",
-        "min_version": "2.49.0",
-        "spec_key": "community_models_specs/tensorflow-ic-imagenet"
-        "-inception-v3-classification-4/specs_v1.0.0.json",
-    },
-    {
-        "model_id": "tensorflow-ic-imagenet-inception-v3-classification-4",
-        "version": "2.0.0",
-        "min_version": "2.49.0",
-        "spec_key": "community_models_specs/tensorflow-ic-imagenet"
-        "-inception-v3-classification-4/specs_v2.0.0.json",
-    },
-    {
-        "model_id": "pytorch-ic-imagenet-inception-v3-classification-4",
-        "version": "1.0.0",
-        "min_version": "2.49.0",
-        "spec_key": "community_models_specs/pytorch-ic-"
-        "imagenet-inception-v3-classification-4/specs_v1.0.0.json",
-    },
-    {
-        "model_id": "pytorch-ic-imagenet-inception-v3-classification-4",
-        "version": "2.0.0",
-        "min_version": "2.49.0",
-        "spec_key": "community_models_specs/pytorch-ic-imagenet-"
-        "inception-v3-classification-4/specs_v2.0.0.json",
-    },
-    {
-        "model_id": "tensorflow-ic-imagenet-inception-v3-classification-4",
-        "version": "3.0.0",
-        "min_version": "4.49.0",
-        "spec_key": "community_models_specs/tensorflow-ic-"
-        "imagenet-inception-v3-classification-4/specs_v3.0.0.json",
-    },
-]
+from tests.unit.sagemaker.jumpstart.constants import (
+    PROTOTYPICAL_MODEL_SPECS_DICT,
+    BASE_MANIFEST,
+    BASE_SPEC,
+    BASE_HEADER,
+)
 
 
 def get_header_from_base_header(
@@ -111,6 +43,14 @@ def get_header_from_base_header(
     spec["model_id"] = model_id
 
     return JumpStartModelHeader(spec)
+
+
+def get_prototype_model_spec(
+    region: str = None, model_id: str = None, version: str = None
+) -> JumpStartModelSpecs:
+
+    specs = JumpStartModelSpecs(PROTOTYPICAL_MODEL_SPECS_DICT[model_id])
+    return specs
 
 
 def get_spec_from_base_spec(

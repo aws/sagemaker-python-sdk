@@ -11,9 +11,9 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
-import pytest
 
 from mock.mock import patch
+import pytest
 
 from sagemaker import image_uris
 
@@ -22,23 +22,11 @@ from sagemaker.jumpstart import constants as sagemaker_constants
 
 
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsCache.get_model_specs")
-def test_jumpstart_script_uri(patched_get_model_specs):
+def test_jumpstart_common_image_uri(patched_get_model_specs):
 
     patched_get_model_specs.side_effect = get_spec_from_base_spec
-    uri = image_uris.retrieve(
-        framework=None,
-        region="us-west-2",
-        image_scope="inference",
-        model_id="pytorch-ic-mobilenet-v2",
-        model_version="*",
-        instance_type="ml.p2.xlarge",
-    )
-    assert uri == "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-inference:1.5.0-gpu-py3"
-    patched_get_model_specs.assert_called_once_with("us-west-2", "pytorch-ic-mobilenet-v2", "*")
 
-    patched_get_model_specs.reset_mock()
-
-    uri = image_uris.retrieve(
+    image_uris.retrieve(
         framework=None,
         region="us-west-2",
         image_scope="training",
@@ -46,13 +34,25 @@ def test_jumpstart_script_uri(patched_get_model_specs):
         model_version="*",
         instance_type="ml.p2.xlarge",
     )
-    assert uri == "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:1.5.0-gpu-py3"
     patched_get_model_specs.assert_called_once_with("us-west-2", "pytorch-ic-mobilenet-v2", "*")
+
     patched_get_model_specs.reset_mock()
 
     image_uris.retrieve(
         framework=None,
         region="us-west-2",
+        image_scope="inference",
+        model_id="pytorch-ic-mobilenet-v2",
+        model_version="1.*",
+        instance_type="ml.p2.xlarge",
+    )
+    patched_get_model_specs.assert_called_once_with("us-west-2", "pytorch-ic-mobilenet-v2", "1.*")
+
+    patched_get_model_specs.reset_mock()
+
+    image_uris.retrieve(
+        framework=None,
+        region=None,
         image_scope="training",
         model_id="pytorch-ic-mobilenet-v2",
         model_version="*",
@@ -66,8 +66,8 @@ def test_jumpstart_script_uri(patched_get_model_specs):
 
     image_uris.retrieve(
         framework=None,
-        region="us-west-2",
-        image_scope="training",
+        region=None,
+        image_scope="inference",
         model_id="pytorch-ic-mobilenet-v2",
         model_version="1.*",
         instance_type="ml.p2.xlarge",
@@ -82,6 +82,16 @@ def test_jumpstart_script_uri(patched_get_model_specs):
             region="us-west-2",
             image_scope="BAD_SCOPE",
             model_id="pytorch-ic-mobilenet-v2",
+            model_version="*",
+            instance_type="ml.p2.xlarge",
+        )
+
+    with pytest.raises(KeyError):
+        image_uris.retrieve(
+            framework=None,
+            region="us-west-2",
+            image_scope="training",
+            model_id="blah",
             model_version="*",
             instance_type="ml.p2.xlarge",
         )

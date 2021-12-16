@@ -19,6 +19,7 @@ from sagemaker.jumpstart.constants import (
     INFERENCE,
     TRAINING,
     SUPPORTED_JUMPSTART_SCOPES,
+    ModelFramework,
 )
 from sagemaker.jumpstart.utils import get_jumpstart_content_bucket
 from sagemaker.jumpstart import accessors as jumpstart_accessors
@@ -115,20 +116,39 @@ def _retrieve_image_uri(
             f"Bad value for container python version for JumpStart model: '{py_version}'."
         )
 
-    if framework == "huggingface":
-        base_framework_version = ecr_specs.framework_version
+    base_framework_version_override = None
+    version_override = None
+    if ecr_specs.framework == ModelFramework.HUGGINGFACE.value:
+        base_framework_version_override = ecr_specs.framework_version
+        version_override = ecr_specs.huggingface_transformers_version
+
+    if image_scope == TRAINING:
+        return image_uris.get_training_image_uri(
+            region=region,
+            framework=ecr_specs.framework,
+            framework_version=version_override or ecr_specs.framework_version,
+            py_version=ecr_specs.py_version,
+            image_uri=None,
+            distribution=None,
+            compiler_config=None,
+            tensorflow_version=None,
+            pytorch_version=base_framework_version_override or base_framework_version,
+            instance_type=instance_type,
+        )
+    if base_framework_version_override is not None:
+        base_framework_version_override = f"pytorch{base_framework_version_override}"
 
     return image_uris.retrieve(
         framework=ecr_specs.framework,
         region=region,
-        version=ecr_specs.framework_version,
+        version=version_override or ecr_specs.framework_version,
         py_version=ecr_specs.py_version,
         instance_type=instance_type,
         accelerator_type=accelerator_type,
         image_scope=image_scope,
         container_version=container_version,
         distribution=distribution,
-        base_framework_version=base_framework_version,
+        base_framework_version=base_framework_version_override or base_framework_version,
         training_compiler_config=training_compiler_config,
     )
 

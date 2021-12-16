@@ -28,10 +28,13 @@ from sagemaker.jumpstart.types import (
     JumpStartVersionedModelId,
 )
 from tests.unit.sagemaker.jumpstart.utils import (
-    BASE_MANIFEST,
-    BASE_SPEC,
     get_spec_from_base_spec,
     patched_get_file_from_s3,
+)
+
+from tests.unit.sagemaker.jumpstart.constants import (
+    BASE_MANIFEST,
+    BASE_SPEC,
 )
 
 

@@ -17,6 +17,7 @@ import json
 import logging
 import os
 import re
+from typing import Optional
 
 from sagemaker import utils
 from sagemaker.jumpstart.utils import is_jumpstart_model_input
@@ -373,3 +374,68 @@ def _validate_arg(arg, available_options, arg_name):
 def _format_tag(tag_prefix, processor, py_version, container_version):
     """Creates a tag for the image URI."""
     return "-".join(x for x in (tag_prefix, processor, py_version, container_version) if x)
+
+
+def get_training_image_uri(
+    region,
+    framework,
+    framework_version=None,
+    py_version=None,
+    image_uri=None,
+    distribution=None,
+    compiler_config=None,
+    tensorflow_version=None,
+    pytorch_version=None,
+    instance_type=None,
+) -> str:
+    """Retrieve image uri for training.
+
+    Args:
+        region (str): AWS region to use for image URI.
+        framework (str): The framework for which to retrieve an image URI.
+        framework_version (str): The framework version for which to retrieve an
+            image URI (default: None).
+        py_version (str): The python version to use for the image (default: None).
+        image_uri (str): If an image URI is supplied, it will be returned (default: None).
+        distribution (dict): A dictionary with information on how to run distributed
+            training (default: None).
+        compiler_config (:class:`~sagemaker.training_compiler.TrainingCompilerConfig`):
+            A configuration class for the SageMaker Training Compiler
+            (default: None).
+        tensorflow_version (str): Version of tensorflow to use. (default: None)
+        pytorch_version (str): Version of pytorch to use. (default: None)
+        instance_type (str): Instance type fo use. (default: None)
+
+    Returns:
+        str: the image URI string.
+    """
+
+    if image_uri:
+        return image_uri
+
+    base_framework_version: Optional[str] = None
+
+    if tensorflow_version is not None or pytorch_version is not None:
+        processor = _processor(instance_type, ["cpu", "gpu"])
+        is_native_huggingface_gpu = processor == "gpu" and not compiler_config
+        container_version = "cu110-ubuntu18.04" if is_native_huggingface_gpu else None
+        if tensorflow_version is not None:
+            base_framework_version = f"tensorflow{tensorflow_version}"
+        else:
+            base_framework_version = f"pytorch{pytorch_version}"
+    else:
+        container_version = None
+        base_framework_version = None
+
+    return retrieve(
+        framework,
+        region,
+        instance_type=instance_type,
+        version=framework_version,
+        py_version=py_version,
+        image_scope="training",
+        distribution=distribution,
+        base_framework_version=base_framework_version,
+        container_version=container_version,
+        training_compiler_config=compiler_config,
+    )
