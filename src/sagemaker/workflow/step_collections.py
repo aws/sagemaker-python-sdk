@@ -63,6 +63,7 @@ class RegisterModel(StepCollection):
         estimator: EstimatorBase = None,
         model_data=None,
         depends_on: Union[List[str], List[Step]] = None,
+        repack_output_path=None,
         repack_model_step_retry_policies: List[RetryPolicy] = None,
         register_model_step_retry_policies: List[RetryPolicy] = None,
         model_package_group_name=None,
@@ -91,6 +92,9 @@ class RegisterModel(StepCollection):
                 job can be run or on which an endpoint can be deployed (default: None).
             depends_on (List[str] or List[Step]): The list of step names or step instances
                 the first step in the collection depends on
+            repack_output_path (str): The S3 prefix URI where the repacked model will be
+                uploaded (default: None) - don't include a trailing slash.
+                If not specified, the default location is s3://default-bucket/job-name.
             repack_model_step_retry_policies (List[RetryPolicy]): The list of retry policies
                 for the repack model step
             register_model_step_retry_policies (List[RetryPolicy]): The list of retry policies
@@ -151,6 +155,7 @@ class RegisterModel(StepCollection):
                 security_group_ids=security_group_ids,
                 description=description,
                 display_name=display_name,
+                repack_output_path=repack_output_path,
                 **kwargs,
             )
             steps.append(repack_model_step)
@@ -195,6 +200,7 @@ class RegisterModel(StepCollection):
                         security_group_ids=security_group_ids,
                         description=description,
                         display_name=display_name,
+                        repack_output_path=repack_output_path,
                         **kwargs,
                     )
                     steps.append(repack_model_step)
@@ -256,6 +262,7 @@ class EstimatorTransformer(StepCollection):
         image_uri=None,
         predictor_cls=None,
         env=None,
+        repack_output_path=None,
         # transformer arguments
         strategy=None,
         assemble_with=None,
@@ -307,6 +314,9 @@ class EstimatorTransformer(StepCollection):
                 it will be the format of the batch transform output.
             env (dict): The Environment variables to be set for use during the
                 transform job (default: None).
+            repack_output_path (str): The S3 prefix URI where the repacked model will be
+                uploaded (default: None) - don't include a trailing slash.
+                If not specified, the default location is s3://default-bucket/job-name.
             depends_on (List[str] or List[Step]): The list of step names or step instances
                 the first step in the collection depends on
             repack_model_step_retry_policies (List[RetryPolicy]): The list of retry policies
@@ -336,6 +346,7 @@ class EstimatorTransformer(StepCollection):
                 security_group_ids=estimator.security_group_ids,
                 description=description,
                 display_name=display_name,
+                repack_output_path=repack_output_path,
             )
             steps.append(repack_model_step)
             model_data = repack_model_step.properties.ModelArtifacts.S3ModelArtifacts

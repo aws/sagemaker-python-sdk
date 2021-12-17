@@ -59,6 +59,7 @@ class _RepackModelStep(TrainingStep):
         display_name: str = None,
         description: str = None,
         source_dir: str = None,
+        repack_output_path=None,
         dependencies: List = None,
         depends_on: Union[List[str], List[Step]] = None,
         retry_policies: List[RetryPolicy] = None,
@@ -101,6 +102,9 @@ class _RepackModelStep(TrainingStep):
                 or model hosting source code dependencies aside from the entry point
                 file in the Git repo (default: None). Structure within this
                 directory are preserved when training on Amazon SageMaker.
+            repack_output_path (str): The S3 prefix URI where the repacked model will be
+                uploaded (default: None) - don't include a trailing slash.
+                If not specified, the default location is s3://default-bucket/job-name.
             dependencies (list[str]): A list of paths to directories (absolute
                     or relative) with any additional libraries that will be exported
                     to the container (default: []). The library folders will be
@@ -170,6 +174,8 @@ class _RepackModelStep(TrainingStep):
             },
             subnets=subnets,
             security_group_ids=security_group_ids,
+            output_path=repack_output_path,
+            code_location=repack_output_path,
             **kwargs,
         )
         repacker.disable_profiler = True

@@ -207,3 +207,21 @@ def test_repack_model_step_with_source_dir(estimator, source_dir):
     assert step.properties.TrainingJobName.expr == {
         "Get": "Steps.MyRepackModelStep.TrainingJobName"
     }
+
+
+def test_repack_model_step_with_output_path(estimator):
+    repack_output_path = "s3://{BUCKET}/repack_output"
+    model_data = f"s3://{BUCKET}/model.tar.gz"
+    entry_point = f"{DATA_DIR}/dummy_script.py"
+    step = _RepackModelStep(
+        name="MyRepackModelStep",
+        sagemaker_session=estimator.sagemaker_session,
+        role=estimator.role,
+        model_data=model_data,
+        entry_point=entry_point,
+        repack_output_path=repack_output_path,
+    )
+    request_dict = step.to_request()
+
+    assert request_dict["Arguments"]["DebugHookConfig"]["S3OutputPath"] == repack_output_path
+    assert request_dict["Arguments"]["OutputDataConfig"]["S3OutputPath"] == repack_output_path
