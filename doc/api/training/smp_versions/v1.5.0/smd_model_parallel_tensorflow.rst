@@ -18,7 +18,6 @@ TensorFlow API
 
 .. class:: smp.DistributedModel
    :noindex:
-   :noindex:
 
    A sub-class of the Keras \ ``Model`` class, which defines the model to
    be partitioned. Model definition is done by sub-classing
@@ -45,7 +44,7 @@ TensorFlow API
    **Methods:**
 
    .. function:: save_model(save_path="/opt/ml/model")
-   :noindex:
+      :noindex:
 
       **Inputs**
       - ``save_path`` (``string``): A path to save an unpartitioned model with latest training weights.
@@ -142,12 +141,12 @@ TensorFlow API
    **Methods:**
 
    .. function:: save( )
-   :noindex:
+      :noindex:
 
       Saves a new checkpoint in the specified directory. Internally uses ``tf.train.CheckpointManager.save()``.
 
    .. function:: restore( )
-   :noindex:
+      :noindex:
 
       Restores the latest checkpoint in the specified directory.
       Internally uses ``tf.train.CheckpointManager.restore()``.

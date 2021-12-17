@@ -35,9 +35,7 @@ Select a version to see the API documentation for version. To use the library, r
    :maxdepth: 1
 
    smp_versions/latest.rst
-   smp_versions/v1_3_0.rst
-   smp_versions/v1_2_0.rst
-   smp_versions/v1_1_0.rst
+   smp_versions/archives.rst
 
 It is recommended to use this documentation alongside `SageMaker Distributed Model Parallel
 <http://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel.html>`__ in the Amazon SageMaker

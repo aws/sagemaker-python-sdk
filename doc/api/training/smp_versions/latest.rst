@@ -1,5 +1,5 @@
 
-Version 1.4.0 (Latest)
+Version 1.6.0 (Latest)
 ======================
 
 To use the library, reference the Common API documentation alongside the framework specific API documentation.

@@ -194,32 +194,32 @@ The following SageMaker distribute model parallel APIs are common across all fra
    post-processing operations on tensors.
 
    .. data:: StepOutput.outputs
-   :noindex:
+      :noindex:
 
       Returns a list of the underlying tensors, indexed by microbatch.
 
    .. function:: StepOutput.reduce_mean( )
-   :noindex:
+      :noindex:
 
       Returns a ``tf.Tensor``, ``torch.Tensor`` that averages the constituent ``tf.Tensor`` s
       ``torch.Tensor`` s. This is commonly used for averaging loss and gradients across microbatches.
 
    .. function:: StepOutput.reduce_sum( )
-   :noindex:
+      :noindex:
 
       Returns a ``tf.Tensor`` /
       ``torch.Tensor`` that sums the constituent
       ``tf.Tensor``\ s/\ ``torch.Tensor``\ s.
 
    .. function:: StepOutput.concat( )
-   :noindex:
+      :noindex:
 
       Returns a
       ``tf.Tensor``/``torch.Tensor`` that concatenates tensors along the
       batch dimension using ``tf.concat`` / ``torch.cat``.
 
    .. function:: StepOutput.stack( )
-   :noindex:
+      :noindex:
 
       Applies ``tf.stack`` / ``torch.stack``
       operation to the list of constituent ``tf.Tensor``\ s /
@@ -228,7 +228,7 @@ The following SageMaker distribute model parallel APIs are common across all fra
    **TensorFlow-only methods**
 
    .. function:: StepOutput.merge( )
-   :noindex:
+      :noindex:
 
       Returns a ``tf.Tensor`` that
       concatenates the constituent ``tf.Tensor``\ s along the batch
@@ -236,7 +236,7 @@ The following SageMaker distribute model parallel APIs are common across all fra
       across microbatches.
 
    .. function:: StepOutput.accumulate(method="variable", var=None)
-   :noindex:
+      :noindex:
 
       Functionally the same as ``StepOutput.reduce_mean()``. However, it is
       more memory-efficient, especially for large numbers of microbatches,
@@ -286,7 +286,7 @@ The library exposes the following basic MPI primitives to its Python API:
    replicas of the same model partition.
 
    .. _communication_api:
-   :noindex:
+      :noindex:
 
 Communication API
 ^^^^^^^^^^^^^^^^^

@@ -176,7 +176,7 @@ This API document assumes you use the following import statements in your traini
    **Methods**
 
    .. function:: backward(tensors, grad_tensors)
-   :noindex:
+      :noindex:
 
       Triggers a distributed backward
       pass across model partitions. Example usage provided in the previous
@@ -185,13 +185,13 @@ This API document assumes you use the following import statements in your traini
       ``retain_grad`` and ``create_graph``  flags are not supported.
 
    .. function:: local_buffers( )
-   :noindex:
+      :noindex:
 
       Returns an iterator over buffers for the modules in
       the partitioned model that have been assigned to the current process.
 
    .. function:: local_named_buffers( )
-   :noindex:
+      :noindex:
 
       Returns an iterator over buffers for the
       modules in the partitioned model that have been assigned to the current
@@ -199,14 +199,14 @@ This API document assumes you use the following import statements in your traini
       itself.
 
    .. function:: local_parameters( )
-   :noindex:
+      :noindex:
 
       Returns an iterator over parameters for the
       modules in the partitioned model that have been assigned to the current
       process.
 
    .. function:: local_named_parameters( )
-   :noindex:
+      :noindex:
 
       Returns an iterator over parameters for
       the modules in the partitioned model that have been assigned to the
@@ -214,20 +214,20 @@ This API document assumes you use the following import statements in your traini
       the parameter itself.
 
    .. function:: local_modules( )
-   :noindex:
+      :noindex:
 
       Returns an iterator over the modules in the
       partitioned model that have been assigned to the current process.
 
    .. function:: local_named_modules( )
-   :noindex:
+      :noindex:
 
       Returns an iterator over the modules in the
       partitioned model that have been assigned to the current process. This
       yields both the name of the module as well as the module itself.
 
    .. function:: local_state_dict( )
-   :noindex:
+      :noindex:
 
       Returns the ``state_dict`` that contains local
       parameters that belong to the current \ ``mp_rank``. This ``state_dict``
@@ -237,7 +237,7 @@ This API document assumes you use the following import statements in your traini
       partition, or to the entire model.
 
    .. function:: state_dict( )
-   :noindex:
+      :noindex:
 
       Returns the ``state_dict`` that contains parameters
       for the entire model. It first collects the \ ``local_state_dict``  and
@@ -247,7 +247,7 @@ This API document assumes you use the following import statements in your traini
       If it is only called on all such ranks, it can hang.
 
    .. function:: load_state_dict( )
-   :noindex:
+      :noindex:
 
       Same as the ``torch.module.load_state_dict()`` ,
       except: It first gathers and merges the ``state_dict``\ s across
@@ -255,7 +255,7 @@ This API document assumes you use the following import statements in your traini
       model partition so that each rank knows its local parameters.
 
    .. function:: register_post_partition_hook(hook)
-   :noindex:
+      :noindex:
 
       Registers a callable ``hook`` to
       be executed after the model is partitioned. This is useful in situations
@@ -265,13 +265,13 @@ This API document assumes you use the following import statements in your traini
       which can be used to remove the hook by calling ``handle.remove()``.
 
    .. function:: cpu( )
-   :noindex:
+      :noindex:
 
       Allgathers parameters and buffers across all ``mp_rank``\ s and moves them
       to the CPU.
 
    .. function:: join( )
-   :noindex:
+      :noindex:
 
       A context manager to be used in conjunction with an instance of
       ``smp.DistributedModel`` to be able to train with uneven inputs across
@@ -281,7 +281,7 @@ This API document assumes you use the following import statements in your traini
       in the PyTorch documentation.
 
    .. function:: register_comm_hook( state, callable )
-   :noindex:
+      :noindex:
 
       **Available for PyTorch 1.8.1 only**
       Registers a communication hook which is an enhancement that provides
@@ -311,7 +311,7 @@ This API document assumes you use the following import statements in your traini
    returns ``optimizer`` with the following methods overridden:
 
    .. function:: state_dict( )
-   :noindex:
+      :noindex:
 
       Returns the ``state_dict`` that contains optimizer state for the entire model.
       It first collects the ``local_state_dict`` and gathers and merges
@@ -319,7 +319,7 @@ This API document assumes you use the following import statements in your traini
       ``state_dict``.
 
    .. function::  load_state_dict( )
-   :noindex:
+      :noindex:
 
       Same as the ``torch.optimizer.load_state_dict()`` , except:
 
@@ -329,7 +329,7 @@ This API document assumes you use the following import statements in your traini
             rank knows its local parameters.
 
    .. function::  local_state_dict( )
-   :noindex:
+      :noindex:
 
       Returns the ``state_dict`` that contains the
       local optimizer state that belongs to the current \ ``mp_rank``. This
@@ -340,7 +340,6 @@ This API document assumes you use the following import statements in your traini
 
    ​
 .. function:: smp.partition(index)
-   :noindex:
    :noindex:
 
    **Inputs**
