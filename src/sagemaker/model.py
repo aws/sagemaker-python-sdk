@@ -180,7 +180,10 @@ class Model(ModelBase):
             raise ValueError("SageMaker Model Package cannot be created without model data.")
         if image_uri is not None:
             self.image_uri = image_uri
-        container_def = self.prepare_container_def()
+        if model_package_group_name is not None:
+            container_def = self.prepare_container_def()
+        else:
+            container_def = {"Image": self.image_uri, "ModelDataUrl": self.model_data}
 
         model_pkg_args = sagemaker.get_model_package_args(
             content_types,
