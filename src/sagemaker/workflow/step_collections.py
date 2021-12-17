@@ -336,7 +336,7 @@ class EstimatorTransformer(StepCollection):
                 depends_on=depends_on,
                 retry_policies=repack_model_step_retry_policies,
                 sagemaker_session=estimator.sagemaker_session,
-                role=estimator.sagemaker_session,
+                role=estimator.role,
                 model_data=model_data,
                 entry_point=entry_point,
                 source_dir=source_dir,
