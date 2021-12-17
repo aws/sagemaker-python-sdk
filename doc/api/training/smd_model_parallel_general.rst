@@ -1,7 +1,15 @@
+#################################
+Use with the SageMaker Python SDK
+#################################
+
+Walk through the following pages to learn about the library's APIs
+to configure and enable distributed model parallelism
+through an Amazon SageMaker estimator.
+
 .. _sm-sdk-modelparallel-params:
 
-Configuration Parameters for Model Parallelism
-==============================================
+Configuration Parameters for ``distribution``
+=============================================
 
 Amazon SageMaker's TensorFlow and PyTorch estimator objects contain a ``distribution`` parameter,
 which is used to enable and specify parameters for the
@@ -59,7 +67,7 @@ in the `SageMaker's Distributed Model Parallel developer guide <https://docs.aws
   :depth: 3
   :local:
 
-Parameters for ``"smdistributed"``
+Parameters for ``smdistributed``
 ----------------------------------
 
 You can use the following parameters to initialize the library

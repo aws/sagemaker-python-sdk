@@ -11,55 +11,33 @@ across multiple GPUs with minimal code changes. The library's API can be accesse
 
 See the following sections to learn more about the SageMaker model parallel library APIs.
 
-Use with the SageMaker Python SDK
-=================================
-
-Walk through the following pages to learn about the library's APIs
-to configure and enable distributed model parallelism
-through an Amazon SageMaker estimator.
-
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 3
 
+   smp_versions/latest
    smd_model_parallel_general
 
-Use the Library's API to Adapt Training Scripts
-===============================================
 
-The library provides Common APIs that you can use across frameworks,
-as well as framework-specific APIs for TensorFlow and PyTorch.
+.. tip::
 
-Select the latest or one of the previous versions of the API documentation
-depending on which version of the library you need to use.
-To use the library, reference the
-**Common API** documentation alongside the framework specific API documentation.
+  We recommended using this API documentation with the conceptual guide at
+  `SageMaker's Distributed Model Parallel
+  <http://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel.html>`_
+  in the *Amazon SageMaker developer guide*. This developer guide documentation includes:
 
-.. toctree::
-   :maxdepth: 2
-
-   smp_versions/latest.rst
-
-To find archived API documentation for the previous versions of the library,
-see the following link:
-
-.. toctree::
-   :maxdepth: 1
-
-   smp_versions/archives.rst
-
-It is recommended to use this documentation alongside `SageMaker Distributed Model Parallel
-<http://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel.html>`__ in the Amazon SageMaker
-developer guide. This developer guide documentation includes:
-
-   -  An overview of model parallelism and the library
-      `core features <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-core-features.html>`__
-   -  Instructions on how to modify `TensorFlow
-      <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-customize-training-script.html#model-parallel-customize-training-script-tf>`__
-      and `PyTorch
-      <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-customize-training-script.html#model-parallel-customize-training-script-pt>`__
-      training scripts
-   -  `Configuration tips and pitfalls
-      <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-customize-tips-pitfalls.html>`__
+  - An overview of model parallelism, and the library's
+    `core features <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-core-features.html>`_,
+    and `extended features for PyTorch <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-extended-features-pytorch.html>`_.
+  - Instructions on how to modify `TensorFlow
+    <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-customize-training-script-tf.html>`_
+    and `PyTorch
+    <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-customize-training-script-pt.html>`_
+    training scripts.
+  - Instructions on how to `run a distributed training job using the SageMaker Python SDK
+    and the SageMaker model parallel library
+    <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-sm-sdk.html>`_.
+  - `Configuration tips and pitfalls
+    <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-customize-tips-pitfalls.html>`_.
 
 
 .. important::
