@@ -1,14 +1,16 @@
-.. admonition:: Contents
-
-   - :ref:`communication_api`
-   - :ref:`mpi_basics`
-
 Common API
 ==========
 
 The following SageMaker distribute model parallel APIs are common across all frameworks.
 
-**Important**: This API document assumes you use the following import statement in your training scripts.
+.. contents:: Table of Contents
+  :depth: 3
+  :local:
+
+The Library's Core APIs
+-----------------------
+
+This API document assumes you use the following import statement in your training scripts.
 
 **TensorFlow**
 
@@ -254,7 +256,7 @@ The following SageMaker distribute model parallel APIs are common across all fra
 .. _mpi_basics:
 
 MPI Basics
-^^^^^^^^^^
+----------
 
 The library exposes the following basic MPI primitives to its Python API:
 
@@ -326,7 +328,7 @@ The library exposes the following basic MPI primitives to its Python API:
 .. _communication_api:
 
 Communication API
-^^^^^^^^^^^^^^^^^
+-----------------
 
 The library provides a few communication primitives which can be helpful while
 developing the training script. These primitives use the following

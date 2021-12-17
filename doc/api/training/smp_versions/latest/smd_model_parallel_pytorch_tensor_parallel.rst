@@ -1,6 +1,6 @@
 .. _smdmp-pytorch-tensor-parallel:
 
-Tensor Parallelism API for PyTorch
+PyTorch API for Tensor Parallelism
 ==================================
 
 SageMaker distributed tensor parallelism works by replacing specific submodules
@@ -17,7 +17,7 @@ place on a best-effort basis for those module supported for tensor parallelism.
 Alternatively, you can directly import and use the library’s distributed
 modules in the model definition.
 
-Some of the supported modules (such as smp.nn.Transformer) are high-level
+Some of the supported modules (such as ``smp.nn.Transformer``) are high-level
 blocks that contain many operations. Because custom implementations
 (as opposed to the built-in PyTorch modules) are typically used for these
 high-level blocks, the library offers an API that you can use to register
@@ -25,7 +25,11 @@ specific distributed versions with such custom modules (provided that they
 are functionally equivalent). This allows the library to automatically replace
 the occurrences of such PyTorch modules with their distributed counterparts
 provided by the library.
-For more information, see :ref:`registering-tp-modules`.
+For more information, see the following topics.
+
+.. contents:: Topics
+  :depth: 3
+  :local:
 
 .. _registering-tp-modules:
 
@@ -41,7 +45,7 @@ so that the library knows how to distribute the custom module. When you
 register the distributed modules, make sure the custom module that you
 use is functionally equivalent to the distributed module. You can verify
 this by taking a look at the equivalent reference implementations in the
-`Appendix <https://quip-amazon.com/ZCbgA7XdyJV5/Getting-Started-with-Tensor-Parallelism-in-the-SageMaker-Distributed-Model-Parallelism-Library#HNR9CAPi42F>`__.
+:ref:`smdmp-tp-appendix`.
 These implementations are functionally equivalent to their distributed
 versions in ``smp.nn`` module.
 
@@ -148,6 +152,7 @@ versions in ``smp.nn`` module.
                                      smp.nn.DistributedTransformer,
                                      init_hook=init_hook)
 
+.. _smdmp-supported-modules-for-tp:
 
 Supported Modules for Tensor Parallelism
 ----------------------------------------
@@ -163,9 +168,9 @@ parallelism.
 -  ``smp.nn.DistributedTransformerOutputLayer``
 -  ``smp.nn.DistributedEmbedding``
 
-For more information about the modules, see :ref:`tp-module-api`.
-
-To find example of using the modules, see :ref:`enabling-tp`.
+.. contents:: Topics
+  :depth: 3
+  :local:
 
 .. _tp-module-api:
 
@@ -410,8 +415,7 @@ There are two ways tensor parallelism can be enabled.
 
 First, you can use
 the distributed module implementations in ``smp.nn`` module directly in
-your model definition. See `Supported
-Modules <https://quip-amazon.com/ZCbgA7XdyJV5/Getting-Started-with-SageMaker-Distributed-Model-Parallelism-Library-Private-Preview#HNR9CAYjMQN>`__
+your model definition. See :ref:`smdmp-supported-modules-for-tp`
 for a complete list of built-in distributed modules. Here is an example
 of how this can be done:
 
@@ -505,6 +509,10 @@ Activation Checkpointing APIs
 activation checkpointing: one for checkpointing modules,
 one for checkpointing sequential modules, and
 one for checkpointing pretrained models.
+
+For a conceptual guide and examples, see
+`Activation Checkpointing <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-extended-features-pytorch-activation-checkpointing.html>`_
+in the *SageMaker's Distributed Model Parallel developer guide*.
 
 .. class:: smdistributed.modelparallel.torch.patches.checkpoint.checkpoint(module, *args, preserve_rng_state=True)
 
@@ -625,3 +633,203 @@ one for checkpointing pretrained models.
             ``e`` are on ``pp_rank 1``. If the strategy is ``group_3,`` then ``a``,
             ``b`` are checkpointed together on ``pp_rank0``, and ``c``, ``d``, ``e`` are
             checkpointed together on ``pp_rank1``.
+
+.. _smdmp-tp-appendix:
+
+Appendix: Reference Implementations for Modules
+-----------------------------------------------
+
+The following are reference implementations for transformer-related
+modules. Note that this is not the actual ``smdistributed`` source code,
+but the distributed implementations provided in the library are the
+distributed versions of these reference implementations, and can be used
+to determine whether the distributed modules perform the same operations
+as the custom modules in your script.
+
+To keep the implementations simple, we only assume keyword arguments,
+and assume the existence of a method ``parse_args(kwargs)``, which
+parses the arguments to ``__init__`` methods and sets the relevant
+attributes of the module, such as ``hidden_size`` and
+``num_attention_heads``.
+
+``smp.nn.DistributedTransformer``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code:: python
+
+   class Transformer(nn.Module):
+       def __init__(self, **kwargs):
+           super(Transformer, self).__init__()
+           self.parse_args(kwargs)
+
+           self.layers = []
+           for l in range(self.num_layers):
+               self.layers.append(TransformerLayer(**kwargs))
+
+           self.seq_layers = nn.Sequential(*self.layers)
+
+       def forward(self, inp):
+           return self.seq_layers(inp)
+
+``smp.nn.DistributedTransformerLayer``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code:: python
+
+   class TransformerLayer(nn.Module):
+       def __init__(self, **kwargs):
+           super(TransformerLayer, self).__init__()
+           self.parse_args(kwargs)
+
+           self.attention = AttentionLayer(**kwargs)
+           self.output = TransformerOutputLayer(**kwargs)
+
+           if self.add_cross_attention:
+               self.cross_attention = AttentionLayer(cross_attention=True, **kwargs)
+
+       def forward(self, inp):
+           if self.add_cross_attention:
+               hidden_states, cross_states, attention_mask, cross_mask = inp
+           else:
+               hidden_states, attention_mask = inp
+
+           attention_output = self.attention((hidden_states, attention_mask))
+           if self.add_cross_attention:
+               attention_output = self.cross_attention((attention_output,
+                                                        cross_states,
+                                                        cross_mask))
+
+           output = self.output(attention_output)
+
+           if self.add_cross_attention:
+               return output, cross_states, attention_mask, cross_mask
+           else:
+               return output, attention_mask
+
+``smp.nn.DistributedAttentionLayer``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code:: python
+
+   class AttentionLayer(nn.Module):
+       def __init__(self, **kwargs):
+           super(AttentionLayer, self).__init__()
+           self.parse_args(kwargs)
+           self.attention_head_size = self.hidden_size // self.num_attention_heads
+
+           self.query = nn.Linear(self.hidden_size, self.hidden_size)
+           self.key = nn.Linear(self.hidden_size, self.hidden_size)
+           self.value = nn.Linear(self.hidden_size, self.hidden_size)
+           self.dense = nn.Linear(self.hidden_size, self.hidden_size)
+
+           self.dropout1 = nn.Dropout(self.attention_dropout_prob)
+           self.dropout2 = nn.Dropout(self.hidden_dropout_prob)
+
+           if self.pre_layernorm:
+               self.pre_layernorm = nn.LayerNorm(self.hidden_size,
+                                       eps=self.layernorm_epsilon)
+
+           if self.post_layernorm:
+               self.layernorm = nn.LayerNorm(self.hidden_size,
+                                       eps=self.layernorm_epsilon)
+
+       def transpose(self, tensor, key=False):
+           shape = tensor.size()[:-1] +
+                           (self.num_attention_heads, self.attention_head_size)
+           tensor = torch.reshape(tensor, shape)
+           if key:
+               return tensor.permute(0, 2, 3, 1)
+           else:
+               return tensor.permute(0, 2, 1, 3)
+
+       def forward(self, inp):
+           if self.cross_attention:
+               hidden_states, cross_states, attention_mask = inp
+           else:
+               hidden_states, attention_mask = inp
+
+           if self.pre_layernorm:
+               norm_states = self.pre_layernorm(hidden_states)
+           else:
+               norm_states = hidden_states
+
+           query_layer = self.query(norm_states)
+
+           if self.cross_attention:
+               key_layer = self.key(cross_states)
+               value_layer = self.value(cross_states)
+           else:
+               key_layer = self.key(norm_states)
+               value_layer = self.value(norm_states)
+
+           query_layer = self.transpose(query_layer)
+           key_layer = self.transpose(key_layer, key=True)
+           value_layer = self.transpose(value_layer)
+
+           attention_scores = torch.matmul(query_layer, key_layer)
+           attention_scores = attention_scores / math.sqrt(self.attention_head_size)
+
+           if not self.cross_attention and self.causal_mask is not None:
+               attention_scores = self.apply_causal_mask(attention_scores)
+
+           attention_scores = attention_scores + attention_mask
+
+           attention_probs = F.softmax(attention_scores, dim=-1)
+           attention_probs = self.dropout1(attention_probs)
+
+           context_layer = torch.matmul(attention_probs, value_layer)
+           context_layer = context_layer.permute(0, 2, 1, 3)
+           new_context_layer_shape = context_layer.size()[:-2] + \
+                                       (self.local_attention_size,)
+           context_layer = torch.reshape(context_layer, new_context_layer_shape)
+
+           self_attention = self.dense(context_layer)
+           self_attention = self.dropout2(self_attention)
+
+           if self.post_layernorm:
+               return self.layernorm(self_attention + hidden_states)
+           else:
+               return self_attention
+
+``smp.nn.DistributedTransformerOutputLayer``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code:: python
+
+   class TransformerOutputLayer(nn.Module):
+       def __init__(self, **kwargs):
+           super(TransformerOutputLayer, self).__init__()
+           self.parse_args(kwargs)
+
+           self.dense1 = nn.Linear(self.hidden_size, self.intermediate_size)
+           self.dense2 = nn.Linear(self.intermediate_size, self.hidden_size)
+
+           self.dropout = nn.Dropout(self.attention_dropout_prob)
+
+           if self.pre_layernorm:
+               self.pre_layernorm = nn.LayerNorm(self.hidden_size,
+                                       eps=self.layernorm_epsilon)
+
+           if self.post_layernorm:
+               self.layernorm = nn.LayerNorm(self.hidden_size,
+                                       eps=self.layernorm_epsilon)
+
+       def forward(self, inp):
+           if self.pre_layernorm:
+               norm_inp = self.pre_layernorm(inp)
+           else:
+               norm_inp = inp
+
+           dense1_output = self.dense1(norm_inp)
+           if self.activation == "gelu":
+               act_output = F.gelu(dense1_output)
+           else:
+               act_output = F.relu(dense1_output)
+
+           dense2_output = self.dense2(act_output)
+           output = self.dropout(dense2_output)
+
+           if self.post_layernorm:
+               return self.layernorm(inp + output)
+           else:
+               return output

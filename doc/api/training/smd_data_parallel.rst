@@ -1,6 +1,6 @@
-##########################
-Distributed data parallel
-##########################
+###############################################
+The SageMaker Distributed Data Parallel Library
+###############################################
 
 SageMaker's distributed data parallel library extends SageMaker’s training
 capabilities on deep learning models with near-linear scaling efficiency,

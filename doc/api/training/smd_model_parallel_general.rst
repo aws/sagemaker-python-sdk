@@ -1,12 +1,13 @@
 .. _sm-sdk-modelparallel-params:
 
-Required SageMaker Python SDK parameters
-========================================
+Configuration Parameters for Model Parallelism
+==============================================
 
-The TensorFlow and PyTorch ``Estimator`` objects contains a ``distribution`` parameter,
+Amazon SageMaker's TensorFlow and PyTorch estimator objects contain a ``distribution`` parameter,
 which is used to enable and specify parameters for the
-initialization of the SageMaker distributed model parallel library. The library internally uses MPI,
-so in order to use model parallelism, MPI must also be enabled using the ``distribution`` parameter.
+initialization of SageMaker distributed training. The library internally uses MPI.
+To use model parallelism, both ``smdistributed`` and MPI must be enabled
+through the ``distribution`` parameter.
 
 The following is an example of how you can launch a new PyTorch training job with the library.
 
@@ -50,12 +51,20 @@ The following is an example of how you can launch a new PyTorch training job wit
 
    smd_mp_estimator.fit('s3://my_bucket/my_training_data/')
 
-Parameters for ``modelparallel``
-================================
+For more conceptual guidance, see
+`Run a SageMaker Distributed Model Parallel Training Job <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-use-api.html>`_
+in the `SageMaker's Distributed Model Parallel developer guide <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel.html>`_.
+
+.. contents:: Table of Contents
+  :depth: 3
+  :local:
+
+Parameters for ``"smdistributed"``
+----------------------------------
 
 You can use the following parameters to initialize the library
 configuring a dictionary for ``modelparallel``, which goes
-into the ``smdistributed`` of ``distribution``.
+into the ``smdistributed`` option for the ``distribution`` parameter.
 
 .. note::
 
@@ -224,8 +233,8 @@ PyTorch-specific Parameters
        loss and GPU bottlenecks during the CPU-to-GPU data transfer.
 
 
-``mpi`` Parameters
-==================
+Parameters for ``mpi``
+----------------------
 
 For the ``"mpi"`` key, a dict must be passed which contains:
 

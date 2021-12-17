@@ -1,5 +1,5 @@
-Distributed model parallel
---------------------------
+The SageMaker Distributed Model Parallel Library
+------------------------------------------------
 
 The Amazon SageMaker distributed model parallel library is a model parallelism library for training
 large deep learning models that were previously difficult to train due to GPU memory limitations.
@@ -14,18 +14,19 @@ See the following sections to learn more about the SageMaker model parallel libr
 Use with the SageMaker Python SDK
 =================================
 
-Use the following page to learn how to configure and enable distributed model parallel
-when you construct an Amazon SageMaker Python SDK `Estimator`.
+Walk through the following pages to learn about the library's APIs
+to configure and enable distributed model parallelism
+through an Amazon SageMaker estimator.
 
 .. toctree::
    :maxdepth: 1
 
    smd_model_parallel_general
 
-The library's API to Adapt Training Scripts
-===========================================
+Use the Library's API to Adapt Training Scripts
+===============================================
 
-The library contains a Common API that is shared across frameworks,
+The library provides Common APIs that you can use across frameworks,
 as well as framework-specific APIs for TensorFlow and PyTorch.
 
 Select the latest or one of the previous versions of the API documentation
