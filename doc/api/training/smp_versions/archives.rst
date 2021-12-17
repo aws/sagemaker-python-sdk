@@ -1,3 +1,5 @@
+.. _smdmp-pt-version-archive:
+
 Version Archive
 ===============
 

@@ -9,4 +9,5 @@ To use the library, reference the Common API documentation alongside the framewo
 
    latest/smd_model_parallel_common_api
    latest/smd_model_parallel_pytorch
+   latest/smd_model_parallel_pytorch_tensor_parallel
    latest/smd_model_parallel_tensorflow

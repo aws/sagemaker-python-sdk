@@ -1,9 +1,8 @@
 TensorFlow API
 ==============
 
-**Supported version: 2.3.1, 2.4.1, 2.5.0**
-
-**Important**: This API document assumes you use the following import statement in your training scripts.
+To use the TensorFlow-specific APIs for SageMaker distributed model parallism,
+you need to add the following import statement at the top of your training script.
 
 .. code:: python
 
@@ -13,8 +12,8 @@ TensorFlow API
 
    Refer to
    `Modify a TensorFlow Training Script
-   <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-customize-training-script.html#model-parallel-customize-training-script-tf>`_
-   to learn how to use the following API in your TensorFlow training script.
+   <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-customize-training-script-tf.html>`_
+   to learn how to use the following APIs in your TensorFlow training script.
 
 .. class:: smp.DistributedModel
    :noindex:
