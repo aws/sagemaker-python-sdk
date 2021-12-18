@@ -1,8 +1,5 @@
 .. _smdmp-pt-version-archive:
 
-Documentation Archive
-=====================
-
 .. toctree::
     :maxdepth: 1
 

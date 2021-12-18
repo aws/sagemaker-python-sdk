@@ -2,7 +2,7 @@
 Use with the SageMaker Python SDK
 #################################
 
-Walk through the following pages to learn about the library's APIs
+Walk through the following pages to learn about the SageMaker model parallel library's APIs
 to configure and enable distributed model parallelism
 through an Amazon SageMaker estimator.
 
@@ -12,56 +12,19 @@ Configuration Parameters for ``distribution``
 =============================================
 
 Amazon SageMaker's TensorFlow and PyTorch estimator objects contain a ``distribution`` parameter,
-which is used to enable and specify parameters for the
-initialization of SageMaker distributed training. The library internally uses MPI.
+which you can use to enable and specify parameters for SageMaker distributed training.
+The SageMaker model parallel library internally uses MPI.
 To use model parallelism, both ``smdistributed`` and MPI must be enabled
 through the ``distribution`` parameter.
 
-The following is an example of how you can launch a new PyTorch training job with the library.
+.. tip::
 
-.. code-block:: python
+  This page provides you a complete list of parameters you can use
+  when you construct a SageMaker estimator and configure for distributed training.
 
-   sagemaker_session = sagemaker.session.Session(boto_session=session)
-
-   mpi_options = {
-                  "enabled" : True,
-                  "processes_per_host" : 8,
-                  "custom_mpi_options" : "--mca btl_vader_single_copy_mechanism none "
-                  }
-
-   smp_options = {
-                  "enabled":True,
-                  "parameters": {
-                     "microbatches": 4,
-                     "placement_strategy": "spread",
-                     "pipeline": "interleaved",
-                     "optimize": "speed",
-                     "partitions": 2,
-                     "ddp": True,
-                  }
-               }
-
-   smd_mp_estimator = PyTorch(
-            entry_point="training-script.py", # Pick your train script
-            source_dir='utils',
-            role=role,
-            instance_type='ml.p3.16xlarge',
-            sagemaker_session=sagemaker_session,
-            framework_version='1.6.0',
-            py_version='py3',
-            instance_count=1,
-            distribution={
-               "smdistributed": {"modelparallel": smp_options},
-               "mpi": mpi_options
-            },
-            base_job_name="SMD-MP-demo",
-         )
-
-   smd_mp_estimator.fit('s3://my_bucket/my_training_data/')
-
-For more conceptual guidance, see
-`Run a SageMaker Distributed Model Parallel Training Job <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-use-api.html>`_
-in the `SageMaker's Distributed Model Parallel developer guide <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel.html>`_.
+  To find examples of how to construct a SageMaker estimator with the distributed training parameters, see
+  `Launch a SageMaker Distributed Model Parallel Training Job <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-sm-sdk.html>`_
+  in the `SageMaker's Distributed Model Parallel developer guide <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel.html>`_.
 
 .. contents:: Table of Contents
   :depth: 3
@@ -91,8 +54,8 @@ Common Parameters
      - Type / Valid values
      - Default
      - Description
-   * - ``partitions`` for TensorFlow,
-       ``pipeline_parallel_degree`` for PyTorch v1.8.1 (**smdistributed-modelparallel**>=v1.6)
+   * - ``partitions`` for TensorFlow and PyTorch with smdistributed-modelparallel<v1.6,
+       ``pipeline_parallel_degree`` for PyTorch v1.8.1 with smdistributed-modelparallel>=v1.6)
      - int
      -
      - **Required.** The number of partitions to split the model into.
@@ -141,37 +104,6 @@ Common Parameters
      - ``0``
      - **Required** if ``auto_partition`` is false. The partition ID to place operations/modules
        that are not placed in any ``smp.partition`` contexts.
-   * - ``tensor_parallel_degree``
-     - int
-     - 1
-     - The number of devices over which the tensor parallel modules will be distributed.
-       If ``tensor_parallel_degree`` is greater than 1, then ``ddp`` must be set to ``True``.
-   * - ``fp16_params`` (**smdistributed-modelparallel**>=v1.6)
-     - bool
-     - ``False``
-     - If ``True``, the parameters of the distributed modules will be initialized in FP16.
-   * - ``shard_optimizer_state`` (**smdistributed-modelparallel**>=v1.6)
-     - bool
-     - ``False``
-     - If ``True``, the library shards the optimizer state of all parameters across
-       the data parallel processes which hold the same parameter.
-       This optimizer state sharding happens in a balanced manner.
-       Note that when sharding optimizer state, full optimizer saving is not currently supported.
-       Please save partial optimizer state. For more information about saving and loading checkpoints with
-       optimizer state sharding, see `Instructions for Checkpointing with Tensor Parallelism <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-extended-features-pytorch-saving-loading-checkpoints.html>`_.
-   * - ``prescaled_batch`` (**smdistributed-modelparallel**>=v1.6)
-     - bool
-     - ``False``
-     - If ``True`` and when ``smp.nn.DistributedTransformerLMHead`` is used
-       (this is typically used for GPT-2 or GPT-3 models),
-       the library assumes that the devices in the same tensor parallelism group
-       receive the same input data. Otherwise, it is assumed that they receive
-       different examples. To learn more, see :ref:`prescaled-batch`.
-   * - ``skip_tracing`` (**smdistributed-modelparallel**>=v1.6)
-     - bool
-     - False
-     - Skips the initial tracing step. This can be useful in very large models
-       where even model tracing at the CPU is not possible due to memory constraints.
 
 TensorFlow-specific Parameters
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -198,47 +130,78 @@ PyTorch-specific Parameters
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. list-table::
-   :widths: 10 20 10 60
-   :header-rows: 1
+  :widths: 10 20 10 60
+  :header-rows: 1
 
-   * - Parameter
-     - Type / Valid values
-     - Default
-     - Description
-   * - ``memory_weight``
-     - float [0.0, 1.0]
-     - ``0.2`` if ``optimize`` is ``"speed"``, else ``0.8``
-     - The weight of memory balancing in the auto-partitioni ng objective, as opposed to balancing computational load. If 0.0, the library only tries to balance computation; if 1.0 the library only tries to balance the memory use. Any value in between interpolates between these extremes.
-   * - ``ddp``
-     - bool
-     - ``False``
-     - Must be set to True if hybrid model/data parallelism is used with DistributedDataParallel. DistributedDataParallel is used with NCCL backend, and uses the MASTER_PORT provided by SageMaker.
-   * - ``active_microbatches`` (**smdistributed-modelparallel**>=v1.3)
-     - int
-     - ``partitions`` + 2
-     - This is the maximum number of microbatches that are simultaneously in execution during pipelining. Jointly scaling batch size and number of microbatches can often mitigate the pipeline bubble overhead, but that can lead to increased memory usage if too many microbatches are simultaneously in execution. In such cases setting the number of active microbatches to a lower number can help control memory usage. By default this is set to two plus the number of partitions of the model.
-   * - ``deterministic_server`` (**smdistributed-modelparallel**>=v1.3)
-     - bool
-     - ``False``
-     - Setting this to true ensures that the execution server for pipelining executes requests in the same order across all data parallel ranks.
-   * -  ``offload_activations`` (**smdistributed-modelparallel**>=v1.6)
-     - bool
-     - False
-     - Enables activation
-       offloading. To improve GPU memory usage, use activation offloading
-       only when (1) the ``microbatches`` and ``active_microbatches`` are
-       greater than 1, and (2) activation checkpointing is enabled for at
-       least one module in the model.
-   * - ``activation_loading_horizon`` (**smdistributed-modelparallel**>=v1.6)
-     - int
-     - 4
-     - Specify the number
-       of pipeline tasks. This determines how early the activations should
-       be loaded back to the GPU, expressed in number of pipeline tasks.
-       Smaller value indicates that activations are loaded closer in time to
-       when they are needed for backward pass. Setting this value too small
-       might improve memory usage, but might potentially cause throughput
-       loss and GPU bottlenecks during the CPU-to-GPU data transfer.
+  * - Parameter
+    - Type / Valid values
+    - Default
+    - Description
+  * - ``memory_weight``
+    - float [0.0, 1.0]
+    - ``0.2`` if ``optimize`` is ``"speed"``, else ``0.8``
+    - The weight of memory balancing in the auto-partitioni ng objective, as opposed to balancing computational load. If 0.0, the library only tries to balance computation; if 1.0 the library only tries to balance the memory use. Any value in between interpolates between these extremes.
+  * - ``ddp``
+    - bool
+    - ``False``
+    - Must be set to True if hybrid model/data parallelism is used with DistributedDataParallel. DistributedDataParallel is used with NCCL backend, and uses the MASTER_PORT provided by SageMaker.
+  * - ``active_microbatches`` (**smdistributed-modelparallel**>=v1.3)
+    - int
+    - ``partitions`` + 2
+    - This is the maximum number of microbatches that are simultaneously in execution during pipelining. Jointly scaling batch size and number of microbatches can often mitigate the pipeline bubble overhead, but that can lead to increased memory usage if too many microbatches are simultaneously in execution. In such cases setting the number of active microbatches to a lower number can help control memory usage. By default this is set to two plus the number of partitions of the model.
+  * - ``deterministic_server`` (**smdistributed-modelparallel**>=v1.3)
+    - bool
+    - ``False``
+    - Setting this to true ensures that the execution server for pipelining executes requests in the same order across all data parallel ranks.
+  * -  ``offload_activations`` (**smdistributed-modelparallel**>=v1.6)
+    - bool
+    - False
+    - Enables activation
+      offloading. To improve GPU memory usage, use activation offloading
+      only when (1) the ``microbatches`` and ``active_microbatches`` are
+      greater than 1, and (2) activation checkpointing is enabled for at
+      least one module in the model.
+  * - ``activation_loading_horizon`` (**smdistributed-modelparallel**>=v1.6)
+    - int
+    - 4
+    - Specify the number
+      of pipeline tasks. This determines how early the activations should
+      be loaded back to the GPU, expressed in number of pipeline tasks.
+      Smaller value indicates that activations are loaded closer in time to
+      when they are needed for backward pass. Setting this value too small
+      might improve memory usage, but might potentially cause throughput
+      loss and GPU bottlenecks during the CPU-to-GPU data transfer.
+  * - ``tensor_parallel_degree`` (**smdistributed-modelparallel**>=v1.6)
+    - int
+    - 1
+    - The number of devices over which the tensor parallel modules will be distributed.
+      If ``tensor_parallel_degree`` is greater than 1, then ``ddp`` must be set to ``True``.
+  * - ``fp16_params`` (**smdistributed-modelparallel**>=v1.6)
+    - bool
+    - ``False``
+    - If ``True``, the parameters of the distributed modules will be initialized in FP16.
+  * - ``shard_optimizer_state`` (**smdistributed-modelparallel**>=v1.6)
+    - bool
+    - ``False``
+    - If ``True``, the library shards the optimizer state of all parameters across
+      the data parallel processes which hold the same parameter.
+      This optimizer state sharding happens in a balanced manner.
+      Note that when sharding optimizer state, full optimizer saving is not currently supported.
+      Please save partial optimizer state. For more information about saving and loading checkpoints with
+      optimizer state sharding, see `Instructions for Checkpointing with Tensor Parallelism <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-extended-features-pytorch-saving-loading-checkpoints.html>`_.
+  * - ``prescaled_batch`` (**smdistributed-modelparallel**>=v1.6)
+    - bool
+    - ``False``
+    - If ``True`` and when ``smp.nn.DistributedTransformerLMHead`` is used
+      (this is typically used for GPT-2 or GPT-3 models),
+      the library assumes that the devices in the same tensor parallelism group
+      receive the same input data. Otherwise, it is assumed that they receive
+      different examples. To learn more, see :ref:`prescaled-batch`.
+  * - ``skip_tracing`` (**smdistributed-modelparallel**>=v1.6)
+    - bool
+    - False
+    - Skips the initial tracing step. This can be useful in very large models
+      where even model tracing at the CPU is not possible due to memory constraints.
 
 
 Parameters for ``mpi``
@@ -338,6 +301,7 @@ Placement Strategy with Tensor Parallelism
 In addition to the two placement strategies introduced in the previous section,
 the library provides additional placement strategies for extended tensor parallelism features
 for PyTorch. The additional placement strategies (parallelism types) are denoted as follows:
+
 - ``D`` stands for (reduced) data parallelism.
 - ``P`` stands for pipeline parallelism.
 - ``T`` stands for tensor parallelism.

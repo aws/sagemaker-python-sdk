@@ -266,8 +266,7 @@ The library exposes the following basic MPI primitives to its Python API:
 -  ``smp.size()`` : The total number of processes.
 -  ``smp.get_world_process_group()`` :
    ``torch.distributed.ProcessGroup`` that contains all processes.
--  ``[smp.CommGroup.WORLD](https://sagemaker.readthedocs.io/en/stable/api/training/smp_versions/latest/smd_model_parallel_common_api.html#smp.CommGroup)``
-   : The communication group corresponding to all processes.
+-  ``smp.CommGroup.WORLD``: The communication group corresponding to all processes.
 -  ``smp.local_rank()``: The rank among the processes on the current instance.
 -  ``smp.local_size()``: The total number of processes on the current instance.
 -  ``smp.get_mp_group()``: The list of ranks over which the current model replica is partitioned.
