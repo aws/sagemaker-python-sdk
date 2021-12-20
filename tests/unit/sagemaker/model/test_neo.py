@@ -26,6 +26,7 @@ NEO_REGION_ACCOUNT = "301217895009"
 DESCRIBE_COMPILATION_JOB_RESPONSE = {
     "CompilationJobStatus": "Completed",
     "ModelArtifacts": {"S3ModelArtifacts": "s3://output-path/model.tar.gz"},
+    "InferenceImage": "inference-container-uri",
 }
 
 
@@ -52,12 +53,7 @@ def test_compile_model_for_inferentia(sagemaker_session):
         framework_version="1.15.0",
         job_name="compile-model",
     )
-    assert (
-        "{}.dkr.ecr.{}.amazonaws.com/sagemaker-neo-tensorflow:1.15.0-inf-py3".format(
-            NEO_REGION_ACCOUNT, REGION
-        )
-        == model.image_uri
-    )
+    assert DESCRIBE_COMPILATION_JOB_RESPONSE["InferenceImage"] == model.image_uri
     assert model._is_compiled_model is True
 
 
@@ -286,7 +282,7 @@ def test_compile_with_framework_version_15(session):
         job_name="compile-model",
     )
 
-    assert "1.5" in model.image_uri
+    assert model.image_uri is not None
 
 
 @patch("sagemaker.session.Session")
@@ -304,26 +300,7 @@ def test_compile_with_framework_version_16(session):
         job_name="compile-model",
     )
 
-    assert "1.6" in model.image_uri
-
-
-@patch("sagemaker.session.Session")
-def test_compile_validates_framework_version(session):
-    session.return_value.boto_region_name = REGION
-
-    model = _create_model()
-    with pytest.raises(ValueError) as e:
-        model.compile(
-            target_instance_family="ml_c4",
-            input_shape={"data": [1, 3, 1024, 1024]},
-            output_path="s3://output",
-            role="role",
-            framework="pytorch",
-            framework_version="1.6.1",
-            job_name="compile-model",
-        )
-
-    assert "Unsupported neo-pytorch version: 1.6.1." in str(e)
+    assert model.image_uri is not None
 
 
 @patch("sagemaker.session.Session")

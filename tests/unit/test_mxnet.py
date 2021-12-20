@@ -68,6 +68,8 @@ MODEL_PKG_RESPONSE = {"ModelPackageArn": "arn:model-pkg-arn"}
 
 ENV_INPUT = {"env_key1": "env_val1", "env_key2": "env_val2", "env_key3": "env_val3"}
 
+INFERENCE_IMAGE_URI = "inference-uri"
+
 
 @pytest.fixture()
 def sagemaker_session():
@@ -83,7 +85,10 @@ def sagemaker_session():
     )
 
     describe = {"ModelArtifacts": {"S3ModelArtifacts": "s3://m/m.tar.gz"}}
-    describe_compilation = {"ModelArtifacts": {"S3ModelArtifacts": "s3://m/model_c5.tar.gz"}}
+    describe_compilation = {
+        "ModelArtifacts": {"S3ModelArtifacts": "s3://m/model_c5.tar.gz"},
+        "InferenceImage": INFERENCE_IMAGE_URI,
+    }
     session.sagemaker_client.create_model_package.side_effect = MODEL_PKG_RESPONSE
     session.sagemaker_client.describe_training_job = Mock(return_value=describe)
     session.sagemaker_client.describe_endpoint = Mock(return_value=ENDPOINT_DESC)
@@ -193,12 +198,6 @@ def _create_compilation_job(input_shape, output_location):
         "stop_condition": {"MaxRuntimeInSeconds": 900},
         "tags": None,
     }
-
-
-def _neo_inference_image(mxnet_version):
-    return "301217895009.dkr.ecr.us-west-2.amazonaws.com/sagemaker-inference-{}:{}-cpu-py3".format(
-        FRAMEWORK.lower(), mxnet_version
-    )
 
 
 @patch("sagemaker.estimator.name_from_base")
@@ -422,7 +421,7 @@ def test_mxnet_neo(time, strftime, sagemaker_session, neo_mxnet_version):
     actual_compile_model_args = sagemaker_session.method_calls[3][2]
     assert expected_compile_model_args == actual_compile_model_args
 
-    assert compiled_model.image_uri == _neo_inference_image(neo_mxnet_version)
+    assert compiled_model.image_uri == INFERENCE_IMAGE_URI
 
     predictor = mx.deploy(1, CPU, use_compiled_model=True)
     assert isinstance(predictor, MXNetPredictor)
