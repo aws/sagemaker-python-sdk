@@ -1,5 +1,14 @@
 # Changelog
 
+## v2.72.1 (2021-12-20)
+
+### Bug Fixes and Other Changes
+
+ * typos and broken link
+ * S3Input - add support for instance attributes
+ * Prevent repack_model script from referencing nonexistent directories
+ * Set ProcessingStep upload locations deterministically to avoid c…
+
 ## v2.72.0 (2021-12-13)
 
 ### Features
