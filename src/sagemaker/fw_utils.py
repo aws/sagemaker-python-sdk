@@ -84,6 +84,7 @@ SM_DATAPARALLEL_SUPPORTED_FRAMEWORK_VERSIONS = {
         "1.9",
         "1.9.0",
         "1.9.1",
+        "1.10",
         "1.10.0",
     ],
 }
