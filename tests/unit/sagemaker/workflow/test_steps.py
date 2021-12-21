@@ -16,6 +16,7 @@ from __future__ import absolute_import
 import pytest
 import sagemaker
 import os
+import warnings
 
 from mock import (
     Mock,
@@ -26,7 +27,7 @@ from mock import (
 from sagemaker.debugger import DEBUGGER_FLAG, ProfilerConfig
 from sagemaker.estimator import Estimator
 from sagemaker.tensorflow import TensorFlow
-from sagemaker.inputs import TrainingInput, TransformInput, CreateModelInput
+from sagemaker.inputs import TrainingInput, TransformInput, CreateModelInput, CompilationInput
 from sagemaker.model import Model
 from sagemaker.processing import (
     Processor,
@@ -52,6 +53,7 @@ from sagemaker.workflow.retry import (
 )
 from sagemaker.workflow.steps import (
     ProcessingStep,
+    CompilationStep,
     ConfigurableRetryStep,
     StepTypeEnum,
     TrainingStep,
@@ -62,8 +64,7 @@ from sagemaker.workflow.steps import (
 )
 from tests.unit import DATA_DIR
 
-SCRIPT_FILE = "dummy_script.py"
-SCRIPT_PATH = os.path.join(DATA_DIR, SCRIPT_FILE)
+DUMMY_SCRIPT_PATH = os.path.join(DATA_DIR, "dummy_script.py")
 
 REGION = "us-west-2"
 BUCKET = "my-bucket"
@@ -125,6 +126,31 @@ def sagemaker_session(boto_session, client):
         sagemaker_client=client,
         sagemaker_runtime_client=client,
         default_bucket=BUCKET,
+    )
+
+
+@pytest.fixture
+def script_processor(sagemaker_session):
+    return ScriptProcessor(
+        role=ROLE,
+        image_uri="012345678901.dkr.ecr.us-west-2.amazonaws.com/my-custom-image-uri",
+        command=["python3"],
+        instance_type="ml.m4.xlarge",
+        instance_count=1,
+        volume_size_in_gb=100,
+        volume_kms_key="arn:aws:kms:us-west-2:012345678901:key/volume-kms-key",
+        output_kms_key="arn:aws:kms:us-west-2:012345678901:key/output-kms-key",
+        max_runtime_in_seconds=3600,
+        base_job_name="my_sklearn_processor",
+        env={"my_env_variable": "my_env_variable_value"},
+        tags=[{"Key": "my-tag", "Value": "my-tag-value"}],
+        network_config=NetworkConfig(
+            subnets=["my_subnet_id"],
+            security_group_ids=["my_security_group_id"],
+            enable_network_isolation=True,
+            encrypt_inter_container_traffic=True,
+        ),
+        sagemaker_session=sagemaker_session,
     )
 
 
@@ -325,7 +351,7 @@ def test_training_step_tensorflow(sagemaker_session):
     training_epochs_parameter = ParameterInteger(name="TrainingEpochs", default_value=5)
     training_batch_size_parameter = ParameterInteger(name="TrainingBatchSize", default_value=500)
     estimator = TensorFlow(
-        entry_point=os.path.join(DATA_DIR, SCRIPT_FILE),
+        entry_point=DUMMY_SCRIPT_PATH,
         role=ROLE,
         model_dir=False,
         image_uri=IMAGE_URI,
@@ -402,6 +428,75 @@ def test_training_step_tensorflow(sagemaker_session):
     assert step.properties.TrainingJobName.expr == {"Get": "Steps.MyTrainingStep.TrainingJobName"}
 
 
+def test_training_step_profiler_warning(sagemaker_session):
+    estimator = TensorFlow(
+        entry_point=DUMMY_SCRIPT_PATH,
+        role=ROLE,
+        model_dir=False,
+        image_uri=IMAGE_URI,
+        source_dir="s3://mybucket/source",
+        framework_version="2.4.1",
+        py_version="py37",
+        disable_profiler=False,
+        instance_count=1,
+        instance_type="ml.p3.16xlarge",
+        sagemaker_session=sagemaker_session,
+        hyperparameters={
+            "batch-size": 500,
+            "epochs": 5,
+        },
+        debugger_hook_config=False,
+        distribution={"smdistributed": {"dataparallel": {"enabled": True}}},
+    )
+
+    inputs = TrainingInput(s3_data=f"s3://{BUCKET}/train_manifest")
+    cache_config = CacheConfig(enable_caching=True, expire_after="PT1H")
+    with warnings.catch_warnings(record=True) as w:
+        TrainingStep(
+            name="MyTrainingStep", estimator=estimator, inputs=inputs, cache_config=cache_config
+        )
+        assert len(w) == 1
+        assert issubclass(w[-1].category, UserWarning)
+        assert "Profiling is enabled on the provided estimator" in str(w[-1].message)
+
+
+def test_training_step_no_profiler_warning(sagemaker_session):
+    estimator = TensorFlow(
+        entry_point=DUMMY_SCRIPT_PATH,
+        role=ROLE,
+        model_dir=False,
+        image_uri=IMAGE_URI,
+        source_dir="s3://mybucket/source",
+        framework_version="2.4.1",
+        py_version="py37",
+        disable_profiler=True,
+        instance_count=1,
+        instance_type="ml.p3.16xlarge",
+        sagemaker_session=sagemaker_session,
+        hyperparameters={
+            "batch-size": 500,
+            "epochs": 5,
+        },
+        debugger_hook_config=False,
+        distribution={"smdistributed": {"dataparallel": {"enabled": True}}},
+    )
+
+    inputs = TrainingInput(s3_data=f"s3://{BUCKET}/train_manifest")
+    cache_config = CacheConfig(enable_caching=True, expire_after="PT1H")
+    with warnings.catch_warnings(record=True) as w:
+        # profiler disabled, cache config not None
+        TrainingStep(
+            name="MyTrainingStep", estimator=estimator, inputs=inputs, cache_config=cache_config
+        )
+        assert len(w) == 0
+
+    with warnings.catch_warnings(record=True) as w:
+        # profiler enabled, cache config is None
+        estimator.disable_profiler = False
+        TrainingStep(name="MyTrainingStep", estimator=estimator, inputs=inputs, cache_config=None)
+        assert len(w) == 0
+
+
 def test_processing_step(sagemaker_session):
     processing_input_data_uri_parameter = ParameterString(
         name="ProcessingInputDataUri", default_value=f"s3://{BUCKET}/processing_manifest"
@@ -472,28 +567,7 @@ def test_processing_step(sagemaker_session):
 
 
 @patch("sagemaker.processing.ScriptProcessor._normalize_args")
-def test_processing_step_normalizes_args(mock_normalize_args, sagemaker_session):
-    processor = ScriptProcessor(
-        role=ROLE,
-        image_uri="012345678901.dkr.ecr.us-west-2.amazonaws.com/my-custom-image-uri",
-        command=["python3"],
-        instance_type="ml.m4.xlarge",
-        instance_count=1,
-        volume_size_in_gb=100,
-        volume_kms_key="arn:aws:kms:us-west-2:012345678901:key/volume-kms-key",
-        output_kms_key="arn:aws:kms:us-west-2:012345678901:key/output-kms-key",
-        max_runtime_in_seconds=3600,
-        base_job_name="my_sklearn_processor",
-        env={"my_env_variable": "my_env_variable_value"},
-        tags=[{"Key": "my-tag", "Value": "my-tag-value"}],
-        network_config=NetworkConfig(
-            subnets=["my_subnet_id"],
-            security_group_ids=["my_security_group_id"],
-            enable_network_isolation=True,
-            encrypt_inter_container_traffic=True,
-        ),
-        sagemaker_session=sagemaker_session,
-    )
+def test_processing_step_normalizes_args_with_local_code(mock_normalize_args, script_processor):
     cache_config = CacheConfig(enable_caching=True, expire_after="PT1H")
     inputs = [
         ProcessingInput(
@@ -509,8 +583,8 @@ def test_processing_step_normalizes_args(mock_normalize_args, sagemaker_session)
     ]
     step = ProcessingStep(
         name="MyProcessingStep",
-        processor=processor,
-        code="foo.py",
+        processor=script_processor,
+        code=DUMMY_SCRIPT_PATH,
         inputs=inputs,
         outputs=outputs,
         job_arguments=["arg1", "arg2"],
@@ -519,10 +593,80 @@ def test_processing_step_normalizes_args(mock_normalize_args, sagemaker_session)
     mock_normalize_args.return_value = [step.inputs, step.outputs]
     step.to_request()
     mock_normalize_args.assert_called_with(
+        job_name="MyProcessingStep-3e89f0c7e101c356cbedf27d9d27e9db",
         arguments=step.job_arguments,
         inputs=step.inputs,
         outputs=step.outputs,
         code=step.code,
+    )
+
+
+@patch("sagemaker.processing.ScriptProcessor._normalize_args")
+def test_processing_step_normalizes_args_with_s3_code(mock_normalize_args, script_processor):
+    cache_config = CacheConfig(enable_caching=True, expire_after="PT1H")
+    inputs = [
+        ProcessingInput(
+            source=f"s3://{BUCKET}/processing_manifest",
+            destination="processing_manifest",
+        )
+    ]
+    outputs = [
+        ProcessingOutput(
+            source=f"s3://{BUCKET}/processing_manifest",
+            destination="processing_manifest",
+        )
+    ]
+    step = ProcessingStep(
+        name="MyProcessingStep",
+        processor=script_processor,
+        code="s3://foo",
+        inputs=inputs,
+        outputs=outputs,
+        job_arguments=["arg1", "arg2"],
+        cache_config=cache_config,
+    )
+    mock_normalize_args.return_value = [step.inputs, step.outputs]
+    step.to_request()
+    mock_normalize_args.assert_called_with(
+        job_name=None,
+        arguments=step.job_arguments,
+        inputs=step.inputs,
+        outputs=step.outputs,
+        code=step.code,
+    )
+
+
+@patch("sagemaker.processing.ScriptProcessor._normalize_args")
+def test_processing_step_normalizes_args_with_no_code(mock_normalize_args, script_processor):
+    cache_config = CacheConfig(enable_caching=True, expire_after="PT1H")
+    inputs = [
+        ProcessingInput(
+            source=f"s3://{BUCKET}/processing_manifest",
+            destination="processing_manifest",
+        )
+    ]
+    outputs = [
+        ProcessingOutput(
+            source=f"s3://{BUCKET}/processing_manifest",
+            destination="processing_manifest",
+        )
+    ]
+    step = ProcessingStep(
+        name="MyProcessingStep",
+        processor=script_processor,
+        inputs=inputs,
+        outputs=outputs,
+        job_arguments=["arg1", "arg2"],
+        cache_config=cache_config,
+    )
+    mock_normalize_args.return_value = [step.inputs, step.outputs]
+    step.to_request()
+    mock_normalize_args.assert_called_with(
+        job_name=None,
+        arguments=step.job_arguments,
+        inputs=step.inputs,
+        outputs=step.outputs,
+        code=None,
     )
 
 
@@ -1052,5 +1196,52 @@ def test_multi_algo_tuning_step(sagemaker_session):
                     },
                 },
             ],
+        },
+    }
+
+
+def test_compilation_step(sagemaker_session):
+    estimator = Estimator(
+        image_uri=IMAGE_URI,
+        role=ROLE,
+        instance_count=1,
+        instance_type="ml.c5.4xlarge",
+        profiler_config=ProfilerConfig(system_monitor_interval_millis=500),
+        rules=[],
+        sagemaker_session=sagemaker_session,
+    )
+
+    model = Model(
+        image_uri=IMAGE_URI,
+        model_data="s3://output/tensorflow.tar.gz",
+        sagemaker_session=sagemaker_session,
+    )
+
+    compilation_input = CompilationInput(
+        target_instance_type="ml_inf",
+        input_shape={"data": [1, 3, 1024, 1024]},
+        output_path="s3://output",
+        compile_max_run=100,
+        framework="tensorflow",
+        job_name="compile-model",
+        compiler_options=None,
+    )
+    compilation_step = CompilationStep(
+        name="MyCompilationStep", estimator=estimator, model=model, inputs=compilation_input
+    )
+
+    assert compilation_step.to_request() == {
+        "Name": "MyCompilationStep",
+        "Type": "Compilation",
+        "Arguments": {
+            "InputConfig": {
+                "DataInputConfig": '{"data": [1, 3, 1024, 1024]}',
+                "Framework": "TENSORFLOW",
+                "S3Uri": "s3://output/tensorflow.tar.gz",
+            },
+            "OutputConfig": {"S3OutputLocation": "s3://output", "TargetDevice": "ml_inf"},
+            "RoleArn": ROLE,
+            "StoppingCondition": {"MaxRuntimeInSeconds": 100},
+            "Tags": [],
         },
     }

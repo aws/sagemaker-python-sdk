@@ -1,5 +1,63 @@
 # Changelog
 
+## v2.72.0 (2021-12-13)
+
+### Features
+
+ * allow conditional parellel builds
+
+### Bug Fixes and Other Changes
+
+ * local mode - support relative file structure
+ * fix endpoint bug
+
+## v2.71.0 (2021-12-06)
+
+### Features
+
+ * Add support for TF 2.6
+ * Adding PT 17/18 Repo
+ * Add profile_name support for Feature Store ingestion
+
+### Bug Fixes and Other Changes
+
+ * Fix non-existent variable name
+ * Add TF 2.6.2 on training
+ * Recreate static lineage test data
+
+## v2.70.0 (2021-12-02)
+
+### Features
+
+ * update boto3 minor version >= 1.20.18
+ * Add support for SageMaker lineage queries
+ * add CV shap explainability for SageMaker Clarify
+ * add NLP support for SageMaker Clarify
+ * Add support for ModelMonitor/Clarify integration in model building pipelines
+ * adding support for transformers 4.11 for SM Training Compiler
+ * SM Training Compiler with an UI to enable/disable compilation for HuggingFace DLCs to speedup training
+
+### Bug Fixes and Other Changes
+
+ * pin coveragepy
+ * Add support for PyTorch 1.9.1
+ * Update s3 path of scheduling analysis config on ClarifyCheckStep
+ * documentation/logging to indicate correct place for DEBUG artifacts from SM trcomp
+ * validate requested transformers version and use the best available version
+ * Install custom pkgs
+
+## v2.69.0 (2021-11-12)
+
+### Features
+
+ * Hugging Face Transformers 4.12 for Pt1.9/TF2.5
+
+## v2.68.0 (2021-11-02)
+
+### Features
+
+ * CompilationStep support for Sagemaker Pipelines
+
 ## v2.67.0 (2021-11-01)
 
 ### Deprecations and Removals

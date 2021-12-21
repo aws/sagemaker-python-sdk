@@ -1840,6 +1840,57 @@ class Session(object):  # pylint: disable=too-many-public-methods
         LOGGER.info("Creating compilation-job with name: %s", job_name)
         self.sagemaker_client.create_compilation_job(**compilation_job_request)
 
+    def _get_compilation_request(
+        self,
+        job_name,
+        input_model_config,
+        output_model_config,
+        role,
+        stop_condition,
+        tags=None,
+        vpc_config=None,
+    ):
+        """Construct CreateCompilationJob request
+
+        Args:
+            input_model_config (dict): the trained model and the Amazon S3 location where it is
+                stored.
+            output_model_config (dict): Identifies the Amazon S3 location where you want Amazon
+                SageMaker Neo to save the results of compilation job
+            role (str): An AWS IAM role (either name or full ARN). The Amazon SageMaker Neo
+                compilation jobs use this role to access model artifacts. You must grant
+                sufficient permissions to this role.
+            job_name (str): Name of the compilation job being created.
+            stop_condition (dict): Defines when compilation job shall finish. Contains entries
+                that can be understood by the service like ``MaxRuntimeInSeconds``.
+            tags (list[dict]): List of tags for labeling a compile model job. For more, see
+                https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
+            vpc_config (dict): Contains values for VpcConfig:
+                * subnets (list[str]): List of subnet ids.
+                The key in vpc_config is 'Subnets'.
+                * security_group_ids (list[str]): List of security group ids.
+                The key in vpc_config is 'SecurityGroupIds'.
+        Returns:
+            dict: A dictionary for CreateCompilationJob request
+        """
+
+        compilation_request = {
+            "InputConfig": input_model_config,
+            "OutputConfig": output_model_config,
+            "RoleArn": role,
+            "StoppingCondition": stop_condition,
+            "CompilationJobName": job_name,
+        }
+
+        tags = _append_project_tags(tags)
+        if tags is not None:
+            compilation_request["Tags"] = tags
+
+        if vpc_config is not None:
+            compilation_request["VpcConfig"] = vpc_config
+
+        return compilation_request
+
     def package_model_for_edge(
         self,
         output_model_config,
@@ -2772,6 +2823,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         marketplace_cert=False,
         approval_status="PendingManualApproval",
         description=None,
+        drift_check_baselines=None,
     ):
         """Get request dictionary for CreateModelPackage API.
 
@@ -2796,6 +2848,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             approval_status (str): Model Approval Status, values can be "Approved", "Rejected",
                 or "PendingManualApproval" (default: "PendingManualApproval").
             description (str): Model Package description (default: None).
+            drift_check_baselines (DriftCheckBaselines): DriftCheckBaselines object (default: None).
         """
 
         request = get_create_model_package_request(
@@ -2811,6 +2864,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             marketplace_cert,
             approval_status,
             description,
+            drift_check_baselines=drift_check_baselines,
         )
         return self.sagemaker_client.create_model_package(**request)
 
@@ -3502,19 +3556,17 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Returns:
             str: The name of the created ``Endpoint``.
         """
-        if not _deployment_entity_exists(
-            lambda: self.sagemaker_client.describe_endpoint_config(EndpointConfigName=name)
-        ):
-            config_options = {"EndpointConfigName": name, "ProductionVariants": production_variants}
-            tags = _append_project_tags(tags)
-            if tags:
-                config_options["Tags"] = tags
-            if kms_key:
-                config_options["KmsKeyId"] = kms_key
-            if data_capture_config_dict is not None:
-                config_options["DataCaptureConfig"] = data_capture_config_dict
+        config_options = {"EndpointConfigName": name, "ProductionVariants": production_variants}
+        tags = _append_project_tags(tags)
+        if tags:
+            config_options["Tags"] = tags
+        if kms_key:
+            config_options["KmsKeyId"] = kms_key
+        if data_capture_config_dict is not None:
+            config_options["DataCaptureConfig"] = data_capture_config_dict
 
-            self.sagemaker_client.create_endpoint_config(**config_options)
+        self.sagemaker_client.create_endpoint_config(**config_options)
+
         return self.create_endpoint(endpoint_name=name, config_name=name, tags=tags, wait=wait)
 
     def expand_role(self, role):
@@ -4107,6 +4159,7 @@ def get_model_package_args(
     description=None,
     tags=None,
     container_def_list=None,
+    drift_check_baselines=None,
 ):
     """Get arguments for create_model_package method.
 
@@ -4114,24 +4167,27 @@ def get_model_package_args(
         content_types (list): The supported MIME types for the input data.
         response_types (list): The supported MIME types for the output data.
         inference_instances (list): A list of the instance types that are used to
-        generate inferences in real-time.
+            generate inferences in real-time.
         transform_instances (list): A list of the instance types on which a transformation
-        job can be run or on which an endpoint can be deployed.
+            job can be run or on which an endpoint can be deployed.
         model_package_name (str): Model Package name, exclusive to `model_package_group_name`,
-        using `model_package_name` makes the Model Package un-versioned (default: None).
+            using `model_package_name` makes the Model Package un-versioned (default: None).
         model_package_group_name (str): Model Package Group name, exclusive to
-        `model_package_name`, using `model_package_group_name` makes the Model Package
-        versioned (default: None).
+            `model_package_name`, using `model_package_group_name` makes the Model Package
+        model_data (str): s3 URI to the model artifacts from training (default: None).
         image_uri (str): Inference image uri for the container. Model class' self.image will
-        be used if it is None (default: None).
+            be used if it is None (default: None).
         model_metrics (ModelMetrics): ModelMetrics object (default: None).
         metadata_properties (MetadataProperties): MetadataProperties object (default: None).
         marketplace_cert (bool): A boolean value indicating if the Model Package is certified
-        for AWS Marketplace (default: False).
+            for AWS Marketplace (default: False).
         approval_status (str): Model Approval Status, values can be "Approved", "Rejected",
-        or "PendingManualApproval" (default: "PendingManualApproval").
+            or "PendingManualApproval" (default: "PendingManualApproval").
         description (str): Model Package description (default: None).
-        container_def_list (list): A list of container defintiions.
+        tags (List[dict[str, str]]): A list of dictionaries containing key-value pairs
+            (default: None).
+        container_def_list (list): A list of container defintiions (default: None).
+        drift_check_baselines (DriftCheckBaselines): DriftCheckBaselines object (default: None).
     Returns:
         dict: A dictionary of method argument names and values.
     """
@@ -4159,6 +4215,8 @@ def get_model_package_args(
         model_package_args["model_package_group_name"] = model_package_group_name
     if model_metrics is not None:
         model_package_args["model_metrics"] = model_metrics._to_request_dict()
+    if drift_check_baselines is not None:
+        model_package_args["drift_check_baselines"] = drift_check_baselines._to_request_dict()
     if metadata_properties is not None:
         model_package_args["metadata_properties"] = metadata_properties._to_request_dict()
     if approval_status is not None:
@@ -4184,31 +4242,35 @@ def get_create_model_package_request(
     approval_status="PendingManualApproval",
     description=None,
     tags=None,
+    drift_check_baselines=None,
 ):
     """Get request dictionary for CreateModelPackage API.
 
     Args:
         model_package_name (str): Model Package name, exclusive to `model_package_group_name`,
-        using `model_package_name` makes the Model Package un-versioned (default: None).
+            using `model_package_name` makes the Model Package un-versioned (default: None).
         model_package_group_name (str): Model Package Group name, exclusive to
-        `model_package_name`, using `model_package_group_name` makes the Model Package
-        versioned (default: None).
+            `model_package_name`, using `model_package_group_name` makes the Model Package
         containers (list): A list of inference containers that can be used for inference
-        specifications of Model Package (default: None).
+            specifications of Model Package (default: None).
         content_types (list): The supported MIME types for the input data (default: None).
         response_types (list): The supported MIME types for the output data (default: None).
         inference_instances (list): A list of the instance types that are used to
-        generate inferences in real-time (default: None).
+            generate inferences in real-time (default: None).
         transform_instances (list): A list of the instance types on which a transformation
-        job can be run or on which an endpoint can be deployed (default: None).
+            job can be run or on which an endpoint can be deployed (default: None).
         model_metrics (ModelMetrics): ModelMetrics object (default: None).
         metadata_properties (MetadataProperties): MetadataProperties object (default: None).
         marketplace_cert (bool): A boolean value indicating if the Model Package is certified
-        for AWS Marketplace (default: False).
+            for AWS Marketplace (default: False).
         approval_status (str): Model Approval Status, values can be "Approved", "Rejected",
-        or "PendingManualApproval" (default: "PendingManualApproval").
+            or "PendingManualApproval" (default: "PendingManualApproval").
         description (str): Model Package description (default: None).
+        tags (List[dict[str, str]]): A list of dictionaries containing key-value pairs
+            (default: None).
+        drift_check_baselines (DriftCheckBaselines): DriftCheckBaselines object (default: None).
     """
+
     if all([model_package_name, model_package_group_name]):
         raise ValueError(
             "model_package_name and model_package_group_name cannot be present at the " "same time."
@@ -4224,6 +4286,8 @@ def get_create_model_package_request(
         request_dict["Tags"] = tags
     if model_metrics:
         request_dict["ModelMetrics"] = model_metrics
+    if drift_check_baselines:
+        request_dict["DriftCheckBaselines"] = drift_check_baselines
     if metadata_properties:
         request_dict["MetadataProperties"] = metadata_properties
     if containers is not None:
