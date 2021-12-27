@@ -36,8 +36,8 @@ from botocore.exceptions import ClientError
 from tests.integ.sagemaker.lineage.helpers import name, names
 
 SLEEP_TIME_SECONDS = 1
-STATIC_PIPELINE_NAME = "SdkIntegTestStaticPipeline14"
-STATIC_ENDPOINT_NAME = "SdkIntegTestStaticEndpoint14"
+STATIC_PIPELINE_NAME = "SdkIntegTestStaticPipeline15"
+STATIC_ENDPOINT_NAME = "SdkIntegTestStaticEndpoint15"
 
 
 @pytest.fixture
@@ -518,6 +518,13 @@ def _get_static_pipeline_execution_arn(sagemaker_session):
 def static_endpoint_context(sagemaker_session, static_pipeline_execution_arn):
     endpoint_arn = get_endpoint_arn_from_static_pipeline(sagemaker_session)
 
+    if endpoint_arn is None:
+        _deploy_static_endpoint(
+            execution_arn=static_pipeline_execution_arn,
+            sagemaker_session=sagemaker_session,
+        )
+        endpoint_arn = get_endpoint_arn_from_static_pipeline(sagemaker_session)
+
     contexts = sagemaker_session.sagemaker_client.list_contexts(SourceUri=endpoint_arn)[
         "ContextSummaries"
     ]
@@ -584,11 +591,17 @@ def static_dataset_artifact(static_model_artifact, sagemaker_session):
 
 
 def get_endpoint_arn_from_static_pipeline(sagemaker_session):
-    endpoint_arn = sagemaker_session.sagemaker_client.describe_endpoint(
-        EndpointName=STATIC_ENDPOINT_NAME
-    )["EndpointArn"]
+    try:
+        endpoint_arn = sagemaker_session.sagemaker_client.describe_endpoint(
+            EndpointName=STATIC_ENDPOINT_NAME
+        )["EndpointArn"]
 
-    return endpoint_arn
+        return endpoint_arn
+    except ClientError as e:
+        error = e.response["Error"]
+        if error["Code"] == "ValidationException":
+            return None
+        raise e
 
 
 def get_model_package_arn_from_static_pipeline(pipeline_execution_arn, sagemaker_session):
@@ -654,7 +667,7 @@ def _deploy_static_endpoint(execution_arn, sagemaker_session):
             sagemaker_session=sagemaker_session,
         )
         model_package.deploy(1, "ml.t2.medium", endpoint_name=STATIC_ENDPOINT_NAME)
-        time.sleep(60)
+        time.sleep(120)
     except ClientError as e:
         if e.response["Error"]["Code"] == "ValidationException":
             print(f"Endpoint {STATIC_ENDPOINT_NAME} already exists. Continuing.")
