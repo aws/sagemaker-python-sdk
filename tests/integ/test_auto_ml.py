@@ -15,12 +15,12 @@ from __future__ import absolute_import
 import os
 
 import pytest
-import tests.integ
-from sagemaker import AutoML, CandidateEstimator, AutoMLInput
-
 from botocore.exceptions import ClientError
+
+import tests.integ
+from sagemaker import AutoML, AutoMLInput, CandidateEstimator
 from sagemaker.utils import unique_name_from_base
-from tests.integ import DATA_DIR, AUTO_ML_DEFAULT_TIMEMOUT_MINUTES, auto_ml_utils
+from tests.integ import AUTO_ML_DEFAULT_TIMEMOUT_MINUTES, DATA_DIR, auto_ml_utils
 from tests.integ.timeout import timeout
 
 ROLE = "SageMakerRole"
@@ -169,6 +169,7 @@ def test_auto_ml_describe_auto_ml_job(sagemaker_session):
                 }
             },
             "TargetAttributeName": TARGET_ATTRIBUTE_NAME,
+            "ContentType": "text/csv;header=present",
         }
     ]
     expected_default_output_config = {
@@ -205,6 +206,7 @@ def test_auto_ml_attach(sagemaker_session):
                 }
             },
             "TargetAttributeName": TARGET_ATTRIBUTE_NAME,
+            "ContentType": "text/csv;header=present",
         }
     ]
     expected_default_output_config = {
