@@ -658,7 +658,7 @@ class Model(ModelBase):
             if target_instance_family == "ml_eia2":
                 pass
             elif target_instance_family.startswith("ml_"):
-                self.image_uri = job_status["InferenceImage"]
+                self.image_uri = job_status.get("InferenceImage", None)
                 self._is_compiled_model = True
             else:
                 LOGGER.warning(
