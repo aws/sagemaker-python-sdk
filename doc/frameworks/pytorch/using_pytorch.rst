@@ -80,7 +80,7 @@ with the following:
 
         # ... load from args.train and args.test, train a model, write model to args.model_dir.
 
-Because the SageMaker imports your training script, you should put your training code in a main guard
+Because SageMaker imports your training script, you should put your training code in a main guard
 (``if __name__=='__main__':``) if you are using the same script to host your model, so that SageMaker does not
 inadvertently run your training code at the wrong point in execution.
 
@@ -177,7 +177,7 @@ fit Required Arguments
    case, the S3 objects rooted at the ``my-training-data`` prefix will
    be available in the default ``train`` channel. A dict from
    string channel names to S3 URIs. In this case, the objects rooted at
-   each S3 prefix will available as files in each channel directory.
+   each S3 prefix will be available as files in each channel directory.
 
 For example:
 
@@ -391,7 +391,7 @@ If you are using PyTorch Elastic Inference 1.5.1, you should provide ``model_fn`
 The client-side Elastic Inference framework is CPU-only, even though inference still happens in a CUDA context on the server. Thus, the default ``model_fn`` for Elastic Inference loads the model to CPU. Tracing models may lead to tensor creation on a specific device, which may cause device-related errors when loading a model onto a different device. Providing an explicit ``map_location=torch.device('cpu')`` argument forces all tensors to CPU.
 
 For more information on the default inference handler functions, please refer to:
-`SageMaker PyTorch Default Inference Handler <https://github.com/aws/sagemaker-pytorch-serving-container/blob/master/src/sagemaker_pytorch_serving_container/default_inference_handler.py>`_.
+`SageMaker PyTorch Default Inference Handler <https://github.com/aws/sagemaker-pytorch-inference-toolkit/blob/master/src/sagemaker_pytorch_serving_container/default_pytorch_inference_handler.py>`_.
 
 Serve a PyTorch Model
 ---------------------

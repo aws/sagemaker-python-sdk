@@ -748,6 +748,14 @@ def _get_processing_inputs_with_all_parameters(bucket):
             input_name="my_dataset",
         ),
         ProcessingInput(
+            input_name="s3_input_wo_defaults",
+            s3_input=S3Input(
+                s3_uri=f"s3://{bucket}",
+                local_path="/opt/ml/processing/input/s3_input_wo_defaults",
+                s3_data_type="S3Prefix",
+            ),
+        ),
+        ProcessingInput(
             input_name="s3_input",
             s3_input=S3Input(
                 s3_uri=f"s3://{bucket}",
@@ -820,6 +828,17 @@ def _get_processing_job_inputs_and_outputs(bucket, output_kms_key):
                     "S3InputMode": "File",
                     "S3DataDistributionType": "FullyReplicated",
                     "S3CompressionType": "None",
+                },
+            },
+            {
+                "InputName": "s3_input_wo_defaults",
+                "AppManaged": False,
+                "S3Input": {
+                    "S3Uri": f"s3://{bucket}",
+                    "LocalPath": "/opt/ml/processing/input/s3_input_wo_defaults",
+                    "S3DataType": "S3Prefix",
+                    "S3InputMode": "File",
+                    "S3DataDistributionType": "FullyReplicated",
                 },
             },
             {
