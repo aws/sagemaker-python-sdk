@@ -79,6 +79,7 @@ extras["test"] = (
         "fabric>=2.0",
         "requests>=2.20.0, <3",
         "sagemaker-experiments",
+        "regex",
     ],
 )
 
