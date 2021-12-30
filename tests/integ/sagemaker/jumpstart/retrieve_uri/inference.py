@@ -22,8 +22,7 @@ import pandas as pd
 
 from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME
 from tests.integ.sagemaker.jumpstart.retrieve_uri.utils import (
-    get_test_cache_bucket,
-    extract_role_arn_from_caller_identity,
+    get_test_artifact_bucket,
 )
 from sagemaker.session import Session
 
@@ -48,21 +47,19 @@ class InferenceJobLauncher:
         script_uri,
         model_uri,
         instance_type,
-        suffix=None,
-        region=None,
-        boto_config=None,
-        base_name=None,
-        execution_role=None,
+        suffix=time.strftime("%Y-%m-%d-%H-%M-%S", time.gmtime()),
+        region=JUMPSTART_DEFAULT_REGION_NAME,
+        boto_config=Config(retries={"max_attempts": 10, "mode": "standard"}),
+        base_name="jumpstart-inference-job",
+        execution_role=Session().get_caller_identity_arn(),
     ) -> None:
 
-        self.suffix = suffix or time.strftime("%Y-%m-%d-%H-%M-%S", time.gmtime())
+        self.suffix = suffix
         self.test_suite_id = os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]
-        self.region = region or JUMPSTART_DEFAULT_REGION_NAME
-        self.config = boto_config or Config(retries={"max_attempts": 10, "mode": "standard"})
-        self.base_name = base_name or "jumpstart-inference-job"
-        self.execution_role = execution_role or extract_role_arn_from_caller_identity(
-            boto3.client("sts").get_caller_identity()["Arn"]
-        )
+        self.region = region
+        self.config = boto_config
+        self.base_name = base_name
+        self.execution_role = execution_role
         self.account_id = boto3.client("sts").get_caller_identity()["Account"]
         self.image_uri = image_uri
         self.script_uri = script_uri
@@ -88,13 +85,15 @@ class InferenceJobLauncher:
 
         self.model_name = self.get_model_name()
 
-        cache_bucket_uri = f"s3://{get_test_cache_bucket()}"
-        repacked_model_uri = os.path.join(
-            cache_bucket_uri,
-            self.test_suite_id,
-            "inference_model_tarballs",
-            self.model_name,
-            "repacked_model.tar.gz",
+        cache_bucket_uri = f"s3://{get_test_artifact_bucket()}"
+        repacked_model_uri = "/".join(
+            [
+                cache_bucket_uri,
+                self.test_suite_id,
+                "inference_model_tarballs",
+                self.model_name,
+                "repacked_model.tar.gz",
+            ]
         )
 
         repack_model(
@@ -158,6 +157,7 @@ class InferenceJobLauncher:
     def create_model(self) -> None:
         self.sagemaker_client.create_model(
             ModelName=self.model_name,
+            EnableNetworkIsolation=True,
             ExecutionRoleArn=self.execution_role,
             PrimaryContainer={
                 "Image": self.image_uri,
@@ -208,12 +208,12 @@ class EndpointInvoker:
     def __init__(
         self,
         endpoint_name,
-        region=None,
-        boto_config=None,
+        region=JUMPSTART_DEFAULT_REGION_NAME,
+        boto_config=Config(retries={"max_attempts": 10, "mode": "standard"}),
     ) -> None:
         self.endpoint_name = endpoint_name
-        self.region = region or JUMPSTART_DEFAULT_REGION_NAME
-        self.config = boto_config or Config(retries={"max_attempts": 10, "mode": "standard"})
+        self.region = region
+        self.config = boto_config
         self.sagemaker_runtime_client = self.get_sagemaker_runtime_client()
 
     def _invoke_endpoint(

@@ -122,8 +122,8 @@ def is_jumpstart_model_input(model_id: Optional[str], version: Optional[str]) ->
     are None, and raises an exception if one argument is None but the other isn't.
 
     Args:
-        model_id (str): Optional. Model id of JumpStart model.
-        version (str): Optional. Version for JumpStart model.
+        model_id (str): Optional. Model ID of the JumpStart model.
+        version (str): Optional. Version of the JumpStart model.
 
     Raises:
         ValueError: If only one of the two arguments is None.

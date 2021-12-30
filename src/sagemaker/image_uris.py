@@ -45,7 +45,7 @@ def retrieve(
     training_compiler_config=None,
     model_id=None,
     model_version=None,
-):
+) -> str:
     """Retrieves the ECR URI for the Docker image matching the given arguments.
 
     Ideally this function should not be called directly, rather it should be called from the
@@ -75,8 +75,10 @@ def retrieve(
         training_compiler_config (:class:`~sagemaker.training_compiler.TrainingCompilerConfig`):
             A configuration class for the SageMaker Training Compiler
             (default: None).
-        model_id (str): JumpStart model id for which to retrieve image URI.
-        model_version (str): JumpStart model version for which to retrieve image URI.
+        model_id (str): JumpStart model ID for which to retrieve image URI
+            (default: None).
+        model_version (str): Version of the JumpStart model for which to retrieve the
+            image URI (default: None).
 
     Returns:
         str: the ECR URI for the corresponding SageMaker Docker image.
@@ -85,8 +87,11 @@ def retrieve(
         ValueError: If the combination of arguments specified is not supported.
     """
     if is_jumpstart_model_input(model_id, model_version):
+
+        # adding assert statements to satisfy mypy type checker
         assert model_id is not None
         assert model_version is not None
+
         return artifacts._retrieve_image_uri(
             model_id,
             model_version,

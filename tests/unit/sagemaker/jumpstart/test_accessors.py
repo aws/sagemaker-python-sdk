@@ -108,15 +108,19 @@ def test_jumpstart_models_cache_set_reset_fxs(mock_model_cache: Mock):
     mock_model_cache.reset_mock()
 
     # validate region and cache kwargs utility
-    assert {"some": "kwarg"} == accessors.JumpStartModelsCache._validate_region_cache_kwargs(
+    assert {
+        "some": "kwarg"
+    } == accessors.JumpStartModelsCache._validate_and_mutate_region_cache_kwargs(
         {"some": "kwarg"}, "us-west-2"
     )
-    assert {"some": "kwarg"} == accessors.JumpStartModelsCache._validate_region_cache_kwargs(
+    assert {
+        "some": "kwarg"
+    } == accessors.JumpStartModelsCache._validate_and_mutate_region_cache_kwargs(
         {"some": "kwarg", "region": "us-west-2"}, "us-west-2"
     )
 
     with pytest.raises(ValueError):
-        accessors.JumpStartModelsCache._validate_region_cache_kwargs(
+        accessors.JumpStartModelsCache._validate_and_mutate_region_cache_kwargs(
             {"some": "kwarg", "region": "us-east-2"}, "us-west-2"
         )
 

@@ -12,18 +12,20 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import os
 import boto3
 import pytest
+from botocore.config import Config
+
 
 from tests.integ.sagemaker.jumpstart.retrieve_uri.utils import (
-    get_test_cache_bucket,
+    get_test_artifact_bucket,
     get_test_suite_id,
 )
 from tests.integ.sagemaker.jumpstart.retrieve_uri.constants import (
     ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID,
     JUMPSTART_TAG,
 )
-import os
 
 
 def _setup():
@@ -34,11 +36,13 @@ def _setup():
 def _teardown():
     print("Tearing down...")
 
-    test_cache_bucket = get_test_cache_bucket()
+    test_cache_bucket = get_test_artifact_bucket()
 
     test_suite_id = os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]
 
-    sagemaker_client = boto3.client("sagemaker")
+    sagemaker_client = boto3.client(
+        "sagemaker", config=Config(retries={"max_attempts": 10, "mode": "standard"})
+    )
 
     search_endpoints_result = sagemaker_client.search(
         Resource="Endpoint",

@@ -13,10 +13,9 @@
 from __future__ import absolute_import
 
 import uuid
-from typing import Match, Optional, Tuple
+from typing import Tuple
 import boto3
 import pandas as pd
-import regex
 import os
 
 from tests.integ.sagemaker.jumpstart.retrieve_uri.constants import (
@@ -36,27 +35,14 @@ def download_file(local_download_path, s3_bucket, s3_key, s3_client) -> None:
     s3_client.download_file(s3_bucket, s3_key, local_download_path)
 
 
-def extract_role_arn_from_caller_identity(caller_identity_arn: str) -> str:
-
-    ASSUME_ROLE_REGEX = r"^(?P<prefix>.+)sts::(?P<infix>\d+):assumed-role\/(?P<suffix>.+?)\/.*$"
-
-    match: Optional[Match[str]] = regex.match(ASSUME_ROLE_REGEX, caller_identity_arn)
-
-    if match is None:
-        # not an assumed role caller identity
-        return caller_identity_arn
-
-    prefix, infix, suffix = match.groups()
-
-    return f"{prefix}iam::{infix}:role/{suffix}"
-
-
 def get_model_tarball_full_uri_from_base_uri(base_uri: str, training_job_name: str) -> str:
-    return os.path.join(
-        base_uri,
-        training_job_name,
-        "output",
-        "model.tar.gz",
+    return "/".join(
+        [
+            base_uri,
+            training_job_name,
+            "output",
+            "model.tar.gz",
+        ]
     )
 
 
@@ -81,7 +67,7 @@ def get_training_dataset_for_model_and_version(model_id: str, version: str) -> d
     return TRAINING_DATASET_MODEL_DICT[(model_id, version)]
 
 
-def get_test_cache_bucket() -> str:
+def get_test_artifact_bucket() -> str:
     bucket_name = Session().default_bucket()
     return bucket_name
 
@@ -95,7 +81,7 @@ def download_inference_assets():
         file_path = os.path.join(TMP_DIRECTORY_PATH, str(asset.value))
         if not os.path.exists(file_path):
             download_file(
-                os.path.join(TMP_DIRECTORY_PATH, str(asset.value)),
+                file_path,
                 get_jumpstart_content_bucket(JUMPSTART_DEFAULT_REGION_NAME),
                 s3_key,
                 boto3.client("s3"),

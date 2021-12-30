@@ -10,7 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""This module contains functions for obtainining JumpStart artifacts."""
+"""This module contains functions for obtaining JumpStart ECR and S3 URIs."""
 from __future__ import absolute_import
 from typing import Optional
 from sagemaker import image_uris
@@ -42,13 +42,14 @@ def _retrieve_image_uri(
 ):
     """Retrieves the container image URI for JumpStart models.
 
-    Only `model_id` and `model_version` are required to be non-None;
+    Only `model_id`, `model_version`, and `image_scope` are required;
     the rest of the fields are auto-populated.
 
 
     Args:
-        model_id (str): JumpStart model id for which to retrieve image URI.
-        model_version (str): JumpStart model version for which to retrieve image URI.
+        model_id (str): JumpStart model ID for which to retrieve image URI.
+        model_version (str): Version of the JumpStart model for which to retrieve
+            the image URI (default: None).
         framework (str): The name of the framework or algorithm.
         region (str): The AWS region.
         version (str): The framework or algorithm version. This is required if there is
@@ -89,7 +90,9 @@ def _retrieve_image_uri(
             "Must specify `image_scope` argument to retrieve image uri for JumpStart models."
         )
     if image_scope not in SUPPORTED_JUMPSTART_SCOPES:
-        raise ValueError("JumpStart models only support inference and training.")
+        raise ValueError(
+            f"JumpStart models only support scopes: {', '.join(SUPPORTED_JUMPSTART_SCOPES)}."
+        )
 
     model_specs = jumpstart_accessors.JumpStartModelsCache.get_model_specs(
         region, model_id, model_version
@@ -99,25 +102,33 @@ def _retrieve_image_uri(
         ecr_specs = model_specs.hosting_ecr_specs
     elif image_scope == TRAINING:
         if not model_specs.training_supported:
-            raise ValueError(f"JumpStart model id '{model_id}' does not support training.")
+            raise ValueError(
+                f"JumpStart model ID '{model_id}' and version '{model_version}' "
+                "does not support training."
+            )
         assert model_specs.training_ecr_specs is not None
         ecr_specs = model_specs.training_ecr_specs
 
     if framework is not None and framework != ecr_specs.framework:
-        raise ValueError(f"Bad value for container framework for JumpStart model: '{framework}'.")
+        raise ValueError(
+            f"Incorrect container framework '{framework}' for JumpStart model ID '{model_id}' "
+            "and version {model_version}'."
+        )
 
     if version is not None and version != ecr_specs.framework_version:
         raise ValueError(
-            f"Bad value for container framework version for JumpStart model: '{version}'."
+            f"Incorrect container framework version '{version}' for JumpStart model ID "
+            f"'{model_id}' and version {model_version}'."
         )
 
     if py_version is not None and py_version != ecr_specs.py_version:
         raise ValueError(
-            f"Bad value for container python version for JumpStart model: '{py_version}'."
+            f"Incorrect python version '{py_version}' for JumpStart model ID '{model_id}' "
+            "and version {model_version}'."
         )
 
-    base_framework_version_override = None
-    version_override = None
+    base_framework_version_override: Optional[str] = None
+    version_override: Optional[str] = None
     if ecr_specs.framework == ModelFramework.HUGGINGFACE.value:
         base_framework_version_override = ecr_specs.framework_version
         version_override = ecr_specs.huggingface_transformers_version
@@ -162,8 +173,10 @@ def _retrieve_model_uri(
     """Retrieves the model artifact S3 URI for the model matching the given arguments.
 
     Args:
-        model_id (str): JumpStart model id for which to retrieve model S3 URI.
-        model_version (str): JumpStart model version for which to retrieve model S3 URI.
+        model_id (str): JumpStart model ID of the JumpStart model for which to retrieve
+            the model artifact S3 URI.
+        model_version (str): Version of the JumpStart model for which to retrieve the model
+            artifact S3 URI.
         model_scope (str): The model type, i.e. what it is used for.
             Valid values: "training" and "inference".
         region (str): Region for which to retrieve model S3 URI.
@@ -185,7 +198,9 @@ def _retrieve_model_uri(
         )
 
     if model_scope not in SUPPORTED_JUMPSTART_SCOPES:
-        raise ValueError("JumpStart models only support inference and training.")
+        raise ValueError(
+            f"JumpStart models only support scopes: {', '.join(SUPPORTED_JUMPSTART_SCOPES)}."
+        )
 
     model_specs = jumpstart_accessors.JumpStartModelsCache.get_model_specs(
         region, model_id, model_version
@@ -194,7 +209,10 @@ def _retrieve_model_uri(
         model_artifact_key = model_specs.hosting_artifact_key
     elif model_scope == TRAINING:
         if not model_specs.training_supported:
-            raise ValueError(f"JumpStart model id '{model_id}' does not support training.")
+            raise ValueError(
+                f"JumpStart model ID '{model_id}' and version '{model_version}' "
+                "does not support training."
+            )
         assert model_specs.training_artifact_key is not None
         model_artifact_key = model_specs.training_artifact_key
 
@@ -211,11 +229,13 @@ def _retrieve_script_uri(
     script_scope: Optional[str],
     region: Optional[str],
 ):
-    """Retrieves the model script s3 URI for the model matching the given arguments.
+    """Retrieves the script S3 URI associated with the model matching the given arguments.
 
     Args:
-        model_id (str): JumpStart model id for which to retrieve model script S3 URI.
-        model_version (str): JumpStart model version for which to retrieve model script S3 URI.
+        model_id (str): JumpStart model ID of the JumpStart model for which to
+            retrieve the script S3 URI.
+        model_version (str): Version of the JumpStart model for which to
+            retrieve the model script S3 URI.
         script_scope (str): The script type, i.e. what it is used for.
             Valid values: "training" and "inference".
         region (str): Region for which to retrieve model script S3 URI.
@@ -237,7 +257,9 @@ def _retrieve_script_uri(
         )
 
     if script_scope not in SUPPORTED_JUMPSTART_SCOPES:
-        raise ValueError("JumpStart models only support inference and training.")
+        raise ValueError(
+            f"JumpStart models only support scopes: {', '.join(SUPPORTED_JUMPSTART_SCOPES)}."
+        )
 
     model_specs = jumpstart_accessors.JumpStartModelsCache.get_model_specs(
         region, model_id, model_version
@@ -246,7 +268,10 @@ def _retrieve_script_uri(
         model_script_key = model_specs.hosting_script_key
     elif script_scope == TRAINING:
         if not model_specs.training_supported:
-            raise ValueError(f"JumpStart model id '{model_id}' does not support training.")
+            raise ValueError(
+                f"JumpStart model ID '{model_id}' and version '{model_version}' "
+                "does not support training."
+            )
         assert model_specs.training_script_key is not None
         model_script_key = model_specs.training_script_key
 

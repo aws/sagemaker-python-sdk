@@ -297,7 +297,7 @@ class JumpStartModelsCache:
         spec = SpecifierSet(f"=={semantic_version_str}")
         available_versions_filtered = list(spec.filter(available_versions))
         return (
-            str(available_versions_filtered[0]) if available_versions_filtered != [] else None
+            str(max(available_versions_filtered)) if available_versions_filtered != [] else None
         )
 
     def _get_header_impl(

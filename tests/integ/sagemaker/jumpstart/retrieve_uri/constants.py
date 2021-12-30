@@ -18,9 +18,14 @@ from typing import Optional
 from typing import Union
 import os
 
+"""
+This module has support for multiple input data types supported by all the JumpStart
+model offerings.
+"""
 
-def _to_s3_path(filename: str, s3_folder: Optional[str]) -> str:
-    return filename if not s3_folder else f"{s3_folder}/{filename}"
+
+def _to_s3_path(filename: str, s3_prefix: Optional[str]) -> str:
+    return filename if not s3_prefix else f"{s3_prefix}/{filename}"
 
 
 _NB_ASSETS_S3_FOLDER = "inference-notebook-assets"
@@ -35,7 +40,7 @@ ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID = "JUMPSTART_SDK_TEST_SUITE_ID"
 JUMPSTART_TAG = "JumpStart-SDK-Integ-Test-Suite-Id"
 
 HYPERPARAMETER_MODEL_DICT = {
-    ("huggingface-spc-bert-base-cased", "*"): {
+    ("huggingface-spc-bert-base-cased", "1.0.0"): {
         "epochs": "1",
         "adam-learning-rate": "2e-05",
         "batch-size": "8",
@@ -46,7 +51,7 @@ HYPERPARAMETER_MODEL_DICT = {
 }
 
 TRAINING_DATASET_MODEL_DICT = {
-    ("huggingface-spc-bert-base-cased", "*"): ("training-datasets/QNLI/"),
+    ("huggingface-spc-bert-base-cased", "1.0.0"): ("training-datasets/QNLI-tiny/"),
 }
 
 

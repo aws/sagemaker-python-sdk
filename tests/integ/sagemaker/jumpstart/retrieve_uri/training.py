@@ -19,15 +19,16 @@ from botocore.config import Config
 
 from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME
 from tests.integ.sagemaker.jumpstart.retrieve_uri.utils import (
-    extract_role_arn_from_caller_identity,
     get_full_hyperparameters,
-    get_test_cache_bucket,
+    get_test_artifact_bucket,
 )
 from sagemaker.jumpstart.utils import get_jumpstart_content_bucket
 
 from tests.integ.sagemaker.jumpstart.retrieve_uri.constants import (
     ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID,
 )
+
+from sagemaker.session import Session
 
 
 class TrainingJobLauncher:
@@ -39,22 +40,20 @@ class TrainingJobLauncher:
         hyperparameters,
         instance_type,
         training_dataset_s3_key,
-        suffix=None,
-        region=None,
-        boto_config=None,
-        base_name=None,
-        execution_role=None,
+        suffix=time.strftime("%Y-%m-%d-%H-%M-%S", time.gmtime()),
+        region=JUMPSTART_DEFAULT_REGION_NAME,
+        boto_config=Config(retries={"max_attempts": 10, "mode": "standard"}),
+        base_name="jumpstart-training-job",
+        execution_role=Session().get_caller_identity_arn(),
     ) -> None:
 
         self.account_id = boto3.client("sts").get_caller_identity()["Account"]
-        self.suffix = suffix or time.strftime("%Y-%m-%d-%H-%M-%S", time.gmtime())
+        self.suffix = suffix
         self.test_suite_id = os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]
-        self.region = region or JUMPSTART_DEFAULT_REGION_NAME
-        self.config = boto_config or Config(retries={"max_attempts": 10, "mode": "standard"})
-        self.base_name = base_name or "jumpstart-training-job"
-        self.execution_role = execution_role or extract_role_arn_from_caller_identity(
-            boto3.client("sts").get_caller_identity()["Arn"]
-        )
+        self.region = region
+        self.config = boto_config
+        self.base_name = base_name
+        self.execution_role = execution_role
         self.image_uri = image_uri
         self.script_uri = script_uri
         self.model_uri = model_uri
@@ -84,7 +83,7 @@ class TrainingJobLauncher:
     def create_training_job(self) -> None:
         self.training_job_name = self.get_training_job_name()
         self.output_tarball_base_path = (
-            f"s3://{get_test_cache_bucket()}/{self.test_suite_id}/training_model_tarballs"
+            f"s3://{get_test_artifact_bucket()}/{self.test_suite_id}/training_model_tarballs"
         )
         training_params = {
             "AlgorithmSpecification": {
@@ -101,6 +100,7 @@ class TrainingJobLauncher:
                 "VolumeSizeInGB": 50,
             },
             "TrainingJobName": self.training_job_name,
+            "EnableNetworkIsolation": True,
             "HyperParameters": get_full_hyperparameters(
                 self.hyperparameters, self.training_job_name, self.model_uri
             ),
