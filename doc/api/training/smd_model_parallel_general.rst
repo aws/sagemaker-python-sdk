@@ -1,338 +1,212 @@
-.. admonition:: Contents
+#################################
+Use with the SageMaker Python SDK
+#################################
 
-   - :ref:`sm-sdk-modelparallel-params`
-   - :ref:`ranking-basics`
+Walk through the following pages to learn about the SageMaker model parallel library's APIs
+to configure and enable distributed model parallelism
+through an Amazon SageMaker estimator.
 
 .. _sm-sdk-modelparallel-params:
 
-Required SageMaker Python SDK parameters
-========================================
+Configuration Parameters for ``distribution``
+=============================================
 
-The TensorFlow and PyTorch ``Estimator`` objects contains a ``distribution`` parameter,
-which is used to enable and specify parameters for the
-initialization of the SageMaker distributed model parallel library. The library internally uses MPI,
-so in order to use model parallelism, MPI must also be enabled using the ``distribution`` parameter.
+Amazon SageMaker's TensorFlow and PyTorch estimator objects contain a ``distribution`` parameter,
+which you can use to enable and specify parameters for SageMaker distributed training.
+The SageMaker model parallel library internally uses MPI.
+To use model parallelism, both ``smdistributed`` and MPI must be enabled
+through the ``distribution`` parameter.
 
-The following is an example of how you can launch a new PyTorch training job with the library.
+.. tip::
 
-.. code-block:: python3
+  This page provides you a complete list of parameters you can use
+  when you construct a SageMaker estimator and configure for distributed training.
 
-   sagemaker_session = sagemaker.session.Session(boto_session=session)
+  To find examples of how to construct a SageMaker estimator with the distributed training parameters, see
+  `Launch a SageMaker Distributed Model Parallel Training Job <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-sm-sdk.html>`_
+  in the `SageMaker's Distributed Model Parallel developer guide <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel.html>`_.
 
-   mpi_options = {
-                  "enabled" : True,
-                  "processes_per_host" : 8,
-                  "custom_mpi_options" : "--mca btl_vader_single_copy_mechanism none "
-                  }
+.. contents:: Table of Contents
+  :depth: 3
+  :local:
 
-   smp_options = {
-                  "enabled":True,
-                  "parameters": {
-                     "microbatches": 4,
-                     "placement_strategy": "spread",
-                     "pipeline": "interleaved",
-                     "optimize": "speed",
-                     "partitions": 2,
-                     "ddp": True,
-                  }
-               }
+Parameters for ``smdistributed``
+----------------------------------
 
-   smd_mp_estimator = PyTorch(
-            entry_point="training-script.py", # Pick your train script
-            source_dir='utils',
-            role=role,
-            instance_type='ml.p3.16xlarge',
-            sagemaker_session=sagemaker_session,
-            framework_version='1.6.0',
-            py_version='py3',
-            instance_count=1,
-            distribution={
-               "smdistributed": {"modelparallel": smp_options},
-               "mpi": mpi_options
-            },
-            base_job_name="SMD-MP-demo",
-         )
+You can use the following parameters to initialize the library
+configuring a dictionary for ``modelparallel``, which goes
+into the ``smdistributed`` option for the ``distribution`` parameter.
 
-   smd_mp_estimator.fit('s3://my_bucket/my_training_data/')
+.. note::
 
-``smdistributed`` Parameters
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ``partitions`` for TensorFlow and ``pipeline_parallel_degree`` for PyTorch are required parameters.
+    All other parameters in the following
+    table are optional.
 
-You can use the following parameters to initialize the library using the ``parameters``
-in the ``smdistributed`` of ``distribution``.
+Common Parameters
+~~~~~~~~~~~~~~~~~
 
-Note: ``partitions`` is required in ``parameters`` of ``smp_options``. All other parameters in the following
-table are optional.
-
-.. table::
+.. list-table::
    :widths: 10 20 10 60
+   :header-rows: 1
 
-   +---------------------------+-------------------------+-------------------+-----------------------+
-   | **Parameter**             | **Type / Valid values** | **Default**       | **Description**       |
-   |                           |                         |                   |                       |
-   +---------------------------+-------------------------+-------------------+-----------------------+
-   | ``partitions`` (required) | int                     | -                 | The number of         |
-   |                           |                         |                   | partitions to         |
-   |                           |                         |                   | split the model       |
-   |                           |                         |                   | into.                 |
-   +---------------------------+-------------------------+-------------------+-----------------------+
-   | ``microbatches``          | int                     | 1                 | The number of         |
-   |                           |                         |                   | microbatches to       |
-   |                           |                         |                   | perform               |
-   |                           |                         |                   | pipelining            |
-   |                           |                         |                   | over. 1 means         |
-   |                           |                         |                   | no pipelining.        |
-   |                           |                         |                   | Batch size must       |
-   |                           |                         |                   | be divisible by       |
-   |                           |                         |                   | the number of         |
-   |                           |                         |                   | microbatches.         |
-   +---------------------------+-------------------------+-------------------+-----------------------+
-   | ``pipeline``              | ``"interleaved"``       | ``"interleaved"`` | The pipeline          |
-   |                           | or ``"simple"``         |                   | schedule.             |
-   |                           |                         |                   |                       |
-   +---------------------------+-------------------------+-------------------+-----------------------+
-   | ``optimize``              | ``"memory"`` or         | ``"memory"``      | Whether the library   |
-   |                           | ``"speed"``             |                   | should optimize       |
-   |                           |                         |                   | for speed or          |
-   |                           |                         |                   | memory during         |
-   |                           |                         |                   | partitioning          |
-   |                           |                         |                   | decision and          |
-   |                           |                         |                   | pipeline              |
-   |                           |                         |                   | execution.            |
-   |                           |                         |                   |                       |
-   |                           |                         |                   |                       |
-   |                           |                         |                   | **speed**             |
-   |                           |                         |                   | When the library is   |
-   |                           |                         |                   | configured to         |
-   |                           |                         |                   | optimize speed,       |
-   |                           |                         |                   | it attempts to        |
-   |                           |                         |                   | balance the           |
-   |                           |                         |                   | number of             |
-   |                           |                         |                   | operations            |
-   |                           |                         |                   | executed in           |
-   |                           |                         |                   | each device,          |
-   |                           |                         |                   | and executes a        |
-   |                           |                         |                   | less strict           |
-   |                           |                         |                   | pipeline              |
-   |                           |                         |                   | schedule in           |
-   |                           |                         |                   | which a               |
-   |                           |                         |                   | microbatch can        |
-   |                           |                         |                   | start executing       |
-   |                           |                         |                   | before the            |
-   |                           |                         |                   | previous              |
-   |                           |                         |                   | microbatch is         |
-   |                           |                         |                   | completely            |
-   |                           |                         |                   | finished on           |
-   |                           |                         |                   | that device.          |
-   |                           |                         |                   |                       |
-   |                           |                         |                   |                       |
-   |                           |                         |                   | **memory**            |
-   |                           |                         |                   | When the library      |
-   |                           |                         |                   | optimizes             |
-   |                           |                         |                   | memory, it            |
-   |                           |                         |                   | attempts to           |
-   |                           |                         |                   | balance the           |
-   |                           |                         |                   | total number of       |
-   |                           |                         |                   | stored                |
-   |                           |                         |                   | trainable             |
-   |                           |                         |                   | parameters and        |
-   |                           |                         |                   | activations on        |
-   |                           |                         |                   | each device and       |
-   |                           |                         |                   | imposes a             |
-   |                           |                         |                   | strict pipeline       |
-   |                           |                         |                   | schedule on the       |
-   |                           |                         |                   | backend.              |
-   +---------------------------+-------------------------+-------------------+-----------------------+
-   | ``placement_strategy``    | ``"cluster"`` or        | ``"cluster"``     | When hybrid           |
-   |                           | ``"spread"``            |                   | model/data            |
-   |                           |                         |                   | parallelism is        |
-   |                           |                         |                   | used,                 |
-   |                           |                         |                   | cluster               |
-   |                           |                         |                   | places a single       |
-   |                           |                         |                   | model replica         |
-   |                           |                         |                   | in neighboring        |
-   |                           |                         |                   | device IDs,           |
-   |                           |                         |                   | whereas               |
-   |                           |                         |                   | spread                |
-   |                           |                         |                   | places them as        |
-   |                           |                         |                   | far as                |
-   |                           |                         |                   | possible.             |
-   |                           |                         |                   |                       |
-   |                           |                         |                   | Example:              |
-   |                           |                         |                   | - 8 GPUs: [0,         |
-   |                           |                         |                   | 1, 2, 3, 4, 5,        |
-   |                           |                         |                   | 6, 7], 4-way          |
-   |                           |                         |                   | model                 |
-   |                           |                         |                   | parallelism,          |
-   |                           |                         |                   | 2-way data            |
-   |                           |                         |                   | parallelism.          |
-   |                           |                         |                   | Two model             |
-   |                           |                         |                   | replicas, each        |
-   |                           |                         |                   | partitioned           |
-   |                           |                         |                   | across 4 GPUs.        |
-   |                           |                         |                   |                       |
-   |                           |                         |                   |                       |
-   |                           |                         |                   | **spread**            |
-   |                           |                         |                   | places                |
-   |                           |                         |                   | the two model         |
-   |                           |                         |                   | replicas in [0,       |
-   |                           |                         |                   | 2, 4, 6] and          |
-   |                           |                         |                   | [1, 3, 5, 7].         |
-   |                           |                         |                   |                       |
-   |                           |                         |                   |                       |
-   |                           |                         |                   | **cluster**           |
-   |                           |                         |                   | places the two        |
-   |                           |                         |                   | model replicas        |
-   |                           |                         |                   | in [0, 1, 2, 3]       |
-   |                           |                         |                   | and [4, 5, 6, 7].     |
-   |                           |                         |                   |                       |
-   |                           |                         |                   | This can be           |
-   |                           |                         |                   | useful, for           |
-   |                           |                         |                   | instance, for         |
-   |                           |                         |                   | performing            |
-   |                           |                         |                   | model                 |
-   |                           |                         |                   | parallelism           |
-   |                           |                         |                   | across                |
-   |                           |                         |                   | instances, and        |
-   |                           |                         |                   | leaving the           |
-   |                           |                         |                   | intra-node            |
-   |                           |                         |                   | high-bandwidth        |
-   |                           |                         |                   | NVLinks for           |
-   |                           |                         |                   | data                  |
-   |                           |                         |                   | parallelism.          |
-   +---------------------------+-------------------------+-------------------+-----------------------+
-   | ``auto_partition``        | bool                    | ``True``          | Enable                |
-   |                           |                         |                   | auto-partitioning.    |
-   |                           |                         |                   | If disabled,          |
-   |                           |                         |                   | ``default_partition`` |
-   |                           |                         |                   | parameter             |
-   |                           |                         |                   | must be               |
-   |                           |                         |                   | provided.             |
-   +---------------------------+-------------------------+-------------------+-----------------------+
-   | ``default_partition``     | int                     | ``0``             | The partition         |
-   |                           |                         |                   | ID to place           |
-   | (required if              |                         |                   | operations/modules    |
-   | auto_partition if false)  |                         |                   | that are not          |
-   |                           |                         |                   | placed in any         |
-   |                           |                         |                   | ``smp.partition``     |
-   |                           |                         |                   | contexts.             |
-   +---------------------------+-------------------------+-------------------+-----------------------+
+   * - Parameter
+     - Type / Valid values
+     - Default
+     - Description
+   * - ``partitions`` for TensorFlow and PyTorch with smdistributed-modelparallel<v1.6,
+       ``pipeline_parallel_degree`` for PyTorch v1.8.1 with smdistributed-modelparallel>=v1.6)
+     - int
+     -
+     - **Required.** The number of partitions to split the model into.
+       In case of ``pipeline_parallel_degree`` for PyTorch, this is the number of devices
+       over which pipeline parallelism will be performed.
+   * - ``microbatches``
+     - int
+     - 1
+     - The number of microbatches to perform pipelining over. 1 means no pipelining.
+       Batch size must be divisible by the number of microbatches.
+   * - ``pipeline``
+     - ``"interleaved"`` or ``"simple"``
+     - ``"interleaved"``
+     - The pipeline schedule.
+   * - ``optimize``
+     - ``"memory"`` or ``"speed"``
+     - ``"memory"``
+     - Determines the distribution mechanism of transformer layers.
+       If optimizing ``speed``, there will be less communication across tensor-parallel ranks
+       and layer normalization will not be distributed. However, there will be duplicate activations
+       stored across tensor-parallel ranks.
+       If optimizing ``memory``, there will be no redundant activations stored,
+       but this will result in more communication overhead across tensor parallel ranks.
+   * - ``placement_strategy``
+     - ``"cluster"``, ``"spread"``, or a permutation of the string ``D``, ``P``, and ``T``.
+     - ``"cluster"``
+     - Determines the mapping of model partitions onto physical devices.
+       When hybrid model/data parallelism is used, ``cluster`` places a single model replica in
+       neighboring device IDs. Contrarily, ``spread`` places a model replica as far as possible.
+       For more information, see :ref:`ranking-basics`.
 
+       In case of the permutation letters, ``D`` stands for reduced-data parallelism,
+       ``P`` stands for pipeline parallelism,
+       and ``T`` stands for tensor parallelism.
+       ``spread`` is equivalent to ``"TPD"``, and ``cluster`` is equivalent to ``"DPT"``.
+       For more information, see :ref:`ranking-basics-tensor-parallelism`.
 
-.. rubric:: TensorFlow-specific parameters
+       Note: For TensorFlow, tensor parallelism is not implemented and
+       available parameter values are only ``"spread"`` and ``"cluster"``.
+   * - ``auto_partition``
+     - bool
+     - ``True``
+     - Enable auto-partitioning. If disabled, ``default_partition`` parameter must be provided.
+   * - ``default_partition``
+     - int
+     - ``0``
+     - **Required** if ``auto_partition`` is false. The partition ID to place operations/modules
+       that are not placed in any ``smp.partition`` contexts.
 
-.. table::
+TensorFlow-specific Parameters
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. list-table::
    :widths: 10 20 10 60
+   :header-rows: 1
 
-   +----------------+-------------------------+-------------+-----------------+
-   | **Parameter**  | **Type / Valid values** | **Default** | **Description** |
-   |                |                         |             |                 |
-   +----------------+-------------------------+-------------+-----------------+
-   | ``contiguous`` | bool                    | ``True``    | Whether the     |
-   |                |                         |             | model           |
-   |                |                         |             | partitions      |
-   |                |                         |             | should be       |
-   |                |                         |             | contiguous. If  |
-   |                |                         |             | true, each      |
-   |                |                         |             | partition forms |
-   |                |                         |             | a connected     |
-   |                |                         |             | component in    |
-   |                |                         |             | the             |
-   |                |                         |             | computational   |
-   |                |                         |             | graph, unless   |
-   |                |                         |             | the graph       |
-   |                |                         |             | itself is not   |
-   |                |                         |             | connected.      |
-   +----------------+-------------------------+-------------+-----------------+
-   | ``horovod``    | bool                    | ``False``   | Must be set to  |
-   |                |                         |             | ``True`` if     |
-   |                |                         |             | hybrid          |
-   |                |                         |             | model/data      |
-   |                |                         |             | parallelism is  |
-   |                |                         |             | used and the    |
-   |                |                         |             | data            |
-   |                |                         |             | parallelism     |
-   |                |                         |             | (DP) framework  |
-   |                |                         |             | is Horovod.     |
-   +----------------+-------------------------+-------------+-----------------+
-
-.. rubric:: PyTorch-specific parameters
-
-.. table::
-   :widths: 10 20 10 60
-
-   +--------------------------+-------------------------+--------------------+--------------------------------------+
-   | **Parameter**            | **Type / Valid values** | **Default**        | **Description**                      |
-   |                          |                         |                    |                                      |
-   +--------------------------+-------------------------+--------------------+--------------------------------------+
-   | ``memory_weight``        | float (between          | 0.2 if             | The weight of                        |
-   |                          | 0.0 and 1.0)            | ``optimize`` is    | memory                               |
-   |                          |                         | ``"speed"``,       | balancing in                         |
-   |                          |                         | else 0.8           | the                                  |
-   |                          |                         |                    | auto-partitioni                      |
-   |                          |                         |                    | ng                                   |
-   |                          |                         |                    | objective, as                        |
-   |                          |                         |                    | opposed to                           |
-   |                          |                         |                    | balancing                            |
-   |                          |                         |                    | computational                        |
-   |                          |                         |                    | load. If 0.0,                        |
-   |                          |                         |                    | the library only tries               |
-   |                          |                         |                    | to balance                           |
-   |                          |                         |                    | computation; if                      |
-   |                          |                         |                    | 1.0 the library only                 |
-   |                          |                         |                    | tries to                             |
-   |                          |                         |                    | balance the                          |
-   |                          |                         |                    | memory use. Any                      |
-   |                          |                         |                    | value in                             |
-   |                          |                         |                    | between                              |
-   |                          |                         |                    | interpolates                         |
-   |                          |                         |                    | between these                        |
-   |                          |                         |                    | extremes.                            |
-   +--------------------------+-------------------------+--------------------+--------------------------------------+
-   | ``ddp``                  | bool                    | ``False``          | Must be set to                       |
-   |                          |                         |                    | ``True`` if                          |
-   |                          |                         |                    | hybrid                               |
-   |                          |                         |                    | model/data                           |
-   |                          |                         |                    | parallelism is                       |
-   |                          |                         |                    | used                                 |
-   |                          |                         |                    | with ``DistributedDataParallel``.    |
-   |                          |                         |                    | ``DistributedDataParallel``          |
-   |                          |                         |                    | is used with                         |
-   |                          |                         |                    | NCCL backend,                        |
-   |                          |                         |                    | and uses the                         |
-   |                          |                         |                    | ``MASTER_PORT``                      |
-   |                          |                         |                    | provided by                          |
-   |                          |                         |                    | SageMaker.                           |
-   +--------------------------+-------------------------+--------------------+--------------------------------------+
-   | ``active_microbatches``  | int                     | ``partitions`` + 2 | This is the maximum number of        |
-   | (Only >= v1.3)           |                         |                    | microbatches that are simultaneously |
-   |                          |                         |                    | in execution during pipelining.      |
-   |                          |                         |                    | Jointly scaling batch                |
-   |                          |                         |                    | size and number of microbatches      |
-   |                          |                         |                    | can often mitigate the pipeline      |
-   |                          |                         |                    | bubble overhead, but that can        |
-   |                          |                         |                    | lead to increased memory usage       |
-   |                          |                         |                    | if too many microbatches are         |
-   |                          |                         |                    | simultaneously in execution.         |
-   |                          |                         |                    | In such cases setting the            |
-   |                          |                         |                    | number of active                     |
-   |                          |                         |                    | microbatches to a lower number       |
-   |                          |                         |                    | can help control memory usage.       |
-   |                          |                         |                    | By default this is set to two        |
-   |                          |                         |                    | plus the number of                   |
-   |                          |                         |                    | partitions of the model.             |
-   +--------------------------+-------------------------+--------------------+--------------------------------------+
-   | ``deterministic_server`` | bool                    | ``False``          | Setting this to true                 |
-   | (Only >= v1.3)           |                         |                    | ensures that the execution           |
-   |                          |                         |                    | server for pipelining                |
-   |                          |                         |                    | executes requests in the             |
-   |                          |                         |                    | same order across all                |
-   |                          |                         |                    | data parallel ranks.                 |
-   +--------------------------+-------------------------+--------------------+--------------------------------------+
+   * - Parameter
+     - Type / Valid values
+     - Default
+     - Description
+   * - ``contiguous``
+     - bool
+     - ``True``
+     - Whether the model partitions should be contiguous. If true, each partition forms a connected component in the computational graph, unless the graph itself is not connected.
+   * - ``horovod``
+     - bool
+     - ``False``
+     - Must be set to ``True`` if hybrid model/data parallelism is used and the data parallelism (DP) framework is Horovod.
 
 
-``mpi`` Parameters
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+PyTorch-specific Parameters
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. list-table::
+  :widths: 10 20 10 60
+  :header-rows: 1
+
+  * - Parameter
+    - Type / Valid values
+    - Default
+    - Description
+  * - ``memory_weight``
+    - float [0.0, 1.0]
+    - ``0.2`` if ``optimize`` is ``"speed"``, else ``0.8``
+    - The weight of memory balancing in the auto-partitioni ng objective, as opposed to balancing computational load. If 0.0, the library only tries to balance computation; if 1.0 the library only tries to balance the memory use. Any value in between interpolates between these extremes.
+  * - ``ddp``
+    - bool
+    - ``False``
+    - Must be set to True if hybrid model/data parallelism is used with DistributedDataParallel. DistributedDataParallel is used with NCCL backend, and uses the MASTER_PORT provided by SageMaker.
+  * - ``active_microbatches`` (**smdistributed-modelparallel**>=v1.3)
+    - int
+    - ``partitions`` + 2
+    - This is the maximum number of microbatches that are simultaneously in execution during pipelining. Jointly scaling batch size and number of microbatches can often mitigate the pipeline bubble overhead, but that can lead to increased memory usage if too many microbatches are simultaneously in execution. In such cases setting the number of active microbatches to a lower number can help control memory usage. By default this is set to two plus the number of partitions of the model.
+  * - ``deterministic_server`` (**smdistributed-modelparallel**>=v1.3)
+    - bool
+    - ``False``
+    - Setting this to true ensures that the execution server for pipelining executes requests in the same order across all data parallel ranks.
+  * -  ``offload_activations`` (**smdistributed-modelparallel**>=v1.6)
+    - bool
+    - False
+    - Enables activation
+      offloading. To improve GPU memory usage, use activation offloading
+      only when (1) the ``microbatches`` and ``active_microbatches`` are
+      greater than 1, and (2) activation checkpointing is enabled for at
+      least one module in the model.
+  * - ``activation_loading_horizon`` (**smdistributed-modelparallel**>=v1.6)
+    - int
+    - 4
+    - Specify the number
+      of pipeline tasks. This determines how early the activations should
+      be loaded back to the GPU, expressed in number of pipeline tasks.
+      Smaller value indicates that activations are loaded closer in time to
+      when they are needed for backward pass. Setting this value too small
+      might improve memory usage, but might potentially cause throughput
+      loss and GPU bottlenecks during the CPU-to-GPU data transfer.
+  * - ``tensor_parallel_degree`` (**smdistributed-modelparallel**>=v1.6)
+    - int
+    - 1
+    - The number of devices over which the tensor parallel modules will be distributed.
+      If ``tensor_parallel_degree`` is greater than 1, then ``ddp`` must be set to ``True``.
+  * - ``fp16_params`` (**smdistributed-modelparallel**>=v1.6)
+    - bool
+    - ``False``
+    - If ``True``, the parameters of the distributed modules will be initialized in FP16.
+  * - ``shard_optimizer_state`` (**smdistributed-modelparallel**>=v1.6)
+    - bool
+    - ``False``
+    - If ``True``, the library shards the optimizer state of all parameters across
+      the data parallel processes which hold the same parameter.
+      This optimizer state sharding happens in a balanced manner.
+      Note that when sharding optimizer state, full optimizer saving is not currently supported.
+      Please save partial optimizer state. For more information about saving and loading checkpoints with
+      optimizer state sharding, see `Instructions for Checkpointing with Tensor Parallelism <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-extended-features-pytorch-saving-loading-checkpoints.html>`_.
+  * - ``prescaled_batch`` (**smdistributed-modelparallel**>=v1.6)
+    - bool
+    - ``False``
+    - If ``True`` and when ``smp.nn.DistributedTransformerLMHead`` is used
+      (this is typically used for GPT-2 or GPT-3 models),
+      the library assumes that the devices in the same tensor parallelism group
+      receive the same input data. Otherwise, it is assumed that they receive
+      different examples. To learn more, see :ref:`prescaled-batch`.
+  * - ``skip_tracing`` (**smdistributed-modelparallel**>=v1.6)
+    - bool
+    - False
+    - Skips the initial tracing step. This can be useful in very large models
+      where even model tracing at the CPU is not possible due to memory constraints.
+
+
+Parameters for ``mpi``
+----------------------
+
 For the ``"mpi"`` key, a dict must be passed which contains:
 
 * ``"enabled"``: Set to ``True`` to launch the training job with MPI.
@@ -369,8 +243,8 @@ For the ``"mpi"`` key, a dict must be passed which contains:
 
 .. _ranking-basics:
 
-Ranking Basics
-==============
+Ranking Basics without Tensor Parallelism
+=========================================
 
 The library maintains a one-to-one mapping between processes and available GPUs:
 for each GPU, there is a corresponding CPU process. Each CPU process
@@ -387,27 +261,136 @@ launched in the instance. For instance, in the preceding
 example, ``local_rank``\ s of the processes will range from 0 to 7,
 since there are 8 GPUs in a ``p3dn.24xlarge`` instance.
 
-When the library is used together with data parallelism (Horovod for TensorFlow
+When model parallelism is used together with data parallelism (Horovod for TensorFlow
 and DDP for PyTorch), the library partitions the set of processes into
 disjoint \ ``mp_group``\ s. An ``mp_group`` is a subset of all processes
-that together hold a single, partitioned model replica. For instance, if
-a single node job is launched with 8 local processes, and
-``partitions`` is 2 (meaning the model will be split into 2), there are
+that together hold a single, partitioned model replica.
+
+For instance, if
+a single node job is launched with 8 local processes with
+``partitions=2`` (meaning the model will be split into 2), there are
 four \ ``mp_group``\ s. The specific sets of processes that form the
-``mp_group``\ s can be adjusted by the ``placement_strategy`` option. In
-this example, if ``placement_strategy`` is ``spread``, then the four
-``mp_group``\ s are ``[0, 4], [1, 5], [2, 6], [3, 7]``. An
-``mp_rank`` is the rank of a process within its own ``mp_group``. In the
-previous example, the ``mp_rank`` of process 1 is 0, and ``mp_rank`` of
-process 6 is 1.
+``mp_group``\ s can be adjusted by the ``placement_strategy`` option.
 
-Analogously, the library defines ``dp_group``\ s as the sets of processes that
-all hold the same model partition, and perform data parallelism among
-each other. In the example above, there are two ``dp_group``\ s,
-``[0, 1, 2, 3]`` and ``[4, 5, 6, 7]``,
+- If ``placement_strategy`` is ``spread``, then the four
+  ``mp_group``\ s are ``[0, 4], [1, 5], [2, 6], [3, 7]``. The
+  ``mp_rank`` is the rank of a process within each ``mp_group``. For example,
+  the ``mp_rank`` is 0 for the processes 0, 1, 2, and 3, and the ``mp_rank`` is 1 for
+  the processes 4, 5, 6, and 7.
 
-since each process within the ``dp_group`` holds the same partition of
-the model, and makes allreduce calls among themselves. Allreduce for
-data parallelism does not take place *across* ``dp_group``\ s.
-``dp_rank`` is defined as the rank of a process within its ``dp_group``.
-In the preceding example, the \ ``dp_rank`` of process 6 is 2.
+  Analogously, the library defines ``dp_group``\ s as sets of processes that
+  all hold the same model partition, and perform data parallelism among
+  each other. If ``placement_strategy`` is ``spread``, there are two ``dp_group``\ s:
+  ``[0, 1, 2, 3]`` and ``[4, 5, 6, 7]``.
+
+  Since each process within the ``dp_group`` holds the same partition of
+  the model, and makes allreduce calls among themselves. Allreduce for
+  data parallelism does not take place *across* ``dp_group``\ s.
+  ``dp_rank`` is defined as the rank of a process within its ``dp_group``.
+  In the preceding example, the \ ``dp_rank`` of process 6 is 2.
+
+- If ``placement_strategy`` is ``cluster``, the four ``mp_group``\ s
+  become ``[0, 1], [2, 3], [4, 5], [6, 7]``, and the the two ``dp_group``\ s become
+  ``[0, 2, 4, 6]`` and ``[1, 3, 5, 7]``.
+
+.. _ranking-basics-tensor-parallelism:
+
+Placement Strategy with Tensor Parallelism
+==========================================
+
+In addition to the two placement strategies introduced in the previous section,
+the library provides additional placement strategies for extended tensor parallelism features
+for PyTorch. The additional placement strategies (parallelism types) are denoted as follows:
+
+- ``D`` stands for (reduced) data parallelism.
+- ``P`` stands for pipeline parallelism.
+- ``T`` stands for tensor parallelism.
+
+With given permutation of the tree letters, the library takes the right-most letter
+as the first strategy performs over the global ranks in ascending order.
+Contrarily, the parallelism type represented by the left-most letter is performed
+over the ranks that are as distant as possible.
+
+- **Example:** Given 8 devices with ``tp_size() == 2``,
+  ``pp_size() == 2``, ``rdp_size() == 2``
+
+  - ``placement_strategy: "DPT"`` gives
+
+    ==== ======== ======= =======
+    rank rdp_rank pp_rank tp_rank
+    ==== ======== ======= =======
+    0    0        0       0
+    1    0        0       1
+    2    0        1       0
+    3    0        1       1
+    4    1        0       0
+    5    1        0       1
+    6    1        1       0
+    7    1        1       1
+    ==== ======== ======= =======
+
+  - ``placement_strategy: "PTD"`` gives
+
+    ==== ======== ======= =======
+    rank rdp_rank pp_rank tp_rank
+    ==== ======== ======= =======
+    0    0        0       0
+    1    1        0       0
+    2    0        0       1
+    3    1        0       1
+    4    0        1       0
+    5    1        1       0
+    6    0        1       1
+    7    1        1       1
+    ==== ======== ======= =======
+
+Because the neighboring ranks are placed on the same instance with
+high-bandwidth NVLinks, it is recommended to place the
+parallelism type that has higher bandwidth requirements for your model
+on the right-most position in the ``placement_strategy`` string. Because
+tensor parallelism often requires frequent communication, placing
+``T`` in the right-most position is recommended (as in the default
+``"cluster"`` strategy). In many large models, keeping the default of
+``"cluster"`` would result in the best performance.
+
+
+.. _prescaled-batch:
+
+Prescaled Batch
+===============
+
+``prescaled_batch`` is a configuration parameter that can be useful for
+``DistributedTransformerLMHead``, which is used for GPT-2 and GPT-3.
+
+The way tensor parallelism works is that when a module is distributed,
+the inputs to the distributed module in different ``tp_rank``\ s gets
+shuffled around in a way that is sliced by the hidden dimension and
+scaled by the batch dimension. For example, if tensor parallel degree is
+8, the inputs to ``DistributedTransformer`` (a tensor with shape
+``[B, S, H]`` where ``B``\ =batch size, ``S``\ =sequence length,
+``H``\ =hidden width) in different ``tp_rank``\ s will be communicated
+around, and the shapes will become ``[8B, S, H/8]``. Each ``tp_rank``
+has the batch from all the peer ``tp_rank``\ s, but only the slice that
+interacts with their local partition of the module.
+
+By default, the library assumes that each ``tp_rank`` gets assigned a
+different batch, and performs the communication described above. If
+``prescaled_batch`` is true, then the library assumes that the input
+batch is already scaled (and is the same across the ``tp_rank``\ s), and
+only does the slicing. In the example above, the library assumes that
+input tensor has shape ``[8B, S, H]``, and only converts it into
+``[8B, S, H/8]``. So if ``prescaled_batch`` is true, it is the user’s
+responsibility to feed the same batch to the ``tp_rank``\ s in the same
+``TP_GROUP``. This can be done by doing the data sharding based on
+``smp.rdp_size()`` and ``smp.rdp_rank()``, instead of ``smp.dp_size()``
+and ``smp.dp_rank()``. When ``prescaled_batch`` is true, the global
+batch size is ``smp.rdp_size()`` multiplied by the per-``MP_GROUP``
+batch size. When ``prescaled_batch`` is false, global batch size is
+``smp.dp_size()`` multiplied by the per-``PP_GROUP`` batch size.
+
+If you use pipeline parallelism degree 1, then you can keep
+``prescaled_batch`` false (the default option). If you use a pipeline
+parallellism degree more than 1, it is recommended to use
+``prescaled_batch`` true, so that you can increase per-``MP_GROUP``
+batch size for efficient pipelining, without running into out-of-memory
+issues.
