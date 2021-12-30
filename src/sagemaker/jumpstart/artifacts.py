@@ -110,19 +110,19 @@ def _retrieve_image_uri(
     if framework is not None and framework != ecr_specs.framework:
         raise ValueError(
             f"Incorrect container framework '{framework}' for JumpStart model ID '{model_id}' "
-            f"and version {model_version}'."
+            f"and version '{model_version}'."
         )
 
     if version is not None and version != ecr_specs.framework_version:
         raise ValueError(
             f"Incorrect container framework version '{version}' for JumpStart model ID "
-            f"'{model_id}' and version {model_version}'."
+            f"'{model_id}' and version '{model_version}'."
         )
 
     if py_version is not None and py_version != ecr_specs.py_version:
         raise ValueError(
             f"Incorrect python version '{py_version}' for JumpStart model ID '{model_id}' "
-            f"and version {model_version}'."
+            f"and version '{model_version}'."
         )
 
     base_framework_version_override: Optional[str] = None
