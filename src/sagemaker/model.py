@@ -178,21 +178,26 @@ class Model(ModelBase):
         """
         if self.model_data is None:
             raise ValueError("SageMaker Model Package cannot be created without model data.")
+        if image_uri is not None:
+            self.image_uri = image_uri
+        if model_package_group_name is not None:
+            container_def = self.prepare_container_def()
+        else:
+            container_def = {"Image": self.image_uri, "ModelDataUrl": self.model_data}
 
         model_pkg_args = sagemaker.get_model_package_args(
             content_types,
             response_types,
             inference_instances,
             transform_instances,
-            model_package_name,
-            model_package_group_name,
-            self.model_data,
-            image_uri or self.image_uri,
-            model_metrics,
-            metadata_properties,
-            marketplace_cert,
-            approval_status,
-            description,
+            model_package_name=model_package_name,
+            model_package_group_name=model_package_group_name,
+            model_metrics=model_metrics,
+            metadata_properties=metadata_properties,
+            marketplace_cert=marketplace_cert,
+            approval_status=approval_status,
+            description=description,
+            container_def_list=[container_def],
             drift_check_baselines=drift_check_baselines,
         )
         model_package = self.sagemaker_session.create_model_package_from_containers(
