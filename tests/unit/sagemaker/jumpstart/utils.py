@@ -48,6 +48,9 @@ def get_header_from_base_header(
 def get_prototype_model_spec(
     region: str = None, model_id: str = None, version: str = None
 ) -> JumpStartModelSpecs:
+    """This function mocks cache accessor functions. For this mock,
+    we only retrieve model specs based on the model id.
+    """
 
     specs = JumpStartModelSpecs(PROTOTYPICAL_MODEL_SPECS_DICT[model_id])
     return specs

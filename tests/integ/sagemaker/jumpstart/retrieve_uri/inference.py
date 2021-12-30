@@ -51,7 +51,7 @@ class InferenceJobLauncher:
         region=JUMPSTART_DEFAULT_REGION_NAME,
         boto_config=Config(retries={"max_attempts": 10, "mode": "standard"}),
         base_name="jumpstart-inference-job",
-        execution_role=Session().get_caller_identity_arn(),
+        execution_role=None,
     ) -> None:
 
         self.suffix = suffix
@@ -59,7 +59,7 @@ class InferenceJobLauncher:
         self.region = region
         self.config = boto_config
         self.base_name = base_name
-        self.execution_role = execution_role
+        self.execution_role = execution_role or Session().get_caller_identity_arn()
         self.account_id = boto3.client("sts").get_caller_identity()["Account"]
         self.image_uri = image_uri
         self.script_uri = script_uri

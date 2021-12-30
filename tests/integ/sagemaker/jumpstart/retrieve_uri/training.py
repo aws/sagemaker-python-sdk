@@ -44,7 +44,7 @@ class TrainingJobLauncher:
         region=JUMPSTART_DEFAULT_REGION_NAME,
         boto_config=Config(retries={"max_attempts": 10, "mode": "standard"}),
         base_name="jumpstart-training-job",
-        execution_role=Session().get_caller_identity_arn(),
+        execution_role=None,
     ) -> None:
 
         self.account_id = boto3.client("sts").get_caller_identity()["Account"]
@@ -53,7 +53,7 @@ class TrainingJobLauncher:
         self.region = region
         self.config = boto_config
         self.base_name = base_name
-        self.execution_role = execution_role
+        self.execution_role = execution_role or Session().get_caller_identity_arn()
         self.image_uri = image_uri
         self.script_uri = script_uri
         self.model_uri = model_uri

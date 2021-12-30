@@ -28,13 +28,13 @@ from sagemaker.jumpstart import accessors as jumpstart_accessors
 def _retrieve_image_uri(
     model_id: str,
     model_version: str,
+    image_scope: str,
     framework: Optional[str],
     region: Optional[str],
     version: Optional[str],
     py_version: Optional[str],
     instance_type: Optional[str],
     accelerator_type: Optional[str],
-    image_scope: Optional[str],
     container_version: Optional[str],
     distribution: Optional[str],
     base_framework_version: Optional[str],
@@ -50,6 +50,9 @@ def _retrieve_image_uri(
         model_id (str): JumpStart model ID for which to retrieve image URI.
         model_version (str): Version of the JumpStart model for which to retrieve
             the image URI (default: None).
+        image_scope (str): The image type, i.e. what it is used for.
+            Valid values: "training", "inference", "eia". If ``accelerator_type`` is set,
+            ``image_scope`` is ignored.
         framework (str): The name of the framework or algorithm.
         region (str): The AWS region.
         version (str): The framework or algorithm version. This is required if there is
@@ -61,9 +64,6 @@ def _retrieve_image_uri(
             there are different images for different processor types.
         accelerator_type (str): Elastic Inference accelerator type. For more, see
             https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html.
-        image_scope (str): The image type, i.e. what it is used for.
-            Valid values: "training", "inference", "eia". If ``accelerator_type`` is set,
-            ``image_scope`` is ignored.
         container_version (str): the version of docker image.
             Ideally the value of parameter should be created inside the framework.
             For custom use, see the list of supported container versions:
@@ -112,7 +112,7 @@ def _retrieve_image_uri(
     if framework is not None and framework != ecr_specs.framework:
         raise ValueError(
             f"Incorrect container framework '{framework}' for JumpStart model ID '{model_id}' "
-            "and version {model_version}'."
+            f"and version {model_version}'."
         )
 
     if version is not None and version != ecr_specs.framework_version:
@@ -124,7 +124,7 @@ def _retrieve_image_uri(
     if py_version is not None and py_version != ecr_specs.py_version:
         raise ValueError(
             f"Incorrect python version '{py_version}' for JumpStart model ID '{model_id}' "
-            "and version {model_version}'."
+            f"and version {model_version}'."
         )
 
     base_framework_version_override: Optional[str] = None

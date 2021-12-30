@@ -10,9 +10,8 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Accessors to retrieve the script S3 URI to be run pretrained ML models
-in SageMaker containers.
-"""
+"""Accessors to retrieve the script S3 URI to run pretrained ML models."""
+
 from __future__ import absolute_import
 
 import logging
