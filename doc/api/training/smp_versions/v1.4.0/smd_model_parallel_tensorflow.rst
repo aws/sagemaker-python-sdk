@@ -1,8 +1,9 @@
 TensorFlow API
 ==============
 
-To use the TensorFlow-specific APIs for SageMaker distributed model parallism,
-you need to add the following import statement at the top of your training script.
+**Supported version: 2.3.1, 2.4.1, 2.5.0**
+
+**Important**: This API document assumes you use the following import statement in your training scripts.
 
 .. code:: python
 
@@ -12,8 +13,8 @@ you need to add the following import statement at the top of your training scrip
 
    Refer to
    `Modify a TensorFlow Training Script
-   <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-customize-training-script-tf.html>`_
-   to learn how to use the following APIs in your TensorFlow training script.
+   <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-customize-training-script.html#model-parallel-customize-training-script-tf>`_
+   to learn how to use the following API in your TensorFlow training script.
 
 .. class:: smp.DistributedModel
    :noindex:
@@ -43,6 +44,7 @@ you need to add the following import statement at the top of your training scrip
    **Methods:**
 
    .. function:: save_model(save_path="/opt/ml/model")
+      :noindex:
 
       **Inputs**
       - ``save_path`` (``string``): A path to save an unpartitioned model with latest training weights.
@@ -53,6 +55,7 @@ you need to add the following import statement at the top of your training scrip
       SageMaker monitors to upload the model artifacts to Amazon S3.
 
 .. function:: smp.partition(index)
+   :noindex:
 
    **Inputs**
 
@@ -84,6 +87,7 @@ you need to add the following import statement at the top of your training scrip
 
 
 .. function:: register_post_partition_hook(hook)
+   :noindex:
 
     Registers a callable ``hook`` to
     be executed after the model is partitioned. This is useful in situations
@@ -99,6 +103,7 @@ you need to add the following import statement at the top of your training scrip
             tf.print("Entered hook through eager context")
 
 .. class:: smp.CheckpointManager
+   :noindex:
 
 
    A subclass of TensorFlow
@@ -136,10 +141,12 @@ you need to add the following import statement at the top of your training scrip
    **Methods:**
 
    .. function:: save( )
+      :noindex:
 
       Saves a new checkpoint in the specified directory. Internally uses ``tf.train.CheckpointManager.save()``.
 
    .. function:: restore( )
+      :noindex:
 
       Restores the latest checkpoint in the specified directory.
       Internally uses ``tf.train.CheckpointManager.restore()``.

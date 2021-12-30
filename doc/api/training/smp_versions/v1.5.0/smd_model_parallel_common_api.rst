@@ -1,16 +1,14 @@
+.. admonition:: Contents
+
+   - :ref:`communication_api`
+   - :ref:`mpi_basics`
+
 Common API
 ==========
 
 The following SageMaker distribute model parallel APIs are common across all frameworks.
 
-.. contents:: Table of Contents
-  :depth: 3
-  :local:
-
-The Library's Core APIs
------------------------
-
-This API document assumes you use the following import statement in your training scripts.
+**Important**: This API document assumes you use the following import statement in your training scripts.
 
 **TensorFlow**
 
@@ -26,10 +24,12 @@ This API document assumes you use the following import statement in your trainin
 
 
 .. function:: smp.init( )
+   :noindex:
 
    Initialize the library. Must be called at the beginning of training script.
 
 .. function:: @smp.step(non_split_inputs, input_split_axes, [*args, **kwargs])
+   :noindex:
 
    A decorator that must be placed over a function that represents a single
    forward and backward pass (for training use cases), or a single forward
@@ -164,6 +164,7 @@ This API document assumes you use the following import statement in your trainin
 
 
 .. class:: StepOutput
+   :noindex:
 
 
    A class that encapsulates all versions of a ``tf.Tensor``
@@ -193,27 +194,32 @@ This API document assumes you use the following import statement in your trainin
    post-processing operations on tensors.
 
    .. data:: StepOutput.outputs
+      :noindex:
 
       Returns a list of the underlying tensors, indexed by microbatch.
 
    .. function:: StepOutput.reduce_mean( )
+      :noindex:
 
       Returns a ``tf.Tensor``, ``torch.Tensor`` that averages the constituent ``tf.Tensor`` s
       ``torch.Tensor`` s. This is commonly used for averaging loss and gradients across microbatches.
 
    .. function:: StepOutput.reduce_sum( )
+      :noindex:
 
       Returns a ``tf.Tensor`` /
       ``torch.Tensor`` that sums the constituent
       ``tf.Tensor``\ s/\ ``torch.Tensor``\ s.
 
    .. function:: StepOutput.concat( )
+      :noindex:
 
       Returns a
       ``tf.Tensor``/``torch.Tensor`` that concatenates tensors along the
       batch dimension using ``tf.concat`` / ``torch.cat``.
 
    .. function:: StepOutput.stack( )
+      :noindex:
 
       Applies ``tf.stack`` / ``torch.stack``
       operation to the list of constituent ``tf.Tensor``\ s /
@@ -222,6 +228,7 @@ This API document assumes you use the following import statement in your trainin
    **TensorFlow-only methods**
 
    .. function:: StepOutput.merge( )
+      :noindex:
 
       Returns a ``tf.Tensor`` that
       concatenates the constituent ``tf.Tensor``\ s along the batch
@@ -229,6 +236,7 @@ This API document assumes you use the following import statement in your trainin
       across microbatches.
 
    .. function:: StepOutput.accumulate(method="variable", var=None)
+      :noindex:
 
       Functionally the same as ``StepOutput.reduce_mean()``. However, it is
       more memory-efficient, especially for large numbers of microbatches,
@@ -254,80 +262,34 @@ This API document assumes you use the following import statement in your trainin
          ignored.
 
 .. _mpi_basics:
+   :noindex:
 
 MPI Basics
-----------
+^^^^^^^^^^
 
 The library exposes the following basic MPI primitives to its Python API:
 
-**Global**
+-  ``smp.rank()``: The rank of the current process.
+-  ``smp.size()``: The total number of processes.
+-  ``smp.mp_rank()``: The rank of the process among the processes that
+   hold the current model replica.
+-  ``smp.dp_rank()``: The rank of the process among the processes that
+   hold different replicas of the same model partition.
+-  ``smp.dp_size()``: The total number of model replicas.
+-  ``smp.local_rank()``: The rank among the processes on the current
+   instance.
+-  ``smp.local_size()``: The total number of processes on the current
+   instance.
+-  ``smp.get_mp_group()``: The list of ranks over which the current
+   model replica is partitioned.
+-  ``smp.get_dp_group()``: The list of ranks that hold different
+   replicas of the same model partition.
 
--  ``smp.rank()`` : The global rank of the current process.
--  ``smp.size()`` : The total number of processes.
--  ``smp.get_world_process_group()`` :
-   ``torch.distributed.ProcessGroup`` that contains all processes.
--  ``smp.CommGroup.WORLD``: The communication group corresponding to all processes.
--  ``smp.local_rank()``: The rank among the processes on the current instance.
--  ``smp.local_size()``: The total number of processes on the current instance.
--  ``smp.get_mp_group()``: The list of ranks over which the current model replica is partitioned.
--  ``smp.get_dp_group()``: The list of ranks that hold different replicas of the same model partition.
-
-**Tensor Parallelism**
-
--  ``smp.tp_rank()`` : The rank of the process within its
-   tensor-parallelism group.
--  ``smp.tp_size()`` : The size of the tensor-parallelism group.
--  ``smp.get_tp_process_group()`` : Equivalent to
-   ``torch.distributed.ProcessGroup`` that contains the processes in the
-   current tensor-parallelism group.
--  ``smp.CommGroup.TP_GROUP`` : The communication group corresponding to
-   the current tensor parallelism group.
-
-**Pipeline Parallelism**
-
--  ``smp.pp_rank()`` : The rank of the process within its
-   pipeline-parallelism group.
--  ``smp.pp_size()`` : The size of the pipeline-parallelism group.
--  ``smp.get_pp_process_group()`` : ``torch.distributed.ProcessGroup``
-   that contains the processes in the current pipeline-parallelism group.
--  ``smp.CommGroup.PP_GROUP`` : The communication group corresponding to
-   the current pipeline parallelism group.
-
-**Reduced-Data Parallelism**
-
--  ``smp.rdp_rank()`` : The rank of the process within its
-   reduced-data-parallelism group.
--  ``smp.rdp_size()`` : The size of the reduced-data-parallelism group.
--  ``smp.get_rdp_process_group()`` : ``torch.distributed.ProcessGroup``
-   that contains the processes in the current reduced data parallelism
-   group.
--  ``smp.CommGroup.RDP_GROUP`` : The communication group corresponding
-   to the current reduced data parallelism group.
-
-**Model Parallelism**
-
--  ``smp.mp_rank()`` : The rank of the process within its model-parallelism
-   group.
--  ``smp.mp_size()`` : The size of the model-parallelism group.
--  ``smp.get_mp_process_group()`` : ``torch.distributed.ProcessGroup``
-   that contains the processes in the current model-parallelism group.
--  ``smp.CommGroup.MP_GROUP`` : The communication group corresponding to
-   the current model parallelism group.
-
-**Data Parallelism**
-
--  ``smp.dp_rank()`` : The rank of the process within its data-parallelism
-   group.
--  ``smp.dp_size()`` : The size of the data-parallelism group.
--  ``smp.get_dp_process_group()`` : ``torch.distributed.ProcessGroup``
-   that contains the processes in the current data-parallelism group.
--  ``smp.CommGroup.DP_GROUP`` : The communication group corresponding to
-   the current data-parallelism group.
-
-.. _communication_api:
+   .. _communication_api:
+      :noindex:
 
 Communication API
------------------
+^^^^^^^^^^^^^^^^^
 
 The library provides a few communication primitives which can be helpful while
 developing the training script. These primitives use the following
@@ -338,6 +300,7 @@ should involve.
 **Helper structures**
 
 .. data:: smp.CommGroup
+   :noindex:
 
    An ``enum`` that takes the values
    ``CommGroup.WORLD``, ``CommGroup.MP_GROUP``, and ``CommGroup.DP_GROUP``.
@@ -356,6 +319,7 @@ should involve.
       themselves.
 
 .. data:: smp.RankType
+   :noindex:
 
    An ``enum`` that takes the values
    ``RankType.WORLD_RANK``, ``RankType.MP_RANK``, and ``RankType.DP_RANK``.
@@ -371,6 +335,7 @@ should involve.
 **Communication primitives:**
 
 .. function:: smp.broadcast(obj, group)
+   :noindex:
 
    Sends the object to all processes in the
    group. The receiving process must call ``smp.recv_from`` to receive the
@@ -403,6 +368,7 @@ should involve.
           smp.recv_from(0, rank_type=smp.RankType.WORLD_RANK)
 
 .. function:: smp.send(obj, dest_rank, rank_type)
+   :noindex:
 
    Sends the object ``obj`` to
    ``dest_rank``, which is of a type specified by ``rank_type``.
@@ -426,6 +392,7 @@ should involve.
       ``recv_from`` call.
 
 .. function:: smp.recv_from(src_rank, rank_type)
+   :noindex:
 
    Receive an object from a peer process. Can be used with a matching
    ``smp.send`` or a ``smp.broadcast`` call.
@@ -451,6 +418,7 @@ should involve.
       ``broadcast`` call, and the object is received.
 
 .. function:: smp.allgather(obj, group)
+   :noindex:
 
    A collective call that gathers all the
    submitted objects across all ranks in the specified ``group``. Returns a
@@ -484,6 +452,7 @@ should involve.
           out = smp.allgather(obj2, smp.CommGroup.MP_GROUP)  # returns [obj1, obj2]
 
 .. function:: smp.barrier(group=smp.WORLD)
+   :noindex:
 
    A statement that hangs until all
    processes in the specified group reach the barrier statement, similar to
@@ -505,12 +474,14 @@ should involve.
       processes outside that ``mp_group``.
 
 .. function:: smp.dp_barrier()
+   :noindex:
 
    Same as passing ``smp.DP_GROUP``\ to ``smp.barrier()``.
    Waits for the processes in the same \ ``dp_group`` as
    the current process to reach the same point in execution.
 
 .. function:: smp.mp_barrier()
+   :noindex:
 
    Same as passing ``smp.MP_GROUP`` to
    ``smp.barrier()``. Waits for the processes in the same ``mp_group`` as
