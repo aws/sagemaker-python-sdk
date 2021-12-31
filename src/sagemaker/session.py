@@ -3565,6 +3565,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if data_capture_config_dict is not None:
             config_options["DataCaptureConfig"] = data_capture_config_dict
 
+        LOGGER.info("Creating endpoint-config with name %s", name)
         self.sagemaker_client.create_endpoint_config(**config_options)
 
         return self.create_endpoint(endpoint_name=name, config_name=name, tags=tags, wait=wait)
