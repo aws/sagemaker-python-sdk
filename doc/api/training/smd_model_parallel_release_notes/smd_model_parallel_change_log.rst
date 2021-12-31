@@ -1,5 +1,66 @@
-Sagemaker Distributed Model Parallel 1.4.0 Release Notes
+Sagemaker Distributed Model Parallel 1.6.0 Release Notes
 ========================================================
+
+*Date: December. 20. 2021*
+
+**New Features**
+
+- **PyTorch**
+
+  - Added extended memory-saving features for PyTorch 1.8.1:
+
+    - Tensor parallelism
+    - Optimizer state sharding
+    - Activation checkpointing
+    - Activation offloading
+
+    For more information, see the following documentation:
+
+    - `SageMaker distributed model parallel developer guide <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-extended-features-pytorch.html>`_
+    - `SageMaker distributed model parallel API documentation for v1.6.0 <https://sagemaker.readthedocs.io/en/stable/api/training/smp_versions/latest.html>`_
+
+**Migration to AWS Deep Learning Containers**
+
+This version passed benchmark testing and is migrated to the following
+AWS Deep Learning Container(s):
+
+- Deep Learning Container for PyTorch 1.8.1:
+
+  .. code::
+
+    763104351884.dkr.ecr.<region>.amazonaws.com/pytorch-training:1.8.1-gpu-py36-cu111-ubuntu18.04
+
+----
+
+Release History
+===============
+
+Sagemaker Distributed Model Parallel 1.5.0 Release Notes
+--------------------------------------------------------
+
+*Date: November. 03. 2021*
+
+**New Features**
+
+- **PyTorch**
+
+  - Currency update for PyTorch 1.10.0
+
+**Migration to AWS Deep Learning Containers**
+
+This version passed benchmark testing and is migrated to the following
+AWS Deep Learning Containers:
+
+- Deep Learning Container for PyTorch 1.10.0:
+
+  .. code::
+
+    763104351884.dkr.ecr.<region>.amazonaws.com/pytorch-training:1.10.0-gpu-py38-cu113-ubuntu20.04-sagemaker
+
+----
+
+Sagemaker Distributed Model Parallel 1.4.0 Release Notes
+--------------------------------------------------------
 
 *Date: June. 29. 2021*
 
@@ -15,17 +76,19 @@ Sagemaker Distributed Model Parallel 1.4.0 Release Notes
 This version passed benchmark testing and is migrated to the following
 AWS Deep Learning Containers:
 
-- TensorFlow 2.5.0 DLC release: `v1.0-tf-2.5.0-tr-py37
-  <https://github.com/aws/deep-learning-containers/releases/tag/v1.0-tf-2.5.0-tr-py37>`__
+- Deep Learning Container for TensorFlow 2.5.0:
 
   .. code::
 
     763104351884.dkr.ecr.<region>.amazonaws.com/tensorflow-training:2.5.0-gpu-py37-cu112-ubuntu18.04-v1.0
 
-----
+- Deep Learning Container for PyTorch 1.9.1:
 
-Release History
-===============
+  .. code::
+
+    763104351884.dkr.ecr.<region>.amazonaws.com/pytorch-training:1.9.1-gpu-py38-cu111-ubuntu20.04
+
+----
 
 Sagemaker Distributed Model Parallel 1.3.1 Release Notes
 --------------------------------------------------------

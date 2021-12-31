@@ -1,8 +1,14 @@
+.. admonition:: Contents
+
+   - :ref:`pytorch_saving_loading`
+   - :ref:`pytorch_saving_loading_instructions`
+
 PyTorch API
 ===========
 
-To use the PyTorch-specific APIs for SageMaker distributed model parallism,
-you need to add the following import statement at the top of your training script.
+**Supported versions: 1.7.1, 1.8.1**
+
+This API document assumes you use the following import statements in your training scripts.
 
 .. code:: python
 
@@ -13,10 +19,11 @@ you need to add the following import statement at the top of your training scrip
 
    Refer to
    `Modify a PyTorch Training Script
-   <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-customize-training-script-pt.html>`_
+   <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-customize-training-script.html#model-parallel-customize-training-script-pt>`_
    to learn how to use the following API in your PyTorch training script.
 
-.. py:class:: smp.DistributedModel()
+.. class:: smp.DistributedModel
+   :noindex:
 
    A sub-class of ``torch.nn.Module`` which specifies the model to be
    partitioned. Accepts a ``torch.nn.Module`` object ``module`` which is
@@ -36,6 +43,7 @@ you need to add the following import statement at the top of your training scrip
    is \ ``model``) can only be made inside a ``smp.step``-decorated
    function.
 
+
    Since ``DistributedModel``  is a ``torch.nn.Module``, a forward pass can
    be performed by calling the \ ``DistributedModel`` object on the input
    tensors.
@@ -48,6 +56,7 @@ you need to add the following import statement at the top of your training scrip
    the \ ``DistributedModel`` object, with tensors and gradients as
    arguments, replacing the PyTorch operations \ ``torch.Tensor.backward``
    or ``torch.autograd.backward``.
+
 
    The API for ``model.backward`` is very similar to
    ``torch.autograd.backward``. For example, the following
@@ -82,7 +91,7 @@ you need to add the following import statement at the top of your training scrip
 
    **Using DDP**
 
-   If DDP is enabled with the SageMaker model parallel library, do not not place a PyTorch
+   If DDP is enabled, do not not place a PyTorch
    ``DistributedDataParallel`` wrapper around the ``DistributedModel`` because
    the ``DistributedModel`` wrapper will also handle data parallelism.
 
@@ -167,6 +176,7 @@ you need to add the following import statement at the top of your training scrip
    **Methods**
 
    .. function:: backward(tensors, grad_tensors)
+      :noindex:
 
       Triggers a distributed backward
       pass across model partitions. Example usage provided in the previous
@@ -175,11 +185,13 @@ you need to add the following import statement at the top of your training scrip
       ``retain_grad`` and ``create_graph``  flags are not supported.
 
    .. function:: local_buffers( )
+      :noindex:
 
       Returns an iterator over buffers for the modules in
       the partitioned model that have been assigned to the current process.
 
    .. function:: local_named_buffers( )
+      :noindex:
 
       Returns an iterator over buffers for the
       modules in the partitioned model that have been assigned to the current
@@ -187,12 +199,14 @@ you need to add the following import statement at the top of your training scrip
       itself.
 
    .. function:: local_parameters( )
+      :noindex:
 
       Returns an iterator over parameters for the
       modules in the partitioned model that have been assigned to the current
       process.
 
    .. function:: local_named_parameters( )
+      :noindex:
 
       Returns an iterator over parameters for
       the modules in the partitioned model that have been assigned to the
@@ -200,17 +214,20 @@ you need to add the following import statement at the top of your training scrip
       the parameter itself.
 
    .. function:: local_modules( )
+      :noindex:
 
       Returns an iterator over the modules in the
       partitioned model that have been assigned to the current process.
 
    .. function:: local_named_modules( )
+      :noindex:
 
       Returns an iterator over the modules in the
       partitioned model that have been assigned to the current process. This
       yields both the name of the module as well as the module itself.
 
    .. function:: local_state_dict( )
+      :noindex:
 
       Returns the ``state_dict`` that contains local
       parameters that belong to the current \ ``mp_rank``. This ``state_dict``
@@ -220,6 +237,7 @@ you need to add the following import statement at the top of your training scrip
       partition, or to the entire model.
 
    .. function:: state_dict( )
+      :noindex:
 
       Returns the ``state_dict`` that contains parameters
       for the entire model. It first collects the \ ``local_state_dict``  and
@@ -229,6 +247,7 @@ you need to add the following import statement at the top of your training scrip
       If it is only called on all such ranks, it can hang.
 
    .. function:: load_state_dict( )
+      :noindex:
 
       Same as the ``torch.module.load_state_dict()`` ,
       except: It first gathers and merges the ``state_dict``\ s across
@@ -236,6 +255,7 @@ you need to add the following import statement at the top of your training scrip
       model partition so that each rank knows its local parameters.
 
    .. function:: register_post_partition_hook(hook)
+      :noindex:
 
       Registers a callable ``hook`` to
       be executed after the model is partitioned. This is useful in situations
@@ -245,11 +265,13 @@ you need to add the following import statement at the top of your training scrip
       which can be used to remove the hook by calling ``handle.remove()``.
 
    .. function:: cpu( )
+      :noindex:
 
       Allgathers parameters and buffers across all ``mp_rank``\ s and moves them
       to the CPU.
 
    .. function:: join( )
+      :noindex:
 
       A context manager to be used in conjunction with an instance of
       ``smp.DistributedModel`` to be able to train with uneven inputs across
@@ -259,6 +281,7 @@ you need to add the following import statement at the top of your training scrip
       in the PyTorch documentation.
 
    .. function:: register_comm_hook( state, callable )
+      :noindex:
 
       **Available for PyTorch 1.8.1 only**
       Registers a communication hook which is an enhancement that provides
@@ -276,116 +299,10 @@ you need to add the following import statement at the top of your training scrip
       `register_comm_hook <https://pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html#torch.nn.parallel.DistributedDataParallel.register_comm_hook>`__
       in the PyTorch documentation.
 
-  **Behavior of** ``smp.DistributedModel`` **with Tensor Parallelism**
-
-  When a model is wrapped by ``smp.DistributedModel``, the library
-  immediately traverses the modules of the model object, and replaces the
-  modules that are supported for tensor parallelism with their distributed
-  counterparts. This replacement happens in place. If there are no other
-  references to the original modules in the script, they are
-  garbage-collected. The module attributes that previously referred to the
-  original submodules now refer to the distributed versions of those
-  submodules.
-
-  **Example:**
-
-  .. code:: python
-
-     # register DistributedSubmodule as the distributed version of Submodule
-     # (note this is a hypothetical example, smp.nn.DistributedSubmodule does not exist)
-     smp.tp_register_with_module(Submodule, smp.nn.DistributedSubmodule)
-
-     class MyModule(nn.Module):
-         def __init__(self):
-             ...
-
-             self.submodule = Submodule()
-         ...
-
-     # enabling tensor parallelism for the entire model
-     with smp.tensor_parallelism():
-         model = MyModule()
-
-     # here model.submodule is still a Submodule object
-     assert isinstance(model.submodule, Submodule)
-
-     model = smp.DistributedModel(model)
-
-     # now model.submodule is replaced with an equivalent instance
-     # of smp.nn.DistributedSubmodule
-     assert isinstance(model.module.submodule, smp.nn.DistributedSubmodule)
-
-  If ``pipeline_parallel_degree`` (equivalently, ``partitions``) is 1, the
-  placement of model partitions into GPUs and the initial broadcast of
-  model parameters and buffers across data-parallel ranks take place
-  immediately. This is because it does not need to wait for the model
-  partition when ``smp.DistributedModel`` wrapper is called. For other
-  cases with ``pipeline_parallel_degree`` greater than 1, the broadcast
-  and device placement will be deferred until the first call of an
-  ``smp.step``-decorated function happens. This is because the first
-  ``smp.step``-decorated function call is when the model partitioning
-  happens if pipeline parallelism is enabled.
-
-  Because of the module replacement during the ``smp.DistributedModel``
-  call, any ``load_state_dict`` calls on the model, as well as any direct
-  access to model parameters, such as during the optimizer creation,
-  should be done **after** the ``smp.DistributedModel`` call.
-
-  Since the broadcast of the model parameters and buffers happens
-  immediately during ``smp.DistributedModel`` call when the degree of
-  pipeline parallelism is 1, using ``@smp.step`` decorators is not
-  required when tensor parallelism is used by itself (without pipeline
-  parallelism).
-
-  For more information about the library's tensor parallelism APIs for PyTorch,
-  see :ref:`smdmp-pytorch-tensor-parallel`.
-
-  **Additional Methods of** ``smp.DistributedModel`` **for Tensor Parallelism**
-
-  The following are the new methods of ``smp.DistributedModel``, in
-  addition to the ones listed in the
-  `documentation <https://sagemaker.readthedocs.io/en/stable/api/training/smp_versions/v1.2.0/smd_model_parallel_pytorch.html#smp.DistributedModel>`__.
-
-  .. function:: distributed_modules()
-
-     -  An iterator that runs over the set of distributed
-        (tensor-parallelized) modules in the model
-
-  .. function:: is_distributed_parameter(param)
-
-     -  Returns ``True`` if the given ``nn.Parameter`` is distributed over
-        tensor-parallel ranks.
-
-  .. function::  is_distributed_buffer(buf)
-
-     -  Returns ``True`` if the given buffer is distributed over
-        tensor-parallel ranks.
-
-  .. function::  is_scaled_batch_parameter(param)
-
-     -  Returns ``True`` if the given ``nn.Parameter`` is operates on the
-        scaled batch (batch over the entire ``TP_GROUP``, and not only the
-        local batch).
-
-  .. function::  is_scaled_batch_buffer(buf)
-
-     -  Returns ``True`` if the parameter corresponding to the given
-        buffer operates on the scaled batch (batch over the entire
-        ``TP_GROUP``, and not only the local batch).
-
-  .. function::  default_reducer_named_parameters()
-
-     -  Returns an iterator that runs over ``(name, param)`` tuples, for
-        ``param`` that is allreduced over the ``DP_GROUP``.
-
-  .. function::  scaled_batch_reducer_named_parameters()
-
-     -  Returns an iterator that runs over ``(name, param)`` tuples, for
-        ``param`` that is allreduced over the ``RDP_GROUP``.
-
 
 
 .. class:: smp.DistributedOptimizer
+   :noindex:
 
    **Parameters**
    - ``optimizer``
@@ -394,6 +311,7 @@ you need to add the following import statement at the top of your training scrip
    returns ``optimizer`` with the following methods overridden:
 
    .. function:: state_dict( )
+      :noindex:
 
       Returns the ``state_dict`` that contains optimizer state for the entire model.
       It first collects the ``local_state_dict`` and gathers and merges
@@ -401,6 +319,7 @@ you need to add the following import statement at the top of your training scrip
       ``state_dict``.
 
    .. function::  load_state_dict( )
+      :noindex:
 
       Same as the ``torch.optimizer.load_state_dict()`` , except:
 
@@ -410,6 +329,7 @@ you need to add the following import statement at the top of your training scrip
             rank knows its local parameters.
 
    .. function::  local_state_dict( )
+      :noindex:
 
       Returns the ``state_dict`` that contains the
       local optimizer state that belongs to the current \ ``mp_rank``. This
@@ -456,12 +376,14 @@ you need to add the following import statement at the top of your training scrip
               self.child3 = Child3()                # child3 on default_partition
 
 .. function:: smp.get_world_process_group( )
+   :noindex:
 
    Returns a ``torch.distributed`` ``ProcessGroup`` that consists of all
    processes, which can be used with the ``torch.distributed`` API.
    Requires ``"ddp": True`` in SageMaker Python SDK parameters.
 
 .. function:: smp.get_mp_process_group( )
+   :noindex:
 
    Returns a ``torch.distributed`` ``ProcessGroup`` that consists of the
    processes in the ``MP_GROUP`` which contains the current process, which
@@ -469,6 +391,7 @@ you need to add the following import statement at the top of your training scrip
    ``"ddp": True`` in SageMaker Python SDK parameters.
 
 .. function:: smp.get_dp_process_group( )
+   :noindex:
 
    Returns a ``torch.distributed`` ``ProcessGroup`` that consists of the
    processes in the ``DP_GROUP`` which contains the current process, which
@@ -476,16 +399,19 @@ you need to add the following import statement at the top of your training scrip
    ``"ddp": True`` in SageMaker Python SDK parameters.
 
 .. function:: smp.is_initialized( )
+   :noindex:
 
    Returns ``True`` if ``smp.init`` has already been called for the
    process, and ``False`` otherwise.
 
 .. function::smp.is_tracing( )
+   :noindex:
 
    Returns ``True`` if the current process is running the tracing step, and
    ``False`` otherwise.
 
 .. data:: smp.nn.FusedLayerNorm
+   :noindex:
 
    `Apex Fused Layer Norm <https://nvidia.github.io/apex/layernorm.html>`__ is currently not
    supported by the library. ``smp.nn.FusedLayerNorm`` replaces ``apex``
@@ -493,6 +419,7 @@ you need to add the following import statement at the top of your training scrip
    ``apex`` to be installed on the system.
 
 .. data:: smp.optimizers.FusedNovoGrad
+   :noindex:
 
 
    `Fused Novo Grad optimizer <https://nvidia.github.io/apex/optimizers.html#apex.optimizers.FusedNovoGrad>`__ is
@@ -501,6 +428,7 @@ you need to add the following import statement at the top of your training scrip
    be installed on the system.
 
 .. data:: smp.optimizers.FusedLamb
+   :noindex:
 
 
    `FusedLamb optimizer <https://nvidia.github.io/apex/optimizers.html#apex.optimizers.FusedLAMB>`__
@@ -509,17 +437,20 @@ you need to add the following import statement at the top of your training scrip
    This requires ``apex`` to be installed on the system.
 
 .. data:: smp.amp.GradScaler
+   :noindex:
 
    `Torch AMP Gradscaler <https://pytorch.org/docs/stable/amp.html#torch.cuda.amp.GradScaler>`__
    currently doesn’t work with the library. ``smp.amp.GradScaler`` replaces
    ``torch.amp.GradScaler`` and provides the same functionality.
 
 .. _pytorch_saving_loading:
+   :noindex:
 
 APIs for Saving and Loading
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. function:: smp.save( )
+   :noindex:
 
    Saves an object. This operation is similar to ``torch.save()``, except
    it has an additional keyword argument, ``partial``, and accepts only
@@ -542,6 +473,7 @@ APIs for Saving and Loading
       override the defaultprotocol.
 
 .. function:: smp.load( )
+   :noindex:
 
    Loads an object saved with ``smp.save()`` from a file.
 
@@ -566,6 +498,7 @@ APIs for Saving and Loading
       Should be used when loading a model trained with the library.
 
 .. _pytorch_saving_loading_instructions:
+   :noindex:
 
 General Instruction For Saving and Loading
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
