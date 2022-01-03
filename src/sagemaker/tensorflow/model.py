@@ -258,8 +258,8 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
 
     def deploy(
         self,
-        initial_instance_count,
-        instance_type,
+        initial_instance_count=None,
+        instance_type=None,
         serializer=None,
         deserializer=None,
         accelerator_type=None,
@@ -268,6 +268,9 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
         kms_key=None,
         wait=True,
         data_capture_config=None,
+        async_inference_config=None,
+        serverless_inference_config=None,
+        inference_type="real_time",
         update_endpoint=None,
     ):
         """Deploy a Tensorflow ``Model`` to a SageMaker ``Endpoint``."""
@@ -287,6 +290,9 @@ class TensorFlowModel(sagemaker.model.FrameworkModel):
             kms_key=kms_key,
             wait=wait,
             data_capture_config=data_capture_config,
+            async_inference_config=async_inference_config,
+            serverless_inference_config=serverless_inference_config,
+            inference_type=inference_type,
             update_endpoint=update_endpoint,
         )
 

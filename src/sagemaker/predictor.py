@@ -15,7 +15,10 @@ from __future__ import print_function, absolute_import
 
 import abc
 from typing import Any, Tuple
-
+import urllib
+import time
+import stopit
+from botocore.exceptions import ClientError
 from sagemaker.deprecations import (
     deprecated_class,
     deprecated_deserialize,
@@ -116,6 +119,7 @@ class Predictor(PredictorBase):
         self.sagemaker_session = sagemaker_session or Session()
         self.serializer = serializer
         self.deserializer = deserializer
+        self.predictor_type = "real_time"
         self._endpoint_config_name = None
         self._model_names = None
         self._context = None
@@ -127,6 +131,8 @@ class Predictor(PredictorBase):
         target_model=None,
         target_variant=None,
         inference_id=None,
+        wait=False,
+        check_period_in_second=None,
     ):
         """Return the inference from the specified endpoint.
 
@@ -136,6 +142,7 @@ class Predictor(PredictorBase):
                 Predictor, the result of the serializer is sent as input
                 data. Otherwise the data must be sequence of bytes, and the
                 predict method then sends the bytes in the request body as is.
+                If using Async inference, data should be a S3 URI str
             initial_args (dict[str,str]): Optional. Default arguments for boto3
                 ``invoke_endpoint`` call. Default is None (no default
                 arguments).
@@ -147,19 +154,55 @@ class Predictor(PredictorBase):
                 model you want to host and the resources you want to deploy for hosting it.
             inference_id (str): If you provide a value, it is added to the captured data
                 when you enable data capture on the endpoint (Default: None).
-
+            wait (bool): When using async inference, specify whether wait for the result or
+                not (Default: False)
+            check_period_in_second (int): When using async inference and wait for the result,
+                specify the frequency to check the result
+        Raises:
+            ValueError: raises ValueError if predictor type is async and data is not a Amazon S3 URI
+                format string
         Returns:
             object: Inference for the given input. If a deserializer was specified when creating
                 the Predictor, the result of the deserializer is
                 returned. Otherwise the response returns the sequence of bytes
                 as is.
         """
-
+        if self.predictor_type == "async":
+            if not isinstance(data, str) or not data.startswith("s3://"):
+                raise ValueError("Please ensure provide the S3 location when using Async Inference")
+            return self._request_async_predict(
+                data, initial_args, inference_id, check_period_in_second, wait
+            )
         request_args = self._create_request_args(
             data, initial_args, target_model, target_variant, inference_id
         )
         response = self.sagemaker_session.sagemaker_runtime_client.invoke_endpoint(**request_args)
         return self._handle_response(response)
+
+    def _request_async_predict(
+        self,
+        data,
+        initial_args=None,
+        inference_id=None,
+        check_period_in_second=None,
+        wait=False,
+    ):
+        """Placeholder docstring"""
+        request_args = self._create_request_args(data, initial_args, inference_id=inference_id)
+
+        response = self.sagemaker_session.sagemaker_runtime_client.invoke_endpoint_async(
+            **request_args
+        )
+        output_location = response["OutputLocation"]
+        result = (
+            self._wait_for_output(
+                output_location=output_location,
+                check_period_in_second=check_period_in_second if not None else 5,
+            )
+            if wait
+            else output_location
+        )
+        return result
 
     def _handle_response(self, response):
         """Placeholder docstring"""
@@ -196,10 +239,35 @@ class Predictor(PredictorBase):
         if inference_id:
             args["InferenceId"] = inference_id
 
-        data = self.serializer.serialize(data)
+        if self.predictor_type == "async":
+            args["InputLocation"] = data
+            args.pop("ContentType", None)
+        else:
+            data = self.serializer.serialize(data)
+            args["Body"] = data
 
-        args["Body"] = data
         return args
+
+    def _wait_for_output(
+        self,
+        output_location,
+        check_period_in_second=5,
+    ):
+        """Placeholder docstring"""
+        output_url = urllib.parse.urlparse(output_location)
+        bucket = output_url.netloc
+        key = output_url.path[1:]
+
+        with stopit.ThreadingTimeout(10 * 60, swallow_exc=False):
+            while True:
+                try:
+                    return self.sagemaker_session.read_s3_file(bucket=bucket, key_prefix=key)
+                except ClientError as e:
+                    if e.response["Error"]["Code"] == "NoSuchKey":
+                        print("waiting for output...")
+                        time.sleep(check_period_in_second)
+                        continue
+                    raise
 
     def update_endpoint(
         self,

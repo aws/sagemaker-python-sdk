@@ -33,12 +33,17 @@ from sagemaker.inputs import CompilationInput
 from sagemaker.deprecations import removed_kwargs
 from sagemaker.predictor import PredictorBase
 from sagemaker.transformer import Transformer
+from sagemaker.utils import unique_name_from_base
+from sagemaker.model_monitor.async_inference_config import AsyncInferenceConfig
+from sagemaker.model_monitor.serverless_inference_config import ServerlessInferenceConfig
 
 LOGGER = logging.getLogger("sagemaker")
 
 NEO_ALLOWED_FRAMEWORKS = set(
     ["mxnet", "tensorflow", "keras", "pytorch", "onnx", "xgboost", "tflite"]
 )
+
+DEFAULT_CPU_INSTANCE_TYPE = "ml.m5.xlarge"
 
 
 class ModelBase(abc.ABC):
@@ -688,8 +693,8 @@ class Model(ModelBase):
 
     def deploy(
         self,
-        initial_instance_count,
-        instance_type,
+        initial_instance_count=None,
+        instance_type=None,
         serializer=None,
         deserializer=None,
         accelerator_type=None,
@@ -698,6 +703,9 @@ class Model(ModelBase):
         kms_key=None,
         wait=True,
         data_capture_config=None,
+        async_inference_config=None,
+        serverless_inference_config=None,
+        inference_type="real_time",
         **kwargs,
     ):
         """Deploy this ``Model`` to an ``Endpoint`` and optionally return a ``Predictor``.
@@ -746,7 +754,17 @@ class Model(ModelBase):
             data_capture_config (sagemaker.model_monitor.DataCaptureConfig): Specifies
                 configuration related to Endpoint data capture for use with
                 Amazon SageMaker Model Monitoring. Default: None.
-
+            async_inference_config (sagemaker.model_monitor.AsyncInferenceConfig): Specifies
+                configuration related to async endpoint. Use this configuration when trying
+                to create async endpoint and make async inference (default: None)
+            serverless_inference_config (sagemaker.model_monitor.ServerlessInferenceConfig):
+                Specifies configuration related to serverless endpoint. Use this configuration
+                when trying to create serverless endpoint and make serverless inference
+                (default: None)
+            inference_type (str): inference type to be used when deploying model to SageMaker
+                endpoints (default: 'real_time')
+        Raises:
+             ValueError: If no role is specified or args combination error
         Returns:
             callable[string, sagemaker.session.Session] or None: Invocation of
                 ``self.predictor_cls`` on the created endpoint name, if ``self.predictor_cls``
@@ -757,6 +775,14 @@ class Model(ModelBase):
 
         if self.role is None:
             raise ValueError("Role can not be null for deploying a model")
+        if inference_type != "serverless" and not (instance_type and initial_instance_count):
+            raise ValueError(
+                "Must specify instance type and instance count unless using serverless inference"
+            )
+        # Need Default Instance type for serverless to create model
+        if instance_type is None and inference_type == "serverless":
+            instance_type = DEFAULT_CPU_INSTANCE_TYPE
+            initial_instance_count = 1
 
         if instance_type.startswith("ml.inf") and not self._is_compiled_model:
             LOGGER.warning(
@@ -770,8 +796,19 @@ class Model(ModelBase):
                 self._base_name = "-".join((self._base_name, compiled_model_suffix))
 
         self._create_sagemaker_model(instance_type, accelerator_type, tags)
+
+        serverless_inference_config_dict = None
+        if inference_type == "serverless":
+            if serverless_inference_config is None:
+                serverless_inference_config = self._build_default_serverless_inference_config()
+            serverless_inference_config_dict = serverless_inference_config._to_request_dict()
+
         production_variant = sagemaker.production_variant(
-            self.name, instance_type, initial_instance_count, accelerator_type=accelerator_type
+            self.name,
+            instance_type,
+            initial_instance_count,
+            accelerator_type=accelerator_type,
+            serverless_inference_config=serverless_inference_config_dict,
         )
         if endpoint_name:
             self.endpoint_name = endpoint_name
@@ -785,6 +822,12 @@ class Model(ModelBase):
         if data_capture_config is not None:
             data_capture_config_dict = data_capture_config._to_request_dict()
 
+        async_inference_config_dict = None
+        if inference_type == "async":
+            if async_inference_config is None:
+                async_inference_config = self._build_default_async_inference_config()
+            async_inference_config_dict = async_inference_config._to_request_dict()
+
         self.sagemaker_session.endpoint_from_production_variants(
             name=self.endpoint_name,
             production_variants=[production_variant],
@@ -792,16 +835,35 @@ class Model(ModelBase):
             kms_key=kms_key,
             wait=wait,
             data_capture_config_dict=data_capture_config_dict,
+            async_inference_config_dict=async_inference_config_dict,
         )
 
         if self.predictor_cls:
             predictor = self.predictor_cls(self.endpoint_name, self.sagemaker_session)
+            predictor.predictor_type = inference_type
             if serializer:
                 predictor.serializer = serializer
             if deserializer:
                 predictor.deserializer = deserializer
             return predictor
         return None
+
+    def _build_default_serverless_inference_config(self):
+        """Placeholder docstring"""
+        return ServerlessInferenceConfig(
+            memory_size_in_mb=2048,
+            max_concurrency=2,
+        )
+
+    def _build_default_async_inference_config(self):
+        """Placeholder docstring"""
+        async_output_folder = unique_name_from_base("{}-async-output".format(self.name))
+        async_output_s3uri = "s3://{}/{}".format(
+            self.sagemaker_session.default_bucket(), async_output_folder
+        )
+        return AsyncInferenceConfig(
+            s3_output_path=async_output_s3uri,
+        )
 
     def transformer(
         self,

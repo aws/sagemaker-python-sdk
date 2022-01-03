@@ -41,6 +41,10 @@ from sagemaker.model_monitor.monitoring_files import Constraints  # noqa: F401
 from sagemaker.model_monitor.monitoring_files import ConstraintViolations  # noqa: F401
 
 from sagemaker.model_monitor.data_capture_config import DataCaptureConfig  # noqa: F401
+from sagemaker.model_monitor.serverless_inference_config import (  # noqa: F401
+    ServerlessInferenceConfig,
+)
+from sagemaker.model_monitor.async_inference_config import AsyncInferenceConfig  # noqa: F401
 from sagemaker.model_monitor.dataset_format import DatasetFormat  # noqa: F401
 
 from sagemaker.network import NetworkConfig  # noqa: F401

@@ -62,7 +62,11 @@ def test_deploy(name_from_base, prepare_container_def, production_variant, sagem
 
     prepare_container_def.assert_called_with(INSTANCE_TYPE, accelerator_type=None)
     production_variant.assert_called_with(
-        MODEL_NAME, INSTANCE_TYPE, INSTANCE_COUNT, accelerator_type=None
+        MODEL_NAME,
+        INSTANCE_TYPE,
+        INSTANCE_COUNT,
+        accelerator_type=None,
+        serverless_inference_config=None,
     )
 
     sagemaker_session.create_model.assert_called_with(
@@ -76,6 +80,7 @@ def test_deploy(name_from_base, prepare_container_def, production_variant, sagem
         kms_key=None,
         wait=True,
         data_capture_config_dict=None,
+        async_inference_config_dict=None,
     )
 
 
@@ -101,7 +106,11 @@ def test_deploy_accelerator_type(
 
     create_sagemaker_model.assert_called_with(INSTANCE_TYPE, ACCELERATOR_TYPE, None)
     production_variant.assert_called_with(
-        MODEL_NAME, INSTANCE_TYPE, INSTANCE_COUNT, accelerator_type=ACCELERATOR_TYPE
+        MODEL_NAME,
+        INSTANCE_TYPE,
+        INSTANCE_COUNT,
+        accelerator_type=ACCELERATOR_TYPE,
+        serverless_inference_config=None,
     )
 
     sagemaker_session.endpoint_from_production_variants.assert_called_with(
@@ -111,6 +120,7 @@ def test_deploy_accelerator_type(
         kms_key=None,
         wait=True,
         data_capture_config_dict=None,
+        async_inference_config_dict=None,
     )
 
 
@@ -134,6 +144,7 @@ def test_deploy_endpoint_name(sagemaker_session):
         kms_key=None,
         wait=True,
         data_capture_config_dict=None,
+        async_inference_config_dict=None,
     )
 
 
@@ -207,6 +218,7 @@ def test_deploy_tags(create_sagemaker_model, production_variant, name_from_base,
         kms_key=None,
         wait=True,
         data_capture_config_dict=None,
+        async_inference_config_dict=None,
     )
 
 
@@ -228,6 +240,7 @@ def test_deploy_kms_key(production_variant, name_from_base, sagemaker_session):
         kms_key=key,
         wait=True,
         data_capture_config_dict=None,
+        async_inference_config_dict=None,
     )
 
 
@@ -248,6 +261,7 @@ def test_deploy_async(production_variant, name_from_base, sagemaker_session):
         kms_key=None,
         wait=False,
         data_capture_config_dict=None,
+        async_inference_config_dict=None,
     )
 
 
@@ -276,7 +290,102 @@ def test_deploy_data_capture_config(production_variant, name_from_base, sagemake
         kms_key=None,
         wait=True,
         data_capture_config_dict=data_capture_config_dict,
+        async_inference_config_dict=None,
     )
+
+
+@patch("sagemaker.model.Model._create_sagemaker_model", Mock())
+@patch("sagemaker.utils.name_from_base", return_value=ENDPOINT_NAME)
+@patch("sagemaker.production_variant", return_value=BASE_PRODUCTION_VARIANT)
+def test_deploy_async_inference(production_variant, name_from_base, sagemaker_session):
+    model = Model(
+        MODEL_IMAGE, MODEL_DATA, role=ROLE, name=MODEL_NAME, sagemaker_session=sagemaker_session
+    )
+
+    async_inference_config = Mock()
+    async_inference_config_dict = {
+        "ClientConfig": {
+            "MaxConcurrentInvocationsPerInstance": 1,
+        },
+        "OutputConfig": {
+            "S3OutputPath": "s3://some_path",
+        },
+    }
+    async_inference_config._to_request_dict.return_value = async_inference_config_dict
+
+    model.deploy(
+        instance_type=INSTANCE_TYPE,
+        initial_instance_count=INSTANCE_COUNT,
+        inference_type="async",
+        async_inference_config=async_inference_config,
+    )
+
+    async_inference_config._to_request_dict.assert_called_with()
+    sagemaker_session.endpoint_from_production_variants.assert_called_with(
+        name=ENDPOINT_NAME,
+        production_variants=[BASE_PRODUCTION_VARIANT],
+        tags=None,
+        kms_key=None,
+        wait=True,
+        data_capture_config_dict=None,
+        async_inference_config_dict=async_inference_config_dict,
+    )
+
+
+@patch("sagemaker.utils.name_from_base", return_value=ENDPOINT_NAME)
+@patch("sagemaker.model.Model._create_sagemaker_model")
+@patch("sagemaker.production_variant")
+def test_deploy_serverless_inference(production_variant, create_sagemaker_model, sagemaker_session):
+    model = Model(
+        MODEL_IMAGE, MODEL_DATA, role=ROLE, name=MODEL_NAME, sagemaker_session=sagemaker_session
+    )
+
+    production_variant_result = copy.deepcopy(BASE_PRODUCTION_VARIANT)
+    production_variant.return_value = production_variant_result
+
+    serverless_inference_config = Mock()
+    serverless_inference_config_dict = {
+        "MemorySizeInMB": 2048,
+        "MaxConcurrency": 2,
+    }
+    serverless_inference_config._to_request_dict.return_value = serverless_inference_config_dict
+
+    model.deploy(
+        inference_type="serverless",
+        serverless_inference_config=serverless_inference_config,
+    )
+
+    serverless_inference_config._to_request_dict.assert_called_with()
+    create_sagemaker_model.assert_called_with("ml.m5.xlarge", None, None)
+    production_variant.assert_called_with(
+        MODEL_NAME,
+        "ml.m5.xlarge",
+        1,
+        accelerator_type=None,
+        serverless_inference_config=serverless_inference_config_dict,
+    )
+
+    sagemaker_session.endpoint_from_production_variants.assert_called_with(
+        name=ENDPOINT_NAME,
+        production_variants=[production_variant_result],
+        tags=None,
+        kms_key=None,
+        wait=True,
+        data_capture_config_dict=None,
+        async_inference_config_dict=None,
+    )
+
+
+def test_deploy_wrong_inference_type(sagemaker_session):
+    model = Model(MODEL_IMAGE, MODEL_DATA, role=ROLE)
+
+    bad_args = ({"instance_type": INSTANCE_TYPE}, {"initial_instance_count": INSTANCE_COUNT})
+    for args in bad_args:
+        with pytest.raises(
+            ValueError,
+            match="Must specify instance type and instance count unless using serverless inference",
+        ):
+            model.deploy(args)
 
 
 @patch("sagemaker.session.Session")
@@ -326,3 +435,29 @@ def test_deploy_predictor_cls(production_variant, sagemaker_session):
     assert isinstance(predictor, sagemaker.predictor.Predictor)
     assert predictor.endpoint_name == endpoint_name
     assert predictor.sagemaker_session == sagemaker_session
+
+    endpoint_name_async = "foo-async"
+    inference_type_async = "async"
+    predictor_async = model.deploy(
+        instance_type=INSTANCE_TYPE,
+        initial_instance_count=INSTANCE_COUNT,
+        endpoint_name=endpoint_name_async,
+        inference_type=inference_type_async,
+    )
+
+    assert isinstance(predictor_async, sagemaker.predictor.Predictor)
+    assert predictor_async.endpoint_name == endpoint_name_async
+    assert predictor_async.sagemaker_session == sagemaker_session
+    assert predictor_async.predictor_type == inference_type_async
+
+    endpoint_name_serverless = "foo-serverless"
+    inference_type_serverless = "serverless"
+    predictor_serverless = model.deploy(
+        endpoint_name=endpoint_name_serverless,
+        inference_type=inference_type_serverless,
+    )
+
+    assert isinstance(predictor_serverless, sagemaker.predictor.Predictor)
+    assert predictor_serverless.endpoint_name == endpoint_name_serverless
+    assert predictor_serverless.sagemaker_session == sagemaker_session
+    assert predictor_serverless.predictor_type == inference_type_serverless

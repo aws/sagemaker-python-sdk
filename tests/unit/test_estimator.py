@@ -2474,6 +2474,7 @@ def test_fit_deploy_tags_in_estimator(name_from_base, sagemaker_session):
         kms_key=None,
         wait=True,
         data_capture_config_dict=None,
+        async_inference_config_dict=None,
     )
 
     sagemaker_session.create_model.assert_called_with(
@@ -2519,6 +2520,7 @@ def test_fit_deploy_tags(name_from_base, sagemaker_session):
         kms_key=None,
         wait=True,
         data_capture_config_dict=None,
+        async_inference_config_dict=None,
     )
 
     sagemaker_session.create_model.assert_called_with(
@@ -2801,6 +2803,27 @@ def test_generic_to_deploy(time, sagemaker_session):
     assert predictor.sagemaker_session == sagemaker_session
 
 
+def test_generic_to_deploy_without_instance_type_or_instance_count(sagemaker_session):
+    e = Estimator(
+        IMAGE_URI,
+        ROLE,
+        INSTANCE_COUNT,
+        INSTANCE_TYPE,
+        output_path=OUTPUT_PATH,
+        sagemaker_session=sagemaker_session,
+    )
+
+    e.fit()
+
+    bad_args = ({"instance_type": INSTANCE_TYPE}, {"initial_instance_count": INSTANCE_COUNT})
+    for args in bad_args:
+        with pytest.raises(
+            ValueError,
+            match="Must specify instance type and instance count unless using serverless inference",
+        ):
+            e.deploy(args)
+
+
 def test_generic_to_deploy_network_isolation(sagemaker_session):
     e = Estimator(
         IMAGE_URI,
@@ -2850,6 +2873,9 @@ def test_generic_to_deploy_kms(create_model, sagemaker_session):
         wait=True,
         kms_key=kms_key,
         data_capture_config=None,
+        async_inference_config=None,
+        serverless_inference_config=None,
+        inference_type="real_time",
     )
 
 

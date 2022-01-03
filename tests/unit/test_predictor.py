@@ -32,6 +32,10 @@ RETURN_VALUE = 0
 CSV_RETURN_VALUE = "1,2,3\r\n"
 PRODUCTION_VARIANT_1 = "PRODUCTION_VARIANT_1"
 INFERENCE_ID = "inference-id"
+ASYNC_OUTPUT_LOCATION = "s3://some-output-path"
+ASYNC_INPUT_LOCATION = "s3://some-input-path"
+ASYNC_CHECK_PERIOD = 10
+DUMMY_DATA = [0, 1, 2, 3]
 
 ENDPOINT_DESC = {"EndpointArn": "foo", "EndpointConfigName": ENDPOINT}
 
@@ -50,6 +54,18 @@ def empty_sagemaker_session():
     response_body.close = Mock("close", return_value=None)
     ims.sagemaker_runtime_client.invoke_endpoint = Mock(
         name="invoke_endpoint", return_value={"Body": response_body}
+    )
+
+    ims.sagemaker_runtime_client.invoke_endpoint_async = Mock(
+        name="invoke_endpoint_async",
+        return_value={
+            "OutputLocation": ASYNC_OUTPUT_LOCATION,
+        },
+    )
+
+    ims.read_s3_file = Mock(
+        name="read_s3_file",
+        return_value=RETURN_VALUE,
     )
     return ims
 
@@ -76,6 +92,67 @@ def test_predict_call_pass_through():
     assert kwargs == expected_request_args
 
     assert result == RETURN_VALUE
+
+
+def test_async_predict_call_pass_through():
+    sagemaker_session = empty_sagemaker_session()
+    predictor = Predictor(ENDPOINT, sagemaker_session)
+    predictor.predictor_type = "async"
+
+    result = predictor.predict(ASYNC_INPUT_LOCATION)
+
+    assert sagemaker_session.sagemaker_runtime_client.invoke_endpoint_async.called
+    assert sagemaker_session.sagemaker_client.describe_endpoint.not_called
+    assert sagemaker_session.sagemaker_client.describe_endpoint_config.not_called
+
+    expected_request_args = {
+        "Accept": DEFAULT_ACCEPT,
+        "InputLocation": ASYNC_INPUT_LOCATION,
+        "EndpointName": ENDPOINT,
+    }
+
+    call_args, kwargs = sagemaker_session.sagemaker_runtime_client.invoke_endpoint_async.call_args
+    assert kwargs == expected_request_args
+    assert result == ASYNC_OUTPUT_LOCATION
+
+
+def test_async_predict_call_pass_through_with_wait():
+    sagemaker_session = empty_sagemaker_session()
+    predictor = Predictor(ENDPOINT, sagemaker_session)
+    predictor.predictor_type = "async"
+
+    input_location = "s3://some-input-path"
+
+    result_async = predictor.predict(
+        input_location, wait=True, check_period_in_second=ASYNC_CHECK_PERIOD
+    )
+
+    assert sagemaker_session.sagemaker_runtime_client.invoke_endpoint_async.called
+    assert sagemaker_session.sagemaker_client.describe_endpoint.not_called
+    assert sagemaker_session.sagemaker_client.describe_endpoint_config.not_called
+
+    expected_request_args = {
+        "Accept": DEFAULT_ACCEPT,
+        "InputLocation": input_location,
+        "EndpointName": ENDPOINT,
+    }
+
+    call_args, kwargs = sagemaker_session.sagemaker_runtime_client.invoke_endpoint_async.call_args
+    assert kwargs == expected_request_args
+    assert result_async == RETURN_VALUE
+
+
+def test_predict_async_call_invalid_input():
+    sagemaker_session = empty_sagemaker_session()
+    predictor = Predictor(ENDPOINT, sagemaker_session)
+    predictor.predictor_type = "async"
+
+    bad_inputs = ["untouched", DUMMY_DATA]
+    for bad_input in bad_inputs:
+        with pytest.raises(
+            ValueError, match="Please ensure provide the S3 location when using Async Inference"
+        ):
+            predictor.predict(bad_input)
 
 
 def test_predict_call_with_target_variant():
