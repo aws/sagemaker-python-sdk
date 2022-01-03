@@ -36,8 +36,8 @@ from botocore.exceptions import ClientError
 from tests.integ.sagemaker.lineage.helpers import name, names
 
 SLEEP_TIME_SECONDS = 1
-STATIC_PIPELINE_NAME = "SdkIntegTestStaticPipeline16"
-STATIC_ENDPOINT_NAME = "SdkIntegTestStaticEndpoint16"
+STATIC_PIPELINE_NAME = "SdkIntegTestStaticPipeline17"
+STATIC_ENDPOINT_NAME = "SdkIntegTestStaticEndpoint17"
 
 
 @pytest.fixture
