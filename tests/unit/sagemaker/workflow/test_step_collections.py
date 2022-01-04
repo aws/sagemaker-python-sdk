@@ -224,6 +224,24 @@ def test_register_model(estimator, model_metrics, drift_check_baselines):
         display_name="RegisterModelStep",
         depends_on=["TestStep"],
         tags=[{"Key": "myKey", "Value": "myValue"}],
+        additional_inference_specifications=[{
+            "Name": "test-name",
+            "Description": "test-description",
+            "Containers": [
+                {
+                    "Image": "fakeimage1",
+                    "ModelDataUrl": "Url1",
+                    "Environment": [{"k1": "v1"}, {"k2": "v2"}],
+                },
+                {
+                    "Image": "fakeimage2",
+                    "ModelDataUrl": "Url2",
+                    "Environment": [{"k3": "v3"}, {"k4": "v4"}],
+                },
+            ],
+            "SupportedRealtimeInferenceInstanceTypes": ["inference_instance"],
+            "SupportedTransformInstanceTypes": ["transform_instance"],
+        }],
     )
     assert ordered(register_model.request_dicts()) == ordered(
         [
@@ -243,6 +261,24 @@ def test_register_model(estimator, model_metrics, drift_check_baselines):
                         "SupportedResponseMIMETypes": ["response_type"],
                         "SupportedTransformInstanceTypes": ["transform_instance"],
                     },
+                    "AdditionalInferenceSpecifications": [{
+                        "Name": "test-name",
+                        "Description": "test-description",
+                        "Containers": [
+                            {
+                                "Image": "fakeimage1",
+                                "ModelDataUrl": "Url1",
+                                "Environment": [{"k1": "v1"}, {"k2": "v2"}],
+                            },
+                            {
+                                "Image": "fakeimage2",
+                                "ModelDataUrl": "Url2",
+                                "Environment": [{"k3": "v3"}, {"k4": "v4"}],
+                            },
+                        ],
+                        "SupportedRealtimeInferenceInstanceTypes": ["inference_instance"],
+                        "SupportedTransformInstanceTypes": ["transform_instance"],
+                    }],
                     "ModelApprovalStatus": "Approved",
                     "ModelMetrics": {
                         "Bias": {},
@@ -286,6 +322,24 @@ def test_register_model_tf(estimator_tf, model_metrics, drift_check_baselines):
         drift_check_baselines=drift_check_baselines,
         approval_status="Approved",
         description="description",
+        additional_inference_specifications=[{
+            "Name": "test-name",
+            "Description": "test-description",
+            "Containers": [
+                {
+                    "Image": "fakeimage1",
+                    "ModelDataUrl": "Url1",
+                    "Environment": [{"k1": "v1"}, {"k2": "v2"}],
+                },
+                {
+                    "Image": "fakeimage2",
+                    "ModelDataUrl": "Url2",
+                    "Environment": [{"k3": "v3"}, {"k4": "v4"}],
+                },
+            ],
+            "SupportedRealtimeInferenceInstanceTypes": ["inference_instance"],
+            "SupportedTransformInstanceTypes": ["transform_instance"],
+        }],
     )
     assert ordered(register_model.request_dicts()) == ordered(
         [
@@ -306,6 +360,24 @@ def test_register_model_tf(estimator_tf, model_metrics, drift_check_baselines):
                         "SupportedResponseMIMETypes": ["response_type"],
                         "SupportedTransformInstanceTypes": ["transform_instance"],
                     },
+                    "AdditionalInferenceSpecifications": [{
+                        "Name": "test-name",
+                        "Description": "test-description",
+                        "Containers": [
+                            {
+                                "Image": "fakeimage1",
+                                "ModelDataUrl": "Url1",
+                                "Environment": [{"k1": "v1"}, {"k2": "v2"}],
+                            },
+                            {
+                                "Image": "fakeimage2",
+                                "ModelDataUrl": "Url2",
+                                "Environment": [{"k3": "v3"}, {"k4": "v4"}],
+                            },
+                        ],
+                        "SupportedRealtimeInferenceInstanceTypes": ["inference_instance"],
+                        "SupportedTransformInstanceTypes": ["transform_instance"],
+                    }],
                     "ModelApprovalStatus": "Approved",
                     "ModelMetrics": {
                         "Bias": {},
@@ -355,6 +427,24 @@ def test_register_model_sip(estimator, model_metrics, drift_check_baselines):
         description="description",
         model=pipeline_model,
         depends_on=["TestStep"],
+        additional_inference_specifications=[{
+            "Name": "test-name",
+            "Description": "test-description",
+            "Containers": [
+                {
+                    "Image": "fakeimage1",
+                    "ModelDataUrl": "Url1",
+                    "Environment": [{"k1": "v1"}, {"k2": "v2"}],
+                },
+                {
+                    "Image": "fakeimage2",
+                    "ModelDataUrl": "Url2",
+                    "Environment": [{"k3": "v3"}, {"k4": "v4"}],
+                },
+            ],
+            "SupportedRealtimeInferenceInstanceTypes": ["inference_instance"],
+            "SupportedTransformInstanceTypes": ["transform_instance"],
+        }],
     )
     assert ordered(register_model.request_dicts()) == ordered(
         [
@@ -382,6 +472,24 @@ def test_register_model_sip(estimator, model_metrics, drift_check_baselines):
                         "SupportedResponseMIMETypes": ["response_type"],
                         "SupportedTransformInstanceTypes": ["transform_instance"],
                     },
+                    "AdditionalInferenceSpecifications": [{
+                        "Name": "test-name",
+                        "Description": "test-description",
+                        "Containers": [
+                            {
+                                "Image": "fakeimage1",
+                                "ModelDataUrl": "Url1",
+                                "Environment": [{"k1": "v1"}, {"k2": "v2"}],
+                            },
+                            {
+                                "Image": "fakeimage2",
+                                "ModelDataUrl": "Url2",
+                                "Environment": [{"k3": "v3"}, {"k4": "v4"}],
+                            },
+                        ],
+                        "SupportedRealtimeInferenceInstanceTypes": ["inference_instance"],
+                        "SupportedTransformInstanceTypes": ["transform_instance"],
+                    }],
                     "ModelApprovalStatus": "Approved",
                     "ModelMetrics": {
                         "Bias": {},
@@ -431,6 +539,24 @@ def test_register_model_with_model_repack_with_estimator(
         dependencies=[dummy_requirements],
         depends_on=["TestStep"],
         tags=[{"Key": "myKey", "Value": "myValue"}],
+        additional_inference_specifications=[{
+            "Name": "test-name",
+            "Description": "test-description",
+            "Containers": [
+                {
+                    "Image": "fakeimage1",
+                    "ModelDataUrl": "Url1",
+                    "Environment": [{"k1": "v1"}, {"k2": "v2"}],
+                },
+                {
+                    "Image": "fakeimage2",
+                    "ModelDataUrl": "Url2",
+                    "Environment": [{"k3": "v3"}, {"k4": "v4"}],
+                },
+            ],
+            "SupportedRealtimeInferenceInstanceTypes": ["inference_instance"],
+            "SupportedTransformInstanceTypes": ["transform_instance"],
+        }],
     )
 
     request_dicts = register_model.request_dicts()
@@ -514,6 +640,24 @@ def test_register_model_with_model_repack_with_estimator(
                         "SupportedResponseMIMETypes": ["response_type"],
                         "SupportedTransformInstanceTypes": ["transform_instance"],
                     },
+                    "AdditionalInferenceSpecifications": [{
+                        "Name": "test-name",
+                        "Description": "test-description",
+                        "Containers": [
+                            {
+                                "Image": "fakeimage1",
+                                "ModelDataUrl": "Url1",
+                                "Environment": [{"k1": "v1"}, {"k2": "v2"}],
+                            },
+                            {
+                                "Image": "fakeimage2",
+                                "ModelDataUrl": "Url2",
+                                "Environment": [{"k3": "v3"}, {"k4": "v4"}],
+                            },
+                        ],
+                        "SupportedRealtimeInferenceInstanceTypes": ["inference_instance"],
+                        "SupportedTransformInstanceTypes": ["transform_instance"],
+                    }],
                     "ModelApprovalStatus": "Approved",
                     "ModelMetrics": {
                         "Bias": {},
@@ -559,6 +703,24 @@ def test_register_model_with_model_repack_with_model(model, model_metrics, drift
         description="description",
         depends_on=["TestStep"],
         tags=[{"Key": "myKey", "Value": "myValue"}],
+        additional_inference_specifications=[{
+            "Name": "test-name",
+            "Description": "test-description",
+            "Containers": [
+                {
+                    "Image": "fakeimage1",
+                    "ModelDataUrl": "Url1",
+                    "Environment": [{"k1": "v1"}, {"k2": "v2"}],
+                },
+                {
+                    "Image": "fakeimage2",
+                    "ModelDataUrl": "Url2",
+                    "Environment": [{"k3": "v3"}, {"k4": "v4"}],
+                },
+            ],
+            "SupportedRealtimeInferenceInstanceTypes": ["inference_instance"],
+            "SupportedTransformInstanceTypes": ["transform_instance"],
+        }],
     )
 
     request_dicts = register_model.request_dicts()
@@ -639,6 +801,24 @@ def test_register_model_with_model_repack_with_model(model, model_metrics, drift
                         "SupportedResponseMIMETypes": ["response_type"],
                         "SupportedTransformInstanceTypes": ["transform_instance"],
                     },
+                    "AdditionalInferenceSpecifications": [{
+                        "Name": "test-name",
+                        "Description": "test-description",
+                        "Containers": [
+                            {
+                                "Image": "fakeimage1",
+                                "ModelDataUrl": "Url1",
+                                "Environment": [{"k1": "v1"}, {"k2": "v2"}],
+                            },
+                            {
+                                "Image": "fakeimage2",
+                                "ModelDataUrl": "Url2",
+                                "Environment": [{"k3": "v3"}, {"k4": "v4"}],
+                            },
+                        ],
+                        "SupportedRealtimeInferenceInstanceTypes": ["inference_instance"],
+                        "SupportedTransformInstanceTypes": ["transform_instance"],
+                    }],
                     "ModelApprovalStatus": "Approved",
                     "ModelMetrics": {
                         "Bias": {},
@@ -691,6 +871,24 @@ def test_register_model_with_model_repack_with_pipeline_model(
         repack_model_step_retry_policies=[service_fault_retry_policy],
         register_model_step_retry_policies=[service_fault_retry_policy],
         tags=[{"Key": "myKey", "Value": "myValue"}],
+        additional_inference_specifications=[{
+            "Name": "test-name",
+            "Description": "test-description",
+            "Containers": [
+                {
+                    "Image": "fakeimage1",
+                    "ModelDataUrl": "Url1",
+                    "Environment": [{"k1": "v1"}, {"k2": "v2"}],
+                },
+                {
+                    "Image": "fakeimage2",
+                    "ModelDataUrl": "Url2",
+                    "Environment": [{"k3": "v3"}, {"k4": "v4"}],
+                },
+            ],
+            "SupportedRealtimeInferenceInstanceTypes": ["inference_instance"],
+            "SupportedTransformInstanceTypes": ["transform_instance"],
+        }],
     )
 
     request_dicts = register_model.request_dicts()
@@ -774,6 +972,24 @@ def test_register_model_with_model_repack_with_pipeline_model(
                         "SupportedResponseMIMETypes": ["response_type"],
                         "SupportedTransformInstanceTypes": ["transform_instance"],
                     },
+                    "AdditionalInferenceSpecifications": [{
+                        "Name": "test-name",
+                        "Description": "test-description",
+                        "Containers": [
+                            {
+                                "Image": "fakeimage1",
+                                "ModelDataUrl": "Url1",
+                                "Environment": [{"k1": "v1"}, {"k2": "v2"}],
+                            },
+                            {
+                                "Image": "fakeimage2",
+                                "ModelDataUrl": "Url2",
+                                "Environment": [{"k3": "v3"}, {"k4": "v4"}],
+                            },
+                        ],
+                        "SupportedRealtimeInferenceInstanceTypes": ["inference_instance"],
+                        "SupportedTransformInstanceTypes": ["transform_instance"],
+                    }],
                     "ModelApprovalStatus": "Approved",
                     "ModelMetrics": {
                         "Bias": {},

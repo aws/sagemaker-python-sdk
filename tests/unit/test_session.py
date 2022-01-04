@@ -2325,6 +2325,26 @@ def test_create_model_package_from_containers_all_args(sagemaker_session):
         "GeneratedBy": "sagemaker-python-sdk",
         "ProjectId": "unit-test",
     }
+
+    additional_inference_specifications = [{
+        "Name": "test-name",
+        "Description": "test-description",
+        "Containers": [
+            {
+                "Image": "fakeimage1",
+                "ModelDataUrl": "Url1",
+                "Environment": [{"k1": "v1"}, {"k2": "v2"}],
+            },
+            {
+                "Image": "fakeimage2",
+                "ModelDataUrl": "Url2",
+                "Environment": [{"k3": "v3"}, {"k4": "v4"}],
+            },
+        ],
+        "SupportedRealtimeInferenceInstanceTypes": inference_instances,
+        "SupportedTransformInstanceTypes": transform_instances,
+    }]
+
     marketplace_cert = (True,)
     approval_status = ("Approved",)
     description = "description"
@@ -2341,6 +2361,7 @@ def test_create_model_package_from_containers_all_args(sagemaker_session):
         approval_status=approval_status,
         description=description,
         drift_check_baselines=drift_check_baselines,
+        additional_inference_specifications=additional_inference_specifications,
     )
     expected_args = {
         "ModelPackageName": model_package_name,
@@ -2351,6 +2372,24 @@ def test_create_model_package_from_containers_all_args(sagemaker_session):
             "SupportedRealtimeInferenceInstanceTypes": inference_instances,
             "SupportedTransformInstanceTypes": transform_instances,
         },
+        "AdditionalInferenceSpecifications": [{
+            "Name": "test-name",
+            "Description": "test-description",
+            "Containers": [
+                {
+                    "Image": "fakeimage1",
+                    "ModelDataUrl": "Url1",
+                    "Environment": [{"k1": "v1"}, {"k2": "v2"}],
+                },
+                {
+                    "Image": "fakeimage2",
+                    "ModelDataUrl": "Url2",
+                    "Environment": [{"k3": "v3"}, {"k4": "v4"}],
+                },
+            ],
+            "SupportedRealtimeInferenceInstanceTypes": inference_instances,
+            "SupportedTransformInstanceTypes": transform_instances,
+        }],
         "ModelPackageDescription": description,
         "ModelMetrics": model_metrics,
         "MetadataProperties": metadata_properties,

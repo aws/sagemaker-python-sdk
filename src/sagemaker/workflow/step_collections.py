@@ -75,6 +75,7 @@ class RegisterModel(StepCollection):
         tags=None,
         model: Union[Model, PipelineModel] = None,
         drift_check_baselines=None,
+        additional_inference_specifications=None,
         **kwargs,
     ):
         """Construct steps `_RepackModelStep` and `_RegisterModelStep` based on the estimator.
@@ -113,6 +114,8 @@ class RegisterModel(StepCollection):
             model (object or Model): A PipelineModel object that comprises a list of models
                 which gets executed as a serial inference pipeline or a Model object.
             drift_check_baselines (DriftCheckBaselines): DriftCheckBaselines object (default: None).
+            additional_inference_specifications (list): A list of Additional inference
+                specifications
             **kwargs: additional arguments to `create_model`.
         """
         steps: List[Step] = []
@@ -229,6 +232,7 @@ class RegisterModel(StepCollection):
             tags=tags,
             container_def_list=self.container_def_list,
             retry_policies=register_model_step_retry_policies,
+            additional_inference_specifications=additional_inference_specifications,
             **kwargs,
         )
         if not repack_model:

@@ -147,6 +147,7 @@ class Model(ModelBase):
         approval_status=None,
         description=None,
         drift_check_baselines=None,
+        additional_inference_specifications=None,
     ):
         """Creates a model package for creating SageMaker models or listing on Marketplace.
 
@@ -172,7 +173,8 @@ class Model(ModelBase):
                 or "PendingManualApproval" (default: "PendingManualApproval").
             description (str): Model Package description (default: None).
             drift_check_baselines (DriftCheckBaselines): DriftCheckBaselines object (default: None).
-
+            additional_inference_specifications (list): A list of Additional inference
+                specifications
         Returns:
             A `sagemaker.model.ModelPackage` instance.
         """
@@ -199,6 +201,7 @@ class Model(ModelBase):
             description=description,
             container_def_list=[container_def],
             drift_check_baselines=drift_check_baselines,
+            additional_inference_specifications=additional_inference_specifications,
         )
         model_package = self.sagemaker_session.create_model_package_from_containers(
             **model_pkg_args

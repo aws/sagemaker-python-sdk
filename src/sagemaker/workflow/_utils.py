@@ -310,6 +310,7 @@ class _RegisterModelStep(ConfigurableRetryStep):
         tags=None,
         container_def_list=None,
         drift_check_baselines=None,
+        additional_inference_specifications=None,
         **kwargs,
     ):
         """Constructor of a register model step.
@@ -347,6 +348,8 @@ class _RegisterModelStep(ConfigurableRetryStep):
                 this step depends on
             retry_policies (List[RetryPolicy]): The list of retry policies for the current step
             drift_check_baselines (DriftCheckBaselines): DriftCheckBaselines object (default: None).
+            additional_inference_specifications (list) : A list of Additional inference
+                specifications
             **kwargs: additional arguments to `create_model`.
         """
         super(_RegisterModelStep, self).__init__(
@@ -370,6 +373,7 @@ class _RegisterModelStep(ConfigurableRetryStep):
         self.tags = tags
         self.kwargs = kwargs
         self.container_def_list = container_def_list
+        self.additional_inference_specifications = additional_inference_specifications
 
         self._properties = Properties(path=f"Steps.{name}", shape_name="DescribeModelPackageOutput")
 
@@ -435,6 +439,7 @@ class _RegisterModelStep(ConfigurableRetryStep):
             description=self.description,
             tags=self.tags,
             container_def_list=self.container_def_list,
+            additional_inference_specifications=self.additional_inference_specifications,
         )
 
         request_dict = get_create_model_package_request(**model_package_args)
