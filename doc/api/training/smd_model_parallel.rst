@@ -1,5 +1,5 @@
-Distributed model parallel
---------------------------
+The SageMaker Distributed Model Parallel Library
+------------------------------------------------
 
 The Amazon SageMaker distributed model parallel library is a model parallelism library for training
 large deep learning models that were previously difficult to train due to GPU memory limitations.
@@ -9,49 +9,35 @@ allowing you to increase prediction accuracy by creating larger models with more
 You can use the library to automatically partition your existing TensorFlow and PyTorch workloads
 across multiple GPUs with minimal code changes. The library's API can be accessed through the Amazon SageMaker SDK.
 
-Use the following sections to learn more about the model parallelism and the library.
-
-Use with the SageMaker Python SDK
-=================================
-
-Use the following page to learn how to configure and enable distributed model parallel
-when you configure an Amazon SageMaker Python SDK `Estimator`.
+See the following sections to learn more about the SageMaker model parallel library APIs.
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 3
 
+   smp_versions/latest
    smd_model_parallel_general
 
-API Documentation
-=================
 
-The library contains a Common API that is shared across frameworks, as well as APIs
-that are specific to supported frameworks, TensorFlow and PyTorch.
+.. tip::
 
-Select a version to see the API documentation for version. To use the library, reference the
-**Common API** documentation alongside the framework specific API documentation.
+  We recommended using this API documentation with the conceptual guide at
+  `SageMaker's Distributed Model Parallel
+  <http://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel.html>`_
+  in the *Amazon SageMaker developer guide*. This developer guide documentation includes:
 
-.. toctree::
-   :maxdepth: 1
-
-   smp_versions/latest.rst
-   smp_versions/v1_3_0.rst
-   smp_versions/v1_2_0.rst
-   smp_versions/v1_1_0.rst
-
-It is recommended to use this documentation alongside `SageMaker Distributed Model Parallel
-<http://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel.html>`__ in the Amazon SageMaker
-developer guide. This developer guide documentation includes:
-
-   -  An overview of model parallelism and the library
-      `core features <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-core-features.html>`__
-   -  Instructions on how to modify `TensorFlow
-      <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-customize-training-script.html#model-parallel-customize-training-script-tf>`__
-      and `PyTorch
-      <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-customize-training-script.html#model-parallel-customize-training-script-pt>`__
-      training scripts
-   -  `Configuration tips and pitfalls
-      <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-customize-tips-pitfalls.html>`__
+  - An overview of model parallelism, and the library's
+    `core features <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-core-features.html>`_,
+    and `extended features for PyTorch <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-extended-features-pytorch.html>`_.
+  - Instructions on how to modify `TensorFlow
+    <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-customize-training-script-tf.html>`_
+    and `PyTorch
+    <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-customize-training-script-pt.html>`_
+    training scripts.
+  - Instructions on how to `run a distributed training job using the SageMaker Python SDK
+    and the SageMaker model parallel library
+    <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-sm-sdk.html>`_.
+  - `Configuration tips and pitfalls
+    <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-customize-tips-pitfalls.html>`_.
 
 
 .. important::
