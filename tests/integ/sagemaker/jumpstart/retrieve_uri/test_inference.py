@@ -17,7 +17,7 @@ from tests.integ.sagemaker.jumpstart.retrieve_uri.inference import (
     EndpointInvoker,
     InferenceJobLauncher,
 )
-from sagemaker import image_uris
+from sagemaker import environment_variables, image_uris
 from sagemaker import script_uris
 from sagemaker import model_uris
 
@@ -53,12 +53,17 @@ def test_jumpstart_inference_retrieve_functions(setup):
         model_id=model_id, model_version=model_version, model_scope="inference"
     )
 
+    environment_vars = environment_variables.retrieve_default(
+        model_id=model_id, model_version=model_version
+    )
+
     inference_job = InferenceJobLauncher(
         image_uri=image_uri,
         script_uri=script_uri,
         model_uri=model_uri,
         instance_type=instance_type,
         base_name="catboost",
+        environment_variables=environment_vars,
     )
 
     inference_job.launch_inference_job()

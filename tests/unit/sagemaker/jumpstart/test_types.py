@@ -12,7 +12,13 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 import copy
-from sagemaker.jumpstart.types import JumpStartECRSpecs, JumpStartModelSpecs, JumpStartModelHeader
+from sagemaker.jumpstart.types import (
+    JumpStartECRSpecs,
+    JumpStartHyperparameter,
+    JumpStartModelSpecs,
+    JumpStartModelHeader,
+)
+from tests.unit.sagemaker.jumpstart.constants import BASE_SPEC
 
 
 def test_jumpstart_model_header():
@@ -53,34 +59,7 @@ def test_jumpstart_model_header():
 
 def test_jumpstart_model_specs():
 
-    specs_dict = {
-        "model_id": "pytorch-ic-mobilenet-v2",
-        "version": "1.0.0",
-        "min_sdk_version": "2.49.0",
-        "training_supported": True,
-        "incremental_training_supported": True,
-        "hosting_ecr_specs": {
-            "framework": "pytorch",
-            "framework_version": "1.7.0",
-            "py_version": "py3",
-        },
-        "training_ecr_specs": {
-            "framework": "pytorch",
-            "framework_version": "1.9.0",
-            "py_version": "py3",
-        },
-        "hosting_artifact_key": "pytorch-infer/infer-pytorch-ic-mobilenet-v2.tar.gz",
-        "training_artifact_key": "pytorch-training/train-pytorch-ic-mobilenet-v2.tar.gz",
-        "hosting_script_key": "source-directory-tarballs/pytorch/inference/ic/v1.0.0/sourcedir.tar.gz",
-        "training_script_key": "source-directory-tarballs/pytorch/transfer_learning/ic/v1.0.0/sourcedir.tar.gz",
-        "hyperparameters": {
-            "adam-learning-rate": {"type": "float", "default": 0.05, "min": 1e-08, "max": 1},
-            "epochs": {"type": "int", "default": 3, "min": 1, "max": 1000},
-            "batch-size": {"type": "int", "default": 4, "min": 1, "max": 1024},
-        },
-    }
-
-    specs1 = JumpStartModelSpecs(specs_dict)
+    specs1 = JumpStartModelSpecs(BASE_SPEC)
 
     assert specs1.model_id == "pytorch-ic-mobilenet-v2"
     assert specs1.version == "1.0.0"
@@ -90,14 +69,14 @@ def test_jumpstart_model_specs():
     assert specs1.hosting_ecr_specs == JumpStartECRSpecs(
         {
             "framework": "pytorch",
-            "framework_version": "1.7.0",
+            "framework_version": "1.5.0",
             "py_version": "py3",
         }
     )
     assert specs1.training_ecr_specs == JumpStartECRSpecs(
         {
             "framework": "pytorch",
-            "framework_version": "1.9.0",
+            "framework_version": "1.5.0",
             "py_version": "py3",
         }
     )
@@ -111,16 +90,67 @@ def test_jumpstart_model_specs():
         specs1.training_script_key
         == "source-directory-tarballs/pytorch/transfer_learning/ic/v1.0.0/sourcedir.tar.gz"
     )
-    assert specs1.hyperparameters == {
-        "adam-learning-rate": {"type": "float", "default": 0.05, "min": 1e-08, "max": 1},
-        "epochs": {"type": "int", "default": 3, "min": 1, "max": 1000},
-        "batch-size": {"type": "int", "default": 4, "min": 1, "max": 1024},
-    }
+    assert specs1.hyperparameters == [
+        JumpStartHyperparameter(
+            {
+                "name": "epochs",
+                "type": "int",
+                "default": 3,
+                "min": 1,
+                "max": 1000,
+                "scope": "algorithm",
+            }
+        ),
+        JumpStartHyperparameter(
+            {
+                "name": "adam-learning-rate",
+                "type": "float",
+                "default": 0.05,
+                "min": 1e-08,
+                "max": 1,
+                "scope": "algorithm",
+            }
+        ),
+        JumpStartHyperparameter(
+            {
+                "name": "batch-size",
+                "type": "int",
+                "default": 4,
+                "min": 1,
+                "max": 1024,
+                "scope": "algorithm",
+            }
+        ),
+        JumpStartHyperparameter(
+            {
+                "name": "sagemaker_submit_directory",
+                "type": "text",
+                "default": "/opt/ml/input/data/code/sourcedir.tar.gz",
+                "scope": "container",
+            }
+        ),
+        JumpStartHyperparameter(
+            {
+                "name": "sagemaker_program",
+                "type": "text",
+                "default": "transfer_learning.py",
+                "scope": "container",
+            }
+        ),
+        JumpStartHyperparameter(
+            {
+                "name": "sagemaker_container_log_level",
+                "type": "text",
+                "default": "20",
+                "scope": "container",
+            }
+        ),
+    ]
 
-    assert specs1.to_json() == specs_dict
+    assert specs1.to_json() == BASE_SPEC
 
-    specs_dict["model_id"] = "diff model id"
-    specs2 = JumpStartModelSpecs(specs_dict)
+    BASE_SPEC["model_id"] = "diff model id"
+    specs2 = JumpStartModelSpecs(BASE_SPEC)
     assert specs1 != specs2
 
     specs3 = copy.deepcopy(specs1)

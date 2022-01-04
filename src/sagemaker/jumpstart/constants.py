@@ -120,6 +120,9 @@ INFERENCE = "inference"
 TRAINING = "training"
 SUPPORTED_JUMPSTART_SCOPES = set([INFERENCE, TRAINING])
 
+INFERENCE_ENTRYPOINT_SCRIPT_NAME = "inference.py"
+TRAINING_ENTRYPOINT_SCRIPT_NAME = "transfer_learning.py"
+
 
 class ModelFramework(str, Enum):
     """Enum class for JumpStart model framework.

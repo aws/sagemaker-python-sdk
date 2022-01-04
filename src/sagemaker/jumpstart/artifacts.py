@@ -93,7 +93,7 @@ def _retrieve_image_uri(
         )
 
     model_specs = jumpstart_accessors.JumpStartModelsAccessor.get_model_specs(
-        region, model_id, model_version
+        region=region, model_id=model_id, version=model_version
     )
 
     if image_scope == INFERENCE:
@@ -201,7 +201,7 @@ def _retrieve_model_uri(
         )
 
     model_specs = jumpstart_accessors.JumpStartModelsAccessor.get_model_specs(
-        region, model_id, model_version
+        region=region, model_id=model_id, version=model_version
     )
     if model_scope == INFERENCE:
         model_artifact_key = model_specs.hosting_artifact_key
@@ -260,7 +260,7 @@ def _retrieve_script_uri(
         )
 
     model_specs = jumpstart_accessors.JumpStartModelsAccessor.get_model_specs(
-        region, model_id, model_version
+        region=region, model_id=model_id, version=model_version
     )
     if script_scope == INFERENCE:
         model_script_key = model_specs.hosting_script_key
@@ -278,3 +278,80 @@ def _retrieve_script_uri(
     script_s3_uri = f"s3://{bucket}/{model_script_key}"
 
     return script_s3_uri
+
+
+def _retrieve_default_hyperparameters(
+    model_id: str,
+    model_version: str,
+    region: Optional[str],
+    include_container_hyperparameters: bool = False,
+):
+    """Retrieves the training hyperparameters for the model matching the given arguments.
+
+    Args:
+        model_id (str): JumpStart model ID of the JumpStart model for which to
+            retrieve the default hyperparameters.
+        model_version (str): Version of the JumpStart model for which to retrieve the
+            default hyperparameters.
+        region (str): Region for which to retrieve default hyperparameters.
+        include_container_hyperparameters (bool): True if container hyperparameters
+            should be returned as well. (Default: False)
+    Returns:
+        dict: the hyperparameters to use for the model.
+
+    Raises:
+        ValueError: If the combination of arguments specified is not supported.
+    """
+
+    if region is None:
+        region = JUMPSTART_DEFAULT_REGION_NAME
+
+    assert region is not None
+
+    model_specs = jumpstart_accessors.JumpStartModelsCache.get_model_specs(
+        region=region, model_id=model_id, version=model_version
+    )
+
+    default_hyperparameters = {}
+    for hyperparameter in model_specs.hyperparameters:
+        if (
+            include_container_hyperparameters and hyperparameter.scope == "container"
+        ) or hyperparameter.scope == "algorithm":
+            default_hyperparameters[hyperparameter.name] = str(hyperparameter.default)
+    return default_hyperparameters
+
+
+def _retrieve_default_environment_variables(
+    model_id: str,
+    model_version: str,
+    region: Optional[str],
+):
+    """Retrieves the inference environment variables for the model matching the given arguments.
+
+    Args:
+        model_id (str): JumpStart model ID of the JumpStart model for which to
+            retrieve the default environment variables.
+        model_version (str): Version of the JumpStart model for which to retrieve the
+            default environment variables.
+        region (str): Region for which to retrieve default environment variables.
+
+    Returns:
+        dict: the inference environment variables to use for the model.
+
+    Raises:
+        ValueError: If the combination of arguments specified is not supported.
+    """
+
+    if region is None:
+        region = JUMPSTART_DEFAULT_REGION_NAME
+
+    assert region is not None
+
+    model_specs = jumpstart_accessors.JumpStartModelsCache.get_model_specs(
+        region=region, model_id=model_id, version=model_version
+    )
+
+    default_environment_variables = {}
+    for environment_variable in model_specs.inference_environment_variables:
+        default_environment_variables[environment_variable.name] = str(environment_variable.default)
+    return default_environment_variables

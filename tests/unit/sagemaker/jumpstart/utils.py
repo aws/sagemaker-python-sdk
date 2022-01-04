@@ -14,6 +14,7 @@ from __future__ import absolute_import
 import copy
 
 from sagemaker.jumpstart.cache import JumpStartModelsCache
+from sagemaker.jumpstart.constants import JUMPSTART_REGION_NAME_SET
 from sagemaker.jumpstart.types import (
     JumpStartCachedS3ContentKey,
     JumpStartCachedS3ContentValue,
@@ -31,15 +32,22 @@ from tests.unit.sagemaker.jumpstart.constants import (
 
 
 def get_header_from_base_header(
-    region: str = None, model_id: str = None, version: str = None
+    _obj: JumpStartModelsCache = None,
+    region: str = None,
+    model_id: str = None,
+    semantic_version_str: str = None,
+    version: str = None,
 ) -> JumpStartModelHeader:
 
     if "pytorch" not in model_id and "tensorflow" not in model_id:
         raise KeyError("Bad model id")
 
+    if region is not None and region not in JUMPSTART_REGION_NAME_SET:
+        raise ValueError(f"Bad region name: {region}")
+
     spec = copy.deepcopy(BASE_HEADER)
 
-    spec["version"] = version
+    spec["version"] = version or semantic_version_str
     spec["model_id"] = model_id
 
     return JumpStartModelHeader(spec)
@@ -57,15 +65,22 @@ def get_prototype_model_spec(
 
 
 def get_spec_from_base_spec(
-    region: str = None, model_id: str = None, version: str = None
+    _obj: JumpStartModelsCache = None,
+    region: str = None,
+    model_id: str = None,
+    semantic_version_str: str = None,
+    version: str = None,
 ) -> JumpStartModelSpecs:
 
     if "pytorch" not in model_id and "tensorflow" not in model_id:
         raise KeyError("Bad model id")
 
+    if region is not None and region not in JUMPSTART_REGION_NAME_SET:
+        raise ValueError(f"Bad region name: {region}")
+
     spec = copy.deepcopy(BASE_SPEC)
 
-    spec["version"] = version
+    spec["version"] = version or semantic_version_str
     spec["model_id"] = model_id
 
     return JumpStartModelSpecs(spec)

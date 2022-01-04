@@ -170,6 +170,93 @@ class JumpStartECRSpecs(JumpStartDataHolderType):
         return json_obj
 
 
+class JumpStartHyperparameter(JumpStartDataHolderType):
+    """Data class for JumpStart hyperparameter."""
+
+    __slots__ = {
+        "name",
+        "type",
+        "options",
+        "default",
+        "scope",
+        "min",
+        "max",
+    }
+
+    def __init__(self, spec: Dict[str, Any]):
+        """Initializes a JumpStartHyperparameter object from its json representation.
+
+        Args:
+            spec (Dict[str, Any]): Dictionary representation of hyperparameter.
+        """
+        self.from_json(spec)
+
+    def from_json(self, json_obj: Dict[str, Any]) -> None:
+        """Sets fields in object based on json.
+
+        Args:
+            json_obj (Dict[str, Any]): Dictionary representation of hyperparameter.
+        """
+
+        self.name = json_obj["name"]
+        self.type = json_obj["type"]
+        self.default = json_obj["default"]
+        self.scope = json_obj["scope"]
+
+        options = json_obj.get("options")
+        if options is not None:
+            self.options = options
+
+        min_val = json_obj.get("min")
+        if min_val is not None:
+            self.min = min_val
+
+        max_val = json_obj.get("max")
+        if max_val is not None:
+            self.max = max_val
+
+    def to_json(self) -> Dict[str, Any]:
+        """Returns json representation of JumpStartHyperparameter object."""
+        json_obj = {att: getattr(self, att) for att in self.__slots__ if hasattr(self, att)}
+        return json_obj
+
+
+class JumpStartEnvironmentVariable(JumpStartDataHolderType):
+    """Data class for JumpStart environment variable."""
+
+    __slots__ = {
+        "name",
+        "type",
+        "default",
+        "scope",
+    }
+
+    def __init__(self, spec: Dict[str, Any]):
+        """Initializes a JumpStartEnvironmentVariable object from its json representation.
+
+        Args:
+            spec (Dict[str, Any]): Dictionary representation of environment variable.
+        """
+        self.from_json(spec)
+
+    def from_json(self, json_obj: Dict[str, Any]) -> None:
+        """Sets fields in object based on json.
+
+        Args:
+            json_obj (Dict[str, Any]): Dictionary representation of environment variable.
+        """
+
+        self.name = json_obj["name"]
+        self.type = json_obj["type"]
+        self.default = json_obj["default"]
+        self.scope = json_obj["scope"]
+
+    def to_json(self) -> Dict[str, Any]:
+        """Returns json representation of JumpStartEnvironmentVariable object."""
+        json_obj = {att: getattr(self, att) for att in self.__slots__ if hasattr(self, att)}
+        return json_obj
+
+
 class JumpStartModelSpecs(JumpStartDataHolderType):
     """Data class JumpStart model specs."""
 
@@ -186,6 +273,7 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         "training_artifact_key",
         "training_script_key",
         "hyperparameters",
+        "inference_environment_variables",
     ]
 
     def __init__(self, spec: Dict[str, Any]):
@@ -210,13 +298,21 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         self.hosting_artifact_key: str = json_obj["hosting_artifact_key"]
         self.hosting_script_key: str = json_obj["hosting_script_key"]
         self.training_supported: bool = bool(json_obj["training_supported"])
+        self.inference_environment_variables = [
+            JumpStartEnvironmentVariable(env_variable)
+            for env_variable in json_obj["inference_environment_variables"]
+        ]
         if self.training_supported:
             self.training_ecr_specs: JumpStartECRSpecs = JumpStartECRSpecs(
                 json_obj["training_ecr_specs"]
             )
             self.training_artifact_key: str = json_obj["training_artifact_key"]
             self.training_script_key: str = json_obj["training_script_key"]
-            self.hyperparameters: Dict[str, Any] = json_obj.get("hyperparameters", {})
+            hyperparameters = json_obj.get("hyperparameters")
+            if hyperparameters is not None:
+                self.hyperparameters = [
+                    JumpStartHyperparameter(hyperparameter) for hyperparameter in hyperparameters
+                ]
 
     def to_json(self) -> Dict[str, Any]:
         """Returns json representation of JumpStartModelSpecs object."""
@@ -224,8 +320,15 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         for att in self.__slots__:
             if hasattr(self, att):
                 cur_val = getattr(self, att)
-                if isinstance(cur_val, JumpStartECRSpecs):
+                if issubclass(type(cur_val), JumpStartDataHolderType):
                     json_obj[att] = cur_val.to_json()
+                elif isinstance(cur_val, list):
+                    json_obj[att] = []
+                    for obj in cur_val:
+                        if issubclass(type(obj), JumpStartDataHolderType):
+                            json_obj[att].append(obj.to_json())
+                        else:
+                            json_obj[att].append(obj)
                 else:
                     json_obj[att] = cur_val
         return json_obj

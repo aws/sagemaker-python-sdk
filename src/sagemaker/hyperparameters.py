@@ -10,37 +10,37 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Accessors to retrieve the model artifact S3 URI of pretrained ML models."""
+"""Accessors to retrieve hyperparameters to run pretrained ML models."""
+
 from __future__ import absolute_import
 
 import logging
-from typing import Optional
+from typing import Dict
 
 from sagemaker.jumpstart import utils as jumpstart_utils
 from sagemaker.jumpstart import artifacts
 
-
 logger = logging.getLogger(__name__)
 
 
-def retrieve(
+def retrieve_default(
     region=None,
     model_id=None,
-    model_version: Optional[str] = None,
-    model_scope: Optional[str] = None,
-) -> str:
-    """Retrieves the model artifact S3 URI for the model matching the given arguments.
+    model_version=None,
+    include_container_hyperparameters=False,
+) -> Dict[str, str]:
+    """Retrieves the default training hyperparameters for the model matching the given arguments.
 
     Args:
-        region (str): Region for which to retrieve model S3 URI.
-        model_id (str): JumpStart model ID of the JumpStart model for which to retrieve
-            the model artifact S3 URI.
-        model_version (str): Version of the JumpStart model for which to retrieve
-            the model artifact S3 URI.
-        model_scope (str): The model type, i.e. what it is used for.
-            Valid values: "training" and "inference".
+        region (str): Region for which to retrieve default hyperparameters.
+        model_id (str): JumpStart model ID of the JumpStart model for which to
+            retrieve the default hyperparameters.
+        model_version (str): Version of the JumpStart model for which to retrieve the
+            default hyperparameters.
+        include_container_hyperparameters (bool): True if container hyperparameters
+            should be returned as well. (Default: False)
     Returns:
-        str: the model artifact S3 URI for the corresponding model.
+        dict: the hyperparameters to use for the model.
 
     Raises:
         ValueError: If the combination of arguments specified is not supported.
@@ -52,4 +52,6 @@ def retrieve(
     assert model_id is not None
     assert model_version is not None
 
-    return artifacts._retrieve_model_uri(model_id, model_version, model_scope, region)
+    return artifacts._retrieve_default_hyperparameters(
+        model_id, model_version, region, include_container_hyperparameters
+    )
