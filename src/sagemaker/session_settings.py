@@ -12,6 +12,8 @@
 # language governing permissions and limitations under the License.
 """Defines classes to parametrize a SageMaker ``Session``."""
 
+from __future__ import absolute_import
+
 
 class SessionSettings(object):
     """Optional container class for settings to apply to a SageMaker session."""
