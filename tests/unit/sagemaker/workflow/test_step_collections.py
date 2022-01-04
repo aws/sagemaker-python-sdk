@@ -802,6 +802,32 @@ def test_register_model_with_model_repack_with_pipeline_model(
             raise Exception("A step exists in the collection of an invalid type.")
 
 
+def test_register_model_with_model_repack_with_repack_output_path(model):
+    repack_output_path = "s3://{BUCKET}/repack_output"
+    register_model = RegisterModel(
+        name="RegisterModelStep",
+        model=model,
+        content_types=["content_type"],
+        response_types=["response_type"],
+        inference_instances=["inference_instance"],
+        transform_instances=["transform_instance"],
+        model_package_group_name="mpg",
+        approval_status="Approved",
+        description="description",
+        depends_on=["TestStep"],
+        tags=[{"Key": "myKey", "Value": "myValue"}],
+        repack_output_path=repack_output_path,
+    )
+
+    request_dicts = register_model.request_dicts()
+
+    for request_dict in request_dicts:
+        if request_dict["Type"] == "Training":
+            arguments = request_dict["Arguments"]
+            assert arguments["DebugHookConfig"]["S3OutputPath"] == repack_output_path
+            assert arguments["OutputDataConfig"]["S3OutputPath"] == repack_output_path
+
+
 def test_estimator_transformer(estimator):
     model_data = f"s3://{BUCKET}/model.tar.gz"
     model_inputs = CreateModelInput(
@@ -983,3 +1009,33 @@ def test_estimator_transformer_with_model_repack(estimator):
             )
         else:
             raise Exception("A step exists in the collection of an invalid type.")
+
+
+def test_estimator_transformer_with_model_repack_with_repack_output_path(estimator):
+    repack_output_path = "s3://{BUCKET}/repack_output"
+    model_data = f"s3://{BUCKET}/model.tar.gz"
+    model_inputs = CreateModelInput(
+        instance_type="c4.4xlarge",
+        accelerator_type="ml.eia1.medium",
+    )
+    transform_inputs = TransformInput(data=f"s3://{BUCKET}/transform_manifest")
+    estimator_transformer = EstimatorTransformer(
+        name="EstimatorTransformerStep",
+        estimator=estimator,
+        model_data=model_data,
+        model_inputs=model_inputs,
+        instance_count=1,
+        instance_type="ml.c4.4xlarge",
+        transform_inputs=transform_inputs,
+        depends_on=["TestStep"],
+        entry_point=f"{DATA_DIR}/dummy_script.py",
+        repack_output_path=repack_output_path,
+    )
+
+    request_dicts = estimator_transformer.request_dicts()
+
+    for request_dict in request_dicts:
+        if request_dict["Type"] == "Training":
+            arguments = request_dict["Arguments"]
+            assert arguments["DebugHookConfig"]["S3OutputPath"] == repack_output_path
+            assert arguments["OutputDataConfig"]["S3OutputPath"] == repack_output_path
