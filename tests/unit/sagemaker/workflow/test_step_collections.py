@@ -865,3 +865,121 @@ def test_estimator_transformer(estimator):
             }
         else:
             raise Exception("A step exists in the collection of an invalid type.")
+
+
+def test_estimator_transformer_with_model_repack(estimator):
+    model_data = f"s3://{BUCKET}/model.tar.gz"
+    dummy_requirements = f"{DATA_DIR}/dummy_requirements.txt"
+    model_inputs = CreateModelInput(
+        instance_type="c4.4xlarge",
+        accelerator_type="ml.eia1.medium",
+    )
+    transform_inputs = TransformInput(data=f"s3://{BUCKET}/transform_manifest")
+    estimator_transformer = EstimatorTransformer(
+        name="EstimatorTransformerStep",
+        estimator=estimator,
+        model_data=model_data,
+        model_inputs=model_inputs,
+        instance_count=1,
+        instance_type="ml.c4.4xlarge",
+        transform_inputs=transform_inputs,
+        depends_on=["TestStep"],
+        entry_point=f"{DATA_DIR}/dummy_script.py",
+        dependencies=[dummy_requirements],
+    )
+    request_dicts = estimator_transformer.request_dicts()
+    assert len(request_dicts) == 3
+
+    for request_dict in request_dicts:
+        if request_dict["Type"] == "Training":
+            assert request_dict["Name"] == "EstimatorTransformerStepRepackModel"
+            assert len(request_dict["DependsOn"]) == 1
+            assert request_dict["DependsOn"][0] == "TestStep"
+            arguments = request_dict["Arguments"]
+            repacker_job_name = arguments["HyperParameters"]["sagemaker_job_name"]
+            assert ordered(arguments) == ordered(
+                {
+                    "AlgorithmSpecification": {
+                        "TrainingImage": MODEL_REPACKING_IMAGE_URI,
+                        "TrainingInputMode": "File",
+                    },
+                    "DebugHookConfig": {
+                        "CollectionConfigurations": [],
+                        "S3OutputPath": f"s3://{BUCKET}/",
+                    },
+                    "HyperParameters": {
+                        "inference_script": '"dummy_script.py"',
+                        "dependencies": f'"{dummy_requirements}"',
+                        "model_archive": '"model.tar.gz"',
+                        "sagemaker_submit_directory": '"s3://{}/{}/source/sourcedir.tar.gz"'.format(
+                            BUCKET, repacker_job_name.replace('"', "")
+                        ),
+                        "sagemaker_program": '"_repack_model.py"',
+                        "sagemaker_container_log_level": "20",
+                        "sagemaker_job_name": repacker_job_name,
+                        "sagemaker_region": f'"{REGION}"',
+                        "source_dir": "null",
+                    },
+                    "InputDataConfig": [
+                        {
+                            "ChannelName": "training",
+                            "DataSource": {
+                                "S3DataSource": {
+                                    "S3DataDistributionType": "FullyReplicated",
+                                    "S3DataType": "S3Prefix",
+                                    "S3Uri": f"s3://{BUCKET}",
+                                }
+                            },
+                        }
+                    ],
+                    "OutputDataConfig": {"S3OutputPath": f"s3://{BUCKET}/"},
+                    "ResourceConfig": {
+                        "InstanceCount": 1,
+                        "InstanceType": "ml.m5.large",
+                        "VolumeSizeInGB": 30,
+                    },
+                    "RoleArn": ROLE,
+                    "StoppingCondition": {"MaxRuntimeInSeconds": 86400},
+                    "VpcConfig": [
+                        ("SecurityGroupIds", ["123", "456"]),
+                        ("Subnets", ["abc", "def"]),
+                    ],
+                }
+            )
+        elif request_dict["Type"] == "Model":
+            assert request_dict["Name"] == "EstimatorTransformerStepCreateModelStep"
+            assert "DependsOn" not in request_dict
+            arguments = request_dict["Arguments"]
+            assert isinstance(arguments["PrimaryContainer"]["ModelDataUrl"], Properties)
+            del arguments["PrimaryContainer"]["ModelDataUrl"]
+            assert ordered(arguments) == ordered(
+                {
+                    "ExecutionRoleArn": "DummyRole",
+                    "PrimaryContainer": {
+                        "Environment": {},
+                        "Image": "fakeimage",
+                    },
+                }
+            )
+        elif request_dict["Type"] == "Transform":
+            assert request_dict["Name"] == "EstimatorTransformerStepTransformStep"
+            assert "DependsOn" not in request_dict
+            arguments = request_dict["Arguments"]
+            assert isinstance(arguments["ModelName"], Properties)
+            arguments.pop("ModelName")
+            assert ordered(arguments) == ordered(
+                {
+                    "TransformInput": {
+                        "DataSource": {
+                            "S3DataSource": {
+                                "S3DataType": "S3Prefix",
+                                "S3Uri": f"s3://{BUCKET}/transform_manifest",
+                            }
+                        }
+                    },
+                    "TransformOutput": {"S3OutputPath": None},
+                    "TransformResources": {"InstanceCount": 1, "InstanceType": "ml.c4.4xlarge"},
+                }
+            )
+        else:
+            raise Exception("A step exists in the collection of an invalid type.")

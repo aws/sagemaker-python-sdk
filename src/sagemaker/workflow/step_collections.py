@@ -284,8 +284,8 @@ class EstimatorTransformer(StepCollection):
 
         An estimator-centric step collection. It models what happens in workflows
         when invoking the `transform()` method on an estimator instance:
-        First, if custom
-        model artifacts are required, a `_RepackModelStep` is included.
+        First, if a custom
+        entry point script is required, a `_RepackModelStep` is included.
         Second, a
         `CreateModelStep` with the model data passed in from a training step or other
         training job output.
@@ -327,10 +327,13 @@ class EstimatorTransformer(StepCollection):
                 transform step
         """
         steps = []
+        repack_model = False
+
         if "entry_point" in kwargs:
-            entry_point = kwargs["entry_point"]
-            source_dir = kwargs.get("source_dir")
-            dependencies = kwargs.get("dependencies")
+            repack_model = True
+            entry_point = kwargs.pop("entry_point", None)
+            source_dir = kwargs.pop("source_dir", None)
+            dependencies = kwargs.pop("dependencies", None)
             repack_model_step = _RepackModelStep(
                 name=f"{name}RepackModel",
                 depends_on=depends_on,
@@ -347,6 +350,7 @@ class EstimatorTransformer(StepCollection):
                 description=description,
                 display_name=display_name,
                 repack_output_path=repack_output_path,
+                **kwargs,
             )
             steps.append(repack_model_step)
             model_data = repack_model_step.properties.ModelArtifacts.S3ModelArtifacts
@@ -373,7 +377,7 @@ class EstimatorTransformer(StepCollection):
             display_name=display_name,
             retry_policies=model_step_retry_policies,
         )
-        if "entry_point" not in kwargs and depends_on:
+        if not repack_model and depends_on:
             # if the CreateModelStep is the first step in the collection
             model_step.add_depends_on(depends_on)
         steps.append(model_step)
