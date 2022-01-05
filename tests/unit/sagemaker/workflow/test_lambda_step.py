@@ -16,7 +16,7 @@ import json
 
 import pytest
 
-from mock import Mock
+from mock import Mock, MagicMock
 
 from sagemaker.workflow.parameters import ParameterInteger, ParameterString
 from sagemaker.workflow.pipeline import Pipeline
@@ -27,12 +27,13 @@ from sagemaker.lambda_helper import Lambda
 @pytest.fixture()
 def sagemaker_session():
     boto_mock = Mock(name="boto_session", region_name="us-west-2")
-    session_mock = Mock(
+    session_mock = MagicMock(
         name="sagemaker_session",
         boto_session=boto_mock,
         boto_region_name="us-west-2",
         config=None,
         local_mode=False,
+        account_id=Mock(),
     )
     return session_mock
 
@@ -173,3 +174,36 @@ def test_lambda_step_no_inputs_outputs(sagemaker_session):
         "OutputParameters": [],
         "Arguments": {},
     }
+
+
+def test_lambda_step_with_function_arn(sagemaker_session):
+    lambda_step = LambdaStep(
+        name="MyLambdaStep",
+        depends_on=["TestStep"],
+        lambda_func=Lambda(
+            function_arn="arn:aws:lambda:us-west-2:123456789012:function:sagemaker_test_lambda",
+            session=sagemaker_session,
+        ),
+        inputs={},
+        outputs=[],
+    )
+    lambda_step._get_function_arn()
+    sagemaker_session.account_id.assert_not_called()
+
+
+def test_lambda_step_without_function_arn(sagemaker_session):
+    lambda_step = LambdaStep(
+        name="MyLambdaStep",
+        depends_on=["TestStep"],
+        lambda_func=Lambda(
+            function_name="name",
+            execution_role_arn="arn:aws:lambda:us-west-2:123456789012:execution_role",
+            zipped_code_dir="",
+            handler="",
+            session=sagemaker_session,
+        ),
+        inputs={},
+        outputs=[],
+    )
+    lambda_step._get_function_arn()
+    sagemaker_session.account_id.assert_called_once()
