@@ -609,9 +609,6 @@ class FakeS3(object):
             self.download_file
         )
         self.sagemaker_session.boto_session.resource().Bucket.side_effect = self.bucket
-        self.sagemaker_session.boto_session.resource().Object = Mock(
-            name="boto_session", region_name="us-west-2"
-        )
         self.fake_upload_path = self.mock_s3_upload()
 
     def bucket(self, name):
