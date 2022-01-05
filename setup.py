@@ -34,7 +34,7 @@ def read_version():
 # Declare minimal set for installation
 required_packages = [
     "attrs",
-    "boto3>=1.20.18",
+    "boto3>=1.20.21",
     "google-pasta",
     "numpy>=1.9.0",
     "protobuf>=3.1",
