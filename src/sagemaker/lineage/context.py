@@ -490,3 +490,15 @@ class EndpointContext(Context):
                     return tag["Value"]
 
         return None
+
+
+class ModelPackageGroup(Context):
+    """An Amazon SageMaker model package group context, which is part of a SageMaker lineage."""
+
+    def pipeline_execution_arn(self) -> str:
+        """Get the ARN for the pipeline execution associated with this model package group (if any).
+
+        Returns:
+            str: A pipeline execution ARN.
+        """
+        return self.properties.get("PipelineExecutionArn")
