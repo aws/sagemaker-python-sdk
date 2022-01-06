@@ -7,7 +7,7 @@
  * typos and broken link
  * S3Input - add support for instance attributes
  * Prevent repack_model script from referencing nonexistent directories
- * Set ProcessingStep upload locations deterministically to avoid c…
+ * Set ProcessingStep upload locations deterministically to avoid cache
 
 ## v2.72.0 (2021-12-13)
 
