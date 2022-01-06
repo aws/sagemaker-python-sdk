@@ -95,7 +95,7 @@ def test_tar_and_upload_dir_s3_with_kms(utils, sagemaker_session):
 
 
 @patch("sagemaker.utils")
-def test_tar_and_upload_dir_s3_without_kms_no_settings(utils, sagemaker_session):
+def test_tar_and_upload_dir_s3_kms_enabled_by_default(utils, sagemaker_session):
     bucket = "mybucket"
     s3_key_prefix = "something/source"
     script = "inference.py"
