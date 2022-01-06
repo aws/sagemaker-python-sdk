@@ -66,6 +66,18 @@ class JumpStartModelsCache(object):
         return cache_kwargs_dict
 
     @staticmethod
+    def _set_cache_and_region(region: str, cache_kwargs: dict) -> None:
+        """Sets ``JumpStartModelsCache._cache`` and ``JumpStartModelsCache._curr_region``.
+
+        Args:
+            region (str): region for which to retrieve header/spec.
+            cache_kwargs (dict): kwargs to pass to ``JumpStartModelsCache``.
+        """
+        if JumpStartModelsCache._cache is None or region != JumpStartModelsCache._curr_region:
+            JumpStartModelsCache._cache = cache.JumpStartModelsCache(region=region, **cache_kwargs)
+            JumpStartModelsCache._curr_region = region
+
+    @staticmethod
     def get_model_header(region: str, model_id: str, version: str) -> JumpStartModelHeader:
         """Returns model header from JumpStart models cache.
 
@@ -77,9 +89,7 @@ class JumpStartModelsCache(object):
         cache_kwargs = JumpStartModelsCache._validate_and_mutate_region_cache_kwargs(
             JumpStartModelsCache._cache_kwargs, region
         )
-        if JumpStartModelsCache._cache is None or region != JumpStartModelsCache._curr_region:
-            JumpStartModelsCache._cache = cache.JumpStartModelsCache(region=region, **cache_kwargs)
-            JumpStartModelsCache._curr_region = region
+        JumpStartModelsCache._set_cache_and_region(region, cache_kwargs)
         assert JumpStartModelsCache._cache is not None
         return JumpStartModelsCache._cache.get_header(model_id, version)
 
@@ -95,9 +105,7 @@ class JumpStartModelsCache(object):
         cache_kwargs = JumpStartModelsCache._validate_and_mutate_region_cache_kwargs(
             JumpStartModelsCache._cache_kwargs, region
         )
-        if JumpStartModelsCache._cache is None or region != JumpStartModelsCache._curr_region:
-            JumpStartModelsCache._cache = cache.JumpStartModelsCache(region=region, **cache_kwargs)
-            JumpStartModelsCache._curr_region = region
+        JumpStartModelsCache._set_cache_and_region(region, cache_kwargs)
         assert JumpStartModelsCache._cache is not None
         return JumpStartModelsCache._cache.get_specs(model_id, version)
 
