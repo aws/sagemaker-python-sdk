@@ -1,5 +1,20 @@
 # Changelog
 
+## v2.72.2 (2022-01-06)
+
+### Bug Fixes and Other Changes
+
+ * Update CHANGELOG.md
+ * Increment static lineage pipeline
+ * fix kmeans test deletion sequence, increment lineage statics
+ * Re-deploy static integ test endpoint if it is not found
+ * Add ContentType in test_auto_ml_describe
+ * Model Registration with BYO scripts
+
+### Documentation Changes
+
+ * SageMaker model parallel library 1.6.0 API doc
+
 ## v2.72.1 (2021-12-20)
 
 ### Bug Fixes and Other Changes
