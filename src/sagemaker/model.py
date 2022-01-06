@@ -34,6 +34,9 @@ from sagemaker.deprecations import removed_kwargs
 from sagemaker.predictor import PredictorBase
 from sagemaker.serverless import ServerlessInferenceConfig
 from sagemaker.transformer import Transformer
+from sagemaker.utils import unique_name_from_base
+from sagemaker.async_inference import AsyncInferenceConfig
+from sagemaker.predictor_async import AsyncPredictor
 
 LOGGER = logging.getLogger("sagemaker")
 
@@ -699,6 +702,7 @@ class Model(ModelBase):
         kms_key=None,
         wait=True,
         data_capture_config=None,
+        async_inference_config=None,
         serverless_inference_config=None,
         **kwargs,
     ):
@@ -752,17 +756,24 @@ class Model(ModelBase):
             data_capture_config (sagemaker.model_monitor.DataCaptureConfig): Specifies
                 configuration related to Endpoint data capture for use with
                 Amazon SageMaker Model Monitoring. Default: None.
+            async_inference_config (sagemaker.model_monitor.AsyncInferenceConfig): Specifies
+                configuration related to async endpoint. Use this configuration when trying
+                to create async endpoint and make async inference. If empty config object
+                passed through, will use default config to deploy async endpoint. Deploy a
+                real-time endpoint if it's None. (default: None)
             serverless_inference_config (sagemaker.serverless.ServerlessInferenceConfig):
                 Specifies configuration related to serverless endpoint. Use this configuration
                 when trying to create serverless endpoint and make serverless inference. If
-                empty object passed through, we will use pre-defined values in
-                ``ServerlessInferenceConfig`` class to deploy serverless endpoint (default: None)
+                empty object passed through, will use pre-defined values in
+                ``ServerlessInferenceConfig`` class to deploy serverless endpoint. Deploy an
+                instance based endpoint if it's None. (default: None)
         Raises:
              ValueError: If arguments combination check failed in these circumstances:
                 - If no role is specified or
                 - If serverless inference config is not specified and instance type and instance
                     count are also not specified or
-                - If a wrong type of object is provided as serverless inference config
+                - If a wrong type of object is provided as serverless inference config or async
+                    inference config
         Returns:
             callable[string, sagemaker.session.Session] or None: Invocation of
                 ``self.predictor_cls`` on the created endpoint name, if ``self.predictor_cls``
@@ -773,6 +784,10 @@ class Model(ModelBase):
 
         if self.role is None:
             raise ValueError("Role can not be null for deploying a model")
+
+        is_async = async_inference_config is not None
+        if is_async and not isinstance(async_inference_config, AsyncInferenceConfig):
+            raise ValueError("async_inference_config needs to be a AsyncInferenceConfig object")
 
         is_serverless = serverless_inference_config is not None
         if not is_serverless and not (instance_type and initial_instance_count):
@@ -821,6 +836,14 @@ class Model(ModelBase):
         if data_capture_config is not None:
             data_capture_config_dict = data_capture_config._to_request_dict()
 
+        async_inference_config_dict = None
+        if is_async:
+            if async_inference_config.output_path is None:
+                async_inference_config = self._build_default_async_inference_config(
+                    async_inference_config
+                )
+            async_inference_config_dict = async_inference_config._to_request_dict()
+
         self.sagemaker_session.endpoint_from_production_variants(
             name=self.endpoint_name,
             production_variants=[production_variant],
@@ -828,6 +851,7 @@ class Model(ModelBase):
             kms_key=kms_key,
             wait=wait,
             data_capture_config_dict=data_capture_config_dict,
+            async_inference_config_dict=async_inference_config_dict,
         )
 
         if self.predictor_cls:
@@ -836,8 +860,19 @@ class Model(ModelBase):
                 predictor.serializer = serializer
             if deserializer:
                 predictor.deserializer = deserializer
+            if is_async:
+                return AsyncPredictor(predictor, self.name)
             return predictor
         return None
+
+    def _build_default_async_inference_config(self, async_inference_config):
+        """Build default async inference config and return ``AsyncInferenceConfig``"""
+        async_output_folder = unique_name_from_base(self.name)
+        async_output_s3uri = "s3://{}/async-endpoint-outputs/{}".format(
+            self.sagemaker_session.default_bucket(), async_output_folder
+        )
+        async_inference_config.output_path = async_output_s3uri
+        return async_inference_config
 
     def transformer(
         self,
