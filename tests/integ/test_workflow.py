@@ -66,14 +66,13 @@ from sagemaker.workflow.conditions import (
     ConditionIn,
     ConditionLessThanOrEqualTo,
 )
-from sagemaker.workflow.condition_step import ConditionStep, JsonGet
+from sagemaker.workflow.condition_step import ConditionStep
 from sagemaker.workflow.callback_step import CallbackStep, CallbackOutput, CallbackOutputTypeEnum
 from sagemaker.workflow.lambda_step import LambdaStep, LambdaOutput, LambdaOutputTypeEnum
-from sagemaker.workflow.properties import PropertyFile
 from sagemaker.wrangler.processing import DataWranglerProcessor
 from sagemaker.dataset_definition.inputs import DatasetDefinition, AthenaDatasetDefinition
 from sagemaker.workflow.execution_variables import ExecutionVariables
-from sagemaker.workflow.functions import Join
+from sagemaker.workflow.functions import Join, JsonGet
 from sagemaker.wrangler.ingestion import generate_data_ingestion_flow_from_s3_input
 from sagemaker.workflow.parameters import (
     ParameterInteger,
@@ -87,6 +86,7 @@ from sagemaker.workflow.steps import (
     TuningStep,
     TransformStep,
     TransformInput,
+    PropertyFile,
 )
 from sagemaker.workflow.step_collections import RegisterModel
 from sagemaker.workflow.pipeline import Pipeline
@@ -137,7 +137,7 @@ def feature_store_session(sagemaker_session):
 
 @pytest.fixture
 def pipeline_name():
-    return f"my-pipeline-{int(time.time() * 10**7)}"
+    return f"my-pipeline-{int(time.time() * 10 ** 7)}"
 
 
 @pytest.fixture
@@ -1371,6 +1371,8 @@ def test_tuning_multi_algos(
     cpu_instance_type,
     pipeline_name,
     region_name,
+    script_dir,
+    athena_dataset_definition,
 ):
     base_dir = os.path.join(DATA_DIR, "pytorch_mnist")
     entry_point = os.path.join(base_dir, "mnist.py")
@@ -1382,6 +1384,42 @@ def test_tuning_multi_algos(
     instance_count = ParameterInteger(name="InstanceCount", default_value=1)
     instance_type = ParameterString(name="InstanceType", default_value="ml.m5.xlarge")
 
+    input_data = f"s3://sagemaker-sample-data-{region_name}/processing/census/census-income.csv"
+
+    sklearn_processor = SKLearnProcessor(
+        framework_version="0.20.0",
+        instance_type=instance_type,
+        instance_count=instance_count,
+        base_job_name="test-sklearn",
+        sagemaker_session=sagemaker_session,
+        role=role,
+    )
+
+    property_file = PropertyFile(
+        name="DataAttributes", output_name="attributes", path="attributes.json"
+    )
+
+    step_process = ProcessingStep(
+        name="my-process",
+        display_name="ProcessingStep",
+        description="description for Processing step",
+        processor=sklearn_processor,
+        inputs=[
+            ProcessingInput(source=input_data, destination="/opt/ml/processing/input"),
+            ProcessingInput(dataset_definition=athena_dataset_definition),
+        ],
+        outputs=[
+            ProcessingOutput(output_name="train_data", source="/opt/ml/processing/train"),
+            ProcessingOutput(output_name="attributes", source="/opt/ml/processing/attributes.json"),
+        ],
+        property_files=[property_file],
+        code=os.path.join(script_dir, "preprocessing.py"),
+    )
+
+    static_hp_1 = ParameterString(name="InstanceType", default_value="ml.m5.xlarge")
+    json_get_hp = JsonGet(
+        step_name=step_process.name, property_file=property_file, json_path="train_size"
+    )
     pytorch_estimator = PyTorch(
         entry_point=entry_point,
         role=role,
@@ -1392,10 +1430,11 @@ def test_tuning_multi_algos(
         sagemaker_session=sagemaker_session,
         enable_sagemaker_metrics=True,
         max_retry_attempts=3,
+        hyperparameters={"static-hp": static_hp_1, "train_size": json_get_hp},
     )
 
     min_batch_size = ParameterString(name="MinBatchSize", default_value="64")
-    max_batch_size = ParameterString(name="MaxBatchSize", default_value="128")
+    max_batch_size = json_get_hp
 
     tuner = HyperparameterTuner.create(
         estimator_dict={
@@ -1415,6 +1454,7 @@ def test_tuning_multi_algos(
             "estimator-2": [{"Name": "test:acc", "Regex": "Overall test accuracy: (.*?);"}],
         },
     )
+
     inputs = {
         "estimator-1": TrainingInput(s3_data=input_path),
         "estimator-2": TrainingInput(s3_data=input_path),
@@ -1429,7 +1469,7 @@ def test_tuning_multi_algos(
     pipeline = Pipeline(
         name=pipeline_name,
         parameters=[instance_count, instance_type, min_batch_size, max_batch_size],
-        steps=[step_tune],
+        steps=[step_process, step_tune],
         sagemaker_session=sagemaker_session,
     )
 

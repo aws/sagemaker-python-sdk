@@ -30,6 +30,8 @@ from sagemaker.tuner import (
     create_transfer_learning_tuner,
     HyperparameterTuner,
 )
+from sagemaker.workflow.functions import JsonGet, Join
+from sagemaker.workflow.parameters import ParameterString, ParameterInteger
 
 from .tuner_test_utils import *  # noqa: F403
 
@@ -68,14 +70,24 @@ def tuner(estimator):
 
 
 def test_prepare_for_training(tuner):
-    static_hyperparameters = {"validated": 1, "another_one": 0}
+    hp1 = JsonGet(step_name="stepname", property_file="pf", json_path="jp")
+    hp2 = Join(on="/", values=["1", "2", ParameterString(name="ps", default_value="3")])
+
+    static_hyperparameters = {
+        "validated": 1,
+        "another_one": 0,
+        "hp1": hp1,
+        "hp2": hp2,
+    }
+
     tuner.estimator.set_hyperparameters(**static_hyperparameters)
     tuner._prepare_for_tuning()
 
     assert tuner._current_job_name.startswith(IMAGE_NAME)
-
-    assert len(tuner.static_hyperparameters) == 1
+    assert len(tuner.static_hyperparameters) == 3
     assert tuner.static_hyperparameters["another_one"] == "0"
+    assert tuner.static_hyperparameters["hp1"] == hp1
+    assert tuner.static_hyperparameters["hp2"] == hp2
 
 
 def test_prepare_for_tuning_with_amazon_estimator(tuner, sagemaker_session):
@@ -1154,6 +1166,20 @@ def test_integer_parameter_ranges():
     assert ranges["MinValue"] == "1"
     assert ranges["MaxValue"] == "2"
     assert ranges["ScalingType"] == "Auto"
+
+
+def test_integer_parameter_ranges_with_pipeline_parameter():
+    min = ParameterInteger(name="p", default_value=2)
+    max = JsonGet(step_name="sn", property_file="pf", json_path="jp")
+    scale = ParameterString(name="scale", default_value="Auto")
+    int_param = IntegerParameter(min, max)
+    ranges = int_param.as_tuning_range("some")
+
+    assert len(ranges.keys()) == 4
+    assert ranges["Name"] == "some"
+    assert ranges["MinValue"] == min
+    assert ranges["MaxValue"] == max
+    assert ranges["ScalingType"] == scale
 
 
 def test_integer_parameter_scaling_type():
