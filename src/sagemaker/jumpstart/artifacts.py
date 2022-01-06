@@ -49,7 +49,7 @@ def _retrieve_image_uri(
     Args:
         model_id (str): JumpStart model ID for which to retrieve image URI.
         model_version (str): Version of the JumpStart model for which to retrieve
-            the image URI (default: None).
+            the image URI.
         image_scope (str): The image type, i.e. what it is used for.
             Valid values: "training", "inference", "eia". If ``accelerator_type`` is set,
             ``image_scope`` is ignored.
@@ -67,12 +67,10 @@ def _retrieve_image_uri(
         container_version (str): the version of docker image.
             Ideally the value of parameter should be created inside the framework.
             For custom use, see the list of supported container versions:
-            https://github.com/aws/deep-learning-containers/blob/master/available_images.md
-            (default: None).
+            https://github.com/aws/deep-learning-containers/blob/master/available_images.md.
         distribution (dict): A dictionary with information on how to run distributed training
         training_compiler_config (:class:`~sagemaker.training_compiler.TrainingCompilerConfig`):
-            A configuration class for the SageMaker Training Compiler
-            (default: None).
+            A configuration class for the SageMaker Training Compiler.
 
     Returns:
         str: the ECR URI for the corresponding SageMaker Docker image.
@@ -94,7 +92,7 @@ def _retrieve_image_uri(
             f"JumpStart models only support scopes: {', '.join(SUPPORTED_JUMPSTART_SCOPES)}."
         )
 
-    model_specs = jumpstart_accessors.JumpStartModelsCache.get_model_specs(
+    model_specs = jumpstart_accessors.JumpStartModelsAccessor.get_model_specs(
         region, model_id, model_version
     )
 
@@ -202,7 +200,7 @@ def _retrieve_model_uri(
             f"JumpStart models only support scopes: {', '.join(SUPPORTED_JUMPSTART_SCOPES)}."
         )
 
-    model_specs = jumpstart_accessors.JumpStartModelsCache.get_model_specs(
+    model_specs = jumpstart_accessors.JumpStartModelsAccessor.get_model_specs(
         region, model_id, model_version
     )
     if model_scope == INFERENCE:
@@ -261,7 +259,7 @@ def _retrieve_script_uri(
             f"JumpStart models only support scopes: {', '.join(SUPPORTED_JUMPSTART_SCOPES)}."
         )
 
-    model_specs = jumpstart_accessors.JumpStartModelsCache.get_model_specs(
+    model_specs = jumpstart_accessors.JumpStartModelsAccessor.get_model_specs(
         region, model_id, model_version
     )
     if script_scope == INFERENCE:

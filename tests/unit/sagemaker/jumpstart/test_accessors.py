@@ -42,12 +42,12 @@ def test_jumpstart_models_cache_get_fxs():
 
     assert get_header_from_base_header(
         region="us-west-2", model_id="pytorch-ic-mobilenet-v2", version="*"
-    ) == accessors.JumpStartModelsCache.get_model_header(
+    ) == accessors.JumpStartModelsAccessor.get_model_header(
         region="us-west-2", model_id="pytorch-ic-mobilenet-v2", version="*"
     )
     assert get_spec_from_base_spec(
         region="us-west-2", model_id="pytorch-ic-mobilenet-v2", version="*"
-    ) == accessors.JumpStartModelsCache.get_model_specs(
+    ) == accessors.JumpStartModelsAccessor.get_model_specs(
         region="us-west-2", model_id="pytorch-ic-mobilenet-v2", version="*"
     )
 
@@ -59,68 +59,70 @@ def test_jumpstart_models_cache_get_fxs():
 def test_jumpstart_models_cache_set_reset_fxs(mock_model_cache: Mock):
 
     # test change of region resets cache
-    accessors.JumpStartModelsCache.get_model_header(
+    accessors.JumpStartModelsAccessor.get_model_header(
         region="us-west-2", model_id="pytorch-ic-mobilenet-v2", version="*"
     )
 
-    accessors.JumpStartModelsCache.get_model_specs(
+    accessors.JumpStartModelsAccessor.get_model_specs(
         region="us-west-2", model_id="pytorch-ic-mobilenet-v2", version="*"
     )
 
     mock_model_cache.assert_called_once()
     mock_model_cache.reset_mock()
 
-    accessors.JumpStartModelsCache.get_model_header(
+    accessors.JumpStartModelsAccessor.get_model_header(
         region="us-east-2", model_id="pytorch-ic-mobilenet-v2", version="*"
     )
 
     mock_model_cache.assert_called_once()
     mock_model_cache.reset_mock()
 
-    accessors.JumpStartModelsCache.get_model_specs(
+    accessors.JumpStartModelsAccessor.get_model_specs(
         region="us-west-1", model_id="pytorch-ic-mobilenet-v2", version="*"
     )
     mock_model_cache.assert_called_once()
     mock_model_cache.reset_mock()
 
     # test set_cache_kwargs
-    accessors.JumpStartModelsCache.set_cache_kwargs(cache_kwargs={"some": "kwarg"})
+    accessors.JumpStartModelsAccessor.set_cache_kwargs(cache_kwargs={"some": "kwarg"})
     mock_model_cache.assert_called_once_with(some="kwarg")
     mock_model_cache.reset_mock()
 
-    accessors.JumpStartModelsCache.set_cache_kwargs(
+    accessors.JumpStartModelsAccessor.set_cache_kwargs(
         region="us-west-2", cache_kwargs={"some": "kwarg"}
     )
     mock_model_cache.assert_called_once_with(region="us-west-2", some="kwarg")
     mock_model_cache.reset_mock()
 
     # test reset cache
-    accessors.JumpStartModelsCache.reset_cache(cache_kwargs={"some": "kwarg"})
+    accessors.JumpStartModelsAccessor.reset_cache(cache_kwargs={"some": "kwarg"})
     mock_model_cache.assert_called_once_with(some="kwarg")
     mock_model_cache.reset_mock()
 
-    accessors.JumpStartModelsCache.reset_cache(region="us-west-2", cache_kwargs={"some": "kwarg"})
+    accessors.JumpStartModelsAccessor.reset_cache(
+        region="us-west-2", cache_kwargs={"some": "kwarg"}
+    )
     mock_model_cache.assert_called_once_with(region="us-west-2", some="kwarg")
     mock_model_cache.reset_mock()
 
-    accessors.JumpStartModelsCache.reset_cache()
+    accessors.JumpStartModelsAccessor.reset_cache()
     mock_model_cache.assert_called_once_with()
     mock_model_cache.reset_mock()
 
     # validate region and cache kwargs utility
     assert {
         "some": "kwarg"
-    } == accessors.JumpStartModelsCache._validate_and_mutate_region_cache_kwargs(
+    } == accessors.JumpStartModelsAccessor._validate_and_mutate_region_cache_kwargs(
         {"some": "kwarg"}, "us-west-2"
     )
     assert {
         "some": "kwarg"
-    } == accessors.JumpStartModelsCache._validate_and_mutate_region_cache_kwargs(
+    } == accessors.JumpStartModelsAccessor._validate_and_mutate_region_cache_kwargs(
         {"some": "kwarg", "region": "us-west-2"}, "us-west-2"
     )
 
     with pytest.raises(ValueError):
-        accessors.JumpStartModelsCache._validate_and_mutate_region_cache_kwargs(
+        accessors.JumpStartModelsAccessor._validate_and_mutate_region_cache_kwargs(
             {"some": "kwarg", "region": "us-east-2"}, "us-west-2"
         )
 

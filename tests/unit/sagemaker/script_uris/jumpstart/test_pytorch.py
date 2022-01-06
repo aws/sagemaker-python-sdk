@@ -20,7 +20,7 @@ from sagemaker import script_uris
 from tests.unit.sagemaker.jumpstart.utils import get_prototype_model_spec
 
 
-@patch("sagemaker.jumpstart.accessors.JumpStartModelsCache.get_model_specs")
+@patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
 def test_jumpstart_pytorch_script_uri(patched_get_model_specs):
 
     patched_get_model_specs.side_effect = get_prototype_model_spec

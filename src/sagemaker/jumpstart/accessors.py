@@ -34,7 +34,7 @@ class SageMakerSettings(object):
         return SageMakerSettings._parsed_sagemaker_version
 
 
-class JumpStartModelsCache(object):
+class JumpStartModelsAccessor(object):
     """Static class for storing the JumpStart models cache."""
 
     _cache: Optional[cache.JumpStartModelsCache] = None
@@ -67,15 +67,17 @@ class JumpStartModelsCache(object):
 
     @staticmethod
     def _set_cache_and_region(region: str, cache_kwargs: dict) -> None:
-        """Sets ``JumpStartModelsCache._cache`` and ``JumpStartModelsCache._curr_region``.
+        """Sets ``JumpStartModelsAccessor._cache`` and ``JumpStartModelsAccessor._curr_region``.
 
         Args:
             region (str): region for which to retrieve header/spec.
             cache_kwargs (dict): kwargs to pass to ``JumpStartModelsCache``.
         """
-        if JumpStartModelsCache._cache is None or region != JumpStartModelsCache._curr_region:
-            JumpStartModelsCache._cache = cache.JumpStartModelsCache(region=region, **cache_kwargs)
-            JumpStartModelsCache._curr_region = region
+        if JumpStartModelsAccessor._cache is None or region != JumpStartModelsAccessor._curr_region:
+            JumpStartModelsAccessor._cache = cache.JumpStartModelsCache(
+                region=region, **cache_kwargs
+            )
+            JumpStartModelsAccessor._curr_region = region
 
     @staticmethod
     def get_model_header(region: str, model_id: str, version: str) -> JumpStartModelHeader:
@@ -86,12 +88,12 @@ class JumpStartModelsCache(object):
             model_id (str): model id to retrieve.
             version (str): semantic version to retrieve for the model id.
         """
-        cache_kwargs = JumpStartModelsCache._validate_and_mutate_region_cache_kwargs(
-            JumpStartModelsCache._cache_kwargs, region
+        cache_kwargs = JumpStartModelsAccessor._validate_and_mutate_region_cache_kwargs(
+            JumpStartModelsAccessor._cache_kwargs, region
         )
-        JumpStartModelsCache._set_cache_and_region(region, cache_kwargs)
-        assert JumpStartModelsCache._cache is not None
-        return JumpStartModelsCache._cache.get_header(model_id, version)
+        JumpStartModelsAccessor._set_cache_and_region(region, cache_kwargs)
+        assert JumpStartModelsAccessor._cache is not None
+        return JumpStartModelsAccessor._cache.get_header(model_id, version)
 
     @staticmethod
     def get_model_specs(region: str, model_id: str, version: str) -> JumpStartModelSpecs:
@@ -102,12 +104,12 @@ class JumpStartModelsCache(object):
             model_id (str): model id to retrieve.
             version (str): semantic version to retrieve for the model id.
         """
-        cache_kwargs = JumpStartModelsCache._validate_and_mutate_region_cache_kwargs(
-            JumpStartModelsCache._cache_kwargs, region
+        cache_kwargs = JumpStartModelsAccessor._validate_and_mutate_region_cache_kwargs(
+            JumpStartModelsAccessor._cache_kwargs, region
         )
-        JumpStartModelsCache._set_cache_and_region(region, cache_kwargs)
-        assert JumpStartModelsCache._cache is not None
-        return JumpStartModelsCache._cache.get_specs(model_id, version)
+        JumpStartModelsAccessor._set_cache_and_region(region, cache_kwargs)
+        assert JumpStartModelsAccessor._cache is not None
+        return JumpStartModelsAccessor._cache.get_specs(model_id, version)
 
     @staticmethod
     def set_cache_kwargs(cache_kwargs: Dict[str, Any], region: str = None) -> None:
@@ -120,18 +122,18 @@ class JumpStartModelsCache(object):
             cache_kwargs (str): cache kwargs to validate.
             region (str): Optional. The region to validate along with the kwargs.
         """
-        cache_kwargs = JumpStartModelsCache._validate_and_mutate_region_cache_kwargs(
+        cache_kwargs = JumpStartModelsAccessor._validate_and_mutate_region_cache_kwargs(
             cache_kwargs, region
         )
-        JumpStartModelsCache._cache_kwargs = cache_kwargs
+        JumpStartModelsAccessor._cache_kwargs = cache_kwargs
         if region is None:
-            JumpStartModelsCache._cache = cache.JumpStartModelsCache(
-                **JumpStartModelsCache._cache_kwargs
+            JumpStartModelsAccessor._cache = cache.JumpStartModelsCache(
+                **JumpStartModelsAccessor._cache_kwargs
             )
         else:
-            JumpStartModelsCache._curr_region = region
-            JumpStartModelsCache._cache = cache.JumpStartModelsCache(
-                region=region, **JumpStartModelsCache._cache_kwargs
+            JumpStartModelsAccessor._curr_region = region
+            JumpStartModelsAccessor._cache = cache.JumpStartModelsCache(
+                region=region, **JumpStartModelsAccessor._cache_kwargs
             )
 
     @staticmethod
@@ -146,4 +148,4 @@ class JumpStartModelsCache(object):
             region (str): The region to validate along with the kwargs.
         """
         cache_kwargs_dict = {} if cache_kwargs is None else cache_kwargs
-        JumpStartModelsCache.set_cache_kwargs(cache_kwargs_dict, region)
+        JumpStartModelsAccessor.set_cache_kwargs(cache_kwargs_dict, region)

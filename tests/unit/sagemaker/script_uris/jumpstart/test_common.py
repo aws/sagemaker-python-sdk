@@ -21,7 +21,7 @@ from tests.unit.sagemaker.jumpstart.utils import get_spec_from_base_spec
 from sagemaker.jumpstart import constants as sagemaker_constants
 
 
-@patch("sagemaker.jumpstart.accessors.JumpStartModelsCache.get_model_specs")
+@patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
 def test_jumpstart_common_script_uri(patched_get_model_specs):
 
     patched_get_model_specs.side_effect = get_spec_from_base_spec

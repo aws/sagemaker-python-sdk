@@ -19,7 +19,7 @@ from sagemaker import model_uris
 from tests.unit.sagemaker.jumpstart.utils import get_prototype_model_spec
 
 
-@patch("sagemaker.jumpstart.accessors.JumpStartModelsCache.get_model_specs")
+@patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
 def test_jumpstart_xgboost_model_uri(patched_get_model_specs):
 
     patched_get_model_specs.side_effect = get_prototype_model_spec

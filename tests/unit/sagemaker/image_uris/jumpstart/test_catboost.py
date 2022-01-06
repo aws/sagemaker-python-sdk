@@ -22,7 +22,7 @@ from sagemaker.pytorch.model import PyTorchModel
 from tests.unit.sagemaker.jumpstart.utils import get_prototype_model_spec
 
 
-@patch("sagemaker.jumpstart.accessors.JumpStartModelsCache.get_model_specs")
+@patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
 def test_jumpstart_catboost_image_uri(patched_get_model_specs):
 
     patched_get_model_specs.side_effect = get_prototype_model_spec
@@ -31,7 +31,7 @@ def test_jumpstart_catboost_image_uri(patched_get_model_specs):
     instance_type = "ml.p2.xlarge"
     region = "us-west-2"
 
-    model_specs = accessors.JumpStartModelsCache.get_model_specs(region, model_id, model_version)
+    model_specs = accessors.JumpStartModelsAccessor.get_model_specs(region, model_id, model_version)
 
     # inference
     uri = image_uris.retrieve(
