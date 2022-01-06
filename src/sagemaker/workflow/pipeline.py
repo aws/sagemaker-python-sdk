@@ -144,7 +144,7 @@ class Pipeline(Entity):
         # If pipeline definition is large, upload to S3 bucket and
         # provide PipelineDefinitionS3Location to request instead.
         if len(pipeline_definition.encode("utf-8")) < 1024 * 100:
-            kwargs["PipelineDefinition"] = self.definition()
+            kwargs["PipelineDefinition"] = pipeline_definition
         else:
             desired_s3_uri = s3.s3_path_join(
                 "s3://", self.sagemaker_session.default_bucket(), self.name
