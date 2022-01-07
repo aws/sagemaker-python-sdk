@@ -22,6 +22,7 @@ import attr
 import botocore
 from botocore.exceptions import ClientError
 
+from sagemaker import s3
 from sagemaker._studio import _append_project_tags
 from sagemaker.session import Session
 from sagemaker.workflow.callback_step import CallbackOutput, CallbackStep
@@ -34,6 +35,7 @@ from sagemaker.workflow.entities import (
 from sagemaker.workflow.execution_variables import ExecutionVariables
 from sagemaker.workflow.parameters import Parameter
 from sagemaker.workflow.pipeline_experiment_config import PipelineExperimentConfig
+from sagemaker.workflow.parallelism_config import ParallelismConfiguration
 from sagemaker.workflow.properties import Properties
 from sagemaker.workflow.steps import Step
 from sagemaker.workflow.step_collections import StepCollection
@@ -94,6 +96,7 @@ class Pipeline(Entity):
         role_arn: str,
         description: str = None,
         tags: List[Dict[str, str]] = None,
+        parallelism_config: ParallelismConfiguration = None,
     ) -> Dict[str, Any]:
         """Creates a Pipeline in the Pipelines service.
 
@@ -102,37 +105,62 @@ class Pipeline(Entity):
             description (str): A description of the pipeline.
             tags (List[Dict[str, str]]): A list of {"Key": "string", "Value": "string"} dicts as
                 tags.
+            parallelism_config (Optional[ParallelismConfiguration]): Parallelism configuration
+                that is applied to each of the executions of the pipeline. It takes precedence
+                over the parallelism configuration of the parent pipeline.
 
         Returns:
             A response dict from the service.
         """
         tags = _append_project_tags(tags)
-
-        kwargs = self._create_args(role_arn, description)
+        kwargs = self._create_args(role_arn, description, parallelism_config)
         update_args(
             kwargs,
             Tags=tags,
         )
         return self.sagemaker_session.sagemaker_client.create_pipeline(**kwargs)
 
-    def _create_args(self, role_arn: str, description: str):
+    def _create_args(
+        self, role_arn: str, description: str, parallelism_config: ParallelismConfiguration
+    ):
         """Constructs the keyword argument dict for a create_pipeline call.
 
         Args:
             role_arn (str): The role arn that is assumed by pipelines to create step artifacts.
             description (str): A description of the pipeline.
+            parallelism_config (Optional[ParallelismConfiguration]): Parallelism configuration
+                that is applied to each of the executions of the pipeline. It takes precedence
+                over the parallelism configuration of the parent pipeline.
 
         Returns:
             A keyword argument dict for calling create_pipeline.
         """
+        pipeline_definition = self.definition()
         kwargs = dict(
             PipelineName=self.name,
-            PipelineDefinition=self.definition(),
             RoleArn=role_arn,
         )
+
+        # If pipeline definition is large, upload to S3 bucket and
+        # provide PipelineDefinitionS3Location to request instead.
+        if len(pipeline_definition.encode("utf-8")) < 1024 * 100:
+            kwargs["PipelineDefinition"] = pipeline_definition
+        else:
+            desired_s3_uri = s3.s3_path_join(
+                "s3://", self.sagemaker_session.default_bucket(), self.name
+            )
+            s3.S3Uploader.upload_string_as_file_body(
+                body=pipeline_definition,
+                desired_s3_uri=desired_s3_uri,
+                sagemaker_session=self.sagemaker_session,
+            )
+            kwargs["PipelineDefinitionS3Location"] = {
+                "Bucket": self.sagemaker_session.default_bucket(),
+                "ObjectKey": self.name,
+            }
+
         update_args(
-            kwargs,
-            PipelineDescription=description,
+            kwargs, PipelineDescription=description, ParallelismConfiguration=parallelism_config
         )
         return kwargs
 
@@ -146,17 +174,25 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
         """
         return self.sagemaker_session.sagemaker_client.describe_pipeline(PipelineName=self.name)
 
-    def update(self, role_arn: str, description: str = None) -> Dict[str, Any]:
+    def update(
+        self,
+        role_arn: str,
+        description: str = None,
+        parallelism_config: ParallelismConfiguration = None,
+    ) -> Dict[str, Any]:
         """Updates a Pipeline in the Workflow service.
 
         Args:
             role_arn (str): The role arn that is assumed by pipelines to create step artifacts.
             description (str): A description of the pipeline.
+            parallelism_config (Optional[ParallelismConfiguration]): Parallelism configuration
+                that is applied to each of the executions of the pipeline. It takes precedence
+                over the parallelism configuration of the parent pipeline.
 
         Returns:
             A response dict from the service.
         """
-        kwargs = self._create_args(role_arn, description)
+        kwargs = self._create_args(role_arn, description, parallelism_config)
         return self.sagemaker_session.sagemaker_client.update_pipeline(**kwargs)
 
     def upsert(
@@ -164,6 +200,7 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
         role_arn: str,
         description: str = None,
         tags: List[Dict[str, str]] = None,
+        parallelism_config: ParallelismConfiguration = None,
     ) -> Dict[str, Any]:
         """Creates a pipeline or updates it, if it already exists.
 
@@ -172,12 +209,14 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
             description (str): A description of the pipeline.
             tags (List[Dict[str, str]]): A list of {"Key": "string", "Value": "string"} dicts as
                 tags.
+            parallelism_config (Optional[Config for parallel steps, Parallelism configuration that
+                is applied to each of. the executions
 
         Returns:
             response dict from service
         """
         try:
-            response = self.create(role_arn, description, tags)
+            response = self.create(role_arn, description, tags, parallelism_config)
         except ClientError as e:
             error = e.response["Error"]
             if (
@@ -215,6 +254,7 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
         parameters: Dict[str, Union[str, bool, int, float]] = None,
         execution_display_name: str = None,
         execution_description: str = None,
+        parallelism_config: ParallelismConfiguration = None,
     ):
         """Starts a Pipeline execution in the Workflow service.
 
@@ -223,6 +263,9 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
                 pipeline parameters.
             execution_display_name (str): The display name of the pipeline execution.
             execution_description (str): A description of the execution.
+            parallelism_config (Optional[ParallelismConfiguration]): Parallelism configuration
+                that is applied to each of the executions of the pipeline. It takes precedence
+                over the parallelism configuration of the parent pipeline.
 
         Returns:
             A `_PipelineExecution` instance, if successful.
@@ -245,6 +288,7 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
             PipelineParameters=format_start_parameters(parameters),
             PipelineExecutionDescription=execution_description,
             PipelineExecutionDisplayName=execution_display_name,
+            ParallelismConfiguration=parallelism_config,
         )
         response = self.sagemaker_session.sagemaker_client.start_pipeline_execution(**kwargs)
         return _PipelineExecution(
