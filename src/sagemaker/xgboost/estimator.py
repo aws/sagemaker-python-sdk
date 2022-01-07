@@ -90,9 +90,9 @@ class XGBoost(Framework):
                 Examples:
                     123.dkr.ecr.us-west-2.amazonaws.com/my-custom-image:1.0
                     custom-image:latest.
-            image_uri_region (str): If ``image_uri` argument is None, the image uri
+            image_uri_region (str): If ``image_uri`` argument is None, the image uri
                 associated with this object will be in this region.
-                    Default: region associated with SageMaker session.
+                Default: region associated with SageMaker session.
             **kwargs: Additional kwargs passed to the
                 :class:`~sagemaker.estimator.Framework` constructor.
 
