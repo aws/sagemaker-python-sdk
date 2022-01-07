@@ -83,10 +83,11 @@ class Vertex:
         self._session = sagemaker_session
 
     def to_lineage_object(self):
-        """Convert the ``Vertex`` object to its corresponding ``Artifact`` or ``Context`` object."""
+        """Convert the ``Vertex`` object to its corresponding Artifact, Action, Context object."""
         from sagemaker.lineage.artifact import Artifact, ModelArtifact
         from sagemaker.lineage.context import Context, EndpointContext
         from sagemaker.lineage.artifact import DatasetArtifact
+        from sagemaker.lineage.action import Action
 
         if self.lineage_entity == LineageEntityEnum.CONTEXT.value:
             resource_name = get_resource_name_from_arn(self.arn)
@@ -102,6 +103,9 @@ class Vertex:
             if self.lineage_source == LineageSourceEnum.DATASET.value:
                 return DatasetArtifact.load(artifact_arn=self.arn, sagemaker_session=self._session)
             return Artifact.load(artifact_arn=self.arn, sagemaker_session=self._session)
+
+        if self.lineage_entity == LineageEntityEnum.ACTION.value:
+            return Action.load(action_name=self.arn.split("/")[1], sagemaker_session=self._session)
 
         raise ValueError("Vertex cannot be converted to a lineage object.")
 
