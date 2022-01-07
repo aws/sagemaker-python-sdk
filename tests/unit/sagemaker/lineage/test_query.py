@@ -45,6 +45,143 @@ def test_lineage_query(sagemaker_session):
     assert response.vertices[1].lineage_entity == "Context"
 
 
+def test_lineage_query_cross_account_same_artifact(sagemaker_session):
+    lineage_query = LineageQuery(sagemaker_session)
+    sagemaker_session.sagemaker_client.query_lineage.return_value = {
+        "Vertices": [
+            {
+                "Arn": "arn:aws:sagemaker:us-east-2:012345678901:artifact/e1f29799189751939405b0f2b5b9d2a0",
+                "Type": "Endpoint",
+                "LineageType": "Artifact",
+            },
+            {
+                "Arn": "arn:aws:sagemaker:us-east-2:012345678902:artifact/e1f29799189751939405b0f2b5b9d2a0",
+                "Type": "Endpoint",
+                "LineageType": "Artifact",
+            },
+        ],
+        "Edges": [
+            {
+                "SourceArn": "arn:aws:sagemaker:us-east-2:012345678901:artifact/e1f29799189751939405b0f2b5b9d2a0",
+                "DestinationArn": "arn:aws:sagemaker:us-east-2:012345678902:artifact/e1f29799189751939405b0f2b5b9d2a0",
+                "AssociationType": "SAME_AS",
+            },
+            {
+                "SourceArn": "arn:aws:sagemaker:us-east-2:012345678902:artifact/e1f29799189751939405b0f2b5b9d2a0",
+                "DestinationArn": "arn:aws:sagemaker:us-east-2:012345678901:artifact/e1f29799189751939405b0f2b5b9d2a0",
+                "AssociationType": "SAME_AS",
+            },
+        ],
+    }
+
+    response = lineage_query.query(
+        start_arns=["arn:aws:sagemaker:us-west-2:0123456789012:context/mycontext"]
+    )
+    assert len(response.edges) == 0
+    assert len(response.vertices) == 1
+    assert (
+        response.vertices[0].arn
+        == "arn:aws:sagemaker:us-east-2:012345678901:artifact/e1f29799189751939405b0f2b5b9d2a0"
+    )
+    assert response.vertices[0].lineage_source == "Endpoint"
+    assert response.vertices[0].lineage_entity == "Artifact"
+
+
+def test_lineage_query_cross_account(sagemaker_session):
+    lineage_query = LineageQuery(sagemaker_session)
+    sagemaker_session.sagemaker_client.query_lineage.return_value = {
+        "Vertices": [
+            {
+                "Arn": "arn:aws:sagemaker:us-east-2:012345678901:artifact/e1f29799189751939405b0f2b5b9d2a0",
+                "Type": "Endpoint",
+                "LineageType": "Artifact",
+            },
+            {
+                "Arn": "arn:aws:sagemaker:us-east-2:012345678902:artifact/e1f29799189751939405b0f2b5b9d2a0",
+                "Type": "Endpoint",
+                "LineageType": "Artifact",
+            },
+            {
+                "Arn": "arn:aws:sagemaker:us-east-2:012345678903:artifact/e1f29799189751939405b0f2b5b9abcd",
+                "Type": "Endpoint",
+                "LineageType": "Artifact",
+            },
+            {
+                "Arn": "arn:aws:sagemaker:us-east-2:012345678903:artifact/e1f29799189751939405b0f2b5b9efgh",
+                "Type": "Endpoint",
+                "LineageType": "Artifact",
+            },
+        ],
+        "Edges": [
+            {
+                "SourceArn": "arn:aws:sagemaker:us-east-2:012345678901:artifact/e1f29799189751939405b0f2b5b9d2a0",
+                "DestinationArn": "arn:aws:sagemaker:us-east-2:012345678902:artifact/e1f29799189751939405b0f2b5b9d2a0",
+                "AssociationType": "SAME_AS",
+            },
+            {
+                "SourceArn": "arn:aws:sagemaker:us-east-2:012345678902:artifact/e1f29799189751939405b0f2b5b9d2a0",
+                "DestinationArn": "arn:aws:sagemaker:us-east-2:012345678901:artifact/e1f29799189751939405b0f2b5b9d2a0",
+                "AssociationType": "SAME_AS",
+            },
+            {
+                "SourceArn": "arn:aws:sagemaker:us-east-2:012345678902:artifact/e1f29799189751939405b0f2b5b9d2a0",
+                "DestinationArn": "arn:aws:sagemaker:us-east-2:012345678903:artifact/e1f29799189751939405b0f2b5b9abcd",
+                "AssociationType": "ABC",
+            },
+            {
+                "SourceArn": "arn:aws:sagemaker:us-east-2:012345678903:artifact/e1f29799189751939405b0f2b5b9abcd",
+                "DestinationArn": "arn:aws:sagemaker:us-east-2:012345678903:artifact/e1f29799189751939405b0f2b5b9efgh",
+                "AssociationType": "DEF",
+            },
+        ],
+    }
+
+    response = lineage_query.query(
+        start_arns=["arn:aws:sagemaker:us-west-2:0123456789012:context/mycontext"]
+    )
+
+    assert len(response.edges) == 2
+    assert (
+        response.edges[0].source_arn
+        == "arn:aws:sagemaker:us-east-2:012345678901:artifact/e1f29799189751939405b0f2b5b9d2a0"
+    )
+    assert (
+        response.edges[0].destination_arn
+        == "arn:aws:sagemaker:us-east-2:012345678903:artifact/e1f29799189751939405b0f2b5b9abcd"
+    )
+    assert response.edges[0].association_type == "ABC"
+
+    assert (
+        response.edges[1].source_arn
+        == "arn:aws:sagemaker:us-east-2:012345678903:artifact/e1f29799189751939405b0f2b5b9abcd"
+    )
+    assert (
+        response.edges[1].destination_arn
+        == "arn:aws:sagemaker:us-east-2:012345678903:artifact/e1f29799189751939405b0f2b5b9efgh"
+    )
+    assert response.edges[1].association_type == "DEF"
+
+    assert len(response.vertices) == 3
+    assert (
+        response.vertices[0].arn
+        == "arn:aws:sagemaker:us-east-2:012345678901:artifact/e1f29799189751939405b0f2b5b9d2a0"
+    )
+    assert response.vertices[0].lineage_source == "Endpoint"
+    assert response.vertices[0].lineage_entity == "Artifact"
+    assert (
+        response.vertices[1].arn
+        == "arn:aws:sagemaker:us-east-2:012345678903:artifact/e1f29799189751939405b0f2b5b9abcd"
+    )
+    assert response.vertices[1].lineage_source == "Endpoint"
+    assert response.vertices[1].lineage_entity == "Artifact"
+    assert (
+        response.vertices[2].arn
+        == "arn:aws:sagemaker:us-east-2:012345678903:artifact/e1f29799189751939405b0f2b5b9efgh"
+    )
+    assert response.vertices[2].lineage_source == "Endpoint"
+    assert response.vertices[2].lineage_entity == "Artifact"
+
+
 def test_vertex_to_object_endpoint_context(sagemaker_session):
     vertex = Vertex(
         arn="arn:aws:sagemaker:us-west-2:0123456789012:context/mycontext",
