@@ -10,7 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Accessors to retrieve environment variables to run pretrained ML models."""
+"""Accessors to retrieve environment variables for hosting containers."""
 
 from __future__ import absolute_import
 
@@ -28,14 +28,15 @@ def retrieve_default(
     model_id=None,
     model_version=None,
 ) -> Dict[str, str]:
-    """Retrieves the default environment variables for the model matching the given arguments.
+    """Retrieves the default container environment variables for the model matching the arguments.
 
     Args:
-        region (str): Region for which to retrieve default environment variables.
-        model_id (str): JumpStart model ID of the JumpStart model for which to
-            retrieve the default environment variables.
-        model_version (str): Version of the JumpStart model for which to retrieve the
-            default environment variables.
+        region (str): Optional. Region for which to retrieve default environment variables.
+            (Default: None).
+        model_id (str): Optional. JumpStart model ID of the JumpStart model for which to
+            retrieve the default environment variables. (Default: None).
+        model_version (str): Optional. Version of the JumpStart model for which to retrieve the
+            default environment variables. (Default: None).
     Returns:
         dict: the variables to use for the model.
 

@@ -12,7 +12,7 @@
 # language governing permissions and limitations under the License.
 """This module contains functions for obtaining JumpStart ECR and S3 URIs."""
 from __future__ import absolute_import
-from typing import Optional
+from typing import Dict, Optional
 from sagemaker import image_uris
 from sagemaker.jumpstart.constants import (
     JUMPSTART_DEFAULT_REGION_NAME,
@@ -20,6 +20,7 @@ from sagemaker.jumpstart.constants import (
     TRAINING,
     SUPPORTED_JUMPSTART_SCOPES,
     ModelFramework,
+    VariableScope,
 )
 from sagemaker.jumpstart.utils import get_jumpstart_content_bucket
 from sagemaker.jumpstart import accessors as jumpstart_accessors
@@ -295,7 +296,12 @@ def _retrieve_default_hyperparameters(
             default hyperparameters.
         region (str): Region for which to retrieve default hyperparameters.
         include_container_hyperparameters (bool): True if container hyperparameters
-            should be returned as well. (Default: False)
+            should be returned as well. Container hyperparameters are not used to tune
+            the specific algorithm, but rather by SageMaker Training to setup
+            the training container environment. For example, there is a container hyperparameter
+            that indicates the entrypoint script to use. These hyperparameters may be required
+            when creating a training job with boto3, however the ``Estimator`` classes
+            should take care of adding container hyperparameters to the job. (Default: False).
     Returns:
         dict: the hyperparameters to use for the model.
 
@@ -312,11 +318,11 @@ def _retrieve_default_hyperparameters(
         region=region, model_id=model_id, version=model_version
     )
 
-    default_hyperparameters = {}
+    default_hyperparameters: Dict[str, str] = {}
     for hyperparameter in model_specs.hyperparameters:
         if (
-            include_container_hyperparameters and hyperparameter.scope == "container"
-        ) or hyperparameter.scope == "algorithm":
+            include_container_hyperparameters and hyperparameter.scope == VariableScope.CONTAINER
+        ) or hyperparameter.scope == VariableScope.ALGORITHM:
             default_hyperparameters[hyperparameter.name] = str(hyperparameter.default)
     return default_hyperparameters
 
@@ -333,7 +339,7 @@ def _retrieve_default_environment_variables(
             retrieve the default environment variables.
         model_version (str): Version of the JumpStart model for which to retrieve the
             default environment variables.
-        region (str): Region for which to retrieve default environment variables.
+        region (Optional[str]): Region for which to retrieve default environment variables.
 
     Returns:
         dict: the inference environment variables to use for the model.
@@ -345,13 +351,11 @@ def _retrieve_default_environment_variables(
     if region is None:
         region = JUMPSTART_DEFAULT_REGION_NAME
 
-    assert region is not None
-
     model_specs = jumpstart_accessors.JumpStartModelsCache.get_model_specs(
         region=region, model_id=model_id, version=model_version
     )
 
-    default_environment_variables = {}
+    default_environment_variables: Dict[str, str] = {}
     for environment_variable in model_specs.inference_environment_variables:
         default_environment_variables[environment_variable.name] = str(environment_variable.default)
     return default_environment_variables

@@ -139,3 +139,13 @@ class ModelFramework(str, Enum):
     CATBOOST = "catboost"
     XGBOOST = "xgboost"
     SKLEARN = "sklearn"
+
+
+class VariableScope(str, Enum):
+    """Enum class for variable scope.
+
+    Used for hosting environment variables and training hyperparameters.
+    """
+
+    CONTAINER = "container"
+    ALGORITHM = "algorithm"

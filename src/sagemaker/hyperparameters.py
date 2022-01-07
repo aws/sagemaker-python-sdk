@@ -10,7 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Accessors to retrieve hyperparameters to run pretrained ML models."""
+"""Accessors to retrieve hyperparameters for training jobs."""
 
 from __future__ import absolute_import
 
@@ -38,7 +38,12 @@ def retrieve_default(
         model_version (str): Version of the JumpStart model for which to retrieve the
             default hyperparameters.
         include_container_hyperparameters (bool): True if container hyperparameters
-            should be returned as well. (Default: False)
+            should be returned as well. Container hyperparameters are not used to tune
+            the specific algorithm, but rather by SageMaker Training to setup
+            the training container environment. For example, there is a container hyperparameter
+            that indicates the entrypoint script to use. These hyperparameters may be required
+            when creating a training job with boto3, however the ``Estimator`` classes
+            should take care of adding container hyperparameters to the job. (Default: False).
     Returns:
         dict: the hyperparameters to use for the model.
 
@@ -47,10 +52,6 @@ def retrieve_default(
     """
     if not jumpstart_utils.is_jumpstart_model_input(model_id, model_version):
         raise ValueError("Must specify `model_id` and `model_version` when retrieving script URIs.")
-
-    # mypy type checking require these assertions
-    assert model_id is not None
-    assert model_version is not None
 
     return artifacts._retrieve_default_hyperparameters(
         model_id, model_version, region, include_container_hyperparameters

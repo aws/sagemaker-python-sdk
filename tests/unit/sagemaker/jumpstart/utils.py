@@ -39,6 +39,9 @@ def get_header_from_base_header(
     version: str = None,
 ) -> JumpStartModelHeader:
 
+    if version and semantic_version_str:
+        raise ValueError()
+
     if "pytorch" not in model_id and "tensorflow" not in model_id:
         raise KeyError("Bad model id")
 
@@ -71,6 +74,9 @@ def get_spec_from_base_spec(
     semantic_version_str: str = None,
     version: str = None,
 ) -> JumpStartModelSpecs:
+
+    if version and semantic_version_str:
+        raise ValueError()
 
     if "pytorch" not in model_id and "tensorflow" not in model_id:
         raise KeyError("Bad model id")

@@ -308,7 +308,7 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
             )
             self.training_artifact_key: str = json_obj["training_artifact_key"]
             self.training_script_key: str = json_obj["training_script_key"]
-            hyperparameters = json_obj.get("hyperparameters")
+            hyperparameters: Any = json_obj.get("hyperparameters")
             if hyperparameters is not None:
                 self.hyperparameters = [
                     JumpStartHyperparameter(hyperparameter) for hyperparameter in hyperparameters
