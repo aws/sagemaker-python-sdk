@@ -53,6 +53,7 @@ ENDPOINT_INPUT_LOCAL_PATH = "/opt/ml/processing/input/endpoint"
 HEADER_OF_LABEL = "Label"
 HEADERS_OF_FEATURES = ["F1", "F2", "F3", "F4", "F5", "F6", "F7"]
 ALL_HEADERS = [*HEADERS_OF_FEATURES, HEADER_OF_LABEL]
+HEADER_OF_PREDICTION = "Decision"
 DATASET_TYPE = "text/csv"
 CONTENT_TYPE = DATASET_TYPE
 ACCEPT_TYPE = DATASET_TYPE
@@ -325,7 +326,7 @@ def scheduled_explainability_monitor(
 ):
     monitor_schedule_name = utils.unique_name_from_base("explainability-monitor")
     analysis_config = ExplainabilityAnalysisConfig(
-        shap_config, model_config, headers=HEADERS_OF_FEATURES
+        shap_config, model_config, headers=HEADERS_OF_FEATURES, label_headers=[HEADER_OF_PREDICTION]
     )
     s3_uri_monitoring_output = os.path.join(
         "s3://",
