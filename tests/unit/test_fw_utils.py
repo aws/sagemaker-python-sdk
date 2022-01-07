@@ -24,6 +24,7 @@ from mock import Mock, patch
 
 from sagemaker import fw_utils
 from sagemaker.utils import name_from_image
+from sagemaker.session_settings import SessionSettings
 
 TIMESTAMP = "2017-10-10-14-14-15"
 
@@ -91,6 +92,40 @@ def test_tar_and_upload_dir_s3_with_kms(utils, sagemaker_session):
     extra_args = {"ServerSideEncryption": "aws:kms", "SSEKMSKeyId": kms_key}
     obj = sagemaker_session.resource("s3").Object("", "")
     obj.upload_file.assert_called_with(utils.create_tar_file(), ExtraArgs=extra_args)
+
+
+@patch("sagemaker.utils")
+def test_tar_and_upload_dir_s3_kms_enabled_by_default(utils, sagemaker_session):
+    bucket = "mybucket"
+    s3_key_prefix = "something/source"
+    script = "inference.py"
+    result = fw_utils.tar_and_upload_dir(sagemaker_session, bucket, s3_key_prefix, script)
+
+    assert result == fw_utils.UploadedCode(
+        "s3://{}/{}/sourcedir.tar.gz".format(bucket, s3_key_prefix), script
+    )
+
+    extra_args = {"ServerSideEncryption": "aws:kms"}
+    obj = sagemaker_session.resource("s3").Object("", "")
+    obj.upload_file.assert_called_with(utils.create_tar_file(), ExtraArgs=extra_args)
+
+
+@patch("sagemaker.utils")
+def test_tar_and_upload_dir_s3_without_kms_with_overridden_settings(utils, sagemaker_session):
+    bucket = "mybucket"
+    s3_key_prefix = "something/source"
+    script = "inference.py"
+    settings = SessionSettings(encrypt_repacked_artifacts=False)
+    result = fw_utils.tar_and_upload_dir(
+        sagemaker_session, bucket, s3_key_prefix, script, settings=settings
+    )
+
+    assert result == fw_utils.UploadedCode(
+        "s3://{}/{}/sourcedir.tar.gz".format(bucket, s3_key_prefix), script
+    )
+
+    obj = sagemaker_session.resource("s3").Object("", "")
+    obj.upload_file.assert_called_with(utils.create_tar_file(), ExtraArgs=None)
 
 
 def test_mp_config_partition_exists():

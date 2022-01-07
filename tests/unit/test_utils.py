@@ -27,6 +27,7 @@ import pytest
 from mock import call, patch, Mock, MagicMock
 
 import sagemaker
+from sagemaker.session_settings import SessionSettings
 
 BUCKET_WITHOUT_WRITING_PERMISSION = "s3://bucket-without-writing-permission"
 
@@ -390,6 +391,13 @@ def test_repack_model_without_source_dir(tmp, fake_s3):
         "/code/inference.py",
     }
 
+    extra_args = {"ServerSideEncryption": "aws:kms"}
+    object_mock = fake_s3.object_mock
+    _, _, kwargs = object_mock.mock_calls[0]
+
+    assert "ExtraArgs" in kwargs
+    assert kwargs["ExtraArgs"] == extra_args
+
 
 def test_repack_model_with_entry_point_without_path_without_source_dir(tmp, fake_s3):
 
@@ -415,11 +423,19 @@ def test_repack_model_with_entry_point_without_path_without_source_dir(tmp, fake
             "s3://fake/location",
             "s3://destination-bucket/model.tar.gz",
             fake_s3.sagemaker_session,
+            kms_key="kms_key",
         )
     finally:
         os.chdir(cwd)
 
     assert list_tar_files(fake_s3.fake_upload_path, tmp) == {"/code/inference.py", "/model"}
+
+    extra_args = {"ServerSideEncryption": "aws:kms", "SSEKMSKeyId": "kms_key"}
+    object_mock = fake_s3.object_mock
+    _, _, kwargs = object_mock.mock_calls[0]
+
+    assert "ExtraArgs" in kwargs
+    assert kwargs["ExtraArgs"] == extra_args
 
 
 def test_repack_model_from_s3_to_s3(tmp, fake_s3):
@@ -434,6 +450,7 @@ def test_repack_model_from_s3_to_s3(tmp, fake_s3):
     )
 
     fake_s3.tar_and_upload("model-dir", "s3://fake/location")
+    fake_s3.sagemaker_session.settings = SessionSettings(encrypt_repacked_artifacts=False)
 
     sagemaker.utils.repack_model(
         "inference.py",
@@ -449,6 +466,11 @@ def test_repack_model_from_s3_to_s3(tmp, fake_s3):
         "/code/inference.py",
         "/model",
     }
+
+    object_mock = fake_s3.object_mock
+    _, _, kwargs = object_mock.mock_calls[0]
+    assert "ExtraArgs" in kwargs
+    assert kwargs["ExtraArgs"] is None
 
 
 def test_repack_model_from_file_to_file(tmp):
@@ -581,6 +603,7 @@ class FakeS3(object):
         self.sagemaker_session = MagicMock()
         self.location_map = {}
         self.current_bucket = None
+        self.object_mock = MagicMock()
 
         self.sagemaker_session.boto_session.resource().Bucket().download_file.side_effect = (
             self.download_file
@@ -606,6 +629,7 @@ class FakeS3(object):
 
     def mock_s3_upload(self):
         dst = os.path.join(self.tmp, "dst")
+        object_mock = self.object_mock
 
         class MockS3Object(object):
             def __init__(self, bucket, key):
@@ -616,6 +640,7 @@ class FakeS3(object):
                 if self.bucket in BUCKET_WITHOUT_WRITING_PERMISSION:
                     raise exceptions.S3UploadFailedError()
                 shutil.copy2(target, dst)
+                object_mock.upload_file(target, **kwargs)
 
         self.sagemaker_session.boto_session.resource().Object = MockS3Object
         return dst
