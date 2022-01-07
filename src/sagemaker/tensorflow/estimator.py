@@ -19,7 +19,7 @@ from packaging import version
 
 from sagemaker import image_uris, s3, utils
 from sagemaker.deprecations import renamed_kwargs
-from sagemaker.estimator import Framework
+from sagemaker.estimator import Framework, EstimatorBase
 import sagemaker.fw_utils as fw
 from sagemaker.tensorflow import defaults
 from sagemaker.tensorflow.model import TensorFlowModel
@@ -327,7 +327,9 @@ class TensorFlow(Framework):
             )
             additional_hyperparameters["model_dir"] = self.model_dir
 
-        hyperparameters.update(Framework._json_encode_hyperparameters(additional_hyperparameters))
+        hyperparameters.update(
+            EstimatorBase._json_encode_hyperparameters(additional_hyperparameters)
+        )
         return hyperparameters
 
     def _default_s3_path(self, directory, mpi=False):

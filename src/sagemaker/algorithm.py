@@ -174,7 +174,7 @@ class AlgorithmEstimator(EstimatorBase):
         self.validate_train_spec()
         self.hyperparameter_definitions = self._parse_hyperparameters()
 
-        self.hyperparam_dict = {}
+        self._hyperparameters = {}
         if hyperparameters:
             self.set_hyperparameters(**hyperparameters)
 
@@ -215,7 +215,7 @@ class AlgorithmEstimator(EstimatorBase):
         """Placeholder docstring"""
         for k, v in kwargs.items():
             value = self._validate_and_cast_hyperparameter(k, v)
-            self.hyperparam_dict[k] = value
+            self._hyperparameters[k] = value
 
         self._validate_and_set_default_hyperparameters()
 
@@ -225,7 +225,7 @@ class AlgorithmEstimator(EstimatorBase):
         The fit() method, that does the model training, calls this method to
         find the hyperparameters you specified.
         """
-        return self.hyperparam_dict
+        return self._hyperparameters
 
     def training_image_uri(self):
         """Returns the docker image to use for training.
@@ -464,10 +464,10 @@ class AlgorithmEstimator(EstimatorBase):
         # Check if all the required hyperparameters are set. If there is a default value
         # for one, set it.
         for name, definition in self.hyperparameter_definitions.items():
-            if name not in self.hyperparam_dict:
+            if name not in self._hyperparameters:
                 spec = definition["spec"]
                 if "DefaultValue" in spec:
-                    self.hyperparam_dict[name] = spec["DefaultValue"]
+                    self._hyperparameters[name] = spec["DefaultValue"]
                 elif "IsRequired" in spec and spec["IsRequired"]:
                     raise ValueError("Required hyperparameter: %s is not set" % name)
 
