@@ -279,6 +279,7 @@ BASELINING_DATASET_S3_URI = "s3://bucket/dataset"
 # for bias
 ANALYSIS_CONFIG_LABEL = "Label"
 ANALYSIS_CONFIG_HEADERS_OF_FEATURES = ["F1", "F2", "F3"]
+ANALYSIS_CONFIG_LABEL_HEADERS = ["Decision"]
 ANALYSIS_CONFIG_ALL_HEADERS = [*ANALYSIS_CONFIG_HEADERS_OF_FEATURES, ANALYSIS_CONFIG_LABEL]
 ANALYSIS_CONFIG_LABEL_VALUES = [1]
 ANALYSIS_CONFIG_FACET_NAME = "F1"
@@ -330,6 +331,11 @@ EXPLAINABILITY_ANALYSIS_CONFIG = {
         "content_type": CONTENT_TYPE,
     },
 }
+EXPLAINABILITY_ANALYSIS_CONFIG_WITH_LABEL_HEADERS = copy.deepcopy(EXPLAINABILITY_ANALYSIS_CONFIG)
+# noinspection PyTypeChecker
+EXPLAINABILITY_ANALYSIS_CONFIG_WITH_LABEL_HEADERS["predictor"][
+    "label_headers"
+] = ANALYSIS_CONFIG_LABEL_HEADERS
 
 
 @pytest.fixture()
@@ -1048,12 +1054,31 @@ def test_explainability_analysis_config(shap_config, model_config):
         explainability_config=shap_config,
         model_config=model_config,
         headers=ANALYSIS_CONFIG_HEADERS_OF_FEATURES,
+        label_headers=ANALYSIS_CONFIG_LABEL_HEADERS,
     )
-    assert EXPLAINABILITY_ANALYSIS_CONFIG == config._to_dict()
+    assert EXPLAINABILITY_ANALYSIS_CONFIG_WITH_LABEL_HEADERS == config._to_dict()
 
 
+@pytest.mark.parametrize(
+    "model_scores,explainability_analysis_config",
+    [
+        (INFERENCE_ATTRIBUTE, EXPLAINABILITY_ANALYSIS_CONFIG),
+        (
+            ModelPredictedLabelConfig(
+                label=INFERENCE_ATTRIBUTE, label_headers=ANALYSIS_CONFIG_LABEL_HEADERS
+            ),
+            EXPLAINABILITY_ANALYSIS_CONFIG_WITH_LABEL_HEADERS,
+        ),
+    ],
+)
 def test_model_explainability_monitor_suggest_baseline(
-    model_explainability_monitor, sagemaker_session, data_config, shap_config, model_config
+    model_explainability_monitor,
+    sagemaker_session,
+    data_config,
+    shap_config,
+    model_config,
+    model_scores,
+    explainability_analysis_config,
 ):
     clarify_model_monitor = model_explainability_monitor
     # suggest baseline
@@ -1061,12 +1086,12 @@ def test_model_explainability_monitor_suggest_baseline(
         data_config=data_config,
         explainability_config=shap_config,
         model_config=model_config,
-        model_scores=INFERENCE_ATTRIBUTE,
+        model_scores=model_scores,
         job_name=BASELINING_JOB_NAME,
     )
     assert isinstance(clarify_model_monitor.latest_baselining_job, ClarifyBaseliningJob)
     assert (
-        EXPLAINABILITY_ANALYSIS_CONFIG
+        explainability_analysis_config
         == clarify_model_monitor.latest_baselining_job_config.analysis_config._to_dict()
     )
     clarify_baselining_job = clarify_model_monitor.latest_baselining_job
@@ -1081,6 +1106,7 @@ def test_model_explainability_monitor_suggest_baseline(
         analysis_config=None,  # will pick up config from baselining job
         baseline_job_name=BASELINING_JOB_NAME,
         endpoint_input=ENDPOINT_NAME,
+        explainability_analysis_config=explainability_analysis_config,
         #  will pick up attributes from baselining job
     )
 
@@ -1133,6 +1159,7 @@ def test_model_explainability_monitor_created_with_config(
         sagemaker_session=sagemaker_session,
         analysis_config=analysis_config,
         constraints=CONSTRAINTS,
+        explainability_analysis_config=EXPLAINABILITY_ANALYSIS_CONFIG,
     )
 
     # update schedule
@@ -1263,6 +1290,7 @@ def _test_model_explainability_monitor_create_schedule(
         features_attribute=FEATURES_ATTRIBUTE,
         inference_attribute=str(INFERENCE_ATTRIBUTE),
     ),
+    explainability_analysis_config=None,
 ):
     # create schedule
     with patch(
@@ -1278,7 +1306,7 @@ def _test_model_explainability_monitor_create_schedule(
         )
         if not isinstance(analysis_config, str):
             upload.assert_called_once()
-            assert json.loads(upload.call_args[0][0]) == EXPLAINABILITY_ANALYSIS_CONFIG
+            assert json.loads(upload.call_args[0][0]) == explainability_analysis_config
 
     # validation
     expected_arguments = {
