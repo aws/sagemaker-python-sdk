@@ -314,7 +314,7 @@ def _retrieve_default_hyperparameters(
 
     assert region is not None
 
-    model_specs = jumpstart_accessors.JumpStartModelsCache.get_model_specs(
+    model_specs = jumpstart_accessors.JumpStartModelsAccessor.get_model_specs(
         region=region, model_id=model_id, version=model_version
     )
 
@@ -351,7 +351,7 @@ def _retrieve_default_environment_variables(
     if region is None:
         region = JUMPSTART_DEFAULT_REGION_NAME
 
-    model_specs = jumpstart_accessors.JumpStartModelsCache.get_model_specs(
+    model_specs = jumpstart_accessors.JumpStartModelsAccessor.get_model_specs(
         region=region, model_id=model_id, version=model_version
     )
 

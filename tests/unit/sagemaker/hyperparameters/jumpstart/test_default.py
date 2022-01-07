@@ -21,7 +21,7 @@ from sagemaker import hyperparameters
 from tests.unit.sagemaker.jumpstart.utils import get_spec_from_base_spec
 
 
-@patch("sagemaker.jumpstart.accessors.JumpStartModelsCache.get_model_specs")
+@patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
 def test_jumpstart_default_hyperparameters(patched_get_model_specs):
 
     patched_get_model_specs.side_effect = get_spec_from_base_spec
