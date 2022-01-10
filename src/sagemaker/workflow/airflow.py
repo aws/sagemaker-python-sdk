@@ -549,7 +549,7 @@ def prepare_framework_container_def(model, instance_type, s3_operations):
             ]
 
     deploy_env = dict(model.env)
-    deploy_env.update(model._framework_env_vars())
+    deploy_env.update(model._script_mode_env_vars())
 
     try:
         if model.model_server_workers:
