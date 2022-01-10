@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.72.3 (2022-01-10)
+
+### Bug Fixes and Other Changes
+
+ * update master from dev
+
 ## v2.72.2 (2022-01-06)
 
 ### Bug Fixes and Other Changes
