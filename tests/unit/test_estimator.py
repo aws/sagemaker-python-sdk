@@ -2323,8 +2323,8 @@ def test_different_code_location_kms_key(utils, sagemaker_session):
     obj = sagemaker_session.boto_session.resource("s3").Object
 
     obj.assert_called_with("another-location", "%s/source/sourcedir.tar.gz" % fw._current_job_name)
-    extra_args = {"ServerSideEncryption": "aws:kms"}
-    obj().upload_file.assert_called_with(utils.create_tar_file(), ExtraArgs=extra_args)
+
+    obj().upload_file.assert_called_with(utils.create_tar_file(), ExtraArgs=None)
 
 
 @patch("sagemaker.utils")

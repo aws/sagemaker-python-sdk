@@ -290,15 +290,11 @@ class ModelPredictedLabelConfig:
             probability_threshold (float): An optional value for binary prediction tasks in which
                 the model returns a probability, to indicate the threshold to convert the
                 prediction to a boolean value. Default is 0.5.
-            label_headers (list[str]): List of headers, each for a predicted score in model output.
-                For bias analysis, it is used to extract the label value with the highest score as
-                predicted label. For explainability job, It is used to beautify the analysis report
-                by replacing placeholders like "label0".
+            label_headers (list): List of label values - one for each score of the ``probability``.
         """
         self.label = label
         self.probability = probability
         self.probability_threshold = probability_threshold
-        self.label_headers = label_headers
         if probability_threshold is not None:
             try:
                 float(probability_threshold)
@@ -1064,10 +1060,10 @@ class SageMakerClarifyProcessor(Processor):
             explainability_config (:class:`~sagemaker.clarify.ExplainabilityConfig` or list):
                 Config of the specific explainability method or a list of ExplainabilityConfig
                 objects. Currently, SHAP and PDP are the two methods supported.
-            model_scores (int or str or :class:`~sagemaker.clarify.ModelPredictedLabelConfig`):
-                Index or JSONPath to locate the predicted scores in the model output. This is not
-                required if the model output is a single score. Alternatively, it can be an instance
-                of ModelPredictedLabelConfig to provide more parameters like label_headers.
+            model_scores(str|int|ModelPredictedLabelConfig):  Index or JSONPath location in the
+                model output for the predicted scores to be explained. This is not required if the
+                model output is a single score. Alternatively, an instance of
+                ModelPredictedLabelConfig can be provided.
             wait (bool): Whether the call should wait until the job completes (default: True).
             logs (bool): Whether to show the logs produced by the job.
                 Only meaningful when ``wait`` is True (default: True).

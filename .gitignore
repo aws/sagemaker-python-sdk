@@ -28,4 +28,3 @@ venv/
 .docker/
 env/
 .vscode/
-.python-version

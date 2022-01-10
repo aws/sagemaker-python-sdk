@@ -26,7 +26,7 @@ from sagemaker.model_monitor import model_monitoring as mm
 from sagemaker import image_uris, s3
 from sagemaker.session import Session
 from sagemaker.utils import name_from_base
-from sagemaker.clarify import SageMakerClarifyProcessor, ModelPredictedLabelConfig
+from sagemaker.clarify import SageMakerClarifyProcessor
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -833,10 +833,9 @@ class ModelExplainabilityMonitor(ClarifyModelMonitor):
                 specific explainability method. Currently, only SHAP is supported.
             model_config (:class:`~sagemaker.clarify.ModelConfig`): Config of the model and its
                 endpoint to be created.
-            model_scores (int or str or :class:`~sagemaker.clarify.ModelPredictedLabelConfig`):
-                Index or JSONPath to locate the predicted scores in the model output. This is not
-                required if the model output is a single score. Alternatively, it can be an instance
-                of ModelPredictedLabelConfig to provide more parameters like label_headers.
+            model_scores (int or str): Index or JSONPath location in the model output for the
+                predicted scores to be explained. This is not required if the model output is
+                a single score.
             wait (bool): Whether the call should wait until the job completes (default: False).
             logs (bool): Whether to show the logs produced by the job.
                 Only meaningful when wait is True (default: False).
@@ -866,24 +865,14 @@ class ModelExplainabilityMonitor(ClarifyModelMonitor):
         headers = copy.deepcopy(data_config.headers)
         if headers and data_config.label in headers:
             headers.remove(data_config.label)
-        if model_scores is None:
-            inference_attribute = None
-            label_headers = None
-        elif isinstance(model_scores, ModelPredictedLabelConfig):
-            inference_attribute = str(model_scores.label)
-            label_headers = model_scores.label_headers
-        else:
-            inference_attribute = str(model_scores)
-            label_headers = None
         self.latest_baselining_job_config = ClarifyBaseliningConfig(
             analysis_config=ExplainabilityAnalysisConfig(
                 explainability_config=explainability_config,
                 model_config=model_config,
                 headers=headers,
-                label_headers=label_headers,
             ),
             features_attribute=data_config.features,
-            inference_attribute=inference_attribute,
+            inference_attribute=model_scores if model_scores is None else str(model_scores),
         )
         self.latest_baselining_job_name = baselining_job_name
         self.latest_baselining_job = ClarifyBaseliningJob(
@@ -1177,7 +1166,7 @@ class ModelExplainabilityMonitor(ClarifyModelMonitor):
 class ExplainabilityAnalysisConfig:
     """Analysis configuration for ModelExplainabilityMonitor."""
 
-    def __init__(self, explainability_config, model_config, headers=None, label_headers=None):
+    def __init__(self, explainability_config, model_config, headers=None):
         """Creates an analysis config dictionary.
 
         Args:
@@ -1186,19 +1175,13 @@ class ExplainabilityAnalysisConfig:
             model_config (sagemaker.clarify.ModelConfig): Config object related to bias
                 configurations.
             headers (list[str]): A list of feature names (without label) of model/endpint input.
-            label_headers (list[str]): List of headers, each for a predicted score in model output.
-                It is used to beautify the analysis report by replacing placeholders like "label0".
-
         """
-        predictor_config = model_config.get_predictor_config()
         self.analysis_config = {
             "methods": explainability_config.get_explainability_config(),
-            "predictor": predictor_config,
+            "predictor": model_config.get_predictor_config(),
         }
         if headers is not None:
             self.analysis_config["headers"] = headers
-        if label_headers is not None:
-            predictor_config["label_headers"] = label_headers
 
     def _to_dict(self):
         """Generates a request dictionary using the parameters provided to the class."""

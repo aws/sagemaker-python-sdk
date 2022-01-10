@@ -21,11 +21,9 @@ from botocore.exceptions import ClientError
 
 from mock import Mock
 
-from sagemaker import s3
 from sagemaker.workflow.execution_variables import ExecutionVariables
 from sagemaker.workflow.parameters import ParameterString
 from sagemaker.workflow.pipeline import Pipeline
-from sagemaker.workflow.parallelism_config import ParallelismConfiguration
 from sagemaker.workflow.pipeline_experiment_config import (
     PipelineExperimentConfig,
     PipelineExperimentConfigProperties,
@@ -64,9 +62,7 @@ def role_arn():
 
 @pytest.fixture
 def sagemaker_session_mock():
-    session_mock = Mock()
-    session_mock.default_bucket = Mock(name="default_bucket", return_value="s3_bucket")
-    return session_mock
+    return Mock()
 
 
 def test_pipeline_create(sagemaker_session_mock, role_arn):
@@ -82,47 +78,6 @@ def test_pipeline_create(sagemaker_session_mock, role_arn):
     )
 
 
-def test_pipeline_create_with_parallelism_config(sagemaker_session_mock, role_arn):
-    pipeline = Pipeline(
-        name="MyPipeline",
-        parameters=[],
-        steps=[],
-        pipeline_experiment_config=ParallelismConfiguration(max_parallel_execution_steps=10),
-        sagemaker_session=sagemaker_session_mock,
-    )
-    pipeline.create(role_arn=role_arn)
-    assert sagemaker_session_mock.sagemaker_client.create_pipeline.called_with(
-        PipelineName="MyPipeline",
-        PipelineDefinition=pipeline.definition(),
-        RoleArn=role_arn,
-        ParallelismConfiguration={"MaxParallelExecutionSteps": 10},
-    )
-
-
-def test_large_pipeline_create(sagemaker_session_mock, role_arn):
-    parameter = ParameterString("MyStr")
-    pipeline = Pipeline(
-        name="MyPipeline",
-        parameters=[parameter],
-        steps=[CustomStep(name="MyStep", input_data=parameter)] * 2000,
-        sagemaker_session=sagemaker_session_mock,
-    )
-
-    s3.S3Uploader.upload_string_as_file_body = Mock()
-
-    pipeline.create(role_arn=role_arn)
-
-    assert s3.S3Uploader.upload_string_as_file_body.called_with(
-        body=pipeline.definition(), s3_uri="s3://s3_bucket/MyPipeline"
-    )
-
-    assert sagemaker_session_mock.sagemaker_client.create_pipeline.called_with(
-        PipelineName="MyPipeline",
-        PipelineDefinitionS3Location={"Bucket": "s3_bucket", "ObjectKey": "MyPipeline"},
-        RoleArn=role_arn,
-    )
-
-
 def test_pipeline_update(sagemaker_session_mock, role_arn):
     pipeline = Pipeline(
         name="MyPipeline",
@@ -133,47 +88,6 @@ def test_pipeline_update(sagemaker_session_mock, role_arn):
     pipeline.update(role_arn=role_arn)
     assert sagemaker_session_mock.sagemaker_client.update_pipeline.called_with(
         PipelineName="MyPipeline", PipelineDefinition=pipeline.definition(), RoleArn=role_arn
-    )
-
-
-def test_pipeline_update_with_parallelism_config(sagemaker_session_mock, role_arn):
-    pipeline = Pipeline(
-        name="MyPipeline",
-        parameters=[],
-        steps=[],
-        pipeline_experiment_config=ParallelismConfiguration(max_parallel_execution_steps=10),
-        sagemaker_session=sagemaker_session_mock,
-    )
-    pipeline.create(role_arn=role_arn)
-    assert sagemaker_session_mock.sagemaker_client.update_pipeline.called_with(
-        PipelineName="MyPipeline",
-        PipelineDefinition=pipeline.definition(),
-        RoleArn=role_arn,
-        ParallelismConfiguration={"MaxParallelExecutionSteps": 10},
-    )
-
-
-def test_large_pipeline_update(sagemaker_session_mock, role_arn):
-    parameter = ParameterString("MyStr")
-    pipeline = Pipeline(
-        name="MyPipeline",
-        parameters=[parameter],
-        steps=[CustomStep(name="MyStep", input_data=parameter)] * 2000,
-        sagemaker_session=sagemaker_session_mock,
-    )
-
-    s3.S3Uploader.upload_string_as_file_body = Mock()
-
-    pipeline.create(role_arn=role_arn)
-
-    assert s3.S3Uploader.upload_string_as_file_body.called_with(
-        body=pipeline.definition(), s3_uri="s3://s3_bucket/MyPipeline"
-    )
-
-    assert sagemaker_session_mock.sagemaker_client.update_pipeline.called_with(
-        PipelineName="MyPipeline",
-        PipelineDefinitionS3Location={"Bucket": "s3_bucket", "ObjectKey": "MyPipeline"},
-        RoleArn=role_arn,
     )
 
 
