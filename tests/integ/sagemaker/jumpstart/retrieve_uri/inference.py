@@ -23,8 +23,8 @@ import pandas as pd
 from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME
 from tests.integ.sagemaker.jumpstart.retrieve_uri.utils import (
     get_test_artifact_bucket,
+    get_sm_session,
 )
-from sagemaker.session import Session
 
 from sagemaker.utils import repack_model
 from sagemaker.model import (
@@ -59,7 +59,7 @@ class InferenceJobLauncher:
         self.region = region
         self.config = boto_config
         self.base_name = base_name
-        self.execution_role = execution_role or Session().get_caller_identity_arn()
+        self.execution_role = execution_role or get_sm_session().get_caller_identity_arn()
         self.account_id = boto3.client("sts").get_caller_identity()["Account"]
         self.image_uri = image_uri
         self.script_uri = script_uri
@@ -102,7 +102,7 @@ class InferenceJobLauncher:
             dependencies=None,
             model_uri=self.model_uri,
             repacked_model_uri=repacked_model_uri,
-            sagemaker_session=Session(),
+            sagemaker_session=get_sm_session(),
             kms_key=None,
         )
 

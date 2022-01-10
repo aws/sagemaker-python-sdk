@@ -21,14 +21,13 @@ from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME
 from tests.integ.sagemaker.jumpstart.retrieve_uri.utils import (
     get_full_hyperparameters,
     get_test_artifact_bucket,
+    get_sm_session,
 )
 from sagemaker.jumpstart.utils import get_jumpstart_content_bucket
 
 from tests.integ.sagemaker.jumpstart.retrieve_uri.constants import (
     ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID,
 )
-
-from sagemaker.session import Session
 
 
 class TrainingJobLauncher:
@@ -53,7 +52,7 @@ class TrainingJobLauncher:
         self.region = region
         self.config = boto_config
         self.base_name = base_name
-        self.execution_role = execution_role or Session().get_caller_identity_arn()
+        self.execution_role = execution_role or get_sm_session().get_caller_identity_arn()
         self.image_uri = image_uri
         self.script_uri = script_uri
         self.model_uri = model_uri

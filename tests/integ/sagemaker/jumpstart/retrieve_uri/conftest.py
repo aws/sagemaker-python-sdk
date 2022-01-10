@@ -27,6 +27,8 @@ from tests.integ.sagemaker.jumpstart.retrieve_uri.constants import (
     JUMPSTART_TAG,
 )
 
+from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME
+
 
 def _setup():
     print("Setting up...")
@@ -41,7 +43,9 @@ def _teardown():
     test_suite_id = os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]
 
     sagemaker_client = boto3.client(
-        "sagemaker", config=Config(retries={"max_attempts": 10, "mode": "standard"})
+        "sagemaker",
+        config=Config(retries={"max_attempts": 10, "mode": "standard"}),
+        region_name=JUMPSTART_DEFAULT_REGION_NAME,
     )
 
     search_endpoints_result = sagemaker_client.search(

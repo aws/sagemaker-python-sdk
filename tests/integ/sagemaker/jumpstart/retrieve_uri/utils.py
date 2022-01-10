@@ -67,8 +67,12 @@ def get_training_dataset_for_model_and_version(model_id: str, version: str) -> d
     return TRAINING_DATASET_MODEL_DICT[(model_id, version)]
 
 
+def get_sm_session() -> Session:
+    return Session(boto_session=boto3.Session(region_name=JUMPSTART_DEFAULT_REGION_NAME))
+
+
 def get_test_artifact_bucket() -> str:
-    bucket_name = Session().default_bucket()
+    bucket_name = get_sm_session().default_bucket()
     return bucket_name
 
 
