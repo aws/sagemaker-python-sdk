@@ -283,6 +283,55 @@ class EndpointContext(Context):
         ]
         return model_list
 
+    def models_v2(
+        self, direction: LineageQueryDirectionEnum = LineageQueryDirectionEnum.DESCENDANTS
+    ) -> List[Artifact]:
+        """Get artifacts representing models from the context lineage by querying lineage data.
+
+        Args:
+            direction (LineageQueryDirectionEnum, optional): The query direction.
+
+        Returns:
+            list of Artifacts: Artifacts representing a model.
+        """
+        # Firstly query out the model_deployment vertices
+        query_filter = LineageFilter(
+            entities=[LineageEntityEnum.ACTION], sources=[LineageSourceEnum.MODEL_DEPLOYMENT]
+        )
+        model_deployment_query_result = LineageQuery(self.sagemaker_session).query(
+            start_arns=[self.context_arn],
+            query_filter=query_filter,
+            direction=direction,
+            include_edges=False,
+        )
+        if not model_deployment_query_result:
+            return []
+
+        model_deployment_vertices: [] = model_deployment_query_result.vertices
+
+        # Secondary query model based on model deployment
+        model_vertices = []
+        for vertex in model_deployment_vertices:
+            query_result = LineageQuery(self.sagemaker_session).query(
+                start_arns=[vertex.arn],
+                query_filter=LineageFilter(
+                    entities=[LineageEntityEnum.ARTIFACT], sources=[LineageSourceEnum.MODEL]
+                ),
+                direction=LineageQueryDirectionEnum.DESCENDANTS,
+                include_edges=False,
+            )
+            model_vertices.extend(query_result.vertices)
+
+        if not model_vertices:
+            return []
+
+        model_artifacts = []
+        for vertex in model_vertices:
+            lineage_object = vertex.to_lineage_object()
+            model_artifacts.append(lineage_object)
+
+        return model_artifacts
+
     def dataset_artifacts(
         self, direction: LineageQueryDirectionEnum = LineageQueryDirectionEnum.ASCENDANTS
     ) -> List[Artifact]:
