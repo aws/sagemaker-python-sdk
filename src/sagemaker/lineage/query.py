@@ -83,10 +83,11 @@ class Vertex:
         self._session = sagemaker_session
 
     def to_lineage_object(self):
-        """Convert the ``Vertex`` object to its corresponding ``Artifact`` or ``Context`` object."""
+        """Convert the ``Vertex`` object to its corresponding Artifact, Action, Context object."""
         from sagemaker.lineage.artifact import Artifact, ModelArtifact
         from sagemaker.lineage.context import Context, EndpointContext
         from sagemaker.lineage.artifact import DatasetArtifact
+        from sagemaker.lineage.action import Action
 
         if self.lineage_entity == LineageEntityEnum.CONTEXT.value:
             resource_name = get_resource_name_from_arn(self.arn)
@@ -102,6 +103,9 @@ class Vertex:
             if self.lineage_source == LineageSourceEnum.DATASET.value:
                 return DatasetArtifact.load(artifact_arn=self.arn, sagemaker_session=self._session)
             return Artifact.load(artifact_arn=self.arn, sagemaker_session=self._session)
+
+        if self.lineage_entity == LineageEntityEnum.ACTION.value:
+            return Action.load(action_name=self.arn.split("/")[1], sagemaker_session=self._session)
 
         raise ValueError("Vertex cannot be converted to a lineage object.")
 
@@ -208,6 +212,44 @@ class LineageQuery(object):
 
         return converted
 
+    def _collapse_cross_account_artifacts(self, query_response):
+        """Collapse the duplicate vertices and edges for cross-account."""
+        for edge in query_response.edges:
+            if (
+                "artifact" in edge.source_arn
+                and "artifact" in edge.destination_arn
+                and edge.source_arn.split("/")[1] == edge.destination_arn.split("/")[1]
+                and edge.source_arn != edge.destination_arn
+            ):
+                edge_source_arn = edge.source_arn
+                edge_destination_arn = edge.destination_arn
+                self._update_cross_account_edge(
+                    edges=query_response.edges,
+                    arn=edge_source_arn,
+                    duplicate_arn=edge_destination_arn,
+                )
+                self._update_cross_account_vertex(
+                    query_response=query_response, duplicate_arn=edge_destination_arn
+                )
+
+        # remove the duplicate edges from cross account
+        new_edge = [e for e in query_response.edges if not e.source_arn == e.destination_arn]
+        query_response.edges = new_edge
+
+        return query_response
+
+    def _update_cross_account_edge(self, edges, arn, duplicate_arn):
+        """Replace the duplicate arn with arn in edges list."""
+        for idx, e in enumerate(edges):
+            if e.destination_arn == duplicate_arn:
+                edges[idx].destination_arn = arn
+            elif e.source_arn == duplicate_arn:
+                edges[idx].source_arn = arn
+
+    def _update_cross_account_vertex(self, query_response, duplicate_arn):
+        """Remove the vertex with duplicate arn in the vertices list."""
+        query_response.vertices = [v for v in query_response.vertices if not v.arn == duplicate_arn]
+
     def query(
         self,
         start_arns: List[str],
@@ -235,5 +277,7 @@ class LineageQuery(object):
             Filters=query_filter._to_request_dict() if query_filter else {},
             MaxDepth=max_depth,
         )
+        query_response = self._convert_api_response(query_response)
+        query_response = self._collapse_cross_account_artifacts(query_response)
 
-        return self._convert_api_response(query_response)
+        return query_response
