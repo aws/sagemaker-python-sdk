@@ -36,6 +36,7 @@ from botocore.exceptions import ClientError
 from tests.integ.sagemaker.lineage.helpers import name, names
 
 SLEEP_TIME_SECONDS = 1
+SLEEP_TIME_TWO_SECONDS = 2
 STATIC_PIPELINE_NAME = "SdkIntegTestStaticPipeline17"
 STATIC_ENDPOINT_NAME = "SdkIntegTestStaticEndpoint17"
 
@@ -360,12 +361,10 @@ def endpoint_context_obj(sagemaker_session):
 
 @pytest.fixture
 def model_obj(sagemaker_session):
-    model = context.Context.create(
-        context_name=name(),
+    model = artifact.Artifact.create(
+        artifact_name=name(),
+        artifact_type="Model",
         source_uri="bar1",
-        source_type="test-source-type1",
-        context_type="Model",
-        description="test-description",
         properties={"k1": "v1"},
         sagemaker_session=sagemaker_session,
     )
@@ -417,11 +416,12 @@ def endpoint_context_associate_with_model(sagemaker_session, endpoint_action_obj
 
     association.Association.create(
         source_arn=endpoint_action_obj.action_arn,
-        destination_arn=model_obj.context_arn,
+        destination_arn=model_obj.artifact_arn,
         sagemaker_session=sagemaker_session,
     )
     yield obj
-    time.sleep(SLEEP_TIME_SECONDS)
+    # sleep 2 seconds since take longer for lineage injection
+    time.sleep(SLEEP_TIME_TWO_SECONDS)
     obj.delete(disassociate=True)
 
 
