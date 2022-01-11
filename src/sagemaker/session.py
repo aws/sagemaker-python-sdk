@@ -42,6 +42,7 @@ from sagemaker.utils import (
     sts_regional_endpoint,
 )
 from sagemaker import exceptions
+from sagemaker.session_settings import SessionSettings
 
 LOGGER = logging.getLogger("sagemaker")
 
@@ -85,6 +86,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         sagemaker_runtime_client=None,
         sagemaker_featurestore_runtime_client=None,
         default_bucket=None,
+        settings=SessionSettings(),
     ):
         """Initialize a SageMaker ``Session``.
 
@@ -110,6 +112,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 If not provided, a default bucket will be created based on the following format:
                 "sagemaker-{region}-{aws-account-id}".
                 Example: "sagemaker-my-custom-bucket".
+            settings (sagemaker.session_settings.SessionSettings): Optional. Set of optional
+                parameters to apply to the session.
         """
         self._default_bucket = None
         self._default_bucket_name_override = default_bucket
@@ -117,6 +121,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         self.s3_client = None
         self.config = None
         self.lambda_client = None
+        self.settings = settings
 
         self._initialize(
             boto_session=boto_session,
@@ -3556,19 +3561,18 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Returns:
             str: The name of the created ``Endpoint``.
         """
-        if not _deployment_entity_exists(
-            lambda: self.sagemaker_client.describe_endpoint_config(EndpointConfigName=name)
-        ):
-            config_options = {"EndpointConfigName": name, "ProductionVariants": production_variants}
-            tags = _append_project_tags(tags)
-            if tags:
-                config_options["Tags"] = tags
-            if kms_key:
-                config_options["KmsKeyId"] = kms_key
-            if data_capture_config_dict is not None:
-                config_options["DataCaptureConfig"] = data_capture_config_dict
+        config_options = {"EndpointConfigName": name, "ProductionVariants": production_variants}
+        tags = _append_project_tags(tags)
+        if tags:
+            config_options["Tags"] = tags
+        if kms_key:
+            config_options["KmsKeyId"] = kms_key
+        if data_capture_config_dict is not None:
+            config_options["DataCaptureConfig"] = data_capture_config_dict
 
-            self.sagemaker_client.create_endpoint_config(**config_options)
+        LOGGER.info("Creating endpoint-config with name %s", name)
+        self.sagemaker_client.create_endpoint_config(**config_options)
+
         return self.create_endpoint(endpoint_name=name, config_name=name, tags=tags, wait=wait)
 
     def expand_role(self, role):

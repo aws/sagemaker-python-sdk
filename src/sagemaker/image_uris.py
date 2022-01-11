@@ -59,7 +59,7 @@ def retrieve(
         py_version (str): The Python version. This is required if there is
             more than one supported Python version for the given framework version.
         instance_type (str): The SageMaker instance type. For supported types, see
-            https://aws.amazon.com/sagemaker/pricing/instance-types. This is required if
+            https://aws.amazon.com/sagemaker/pricing. This is required if
             there are different images for different processor types.
         accelerator_type (str): Elastic Inference accelerator type. For more, see
             https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html.
