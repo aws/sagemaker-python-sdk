@@ -154,7 +154,6 @@ class LambdaStep(Step):
         Method creates a lambda function and returns it's arn.
         If the lambda is already present, it will build it's arn and return that.
         """
-        account_id = self.lambda_func.session.account_id()
         region = self.lambda_func.session.boto_region_name
         if region.lower() == "cn-north-1" or region.lower() == "cn-northwest-1":
             partition = "aws-cn"
@@ -163,6 +162,7 @@ class LambdaStep(Step):
 
         if self.lambda_func.function_arn is None:
             try:
+                account_id = self.lambda_func.session.account_id()
                 response = self.lambda_func.create()
                 return response["FunctionArn"]
             except ValueError as error:
