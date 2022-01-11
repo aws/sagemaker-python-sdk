@@ -405,7 +405,7 @@ class Model(ModelBase):
             self.image_uri, self.model_data, deploy_env, image_config=self.image_config
         )
 
-    def _upload_code(self, key_prefix, repack=False):
+    def _upload_code(self, key_prefix: str, repack: bool = False) -> None:
         """Uploads code to S3 to be used with script mode with SageMaker inference.
 
         Args:
