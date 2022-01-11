@@ -16,6 +16,7 @@ from __future__ import absolute_import, print_function
 import json
 import logging
 import os
+from typing import Dict
 import uuid
 from abc import ABCMeta, abstractmethod
 
@@ -582,7 +583,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         return name_from_base(self.base_job_name)
 
     @staticmethod
-    def _json_encode_hyperparameters(hyperparameters):
+    def _json_encode_hyperparameters(hyperparameters: dict) -> dict:
         """Applies Json encoding for certain Hyperparameter types, returns hyperparameters.
 
         Args:
@@ -661,14 +662,14 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self._prepare_debugger_for_training()
         self._prepare_profiler_for_training()
 
-    def _script_mode_hyperparam_update(self, code_dir, script):
+    def _script_mode_hyperparam_update(self, code_dir: str, script: str) -> None:
         """Applies in-place update to hyperparameters required for script mode with training.
 
         Args:
             code_dir (str): The directory hosting the training scripts.
             script (str): The relative filepath of the training entry-point script.
         """
-        hyperparams = {}
+        hyperparams: Dict[str, str] = {}
         hyperparams[DIR_PARAM_NAME] = code_dir
         hyperparams[SCRIPT_PARAM_NAME] = script
         hyperparams[CONTAINER_LOG_LEVEL_PARAM_NAME] = self.container_log_level
@@ -677,7 +678,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
 
         self._hyperparameters.update(EstimatorBase._json_encode_hyperparameters(hyperparams))
 
-    def _stage_user_code_in_s3(self):
+    def _stage_user_code_in_s3(self) -> str:
         """Upload the user training script to s3 and return the location.
 
         Returns: s3 uri
@@ -2615,14 +2616,14 @@ class Framework(EstimatorBase):
 
         self._validate_and_set_debugger_configs()
 
-    def _script_mode_hyperparam_update(self, code_dir, script):
+    def _script_mode_hyperparam_update(self, code_dir: str, script: str) -> None:
         """Applies in-place update to hyperparameters required for script mode with training.
 
         Args:
             code_dir (str): The directory hosting the training scripts.
             script (str): The relative filepath of the training entry-point script.
         """
-        hyperparams = {}
+        hyperparams: Dict[str, str] = {}
         hyperparams[DIR_PARAM_NAME] = code_dir
         hyperparams[SCRIPT_PARAM_NAME] = script
         hyperparams[CONTAINER_LOG_LEVEL_PARAM_NAME] = self.container_log_level

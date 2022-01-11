@@ -3354,10 +3354,34 @@ def test_image_name_map(sagemaker_session):
     assert e.image_uri == IMAGE_URI
 
 
+@patch("sagemaker.git_utils.git_clone_repo")
+def test_git_support_with_branch_and_commit_succeed_estimator_class(
+    git_clone_repo, sagemaker_session
+):
+    git_clone_repo.side_effect = lambda gitconfig, entrypoint, source_dir=None, dependencies=None: {
+        "entry_point": "/tmp/repo_dir/entry_point",
+        "source_dir": None,
+        "dependencies": None,
+    }
+    git_config = {"repo": GIT_REPO, "branch": BRANCH, "commit": COMMIT}
+    entry_point = "entry_point"
+    fw = Estimator(
+        entry_point=entry_point,
+        git_config=git_config,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        image_uri=IMAGE_URI,
+    )
+    fw.fit()
+    git_clone_repo.assert_called_once_with(git_config, entry_point, None, None)
+
+
 @patch("sagemaker.estimator.Estimator._stage_user_code_in_s3")
 def test_script_mode_estimator(patched_stage_user_code, sagemaker_session):
     patched_stage_user_code.return_value = UploadedCode(
-        s3_prefix="s3://%s/%s" % ("bucket", "key"), script_name="script_name"
+        s3_prefix="s3://bucket/key", script_name="script_name"
     )
     script_uri = "s3://codebucket/someprefix/sourcedir.tar.gz"
     image_uri = "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:1.9.0-gpu-py38"
