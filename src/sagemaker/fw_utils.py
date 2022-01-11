@@ -19,8 +19,10 @@ import re
 import shutil
 import tempfile
 from collections import namedtuple
+from typing import Optional
 
 import sagemaker.image_uris
+from sagemaker.session_settings import SessionSettings
 import sagemaker.utils
 
 from sagemaker.deprecations import renamed_warning
@@ -73,7 +75,20 @@ SM_DATAPARALLEL_SUPPORTED_FRAMEWORK_VERSIONS = {
         "2.6.0",
         "2.6.2",
     ],
-    "pytorch": ["1.6", "1.6.0", "1.7", "1.7.1", "1.8", "1.8.0", "1.8.1", "1.9", "1.9.0", "1.9.1"],
+    "pytorch": [
+        "1.6",
+        "1.6.0",
+        "1.7",
+        "1.7.1",
+        "1.8",
+        "1.8.0",
+        "1.8.1",
+        "1.9",
+        "1.9.0",
+        "1.9.1",
+        "1.10",
+        "1.10.0",
+    ],
 }
 SMDISTRIBUTED_SUPPORTED_STRATEGIES = ["dataparallel", "modelparallel"]
 
@@ -203,6 +218,7 @@ def tar_and_upload_dir(
     dependencies=None,
     kms_key=None,
     s3_resource=None,
+    settings: Optional[SessionSettings] = None,
 ):
     """Package source files and upload a compress tar file to S3.
 
@@ -230,6 +246,9 @@ def tar_and_upload_dir(
         s3_resource (boto3.resource("s3")): Optional. Pre-instantiated Boto3 Resource
             for S3 connections, can be used to customize the configuration,
             e.g. set the endpoint URL (default: None).
+        settings (sagemaker.session_settings.SessionSettings): Optional. The settings
+            of the SageMaker ``Session``, can be used to override the default encryption
+            behavior (default: None).
     Returns:
         sagemaker.fw_utils.UserCode: An object with the S3 bucket and key (S3 prefix) and
             script name.
@@ -241,6 +260,7 @@ def tar_and_upload_dir(
     dependencies = dependencies or []
     key = "%s/sourcedir.tar.gz" % s3_key_prefix
     tmp = tempfile.mkdtemp()
+    encrypt_artifact = True if settings is None else settings.encrypt_repacked_artifacts
 
     try:
         source_files = _list_files_to_compress(script, directory) + dependencies
@@ -250,6 +270,10 @@ def tar_and_upload_dir(
 
         if kms_key:
             extra_args = {"ServerSideEncryption": "aws:kms", "SSEKMSKeyId": kms_key}
+        elif encrypt_artifact:
+            # encrypt the tarball at rest in S3 with the default AWS managed KMS key for S3
+            # see https://docs.aws.amazon.com/AmazonS3/latest/API/API_PutObject.html#API_PutObject_RequestSyntax
+            extra_args = {"ServerSideEncryption": "aws:kms"}
         else:
             extra_args = None
 

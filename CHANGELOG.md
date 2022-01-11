@@ -1,5 +1,45 @@
 # Changelog
 
+## v2.72.3 (2022-01-10)
+
+### Features
+
+ * default repack encryption
+ * support large pipeline
+ * add support for pytorch 1.10.0
+ 
+### Documentation Changes
+
+ * SageMaker model parallel library 1.6.0 API doc
+
+### Bug Fixes and Other Changes
+
+ * Model Registration with BYO scripts
+ * Add ContentType in test_auto_ml_describe
+ * Re-deploy static integ test endpoint if it is not found
+ * fix kmeans test deletion sequence, increment lineage statics
+ * Increment static lineage pipeline
+ * Fix lineage query integ tests
+ * Add label_headers option for Clarify ModelExplainabilityMonitor
+ * Add action type to lineage object
+ * Collapse cross-account artifacts in query lineage response
+ * Update CHANGELOG.md to remove defaulting dot characters
+
+## v2.72.2 (2022-01-06)
+
+### Bug Fixes and Other Changes
+
+ * Update CHANGELOG.md
+ * Increment static lineage pipeline
+ * fix kmeans test deletion sequence, increment lineage statics
+ * Re-deploy static integ test endpoint if it is not found
+ * Add ContentType in test_auto_ml_describe
+ * Model Registration with BYO scripts
+
+### Documentation Changes
+
+ * SageMaker model parallel library 1.6.0 API doc
+
 ## v2.72.1 (2021-12-20)
 
 ### Bug Fixes and Other Changes
@@ -7,7 +47,7 @@
  * typos and broken link
  * S3Input - add support for instance attributes
  * Prevent repack_model script from referencing nonexistent directories
- * Set ProcessingStep upload locations deterministically to avoid c…
+ * Set ProcessingStep upload locations deterministically to avoid cache
 
 ## v2.72.0 (2021-12-13)
 

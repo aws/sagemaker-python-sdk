@@ -1126,6 +1126,7 @@ class FrameworkModel(Model):
                 script=self.entry_point,
                 directory=self.source_dir,
                 dependencies=self.dependencies,
+                settings=self.sagemaker_session.settings,
             )
 
         if repack and self.model_data is not None and self.entry_point is not None:
