@@ -103,7 +103,7 @@ class TrainingJobLauncher:
             "HyperParameters": get_full_hyperparameters(
                 self.hyperparameters, self.training_job_name, self.model_uri
             ),
-            "StoppingCondition": {"MaxRuntimeInSeconds": 360000},
+            "StoppingCondition": {"MaxRuntimeInSeconds": 86400},
             "InputDataConfig": [
                 {
                     "ChannelName": "training",
