@@ -406,7 +406,14 @@ class Model(ModelBase):
         )
 
     def _upload_code(self, key_prefix, repack=False):
-        """Placeholder Docstring"""
+        """Uploads code to S3 to be used with script mode with SageMaker inference.
+
+        Args:
+            key_prefix (str): The S3 key associated with the ``code_location`` parameter of the
+                ``Model`` class.
+            repack (bool): Optional. Set to ``True`` to indicate that the source code and model
+                artifact should be repackaged into a new S3 object. (default: False).
+        """
         local_code = utils.get_config_value("local.local_code", self.sagemaker_session.config)
         if (self.sagemaker_session.local_mode and local_code) or self.entry_point is None:
             self.uploaded_code = None
