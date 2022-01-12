@@ -30,6 +30,7 @@ from sagemaker.inputs import (
     TransformInput,
 )
 from sagemaker.model import Model
+from sagemaker.pipeline import PipelineModel
 from sagemaker.processing import (
     ProcessingInput,
     ProcessingJob,
@@ -319,7 +320,7 @@ class CreateModelStep(ConfigurableRetryStep):
     def __init__(
         self,
         name: str,
-        model: Model,
+        model: Union[Model, PipelineModel],
         inputs: CreateModelInput,
         depends_on: Union[List[str], List[Step]] = None,
         retry_policies: List[RetryPolicy] = None,
@@ -333,7 +334,8 @@ class CreateModelStep(ConfigurableRetryStep):
 
         Args:
             name (str): The name of the CreateModel step.
-            model (Model): A `sagemaker.model.Model` instance.
+            model (Model or PipelineModel): A `sagemaker.model.Model`
+                or `sagemaker.pipeline.PipelineModel` instance.
             inputs (CreateModelInput): A `sagemaker.inputs.CreateModelInput` instance.
                 Defaults to `None`.
             depends_on (List[str] or List[Step]): A list of step names or step instances
@@ -358,16 +360,25 @@ class CreateModelStep(ConfigurableRetryStep):
         ModelName cannot be included in the arguments.
         """
 
-        request_dict = self.model.sagemaker_session._create_model_request(
-            name="",
-            role=self.model.role,
-            container_defs=self.model.prepare_container_def(
-                instance_type=self.inputs.instance_type,
-                accelerator_type=self.inputs.accelerator_type,
-            ),
-            vpc_config=self.model.vpc_config,
-            enable_network_isolation=self.model.enable_network_isolation(),
-        )
+        if isinstance(self.model, PipelineModel):
+            request_dict = self.model.sagemaker_session._create_model_request(
+                name="",
+                role=self.model.role,
+                container_defs=self.model.pipeline_container_def(self.inputs.instance_type),
+                vpc_config=self.model.vpc_config,
+                enable_network_isolation=self.model.enable_network_isolation,
+            )
+        else:
+            request_dict = self.model.sagemaker_session._create_model_request(
+                name="",
+                role=self.model.role,
+                container_defs=self.model.prepare_container_def(
+                    instance_type=self.inputs.instance_type,
+                    accelerator_type=self.inputs.accelerator_type,
+                ),
+                vpc_config=self.model.vpc_config,
+                enable_network_isolation=self.model.enable_network_isolation(),
+            )
         request_dict.pop("ModelName")
 
         return request_dict
