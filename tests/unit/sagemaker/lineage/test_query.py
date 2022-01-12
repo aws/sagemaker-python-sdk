@@ -37,6 +37,38 @@ def test_lineage_query(sagemaker_session):
     assert response.edges[0].destination_arn == "arn2"
     assert response.edges[0].association_type == "Produced"
     assert len(response.vertices) == 2
+
+    assert response.vertices[0].arn == "arn1"
+    assert response.vertices[0].lineage_source == "Endpoint"
+    assert response.vertices[0].lineage_entity == "Artifact"
+    assert response.vertices[1].arn == "arn2"
+    assert response.vertices[1].lineage_source == "Model"
+    assert response.vertices[1].lineage_entity == "Context"
+
+
+def test_lineage_query_duplication(sagemaker_session):
+    lineage_query = LineageQuery(sagemaker_session)
+    sagemaker_session.sagemaker_client.query_lineage.return_value = {
+        "Vertices": [
+            {"Arn": "arn1", "Type": "Endpoint", "LineageType": "Artifact"},
+            {"Arn": "arn1", "Type": "Endpoint", "LineageType": "Artifact"},
+            {"Arn": "arn2", "Type": "Model", "LineageType": "Context"},
+        ],
+        "Edges": [
+            {"SourceArn": "arn1", "DestinationArn": "arn2", "AssociationType": "Produced"},
+            {"SourceArn": "arn1", "DestinationArn": "arn2", "AssociationType": "Produced"},
+        ],
+    }
+
+    response = lineage_query.query(
+        start_arns=["arn:aws:sagemaker:us-west-2:0123456789012:context/mycontext"]
+    )
+
+    assert len(response.edges) == 1
+    assert response.edges[0].source_arn == "arn1"
+    assert response.edges[0].destination_arn == "arn2"
+    assert response.edges[0].association_type == "Produced"
+    assert len(response.vertices) == 2
     assert response.vertices[0].arn == "arn1"
     assert response.vertices[0].lineage_source == "Endpoint"
     assert response.vertices[0].lineage_entity == "Artifact"
