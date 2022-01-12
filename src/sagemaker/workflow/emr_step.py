@@ -73,13 +73,13 @@ class EMRStep(Step):
         depends_on: List[str] = None,
         cache_config: CacheConfig = None,
     ):
-        """Constructs a LambdaStep.
+        """Constructs a EMRStep.
 
         Args:
             name(str): The name of the EMR step.
             display_name(str): The display name of the EMR step.
             description(str): The description of the EMR step.
-            cluster_id(str): A string that uniquely identifies the cluster.
+            cluster_id(str): The ID of the running EMR cluster.
             step_config(EMRStepConfig): One StepConfig to be executed by the job flow.
             depends_on(List[str]):
                 A list of step names this `sagemaker.workflow.steps.EMRStep` depends on
