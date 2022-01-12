@@ -12,9 +12,11 @@
 # language governing permissions and limitations under the License.
 """This module contains code to query SageMaker lineage."""
 from __future__ import absolute_import
+
 from datetime import datetime
 from enum import Enum
 from typing import Optional, Union, List, Dict
+
 from sagemaker.lineage._utils import get_resource_name_from_arn
 
 
@@ -65,6 +67,27 @@ class Edge:
         self.destination_arn = destination_arn
         self.association_type = association_type
 
+    def __hash__(self):
+        """Define hash function for ``Edge``."""
+        return hash(
+            (
+                "source_arn",
+                self.source_arn,
+                "destination_arn",
+                self.destination_arn,
+                "association_type",
+                self.association_type,
+            )
+        )
+
+    def __eq__(self, other):
+        """Define equal function for ``Edge``."""
+        return (
+            self.association_type == other.association_type
+            and self.source_arn == other.source_arn
+            and self.destination_arn == other.destination_arn
+        )
+
 
 class Vertex:
     """A vertex for a lineage graph."""
@@ -81,6 +104,27 @@ class Vertex:
         self.lineage_entity = lineage_entity
         self.lineage_source = lineage_source
         self._session = sagemaker_session
+
+    def __hash__(self):
+        """Define hash function for ``Vertex``."""
+        return hash(
+            (
+                "arn",
+                self.arn,
+                "lineage_entity",
+                self.lineage_entity,
+                "lineage_source",
+                self.lineage_source,
+            )
+        )
+
+    def __eq__(self, other):
+        """Define equal function for ``Vertex``."""
+        return (
+            self.arn == other.arn
+            and self.lineage_entity == other.lineage_entity
+            and self.lineage_source == other.lineage_source
+        )
 
     def to_lineage_object(self):
         """Convert the ``Vertex`` object to its corresponding Artifact, Action, Context object."""
@@ -209,6 +253,18 @@ class LineageQuery(object):
         converted = LineageQueryResult()
         converted.edges = [self._get_edge(edge) for edge in response["Edges"]]
         converted.vertices = [self._get_vertex(vertex) for vertex in response["Vertices"]]
+
+        edge_set = set()
+        for edge in converted.edges:
+            if edge in edge_set:
+                converted.edges.remove(edge)
+            edge_set.add(edge)
+
+        vertex_set = set()
+        for vertex in converted.vertices:
+            if vertex in vertex_set:
+                converted.vertices.remove(vertex)
+            vertex_set.add(vertex)
 
         return converted
 
