@@ -41,8 +41,13 @@ class JumpStartDataHolderType:
         if self.__slots__ != other.__slots__:
             return False
         for attribute in self.__slots__:
-            if getattr(self, attribute) != getattr(other, attribute):
+            if (hasattr(self, attribute) and not hasattr(other, attribute)) or (
+                hasattr(other, attribute) and not hasattr(self, attribute)
+            ):
                 return False
+            if hasattr(self, attribute) and hasattr(other, attribute):
+                if getattr(self, attribute) != getattr(other, attribute):
+                    return False
         return True
 
     def __hash__(self) -> int:
@@ -112,7 +117,7 @@ class JumpStartModelHeader(JumpStartDataHolderType):
 
     def to_json(self) -> Dict[str, str]:
         """Returns json representation of JumpStartModelHeader object."""
-        json_obj = {att: getattr(self, att) for att in self.__slots__}
+        json_obj = {att: getattr(self, att) for att in self.__slots__ if hasattr(self, att)}
         return json_obj
 
     def from_json(self, json_obj: Dict[str, str]) -> None:
@@ -134,6 +139,7 @@ class JumpStartECRSpecs(JumpStartDataHolderType):
         "framework",
         "framework_version",
         "py_version",
+        "huggingface_transformers_version",
     }
 
     def __init__(self, spec: Dict[str, Any]):
@@ -154,10 +160,13 @@ class JumpStartECRSpecs(JumpStartDataHolderType):
         self.framework = json_obj["framework"]
         self.framework_version = json_obj["framework_version"]
         self.py_version = json_obj["py_version"]
+        huggingface_transformers_version = json_obj.get("huggingface_transformers_version")
+        if huggingface_transformers_version is not None:
+            self.huggingface_transformers_version = huggingface_transformers_version
 
     def to_json(self) -> Dict[str, Any]:
         """Returns json representation of JumpStartECRSpecs object."""
-        json_obj = {att: getattr(self, att) for att in self.__slots__}
+        json_obj = {att: getattr(self, att) for att in self.__slots__ if hasattr(self, att)}
         return json_obj
 
 
@@ -202,26 +211,23 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         self.hosting_script_key: str = json_obj["hosting_script_key"]
         self.training_supported: bool = bool(json_obj["training_supported"])
         if self.training_supported:
-            self.training_ecr_specs: Optional[JumpStartECRSpecs] = JumpStartECRSpecs(
+            self.training_ecr_specs: JumpStartECRSpecs = JumpStartECRSpecs(
                 json_obj["training_ecr_specs"]
             )
-            self.training_artifact_key: Optional[str] = json_obj["training_artifact_key"]
-            self.training_script_key: Optional[str] = json_obj["training_script_key"]
-            self.hyperparameters: Optional[Dict[str, Any]] = json_obj.get("hyperparameters")
-        else:
-            self.training_ecr_specs = (
-                self.training_artifact_key
-            ) = self.training_script_key = self.hyperparameters = None
+            self.training_artifact_key: str = json_obj["training_artifact_key"]
+            self.training_script_key: str = json_obj["training_script_key"]
+            self.hyperparameters: Dict[str, Any] = json_obj.get("hyperparameters", {})
 
     def to_json(self) -> Dict[str, Any]:
         """Returns json representation of JumpStartModelSpecs object."""
         json_obj = {}
         for att in self.__slots__:
-            cur_val = getattr(self, att)
-            if isinstance(cur_val, JumpStartECRSpecs):
-                json_obj[att] = cur_val.to_json()
-            else:
-                json_obj[att] = cur_val
+            if hasattr(self, att):
+                cur_val = getattr(self, att)
+                if isinstance(cur_val, JumpStartECRSpecs):
+                    json_obj[att] = cur_val.to_json()
+                else:
+                    json_obj[att] = cur_val
         return json_obj
 
 
@@ -274,7 +280,7 @@ class JumpStartCachedS3ContentValue(JumpStartDataHolderType):
         self,
         formatted_content: Union[
             Dict[JumpStartVersionedModelId, JumpStartModelHeader],
-            List[JumpStartModelSpecs],
+            JumpStartModelSpecs,
         ],
         md5_hash: Optional[str] = None,
     ) -> None:
@@ -282,7 +288,7 @@ class JumpStartCachedS3ContentValue(JumpStartDataHolderType):
 
         Args:
             formatted_content (Union[Dict[JumpStartVersionedModelId, JumpStartModelHeader],
-            List[JumpStartModelSpecs]]):
+            JumpStartModelSpecs]):
                 Formatted content for model specs and mappings from
                 versioned model ids to specs.
             md5_hash (str): md5_hash for stored file content from s3.

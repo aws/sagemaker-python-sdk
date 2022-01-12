@@ -12,27 +12,12 @@
 # language governing permissions and limitations under the License.
 """This module contains utilities related to SageMaker JumpStart."""
 from __future__ import absolute_import
-from typing import Dict, List
-import semantic_version
+from typing import Dict, List, Optional
+from packaging.version import Version
 import sagemaker
 from sagemaker.jumpstart import constants
+from sagemaker.jumpstart import accessors
 from sagemaker.jumpstart.types import JumpStartModelHeader, JumpStartVersionedModelId
-
-
-class SageMakerSettings(object):
-    """Static class for storing the SageMaker settings."""
-
-    _PARSED_SAGEMAKER_VERSION = ""
-
-    @staticmethod
-    def set_sagemaker_version(version: str) -> None:
-        """Set SageMaker version."""
-        SageMakerSettings._PARSED_SAGEMAKER_VERSION = version
-
-    @staticmethod
-    def get_sagemaker_version() -> str:
-        """Return SageMaker version."""
-        return SageMakerSettings._PARSED_SAGEMAKER_VERSION
 
 
 def get_jumpstart_launched_regions_message() -> str:
@@ -95,23 +80,23 @@ def get_sagemaker_version() -> str:
     calls ``parse_sagemaker_version`` to retrieve the version and set
     the constant.
     """
-    if SageMakerSettings.get_sagemaker_version() == "":
-        SageMakerSettings.set_sagemaker_version(parse_sagemaker_version())
-    return SageMakerSettings.get_sagemaker_version()
+    if accessors.SageMakerSettings.get_sagemaker_version() == "":
+        accessors.SageMakerSettings.set_sagemaker_version(parse_sagemaker_version())
+    return accessors.SageMakerSettings.get_sagemaker_version()
 
 
 def parse_sagemaker_version() -> str:
     """Returns sagemaker library version. This should only be called once.
 
     Function reads ``__version__`` variable in ``sagemaker`` module.
-    In order to maintain compatibility with the ``semantic_version``
+    In order to maintain compatibility with the ``packaging.version``
     library, versions with fewer than 2, or more than 3, periods are rejected.
-    All versions that cannot be parsed with ``semantic_version`` are also
+    All versions that cannot be parsed with ``packaging.version`` are also
     rejected.
 
     Raises:
         RuntimeError: If the SageMaker version is not readable. An exception is also raised if
-        the version cannot be parsed by ``semantic_version``.
+        the version cannot be parsed by ``packaging.version``.
     """
     version = sagemaker.__version__
     parsed_version = None
@@ -125,6 +110,29 @@ def parse_sagemaker_version() -> str:
     else:
         raise RuntimeError(f"Bad value for SageMaker version: {sagemaker.__version__}")
 
-    semantic_version.Version(parsed_version)
+    Version(parsed_version)
 
     return parsed_version
+
+
+def is_jumpstart_model_input(model_id: Optional[str], version: Optional[str]) -> bool:
+    """Determines if `model_id` and `version` input are for JumpStart.
+
+    This method returns True if both arguments are not None, false if both arguments
+    are None, and raises an exception if one argument is None but the other isn't.
+
+    Args:
+        model_id (str): Optional. Model ID of the JumpStart model.
+        version (str): Optional. Version of the JumpStart model.
+
+    Raises:
+        ValueError: If only one of the two arguments is None.
+    """
+    if model_id is not None or version is not None:
+        if model_id is None or version is None:
+            raise ValueError(
+                "Must specify `model_id` and `model_version` when getting specs for "
+                "JumpStart models."
+            )
+        return True
+    return False

@@ -106,7 +106,7 @@ def test_parse_sagemaker_version():
 
 
 @patch("sagemaker.jumpstart.utils.parse_sagemaker_version")
-@patch("sagemaker.jumpstart.utils.SageMakerSettings._PARSED_SAGEMAKER_VERSION", "")
+@patch("sagemaker.jumpstart.accessors.SageMakerSettings._parsed_sagemaker_version", "")
 def test_get_sagemaker_version(patched_parse_sm_version: Mock):
     utils.get_sagemaker_version()
     utils.get_sagemaker_version()
