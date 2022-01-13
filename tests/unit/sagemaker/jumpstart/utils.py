@@ -40,7 +40,7 @@ def get_header_from_base_header(
 ) -> JumpStartModelHeader:
 
     if version and semantic_version_str:
-        raise ValueError()
+        raise ValueError("Cannot specify both `version` and `semantic_version_str` fields.")
 
     if "pytorch" not in model_id and "tensorflow" not in model_id:
         raise KeyError("Bad model id")
@@ -76,7 +76,7 @@ def get_spec_from_base_spec(
 ) -> JumpStartModelSpecs:
 
     if version and semantic_version_str:
-        raise ValueError()
+        raise ValueError("Cannot specify both `version` and `semantic_version_str` fields.")
 
     if "pytorch" not in model_id and "tensorflow" not in model_id:
         raise KeyError("Bad model id")

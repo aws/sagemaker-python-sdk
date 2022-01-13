@@ -304,9 +304,6 @@ def _retrieve_default_hyperparameters(
             should take care of adding container hyperparameters to the job. (Default: False).
     Returns:
         dict: the hyperparameters to use for the model.
-
-    Raises:
-        ValueError: If the combination of arguments specified is not supported.
     """
 
     if region is None:
@@ -343,9 +340,6 @@ def _retrieve_default_environment_variables(
 
     Returns:
         dict: the inference environment variables to use for the model.
-
-    Raises:
-        ValueError: If the combination of arguments specified is not supported.
     """
 
     if region is None:

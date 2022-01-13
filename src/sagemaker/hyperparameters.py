@@ -32,11 +32,11 @@ def retrieve_default(
     """Retrieves the default training hyperparameters for the model matching the given arguments.
 
     Args:
-        region (str): Region for which to retrieve default hyperparameters.
-        model_id (str): JumpStart model ID of the JumpStart model for which to
-            retrieve the default hyperparameters.
-        model_version (str): Version of the JumpStart model for which to retrieve the
-            default hyperparameters.
+        region (str): Region for which to retrieve default hyperparameters. (Default: None).
+        model_id (str): Model ID of the model for which to
+            retrieve the default hyperparameters. (Default: None).
+        model_version (str): Version of the model for which to retrieve the
+            default hyperparameters. (Default: None).
         include_container_hyperparameters (bool): True if container hyperparameters
             should be returned as well. Container hyperparameters are not used to tune
             the specific algorithm, but rather by SageMaker Training to setup

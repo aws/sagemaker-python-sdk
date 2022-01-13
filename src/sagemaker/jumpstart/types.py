@@ -171,7 +171,7 @@ class JumpStartECRSpecs(JumpStartDataHolderType):
 
 
 class JumpStartHyperparameter(JumpStartDataHolderType):
-    """Data class for JumpStart hyperparameter."""
+    """Data class for JumpStart hyperparameter definition in the training container."""
 
     __slots__ = {
         "name",
@@ -222,7 +222,7 @@ class JumpStartHyperparameter(JumpStartDataHolderType):
 
 
 class JumpStartEnvironmentVariable(JumpStartDataHolderType):
-    """Data class for JumpStart environment variable."""
+    """Data class for JumpStart environment variable definitions in the hosting container."""
 
     __slots__ = {
         "name",

@@ -142,7 +142,7 @@ class ModelFramework(str, Enum):
 
 
 class VariableScope(str, Enum):
-    """Enum class for variable scope.
+    """Possible value of the ``scope`` attribute for a hyperparameter or environment variable.
 
     Used for hosting environment variables and training hyperparameters.
     """

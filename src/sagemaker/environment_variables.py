@@ -33,9 +33,9 @@ def retrieve_default(
     Args:
         region (str): Optional. Region for which to retrieve default environment variables.
             (Default: None).
-        model_id (str): Optional. JumpStart model ID of the JumpStart model for which to
+        model_id (str): Optional. Model ID of the model for which to
             retrieve the default environment variables. (Default: None).
-        model_version (str): Optional. Version of the JumpStart model for which to retrieve the
+        model_version (str): Optional. Version of the model for which to retrieve the
             default environment variables. (Default: None).
     Returns:
         dict: the variables to use for the model.
