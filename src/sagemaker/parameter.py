@@ -15,6 +15,8 @@ from __future__ import absolute_import
 
 import json
 from sagemaker.workflow.parameters import Parameter as PipelineParameter
+from sagemaker.workflow.functions import JsonGet as PipelineJsonGet
+from sagemaker.workflow.functions import Join as PipelineJoin
 
 
 class ParameterRange(object):
@@ -71,10 +73,10 @@ class ParameterRange(object):
         return {
             "Name": name,
             "MinValue": str(self.min_value)
-            if not isinstance(self.min_value, PipelineParameter)
+            if not isinstance(self.min_value, (PipelineParameter, PipelineJsonGet, PipelineJoin))
             else self.min_value,
             "MaxValue": str(self.max_value)
-            if not isinstance(self.max_value, PipelineParameter)
+            if not isinstance(self.max_value, (PipelineParameter, PipelineJsonGet, PipelineJoin))
             else self.max_value,
             "ScalingType": self.scaling_type,
         }
@@ -108,10 +110,11 @@ class CategoricalParameter(ParameterRange):
             values (list or object): The possible values for the hyperparameter.
                 This input will be converted into a list of strings.
         """
-        if isinstance(values, list):
-            self.values = [str(v) if not isinstance(v, PipelineParameter) else v for v in values]
-        else:
-            self.values = [str(values) if not isinstance(values, PipelineParameter) else values]
+        values = values if isinstance(values, list) else [values]
+        self.values = [
+            str(v) if not isinstance(v, (PipelineParameter, PipelineJsonGet, PipelineJoin)) else v
+            for v in values
+        ]
 
     def as_tuning_range(self, name):
         """Represent the parameter range as a dictionary.
