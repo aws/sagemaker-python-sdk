@@ -96,6 +96,7 @@ from sagemaker.feature_store.feature_group import FeatureGroup, FeatureDefinitio
 from tests.integ import DATA_DIR
 from tests.integ.kms_utils import get_or_create_kms_key
 from tests.integ.retry import retries
+from tests.integ.vpc_test_utils import get_or_create_vpc_resources
 
 
 def ordered(obj):
