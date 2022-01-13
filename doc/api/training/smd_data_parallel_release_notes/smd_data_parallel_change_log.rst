@@ -1,6 +1,6 @@
 .. _sdp_1.2.2_release_note:
 
-Sagemaker Distributed Data Parallel 1.2.2 Release Notes
+SageMaker Distributed Data Parallel 1.2.2 Release Notes
 =======================================================
 
 *Date: November. 24. 2021*
@@ -35,7 +35,7 @@ This version passed benchmark testing and is migrated to the following AWS Deep 
 Release History
 ===============
 
-Sagemaker Distributed Data Parallel 1.2.1 Release Notes
+SageMaker Distributed Data Parallel 1.2.1 Release Notes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 *Date: June. 29. 2021*
@@ -66,7 +66,7 @@ This version passed benchmark testing and is migrated to the following AWS Deep 
     763104351884.dkr.ecr.<region>.amazonaws.com/tensorflow-training:2.5.0-gpu-py37-cu112-ubuntu18.04-v1.0
 
 
-Sagemaker Distributed Data Parallel 1.2.0 Release Notes
+SageMaker Distributed Data Parallel 1.2.0 Release Notes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 -  New features
@@ -79,7 +79,7 @@ Sagemaker Distributed Data Parallel 1.2.0 Release Notes
    AllReduce. For best performance, it is recommended you use an
    instance type that supports Amazon Elastic Fabric Adapter
    (ml.p3dn.24xlarge and ml.p4d.24xlarge) when you train a model using
-   Sagemaker Distributed data parallel.
+   SageMaker Distributed data parallel.
 
 **Bug Fixes:**
 
@@ -87,7 +87,7 @@ Sagemaker Distributed Data Parallel 1.2.0 Release Notes
 
 ----
 
-Sagemaker Distributed Data Parallel 1.1.2 Release Notes
+SageMaker Distributed Data Parallel 1.1.2 Release Notes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 -  Bug Fixes
@@ -101,7 +101,7 @@ Sagemaker Distributed Data Parallel 1.1.2 Release Notes
 
 **Known Issues:**
 
--  Sagemaker Distributed data parallel has slower throughput than NCCL
+-  SageMaker Distributed data parallel has slower throughput than NCCL
    when run using a single node. For the best performance, use
    multi-node distributed training with smdistributed.dataparallel. Use
    a single node only for experimental runs while preparing your
@@ -109,7 +109,7 @@ Sagemaker Distributed Data Parallel 1.1.2 Release Notes
 
 ----
 
-Sagemaker Distributed Data Parallel 1.1.1 Release Notes
+SageMaker Distributed Data Parallel 1.1.1 Release Notes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 -  New Features
@@ -136,7 +136,7 @@ Sagemaker Distributed Data Parallel 1.1.1 Release Notes
 
 ----
 
-Sagemaker Distributed Data Parallel 1.1.0 Release Notes
+SageMaker Distributed Data Parallel 1.1.0 Release Notes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 -  New Features
@@ -172,7 +172,7 @@ SDK Guide
 
 ----
 
-Sagemaker Distributed Data Parallel 1.0.0 Release Notes
+SageMaker Distributed Data Parallel 1.0.0 Release Notes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 -  First Release
