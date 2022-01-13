@@ -112,7 +112,7 @@ you will have for distributed training with the distributed data parallel librar
    def main():
 
        # Scale batch size by world size
-       batch_size //= dist.get_world_size() // 8
+       batch_size //= dist.get_world_size()
        batch_size = max(batch_size, 1)
 
        # Prepare dataset
