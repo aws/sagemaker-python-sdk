@@ -155,10 +155,6 @@ script you will have for distributed training with the library.
 TensorFlow API
 ==============
 
-.. rubric:: Supported versions
-
-**TensorFlow 2.3.1, 2.4.1, 2.5.0**
-
 .. function:: smdistributed.dataparallel.tensorflow.init()
 
    Initialize ``smdistributed.dataparallel``. Must be called at the

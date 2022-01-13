@@ -3,7 +3,7 @@
 
 # You can set these variables from the command line.
 SPHINXOPTS    = -W
-SPHINXBUILD   = python -msphinx 
+SPHINXBUILD   = python3 -msphinx
 SPHINXPROJ    = sagemaker
 SOURCEDIR     = .
 BUILDDIR      = _build

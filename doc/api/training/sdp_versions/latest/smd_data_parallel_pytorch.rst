@@ -2,10 +2,12 @@
 PyTorch Guide to SageMaker's distributed data parallel library
 ##############################################################
 
-.. admonition:: Contents
+Use this guide to learn about the SageMaker distributed
+data parallel library API for PyTorch.
 
-   - :ref:`pytorch-sdp-modify`
-   - :ref:`pytorch-sdp-api`
+.. contents:: Topics
+  :depth: 3
+  :local:
 
 .. _pytorch-sdp-modify:
 
@@ -55,7 +57,7 @@ API offered for PyTorch.
 
 
 -  Modify the ``torch.utils.data.distributed.DistributedSampler`` to
-   include the cluster’s information. Set``num_replicas`` to the
+   include the cluster’s information. Set ``num_replicas`` to the
    total number of GPUs participating in training across all the nodes
    in the cluster. This is called ``world_size``. You can get
    ``world_size`` with
@@ -153,9 +155,132 @@ you will have for distributed training with the distributed data parallel librar
 PyTorch API
 ===========
 
-.. rubric:: Supported versions
+.. class:: smdistributed.dataparallel.torch.parallel.DistributedDataParallel(module, device_ids=None, output_device=None, broadcast_buffers=True, process_group=None, bucket_cap_mb=None)
 
-**PyTorch 1.7.1, 1.8.1**
+   ``smdistributed.dataparallel``'s implementation of distributed data
+   parallelism for PyTorch. In most cases, wrapping your PyTorch Module
+   with ``smdistributed.dataparallel``'s ``DistributedDataParallel`` (DDP) is
+   all you need to do to use ``smdistributed.dataparallel``.
+
+   Creation of this DDP class requires ``smdistributed.dataparallel``
+   already initialized
+   with ``smdistributed.dataparallel.torch.distributed.init_process_group()``.
+
+   This container parallelizes the application of the given module by
+   splitting the input across the specified devices by chunking in the
+   batch dimension. The module is replicated on each machine and each
+   device, and each such replica handles a portion of the input. During the
+   backwards pass, gradients from each node are averaged.
+
+   The batch size should be larger than the number of GPUs used locally.
+   ​
+   Example usage
+   of ``smdistributed.dataparallel.torch.parallel.DistributedDataParallel``:
+
+   .. code:: python
+
+      import torch
+      import smdistributed.dataparallel.torch.distributed as dist
+      from smdistributed.dataparallel.torch.parallel import DistributedDataParallel as DDP
+
+      dist.init_process_group()
+
+      # Pin GPU to be used to process local rank (one GPU per process)
+      torch.cuda.set_device(dist.get_local_rank())
+
+      # Build model and optimizer
+      model = ...
+      optimizer = torch.optim.SGD(model.parameters(),
+                                  lr=1e-3 * dist.get_world_size())
+      # Wrap model with smdistributed.dataparallel's DistributedDataParallel
+      model = DDP(model)
+
+   **Parameters:**
+
+   -  ``module (torch.nn.Module)(required):`` PyTorch NN Module to be
+      parallelized
+   -  ``device_ids (list[int])(optional):`` CUDA devices. This should only
+      be provided when the input module resides on a single CUDA device.
+      For single-device modules,
+      the ``ith module replica is placed on device_ids[i]``. For
+      multi-device modules and CPU modules, device_ids must be None or an
+      empty list, and input data for the forward pass must be placed on the
+      correct device. Defaults to ``None``.
+   -  ``output_device (int)(optional):`` Device location of output for
+      single-device CUDA modules. For multi-device modules and CPU modules,
+      it must be None, and the module itself dictates the output location.
+      (default: device_ids[0] for single-device modules).  Defaults
+      to ``None``.
+   -  ``broadcast_buffers (bool)(optional):`` Flag that enables syncing
+      (broadcasting) buffers of the module at beginning of the forward
+      function. ``smdistributed.dataparallel`` does not support broadcast
+      buffer yet. Please set this to ``False``.
+   -  ``process_group(smdistributed.dataparallel.torch.distributed.group)(optional):`` Process
+      group is not supported in ``smdistributed.dataparallel``. This
+      parameter exists for API parity with torch.distributed only. Only
+      supported value is
+      ``smdistributed.dataparallel.torch.distributed.group.WORLD.`` Defaults
+      to ``None.``
+   -  ``bucket_cap_mb (int)(optional):`` DistributedDataParallel will
+      bucket parameters into multiple buckets so that gradient reduction of
+      each bucket can potentially overlap with backward
+      computation. ``bucket_cap_mb`` controls the bucket size in
+      MegaBytes (MB) (default: 25).
+
+   .. note::
+
+      This module assumes all parameters are registered in the model by the
+      time it is created. No parameters should be added nor removed later.
+
+   .. note::
+
+      This module assumes all parameters are registered in the model of
+      each distributed processes are in the same order. The module itself
+      will conduct gradient all-reduction following the reverse order of
+      the registered parameters of the model. In other words, it is users’
+      responsibility to ensure that each distributed process has the exact
+      same model and thus the exact same parameter registration order.
+
+   .. note::
+
+      You should never change the set of your model’s parameters after
+      wrapping up your model with DistributedDataParallel. In other words,
+      when wrapping up your model with DistributedDataParallel, the
+      constructor of DistributedDataParallel will register the additional
+      gradient reduction functions on all the parameters of the model
+      itself at the time of construction. If you change the model’s
+      parameters after the DistributedDataParallel construction, this is
+      not supported and unexpected behaviors can happen, since some
+      parameters’ gradient reduction functions might not get called.
+
+   .. method:: no_sync()
+
+      ``smdistributed.dataparallel`` supports the `PyTorch DDP no_sync() <https://pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html#torch.nn.parallel.DistributedDataParallel.no_sync>`_
+      context manager. It enables gradient accumulation by skipping AllReduce
+      during training iterations inside the context.
+
+      .. note::
+
+        The ``no_sync()`` context manager is available from smdistributed-dataparallel v1.2.2.
+        To find the release note, see :ref:`sdp_1.2.2_release_note`.
+
+      **Example:**
+
+      .. code:: python
+
+        # Gradients are accumulated while inside no_sync context
+        with model.no_sync():
+            ...
+            loss.backward()
+
+        # First iteration upon exiting context
+        # Incoming gradients are added to the accumulated gradients and then synchronized via AllReduce
+        ...
+        loss.backward()
+
+        # Update weights and reset gradients to zero after accumulation is finished
+        optimizer.step()
+        optimizer.zero_grad()
 
 
 .. function:: smdistributed.dataparallel.torch.distributed.is_available()
@@ -407,99 +532,6 @@ PyTorch API
 
    -  Async op work handle, if async_op is set to True. ``None``,
       otherwise.
-
-
-.. class:: smdistributed.dataparallel.torch.parallel.DistributedDataParallel(module, device_ids=None, output_device=None, broadcast_buffers=True, process_group=None, bucket_cap_mb=None)
-
-   ``smdistributed.dataparallel's`` implementation of distributed data
-   parallelism for PyTorch. In most cases, wrapping your PyTorch Module
-   with ``smdistributed.dataparallel's`` ``DistributedDataParallel (DDP)`` is
-   all you need to do to use ``smdistributed.dataparallel``.
-
-   Creation of this DDP class requires ``smdistributed.dataparallel``
-   already initialized
-   with ``smdistributed.dataparallel.torch.distributed.init_process_group()``.
-
-   This container parallelizes the application of the given module by
-   splitting the input across the specified devices by chunking in the
-   batch dimension. The module is replicated on each machine and each
-   device, and each such replica handles a portion of the input. During the
-   backwards pass, gradients from each node are averaged.
-
-   The batch size should be larger than the number of GPUs used locally.
-   ​
-   Example usage
-   of ``smdistributed.dataparallel.torch.parallel.DistributedDataParallel``:
-
-   .. code:: python
-
-      import torch
-      import smdistributed.dataparallel.torch.distributed as dist
-      from smdistributed.dataparallel.torch.parallel import DistributedDataParallel as DDP
-
-      dist.init_process_group()
-
-      # Pin GPU to be used to process local rank (one GPU per process)
-      torch.cuda.set_device(dist.get_local_rank())
-
-      # Build model and optimizer
-      model = ...
-      optimizer = torch.optim.SGD(model.parameters(),
-                                  lr=1e-3 * dist.get_world_size())
-      # Wrap model with smdistributed.dataparallel's DistributedDataParallel
-      model = DDP(model)
-
-   **Parameters:**
-
-   -  ``module (torch.nn.Module)(required):`` PyTorch NN Module to be
-      parallelized
-   -  ``device_ids (list[int])(optional):`` CUDA devices. This should only
-      be provided when the input module resides on a single CUDA device.
-      For single-device modules,
-      the ``ith module replica is placed on device_ids[i]``. For
-      multi-device modules and CPU modules, device_ids must be None or an
-      empty list, and input data for the forward pass must be placed on the
-      correct device. Defaults to ``None``.
-   -  ``output_device (int)(optional):`` Device location of output for
-      single-device CUDA modules. For multi-device modules and CPU modules,
-      it must be None, and the module itself dictates the output location.
-      (default: device_ids[0] for single-device modules).  Defaults
-      to ``None``.
-   -  ``broadcast_buffers (bool)(optional):`` Flag that enables syncing
-      (broadcasting) buffers of the module at beginning of the forward
-      function. ``smdistributed.dataparallel`` does not support broadcast
-      buffer yet. Please set this to ``False``.
-   -  ``process_group(smdistributed.dataparallel.torch.distributed.group)(optional):`` Process
-      group is not supported in ``smdistributed.dataparallel``. This
-      parameter exists for API parity with torch.distributed only. Only
-      supported value is
-      ``smdistributed.dataparallel.torch.distributed.group.WORLD.`` Defaults
-      to ``None.``
-   -  ``bucket_cap_mb (int)(optional):`` DistributedDataParallel will
-      bucket parameters into multiple buckets so that gradient reduction of
-      each bucket can potentially overlap with backward
-      computation. ``bucket_cap_mb`` controls the bucket size in
-      MegaBytes (MB) (default: 25).
-
-   .. rubric:: Notes
-
-   -  This module assumes all parameters are registered in the model by the
-      time it is created. No parameters should be added nor removed later.
-   -  This module assumes all parameters are registered in the model of
-      each distributed processes are in the same order. The module itself
-      will conduct gradient all-reduction following the reverse order of
-      the registered parameters of the model. In other words, it is users’
-      responsibility to ensure that each distributed process has the exact
-      same model and thus the exact same parameter registration order.
-   -  You should never change the set of your model’s parameters after
-      wrapping up your model with DistributedDataParallel. In other words,
-      when wrapping up your model with DistributedDataParallel, the
-      constructor of DistributedDataParallel will register the additional
-      gradient reduction functions on all the parameters of the model
-      itself at the time of construction. If you change the model’s
-      parameters after the DistributedDataParallel construction, this is
-      not supported and unexpected behaviors can happen, since some
-      parameters’ gradient reduction functions might not get called.
 
 
 .. class:: smdistributed.dataparallel.torch.distributed.ReduceOp
