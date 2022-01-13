@@ -46,7 +46,10 @@ def get_header_from_base_header(
         raise KeyError("Bad model id")
 
     if region is not None and region not in JUMPSTART_REGION_NAME_SET:
-        raise ValueError(f"Bad region name: {region}")
+        raise ValueError(
+            f"Region name {region} not supported. Please use one of the supported regions in "
+            f"{JUMPSTART_REGION_NAME_SET}"
+        )
 
     spec = copy.deepcopy(BASE_HEADER)
 
@@ -82,7 +85,10 @@ def get_spec_from_base_spec(
         raise KeyError("Bad model id")
 
     if region is not None and region not in JUMPSTART_REGION_NAME_SET:
-        raise ValueError(f"Bad region name: {region}")
+        raise ValueError(
+            f"Region name {region} not supported. Please use one of the supported regions in "
+            f"{JUMPSTART_REGION_NAME_SET}"
+        )
 
     spec = copy.deepcopy(BASE_SPEC)
 
