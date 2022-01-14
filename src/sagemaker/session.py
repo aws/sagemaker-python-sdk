@@ -4382,11 +4382,12 @@ def pipeline_container_def(models, instance_type=None):
 
 def production_variant(
     model_name,
-    instance_type,
-    initial_instance_count=1,
+    instance_type=None,
+    initial_instance_count=None,
     variant_name="AllTraffic",
     initial_weight=1,
     accelerator_type=None,
+    serverless_inference_config=None,
 ):
     """Create a production variant description suitable for use in a ``ProductionVariant`` list.
 
@@ -4405,20 +4406,28 @@ def production_variant(
         accelerator_type (str): Type of Elastic Inference accelerator for this production variant.
             For example, 'ml.eia1.medium'.
             For more information: https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html
+        serverless_inference_config (dict): Specifies configuration dict related to serverless
+            endpoint. The dict is converted from sagemaker.model_monitor.ServerlessInferenceConfig
+            object (default: None)
 
     Returns:
         dict[str, str]: An SageMaker ``ProductionVariant`` description
     """
     production_variant_configuration = {
         "ModelName": model_name,
-        "InstanceType": instance_type,
-        "InitialInstanceCount": initial_instance_count,
         "VariantName": variant_name,
         "InitialVariantWeight": initial_weight,
     }
 
     if accelerator_type:
         production_variant_configuration["AcceleratorType"] = accelerator_type
+
+    if serverless_inference_config:
+        production_variant_configuration["ServerlessConfig"] = serverless_inference_config
+    else:
+        initial_instance_count = initial_instance_count or 1
+        production_variant_configuration["InitialInstanceCount"] = initial_instance_count
+        production_variant_configuration["InstanceType"] = instance_type
 
     return production_variant_configuration
 
