@@ -43,6 +43,7 @@ class LineageSourceEnum(Enum):
     MODEL_REPLACE = "ModelReplaced"
     TENSORBOARD = "TensorBoard"
     TRAINING_JOB = "TrainingJob"
+    APPROVAL = "Approval"
 
 
 class LineageQueryDirectionEnum(Enum):
@@ -203,11 +204,11 @@ class LineageFilter(object):
     def _to_request_dict(self):
         """Convert the lineage filter to its API representation."""
         filter_request = {}
-        if self.entities:
+        if self.sources:
             filter_request["Types"] = list(
                 map(lambda x: x.value if isinstance(x, LineageSourceEnum) else x, self.sources)
             )
-        if self.sources:
+        if self.entities:
             filter_request["LineageTypes"] = list(
                 map(lambda x: x.value if isinstance(x, LineageEntityEnum) else x, self.entities)
             )
