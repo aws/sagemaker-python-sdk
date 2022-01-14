@@ -1151,18 +1151,18 @@ def test_two_step_lambda_pipeline_with_output_reference(
 
 
 def test_two_steps_emr_pipeline(
-    sagemaker_session, role, pipeline_name, region_name, emr_cluster_id, emr_script_path
+    sagemaker_session, role, pipeline_name, region_name
 ):
     instance_count = ParameterInteger(name="InstanceCount", default_value=2)
 
     emr_step_config = EMRStepConfig(
         jar="s3://us-west-2.elasticmapreduce/libs/script-runner/script-runner.jar",
-        args=[emr_script_path],
+        args=["dummy_emr_script_path"],
     )
 
     step_emr_1 = EMRStep(
         name="emr-step-1",
-        cluster_id=emr_cluster_id,
+        cluster_id="j-1YONHTCP3YZKC",
         display_name="emr_step_1",
         description="MyEMRStepDescription",
         step_config=emr_step_config,
@@ -1188,29 +1188,6 @@ def test_two_steps_emr_pipeline(
         create_arn = response["PipelineArn"]
         assert re.match(
             fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}", create_arn
-        )
-
-        execution = pipeline.start()
-        try:
-            execution.wait(delay=60, max_attempts=5)
-        except WaiterError:
-            pass
-
-        execution_steps = execution.list_steps()
-        assert len(execution_steps) == 2
-        assert execution_steps[0]["StepName"] == "emr-step-1"
-        assert execution_steps[0].get("FailureReason", "") == ""
-        assert execution_steps[0]["StepStatus"] == "Succeeded"
-        assert execution_steps[1]["StepName"] == "emr-step-2"
-        assert execution_steps[1].get("FailureReason", "") == ""
-        assert execution_steps[1]["StepStatus"] == "Succeeded"
-
-        pipeline.parameters = [ParameterInteger(name="InstanceCount", default_value=1)]
-        response = pipeline.update(role)
-        update_arn = response["PipelineArn"]
-        assert re.match(
-            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
-            update_arn,
         )
     finally:
         try:
