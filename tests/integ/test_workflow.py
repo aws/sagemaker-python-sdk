@@ -1149,9 +1149,7 @@ def test_two_step_lambda_pipeline_with_output_reference(
             pass
 
 
-def test_two_steps_emr_pipeline(
-    sagemaker_session, role, pipeline_name, region_name
-):
+def test_two_steps_emr_pipeline(sagemaker_session, role, pipeline_name, region_name):
     instance_count = ParameterInteger(name="InstanceCount", default_value=2)
 
     emr_step_config = EMRStepConfig(
