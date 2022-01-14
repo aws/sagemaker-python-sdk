@@ -25,6 +25,13 @@ from sagemaker.lineage import (
     association,
     artifact,
 )
+from sagemaker.lineage.query import (
+    LineageFilter,
+    LineageEntityEnum,
+    LineageSourceEnum,
+    LineageQuery,
+    LineageQueryDirectionEnum,
+)
 from sagemaker.model import ModelPackage
 from tests.integ.test_workflow import test_end_to_end_pipeline_successful_execution
 from sagemaker.workflow.pipeline import _PipelineExecution
@@ -512,6 +519,42 @@ def _get_static_pipeline_execution_arn(sagemaker_session):
         )
 
     return pipeline_execution_arn
+
+
+@pytest.fixture
+def static_approval_action(
+    sagemaker_session, static_endpoint_context, static_pipeline_execution_arn
+):
+    query_filter = LineageFilter(
+        entities=[LineageEntityEnum.ACTION], sources=[LineageSourceEnum.APPROVAL]
+    )
+    query_result = LineageQuery(sagemaker_session).query(
+        start_arns=[static_endpoint_context.context_arn],
+        query_filter=query_filter,
+        direction=LineageQueryDirectionEnum.ASCENDANTS,
+        include_edges=False,
+    )
+    action_name = query_result.vertices[0].arn.split("/")[1]
+    yield action.ModelPackageApprovalAction.load(
+        action_name=action_name, sagemaker_session=sagemaker_session
+    )
+
+
+@pytest.fixture
+def static_model_deployment_action(sagemaker_session, static_endpoint_context):
+    query_filter = LineageFilter(
+        entities=[LineageEntityEnum.ACTION], sources=[LineageSourceEnum.MODEL_DEPLOYMENT]
+    )
+    query_result = LineageQuery(sagemaker_session).query(
+        start_arns=[static_endpoint_context.context_arn],
+        query_filter=query_filter,
+        direction=LineageQueryDirectionEnum.ASCENDANTS,
+        include_edges=False,
+    )
+    model_approval_actions = []
+    for vertex in query_result.vertices:
+        model_approval_actions.append(vertex.to_lineage_object())
+    yield model_approval_actions[0]
 
 
 @pytest.fixture
