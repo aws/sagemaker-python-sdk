@@ -1,14 +1,8 @@
-.. admonition:: Contents
-
-   - :ref:`pytorch_saving_loading`
-   - :ref:`pytorch_saving_loading_instructions`
-
 PyTorch API
 ===========
 
-**Supported versions: 1.7.1, 1.8.1**
-
-This API document assumes you use the following import statements in your training scripts.
+To use the PyTorch-specific APIs for SageMaker distributed model parallism,
+you need to add the following import statement at the top of your training script.
 
 .. code:: python
 
@@ -19,10 +13,10 @@ This API document assumes you use the following import statements in your traini
 
    Refer to
    `Modify a PyTorch Training Script
-   <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-customize-training-script.html#model-parallel-customize-training-script-pt>`_
+   <https://docs.aws.amazon.com/sagemaker/latest/dg/model-parallel-customize-training-script-pt.html>`_
    to learn how to use the following API in your PyTorch training script.
 
-.. class:: smp.DistributedModel
+.. py:class:: smp.DistributedModel()
 
    A sub-class of ``torch.nn.Module`` which specifies the model to be
    partitioned. Accepts a ``torch.nn.Module`` object ``module`` which is
@@ -42,7 +36,6 @@ This API document assumes you use the following import statements in your traini
    is \ ``model``) can only be made inside a ``smp.step``-decorated
    function.
 
-
    Since ``DistributedModel``  is a ``torch.nn.Module``, a forward pass can
    be performed by calling the \ ``DistributedModel`` object on the input
    tensors.
@@ -55,7 +48,6 @@ This API document assumes you use the following import statements in your traini
    the \ ``DistributedModel`` object, with tensors and gradients as
    arguments, replacing the PyTorch operations \ ``torch.Tensor.backward``
    or ``torch.autograd.backward``.
-
 
    The API for ``model.backward`` is very similar to
    ``torch.autograd.backward``. For example, the following
@@ -90,7 +82,7 @@ This API document assumes you use the following import statements in your traini
 
    **Using DDP**
 
-   If DDP is enabled, do not not place a PyTorch
+   If DDP is enabled with the SageMaker model parallel library, do not not place a PyTorch
    ``DistributedDataParallel`` wrapper around the ``DistributedModel`` because
    the ``DistributedModel`` wrapper will also handle data parallelism.
 
@@ -283,6 +275,113 @@ This API document assumes you use the following import statements in your traini
       For more information, see:
       `register_comm_hook <https://pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html#torch.nn.parallel.DistributedDataParallel.register_comm_hook>`__
       in the PyTorch documentation.
+
+  **Behavior of** ``smp.DistributedModel`` **with Tensor Parallelism**
+
+  When a model is wrapped by ``smp.DistributedModel``, the library
+  immediately traverses the modules of the model object, and replaces the
+  modules that are supported for tensor parallelism with their distributed
+  counterparts. This replacement happens in place. If there are no other
+  references to the original modules in the script, they are
+  garbage-collected. The module attributes that previously referred to the
+  original submodules now refer to the distributed versions of those
+  submodules.
+
+  **Example:**
+
+  .. code:: python
+
+     # register DistributedSubmodule as the distributed version of Submodule
+     # (note this is a hypothetical example, smp.nn.DistributedSubmodule does not exist)
+     smp.tp_register_with_module(Submodule, smp.nn.DistributedSubmodule)
+
+     class MyModule(nn.Module):
+         def __init__(self):
+             ...
+
+             self.submodule = Submodule()
+         ...
+
+     # enabling tensor parallelism for the entire model
+     with smp.tensor_parallelism():
+         model = MyModule()
+
+     # here model.submodule is still a Submodule object
+     assert isinstance(model.submodule, Submodule)
+
+     model = smp.DistributedModel(model)
+
+     # now model.submodule is replaced with an equivalent instance
+     # of smp.nn.DistributedSubmodule
+     assert isinstance(model.module.submodule, smp.nn.DistributedSubmodule)
+
+  If ``pipeline_parallel_degree`` (equivalently, ``partitions``) is 1, the
+  placement of model partitions into GPUs and the initial broadcast of
+  model parameters and buffers across data-parallel ranks take place
+  immediately. This is because it does not need to wait for the model
+  partition when ``smp.DistributedModel`` wrapper is called. For other
+  cases with ``pipeline_parallel_degree`` greater than 1, the broadcast
+  and device placement will be deferred until the first call of an
+  ``smp.step``-decorated function happens. This is because the first
+  ``smp.step``-decorated function call is when the model partitioning
+  happens if pipeline parallelism is enabled.
+
+  Because of the module replacement during the ``smp.DistributedModel``
+  call, any ``load_state_dict`` calls on the model, as well as any direct
+  access to model parameters, such as during the optimizer creation,
+  should be done **after** the ``smp.DistributedModel`` call.
+
+  Since the broadcast of the model parameters and buffers happens
+  immediately during ``smp.DistributedModel`` call when the degree of
+  pipeline parallelism is 1, using ``@smp.step`` decorators is not
+  required when tensor parallelism is used by itself (without pipeline
+  parallelism).
+
+  For more information about the library's tensor parallelism APIs for PyTorch,
+  see :ref:`smdmp-pytorch-tensor-parallel`.
+
+  **Additional Methods of** ``smp.DistributedModel`` **for Tensor Parallelism**
+
+  The following are the new methods of ``smp.DistributedModel``, in
+  addition to the ones listed in the
+  `documentation <https://sagemaker.readthedocs.io/en/stable/api/training/smp_versions/v1.2.0/smd_model_parallel_pytorch.html#smp.DistributedModel>`__.
+
+  .. function:: distributed_modules()
+
+     -  An iterator that runs over the set of distributed
+        (tensor-parallelized) modules in the model
+
+  .. function:: is_distributed_parameter(param)
+
+     -  Returns ``True`` if the given ``nn.Parameter`` is distributed over
+        tensor-parallel ranks.
+
+  .. function::  is_distributed_buffer(buf)
+
+     -  Returns ``True`` if the given buffer is distributed over
+        tensor-parallel ranks.
+
+  .. function::  is_scaled_batch_parameter(param)
+
+     -  Returns ``True`` if the given ``nn.Parameter`` is operates on the
+        scaled batch (batch over the entire ``TP_GROUP``, and not only the
+        local batch).
+
+  .. function::  is_scaled_batch_buffer(buf)
+
+     -  Returns ``True`` if the parameter corresponding to the given
+        buffer operates on the scaled batch (batch over the entire
+        ``TP_GROUP``, and not only the local batch).
+
+  .. function::  default_reducer_named_parameters()
+
+     -  Returns an iterator that runs over ``(name, param)`` tuples, for
+        ``param`` that is allreduced over the ``DP_GROUP``.
+
+  .. function::  scaled_batch_reducer_named_parameters()
+
+     -  Returns an iterator that runs over ``(name, param)`` tuples, for
+        ``param`` that is allreduced over the ``RDP_GROUP``.
 
 
 

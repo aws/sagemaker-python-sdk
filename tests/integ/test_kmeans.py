@@ -76,11 +76,10 @@ def test_kmeans(sagemaker_session, cpu_instance_type, training_set):
         for record in result:
             assert record.label["closest_cluster"] is not None
             assert record.label["distance_to_cluster"] is not None
-
-    predictor.delete_model()
-    with pytest.raises(Exception) as exception:
-        sagemaker_session.sagemaker_client.describe_model(ModelName=model.name)
-        assert "Could not find model" in str(exception.value)
+        predictor.delete_model()
+        with pytest.raises(Exception) as exception:
+            sagemaker_session.sagemaker_client.describe_model(ModelName=model.name)
+            assert "Could not find model" in str(exception.value)
 
 
 def test_async_kmeans(sagemaker_session, cpu_instance_type, training_set):

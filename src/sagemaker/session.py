@@ -42,6 +42,7 @@ from sagemaker.utils import (
     sts_regional_endpoint,
 )
 from sagemaker import exceptions
+from sagemaker.session_settings import SessionSettings
 
 LOGGER = logging.getLogger("sagemaker")
 
@@ -85,6 +86,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         sagemaker_runtime_client=None,
         sagemaker_featurestore_runtime_client=None,
         default_bucket=None,
+        settings=SessionSettings(),
     ):
         """Initialize a SageMaker ``Session``.
 
@@ -110,6 +112,8 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 If not provided, a default bucket will be created based on the following format:
                 "sagemaker-{region}-{aws-account-id}".
                 Example: "sagemaker-my-custom-bucket".
+            settings (sagemaker.session_settings.SessionSettings): Optional. Set of optional
+                parameters to apply to the session.
         """
         self._default_bucket = None
         self._default_bucket_name_override = default_bucket
@@ -117,6 +121,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         self.s3_client = None
         self.config = None
         self.lambda_client = None
+        self.settings = settings
 
         self._initialize(
             boto_session=boto_session,
@@ -3565,6 +3570,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if data_capture_config_dict is not None:
             config_options["DataCaptureConfig"] = data_capture_config_dict
 
+        LOGGER.info("Creating endpoint-config with name %s", name)
         self.sagemaker_client.create_endpoint_config(**config_options)
 
         return self.create_endpoint(endpoint_name=name, config_name=name, tags=tags, wait=wait)
@@ -4376,11 +4382,12 @@ def pipeline_container_def(models, instance_type=None):
 
 def production_variant(
     model_name,
-    instance_type,
-    initial_instance_count=1,
+    instance_type=None,
+    initial_instance_count=None,
     variant_name="AllTraffic",
     initial_weight=1,
     accelerator_type=None,
+    serverless_inference_config=None,
 ):
     """Create a production variant description suitable for use in a ``ProductionVariant`` list.
 
@@ -4399,20 +4406,28 @@ def production_variant(
         accelerator_type (str): Type of Elastic Inference accelerator for this production variant.
             For example, 'ml.eia1.medium'.
             For more information: https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html
+        serverless_inference_config (dict): Specifies configuration dict related to serverless
+            endpoint. The dict is converted from sagemaker.model_monitor.ServerlessInferenceConfig
+            object (default: None)
 
     Returns:
         dict[str, str]: An SageMaker ``ProductionVariant`` description
     """
     production_variant_configuration = {
         "ModelName": model_name,
-        "InstanceType": instance_type,
-        "InitialInstanceCount": initial_instance_count,
         "VariantName": variant_name,
         "InitialVariantWeight": initial_weight,
     }
 
     if accelerator_type:
         production_variant_configuration["AcceleratorType"] = accelerator_type
+
+    if serverless_inference_config:
+        production_variant_configuration["ServerlessConfig"] = serverless_inference_config
+    else:
+        initial_instance_count = initial_instance_count or 1
+        production_variant_configuration["InitialInstanceCount"] = initial_instance_count
+        production_variant_configuration["InstanceType"] = instance_type
 
     return production_variant_configuration
 
