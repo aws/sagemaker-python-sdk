@@ -16,7 +16,6 @@ import pandas as pd
 
 
 from tests.integ.sagemaker.jumpstart.retrieve_uri.utils import (
-    get_hyperparameters_for_model_and_version,
     get_model_tarball_full_uri_from_base_uri,
     get_training_dataset_for_model_and_version,
 )
@@ -25,9 +24,10 @@ from tests.integ.sagemaker.jumpstart.retrieve_uri.inference import (
     InferenceJobLauncher,
 )
 from tests.integ.sagemaker.jumpstart.retrieve_uri.training import TrainingJobLauncher
-from sagemaker import image_uris
+from sagemaker import environment_variables, image_uris
 from sagemaker import script_uris
 from sagemaker import model_uris
+from sagemaker import hyperparameters
 
 
 def test_jumpstart_transfer_learning_retrieve_functions(setup):
@@ -55,11 +55,15 @@ def test_jumpstart_transfer_learning_retrieve_functions(setup):
         model_id=model_id, model_version=model_version, model_scope="training"
     )
 
+    default_hyperparameters = hyperparameters.retrieve_default(
+        model_id=model_id, model_version=model_version, include_container_hyperparameters=True
+    )
+
     training_job = TrainingJobLauncher(
         image_uri=image_uri,
         script_uri=script_uri,
         model_uri=model_uri,
-        hyperparameters=get_hyperparameters_for_model_and_version(model_id, model_version),
+        hyperparameters=default_hyperparameters,
         instance_type=training_instance_type,
         training_dataset_s3_key=get_training_dataset_for_model_and_version(model_id, model_version),
         base_name="huggingface",
@@ -83,6 +87,10 @@ def test_jumpstart_transfer_learning_retrieve_functions(setup):
         model_id=model_id, model_version=model_version, script_scope="inference"
     )
 
+    environment_vars = environment_variables.retrieve_default(
+        model_id=model_id, model_version=model_version
+    )
+
     inference_job = InferenceJobLauncher(
         image_uri=image_uri,
         script_uri=script_uri,
@@ -91,6 +99,7 @@ def test_jumpstart_transfer_learning_retrieve_functions(setup):
         ),
         instance_type=inference_instance_type,
         base_name="huggingface",
+        environment_variables=environment_vars,
     )
 
     inference_job.launch_inference_job()

@@ -19,7 +19,6 @@ import pandas as pd
 import os
 
 from tests.integ.sagemaker.jumpstart.retrieve_uri.constants import (
-    HYPERPARAMETER_MODEL_DICT,
     TEST_ASSETS_SPECS,
     TMP_DIRECTORY_PATH,
     TRAINING_DATASET_MODEL_DICT,
@@ -57,10 +56,6 @@ def get_full_hyperparameters(
         "model-artifact-bucket": bucket,
         "model-artifact-key": key,
     }
-
-
-def get_hyperparameters_for_model_and_version(model_id: str, version: str) -> dict:
-    return HYPERPARAMETER_MODEL_DICT[(model_id, version)]
 
 
 def get_training_dataset_for_model_and_version(model_id: str, version: str) -> dict:

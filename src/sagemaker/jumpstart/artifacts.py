@@ -12,7 +12,7 @@
 # language governing permissions and limitations under the License.
 """This module contains functions for obtaining JumpStart ECR and S3 URIs."""
 from __future__ import absolute_import
-from typing import Optional
+from typing import Dict, Optional
 from sagemaker import image_uris
 from sagemaker.jumpstart.constants import (
     JUMPSTART_DEFAULT_REGION_NAME,
@@ -20,6 +20,7 @@ from sagemaker.jumpstart.constants import (
     TRAINING,
     SUPPORTED_JUMPSTART_SCOPES,
     ModelFramework,
+    VariableScope,
 )
 from sagemaker.jumpstart.utils import get_jumpstart_content_bucket
 from sagemaker.jumpstart import accessors as jumpstart_accessors
@@ -93,7 +94,7 @@ def _retrieve_image_uri(
         )
 
     model_specs = jumpstart_accessors.JumpStartModelsAccessor.get_model_specs(
-        region, model_id, model_version
+        region=region, model_id=model_id, version=model_version
     )
 
     if image_scope == INFERENCE:
@@ -110,19 +111,19 @@ def _retrieve_image_uri(
     if framework is not None and framework != ecr_specs.framework:
         raise ValueError(
             f"Incorrect container framework '{framework}' for JumpStart model ID '{model_id}' "
-            f"and version {model_version}'."
+            f"and version '{model_version}'."
         )
 
     if version is not None and version != ecr_specs.framework_version:
         raise ValueError(
             f"Incorrect container framework version '{version}' for JumpStart model ID "
-            f"'{model_id}' and version {model_version}'."
+            f"'{model_id}' and version '{model_version}'."
         )
 
     if py_version is not None and py_version != ecr_specs.py_version:
         raise ValueError(
             f"Incorrect python version '{py_version}' for JumpStart model ID '{model_id}' "
-            f"and version {model_version}'."
+            f"and version '{model_version}'."
         )
 
     base_framework_version_override: Optional[str] = None
@@ -201,7 +202,7 @@ def _retrieve_model_uri(
         )
 
     model_specs = jumpstart_accessors.JumpStartModelsAccessor.get_model_specs(
-        region, model_id, model_version
+        region=region, model_id=model_id, version=model_version
     )
     if model_scope == INFERENCE:
         model_artifact_key = model_specs.hosting_artifact_key
@@ -260,7 +261,7 @@ def _retrieve_script_uri(
         )
 
     model_specs = jumpstart_accessors.JumpStartModelsAccessor.get_model_specs(
-        region, model_id, model_version
+        region=region, model_id=model_id, version=model_version
     )
     if script_scope == INFERENCE:
         model_script_key = model_specs.hosting_script_key
@@ -278,3 +279,77 @@ def _retrieve_script_uri(
     script_s3_uri = f"s3://{bucket}/{model_script_key}"
 
     return script_s3_uri
+
+
+def _retrieve_default_hyperparameters(
+    model_id: str,
+    model_version: str,
+    region: Optional[str],
+    include_container_hyperparameters: bool = False,
+):
+    """Retrieves the training hyperparameters for the model matching the given arguments.
+
+    Args:
+        model_id (str): JumpStart model ID of the JumpStart model for which to
+            retrieve the default hyperparameters.
+        model_version (str): Version of the JumpStart model for which to retrieve the
+            default hyperparameters.
+        region (str): Region for which to retrieve default hyperparameters.
+        include_container_hyperparameters (bool): True if container hyperparameters
+            should be returned as well. Container hyperparameters are not used to tune
+            the specific algorithm, but rather by SageMaker Training to setup
+            the training container environment. For example, there is a container hyperparameter
+            that indicates the entrypoint script to use. These hyperparameters may be required
+            when creating a training job with boto3, however the ``Estimator`` classes
+            should take care of adding container hyperparameters to the job. (Default: False).
+    Returns:
+        dict: the hyperparameters to use for the model.
+    """
+
+    if region is None:
+        region = JUMPSTART_DEFAULT_REGION_NAME
+
+    assert region is not None
+
+    model_specs = jumpstart_accessors.JumpStartModelsAccessor.get_model_specs(
+        region=region, model_id=model_id, version=model_version
+    )
+
+    default_hyperparameters: Dict[str, str] = {}
+    for hyperparameter in model_specs.hyperparameters:
+        if (
+            include_container_hyperparameters and hyperparameter.scope == VariableScope.CONTAINER
+        ) or hyperparameter.scope == VariableScope.ALGORITHM:
+            default_hyperparameters[hyperparameter.name] = str(hyperparameter.default)
+    return default_hyperparameters
+
+
+def _retrieve_default_environment_variables(
+    model_id: str,
+    model_version: str,
+    region: Optional[str],
+):
+    """Retrieves the inference environment variables for the model matching the given arguments.
+
+    Args:
+        model_id (str): JumpStart model ID of the JumpStart model for which to
+            retrieve the default environment variables.
+        model_version (str): Version of the JumpStart model for which to retrieve the
+            default environment variables.
+        region (Optional[str]): Region for which to retrieve default environment variables.
+
+    Returns:
+        dict: the inference environment variables to use for the model.
+    """
+
+    if region is None:
+        region = JUMPSTART_DEFAULT_REGION_NAME
+
+    model_specs = jumpstart_accessors.JumpStartModelsAccessor.get_model_specs(
+        region=region, model_id=model_id, version=model_version
+    )
+
+    default_environment_variables: Dict[str, str] = {}
+    for environment_variable in model_specs.inference_environment_variables:
+        default_environment_variables[environment_variable.name] = str(environment_variable.default)
+    return default_environment_variables

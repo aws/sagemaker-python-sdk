@@ -32,7 +32,9 @@ def test_jumpstart_common_model_uri(patched_get_model_specs):
         model_version="*",
     )
     patched_get_model_specs.assert_called_once_with(
-        sagemaker_constants.JUMPSTART_DEFAULT_REGION_NAME, "pytorch-ic-mobilenet-v2", "*"
+        region=sagemaker_constants.JUMPSTART_DEFAULT_REGION_NAME,
+        model_id="pytorch-ic-mobilenet-v2",
+        version="*",
     )
 
     patched_get_model_specs.reset_mock()
@@ -43,7 +45,9 @@ def test_jumpstart_common_model_uri(patched_get_model_specs):
         model_version="1.*",
     )
     patched_get_model_specs.assert_called_once_with(
-        sagemaker_constants.JUMPSTART_DEFAULT_REGION_NAME, "pytorch-ic-mobilenet-v2", "1.*"
+        region=sagemaker_constants.JUMPSTART_DEFAULT_REGION_NAME,
+        model_id="pytorch-ic-mobilenet-v2",
+        version="1.*",
     )
 
     patched_get_model_specs.reset_mock()
@@ -54,7 +58,9 @@ def test_jumpstart_common_model_uri(patched_get_model_specs):
         model_id="pytorch-ic-mobilenet-v2",
         model_version="*",
     )
-    patched_get_model_specs.assert_called_once_with("us-west-2", "pytorch-ic-mobilenet-v2", "*")
+    patched_get_model_specs.assert_called_once_with(
+        region="us-west-2", model_id="pytorch-ic-mobilenet-v2", version="*"
+    )
 
     patched_get_model_specs.reset_mock()
 
@@ -64,7 +70,9 @@ def test_jumpstart_common_model_uri(patched_get_model_specs):
         model_id="pytorch-ic-mobilenet-v2",
         model_version="1.*",
     )
-    patched_get_model_specs.assert_called_once_with("us-west-2", "pytorch-ic-mobilenet-v2", "1.*")
+    patched_get_model_specs.assert_called_once_with(
+        region="us-west-2", model_id="pytorch-ic-mobilenet-v2", version="1.*"
+    )
 
     with pytest.raises(ValueError):
         model_uris.retrieve(

@@ -27,12 +27,6 @@ from tests.integ.sagemaker.jumpstart.retrieve_uri.utils import (
 )
 
 from sagemaker.utils import repack_model
-from sagemaker.model import (
-    CONTAINER_LOG_LEVEL_PARAM_NAME,
-    DIR_PARAM_NAME,
-    SAGEMAKER_REGION_PARAM_NAME,
-    SCRIPT_PARAM_NAME,
-)
 from tests.integ.sagemaker.jumpstart.retrieve_uri.constants import (
     ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID,
     JUMPSTART_TAG,
@@ -47,6 +41,7 @@ class InferenceJobLauncher:
         script_uri,
         model_uri,
         instance_type,
+        environment_variables,
         suffix=time.strftime("%Y-%m-%d-%H-%M-%S", time.gmtime()),
         region=JUMPSTART_DEFAULT_REGION_NAME,
         boto_config=Config(retries={"max_attempts": 10, "mode": "standard"}),
@@ -65,6 +60,7 @@ class InferenceJobLauncher:
         self.script_uri = script_uri
         self.model_uri = model_uri
         self.instance_type = instance_type
+        self.environment_variables = environment_variables
         self.sagemaker_client = self.get_sagemaker_client()
 
     def launch_inference_job(self):
@@ -163,16 +159,7 @@ class InferenceJobLauncher:
                 "Image": self.image_uri,
                 "ModelDataUrl": self.repacked_model_uri,
                 "Mode": "SingleModel",
-                "Environment": {
-                    SCRIPT_PARAM_NAME.upper(): "inference.py",
-                    DIR_PARAM_NAME.upper(): "/opt/ml/model/code",
-                    CONTAINER_LOG_LEVEL_PARAM_NAME.upper(): "20",
-                    SAGEMAKER_REGION_PARAM_NAME.upper(): self.region,
-                    "MODEL_CACHE_ROOT": "/opt/ml/model",
-                    "SAGEMAKER_ENV": "1",
-                    "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
-                    "SAGEMAKER_MODEL_SERVER_TIMEOUT": "3600",
-                },
+                "Environment": self.environment_variables,
             },
         )
 

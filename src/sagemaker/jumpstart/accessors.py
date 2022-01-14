@@ -93,7 +93,9 @@ class JumpStartModelsAccessor(object):
         )
         JumpStartModelsAccessor._set_cache_and_region(region, cache_kwargs)
         assert JumpStartModelsAccessor._cache is not None
-        return JumpStartModelsAccessor._cache.get_header(model_id, version)
+        return JumpStartModelsAccessor._cache.get_header(
+            model_id=model_id, semantic_version_str=version
+        )
 
     @staticmethod
     def get_model_specs(region: str, model_id: str, version: str) -> JumpStartModelSpecs:
@@ -109,7 +111,9 @@ class JumpStartModelsAccessor(object):
         )
         JumpStartModelsAccessor._set_cache_and_region(region, cache_kwargs)
         assert JumpStartModelsAccessor._cache is not None
-        return JumpStartModelsAccessor._cache.get_specs(model_id, version)
+        return JumpStartModelsAccessor._cache.get_specs(
+            model_id=model_id, semantic_version_str=version
+        )
 
     @staticmethod
     def set_cache_kwargs(cache_kwargs: Dict[str, Any], region: str = None) -> None:

@@ -39,16 +39,6 @@ ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID = "JUMPSTART_SDK_TEST_SUITE_ID"
 
 JUMPSTART_TAG = "JumpStart-SDK-Integ-Test-Suite-Id"
 
-HYPERPARAMETER_MODEL_DICT = {
-    ("huggingface-spc-bert-base-cased", "1.0.0"): {
-        "epochs": "1",
-        "adam-learning-rate": "2e-05",
-        "batch-size": "8",
-        "sagemaker_submit_directory": "/opt/ml/input/data/code/sourcedir.tar.gz",
-        "sagemaker_program": "transfer_learning.py",
-        "sagemaker_container_log_level": "20",
-    },
-}
 
 TRAINING_DATASET_MODEL_DICT = {
     ("huggingface-spc-bert-base-cased", "1.0.0"): ("training-datasets/QNLI-tiny/"),

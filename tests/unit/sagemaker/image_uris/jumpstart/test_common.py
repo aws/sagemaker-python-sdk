@@ -23,7 +23,6 @@ from sagemaker.jumpstart import constants as sagemaker_constants
 
 @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
 def test_jumpstart_common_image_uri(patched_get_model_specs):
-
     patched_get_model_specs.side_effect = get_spec_from_base_spec
 
     image_uris.retrieve(
@@ -34,7 +33,9 @@ def test_jumpstart_common_image_uri(patched_get_model_specs):
         model_version="*",
         instance_type="ml.p2.xlarge",
     )
-    patched_get_model_specs.assert_called_once_with("us-west-2", "pytorch-ic-mobilenet-v2", "*")
+    patched_get_model_specs.assert_called_once_with(
+        region="us-west-2", model_id="pytorch-ic-mobilenet-v2", version="*"
+    )
 
     patched_get_model_specs.reset_mock()
 
@@ -46,7 +47,9 @@ def test_jumpstart_common_image_uri(patched_get_model_specs):
         model_version="1.*",
         instance_type="ml.p2.xlarge",
     )
-    patched_get_model_specs.assert_called_once_with("us-west-2", "pytorch-ic-mobilenet-v2", "1.*")
+    patched_get_model_specs.assert_called_once_with(
+        region="us-west-2", model_id="pytorch-ic-mobilenet-v2", version="1.*"
+    )
 
     patched_get_model_specs.reset_mock()
 
@@ -59,7 +62,9 @@ def test_jumpstart_common_image_uri(patched_get_model_specs):
         instance_type="ml.p2.xlarge",
     )
     patched_get_model_specs.assert_called_once_with(
-        sagemaker_constants.JUMPSTART_DEFAULT_REGION_NAME, "pytorch-ic-mobilenet-v2", "*"
+        region=sagemaker_constants.JUMPSTART_DEFAULT_REGION_NAME,
+        model_id="pytorch-ic-mobilenet-v2",
+        version="*",
     )
 
     patched_get_model_specs.reset_mock()
@@ -73,7 +78,9 @@ def test_jumpstart_common_image_uri(patched_get_model_specs):
         instance_type="ml.p2.xlarge",
     )
     patched_get_model_specs.assert_called_once_with(
-        sagemaker_constants.JUMPSTART_DEFAULT_REGION_NAME, "pytorch-ic-mobilenet-v2", "1.*"
+        region=sagemaker_constants.JUMPSTART_DEFAULT_REGION_NAME,
+        model_id="pytorch-ic-mobilenet-v2",
+        version="1.*",
     )
 
     with pytest.raises(ValueError):

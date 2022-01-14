@@ -17,14 +17,13 @@ from __future__ import absolute_import
 import logging
 
 from sagemaker.jumpstart import utils as jumpstart_utils
-from sagemaker.jumpstart import constants as jumpstart_constants
 from sagemaker.jumpstart import artifacts
 
 logger = logging.getLogger(__name__)
 
 
 def retrieve(
-    region=jumpstart_constants.JUMPSTART_DEFAULT_REGION_NAME,
+    region=None,
     model_id=None,
     model_version=None,
     script_scope=None,
