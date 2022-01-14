@@ -2343,6 +2343,7 @@ class Framework(EstimatorBase):
             dependencies=self.dependencies,
             kms_key=kms_key,
             s3_resource=self.sagemaker_session.s3_resource,
+            settings=self.sagemaker_session.settings,
         )
 
     def _model_source_dir(self):
@@ -2425,51 +2426,32 @@ class Framework(EstimatorBase):
 
         return init_params
 
-    def training_image_uri(self):
+    def training_image_uri(self, region=None):
         """Return the Docker image to use for training.
 
         The :meth:`~sagemaker.estimator.EstimatorBase.fit` method, which does
         the model training, calls this method to find the image to use for model
         training.
 
+        Args:
+            region (str): Optional. AWS region to use for image URI. Default: AWS region associated
+                with the SageMaker session.
+
         Returns:
             str: The URI of the Docker image.
         """
-        if self.image_uri:
-            return self.image_uri
-        if hasattr(self, "distribution"):
-            distribution = self.distribution  # pylint: disable=no-member
-        else:
-            distribution = None
-        compiler_config = getattr(self, "compiler_config", None)
 
-        if hasattr(self, "tensorflow_version") or hasattr(self, "pytorch_version"):
-            processor = image_uris._processor(self.instance_type, ["cpu", "gpu"])
-            is_native_huggingface_gpu = processor == "gpu" and not compiler_config
-            container_version = "cu110-ubuntu18.04" if is_native_huggingface_gpu else None
-            if self.tensorflow_version is not None:  # pylint: disable=no-member
-                base_framework_version = (
-                    f"tensorflow{self.tensorflow_version}"  # pylint: disable=no-member
-                )
-            else:
-                base_framework_version = (
-                    f"pytorch{self.pytorch_version}"  # pylint: disable=no-member
-                )
-        else:
-            container_version = None
-            base_framework_version = None
-
-        return image_uris.retrieve(
-            self._framework_name,
-            self.sagemaker_session.boto_region_name,
-            instance_type=self.instance_type,
-            version=self.framework_version,  # pylint: disable=no-member
+        return image_uris.get_training_image_uri(
+            region=region or self.sagemaker_session.boto_region_name,
+            framework=self._framework_name,
+            framework_version=self.framework_version,  # pylint: disable=no-member
             py_version=self.py_version,  # pylint: disable=no-member
-            image_scope="training",
-            distribution=distribution,
-            base_framework_version=base_framework_version,
-            container_version=container_version,
-            training_compiler_config=compiler_config,
+            image_uri=self.image_uri,
+            distribution=getattr(self, "distribution", None),
+            compiler_config=getattr(self, "compiler_config", None),
+            tensorflow_version=getattr(self, "tensorflow_version", None),
+            pytorch_version=getattr(self, "pytorch_version", None),
+            instance_type=self.instance_type,
         )
 
     @classmethod

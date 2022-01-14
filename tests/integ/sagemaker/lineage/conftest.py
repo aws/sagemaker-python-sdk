@@ -36,8 +36,9 @@ from botocore.exceptions import ClientError
 from tests.integ.sagemaker.lineage.helpers import name, names
 
 SLEEP_TIME_SECONDS = 1
-STATIC_PIPELINE_NAME = "SdkIntegTestStaticPipeline14"
-STATIC_ENDPOINT_NAME = "SdkIntegTestStaticEndpoint14"
+SLEEP_TIME_TWO_SECONDS = 2
+STATIC_PIPELINE_NAME = "SdkIntegTestStaticPipeline17"
+STATIC_ENDPOINT_NAME = "SdkIntegTestStaticEndpoint17"
 
 
 @pytest.fixture
@@ -360,12 +361,10 @@ def endpoint_context_obj(sagemaker_session):
 
 @pytest.fixture
 def model_obj(sagemaker_session):
-    model = context.Context.create(
-        context_name=name(),
+    model = artifact.Artifact.create(
+        artifact_name=name(),
+        artifact_type="Model",
         source_uri="bar1",
-        source_type="test-source-type1",
-        context_type="Model",
-        description="test-description",
         properties={"k1": "v1"},
         sagemaker_session=sagemaker_session,
     )
@@ -417,11 +416,12 @@ def endpoint_context_associate_with_model(sagemaker_session, endpoint_action_obj
 
     association.Association.create(
         source_arn=endpoint_action_obj.action_arn,
-        destination_arn=model_obj.context_arn,
+        destination_arn=model_obj.artifact_arn,
         sagemaker_session=sagemaker_session,
     )
     yield obj
-    time.sleep(SLEEP_TIME_SECONDS)
+    # sleep 2 seconds since take longer for lineage injection
+    time.sleep(SLEEP_TIME_TWO_SECONDS)
     obj.delete(disassociate=True)
 
 
@@ -518,6 +518,13 @@ def _get_static_pipeline_execution_arn(sagemaker_session):
 def static_endpoint_context(sagemaker_session, static_pipeline_execution_arn):
     endpoint_arn = get_endpoint_arn_from_static_pipeline(sagemaker_session)
 
+    if endpoint_arn is None:
+        _deploy_static_endpoint(
+            execution_arn=static_pipeline_execution_arn,
+            sagemaker_session=sagemaker_session,
+        )
+        endpoint_arn = get_endpoint_arn_from_static_pipeline(sagemaker_session)
+
     contexts = sagemaker_session.sagemaker_client.list_contexts(SourceUri=endpoint_arn)[
         "ContextSummaries"
     ]
@@ -584,11 +591,17 @@ def static_dataset_artifact(static_model_artifact, sagemaker_session):
 
 
 def get_endpoint_arn_from_static_pipeline(sagemaker_session):
-    endpoint_arn = sagemaker_session.sagemaker_client.describe_endpoint(
-        EndpointName=STATIC_ENDPOINT_NAME
-    )["EndpointArn"]
+    try:
+        endpoint_arn = sagemaker_session.sagemaker_client.describe_endpoint(
+            EndpointName=STATIC_ENDPOINT_NAME
+        )["EndpointArn"]
 
-    return endpoint_arn
+        return endpoint_arn
+    except ClientError as e:
+        error = e.response["Error"]
+        if error["Code"] == "ValidationException":
+            return None
+        raise e
 
 
 def get_model_package_arn_from_static_pipeline(pipeline_execution_arn, sagemaker_session):
@@ -654,7 +667,7 @@ def _deploy_static_endpoint(execution_arn, sagemaker_session):
             sagemaker_session=sagemaker_session,
         )
         model_package.deploy(1, "ml.t2.medium", endpoint_name=STATIC_ENDPOINT_NAME)
-        time.sleep(60)
+        time.sleep(120)
     except ClientError as e:
         if e.response["Error"]["Code"] == "ValidationException":
             print(f"Endpoint {STATIC_ENDPOINT_NAME} already exists. Continuing.")

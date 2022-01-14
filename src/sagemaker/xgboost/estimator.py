@@ -48,6 +48,7 @@ class XGBoost(Framework):
         hyperparameters=None,
         py_version="py3",
         image_uri=None,
+        image_uri_region=None,
         **kwargs
     ):
         """An estimator that executes an XGBoost-based SageMaker Training Job.
@@ -89,6 +90,9 @@ class XGBoost(Framework):
                 Examples:
                     123.dkr.ecr.us-west-2.amazonaws.com/my-custom-image:1.0
                     custom-image:latest.
+            image_uri_region (str): If ``image_uri`` argument is None, the image uri
+                associated with this object will be in this region.
+                Default: region associated with SageMaker session.
             **kwargs: Additional kwargs passed to the
                 :class:`~sagemaker.estimator.Framework` constructor.
 
@@ -114,7 +118,7 @@ class XGBoost(Framework):
         if image_uri is None:
             self.image_uri = image_uris.retrieve(
                 self._framework_name,
-                self.sagemaker_session.boto_region_name,
+                image_uri_region or self.sagemaker_session.boto_region_name,
                 version=framework_version,
                 py_version=self.py_version,
                 instance_type=instance_type,

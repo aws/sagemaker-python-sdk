@@ -43,6 +43,7 @@ class SKLearn(Framework):
         source_dir=None,
         hyperparameters=None,
         image_uri=None,
+        image_uri_region=None,
         **kwargs
     ):
         """Creates a SKLearn Estimator for Scikit-learn environment.
@@ -99,6 +100,9 @@ class SKLearn(Framework):
                 If ``framework_version`` or ``py_version`` are ``None``, then
                 ``image_uri`` is required. If also ``None``, then a ``ValueError``
                 will be raised.
+            image_uri_region (str): If ``image_uri`` argument is None, the image uri
+                associated with this object will be in this region.
+                Default: region associated with SageMaker session.
             **kwargs: Additional kwargs passed to the
                 :class:`~sagemaker.estimator.Framework` constructor.
 
@@ -144,7 +148,7 @@ class SKLearn(Framework):
         if image_uri is None:
             self.image_uri = image_uris.retrieve(
                 SKLearn._framework_name,
-                self.sagemaker_session.boto_region_name,
+                image_uri_region or self.sagemaker_session.boto_region_name,
                 version=self.framework_version,
                 py_version=self.py_version,
                 instance_type=instance_type,

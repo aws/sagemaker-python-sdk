@@ -17,9 +17,13 @@ import json
 import logging
 import os
 import re
+from typing import Optional
 
 from sagemaker import utils
+from sagemaker.jumpstart.utils import is_jumpstart_model_input
 from sagemaker.spark import defaults
+from sagemaker.jumpstart import artifacts
+
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +43,9 @@ def retrieve(
     distribution=None,
     base_framework_version=None,
     training_compiler_config=None,
-):
+    model_id=None,
+    model_version=None,
+) -> str:
     """Retrieves the ECR URI for the Docker image matching the given arguments.
 
     Ideally this function should not be called directly, rather it should be called from the
@@ -53,7 +59,7 @@ def retrieve(
         py_version (str): The Python version. This is required if there is
             more than one supported Python version for the given framework version.
         instance_type (str): The SageMaker instance type. For supported types, see
-            https://aws.amazon.com/sagemaker/pricing/instance-types. This is required if
+            https://aws.amazon.com/sagemaker/pricing. This is required if
             there are different images for different processor types.
         accelerator_type (str): Elastic Inference accelerator type. For more, see
             https://docs.aws.amazon.com/sagemaker/latest/dg/ei.html.
@@ -69,6 +75,10 @@ def retrieve(
         training_compiler_config (:class:`~sagemaker.training_compiler.TrainingCompilerConfig`):
             A configuration class for the SageMaker Training Compiler
             (default: None).
+        model_id (str): JumpStart model ID for which to retrieve image URI
+            (default: None).
+        model_version (str): Version of the JumpStart model for which to retrieve the
+            image URI (default: None).
 
     Returns:
         str: the ECR URI for the corresponding SageMaker Docker image.
@@ -76,6 +86,28 @@ def retrieve(
     Raises:
         ValueError: If the combination of arguments specified is not supported.
     """
+    if is_jumpstart_model_input(model_id, model_version):
+
+        # adding assert statements to satisfy mypy type checker
+        assert model_id is not None
+        assert model_version is not None
+
+        return artifacts._retrieve_image_uri(
+            model_id,
+            model_version,
+            image_scope,
+            framework,
+            region,
+            version,
+            py_version,
+            instance_type,
+            accelerator_type,
+            container_version,
+            distribution,
+            base_framework_version,
+            training_compiler_config,
+        )
+
     if training_compiler_config is None:
         config = _config_for_framework_and_scope(framework, image_scope, accelerator_type)
     elif framework == HUGGING_FACE_FRAMEWORK:
@@ -347,3 +379,68 @@ def _validate_arg(arg, available_options, arg_name):
 def _format_tag(tag_prefix, processor, py_version, container_version):
     """Creates a tag for the image URI."""
     return "-".join(x for x in (tag_prefix, processor, py_version, container_version) if x)
+
+
+def get_training_image_uri(
+    region,
+    framework,
+    framework_version=None,
+    py_version=None,
+    image_uri=None,
+    distribution=None,
+    compiler_config=None,
+    tensorflow_version=None,
+    pytorch_version=None,
+    instance_type=None,
+) -> str:
+    """Retrieve image uri for training.
+
+    Args:
+        region (str): AWS region to use for image URI.
+        framework (str): The framework for which to retrieve an image URI.
+        framework_version (str): The framework version for which to retrieve an
+            image URI (default: None).
+        py_version (str): The python version to use for the image (default: None).
+        image_uri (str): If an image URI is supplied, it will be returned (default: None).
+        distribution (dict): A dictionary with information on how to run distributed
+            training (default: None).
+        compiler_config (:class:`~sagemaker.training_compiler.TrainingCompilerConfig`):
+            A configuration class for the SageMaker Training Compiler
+            (default: None).
+        tensorflow_version (str): Version of tensorflow to use. (default: None)
+        pytorch_version (str): Version of pytorch to use. (default: None)
+        instance_type (str): Instance type fo use. (default: None)
+
+    Returns:
+        str: the image URI string.
+    """
+
+    if image_uri:
+        return image_uri
+
+    base_framework_version: Optional[str] = None
+
+    if tensorflow_version is not None or pytorch_version is not None:
+        processor = _processor(instance_type, ["cpu", "gpu"])
+        is_native_huggingface_gpu = processor == "gpu" and not compiler_config
+        container_version = "cu110-ubuntu18.04" if is_native_huggingface_gpu else None
+        if tensorflow_version is not None:
+            base_framework_version = f"tensorflow{tensorflow_version}"
+        else:
+            base_framework_version = f"pytorch{pytorch_version}"
+    else:
+        container_version = None
+        base_framework_version = None
+
+    return retrieve(
+        framework,
+        region,
+        instance_type=instance_type,
+        version=framework_version,
+        py_version=py_version,
+        image_scope="training",
+        distribution=distribution,
+        base_framework_version=base_framework_version,
+        container_version=container_version,
+        training_compiler_config=compiler_config,
+    )
