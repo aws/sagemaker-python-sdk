@@ -154,10 +154,10 @@ class Model(ModelBase):
                 created by ``sagemaker.session.Session`` is used.
             entry_point (str): Path (absolute or relative) to the Python source
                 file which should be executed as the entry point to model
-                hosting. If ``source_dir`` is specified, then ``entry_point``
-                must point to a file located at the root of ``source_dir``.
-                If 'git_config' is provided, 'entry_point' should be
-                a relative location to the Python source file in the Git repo.
+                hosting (default: None). If ``source_dir`` is specified,
+                then ``entry_point`` must point to a file located at the root of
+                ``source_dir``. If 'git_config' is provided, 'entry_point' should
+                be a relative location to the Python source file in the Git repo.
 
                 Example:
                     With the following GitHub repo directory structure:
