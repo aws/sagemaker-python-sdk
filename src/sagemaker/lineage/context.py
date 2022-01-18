@@ -31,6 +31,8 @@ from sagemaker.lineage.query import (
     LineageQueryDirectionEnum,
 )
 from sagemaker.lineage.artifact import Artifact
+from sagemaker.lineage.action import Action
+from sagemaker.lineage.lineage_trial_component import LineageTrialComponent
 
 
 class Context(_base_types.Record):
@@ -256,12 +258,30 @@ class Context(_base_types.Record):
             sagemaker_session=sagemaker_session,
         )
 
+    def actions(self, direction: LineageQueryDirectionEnum) -> List[Action]:
+        """Use the lineage query to retrieve actions that use this context.
+
+        Args:
+            direction (LineageQueryDirectionEnum): The query direction.
+
+        Returns:
+            list of Actions: Actions.
+        """
+        query_filter = LineageFilter(entities=[LineageEntityEnum.ACTION])
+        query_result = LineageQuery(self.sagemaker_session).query(
+            start_arns=[self.context_arn],
+            query_filter=query_filter,
+            direction=direction,
+            include_edges=False,
+        )
+        return [vertex.to_lineage_object() for vertex in query_result.vertices]
+
 
 class EndpointContext(Context):
     """An Amazon SageMaker endpoint context, which is part of a SageMaker lineage."""
 
     def models(self) -> List[association.Association]:
-        """Get all models deployed by all endpoint versions of the endpoint.
+        """Use Lineage API to get all models deployed by this endpoint.
 
         Returns:
             list of Associations: Associations that destination represents an endpoint's model.
@@ -286,7 +306,7 @@ class EndpointContext(Context):
     def models_v2(
         self, direction: LineageQueryDirectionEnum = LineageQueryDirectionEnum.DESCENDANTS
     ) -> List[Artifact]:
-        """Get artifacts representing models from the context lineage by querying lineage data.
+        """Use the lineage query to retrieve downstream model artifacts that use this endpoint.
 
         Args:
             direction (LineageQueryDirectionEnum, optional): The query direction.
@@ -335,7 +355,7 @@ class EndpointContext(Context):
     def dataset_artifacts(
         self, direction: LineageQueryDirectionEnum = LineageQueryDirectionEnum.ASCENDANTS
     ) -> List[Artifact]:
-        """Get artifacts representing datasets from the endpoint's lineage.
+        """Use the lineage query to retrieve datasets that use this endpoint.
 
         Args:
             direction (LineageQueryDirectionEnum, optional): The query direction.
@@ -360,6 +380,9 @@ class EndpointContext(Context):
     ) -> List[str]:
         """Get ARNs for all training jobs that appear in the endpoint's lineage.
 
+        Args:
+            direction (LineageQueryDirectionEnum, optional): The query direction.
+
         Returns:
             list of str: Training job ARNs.
         """
@@ -382,10 +405,77 @@ class EndpointContext(Context):
             training_job_arns.append(trial_component["Source"]["SourceArn"])
         return training_job_arns
 
+    def processing_jobs(
+        self, direction: LineageQueryDirectionEnum = LineageQueryDirectionEnum.ASCENDANTS
+    ) -> List[LineageTrialComponent]:
+        """Use the lineage query to retrieve processing jobs that use this endpoint.
+
+        Args:
+            direction (LineageQueryDirectionEnum, optional): The query direction.
+
+        Returns:
+            list of LineageTrialComponent: Lineage trial component that represent Processing jobs.
+        """
+        query_filter = LineageFilter(
+            entities=[LineageEntityEnum.TRIAL_COMPONENT], sources=[LineageSourceEnum.PROCESSING_JOB]
+        )
+        query_result = LineageQuery(self.sagemaker_session).query(
+            start_arns=[self.context_arn],
+            query_filter=query_filter,
+            direction=direction,
+            include_edges=False,
+        )
+        return [vertex.to_lineage_object() for vertex in query_result.vertices]
+
+    def transform_jobs(
+        self, direction: LineageQueryDirectionEnum = LineageQueryDirectionEnum.ASCENDANTS
+    ) -> List[LineageTrialComponent]:
+        """Use the lineage query to retrieve transform jobs that use this endpoint.
+
+        Args:
+            direction (LineageQueryDirectionEnum, optional): The query direction.
+
+        Returns:
+            list of LineageTrialComponent: Lineage trial component that represent Transform jobs.
+        """
+        query_filter = LineageFilter(
+            entities=[LineageEntityEnum.TRIAL_COMPONENT], sources=[LineageSourceEnum.TRANSFORM_JOB]
+        )
+        query_result = LineageQuery(self.sagemaker_session).query(
+            start_arns=[self.context_arn],
+            query_filter=query_filter,
+            direction=direction,
+            include_edges=False,
+        )
+        return [vertex.to_lineage_object() for vertex in query_result.vertices]
+
+    def trial_components(
+        self, direction: LineageQueryDirectionEnum = LineageQueryDirectionEnum.ASCENDANTS
+    ) -> List[LineageTrialComponent]:
+        """Use the lineage query to retrieve trial components that use this endpoint.
+
+        Args:
+            direction (LineageQueryDirectionEnum, optional): The query direction.
+
+        Returns:
+            list of LineageTrialComponent: Lineage trial component.
+        """
+        query_filter = LineageFilter(entities=[LineageEntityEnum.TRIAL_COMPONENT])
+        query_result = LineageQuery(self.sagemaker_session).query(
+            start_arns=[self.context_arn],
+            query_filter=query_filter,
+            direction=direction,
+            include_edges=False,
+        )
+        return [vertex.to_lineage_object() for vertex in query_result.vertices]
+
     def pipeline_execution_arn(
         self, direction: LineageQueryDirectionEnum = LineageQueryDirectionEnum.ASCENDANTS
     ) -> str:
         """Get the ARN for the pipeline execution associated with this endpoint (if any).
+
+        Args:
+            direction (LineageQueryDirectionEnum, optional): The query direction.
 
         Returns:
             str: A pipeline execution ARN.
