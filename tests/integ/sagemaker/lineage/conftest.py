@@ -32,6 +32,14 @@ from sagemaker.session import get_execution_role
 from smexperiments import trial_component, trial, experiment
 from random import randint
 from botocore.exceptions import ClientError
+from sagemaker.lineage.query import (
+    LineageQuery,
+    LineageFilter,
+    LineageSourceEnum,
+    LineageEntityEnum,
+    LineageQueryDirectionEnum,
+)
+from sagemaker.lineage.lineage_trial_component import LineageTrialComponent
 
 from tests.integ.sagemaker.lineage.helpers import name, names
 
@@ -39,6 +47,7 @@ SLEEP_TIME_SECONDS = 1
 SLEEP_TIME_TWO_SECONDS = 2
 STATIC_PIPELINE_NAME = "SdkIntegTestStaticPipeline17"
 STATIC_ENDPOINT_NAME = "SdkIntegTestStaticEndpoint17"
+STATIC_MODEL_PACKAGE_GROUP_NAME = "SdkIntegTestStaticPipeline17ModelPackageGroup"
 
 
 @pytest.fixture
@@ -207,6 +216,24 @@ def trial_associated_artifact(artifact_obj, trial_obj, trial_component_obj, sage
         sagemaker_session=sagemaker_session,
     )
     trial_obj.add_trial_component(trial_component_obj)
+    time.sleep(4)
+    yield artifact_obj
+    trial_obj.remove_trial_component(trial_component_obj)
+    assntn.delete()
+
+
+@pytest.fixture
+def upstream_trial_associated_artifact(
+    artifact_obj, trial_obj, trial_component_obj, sagemaker_session
+):
+    assntn = association.Association.create(
+        source_arn=trial_component_obj.trial_component_arn,
+        destination_arn=artifact_obj.artifact_arn,
+        association_type="ContributedTo",
+        sagemaker_session=sagemaker_session,
+    )
+    trial_obj.add_trial_component(trial_component_obj)
+    time.sleep(3)
     yield artifact_obj
     trial_obj.remove_trial_component(trial_component_obj)
     assntn.delete()
@@ -515,6 +542,103 @@ def _get_static_pipeline_execution_arn(sagemaker_session):
 
 
 @pytest.fixture
+def static_approval_action(
+    sagemaker_session, static_endpoint_context, static_pipeline_execution_arn
+):
+    query_filter = LineageFilter(
+        entities=[LineageEntityEnum.ACTION], sources=[LineageSourceEnum.APPROVAL]
+    )
+    query_result = LineageQuery(sagemaker_session).query(
+        start_arns=[static_endpoint_context.context_arn],
+        query_filter=query_filter,
+        direction=LineageQueryDirectionEnum.ASCENDANTS,
+        include_edges=False,
+    )
+    action_name = query_result.vertices[0].arn.split("/")[1]
+    yield action.ModelPackageApprovalAction.load(
+        action_name=action_name, sagemaker_session=sagemaker_session
+    )
+
+
+@pytest.fixture
+def static_model_deployment_action(sagemaker_session, static_endpoint_context):
+    query_filter = LineageFilter(
+        entities=[LineageEntityEnum.ACTION], sources=[LineageSourceEnum.MODEL_DEPLOYMENT]
+    )
+    query_result = LineageQuery(sagemaker_session).query(
+        start_arns=[static_endpoint_context.context_arn],
+        query_filter=query_filter,
+        direction=LineageQueryDirectionEnum.ASCENDANTS,
+        include_edges=False,
+    )
+    model_approval_actions = []
+    for vertex in query_result.vertices:
+        model_approval_actions.append(vertex.to_lineage_object())
+    yield model_approval_actions[0]
+
+
+@pytest.fixture
+def static_processing_job_trial_component(
+    sagemaker_session, static_endpoint_context
+) -> LineageTrialComponent:
+    query_filter = LineageFilter(
+        entities=[LineageEntityEnum.TRIAL_COMPONENT], sources=[LineageSourceEnum.PROCESSING_JOB]
+    )
+
+    query_result = LineageQuery(sagemaker_session).query(
+        start_arns=[static_endpoint_context.context_arn],
+        query_filter=query_filter,
+        direction=LineageQueryDirectionEnum.ASCENDANTS,
+        include_edges=False,
+    )
+    processing_jobs = []
+    for vertex in query_result.vertices:
+        processing_jobs.append(vertex.to_lineage_object())
+
+    return processing_jobs[0]
+
+
+@pytest.fixture
+def static_training_job_trial_component(
+    sagemaker_session, static_endpoint_context
+) -> LineageTrialComponent:
+    query_filter = LineageFilter(
+        entities=[LineageEntityEnum.TRIAL_COMPONENT], sources=[LineageSourceEnum.TRAINING_JOB]
+    )
+
+    query_result = LineageQuery(sagemaker_session).query(
+        start_arns=[static_endpoint_context.context_arn],
+        query_filter=query_filter,
+        direction=LineageQueryDirectionEnum.ASCENDANTS,
+        include_edges=False,
+    )
+    training_jobs = []
+    for vertex in query_result.vertices:
+        training_jobs.append(vertex.to_lineage_object())
+
+    return training_jobs[0]
+
+
+@pytest.fixture
+def static_transform_job_trial_component(
+    static_processing_job_trial_component, sagemaker_session, static_endpoint_context
+) -> LineageTrialComponent:
+    query_filter = LineageFilter(
+        entities=[LineageEntityEnum.TRIAL_COMPONENT], sources=[LineageSourceEnum.TRANSFORM_JOB]
+    )
+    query_result = LineageQuery(sagemaker_session).query(
+        start_arns=[static_processing_job_trial_component.trial_component_arn],
+        query_filter=query_filter,
+        direction=LineageQueryDirectionEnum.DESCENDANTS,
+        include_edges=False,
+    )
+    transform_jobs = []
+    for vertex in query_result.vertices:
+        transform_jobs.append(vertex.to_lineage_object())
+    yield transform_jobs[0]
+
+
+@pytest.fixture
 def static_endpoint_context(sagemaker_session, static_pipeline_execution_arn):
     endpoint_arn = get_endpoint_arn_from_static_pipeline(sagemaker_session)
 
@@ -588,6 +712,23 @@ def static_dataset_artifact(static_model_artifact, sagemaker_session):
         dataset_associations["AssociationSummaries"][0]["SourceArn"],
         sagemaker_session=sagemaker_session,
     )
+
+
+@pytest.fixture
+def static_image_artifact(static_model_artifact, sagemaker_session):
+    query_filter = LineageFilter(
+        entities=[LineageEntityEnum.ARTIFACT], sources=[LineageSourceEnum.IMAGE]
+    )
+    query_result = LineageQuery(sagemaker_session).query(
+        start_arns=[static_model_artifact.artifact_arn],
+        query_filter=query_filter,
+        direction=LineageQueryDirectionEnum.ASCENDANTS,
+        include_edges=False,
+    )
+    image_artifact = []
+    for vertex in query_result.vertices:
+        image_artifact.append(vertex.to_lineage_object())
+    return image_artifact[0]
 
 
 def get_endpoint_arn_from_static_pipeline(sagemaker_session):
