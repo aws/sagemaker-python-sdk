@@ -23,6 +23,7 @@ from sagemaker.lineage._utils import get_resource_name_from_arn
 class LineageEntityEnum(Enum):
     """Enum of lineage entities for use in a query filter."""
 
+    TRIAL = "Trial"
     ACTION = "Action"
     ARTIFACT = "Artifact"
     CONTEXT = "Context"
@@ -44,6 +45,8 @@ class LineageSourceEnum(Enum):
     TENSORBOARD = "TensorBoard"
     TRAINING_JOB = "TrainingJob"
     APPROVAL = "Approval"
+    PROCESSING_JOB = "ProcessingJob"
+    TRANSFORM_JOB = "TransformJob"
 
 
 class LineageQueryDirectionEnum(Enum):
@@ -128,11 +131,15 @@ class Vertex:
         )
 
     def to_lineage_object(self):
-        """Convert the ``Vertex`` object to its corresponding Artifact, Action, Context object."""
-        from sagemaker.lineage.artifact import Artifact, ModelArtifact
+        """Convert the ``Vertex`` object to its corresponding lineage object.
+
+        Returns:
+            A ``Vertex`` object to its corresponding ``Artifact``,``Action``, ``Context``
+            or ``TrialComponent`` object.
+        """
         from sagemaker.lineage.context import Context, EndpointContext
-        from sagemaker.lineage.artifact import DatasetArtifact
         from sagemaker.lineage.action import Action
+        from sagemaker.lineage.lineage_trial_component import LineageTrialComponent
 
         if self.lineage_entity == LineageEntityEnum.CONTEXT.value:
             resource_name = get_resource_name_from_arn(self.arn)
@@ -143,16 +150,30 @@ class Vertex:
             return Context.load(context_name=resource_name, sagemaker_session=self._session)
 
         if self.lineage_entity == LineageEntityEnum.ARTIFACT.value:
-            if self.lineage_source == LineageSourceEnum.MODEL.value:
-                return ModelArtifact.load(artifact_arn=self.arn, sagemaker_session=self._session)
-            if self.lineage_source == LineageSourceEnum.DATASET.value:
-                return DatasetArtifact.load(artifact_arn=self.arn, sagemaker_session=self._session)
-            return Artifact.load(artifact_arn=self.arn, sagemaker_session=self._session)
+            return self._artifact_to_lineage_object()
 
         if self.lineage_entity == LineageEntityEnum.ACTION.value:
             return Action.load(action_name=self.arn.split("/")[1], sagemaker_session=self._session)
 
+        if self.lineage_entity == LineageEntityEnum.TRIAL_COMPONENT.value:
+            trial_component_name = get_resource_name_from_arn(self.arn)
+            return LineageTrialComponent.load(
+                trial_component_name=trial_component_name, sagemaker_session=self._session
+            )
         raise ValueError("Vertex cannot be converted to a lineage object.")
+
+    def _artifact_to_lineage_object(self):
+        """Convert the ``Vertex`` object to its corresponding ``Artifact``."""
+        from sagemaker.lineage.artifact import Artifact, ModelArtifact, ImageArtifact
+        from sagemaker.lineage.artifact import DatasetArtifact
+
+        if self.lineage_source == LineageSourceEnum.MODEL.value:
+            return ModelArtifact.load(artifact_arn=self.arn, sagemaker_session=self._session)
+        if self.lineage_source == LineageSourceEnum.DATASET.value:
+            return DatasetArtifact.load(artifact_arn=self.arn, sagemaker_session=self._session)
+        if self.lineage_source == LineageSourceEnum.IMAGE.value:
+            return ImageArtifact.load(artifact_arn=self.arn, sagemaker_session=self._session)
+        return Artifact.load(artifact_arn=self.arn, sagemaker_session=self._session)
 
 
 class LineageQueryResult(object):
@@ -242,9 +263,12 @@ class LineageQuery(object):
 
     def _get_vertex(self, vertex):
         """Convert lineage query API response to a Vertex."""
+        vertex_type = None
+        if "Type" in vertex:
+            vertex_type = vertex["Type"]
         return Vertex(
             arn=vertex["Arn"],
-            lineage_source=vertex["Type"],
+            lineage_source=vertex_type,
             lineage_entity=vertex["LineageType"],
             sagemaker_session=self._session,
         )
