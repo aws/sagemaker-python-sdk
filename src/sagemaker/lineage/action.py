@@ -16,12 +16,11 @@ from __future__ import absolute_import
 from typing import Optional, Iterator, List
 from datetime import datetime
 
-from sagemaker import Session
+from sagemaker.session import Session
 from sagemaker.apiutils import _base_types
 from sagemaker.lineage import _api_types, _utils
 from sagemaker.lineage._api_types import ActionSource, ActionSummary
 from sagemaker.lineage.artifact import Artifact
-from sagemaker.lineage.context import Context
 
 from sagemaker.lineage.query import (
     LineageQuery,
@@ -126,7 +125,7 @@ class Action(_base_types.Record):
         self._invoke_api(self._boto_delete_method, self._boto_delete_members)
 
     @classmethod
-    def load(cls, action_name: str, sagemaker_session: Session = None) -> "Action":
+    def load(cls, action_name: str, sagemaker_session=None) -> "Action":
         """Load an existing action and return an ``Action`` object representing it.
 
         Args:
@@ -324,7 +323,7 @@ class ModelPackageApprovalAction(Action):
 
     def endpoints(
         self, direction: LineageQueryDirectionEnum = LineageQueryDirectionEnum.DESCENDANTS
-    ) -> List[Context]:
+    ) -> List:
         """Use a lineage query to retrieve downstream endpoint contexts that use this action.
 
         Args:
