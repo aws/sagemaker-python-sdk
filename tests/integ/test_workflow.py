@@ -69,6 +69,7 @@ from sagemaker.workflow.conditions import (
 from sagemaker.workflow.condition_step import ConditionStep
 from sagemaker.workflow.callback_step import CallbackStep, CallbackOutput, CallbackOutputTypeEnum
 from sagemaker.workflow.lambda_step import LambdaStep, LambdaOutput, LambdaOutputTypeEnum
+from sagemaker.workflow.emr_step import EMRStep, EMRStepConfig
 from sagemaker.wrangler.processing import DataWranglerProcessor
 from sagemaker.dataset_definition.inputs import DatasetDefinition, AthenaDatasetDefinition
 from sagemaker.workflow.execution_variables import ExecutionVariables
@@ -1140,6 +1141,50 @@ def test_two_step_lambda_pipeline_with_output_reference(
         assert re.match(
             fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}",
             create_arn,
+        )
+    finally:
+        try:
+            pipeline.delete()
+        except Exception:
+            pass
+
+
+def test_two_steps_emr_pipeline(sagemaker_session, role, pipeline_name, region_name):
+    instance_count = ParameterInteger(name="InstanceCount", default_value=2)
+
+    emr_step_config = EMRStepConfig(
+        jar="s3://us-west-2.elasticmapreduce/libs/script-runner/script-runner.jar",
+        args=["dummy_emr_script_path"],
+    )
+
+    step_emr_1 = EMRStep(
+        name="emr-step-1",
+        cluster_id="j-1YONHTCP3YZKC",
+        display_name="emr_step_1",
+        description="MyEMRStepDescription",
+        step_config=emr_step_config,
+    )
+
+    step_emr_2 = EMRStep(
+        name="emr-step-2",
+        cluster_id=step_emr_1.properties.ClusterId,
+        display_name="emr_step_2",
+        description="MyEMRStepDescription",
+        step_config=emr_step_config,
+    )
+
+    pipeline = Pipeline(
+        name=pipeline_name,
+        parameters=[instance_count],
+        steps=[step_emr_1, step_emr_2],
+        sagemaker_session=sagemaker_session,
+    )
+
+    try:
+        response = pipeline.create(role)
+        create_arn = response["PipelineArn"]
+        assert re.match(
+            fr"arn:aws:sagemaker:{region_name}:\d{{12}}:pipeline/{pipeline_name}", create_arn
         )
     finally:
         try:
