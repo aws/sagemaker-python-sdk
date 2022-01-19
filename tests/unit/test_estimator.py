@@ -3458,5 +3458,6 @@ def test_script_mode_estimator_same_calls_as_framework(
     framework_estimator.fit(training_data_uri)
 
     assert len(generic_estimator_tar_and_upload_dir_args) == 1
+    assert len(generic_estimator_train_args) == 1
     assert generic_estimator_tar_and_upload_dir_args == patched_tar_and_upload_dir.call_args_list
     assert generic_estimator_train_args == sagemaker_session.train.call_args_list
