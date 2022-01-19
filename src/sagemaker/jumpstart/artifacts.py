@@ -19,6 +19,8 @@ from sagemaker.jumpstart.constants import (
     INFERENCE,
     TRAINING,
     SUPPORTED_JUMPSTART_SCOPES,
+)
+from sagemaker.jumpstart.enums import (
     ModelFramework,
     VariableScope,
 )

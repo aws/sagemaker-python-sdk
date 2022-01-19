@@ -13,7 +13,6 @@
 """This module stores constants related to SageMaker JumpStart."""
 from __future__ import absolute_import
 from typing import Set
-from enum import Enum
 import boto3
 from sagemaker.jumpstart.types import JumpStartLaunchedRegionInfo
 
@@ -122,30 +121,3 @@ SUPPORTED_JUMPSTART_SCOPES = set([INFERENCE, TRAINING])
 
 INFERENCE_ENTRYPOINT_SCRIPT_NAME = "inference.py"
 TRAINING_ENTRYPOINT_SCRIPT_NAME = "transfer_learning.py"
-
-
-class ModelFramework(str, Enum):
-    """Enum class for JumpStart model framework.
-
-    The ML framework as referenced in the prefix of the model ID.
-    This value does not necessarily correspond to the container name.
-    """
-
-    PYTORCH = "pytorch"
-    TENSORFLOW = "tensorflow"
-    MXNET = "mxnet"
-    HUGGINGFACE = "huggingface"
-    LIGHTGBM = "lightgbm"
-    CATBOOST = "catboost"
-    XGBOOST = "xgboost"
-    SKLEARN = "sklearn"
-
-
-class VariableScope(str, Enum):
-    """Possible value of the ``scope`` attribute for a hyperparameter or environment variable.
-
-    Used for hosting environment variables and training hyperparameters.
-    """
-
-    CONTAINER = "container"
-    ALGORITHM = "algorithm"
