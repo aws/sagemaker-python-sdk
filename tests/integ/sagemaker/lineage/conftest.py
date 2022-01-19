@@ -668,6 +668,29 @@ def static_endpoint_context(sagemaker_session, static_pipeline_execution_arn):
 
 
 @pytest.fixture
+def static_model_package_group_context(sagemaker_session, static_pipeline_execution_arn):
+
+    model_package_group_arn = get_model_package_group_arn_from_static_pipeline(sagemaker_session)
+
+    contexts = sagemaker_session.sagemaker_client.list_contexts(SourceUri=model_package_group_arn)[
+        "ContextSummaries"
+    ]
+    if len(contexts) != 1:
+        raise (
+            Exception(
+                f"Got an unexpected number of Contexts for \
+                model package group {STATIC_MODEL_PACKAGE_GROUP_NAME} from pipeline \
+                execution {static_pipeline_execution_arn}. \
+                Expected 1 but got {len(contexts)}"
+            )
+        )
+
+    yield context.ModelPackageGroup.load(
+        contexts[0]["ContextName"], sagemaker_session=sagemaker_session
+    )
+
+
+@pytest.fixture
 def static_model_artifact(sagemaker_session, static_pipeline_execution_arn):
     model_package_arn = get_model_package_arn_from_static_pipeline(
         static_pipeline_execution_arn, sagemaker_session
@@ -743,6 +766,15 @@ def get_endpoint_arn_from_static_pipeline(sagemaker_session):
         if error["Code"] == "ValidationException":
             return None
         raise e
+
+
+def get_model_package_group_arn_from_static_pipeline(sagemaker_session):
+    static_model_package_group_arn = (
+        sagemaker_session.sagemaker_client.describe_model_package_group(
+            ModelPackageGroupName=STATIC_MODEL_PACKAGE_GROUP_NAME
+        )["ModelPackageGroupArn"]
+    )
+    return static_model_package_group_arn
 
 
 def get_model_package_arn_from_static_pipeline(pipeline_execution_arn, sagemaker_session):
