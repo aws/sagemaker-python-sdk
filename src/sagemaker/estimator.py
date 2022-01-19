@@ -16,7 +16,7 @@ from __future__ import absolute_import, print_function
 import json
 import logging
 import os
-from typing import Dict
+from typing import Any, Dict
 import uuid
 from abc import ABCMeta, abstractmethod
 
@@ -364,7 +364,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 try to use either CodeCommit credential helper or local
                 credential storage for authentication.
             hyperparameters (dict): Dictionary containing the hyperparameters to
-                initialize this estimator with.
+                initialize this estimator with. (Default: None).
             container_log_level (int): Log level to use within the container
                 (default: logging.INFO). Valid values are defined in the Python
                 logging module.
@@ -375,7 +375,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
                 If not specified, the default ``code location`` is s3://output_bucket/job-name/.
             entry_point (str): Path (absolute or relative) to the local Python
                 source file which should be executed as the entry point to
-                training. If ``source_dir`` is specified, then ``entry_point``
+                training. (Default: None). If ``source_dir`` is specified, then ``entry_point``
                 must point to a file located at the root of ``source_dir``.
                 If 'git_config' is provided, 'entry_point' should be
                 a relative location to the Python source file in the Git repo.
@@ -583,7 +583,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         return name_from_base(self.base_job_name)
 
     @staticmethod
-    def _json_encode_hyperparameters(hyperparameters: dict) -> dict:
+    def _json_encode_hyperparameters(hyperparameters: Dict[str, Any]) -> Dict[str, Any]:
         """Applies Json encoding for certain Hyperparameter types, returns hyperparameters.
 
         Args:
@@ -679,7 +679,7 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self._hyperparameters.update(EstimatorBase._json_encode_hyperparameters(hyperparams))
 
     def _stage_user_code_in_s3(self) -> str:
-        """Upload the user training script to s3 and return the location.
+        """Upload the user training script to s3 and return the s3 URI.
 
         Returns: s3 uri
         """
@@ -2691,7 +2691,7 @@ class Framework(EstimatorBase):
         return None
 
     def set_hyperparameters(self, **kwargs):
-        """Sets hyperparameters."""
+        """Escape the dict argument as JSON, update the private hyperparameter attribute."""
         self._hyperparameters.update(EstimatorBase._json_encode_hyperparameters(kwargs))
 
     def hyperparameters(self):

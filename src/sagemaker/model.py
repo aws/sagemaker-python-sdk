@@ -399,12 +399,10 @@ class Model(ModelBase):
         )
         deploy_env = copy.deepcopy(self.env)
         if self.source_dir or self.dependencies or self.entry_point or self.git_config:
-            self._upload_code(
-                deploy_key_prefix,
-                repack=self.source_dir
-                and self.entry_point
-                and not (self.key_prefix or self.git_config),
+            is_repack = (
+                self.source_dir and self.entry_point and not (self.key_prefix or self.git_config)
             )
+            self._upload_code(deploy_key_prefix, repack=is_repack)
             deploy_env.update(self._script_mode_env_vars())
         return sagemaker.container_def(
             self.image_uri, self.model_data, deploy_env, image_config=self.image_config
