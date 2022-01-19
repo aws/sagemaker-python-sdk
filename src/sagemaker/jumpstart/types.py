@@ -274,6 +274,13 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
         "training_script_key",
         "hyperparameters",
         "inference_environment_variables",
+        "inference_vulnerable",
+        "inference_dependencies",
+        "inference_vulnerabilities",
+        "training_vulnerable",
+        "training_dependencies",
+        "training_vulnerabilities",
+        "deprecated",
     ]
 
     def __init__(self, spec: Dict[str, Any]):
@@ -302,6 +309,14 @@ class JumpStartModelSpecs(JumpStartDataHolderType):
             JumpStartEnvironmentVariable(env_variable)
             for env_variable in json_obj["inference_environment_variables"]
         ]
+        self.inference_vulnerable: bool = bool(json_obj["inference_vulnerable"])
+        self.inference_dependencies: List[str] = json_obj["inference_dependencies"]
+        self.inference_vulnerabilities: List[str] = json_obj["inference_vulnerabilities"]
+        self.training_vulnerable: bool = bool(json_obj["training_vulnerable"])
+        self.training_dependencies: List[str] = json_obj["training_dependencies"]
+        self.training_vulnerabilities: List[str] = json_obj["training_vulnerabilities"]
+        self.deprecated: bool = bool(json_obj["deprecated"])
+
         if self.training_supported:
             self.training_ecr_specs: JumpStartECRSpecs = JumpStartECRSpecs(
                 json_obj["training_ecr_specs"]

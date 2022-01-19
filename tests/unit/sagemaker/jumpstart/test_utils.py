@@ -14,8 +14,13 @@ from __future__ import absolute_import
 from mock.mock import Mock, patch
 import pytest
 from sagemaker.jumpstart import utils
-from sagemaker.jumpstart.constants import JUMPSTART_REGION_NAME_SET
+from sagemaker.jumpstart.constants import INFERENCE, JUMPSTART_REGION_NAME_SET, TRAINING
+from sagemaker.jumpstart.exceptions import (
+    DeprecatedJumpStartModelError,
+    VulnerableJumpStartModelError,
+)
 from sagemaker.jumpstart.types import JumpStartModelHeader, JumpStartVersionedModelId
+from tests.unit.sagemaker.jumpstart.utils import get_spec_from_base_spec
 
 
 def test_get_jumpstart_content_bucket():
@@ -112,3 +117,93 @@ def test_get_sagemaker_version(patched_parse_sm_version: Mock):
     utils.get_sagemaker_version()
     utils.get_sagemaker_version()
     assert patched_parse_sm_version.called_only_once()
+
+
+@patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+def test_jumpstart_vulnerable_model(patched_get_model_specs):
+    def make_vulnerable_inference_spec(*largs, **kwargs):
+        spec = get_spec_from_base_spec(*largs, **kwargs)
+        spec.inference_vulnerable = True
+        spec.inference_vulnerabilities = ["some", "vulnerability"]
+        return spec
+
+    patched_get_model_specs.side_effect = make_vulnerable_inference_spec
+
+    with pytest.raises(VulnerableJumpStartModelError) as e:
+        utils.verify_model_region_and_return_specs(
+            model_id="pytorch-eqa-bert-base-cased", version="*", scope=INFERENCE, region="us-west-2"
+        )
+    assert (
+        "JumpStart model 'pytorch-eqa-bert-base-cased' and version '*' has "
+        "at least 1 vulnerable dependency in the inference scripts. List of vulnerabilities: "
+        "some, vulnerability" == str(e.value.message)
+    )
+
+    assert (
+        utils.verify_model_region_and_return_specs(
+            model_id="pytorch-eqa-bert-base-cased",
+            version="*",
+            scope=INFERENCE,
+            region="us-west-2",
+            tolerate_vulnerable_model=True,
+        )
+        is not None
+    )
+
+    def make_vulnerable_training_spec(*largs, **kwargs):
+        spec = get_spec_from_base_spec(*largs, **kwargs)
+        spec.training_vulnerable = True
+        spec.training_vulnerabilities = ["some", "vulnerability"]
+        return spec
+
+    patched_get_model_specs.side_effect = make_vulnerable_training_spec
+
+    with pytest.raises(VulnerableJumpStartModelError) as e:
+        utils.verify_model_region_and_return_specs(
+            model_id="pytorch-eqa-bert-base-cased", version="*", scope=TRAINING, region="us-west-2"
+        )
+    assert (
+        "JumpStart model 'pytorch-eqa-bert-base-cased' and version '*' has "
+        "at least 1 vulnerable dependency in the training scripts. List of vulnerabilities: "
+        "some, vulnerability" == str(e.value.message)
+    )
+
+    assert (
+        utils.verify_model_region_and_return_specs(
+            model_id="pytorch-eqa-bert-base-cased",
+            version="*",
+            scope=TRAINING,
+            region="us-west-2",
+            tolerate_vulnerable_model=True,
+        )
+        is not None
+    )
+
+
+@patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+def test_jumpstart_deprecated_model(patched_get_model_specs):
+    def make_deprecated_spec(*largs, **kwargs):
+        spec = get_spec_from_base_spec(*largs, **kwargs)
+        spec.deprecated = True
+        return spec
+
+    patched_get_model_specs.side_effect = make_deprecated_spec
+
+    with pytest.raises(DeprecatedJumpStartModelError) as e:
+        utils.verify_model_region_and_return_specs(
+            model_id="pytorch-eqa-bert-base-cased", version="*", scope=INFERENCE, region="us-west-2"
+        )
+    assert "JumpStart model 'pytorch-eqa-bert-base-cased' and version '*' is deprecated." == str(
+        e.value.message
+    )
+
+    assert (
+        utils.verify_model_region_and_return_specs(
+            model_id="pytorch-eqa-bert-base-cased",
+            version="*",
+            scope=INFERENCE,
+            region="us-west-2",
+            tolerate_deprecated_model=True,
+        )
+        is not None
+    )

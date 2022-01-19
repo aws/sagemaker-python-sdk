@@ -17,6 +17,10 @@ from packaging.version import Version
 import sagemaker
 from sagemaker.jumpstart import constants
 from sagemaker.jumpstart import accessors
+from sagemaker.jumpstart.exceptions import (
+    DeprecatedJumpStartModelError,
+    VulnerableJumpStartModelError,
+)
 from sagemaker.jumpstart.types import JumpStartModelHeader, JumpStartVersionedModelId
 
 
@@ -136,3 +140,86 @@ def is_jumpstart_model_input(model_id: Optional[str], version: Optional[str]) ->
             )
         return True
     return False
+
+
+def verify_model_region_and_return_specs(
+    model_id: Optional[str],
+    version: Optional[str],
+    scope: Optional[str],
+    region: str,
+    tolerate_vulnerable_model: Optional[bool] = None,
+    tolerate_deprecated_model: Optional[bool] = None,
+):
+    """Verifies that an acceptable model_id, version, scope, and region combination is provided.
+
+    If the scope is not supported, the model id/region/version has no spec, or the model is vulnerable
+    or deprecated, an exception will be raised.
+
+    Args:
+        model_id (Optional[str]): model id of the JumpStart model to verify and
+            obtains specs.
+        version (Optional[str]): version of the JumpStart model to verify and
+            obtains specs.
+        scope (Optional[str]): scope of the JumpStart model to verify.
+        region (Optional[str]): region of the JumpStart model to verify and
+            obtains specs.
+        tolerate_vulnerable_model (Optional[bool]): True if vulnerable models should be tolerated (exception
+            not thrown). False if these models should throw an exception. (Default: None).
+        tolerate_deprecated_model (Optional[bool]): True if deprecated models should be tolerated (exception
+            not thrown). False if these models should throw an exception. (Default: None).
+    """
+
+    if tolerate_vulnerable_model is None:
+        tolerate_vulnerable_model = False
+
+    if tolerate_deprecated_model is None:
+        tolerate_deprecated_model = False
+
+    if scope is None:
+        raise ValueError(
+            "Must specify `model_scope` argument to retrieve model "
+            "artifact uri for JumpStart models."
+        )
+
+    if scope not in constants.SUPPORTED_JUMPSTART_SCOPES:
+        raise ValueError(
+            f"JumpStart models only support scopes: {', '.join(constants.SUPPORTED_JUMPSTART_SCOPES)}."
+        )
+
+    model_specs = accessors.JumpStartModelsAccessor.get_model_specs(
+        region=region, model_id=model_id, version=version
+    )
+
+    if scope == constants.TRAINING and not model_specs.training_supported:
+        raise ValueError(
+            f"JumpStart model ID '{model_id}' and version '{version}' " "does not support training."
+        )
+
+    if model_specs.deprecated and not tolerate_deprecated_model:
+        raise DeprecatedJumpStartModelError(model_id=model_id, version=version)
+
+    if (
+        scope == constants.INFERENCE
+        and model_specs.inference_vulnerable
+        and not tolerate_vulnerable_model
+    ):
+        raise VulnerableJumpStartModelError(
+            model_id=model_id,
+            version=version,
+            vulnerabilities=model_specs.inference_vulnerabilities,
+            inference=True,
+        )
+
+    if (
+        scope == constants.TRAINING
+        and model_specs.training_vulnerable
+        and not tolerate_vulnerable_model
+    ):
+        raise VulnerableJumpStartModelError(
+            model_id=model_id,
+            version=version,
+            vulnerabilities=model_specs.training_vulnerabilities,
+            inference=False,
+        )
+
+    return model_specs

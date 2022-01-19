@@ -15,6 +15,7 @@
 from __future__ import absolute_import
 
 import logging
+from typing import Optional
 
 from sagemaker.jumpstart import utils as jumpstart_utils
 from sagemaker.jumpstart import artifacts
@@ -27,6 +28,8 @@ def retrieve(
     model_id=None,
     model_version=None,
     script_scope=None,
+    tolerate_vulnerable_model: Optional[bool] = None,
+    tolerate_deprecated_model: Optional[bool] = None,
 ) -> str:
     """Retrieves the script S3 URI associated with the model matching the given arguments.
 
@@ -38,6 +41,10 @@ def retrieve(
             model script S3 URI.
         script_scope (str): The script type, i.e. what it is used for.
             Valid values: "training" and "inference".
+        tolerate_vulnerable_model (bool): True if vulnerable models should be tolerated (exception
+            not thrown). False if these models should throw an exception. (Default: None).
+        tolerate_deprecated_model (bool): True if deprecated models should be tolerated (exception
+            not thrown). False if these models should throw an exception. (Default: None).
     Returns:
         str: the model script URI for the corresponding model.
 
@@ -51,4 +58,11 @@ def retrieve(
     assert model_id is not None
     assert model_version is not None
 
-    return artifacts._retrieve_script_uri(model_id, model_version, script_scope, region)
+    return artifacts._retrieve_script_uri(
+        model_id,
+        model_version,
+        script_scope,
+        region,
+        tolerate_vulnerable_model,
+        tolerate_deprecated_model,
+    )
