@@ -14,10 +14,12 @@
 from __future__ import absolute_import
 from typing import Dict, List, Optional
 from packaging.version import Version
+from urllib.parse import urlparse
 import sagemaker
 from sagemaker.jumpstart import constants
 from sagemaker.jumpstart import accessors
 from sagemaker.jumpstart.types import JumpStartModelHeader, JumpStartVersionedModelId
+from sagemaker.s3 import parse_s3_url
 
 
 def get_jumpstart_launched_regions_message() -> str:
@@ -136,3 +138,53 @@ def is_jumpstart_model_input(model_id: Optional[str], version: Optional[str]) ->
             )
         return True
     return False
+
+
+def is_jumpstart_model_uri(uri: Optional[str]) -> bool:
+    """Returns True if URI corresponds to a JumpStart-hosted model.
+
+    Args:
+        uri (Optional[str]): uri for inference/training job.
+    """
+
+    bucket = None
+    if urlparse(uri).scheme == "s3":
+        bucket, _ = parse_s3_url(uri)
+
+    return bucket in constants.JUMPSTART_BUCKET_NAME_SET
+
+
+def add_jumpstart_tags(
+    tags: Optional[List[Dict[str, str]]],
+    inference_model_uri: Optional[str],
+    inference_script_uri: Optional[str],
+) -> List[Dict[str, str]]:
+    """Adds tags for JumpStart models. Returns original tags for non-JumpStart
+    models.
+
+    Args:
+        tags (Optional[List[Dict[str,str]]): Current tags for JumpStart inference
+        or training job.
+        inference_model_uri (Optional[str]): S3 URI for inference model artifact.
+        inference_script_uri (Optional[str]): S3 URI for inference script tarball.
+    """
+
+    if is_jumpstart_model_uri(inference_model_uri):
+        if tags is None:
+            tags = []
+        tags.append(
+            {
+                constants.JumpStartTag.INFERENCE_MODEL_URI.value: inference_model_uri,
+            }
+        )
+
+    if is_jumpstart_model_uri(inference_script_uri):
+        if tags is None:
+            tags = []
+        tags.append(
+            {
+                constants.JumpStartTag.INFERENCE_SCRIPT_URI.value: inference_script_uri,
+            }
+        )
+
+    return tags

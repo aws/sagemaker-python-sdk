@@ -13,9 +13,18 @@
 from __future__ import absolute_import
 from mock.mock import Mock, patch
 import pytest
+import random
 from sagemaker.jumpstart import utils
-from sagemaker.jumpstart.constants import JUMPSTART_REGION_NAME_SET
+from sagemaker.jumpstart.constants import (
+    JUMPSTART_BUCKET_NAME_SET,
+    JUMPSTART_REGION_NAME_SET,
+    JumpStartTag,
+)
 from sagemaker.jumpstart.types import JumpStartModelHeader, JumpStartVersionedModelId
+
+
+def random_jumpstart_s3_uri(key):
+    return f"s3://{random.choice(list(JUMPSTART_BUCKET_NAME_SET))}/{key}"
 
 
 def test_get_jumpstart_content_bucket():
@@ -112,3 +121,168 @@ def test_get_sagemaker_version(patched_parse_sm_version: Mock):
     utils.get_sagemaker_version()
     utils.get_sagemaker_version()
     assert patched_parse_sm_version.called_only_once()
+
+
+def test_is_jumpstart_model_uri():
+
+    assert not utils.is_jumpstart_model_uri("fdsfdsf")
+    assert not utils.is_jumpstart_model_uri("s3://not-jumpstart-bucket/sdfsdfds")
+    assert not utils.is_jumpstart_model_uri("some/actual/localfile")
+
+    assert utils.is_jumpstart_model_uri(
+        random_jumpstart_s3_uri("source_directory_tarballs/sourcedir.tar.gz")
+    )
+    assert utils.is_jumpstart_model_uri(random_jumpstart_s3_uri("random_key"))
+
+
+def test_add_jumpstart_tags():
+    tags = None
+    inference_model_uri = "dfsdfsd"
+    inference_script_uri = "dfsdfs"
+    assert (
+        utils.add_jumpstart_tags(
+            tags=tags,
+            inference_model_uri=inference_model_uri,
+            inference_script_uri=inference_script_uri,
+        )
+        is None
+    )
+
+    tags = []
+    inference_model_uri = "dfsdfsd"
+    inference_script_uri = "dfsdfs"
+    assert (
+        utils.add_jumpstart_tags(
+            tags=tags,
+            inference_model_uri=inference_model_uri,
+            inference_script_uri=inference_script_uri,
+        )
+        == []
+    )
+
+    tags = [{"some": "tag"}]
+    inference_model_uri = "dfsdfsd"
+    inference_script_uri = "dfsdfs"
+    assert (
+        utils.add_jumpstart_tags(
+            tags=tags,
+            inference_model_uri=inference_model_uri,
+            inference_script_uri=inference_script_uri,
+        )
+        == [{"some": "tag"}]
+    )
+
+    tags = None
+    inference_model_uri = random_jumpstart_s3_uri("random_key")
+    inference_script_uri = "dfsdfs"
+    assert (
+        utils.add_jumpstart_tags(
+            tags=tags,
+            inference_model_uri=inference_model_uri,
+            inference_script_uri=inference_script_uri,
+        )
+        == [{JumpStartTag.INFERENCE_MODEL_URI.value: inference_model_uri}]
+    )
+
+    tags = []
+    inference_model_uri = random_jumpstart_s3_uri("random_key")
+    inference_script_uri = "dfsdfs"
+    assert (
+        utils.add_jumpstart_tags(
+            tags=tags,
+            inference_model_uri=inference_model_uri,
+            inference_script_uri=inference_script_uri,
+        )
+        == [{JumpStartTag.INFERENCE_MODEL_URI.value: inference_model_uri}]
+    )
+
+    tags = [{"some": "tag"}]
+    inference_model_uri = random_jumpstart_s3_uri("random_key")
+    inference_script_uri = "dfsdfs"
+    assert utils.add_jumpstart_tags(
+        tags=tags,
+        inference_model_uri=inference_model_uri,
+        inference_script_uri=inference_script_uri,
+    ) == [
+        {"some": "tag"},
+        {JumpStartTag.INFERENCE_MODEL_URI.value: inference_model_uri},
+    ]
+
+    tags = None
+    inference_script_uri = random_jumpstart_s3_uri("random_key")
+    inference_model_uri = "dfsdfs"
+    assert (
+        utils.add_jumpstart_tags(
+            tags=tags,
+            inference_model_uri=inference_model_uri,
+            inference_script_uri=inference_script_uri,
+        )
+        == [{JumpStartTag.INFERENCE_SCRIPT_URI.value: inference_script_uri}]
+    )
+
+    tags = []
+    inference_script_uri = random_jumpstart_s3_uri("random_key")
+    inference_model_uri = "dfsdfs"
+    assert (
+        utils.add_jumpstart_tags(
+            tags=tags,
+            inference_model_uri=inference_model_uri,
+            inference_script_uri=inference_script_uri,
+        )
+        == [{JumpStartTag.INFERENCE_SCRIPT_URI.value: inference_script_uri}]
+    )
+
+    tags = [{"some": "tag"}]
+    inference_script_uri = random_jumpstart_s3_uri("random_key")
+    inference_model_uri = "dfsdfs"
+    assert utils.add_jumpstart_tags(
+        tags=tags,
+        inference_model_uri=inference_model_uri,
+        inference_script_uri=inference_script_uri,
+    ) == [
+        {"some": "tag"},
+        {JumpStartTag.INFERENCE_SCRIPT_URI.value: inference_script_uri},
+    ]
+
+    tags = None
+    inference_script_uri = random_jumpstart_s3_uri("random_key")
+    inference_model_uri = random_jumpstart_s3_uri("random_key")
+    assert utils.add_jumpstart_tags(
+        tags=tags,
+        inference_model_uri=inference_model_uri,
+        inference_script_uri=inference_script_uri,
+    ) == [
+        {
+            JumpStartTag.INFERENCE_MODEL_URI.value: inference_model_uri,
+        },
+        {JumpStartTag.INFERENCE_SCRIPT_URI.value: inference_script_uri},
+    ]
+
+    tags = []
+    inference_script_uri = random_jumpstart_s3_uri("random_key")
+    inference_model_uri = random_jumpstart_s3_uri("random_key")
+    assert utils.add_jumpstart_tags(
+        tags=tags,
+        inference_model_uri=inference_model_uri,
+        inference_script_uri=inference_script_uri,
+    ) == [
+        {
+            JumpStartTag.INFERENCE_MODEL_URI.value: inference_model_uri,
+        },
+        {JumpStartTag.INFERENCE_SCRIPT_URI.value: inference_script_uri},
+    ]
+
+    tags = [{"some": "tag"}]
+    inference_script_uri = random_jumpstart_s3_uri("random_key")
+    inference_model_uri = random_jumpstart_s3_uri("random_key")
+    assert utils.add_jumpstart_tags(
+        tags=tags,
+        inference_model_uri=inference_model_uri,
+        inference_script_uri=inference_script_uri,
+    ) == [
+        {"some": "tag"},
+        {
+            JumpStartTag.INFERENCE_MODEL_URI.value: inference_model_uri,
+        },
+        {JumpStartTag.INFERENCE_SCRIPT_URI.value: inference_script_uri},
+    ]
