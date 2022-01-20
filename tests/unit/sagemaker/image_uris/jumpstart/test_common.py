@@ -96,7 +96,7 @@ def test_jumpstart_common_image_uri(
     )
     patched_verify_model_region_and_return_specs.assert_called_once()
 
-    with pytest.raises(ValueError):
+    with pytest.raises(NotImplementedError):
         image_uris.retrieve(
             framework=None,
             region="us-west-2",

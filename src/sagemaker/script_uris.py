@@ -42,9 +42,9 @@ def retrieve(
         script_scope (str): The script type, i.e. what it is used for.
             Valid values: "training" and "inference".
         tolerate_vulnerable_model (bool): True if vulnerable models should be tolerated (exception
-            not thrown). False if these models should throw an exception. (Default: None).
+            not raised). False if these models should raise an exception. (Default: None).
         tolerate_deprecated_model (bool): True if deprecated models should be tolerated (exception
-            not thrown). False if these models should throw an exception. (Default: None).
+            not raised). False if these models should raise an exception. (Default: None).
     Returns:
         str: the model script URI for the corresponding model.
 

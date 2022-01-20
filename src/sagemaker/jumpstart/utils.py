@@ -21,7 +21,11 @@ from sagemaker.jumpstart.exceptions import (
     DeprecatedJumpStartModelError,
     VulnerableJumpStartModelError,
 )
-from sagemaker.jumpstart.types import JumpStartModelHeader, JumpStartVersionedModelId
+from sagemaker.jumpstart.types import (
+    JumpStartModelHeader,
+    JumpStartModelSpecs,
+    JumpStartVersionedModelId,
+)
 
 
 def get_jumpstart_launched_regions_message() -> str:
@@ -149,11 +153,8 @@ def verify_model_region_and_return_specs(
     region: str,
     tolerate_vulnerable_model: Optional[bool] = None,
     tolerate_deprecated_model: Optional[bool] = None,
-):
+) -> JumpStartModelSpecs:
     """Verifies that an acceptable model_id, version, scope, and region combination is provided.
-
-    If the scope is not supported, the model id/region/version has no spec, or the model is vulnerable
-    or deprecated, an exception will be raised.
 
     Args:
         model_id (Optional[str]): model id of the JumpStart model to verify and
@@ -163,10 +164,19 @@ def verify_model_region_and_return_specs(
         scope (Optional[str]): scope of the JumpStart model to verify.
         region (Optional[str]): region of the JumpStart model to verify and
             obtains specs.
-        tolerate_vulnerable_model (Optional[bool]): True if vulnerable models should be tolerated (exception
-            not thrown). False if these models should throw an exception. (Default: None).
-        tolerate_deprecated_model (Optional[bool]): True if deprecated models should be tolerated (exception
-            not thrown). False if these models should throw an exception. (Default: None).
+        tolerate_vulnerable_model (Optional[bool]): True if vulnerable models should be tolerated
+            (exception not raised). False if these models should raise an exception.
+            (Default: None).
+        tolerate_deprecated_model (Optional[bool]): True if deprecated models should be tolerated
+            (exception not raised). False if these models should raise an exception.
+            (Default: None).
+
+
+    Raises:
+        ValueError: If the combination of arguments specified is not supported.
+        NotImplementedError: If the scope is not supported.
+        VulnerableJumpStartModelError: If the model is vulnerable.
+        DeprecatedJumpStartModelError: If the model is deprecated.
     """
 
     if tolerate_vulnerable_model is None:
@@ -182,15 +192,22 @@ def verify_model_region_and_return_specs(
         )
 
     if scope not in constants.SUPPORTED_JUMPSTART_SCOPES:
-        raise ValueError(
-            f"JumpStart models only support scopes: {', '.join(constants.SUPPORTED_JUMPSTART_SCOPES)}."
+        raise NotImplementedError(
+            "JumpStart models only support scopes: "
+            f"{', '.join(constants.SUPPORTED_JUMPSTART_SCOPES)}."
         )
+
+    assert model_id is not None
+    assert version is not None
 
     model_specs = accessors.JumpStartModelsAccessor.get_model_specs(
         region=region, model_id=model_id, version=version
     )
 
-    if scope == constants.TRAINING and not model_specs.training_supported:
+    if (
+        scope == constants.JumpStartScriptScope.TRAINING.value
+        and not model_specs.training_supported
+    ):
         raise ValueError(
             f"JumpStart model ID '{model_id}' and version '{version}' " "does not support training."
         )
@@ -199,7 +216,7 @@ def verify_model_region_and_return_specs(
         raise DeprecatedJumpStartModelError(model_id=model_id, version=version)
 
     if (
-        scope == constants.INFERENCE
+        scope == constants.JumpStartScriptScope.INFERENCE.value
         and model_specs.inference_vulnerable
         and not tolerate_vulnerable_model
     ):
@@ -207,11 +224,11 @@ def verify_model_region_and_return_specs(
             model_id=model_id,
             version=version,
             vulnerabilities=model_specs.inference_vulnerabilities,
-            inference=True,
+            scope=constants.JumpStartScriptScope.INFERENCE,
         )
 
     if (
-        scope == constants.TRAINING
+        scope == constants.JumpStartScriptScope.TRAINING.value
         and model_specs.training_vulnerable
         and not tolerate_vulnerable_model
     ):
@@ -219,7 +236,7 @@ def verify_model_region_and_return_specs(
             model_id=model_id,
             version=version,
             vulnerabilities=model_specs.training_vulnerabilities,
-            inference=False,
+            scope=constants.JumpStartScriptScope.TRAINING,
         )
 
     return model_specs

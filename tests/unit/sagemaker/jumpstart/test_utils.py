@@ -14,7 +14,7 @@ from __future__ import absolute_import
 from mock.mock import Mock, patch
 import pytest
 from sagemaker.jumpstart import utils
-from sagemaker.jumpstart.constants import INFERENCE, JUMPSTART_REGION_NAME_SET, TRAINING
+from sagemaker.jumpstart.constants import JUMPSTART_REGION_NAME_SET, JumpStartScriptScope
 from sagemaker.jumpstart.exceptions import (
     DeprecatedJumpStartModelError,
     VulnerableJumpStartModelError,
@@ -131,19 +131,23 @@ def test_jumpstart_vulnerable_model(patched_get_model_specs):
 
     with pytest.raises(VulnerableJumpStartModelError) as e:
         utils.verify_model_region_and_return_specs(
-            model_id="pytorch-eqa-bert-base-cased", version="*", scope=INFERENCE, region="us-west-2"
+            model_id="pytorch-eqa-bert-base-cased",
+            version="*",
+            scope=JumpStartScriptScope.INFERENCE.value,
+            region="us-west-2",
         )
     assert (
-        "JumpStart model 'pytorch-eqa-bert-base-cased' and version '*' has "
-        "at least 1 vulnerable dependency in the inference scripts. List of vulnerabilities: "
-        "some, vulnerability" == str(e.value.message)
-    )
+        "Version '*' of JumpStart model 'pytorch-eqa-bert-base-cased' has at least 1 "
+        "vulnerable dependency in the inference script. "
+        "Please try targetting a higher version of the model. "
+        "List of vulnerabilities: some, vulnerability"
+    ) == str(e.value.message)
 
     assert (
         utils.verify_model_region_and_return_specs(
             model_id="pytorch-eqa-bert-base-cased",
             version="*",
-            scope=INFERENCE,
+            scope=JumpStartScriptScope.INFERENCE.value,
             region="us-west-2",
             tolerate_vulnerable_model=True,
         )
@@ -160,19 +164,23 @@ def test_jumpstart_vulnerable_model(patched_get_model_specs):
 
     with pytest.raises(VulnerableJumpStartModelError) as e:
         utils.verify_model_region_and_return_specs(
-            model_id="pytorch-eqa-bert-base-cased", version="*", scope=TRAINING, region="us-west-2"
+            model_id="pytorch-eqa-bert-base-cased",
+            version="*",
+            scope=JumpStartScriptScope.TRAINING.value,
+            region="us-west-2",
         )
     assert (
-        "JumpStart model 'pytorch-eqa-bert-base-cased' and version '*' has "
-        "at least 1 vulnerable dependency in the training scripts. List of vulnerabilities: "
-        "some, vulnerability" == str(e.value.message)
-    )
+        "Version '*' of JumpStart model 'pytorch-eqa-bert-base-cased' has at least 1 "
+        "vulnerable dependency in the training script. "
+        "Please try targetting a higher version of the model. "
+        "List of vulnerabilities: some, vulnerability"
+    ) == str(e.value.message)
 
     assert (
         utils.verify_model_region_and_return_specs(
             model_id="pytorch-eqa-bert-base-cased",
             version="*",
-            scope=TRAINING,
+            scope=JumpStartScriptScope.TRAINING.value,
             region="us-west-2",
             tolerate_vulnerable_model=True,
         )
@@ -191,17 +199,19 @@ def test_jumpstart_deprecated_model(patched_get_model_specs):
 
     with pytest.raises(DeprecatedJumpStartModelError) as e:
         utils.verify_model_region_and_return_specs(
-            model_id="pytorch-eqa-bert-base-cased", version="*", scope=INFERENCE, region="us-west-2"
+            model_id="pytorch-eqa-bert-base-cased",
+            version="*",
+            scope=JumpStartScriptScope.INFERENCE.value,
+            region="us-west-2",
         )
-    assert "JumpStart model 'pytorch-eqa-bert-base-cased' and version '*' is deprecated." == str(
-        e.value.message
-    )
+    assert "Version '*' of JumpStart model 'pytorch-eqa-bert-base-cased' is deprecated. "
+    "Please try targetting a higher version of the model." == str(e.value.message)
 
     assert (
         utils.verify_model_region_and_return_specs(
             model_id="pytorch-eqa-bert-base-cased",
             version="*",
-            scope=INFERENCE,
+            scope=JumpStartScriptScope.INFERENCE.value,
             region="us-west-2",
             tolerate_deprecated_model=True,
         )

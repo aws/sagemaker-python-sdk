@@ -82,9 +82,9 @@ def retrieve(
         model_version (str): Version of the JumpStart model for which to retrieve the
             image URI (default: None).
         tolerate_vulnerable_model (bool): True if vulnerable models should be tolerated (exception
-            not thrown). False if these models should throw an exception. (Default: None).
+            not raised). False if these models should raise an exception. (Default: None).
         tolerate_deprecated_model (bool): True if deprecated models should be tolerated (exception
-            not thrown). False if these models should throw an exception. (Default: None).
+            not raised). False if these models should raise an exception. (Default: None).
 
     Returns:
         str: the ECR URI for the corresponding SageMaker Docker image.

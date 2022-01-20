@@ -86,7 +86,7 @@ def test_jumpstart_common_model_uri(
     )
     patched_verify_model_region_and_return_specs.assert_called_once()
 
-    with pytest.raises(ValueError):
+    with pytest.raises(NotImplementedError):
         model_uris.retrieve(
             region="us-west-2",
             model_scope="BAD_SCOPE",

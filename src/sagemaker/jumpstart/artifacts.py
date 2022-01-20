@@ -16,8 +16,7 @@ from typing import Dict, Optional
 from sagemaker import image_uris
 from sagemaker.jumpstart.constants import (
     JUMPSTART_DEFAULT_REGION_NAME,
-    INFERENCE,
-    TRAINING,
+    JumpStartScriptScope,
     ModelFramework,
     VariableScope,
 )
@@ -77,9 +76,9 @@ def _retrieve_image_uri(
         training_compiler_config (:class:`~sagemaker.training_compiler.TrainingCompilerConfig`):
             A configuration class for the SageMaker Training Compiler.
         tolerate_vulnerable_model (bool): True if vulnerable models should be tolerated (exception
-            not thrown). False if these models should throw an exception.
+            not raised). False if these models should raise an exception.
         tolerate_deprecated_model (bool): True if deprecated models should be tolerated (exception
-            not thrown). False if these models should throw an exception.
+            not raised). False if these models should raise an exception.
 
     Returns:
         str: the ECR URI for the corresponding SageMaker Docker image.
@@ -103,9 +102,9 @@ def _retrieve_image_uri(
         tolerate_deprecated_model=tolerate_deprecated_model,
     )
 
-    if image_scope == INFERENCE:
+    if image_scope == JumpStartScriptScope.INFERENCE.value:
         ecr_specs = model_specs.hosting_ecr_specs
-    elif image_scope == TRAINING:
+    elif image_scope == JumpStartScriptScope.TRAINING.value:
         assert model_specs.training_ecr_specs is not None
         ecr_specs = model_specs.training_ecr_specs
 
@@ -133,7 +132,7 @@ def _retrieve_image_uri(
         base_framework_version_override = ecr_specs.framework_version
         version_override = ecr_specs.huggingface_transformers_version
 
-    if image_scope == TRAINING:
+    if image_scope == JumpStartScriptScope.TRAINING.value:
         return image_uris.get_training_image_uri(
             region=region,
             framework=ecr_specs.framework,
@@ -183,9 +182,9 @@ def _retrieve_model_uri(
             Valid values: "training" and "inference".
         region (str): Region for which to retrieve model S3 URI.
         tolerate_vulnerable_model (bool): True if vulnerable models should be tolerated (exception
-            not thrown). False if these models should throw an exception.
+            not raised). False if these models should raise an exception.
         tolerate_deprecated_model (bool): True if deprecated models should be tolerated (exception
-            not thrown). False if these models should throw an exception.
+            not raised). False if these models should raise an exception.
     Returns:
         str: the model artifact S3 URI for the corresponding model.
 
@@ -208,9 +207,9 @@ def _retrieve_model_uri(
         tolerate_deprecated_model=tolerate_deprecated_model,
     )
 
-    if model_scope == INFERENCE:
+    if model_scope == JumpStartScriptScope.INFERENCE.value:
         model_artifact_key = model_specs.hosting_artifact_key
-    elif model_scope == TRAINING:
+    elif model_scope == JumpStartScriptScope.TRAINING.value:
         assert model_specs.training_artifact_key is not None
         model_artifact_key = model_specs.training_artifact_key
 
@@ -240,9 +239,9 @@ def _retrieve_script_uri(
             Valid values: "training" and "inference".
         region (str): Region for which to retrieve model script S3 URI.
         tolerate_vulnerable_model (bool): True if vulnerable models should be tolerated (exception
-            not thrown). False if these models should throw an exception.
+            not raised). False if these models should raise an exception.
         tolerate_deprecated_model (bool): True if deprecated models should be tolerated (exception
-            not thrown). False if these models should throw an exception.
+            not raised). False if these models should raise an exception.
     Returns:
         str: the model script URI for the corresponding model.
 
@@ -265,9 +264,9 @@ def _retrieve_script_uri(
         tolerate_deprecated_model=tolerate_deprecated_model,
     )
 
-    if script_scope == INFERENCE:
+    if script_scope == JumpStartScriptScope.INFERENCE.value:
         model_script_key = model_specs.hosting_script_key
-    elif script_scope == TRAINING:
+    elif script_scope == JumpStartScriptScope.TRAINING.value:
         assert model_specs.training_script_key is not None
         model_script_key = model_specs.training_script_key
 
