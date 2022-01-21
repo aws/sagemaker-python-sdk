@@ -158,3 +158,5 @@ class JumpStartTag(str, Enum):
 
     INFERENCE_MODEL_URI = "aws-jumpstart-inference-model-uri"
     INFERENCE_SCRIPT_URI = "aws-jumpstart-inference-script-uri"
+    TRAINING_MODEL_URI = "aws-jumpstart-training-model-uri"
+    TRAINING_SCRIPT_URI = "aws-jumpstart-training-script-uri"

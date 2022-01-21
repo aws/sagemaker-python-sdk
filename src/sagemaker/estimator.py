@@ -48,6 +48,10 @@ from sagemaker.fw_utils import (
 )
 from sagemaker.inputs import TrainingInput
 from sagemaker.job import _Job
+from sagemaker.jumpstart.utils import (
+    add_jumpstart_tags,
+    update_inference_tags_with_jumpstart_training_tags,
+)
 from sagemaker.local import LocalSession
 from sagemaker.model import (
     CONTAINER_LOG_LEVEL_PARAM_NAME,
@@ -442,7 +446,6 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self.volume_kms_key = volume_kms_key
         self.max_run = max_run
         self.input_mode = input_mode
-        self.tags = tags
         self.metric_definitions = metric_definitions
         self.model_uri = model_uri
         self.model_channel_name = model_channel_name
@@ -456,7 +459,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self.entry_point = entry_point
         self.dependencies = dependencies
         self.uploaded_code = None
-
+        self.tags = add_jumpstart_tags(
+            tags=tags, training_model_uri=self.model_uri, training_script_uri=self.source_dir
+        )
         if self.instance_type in ("local", "local_gpu"):
             if self.instance_type == "local_gpu" and self.instance_count > 1:
                 raise RuntimeError("Distributed Training in Local GPU is not supported")
@@ -1202,6 +1207,10 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             model = self.create_model(**kwargs)
 
         model.name = model_name
+
+        tags = update_inference_tags_with_jumpstart_training_tags(
+            inference_tags=tags, training_tags=self.tags
+        )
 
         return model.deploy(
             instance_type=instance_type,
