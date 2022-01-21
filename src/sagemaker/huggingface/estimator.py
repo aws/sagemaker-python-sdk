@@ -17,7 +17,7 @@ import logging
 import re
 
 from sagemaker.deprecations import renamed_kwargs
-from sagemaker.estimator import Framework
+from sagemaker.estimator import Framework, EstimatorBase
 from sagemaker.fw_utils import (
     framework_name_from_image,
     warn_if_parameter_server_with_multi_gpu,
@@ -246,13 +246,13 @@ class HuggingFace(Framework):
             distribution=self.distribution
         )
         hyperparameters.update(
-            Framework._json_encode_hyperparameters(distributed_training_hyperparameters)
+            EstimatorBase._json_encode_hyperparameters(distributed_training_hyperparameters)
         )
 
         if self.compiler_config:
             training_compiler_hyperparameters = self.compiler_config._to_hyperparameter_dict()
             hyperparameters.update(
-                Framework._json_encode_hyperparameters(training_compiler_hyperparameters)
+                EstimatorBase._json_encode_hyperparameters(training_compiler_hyperparameters)
             )
 
         return hyperparameters
