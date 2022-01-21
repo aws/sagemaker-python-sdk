@@ -17,6 +17,8 @@ import json
 import os
 import subprocess
 from time import sleep
+from sagemaker.fw_utils import UploadedCode
+
 
 import pytest
 from botocore.exceptions import ClientError
@@ -3350,3 +3352,112 @@ def test_image_name_map(sagemaker_session):
     )
 
     assert e.image_uri == IMAGE_URI
+
+
+@patch("sagemaker.git_utils.git_clone_repo")
+def test_git_support_with_branch_and_commit_succeed_estimator_class(
+    git_clone_repo, sagemaker_session
+):
+    git_clone_repo.side_effect = lambda gitconfig, entrypoint, source_dir=None, dependencies=None: {
+        "entry_point": "/tmp/repo_dir/entry_point",
+        "source_dir": None,
+        "dependencies": None,
+    }
+    git_config = {"repo": GIT_REPO, "branch": BRANCH, "commit": COMMIT}
+    entry_point = "entry_point"
+    fw = Estimator(
+        entry_point=entry_point,
+        git_config=git_config,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        image_uri=IMAGE_URI,
+    )
+    fw.fit()
+    git_clone_repo.assert_called_once_with(git_config, entry_point, None, None)
+
+
+@patch("sagemaker.estimator.Estimator._stage_user_code_in_s3")
+def test_script_mode_estimator(patched_stage_user_code, sagemaker_session):
+    patched_stage_user_code.return_value = UploadedCode(
+        s3_prefix="s3://bucket/key", script_name="script_name"
+    )
+    script_uri = "s3://codebucket/someprefix/sourcedir.tar.gz"
+    image_uri = "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:1.9.0-gpu-py38"
+    model_uri = "s3://someprefix2/models/model.tar.gz"
+    t = Estimator(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        sagemaker_session=sagemaker_session,
+        instance_count=INSTANCE_COUNT,
+        instance_type=INSTANCE_TYPE,
+        source_dir=script_uri,
+        image_uri=image_uri,
+        model_uri=model_uri,
+    )
+    t.fit("s3://bucket/mydata")
+
+    patched_stage_user_code.assert_called_once()
+    sagemaker_session.train.assert_called_once()
+
+
+@patch("time.time", return_value=TIME)
+@patch("sagemaker.estimator.tar_and_upload_dir")
+def test_script_mode_estimator_same_calls_as_framework(
+    patched_tar_and_upload_dir, sagemaker_session
+):
+
+    patched_tar_and_upload_dir.return_value = UploadedCode(
+        s3_prefix="s3://%s/%s" % ("bucket", "key"), script_name="script_name"
+    )
+    sagemaker_session.boto_region_name = REGION
+
+    script_uri = "s3://codebucket/someprefix/sourcedir.tar.gz"
+
+    instance_type = "ml.p2.xlarge"
+    instance_count = 1
+
+    model_uri = "s3://someprefix2/models/model.tar.gz"
+    training_data_uri = "s3://bucket/mydata"
+
+    generic_estimator = Estimator(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        region=REGION,
+        sagemaker_session=sagemaker_session,
+        instance_count=instance_count,
+        instance_type=instance_type,
+        source_dir=script_uri,
+        image_uri=IMAGE_URI,
+        model_uri=model_uri,
+        environment={"USE_SMDEBUG": "0"},
+        dependencies=[],
+        debugger_hook_config={},
+    )
+    generic_estimator.fit(training_data_uri)
+
+    generic_estimator_tar_and_upload_dir_args = patched_tar_and_upload_dir.call_args_list
+    generic_estimator_train_args = sagemaker_session.train.call_args_list
+
+    patched_tar_and_upload_dir.reset_mock()
+    sagemaker_session.train.reset_mock()
+
+    framework_estimator = DummyFramework(
+        entry_point=SCRIPT_PATH,
+        role=ROLE,
+        region=REGION,
+        source_dir=script_uri,
+        instance_count=instance_count,
+        instance_type=instance_type,
+        sagemaker_session=sagemaker_session,
+        model_uri=model_uri,
+        dependencies=[],
+        debugger_hook_config={},
+    )
+    framework_estimator.fit(training_data_uri)
+
+    assert len(generic_estimator_tar_and_upload_dir_args) == 1
+    assert len(generic_estimator_train_args) == 1
+    assert generic_estimator_tar_and_upload_dir_args == patched_tar_and_upload_dir.call_args_list
+    assert generic_estimator_train_args == sagemaker_session.train.call_args_list
