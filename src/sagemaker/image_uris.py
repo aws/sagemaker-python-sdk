@@ -93,7 +93,11 @@ def retrieve(
         str: the ECR URI for the corresponding SageMaker Docker image.
 
     Raises:
+        NotImplementedError: If the scope is not supported.
         ValueError: If the combination of arguments specified is not supported.
+        VulnerableJumpStartModelError: If any of the dependencies required by the script have
+            known security vulnerabilities.
+        DeprecatedJumpStartModelError: If the version of the model is deprecated.
     """
     if is_jumpstart_model_input(model_id, model_version):
 

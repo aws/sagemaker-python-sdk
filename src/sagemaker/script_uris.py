@@ -52,7 +52,11 @@ def retrieve(
         str: the model script URI for the corresponding model.
 
     Raises:
+        NotImplementedError: If the scope is not supported.
         ValueError: If the combination of arguments specified is not supported.
+        VulnerableJumpStartModelError: If any of the dependencies required by the script have
+            known security vulnerabilities.
+        DeprecatedJumpStartModelError: If the version of the model is deprecated.
     """
     if not jumpstart_utils.is_jumpstart_model_input(model_id, model_version):
         raise ValueError("Must specify `model_id` and `model_version` when retrieving script URIs.")
