@@ -12,9 +12,10 @@
 # language governing permissions and limitations under the License.
 """This module contains utilities related to SageMaker JumpStart."""
 from __future__ import absolute_import
+from functools import reduce
 from typing import Dict, List, Optional
-from packaging.version import Version
 from urllib.parse import urlparse
+from packaging.version import Version
 import sagemaker
 from sagemaker.jumpstart import constants
 from sagemaker.jumpstart import accessors
@@ -154,13 +155,26 @@ def is_jumpstart_model_uri(uri: Optional[str]) -> bool:
     return bucket in constants.JUMPSTART_BUCKET_NAME_SET
 
 
+def tag_key_in_array(tag_key: str, tag_array: List[Dict[str, str]]) -> bool:
+    """Returns True if ``tag_key`` is in the ``tag_array``.
+
+    Args:
+        tag_key (str): the tag key to check if it's already in the ``tag_array``.
+        tag_array (List[Dict[str, str]]): array of tags to check for ``tag_key``.
+    """
+    if len(tag_array) == 0:
+        return False
+    return tag_key in reduce(lambda a, b: set(a.keys()).union(set(b.keys())), tag_array)
+
+
 def add_jumpstart_tags(
     tags: Optional[List[Dict[str, str]]],
     inference_model_uri: Optional[str],
     inference_script_uri: Optional[str],
 ) -> List[Dict[str, str]]:
-    """Adds tags for JumpStart models. Returns original tags for non-JumpStart
-    models.
+    """Add custom tags to JumpStart models, return the updated tags.
+
+    No-op if this is not a JumpStart model related resource.
 
     Args:
         tags (Optional[List[Dict[str,str]]): Current tags for JumpStart inference
@@ -172,19 +186,21 @@ def add_jumpstart_tags(
     if is_jumpstart_model_uri(inference_model_uri):
         if tags is None:
             tags = []
-        tags.append(
-            {
-                constants.JumpStartTag.INFERENCE_MODEL_URI.value: inference_model_uri,
-            }
-        )
+        if not tag_key_in_array(constants.JumpStartTag.INFERENCE_MODEL_URI.value, tags):
+            tags.append(
+                {
+                    constants.JumpStartTag.INFERENCE_MODEL_URI.value: inference_model_uri,
+                }
+            )
 
     if is_jumpstart_model_uri(inference_script_uri):
         if tags is None:
             tags = []
-        tags.append(
-            {
-                constants.JumpStartTag.INFERENCE_SCRIPT_URI.value: inference_script_uri,
-            }
-        )
+        if not tag_key_in_array(constants.JumpStartTag.INFERENCE_SCRIPT_URI.value, tags):
+            tags.append(
+                {
+                    constants.JumpStartTag.INFERENCE_SCRIPT_URI.value: inference_script_uri,
+                }
+            )
 
     return tags

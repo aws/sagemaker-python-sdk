@@ -154,7 +154,7 @@ class VariableScope(str, Enum):
 
 
 class JumpStartTag(str, Enum):
-    """Enum class for tags to apply to JumpStart models."""
+    """Enum class for tag keys to apply to JumpStart models."""
 
-    INFERENCE_MODEL_URI = "jumpstart-inference-model-uri"
-    INFERENCE_SCRIPT_URI = "jumpstart-inference-script-uri"
+    INFERENCE_MODEL_URI = "aws-jumpstart-inference-model-uri"
+    INFERENCE_SCRIPT_URI = "aws-jumpstart-inference-script-uri"

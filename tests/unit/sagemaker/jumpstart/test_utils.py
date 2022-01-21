@@ -286,3 +286,42 @@ def test_add_jumpstart_tags():
         },
         {JumpStartTag.INFERENCE_SCRIPT_URI.value: inference_script_uri},
     ]
+
+    tags = [{JumpStartTag.INFERENCE_MODEL_URI.value: "garbage-value"}]
+    inference_script_uri = random_jumpstart_s3_uri("random_key")
+    inference_model_uri = random_jumpstart_s3_uri("random_key")
+    assert utils.add_jumpstart_tags(
+        tags=tags,
+        inference_model_uri=inference_model_uri,
+        inference_script_uri=inference_script_uri,
+    ) == [
+        {JumpStartTag.INFERENCE_MODEL_URI.value: "garbage-value"},
+        {JumpStartTag.INFERENCE_SCRIPT_URI.value: inference_script_uri},
+    ]
+
+    tags = [{JumpStartTag.INFERENCE_SCRIPT_URI.value: "garbage-value"}]
+    inference_script_uri = random_jumpstart_s3_uri("random_key")
+    inference_model_uri = random_jumpstart_s3_uri("random_key")
+    assert utils.add_jumpstart_tags(
+        tags=tags,
+        inference_model_uri=inference_model_uri,
+        inference_script_uri=inference_script_uri,
+    ) == [
+        {JumpStartTag.INFERENCE_SCRIPT_URI.value: "garbage-value"},
+        {JumpStartTag.INFERENCE_MODEL_URI.value: inference_model_uri},
+    ]
+
+    tags = [
+        {JumpStartTag.INFERENCE_SCRIPT_URI.value: "garbage-value"},
+        {JumpStartTag.INFERENCE_MODEL_URI.value: "garbage-value-2"},
+    ]
+    inference_script_uri = random_jumpstart_s3_uri("random_key")
+    inference_model_uri = random_jumpstart_s3_uri("random_key")
+    assert utils.add_jumpstart_tags(
+        tags=tags,
+        inference_model_uri=inference_model_uri,
+        inference_script_uri=inference_script_uri,
+    ) == [
+        {JumpStartTag.INFERENCE_SCRIPT_URI.value: "garbage-value"},
+        {JumpStartTag.INFERENCE_MODEL_URI.value: "garbage-value-2"},
+    ]

@@ -20,7 +20,6 @@ import sagemaker
 from sagemaker.model import FrameworkModel, Model
 from sagemaker.huggingface.model import HuggingFaceModel
 from sagemaker.jumpstart.constants import JUMPSTART_BUCKET_NAME_SET, JumpStartTag
-from sagemaker.model import FrameworkModel, Model
 from sagemaker.mxnet.model import MXNetModel
 from sagemaker.pytorch.model import PyTorchModel
 from sagemaker.sklearn.model import SKLearnModel
@@ -482,7 +481,7 @@ def test_script_mode_model_tags_jumpstart_models(repack_model, sagemaker_session
         },
     ]
 
-    non_jumpstart_source_dir = f"s3://blah/blah/blah"
+    non_jumpstart_source_dir = "s3://blah/blah/blah"
     t = Model(
         entry_point=ENTRY_POINT_INFERENCE,
         role=ROLE,
