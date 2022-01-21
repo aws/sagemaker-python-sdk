@@ -164,19 +164,21 @@ def verify_model_region_and_return_specs(
         scope (Optional[str]): scope of the JumpStart model to verify.
         region (Optional[str]): region of the JumpStart model to verify and
             obtains specs.
-        tolerate_vulnerable_model (Optional[bool]): True if vulnerable models should be tolerated
-            (exception not raised). False if these models should raise an exception.
-            (Default: None).
+        tolerate_vulnerable_model (Optional[bool]): True if vulnerable versions of model
+            specifications should be tolerated (exception not raised). False or None, raises an
+            exception if the script used by this version of the model has dependencies with known
+            security vulnerabilities. (Default: None).
         tolerate_deprecated_model (Optional[bool]): True if deprecated models should be tolerated
             (exception not raised). False if these models should raise an exception.
             (Default: None).
 
 
     Raises:
-        ValueError: If the combination of arguments specified is not supported.
         NotImplementedError: If the scope is not supported.
-        VulnerableJumpStartModelError: If the model is vulnerable.
-        DeprecatedJumpStartModelError: If the model is deprecated.
+        ValueError: If the combination of arguments specified is not supported.
+        VulnerableJumpStartModelError: If any of the dependencies required by the script have
+            known security vulnerabilities.
+        DeprecatedJumpStartModelError: If the version of the model is deprecated.
     """
 
     if tolerate_vulnerable_model is None:

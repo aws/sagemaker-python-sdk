@@ -41,10 +41,13 @@ def retrieve(
             model script S3 URI.
         script_scope (str): The script type, i.e. what it is used for.
             Valid values: "training" and "inference".
-        tolerate_vulnerable_model (bool): True if vulnerable models should be tolerated (exception
-            not raised). False if these models should raise an exception. (Default: None).
-        tolerate_deprecated_model (bool): True if deprecated models should be tolerated (exception
-            not raised). False if these models should raise an exception. (Default: None).
+        tolerate_vulnerable_model (Optional[bool]): True if vulnerable versions of model
+            specifications should be tolerated (exception not raised). False or None, raises an
+            exception if the script used by this version of the model has dependencies with known
+            security vulnerabilities. (Default: None).
+        tolerate_deprecated_model (Optional[bool]): True if deprecated models should be tolerated
+            (exception not raised). False if these models should raise an exception.
+            (Default: None).
     Returns:
         str: the model script URI for the corresponding model.
 

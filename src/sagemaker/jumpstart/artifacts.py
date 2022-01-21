@@ -75,18 +75,22 @@ def _retrieve_image_uri(
         distribution (dict): A dictionary with information on how to run distributed training
         training_compiler_config (:class:`~sagemaker.training_compiler.TrainingCompilerConfig`):
             A configuration class for the SageMaker Training Compiler.
-        tolerate_vulnerable_model (bool): True if vulnerable models should be tolerated (exception
-            not raised). False if these models should raise an exception.
-        tolerate_deprecated_model (bool): True if deprecated models should be tolerated (exception
-            not raised). False if these models should raise an exception.
+        tolerate_vulnerable_model (Optional[bool]): True if vulnerable versions of model
+            specifications should be tolerated (exception not raised). False or None, raises an
+            exception if the script used by this version of the model has dependencies with known
+            security vulnerabilities.
+        tolerate_deprecated_model (Optional[bool]): True if deprecated versions of model
+            specifications should be tolerated (exception not raised). False or None, raises
+            an exception if the version of the model is deprecated.
 
     Returns:
         str: the ECR URI for the corresponding SageMaker Docker image.
 
     Raises:
         ValueError: If the combination of arguments specified is not supported.
-        VulnerableJumpStartModelError: If the model is vulnerable.
-        DeprecatedJumpStartModelError: If the model is deprecated.
+        VulnerableJumpStartModelError: If any of the dependencies required by the script have
+            known security vulnerabilities.
+        DeprecatedJumpStartModelError: If the version of the model is deprecated.
     """
     if region is None:
         region = JUMPSTART_DEFAULT_REGION_NAME
@@ -102,9 +106,9 @@ def _retrieve_image_uri(
         tolerate_deprecated_model=tolerate_deprecated_model,
     )
 
-    if image_scope == JumpStartScriptScope.INFERENCE.value:
+    if image_scope == JumpStartScriptScope.INFERENCE:
         ecr_specs = model_specs.hosting_ecr_specs
-    elif image_scope == JumpStartScriptScope.TRAINING.value:
+    elif image_scope == JumpStartScriptScope.TRAINING:
         assert model_specs.training_ecr_specs is not None
         ecr_specs = model_specs.training_ecr_specs
 
@@ -128,11 +132,11 @@ def _retrieve_image_uri(
 
     base_framework_version_override: Optional[str] = None
     version_override: Optional[str] = None
-    if ecr_specs.framework == ModelFramework.HUGGINGFACE.value:
+    if ecr_specs.framework == ModelFramework.HUGGINGFACE:
         base_framework_version_override = ecr_specs.framework_version
         version_override = ecr_specs.huggingface_transformers_version
 
-    if image_scope == JumpStartScriptScope.TRAINING.value:
+    if image_scope == JumpStartScriptScope.TRAINING:
         return image_uris.get_training_image_uri(
             region=region,
             framework=ecr_specs.framework,
@@ -181,17 +185,21 @@ def _retrieve_model_uri(
         model_scope (str): The model type, i.e. what it is used for.
             Valid values: "training" and "inference".
         region (str): Region for which to retrieve model S3 URI.
-        tolerate_vulnerable_model (bool): True if vulnerable models should be tolerated (exception
-            not raised). False if these models should raise an exception.
-        tolerate_deprecated_model (bool): True if deprecated models should be tolerated (exception
-            not raised). False if these models should raise an exception.
+        tolerate_vulnerable_model (Optional[bool]): True if vulnerable versions of model
+            specifications should be tolerated (exception not raised). False or None, raises an
+            exception if the script used by this version of the model has dependencies with known
+            security vulnerabilities.
+        tolerate_deprecated_model (Optional[bool]): True if deprecated versions of model
+            specifications should be tolerated (exception not raised). False or None, raises
+            an exception if the version of the model is deprecated.
     Returns:
         str: the model artifact S3 URI for the corresponding model.
 
     Raises:
         ValueError: If the combination of arguments specified is not supported.
-        VulnerableJumpStartModelError: If the model is vulnerable.
-        DeprecatedJumpStartModelError: If the model is deprecated.
+        VulnerableJumpStartModelError: If any of the dependencies required by the script have
+            known security vulnerabilities.
+        DeprecatedJumpStartModelError: If the version of the model is deprecated.
     """
     if region is None:
         region = JUMPSTART_DEFAULT_REGION_NAME
@@ -207,9 +215,9 @@ def _retrieve_model_uri(
         tolerate_deprecated_model=tolerate_deprecated_model,
     )
 
-    if model_scope == JumpStartScriptScope.INFERENCE.value:
+    if model_scope == JumpStartScriptScope.INFERENCE:
         model_artifact_key = model_specs.hosting_artifact_key
-    elif model_scope == JumpStartScriptScope.TRAINING.value:
+    elif model_scope == JumpStartScriptScope.TRAINING:
         assert model_specs.training_artifact_key is not None
         model_artifact_key = model_specs.training_artifact_key
 
@@ -238,17 +246,21 @@ def _retrieve_script_uri(
         script_scope (str): The script type, i.e. what it is used for.
             Valid values: "training" and "inference".
         region (str): Region for which to retrieve model script S3 URI.
-        tolerate_vulnerable_model (bool): True if vulnerable models should be tolerated (exception
-            not raised). False if these models should raise an exception.
-        tolerate_deprecated_model (bool): True if deprecated models should be tolerated (exception
-            not raised). False if these models should raise an exception.
+        tolerate_vulnerable_model (Optional[bool]): True if vulnerable versions of model
+            specifications should be tolerated (exception not raised). False or None, raises an
+            exception if the script used by this version of the model has dependencies with known
+            security vulnerabilities.
+        tolerate_deprecated_model (Optional[bool]): True if deprecated versions of model
+            specifications should be tolerated (exception not raised). False or None, raises
+            an exception if the version of the model is deprecated.
     Returns:
         str: the model script URI for the corresponding model.
 
     Raises:
         ValueError: If the combination of arguments specified is not supported.
-        VulnerableJumpStartModelError: If the model is vulnerable.
-        DeprecatedJumpStartModelError: If the model is deprecated.
+        VulnerableJumpStartModelError: If any of the dependencies required by the script have
+            known security vulnerabilities.
+        DeprecatedJumpStartModelError: If the version of the model is deprecated.
     """
     if region is None:
         region = JUMPSTART_DEFAULT_REGION_NAME
@@ -264,9 +276,9 @@ def _retrieve_script_uri(
         tolerate_deprecated_model=tolerate_deprecated_model,
     )
 
-    if script_scope == JumpStartScriptScope.INFERENCE.value:
+    if script_scope == JumpStartScriptScope.INFERENCE:
         model_script_key = model_specs.hosting_script_key
-    elif script_scope == JumpStartScriptScope.TRAINING.value:
+    elif script_scope == JumpStartScriptScope.TRAINING:
         assert model_specs.training_script_key is not None
         model_script_key = model_specs.training_script_key
 
