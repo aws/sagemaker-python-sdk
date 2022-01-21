@@ -143,10 +143,10 @@ class Artifact(_base_types.Record):
         return artifact
 
     def downstream_trials(self, sagemaker_session=None) -> list:
-        """Retrieve all trial runs which that use this artifact.
+        """Use the lineage API to retrieve all downstream trials that use this artifact.
 
         Args:
-            sagemaker_session (obj): Sagemaker Sesssion to use. If not provided a default session
+            sagemaker_session (obj): Sagemaker Session to use. If not provided a default session
                 will be created.
 
         Returns:
@@ -159,6 +159,54 @@ class Artifact(_base_types.Record):
         )
         trial_component_arns: list = list(map(lambda x: x.destination_arn, outgoing_associations))
 
+        return self._get_trial_from_trial_component(trial_component_arns)
+
+    def downstream_trials_v2(self) -> list:
+        """Use a lineage query to retrieve all downstream trials that use this artifact.
+
+        Returns:
+            [Trial]: A list of SageMaker `Trial` objects.
+        """
+        return self._trials(direction=LineageQueryDirectionEnum.DESCENDANTS)
+
+    def upstream_trials(self) -> List:
+        """Use the lineage query to retrieve all upstream trials that use this artifact.
+
+        Returns:
+            [Trial]: A list of SageMaker `Trial` objects.
+        """
+        return self._trials(direction=LineageQueryDirectionEnum.ASCENDANTS)
+
+    def _trials(
+        self, direction: LineageQueryDirectionEnum = LineageQueryDirectionEnum.BOTH
+    ) -> List:
+        """Use the lineage query to retrieve all trials that use this artifact.
+
+        Args:
+            direction (LineageQueryDirectionEnum, optional): The query direction.
+
+        Returns:
+            [Trial]: A list of SageMaker `Trial` objects.
+        """
+        query_filter = LineageFilter(entities=[LineageEntityEnum.TRIAL_COMPONENT])
+        query_result = LineageQuery(self.sagemaker_session).query(
+            start_arns=[self.artifact_arn],
+            query_filter=query_filter,
+            direction=direction,
+            include_edges=False,
+        )
+        trial_component_arns: list = list(map(lambda x: x.arn, query_result.vertices))
+        return self._get_trial_from_trial_component(trial_component_arns)
+
+    def _get_trial_from_trial_component(self, trial_component_arns: list) -> List:
+        """Retrieve all upstream trial runs which that use the trial component arns.
+
+        Args:
+            trial_component_arns (list): list of trial component arns
+
+        Returns:
+            [Trial]: A list of SageMaker `Trial` objects.
+        """
         if not trial_component_arns:
             # no outgoing associations for this artifact
             return []
@@ -170,7 +218,7 @@ class Artifact(_base_types.Record):
         num_search_batches = math.ceil(len(trial_component_arns) % max_search_by_arn)
         trial_components: list = []
 
-        sagemaker_session = sagemaker_session or _utils.default_session()
+        sagemaker_session = self.sagemaker_session or _utils.default_session()
         sagemaker_client = sagemaker_session.sagemaker_client
 
         for i in range(num_search_batches):
@@ -335,6 +383,17 @@ class Artifact(_base_types.Record):
             sagemaker_session=sagemaker_session,
         )
 
+    def s3_uri_artifacts(self, s3_uri: str) -> dict:
+        """Retrieve a list of artifacts that use provided s3 uri.
+
+        Args:
+            s3_uri (str): A S3 URI.
+
+        Returns:
+            A list of ``Artifacts``
+        """
+        return self.sagemaker_session.sagemaker_client.list_artifacts(SourceUri=s3_uri)
+
 
 class ModelArtifact(Artifact):
     """A SageMaker lineage artifact representing a model.
@@ -349,7 +408,7 @@ class ModelArtifact(Artifact):
         """Get association summaries for endpoints deployed with this model.
 
         Returns:
-            [AssociationSummary]: A list of associations repesenting the endpoints using the model.
+            [AssociationSummary]: A list of associations representing the endpoints using the model.
         """
         endpoint_development_actions: Iterator = Association.list(
             source_arn=self.artifact_arn,
@@ -522,3 +581,69 @@ class DatasetArtifact(Artifact):
         for vertex in query_result.vertices:
             endpoint_contexts.append(vertex.to_lineage_object())
         return endpoint_contexts
+
+    def upstream_datasets(self) -> List[Artifact]:
+        """Use the lineage query to retrieve upstream artifacts that use this dataset artifact.
+
+        Returns:
+            list of Artifacts: Artifacts representing an dataset.
+        """
+        return self._datasets(direction=LineageQueryDirectionEnum.ASCENDANTS)
+
+    def downstream_datasets(self) -> List[Artifact]:
+        """Use the lineage query to retrieve downstream artifacts that use this dataset.
+
+        Returns:
+            list of Artifacts: Artifacts representing an dataset.
+        """
+        return self._datasets(direction=LineageQueryDirectionEnum.DESCENDANTS)
+
+    def _datasets(
+        self, direction: LineageQueryDirectionEnum = LineageQueryDirectionEnum.BOTH
+    ) -> List[Artifact]:
+        """Use the lineage query to retrieve all artifacts that use this dataset.
+
+        Args:
+            direction (LineageQueryDirectionEnum, optional): The query direction.
+
+        Returns:
+            list of Artifacts: Artifacts representing an dataset.
+        """
+        query_filter = LineageFilter(
+            entities=[LineageEntityEnum.ARTIFACT], sources=[LineageSourceEnum.DATASET]
+        )
+        query_result = LineageQuery(self.sagemaker_session).query(
+            start_arns=[self.artifact_arn],
+            query_filter=query_filter,
+            direction=direction,
+            include_edges=False,
+        )
+        return [vertex.to_lineage_object() for vertex in query_result.vertices]
+
+
+class ImageArtifact(Artifact):
+    """A SageMaker lineage artifact representing an image.
+
+    Common model specific lineage traversals to discover how the image is connected
+    to other entities.
+    """
+
+    def datasets(self, direction: LineageQueryDirectionEnum) -> List[Artifact]:
+        """Use the lineage query to retrieve datasets that use this image artifact.
+
+        Args:
+            direction (LineageQueryDirectionEnum): The query direction.
+
+        Returns:
+            list of Artifacts: Artifacts representing a dataset.
+        """
+        query_filter = LineageFilter(
+            entities=[LineageEntityEnum.ARTIFACT], sources=[LineageSourceEnum.DATASET]
+        )
+        query_result = LineageQuery(self.sagemaker_session).query(
+            start_arns=[self.artifact_arn],
+            query_filter=query_filter,
+            direction=direction,
+            include_edges=False,
+        )
+        return [vertex.to_lineage_object() for vertex in query_result.vertices]

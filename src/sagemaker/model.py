@@ -32,6 +32,7 @@ from sagemaker import (
 from sagemaker.inputs import CompilationInput
 from sagemaker.deprecations import removed_kwargs
 from sagemaker.predictor import PredictorBase
+from sagemaker.serverless import ServerlessInferenceConfig
 from sagemaker.transformer import Transformer
 
 LOGGER = logging.getLogger("sagemaker")
@@ -209,7 +210,7 @@ class Model(ModelBase):
             model_package_arn=model_package.get("ModelPackageArn"),
         )
 
-    def _init_sagemaker_session_if_does_not_exist(self, instance_type):
+    def _init_sagemaker_session_if_does_not_exist(self, instance_type=None):
         """Set ``self.sagemaker_session`` to ``LocalSession`` or ``Session`` if it's not already.
 
         The type of session object is determined by the instance type.
@@ -683,8 +684,8 @@ class Model(ModelBase):
 
     def deploy(
         self,
-        initial_instance_count,
-        instance_type,
+        initial_instance_count=None,
+        instance_type=None,
         serializer=None,
         deserializer=None,
         accelerator_type=None,
@@ -693,6 +694,7 @@ class Model(ModelBase):
         kms_key=None,
         wait=True,
         data_capture_config=None,
+        serverless_inference_config=None,
         **kwargs,
     ):
         """Deploy this ``Model`` to an ``Endpoint`` and optionally return a ``Predictor``.
@@ -710,9 +712,13 @@ class Model(ModelBase):
 
         Args:
             initial_instance_count (int): The initial number of instances to run
-                in the ``Endpoint`` created from this ``Model``.
+                in the ``Endpoint`` created from this ``Model``. If not using
+                serverless inference, then it need to be a number larger or equals
+                to 1 (default: None)
             instance_type (str): The EC2 instance type to deploy this Model to.
-                For example, 'ml.p2.xlarge', or 'local' for local mode.
+                For example, 'ml.p2.xlarge', or 'local' for local mode. If not using
+                serverless inference, then it is required to deploy a model.
+                (default: None)
             serializer (:class:`~sagemaker.serializers.BaseSerializer`): A
                 serializer object, used to encode data for an inference endpoint
                 (default: None). If ``serializer`` is not None, then
@@ -741,7 +747,17 @@ class Model(ModelBase):
             data_capture_config (sagemaker.model_monitor.DataCaptureConfig): Specifies
                 configuration related to Endpoint data capture for use with
                 Amazon SageMaker Model Monitoring. Default: None.
-
+            serverless_inference_config (sagemaker.serverless.ServerlessInferenceConfig):
+                Specifies configuration related to serverless endpoint. Use this configuration
+                when trying to create serverless endpoint and make serverless inference. If
+                empty object passed through, we will use pre-defined values in
+                ``ServerlessInferenceConfig`` class to deploy serverless endpoint (default: None)
+        Raises:
+             ValueError: If arguments combination check failed in these circumstances:
+                - If no role is specified or
+                - If serverless inference config is not specified and instance type and instance
+                    count are also not specified or
+                - If a wrong type of object is provided as serverless inference config
         Returns:
             callable[string, sagemaker.session.Session] or None: Invocation of
                 ``self.predictor_cls`` on the created endpoint name, if ``self.predictor_cls``
@@ -753,27 +769,47 @@ class Model(ModelBase):
         if self.role is None:
             raise ValueError("Role can not be null for deploying a model")
 
-        if instance_type.startswith("ml.inf") and not self._is_compiled_model:
+        is_serverless = serverless_inference_config is not None
+        if not is_serverless and not (instance_type and initial_instance_count):
+            raise ValueError(
+                "Must specify instance type and instance count unless using serverless inference"
+            )
+
+        if is_serverless and not isinstance(serverless_inference_config, ServerlessInferenceConfig):
+            raise ValueError(
+                "serverless_inference_config needs to be a ServerlessInferenceConfig object"
+            )
+
+        if instance_type and instance_type.startswith("ml.inf") and not self._is_compiled_model:
             LOGGER.warning(
                 "Your model is not compiled. Please compile your model before using Inferentia."
             )
 
-        compiled_model_suffix = "-".join(instance_type.split(".")[:-1])
-        if self._is_compiled_model:
+        compiled_model_suffix = None if is_serverless else "-".join(instance_type.split(".")[:-1])
+        if self._is_compiled_model and not is_serverless:
             self._ensure_base_name_if_needed(self.image_uri)
             if self._base_name is not None:
                 self._base_name = "-".join((self._base_name, compiled_model_suffix))
 
         self._create_sagemaker_model(instance_type, accelerator_type, tags)
+
+        serverless_inference_config_dict = (
+            serverless_inference_config._to_request_dict() if is_serverless else None
+        )
         production_variant = sagemaker.production_variant(
-            self.name, instance_type, initial_instance_count, accelerator_type=accelerator_type
+            self.name,
+            instance_type,
+            initial_instance_count,
+            accelerator_type=accelerator_type,
+            serverless_inference_config=serverless_inference_config_dict,
         )
         if endpoint_name:
             self.endpoint_name = endpoint_name
         else:
             base_endpoint_name = self._base_name or utils.base_from_name(self.name)
-            if self._is_compiled_model and not base_endpoint_name.endswith(compiled_model_suffix):
-                base_endpoint_name = "-".join((base_endpoint_name, compiled_model_suffix))
+            if self._is_compiled_model and not is_serverless:
+                if not base_endpoint_name.endswith(compiled_model_suffix):
+                    base_endpoint_name = "-".join((base_endpoint_name, compiled_model_suffix))
             self.endpoint_name = utils.name_from_base(base_endpoint_name)
 
         data_capture_config_dict = None

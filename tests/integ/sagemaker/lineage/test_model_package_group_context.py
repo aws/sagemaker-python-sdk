@@ -10,9 +10,11 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Classes for performing machine learning on serverless compute."""
-from sagemaker.serverless.model import LambdaModel  # noqa: F401
-from sagemaker.serverless.predictor import LambdaPredictor  # noqa: F401
-from sagemaker.serverless.serverless_inference_config import (  # noqa: F401
-    ServerlessInferenceConfig,
-)
+"""This module contains code to test SageMaker ``ModelPackageGroup``"""
+from __future__ import absolute_import
+
+
+def test_pipeline_execution_arn(static_model_package_group_context, static_pipeline_execution_arn):
+    pipeline_execution_arn = static_model_package_group_context.pipeline_execution_arn()
+
+    assert pipeline_execution_arn == static_pipeline_execution_arn
