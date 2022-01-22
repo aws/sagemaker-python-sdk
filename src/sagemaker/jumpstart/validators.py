@@ -25,7 +25,7 @@ def _validate_hyperparameter(
     hyperparameter_name: str,
     hyperparameter_value: Any,
     hyperparameter_specs: List[JumpStartHyperparameter],
-):
+) -> None:
     """Perform low-level hyperparameter validation on single parameter.
 
     Args:

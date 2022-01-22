@@ -68,7 +68,7 @@ def validate(
     model_version: Optional[str] = None,
     hyperparameters: Optional[dict] = None,
     validation_mode: Optional[HyperparameterValidationMode] = None,
-):
+) -> None:
     """Validate hyperparameters for models.
 
     Args:
