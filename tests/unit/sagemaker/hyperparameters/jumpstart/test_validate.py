@@ -65,6 +65,42 @@ def test_jumpstart_validate_provided_hyperparameters(patched_get_model_specs):
                         "exclusive_max": 4,
                     }
                 ),
+                JumpStartHyperparameter(
+                    {
+                        "name": "test_exclusive_min_param_text",
+                        "type": "text",
+                        "default": "hello",
+                        "scope": "algorithm",
+                        "exclusive_min": 1,
+                    }
+                ),
+                JumpStartHyperparameter(
+                    {
+                        "name": "test_exclusive_max_param_text",
+                        "type": "text",
+                        "default": "hello",
+                        "scope": "algorithm",
+                        "exclusive_max": 6,
+                    }
+                ),
+                JumpStartHyperparameter(
+                    {
+                        "name": "test_min_param_text",
+                        "type": "text",
+                        "default": "hello",
+                        "scope": "algorithm",
+                        "min": 1,
+                    }
+                ),
+                JumpStartHyperparameter(
+                    {
+                        "name": "test_max_param_text",
+                        "type": "text",
+                        "default": "hello",
+                        "scope": "algorithm",
+                        "max": 6,
+                    }
+                ),
             ]
         )
         return spec
@@ -82,6 +118,10 @@ def test_jumpstart_validate_provided_hyperparameters(patched_get_model_specs):
         "test_bool_param": False,
         "test_exclusive_min_param": 4,
         "test_exclusive_max_param": -4,
+        "test_exclusive_min_param_text": "hello",
+        "test_exclusive_max_param_text": "hello",
+        "test_min_param_text": "hello",
+        "test_max_param_text": "hello",
     }
 
     hyperparameters.validate(
@@ -218,6 +258,86 @@ def test_jumpstart_validate_provided_hyperparameters(patched_get_model_specs):
                 hyperparameters=hyperparameter_to_test,
             )
     hyperparameter_to_test["test_exclusive_max_param"] = original_exclusive_max_val
+
+    original_exclusive_max_text_val = hyperparameter_to_test["test_exclusive_max_param_text"]
+    for val in ["", "sd", "12345"]:
+        hyperparameter_to_test["test_exclusive_max_param_text"] = val
+        hyperparameters.validate(
+            region=region,
+            model_id=model_id,
+            model_version=model_version,
+            hyperparameters=hyperparameter_to_test,
+        )
+    for val in ["123456", "123456789"]:
+        hyperparameter_to_test["test_exclusive_max_param_text"] = val
+        with pytest.raises(JumpStartHyperparametersError):
+            hyperparameters.validate(
+                region=region,
+                model_id=model_id,
+                model_version=model_version,
+                hyperparameters=hyperparameter_to_test,
+            )
+    hyperparameter_to_test["test_exclusive_max_param_text"] = original_exclusive_max_text_val
+
+    original_max_text_val = hyperparameter_to_test["test_max_param_text"]
+    for val in ["", "sd", "12345", "123456"]:
+        hyperparameter_to_test["test_max_param_text"] = val
+        hyperparameters.validate(
+            region=region,
+            model_id=model_id,
+            model_version=model_version,
+            hyperparameters=hyperparameter_to_test,
+        )
+    for val in ["1234567", "123456789"]:
+        hyperparameter_to_test["test_max_param_text"] = val
+        with pytest.raises(JumpStartHyperparametersError):
+            hyperparameters.validate(
+                region=region,
+                model_id=model_id,
+                model_version=model_version,
+                hyperparameters=hyperparameter_to_test,
+            )
+    hyperparameter_to_test["test_max_param_text"] = original_max_text_val
+
+    original_exclusive_min_text_val = hyperparameter_to_test["test_exclusive_min_param_text"]
+    for val in ["12", "sdfs", "12345dsfs"]:
+        hyperparameter_to_test["test_exclusive_min_param_text"] = val
+        hyperparameters.validate(
+            region=region,
+            model_id=model_id,
+            model_version=model_version,
+            hyperparameters=hyperparameter_to_test,
+        )
+    for val in ["1", "d", ""]:
+        hyperparameter_to_test["test_exclusive_min_param_text"] = val
+        with pytest.raises(JumpStartHyperparametersError):
+            hyperparameters.validate(
+                region=region,
+                model_id=model_id,
+                model_version=model_version,
+                hyperparameters=hyperparameter_to_test,
+            )
+    hyperparameter_to_test["test_exclusive_min_param_text"] = original_exclusive_min_text_val
+
+    original_min_text_val = hyperparameter_to_test["test_min_param_text"]
+    for val in ["1", "s", "12", "sdfs", "12345dsfs"]:
+        hyperparameter_to_test["test_min_param_text"] = val
+        hyperparameters.validate(
+            region=region,
+            model_id=model_id,
+            model_version=model_version,
+            hyperparameters=hyperparameter_to_test,
+        )
+    for val in [""]:
+        hyperparameter_to_test["test_min_param_text"] = val
+        with pytest.raises(JumpStartHyperparametersError):
+            hyperparameters.validate(
+                region=region,
+                model_id=model_id,
+                model_version=model_version,
+                hyperparameters=hyperparameter_to_test,
+            )
+    hyperparameter_to_test["test_min_param_text"] = original_min_text_val
 
     del hyperparameter_to_test["batch-size"]
     hyperparameter_to_test["penalty"] = "blah"
