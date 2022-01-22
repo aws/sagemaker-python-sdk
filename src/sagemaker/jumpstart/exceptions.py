@@ -11,12 +11,13 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """This module stores exceptions related to SageMaker JumpStart."""
+from __future__ import absolute_import
 
 from typing import Optional
 
 
 class JumpStartHyperparametersError(Exception):
-    """Exception raised for errors with hyperparameters for JumpStart models."""
+    """Exception raised for bad hyperparameters of a JumpStart model."""
 
     def __init__(
         self,

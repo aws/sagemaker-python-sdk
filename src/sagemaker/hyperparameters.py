@@ -53,7 +53,9 @@ def retrieve_default(
         ValueError: If the combination of arguments specified is not supported.
     """
     if not jumpstart_utils.is_jumpstart_model_input(model_id, model_version):
-        raise ValueError("Must specify `model_id` and `model_version` when retrieving script URIs.")
+        raise ValueError(
+            "Must specify `model_id` and `model_version` when retrieving hyperparameters."
+        )
 
     return artifacts._retrieve_default_hyperparameters(
         model_id, model_version, region, include_container_hyperparameters
@@ -84,11 +86,16 @@ def validate(
           If set to ``VALIDATE_ALL``, all hyperparameters for the model will be validated.
           (Default: None)
 
+    Raises:
+        JumpStartHyperparametersError: If the hyperparameter is not formatted correctly,
+            according to its specs in the model metadata.
 
     """
 
     if not jumpstart_utils.is_jumpstart_model_input(model_id, model_version):
-        raise ValueError("Must specify `model_id` and `model_version` when retrieving script URIs.")
+        raise ValueError(
+            "Must specify `model_id` and `model_version` when validating hyperparameters."
+        )
 
     if hyperparameters is None:
         raise ValueError("Must specify hyperparameters.")

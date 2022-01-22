@@ -28,16 +28,44 @@ from tests.unit.sagemaker.jumpstart.utils import get_spec_from_base_spec
 def test_jumpstart_validate_provided_hyperparameters(patched_get_model_specs):
     def add_options_to_hyperparameter(*largs, **kwargs):
         spec = get_spec_from_base_spec(*largs, **kwargs)
-        spec.hyperparameters.append(
-            JumpStartHyperparameter(
-                {
-                    "name": "penalty",
-                    "type": "text",
-                    "default": "l2",
-                    "options": ["l1", "l2", "elasticnet", "none"],
-                    "scope": "algorithm",
-                }
-            )
+        spec.hyperparameters.extend(
+            [
+                JumpStartHyperparameter(
+                    {
+                        "name": "penalty",
+                        "type": "text",
+                        "default": "l2",
+                        "options": ["l1", "l2", "elasticnet", "none"],
+                        "scope": "algorithm",
+                    }
+                ),
+                JumpStartHyperparameter(
+                    {
+                        "name": "test_bool_param",
+                        "type": "bool",
+                        "default": True,
+                        "scope": "algorithm",
+                    }
+                ),
+                JumpStartHyperparameter(
+                    {
+                        "name": "test_exclusive_min_param",
+                        "type": "float",
+                        "default": 4,
+                        "scope": "algorithm",
+                        "exclusive_min": 1,
+                    }
+                ),
+                JumpStartHyperparameter(
+                    {
+                        "name": "test_exclusive_max_param",
+                        "type": "int",
+                        "default": -4,
+                        "scope": "algorithm",
+                        "exclusive_max": 4,
+                    }
+                ),
+            ]
         )
         return spec
 
@@ -51,6 +79,9 @@ def test_jumpstart_validate_provided_hyperparameters(patched_get_model_specs):
         "batch-size": "4",
         "epochs": "3",
         "penalty": "l2",
+        "test_bool_param": False,
+        "test_exclusive_min_param": 4,
+        "test_exclusive_max_param": -4,
     }
 
     hyperparameters.validate(
@@ -127,6 +158,66 @@ def test_jumpstart_validate_provided_hyperparameters(patched_get_model_specs):
         model_version=model_version,
         hyperparameters=hyperparameter_to_test,
     )
+
+    original_bool_val = hyperparameter_to_test["test_bool_param"]
+    for val in ["False", "fAlSe", "false", "True", "TrUe", "true", True, False]:
+        hyperparameter_to_test["test_bool_param"] = val
+        hyperparameters.validate(
+            region=region,
+            model_id=model_id,
+            model_version=model_version,
+            hyperparameters=hyperparameter_to_test,
+        )
+    for val in [None, "", 5, "Truesday", "Falsehood"]:
+        hyperparameter_to_test["test_bool_param"] = val
+        with pytest.raises(JumpStartHyperparametersError):
+            hyperparameters.validate(
+                region=region,
+                model_id=model_id,
+                model_version=model_version,
+                hyperparameters=hyperparameter_to_test,
+            )
+    hyperparameter_to_test["test_bool_param"] = original_bool_val
+
+    original_exclusive_min_val = hyperparameter_to_test["test_exclusive_min_param"]
+    for val in [2, 1 + 1e-9]:
+        hyperparameter_to_test["test_exclusive_min_param"] = val
+        hyperparameters.validate(
+            region=region,
+            model_id=model_id,
+            model_version=model_version,
+            hyperparameters=hyperparameter_to_test,
+        )
+    for val in [1, 1 - 1e-99, -99]:
+        hyperparameter_to_test["test_exclusive_min_param"] = val
+        with pytest.raises(JumpStartHyperparametersError):
+            hyperparameters.validate(
+                region=region,
+                model_id=model_id,
+                model_version=model_version,
+                hyperparameters=hyperparameter_to_test,
+            )
+    hyperparameter_to_test["test_exclusive_min_param"] = original_exclusive_min_val
+
+    original_exclusive_max_val = hyperparameter_to_test["test_exclusive_max_param"]
+    for val in [-2, 2, 3]:
+        hyperparameter_to_test["test_exclusive_max_param"] = val
+        hyperparameters.validate(
+            region=region,
+            model_id=model_id,
+            model_version=model_version,
+            hyperparameters=hyperparameter_to_test,
+        )
+    for val in [4, 5, 99]:
+        hyperparameter_to_test["test_exclusive_max_param"] = val
+        with pytest.raises(JumpStartHyperparametersError):
+            hyperparameters.validate(
+                region=region,
+                model_id=model_id,
+                model_version=model_version,
+                hyperparameters=hyperparameter_to_test,
+            )
+    hyperparameter_to_test["test_exclusive_max_param"] = original_exclusive_max_val
 
     del hyperparameter_to_test["batch-size"]
     hyperparameter_to_test["penalty"] = "blah"
