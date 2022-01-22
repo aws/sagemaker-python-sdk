@@ -18,7 +18,7 @@ import logging
 import re
 
 from sagemaker import image_uris, fw_utils
-from sagemaker.estimator import Framework
+from sagemaker.estimator import Framework, EstimatorBase
 from sagemaker.model import FrameworkModel, SAGEMAKER_OUTPUT_LOCATION
 from sagemaker.mxnet.model import MXNetModel
 from sagemaker.tensorflow.model import TensorFlowModel
@@ -340,7 +340,9 @@ class RLEstimator(Framework):
             SAGEMAKER_ESTIMATOR: SAGEMAKER_ESTIMATOR_VALUE,
         }
 
-        hyperparameters.update(Framework._json_encode_hyperparameters(additional_hyperparameters))
+        hyperparameters.update(
+            EstimatorBase._json_encode_hyperparameters(additional_hyperparameters)
+        )
         return hyperparameters
 
     @classmethod
