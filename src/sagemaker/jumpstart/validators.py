@@ -179,8 +179,8 @@ def validate_hyperparameters(
           default region).
 
     Raises:
-        JumpStartHyperparametersError: If the hyperparameter is not formatted correctly,
-            according to its specs in the model metadata.
+        JumpStartHyperparametersError: If the hyperparameters are not formatted correctly,
+            according to their metadata specs.
 
     """
 
