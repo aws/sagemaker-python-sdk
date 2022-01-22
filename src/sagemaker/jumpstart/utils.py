@@ -168,7 +168,7 @@ def tag_key_in_array(tag_key: str, tag_array: List[Dict[str, str]]) -> bool:
 
 
 def get_tag_value(tag_key: str, tag_array: List[Dict[str, str]]) -> str:
-    """Gets the value of a tag for a given ``tag_key``.
+    """Return the value of a tag whose key matches the given ``tag_key``.
 
     Args:
         tag_key (str): AWS tag for which to search.
@@ -201,10 +201,10 @@ def add_single_jumpstart_tag(
     if is_jumpstart_model_uri(uri):
         if curr_tags is None:
             curr_tags = []
-        if not tag_key_in_array(tag_key.value, curr_tags):
+        if not tag_key_in_array(tag_key, curr_tags):
             curr_tags.append(
                 {
-                    tag_key.value: uri,
+                    tag_key: uri,
                 }
             )
     return curr_tags
@@ -268,10 +268,11 @@ def update_inference_tags_with_jumpstart_training_tags(
     """
     if training_tags:
         for tag_key in constants.JumpStartTag:
-            if tag_key_in_array(tag_key.value, training_tags):
-                tag_value = get_tag_value(tag_key.value, training_tags)
+            if tag_key_in_array(tag_key, training_tags):
+                tag_value = get_tag_value(tag_key, training_tags)
                 if inference_tags is None:
                     inference_tags = []
-                if not tag_key_in_array(tag_key.value, inference_tags):
-                    inference_tags.append({tag_key.value: tag_value})
+                if not tag_key_in_array(tag_key, inference_tags):
+                    inference_tags.append({tag_key: tag_value})
+
     return inference_tags
