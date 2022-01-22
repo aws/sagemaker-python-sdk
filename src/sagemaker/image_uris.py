@@ -45,8 +45,8 @@ def retrieve(
     training_compiler_config=None,
     model_id=None,
     model_version=None,
-    tolerate_vulnerable_model=None,
-    tolerate_deprecated_model=None,
+    tolerate_vulnerable_model=False,
+    tolerate_deprecated_model=False,
 ) -> str:
     """Retrieves the ECR URI for the Docker image matching the given arguments.
 
@@ -82,12 +82,12 @@ def retrieve(
         model_version (str): Version of the JumpStart model for which to retrieve the
             image URI (default: None).
         tolerate_vulnerable_model (bool): True if vulnerable versions of model specifications
-            should be tolerated (exception not raised). False or None, raises an exception if
+            should be tolerated (exception not raised). If False, raises an exception if
             the script used by this version of the model has dependencies with known security
-            vulnerabilities. (Default: None).
+            vulnerabilities. (Default: False).
         tolerate_deprecated_model (bool): True if deprecated versions of model specifications
-            should be tolerated (exception not raised). False or None, raises an exception
-            if the version of the model is deprecated. (Default: None).
+            should be tolerated (exception not raised). If False, raises an exception
+            if the version of the model is deprecated. (Default: False).
 
     Returns:
         str: the ECR URI for the corresponding SageMaker Docker image.
@@ -100,10 +100,6 @@ def retrieve(
         DeprecatedJumpStartModelError: If the version of the model is deprecated.
     """
     if is_jumpstart_model_input(model_id, model_version):
-
-        # adding assert statements to satisfy mypy type checker
-        assert model_id is not None
-        assert model_version is not None
 
         return artifacts._retrieve_image_uri(
             model_id,

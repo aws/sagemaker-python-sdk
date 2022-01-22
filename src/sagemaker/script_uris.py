@@ -15,7 +15,6 @@
 from __future__ import absolute_import
 
 import logging
-from typing import Optional
 
 from sagemaker.jumpstart import utils as jumpstart_utils
 from sagemaker.jumpstart import artifacts
@@ -28,8 +27,8 @@ def retrieve(
     model_id=None,
     model_version=None,
     script_scope=None,
-    tolerate_vulnerable_model: Optional[bool] = None,
-    tolerate_deprecated_model: Optional[bool] = None,
+    tolerate_vulnerable_model: bool = False,
+    tolerate_deprecated_model: bool = False,
 ) -> str:
     """Retrieves the script S3 URI associated with the model matching the given arguments.
 
@@ -41,13 +40,13 @@ def retrieve(
             model script S3 URI.
         script_scope (str): The script type, i.e. what it is used for.
             Valid values: "training" and "inference".
-        tolerate_vulnerable_model (Optional[bool]): True if vulnerable versions of model
-            specifications should be tolerated (exception not raised). False or None, raises an
+        tolerate_vulnerable_model (bool): True if vulnerable versions of model
+            specifications should be tolerated (exception not raised). If False, raises an
             exception if the script used by this version of the model has dependencies with known
-            security vulnerabilities. (Default: None).
-        tolerate_deprecated_model (Optional[bool]): True if deprecated models should be tolerated
+            security vulnerabilities. (Default: False).
+        tolerate_deprecated_model (bool): True if deprecated models should be tolerated
             (exception not raised). False if these models should raise an exception.
-            (Default: None).
+            (Default: False).
     Returns:
         str: the model script URI for the corresponding model.
 
@@ -60,10 +59,6 @@ def retrieve(
     """
     if not jumpstart_utils.is_jumpstart_model_input(model_id, model_version):
         raise ValueError("Must specify `model_id` and `model_version` when retrieving script URIs.")
-
-    # mypy type checking require these assertions
-    assert model_id is not None
-    assert model_version is not None
 
     return artifacts._retrieve_script_uri(
         model_id,

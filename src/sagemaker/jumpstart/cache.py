@@ -166,13 +166,12 @@ class JumpStartModelsCache:
         manifest = self._s3_cache.get(
             JumpStartCachedS3ContentKey(JumpStartS3FileType.MANIFEST, self._manifest_file_s3_key)
         ).formatted_content
-        assert isinstance(manifest, dict)
 
         sm_version = utils.get_sagemaker_version()
 
         versions_compatible_with_sagemaker = [
             Version(header.version)
-            for header in manifest.values()
+            for header in manifest.values()  # type: ignore
             if header.model_id == model_id and Version(header.min_version) <= Version(sm_version)
         ]
 
@@ -184,7 +183,8 @@ class JumpStartModelsCache:
             return JumpStartVersionedModelId(model_id, sm_compatible_model_version)
 
         versions_incompatible_with_sagemaker = [
-            Version(header.version) for header in manifest.values() if header.model_id == model_id
+            Version(header.version) for header in manifest.values()  # type: ignore
+            if header.model_id == model_id
         ]
         sm_incompatible_model_version = self._select_version(
             version, versions_incompatible_with_sagemaker
@@ -194,7 +194,7 @@ class JumpStartModelsCache:
             model_version_to_use_incompatible_with_sagemaker = sm_incompatible_model_version
             sm_version_to_use_list = [
                 header.min_version
-                for header in manifest.values()
+                for header in manifest.values()  # type: ignore
                 if header.model_id == model_id
                 and header.version == model_version_to_use_incompatible_with_sagemaker
             ]
@@ -262,8 +262,7 @@ class JumpStartModelsCache:
         manifest_dict = self._s3_cache.get(
             JumpStartCachedS3ContentKey(JumpStartS3FileType.MANIFEST, self._manifest_file_s3_key)
         ).formatted_content
-        assert isinstance(manifest_dict, dict)
-        manifest = list(manifest_dict.values())
+        manifest = list(manifest_dict.values())  # type: ignore
         return manifest
 
     def get_header(self, model_id: str, semantic_version_str: str) -> JumpStartModelHeader:
@@ -324,9 +323,7 @@ class JumpStartModelsCache:
             JumpStartCachedS3ContentKey(JumpStartS3FileType.MANIFEST, self._manifest_file_s3_key)
         ).formatted_content
         try:
-            assert isinstance(manifest, dict)
-            header = manifest[versioned_model_id]
-            assert isinstance(header, JumpStartModelHeader)
+            header = manifest[versioned_model_id]  # type: ignore
             return header
         except KeyError:
             if attempt > 0:
@@ -348,8 +345,7 @@ class JumpStartModelsCache:
         specs = self._s3_cache.get(
             JumpStartCachedS3ContentKey(JumpStartS3FileType.SPECS, spec_key)
         ).formatted_content
-        assert isinstance(specs, JumpStartModelSpecs)
-        return specs
+        return specs  # type: ignore
 
     def clear(self) -> None:
         """Clears the model id/version and s3 cache."""
